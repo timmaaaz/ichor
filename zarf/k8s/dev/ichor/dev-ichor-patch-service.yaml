@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ichor-service
+  namespace: ichor-system
+
+spec:
+  type: ClusterIP
+
+  ports:
+    - name: ichor
+      port: 3000
+      targetPort: ichor
+    - name: ichor-debug
+      port: 3010
+      targetPort: ichor-debug
+    - name: metrics
+      port: 4000
+      targetPort: metrics
+    - name: metrics-debug
+      port: 4010
+      targetPort: metrics-debug
+    - name: prometheus
+      port: 4020
+      targetPort: metrics-prom

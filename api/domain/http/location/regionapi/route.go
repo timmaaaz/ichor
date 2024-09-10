@@ -1,0 +1,31 @@
+package regionapi
+
+import (
+	"net/http"
+
+	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/mid"
+	"bitbucket.org/superiortechnologies/ichor/app/domain/location/regionapp"
+	"bitbucket.org/superiortechnologies/ichor/app/sdk/authclient"
+	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
+	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
+	"bitbucket.org/superiortechnologies/ichor/foundation/web"
+)
+
+// Constants for the regionapi package.
+type Config struct {
+	Log        *logger.Logger
+	RegionBus  *regionbus.Business
+	AuthClient *authclient.Client
+}
+
+// Routes adds specific routes for this group.
+func Routes(app *web.App, cfg Config) {
+	const version = "v1"
+
+	authen := mid.Authenticate(cfg.AuthClient)
+
+	api := newAPI(regionapp.NewApp(cfg.RegionBus))
+
+	app.HandlerFunc(http.MethodGet, version, "/regions", api.query, authen)
+	app.HandlerFunc(http.MethodGet, version, "/regions/{region_id}", api.queryByID, authen)
+}

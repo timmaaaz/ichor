@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base/ichor/
+  - ./dev-ichor-configmap.yaml
+patches:
+  - path: ./dev-ichor-patch-deploy.yaml
+  - path: ./dev-ichor-patch-service.yaml
+images:
+  - name: ichor-image
+    newName: localhost/superior/ichor
+    newTag: 0.0.1
+  - name: metrics-image
+    newName: localhost/superior/metrics
+    newTag: 0.0.1
