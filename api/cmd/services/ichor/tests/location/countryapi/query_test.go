@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/apitest"
-	"bitbucket.org/superiortechnologies/ichor/app/domain/location/countryapp"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/query"
 	"github.com/google/go-cmp/cmp"
+	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/domain/location/countryapp"
+	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {

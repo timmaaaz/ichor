@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/countrybus"
+	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 )
 
 func applyFilter(filter countrybus.QueryFilter, data map[string]interface{}, buf *bytes.Buffer) {

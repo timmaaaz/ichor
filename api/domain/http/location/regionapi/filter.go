@@ -3,7 +3,7 @@ package regionapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/location/regionapp"
+	"github.com/timmaaaz/ichor/app/domain/location/regionapp"
 )
 
 func parseQueryParams(r *http.Request) (regionapp.QueryParams, error) {

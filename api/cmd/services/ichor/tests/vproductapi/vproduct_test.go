@@ -3,7 +3,7 @@ package vproduct_test
 import (
 	"testing"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
 func Test_VProduct(t *testing.T) {

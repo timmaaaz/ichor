@@ -3,7 +3,7 @@ package rawapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/foundation/web"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 // Routes adds specific routes for this group.

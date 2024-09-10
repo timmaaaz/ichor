@@ -3,10 +3,10 @@ package tran_test
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/apitest"
-	"bitbucket.org/superiortechnologies/ichor/app/domain/tranapp"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
 	"github.com/google/go-cmp/cmp"
+	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/domain/tranapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
 func create200(sd apitest.SeedData) []apitest.Table {

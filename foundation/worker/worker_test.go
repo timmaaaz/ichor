@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/foundation/worker"
+	"github.com/timmaaaz/ichor/foundation/worker"
 )
 
 func Test_Worker(t *testing.T) {

@@ -3,8 +3,8 @@ package product_test
 import (
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/productapp"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/app/domain/productapp"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
 )
 
 func toAppProduct(prd productbus.Product) productapp.Product {

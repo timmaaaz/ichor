@@ -6,8 +6,8 @@ import (
 	"context"
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/mid"
-	"bitbucket.org/superiortechnologies/ichor/foundation/web"
+	"github.com/timmaaaz/ichor/app/sdk/mid"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 type midFunc func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder

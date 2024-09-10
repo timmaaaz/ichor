@@ -1,8 +1,8 @@
 package productapp
 
 import (
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
 var defaultOrderBy = order.NewBy("product_id", order.ASC)

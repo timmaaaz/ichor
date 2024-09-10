@@ -38,6 +38,6 @@ CMD ["./ichor"]
 LABEL org.opencontainers.image.created="${BUILD_DATE}" \
     org.opencontainers.image.title="ichor-api" \
     org.opencontainers.image.authors="William Kennedy <bill@ardanlabs.com>" \
-    org.opencontainers.image.source="https://bitbucket.org/superiortechnologies/ichor/tree/master/a/services/ichor" \
+    org.opencontainers.image.source="https://github.com/timmaaaz/ichor/tree/master/a/services/ichor" \
     org.opencontainers.image.revision="${BUILD_REF}" \
     org.opencontainers.image.vendor="Ardan Labs"

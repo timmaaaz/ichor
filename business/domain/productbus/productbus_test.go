@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/dbtest"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/unitest"
 	"github.com/google/go-cmp/cmp"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
 func Test_Product(t *testing.T) {

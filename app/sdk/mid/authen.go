@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/auth"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/authclient"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/app/sdk/authclient"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
 // Authenticate validates authentication via the auth service.

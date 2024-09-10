@@ -4,11 +4,11 @@ package vproductapp
 import (
 	"context"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/query"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/vproductbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/query"
+	"github.com/timmaaaz/ichor/business/domain/vproductbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 // App manages the set of app layer api functions for the view product domain.

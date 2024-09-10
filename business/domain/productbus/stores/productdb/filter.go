@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
 )
 
 func (s *Store) applyFilter(filter productbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {

@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/auth"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 func Test_Auth(t *testing.T) {

@@ -3,11 +3,11 @@ package vproductapp
 import (
 	"strconv"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/vproductbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/vproductbus"
 )
 
 func parseFilter(qp QueryParams) (vproductbus.QueryFilter, error) {

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // Exporter implements the prometheus exporter support.

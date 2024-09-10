@@ -13,16 +13,16 @@ import (
 	"syscall"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/api/cmd/services/ichor/build/all"
-	"bitbucket.org/superiortechnologies/ichor/api/cmd/services/ichor/build/crud"
-	"bitbucket.org/superiortechnologies/ichor/api/cmd/services/ichor/build/reporting"
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/debug"
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/mux"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/authclient"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/sqldb"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
-	"bitbucket.org/superiortechnologies/ichor/foundation/otel"
 	"github.com/ardanlabs/conf/v3"
+	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all"
+	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/crud"
+	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/reporting"
+	"github.com/timmaaaz/ichor/api/sdk/http/debug"
+	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/app/sdk/authclient"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/otel"
 )
 
 /*

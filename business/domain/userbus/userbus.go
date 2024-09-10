@@ -8,13 +8,13 @@ import (
 	"net/mail"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/delegate"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/sqldb"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
-	"bitbucket.org/superiortechnologies/ichor/foundation/otel"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/otel"
 	"golang.org/x/crypto/bcrypt"
 )
 

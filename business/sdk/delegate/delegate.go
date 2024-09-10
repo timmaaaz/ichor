@@ -5,7 +5,7 @@ package delegate
 import (
 	"context"
 
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // These types are just for documentation so we know what keys go

@@ -4,14 +4,14 @@ package all
 import (
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/api/domain/http/authapi"
-	"bitbucket.org/superiortechnologies/ichor/api/domain/http/checkapi"
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/mux"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus/stores/usercache"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus/stores/userdb"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/delegate"
-	"bitbucket.org/superiortechnologies/ichor/foundation/web"
+	"github.com/timmaaaz/ichor/api/domain/http/authapi"
+	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
+	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
+	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 // Routes constructs the add value which provides the implementation of

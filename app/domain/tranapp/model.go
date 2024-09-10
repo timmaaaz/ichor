@@ -6,10 +6,10 @@ import (
 	"net/mail"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
 // Product represents an individual product.

@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus/stores/userdb"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/sqldb"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // Users retrieves all users from the database.

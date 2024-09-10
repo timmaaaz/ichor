@@ -1,8 +1,8 @@
 package countrydb
 
 import (
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/countrybus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 )
 
 type country struct {

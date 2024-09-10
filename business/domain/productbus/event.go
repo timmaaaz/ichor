@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 )
 
 // registerDelegateFunctions will register action functions with the delegate

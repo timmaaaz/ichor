@@ -1,4 +1,4 @@
-module bitbucket.org/superiortechnologies/ichor
+module github.com/timmaaaz/ichor
 
 go 1.23.0
 

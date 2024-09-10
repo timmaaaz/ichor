@@ -3,14 +3,14 @@ package productapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/mid"
-	"bitbucket.org/superiortechnologies/ichor/app/domain/productapp"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/auth"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/authclient"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
-	"bitbucket.org/superiortechnologies/ichor/foundation/web"
+	"github.com/timmaaaz/ichor/api/sdk/http/mid"
+	"github.com/timmaaaz/ichor/app/domain/productapp"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/app/sdk/authclient"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 // Config contains all the mandatory systems required by handlers.

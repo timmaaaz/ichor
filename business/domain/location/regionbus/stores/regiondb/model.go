@@ -1,8 +1,8 @@
 package regiondb
 
 import (
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 )
 
 type region struct {

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/apitest"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
 	"github.com/google/go-cmp/cmp"
+	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
 func delete200(sd apitest.SeedData) []apitest.Table {

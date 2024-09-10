@@ -13,12 +13,12 @@ import (
 	"syscall"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/api/cmd/services/metrics/collector"
-	"bitbucket.org/superiortechnologies/ichor/api/cmd/services/metrics/publisher"
-	expvarsrv "bitbucket.org/superiortechnologies/ichor/api/cmd/services/metrics/publisher/expvar"
-	prometheussrv "bitbucket.org/superiortechnologies/ichor/api/cmd/services/metrics/publisher/prometheus"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
 	"github.com/ardanlabs/conf/v3"
+	"github.com/timmaaaz/ichor/api/cmd/services/metrics/collector"
+	"github.com/timmaaaz/ichor/api/cmd/services/metrics/publisher"
+	expvarsrv "github.com/timmaaaz/ichor/api/cmd/services/metrics/publisher/expvar"
+	prometheussrv "github.com/timmaaaz/ichor/api/cmd/services/metrics/publisher/prometheus"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 var build = "develop"

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
 )
 
 type product struct {

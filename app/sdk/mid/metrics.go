@@ -3,7 +3,7 @@ package mid
 import (
 	"context"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/metrics"
+	"github.com/timmaaaz/ichor/app/sdk/metrics"
 )
 
 // Metrics updates program counters.

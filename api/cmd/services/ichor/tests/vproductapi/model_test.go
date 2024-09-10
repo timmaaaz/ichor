@@ -3,9 +3,9 @@ package vproduct_test
 import (
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/vproductapp"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/app/domain/vproductapp"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
 func toAppVProduct(usr userbus.User, prd productbus.Product) vproductapp.Product {

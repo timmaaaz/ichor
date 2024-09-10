@@ -6,9 +6,9 @@ import (
 	"net/mail"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/sqldb/dbarray"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb/dbarray"
 )
 
 type user struct {

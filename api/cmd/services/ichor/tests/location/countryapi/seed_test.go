@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/apitest"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/auth"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/countrybus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/dbtest"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {

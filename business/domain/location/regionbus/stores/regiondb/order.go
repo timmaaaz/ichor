@@ -3,8 +3,8 @@ package regiondb
 import (
 	"fmt"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
 var orderByFields = map[string]string{

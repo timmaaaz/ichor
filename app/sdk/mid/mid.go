@@ -5,12 +5,12 @@ import (
 	"context"
 	"errors"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/auth"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/homebus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/sqldb"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // Encoder defines behavior that can encode a data model and provide

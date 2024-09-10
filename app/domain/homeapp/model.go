@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/mid"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/mid"
+	"github.com/timmaaaz/ichor/business/domain/homebus"
 )
 
 // QueryParams represents the set of possible query strings.

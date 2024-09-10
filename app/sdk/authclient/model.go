@@ -3,8 +3,8 @@ package authclient
 import (
 	"encoding/json"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/auth"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
 )
 
 // Authorize defines the information required to perform an authorization.

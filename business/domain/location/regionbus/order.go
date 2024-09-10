@@ -1,6 +1,6 @@
 package regionbus
 
-import "bitbucket.org/superiortechnologies/ichor/business/sdk/order"
+import "github.com/timmaaaz/ichor/business/sdk/order"
 
 // DefaultOrderBy represents the default way we sort. Usually we order by id but
 // in the case of countries, they almost always should be by their country.

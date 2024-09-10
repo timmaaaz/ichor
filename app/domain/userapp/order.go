@@ -1,8 +1,8 @@
 package userapp
 
 import (
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
 var defaultOrderBy = order.NewBy("user_id", order.ASC)

@@ -3,8 +3,8 @@ package home_test
 import (
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/homeapp"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/app/domain/homeapp"
+	"github.com/timmaaaz/ichor/business/domain/homebus"
 )
 
 func toAppHome(hme homebus.Home) homeapp.Home {

@@ -1,9 +1,9 @@
 package vproductbus
 
 import (
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
 // QueryFilter holds the available fields a query can be filtered on.

@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus/stores/usercache"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus/stores/userdb"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
+	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // ErrForbidden is returned when a auth issue is identified.

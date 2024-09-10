@@ -3,9 +3,9 @@ package homeapp
 import (
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/homebus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/homebus"
 )
 
 func parseFilter(qp QueryParams) (homebus.QueryFilter, error) {

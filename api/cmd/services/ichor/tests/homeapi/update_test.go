@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/apitest"
-	"bitbucket.org/superiortechnologies/ichor/app/domain/homeapp"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/dbtest"
 	"github.com/google/go-cmp/cmp"
+	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/domain/homeapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
 
 func update200(sd apitest.SeedData) []apitest.Table {

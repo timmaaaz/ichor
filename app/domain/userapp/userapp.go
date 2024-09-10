@@ -5,13 +5,13 @@ import (
 	"context"
 	"errors"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/auth"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/mid"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/query"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/mid"
+	"github.com/timmaaaz/ichor/app/sdk/query"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 // App manages the set of app layer api functions for the user domain.

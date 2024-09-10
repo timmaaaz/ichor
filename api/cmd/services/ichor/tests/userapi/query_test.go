@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"sort"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/apitest"
-	"bitbucket.org/superiortechnologies/ichor/app/domain/userapp"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/query"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
 	"github.com/google/go-cmp/cmp"
+	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/domain/userapp"
+	"github.com/timmaaaz/ichor/app/sdk/query"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {

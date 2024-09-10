@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
 func applyFilter(filter userbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {

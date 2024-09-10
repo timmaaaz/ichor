@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"net/mail"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/sqldb"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // Store manages the set of APIs for user database access.

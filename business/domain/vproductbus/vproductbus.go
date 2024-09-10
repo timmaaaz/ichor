@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
-	"bitbucket.org/superiortechnologies/ichor/foundation/otel"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/foundation/otel"
 )
 
 // Storer interface declares the behavior this package needs to persist and

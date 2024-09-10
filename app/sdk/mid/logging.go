@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // Logger writes information about the request to the logs.

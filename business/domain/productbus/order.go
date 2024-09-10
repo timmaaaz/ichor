@@ -1,6 +1,6 @@
 package productbus
 
-import "bitbucket.org/superiortechnologies/ichor/business/sdk/order"
+import "github.com/timmaaaz/ichor/business/sdk/order"
 
 // DefaultOrderBy represents the default way we sort.
 var DefaultOrderBy = order.NewBy(OrderByProductID, order.ASC)

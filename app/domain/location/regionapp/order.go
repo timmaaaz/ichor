@@ -1,8 +1,8 @@
 package regionapp
 
 import (
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
 var defaultOrderBy = order.NewBy("name", order.ASC)

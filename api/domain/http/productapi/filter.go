@@ -3,7 +3,7 @@ package productapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/productapp"
+	"github.com/timmaaaz/ichor/app/domain/productapp"
 )
 
 func parseQueryParams(r *http.Request) productapp.QueryParams {

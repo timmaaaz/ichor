@@ -5,9 +5,9 @@ import (
 	"context"
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/userapp"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/foundation/web"
+	"github.com/timmaaaz/ichor/app/domain/userapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 type api struct {

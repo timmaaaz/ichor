@@ -4,12 +4,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	authbuild "bitbucket.org/superiortechnologies/ichor/api/cmd/services/auth/build/all"
-	ichorbuild "bitbucket.org/superiortechnologies/ichor/api/cmd/services/ichor/build/all"
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/mux"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/auth"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/authclient"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/dbtest"
+	authbuild "github.com/timmaaaz/ichor/api/cmd/services/auth/build/all"
+	ichorbuild "github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all"
+	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/app/sdk/authclient"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
 
 // StartTest initialized the system to run a test.

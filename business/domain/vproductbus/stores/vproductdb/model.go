@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/vproductbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/vproductbus"
 )
 
 type product struct {

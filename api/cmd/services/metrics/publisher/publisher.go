@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // Set of possible publisher types.

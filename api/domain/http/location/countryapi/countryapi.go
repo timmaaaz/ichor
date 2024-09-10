@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/location/countryapp"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/foundation/web"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/domain/location/countryapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 type api struct {

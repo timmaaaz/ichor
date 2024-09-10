@@ -3,8 +3,8 @@ package userdb
 import (
 	"fmt"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
 var orderByFields = map[string]string{

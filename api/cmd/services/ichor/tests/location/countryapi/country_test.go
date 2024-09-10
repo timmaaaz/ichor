@@ -3,7 +3,7 @@ package country_test
 import (
 	"testing"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
 func Test_Country(t *testing.T) {

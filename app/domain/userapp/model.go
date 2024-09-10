@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
 const dateFormat = "2006-01-02"

@@ -3,7 +3,7 @@ package homeapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/homeapp"
+	"github.com/timmaaaz/ichor/app/domain/homeapp"
 )
 
 func parseQueryParams(r *http.Request) homeapp.QueryParams {

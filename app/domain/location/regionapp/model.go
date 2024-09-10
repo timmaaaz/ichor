@@ -3,7 +3,7 @@ package regionapp
 import (
 	"encoding/json"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 )
 
 type QueryParams struct {

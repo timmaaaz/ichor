@@ -3,7 +3,7 @@ package mid
 import (
 	"context"
 
-	"bitbucket.org/superiortechnologies/ichor/foundation/otel"
+	"github.com/timmaaaz/ichor/foundation/otel"
 	"go.opentelemetry.io/otel/trace"
 )
 

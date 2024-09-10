@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/migrate"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/migrate"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // Seed loads test data into the database.

@@ -3,7 +3,7 @@ package countryapp
 import (
 	"encoding/json"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/countrybus"
+	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 )
 
 const dateFormat = "2006-01-02"

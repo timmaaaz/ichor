@@ -3,9 +3,9 @@ package productapp
 import (
 	"strconv"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
 )
 
 func parseFilter(qp QueryParams) (productbus.QueryFilter, error) {

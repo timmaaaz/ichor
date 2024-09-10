@@ -3,7 +3,7 @@ package vproductapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/vproductapp"
+	"github.com/timmaaaz/ichor/app/domain/vproductapp"
 )
 
 func parseQueryParams(r *http.Request) vproductapp.QueryParams {

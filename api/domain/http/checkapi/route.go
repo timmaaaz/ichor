@@ -3,10 +3,10 @@ package checkapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/checkapp"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
-	"bitbucket.org/superiortechnologies/ichor/foundation/web"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/app/domain/checkapp"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 // Config contains all the mandatory systems required by handlers.

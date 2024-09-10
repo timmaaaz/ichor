@@ -7,10 +7,10 @@ import (
 	"runtime"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/sqldb"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // App manages the set of app layer api functions for the check domain.

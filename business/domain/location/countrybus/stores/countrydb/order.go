@@ -3,8 +3,8 @@ package countrydb
 import (
 	"fmt"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/countrybus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
 var orderByFields = map[string]string{

@@ -4,8 +4,8 @@ import (
 	"context"
 	"runtime/debug"
 
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/metrics"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/metrics"
 )
 
 // Panics recovers from panics and converts the panic to an error so it is

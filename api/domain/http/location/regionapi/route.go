@@ -3,12 +3,12 @@ package regionapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/api/sdk/http/mid"
-	"bitbucket.org/superiortechnologies/ichor/app/domain/location/regionapp"
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/authclient"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
-	"bitbucket.org/superiortechnologies/ichor/foundation/logger"
-	"bitbucket.org/superiortechnologies/ichor/foundation/web"
+	"github.com/timmaaaz/ichor/api/sdk/http/mid"
+	"github.com/timmaaaz/ichor/app/domain/location/regionapp"
+	"github.com/timmaaaz/ichor/app/sdk/authclient"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 // Constants for the regionapi package.

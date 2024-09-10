@@ -1,9 +1,9 @@
 package regionapp
 
 import (
-	"bitbucket.org/superiortechnologies/ichor/app/sdk/errs"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 )
 
 func parseFilter(qp QueryParams) (regionbus.QueryFilter, error) {

@@ -3,7 +3,7 @@ package countryapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/location/countryapp"
+	"github.com/timmaaaz/ichor/app/domain/location/countryapp"
 )
 
 func parseQueryParams(r *http.Request) (countryapp.QueryParams, error) {

@@ -3,7 +3,7 @@ package userapi
 import (
 	"net/http"
 
-	"bitbucket.org/superiortechnologies/ichor/app/domain/userapp"
+	"github.com/timmaaaz/ichor/app/domain/userapp"
 )
 
 func parseQueryParams(r *http.Request) (userapp.QueryParams, error) {

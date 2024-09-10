@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/dbtest"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/unitest"
 	"github.com/google/go-cmp/cmp"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
 func Test_region(t *testing.T) {

@@ -4,7 +4,7 @@ package query
 import (
 	"encoding/json"
 
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 // Result is the data model used when returning a query result.

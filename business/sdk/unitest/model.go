@@ -3,11 +3,11 @@ package unitest
 import (
 	"context"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/homebus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/countrybus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/location/regionbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/productbus"
-	"bitbucket.org/superiortechnologies/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
 // User represents an app user specified for the test.

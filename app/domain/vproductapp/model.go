@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"bitbucket.org/superiortechnologies/ichor/business/domain/vproductbus"
+	"github.com/timmaaaz/ichor/business/domain/vproductbus"
 )
 
 // QueryParams represents the set of possible query strings.

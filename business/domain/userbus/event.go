@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"bitbucket.org/superiortechnologies/ichor/business/sdk/delegate"
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 )
 
 // DomainName represents the name of this domain.
