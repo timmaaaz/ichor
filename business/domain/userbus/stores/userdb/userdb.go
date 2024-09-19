@@ -167,7 +167,7 @@ func (s *Store) Count(ctx context.Context, filter userbus.QueryFilter) (int, err
 
 	const q = `
 	SELECT
-		count(1)
+		COUNT(1) AS count
 	FROM
 		users`
 
