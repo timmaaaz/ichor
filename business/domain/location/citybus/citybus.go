@@ -85,7 +85,7 @@ func (b *Business) Create(ctx context.Context, nc NewCity) (City, error) {
 }
 
 // Update modifies information about a city.
-func (b *Business) Update(ctx context.Context, cty City, uc UpdateCity) error {
+func (b *Business) Update(ctx context.Context, cty City, uc UpdateCity) (City, error) {
 	ctx, span := otel.AddSpan(ctx, "business.citybus.Update")
 	defer span.End()
 
@@ -98,10 +98,10 @@ func (b *Business) Update(ctx context.Context, cty City, uc UpdateCity) error {
 	}
 
 	if err := b.storer.Update(ctx, cty); err != nil {
-		return fmt.Errorf("store update: %w", err)
+		return City{}, fmt.Errorf("store update: %w", err)
 	}
 
-	return nil
+	return cty, nil
 }
 
 // Delete removes a city from the system.

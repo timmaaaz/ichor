@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
@@ -23,6 +24,7 @@ type SeedData struct {
 	Admins    []User
 	Countries []countrybus.Country
 	Regions   []regionbus.Region
+	Cities    []citybus.City
 }
 
 // Table represent fields needed for running an unit test.

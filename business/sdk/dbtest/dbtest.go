@@ -11,6 +11,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
+	"github.com/timmaaaz/ichor/business/domain/location/citybus"
+	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus/stores/countrydb"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
@@ -38,6 +40,7 @@ type BusDomain struct {
 	User     *userbus.Business
 	Country  *countrybus.Business
 	Region   *regionbus.Business
+	City     *citybus.Business
 	VProduct *vproductbus.Business
 }
 
@@ -45,6 +48,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	delegate := delegate.New(log)
 	countryBus := countrybus.NewBusiness(log, delegate, countrydb.NewStore(log, db))
 	regionBus := regionbus.NewBusiness(log, delegate, regiondb.NewStore(log, db))
+	cityBus := citybus.NewBusiness(log, delegate, citydb.NewStore(log, db))
 	userBus := userbus.NewBusiness(log, delegate, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))
@@ -54,6 +58,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Delegate: delegate,
 		Country:  countryBus,
 		Region:   regionBus,
+		City:     cityBus,
 		Home:     homeBus,
 		Product:  productBus,
 		User:     userBus,
