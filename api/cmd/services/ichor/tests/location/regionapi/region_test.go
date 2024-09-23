@@ -13,7 +13,7 @@ func Test_Region(t *testing.T) {
 
 	// -------------------------------------------------------------------------
 
-	_, err := insertSeedData(test.DB, test.Auth)
+	sd, err := insertSeedData(test.DB, test.Auth)
 	if err != nil {
 		t.Fatalf("Seeding error: %s", err)
 	}
@@ -21,5 +21,5 @@ func Test_Region(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	// test.Run(t, query200(sd), "query-200")
-	// test.Run(t, regionQueryByID200(sd), "query-by-id-200")
+	test.Run(t, queryByID200(sd), "query-by-id-200")
 }

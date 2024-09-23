@@ -21,7 +21,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
-
 	tu1 := apitest.User{
 		User:  usrs[0],
 		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),

@@ -21,5 +21,5 @@ func Test_Country(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	test.Run(t, query200(sd), "query-200")
-	// test.Run(t, countryQueryByID200(sd), "query-by-id-200")
+	test.Run(t, countryQueryByID200(sd), "query-by-id-200")
 }
