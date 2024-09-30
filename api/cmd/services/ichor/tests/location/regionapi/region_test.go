@@ -20,6 +20,6 @@ func Test_Region(t *testing.T) {
 
 	// -------------------------------------------------------------------------
 
-	// test.Run(t, query200(sd), "query-200")
+	test.Run(t, query200(sd), "query-200")
 	test.Run(t, queryByID200(sd), "query-by-id-200")
 }
