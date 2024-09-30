@@ -49,7 +49,7 @@ func (a *App) Create(ctx context.Context, app NewCity) (City, error) {
 		return City{}, errs.Newf(errs.Internal, "create: city[%+v]: %s", city, err)
 	}
 
-	return toAppCity(city), nil
+	return ToAppCity(city), nil
 }
 
 // Update updates an existing city.
@@ -72,7 +72,7 @@ func (a *App) Update(ctx context.Context, app UpdateCity, id uuid.UUID) (City, e
 		return City{}, errs.Newf(errs.Internal, "update: city[%+v]: %s", city, err)
 	}
 
-	return toAppCity(updated), nil
+	return ToAppCity(updated), nil
 }
 
 // Delete removes an existing city.
@@ -117,7 +117,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[City], er
 		return query.Result[City]{}, errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(toAppCities(cities), total, page), nil
+	return query.NewResult(ToAppCities(cities), total, page), nil
 }
 
 // QueryByID retrieves the city by the specified ID.
@@ -127,5 +127,5 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (City, error) {
 		return City{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
-	return toAppCity(city), nil
+	return ToAppCity(city), nil
 }

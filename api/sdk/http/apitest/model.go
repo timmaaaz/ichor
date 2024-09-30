@@ -1,6 +1,7 @@
 package apitest
 
 import (
+	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
@@ -22,6 +23,7 @@ type SeedData struct {
 	Admins    []User
 	Countries []countrybus.Country
 	Regions   []regionbus.Region
+	Cities    []cityapp.City
 }
 
 // Table represent fields needed for running an api test.

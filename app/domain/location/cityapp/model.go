@@ -29,7 +29,7 @@ func (app City) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppCity(bus citybus.City) City {
+func ToAppCity(bus citybus.City) City {
 	return City{
 		ID:       bus.ID.String(),
 		RegionID: bus.RegionID.String(),
@@ -37,10 +37,10 @@ func toAppCity(bus citybus.City) City {
 	}
 }
 
-func toAppCities(bus []citybus.City) []City {
+func ToAppCities(bus []citybus.City) []City {
 	app := make([]City, len(bus))
 	for i, v := range bus {
-		app[i] = toAppCity(v)
+		app[i] = ToAppCity(v)
 	}
 	return app
 }
@@ -85,8 +85,8 @@ func toBusNewCity(app NewCity) (citybus.NewCity, error) {
 
 // UpdateCity defines the data needed to update a city.
 type UpdateCity struct {
-	RegionID *string `json:"regionID" validate:"required"`
-	Name     *string `json:"name" validate:"required,min=3,max=100"`
+	RegionID *string `json:"regionID"`
+	Name     *string `json:"name"`
 }
 
 // Decode implements the decoder interface.
