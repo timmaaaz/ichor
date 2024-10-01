@@ -1,6 +1,7 @@
 package apitest
 
 import (
+	"github.com/timmaaaz/ichor/app/domain/assettypeapp"
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -20,12 +21,13 @@ type User struct {
 
 // SeedData represents users for api tests.
 type SeedData struct {
-	Users     []User
-	Admins    []User
-	Countries []countrybus.Country
-	Regions   []regionbus.Region
-	Cities    []cityapp.City
-	Streets   []streetapp.Street
+	Users      []User
+	Admins     []User
+	Countries  []countrybus.Country
+	Regions    []regionbus.Region
+	Cities     []cityapp.City
+	Streets    []streetapp.Street
+	AssetTypes []assettypeapp.AssetType
 }
 
 // Table represent fields needed for running an api test.
