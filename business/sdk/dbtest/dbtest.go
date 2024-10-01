@@ -12,11 +12,13 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
-	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citybus"
+	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus/stores/countrydb"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
+	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
+	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
@@ -41,6 +43,7 @@ type BusDomain struct {
 	Country  *countrybus.Business
 	Region   *regionbus.Business
 	City     *citybus.Business
+	Street   *streetbus.Business
 	VProduct *vproductbus.Business
 }
 
@@ -49,6 +52,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	countryBus := countrybus.NewBusiness(log, delegate, countrydb.NewStore(log, db))
 	regionBus := regionbus.NewBusiness(log, delegate, regiondb.NewStore(log, db))
 	cityBus := citybus.NewBusiness(log, delegate, citydb.NewStore(log, db))
+	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
 	userBus := userbus.NewBusiness(log, delegate, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))
@@ -59,6 +63,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Country:  countryBus,
 		Region:   regionBus,
 		City:     cityBus,
+		Street:   streetBus,
 		Home:     homeBus,
 		Product:  productBus,
 		User:     userBus,

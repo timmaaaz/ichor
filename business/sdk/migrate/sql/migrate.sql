@@ -30,6 +30,17 @@ CREATE TABLE cities (
    FOREIGN KEY (region_id) REFERENCES regions(region_id) ON DELETE CASCADE
 );
 -- Version: 1.04
+-- Description: create table streets
+CREATE TABLE streets (
+   street_id UUID NOT NULL,
+   city_id UUID NOT NULL,
+   line_1 TEXT NOT NULL,
+   line_2 TEXT NULL,
+   postal_code VARCHAR(20) NULL,
+   PRIMARY KEY (street_id),
+   FOREIGN KEY (city_id) REFERENCES cities(city_id) ON DELETE SET NULL-- Check this cascade relationship
+);
+-- Version: 1.05
 -- Description: Create table users
 CREATE TABLE users (
    user_id UUID NOT NULL,
@@ -55,7 +66,7 @@ CREATE TABLE users (
    date_updated TIMESTAMP NOT NULL,
    PRIMARY KEY (user_id)
 );
--- Version: 1.05
+-- Version: 1.06
 -- Description: Create table products
 CREATE TABLE products (
    product_id UUID NOT NULL,
@@ -68,7 +79,7 @@ CREATE TABLE products (
    PRIMARY KEY (product_id),
    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
--- Version: 1.06
+-- Version: 1.07
 -- Description: Add products view.
 CREATE OR REPLACE VIEW view_products AS
 SELECT p.product_id,
@@ -81,7 +92,7 @@ SELECT p.product_id,
    u.username AS user_name
 FROM products AS p
    JOIN users AS u ON u.user_id = p.user_id;
--- Version: 1.07
+-- Version: 1.08
 -- Description: Create table homes
 CREATE TABLE homes (
    home_id UUID NOT NULL,

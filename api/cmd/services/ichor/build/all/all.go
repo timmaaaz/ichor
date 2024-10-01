@@ -18,7 +18,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
-	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citybus"
+	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus/stores/countrydb"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"

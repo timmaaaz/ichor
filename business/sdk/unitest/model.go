@@ -7,6 +7,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
@@ -25,6 +26,7 @@ type SeedData struct {
 	Countries []countrybus.Country
 	Regions   []regionbus.Region
 	Cities    []citybus.City
+	Streets   []streetbus.Street
 }
 
 // Table represent fields needed for running an unit test.
