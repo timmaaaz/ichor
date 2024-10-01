@@ -1,11 +1,11 @@
-package city_test
+package street_test
 
 import (
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
+	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
@@ -13,16 +13,16 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/cities?page=1&rows=10",
+			URL:        "/v1/streets?page=1&rows=10",
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &query.Result[cityapp.City]{},
-			ExpResp: &query.Result[cityapp.City]{
+			GotResp:    &query.Result[streetapp.Street]{},
+			ExpResp: &query.Result[streetapp.Street]{
 				Page:        1,
 				RowsPerPage: 10,
 				Total:       50,
-				Items:       sd.Cities[:10],
+				Items:       sd.Streets[:10],
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
@@ -37,12 +37,12 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/cities/" + sd.Cities[0].ID,
+			URL:        "/v1/streets/" + sd.Streets[0].ID,
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &cityapp.City{},
-			ExpResp:    &sd.Cities[0],
+			GotResp:    &streetapp.Street{},
+			ExpResp:    &sd.Streets[0],
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
