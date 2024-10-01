@@ -85,7 +85,7 @@ CREATE TABLE users (
    PRIMARY KEY (user_id)
 );
 -- Version: 1.08
--- Description: Create table asset_conditions
+-- Description: Create table assets
 CREATE TABLE assets (
    asset_id UUID NOT NULL,
    type_id UUID NOT NULL,
@@ -153,7 +153,7 @@ CREATE TABLE homes (
    PRIMARY KEY (home_id),
    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
--- Version: 1.09
+-- Version: 1.12
 -- Description: Add approval status 
 CREATE TABLE approval_status (
    approval_status_id UUID NOT NULL, 
@@ -161,18 +161,11 @@ CREATE TABLE approval_status (
    name TEXT NOT NULL,
    PRIMARY KEY (approval_status_id)
 );
--- Version: 1.10
+-- Version: 1.13
 -- Description: Add fulfillment status
 CREATE TABLE fulfillment_status (
    fulfillment_status_id UUID NOT NULL, 
    icon_id UUID NOT NULL, 
    name TEXT NOT NULL,
    PRIMARY KEY (fulfillment_status_id)
-);
--- Version: 1.11
--- Description: add asset condition
-CREATE TABLE asset_condition (
-   asset_condition_id UUID NOT NULL, 
-   name TEXT NOT NULL,
-   PRIMARY KEY (asset_condition_id)
 );
