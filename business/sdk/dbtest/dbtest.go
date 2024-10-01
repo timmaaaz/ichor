@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/domain/assettypebus"
+	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
@@ -18,7 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores"
+	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
@@ -36,15 +38,16 @@ import (
 
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
-	Delegate *delegate.Delegate
-	Home     *homebus.Business
-	Product  *productbus.Business
-	User     *userbus.Business
-	Country  *countrybus.Business
-	Region   *regionbus.Business
-	City     *citybus.Business
-	Street   *streetbus.Business
-	VProduct *vproductbus.Business
+	Delegate  *delegate.Delegate
+	Home      *homebus.Business
+	AssetType *assettypebus.Business
+	Product   *productbus.Business
+	User      *userbus.Business
+	Country   *countrybus.Business
+	Region    *regionbus.Business
+	City      *citybus.Business
+	Street    *streetbus.Business
+	VProduct  *vproductbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -53,21 +56,25 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	regionBus := regionbus.NewBusiness(log, delegate, regiondb.NewStore(log, db))
 	cityBus := citybus.NewBusiness(log, delegate, citydb.NewStore(log, db))
 	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
+
+	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
+
 	userBus := userbus.NewBusiness(log, delegate, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 
 	return BusDomain{
-		Delegate: delegate,
-		Country:  countryBus,
-		Region:   regionBus,
-		City:     cityBus,
-		Street:   streetBus,
-		Home:     homeBus,
-		Product:  productBus,
-		User:     userBus,
-		VProduct: vproductBus,
+		Delegate:  delegate,
+		Home:      homeBus,
+		AssetType: assetTypeBus,
+		Product:   productBus,
+		User:      userBus,
+		Country:   countryBus,
+		Region:    regionBus,
+		City:      cityBus,
+		Street:    streetBus,
+		VProduct:  vproductBus,
 	}
 }
 
