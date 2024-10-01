@@ -4,8 +4,12 @@ package all
 import (
 	"time"
 
+<<<<<<< HEAD
 	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assetconditionapi"
+=======
+	"github.com/timmaaaz/ichor/api/domain/http/assettypeapi"
+>>>>>>> a7b5839 ([chore] Working on asset types integration tests)
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
@@ -71,6 +75,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	approvalStatusBus := approvalstatusbus.NewBusiness(cfg.Log, delegate, approvalstatusdb.NewStore(cfg.Log, cfg.DB))
 	fulfillmentStatusBus := fulfillmentstatusbus.NewBusiness(cfg.Log, delegate, fulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
 	assetConditionBus := assetconditionbus.NewBusiness(cfg.Log, delegate, assetconditiondb.NewStore(cfg.Log, cfg.DB))
+	assetTypeBus := assettypebus.NewBusiness(cfg.Log, delegate, assettypedb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -157,4 +162,9 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:               cfg.Log,
 	})
 
+	assettypeapi.Routes(app, assettypeapi.Config{
+		AssetTypeBus: assetTypeBus,
+		AuthClient:   cfg.AuthClient,
+		Log:          cfg.Log,
+	})
 }
