@@ -47,7 +47,7 @@ func ToAppCities(bus []citybus.City) []City {
 
 // =============================================================================
 
-// NewCity defines teh data needed to add a city.
+// NewCity defines the data needed to add a city.
 type NewCity struct {
 	RegionID string `json:"regionID" validate:"required"`
 	Name     string `json:"name" validate:"required,min=3,max=100"`
