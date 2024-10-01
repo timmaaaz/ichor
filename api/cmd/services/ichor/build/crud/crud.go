@@ -6,15 +6,24 @@ import (
 
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
+	"github.com/timmaaaz/ichor/api/domain/http/location/cityapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/countryapi"
+	"github.com/timmaaaz/ichor/api/domain/http/location/regionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/location/streetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/productapi"
 	"github.com/timmaaaz/ichor/api/domain/http/tranapi"
 	"github.com/timmaaaz/ichor/api/domain/http/userapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
+	"github.com/timmaaaz/ichor/business/domain/location/citybus"
+	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus/stores/countrydb"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
+	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
+	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
@@ -42,6 +51,9 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	productBus := productbus.NewBusiness(cfg.Log, userBus, delegate, productdb.NewStore(cfg.Log, cfg.DB))
 	homeBus := homebus.NewBusiness(cfg.Log, userBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
 	countryBus := countrybus.NewBusiness(cfg.Log, delegate, countrydb.NewStore(cfg.Log, cfg.DB))
+	regionBus := regionbus.NewBusiness(cfg.Log, delegate, regiondb.NewStore(cfg.Log, cfg.DB))
+	cityBus := citybus.NewBusiness(cfg.Log, delegate, citydb.NewStore(cfg.Log, cfg.DB))
+	streetBus := streetbus.NewBusiness(cfg.Log, delegate, streetdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -80,4 +92,21 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:        cfg.Log,
 	})
 
+	regionapi.Routes(app, regionapi.Config{
+		RegionBus:  regionBus,
+		AuthClient: cfg.AuthClient,
+		Log:        cfg.Log,
+	})
+
+	cityapi.Routes(app, cityapi.Config{
+		CityBus:    cityBus,
+		AuthClient: cfg.AuthClient,
+		Log:        cfg.Log,
+	})
+
+	streetapi.Routes(app, streetapi.Config{
+		StreetBus:  streetBus,
+		AuthClient: cfg.AuthClient,
+		Log:        cfg.Log,
+	})
 }

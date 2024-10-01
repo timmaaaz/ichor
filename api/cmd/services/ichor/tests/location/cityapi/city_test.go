@@ -1,4 +1,4 @@
-package country_test
+package city_test
 
 import (
 	"testing"
@@ -6,10 +6,10 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
-func Test_Country(t *testing.T) {
+func Test_City(t *testing.T) {
 	t.Parallel()
 
-	test := apitest.StartTest(t, "Test_Country")
+	test := apitest.StartTest(t, "Test_City")
 
 	// -------------------------------------------------------------------------
 
@@ -21,5 +21,13 @@ func Test_Country(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	test.Run(t, query200(sd), "query-200")
-	test.Run(t, countryQueryByID200(sd), "query-by-id-200")
+	test.Run(t, queryByID200(sd), "query-by-id-200")
+
+	test.Run(t, create200(sd), "create-200")
+	test.Run(t, create400(sd), "create-400")
+
+	test.Run(t, update200(sd), "update-200")
+	test.Run(t, update400(sd), "update-400")
+
+	test.Run(t, delete200(sd), "delete-200")
 }
