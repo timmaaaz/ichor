@@ -9,12 +9,17 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+<<<<<<< HEAD
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	assetconditiondb "github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
+=======
+	"github.com/timmaaaz/ichor/business/domain/assettypebus"
+	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
+>>>>>>> e3d2051 ([chore] Biz layer for asset types complete)
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
@@ -24,7 +29,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores"
+	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
@@ -62,6 +67,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	regionBus := regionbus.NewBusiness(log, delegate, regiondb.NewStore(log, db))
 	cityBus := citybus.NewBusiness(log, delegate, citydb.NewStore(log, db))
 	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
+
+	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
+
 	userBus := userbus.NewBusiness(log, delegate, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))
