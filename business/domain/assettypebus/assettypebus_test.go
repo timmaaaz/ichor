@@ -65,6 +65,20 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				return cmp.Diff(exp, got)
 			},
 		},
+		{
+			Name:    "Query by id",
+			ExpResp: sd.AssetTypes[0],
+			ExcFunc: func(ctx context.Context) any {
+				got, err := busDomain.AssetType.QueryByID(ctx, sd.AssetTypes[0].ID)
+				if err != nil {
+					return err
+				}
+				return got
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(exp, got)
+			},
+		},
 	}
 	return table
 }

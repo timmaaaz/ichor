@@ -30,6 +30,6 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/assettypes", api.query, authen)
 	app.HandlerFunc(http.MethodGet, version, "/assettypes/{asset_type_id}", api.queryByID, authen)
 	app.HandlerFunc(http.MethodPost, version, "/assettypes", api.create, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodPut, version, "/assettypes/{asset_type_id}", api.update, authen)
-	app.HandlerFunc(http.MethodDelete, version, "/assettypes/{asset_type_id}", api.delete, authen)
+	app.HandlerFunc(http.MethodPut, version, "/assettypes/{asset_type_id}", api.update, authen, ruleAdmin)
+	app.HandlerFunc(http.MethodDelete, version, "/assettypes/{asset_type_id}", api.delete, authen, ruleAdmin)
 }

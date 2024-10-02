@@ -173,7 +173,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (assettypebus.Asset
     `
 
 	var dbAt assetType
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, &dbAt, data); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbAt); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return assettypebus.AssetType{}, fmt.Errorf("db: %w", assettypebus.ErrNotFound)
 		}
