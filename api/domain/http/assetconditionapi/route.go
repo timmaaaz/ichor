@@ -12,14 +12,14 @@ import (
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
-// Config contains all the mandatory systems required by handlers
+// Config contains all the mandatory systems required by handlers.
 type Config struct {
 	Log               *logger.Logger
 	AssetConditionBus *assetconditionbus.Business
 	AuthClient        *authclient.Client
 }
 
-// Routes adds routes to the group
+// Routes adds specific routes for this group.
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
@@ -27,10 +27,9 @@ func Routes(app *web.App, cfg Config) {
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
 	api := newAPI(assetconditionapp.NewApp(cfg.AssetConditionBus))
-
-	app.HandlerFunc(http.MethodGet, version, "/assetcondition", api.query, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodGet, version, "/assetcondition/{asset_condition_id}", api.queryByID, authen)
-	app.HandlerFunc(http.MethodPost, version, "/assetcondition", api.create, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodPut, version, "/assetcondition/{asset_condition_id}", api.update, authen)
-	app.HandlerFunc(http.MethodDelete, version, "/assetcondition/{asset_condition_id}", api.delete, authen)
+	app.HandlerFunc(http.MethodGet, version, "/assetconditions", api.query, authen)
+	app.HandlerFunc(http.MethodGet, version, "/assetconditions/{asset_condition_id}", api.queryByID, authen)
+	app.HandlerFunc(http.MethodPost, version, "/assetconditions", api.create, authen, ruleAdmin)
+	app.HandlerFunc(http.MethodPut, version, "/assetconditions/{asset_condition_id}", api.update, authen, ruleAdmin)
+	app.HandlerFunc(http.MethodDelete, version, "/assetconditions/{asset_condition_id}", api.delete, authen, ruleAdmin)
 }

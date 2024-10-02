@@ -1,4 +1,4 @@
-package assetconditionapi_test
+package assetcondition_test
 
 import (
 	"context"
@@ -10,25 +10,20 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
-	"github.com/timmaaaz/ichor/business/sdk/order"
-	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {
 	ctx := context.Background()
-
 	busDomain := db.BusDomain
 
-	usrs, err := userbus.TestSeedUsers(ctx, 1, userbus.Roles.Admin, busDomain.User)
+	usrs, err := userbus.TestSeedUsers(ctx, 1, userbus.Roles.User, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
-
 	tu1 := apitest.User{
 		User:  usrs[0],
 		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
 	}
-
 	usrs, err = userbus.TestSeedUsers(ctx, 1, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
@@ -38,26 +33,14 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
 	}
 
-	assetCondition1, err := busDomain.AssetCondition.Query(ctx, assetconditionbus.QueryFilter{}, order.NewBy(assetconditionbus.OrderByName, order.ASC), page.MustParse("1", "2"))
+	ats, err := assetconditionbus.TestSeedAssetConditions(ctx, 10, busDomain.AssetCondition)
 	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("querying approval statuses : %w", err)
+		return apitest.SeedData{}, err
 	}
 
-	assetCondition2, err := busDomain.AssetCondition.Query(ctx, assetconditionbus.QueryFilter{}, order.NewBy(assetconditionbus.OrderByName, order.ASC), page.MustParse("2", "2"))
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("querying approval statuses : %w", err)
-	}
-
-	conditions := append(assetCondition1, assetCondition2...)
-
-	appConditions := assetconditionapp.ToAppAssetConditions(conditions)
-
-	sd := apitest.SeedData{
+	return apitest.SeedData{
 		Users:           []apitest.User{tu1},
 		Admins:          []apitest.User{tu2},
-		AssetConditions: appConditions,
-	}
-
-	return sd, nil
-
+		AssetConditions: assetconditionapp.ToAppAssetConditions(ats),
+	}, nil
 }

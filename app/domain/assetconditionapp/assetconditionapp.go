@@ -15,79 +15,73 @@ import (
 
 // App manages the set of app layer api functions for the asset condition domain.
 type App struct {
-	assetconditionbus *assetconditionbus.Business
+	assetConditionBus *assetconditionbus.Business
 	auth              *auth.Auth
 }
 
-// NewApp constructs an asset condition app API for use.
+// NewApp constructs a asset condition app API for use.
 func NewApp(assetConditionBus *assetconditionbus.Business) *App {
 	return &App{
-		assetconditionbus: assetConditionBus,
+		assetConditionBus: assetConditionBus,
 	}
 }
 
-// NewAppWithAuth constructs an asset condition app API for use with auth support.
+// NewAppWithAuth constructs a asset condition app API for use with auth support.
 func NewAppWithAuth(assetConditionBus *assetconditionbus.Business, ath *auth.Auth) *App {
 	return &App{
 		auth:              ath,
-		assetconditionbus: assetConditionBus,
+		assetConditionBus: assetConditionBus,
 	}
 }
 
-// Create adds a new asset condition to the system
+// Create adds a new asset condition to the system.
 func (a *App) Create(ctx context.Context, app NewAssetCondition) (AssetCondition, error) {
-	nas, err := toBusNewAssetCondition(app)
+	assetCondition, err := a.assetConditionBus.Create(ctx, ToBusNewAssetCondition(app))
 	if err != nil {
-		return AssetCondition{}, errs.New(errs.InvalidArgument, err)
+		if errors.Is(err, assetconditionbus.ErrUniqueEntry) {
+			return AssetCondition{}, errs.New(errs.Aborted, assetconditionbus.ErrUniqueEntry)
+		}
+		return AssetCondition{}, errs.Newf(errs.Internal, "create: asset condition[%+v]: %s", assetCondition, err)
 	}
 
-	as, err := a.assetconditionbus.Create(ctx, nas)
-	if err != nil {
-		return AssetCondition{}, err
-	}
-
-	return ToAppAssetCondition(as), nil
+	return ToAppAssetCondition(assetCondition), nil
 }
 
-// Update updates an existing asset condition
+// Update updates an existing asset condition.
 func (a *App) Update(ctx context.Context, app UpdateAssetCondition, id uuid.UUID) (AssetCondition, error) {
-	uas, err := toBusUpdateAssetCondition(app)
+	uat := ToBusUpdateAssetCondition(app)
+
+	at, err := a.assetConditionBus.QueryByID(ctx, id)
 	if err != nil {
-		return AssetCondition{}, errs.New(errs.InvalidArgument, err)
+		return AssetCondition{}, errs.Newf(errs.NotFound, "update: asset condition[%s]: %s", id, err)
 	}
 
-	as, err := a.assetconditionbus.QueryByID(ctx, id)
-	if err != nil {
-		return AssetCondition{}, errs.New(errs.NotFound, assetconditionbus.ErrNotFound)
-	}
-
-	updated, err := a.assetconditionbus.Update(ctx, as, uas)
+	assetCondition, err := a.assetConditionBus.Update(ctx, at, uat)
 	if err != nil {
 		if errors.Is(err, assetconditionbus.ErrNotFound) {
 			return AssetCondition{}, errs.New(errs.NotFound, err)
 		}
-		return AssetCondition{}, errs.Newf(errs.Internal, "update: approvalStatus[%+v]: %s", updated, err)
+		return AssetCondition{}, errs.Newf(errs.Internal, "update: asset condition[%+v]: %s", assetCondition, err)
 	}
 
-	return ToAppAssetCondition(updated), nil
+	return ToAppAssetCondition(assetCondition), nil
 }
 
-// Delete removes an existing asset condition
+// Delete removes an existing asset condition.
 func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
-	as, err := a.assetconditionbus.QueryByID(ctx, id)
+	at, err := a.assetConditionBus.QueryByID(ctx, id)
 	if err != nil {
-		return errs.New(errs.NotFound, assetconditionbus.ErrNotFound)
+		return errs.Newf(errs.NotFound, "delete: asset condition[%s]: %s", id, err)
 	}
 
-	err = a.assetconditionbus.Delete(ctx, as)
-	if err != nil {
-		return errs.Newf(errs.Internal, "delete asset condition[%+v]: %s", as, err)
+	if err := a.assetConditionBus.Delete(ctx, at); err != nil {
+		return errs.Newf(errs.Internal, "delete: asset condition[%+v]: %s", at, err)
 	}
 
 	return nil
 }
 
-// Query returns a list of asset conditions based on the filter, order and page
+// Query returns a list of asset conditions.
 func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[AssetCondition], error) {
 	page, err := page.Parse(qp.Page, qp.Rows)
 	if err != nil {
@@ -104,25 +98,25 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[AssetCond
 		return query.Result[AssetCondition]{}, errs.NewFieldsError("orderby", err)
 	}
 
-	as, err := a.assetconditionbus.Query(ctx, filter, orderBy, page)
+	ats, err := a.assetConditionBus.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return query.Result[AssetCondition]{}, errs.Newf(errs.Internal, "query: %s", err)
 	}
 
-	total, err := a.assetconditionbus.Count(ctx, filter)
+	total, err := a.assetConditionBus.Count(ctx, filter)
 	if err != nil {
 		return query.Result[AssetCondition]{}, errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(ToAppAssetConditions(as), total, page), nil
+	return query.NewResult(ToAppAssetConditions(ats), total, page), nil
 }
 
-// QueryByID retrieves the asset condition by ID
+// QueryByID returns a single asset condition based on the id.
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (AssetCondition, error) {
-	as, err := a.assetconditionbus.QueryByID(ctx, id)
+	at, err := a.assetConditionBus.QueryByID(ctx, id)
 	if err != nil {
-		return AssetCondition{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+		return AssetCondition{}, errs.Newf(errs.NotFound, "query: asset condition[%s]: %s", id, err)
 	}
 
-	return ToAppAssetCondition(as), nil
+	return ToAppAssetCondition(at), nil
 }
