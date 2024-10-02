@@ -4,6 +4,7 @@ package all
 import (
 	"time"
 
+	"github.com/timmaaaz/ichor/api/domain/http/assetconditionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assettypeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
@@ -17,6 +18,8 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/userapi"
 	"github.com/timmaaaz/ichor/api/domain/http/vproductapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -63,6 +66,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	cityBus := citybus.NewBusiness(cfg.Log, delegate, citydb.NewStore(cfg.Log, cfg.DB))
 	streetBus := streetbus.NewBusiness(cfg.Log, delegate, streetdb.NewStore(cfg.Log, cfg.DB))
 	assetTypeBus := assettypebus.NewBusiness(cfg.Log, delegate, assettypedb.NewStore(cfg.Log, cfg.DB))
+	assetConditionBus := assetconditionbus.NewBusiness(cfg.Log, delegate, assetconditiondb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -135,5 +139,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AssetTypeBus: assetTypeBus,
 		AuthClient:   cfg.AuthClient,
 		Log:          cfg.Log,
+	})
+
+	assetconditionapi.Routes(app, assetconditionapi.Config{
+		AssetConditionBus: assetConditionBus,
+		AuthClient:        cfg.AuthClient,
+		Log:               cfg.Log,
 	})
 }
