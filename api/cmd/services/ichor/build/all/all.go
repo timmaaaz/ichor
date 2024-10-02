@@ -10,8 +10,6 @@ import (
 
 	"github.com/timmaaaz/ichor/api/domain/http/assettypeapi"
 
-	"github.com/timmaaaz/ichor/api/domain/http/assettypeapi"
-
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
@@ -180,6 +178,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient: cfg.AuthClient,
 		Log:        cfg.Log,
 	})
+
 	fulfillmentstatusapi.Routes(app, fulfillmentstatusapi.Config{
 		FulfillmentStatusBus: fulfillmentStatusBus,
 		AuthClient:           cfg.AuthClient,

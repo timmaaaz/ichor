@@ -47,6 +47,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "missing name",
+			URL:        "/v1/assetconditions",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -113,8 +114,22 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
 			ExpResp:    errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "badtoken",
+			URL:        "/v1/assetconditions",
+			Token:      sd.Admins[0].Token[:10],
+			Method:     http.MethodPost,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token contains an invalid number of segments"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
 		},
 	}
-
 	return table
 }
