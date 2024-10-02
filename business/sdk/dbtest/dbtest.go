@@ -9,17 +9,14 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-<<<<<<< HEAD
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	assetconditiondb "github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores"
-	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
-	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
-=======
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
->>>>>>> e3d2051 ([chore] Biz layer for asset types complete)
+	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
+	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"

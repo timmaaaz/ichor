@@ -4,12 +4,9 @@ package crud
 import (
 	"time"
 
-<<<<<<< HEAD
 	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assetconditionapi"
-=======
 	"github.com/timmaaaz/ichor/api/domain/http/assettypeapi"
->>>>>>> a7b5839 ([chore] Working on asset types integration tests)
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
@@ -21,21 +18,17 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/tranapi"
 	"github.com/timmaaaz/ichor/api/domain/http/userapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
-<<<<<<< HEAD
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
-	assetconditiondb "github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores"
-	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
-	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
-=======
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
->>>>>>> a7b5839 ([chore] Working on asset types integration tests)
+	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
+	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
-	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
+	"github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus/stores/countrydb"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
