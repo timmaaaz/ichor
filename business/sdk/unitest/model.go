@@ -3,6 +3,7 @@ package unitest
 import (
 	"context"
 
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
@@ -22,13 +23,14 @@ type User struct {
 
 // SeedData represents data that was seeded for the test.
 type SeedData struct {
-	Users      []User
-	Admins     []User
-	AssetTypes []assettypebus.AssetType
-	Countries  []countrybus.Country
-	Regions    []regionbus.Region
-	Cities     []citybus.City
-	Streets    []streetbus.Street
+	Users           []User
+	Admins          []User
+	AssetTypes      []assettypebus.AssetType
+	AssetConditions []assetconditionbus.AssetCondition
+	Countries       []countrybus.Country
+	Regions         []regionbus.Region
+	Cities          []citybus.City
+	Streets         []streetbus.Street
 }
 
 // Table represent fields needed for running an unit test.
