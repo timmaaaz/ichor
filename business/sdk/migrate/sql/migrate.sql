@@ -8,6 +8,15 @@ CREATE TABLE asset_types (
    UNIQUE (name)
 );
 -- Version: 1.02
+-- Description: Create table asset_conditions
+CREATE TABLE asset_conditions (
+   asset_condition_id UUID NOT NULL,
+   name TEXT NOT NULL,
+   description TEXT NULL,
+   PRIMARY KEY (asset_condition_id),
+   UNIQUE (name)
+);
+-- Version: 1.03
 -- Description: Create table country
 CREATE TABLE countries (
    country_id UUID NOT NULL,
@@ -17,7 +26,7 @@ CREATE TABLE countries (
    alpha_3 VARCHAR(3) NOT NULL,
    PRIMARY KEY (country_id)
 );
--- Version: 1.03
+-- Version: 1.04
 -- Description: Create table regions
 CREATE TABLE regions (
    region_id UUID NOT NULL,
@@ -28,7 +37,7 @@ CREATE TABLE regions (
    PRIMARY KEY (region_id),
    FOREIGN KEY (country_id) REFERENCES countries(country_id) ON DELETE CASCADE
 );
--- Version: 1.04
+-- Version: 1.05
 -- Description: create table cities
 CREATE TABLE cities (
    city_id UUID NOT NULL,
@@ -38,7 +47,7 @@ CREATE TABLE cities (
    UNIQUE (region_id, name),
    FOREIGN KEY (region_id) REFERENCES regions(region_id) ON DELETE CASCADE
 );
--- Version: 1.05
+-- Version: 1.06
 -- Description: create table streets
 CREATE TABLE streets (
    street_id UUID NOT NULL,
@@ -49,7 +58,7 @@ CREATE TABLE streets (
    PRIMARY KEY (street_id),
    FOREIGN KEY (city_id) REFERENCES cities(city_id) ON DELETE SET NULL-- Check this cascade relationship
 );
--- Version: 1.06
+-- Version: 1.07
 -- Description: Create table users
 CREATE TABLE users (
    user_id UUID NOT NULL,
@@ -75,7 +84,7 @@ CREATE TABLE users (
    date_updated TIMESTAMP NOT NULL,
    PRIMARY KEY (user_id)
 );
--- Version: 1.07
+-- Version: 1.08
 -- Description: Create table products
 CREATE TABLE products (
    product_id UUID NOT NULL,
@@ -88,7 +97,7 @@ CREATE TABLE products (
    PRIMARY KEY (product_id),
    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
--- Version: 1.08
+-- Version: 1.09
 -- Description: Add products view.
 CREATE OR REPLACE VIEW view_products AS
 SELECT p.product_id,
@@ -101,7 +110,7 @@ SELECT p.product_id,
    u.username AS user_name
 FROM products AS p
    JOIN users AS u ON u.user_id = p.user_id;
--- Version: 1.09
+-- Version: 1.10
 -- Description: Create table homes
 CREATE TABLE homes (
    home_id UUID NOT NULL,

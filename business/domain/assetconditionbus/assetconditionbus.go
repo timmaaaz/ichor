@@ -33,25 +33,24 @@ type Storer interface {
 	QueryByID(ctx context.Context, assetConditionID uuid.UUID) (AssetCondition, error)
 }
 
+// Business manages the set of APIs for asset condition access.
 type Business struct {
 	log      *logger.Logger
 	storer   Storer
 	delegate *delegate.Delegate
 }
 
-// NewBusiness constructs a new asset condition business API
+// NewBusiness constructs a asset condition business API for use.
 func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer) *Business {
 	return &Business{
 		log:      log,
-		storer:   storer,
 		delegate: delegate,
+		storer:   storer,
 	}
 }
 
 // NewWithTx constructs a new business value that will use the
 // specified transaction in any store related calls.
-//
-// This function seems like it could be implemented only once, but same with a lot of other pieces of this
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
@@ -67,65 +66,76 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	return &bus, nil
 }
 
-// Create creates a new asset condition to the system.
-func (b *Business) Create(ctx context.Context, nac NewAssetCondition) (AssetCondition, error) {
+// Create adds a new asset condition to the system.
+func (b *Business) Create(ctx context.Context, nat NewAssetCondition) (AssetCondition, error) {
 	ctx, span := otel.AddSpan(ctx, "business.assetconditionbus.Create")
 	defer span.End()
 
-	as := AssetCondition{
-		ID:   uuid.New(),
-		Name: nac.Name,
+	at := AssetCondition{
+		ID:          uuid.New(),
+		Name:        nat.Name,
+		Description: nat.Description,
 	}
 
-	if err := b.storer.Create(ctx, as); err != nil {
-		return AssetCondition{}, fmt.Errorf("store create: %w", err)
+	if err := b.storer.Create(ctx, at); err != nil {
+		if errors.Is(err, ErrUniqueEntry) {
+			return AssetCondition{}, fmt.Errorf("create: %w", ErrUniqueEntry)
+		}
+		return AssetCondition{}, err
 	}
 
-	return as, nil
+	return at, nil
 }
 
-// Update modifies information about an asset condition.
-func (b *Business) Update(ctx context.Context, as AssetCondition, uac UpdateAssetCondition) (AssetCondition, error) {
+// Update updates an existing asset condition.
+func (b *Business) Update(ctx context.Context, at AssetCondition, uat UpdateAssetCondition) (AssetCondition, error) {
 	ctx, span := otel.AddSpan(ctx, "business.assetconditionbus.Update")
 	defer span.End()
 
-	if uac.Name != nil {
-		as.Name = *uac.Name
+	if uat.Name != nil {
+		at.Name = *uat.Name
 	}
 
-	if err := b.storer.Update(ctx, as); err != nil {
-		return AssetCondition{}, fmt.Errorf("store update: %w", err)
+	if uat.Description != nil {
+		at.Description = *uat.Description
 	}
 
-	return as, nil
+	if err := b.storer.Update(ctx, at); err != nil {
+		if errors.Is(err, ErrUniqueEntry) {
+			return AssetCondition{}, fmt.Errorf("update: %w", ErrUniqueEntry)
+		}
+		return AssetCondition{}, fmt.Errorf("update: %w", err)
+	}
+
+	return at, nil
 }
 
 // Delete removes an asset condition from the system.
-func (b *Business) Delete(ctx context.Context, as AssetCondition) error {
+func (b *Business) Delete(ctx context.Context, at AssetCondition) error {
 	ctx, span := otel.AddSpan(ctx, "business.assetconditionbus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, as); err != nil {
-		return fmt.Errorf("store delete: %w", err)
+	if err := b.storer.Delete(ctx, at); err != nil {
+		return fmt.Errorf("delete: %w", err)
 	}
 
 	return nil
 }
 
-// Query returns a list of asset condition
+// Query retrieves a list of existing asset conditions from the system.
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]AssetCondition, error) {
 	ctx, span := otel.AddSpan(ctx, "business.assetconditionbus.Query")
 	defer span.End()
 
-	aprvlStatuses, err := b.storer.Query(ctx, filter, orderBy, page)
+	assetConditions, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
 
-	return aprvlStatuses, nil
+	return assetConditions, nil
 }
 
-// Count returns the total number of asset conditiones
+// Count returns the total number of asset conditions.
 func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 	ctx, span := otel.AddSpan(ctx, "business.assetconditionbus.Count")
 	defer span.End()
@@ -134,14 +144,14 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // QueryByID finds the asset condition by the specified ID.
-func (b *Business) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (AssetCondition, error) {
+func (b *Business) QueryByID(ctx context.Context, id uuid.UUID) (AssetCondition, error) {
 	ctx, span := otel.AddSpan(ctx, "business.assetconditionbus.QueryByID")
 	defer span.End()
 
-	as, err := b.storer.QueryByID(ctx, aprvlStatusID)
+	assetCondition, err := b.storer.QueryByID(ctx, id)
 	if err != nil {
-		return AssetCondition{}, fmt.Errorf("query: aprvlStatusID[%s]: %w", aprvlStatusID, err)
+		return AssetCondition{}, fmt.Errorf("query: assetConditionID[%s]: %w", id, err)
 	}
 
-	return as, nil
+	return assetCondition, nil
 }

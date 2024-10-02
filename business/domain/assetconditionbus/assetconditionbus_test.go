@@ -8,15 +8,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
-	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
-func Test_AssetCondition(t *testing.T) {
+func Test_Street(t *testing.T) {
 	t.Parallel()
 
-	db := dbtest.NewDatabase(t, "Test_AssetCondition")
+	db := dbtest.NewDatabase(t, "Test_Street")
 
 	sd, err := insertSeedData(db.BusDomain)
 	if err != nil {
@@ -26,131 +25,147 @@ func Test_AssetCondition(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	unitest.Run(t, query(db.BusDomain, sd), "query")
-	unitest.Run(t, create(db.BusDomain, sd), "create")
+	unitest.Run(t, create(db.BusDomain), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
-// =============================================================================
-
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	as, err := assetconditionbus.TestSeedAssetCondition(ctx, 10, busDomain.AssetCondition)
+	ats, err := assetconditionbus.TestSeedAssetConditions(ctx, 10, busDomain.AssetCondition)
 	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding asset condition : %w", err)
+		return unitest.SeedData{}, fmt.Errorf("seeding asset conditions : %w", err)
 	}
 
 	return unitest.SeedData{
-		AssetCondition: as,
+		AssetConditions: ats,
 	}, nil
 }
 
-func query(busdomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	table := []unitest.Table{
 		{
-			Name: "query",
+			Name: "Query",
 			ExpResp: []assetconditionbus.AssetCondition{
-				{ID: sd.AssetCondition[0].ID, Name: sd.AssetCondition[0].Name},
-				{ID: sd.AssetCondition[1].ID, Name: sd.AssetCondition[1].Name},
-				{ID: sd.AssetCondition[2].ID, Name: sd.AssetCondition[2].Name},
-				{ID: sd.AssetCondition[3].ID, Name: sd.AssetCondition[3].Name},
-				{ID: sd.AssetCondition[4].ID, Name: sd.AssetCondition[4].Name},
+				sd.AssetConditions[0],
+				sd.AssetConditions[1],
+				sd.AssetConditions[2],
+				sd.AssetConditions[3],
+				sd.AssetConditions[4],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				aprvlStatuses, err := busdomain.AssetCondition.Query(ctx, assetconditionbus.QueryFilter{}, order.NewBy(assetconditionbus.OrderByName, order.ASC), page.MustParse("1", "5"))
+				got, err := busDomain.AssetCondition.Query(ctx, assetconditionbus.QueryFilter{}, assetconditionbus.DefaultOrderBy, page.MustParse("1", "5"))
 				if err != nil {
 					return err
 				}
-				return aprvlStatuses
+				return got
 			},
 			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
+				return cmp.Diff(exp, got)
+			},
+		},
+		{
+			Name:    "Query by id",
+			ExpResp: sd.AssetConditions[0],
+			ExcFunc: func(ctx context.Context) any {
+				got, err := busDomain.AssetCondition.QueryByID(ctx, sd.AssetConditions[0].ID)
+				if err != nil {
+					return err
+				}
+				return got
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(exp, got)
 			},
 		},
 	}
-
 	return table
 }
 
-func create(busDomain dbtest.BusDomain, _ unitest.SeedData) []unitest.Table {
+func create(busDomain dbtest.BusDomain) []unitest.Table {
 	table := []unitest.Table{
 		{
-			Name: "create",
+			Name: "Create",
 			ExpResp: assetconditionbus.AssetCondition{
-				Name: "Test Asset Condition",
+				Name:        "Test AssetCondition",
+				Description: "Test AssetCondition Description",
 			},
 			ExcFunc: func(ctx context.Context) any {
-				aprvlStatus, err := busDomain.AssetCondition.Create(ctx, assetconditionbus.NewAssetCondition{
-					Name: "Test Asset Condition",
+				resp, err := busDomain.AssetCondition.Create(ctx, assetconditionbus.NewAssetCondition{
+					Name:        "Test AssetCondition",
+					Description: "Test AssetCondition Description",
 				})
 				if err != nil {
 					return err
 				}
-				return aprvlStatus
+				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(assetconditionbus.AssetCondition)
 				if !exists {
-					return fmt.Sprintf("got is not an asset condition %v", got)
+					return fmt.Sprintf("got is not an asset condition: %v", got)
 				}
 
 				expResp := exp.(assetconditionbus.AssetCondition)
 				expResp.ID = gotResp.ID
 
-				return cmp.Diff(gotResp, expResp)
+				return cmp.Diff(expResp, gotResp)
 			},
 		},
 	}
-
 	return table
 }
 
 func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	table := []unitest.Table{
 		{
-			Name: "update",
+			Name: "Update",
 			ExpResp: assetconditionbus.AssetCondition{
-				ID:   sd.AssetCondition[0].ID,
-				Name: "Updated Asset Condition",
+				ID:          sd.AssetConditions[0].ID,
+				Name:        "Updated AssetCondition",
+				Description: "Updated AssetCondition Description",
 			},
 			ExcFunc: func(ctx context.Context) any {
-				aprvlStatus, err := busDomain.AssetCondition.Update(ctx, sd.AssetCondition[0], assetconditionbus.UpdateAssetCondition{
-					Name: dbtest.StringPointer("Updated Asset Condition"),
+				resp, err := busDomain.AssetCondition.Update(ctx, sd.AssetConditions[0], assetconditionbus.UpdateAssetCondition{
+					Name:        dbtest.StringPointer("Updated AssetCondition"),
+					Description: dbtest.StringPointer("Updated AssetCondition Description"),
 				})
 				if err != nil {
 					return err
 				}
-				return aprvlStatus
+				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(assetconditionbus.AssetCondition)
 				if !exists {
-					return fmt.Sprintf("got is not an asset condition %v", got)
+					return fmt.Sprintf("got is not an asset condition: %v", got)
 				}
+
 				expResp := exp.(assetconditionbus.AssetCondition)
-				return cmp.Diff(gotResp, expResp)
+				return cmp.Diff(expResp, gotResp)
 			},
 		},
 	}
-
 	return table
 }
 
 func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	table := []unitest.Table{
 		{
-			Name:    "delete",
+			Name:    "Delete",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.AssetCondition.Delete(ctx, sd.AssetCondition[0])
-				return err
+				err := busDomain.AssetCondition.Delete(ctx, sd.AssetConditions[0])
+				if err != nil {
+					return err
+				}
+				return nil
 			},
-			CmpFunc: func(got, exp any) string {
-				return cmp.Diff(got, exp)
+			CmpFunc: func(got any, exp any) string {
+				return ""
 			},
 		},
 	}
-
 	return table
 }

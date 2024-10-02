@@ -12,7 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
-	assetconditiondb "github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores"
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
@@ -44,18 +44,17 @@ import (
 
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
-	Delegate          *delegate.Delegate
-	Home              *homebus.Business
-	Product           *productbus.Business
-	User              *userbus.Business
-	Country           *countrybus.Business
-	Region            *regionbus.Business
-	City              *citybus.Business
-	Street            *streetbus.Business
-	VProduct          *vproductbus.Business
-	ApprovalStatus    *approvalstatusbus.Business
-	FulfillmentStatus *fulfillmentstatusbus.Business
-	AssetCondition    *assetconditionbus.Business
+	Delegate       *delegate.Delegate
+	Home           *homebus.Business
+	AssetType      *assettypebus.Business
+	AssetCondition *assetconditionbus.Business
+	Product        *productbus.Business
+	User           *userbus.Business
+	Country        *countrybus.Business
+	Region         *regionbus.Business
+	City           *citybus.Business
+	Street         *streetbus.Business
+	VProduct       *vproductbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -66,6 +65,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
 
 	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
+	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 
 	userBus := userbus.NewBusiness(log, delegate, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
@@ -76,18 +76,17 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	assetconditionbus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 
 	return BusDomain{
-		Delegate:          delegate,
-		Country:           countryBus,
-		Region:            regionBus,
-		City:              cityBus,
-		Street:            streetBus,
-		Home:              homeBus,
-		Product:           productBus,
-		User:              userBus,
-		VProduct:          vproductBus,
-		ApprovalStatus:    approvalstatusBus,
-		FulfillmentStatus: fulfillmentstatusBus,
-		AssetCondition:    assetconditionbus,
+		Delegate:       delegate,
+		Home:           homeBus,
+		AssetType:      assetTypeBus,
+		AssetCondition: assetConditionBus,
+		Product:        productBus,
+		User:           userBus,
+		Country:        countryBus,
+		Region:         regionBus,
+		City:           cityBus,
+		Street:         streetBus,
+		VProduct:       vproductBus,
 	}
 }
 
