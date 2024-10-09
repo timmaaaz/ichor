@@ -16,8 +16,8 @@ type QueryFilter struct {
 	Name                *string
 	EstPrice            *types.Money
 	Price               *types.Money
-	MaintenanceInterval *time.Duration
-	LifeExpectancy      *time.Duration
+	MaintenanceInterval *types.Interval
+	LifeExpectancy      *types.Interval
 	ModelNumber         *string
 	IsEnabled           *bool
 
