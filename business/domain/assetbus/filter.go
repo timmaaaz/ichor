@@ -18,7 +18,6 @@ type QueryFilter struct {
 	Price               *types.Money
 	MaintenanceInterval *time.Duration
 	LifeExpectancy      *time.Duration
-	SerialNumber        *string
 	ModelNumber         *string
 	IsEnabled           *bool
 

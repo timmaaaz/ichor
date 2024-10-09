@@ -116,24 +116,22 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: assetbus.Asset{
-				TypeID:       sd.AssetTypes[0].ID,
-				ConditionID:  sd.AssetConditions[0].ID,
-				Name:         "Test Asset",
-				SerialNumber: "123456",
-				ModelNumber:  "654321",
-				IsEnabled:    true,
-				CreatedBy:    sd.Admins[0].ID,
-				UpdatedBy:    sd.Admins[0].ID,
+				TypeID:      sd.AssetTypes[0].ID,
+				ConditionID: sd.AssetConditions[0].ID,
+				Name:        "Test Asset",
+				ModelNumber: "654321",
+				IsEnabled:   true,
+				CreatedBy:   sd.Admins[0].ID,
+				UpdatedBy:   sd.Admins[0].ID,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				na := assetbus.NewAsset{
-					TypeID:       sd.AssetTypes[0].ID,
-					ConditionID:  sd.AssetConditions[0].ID,
-					Name:         "Test Asset",
-					SerialNumber: "123456",
-					ModelNumber:  "654321",
-					IsEnabled:    true,
-					CreatedBy:    sd.Admins[0].ID,
+					TypeID:      sd.AssetTypes[0].ID,
+					ConditionID: sd.AssetConditions[0].ID,
+					Name:        "Test Asset",
+					ModelNumber: "654321",
+					IsEnabled:   true,
+					CreatedBy:   sd.Admins[0].ID,
 				}
 
 				got, err := busDomain.Asset.Create(ctx, na)
@@ -176,7 +174,6 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				Price:               sd.Assets[1].Price,
 				MaintenanceInterval: sd.Assets[1].MaintenanceInterval,
 				LifeExpectancy:      sd.Assets[1].LifeExpectancy,
-				SerialNumber:        "654321",
 				ModelNumber:         "123456",
 				IsEnabled:           false,
 				CreatedBy:           sd.Admins[0].ID,
@@ -184,10 +181,9 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				ua := assetbus.UpdateAsset{
-					Name:         dbtest.StringPointer("Updated Asset"),
-					SerialNumber: dbtest.StringPointer("654321"),
-					ModelNumber:  dbtest.StringPointer("123456"),
-					IsEnabled:    dbtest.BoolPointer(false),
+					Name:        dbtest.StringPointer("Updated Asset"),
+					ModelNumber: dbtest.StringPointer("123456"),
+					IsEnabled:   dbtest.BoolPointer(false),
 				}
 
 				got, err := busDomain.Asset.Update(ctx, sd.Assets[1], ua)

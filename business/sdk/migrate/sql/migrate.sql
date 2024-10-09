@@ -95,7 +95,6 @@ CREATE TABLE assets (
    price NUMERIC(10,2) NULL,
    maintenance_interval INTERVAL NULL,
    life_expectancy INTERVAL NULL,
-   serial_number TEXT NULL,
    model_number TEXT NULL,
    is_enabled BOOLEAN NOT NULL,
    date_created TIMESTAMP NOT NULL,

@@ -16,7 +16,6 @@ var orderByFields = map[string]string{
 	assetbus.OrderByPrice:          "price",
 	assetbus.OrderByMaintenance:    "maintenance_interval",
 	assetbus.OrderByLifeExpectancy: "life_expectancy",
-	assetbus.OrderBySerialNumber:   "serial_number",
 	assetbus.OrderByModelNumber:    "model_number",
 	assetbus.OrderByIsEnabled:      "is_enabled",
 	assetbus.OrderByDateCreated:    "date_created",

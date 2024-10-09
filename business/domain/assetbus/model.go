@@ -17,7 +17,6 @@ type Asset struct {
 	Price               types.Money
 	MaintenanceInterval types.Interval
 	LifeExpectancy      types.Interval
-	SerialNumber        string
 	ModelNumber         string
 	IsEnabled           bool
 	DateCreated         time.Time
@@ -35,7 +34,6 @@ type NewAsset struct {
 	Price               types.Money
 	MaintenanceInterval types.Interval
 	LifeExpectancy      types.Interval
-	SerialNumber        string
 	ModelNumber         string
 	IsEnabled           bool
 	CreatedBy           uuid.UUID
@@ -51,7 +49,6 @@ type UpdateAsset struct {
 	Price               *types.Money
 	MaintenanceInterval *types.Interval
 	LifeExpectancy      *types.Interval
-	SerialNumber        *string
 	ModelNumber         *string
 	IsEnabled           *bool
 	UpdatedBy           *uuid.UUID
