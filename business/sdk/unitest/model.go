@@ -3,6 +3,7 @@ package unitest
 import (
 	"context"
 
+	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -27,6 +28,7 @@ type SeedData struct {
 	Admins          []User
 	AssetTypes      []assettypebus.AssetType
 	AssetConditions []assetconditionbus.AssetCondition
+	Assets          []assetbus.Asset
 	Countries       []countrybus.Country
 	Regions         []regionbus.Region
 	Cities          []citybus.City

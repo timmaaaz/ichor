@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/domain/assetbus"
+	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
@@ -44,6 +46,7 @@ type BusDomain struct {
 	Home           *homebus.Business
 	AssetType      *assettypebus.Business
 	AssetCondition *assetconditionbus.Business
+	Asset          *assetbus.Business
 	Product        *productbus.Business
 	User           *userbus.Business
 	Country        *countrybus.Business
@@ -62,6 +65,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
 	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
+	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
 
 	userBus := userbus.NewBusiness(log, delegate, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
@@ -73,6 +77,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Home:           homeBus,
 		AssetType:      assetTypeBus,
 		AssetCondition: assetConditionBus,
+		Asset:          assetBus,
 		Product:        productBus,
 		User:           userBus,
 		Country:        countryBus,
