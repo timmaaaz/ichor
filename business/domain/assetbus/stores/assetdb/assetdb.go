@@ -50,11 +50,11 @@ func (s *Store) Create(ctx context.Context, ass assetbus.Asset) error {
 	const q = `
     INSERT INTO assets (
         asset_id, type_id, condition_id, name, est_price, maintenance_interval,
-        life_expectancy, serial_number, model_number, is_enabled, date_created,
+        life_expectancy, model_number, is_enabled, date_created,
         date_updated, created_by, updated_by
     ) VALUES (
         :asset_id, :type_id, :condition_id, :name, :est_price, :maintenance_interval,
-        :life_expectancy, :serial_number, :model_number, :is_enabled, :date_created,
+        :life_expectancy, :model_number, :is_enabled, :date_created,
         :date_updated, :created_by, :updated_by
     )   
     `
@@ -82,7 +82,6 @@ func (s *Store) Update(ctx context.Context, ass assetbus.Asset) error {
 		price = :price,
 		maintenance_interval = :maintenance_interval,
 		life_expectancy = :life_expectancy,
-		serial_number = :serial_number,
 		model_number = :model_number,
 		is_enabled = :is_enabled,
 		date_created = :date_created,
@@ -128,7 +127,7 @@ func (s *Store) Query(ctx context.Context, filter assetbus.QueryFilter, orderBy 
 	const q = `
     SELECT
         asset_id, type_id, condition_id, name, est_price, maintenance_interval,
-        life_expectancy, serial_number, model_number, is_enabled, date_created,
+        life_expectancy, model_number, is_enabled, date_created,
         date_updated, created_by, updated_by
     FROM
         assets`

@@ -40,7 +40,6 @@ func TestNewAssets(n int, typeIDs []uuid.UUID, conditionIDs []uuid.UUID, userID 
 			Price:               price,
 			MaintenanceInterval: maintenanceInterval,
 			LifeExpectancy:      lifeExpectancy,
-			SerialNumber:        fmt.Sprintf("SerialNumber%d", idx),
 			ModelNumber:         fmt.Sprintf("ModelNumber%d", idx),
 			IsEnabled:           true,
 			CreatedBy:           userID,

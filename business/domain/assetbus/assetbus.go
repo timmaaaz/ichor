@@ -80,7 +80,6 @@ func (b *Business) Create(ctx context.Context, na NewAsset) (Asset, error) {
 		EstPrice:            na.EstPrice,
 		MaintenanceInterval: na.MaintenanceInterval,
 		LifeExpectancy:      na.LifeExpectancy,
-		SerialNumber:        na.SerialNumber,
 		ModelNumber:         na.ModelNumber,
 		IsEnabled:           na.IsEnabled,
 		DateCreated:         now,
@@ -129,10 +128,6 @@ func (b *Business) Update(ctx context.Context, ass Asset, ua UpdateAsset) (Asset
 
 	if ua.LifeExpectancy != nil {
 		ass.LifeExpectancy = *ua.LifeExpectancy
-	}
-
-	if ua.SerialNumber != nil {
-		ass.SerialNumber = *ua.SerialNumber
 	}
 
 	if ua.ModelNumber != nil {

@@ -19,7 +19,6 @@ type asset struct {
 	Price               sql.NullString `db:"price"`
 	MaintenanceInterval sql.NullString `db:"maintenance_interval"`
 	LifeExpectancy      sql.NullString `db:"life_expectancy"`
-	SerialNumber        string         `db:"serial_number"`
 	ModelNumber         string         `db:"model_number"`
 	IsEnabled           bool           `db:"is_enabled"`
 	DateCreated         time.Time      `db:"date_created"`
@@ -38,7 +37,6 @@ func toDBAsset(bus assetbus.Asset) asset {
 		Price:               bus.Price.DBValue(),
 		MaintenanceInterval: bus.MaintenanceInterval.DBValue(),
 		LifeExpectancy:      bus.LifeExpectancy.DBValue(),
-		SerialNumber:        bus.SerialNumber,
 		ModelNumber:         bus.ModelNumber,
 		IsEnabled:           bus.IsEnabled,
 		DateCreated:         bus.DateCreated.UTC(),
@@ -78,7 +76,6 @@ func toBusAsset(db asset) (assetbus.Asset, error) {
 		Price:               price,
 		MaintenanceInterval: maintenanceInterval,
 		LifeExpectancy:      lifeExpectancy,
-		SerialNumber:        db.SerialNumber,
 		ModelNumber:         db.ModelNumber,
 		IsEnabled:           db.IsEnabled,
 		DateCreated:         db.DateCreated.In(time.Local),

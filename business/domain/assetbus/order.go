@@ -15,7 +15,6 @@ const (
 	OrderByPrice          = "price"
 	OrderByMaintenance    = "maintenance_interval"
 	OrderByLifeExpectancy = "life_expectancy"
-	OrderBySerialNumber   = "serial_number"
 	OrderByModelNumber    = "model_number"
 	OrderByIsEnabled      = "is_enabled"
 	OrderByDateCreated    = "date_created"
