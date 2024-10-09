@@ -27,9 +27,9 @@ func Routes(app *web.App, cfg Config) {
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
 	api := newAPI(assetapp.NewApp(cfg.AssetBus))
-	app.HandlerFunc(http.MethodGet, version, "/assets", api.query, authen)
+	app.HandlerFunc(http.MethodGet, version, "/assets", api.query, authen, ruleAdmin)
 	app.HandlerFunc(http.MethodGet, version, "/assets/{asset_id}", api.queryByID, authen)
 	app.HandlerFunc(http.MethodPost, version, "/assets", api.create, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodPut, version, "/assets/{asset_id}", api.update, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodDelete, version, "/assets/{asset_id}", api.delete, authen, ruleAdmin)
+	app.HandlerFunc(http.MethodPut, version, "/assets/{asset_id}", api.update, authen)
+	app.HandlerFunc(http.MethodDelete, version, "/assets/{asset_id}", api.delete, authen)
 }

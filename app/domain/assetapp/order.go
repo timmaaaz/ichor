@@ -10,6 +10,7 @@ var defaultOrderBy = order.NewBy("name", order.ASC)
 var orderByFields = map[string]string{
 	"asset_id":             assetbus.OrderByID,
 	"type_id":              assetbus.OrderByTypeID,
+	"condition_id":         assetbus.OrderByConditionID,
 	"name":                 assetbus.OrderByName,
 	"est_price":            assetbus.OrderByEstPrice,
 	"price":                assetbus.OrderByPrice,

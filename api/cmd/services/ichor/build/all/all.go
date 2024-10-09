@@ -7,7 +7,6 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assetconditionapi"
-
 	"github.com/timmaaaz/ichor/api/domain/http/assettypeapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
