@@ -9,11 +9,13 @@ var DefaultOrderBy = order.NewBy(OrderByName, order.ASC)
 const (
 	OrderByID             = "id"
 	OrderByTypeID         = "type_id"
+	OrderByConditionID    = "condition_id"
 	OrderByName           = "name"
 	OrderByEstPrice       = "est_price"
 	OrderByPrice          = "price"
 	OrderByMaintenance    = "maintenance_interval"
 	OrderByLifeExpectancy = "life_expectancy"
+	OrderBySerialNumber   = "serial_number"
 	OrderByModelNumber    = "model_number"
 	OrderByIsEnabled      = "is_enabled"
 	OrderByDateCreated    = "date_created"

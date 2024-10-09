@@ -70,8 +70,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
 
 	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
-	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
+	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 
 	userBus := userbus.NewBusiness(log, delegate, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
@@ -84,7 +84,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Delegate:          delegate,
 		Home:              homeBus,
 		AssetType:         assetTypeBus,
-		AssetCondition:    assetConditionBus,
 		Asset:             assetBus,
 		Product:           productBus,
 		User:              userBus,
@@ -95,7 +94,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		VProduct:          vproductBus,
 		ApprovalStatus:    approvalstatusBus,
 		FulfillmentStatus: fulfillmentstatusBus,
+		AssetCondition:    assetConditionBus,
 	}
+
 }
 
 // =============================================================================

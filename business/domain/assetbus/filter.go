@@ -12,11 +12,13 @@ import (
 type QueryFilter struct {
 	ID                  *uuid.UUID
 	TypeID              *uuid.UUID
+	ConditionID         *uuid.UUID
 	Name                *string
 	EstPrice            *types.Money
 	Price               *types.Money
-	MaintenanceInterval *types.Interval
-	LifeExpectancy      *types.Interval
+	MaintenanceInterval *time.Duration
+	LifeExpectancy      *time.Duration
+	SerialNumber        *string
 	ModelNumber         *string
 	IsEnabled           *bool
 

@@ -20,6 +20,11 @@ func applyFilter(filter assetbus.QueryFilter, data map[string]interface{}, buf *
 		wc = append(wc, "type_id = :type_id")
 	}
 
+	if filter.ConditionID != nil {
+		data["condition_id"] = *filter.ConditionID
+		wc = append(wc, "condition_id = :condition_id")
+	}
+
 	if filter.Name != nil {
 		data["name"] = "%" + *filter.Name + "%"
 		wc = append(wc, "name ILIKE :name")
@@ -43,6 +48,11 @@ func applyFilter(filter assetbus.QueryFilter, data map[string]interface{}, buf *
 	if filter.LifeExpectancy != nil {
 		data["life_expectancy"] = *filter.LifeExpectancy
 		wc = append(wc, "life_expectancy = :life_expectancy")
+	}
+
+	if filter.SerialNumber != nil {
+		data["serial_number"] = *filter.SerialNumber
+		wc = append(wc, "serial_number = :serial_number")
 	}
 
 	if filter.ModelNumber != nil {

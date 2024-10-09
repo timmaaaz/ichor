@@ -13,11 +13,13 @@ import (
 type asset struct {
 	ID                  uuid.UUID      `db:"asset_id"`
 	TypeID              uuid.UUID      `db:"type_id"`
+	ConditionID         uuid.UUID      `db:"condition_id"`
 	Name                string         `db:"name"`
 	EstPrice            sql.NullString `db:"est_price"`
 	Price               sql.NullString `db:"price"`
 	MaintenanceInterval sql.NullString `db:"maintenance_interval"`
 	LifeExpectancy      sql.NullString `db:"life_expectancy"`
+	SerialNumber        string         `db:"serial_number"`
 	ModelNumber         string         `db:"model_number"`
 	IsEnabled           bool           `db:"is_enabled"`
 	DateCreated         time.Time      `db:"date_created"`
@@ -30,11 +32,13 @@ func toDBAsset(bus assetbus.Asset) asset {
 	return asset{
 		ID:                  bus.ID,
 		TypeID:              bus.TypeID,
+		ConditionID:         bus.ConditionID,
 		Name:                bus.Name,
 		EstPrice:            bus.EstPrice.DBValue(),
 		Price:               bus.Price.DBValue(),
 		MaintenanceInterval: bus.MaintenanceInterval.DBValue(),
 		LifeExpectancy:      bus.LifeExpectancy.DBValue(),
+		SerialNumber:        bus.SerialNumber,
 		ModelNumber:         bus.ModelNumber,
 		IsEnabled:           bus.IsEnabled,
 		DateCreated:         bus.DateCreated.UTC(),
@@ -68,11 +72,13 @@ func toBusAsset(db asset) (assetbus.Asset, error) {
 	return assetbus.Asset{
 		ID:                  db.ID,
 		TypeID:              db.TypeID,
+		ConditionID:         db.ConditionID,
 		Name:                db.Name,
 		EstPrice:            estPrice,
 		Price:               price,
 		MaintenanceInterval: maintenanceInterval,
 		LifeExpectancy:      lifeExpectancy,
+		SerialNumber:        db.SerialNumber,
 		ModelNumber:         db.ModelNumber,
 		IsEnabled:           db.IsEnabled,
 		DateCreated:         db.DateCreated.In(time.Local),
