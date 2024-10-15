@@ -85,15 +85,15 @@ func ToAppAssets(bus []assetbus.Asset) []Asset {
 // =============================================================================
 
 type NewAsset struct {
-	TypeID              string `json:"type_id"`
-	Name                string `json:"name"`
+	TypeID              string `json:"type_id" validate:"required,uuid"`
+	Name                string `json:"name" validate:"required"`
 	EstPrice            string `json:"est_price"`
 	Price               string `json:"price"`
 	MaintenanceInterval string `json:"maintenance_interval"`
 	LifeExpectancy      string `json:"life_expectancy"`
 	ModelNumber         string `json:"model_number"`
 	IsEnabled           bool   `json:"is_enabled"`
-	CreatedBy           string `json:"created_by"`
+	CreatedBy           string `json:"created_by" validate:"required"`
 }
 
 // Decode implements the decoder interface.
