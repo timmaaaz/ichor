@@ -9,7 +9,6 @@ var DefaultOrderBy = order.NewBy(OrderByName, order.ASC)
 const (
 	OrderByID             = "id"
 	OrderByTypeID         = "type_id"
-	OrderByConditionID    = "condition_id"
 	OrderByName           = "name"
 	OrderByEstPrice       = "est_price"
 	OrderByPrice          = "price"

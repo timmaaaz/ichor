@@ -10,7 +10,6 @@ import (
 var orderByFields = map[string]string{
 	assetbus.OrderByID:             "asset_id",
 	assetbus.OrderByTypeID:         "type_id",
-	assetbus.OrderByConditionID:    "condition_id",
 	assetbus.OrderByName:           "name",
 	assetbus.OrderByEstPrice:       "est_price",
 	assetbus.OrderByPrice:          "price",
