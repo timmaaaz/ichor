@@ -89,7 +89,6 @@ CREATE TABLE users (
 CREATE TABLE assets (
    asset_id UUID NOT NULL,
    type_id UUID NOT NULL,
-   condition_id UUID NOT NULL,
    name TEXT NOT NULL,
    est_price NUMERIC(10,2) NULL,
    price NUMERIC(10,2) NULL,
@@ -108,7 +107,6 @@ CREATE TABLE assets (
 
    -- named foreign keys
    CONSTRAINT fk_assets_type_id FOREIGN KEY (type_id) REFERENCES asset_types(asset_type_id) ON DELETE CASCADE,
-   CONSTRAINT fk_assets_condition_id FOREIGN KEY (condition_id) REFERENCES asset_conditions(asset_condition_id) ON DELETE CASCADE,
    CONSTRAINT fk_assets_created_by FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE,
    CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE CASCADE
 );

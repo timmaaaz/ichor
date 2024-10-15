@@ -1,6 +1,7 @@
 package apitest
 
 import (
+	"github.com/timmaaaz/ichor/app/domain/assetapp"
 	"github.com/timmaaaz/ichor/app/domain/assetconditionapp"
 	"github.com/timmaaaz/ichor/app/domain/assettypeapp"
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
@@ -28,6 +29,7 @@ type SeedData struct {
 	Regions         []regionbus.Region
 	Cities          []cityapp.City
 	Streets         []streetapp.Street
+	Assets          []assetapp.Asset
 	AssetTypes      []assettypeapp.AssetType
 	AssetConditions []assetconditionapp.AssetCondition
 }
