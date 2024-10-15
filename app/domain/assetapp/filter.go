@@ -29,14 +29,6 @@ func parseFilter(qp QueryParams) (assetbus.QueryFilter, error) {
 		filter.TypeID = &id
 	}
 
-	if qp.ConditionID != "" {
-		id, err := uuid.Parse(qp.ConditionID)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("condition_id", err)
-		}
-		filter.ConditionID = &id
-	}
-
 	if qp.Name != "" {
 		filter.Name = &qp.Name
 	}

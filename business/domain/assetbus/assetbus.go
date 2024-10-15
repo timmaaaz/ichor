@@ -75,7 +75,6 @@ func (b *Business) Create(ctx context.Context, na NewAsset) (Asset, error) {
 	asset := Asset{
 		ID:                  uuid.New(),
 		TypeID:              na.TypeID,
-		ConditionID:         na.ConditionID,
 		Name:                na.Name,
 		EstPrice:            na.EstPrice,
 		MaintenanceInterval: na.MaintenanceInterval,
@@ -104,10 +103,6 @@ func (b *Business) Update(ctx context.Context, ass Asset, ua UpdateAsset) (Asset
 
 	if ua.TypeID != nil {
 		ass.TypeID = *ua.TypeID
-	}
-
-	if ua.ConditionID != nil {
-		ass.ConditionID = *ua.ConditionID
 	}
 
 	if ua.Name != nil {

@@ -20,11 +20,6 @@ func applyFilter(filter assetbus.QueryFilter, data map[string]interface{}, buf *
 		wc = append(wc, "type_id = :type_id")
 	}
 
-	if filter.ConditionID != nil {
-		data["condition_id"] = *filter.ConditionID
-		wc = append(wc, "condition_id = :condition_id")
-	}
-
 	if filter.Name != nil {
 		data["name"] = "%" + *filter.Name + "%"
 		wc = append(wc, "name ILIKE :name")
