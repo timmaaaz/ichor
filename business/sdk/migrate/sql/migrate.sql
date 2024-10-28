@@ -109,3 +109,11 @@ CREATE TABLE homes (
    PRIMARY KEY (home_id),
    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
+-- Version: 1.09
+-- Description: Add approval status 
+CREATE TABLE approval_status (
+   approval_status_id UUID NOT NULL, 
+   icon_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   PRIMARY KEY (approval_status_id)
+);
