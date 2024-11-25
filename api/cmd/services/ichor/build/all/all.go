@@ -4,6 +4,7 @@ package all
 import (
 	"time"
 
+	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/cityapi"
@@ -16,6 +17,8 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/userapi"
 	"github.com/timmaaaz/ichor/api/domain/http/vproductapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
@@ -59,6 +62,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	regionBus := regionbus.NewBusiness(cfg.Log, delegate, regiondb.NewStore(cfg.Log, cfg.DB))
 	cityBus := citybus.NewBusiness(cfg.Log, delegate, citydb.NewStore(cfg.Log, cfg.DB))
 	streetBus := streetbus.NewBusiness(cfg.Log, delegate, streetdb.NewStore(cfg.Log, cfg.DB))
+	approvalStatusBus := approvalstatusbus.NewBusiness(cfg.Log, delegate, approvalstatusdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -126,4 +130,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient: cfg.AuthClient,
 		Log:        cfg.Log,
 	})
+
+	approvalstatusapi.Routes(app, approvalstatusapi.Config{
+		ApprovalStatusBus: approvalStatusBus,
+		AuthClient:        cfg.AuthClient,
+		Log:               cfg.Log,
+	})
+
 }

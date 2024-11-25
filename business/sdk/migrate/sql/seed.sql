@@ -315,3 +315,12 @@ INSERT INTO users (
     ('5cf37266-3473-4006-984f-9325122678b7', 'admin_gopher', 'Admin', 'Gopher', NULL, 'admin@example.com', NULL, NULL, NULL, NULL, NULL, '{ADMIN}', '{}', '$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a', NULL, true, NULL, NULL, '2019-03-24 00:00:00', '2019-03-24 00:00:00'),
     ('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'user_gopher', 'User', 'Gopher', NULL, 'user@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2019-03-24 00:00:00', '2019-03-24 00:00:00')
 ON CONFLICT DO NOTHING;
+
+
+INSERT INTO approval_status (approval_status_id, name, icon_id) VALUES 
+    (uuid_generate_v4(), 'SUCCESS', uuid_generate_v4()),
+    (uuid_generate_v4(), 'ERROR', uuid_generate_v4()),
+    (uuid_generate_v4(), 'WAITING', uuid_generate_v4()),
+    (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
+    (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
+
