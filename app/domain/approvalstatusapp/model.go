@@ -78,8 +78,8 @@ func toBusNewApprovalStatus(app NewApprovalStatus) (approvalstatusbus.NewApprova
 }
 
 type UpdateApprovalStatus struct {
-	IconID *string `json:"iconID"`
-	Name   *string `json:"name"`
+	IconID *string `json:"icon_id" validate:"required"`
+	Name   *string `json:"name" validate:"required,min=3,max=100"`
 }
 
 func (app *UpdateApprovalStatus) Decode(data []byte) error {
