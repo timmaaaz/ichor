@@ -35,7 +35,6 @@ type SeedData struct {
 	AssetCondition    []assetconditionbus.AssetCondition
 }
 
-// Table represent fields needed for running an unit test.
 type Table struct {
 	Name    string
 	ExpResp any

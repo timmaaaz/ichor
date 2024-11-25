@@ -58,6 +58,7 @@ type BusDomain struct {
 	City           *citybus.Business
 	Street         *streetbus.Business
 	VProduct       *vproductbus.Business
+	ApprovalStatus *approvalstatusbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -92,6 +93,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		City:           cityBus,
 		Street:         streetBus,
 		VProduct:       vproductBus,
+		ApprovalStatus: approvalstatusBus,
 	}
 }
 
