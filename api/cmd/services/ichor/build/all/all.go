@@ -176,4 +176,10 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient: cfg.AuthClient,
 		Log:        cfg.Log,
 	})
+	fulfillmentstatusapi.Routes(app, fulfillmentstatusapi.Config{
+		FulfillmentStatusBus: fulfillmentStatusBus,
+		AuthClient:           cfg.AuthClient,
+		Log:                  cfg.Log,
+	})
+
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -26,13 +27,14 @@ type User struct {
 type SeedData struct {
 	Users             []User
 	Admins            []User
+	AssetConditions   []assetconditionbus.AssetCondition
+	Assets            []assetbus.Asset
 	Countries         []countrybus.Country
 	Regions           []regionbus.Region
 	Cities            []citybus.City
 	Streets           []streetbus.Street
 	ApprovalStatus    []approvalstatusbus.ApprovalStatus
 	FulfillmentStatus []fulfillmentstatusbus.FulfillmentStatus
-	AssetCondition    []assetconditionbus.AssetCondition
 }
 
 type Table struct {

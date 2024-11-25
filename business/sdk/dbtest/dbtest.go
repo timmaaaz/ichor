@@ -46,19 +46,20 @@ import (
 
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
-	Delegate       *delegate.Delegate
-	Home           *homebus.Business
-	AssetType      *assettypebus.Business
-	AssetCondition *assetconditionbus.Business
-	Asset          *assetbus.Business
-	Product        *productbus.Business
-	User           *userbus.Business
-	Country        *countrybus.Business
-	Region         *regionbus.Business
-	City           *citybus.Business
-	Street         *streetbus.Business
-	VProduct       *vproductbus.Business
-	ApprovalStatus *approvalstatusbus.Business
+	Delegate          *delegate.Delegate
+	Home              *homebus.Business
+	AssetType         *assettypebus.Business
+	AssetCondition    *assetconditionbus.Business
+	Asset             *assetbus.Business
+	Product           *productbus.Business
+	User              *userbus.Business
+	Country           *countrybus.Business
+	Region            *regionbus.Business
+	City              *citybus.Business
+	Street            *streetbus.Business
+	VProduct          *vproductbus.Business
+	ApprovalStatus    *approvalstatusbus.Business
+	FulfillmentStatus *fulfillmentstatusbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -78,22 +79,22 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 	approvalstatusBus := approvalstatusbus.NewBusiness(log, delegate, approvalstatusdb.NewStore(log, db))
 	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db))
-	assetconditionbus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 
 	return BusDomain{
-		Delegate:       delegate,
-		Home:           homeBus,
-		AssetType:      assetTypeBus,
-		AssetCondition: assetConditionBus,
-		Asset:          assetBus,
-		Product:        productBus,
-		User:           userBus,
-		Country:        countryBus,
-		Region:         regionBus,
-		City:           cityBus,
-		Street:         streetBus,
-		VProduct:       vproductBus,
-		ApprovalStatus: approvalstatusBus,
+		Delegate:          delegate,
+		Home:              homeBus,
+		AssetType:         assetTypeBus,
+		AssetCondition:    assetConditionBus,
+		Asset:             assetBus,
+		Product:           productBus,
+		User:              userBus,
+		Country:           countryBus,
+		Region:            regionBus,
+		City:              cityBus,
+		Street:            streetBus,
+		VProduct:          vproductBus,
+		ApprovalStatus:    approvalstatusBus,
+		FulfillmentStatus: fulfillmentstatusBus,
 	}
 }
 
