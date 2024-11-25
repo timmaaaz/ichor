@@ -324,3 +324,10 @@ INSERT INTO approval_status (approval_status_id, name, icon_id) VALUES
     (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
     (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
 
+INSERT INTO fulfillment_status (fulfillment_status_id, name, icon_id) VALUES 
+    (uuid_generate_v4(), 'SUCCESS', uuid_generate_v4()),
+    (uuid_generate_v4(), 'ERROR', uuid_generate_v4()),
+    (uuid_generate_v4(), 'WAITING', uuid_generate_v4()),
+    (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
+    (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
+

@@ -117,3 +117,11 @@ CREATE TABLE approval_status (
    name TEXT NOT NULL,
    PRIMARY KEY (approval_status_id)
 );
+-- Version: 1.10
+-- Description: Add fulfillment status
+CREATE TABLE fulfillment_status (
+   fulfillment_status_id UUID NOT NULL, 
+   icon_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   PRIMARY KEY (fulfillment_status_id)
+);
