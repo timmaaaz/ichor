@@ -3,6 +3,7 @@ package apitest
 import (
 	"github.com/timmaaaz/ichor/app/domain/approvalstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/assetconditionapp"
+	"github.com/timmaaaz/ichor/app/domain/assettypeapp"
 	"github.com/timmaaaz/ichor/app/domain/fulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
@@ -32,6 +33,7 @@ type SeedData struct {
 	ApprovalStatuses    []approvalstatusapp.ApprovalStatus
 	FulfillmentStatuses []fulfillmentstatusapp.FulfillmentStatus
 	AssetConditions     []assetconditionapp.AssetCondition
+	AssetTypes          []assettypeapp.AssetType
 }
 
 // Table represent fields needed for running an api test.

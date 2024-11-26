@@ -132,3 +132,10 @@ CREATE TABLE asset_condition (
    name TEXT NOT NULL,
    PRIMARY KEY (asset_condition_id)
 );
+-- Version: 1.12
+-- Description: Add asset types
+CREATE TABLE asset_types (
+   asset_type_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   PRIMARY KEY (asset_type_id)
+);

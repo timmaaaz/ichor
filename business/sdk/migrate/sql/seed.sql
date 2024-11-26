@@ -337,3 +337,12 @@ INSERT INTO asset_condition (asset_condition_id, name) VALUES
     (uuid_generate_v4(), 'USED'),
     (uuid_generate_v4(), 'POOR'),
     (uuid_generate_v4(), 'END_OF_LIFE');
+    
+INSERT INTO asset_types (asset_type_id, name) VALUES 
+    (uuid_generate_v4(), 'Computer'),
+    (uuid_generate_v4(), 'Phone'),
+    (uuid_generate_v4(), 'Printer'),
+    (uuid_generate_v4(), 'Monitor'),
+    (uuid_generate_v4(), 'Mouse'),
+    (uuid_generate_v4(), 'Keyboard'),
+    (uuid_generate_v4(), 'Laptop');

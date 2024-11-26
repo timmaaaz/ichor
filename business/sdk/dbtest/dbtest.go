@@ -13,6 +13,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	assetconditiondb "github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores"
+	"github.com/timmaaaz/ichor/business/domain/assettypebus"
+	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -54,6 +56,7 @@ type BusDomain struct {
 	ApprovalStatus    *approvalstatusbus.Business
 	FulfillmentStatus *fulfillmentstatusbus.Business
 	AssetCondition    *assetconditionbus.Business
+	AssetType         *assettypebus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -69,6 +72,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	approvalstatusBus := approvalstatusbus.NewBusiness(log, delegate, approvalstatusdb.NewStore(log, db))
 	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db))
 	assetconditionbus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
+	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:          delegate,
@@ -83,6 +87,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ApprovalStatus:    approvalstatusBus,
 		FulfillmentStatus: fulfillmentstatusBus,
 		AssetCondition:    assetconditionbus,
+		AssetType:         assetTypeBus,
 	}
 }
 
