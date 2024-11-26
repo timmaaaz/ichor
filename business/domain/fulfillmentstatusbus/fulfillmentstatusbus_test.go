@@ -38,7 +38,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 
 	as, err := fulfillmentstatusbus.TestSeedFulfillmentStatus(ctx, 10, busDomain.FulfillmentStatus)
 	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding approval statues : %w", err)
+		return unitest.SeedData{}, fmt.Errorf("seeding fulfillment statues : %w", err)
 	}
 
 	return unitest.SeedData{
@@ -58,11 +58,11 @@ func query(busdomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				{ID: sd.FulfillmentStatus[4].ID, Name: sd.FulfillmentStatus[4].Name, IconID: sd.FulfillmentStatus[4].IconID},
 			},
 			ExcFunc: func(ctx context.Context) any {
-				aprvlStatuses, err := busdomain.FulfillmentStatus.Query(ctx, fulfillmentstatusbus.QueryFilter{}, order.NewBy(fulfillmentstatusbus.OrderByName, order.ASC), page.MustParse("1", "5"))
+				fulfillmentstatuses, err := busdomain.FulfillmentStatus.Query(ctx, fulfillmentstatusbus.QueryFilter{}, order.NewBy(fulfillmentstatusbus.OrderByName, order.ASC), page.MustParse("1", "5"))
 				if err != nil {
 					return err
 				}
-				return aprvlStatuses
+				return fulfillmentstatuses
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)

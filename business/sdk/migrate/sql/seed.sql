@@ -331,3 +331,9 @@ INSERT INTO fulfillment_status (fulfillment_status_id, name, icon_id) VALUES
     (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
     (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
 
+INSERT INTO asset_condition (asset_condition_id, name) VALUES 
+    (uuid_generate_v4(), 'PERFECT'),
+    (uuid_generate_v4(), 'GOOD'),
+    (uuid_generate_v4(), 'USED'),
+    (uuid_generate_v4(), 'POOR'),
+    (uuid_generate_v4(), 'END_OF_LIFE');
