@@ -35,6 +35,7 @@ type SeedData struct {
 	Streets           []streetbus.Street
 	ApprovalStatus    []approvalstatusbus.ApprovalStatus
 	FulfillmentStatus []fulfillmentstatusbus.FulfillmentStatus
+	AssetCondition    []assetconditionbus.AssetCondition
 }
 
 type Table struct {

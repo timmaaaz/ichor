@@ -60,6 +60,7 @@ type BusDomain struct {
 	VProduct          *vproductbus.Business
 	ApprovalStatus    *approvalstatusbus.Business
 	FulfillmentStatus *fulfillmentstatusbus.Business
+	AssetCondition    *assetconditionbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -79,6 +80,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 	approvalstatusBus := approvalstatusbus.NewBusiness(log, delegate, approvalstatusdb.NewStore(log, db))
 	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db))
+	assetconditionbus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:          delegate,
@@ -95,6 +97,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		VProduct:          vproductBus,
 		ApprovalStatus:    approvalstatusBus,
 		FulfillmentStatus: fulfillmentstatusBus,
+		AssetCondition:    assetconditionbus,
 	}
 }
 

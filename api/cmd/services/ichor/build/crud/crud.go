@@ -10,8 +10,6 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assetconditionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assettypeapi"
 
-	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
-
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
