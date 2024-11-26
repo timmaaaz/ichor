@@ -125,3 +125,10 @@ CREATE TABLE fulfillment_status (
    name TEXT NOT NULL,
    PRIMARY KEY (fulfillment_status_id)
 );
+-- Version: 1.11
+-- Description: add asset condition
+CREATE TABLE asset_condition (
+   asset_condition_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   PRIMARY KEY (asset_condition_id)
+);

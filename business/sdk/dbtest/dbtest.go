@@ -11,6 +11,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
+	assetconditiondb "github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -51,6 +53,7 @@ type BusDomain struct {
 	VProduct          *vproductbus.Business
 	ApprovalStatus    *approvalstatusbus.Business
 	FulfillmentStatus *fulfillmentstatusbus.Business
+	AssetCondition    *assetconditionbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -65,6 +68,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 	approvalstatusBus := approvalstatusbus.NewBusiness(log, delegate, approvalstatusdb.NewStore(log, db))
 	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db))
+	assetconditionbus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:          delegate,
@@ -78,6 +82,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		VProduct:          vproductBus,
 		ApprovalStatus:    approvalstatusBus,
 		FulfillmentStatus: fulfillmentstatusBus,
+		AssetCondition:    assetconditionbus,
 	}
 }
 
