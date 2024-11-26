@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
@@ -31,6 +32,7 @@ type SeedData struct {
 	Streets           []streetbus.Street
 	ApprovalStatus    []approvalstatusbus.ApprovalStatus
 	FulfillmentStatus []fulfillmentstatusbus.FulfillmentStatus
+	AssetCondition    []assetconditionbus.AssetCondition
 }
 
 // Table represent fields needed for running an unit test.

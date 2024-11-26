@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assetconditionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
@@ -18,6 +19,8 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
+	assetconditiondb "github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -62,6 +65,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	streetBus := streetbus.NewBusiness(cfg.Log, delegate, streetdb.NewStore(cfg.Log, cfg.DB))
 	approvalStatusBus := approvalstatusbus.NewBusiness(cfg.Log, delegate, approvalstatusdb.NewStore(cfg.Log, cfg.DB))
 	fulfillmentStatusBus := fulfillmentstatusbus.NewBusiness(cfg.Log, delegate, fulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
+	assetconditionBus := assetconditionbus.NewBusiness(cfg.Log, delegate, assetconditiondb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -128,6 +132,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		FulfillmentStatusBus: fulfillmentStatusBus,
 		AuthClient:           cfg.AuthClient,
 		Log:                  cfg.Log,
+	})
+
+	assetconditionapi.Routes(app, assetconditionapi.Config{
+		AssetConditionBus: assetconditionBus,
+		AuthClient:        cfg.AuthClient,
+		Log:               cfg.Log,
 	})
 
 }

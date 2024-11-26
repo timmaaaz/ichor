@@ -19,7 +19,7 @@ func TestNewFulfillmentStatus(n int) []NewFulfillmentStatus {
 
 		nas := NewFulfillmentStatus{
 			IconID: uuid.New(),
-			Name:   fmt.Sprintf("FulfillmentStatus%d", idx),
+			Name:   fmt.Sprintf("AFulfillmentStatus%d", idx),
 		}
 
 		newFulfillmentStatus[i] = nas
