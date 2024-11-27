@@ -159,6 +159,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AssetConditionBus: assetConditionBus,
 		AuthClient:        cfg.AuthClient,
 		Log:               cfg.Log,
+	})
+
 	assettypeapi.Routes(app, assettypeapi.Config{
 		AssetTypeBus: assetTypeBus,
 		AuthClient:   cfg.AuthClient,
