@@ -11,6 +11,7 @@ import (
 type Asset struct {
 	ID                  uuid.UUID
 	TypeID              uuid.UUID
+	ConditionID         uuid.UUID
 	Name                string
 	EstPrice            types.Money
 	Price               types.Money
@@ -28,6 +29,7 @@ type Asset struct {
 // NewAsset contains information needed to create a new asset.
 type NewAsset struct {
 	TypeID              uuid.UUID
+	ConditionID         uuid.UUID
 	Name                string
 	EstPrice            types.Money
 	Price               types.Money
@@ -43,6 +45,7 @@ type NewAsset struct {
 // included are intended to have separate endpoints or permissions to update.
 type UpdateAsset struct {
 	TypeID              *uuid.UUID
+	ConditionID         *uuid.UUID
 	Name                *string
 	EstPrice            *types.Money
 	Price               *types.Money

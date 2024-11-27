@@ -158,6 +158,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: assetbus.Asset{
 				ID:                  sd.Assets[1].ID,
 				TypeID:              sd.Assets[1].TypeID,
+				ConditionID:         sd.Assets[1].ConditionID,
 				Name:                "Updated Asset",
 				EstPrice:            sd.Assets[1].EstPrice,
 				Price:               sd.Assets[1].Price,

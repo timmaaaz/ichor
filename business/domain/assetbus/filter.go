@@ -19,6 +19,7 @@ type QueryFilter struct {
 	LifeExpectancy      *types.Interval
 	ModelNumber         *string
 	IsEnabled           *bool
+	SerialNumber        *string
 
 	// Date filters
 	StartDateCreated *time.Time

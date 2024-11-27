@@ -38,7 +38,6 @@ type SeedData struct {
 	FulfillmentStatus []fulfillmentstatusbus.FulfillmentStatus
 	AssetCondition    []assetconditionbus.AssetCondition
 	AssetTypes        []assettypebus.AssetType
-	Assets            []assetbus.Asset
 }
 
 type Table struct {

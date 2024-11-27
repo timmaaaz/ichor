@@ -1,4 +1,4 @@
-package assetconditionapi_test
+package assetcondition_test
 
 import (
 	"testing"
