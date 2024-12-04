@@ -15,7 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
-// Store manages the set of APIs for asset condition database access.
+// Store manages the set of APIs for streets database access.
 type Store struct {
 	log *logger.Logger
 	db  sqlx.ExtContext
@@ -46,15 +46,15 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assetconditionbus.Storer, 
 }
 
 // Create inserts a new asset condition into the database.
-func (s *Store) Create(ctx context.Context, ac assetconditionbus.AssetCondition) error {
+func (s *Store) Create(ctx context.Context, at assetconditionbus.AssetCondition) error {
 	const q = `
-    INSERT INTO asset_condition (
-        asset_condition_id, name
+    INSERT INTO asset_conditions (
+        asset_condition_id, name, description
     ) VALUES (
-        :asset_condition_id, :name
+        :asset_condition_id, :name, :description
     )
     `
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(ac)); err != nil {
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(at)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", assetconditionbus.ErrUniqueEntry)
 		}
@@ -64,17 +64,18 @@ func (s *Store) Create(ctx context.Context, ac assetconditionbus.AssetCondition)
 	return nil
 }
 
-// Update replaces an asset condition in the database
-func (s *Store) Update(ctx context.Context, ac assetconditionbus.AssetCondition) error {
+// Update modifies data about an asset condition in the database.
+func (s *Store) Update(ctx context.Context, at assetconditionbus.AssetCondition) error {
 	const q = `
-	UPDATE asset_condition
-	SET 
-        name = :name
-	WHERE 
-		asset_condition_id = :asset_condition_id
-	`
-
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(ac)); err != nil {
+    UPDATE 
+        asset_conditions
+    SET
+        name = :name,
+        description = :description
+    WHERE
+        asset_condition_id = :asset_condition_id
+    `
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(at)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", assetconditionbus.ErrUniqueEntry)
 		}
@@ -85,22 +86,21 @@ func (s *Store) Update(ctx context.Context, ac assetconditionbus.AssetCondition)
 }
 
 // Delete removes an asset condition from the database.
-func (s *Store) Delete(ctx context.Context, as assetconditionbus.AssetCondition) error {
+func (s *Store) Delete(ctx context.Context, at assetconditionbus.AssetCondition) error {
 	const q = `
-	DELETE FROM
-		asset_condition
-	WHERE
-		asset_condition_id = :asset_condition_id
-	`
-
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(as)); err != nil {
+    DELETE FROM
+        asset_conditions
+    WHERE
+        asset_condition_id = :asset_condition_id
+    `
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(at)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 
 	return nil
 }
 
-// Query retrieves a list of asset conditions from the database.
+// Query retrieves a list of existing asset conditions from the database.
 func (s *Store) Query(ctx context.Context, filter assetconditionbus.QueryFilter, orderBy order.By, page page.Page) ([]assetconditionbus.AssetCondition, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
@@ -108,11 +108,10 @@ func (s *Store) Query(ctx context.Context, filter assetconditionbus.QueryFilter,
 	}
 
 	const q = `
-	SELECT 
-		asset_condition_id, name
-	FROM
-		asset_condition
-	`
+    SELECT
+        asset_condition_id, name, description
+    FROM
+        asset_conditions`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -125,16 +124,15 @@ func (s *Store) Query(ctx context.Context, filter assetconditionbus.QueryFilter,
 	buf.WriteString(orderByClause)
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
 
-	var assetCondition []assetCondition
-
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &assetCondition); err != nil {
+	var dbAcs []assetCondition
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbAcs); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	return toBusAssetConditions(assetCondition), nil
+	return toBusAssetConditions(dbAcs), nil
 }
 
-// Count returns the total number of asset conditions
+// Count returns the total number of asset conditions in the DB.
 func (s *Store) Count(ctx context.Context, filter assetconditionbus.QueryFilter) (int, error) {
 	data := map[string]any{}
 
@@ -142,7 +140,7 @@ func (s *Store) Count(ctx context.Context, filter assetconditionbus.QueryFilter)
     SELECT
         COUNT(1) AS count
     FROM
-        asset_condition`
+        asset_conditions`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -157,30 +155,30 @@ func (s *Store) Count(ctx context.Context, filter assetconditionbus.QueryFilter)
 	return count.Count, nil
 }
 
-// QueryByID finds the asset condition by the specified ID.
-func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (assetconditionbus.AssetCondition, error) {
+// QueryByID retrieves a single asset condition by its id.
+func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (assetconditionbus.AssetCondition, error) {
 	data := struct {
 		ID string `db:"asset_condition_id"`
 	}{
-		ID: aprvlStatusID.String(),
+		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        asset_condition_id, name
+        asset_condition_id, name, description
     FROM
-        asset_condition
+        asset_conditions
     WHERE
         asset_condition_id = :asset_condition_id
     `
 
-	var assetCondition assetCondition
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &assetCondition); err != nil {
+	var dbAc assetCondition
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbAc); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return assetconditionbus.AssetCondition{}, fmt.Errorf("db: %w", assetconditionbus.ErrNotFound)
 		}
-		return assetconditionbus.AssetCondition{}, fmt.Errorf("namedquerystruct: %w", err)
+		return assetconditionbus.AssetCondition{}, fmt.Errorf("querystruct: %w", err)
 	}
 
-	return toBusAssetCondition(assetCondition), nil
+	return toBusAssetCondition(dbAc), nil
 }

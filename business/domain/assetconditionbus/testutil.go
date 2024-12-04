@@ -7,39 +7,40 @@ import (
 	"sort"
 )
 
-// TestNewApprovalStatus is a helper method for testing.
-func TestNewAssetCondition(n int) []NewAssetCondition {
-	newAssetCondition := make([]NewAssetCondition, n)
+// TestNewAssetConditions is a helper method for testing.
+func TestNewAssetConditions(n int) []NewAssetCondition {
+	newAssetConditions := make([]NewAssetCondition, n)
 
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
 
-		nac := NewAssetCondition{
-			Name: fmt.Sprintf("AssetCondition%d", idx),
+		na := NewAssetCondition{
+			Name:        fmt.Sprintf("AssetCondition%d", idx),
+			Description: fmt.Sprintf("AssetCondition%d Description", idx),
 		}
 
-		newAssetCondition[i] = nac
+		newAssetConditions[i] = na
 	}
 
-	return newAssetCondition
+	return newAssetConditions
 }
 
-// TestAssetCondition is a helper method for testing.
-func TestSeedAssetCondition(ctx context.Context, n int, api *Business) ([]AssetCondition, error) {
-	newAssetConditions := TestNewAssetCondition(n)
+// TestSeedAssetConditions is a helper method for testing.
+func TestSeedAssetConditions(ctx context.Context, n int, api *Business) ([]AssetCondition, error) {
+	newAssetConditions := TestNewAssetConditions(n)
 
 	assetConditions := make([]AssetCondition, len(newAssetConditions))
-	for i, nc := range newAssetConditions {
-		as, err := api.Create(ctx, nc)
+	for i, na := range newAssetConditions {
+		assetCondition, err := api.Create(ctx, na)
 		if err != nil {
-			return nil, fmt.Errorf("seeding city: idx: %d : %w", i, err)
+			return nil, fmt.Errorf("seeding asset condition: idx: %d : %w", i, err)
 		}
 
-		assetConditions[i] = as
+		assetConditions[i] = assetCondition
 	}
 
-	// sort cities by name
+	// sort asset conditions by name
 	sort.Slice(assetConditions, func(i, j int) bool {
 		return assetConditions[i].Name <= assetConditions[j].Name
 	})

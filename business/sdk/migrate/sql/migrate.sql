@@ -1,4 +1,22 @@
 -- Version: 1.01
+-- Description: Create table asset_types
+CREATE TABLE asset_types (
+   asset_type_id UUID NOT NULL,
+   name TEXT NOT NULL,
+   description TEXT NULL,
+   PRIMARY KEY (asset_type_id),
+   UNIQUE (name)
+);
+-- Version: 1.02
+-- Description: Create table asset_conditions
+CREATE TABLE asset_conditions (
+   asset_condition_id UUID NOT NULL,
+   name TEXT NOT NULL,
+   description TEXT NULL,
+   PRIMARY KEY (asset_condition_id),
+   UNIQUE (name)
+);
+-- Version: 1.03
 -- Description: Create table country
 CREATE TABLE countries (
    country_id UUID NOT NULL,
@@ -8,7 +26,7 @@ CREATE TABLE countries (
    alpha_3 VARCHAR(3) NOT NULL,
    PRIMARY KEY (country_id)
 );
--- Version: 1.02
+-- Version: 1.04
 -- Description: Create table regions
 CREATE TABLE regions (
    region_id UUID NOT NULL,
@@ -19,7 +37,7 @@ CREATE TABLE regions (
    PRIMARY KEY (region_id),
    FOREIGN KEY (country_id) REFERENCES countries(country_id) ON DELETE CASCADE
 );
--- Version: 1.03
+-- Version: 1.05
 -- Description: create table cities
 CREATE TABLE cities (
    city_id UUID NOT NULL,
@@ -29,7 +47,7 @@ CREATE TABLE cities (
    UNIQUE (region_id, name),
    FOREIGN KEY (region_id) REFERENCES regions(region_id) ON DELETE CASCADE
 );
--- Version: 1.04
+-- Version: 1.06
 -- Description: create table streets
 CREATE TABLE streets (
    street_id UUID NOT NULL,
@@ -40,7 +58,7 @@ CREATE TABLE streets (
    PRIMARY KEY (street_id),
    FOREIGN KEY (city_id) REFERENCES cities(city_id) ON DELETE SET NULL-- Check this cascade relationship
 );
--- Version: 1.05
+-- Version: 1.07
 -- Description: Create table users
 CREATE TABLE users (
    user_id UUID NOT NULL,
@@ -66,7 +84,36 @@ CREATE TABLE users (
    date_updated TIMESTAMP NOT NULL,
    PRIMARY KEY (user_id)
 );
--- Version: 1.06
+-- Version: 1.08
+-- Description: Create table assets
+CREATE TABLE assets (
+   asset_id UUID NOT NULL,
+   type_id UUID NOT NULL,
+   condition_id UUID NOT NULL,
+   name TEXT NOT NULL,
+   est_price NUMERIC(10,2) NULL,
+   price NUMERIC(10,2) NULL,
+   maintenance_interval INTERVAL NULL,
+   life_expectancy INTERVAL NULL,
+   serial_number TEXT NULL,
+   model_number TEXT NULL,
+   is_enabled BOOLEAN NOT NULL,
+   date_created TIMESTAMP NOT NULL,
+   date_updated TIMESTAMP NOT NULL,
+   created_by UUID NOT NULL,
+   updated_by UUID NOT NULL,
+   PRIMARY KEY (asset_id),
+   
+   -- UNIQUE named constraint
+   CONSTRAINT unique_asset_name UNIQUE (name),
+
+   -- named foreign keys
+   CONSTRAINT fk_assets_type_id FOREIGN KEY (type_id) REFERENCES asset_types(asset_type_id) ON DELETE CASCADE,
+   CONSTRAINT fk_assets_created_by FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE,
+   CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE CASCADE,
+   CONSTRAINT fk_assets_condition_id FOREIGN KEY (condition_id) REFERENCES asset_conditions(asset_condition_id) ON DELETE CASCADE
+);
+-- Version: 1.09
 -- Description: Create table products
 CREATE TABLE products (
    product_id UUID NOT NULL,
@@ -79,7 +126,7 @@ CREATE TABLE products (
    PRIMARY KEY (product_id),
    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
--- Version: 1.07
+-- Version: 1.10
 -- Description: Add products view.
 CREATE OR REPLACE VIEW view_products AS
 SELECT p.product_id,
@@ -92,7 +139,7 @@ SELECT p.product_id,
    u.username AS user_name
 FROM products AS p
    JOIN users AS u ON u.user_id = p.user_id;
--- Version: 1.08
+-- Version: 1.11
 -- Description: Create table homes
 CREATE TABLE homes (
    home_id UUID NOT NULL,
@@ -109,7 +156,7 @@ CREATE TABLE homes (
    PRIMARY KEY (home_id),
    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
--- Version: 1.09
+-- Version: 1.12
 -- Description: Add approval status 
 CREATE TABLE approval_status (
    approval_status_id UUID NOT NULL, 
@@ -117,18 +164,11 @@ CREATE TABLE approval_status (
    name TEXT NOT NULL,
    PRIMARY KEY (approval_status_id)
 );
--- Version: 1.10
+-- Version: 1.13
 -- Description: Add fulfillment status
 CREATE TABLE fulfillment_status (
    fulfillment_status_id UUID NOT NULL, 
    icon_id UUID NOT NULL, 
    name TEXT NOT NULL,
    PRIMARY KEY (fulfillment_status_id)
-);
--- Version: 1.11
--- Description: add asset condition
-CREATE TABLE asset_condition (
-   asset_condition_id UUID NOT NULL, 
-   name TEXT NOT NULL,
-   PRIMARY KEY (asset_condition_id)
 );

@@ -1,4 +1,4 @@
-package assetconditionapi_test
+package assetcondition_test
 
 import (
 	"net/http"
@@ -13,18 +13,18 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/assetcondition?page=1&row=2",
-			Token:      sd.Users[0].Token,
+			URL:        "/v1/assetconditions?page=1&rows=10",
+			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &query.Result[assetconditionapp.AssetCondition]{},
 			ExpResp: &query.Result[assetconditionapp.AssetCondition]{
 				Page:        1,
-				RowsPerPage: 2,
-				Total:       5,
-				Items:       sd.AssetConditions[:2],
+				RowsPerPage: 10,
+				Total:       15,
+				Items:       sd.AssetConditions,
 			},
-			CmpFunc: func(got, exp any) string {
+			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
 		},
@@ -37,8 +37,8 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/assetcondition/" + sd.AssetConditions[0].ID,
-			Token:      sd.Users[0].Token,
+			URL:        "/v1/assetconditions/" + sd.AssetConditions[0].ID,
+			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &assetconditionapp.AssetCondition{},

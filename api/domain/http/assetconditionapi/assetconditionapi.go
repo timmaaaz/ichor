@@ -26,12 +26,12 @@ func (api *api) create(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	condition, err := api.assetconditionapp.Create(ctx, app)
+	assetCondition, err := api.assetconditionapp.Create(ctx, app)
 	if err != nil {
 		return errs.NewError(err)
 	}
 
-	return condition
+	return assetCondition
 }
 
 func (api *api) update(ctx context.Context, r *http.Request) web.Encoder {
@@ -40,18 +40,18 @@ func (api *api) update(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	conditionID := web.Param(r, "asset_condition_id")
-	parsed, err := uuid.Parse(conditionID)
+	assetConditionID := web.Param(r, "asset_condition_id")
+	parsed, err := uuid.Parse(assetConditionID)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	condition, err := api.assetconditionapp.Update(ctx, app, parsed)
+	assetCondition, err := api.assetconditionapp.Update(ctx, app, parsed)
 	if err != nil {
 		return errs.NewError(err)
 	}
 
-	return condition
+	return assetCondition
 }
 
 func (api *api) delete(ctx context.Context, r *http.Request) web.Encoder {
@@ -76,12 +76,12 @@ func (api *api) query(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	conditions, err := api.assetconditionapp.Query(ctx, qp)
+	result, err := api.assetconditionapp.Query(ctx, qp)
 	if err != nil {
 		return errs.NewError(err)
 	}
 
-	return conditions
+	return result
 }
 
 func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
@@ -92,10 +92,10 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	assetConditions, err := api.assetconditionapp.QueryByID(ctx, parsed)
+	result, err := api.assetconditionapp.QueryByID(ctx, parsed)
 	if err != nil {
 		return errs.NewError(err)
 	}
 
-	return assetConditions
+	return result
 }

@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
+	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
@@ -26,6 +28,8 @@ type User struct {
 type SeedData struct {
 	Users             []User
 	Admins            []User
+	AssetConditions   []assetconditionbus.AssetCondition
+	Assets            []assetbus.Asset
 	Countries         []countrybus.Country
 	Regions           []regionbus.Region
 	Cities            []citybus.City
@@ -33,9 +37,9 @@ type SeedData struct {
 	ApprovalStatus    []approvalstatusbus.ApprovalStatus
 	FulfillmentStatus []fulfillmentstatusbus.FulfillmentStatus
 	AssetCondition    []assetconditionbus.AssetCondition
+	AssetTypes        []assettypebus.AssetType
 }
 
-// Table represent fields needed for running an unit test.
 type Table struct {
 	Name    string
 	ExpResp any
