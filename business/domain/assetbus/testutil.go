@@ -12,7 +12,7 @@ import (
 )
 
 // TestNewAssets is a helper method for testing.
-func TestNewAssets(n int, typeIDs []uuid.UUID, userID uuid.UUID) []NewAsset {
+func TestNewAssets(n int, typeIDs, conditionIDs []uuid.UUID, userID uuid.UUID) []NewAsset {
 	newAssets := make([]NewAsset, n)
 
 	idx := rand.Intn(10000)
@@ -34,6 +34,7 @@ func TestNewAssets(n int, typeIDs []uuid.UUID, userID uuid.UUID) []NewAsset {
 
 		na := NewAsset{
 			TypeID:              typeIDs[rand.Intn(len(typeIDs))],
+			ConditionID:         conditionIDs[rand.Intn(len(conditionIDs))],
 			Name:                fmt.Sprintf("Name%d", idx),
 			EstPrice:            estPrice,
 			Price:               price,
@@ -52,8 +53,8 @@ func TestNewAssets(n int, typeIDs []uuid.UUID, userID uuid.UUID) []NewAsset {
 }
 
 // TestSeedAssets is a helper method for testing.
-func TestSeedAssets(ctx context.Context, n int, typeIDs []uuid.UUID, userID uuid.UUID, api *Business) ([]Asset, error) {
-	newAssets := TestNewAssets(n, typeIDs, userID)
+func TestSeedAssets(ctx context.Context, n int, typeIDs, conditionIDs []uuid.UUID, userID uuid.UUID, api *Business) ([]Asset, error) {
+	newAssets := TestNewAssets(n, typeIDs, conditionIDs, userID)
 
 	assets := make([]Asset, len(newAssets))
 	for i, na := range newAssets {

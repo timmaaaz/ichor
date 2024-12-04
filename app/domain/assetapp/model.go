@@ -17,6 +17,7 @@ type QueryParams struct {
 	OrderBy             string
 	ID                  string
 	TypeID              string
+	ConditionID         string
 	Name                string
 	EstPrice            string
 	Price               string
@@ -37,6 +38,7 @@ type QueryParams struct {
 type Asset struct {
 	ID                  string `json:"id"`
 	TypeID              string `json:"type_id"`
+	ConditionID         string `json:"condition_id"`
 	Name                string `json:"name"`
 	EstPrice            string `json:"est_price"`
 	Price               string `json:"price"`
@@ -60,6 +62,7 @@ func ToAppAsset(bus assetbus.Asset) Asset {
 	return Asset{
 		ID:                  bus.ID.String(),
 		TypeID:              bus.TypeID.String(),
+		ConditionID:         bus.ConditionID.String(),
 		Name:                bus.Name,
 		EstPrice:            bus.EstPrice.Value(),
 		Price:               bus.Price.Value(),
@@ -85,8 +88,9 @@ func ToAppAssets(bus []assetbus.Asset) []Asset {
 // =============================================================================
 
 type NewAsset struct {
-	TypeID              string `json:"type_id"`
-	Name                string `json:"name"`
+	TypeID              string `json:"type_id" validate:"required"`
+	ConditionID         string `json:"condition_id" validate:"required"`
+	Name                string `json:"name" validate:"required"`
 	EstPrice            string `json:"est_price"`
 	Price               string `json:"price"`
 	MaintenanceInterval string `json:"maintenance_interval"`
@@ -112,6 +116,7 @@ func (app NewAsset) Validate() error {
 
 func toBusNewAsset(app NewAsset) (assetbus.NewAsset, error) {
 	var typeID uuid.UUID
+	var conditionID uuid.UUID
 	var estPrice types.Money
 	var price types.Money
 	var maintenanceInterval types.Interval
@@ -121,6 +126,13 @@ func toBusNewAsset(app NewAsset) (assetbus.NewAsset, error) {
 
 	if app.TypeID != "" {
 		typeID, err = uuid.Parse(app.TypeID)
+		if err != nil {
+			return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
+		}
+	}
+
+	if app.ConditionID != "" {
+		conditionID, err = uuid.Parse(app.ConditionID)
 		if err != nil {
 			return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
 		}
@@ -161,6 +173,7 @@ func toBusNewAsset(app NewAsset) (assetbus.NewAsset, error) {
 
 	return assetbus.NewAsset{
 		TypeID:              typeID,
+		ConditionID:         conditionID,
 		Name:                app.Name,
 		EstPrice:            estPrice,
 		Price:               price,
@@ -177,6 +190,7 @@ func toBusNewAsset(app NewAsset) (assetbus.NewAsset, error) {
 // UpdateAsset contains information needed to update an asset.
 type UpdateAsset struct {
 	TypeID              *string `json:"type_id"`
+	ConditionID         *string `json:"condition_id"`
 	Name                *string `json:"name"`
 	EstPrice            *string `json:"est_price"`
 	Price               *string `json:"price"`
@@ -203,6 +217,7 @@ func (app UpdateAsset) Validate() error {
 
 func toBusUpdateAsset(app UpdateAsset) (assetbus.UpdateAsset, error) {
 	var typeID *uuid.UUID
+	var conditionID *uuid.UUID
 	var name *string
 	var estPrice *types.Money
 	var price *types.Money
@@ -220,6 +235,14 @@ func toBusUpdateAsset(app UpdateAsset) (assetbus.UpdateAsset, error) {
 			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
 		}
 		typeID = &id
+	}
+
+	if app.ConditionID != nil {
+		id, err := uuid.Parse(*app.ConditionID)
+		if err != nil {
+			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
+		}
+		conditionID = &id
 	}
 
 	if app.Name != nil {
@@ -272,6 +295,7 @@ func toBusUpdateAsset(app UpdateAsset) (assetbus.UpdateAsset, error) {
 
 	return assetbus.UpdateAsset{
 		TypeID:              typeID,
+		ConditionID:         conditionID,
 		Name:                name,
 		EstPrice:            estPrice,
 		Price:               price,

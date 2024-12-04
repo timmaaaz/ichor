@@ -12,6 +12,7 @@ import (
 type QueryFilter struct {
 	ID                  *uuid.UUID
 	TypeID              *uuid.UUID
+	ConditionID         *uuid.UUID
 	Name                *string
 	EstPrice            *types.Money
 	Price               *types.Money

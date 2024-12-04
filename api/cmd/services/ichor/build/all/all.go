@@ -27,7 +27,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
-	assetconditiondb "github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores"
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
+
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
@@ -176,12 +177,6 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AssetBus:   assetBus,
 		AuthClient: cfg.AuthClient,
 		Log:        cfg.Log,
-	})
-
-	fulfillmentstatusapi.Routes(app, fulfillmentstatusapi.Config{
-		FulfillmentStatusBus: fulfillmentStatusBus,
-		AuthClient:           cfg.AuthClient,
-		Log:                  cfg.Log,
 	})
 
 }

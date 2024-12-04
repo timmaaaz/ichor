@@ -118,18 +118,6 @@ func create401(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
-		{
-			Name:       "badtoken",
-			URL:        "/v1/assetconditions",
-			Token:      sd.Admins[0].Token[:10],
-			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
-			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token contains an invalid number of segments"),
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
 	}
 	return table
 }

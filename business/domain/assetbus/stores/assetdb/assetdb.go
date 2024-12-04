@@ -76,6 +76,7 @@ func (s *Store) Update(ctx context.Context, ass assetbus.Asset) error {
 	SET
 		asset_id = :asset_id,
 		type_id = :type_id,
+		condition_id = :condition_id,
 		name = :name,
 		est_price = :est_price,
 		price = :price,
@@ -184,7 +185,7 @@ func (s *Store) QueryByID(ctx context.Context, assetID uuid.UUID) (assetbus.Asse
 
 	const q = `
     SELECT
-        asset_id, type_id, name, est_price, maintenance_interval,
+        asset_id, type_id, condition_id, name, est_price, maintenance_interval,
         life_expectancy, model_number, is_enabled, date_created,
         date_updated, created_by, updated_by
     FROM

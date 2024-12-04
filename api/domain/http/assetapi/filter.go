@@ -15,6 +15,7 @@ func parseQueryParams(r *http.Request) (assetapp.QueryParams, error) {
 		OrderBy:             values.Get("orderBy"),
 		ID:                  values.Get("asset_id"),
 		TypeID:              values.Get("type_id"),
+		ConditionID:         values.Get("condition_id"),
 		Name:                values.Get("name"),
 		EstPrice:            values.Get("est_price"),
 		Price:               values.Get("price"),

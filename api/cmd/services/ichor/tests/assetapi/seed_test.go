@@ -7,9 +7,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/assetapp"
+	"github.com/timmaaaz/ichor/app/domain/assetconditionapp"
 	"github.com/timmaaaz/ichor/app/domain/assettypeapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
+	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 
 	"github.com/timmaaaz/ichor/business/domain/userbus"
@@ -46,16 +48,26 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		atIDs = append(atIDs, at.ID)
 	}
 
-	as, err := assetbus.TestSeedAssets(ctx, 20, atIDs, tu1.ID, busDomain.Asset)
+	acs, err := assetconditionbus.TestSeedAssetConditions(ctx, 6, busDomain.AssetCondition)
+	if err != nil {
+		return apitest.SeedData{}, err
+	}
+	acIDs := make([]uuid.UUID, 0, len(acs))
+	for _, ac := range acs {
+		acIDs = append(acIDs, ac.ID)
+	}
+
+	as, err := assetbus.TestSeedAssets(ctx, 20, atIDs, acIDs, tu1.ID, busDomain.Asset)
 	if err != nil {
 		return apitest.SeedData{}, err
 	}
 
 	sd := apitest.SeedData{
-		Users:      []apitest.User{tu1},
-		Admins:     []apitest.User{tu2},
-		Assets:     assetapp.ToAppAssets(as),
-		AssetTypes: assettypeapp.ToAppAssetTypes(ats),
+		Users:           []apitest.User{tu1},
+		Admins:          []apitest.User{tu2},
+		Assets:          assetapp.ToAppAssets(as),
+		AssetConditions: assetconditionapp.ToAppAssetConditions(acs),
+		AssetTypes:      assettypeapp.ToAppAssetTypes(ats),
 	}
 
 	return sd, nil

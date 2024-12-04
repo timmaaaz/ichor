@@ -22,6 +22,7 @@ func Test_AssetCondition(t *testing.T) {
 
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, create400(sd), "create-400")
+	test.Run(t, create401(sd), "create-401")
 
 	test.Run(t, update200(sd), "update-200")
 	test.Run(t, update400(sd), "update-400")
