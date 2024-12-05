@@ -1,13 +1,13 @@
-package assetconditiondb
+package tagdb
 
 import (
 	"bytes"
 	"strings"
 
-	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
+	"github.com/timmaaaz/ichor/business/domain/tagbus"
 )
 
-func applyFilter(filter assetconditionbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
+func applyFilter(filter tagbus.QueryFilter, data map[string]interface{}, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {
@@ -17,7 +17,12 @@ func applyFilter(filter assetconditionbus.QueryFilter, data map[string]any, buf 
 
 	if filter.Name != nil {
 		data["name"] = "%" + *filter.Name + "%"
-		wc = append(wc, "name LIKE :name")
+		wc = append(wc, "name ILIKE :name")
+	}
+
+	if filter.Description != nil {
+		data["description"] = "%" + *filter.Description + "%"
+		wc = append(wc, "description ILIKE :description")
 	}
 
 	if len(wc) > 0 {

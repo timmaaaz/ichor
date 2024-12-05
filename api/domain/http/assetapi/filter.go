@@ -11,7 +11,7 @@ func parseQueryParams(r *http.Request) (assetapp.QueryParams, error) {
 
 	filter := assetapp.QueryParams{
 		Page:                values.Get("page"),
-		Rows:                values.Get("row"),
+		Rows:                values.Get("rows"),
 		OrderBy:             values.Get("orderBy"),
 		ID:                  values.Get("asset_id"),
 		TypeID:              values.Get("type_id"),

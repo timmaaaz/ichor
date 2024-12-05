@@ -1,4 +1,4 @@
-package assetcondition_test
+package tag_test
 
 import (
 	"testing"
@@ -6,15 +6,15 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
-func Test_AssetCondition(t *testing.T) {
+func Test_Tags(t *testing.T) {
 	t.Parallel()
 
-	test := apitest.StartTest(t, "Test_AssetCondition")
+	test := apitest.StartTest(t, "Test_Tags")
 
 	sd, err := insertSeedData(test.DB, test.Auth)
 
 	if err != nil {
-		t.Fatalf("seeding error %s", err)
+		t.Fatalf("Seeding error: %s", err)
 	}
 
 	test.Run(t, query200(sd), "query-200")
@@ -30,4 +30,5 @@ func Test_AssetCondition(t *testing.T) {
 
 	test.Run(t, delete200(sd), "delete-200")
 	test.Run(t, delete401(sd), "delete-401")
+
 }

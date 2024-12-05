@@ -1,11 +1,11 @@
-package approvalstatus_test
+package tag_test
 
 import (
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/approvalstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/tagapp"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
@@ -13,18 +13,18 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/approvalstatus?page=1&rows=2",
-			Token:      sd.Users[0].Token,
+			URL:        "/v1/tags?page=1&rows=7",
+			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &query.Result[approvalstatusapp.ApprovalStatus]{},
-			ExpResp: &query.Result[approvalstatusapp.ApprovalStatus]{
+			GotResp:    &query.Result[tagapp.Tag]{},
+			ExpResp: &query.Result[tagapp.Tag]{
 				Page:        1,
-				RowsPerPage: 2,
-				Total:       5,
-				Items:       sd.ApprovalStatuses[:2],
+				RowsPerPage: 7,
+				Total:       10,
+				Items:       sd.Tags[:7],
 			},
-			CmpFunc: func(got, exp any) string {
+			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
 		},
@@ -37,12 +37,12 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/approvalstatus/" + sd.ApprovalStatuses[0].ID,
-			Token:      sd.Users[0].Token,
+			URL:        "/v1/tags/" + sd.Tags[0].ID,
+			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &approvalstatusapp.ApprovalStatus{},
-			ExpResp:    &sd.ApprovalStatuses[0],
+			GotResp:    &tagapp.Tag{},
+			ExpResp:    &sd.Tags[0],
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
