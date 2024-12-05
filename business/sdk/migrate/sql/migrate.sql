@@ -172,3 +172,11 @@ CREATE TABLE fulfillment_status (
    name TEXT NOT NULL,
    PRIMARY KEY (fulfillment_status_id)
 );
+-- Version: 1.14
+-- Description: Add Tags
+CREATE TABLE tags (
+   tag_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   description TEXT NULL,
+   PRIMARY KEY (tag_id)
+)

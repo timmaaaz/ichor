@@ -1,4 +1,4 @@
-package assetcondition_test
+package tag_test
 
 import (
 	"fmt"
@@ -6,36 +6,35 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/assetconditionapp"
+	"github.com/timmaaaz/ichor/app/domain/tagapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
 
 func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
-		{
-			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/assetconditions/%s", sd.AssetConditions[0].ID),
+		{Name: "basic",
+			URL:        fmt.Sprintf("/v1/tags/%s", sd.Tags[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
-			Input: &assetconditionapp.UpdateAssetCondition{
+			Input: &tagapp.UpdateTag{
 				Name:        dbtest.StringPointer("Updated New Asset Type"),
 				Description: dbtest.StringPointer("Updated Optional Description"),
 			},
-			GotResp: &assetconditionapp.AssetCondition{},
-			ExpResp: &assetconditionapp.AssetCondition{
-				ID:          sd.AssetConditions[0].ID,
+			GotResp: &tagapp.Tag{},
+			ExpResp: &tagapp.Tag{
+				ID:          sd.Tags[0].ID,
 				Name:        "Updated New Asset Type",
 				Description: "Updated Optional Description",
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(*assetconditionapp.AssetCondition)
+				gotResp, exists := got.(*tagapp.Tag)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*assetconditionapp.AssetCondition)
+				expResp := exp.(*tagapp.Tag)
 				return cmp.Diff(expResp, gotResp)
 			},
 		},
@@ -47,11 +46,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "invalid name",
-			URL:        fmt.Sprintf("/v1/assetconditions/%s", sd.AssetConditions[0].ID),
+			URL:        fmt.Sprintf("/v1/tags/%s", sd.Tags[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &assetconditionapp.UpdateAssetCondition{
+			Input: &tagapp.UpdateTag{
 				Name: dbtest.StringPointer("a"),
 			},
 			GotResp: &errs.Error{},
@@ -72,7 +71,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/assetconditions/%s", sd.AssetConditions[0].ID),
+			URL:        fmt.Sprintf("/v1/tags/%s", sd.Tags[0].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -84,7 +83,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/assetconditions/%s", sd.AssetConditions[0].ID),
+			URL:        fmt.Sprintf("/v1/tags/%s", sd.Tags[0].ID),
 			Token:      sd.Admins[0].Token + "bad",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -96,7 +95,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/assetconditions/%s", sd.AssetConditions[0].ID),
+			URL:        fmt.Sprintf("/v1/tags/%s", sd.Tags[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

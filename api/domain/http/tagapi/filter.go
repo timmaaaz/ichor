@@ -1,15 +1,15 @@
-package assetconditionapi
+package tagapi
 
 import (
 	"net/http"
 
-	"github.com/timmaaaz/ichor/app/domain/assetconditionapp"
+	"github.com/timmaaaz/ichor/app/domain/tagapp"
 )
 
-func parseQueryParams(r *http.Request) (assetconditionapp.QueryParams, error) {
+func parseQueryParams(r *http.Request) (tagapp.QueryParams, error) {
 	values := r.URL.Query()
 
-	filter := assetconditionapp.QueryParams{
+	filter := tagapp.QueryParams{
 		Page:        values.Get("page"),
 		Rows:        values.Get("rows"),
 		OrderBy:     values.Get("orderBy"),

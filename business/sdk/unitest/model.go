@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
+	"github.com/timmaaaz/ichor/business/domain/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
@@ -38,6 +39,7 @@ type SeedData struct {
 	FulfillmentStatus []fulfillmentstatusbus.FulfillmentStatus
 	AssetCondition    []assetconditionbus.AssetCondition
 	AssetTypes        []assettypebus.AssetType
+	Tags              []tagbus.Tag
 }
 
 type Table struct {

@@ -11,7 +11,7 @@ func parseQueryParams(r *http.Request) vproductapp.QueryParams {
 
 	filter := vproductapp.QueryParams{
 		Page:     values.Get("page"),
-		Rows:     values.Get("row"),
+		Rows:     values.Get("rows"),
 		OrderBy:  values.Get("orderBy"),
 		ID:       values.Get("product_id"),
 		Name:     values.Get("name"),
