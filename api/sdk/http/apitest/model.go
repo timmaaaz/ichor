@@ -10,6 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
 	"github.com/timmaaaz/ichor/app/domain/tagapp"
+	"github.com/timmaaaz/ichor/app/domain/titleapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
@@ -40,6 +41,7 @@ type SeedData struct {
 	FulfillmentStatuses []fulfillmentstatusapp.FulfillmentStatus
 	Tags                []tagapp.Tag
 	AssetTags           []assettagapp.AssetTag
+	Titles              []titleapp.Title
 }
 
 // Table represent fields needed for running an api test.

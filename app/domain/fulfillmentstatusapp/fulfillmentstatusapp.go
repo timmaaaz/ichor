@@ -49,7 +49,7 @@ func (a *App) Create(ctx context.Context, app NewFulfillmentStatus) (Fulfillment
 	return ToAppFulfillmentStatus(fs), nil
 }
 
-// Update updates an existing approval status
+// Update updates an existing fulfillment status
 func (a *App) Update(ctx context.Context, app UpdateFulfillmentStatus, id uuid.UUID) (FulfillmentStatus, error) {
 	uas, err := toBusUpdateFulfillmentStatus(app)
 	if err != nil {
@@ -72,7 +72,7 @@ func (a *App) Update(ctx context.Context, app UpdateFulfillmentStatus, id uuid.U
 	return ToAppFulfillmentStatus(updated), nil
 }
 
-// Delete removes an existing approval status
+// Delete removes an existing fulfillment status
 func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 	as, err := a.fulfillmentstatusbus.QueryByID(ctx, id)
 	if err != nil {
@@ -81,13 +81,13 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 
 	err = a.fulfillmentstatusbus.Delete(ctx, as)
 	if err != nil {
-		return errs.Newf(errs.Internal, "delete approval status[%+v]: %s", as, err)
+		return errs.Newf(errs.Internal, "delete fulfillment status[%+v]: %s", as, err)
 	}
 
 	return nil
 }
 
-// Query returns a list of approval statuses based on the filter, order and page
+// Query returns a list of fulfillment statuses based on the filter, order and page
 func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[FulfillmentStatus], error) {
 	page, err := page.Parse(qp.Page, qp.Rows)
 	if err != nil {
@@ -117,7 +117,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Fulfillme
 	return query.NewResult(ToAppFulfillmentStatuses(as), total, page), nil
 }
 
-// QueryByID retrieves the approval status by ID
+// QueryByID retrieves the fulfillment status by ID
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (FulfillmentStatus, error) {
 	as, err := a.fulfillmentstatusbus.QueryByID(ctx, id)
 	if err != nil {

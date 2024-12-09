@@ -190,3 +190,11 @@ CREATE TABLE asset_tags (
    FOREIGN KEY (asset_id) REFERENCES assets(asset_id) ON DELETE CASCADE,
    FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
 )
+-- Version: 1.16
+-- Description: create titles table
+CREATE TABLE titles (
+   title_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   description TEXT NULL,
+   PRIMARY KEY (title_id)
+);
