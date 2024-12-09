@@ -26,6 +26,8 @@ func Test_AssetCondition(t *testing.T) {
 
 	test.Run(t, update200(sd), "update-200")
 	test.Run(t, update400(sd), "update-400")
+	test.Run(t, update401(sd), "update-401")
 
 	test.Run(t, delete200(sd), "delete-200")
+	test.Run(t, delete401(sd), "delete-401")
 }

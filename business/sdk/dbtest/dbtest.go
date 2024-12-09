@@ -15,6 +15,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
+	"github.com/timmaaaz/ichor/business/domain/assettagbus"
+	"github.com/timmaaaz/ichor/business/domain/assettagbus/store/assettagdb"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
@@ -31,6 +33,8 @@ import (
 	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
+	"github.com/timmaaaz/ichor/business/domain/tagbus"
+	"github.com/timmaaaz/ichor/business/domain/tagbus/stores/tagdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
@@ -60,6 +64,8 @@ type BusDomain struct {
 	VProduct          *vproductbus.Business
 	ApprovalStatus    *approvalstatusbus.Business
 	FulfillmentStatus *fulfillmentstatusbus.Business
+	Tag               *tagbus.Business
+	AssetTag          *assettagbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -80,6 +86,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	approvalstatusBus := approvalstatusbus.NewBusiness(log, delegate, approvalstatusdb.NewStore(log, db))
 	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db))
 
+	tagBus := tagbus.NewBusiness(log, delegate, tagdb.NewStore(log, db))
+	assetTagBus := assettagbus.NewBusiness(log, delegate, assettagdb.NewStore(log, db))
+
 	return BusDomain{
 		Delegate:          delegate,
 		Home:              homeBus,
@@ -95,6 +104,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ApprovalStatus:    approvalstatusBus,
 		FulfillmentStatus: fulfillmentstatusBus,
 		AssetCondition:    assetConditionBus,
+		Tag:               tagBus,
+		AssetTag:          assetTagBus,
 	}
 
 }

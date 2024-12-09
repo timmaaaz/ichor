@@ -11,7 +11,7 @@ func parseQueryParams(r *http.Request) (streetapp.QueryParams, error) {
 
 	filter := streetapp.QueryParams{
 		Page:       values.Get("page"),
-		Rows:       values.Get("row"),
+		Rows:       values.Get("rows"),
 		OrderBy:    values.Get("orderBy"),
 		ID:         values.Get("street_id"),
 		CityID:     values.Get("city_id"),

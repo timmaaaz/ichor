@@ -11,7 +11,7 @@ func parseQueryParams(r *http.Request) (userapp.QueryParams, error) {
 
 	filter := userapp.QueryParams{
 		Page:               values.Get("page"),
-		Rows:               values.Get("row"),
+		Rows:               values.Get("rows"),
 		OrderBy:            values.Get("orderBy"),
 		ID:                 values.Get("user_id"),
 		RequestedBy:        values.Get("requested_by"),

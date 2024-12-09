@@ -1,15 +1,16 @@
-package assetconditiondb
+package tagdb
 
 import (
 	"fmt"
 
-	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
+	"github.com/timmaaaz/ichor/business/domain/tagbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
 var orderByFields = map[string]string{
-	assetconditionbus.OrderByID:   "asset_condition_id",
-	assetconditionbus.OrderByName: "name",
+	tagbus.OrderByID:          "tag_id",
+	tagbus.OrderByName:        "name",
+	tagbus.OrderByDescription: "description",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

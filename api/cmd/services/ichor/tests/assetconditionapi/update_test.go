@@ -13,7 +13,8 @@ import (
 
 func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
-		{Name: "basic",
+		{
+			Name:       "basic",
 			URL:        fmt.Sprintf("/v1/assetconditions/%s", sd.AssetConditions[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
@@ -44,7 +45,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 
 func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
-		{Name: "invalid name",
+		{
+			Name:       "invalid name",
 			URL:        fmt.Sprintf("/v1/assetconditions/%s", sd.AssetConditions[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
