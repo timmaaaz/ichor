@@ -6,6 +6,7 @@ import (
 
 	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assettagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/tagapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assetconditionapi"
@@ -27,6 +28,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/assettagbus"
+	"github.com/timmaaaz/ichor/business/domain/assettagbus/store/assettagdb"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/tagbus/stores/tagdb"
 
@@ -85,6 +88,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	assetTypeBus := assettypebus.NewBusiness(cfg.Log, delegate, assettypedb.NewStore(cfg.Log, cfg.DB))
 	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
 	tagBus := tagbus.NewBusiness(cfg.Log, delegate, tagdb.NewStore(cfg.Log, cfg.DB))
+	assetTagBus := assettagbus.NewBusiness(cfg.Log, delegate, assettagdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -175,5 +179,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		TagBus:     tagBus,
 		AuthClient: cfg.AuthClient,
 		Log:        cfg.Log,
+	})
+
+	assettagapi.Routes(app, assettagapi.Config{
+		AssetTagBus: assetTagBus,
+		AuthClient:  cfg.AuthClient,
+		Log:         cfg.Log,
 	})
 }

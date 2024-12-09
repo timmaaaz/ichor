@@ -180,3 +180,13 @@ CREATE TABLE tags (
    description TEXT NULL,
    PRIMARY KEY (tag_id)
 )
+-- Version: 1.15
+-- Description: Add asset_tags
+CREATE TABLE asset_tags (
+   asset_tag_id UUID NOT NULL,
+   asset_id UUID NOT NULL,
+   tag_id UUID NOT NULL,
+   PRIMARY KEY (asset_tag_id),
+   FOREIGN KEY (asset_id) REFERENCES assets(asset_id) ON DELETE CASCADE,
+   FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
+)

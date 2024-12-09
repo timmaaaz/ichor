@@ -6,6 +6,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
+	"github.com/timmaaaz/ichor/business/domain/assettagbus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -40,6 +41,7 @@ type SeedData struct {
 	AssetCondition    []assetconditionbus.AssetCondition
 	AssetTypes        []assettypebus.AssetType
 	Tags              []tagbus.Tag
+	AssetTags         []assettagbus.AssetTag
 }
 
 type Table struct {

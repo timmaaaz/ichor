@@ -15,6 +15,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
+	"github.com/timmaaaz/ichor/business/domain/assettagbus"
+	"github.com/timmaaaz/ichor/business/domain/assettagbus/store/assettagdb"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
@@ -63,6 +65,7 @@ type BusDomain struct {
 	ApprovalStatus    *approvalstatusbus.Business
 	FulfillmentStatus *fulfillmentstatusbus.Business
 	Tag               *tagbus.Business
+	AssetTag          *assettagbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -84,6 +87,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db))
 
 	tagBus := tagbus.NewBusiness(log, delegate, tagdb.NewStore(log, db))
+	assetTagBus := assettagbus.NewBusiness(log, delegate, assettagdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:          delegate,
@@ -101,6 +105,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		FulfillmentStatus: fulfillmentstatusBus,
 		AssetCondition:    assetConditionBus,
 		Tag:               tagBus,
+		AssetTag:          assetTagBus,
 	}
 
 }
