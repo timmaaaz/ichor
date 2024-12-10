@@ -21,7 +21,7 @@ func applyFilter(filter assettagbus.QueryFilter, data map[string]interface{}, bu
 	}
 
 	if filter.TagID != nil {
-		data["description"] = *filter.TagID
+		data["tag_id"] = *filter.TagID
 		wc = append(wc, "tag_id = :tag_id")
 	}
 

@@ -198,3 +198,13 @@ CREATE TABLE titles (
    description TEXT NULL,
    PRIMARY KEY (title_id)
 );
+-- Version: 1.17
+-- Description: Creates reports to table
+CREATE TABLE reports_to(
+   reports_to_id UUID NOT NULL,
+   reporter_id UUID NOT NULL,
+   boss_id UUID NOT NULL,
+   PRIMARY KEY (reports_to_id),
+   FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE CASCADE,
+   FOREIGN KEY (boss_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
