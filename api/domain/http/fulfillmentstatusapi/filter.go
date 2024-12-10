@@ -11,7 +11,7 @@ func parseQueryParams(r *http.Request) (fulfillmentstatusapp.QueryParams, error)
 
 	filter := fulfillmentstatusapp.QueryParams{
 		Page:    values.Get("page"),
-		Rows:    values.Get("row"),
+		Rows:    values.Get("rows"),
 		OrderBy: values.Get("orderBy"),
 		ID:      values.Get("fulfillment_status_id"),
 		Name:    values.Get("name"),
