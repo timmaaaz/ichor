@@ -12,10 +12,10 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
-func Test_Street(t *testing.T) {
+func Test_AssetType(t *testing.T) {
 	t.Parallel()
 
-	db := dbtest.NewDatabase(t, "Test_Street")
+	db := dbtest.NewDatabase(t, "Test_AssetType")
 
 	sd, err := insertSeedData(db.BusDomain)
 	if err != nil {

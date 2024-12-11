@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/officebus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
@@ -46,6 +47,7 @@ type SeedData struct {
 	AssetTags         []assettagbus.AssetTag
 	Title             []titlebus.Title
 	ReportsTo         []reportstobus.ReportsTo
+	Offices           []officebus.Office
 }
 
 type Table struct {
