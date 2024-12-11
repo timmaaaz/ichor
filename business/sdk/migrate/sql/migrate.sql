@@ -208,3 +208,12 @@ CREATE TABLE reports_to(
    FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE CASCADE,
    FOREIGN KEY (boss_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+-- Version: 1.18
+-- Description: Creates office table
+CREATE TABLE offices (
+   office_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   street_id UUID NOT NULL,
+   PRIMARY KEY (office_id),
+   FOREIGN KEY (street_id) REFERENCES streets(street_id) ON DELETE CASCADE
+);

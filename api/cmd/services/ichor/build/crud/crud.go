@@ -7,6 +7,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assettagapi"
+	"github.com/timmaaaz/ichor/api/domain/http/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/titleapi"
@@ -32,6 +33,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assettagbus"
 	"github.com/timmaaaz/ichor/business/domain/assettagbus/store/assettagdb"
+	"github.com/timmaaaz/ichor/business/domain/officebus"
+	"github.com/timmaaaz/ichor/business/domain/officebus/stores/officedb"
 	"github.com/timmaaaz/ichor/business/domain/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/reportstobus/store/reportstodb"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
@@ -99,6 +102,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	titlebus := titlebus.NewBusiness(cfg.Log, delegate, titledb.NewStore(cfg.Log, cfg.DB))
 
 	reportsToBus := reportstobus.NewBusiness(cfg.Log, delegate, reportstodb.NewStore(cfg.Log, cfg.DB))
+
+	officeBus := officebus.NewBusiness(cfg.Log, delegate, officedb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -206,5 +211,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		ReportsToBus: reportsToBus,
 		AuthClient:   cfg.AuthClient,
 		Log:          cfg.Log,
+	})
+
+	officeapi.Routes(app, officeapi.Config{
+		OfficeBus:  officeBus,
+		AuthClient: cfg.AuthClient,
+		Log:        cfg.Log,
 	})
 }
