@@ -217,3 +217,23 @@ CREATE TABLE offices (
    PRIMARY KEY (office_id),
    FOREIGN KEY (street_id) REFERENCES streets(street_id) ON DELETE CASCADE
 );
+-- Version: 1.19
+-- Description: Add user_assets
+CREATE TABLE user_assets (
+   user_asset_id UUID NOT NULL,
+   user_id UUID NOT NULL,
+   asset_id UUID NOT NULL,
+   approval_status_id UUID NOT NULL,
+   last_maintenance TIMESTAMP NOT NULL,
+   date_received TIMESTAMP NOT NULL,
+   approved_by UUID NOT NULL,
+   fulfillment_status_id UUID NOT NULL,
+   condition_id UUID NOT NULL,
+   PRIMARY KEY (user_asset_id),
+   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+   FOREIGN KEY (asset_id) REFERENCES assets(asset_id) ON DELETE CASCADE,
+   FOREIGN KEY (approval_status_id) REFERENCES approval_status(approval_status_id) ON DELETE CASCADE,
+   FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE CASCADE,
+   FOREIGN KEY (fulfillment_status_id) REFERENCES fulfillment_status(fulfillment_status_id) ON DELETE CASCADE,
+   FOREIGN KEY (condition_id) REFERENCES asset_conditions(asset_condition_id) ON DELETE CASCADE
+)
