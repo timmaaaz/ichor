@@ -41,6 +41,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/tagbus/stores/tagdb"
 	"github.com/timmaaaz/ichor/business/domain/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/titlebus/stores/titledb"
+	"github.com/timmaaaz/ichor/business/domain/userassetbus"
+	"github.com/timmaaaz/ichor/business/domain/userassetbus/stores/userassetdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
@@ -75,6 +77,7 @@ type BusDomain struct {
 	Title             *titlebus.Business
 	ReportsTo         *reportstobus.Business
 	Office            *officebus.Business
+	UserAsset         *userassetbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -100,6 +103,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	assetTagBus := assettagbus.NewBusiness(log, delegate, assettagdb.NewStore(log, db))
 	reportsToBus := reportstobus.NewBusiness(log, delegate, reportstodb.NewStore(log, db))
 	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
+	userAssetBus := userassetbus.NewBusiness(log, delegate, userassetdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:          delegate,
@@ -121,6 +125,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Title:             titlebus,
 		ReportsTo:         reportsToBus,
 		Office:            officeBus,
+		UserAsset:         userAssetBus,
 	}
 
 }
@@ -193,8 +198,14 @@ func NewDatabase(t *testing.T, testName string) *Database {
 		Name:       dbName,
 		DisableTLS: true,
 	})
+
 	if err != nil {
 		t.Fatalf("Opening database connection: %v", err)
+	}
+
+	_, err = db.Exec("SET TIME ZONE 'America/New_York'")
+	if err != nil {
+		t.Fatalf("Error setting time zone: %v", err)
 	}
 
 	t.Logf("Migrate Database: %s\n", dbName)

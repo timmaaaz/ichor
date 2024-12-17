@@ -19,6 +19,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/titlebus"
+	"github.com/timmaaaz/ichor/business/domain/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 )
 
@@ -48,6 +49,7 @@ type SeedData struct {
 	Title             []titlebus.Title
 	ReportsTo         []reportstobus.ReportsTo
 	Offices           []officebus.Office
+	UserAssets        []userassetbus.UserAsset
 }
 
 type Table struct {
