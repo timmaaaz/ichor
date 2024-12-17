@@ -17,15 +17,16 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
-func Test_Asset(t *testing.T) {
+func Test_UserAsset(t *testing.T) {
 	t.Parallel()
 
-	db := dbtest.NewDatabase(t, "Test_Asset")
+	db := dbtest.NewDatabase(t, "Test_UserAsset")
 
 	sd, err := insertSeedData(db.BusDomain)
 	if err != nil {
@@ -67,7 +68,17 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		conditionIDs = append(conditionIDs, c.ID)
 	}
 
-	assets, err := assetbus.TestSeedAssets(ctx, 25, typeIDs, conditionIDs, admins[0].ID, busDomain.Asset)
+	validAssets, err := validassetbus.TestSeedValidAssets(ctx, 25, typeIDs, admins[0].ID, busDomain.ValidAsset)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding valid assets : %w", err)
+	}
+
+	validAssetIDs := make([]uuid.UUID, len(validAssets))
+	for i, a := range validAssets {
+		validAssetIDs[i] = a.ID
+	}
+
+	assets, err := assetbus.TestSeedAssets(ctx, 15, validAssetIDs, conditionIDs, busDomain.Asset)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding assets : %w", err)
 	}
@@ -116,8 +127,9 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		Admins:          []unitest.User{{User: admins[0]}},
 		AssetTypes:      types,
 		AssetConditions: conditions,
-		Assets:          assets,
+		ValidAssets:     validAssets,
 		UserAssets:      userAssets,
+		Assets:          assets,
 	}, nil
 }
 
@@ -168,7 +180,6 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					UserID:              sd.UserAssets[0].UserID,
 					AssetID:             sd.UserAssets[0].AssetID,
 					ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-					ConditionID:         sd.UserAssets[0].ConditionID,
 					ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 					FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 					DateReceived:        sd.UserAssets[0].DateReceived,
@@ -209,7 +220,6 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				UserID:              sd.UserAssets[0].UserID,
 				AssetID:             sd.UserAssets[0].AssetID,
 				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				DateReceived:        sd.UserAssets[0].DateReceived,
@@ -220,7 +230,6 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					UserID:              &sd.UserAssets[0].UserID,
 					AssetID:             &sd.UserAssets[0].AssetID,
 					ApprovedBy:          &sd.UserAssets[0].ApprovedBy,
-					ConditionID:         &sd.UserAssets[0].ConditionID,
 					ApprovalStatusID:    &sd.UserAssets[0].ApprovalStatusID,
 					FulfillmentStatusID: &sd.UserAssets[0].FulfillmentStatusID,
 					DateReceived:        &sd.UserAssets[0].DateReceived,

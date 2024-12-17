@@ -11,7 +11,6 @@ type UserAsset struct {
 	UserID              uuid.UUID
 	AssetID             uuid.UUID
 	ApprovedBy          uuid.UUID
-	ConditionID         uuid.UUID
 	ApprovalStatusID    uuid.UUID
 	FulfillmentStatusID uuid.UUID
 
@@ -23,7 +22,6 @@ type NewUserAsset struct {
 	UserID              uuid.UUID
 	AssetID             uuid.UUID
 	ApprovedBy          uuid.UUID
-	ConditionID         uuid.UUID
 	ApprovalStatusID    uuid.UUID
 	FulfillmentStatusID uuid.UUID
 
@@ -35,7 +33,6 @@ type UpdateUserAsset struct {
 	UserID              *uuid.UUID
 	AssetID             *uuid.UUID
 	ApprovedBy          *uuid.UUID
-	ConditionID         *uuid.UUID
 	ApprovalStatusID    *uuid.UUID
 	FulfillmentStatusID *uuid.UUID
 

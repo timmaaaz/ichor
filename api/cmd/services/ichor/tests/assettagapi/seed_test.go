@@ -6,16 +6,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/assetapp"
 	"github.com/timmaaaz/ichor/app/domain/assettagapp"
 	"github.com/timmaaaz/ichor/app/domain/tagapp"
+	"github.com/timmaaaz/ichor/app/domain/validassetapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/assetbus"
-	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assettagbus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
 
@@ -50,16 +49,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		atIDs = append(atIDs, at.ID)
 	}
 
-	acs, err := assetconditionbus.TestSeedAssetConditions(ctx, 6, busDomain.AssetCondition)
-	if err != nil {
-		return apitest.SeedData{}, err
-	}
-	acIDs := make([]uuid.UUID, 0, len(acs))
-	for _, ac := range acs {
-		acIDs = append(acIDs, ac.ID)
-	}
-
-	as, err := assetbus.TestSeedAssets(ctx, 20, atIDs, acIDs, tu1.ID, busDomain.Asset)
+	as, err := validassetbus.TestSeedValidAssets(ctx, 20, atIDs, tu1.ID, busDomain.ValidAsset)
 	if err != nil {
 		return apitest.SeedData{}, err
 	}
@@ -89,11 +79,11 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	sd := apitest.SeedData{
-		Users:     []apitest.User{tu1},
-		Admins:    []apitest.User{tu2},
-		Assets:    assetapp.ToAppAssets(as),
-		Tags:      tagapp.ToAppTags(tags),
-		AssetTags: assettagapp.ToAppAssetTags(assetTags),
+		Users:       []apitest.User{tu1},
+		Admins:      []apitest.User{tu2},
+		ValidAssets: validassetapp.ToAppValidAssets(as),
+		Tags:        tagapp.ToAppTags(tags),
+		AssetTags:   assettagapp.ToAppAssetTags(assetTags),
 	}
 
 	return sd, nil

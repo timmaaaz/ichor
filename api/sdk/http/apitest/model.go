@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/tagapp"
 	"github.com/timmaaaz/ichor/app/domain/titleapp"
 	"github.com/timmaaaz/ichor/app/domain/userassetapp"
+	"github.com/timmaaaz/ichor/app/domain/validassetapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
@@ -37,7 +38,7 @@ type SeedData struct {
 	Regions             []regionbus.Region
 	Cities              []cityapp.City
 	Streets             []streetapp.Street
-	Assets              []assetapp.Asset
+	ValidAssets         []validassetapp.ValidAsset
 	AssetTypes          []assettypeapp.AssetType
 	AssetConditions     []assetconditionapp.AssetCondition
 	ApprovalStatuses    []approvalstatusapp.ApprovalStatus
@@ -48,6 +49,7 @@ type SeedData struct {
 	ReportsTo           []reportstoapp.ReportsTo
 	Offices             []officeapp.Office
 	UserAssets          []userassetapp.UserAsset
+	Assets              []assetapp.Asset
 }
 
 // Table represent fields needed for running an api test.

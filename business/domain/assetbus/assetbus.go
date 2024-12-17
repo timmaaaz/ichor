@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -67,26 +66,15 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 
 // Create inserts a new asset into the database.
 func (b *Business) Create(ctx context.Context, na NewAsset) (Asset, error) {
-	ctx, span := otel.AddSpan(ctx, "business.userbus.create")
+	ctx, span := otel.AddSpan(ctx, "business.assetbus.create")
 	defer span.End()
 
-	now := time.Now()
-
 	asset := Asset{
-		ID:                  uuid.New(),
-		TypeID:              na.TypeID,
-		ConditionID:         na.ConditionID,
-		Name:                na.Name,
-		EstPrice:            na.EstPrice,
-		MaintenanceInterval: na.MaintenanceInterval,
-		LifeExpectancy:      na.LifeExpectancy,
-		SerialNumber:        na.SerialNumber,
-		ModelNumber:         na.ModelNumber,
-		IsEnabled:           na.IsEnabled,
-		DateCreated:         now,
-		DateUpdated:         now,
-		CreatedBy:           na.CreatedBy,
-		UpdatedBy:           na.CreatedBy,
+		ID:               uuid.New(),
+		ValidAssetID:     na.ValidAssetID,
+		AssetConditionID: na.AssetConditionID,
+		LastMaintenance:  na.LastMaintenance,
+		SerialNumber:     na.SerialNumber,
 	}
 
 	if err := b.storer.Create(ctx, asset); err != nil {
@@ -98,56 +86,24 @@ func (b *Business) Create(ctx context.Context, na NewAsset) (Asset, error) {
 
 // Update replaces an asset document in the database.
 func (b *Business) Update(ctx context.Context, ass Asset, ua UpdateAsset) (Asset, error) {
-	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
+	ctx, span := otel.AddSpan(ctx, "business.assetbus.update")
 	defer span.End()
-
-	now := time.Now()
-
-	if ua.TypeID != nil {
-		ass.TypeID = *ua.TypeID
-	}
-
-	if ua.ConditionID != nil {
-		ass.ConditionID = *ua.ConditionID
-	}
-
-	if ua.Name != nil {
-		ass.Name = *ua.Name
-	}
-
-	if ua.EstPrice != nil {
-		ass.EstPrice = *ua.EstPrice
-	}
-
-	if ua.Price != nil {
-		ass.Price = *ua.Price
-	}
-
-	if ua.MaintenanceInterval != nil {
-		ass.MaintenanceInterval = *ua.MaintenanceInterval
-	}
-
-	if ua.LifeExpectancy != nil {
-		ass.LifeExpectancy = *ua.LifeExpectancy
-	}
 
 	if ua.SerialNumber != nil {
 		ass.SerialNumber = *ua.SerialNumber
 	}
 
-	if ua.ModelNumber != nil {
-		ass.ModelNumber = *ua.ModelNumber
+	if ua.LastMaintenance != nil {
+		ass.LastMaintenance = *ua.LastMaintenance
 	}
 
-	if ua.IsEnabled != nil {
-		ass.IsEnabled = *ua.IsEnabled
+	if ua.AssetConditionID != nil {
+		ass.AssetConditionID = *ua.AssetConditionID
 	}
 
-	if ua.UpdatedBy != nil {
-		ass.UpdatedBy = *ua.UpdatedBy
+	if ua.ValidAssetID != nil {
+		ass.ValidAssetID = *ua.ValidAssetID
 	}
-
-	ass.DateUpdated = now
 
 	if err := b.storer.Update(ctx, ass); err != nil {
 		return Asset{}, fmt.Errorf("update: %w", err)

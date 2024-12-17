@@ -5,20 +5,12 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
-var defaultOrderBy = order.NewBy("name", order.ASC)
+var defaultOrderBy = order.NewBy("asset_id", order.ASC)
 
 var orderByFields = map[string]string{
-	"asset_id":             assetbus.OrderByID,
-	"type_id":              assetbus.OrderByTypeID,
-	"name":                 assetbus.OrderByName,
-	"est_price":            assetbus.OrderByEstPrice,
-	"price":                assetbus.OrderByPrice,
-	"maintenance_interval": assetbus.OrderByMaintenance,
-	"life_expectancy":      assetbus.OrderByLifeExpectancy,
-	"model_number":         assetbus.OrderByModelNumber,
-	"is_enabled":           assetbus.OrderByIsEnabled,
-	"date_created":         assetbus.OrderByDateCreated,
-	"date_updated":         assetbus.OrderByDateUpdated,
-	"created_by":           assetbus.OrderByCreatedBy,
-	"updated_by":           assetbus.OrderByUpdatedBy,
+	"asset_id":              assetbus.OrderByID,
+	"valid_asset_id":        assetbus.OrderByValidAssetID,
+	"asset_condition_id":    assetbus.OrderByConditionID,
+	"last_maintenance_time": assetbus.OrderByLastMaintenance,
+	"serial_number":         assetbus.OrderBySerialNumber,
 }

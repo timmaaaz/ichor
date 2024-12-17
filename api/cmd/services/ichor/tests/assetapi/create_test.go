@@ -18,20 +18,17 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &assetapp.NewAsset{
-				TypeID:      sd.AssetTypes[0].ID,
-				ConditionID: sd.AssetConditions[0].ID,
-				Name:        "New Asset",
-				IsEnabled:   true,
-				CreatedBy:   sd.Admins[0].ID.String(),
+				ConditionID:     sd.Assets[0].ConditionID,
+				ValidAssetID:    sd.Assets[0].ValidAssetID,
+				LastMaintenance: sd.Assets[0].LastMaintenance,
+				SerialNumber:    sd.Assets[0].SerialNumber,
 			},
 			GotResp: &assetapp.Asset{},
 			ExpResp: &assetapp.Asset{
-				Name:        "New Asset",
-				TypeID:      sd.AssetTypes[0].ID,
-				ConditionID: sd.AssetConditions[0].ID,
-				IsEnabled:   true,
-				CreatedBy:   sd.Admins[0].ID.String(),
-				UpdatedBy:   sd.Admins[0].ID.String(),
+				ConditionID:     sd.Assets[0].ConditionID,
+				ValidAssetID:    sd.Assets[0].ValidAssetID,
+				LastMaintenance: sd.Assets[0].LastMaintenance,
+				SerialNumber:    sd.Assets[0].SerialNumber,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*assetapp.Asset)
@@ -41,10 +38,8 @@ func create200(sd apitest.SeedData) []apitest.Table {
 
 				expResp := exp.(*assetapp.Asset)
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
 
-				return cmp.Diff(got, exp)
+				return cmp.Diff(gotResp, expResp)
 			},
 		},
 	}
@@ -55,37 +50,35 @@ func create200(sd apitest.SeedData) []apitest.Table {
 func create400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
-			Name:       "missing type",
+			Name:       "missing serial number",
 			URL:        "/v1/assets",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &assetapp.NewAsset{
-				Name:        "New Asset",
-				IsEnabled:   true,
-				ConditionID: sd.AssetConditions[0].ID,
-				CreatedBy:   sd.Admins[0].ID.String(),
+				ValidAssetID:    sd.Assets[0].ValidAssetID,
+				ConditionID:     sd.Assets[0].ConditionID,
+				LastMaintenance: sd.Assets[0].LastMaintenance,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"type_id\",\"error\":\"type_id is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"serial_number\",\"error\":\"serial_number is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
 		},
 		{
-			Name:       "missing name",
+			Name:       "missing valid asset id",
 			URL:        "/v1/assets",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &assetapp.NewAsset{
-				TypeID:      sd.AssetTypes[0].ID,
-				ConditionID: sd.AssetConditions[0].ID,
-				IsEnabled:   true,
-				CreatedBy:   sd.Admins[0].ID.String(),
+				ConditionID:     sd.Assets[0].ConditionID,
+				LastMaintenance: sd.Assets[0].LastMaintenance,
+				SerialNumber:    sd.Assets[0].SerialNumber,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"name\",\"error\":\"name is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"valid_asset_id\",\"error\":\"valid_asset_id is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -97,13 +90,29 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &assetapp.NewAsset{
-				Name:      "New Asset",
-				TypeID:    sd.AssetTypes[0].ID,
-				IsEnabled: true,
-				CreatedBy: sd.Admins[0].ID.String(),
+				ValidAssetID:    sd.Assets[0].ValidAssetID,
+				LastMaintenance: sd.Assets[0].LastMaintenance,
+				SerialNumber:    sd.Assets[0].SerialNumber,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"condition_id\",\"error\":\"condition_id is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"asset_condition_id\",\"error\":\"asset_condition_id is a required field\"}]"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "missing last maintenance time",
+			URL:        "/v1/assets",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &assetapp.NewAsset{
+				ValidAssetID: sd.Assets[0].ValidAssetID,
+				ConditionID:  sd.Assets[0].ConditionID,
+				SerialNumber: sd.Assets[0].SerialNumber,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"last_maintenance\",\"error\":\"last_maintenance is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

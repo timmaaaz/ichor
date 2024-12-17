@@ -8,12 +8,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 
-	"github.com/timmaaaz/ichor/business/domain/assetbus"
-	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assettagbus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
@@ -53,17 +52,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		typeIDs = append(typeIDs, t.ID)
 	}
 
-	conditions, err := assetconditionbus.TestSeedAssetConditions(ctx, 5, busDomain.AssetCondition)
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding asset conditions : %w", err)
-	}
-
-	conditionIDs := make([]uuid.UUID, 0, len(conditions))
-	for _, c := range conditions {
-		conditionIDs = append(conditionIDs, c.ID)
-	}
-
-	assets, err := assetbus.TestSeedAssets(ctx, 10, typeIDs, conditionIDs, admins[0].ID, busDomain.Asset)
+	assets, err := validassetbus.TestSeedValidAssets(ctx, 10, typeIDs, admins[0].ID, busDomain.ValidAsset)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding assets : %w", err)
 	}
@@ -93,10 +82,10 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	}
 
 	return unitest.SeedData{
-		Admins:    []unitest.User{{User: admins[0]}},
-		Assets:    assets,
-		Tags:      tags,
-		AssetTags: assetTags,
+		Admins:      []unitest.User{{User: admins[0]}},
+		ValidAssets: assets,
+		Tags:        tags,
+		AssetTags:   assetTags,
 	}, nil
 }
 

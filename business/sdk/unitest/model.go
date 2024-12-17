@@ -21,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 )
 
 // User represents an app user specified for the test.
@@ -35,7 +36,7 @@ type SeedData struct {
 	Users             []User
 	Admins            []User
 	AssetConditions   []assetconditionbus.AssetCondition
-	Assets            []assetbus.Asset
+	ValidAssets       []validassetbus.ValidAsset
 	Countries         []countrybus.Country
 	Regions           []regionbus.Region
 	Cities            []citybus.City
@@ -50,6 +51,7 @@ type SeedData struct {
 	ReportsTo         []reportstobus.ReportsTo
 	Offices           []officebus.Office
 	UserAssets        []userassetbus.UserAsset
+	Assets            []assetbus.Asset
 }
 
 type Table struct {

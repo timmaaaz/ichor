@@ -8,20 +8,11 @@ import (
 )
 
 var orderByFields = map[string]string{
-	assetbus.OrderByID:             "asset_id",
-	assetbus.OrderByTypeID:         "type_id",
-	assetbus.OrderByName:           "name",
-	assetbus.OrderByEstPrice:       "est_price",
-	assetbus.OrderByPrice:          "price",
-	assetbus.OrderByMaintenance:    "maintenance_interval",
-	assetbus.OrderByLifeExpectancy: "life_expectancy",
-	assetbus.OrderBySerialNumber:   "serial_number",
-	assetbus.OrderByModelNumber:    "model_number",
-	assetbus.OrderByIsEnabled:      "is_enabled",
-	assetbus.OrderByDateCreated:    "date_created",
-	assetbus.OrderByDateUpdated:    "date_updated",
-	assetbus.OrderByCreatedBy:      "created_by",
-	assetbus.OrderByUpdatedBy:      "updated_by",
+	assetbus.OrderByID:              "asset_id",
+	assetbus.OrderByConditionID:     "asset_condition_id",
+	assetbus.OrderByLastMaintenance: "last_maintenance_time",
+	assetbus.OrderBySerialNumber:    "serial_number",
+	assetbus.OrderByValidAssetID:    "valid_asset_id",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

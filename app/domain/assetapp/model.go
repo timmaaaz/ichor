@@ -2,78 +2,47 @@ package assetapp
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
-	"github.com/timmaaaz/ichor/business/domain/assetbus/types"
+	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
 type QueryParams struct {
-	Page                string
-	Rows                string
-	OrderBy             string
-	ID                  string
-	TypeID              string
-	ConditionID         string
-	Name                string
-	EstPrice            string
-	Price               string
-	MaintenanceInterval string
-	LifeExpectancy      string
-	ModelNumber         string
-	IsEnabled           string
-	StartDateCreated    string
-	EndDateCreated      string
-	StartDateUpdated    string
-	EndDateUpdated      string
-	CreatedBy           string
-	UpdatedBy           string
+	Page            string
+	Rows            string
+	OrderBy         string
+	ID              string
+	ValidAssetID    string
+	ConditionID     string
+	SerialNumber    string
+	LastMaintenance string
 }
-
-// =============================================================================
 
 type Asset struct {
-	ID                  string `json:"id"`
-	TypeID              string `json:"type_id"`
-	ConditionID         string `json:"condition_id"`
-	Name                string `json:"name"`
-	EstPrice            string `json:"est_price"`
-	Price               string `json:"price"`
-	MaintenanceInterval string `json:"maintenance_interval"`
-	LifeExpectancy      string `json:"life_expectancy"`
-	ModelNumber         string `json:"model_number"`
-	IsEnabled           bool   `json:"is_enabled"`
-	DateCreated         string `json:"date_created"`
-	DateUpdated         string `json:"date_updated"`
-	CreatedBy           string `json:"created_by"`
-	UpdatedBy           string `json:"updated_by"`
+	ID              string `json:"id"`
+	ValidAssetID    string `json:"valid_asset_id"`
+	ConditionID     string `json:"asset_condition_id"`
+	LastMaintenance string `json:"last_maintenance"`
+	SerialNumber    string `json:"serial_number"`
 }
 
-// Encode implements the encoder interface.
 func (app Asset) Encode() ([]byte, string, error) {
+
 	data, err := json.Marshal(app)
 	return data, "application/json", err
 }
 
 func ToAppAsset(bus assetbus.Asset) Asset {
+
 	return Asset{
-		ID:                  bus.ID.String(),
-		TypeID:              bus.TypeID.String(),
-		ConditionID:         bus.ConditionID.String(),
-		Name:                bus.Name,
-		EstPrice:            bus.EstPrice.Value(),
-		Price:               bus.Price.Value(),
-		MaintenanceInterval: bus.MaintenanceInterval.Value(),
-		LifeExpectancy:      bus.LifeExpectancy.Value(),
-		ModelNumber:         bus.ModelNumber,
-		IsEnabled:           bus.IsEnabled,
-		DateCreated:         bus.DateCreated.Format(time.RFC3339),
-		DateUpdated:         bus.DateUpdated.Format(time.RFC3339),
-		CreatedBy:           bus.CreatedBy.String(),
-		UpdatedBy:           bus.UpdatedBy.String(),
+		ID:              bus.ID.String(),
+		ValidAssetID:    bus.ValidAssetID.String(),
+		ConditionID:     bus.AssetConditionID.String(),
+		LastMaintenance: bus.LastMaintenance.Format(timeutil.FORMAT),
+		SerialNumber:    bus.SerialNumber,
 	}
 }
 
@@ -85,27 +54,19 @@ func ToAppAssets(bus []assetbus.Asset) []Asset {
 	return app
 }
 
-// =============================================================================
+// =========================================================================
 
 type NewAsset struct {
-	TypeID              string `json:"type_id" validate:"required"`
-	ConditionID         string `json:"condition_id" validate:"required"`
-	Name                string `json:"name" validate:"required"`
-	EstPrice            string `json:"est_price"`
-	Price               string `json:"price"`
-	MaintenanceInterval string `json:"maintenance_interval"`
-	LifeExpectancy      string `json:"life_expectancy"`
-	ModelNumber         string `json:"model_number"`
-	IsEnabled           bool   `json:"is_enabled"`
-	CreatedBy           string `json:"created_by"`
+	ValidAssetID    string `json:"valid_asset_id" validate:"required"`
+	ConditionID     string `json:"asset_condition_id" validate:"required"`
+	LastMaintenance string `json:"last_maintenance" validate:"required"`
+	SerialNumber    string `json:"serial_number" validate:"required"`
 }
 
-// Decode implements the decoder interface.
 func (app *NewAsset) Decode(data []byte) error {
 	return json.Unmarshal(data, &app)
 }
 
-// Validate checks the data in the model is considered clean.
 func (app NewAsset) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
@@ -115,90 +76,44 @@ func (app NewAsset) Validate() error {
 }
 
 func toBusNewAsset(app NewAsset) (assetbus.NewAsset, error) {
-	var typeID uuid.UUID
-	var conditionID uuid.UUID
-	var estPrice types.Money
-	var price types.Money
-	var maintenanceInterval types.Interval
-	var lifeExpectancy types.Interval
-
+	var validAssetID, conditionID uuid.UUID
+	var lastMaintenance time.Time
 	var err error
-
-	if app.TypeID != "" {
-		typeID, err = uuid.Parse(app.TypeID)
-		if err != nil {
-			return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
-		}
-	}
 
 	if app.ConditionID != "" {
 		conditionID, err = uuid.Parse(app.ConditionID)
 		if err != nil {
-			return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
+			return assetbus.NewAsset{}, err
 		}
 	}
 
-	if app.EstPrice != "" {
-		estPrice, err = types.ParseMoney(app.EstPrice)
+	if app.ValidAssetID != "" {
+		validAssetID, err = uuid.Parse(app.ValidAssetID)
 		if err != nil {
-			return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
+			return assetbus.NewAsset{}, err
 		}
 	}
 
-	if app.Price != "" {
-		price, err = types.ParseMoney(app.Price)
+	if app.LastMaintenance != "" {
+		lastMaintenance, err = time.Parse(timeutil.FORMAT, app.LastMaintenance)
 		if err != nil {
-			return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
+			return assetbus.NewAsset{}, err
 		}
-	}
-
-	if app.MaintenanceInterval != "" {
-		maintenanceInterval, err = types.ParseInterval(app.MaintenanceInterval)
-		if err != nil {
-			return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
-		}
-	}
-
-	if app.LifeExpectancy != "" {
-		lifeExpectancy, err = types.ParseInterval(app.LifeExpectancy)
-		if err != nil {
-			return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
-		}
-	}
-
-	createdBy, err := uuid.Parse(app.CreatedBy)
-	if err != nil {
-		return assetbus.NewAsset{}, fmt.Errorf("tobusnewasset: %w", err)
 	}
 
 	return assetbus.NewAsset{
-		TypeID:              typeID,
-		ConditionID:         conditionID,
-		Name:                app.Name,
-		EstPrice:            estPrice,
-		Price:               price,
-		MaintenanceInterval: maintenanceInterval,
-		LifeExpectancy:      lifeExpectancy,
-		ModelNumber:         app.ModelNumber,
-		IsEnabled:           app.IsEnabled,
-		CreatedBy:           createdBy,
+		ValidAssetID:     validAssetID,
+		AssetConditionID: conditionID,
+		LastMaintenance:  lastMaintenance,
+		SerialNumber:     app.SerialNumber,
 	}, nil
 }
 
-// =============================================================================
-
-// UpdateAsset contains information needed to update an asset.
 type UpdateAsset struct {
-	TypeID              *string `json:"type_id"`
-	ConditionID         *string `json:"condition_id"`
-	Name                *string `json:"name"`
-	EstPrice            *string `json:"est_price"`
-	Price               *string `json:"price"`
-	MaintenanceInterval *string `json:"maintenance_interval"`
-	LifeExpectancy      *string `json:"life_expectancy"`
-	ModelNumber         *string `json:"model_number"`
-	IsEnabled           *bool   `json:"is_enabled"`
-	UpdatedBy           *string `json:"updated_by"`
+	ValidAssetID    *string `json:"valid_asset_id" validate:"omitempty,min=36,max=36"`
+	ConditionID     *string `json:"asset_condition_id" validate:"omitempty,min=36,max=36"`
+	LastMaintenance *string `json:"last_maintenance"`
+	SerialNumber    *string `json:"serial_number"`
 }
 
 // Decode implements the decoder interface.
@@ -216,93 +131,37 @@ func (app UpdateAsset) Validate() error {
 }
 
 func toBusUpdateAsset(app UpdateAsset) (assetbus.UpdateAsset, error) {
-	var typeID *uuid.UUID
-	var conditionID *uuid.UUID
-	var name *string
-	var estPrice *types.Money
-	var price *types.Money
-	var maintenanceInterval *types.Interval
-	var lifeExpectancy *types.Interval
-	var modelNumber *string
-	var isEnabled *bool
-	var updatedBy *uuid.UUID
-
-	var err error
-
-	if app.TypeID != nil {
-		id, err := uuid.Parse(*app.TypeID)
-		if err != nil {
-			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
-		}
-		typeID = &id
-	}
+	var validAssetID, conditionID *uuid.UUID
+	var lastMaintenance *time.Time
 
 	if app.ConditionID != nil {
 		id, err := uuid.Parse(*app.ConditionID)
 		if err != nil {
-			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
+			return assetbus.UpdateAsset{}, err
 		}
 		conditionID = &id
 	}
 
-	if app.Name != nil {
-		name = app.Name
-	}
-
-	if app.EstPrice != nil {
-		estPrice, err = types.ParseMoneyPtr(*app.EstPrice)
+	if app.ValidAssetID != nil {
+		id, err := uuid.Parse(*app.ValidAssetID)
 		if err != nil {
-			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
+			return assetbus.UpdateAsset{}, err
 		}
+		validAssetID = &id
 	}
 
-	if app.Price != nil {
-		price, err = types.ParseMoneyPtr(*app.Price)
+	if app.LastMaintenance != nil {
+		t, err := time.Parse(timeutil.FORMAT, *app.LastMaintenance)
 		if err != nil {
-			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
+			return assetbus.UpdateAsset{}, err
 		}
-	}
-
-	if app.MaintenanceInterval != nil {
-		maintenanceInterval, err = types.ParseIntervalPtr(*app.MaintenanceInterval)
-		if err != nil {
-			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
-		}
-	}
-
-	if app.LifeExpectancy != nil {
-		lifeExpectancy, err = types.ParseIntervalPtr(*app.LifeExpectancy)
-		if err != nil {
-			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
-		}
-	}
-
-	if app.ModelNumber != nil {
-		modelNumber = app.ModelNumber
-	}
-
-	if app.IsEnabled != nil {
-		isEnabled = app.IsEnabled
-	}
-
-	if app.UpdatedBy != nil {
-		id, err := uuid.Parse(*app.UpdatedBy)
-		if err != nil {
-			return assetbus.UpdateAsset{}, fmt.Errorf("tobusupdateasset: %w", err)
-		}
-		updatedBy = &id
+		lastMaintenance = &t
 	}
 
 	return assetbus.UpdateAsset{
-		TypeID:              typeID,
-		ConditionID:         conditionID,
-		Name:                name,
-		EstPrice:            estPrice,
-		Price:               price,
-		MaintenanceInterval: maintenanceInterval,
-		LifeExpectancy:      lifeExpectancy,
-		ModelNumber:         modelNumber,
-		IsEnabled:           isEnabled,
-		UpdatedBy:           updatedBy,
+		ValidAssetID:     validAssetID,
+		AssetConditionID: conditionID,
+		LastMaintenance:  lastMaintenance,
+		SerialNumber:     app.SerialNumber,
 	}, nil
 }

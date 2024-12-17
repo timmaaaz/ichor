@@ -1,13 +1,12 @@
 package assetapp
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
-	"github.com/timmaaaz/ichor/business/domain/assetbus/types"
+	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
 func parseFilter(qp QueryParams) (assetbus.QueryFilter, error) {
@@ -16,17 +15,9 @@ func parseFilter(qp QueryParams) (assetbus.QueryFilter, error) {
 	if qp.ID != "" {
 		id, err := uuid.Parse(qp.ID)
 		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("asset_id", err)
+			return assetbus.QueryFilter{}, errs.NewFieldsError("id", err)
 		}
 		filter.ID = &id
-	}
-
-	if qp.TypeID != "" {
-		id, err := uuid.Parse(qp.TypeID)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("type_id", err)
-		}
-		filter.TypeID = &id
 	}
 
 	if qp.ConditionID != "" {
@@ -34,104 +25,27 @@ func parseFilter(qp QueryParams) (assetbus.QueryFilter, error) {
 		if err != nil {
 			return assetbus.QueryFilter{}, errs.NewFieldsError("condition_id", err)
 		}
-		filter.ConditionID = &id
+		filter.AssetConditionID = &id
 	}
 
-	if qp.Name != "" {
-		filter.Name = &qp.Name
-	}
-
-	if qp.EstPrice != "" {
-		estPrice, err := types.ParseMoneyPtr(qp.EstPrice)
+	if qp.LastMaintenance != "" {
+		t, err := time.Parse(timeutil.FORMAT, qp.LastMaintenance)
 		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("est_price", err)
+			return assetbus.QueryFilter{}, errs.NewFieldsError("last_maintenance", err)
 		}
-
-		filter.EstPrice = estPrice
+		filter.LastMaintenance = &t
 	}
 
-	if qp.Price != "" {
-		price, err := types.ParseMoneyPtr(qp.Price)
+	if qp.SerialNumber != "" {
+		filter.SerialNumber = &qp.SerialNumber
+	}
+
+	if qp.ValidAssetID != "" {
+		id, err := uuid.Parse(qp.ValidAssetID)
 		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("price", err)
+			return assetbus.QueryFilter{}, errs.NewFieldsError("valid_asset_id", err)
 		}
-		filter.Price = price
-	}
-
-	if qp.MaintenanceInterval != "" {
-		maintenanceInterval, err := types.ParseIntervalPtr(qp.MaintenanceInterval)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("maintenance_interval", err)
-		}
-		filter.MaintenanceInterval = maintenanceInterval
-	}
-
-	if qp.LifeExpectancy != "" {
-		lifeExpectancy, err := types.ParseIntervalPtr(qp.LifeExpectancy)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("life_expectancy", err)
-		}
-		filter.LifeExpectancy = lifeExpectancy
-	}
-
-	if qp.ModelNumber != "" {
-		filter.ModelNumber = &qp.ModelNumber
-	}
-
-	if qp.IsEnabled != "" {
-		isEnabled, err := strconv.ParseBool(qp.IsEnabled)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("is_enabled", err)
-		}
-		filter.IsEnabled = &isEnabled
-	}
-
-	if qp.StartDateCreated != "" {
-		startDateCreated, err := time.Parse(time.RFC3339, qp.StartDateCreated)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("start_date_created", err)
-		}
-		filter.StartDateCreated = &startDateCreated
-	}
-
-	if qp.EndDateCreated != "" {
-		endDateCreated, err := time.Parse(time.RFC3339, qp.EndDateCreated)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("end_date_created", err)
-		}
-		filter.EndDateCreated = &endDateCreated
-	}
-
-	if qp.StartDateUpdated != "" {
-		startDateUpdated, err := time.Parse(time.RFC3339, qp.StartDateUpdated)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("start_date_updated", err)
-		}
-		filter.StartDateUpdated = &startDateUpdated
-	}
-
-	if qp.EndDateUpdated != "" {
-		endDateUpdated, err := time.Parse(time.RFC3339, qp.EndDateUpdated)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("end_date_updated", err)
-		}
-		filter.EndDateUpdated = &endDateUpdated
-	}
-
-	if qp.CreatedBy != "" {
-		createdBy, err := uuid.Parse(qp.CreatedBy)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("created_by", err)
-		}
-		filter.CreatedBy = &createdBy
-	}
-
-	if qp.UpdatedBy != "" {
-		updatedBy, err := uuid.Parse(qp.UpdatedBy)
-		if err != nil {
-			return assetbus.QueryFilter{}, errs.NewFieldsError("updated_by", err)
-		}
-		filter.UpdatedBy = &updatedBy
+		filter.ValidAssetID = &id
 	}
 
 	return filter, nil

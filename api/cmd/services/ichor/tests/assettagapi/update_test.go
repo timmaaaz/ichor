@@ -20,13 +20,13 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &assettagapp.UpdateAssetTag{
-				AssetID: dbtest.StringPointer(sd.Assets[0].ID),
+				AssetID: dbtest.StringPointer(sd.ValidAssets[0].ID),
 				TagID:   dbtest.StringPointer(sd.Tags[0].ID),
 			},
 			GotResp: &assettagapp.AssetTag{},
 			ExpResp: &assettagapp.AssetTag{
 				ID:      sd.AssetTags[2].ID,
-				AssetID: sd.Assets[0].ID,
+				AssetID: sd.ValidAssets[0].ID,
 				TagID:   sd.Tags[0].ID,
 			},
 			CmpFunc: func(got any, exp any) string {
@@ -48,7 +48,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/assettags/%s", sd.Assets[0].ID),
+			URL:        fmt.Sprintf("/v1/assettags/%s", sd.AssetTags[0].ID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -60,7 +60,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/assettags/%s", sd.Assets[0].ID),
+			URL:        fmt.Sprintf("/v1/assettags/%s", sd.AssetTags[0].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -72,7 +72,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/assettags/%s", sd.Assets[0].ID),
+			URL:        fmt.Sprintf("/v1/assettags/%s", sd.AssetTags[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

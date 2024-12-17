@@ -51,7 +51,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/assettags/%s", sd.Assets[0].ID),
+			URL:        fmt.Sprintf("/v1/assettags/%s", sd.AssetTags[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,

@@ -18,12 +18,12 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &assettagapp.NewAssetTag{
-				AssetID: sd.Assets[0].ID,
+				AssetID: sd.ValidAssets[0].ID,
 				TagID:   sd.Tags[0].ID,
 			},
 			GotResp: &assettagapp.AssetTag{},
 			ExpResp: &assettagapp.AssetTag{
-				AssetID: sd.Assets[0].ID,
+				AssetID: sd.ValidAssets[0].ID,
 				TagID:   sd.Tags[0].ID,
 			},
 			CmpFunc: func(got any, exp any) string {
@@ -52,7 +52,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &assettagapp.NewAssetTag{
-				AssetID: sd.Assets[0].ID,
+				AssetID: sd.ValidAssets[0].ID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"tag_id\",\"error\":\"tag_id is a required field\"}]"),

@@ -9,7 +9,6 @@ const (
 	OrderByUserID              = "user_id"
 	OrderByAssetID             = "asset_id"
 	OrderByApprovedBy          = "approved_by"
-	OrderByConditionID         = "condition_id"
 	OrderByApprovalStatusID    = "approval_status_id"
 	OrderByFulfillmentStatusID = "fulfillment_status_id"
 	OrderByDateReceived        = "date_received"

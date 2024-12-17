@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/titleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/userassetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/validassetapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/fulfillmentstatusapi"
@@ -32,6 +33,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/validassetbus"
+	validassetdb "github.com/timmaaaz/ichor/business/domain/validassetbus/stores/assetdb"
+
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
 	"github.com/timmaaaz/ichor/business/domain/assettagbus"
@@ -98,13 +102,14 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	fulfillmentStatusBus := fulfillmentstatusbus.NewBusiness(cfg.Log, delegate, fulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
 	assetConditionBus := assetconditionbus.NewBusiness(cfg.Log, delegate, assetconditiondb.NewStore(cfg.Log, cfg.DB))
 	assetTypeBus := assettypebus.NewBusiness(cfg.Log, delegate, assettypedb.NewStore(cfg.Log, cfg.DB))
-	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
+	validAssetBus := validassetbus.NewBusiness(cfg.Log, delegate, validassetdb.NewStore(cfg.Log, cfg.DB))
 	tagBus := tagbus.NewBusiness(cfg.Log, delegate, tagdb.NewStore(cfg.Log, cfg.DB))
 	assetTagBus := assettagbus.NewBusiness(cfg.Log, delegate, assettagdb.NewStore(cfg.Log, cfg.DB))
 	titleBus := titlebus.NewBusiness(cfg.Log, delegate, titledb.NewStore(cfg.Log, cfg.DB))
 	reportsToBus := reportstobus.NewBusiness(cfg.Log, delegate, reportstodb.NewStore(cfg.Log, cfg.DB))
 	officeBus := officebus.NewBusiness(cfg.Log, delegate, officedb.NewStore(cfg.Log, cfg.DB))
 	userAssetBus := userassetbus.NewBusiness(cfg.Log, delegate, userassetdb.NewStore(cfg.Log, cfg.DB))
+	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -197,10 +202,10 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:          cfg.Log,
 	})
 
-	assetapi.Routes(app, assetapi.Config{
-		AssetBus:   assetBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+	validassetapi.Routes(app, validassetapi.Config{
+		ValidAssetBus: validAssetBus,
+		AuthClient:    cfg.AuthClient,
+		Log:           cfg.Log,
 	})
 
 	tagapi.Routes(app, tagapi.Config{
@@ -237,5 +242,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		UserAssetBus: userAssetBus,
 		AuthClient:   cfg.AuthClient,
 		Log:          cfg.Log,
+	})
+
+	assetapi.Routes(app, assetapi.Config{
+		AssetBus:   assetBus,
+		AuthClient: cfg.AuthClient,
+		Log:        cfg.Log,
 	})
 }

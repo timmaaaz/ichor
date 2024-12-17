@@ -6,37 +6,33 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+
 	"github.com/timmaaaz/ichor/app/domain/assetapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
 
 func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/assets/%s", sd.Assets[0].ID),
+			URL:        fmt.Sprintf("/v1/assets/%s", sd.Assets[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &assetapp.UpdateAsset{
-				TypeID:      dbtest.StringPointer(sd.AssetTypes[0].ID),
-				ConditionID: dbtest.StringPointer(sd.AssetConditions[0].ID),
-				Name:        dbtest.StringPointer("Updated Asset"),
-				IsEnabled:   dbtest.BoolPointer(false),
-				UpdatedBy:   dbtest.StringPointer(sd.Admins[0].ID.String()),
+				ValidAssetID:    &sd.Assets[0].ValidAssetID,
+				LastMaintenance: &sd.Assets[0].LastMaintenance,
+				SerialNumber:    &sd.Assets[0].SerialNumber,
+				ConditionID:     &sd.Assets[0].ConditionID,
 			},
 			GotResp: &assetapp.Asset{},
 			ExpResp: &assetapp.Asset{
-				Name:                "Updated Asset",
-				TypeID:              sd.AssetTypes[0].ID,
-				ConditionID:         sd.AssetConditions[0].ID,
-				IsEnabled:           false,
-				UpdatedBy:           sd.Admins[0].ID.String(),
-				EstPrice:            sd.Assets[0].EstPrice,
-				MaintenanceInterval: sd.Assets[0].MaintenanceInterval,
-				LifeExpectancy:      sd.Assets[0].LifeExpectancy,
-				ModelNumber:         sd.Assets[0].ModelNumber,
+				ID:              sd.Assets[1].ID,
+				ValidAssetID:    sd.Assets[0].ValidAssetID,
+				LastMaintenance: sd.Assets[0].LastMaintenance,
+				SerialNumber:    sd.Assets[0].SerialNumber,
+				ConditionID:     sd.Assets[0].ConditionID,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*assetapp.Asset)
@@ -45,12 +41,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				expResp := exp.(*assetapp.Asset)
-				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
-				expResp.CreatedBy = gotResp.CreatedBy
 
-				return cmp.Diff(got, exp)
+				return cmp.Diff(gotResp, expResp)
 			},
 		},
 	}
@@ -60,13 +52,13 @@ func update200(sd apitest.SeedData) []apitest.Table {
 func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
-			Name:       "missing type",
+			Name:       "the valid asset iD is malformed",
 			URL:        fmt.Sprintf("/v1/assets/%s", sd.Assets[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &assetapp.UpdateAsset{
-				TypeID: dbtest.StringPointer("asdf"),
+				ValidAssetID: dbtest.StringPointer(sd.Assets[0].ID[:7]),
 			},
 			GotResp: &struct{}{},
 			ExpResp: &struct{}{},
