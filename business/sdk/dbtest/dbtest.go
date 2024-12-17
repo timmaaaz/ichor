@@ -31,6 +31,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
+	"github.com/timmaaaz/ichor/business/domain/officebus"
+	"github.com/timmaaaz/ichor/business/domain/officebus/stores/officedb"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/reportstobus"
@@ -72,6 +74,7 @@ type BusDomain struct {
 	AssetTag          *assettagbus.Business
 	Title             *titlebus.Business
 	ReportsTo         *reportstobus.Business
+	Office            *officebus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -96,6 +99,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	tagBus := tagbus.NewBusiness(log, delegate, tagdb.NewStore(log, db))
 	assetTagBus := assettagbus.NewBusiness(log, delegate, assettagdb.NewStore(log, db))
 	reportsToBus := reportstobus.NewBusiness(log, delegate, reportstodb.NewStore(log, db))
+	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:          delegate,
@@ -116,6 +120,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		AssetTag:          assetTagBus,
 		Title:             titlebus,
 		ReportsTo:         reportsToBus,
+		Office:            officeBus,
 	}
 
 }
