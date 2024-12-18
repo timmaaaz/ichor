@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
+	"github.com/timmaaaz/ichor/foundation/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -90,7 +91,7 @@ func (app NewUserAsset) Validate() error {
 	return nil
 }
 
-func toBusNewUserAsset(app NewUserAsset) (userassetbus.NewUserAsset, error) {
+func toBusNewUserAsset3(app NewUserAsset) (userassetbus.NewUserAsset, error) {
 	var userID, assetID, approvedBy, approvalStatusID, fulfillmentStatusID uuid.UUID
 	var dateReceived, lastMaintenance time.Time
 	var err error
@@ -153,6 +154,14 @@ func toBusNewUserAsset(app NewUserAsset) (userassetbus.NewUserAsset, error) {
 		DateReceived:        dateReceived,
 		LastMaintenance:     lastMaintenance,
 	}, nil
+}
+
+func toBusNewUserAsset(app NewUserAsset) (userassetbus.NewUserAsset, error) {
+
+	dst := &userassetbus.NewUserAsset{}
+
+	err := convert.PopulateTypesFromStrings(app, dst)
+	return *dst, err
 }
 
 // =========================================================================
