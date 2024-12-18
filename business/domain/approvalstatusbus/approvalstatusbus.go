@@ -10,6 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/convert"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
@@ -90,12 +91,9 @@ func (b *Business) Update(ctx context.Context, as ApprovalStatus, uas UpdateAppr
 	ctx, span := otel.AddSpan(ctx, "business.approvalstatusbus.Update")
 	defer span.End()
 
-	if uas.IconID != nil {
-		as.IconID = *uas.IconID
-	}
-
-	if uas.Name != nil {
-		as.Name = *uas.Name
+	err := convert.PopulateSameTypes(uas, &as)
+	if err != nil {
+		return ApprovalStatus{}, fmt.Errorf("populate struct: %w", err)
 	}
 
 	if err := b.storer.Update(ctx, as); err != nil {
