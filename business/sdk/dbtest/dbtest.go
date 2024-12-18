@@ -13,6 +13,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
+	validassetdb "github.com/timmaaaz/ichor/business/domain/validassetbus/stores/assetdb"
+
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
 	"github.com/timmaaaz/ichor/business/domain/assettagbus"
@@ -46,6 +48,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/vproductbus"
 	"github.com/timmaaaz/ichor/business/domain/vproductbus/stores/vproductdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -60,9 +63,6 @@ import (
 type BusDomain struct {
 	Delegate          *delegate.Delegate
 	Home              *homebus.Business
-	AssetType         *assettypebus.Business
-	AssetCondition    *assetconditionbus.Business
-	Asset             *assetbus.Business
 	Product           *productbus.Business
 	User              *userbus.Business
 	Country           *countrybus.Business
@@ -77,7 +77,12 @@ type BusDomain struct {
 	Title             *titlebus.Business
 	ReportsTo         *reportstobus.Business
 	Office            *officebus.Business
-	UserAsset         *userassetbus.Business
+
+	ValidAsset     *validassetbus.Business
+	AssetType      *assettypebus.Business
+	AssetCondition *assetconditionbus.Business
+	UserAsset      *userassetbus.Business
+	Asset          *assetbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -88,7 +93,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
 
 	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
-	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
+	validAssetBus := validassetbus.NewBusiness(log, delegate, validassetdb.NewStore(log, db))
 	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 
 	userBus := userbus.NewBusiness(log, delegate, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
@@ -104,12 +109,13 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	reportsToBus := reportstobus.NewBusiness(log, delegate, reportstodb.NewStore(log, db))
 	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
 	userAssetBus := userassetbus.NewBusiness(log, delegate, userassetdb.NewStore(log, db))
+	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:          delegate,
 		Home:              homeBus,
 		AssetType:         assetTypeBus,
-		Asset:             assetBus,
+		ValidAsset:        validAssetBus,
 		Product:           productBus,
 		User:              userBus,
 		Country:           countryBus,
@@ -126,6 +132,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ReportsTo:         reportsToBus,
 		Office:            officeBus,
 		UserAsset:         userAssetBus,
+		Asset:             assetBus,
 	}
 
 }

@@ -12,7 +12,6 @@ var orderByFields = map[string]string{
 	"user_id":               userassetbus.OrderByUserID,
 	"asset_id":              userassetbus.OrderByAssetID,
 	"approved_by":           userassetbus.OrderByApprovedBy,
-	"condition_id":          userassetbus.OrderByConditionID,
 	"approval_status_id":    userassetbus.OrderByApprovalStatusID,
 	"fulfillment_status_id": userassetbus.OrderByFulfillmentStatusID,
 	"date_received":         userassetbus.OrderByDateReceived,

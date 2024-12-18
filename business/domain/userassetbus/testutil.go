@@ -17,7 +17,6 @@ func TestNewUserAssets(n int, UserIDs, AssetIDs, ApprovedBy, ConditionIDs, Appro
 			UserID:              UserIDs[i%len(UserIDs)],
 			AssetID:             AssetIDs[i%len(AssetIDs)],
 			ApprovedBy:          ApprovedBy[i%len(ApprovedBy)],
-			ConditionID:         ConditionIDs[i%len(ConditionIDs)],
 			ApprovalStatusID:    ApprovalStatusIDs[i%len(ApprovalStatusIDs)],
 			FulfillmentStatusID: FulfillmentStatusIDs[i%len(FulfillmentStatusIDs)],
 			DateReceived:        time.Now().AddDate(0, -i, 0),

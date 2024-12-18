@@ -7,10 +7,12 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
@@ -41,36 +43,44 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	types, err := assettypebus.TestSeedAssetTypes(ctx, 3, busDomain.AssetType)
+	assetTypes, err := assettypebus.TestSeedAssetTypes(ctx, 5, busDomain.AssetType)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding asset types : %w", err)
 	}
 
-	typeIDs := make([]uuid.UUID, 0, len(types))
-	for _, t := range types {
-		typeIDs = append(typeIDs, t.ID)
+	assetTypeIDs := make([]uuid.UUID, len(assetTypes))
+	for i, at := range assetTypes {
+		assetTypeIDs[i] = at.ID
 	}
 
-	conditions, err := assetconditionbus.TestSeedAssetConditions(ctx, 5, busDomain.AssetCondition)
+	validAssets, err := validassetbus.TestSeedValidAssets(ctx, 15, assetTypeIDs, admins[0].ID, busDomain.ValidAsset)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding valid assets : %w", err)
+	}
+
+	validAssetIDs := make([]uuid.UUID, len(validAssets))
+	for i, va := range validAssets {
+		validAssetIDs[i] = va.ID
+	}
+
+	conditions, err := assetconditionbus.TestSeedAssetConditions(ctx, 8, busDomain.AssetCondition)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding asset conditions : %w", err)
 	}
 
-	conditionIDs := make([]uuid.UUID, 0, len(conditions))
-	for _, c := range conditions {
-		conditionIDs = append(conditionIDs, c.ID)
+	conditionIDs := make([]uuid.UUID, len(conditions))
+	for i, c := range conditions {
+		conditionIDs[i] = c.ID
 	}
 
-	assets, err := assetbus.TestSeedAssets(ctx, 10, typeIDs, conditionIDs, admins[0].ID, busDomain.Asset)
+	assets, err := assetbus.TestSeedAssets(ctx, 15, validAssetIDs, conditionIDs, busDomain.Asset)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding assets : %w", err)
 	}
 
 	return unitest.SeedData{
-		Admins:          []unitest.User{{User: admins[0]}},
-		AssetTypes:      types,
-		AssetConditions: conditions,
-		Assets:          assets,
+		Admins: []unitest.User{{User: admins[0]}},
+		Assets: assets,
 	}, nil
 }
 
@@ -103,7 +113,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 				for i := range gotResp {
 					expResp[i].ID = gotResp[i].ID
-					expResp[i].TypeID = gotResp[i].TypeID
+
 				}
 
 				return cmp.Diff(exp, got)
@@ -117,24 +127,17 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: assetbus.Asset{
-				TypeID:       sd.AssetTypes[0].ID,
-				ConditionID:  sd.AssetConditions[0].ID,
-				Name:         "Test Asset",
-				SerialNumber: "123456",
-				ModelNumber:  "654321",
-				IsEnabled:    true,
-				CreatedBy:    sd.Admins[0].ID,
-				UpdatedBy:    sd.Admins[0].ID,
+				SerialNumber:     "123456",
+				ValidAssetID:     sd.Assets[0].ValidAssetID,
+				AssetConditionID: sd.Assets[0].AssetConditionID,
+				LastMaintenance:  sd.Assets[0].LastMaintenance,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				na := assetbus.NewAsset{
-					TypeID:       sd.AssetTypes[0].ID,
-					ConditionID:  sd.AssetConditions[0].ID,
-					Name:         "Test Asset",
-					SerialNumber: "123456",
-					ModelNumber:  "654321",
-					IsEnabled:    true,
-					CreatedBy:    sd.Admins[0].ID,
+					SerialNumber:     "123456",
+					ValidAssetID:     sd.Assets[0].ValidAssetID,
+					AssetConditionID: sd.Assets[0].AssetConditionID,
+					LastMaintenance:  sd.Assets[0].LastMaintenance,
 				}
 
 				got, err := busDomain.Asset.Create(ctx, na)
@@ -155,8 +158,6 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(expResp, gotResp)
 			},
@@ -169,29 +170,21 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "update",
 			ExpResp: assetbus.Asset{
-				ID:                  sd.Assets[1].ID,
-				TypeID:              sd.Assets[1].TypeID,
-				ConditionID:         sd.Assets[1].ConditionID,
-				Name:                "Updated Asset",
-				EstPrice:            sd.Assets[1].EstPrice,
-				Price:               sd.Assets[1].Price,
-				MaintenanceInterval: sd.Assets[1].MaintenanceInterval,
-				LifeExpectancy:      sd.Assets[1].LifeExpectancy,
-				SerialNumber:        "654321",
-				ModelNumber:         "123456",
-				IsEnabled:           false,
-				CreatedBy:           sd.Admins[0].ID,
-				UpdatedBy:           sd.Admins[0].ID,
+				ID:               sd.Assets[0].ID,
+				SerialNumber:     "654321",
+				ValidAssetID:     sd.Assets[1].ValidAssetID,
+				AssetConditionID: sd.Assets[1].AssetConditionID,
+				LastMaintenance:  sd.Assets[1].LastMaintenance,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				ua := assetbus.UpdateAsset{
-					Name:         dbtest.StringPointer("Updated Asset"),
-					SerialNumber: dbtest.StringPointer("654321"),
-					ModelNumber:  dbtest.StringPointer("123456"),
-					IsEnabled:    dbtest.BoolPointer(false),
+					ValidAssetID:     &sd.Assets[1].ValidAssetID,
+					SerialNumber:     dbtest.StringPointer("654321"),
+					AssetConditionID: &sd.Assets[1].AssetConditionID,
+					LastMaintenance:  &sd.Assets[1].LastMaintenance,
 				}
 
-				got, err := busDomain.Asset.Update(ctx, sd.Assets[1], ua)
+				got, err := busDomain.Asset.Update(ctx, sd.Assets[0], ua)
 				if err != nil {
 					return err
 				}
@@ -207,9 +200,6 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				if !exists {
 					return "error occurred"
 				}
-
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
 
 				return cmp.Diff(expResp, gotResp)
 			},

@@ -85,11 +85,10 @@ CREATE TABLE users (
    PRIMARY KEY (user_id)
 );
 -- Version: 1.08
--- Description: Create table assets
-CREATE TABLE assets (
-   asset_id UUID NOT NULL,
+-- Description: Create table valid_assets
+CREATE TABLE valid_assets (
+   valid_asset_id UUID NOT NULL,
    type_id UUID NOT NULL,
-   condition_id UUID NOT NULL,
    name TEXT NOT NULL,
    est_price NUMERIC(10,2) NULL,
    price NUMERIC(10,2) NULL,
@@ -102,7 +101,7 @@ CREATE TABLE assets (
    date_updated TIMESTAMP NOT NULL,
    created_by UUID NOT NULL,
    updated_by UUID NOT NULL,
-   PRIMARY KEY (asset_id),
+   PRIMARY KEY (valid_asset_id),
    
    -- UNIQUE named constraint
    CONSTRAINT unique_asset_name UNIQUE (name),
@@ -110,8 +109,7 @@ CREATE TABLE assets (
    -- named foreign keys
    CONSTRAINT fk_assets_type_id FOREIGN KEY (type_id) REFERENCES asset_types(asset_type_id) ON DELETE CASCADE,
    CONSTRAINT fk_assets_created_by FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE,
-   CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE CASCADE,
-   CONSTRAINT fk_assets_condition_id FOREIGN KEY (condition_id) REFERENCES asset_conditions(asset_condition_id) ON DELETE CASCADE
+   CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE CASCADE
 );
 -- Version: 1.09
 -- Description: Create table products
@@ -179,7 +177,7 @@ CREATE TABLE tags (
    name TEXT NOT NULL,
    description TEXT NULL,
    PRIMARY KEY (tag_id)
-)
+);
 -- Version: 1.15
 -- Description: Add asset_tags
 CREATE TABLE asset_tags (
@@ -187,9 +185,9 @@ CREATE TABLE asset_tags (
    asset_id UUID NOT NULL,
    tag_id UUID NOT NULL,
    PRIMARY KEY (asset_tag_id),
-   FOREIGN KEY (asset_id) REFERENCES assets(asset_id) ON DELETE CASCADE,
+   FOREIGN KEY (asset_id) REFERENCES valid_assets(valid_asset_id) ON DELETE CASCADE,
    FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
-)
+);
 -- Version: 1.16
 -- Description: create titles table
 CREATE TABLE titles (
@@ -218,6 +216,18 @@ CREATE TABLE offices (
    FOREIGN KEY (street_id) REFERENCES streets(street_id) ON DELETE CASCADE
 );
 -- Version: 1.19
+-- Description: Add assets
+CREATE TABLE assets (
+   asset_id UUID NOT NULL,
+   valid_asset_id UUID NOT NULL,
+   last_maintenance_time TIMESTAMP NOT NULL,
+   serial_number TEXT NOT NULL,
+   asset_condition_id UUID NOT NULL,
+   PRIMARY KEY (asset_id),
+   FOREIGN KEY (valid_asset_id) REFERENCES valid_assets(valid_asset_id) ON DELETE CASCADE,
+   FOREIGN KEY (asset_condition_id) REFERENCES asset_conditions(asset_condition_id) ON DELETE CASCADE
+);
+-- Version: 1.20
 -- Description: Add user_assets
 CREATE TABLE user_assets (
    user_asset_id UUID NOT NULL,
@@ -228,12 +238,11 @@ CREATE TABLE user_assets (
    date_received TIMESTAMP NOT NULL,
    approved_by UUID NOT NULL,
    fulfillment_status_id UUID NOT NULL,
-   condition_id UUID NOT NULL,
    PRIMARY KEY (user_asset_id),
    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
    FOREIGN KEY (asset_id) REFERENCES assets(asset_id) ON DELETE CASCADE,
    FOREIGN KEY (approval_status_id) REFERENCES approval_status(approval_status_id) ON DELETE CASCADE,
    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE CASCADE,
-   FOREIGN KEY (fulfillment_status_id) REFERENCES fulfillment_status(fulfillment_status_id) ON DELETE CASCADE,
-   FOREIGN KEY (condition_id) REFERENCES asset_conditions(asset_condition_id) ON DELETE CASCADE
-)
+   FOREIGN KEY (fulfillment_status_id) REFERENCES fulfillment_status(fulfillment_status_id) ON DELETE CASCADE
+);
+

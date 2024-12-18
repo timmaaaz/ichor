@@ -21,7 +21,6 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				UserID:              sd.UserAssets[0].UserID,
 				AssetID:             sd.UserAssets[0].AssetID,
 				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				DateReceived:        sd.UserAssets[0].DateReceived,
@@ -32,7 +31,6 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				UserID:              sd.UserAssets[0].UserID,
 				AssetID:             sd.UserAssets[0].AssetID,
 				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				DateReceived:        sd.UserAssets[0].DateReceived,
@@ -66,7 +64,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &userassetapp.NewUserAsset{
 				AssetID:             sd.UserAssets[0].AssetID,
 				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				DateReceived:        sd.UserAssets[0].DateReceived,
@@ -87,7 +84,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &userassetapp.NewUserAsset{
 				UserID:              sd.UserAssets[0].UserID,
 				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				DateReceived:        sd.UserAssets[0].DateReceived,
@@ -108,7 +104,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &userassetapp.NewUserAsset{
 				UserID:              sd.UserAssets[0].UserID,
 				AssetID:             sd.UserAssets[0].AssetID,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				DateReceived:        sd.UserAssets[0].DateReceived,
@@ -120,27 +115,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
-		{
-			Name:       "missing condition id",
-			URL:        "/v1/userassets",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &userassetapp.NewUserAsset{
-				UserID:              sd.UserAssets[0].UserID,
-				AssetID:             sd.UserAssets[0].AssetID,
-				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
-				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
-				DateReceived:        sd.UserAssets[0].DateReceived,
-				LastMaintenance:     sd.UserAssets[0].LastMaintenance,
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"condition_id\",\"error\":\"condition_id is a required field\"}]"),
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
+
 		{
 			Name:       "missing approval status id",
 			URL:        "/v1/userassets",
@@ -151,7 +126,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				UserID:              sd.UserAssets[0].UserID,
 				AssetID:             sd.UserAssets[0].AssetID,
 				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				DateReceived:        sd.UserAssets[0].DateReceived,
 				LastMaintenance:     sd.UserAssets[0].LastMaintenance,
@@ -172,7 +146,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				UserID:           sd.UserAssets[0].UserID,
 				AssetID:          sd.UserAssets[0].AssetID,
 				ApprovedBy:       sd.UserAssets[0].ApprovedBy,
-				ConditionID:      sd.UserAssets[0].ConditionID,
 				ApprovalStatusID: sd.UserAssets[0].ApprovalStatusID,
 				DateReceived:     sd.UserAssets[0].DateReceived,
 				LastMaintenance:  sd.UserAssets[0].LastMaintenance,
@@ -193,7 +166,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				UserID:              sd.UserAssets[0].UserID,
 				AssetID:             sd.UserAssets[0].AssetID,
 				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				LastMaintenance:     sd.UserAssets[0].LastMaintenance,
@@ -214,7 +186,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				UserID:              sd.UserAssets[0].UserID,
 				AssetID:             sd.UserAssets[0].AssetID,
 				ApprovedBy:          sd.UserAssets[0].ApprovedBy,
-				ConditionID:         sd.UserAssets[0].ConditionID,
 				ApprovalStatusID:    sd.UserAssets[0].ApprovalStatusID,
 				FulfillmentStatusID: sd.UserAssets[0].FulfillmentStatusID,
 				DateReceived:        sd.UserAssets[0].DateReceived,

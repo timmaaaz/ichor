@@ -7,9 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
+	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
-
-const TimeLayout = "2006-01-02 15:04:05 -0700 MST"
 
 type QueryParams struct {
 	Page                string
@@ -31,7 +30,6 @@ type UserAsset struct {
 	UserID              string `json:"user_id"`
 	AssetID             string `json:"asset_id"`
 	ApprovedBy          string `json:"approved_by"`
-	ConditionID         string `json:"condition_id"`
 	ApprovalStatusID    string `json:"approval_status_id"`
 	FulfillmentStatusID string `json:"fulfillment_status_id"`
 
@@ -50,7 +48,6 @@ func ToAppUserAsset(bus userassetbus.UserAsset) UserAsset {
 		UserID:              bus.UserID.String(),
 		AssetID:             bus.AssetID.String(),
 		ApprovedBy:          bus.ApprovedBy.String(),
-		ConditionID:         bus.ConditionID.String(),
 		ApprovalStatusID:    bus.ApprovalStatusID.String(),
 		FulfillmentStatusID: bus.FulfillmentStatusID.String(),
 		DateReceived:        bus.DateReceived.String(),
@@ -72,7 +69,6 @@ type NewUserAsset struct {
 	UserID              string `json:"user_id" validate:"required"`
 	AssetID             string `json:"asset_id" validate:"required"`
 	ApprovedBy          string `json:"approved_by" validate:"required"`
-	ConditionID         string `json:"condition_id" validate:"required"`
 	ApprovalStatusID    string `json:"approval_status_id" validate:"required"`
 	FulfillmentStatusID string `json:"fulfillment_status_id" validate:"required"`
 
@@ -95,19 +91,12 @@ func (app NewUserAsset) Validate() error {
 }
 
 func toBusNewUserAsset(app NewUserAsset) (userassetbus.NewUserAsset, error) {
-	var userID, assetID, approvedBy, conditionID, approvalStatusID, fulfillmentStatusID uuid.UUID
+	var userID, assetID, approvedBy, approvalStatusID, fulfillmentStatusID uuid.UUID
 	var dateReceived, lastMaintenance time.Time
 	var err error
 
 	if app.UserID != "" {
 		userID, err = uuid.Parse(app.UserID)
-		if err != nil {
-			return userassetbus.NewUserAsset{}, err
-		}
-	}
-
-	if app.ConditionID != "" {
-		conditionID, err = uuid.Parse(app.ConditionID)
 		if err != nil {
 			return userassetbus.NewUserAsset{}, err
 		}
@@ -142,14 +131,14 @@ func toBusNewUserAsset(app NewUserAsset) (userassetbus.NewUserAsset, error) {
 	}
 
 	if app.DateReceived != "" {
-		dateReceived, err = time.Parse(TimeLayout, app.DateReceived)
+		dateReceived, err = time.Parse(timeutil.FORMAT, app.DateReceived)
 		if err != nil {
 			return userassetbus.NewUserAsset{}, err
 		}
 	}
 
 	if app.LastMaintenance != "" {
-		lastMaintenance, err = time.Parse(TimeLayout, app.LastMaintenance)
+		lastMaintenance, err = time.Parse(timeutil.FORMAT, app.LastMaintenance)
 		if err != nil {
 			return userassetbus.NewUserAsset{}, err
 		}
@@ -159,7 +148,6 @@ func toBusNewUserAsset(app NewUserAsset) (userassetbus.NewUserAsset, error) {
 		UserID:              userID,
 		AssetID:             assetID,
 		ApprovedBy:          approvedBy,
-		ConditionID:         conditionID,
 		ApprovalStatusID:    approvalStatusID,
 		FulfillmentStatusID: fulfillmentStatusID,
 		DateReceived:        dateReceived,
@@ -173,7 +161,6 @@ type UpdateUserAsset struct {
 	UserID              *string `json:"user_id"`
 	AssetID             *string `json:"asset_id"`
 	ApprovedBy          *string `json:"approved_by"`
-	ConditionID         *string `json:"condition_id"`
 	ApprovalStatusID    *string `json:"approval_status_id"`
 	FulfillmentStatusID *string `json:"fulfillment_status_id"`
 
@@ -196,7 +183,7 @@ func (app UpdateUserAsset) Validate() error {
 }
 
 func toBusUpdateUserAsset(app UpdateUserAsset) (userassetbus.UpdateUserAsset, error) {
-	var userID, assetID, approvedBy, conditionID, approvalStatusID, fulfillmentStatusID *uuid.UUID
+	var userID, assetID, approvedBy, approvalStatusID, fulfillmentStatusID *uuid.UUID
 	var dateReceived, lastMaintenance *time.Time
 
 	if app.UserID != nil {
@@ -205,14 +192,6 @@ func toBusUpdateUserAsset(app UpdateUserAsset) (userassetbus.UpdateUserAsset, er
 			return userassetbus.UpdateUserAsset{}, err
 		}
 		userID = &id
-	}
-
-	if app.ConditionID != nil {
-		id, err := uuid.Parse(*app.ConditionID)
-		if err != nil {
-			return userassetbus.UpdateUserAsset{}, err
-		}
-		conditionID = &id
 	}
 
 	if app.ApprovalStatusID != nil {
@@ -248,7 +227,7 @@ func toBusUpdateUserAsset(app UpdateUserAsset) (userassetbus.UpdateUserAsset, er
 	}
 
 	if app.DateReceived != nil {
-		dr, err := time.Parse(TimeLayout, *app.DateReceived)
+		dr, err := time.Parse(timeutil.FORMAT, *app.DateReceived)
 		if err != nil {
 			return userassetbus.UpdateUserAsset{}, err
 		}
@@ -256,7 +235,7 @@ func toBusUpdateUserAsset(app UpdateUserAsset) (userassetbus.UpdateUserAsset, er
 	}
 
 	if app.LastMaintenance != nil {
-		lm, err := time.Parse(TimeLayout, *app.LastMaintenance)
+		lm, err := time.Parse(timeutil.FORMAT, *app.LastMaintenance)
 		if err != nil {
 			return userassetbus.UpdateUserAsset{}, err
 		}
@@ -267,7 +246,6 @@ func toBusUpdateUserAsset(app UpdateUserAsset) (userassetbus.UpdateUserAsset, er
 		UserID:              userID,
 		AssetID:             assetID,
 		ApprovedBy:          approvedBy,
-		ConditionID:         conditionID,
 		ApprovalStatusID:    approvalStatusID,
 		FulfillmentStatusID: fulfillmentStatusID,
 		DateReceived:        dateReceived,

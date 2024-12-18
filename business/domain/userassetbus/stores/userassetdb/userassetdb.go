@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -50,17 +49,17 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userassetbus.Storer, error
 func (s *Store) Create(ctx context.Context, ass userassetbus.UserAsset) error {
 	const q = `
     INSERT INTO user_assets (
-        user_asset_id, asset_id, condition_id, user_id, approved_by, approval_status_id, fulfillment_status_id,
+        user_asset_id, asset_id, user_id, approved_by, approval_status_id, fulfillment_status_id,
 		date_received, last_maintenance
     ) VALUES (
-        :user_asset_id, :asset_id,  :condition_id, :user_id, :approved_by, :approval_status_id, :fulfillment_status_id,
+        :user_asset_id, :asset_id,   :user_id, :approved_by, :approval_status_id, :fulfillment_status_id,
 		:date_received, :last_maintenance
 	)   
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserAsset(ass)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", assetbus.ErrUniqueEntry)
+			return fmt.Errorf("namedexeccontext: %w", userassetbus.ErrUniqueEntry)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -75,7 +74,6 @@ func (s *Store) Update(ctx context.Context, ass userassetbus.UserAsset) error {
 	SET
 		user_asset_id = :user_asset_id,
 		asset_id = :asset_id,
-		condition_id = :condition_id,
 		user_id = :user_id,
         approved_by = :approved_by,
         approval_status_id = :approval_status_id,
@@ -89,7 +87,7 @@ func (s *Store) Update(ctx context.Context, ass userassetbus.UserAsset) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserAsset(ass)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", assetbus.ErrUniqueEntry)
+			return fmt.Errorf("namedexeccontext: %w", userassetbus.ErrUniqueEntry)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -120,7 +118,7 @@ func (s *Store) Query(ctx context.Context, filter userassetbus.QueryFilter, orde
 
 	const q = `
     SELECT
-        user_asset_id, condition_id, user_id, asset_id, approved_by, approval_status_id, fulfillment_status_id,
+        user_asset_id, user_id, asset_id, approved_by, approval_status_id, fulfillment_status_id,
 		date_received, last_maintenance
     FROM
         user_assets`
@@ -177,7 +175,7 @@ func (s *Store) QueryByID(ctx context.Context, userAssetID uuid.UUID) (userasset
 
 	const q = `
     SELECT
-        user_asset_id, condition_id, user_id, asset_id, approved_by, approval_status_id, fulfillment_status_id,
+        user_asset_id, user_id, asset_id, approved_by, approval_status_id, fulfillment_status_id,
 		date_received, last_maintenance
     FROM
         user_assets

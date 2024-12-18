@@ -36,7 +36,6 @@ func toDBUserAsset(bus userassetbus.UserAsset) userAsset {
 		UserID:              bus.UserID,
 		AssetID:             bus.AssetID,
 		ApprovedBy:          bus.ApprovedBy,
-		ConditionID:         bus.ConditionID,
 		ApprovalStatusID:    bus.ApprovalStatusID,
 		FulfillmentStatusID: bus.FulfillmentStatusID,
 
@@ -51,7 +50,6 @@ func toBusUserAsset(db userAsset) userassetbus.UserAsset {
 		UserID:              db.UserID,
 		AssetID:             db.AssetID,
 		ApprovedBy:          db.ApprovedBy,
-		ConditionID:         db.ConditionID,
 		ApprovalStatusID:    db.ApprovalStatusID,
 		FulfillmentStatusID: db.FulfillmentStatusID,
 

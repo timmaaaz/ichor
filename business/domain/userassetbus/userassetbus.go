@@ -73,7 +73,6 @@ func (b *Business) Create(ctx context.Context, nua NewUserAsset) (UserAsset, err
 		ID:                  uuid.New(),
 		UserID:              nua.UserID,
 		AssetID:             nua.AssetID,
-		ConditionID:         nua.ConditionID,
 		ApprovedBy:          nua.ApprovedBy,
 		ApprovalStatusID:    nua.ApprovalStatusID,
 		FulfillmentStatusID: nua.FulfillmentStatusID,
@@ -119,10 +118,6 @@ func (b *Business) Update(ctx context.Context, ass UserAsset, uua UpdateUserAsse
 
 	if uua.UserID != nil {
 		ass.UserID = *uua.UserID
-	}
-
-	if uua.ConditionID != nil {
-		ass.ConditionID = *uua.ConditionID
 	}
 
 	if err := b.storer.Update(ctx, ass); err != nil {

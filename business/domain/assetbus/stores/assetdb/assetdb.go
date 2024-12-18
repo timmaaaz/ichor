@@ -7,12 +7,13 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
+
+	"github.com/jmoiron/sqlx"
 )
 
 // Store manages the set of APIs for assets database access.
@@ -45,18 +46,14 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assetbus.Storer, error) {
 	return &store, nil
 }
 
-// Create inserts a new asset into the database.
+// Create inserts a new user asset into the database.
 func (s *Store) Create(ctx context.Context, ass assetbus.Asset) error {
 	const q = `
     INSERT INTO assets (
-        asset_id, type_id, condition_id, name, est_price, maintenance_interval,
-        life_expectancy, serial_number, model_number, is_enabled, date_created,
-        date_updated, created_by, updated_by
+        asset_id, valid_asset_id, last_maintenance_time, serial_number, asset_condition_id
     ) VALUES (
-        :asset_id, :type_id, :condition_id, :name, :est_price, :maintenance_interval,
-        :life_expectancy, :serial_number, :model_number, :is_enabled, :date_created,
-        :date_updated, :created_by, :updated_by
-    )   
+		:asset_id, :valid_asset_id, :last_maintenance_time, :serial_number, :asset_condition_id
+	)
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAsset(ass)); err != nil {
@@ -68,27 +65,17 @@ func (s *Store) Create(ctx context.Context, ass assetbus.Asset) error {
 	return nil
 }
 
-// Update replaces an asset document in the database.
+// Update replaces a user asset document in the database.
 func (s *Store) Update(ctx context.Context, ass assetbus.Asset) error {
 	const q = `
 	UPDATE
 		assets
 	SET
 		asset_id = :asset_id,
-		type_id = :type_id,
-		condition_id = :condition_id,
-		name = :name,
-		est_price = :est_price,
-		price = :price,
-		maintenance_interval = :maintenance_interval,
-		life_expectancy = :life_expectancy,
-		serial_number = :serial_number,
-		model_number = :model_number,
-		is_enabled = :is_enabled,
-		date_created = :date_created,
-		date_updated = :date_updated,
-		created_by = :created_by,
-		updated_by = :updated_by
+		valid_asset_id = :valid_asset_id,
+        last_maintenance_time = :last_maintenance_time,
+        serial_number = :serial_number,
+        asset_condition_id = :asset_condition_id
 	WHERE
 		asset_id = :asset_id
 
@@ -103,7 +90,7 @@ func (s *Store) Update(ctx context.Context, ass assetbus.Asset) error {
 	return nil
 }
 
-// Delete removes an asset from the database.
+// Delete removes an user asset from the database.
 func (s *Store) Delete(ctx context.Context, ass assetbus.Asset) error {
 	const q = `
 	DELETE FROM
@@ -118,7 +105,7 @@ func (s *Store) Delete(ctx context.Context, ass assetbus.Asset) error {
 	return nil
 }
 
-// Query retrieves a list of assets from the database.
+// Query retrieves a list of user assets from the database.
 func (s *Store) Query(ctx context.Context, filter assetbus.QueryFilter, orderBy order.By, page page.Page) ([]assetbus.Asset, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
@@ -127,9 +114,7 @@ func (s *Store) Query(ctx context.Context, filter assetbus.QueryFilter, orderBy 
 
 	const q = `
     SELECT
-        asset_id, type_id, condition_id, name, est_price, maintenance_interval,
-        life_expectancy, serial_number, model_number, is_enabled, date_created,
-        date_updated, created_by, updated_by
+		asset_id, valid_asset_id, last_maintenance_time, serial_number, asset_condition_id
     FROM
         assets`
 
@@ -149,7 +134,7 @@ func (s *Store) Query(ctx context.Context, filter assetbus.QueryFilter, orderBy 
 		return nil, fmt.Errorf("namedselectcontext: %w", err)
 	}
 
-	return toBusAssets(assets)
+	return toBusAssets(assets), nil
 }
 
 // Count returns the number of assets in the database.
@@ -176,18 +161,16 @@ func (s *Store) Count(ctx context.Context, filter assetbus.QueryFilter) (int, er
 }
 
 // QueryByID retrieves a single asset from the database by its ID.
-func (s *Store) QueryByID(ctx context.Context, assetID uuid.UUID) (assetbus.Asset, error) {
+func (s *Store) QueryByID(ctx context.Context, userAssetID uuid.UUID) (assetbus.Asset, error) {
 	data := struct {
 		ID string `db:"asset_id"`
 	}{
-		ID: assetID.String(),
+		ID: userAssetID.String(),
 	}
 
 	const q = `
     SELECT
-        asset_id, type_id, condition_id, name, est_price, maintenance_interval,
-        life_expectancy, model_number, is_enabled, date_created,
-        date_updated, created_by, updated_by
+        asset_id, valid_asset_id, asset_condition_id, serial_number, last_maintenance_time
     FROM
         assets
     WHERE
@@ -202,5 +185,5 @@ func (s *Store) QueryByID(ctx context.Context, assetID uuid.UUID) (assetbus.Asse
 		return assetbus.Asset{}, fmt.Errorf("querystruct: %w", err)
 	}
 
-	return toBusAsset(ass)
+	return toBusAsset(ass), nil
 }

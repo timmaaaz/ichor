@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
+	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
@@ -65,7 +66,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		conditionIDs = append(conditionIDs, c.ID)
 	}
 
-	assets, err := assetbus.TestSeedAssets(ctx, 25, typeIDs, conditionIDs, admins[0].ID, busDomain.Asset)
+	validAssets, err := validassetbus.TestSeedValidAssets(ctx, 25, typeIDs, admins[0].ID, busDomain.ValidAsset)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding assets : %w", err)
+	}
+
+	validAssetIDs := make([]uuid.UUID, len(validAssets))
+	for i, a := range validAssets {
+		validAssetIDs[i] = a.ID
+	}
+
+	assets, err := assetbus.TestSeedAssets(ctx, 15, validAssetIDs, conditionIDs, busDomain.Asset)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding assets : %w", err)
 	}
