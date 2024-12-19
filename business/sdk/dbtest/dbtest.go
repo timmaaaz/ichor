@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
@@ -300,4 +301,8 @@ func UserNamePointer(value string) *userbus.Name {
 func ProductNamePointer(value string) *productbus.Name {
 	name := productbus.MustParseName(value)
 	return &name
+}
+
+func UUIDPointer(value uuid.UUID) *uuid.UUID {
+	return &value
 }

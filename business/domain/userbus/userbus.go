@@ -13,6 +13,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/convert"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 	"golang.org/x/crypto/bcrypt"
@@ -119,48 +120,9 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
-	if uu.ApprovedBy != nil {
-		usr.ApprovedBy = *uu.ApprovedBy
-	}
-
-	if uu.TitleID != nil {
-		usr.TitleID = *uu.TitleID
-	}
-
-	if uu.OfficeID != nil {
-		usr.OfficeID = *uu.OfficeID
-	}
-
-	if uu.WorkPhoneID != nil {
-		usr.WorkPhoneID = *uu.WorkPhoneID
-	}
-
-	if uu.CellPhoneID != nil {
-		usr.CellPhoneID = *uu.CellPhoneID
-	}
-
-	if uu.Username != nil {
-		usr.Username = *uu.Username
-	}
-
-	if uu.FirstName != nil {
-		usr.FirstName = *uu.FirstName
-	}
-
-	if uu.LastName != nil {
-		usr.LastName = *uu.LastName
-	}
-
-	if uu.Email != nil {
-		usr.Email = *uu.Email
-	}
-
-	if uu.Roles != nil {
-		usr.Roles = uu.Roles
-	}
-
-	if uu.SystemRoles != nil {
-		usr.SystemRoles = uu.SystemRoles
+	err := convert.PopulateSameTypes(uu, &usr)
+	if err != nil {
+		return User{}, fmt.Errorf("populate user from update user: %w", err)
 	}
 
 	if uu.Password != nil {
@@ -169,18 +131,6 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 			return User{}, fmt.Errorf("generatefrompassword: %w", err)
 		}
 		usr.PasswordHash = pw
-	}
-
-	if uu.Enabled != nil {
-		usr.Enabled = *uu.Enabled
-	}
-
-	if uu.DateHired != nil {
-		usr.DateHired = *uu.DateHired
-	}
-
-	if uu.DateApproved != nil {
-		usr.DateApproved = *uu.DateApproved
 	}
 
 	usr.DateUpdated = time.Now()

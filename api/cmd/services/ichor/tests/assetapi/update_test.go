@@ -21,18 +21,18 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &assetapp.UpdateAsset{
-				ValidAssetID:    &sd.Assets[0].ValidAssetID,
-				LastMaintenance: &sd.Assets[0].LastMaintenance,
-				SerialNumber:    &sd.Assets[0].SerialNumber,
-				ConditionID:     &sd.Assets[0].ConditionID,
+				ValidAssetID:     &sd.Assets[0].ValidAssetID,
+				LastMaintenance:  &sd.Assets[0].LastMaintenance,
+				SerialNumber:     &sd.Assets[0].SerialNumber,
+				AssetConditionID: &sd.Assets[0].AssetConditionID,
 			},
 			GotResp: &assetapp.Asset{},
 			ExpResp: &assetapp.Asset{
-				ID:              sd.Assets[1].ID,
-				ValidAssetID:    sd.Assets[0].ValidAssetID,
-				LastMaintenance: sd.Assets[0].LastMaintenance,
-				SerialNumber:    sd.Assets[0].SerialNumber,
-				ConditionID:     sd.Assets[0].ConditionID,
+				ID:               sd.Assets[1].ID,
+				ValidAssetID:     sd.Assets[0].ValidAssetID,
+				LastMaintenance:  sd.Assets[0].LastMaintenance,
+				SerialNumber:     sd.Assets[0].SerialNumber,
+				AssetConditionID: sd.Assets[0].AssetConditionID,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*assetapp.Asset)
