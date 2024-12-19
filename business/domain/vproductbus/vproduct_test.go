@@ -89,7 +89,7 @@ func toVProduct(usr userbus.User, prd productbus.Product) vproductbus.Product {
 		Quantity:    prd.Quantity,
 		DateCreated: prd.DateCreated,
 		DateUpdated: prd.DateUpdated,
-		UserName:    usr.Name,
+		UserName:    usr.Username,
 	}
 }
 
