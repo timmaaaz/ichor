@@ -106,3 +106,86 @@ func Test_ConvertFromStrings(t *testing.T) {
 		t.Error("Destination values did not match source values")
 	}
 }
+
+func Test_ConvertFromStringsToPointers(t *testing.T) {
+	type testDest struct {
+		Name   *string
+		ID     *uuid.UUID
+		Status *int
+	}
+
+	type testSrc struct {
+		Name   *string
+		ID     *string
+		Status *string
+	}
+
+	id := uuid.New()
+	src := testSrc{
+		Name:   dbtest.StringPointer("test"),
+		ID:     dbtest.StringPointer(id.String()),
+		Status: dbtest.StringPointer("15"),
+	}
+
+	dest := testDest{}
+
+	err := convert.PopulateTypesFromStrings(src, &dest)
+	if err != nil {
+		t.Errorf("Failed to convert with err: %v", err)
+	}
+
+	if *dest.Name != *src.Name || *dest.ID != id || *dest.Status != 15 {
+		t.Error("Destination values did not match source values")
+	}
+}
+
+type testSrc struct {
+	Name   *string
+	ID     *uuid.UUID
+	Status *int
+}
+
+type testDest struct {
+	Name   string
+	ID     uuid.UUID
+	Status int
+}
+
+var src = testSrc{
+	Name:   dbtest.StringPointer("test"),
+	ID:     dbtest.UUIDPointer(uuid.New()),
+	Status: dbtest.IntPointer(15),
+}
+
+var dst = testDest{}
+
+var result = testDest{}
+
+func BenchmarkAssignment(t *testing.B) {
+	for i := 0; i < t.N; i++ {
+		manualAssignment(src, &dst)
+	}
+	result = dst
+}
+
+func BenchmarkConversion(t *testing.B) {
+	for i := 0; i < t.N; i++ {
+		convert.PopulateSameTypes(src, dst)
+	}
+
+	result = dst
+}
+
+func manualAssignment(src testSrc, dst *testDest) {
+	if src.ID != nil {
+		dst.ID = *src.ID
+	}
+
+	if src.Name != nil {
+		dst.Name = *src.Name
+	}
+
+	if src.Status != nil {
+		dst.Status = *src.Status
+	}
+}

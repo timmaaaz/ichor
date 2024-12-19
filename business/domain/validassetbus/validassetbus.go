@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/convert"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
@@ -102,43 +103,8 @@ func (b *Business) Update(ctx context.Context, ass ValidAsset, ua UpdateValidAss
 
 	now := time.Now()
 
-	if ua.TypeID != nil {
-		ass.TypeID = *ua.TypeID
-	}
-	if ua.Name != nil {
-		ass.Name = *ua.Name
-	}
-
-	if ua.EstPrice != nil {
-		ass.EstPrice = *ua.EstPrice
-	}
-
-	if ua.Price != nil {
-		ass.Price = *ua.Price
-	}
-
-	if ua.MaintenanceInterval != nil {
-		ass.MaintenanceInterval = *ua.MaintenanceInterval
-	}
-
-	if ua.LifeExpectancy != nil {
-		ass.LifeExpectancy = *ua.LifeExpectancy
-	}
-
-	if ua.SerialNumber != nil {
-		ass.SerialNumber = *ua.SerialNumber
-	}
-
-	if ua.ModelNumber != nil {
-		ass.ModelNumber = *ua.ModelNumber
-	}
-
-	if ua.IsEnabled != nil {
-		ass.IsEnabled = *ua.IsEnabled
-	}
-
-	if ua.UpdatedBy != nil {
-		ass.UpdatedBy = *ua.UpdatedBy
+	if err := convert.PopulateSameTypes(ua, &ass); err != nil {
+		return ValidAsset{}, fmt.Errorf("populate asset struct: %w", err)
 	}
 
 	ass.DateUpdated = now
