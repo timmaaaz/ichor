@@ -42,7 +42,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				FirstName:    "Adam",
 				LastName:     "Griffis",
 				Email:        "adam123@superiortech.io",
-				Birthday:     "0001-01-01T00:00:00Z",
+				Birthday:     "1980-01-01T00:00:00Z",
 				DateHired:    "0001-01-01T00:00:00Z",
 				DateApproved: "0001-01-01T00:00:00Z",
 				Roles:        []string{"USER"},
