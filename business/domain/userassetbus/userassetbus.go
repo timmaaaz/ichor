@@ -10,6 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/convert"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
@@ -92,32 +93,9 @@ func (b *Business) Update(ctx context.Context, ass UserAsset, uua UpdateUserAsse
 	ctx, span := otel.AddSpan(ctx, "business.userassetbus.update")
 	defer span.End()
 
-	if uua.ApprovalStatusID != nil {
-		ass.ApprovalStatusID = *uua.ApprovalStatusID
-	}
-
-	if uua.FulfillmentStatusID != nil {
-		ass.FulfillmentStatusID = *uua.FulfillmentStatusID
-	}
-
-	if uua.DateReceived != nil {
-		ass.DateReceived = *uua.DateReceived
-	}
-
-	if uua.LastMaintenance != nil {
-		ass.LastMaintenance = *uua.LastMaintenance
-	}
-
-	if uua.ApprovedBy != nil {
-		ass.ApprovedBy = *uua.ApprovedBy
-	}
-
-	if uua.AssetID != nil {
-		ass.AssetID = *uua.AssetID
-	}
-
-	if uua.UserID != nil {
-		ass.UserID = *uua.UserID
+	err := convert.PopulateSameTypes(uua, &ass)
+	if err != nil {
+		return UserAsset{}, fmt.Errorf("populate user asset from update user asset: %w", err)
 	}
 
 	if err := b.storer.Update(ctx, ass); err != nil {

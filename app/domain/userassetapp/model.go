@@ -2,13 +2,10 @@ package userassetapp
 
 import (
 	"encoding/json"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
 	"github.com/timmaaaz/ichor/foundation/convert"
-	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
 type QueryParams struct {
@@ -91,71 +88,6 @@ func (app NewUserAsset) Validate() error {
 	return nil
 }
 
-func toBusNewUserAsset3(app NewUserAsset) (userassetbus.NewUserAsset, error) {
-	var userID, assetID, approvedBy, approvalStatusID, fulfillmentStatusID uuid.UUID
-	var dateReceived, lastMaintenance time.Time
-	var err error
-
-	if app.UserID != "" {
-		userID, err = uuid.Parse(app.UserID)
-		if err != nil {
-			return userassetbus.NewUserAsset{}, err
-		}
-	}
-
-	if app.ApprovalStatusID != "" {
-		approvalStatusID, err = uuid.Parse(app.ApprovalStatusID)
-		if err != nil {
-			return userassetbus.NewUserAsset{}, err
-		}
-	}
-
-	if app.FulfillmentStatusID != "" {
-		fulfillmentStatusID, err = uuid.Parse(app.FulfillmentStatusID)
-		if err != nil {
-			return userassetbus.NewUserAsset{}, err
-		}
-	}
-
-	if app.AssetID != "" {
-		assetID, err = uuid.Parse(app.AssetID)
-		if err != nil {
-			return userassetbus.NewUserAsset{}, err
-		}
-	}
-
-	if app.ApprovedBy != "" {
-		approvedBy, err = uuid.Parse(app.ApprovedBy)
-		if err != nil {
-			return userassetbus.NewUserAsset{}, err
-		}
-	}
-
-	if app.DateReceived != "" {
-		dateReceived, err = time.Parse(timeutil.FORMAT, app.DateReceived)
-		if err != nil {
-			return userassetbus.NewUserAsset{}, err
-		}
-	}
-
-	if app.LastMaintenance != "" {
-		lastMaintenance, err = time.Parse(timeutil.FORMAT, app.LastMaintenance)
-		if err != nil {
-			return userassetbus.NewUserAsset{}, err
-		}
-	}
-
-	return userassetbus.NewUserAsset{
-		UserID:              userID,
-		AssetID:             assetID,
-		ApprovedBy:          approvedBy,
-		ApprovalStatusID:    approvalStatusID,
-		FulfillmentStatusID: fulfillmentStatusID,
-		DateReceived:        dateReceived,
-		LastMaintenance:     lastMaintenance,
-	}, nil
-}
-
 func toBusNewUserAsset(app NewUserAsset) (userassetbus.NewUserAsset, error) {
 
 	dst := &userassetbus.NewUserAsset{}
@@ -192,72 +124,9 @@ func (app UpdateUserAsset) Validate() error {
 }
 
 func toBusUpdateUserAsset(app UpdateUserAsset) (userassetbus.UpdateUserAsset, error) {
-	var userID, assetID, approvedBy, approvalStatusID, fulfillmentStatusID *uuid.UUID
-	var dateReceived, lastMaintenance *time.Time
+	uua := userassetbus.UpdateUserAsset{}
 
-	if app.UserID != nil {
-		id, err := uuid.Parse(*app.UserID)
-		if err != nil {
-			return userassetbus.UpdateUserAsset{}, err
-		}
-		userID = &id
-	}
+	err := convert.PopulateTypesFromStrings(app, &uua)
 
-	if app.ApprovalStatusID != nil {
-		id, err := uuid.Parse(*app.ApprovalStatusID)
-		if err != nil {
-			return userassetbus.UpdateUserAsset{}, err
-		}
-		approvalStatusID = &id
-	}
-
-	if app.FulfillmentStatusID != nil {
-		id, err := uuid.Parse(*app.FulfillmentStatusID)
-		if err != nil {
-			return userassetbus.UpdateUserAsset{}, err
-		}
-		fulfillmentStatusID = &id
-	}
-
-	if app.AssetID != nil {
-		id, err := uuid.Parse(*app.AssetID)
-		if err != nil {
-			return userassetbus.UpdateUserAsset{}, err
-		}
-		assetID = &id
-	}
-
-	if app.ApprovedBy != nil {
-		id, err := uuid.Parse(*app.ApprovedBy)
-		if err != nil {
-			return userassetbus.UpdateUserAsset{}, err
-		}
-		approvedBy = &id
-	}
-
-	if app.DateReceived != nil {
-		dr, err := time.Parse(timeutil.FORMAT, *app.DateReceived)
-		if err != nil {
-			return userassetbus.UpdateUserAsset{}, err
-		}
-		dateReceived = &dr
-	}
-
-	if app.LastMaintenance != nil {
-		lm, err := time.Parse(timeutil.FORMAT, *app.LastMaintenance)
-		if err != nil {
-			return userassetbus.UpdateUserAsset{}, err
-		}
-		lastMaintenance = &lm
-	}
-
-	return userassetbus.UpdateUserAsset{
-		UserID:              userID,
-		AssetID:             assetID,
-		ApprovedBy:          approvedBy,
-		ApprovalStatusID:    approvalStatusID,
-		FulfillmentStatusID: fulfillmentStatusID,
-		DateReceived:        dateReceived,
-		LastMaintenance:     lastMaintenance,
-	}, nil
+	return uua, err
 }
