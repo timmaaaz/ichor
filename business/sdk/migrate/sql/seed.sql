@@ -303,6 +303,14 @@ INSERT INTO regions (region_id, country_id, name, code) VALUES
 (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Wisconsin', 'WI'),
 (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Wyoming', 'WY')
 ;
+
+INSERT INTO user_approval_status (user_approval_status_id, name, icon_id) VALUES
+    ('89173300-3f4e-4606-872c-f34914bbee19', 'PENDING', uuid_generate_v4()),
+    ('0394acac-ace4-4e8f-b64e-68625b0af14a', 'APPROVED', uuid_generate_v4()),
+    ('7b901e2e-3f33-40c1-9201-b4e8b1718b4b', 'DENIED', uuid_generate_v4()),
+    ('132a2572-b7a0-4b56-a165-55e1c244c3e2', 'UNDER REVIEW', uuid_generate_v4());
+
+
 -- INSERT INTO users (user_id, name, email, roles, password_hash, department, enabled, date_created, date_updated) VALUES
 -- 	('5cf37266-3473-4006-984f-9325122678b7', 'Admin Gopher', 'admin@example.com', '{ADMIN}', '$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a', NULL, true, '2019-03-24 00:00:00', '2019-03-24 00:00:00'),
 -- 	('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'User Gopher', 'user@example.com', '{USER}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, '2019-03-24 00:00:00', '2019-03-24 00:00:00')
@@ -310,10 +318,10 @@ INSERT INTO regions (region_id, country_id, name, code) VALUES
 INSERT INTO users (
     user_id, username, first_name, last_name, birthday, email, title_id, work_phone_id, cell_phone_id, 
     requested_by, approved_by, roles, system_roles, password_hash, office_id, enabled, 
-    date_requested, date_approved, date_created, date_updated
+    date_requested, date_approved, date_created, date_updated, user_approval_status
 ) VALUES
-    ('5cf37266-3473-4006-984f-9325122678b7', 'admin_gopher', 'Admin', 'Gopher', NULL, 'admin@example.com', NULL, NULL, NULL, NULL, NULL, '{ADMIN}', '{}', '$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a', NULL, true, NULL, NULL, '2019-03-24 00:00:00', '2019-03-24 00:00:00'),
-    ('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'user_gopher', 'User', 'Gopher', NULL, 'user@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2019-03-24 00:00:00', '2019-03-24 00:00:00')
+    ('5cf37266-3473-4006-984f-9325122678b7', 'admin_gopher', 'Admin', 'Gopher', NULL, 'admin@example.com', NULL, NULL, NULL, NULL, NULL, '{ADMIN}', '{}', '$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a', NULL, true, NULL, NULL, '2019-03-24 00:00:00', '2019-03-24 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a'),
+    ('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'user_gopher', 'User', 'Gopher', NULL, 'user@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2019-03-24 00:00:00', '2019-03-24 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a')
 ON CONFLICT DO NOTHING;
 
 
@@ -337,3 +345,4 @@ INSERT INTO asset_conditions (asset_condition_id, name) VALUES
     (uuid_generate_v4(), 'USED'),
     (uuid_generate_v4(), 'POOR'),
     (uuid_generate_v4(), 'END_OF_LIFE');
+

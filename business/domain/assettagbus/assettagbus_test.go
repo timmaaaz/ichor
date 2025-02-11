@@ -36,7 +36,7 @@ func Test_AssetTags(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	admins, err := userbus.TestSeedUsers(ctx, 1, userbus.Roles.Admin, busDomain.User)
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}

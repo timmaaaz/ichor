@@ -9,30 +9,32 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb/dbarray"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb/nulltypes"
 )
 
 type user struct {
-	ID            uuid.UUID      `db:"user_id"`
-	RequestedBy   uuid.UUID      `db:"requested_by"`
-	ApprovedBy    uuid.UUID      `db:"approved_by"`
-	TitleID       uuid.UUID      `db:"title_id"`
-	OfficeID      uuid.UUID      `db:"office_id"`
-	WorkPhoneID   uuid.UUID      `db:"work_phone_id"`
-	CellPhoneID   uuid.UUID      `db:"cell_phone_id"`
-	Username      string         `db:"username"`
-	FirstName     string         `db:"first_name"`
-	LastName      string         `db:"last_name"`
-	Email         string         `db:"email"`
-	Birthday      sql.NullTime   `db:"birthday"`
-	Roles         dbarray.String `db:"roles"`
-	SystemRoles   dbarray.String `db:"system_roles"`
-	PasswordHash  []byte         `db:"password_hash"`
-	Enabled       bool           `db:"enabled"`
-	DateHired     sql.NullTime   `db:"date_hired"`
-	DateRequested sql.NullTime   `db:"date_requested"`
-	DateApproved  sql.NullTime   `db:"date_approved"`
-	DateCreated   time.Time      `db:"date_created"`
-	DateUpdated   time.Time      `db:"date_updated"`
+	ID                 uuid.UUID      `db:"user_id"`
+	RequestedBy        sql.NullString `db:"requested_by"`
+	ApprovedBy         sql.NullString `db:"approved_by"`
+	UserApprovalStatus uuid.UUID      `db:"user_approval_status"`
+	TitleID            sql.NullString `db:"title_id"`
+	OfficeID           sql.NullString `db:"office_id"`
+	WorkPhoneID        uuid.UUID      `db:"work_phone_id"`
+	CellPhoneID        uuid.UUID      `db:"cell_phone_id"`
+	Username           string         `db:"username"`
+	FirstName          string         `db:"first_name"`
+	LastName           string         `db:"last_name"`
+	Email              string         `db:"email"`
+	Birthday           sql.NullTime   `db:"birthday"`
+	Roles              dbarray.String `db:"roles"`
+	SystemRoles        dbarray.String `db:"system_roles"`
+	PasswordHash       []byte         `db:"password_hash"`
+	Enabled            bool           `db:"enabled"`
+	DateHired          sql.NullTime   `db:"date_hired"`
+	DateRequested      sql.NullTime   `db:"date_requested"`
+	DateApproved       sql.NullTime   `db:"date_approved"`
+	DateCreated        time.Time      `db:"date_created"`
+	DateUpdated        time.Time      `db:"date_updated"`
 }
 
 func toDBUser(bus userbus.User) user {
@@ -66,27 +68,28 @@ func toDBUser(bus userbus.User) user {
 	}
 
 	return user{
-		ID:            bus.ID,
-		RequestedBy:   bus.RequestedBy,
-		ApprovedBy:    bus.ApprovedBy,
-		TitleID:       bus.TitleID,
-		OfficeID:      bus.OfficeID,
-		WorkPhoneID:   bus.WorkPhoneID,
-		CellPhoneID:   bus.CellPhoneID,
-		Username:      bus.Username.String(),
-		FirstName:     bus.FirstName.String(),
-		LastName:      bus.LastName.String(),
-		Email:         bus.Email.Address,
-		Birthday:      birthday,
-		Roles:         userbus.ParseRolesToString(bus.Roles),
-		SystemRoles:   userbus.ParseRolesToString(bus.SystemRoles),
-		PasswordHash:  bus.PasswordHash,
-		Enabled:       bus.Enabled,
-		DateHired:     dateHired,
-		DateRequested: dateRequested,
-		DateApproved:  dateApproved,
-		DateCreated:   bus.DateCreated.UTC(),
-		DateUpdated:   bus.DateUpdated.UTC(),
+		ID:                 bus.ID,
+		RequestedBy:        nulltypes.ToNullableUUID(bus.RequestedBy),
+		ApprovedBy:         nulltypes.ToNullableUUID(bus.ApprovedBy),
+		UserApprovalStatus: bus.UserApprovalStatus,
+		TitleID:            nulltypes.ToNullableUUID(bus.TitleID),
+		OfficeID:           nulltypes.ToNullableUUID(bus.OfficeID),
+		WorkPhoneID:        bus.WorkPhoneID,
+		CellPhoneID:        bus.CellPhoneID,
+		Username:           bus.Username.String(),
+		FirstName:          bus.FirstName.String(),
+		LastName:           bus.LastName.String(),
+		Email:              bus.Email.Address,
+		Birthday:           birthday,
+		Roles:              userbus.ParseRolesToString(bus.Roles),
+		SystemRoles:        userbus.ParseRolesToString(bus.SystemRoles),
+		PasswordHash:       bus.PasswordHash,
+		Enabled:            bus.Enabled,
+		DateHired:          dateHired,
+		DateRequested:      dateRequested,
+		DateApproved:       dateApproved,
+		DateCreated:        bus.DateCreated.UTC(),
+		DateUpdated:        bus.DateUpdated.UTC(),
 	}
 }
 
@@ -146,27 +149,28 @@ func toBusUser(db user) (userbus.User, error) {
 	}
 
 	bus := userbus.User{
-		ID:            db.ID,
-		RequestedBy:   db.RequestedBy,
-		ApprovedBy:    db.ApprovedBy,
-		TitleID:       db.TitleID,
-		OfficeID:      db.OfficeID,
-		WorkPhoneID:   db.WorkPhoneID,
-		CellPhoneID:   db.CellPhoneID,
-		Username:      username,
-		FirstName:     firstName,
-		LastName:      lastName,
-		Email:         email,
-		Birthday:      birthday,
-		Roles:         roles,
-		SystemRoles:   systemRoles,
-		PasswordHash:  db.PasswordHash,
-		Enabled:       db.Enabled,
-		DateHired:     dateHired,
-		DateRequested: dateRequested,
-		DateApproved:  dateApproved,
-		DateCreated:   db.DateCreated.In(time.Local),
-		DateUpdated:   db.DateUpdated.In(time.Local),
+		ID:                 db.ID,
+		RequestedBy:        nulltypes.FromNullableUUID(db.RequestedBy),
+		ApprovedBy:         nulltypes.FromNullableUUID(db.ApprovedBy),
+		UserApprovalStatus: db.UserApprovalStatus,
+		TitleID:            nulltypes.FromNullableUUID(db.TitleID),
+		OfficeID:           nulltypes.FromNullableUUID(db.OfficeID),
+		WorkPhoneID:        db.WorkPhoneID,
+		CellPhoneID:        db.CellPhoneID,
+		Username:           username,
+		FirstName:          firstName,
+		LastName:           lastName,
+		Email:              email,
+		Birthday:           birthday,
+		Roles:              roles,
+		SystemRoles:        systemRoles,
+		PasswordHash:       db.PasswordHash,
+		Enabled:            db.Enabled,
+		DateHired:          dateHired,
+		DateRequested:      dateRequested,
+		DateApproved:       dateApproved,
+		DateCreated:        db.DateCreated.In(time.Local),
+		DateUpdated:        db.DateUpdated.In(time.Local),
 	}
 
 	return bus, nil

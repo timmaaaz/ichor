@@ -7,6 +7,8 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/vproductapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus/stores/userapprovalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
@@ -30,7 +32,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	// Construct the business domain packages we need here so we are using the
 	// sames instances for the different set of domain apis.
 	delegate := delegate.New(cfg.Log)
-	userBus := userbus.NewBusiness(cfg.Log, delegate, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
+	userApprovalStatusBus := userapprovalstatusbus.NewBusiness(cfg.Log, delegate, userapprovalstatusdb.NewStore(cfg.Log, cfg.DB))
+	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{

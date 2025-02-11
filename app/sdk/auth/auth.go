@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus/stores/userapprovalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
@@ -61,8 +63,10 @@ func New(cfg Config) (*Auth, error) {
 	// If a database connection is not provided, we won't perform the
 	// user enabled check.
 	var userBus *userbus.Business
+	var userApprovalStatusBus *userapprovalstatusbus.Business
 	if cfg.DB != nil {
-		userBus = userbus.NewBusiness(cfg.Log, nil, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), 10*time.Minute))
+		userApprovalStatusBus = userapprovalstatusbus.NewBusiness(cfg.Log, nil, userapprovalstatusdb.NewStore(cfg.Log, cfg.DB))
+		userBus = userbus.NewBusiness(cfg.Log, nil, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), 10*time.Minute))
 	}
 
 	a := Auth{
