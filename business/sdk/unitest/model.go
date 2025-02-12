@@ -19,9 +19,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/titlebus"
-	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 )
 
@@ -43,7 +43,7 @@ type SeedData struct {
 	Cities             []citybus.City
 	Streets            []streetbus.Street
 	ApprovalStatus     []approvalstatusbus.ApprovalStatus
-	UserApprovalStatus []userapprovalstatusbus.UserApprovalStatus
+	UserApprovalStatus []approvalbus.UserApprovalStatus
 	FulfillmentStatus  []fulfillmentstatusbus.FulfillmentStatus
 	AssetCondition     []assetconditionbus.AssetCondition
 	AssetTypes         []assettypebus.AssetType

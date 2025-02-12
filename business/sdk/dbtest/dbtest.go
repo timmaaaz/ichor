@@ -14,8 +14,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
-	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus/stores/userapprovalstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
+	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/validassetbus/stores/assetdb"
 
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
@@ -48,9 +48,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/titlebus/stores/titledb"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus/stores/userassetdb"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
-	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
 	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/vproductbus"
 	"github.com/timmaaaz/ichor/business/domain/vproductbus/stores/vproductdb"
@@ -74,7 +74,7 @@ type BusDomain struct {
 	Street             *streetbus.Business
 	VProduct           *vproductbus.Business
 	ApprovalStatus     *approvalstatusbus.Business
-	UserApprovalStatus *userapprovalstatusbus.Business
+	UserApprovalStatus *approvalbus.Business
 	FulfillmentStatus  *fulfillmentstatusbus.Business
 	Tag                *tagbus.Business
 	AssetTag           *assettagbus.Business
@@ -100,7 +100,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	validAssetBus := validassetbus.NewBusiness(log, delegate, validassetdb.NewStore(log, db))
 	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
 
-	userapprovalstatusbus := userapprovalstatusbus.NewBusiness(log, delegate, userapprovalstatusdb.NewStore(log, db))
+	userapprovalstatusbus := approvalbus.NewBusiness(log, delegate, approvaldb.NewStore(log, db))
 	userBus := userbus.NewBusiness(log, delegate, userapprovalstatusbus, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))

@@ -13,14 +13,14 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/reportstoapp"
 	"github.com/timmaaaz/ichor/app/domain/tagapp"
 	"github.com/timmaaaz/ichor/app/domain/titleapp"
-	"github.com/timmaaaz/ichor/app/domain/userapprovalstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/userassetapp"
+	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/validassetapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
 // User extends the dbtest user for api test support.
@@ -43,7 +43,7 @@ type SeedData struct {
 	AssetTypes           []assettypeapp.AssetType
 	AssetConditions      []assetconditionapp.AssetCondition
 	ApprovalStatuses     []approvalstatusapp.ApprovalStatus
-	UserApprovalStatuses []userapprovalstatusapp.UserApprovalStatus
+	UserApprovalStatuses []approvalapp.UserApprovalStatus
 	FulfillmentStatuses  []fulfillmentstatusapp.FulfillmentStatus
 	Tags                 []tagapp.Tag
 	AssetTags            []assettagapp.AssetTag

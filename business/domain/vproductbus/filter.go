@@ -3,7 +3,7 @@ package vproductbus
 import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
 // QueryFilter holds the available fields a query can be filtered on.
