@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/officebus"
 	"github.com/timmaaaz/ichor/business/domain/titlebus"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/order"
@@ -39,6 +40,9 @@ func Test_User(t *testing.T) {
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
+	unitest.Run(t, approve(db.BusDomain, sd), "approve")
+	unitest.Run(t, deny(db.BusDomain, sd), "deny")
+	unitest.Run(t, setUnderReview(db.BusDomain, sd), "setUnderReview")
 }
 
 // =============================================================================
@@ -77,6 +81,11 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	*/
 
 	// -------------------------------------------------------------------------
+
+	userapprovalstatuses, err := busDomain.UserApprovalStatus.Query(ctx, userapprovalstatusbus.QueryFilter{}, userapprovalstatusbus.DefaultOrderBy, page.MustParse("1", "4"))
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("querying approval statuses : %w", err)
+	}
 
 	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
 	if err != nil {
@@ -150,7 +159,8 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 			{User: users[0]}, {User: users[1]}, {User: users[2]},
 			{User: users[3]}, {User: users[4]},
 			{User: requestor[0]}, {User: requestor[1]}, {User: requestor[2]}},
-		Admins: []unitest.User{tu1, tu2},
+		Admins:             []unitest.User{tu1, tu2},
+		UserApprovalStatus: userapprovalstatuses,
 	}
 
 	return sd, nil
@@ -392,5 +402,133 @@ func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		},
 	}
 
+	return table
+}
+
+func approve(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+
+	var approvedID uuid.UUID
+	for _, status := range sd.UserApprovalStatus {
+		if status.Name == "APPROVED" {
+			approvedID = status.ID
+			break
+		}
+	}
+
+	if approvedID == uuid.Nil {
+		panic("did not find status needed to continue")
+	}
+
+	table := []unitest.Table{
+		{
+			Name:    "basic",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				err := busDomain.User.Approve(ctx, sd.Users[0].User, sd.Admins[0].ID)
+				if err != nil {
+					return err
+				}
+
+				user, err := busDomain.User.QueryByID(ctx, sd.Users[0].User.ID)
+				if err != nil {
+					return err
+				}
+
+				if user.UserApprovalStatus != approvedID {
+					return fmt.Errorf("expected approval status %s, got %s", approvedID, user.UserApprovalStatus)
+				}
+
+				return nil
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+	return table
+}
+
+func deny(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+
+	var deniedID uuid.UUID
+	for _, status := range sd.UserApprovalStatus {
+		if status.Name == "DENIED" {
+			deniedID = status.ID
+			break
+		}
+	}
+
+	if deniedID == uuid.Nil {
+		panic("did not find status needed to continue")
+	}
+
+	table := []unitest.Table{
+		{
+			Name:    "basic",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				err := busDomain.User.Deny(ctx, sd.Users[0].User)
+				if err != nil {
+					return err
+				}
+
+				user, err := busDomain.User.QueryByID(ctx, sd.Users[0].User.ID)
+				if err != nil {
+					return err
+				}
+
+				if user.UserApprovalStatus != deniedID {
+					return fmt.Errorf("expected approval status %s, got %s", deniedID, user.UserApprovalStatus)
+				}
+
+				return nil
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+	return table
+}
+func setUnderReview(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+
+	var urID uuid.UUID
+	for _, status := range sd.UserApprovalStatus {
+		if status.Name == "UNDER REVIEW" {
+			urID = status.ID
+			break
+		}
+	}
+
+	if urID == uuid.Nil {
+		panic("did not find status needed to continue")
+	}
+
+	table := []unitest.Table{
+		{
+			Name:    "basic",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				err := busDomain.User.SetUnderReview(ctx, sd.Users[0].User)
+				if err != nil {
+					return err
+				}
+
+				user, err := busDomain.User.QueryByID(ctx, sd.Users[0].User.ID)
+				if err != nil {
+					return err
+				}
+
+				if user.UserApprovalStatus != urID {
+					return fmt.Errorf("expected approval status %s, got %s", urID, user.UserApprovalStatus)
+				}
+
+				return nil
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
 	return table
 }

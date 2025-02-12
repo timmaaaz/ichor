@@ -92,3 +92,18 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 
 	return usr
 }
+
+func (api *api) approve(ctx context.Context, r *http.Request) web.Encoder {
+	if err := api.userApp.ApproveUser(ctx); err != nil {
+		return errs.NewError(err)
+	}
+
+	return nil
+}
+func (api *api) deny(ctx context.Context, r *http.Request) web.Encoder {
+	if err := api.userApp.DenyUser(ctx); err != nil {
+		return errs.NewError(err)
+	}
+
+	return nil
+}

@@ -244,6 +244,7 @@ func (b *Business) Authenticate(ctx context.Context, email mail.Address, passwor
 	return usr, nil
 }
 
+// We return User for testing purposes - there might be a better way to do this
 func (b *Business) Approve(ctx context.Context, user User, approvedBy uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.approve")
 	defer span.End()
@@ -271,21 +272,21 @@ func (b *Business) Approve(ctx context.Context, user User, approvedBy uuid.UUID)
 
 	return nil
 }
-func (b *Business) Reject(ctx context.Context, user User) error {
-	ctx, span := otel.AddSpan(ctx, "business.userbus.reject")
+func (b *Business) Deny(ctx context.Context, user User) error {
+	ctx, span := otel.AddSpan(ctx, "business.userbus.deny")
 	defer span.End()
 
-	var approvedStatus string = "REJECTED"
+	var approvedStatus string = "DENIED"
 
 	statuses, err := b.uas.Query(ctx, userapprovalstatusbus.QueryFilter{Name: &approvedStatus}, userapprovalstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
 	if err != nil {
-		return fmt.Errorf("query userapprovalstatus for rejectee: %w", err)
+		return fmt.Errorf("query userapprovalstatus for denied: %w", err)
 	}
 
 	status := statuses[0]
 
 	if status.Name != approvedStatus {
-		return fmt.Errorf("approved userapprovalstatus not found: %w", err)
+		return fmt.Errorf("denied userapprovalstatus not found: %w", err)
 	}
 
 	user.UserApprovalStatus = status.ID
