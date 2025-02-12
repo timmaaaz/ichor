@@ -6,6 +6,8 @@ import (
 	"net/mail"
 	"time"
 
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus/stores/userapprovalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -28,7 +30,8 @@ func UserAdd(log *logger.Logger, cfg sqldb.Config, username, firstName, lastName
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	userBus := userbus.NewBusiness(log, nil, userdb.NewStore(log, db))
+	userApprovalStatusBus := userapprovalstatusbus.NewBusiness(log, nil, userapprovalstatusdb.NewStore(log, db))
+	userBus := userbus.NewBusiness(log, nil, userApprovalStatusBus, userdb.NewStore(log, db))
 
 	addr, err := mail.ParseAddress(email)
 	if err != nil {

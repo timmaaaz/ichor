@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -44,14 +45,16 @@ type Business struct {
 	log      *logger.Logger
 	storer   Storer
 	delegate *delegate.Delegate
+	uas      *userapprovalstatusbus.Business
 }
 
 // NewBusiness constructs a user business API for use.
-func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, uas *userapprovalstatusbus.Business, storer Storer) *Business {
 	return &Business{
 		log:      log,
 		delegate: delegate,
 		storer:   storer,
+		uas:      uas,
 	}
 }
 
@@ -82,30 +85,44 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 		return User{}, fmt.Errorf("generatefrompassword: %w", err)
 	}
 
+	var defaultStatus string = "PENDING"
+
+	statuses, err := b.uas.Query(ctx, userapprovalstatusbus.QueryFilter{Name: &defaultStatus}, userapprovalstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		return User{}, fmt.Errorf("query userapprovalstatus pending: %w", err)
+	}
+
+	status := statuses[0]
+
+	if status.Name != defaultStatus {
+		return User{}, fmt.Errorf("default approval status not found: %w", err)
+	}
+
 	now := time.Now()
 
 	usr := User{
-		ID:            uuid.New(),
-		RequestedBy:   nu.RequestedBy,
-		ApprovedBy:    uuid.Nil,
-		TitleID:       nu.TitleID,
-		OfficeID:      nu.OfficeID,
-		WorkPhoneID:   nu.WorkPhoneID,
-		CellPhoneID:   nu.CellPhoneID,
-		Username:      nu.Username,
-		FirstName:     nu.FirstName,
-		LastName:      nu.LastName,
-		Email:         nu.Email,
-		Birthday:      nu.Birthday,
-		Roles:         nu.Roles,
-		SystemRoles:   nu.SystemRoles,
-		PasswordHash:  hash,
-		Enabled:       nu.Enabled,
-		DateHired:     time.Time{}, // Zero-value
-		DateRequested: now,
-		DateApproved:  time.Time{}, // Zero-value
-		DateCreated:   now,
-		DateUpdated:   now,
+		ID:                 uuid.New(),
+		RequestedBy:        nu.RequestedBy,
+		ApprovedBy:         uuid.Nil,
+		UserApprovalStatus: status.ID,
+		TitleID:            nu.TitleID,
+		OfficeID:           nu.OfficeID,
+		WorkPhoneID:        nu.WorkPhoneID,
+		CellPhoneID:        nu.CellPhoneID,
+		Username:           nu.Username,
+		FirstName:          nu.FirstName,
+		LastName:           nu.LastName,
+		Email:              nu.Email,
+		Birthday:           nu.Birthday,
+		Roles:              nu.Roles,
+		SystemRoles:        nu.SystemRoles,
+		PasswordHash:       hash,
+		Enabled:            nu.Enabled,
+		DateHired:          time.Time{}, // Zero-value
+		DateRequested:      now,
+		DateApproved:       time.Time{}, // Zero-value
+		DateCreated:        now,
+		DateUpdated:        now,
 	}
 
 	if err := b.storer.Create(ctx, usr); err != nil {

@@ -32,14 +32,14 @@ func Test_ReportsTo(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	admins, err := userbus.TestSeedUsers(ctx, 1, userbus.Roles.Admin, busDomain.User)
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
 	// ============= User Creation =================
 
-	reporters, err := userbus.TestSeedUsers(ctx, 10, userbus.Roles.User, busDomain.User)
+	reporters, err := userbus.TestSeedUsersWithNoFKs(ctx, 10, userbus.Roles.User, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding reporter : %w", err)
 	}
@@ -49,7 +49,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		reporterIDs[i] = r.ID
 	}
 
-	bosses, err := userbus.TestSeedUsers(ctx, 10, userbus.Roles.User, busDomain.User)
+	bosses, err := userbus.TestSeedUsersWithNoFKs(ctx, 10, userbus.Roles.User, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding reporter : %w", err)
 	}

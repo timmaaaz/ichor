@@ -9,8 +9,15 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/location/citybus"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/officebus"
+	"github.com/timmaaaz/ichor/business/domain/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 	"golang.org/x/crypto/bcrypt"
@@ -28,8 +35,8 @@ func Test_User(t *testing.T) {
 
 	// -------------------------------------------------------------------------
 
-	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain), "create")
+	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
@@ -39,7 +46,7 @@ func Test_User(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	usrs, err := userbus.TestSeedUsers(ctx, 2, userbus.Roles.Admin, busDomain.User)
+	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 2, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
@@ -54,23 +61,95 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 
 	// -------------------------------------------------------------------------
 
-	usrs, err = userbus.TestSeedUsers(ctx, 2, userbus.Roles.User, busDomain.User)
+	/*
+		usrs, err = userbus.TestSeedUsersWithNoFKs(ctx, 2, userbus.Roles.User, busDomain.User)
+		if err != nil {
+			return unitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
+		}
+
+			tu3 := unitest.User{
+				User: usrs[0],
+			}
+
+			tu4 := unitest.User{
+				User: usrs[1],
+			}
+	*/
+
+	// -------------------------------------------------------------------------
+
+	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("querying regions : %w", err)
+	}
+
+	ids := make([]uuid.UUID, 0, len(regions))
+	for _, r := range regions {
+		ids = append(ids, r.ID)
+	}
+
+	cities, err := citybus.TestSeedCities(ctx, 10, ids, busDomain.City)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding cities : %w", err)
+	}
+
+	cityIDs := make([]uuid.UUID, 0, len(ids))
+	for _, c := range cities {
+		cityIDs = append(cityIDs, c.ID)
+	}
+
+	streets, err := streetbus.TestSeedStreets(ctx, 7, cityIDs, busDomain.Street)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding streets : %w", err)
+	}
+
+	streetIDs := make([]uuid.UUID, 0, len(streets))
+	for _, s := range streets {
+		streetIDs = append(streetIDs, s.ID)
+	}
+
+	offices, err := officebus.TestSeedOffices(ctx, 5, streetIDs, busDomain.Office)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding offices : %w", err)
+	}
+
+	officeIDs := make([]uuid.UUID, 0, len(offices))
+	for _, o := range offices {
+		officeIDs = append(officeIDs, o.ID)
+	}
+
+	titles, err := titlebus.TestSeedTitles(ctx, 5, busDomain.Title)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding titles : %w", err)
+	}
+
+	titleIDs := make([]uuid.UUID, 0, len(titles))
+	for _, t := range titles {
+		titleIDs = append(titleIDs, t.ID)
+	}
+
+	requestor, err := userbus.TestSeedUsersWithNoFKs(ctx, 3, userbus.Roles.User, busDomain.User)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("test user : %w", err)
+	}
+
+	requestorIDs := make([]uuid.UUID, 0, len(requestor))
+	for _, req := range requestor {
+		requestorIDs = append(requestorIDs, req.ID)
+	}
+
+	users, err := userbus.TestSeedUsers(ctx, 5, userbus.Roles.User, requestorIDs, titleIDs, officeIDs, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
-	}
-
-	tu3 := unitest.User{
-		User: usrs[0],
-	}
-
-	tu4 := unitest.User{
-		User: usrs[1],
 	}
 
 	// -------------------------------------------------------------------------
 
 	sd := unitest.SeedData{
-		Users:  []unitest.User{tu3, tu4},
+		Users: []unitest.User{
+			{User: users[0]}, {User: users[1]}, {User: users[2]},
+			{User: users[3]}, {User: users[4]},
+			{User: requestor[0]}, {User: requestor[1]}, {User: requestor[2]}},
 		Admins: []unitest.User{tu1, tu2},
 	}
 
@@ -91,7 +170,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	}
 
 	sort.Slice(usrs, func(i, j int) bool {
-		return usrs[i].ID.String() <= usrs[j].ID.String()
+		return usrs[i].FirstName.String() > usrs[j].FirstName.String()
 	})
 
 	table := []unitest.Table{
@@ -103,7 +182,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					Username: dbtest.UserNamePointer("Username"),
 				}
 
-				resp, err := busDomain.User.Query(ctx, filter, userbus.DefaultOrderBy, page.MustParse("1", "10"))
+				resp, err := busDomain.User.Query(ctx, filter, order.NewBy(userbus.OrderByFirstName, order.DESC), page.MustParse("1", "10"))
 				if err != nil {
 					return err
 				}
@@ -173,13 +252,14 @@ func create(busDomain dbtest.BusDomain) []unitest.Table {
 		{
 			Name: "basic",
 			ExpResp: userbus.User{
-				Username:    userbus.MustParseName("jtimmer"),
-				FirstName:   userbus.MustParseName("Jake"),
-				LastName:    userbus.MustParseName("Timmer"),
-				Email:       *email,
-				Roles:       []userbus.Role{userbus.Roles.Admin},
-				SystemRoles: []userbus.Role{userbus.Roles.Admin},
-				Enabled:     true,
+				Username:           userbus.MustParseName("jtimmer"),
+				FirstName:          userbus.MustParseName("Jake"),
+				LastName:           userbus.MustParseName("Timmer"),
+				Email:              *email,
+				Roles:              []userbus.Role{userbus.Roles.Admin},
+				SystemRoles:        []userbus.Role{userbus.Roles.Admin},
+				Enabled:            true,
+				UserApprovalStatus: uuid.MustParse("89173300-3f4e-4606-872c-f34914bbee19"),
 			},
 			ExcFunc: func(ctx context.Context) any {
 				nu := userbus.NewUser{

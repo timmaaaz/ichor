@@ -60,10 +60,30 @@ CREATE TABLE streets (
 );
 -- Version: 1.07
 -- Description: Create table users
+CREATE TABLE user_approval_status (
+   user_approval_status_id UUID NOT NULL, 
+   icon_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   PRIMARY KEY (user_approval_status_id)
+);
+CREATE TABLE titles (
+   title_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   description TEXT NULL,
+   PRIMARY KEY (title_id)
+);
+CREATE TABLE offices (
+   office_id UUID NOT NULL, 
+   name TEXT NOT NULL,
+   street_id UUID NOT NULL,
+   PRIMARY KEY (office_id),
+   FOREIGN KEY (street_id) REFERENCES streets(street_id) ON DELETE CASCADE
+);
 CREATE TABLE users (
    user_id UUID NOT NULL,
    requested_by UUID NULL,
    approved_by UUID NULL,
+   user_approval_status UUID NOT NULL,
    title_id UUID NULL,
    office_id UUID NULL,
    work_phone_id UUID NULL,
@@ -82,7 +102,12 @@ CREATE TABLE users (
    date_approved TIMESTAMP NULL,
    date_created TIMESTAMP NOT NULL,
    date_updated TIMESTAMP NOT NULL,
-   PRIMARY KEY (user_id)
+   PRIMARY KEY (user_id),
+   FOREIGN KEY (requested_by) REFERENCES users (user_id) ON DELETE SET NULL, -- we don't want to delete someone if their boss is deleted
+   FOREIGN KEY (approved_by) REFERENCES users (user_id) ON DELETE SET NULL, -- we don't want to delete someone if their boss is deleted
+   FOREIGN KEY (title_id) REFERENCES titles(title_id) ON DELETE CASCADE,
+   FOREIGN KEY (office_id) REFERENCES offices(office_id) ON DELETE CASCADE,
+   FOREIGN KEY (user_approval_status) REFERENCES user_approval_status(user_approval_status_id) ON DELETE CASCADE
 );
 -- Version: 1.08
 -- Description: Create table valid_assets
@@ -188,14 +213,6 @@ CREATE TABLE asset_tags (
    FOREIGN KEY (asset_id) REFERENCES valid_assets(valid_asset_id) ON DELETE CASCADE,
    FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
 );
--- Version: 1.16
--- Description: create titles table
-CREATE TABLE titles (
-   title_id UUID NOT NULL, 
-   name TEXT NOT NULL,
-   description TEXT NULL,
-   PRIMARY KEY (title_id)
-);
 -- Version: 1.17
 -- Description: Creates reports to table
 CREATE TABLE reports_to(
@@ -205,15 +222,6 @@ CREATE TABLE reports_to(
    PRIMARY KEY (reports_to_id),
    FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE CASCADE,
    FOREIGN KEY (boss_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
--- Version: 1.18
--- Description: Creates office table
-CREATE TABLE offices (
-   office_id UUID NOT NULL, 
-   name TEXT NOT NULL,
-   street_id UUID NOT NULL,
-   PRIMARY KEY (office_id),
-   FOREIGN KEY (street_id) REFERENCES streets(street_id) ON DELETE CASCADE
 );
 -- Version: 1.19
 -- Description: Add assets
@@ -240,9 +248,8 @@ CREATE TABLE user_assets (
    fulfillment_status_id UUID NOT NULL,
    PRIMARY KEY (user_asset_id),
    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+   FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE CASCADE,
    FOREIGN KEY (asset_id) REFERENCES assets(asset_id) ON DELETE CASCADE,
    FOREIGN KEY (approval_status_id) REFERENCES approval_status(approval_status_id) ON DELETE CASCADE,
-   FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE CASCADE,
    FOREIGN KEY (fulfillment_status_id) REFERENCES fulfillment_status(fulfillment_status_id) ON DELETE CASCADE
 );
-

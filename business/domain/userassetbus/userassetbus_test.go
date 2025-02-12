@@ -43,7 +43,7 @@ func Test_UserAsset(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	admins, err := userbus.TestSeedUsers(ctx, 1, userbus.Roles.Admin, busDomain.User)
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
@@ -88,7 +88,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		assetIDs[i] = a.ID
 	}
 
-	users, err := userbus.TestSeedUsers(ctx, 20, userbus.Roles.User, busDomain.User)
+	users, err := userbus.TestSeedUsersWithNoFKs(ctx, 20, userbus.Roles.User, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding approved by : %w", err)
 	}

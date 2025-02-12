@@ -36,7 +36,7 @@ func TestSeedApprovalStatus(ctx context.Context, n int, api *Business) ([]Approv
 	for i, nc := range newApprovalStatuses {
 		as, err := api.Create(ctx, nc)
 		if err != nil {
-			return nil, fmt.Errorf("seeding city: idx: %d : %w", i, err)
+			return nil, fmt.Errorf("seeding approval status: idx: %d : %w", i, err)
 		}
 
 		aprvlStatuses[i] = as

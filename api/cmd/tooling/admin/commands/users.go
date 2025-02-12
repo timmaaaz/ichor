@@ -25,7 +25,7 @@ func Users(log *logger.Logger, cfg sqldb.Config, pageNumber string, rowsPerPage 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	userBus := userbus.NewBusiness(log, nil, userdb.NewStore(log, db))
+	userBus := userbus.NewBusiness(log, nil, nil, userdb.NewStore(log, db))
 
 	page, err := page.Parse(pageNumber, rowsPerPage)
 	if err != nil {

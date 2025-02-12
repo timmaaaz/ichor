@@ -13,6 +13,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/titleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/userapprovalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/validassetapi"
 
@@ -33,6 +34,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus/stores/userapprovalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/validassetbus/stores/assetdb"
 
@@ -90,7 +93,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	// Construct the business domain packages we need here so we are using the
 	// sames instances for the different set of domain apis.
 	delegate := delegate.New(cfg.Log)
-	userBus := userbus.NewBusiness(cfg.Log, delegate, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
+	userApprovalStatusBus := userapprovalstatusbus.NewBusiness(cfg.Log, delegate, userapprovalstatusdb.NewStore(cfg.Log, cfg.DB))
+	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
 	productBus := productbus.NewBusiness(cfg.Log, userBus, delegate, productdb.NewStore(cfg.Log, cfg.DB))
 	homeBus := homebus.NewBusiness(cfg.Log, userBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(cfg.Log, cfg.DB))
@@ -248,5 +252,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AssetBus:   assetBus,
 		AuthClient: cfg.AuthClient,
 		Log:        cfg.Log,
+	})
+
+	userapprovalstatusapi.Routes(app, userapprovalstatusapi.Config{
+		UserApprovalStatusBus: userApprovalStatusBus,
+		AuthClient:            cfg.AuthClient,
+		Log:                   cfg.Log,
 	})
 }

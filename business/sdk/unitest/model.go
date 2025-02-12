@@ -19,6 +19,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/titlebus"
+	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/userbus"
 	"github.com/timmaaaz/ichor/business/domain/validassetbus"
@@ -33,25 +34,26 @@ type User struct {
 
 // SeedData represents data that was seeded for the test.
 type SeedData struct {
-	Users             []User
-	Admins            []User
-	AssetConditions   []assetconditionbus.AssetCondition
-	ValidAssets       []validassetbus.ValidAsset
-	Countries         []countrybus.Country
-	Regions           []regionbus.Region
-	Cities            []citybus.City
-	Streets           []streetbus.Street
-	ApprovalStatus    []approvalstatusbus.ApprovalStatus
-	FulfillmentStatus []fulfillmentstatusbus.FulfillmentStatus
-	AssetCondition    []assetconditionbus.AssetCondition
-	AssetTypes        []assettypebus.AssetType
-	Tags              []tagbus.Tag
-	AssetTags         []assettagbus.AssetTag
-	Title             []titlebus.Title
-	ReportsTo         []reportstobus.ReportsTo
-	Offices           []officebus.Office
-	UserAssets        []userassetbus.UserAsset
-	Assets            []assetbus.Asset
+	Users              []User
+	Admins             []User
+	AssetConditions    []assetconditionbus.AssetCondition
+	ValidAssets        []validassetbus.ValidAsset
+	Countries          []countrybus.Country
+	Regions            []regionbus.Region
+	Cities             []citybus.City
+	Streets            []streetbus.Street
+	ApprovalStatus     []approvalstatusbus.ApprovalStatus
+	UserApprovalStatus []userapprovalstatusbus.UserApprovalStatus
+	FulfillmentStatus  []fulfillmentstatusbus.FulfillmentStatus
+	AssetCondition     []assetconditionbus.AssetCondition
+	AssetTypes         []assettypebus.AssetType
+	Tags               []tagbus.Tag
+	AssetTags          []assettagbus.AssetTag
+	Title              []titlebus.Title
+	ReportsTo          []reportstobus.ReportsTo
+	Offices            []officebus.Office
+	UserAssets         []userassetbus.UserAsset
+	Assets             []assetbus.Asset
 }
 
 type Table struct {
