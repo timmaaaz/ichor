@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/userapp"
+	"github.com/timmaaaz/ichor/app/domain/users/userapp"
 	"github.com/timmaaaz/ichor/app/sdk/query"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {

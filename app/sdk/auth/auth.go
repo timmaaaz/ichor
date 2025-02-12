@@ -14,11 +14,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus/stores/userapprovalstatusdb"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
-	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
+	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -63,9 +63,9 @@ func New(cfg Config) (*Auth, error) {
 	// If a database connection is not provided, we won't perform the
 	// user enabled check.
 	var userBus *userbus.Business
-	var userApprovalStatusBus *userapprovalstatusbus.Business
+	var userApprovalStatusBus *approvalbus.Business
 	if cfg.DB != nil {
-		userApprovalStatusBus = userapprovalstatusbus.NewBusiness(cfg.Log, nil, userapprovalstatusdb.NewStore(cfg.Log, cfg.DB))
+		userApprovalStatusBus = approvalbus.NewBusiness(cfg.Log, nil, approvaldb.NewStore(cfg.Log, cfg.DB))
 		userBus = userbus.NewBusiness(cfg.Log, nil, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), 10*time.Minute))
 	}
 

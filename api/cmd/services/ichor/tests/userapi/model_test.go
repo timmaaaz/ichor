@@ -3,8 +3,8 @@ package user_test
 import (
 	"time"
 
-	"github.com/timmaaaz/ichor/app/domain/userapp"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/app/domain/users/userapp"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
 func toAppUser(bus userbus.User) userapp.User {

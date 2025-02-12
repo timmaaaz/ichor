@@ -13,7 +13,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assettagbus"
 	"github.com/timmaaaz/ichor/business/domain/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/tagbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )

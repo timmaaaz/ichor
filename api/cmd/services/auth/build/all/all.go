@@ -7,9 +7,9 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/authapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus/stores/usercache"
-	"github.com/timmaaaz/ichor/business/domain/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/foundation/web"
 )

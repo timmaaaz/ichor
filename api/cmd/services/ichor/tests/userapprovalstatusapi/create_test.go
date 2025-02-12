@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/userapprovalstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
@@ -20,26 +20,26 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/userapprovalstatus",
+			URL:        "/v1/users/status/approvals",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
-			Input: &userapprovalstatusapp.NewUserApprovalStatus{
+			Input: &approvalapp.NewUserApprovalStatus{
 				IconID: newUUID.String(),
 				Name:   "TestUserApprovalStatus",
 			},
-			GotResp: &userapprovalstatusapp.UserApprovalStatus{},
-			ExpResp: &userapprovalstatusapp.UserApprovalStatus{
+			GotResp: &approvalapp.UserApprovalStatus{},
+			ExpResp: &approvalapp.UserApprovalStatus{
 				IconID: newUUID.String(),
 				Name:   "TestUserApprovalStatus",
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(*userapprovalstatusapp.UserApprovalStatus)
+				gotResp, exists := got.(*approvalapp.UserApprovalStatus)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*userapprovalstatusapp.UserApprovalStatus)
+				expResp := exp.(*approvalapp.UserApprovalStatus)
 				expResp.ID = gotResp.ID
 
 				return cmp.Diff(got, exp)
@@ -60,11 +60,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "missing icon id",
-			URL:        "/v1/userapprovalstatus",
+			URL:        "/v1/users/status/approvals",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &userapprovalstatusapp.NewUserApprovalStatus{
+			Input: &approvalapp.NewUserApprovalStatus{
 				Name: "missing icon id",
 			},
 			GotResp: &errs.Error{},
@@ -75,11 +75,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing name",
-			URL:        "/v1/userapprovalstatus",
+			URL:        "/v1/users/status/approvals",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &userapprovalstatusapp.NewUserApprovalStatus{
+			Input: &approvalapp.NewUserApprovalStatus{
 				IconID: newUUID.String(),
 			},
 			GotResp: &errs.Error{},

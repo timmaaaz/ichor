@@ -5,7 +5,7 @@ import (
 
 	"github.com/timmaaaz/ichor/app/domain/vproductapp"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
 func toAppVProduct(usr userbus.User, prd productbus.Product) vproductapp.Product {

@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/userapprovalstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/userapprovalstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/userbus"
+	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -38,19 +38,19 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
 	}
 
-	approvalstatus1, err := busDomain.UserApprovalStatus.Query(ctx, userapprovalstatusbus.QueryFilter{}, order.NewBy(userapprovalstatusbus.OrderByName, order.ASC), page.MustParse("1", "2"))
+	approvalstatus1, err := busDomain.UserApprovalStatus.Query(ctx, approvalbus.QueryFilter{}, order.NewBy(approvalbus.OrderByName, order.ASC), page.MustParse("1", "2"))
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("querying approval statuses : %w", err)
 	}
 
-	approvalstatus2, err := busDomain.UserApprovalStatus.Query(ctx, userapprovalstatusbus.QueryFilter{}, order.NewBy(userapprovalstatusbus.OrderByName, order.ASC), page.MustParse("2", "2"))
+	approvalstatus2, err := busDomain.UserApprovalStatus.Query(ctx, approvalbus.QueryFilter{}, order.NewBy(approvalbus.OrderByName, order.ASC), page.MustParse("2", "2"))
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("querying approval statuses : %w", err)
 	}
 
 	apprvls := append(approvalstatus1, approvalstatus2...)
 
-	appApprvls := userapprovalstatusapp.ToAppUserApprovalStatuses(apprvls)
+	appApprvls := approvalapp.ToAppUserApprovalStatuses(apprvls)
 
 	sd := apitest.SeedData{
 		Users:                []apitest.User{tu1},
