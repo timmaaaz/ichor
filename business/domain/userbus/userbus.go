@@ -244,7 +244,6 @@ func (b *Business) Authenticate(ctx context.Context, email mail.Address, passwor
 	return usr, nil
 }
 
-// We return User for testing purposes - there might be a better way to do this
 func (b *Business) Approve(ctx context.Context, user User, approvedBy uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.approve")
 	defer span.End()
