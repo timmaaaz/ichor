@@ -146,3 +146,21 @@ func (a *App) QueryByID(ctx context.Context) (User, error) {
 
 	return toAppUser(usr), nil
 }
+
+func (a *App) ApproveUser(ctx context.Context) error {
+	usr, err := mid.GetUser(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "approveuser: %s", err)
+	}
+
+	usrID, err := mid.GetUserID(ctx)
+	if err != nil || usrID != usr.ID {
+		return errs.Newf(errs.Internal, "approveuser: %s", err)
+	}
+
+	if err := a.userBus.Approve(ctx, &usr, usrID); err != nil {
+		return errs.Newf(errs.Internal, "approveuser: userID[%s]: %s", usr.ID, err)
+	}
+
+	return nil
+}
