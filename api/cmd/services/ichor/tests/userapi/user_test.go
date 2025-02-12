@@ -33,4 +33,10 @@ func Test_User(t *testing.T) {
 
 	test.Run(t, delete200(sd), "delete-200")
 	test.Run(t, delete401(sd), "delete-401")
+
+	test.Run(t, approve200(sd), "approve-200")
+	test.Run(t, approve401(sd), "approve-401")
+
+	test.Run(t, deny200(sd), "deny-200")
+	test.Run(t, deny401(sd), "deny-401")
 }

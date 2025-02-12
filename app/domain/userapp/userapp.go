@@ -146,3 +146,47 @@ func (a *App) QueryByID(ctx context.Context) (User, error) {
 
 	return toAppUser(usr), nil
 }
+
+func (a *App) ApproveUser(ctx context.Context) error {
+	usr, err := mid.GetUser(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "approveuser: %s", err)
+	}
+
+	usrID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "approveuser: %s", err)
+	}
+
+	// we don't need to send the user information back to the user probably
+	if err := a.userBus.Approve(ctx, usr, usrID); err != nil {
+		return errs.Newf(errs.Internal, "approveuser: userID[%s]: %s", usr.ID, err)
+	}
+
+	return nil
+}
+
+func (a *App) DenyUser(ctx context.Context) error {
+	usr, err := mid.GetUser(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "deny user: %s", err)
+	}
+
+	if err := a.userBus.Deny(ctx, usr); err != nil {
+		return errs.Newf(errs.Internal, "deny user: userID[%s]: %s", usr.ID, err)
+	}
+
+	return nil
+}
+
+func (a *App) SetUserUnderReview(ctx context.Context) error {
+	usr, err := mid.GetUser(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "SetUserPending: %s", err)
+	}
+	if err := a.userBus.SetUnderReview(ctx, usr); err != nil {
+		return errs.Newf(errs.Internal, "SetUserPending: userID[%s]: %s", usr.ID, err)
+	}
+
+	return nil
+}

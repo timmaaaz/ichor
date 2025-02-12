@@ -35,4 +35,6 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodPut, version, "/users/role/{user_id}", api.updateRole, authen, ruleAuthorizeAdmin)
 	app.HandlerFunc(http.MethodPut, version, "/users/{user_id}", api.update, authen, ruleAuthorizeUser)
 	app.HandlerFunc(http.MethodDelete, version, "/users/{user_id}", api.delete, authen, ruleAuthorizeUser)
+	app.HandlerFunc(http.MethodPut, version, "/users/approve/{user_id}", api.approve, authen, ruleAuthorizeAdmin)
+	app.HandlerFunc(http.MethodPut, version, "/users/deny/{user_id}", api.deny, authen, ruleAuthorizeAdmin)
 }

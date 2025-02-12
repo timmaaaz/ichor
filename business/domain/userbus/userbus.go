@@ -243,3 +243,82 @@ func (b *Business) Authenticate(ctx context.Context, email mail.Address, passwor
 
 	return usr, nil
 }
+
+// We return User for testing purposes - there might be a better way to do this
+func (b *Business) Approve(ctx context.Context, user User, approvedBy uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.userbus.approve")
+	defer span.End()
+
+	var approvedStatus string = "APPROVED"
+
+	statuses, err := b.uas.Query(ctx, userapprovalstatusbus.QueryFilter{Name: &approvedStatus}, userapprovalstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		return fmt.Errorf("query userapprovalstatus for approved: %w", err)
+	}
+
+	status := statuses[0]
+
+	if status.Name != approvedStatus {
+		return fmt.Errorf("approved userapprovalstatus not found: %w", err)
+	}
+
+	user.DateApproved = time.Now()
+	user.ApprovedBy = approvedBy
+	user.UserApprovalStatus = status.ID
+
+	if err := b.storer.Update(ctx, user); err != nil {
+		return fmt.Errorf("update: %w", err)
+	}
+
+	return nil
+}
+func (b *Business) Deny(ctx context.Context, user User) error {
+	ctx, span := otel.AddSpan(ctx, "business.userbus.deny")
+	defer span.End()
+
+	var approvedStatus string = "DENIED"
+
+	statuses, err := b.uas.Query(ctx, userapprovalstatusbus.QueryFilter{Name: &approvedStatus}, userapprovalstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		return fmt.Errorf("query userapprovalstatus for denied: %w", err)
+	}
+
+	status := statuses[0]
+
+	if status.Name != approvedStatus {
+		return fmt.Errorf("denied userapprovalstatus not found: %w", err)
+	}
+
+	user.UserApprovalStatus = status.ID
+
+	if err := b.storer.Update(ctx, user); err != nil {
+		return fmt.Errorf("update: %w", err)
+	}
+
+	return nil
+}
+func (b *Business) SetUnderReview(ctx context.Context, user User) error {
+	ctx, span := otel.AddSpan(ctx, "business.userbus.setunderreview")
+	defer span.End()
+
+	var underReviewStatus string = "UNDER REVIEW"
+
+	statuses, err := b.uas.Query(ctx, userapprovalstatusbus.QueryFilter{Name: &underReviewStatus}, userapprovalstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		return fmt.Errorf("query userapprovalstatus for under review: %w", err)
+	}
+
+	status := statuses[0]
+
+	if status.Name != underReviewStatus {
+		return fmt.Errorf("under review userapprovalstatus not found: %w", err)
+	}
+
+	user.UserApprovalStatus = status.ID
+
+	if err := b.storer.Update(ctx, user); err != nil {
+		return fmt.Errorf("update: %w", err)
+	}
+
+	return nil
+}

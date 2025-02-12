@@ -69,7 +69,7 @@ func (app *NewTran) Decode(data []byte) error {
 // NewUser contains information needed to create a new user.
 // NewUser defines the data needed to add a new user.
 type NewUser struct {
-	RequestedBy     string   `json:"requestedBy" validate:"omitempty"`
+	RequestedBy     string   `json:"requestedBy" validate:"omitempty"` // we might be able to infer this instead of taking it as an argument
 	TitleID         string   `json:"titleID" validate:"omitempty"`
 	OfficeID        string   `json:"officeID" validate:"omitempty"`
 	WorkPhoneID     string   `json:"workPhoneID" validate:"omitempty"`
