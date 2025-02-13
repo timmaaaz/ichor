@@ -16,6 +16,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
+	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
+	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/validassetbus/stores/assetdb"
 
 	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
@@ -64,23 +66,24 @@ import (
 
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
-	Delegate           *delegate.Delegate
-	Home               *homebus.Business
-	Product            *productbus.Business
-	User               *userbus.Business
-	Country            *countrybus.Business
-	Region             *regionbus.Business
-	City               *citybus.Business
-	Street             *streetbus.Business
-	VProduct           *vproductbus.Business
-	ApprovalStatus     *approvalstatusbus.Business
-	UserApprovalStatus *approvalbus.Business
-	FulfillmentStatus  *fulfillmentstatusbus.Business
-	Tag                *tagbus.Business
-	AssetTag           *assettagbus.Business
-	Title              *titlebus.Business
-	ReportsTo          *reportstobus.Business
-	Office             *officebus.Business
+	Delegate            *delegate.Delegate
+	Home                *homebus.Business
+	Product             *productbus.Business
+	User                *userbus.Business
+	Country             *countrybus.Business
+	Region              *regionbus.Business
+	City                *citybus.Business
+	Street              *streetbus.Business
+	VProduct            *vproductbus.Business
+	ApprovalStatus      *approvalstatusbus.Business
+	UserApprovalStatus  *approvalbus.Business
+	UserApprovalComment *commentbus.Business
+	FulfillmentStatus   *fulfillmentstatusbus.Business
+	Tag                 *tagbus.Business
+	AssetTag            *assettagbus.Business
+	Title               *titlebus.Business
+	ReportsTo           *reportstobus.Business
+	Office              *officebus.Business
 
 	ValidAsset     *validassetbus.Business
 	AssetType      *assettypebus.Business
@@ -115,30 +118,32 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
 	userAssetBus := userassetbus.NewBusiness(log, delegate, userassetdb.NewStore(log, db))
 	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
+	userApprovalCommentBus := commentbus.NewBusiness(log, delegate, commentdb.NewStore(log, db))
 
 	return BusDomain{
-		Delegate:           delegate,
-		Home:               homeBus,
-		AssetType:          assetTypeBus,
-		ValidAsset:         validAssetBus,
-		Product:            productBus,
-		User:               userBus,
-		UserApprovalStatus: userapprovalstatusbus,
-		Country:            countryBus,
-		Region:             regionBus,
-		City:               cityBus,
-		Street:             streetBus,
-		VProduct:           vproductBus,
-		ApprovalStatus:     approvalstatusBus,
-		FulfillmentStatus:  fulfillmentstatusBus,
-		AssetCondition:     assetConditionBus,
-		Tag:                tagBus,
-		AssetTag:           assetTagBus,
-		Title:              titlebus,
-		ReportsTo:          reportsToBus,
-		Office:             officeBus,
-		UserAsset:          userAssetBus,
-		Asset:              assetBus,
+		Delegate:            delegate,
+		Home:                homeBus,
+		AssetType:           assetTypeBus,
+		ValidAsset:          validAssetBus,
+		Product:             productBus,
+		User:                userBus,
+		UserApprovalStatus:  userapprovalstatusbus,
+		UserApprovalComment: userApprovalCommentBus,
+		Country:             countryBus,
+		Region:              regionBus,
+		City:                cityBus,
+		Street:              streetBus,
+		VProduct:            vproductBus,
+		ApprovalStatus:      approvalstatusBus,
+		FulfillmentStatus:   fulfillmentstatusBus,
+		AssetCondition:      assetConditionBus,
+		Tag:                 tagBus,
+		AssetTag:            assetTagBus,
+		Title:               titlebus,
+		ReportsTo:           reportsToBus,
+		Office:              officeBus,
+		UserAsset:           userAssetBus,
+		Asset:               assetBus,
 	}
 
 }

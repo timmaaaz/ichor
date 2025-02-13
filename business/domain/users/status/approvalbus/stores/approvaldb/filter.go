@@ -12,7 +12,7 @@ func applyFilter(filter approvalbus.QueryFilter, data map[string]any, buf *bytes
 
 	if filter.ID != nil {
 		data["user_approval_status_id"] = *filter.ID
-		wc = append(wc, "approval_status_id = :approval_status_id")
+		wc = append(wc, "user_approval_status_id = :user_approval_status_id")
 	}
 
 	if filter.IconID != nil {
