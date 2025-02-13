@@ -97,8 +97,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	// sames instances for the different set of domain apis.
 	delegate := delegate.New(cfg.Log)
 	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB))
-	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, commentdb.NewStore(cfg.Log, cfg.DB))
 	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
+	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, userBus, commentdb.NewStore(cfg.Log, cfg.DB))
 	productBus := productbus.NewBusiness(cfg.Log, userBus, delegate, productdb.NewStore(cfg.Log, cfg.DB))
 	homeBus := homebus.NewBusiness(cfg.Log, userBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(cfg.Log, cfg.DB))

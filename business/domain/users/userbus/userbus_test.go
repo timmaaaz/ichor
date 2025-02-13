@@ -509,7 +509,7 @@ func setUnderReview(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.T
 			Name:    "basic",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.User.SetUnderReview(ctx, sd.Users[0].User)
+				err := busDomain.User.SetUnderReview(ctx, sd.Users[0].User.ID)
 				if err != nil {
 					return err
 				}

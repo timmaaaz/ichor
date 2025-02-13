@@ -178,15 +178,3 @@ func (a *App) DenyUser(ctx context.Context) error {
 
 	return nil
 }
-
-func (a *App) SetUserUnderReview(ctx context.Context) error {
-	usr, err := mid.GetUser(ctx)
-	if err != nil {
-		return errs.Newf(errs.Internal, "SetUserPending: %s", err)
-	}
-	if err := a.userBus.SetUnderReview(ctx, usr); err != nil {
-		return errs.Newf(errs.Internal, "SetUserPending: userID[%s]: %s", usr.ID, err)
-	}
-
-	return nil
-}
