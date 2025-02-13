@@ -27,9 +27,9 @@ func Routes(app *web.App, cfg Config) {
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
 	api := newAPI(cityapp.NewApp(cfg.CityBus))
-	app.HandlerFunc(http.MethodGet, version, "/cities", api.query, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodGet, version, "/cities/{city_id}", api.queryByID, authen)
-	app.HandlerFunc(http.MethodPost, version, "/cities", api.create, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodPut, version, "/cities/{city_id}", api.update, authen)
-	app.HandlerFunc(http.MethodDelete, version, "/cities/{city_id}", api.delete, authen)
+	app.HandlerFunc(http.MethodGet, version, "/location/cities", api.query, authen, ruleAdmin)
+	app.HandlerFunc(http.MethodGet, version, "/location/cities/{city_id}", api.queryByID, authen)
+	app.HandlerFunc(http.MethodPost, version, "/location/cities", api.create, authen, ruleAdmin)
+	app.HandlerFunc(http.MethodPut, version, "/location/cities/{city_id}", api.update, authen)
+	app.HandlerFunc(http.MethodDelete, version, "/location/cities/{city_id}", api.delete, authen)
 }

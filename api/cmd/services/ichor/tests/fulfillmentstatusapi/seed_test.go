@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/fulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/fulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/order"

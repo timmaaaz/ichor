@@ -27,9 +27,9 @@ func Routes(app *web.App, cfg Config) {
 	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
 	api := newAPI(streetapp.NewApp(cfg.StreetBus))
-	app.HandlerFunc(http.MethodGet, version, "/streets", api.query, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodGet, version, "/streets/{street_id}", api.queryByID, authen)
-	app.HandlerFunc(http.MethodPost, version, "/streets", api.create, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodPut, version, "/streets/{street_id}", api.update, authen)
-	app.HandlerFunc(http.MethodDelete, version, "/streets/{street_id}", api.delete, authen)
+	app.HandlerFunc(http.MethodGet, version, "/location/streets", api.query, authen, ruleAdmin)
+	app.HandlerFunc(http.MethodGet, version, "/location/streets/{street_id}", api.queryByID, authen)
+	app.HandlerFunc(http.MethodPost, version, "/location/streets", api.create, authen, ruleAdmin)
+	app.HandlerFunc(http.MethodPut, version, "/location/streets/{street_id}", api.update, authen)
+	app.HandlerFunc(http.MethodDelete, version, "/location/streets/{street_id}", api.delete, authen)
 }

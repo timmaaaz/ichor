@@ -26,6 +26,6 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(regionapp.NewApp(cfg.RegionBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/regions", api.query, authen)
-	app.HandlerFunc(http.MethodGet, version, "/regions/{region_id}", api.queryByID, authen)
+	app.HandlerFunc(http.MethodGet, version, "/location/regions", api.query, authen)
+	app.HandlerFunc(http.MethodGet, version, "/location/regions/{region_id}", api.queryByID, authen)
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/assetapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assetapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 

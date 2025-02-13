@@ -7,12 +7,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 
-	"github.com/timmaaaz/ichor/app/domain/assettypeapp"
-	"github.com/timmaaaz/ichor/app/domain/validassetapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assettypeapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 
-	"github.com/timmaaaz/ichor/business/domain/assettypebus"
-	"github.com/timmaaaz/ichor/business/domain/validassetbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
+	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
