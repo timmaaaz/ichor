@@ -118,7 +118,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
 	userAssetBus := userassetbus.NewBusiness(log, delegate, userassetdb.NewStore(log, db))
 	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
-	userApprovalCommentBus := commentbus.NewBusiness(log, delegate, commentdb.NewStore(log, db))
+	userApprovalCommentBus := commentbus.NewBusiness(log, delegate, userBus, commentdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:            delegate,
