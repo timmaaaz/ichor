@@ -27,6 +27,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/productapi"
 	"github.com/timmaaaz/ichor/api/domain/http/tranapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/status/approvalapi"
+	"github.com/timmaaaz/ichor/api/domain/http/users/status/commentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/userapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
 
@@ -36,6 +37,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
+	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
+	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
 	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/validassetbus/stores/assetdb"
 
@@ -93,6 +96,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	// sames instances for the different set of domain apis.
 	delegate := delegate.New(cfg.Log)
 	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB))
+	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, commentdb.NewStore(cfg.Log, cfg.DB))
+
 	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
 	productBus := productbus.NewBusiness(cfg.Log, userBus, delegate, productdb.NewStore(cfg.Log, cfg.DB))
 	homeBus := homebus.NewBusiness(cfg.Log, userBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
@@ -247,4 +252,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:            cfg.AuthClient,
 		Log:                   cfg.Log,
 	})
+
+	commentapi.Routes(app, commentapi.Config{
+		Log:                    cfg.Log,
+		UserApprovalCommentBus: userApprovalCommentBus,
+		AuthClient:             cfg.AuthClient,
+	})
+
 }

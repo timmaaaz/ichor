@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/titleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/status/approvalapi"
+	"github.com/timmaaaz/ichor/api/domain/http/users/status/commentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/validassetapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
@@ -70,6 +71,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
+	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
+	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
@@ -94,6 +97,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	// sames instances for the different set of domain apis.
 	delegate := delegate.New(cfg.Log)
 	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB))
+	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, commentdb.NewStore(cfg.Log, cfg.DB))
 	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
 	productBus := productbus.NewBusiness(cfg.Log, userBus, delegate, productdb.NewStore(cfg.Log, cfg.DB))
 	homeBus := homebus.NewBusiness(cfg.Log, userBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
@@ -258,5 +262,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		UserApprovalStatusBus: userApprovalStatusBus,
 		AuthClient:            cfg.AuthClient,
 		Log:                   cfg.Log,
+	})
+
+	commentapi.Routes(app, commentapi.Config{
+		Log:                    cfg.Log,
+		UserApprovalCommentBus: userApprovalCommentBus,
+		AuthClient:             cfg.AuthClient,
 	})
 }

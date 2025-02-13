@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/titleapp"
 	"github.com/timmaaaz/ichor/app/domain/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
+	"github.com/timmaaaz/ichor/app/domain/users/status/commentapp"
 	"github.com/timmaaaz/ichor/app/domain/validassetapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
@@ -44,6 +45,7 @@ type SeedData struct {
 	AssetConditions      []assetconditionapp.AssetCondition
 	ApprovalStatuses     []approvalstatusapp.ApprovalStatus
 	UserApprovalStatuses []approvalapp.UserApprovalStatus
+	UserApprovalComments []commentapp.UserApprovalComment
 	FulfillmentStatuses  []fulfillmentstatusapp.FulfillmentStatus
 	Tags                 []tagapp.Tag
 	AssetTags            []assettagapp.AssetTag

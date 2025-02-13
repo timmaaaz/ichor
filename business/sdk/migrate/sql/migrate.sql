@@ -253,3 +253,17 @@ CREATE TABLE user_assets (
    FOREIGN KEY (approval_status_id) REFERENCES approval_status(approval_status_id) ON DELETE CASCADE,
    FOREIGN KEY (fulfillment_status_id) REFERENCES fulfillment_status(fulfillment_status_id) ON DELETE CASCADE
 );
+
+
+-- Version: 1.21
+-- Description: Add user_approval_comments
+CREATE TABLE user_approval_comments (
+   comment_id UUID NOT NULL,
+   comment VARCHAR(255) NOT NULL,
+   commenter_id UUID NOT NULL,
+   user_id UUID NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (comment_id),
+   FOREIGN KEY (commenter_id) REFERENCES users(user_id) ON DELETE SET NULL,
+   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+);
