@@ -6,15 +6,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/assettagapp"
-	"github.com/timmaaaz/ichor/app/domain/tagapp"
-	"github.com/timmaaaz/ichor/app/domain/validassetapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assettagapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/assettagbus"
-	"github.com/timmaaaz/ichor/business/domain/assettypebus"
-	"github.com/timmaaaz/ichor/business/domain/tagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
+	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
-	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
 

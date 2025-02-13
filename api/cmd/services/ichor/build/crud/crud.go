@@ -4,21 +4,21 @@ package crud
 import (
 	"time"
 
-	"github.com/timmaaaz/ichor/api/domain/http/approvalstatusapi"
-	"github.com/timmaaaz/ichor/api/domain/http/assetapi"
-	"github.com/timmaaaz/ichor/api/domain/http/assettagapi"
-	"github.com/timmaaaz/ichor/api/domain/http/officeapi"
-	"github.com/timmaaaz/ichor/api/domain/http/reportstoapi"
-	"github.com/timmaaaz/ichor/api/domain/http/tagapi"
-	"github.com/timmaaaz/ichor/api/domain/http/titleapi"
-	"github.com/timmaaaz/ichor/api/domain/http/userassetapi"
-	"github.com/timmaaaz/ichor/api/domain/http/validassetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assets/approvalstatusapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assets/assetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assets/assettagapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assets/tagapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
+	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
+	"github.com/timmaaaz/ichor/api/domain/http/users/titleapi"
 
-	"github.com/timmaaaz/ichor/api/domain/http/assetconditionapi"
-	"github.com/timmaaaz/ichor/api/domain/http/assettypeapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assets/assetconditionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/assets/assettypeapi"
 
+	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
-	"github.com/timmaaaz/ichor/api/domain/http/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/homeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/cityapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/countryapi"
@@ -31,36 +31,36 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/users/userapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
 
-	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
-	"github.com/timmaaaz/ichor/business/domain/assetbus"
-	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus/stores/approvalstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
+	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
-	"github.com/timmaaaz/ichor/business/domain/validassetbus"
-	validassetdb "github.com/timmaaaz/ichor/business/domain/validassetbus/stores/assetdb"
 
-	"github.com/timmaaaz/ichor/business/domain/assettagbus"
-	"github.com/timmaaaz/ichor/business/domain/assettagbus/store/assettagdb"
-	"github.com/timmaaaz/ichor/business/domain/officebus"
-	"github.com/timmaaaz/ichor/business/domain/officebus/stores/officedb"
-	"github.com/timmaaaz/ichor/business/domain/reportstobus"
-	"github.com/timmaaaz/ichor/business/domain/reportstobus/store/reportstodb"
-	"github.com/timmaaaz/ichor/business/domain/tagbus"
-	"github.com/timmaaaz/ichor/business/domain/tagbus/stores/tagdb"
-	"github.com/timmaaaz/ichor/business/domain/titlebus"
-	"github.com/timmaaaz/ichor/business/domain/titlebus/stores/titledb"
-	"github.com/timmaaaz/ichor/business/domain/userassetbus"
-	"github.com/timmaaaz/ichor/business/domain/userassetbus/stores/userassetdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus/store/assettagdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/tagbus/stores/tagdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus/stores/userassetdb"
+	"github.com/timmaaaz/ichor/business/domain/location/officebus"
+	"github.com/timmaaaz/ichor/business/domain/location/officebus/stores/officedb"
+	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
+	"github.com/timmaaaz/ichor/business/domain/users/reportstobus/store/reportstodb"
+	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
+	"github.com/timmaaaz/ichor/business/domain/users/titlebus/stores/titledb"
 
-	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
-	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
-	"github.com/timmaaaz/ichor/business/domain/assettypebus"
-	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
-	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
-	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus/stores/assettypedb"
+	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
+	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus/stores"
 
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
@@ -96,9 +96,9 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	// sames instances for the different set of domain apis.
 	delegate := delegate.New(cfg.Log)
 	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB))
-	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, commentdb.NewStore(cfg.Log, cfg.DB))
-
 	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
+	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, userBus, commentdb.NewStore(cfg.Log, cfg.DB))
+
 	productBus := productbus.NewBusiness(cfg.Log, userBus, delegate, productdb.NewStore(cfg.Log, cfg.DB))
 	homeBus := homebus.NewBusiness(cfg.Log, userBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
 	countryBus := countrybus.NewBusiness(cfg.Log, delegate, countrydb.NewStore(cfg.Log, cfg.DB))

@@ -11,11 +11,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
+	"github.com/timmaaaz/ichor/business/domain/location/officebus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	"github.com/timmaaaz/ichor/business/domain/officebus"
-	"github.com/timmaaaz/ichor/business/domain/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
+	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/order"
@@ -509,7 +509,7 @@ func setUnderReview(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.T
 			Name:    "basic",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.User.SetUnderReview(ctx, sd.Users[0].User)
+				err := busDomain.User.SetUnderReview(ctx, sd.Users[0].User.ID)
 				if err != nil {
 					return err
 				}

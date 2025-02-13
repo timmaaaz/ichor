@@ -10,50 +10,50 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/approvalstatusbus/stores/approvalstatusdb"
-	"github.com/timmaaaz/ichor/business/domain/assetbus"
-	"github.com/timmaaaz/ichor/business/domain/assetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus/stores/approvalstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
+	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
-	validassetdb "github.com/timmaaaz/ichor/business/domain/validassetbus/stores/assetdb"
 
-	"github.com/timmaaaz/ichor/business/domain/assetconditionbus"
-	"github.com/timmaaaz/ichor/business/domain/assetconditionbus/stores/assetconditiondb"
-	"github.com/timmaaaz/ichor/business/domain/assettagbus"
-	"github.com/timmaaaz/ichor/business/domain/assettagbus/store/assettagdb"
-	"github.com/timmaaaz/ichor/business/domain/assettypebus"
-	"github.com/timmaaaz/ichor/business/domain/assettypebus/stores/assettypedb"
-	"github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus"
-	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/fulfillmentstatusbus/stores"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus/store/assettagdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus/stores/assettypedb"
+	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
+	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus/stores"
+	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/tagbus/stores/tagdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus/stores/userassetdb"
+	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus/stores/countrydb"
+	"github.com/timmaaaz/ichor/business/domain/location/officebus"
+	"github.com/timmaaaz/ichor/business/domain/location/officebus/stores/officedb"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
-	"github.com/timmaaaz/ichor/business/domain/officebus"
-	"github.com/timmaaaz/ichor/business/domain/officebus/stores/officedb"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
-	"github.com/timmaaaz/ichor/business/domain/reportstobus"
-	"github.com/timmaaaz/ichor/business/domain/reportstobus/store/reportstodb"
-	"github.com/timmaaaz/ichor/business/domain/tagbus"
-	"github.com/timmaaaz/ichor/business/domain/tagbus/stores/tagdb"
-	"github.com/timmaaaz/ichor/business/domain/titlebus"
-	"github.com/timmaaaz/ichor/business/domain/titlebus/stores/titledb"
-	"github.com/timmaaaz/ichor/business/domain/userassetbus"
-	"github.com/timmaaaz/ichor/business/domain/userassetbus/stores/userassetdb"
+	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
+	"github.com/timmaaaz/ichor/business/domain/users/reportstobus/store/reportstodb"
+	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
+	"github.com/timmaaaz/ichor/business/domain/users/titlebus/stores/titledb"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
-	"github.com/timmaaaz/ichor/business/domain/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/vproductbus"
 	"github.com/timmaaaz/ichor/business/domain/vproductbus/stores/vproductdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -66,59 +66,71 @@ import (
 
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
-	Delegate            *delegate.Delegate
-	Home                *homebus.Business
-	Product             *productbus.Business
+	Delegate *delegate.Delegate
+
+	// Locations
+	Home    *homebus.Business
+	Country *countrybus.Business
+	Region  *regionbus.Business
+	City    *citybus.Business
+	Street  *streetbus.Business
+	Office  *officebus.Business
+
+	// Users
 	User                *userbus.Business
-	Country             *countrybus.Business
-	Region              *regionbus.Business
-	City                *citybus.Business
-	Street              *streetbus.Business
-	VProduct            *vproductbus.Business
-	ApprovalStatus      *approvalstatusbus.Business
-	UserApprovalStatus  *approvalbus.Business
-	UserApprovalComment *commentbus.Business
-	FulfillmentStatus   *fulfillmentstatusbus.Business
-	Tag                 *tagbus.Business
-	AssetTag            *assettagbus.Business
 	Title               *titlebus.Business
 	ReportsTo           *reportstobus.Business
-	Office              *officebus.Business
+	UserApprovalStatus  *approvalbus.Business
+	UserApprovalComment *commentbus.Business
 
-	ValidAsset     *validassetbus.Business
-	AssetType      *assettypebus.Business
-	AssetCondition *assetconditionbus.Business
-	UserAsset      *userassetbus.Business
-	Asset          *assetbus.Business
+	// Assets
+	ApprovalStatus    *approvalstatusbus.Business
+	FulfillmentStatus *fulfillmentstatusbus.Business
+	Tag               *tagbus.Business
+	AssetTag          *assettagbus.Business
+	ValidAsset        *validassetbus.Business
+	AssetType         *assettypebus.Business
+	AssetCondition    *assetconditionbus.Business
+	UserAsset         *userassetbus.Business
+	Asset             *assetbus.Business
+
+	// ETC
+	Product  *productbus.Business
+	VProduct *vproductbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	delegate := delegate.New(log)
+
+	// Users
+	userapprovalstatusbus := approvalbus.NewBusiness(log, delegate, approvaldb.NewStore(log, db))
+	userBus := userbus.NewBusiness(log, delegate, userapprovalstatusbus, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
+	reportsToBus := reportstobus.NewBusiness(log, delegate, reportstodb.NewStore(log, db))
+	userApprovalCommentBus := commentbus.NewBusiness(log, delegate, userBus, commentdb.NewStore(log, db))
+	titlebus := titlebus.NewBusiness(log, delegate, titledb.NewStore(log, db))
+
+	// Locations
 	countryBus := countrybus.NewBusiness(log, delegate, countrydb.NewStore(log, db))
 	regionBus := regionbus.NewBusiness(log, delegate, regiondb.NewStore(log, db))
 	cityBus := citybus.NewBusiness(log, delegate, citydb.NewStore(log, db))
 	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
+	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))
+	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
 
+	// Assets
 	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
 	validAssetBus := validassetbus.NewBusiness(log, delegate, validassetdb.NewStore(log, db))
 	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
-
-	userapprovalstatusbus := approvalbus.NewBusiness(log, delegate, approvaldb.NewStore(log, db))
-	userBus := userbus.NewBusiness(log, delegate, userapprovalstatusbus, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
-	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
-	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))
-	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 	approvalstatusBus := approvalstatusbus.NewBusiness(log, delegate, approvalstatusdb.NewStore(log, db))
 	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db))
-	titlebus := titlebus.NewBusiness(log, delegate, titledb.NewStore(log, db))
-
 	tagBus := tagbus.NewBusiness(log, delegate, tagdb.NewStore(log, db))
 	assetTagBus := assettagbus.NewBusiness(log, delegate, assettagdb.NewStore(log, db))
-	reportsToBus := reportstobus.NewBusiness(log, delegate, reportstodb.NewStore(log, db))
-	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
 	userAssetBus := userassetbus.NewBusiness(log, delegate, userassetdb.NewStore(log, db))
 	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
-	userApprovalCommentBus := commentbus.NewBusiness(log, delegate, commentdb.NewStore(log, db))
+
+	// Products
+	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
+	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:            delegate,

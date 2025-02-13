@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/assettagapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assettagapp"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
@@ -13,7 +13,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/assettags?page=1&rows=10",
+			URL:        "/v1/assets/assettags?page=1&rows=10",
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
@@ -36,7 +36,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/assettags/" + sd.AssetTags[0].ID,
+			URL:        "/v1/assets/assettags/" + sd.AssetTags[0].ID,
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

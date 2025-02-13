@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/reportstoapp"
+	"github.com/timmaaaz/ichor/app/domain/users/reportstoapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/reportstobus"
+	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"

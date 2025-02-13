@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/tagapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/tagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )

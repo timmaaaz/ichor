@@ -297,7 +297,7 @@ func (b *Business) Deny(ctx context.Context, user User) error {
 
 	return nil
 }
-func (b *Business) SetUnderReview(ctx context.Context, user User) error {
+func (b *Business) SetUnderReview(ctx context.Context, userID uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.setunderreview")
 	defer span.End()
 
@@ -312,6 +312,11 @@ func (b *Business) SetUnderReview(ctx context.Context, user User) error {
 
 	if status.Name != underReviewStatus {
 		return fmt.Errorf("under review userapprovalstatus not found: %w", err)
+	}
+
+	user, err := b.storer.QueryByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("query user by id: %w", err)
 	}
 
 	user.UserApprovalStatus = status.ID

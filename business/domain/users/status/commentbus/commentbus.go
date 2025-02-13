@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -38,14 +39,16 @@ type Business struct {
 	log      *logger.Logger
 	storer   Storer
 	delegate *delegate.Delegate
+	userbus  *userbus.Business
 }
 
 // NewBusiness constructs a new user status comment business API for use.
-func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, userbus *userbus.Business, storer Storer) *Business {
 	return &Business{
 		log:      log,
 		delegate: delegate,
 		storer:   storer,
+		userbus:  userbus,
 	}
 }
 
@@ -83,6 +86,10 @@ func (b *Business) Create(ctx context.Context, nuac NewUserApprovalComment) (Use
 
 	if err := b.storer.Create(ctx, uac); err != nil {
 		return UserApprovalComment{}, fmt.Errorf("store create: %w", err)
+	}
+
+	if err := b.userbus.SetUnderReview(ctx, nuac.UserID); err != nil {
+		return UserApprovalComment{}, fmt.Errorf("userbus set under review: %w", err)
 	}
 
 	return uac, nil

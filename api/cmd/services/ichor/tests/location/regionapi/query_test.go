@@ -37,7 +37,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/regions?page=1&rows=5&orderBy=name,ASC",
+			URL:        "/v1/location/regions?page=1&rows=5&orderBy=name,ASC",
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
@@ -75,7 +75,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/regions/%s", sd.Regions[0].ID),
+			URL:        fmt.Sprintf("/v1/location/regions/%s", sd.Regions[0].ID),
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/approvalstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/approvalstatusapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
@@ -18,7 +18,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/approvalstatus/" + sd.ApprovalStatuses[0].ID,
+			URL:        "/v1/assets/approvalstatus/" + sd.ApprovalStatuses[0].ID,
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -49,7 +49,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "bad-id",
-			URL:        "/v1/approvalstatus/abc",
+			URL:        "/v1/assets/approvalstatus/abc",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
