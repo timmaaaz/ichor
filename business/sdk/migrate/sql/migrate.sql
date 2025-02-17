@@ -287,3 +287,16 @@ CREATE TABLE contact_info (
    notes TEXT NULL,
    PRIMARY KEY (contact_info_id)
 );
+
+-- Version: 1.23
+-- Description add inventory.brands
+CREATE TABLE brands (
+   brand_id UUID NOT NULL,
+   name TEXT NOT NULL,
+   manufacturer_id UUID NOT NULL,
+   contact_info_id UUID NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (brand_id),
+   FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id) 
+);
