@@ -298,7 +298,7 @@ CREATE TABLE brands (
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (brand_id),
    FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id) ON DELETE CASCADE
-
+);
 -- =============================================================================
 -- Permissions
 -- =============================================================================
@@ -306,7 +306,7 @@ CREATE TABLE brands (
 -- Version: 1.24
 -- Description: Create table roles
 CREATE TABLE roles (
-    id SERIAL PRIMARY KEY,
+    role_id UUID PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT
 );
@@ -314,19 +314,25 @@ CREATE TABLE roles (
 -- Version: 1.25
 -- Description: Create table user_roles
 CREATE TABLE user_roles (
+      user_role_id UUID NOT NULL,
       user_id UUID NOT NULL,
-      role_id INTEGER NOT NULL,
-      PRIMARY KEY (user_id, role_id),
+      role_id UUID NOT NULL,
+      PRIMARY KEY (user_role_id),
+      UNIQUE (user_id, role_id),
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-      FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
-)
+      FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
+);
 
 -- Version: 1.26
+-- Description: Enable ltree extension
+CREATE EXTENSION IF NOT EXISTS ltree;
+
+-- Version: 1.27
 -- Description: Create table organizational_units
 CREATE TABLE organizational_units (
-    id SERIAL PRIMARY KEY,
+    organizational_unit_id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    parent_id INTEGER REFERENCES organizational_units(id),
+    parent_id UUID REFERENCES organizational_units(organizational_unit_id),
     level INTEGER NOT NULL,
     path ltree, -- Enables efficient tree querying
     can_inherit_permissions BOOLEAN DEFAULT true,     -- Can permissions flow down?
@@ -336,11 +342,11 @@ CREATE TABLE organizational_units (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Version: 1.27
+-- Version: 1.28
 -- Description: Create table table_permissions
 CREATE TABLE table_permissions (
-    id SERIAL PRIMARY KEY,
-    role_id INTEGER REFERENCES roles(id),
+    table_permissoins_id UUID PRIMARY KEY,
+    role_id UUID REFERENCES roles(role_id),
     table_name VARCHAR(50) NOT NULL,
     can_create BOOLEAN DEFAULT FALSE,
     can_read BOOLEAN DEFAULT FALSE,

@@ -22,7 +22,7 @@ func TestNewRoles(n int) []NewRole {
 }
 
 // TestSeedRoles is a helper method for testing
-func TestSeedRoles(ctx context.Context, n int, api *Business) []Role {
+func TestSeedRoles(ctx context.Context, n int, api *Business) ([]Role, error) {
 	newRoles := TestNewRoles(n)
 	roles := make([]Role, n)
 
@@ -34,4 +34,6 @@ func TestSeedRoles(ctx context.Context, n int, api *Business) []Role {
 
 		roles[i] = r
 	}
+
+	return roles, nil
 }
