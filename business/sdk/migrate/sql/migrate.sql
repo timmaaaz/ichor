@@ -286,4 +286,53 @@ CREATE TABLE contact_info (
    preferred_contact_type contact_type NOT NULL,
    notes TEXT NULL,
    PRIMARY KEY (contact_info_id)
+
+-- =============================================================================
+-- Permissions
+-- =============================================================================
+
+-- Version: 1.23
+-- Description: Create table roles
+CREATE TABLE roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT
+);
+
+-- Version: 1.24
+-- Description: Create table user_roles
+CREATE TABLE user_roles (
+      user_id UUID NOT NULL,
+      role_id INTEGER NOT NULL,
+      PRIMARY KEY (user_id, role_id),
+      FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+      FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+)
+
+-- Version: 1.25
+-- Description: Create table organizational_units
+CREATE TABLE organizational_units (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    parent_id INTEGER REFERENCES organizational_units(id),
+    level INTEGER NOT NULL,
+    path ltree, -- Enables efficient tree querying
+    can_inherit_permissions BOOLEAN DEFAULT true,     -- Can permissions flow down?
+    can_rollup_data BOOLEAN DEFAULT true,       -- Can data roll up?
+    unit_type VARCHAR(50),                 -- e.g., 'DEPARTMENT', 'BRANCH', 'REGION'
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Version: 1.26
+-- Description: Create table table_permissions
+CREATE TABLE table_permissions (
+    id SERIAL PRIMARY KEY,
+    role_id INTEGER REFERENCES roles(id),
+    table_name VARCHAR(50) NOT NULL,
+    can_create BOOLEAN DEFAULT FALSE,
+    can_read BOOLEAN DEFAULT FALSE,
+    can_update BOOLEAN DEFAULT FALSE,
+    can_delete BOOLEAN DEFAULT FALSE,
+    UNIQUE(role_id, table_name)
 );
