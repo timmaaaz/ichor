@@ -10,6 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/titleapi"
@@ -37,6 +38,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -122,6 +125,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	officeBus := officebus.NewBusiness(cfg.Log, delegate, officedb.NewStore(cfg.Log, cfg.DB))
 	userAssetBus := userassetbus.NewBusiness(cfg.Log, delegate, userassetdb.NewStore(cfg.Log, cfg.DB))
 	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
+
+	contactInfoBus := contactinfobus.NewBusiness(cfg.Log, delegate, contactinfodb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -259,4 +264,9 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:             cfg.AuthClient,
 	})
 
+	contactinfoapi.Routes(app, contactinfoapi.Config{
+		ContactInfoBus: contactInfoBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+	})
 }

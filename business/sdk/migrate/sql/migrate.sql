@@ -267,3 +267,23 @@ CREATE TABLE user_approval_comments (
    FOREIGN KEY (commenter_id) REFERENCES users(user_id) ON DELETE SET NULL,
    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
+
+CREATE TYPE contact_type as ENUM ('phone', 'email', 'mail', 'fax');
+
+-- Version: 1.22
+-- Description: Add contact_info
+CREATE TABLE contact_info (
+   contact_info_id UUID NOT NULL,
+   first_name VARCHAR(50) NOT NULL,
+   last_name VARCHAR(50) NOT NULL,
+   primary_phone_number VARCHAR(50) NOT NULL,
+   secondary_phone_number VARCHAR(50) NULL,
+   email_address VARCHAR(50) NOT NULL,
+   address TEXT NOT NULL,
+   available_hours_start VARCHAR(50) NOT NULL,
+   available_hours_end VARCHAR(50) NOT NULL,
+   timezone VARCHAR(50) NOT NULL,
+   preferred_contact_type contact_type NOT NULL,
+   notes TEXT NULL,
+   PRIMARY KEY (contact_info_id)
+);
