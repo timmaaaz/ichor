@@ -82,20 +82,20 @@ func (b *Business) Create(ctx context.Context, nr NewRole) (Role, error) {
 }
 
 // Update modifies a role in the system.
-func (b *Business) Update(ctx context.Context, role Role, ur UpdateRole) error {
+func (b *Business) Update(ctx context.Context, role Role, ur UpdateRole) (Role, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
 	err := convert.PopulateSameTypes(ur, &role)
 	if err != nil {
-		return fmt.Errorf("populate same types: %w", err)
+		return Role{}, fmt.Errorf("populate same types: %w", err)
 	}
 
 	if err := b.storer.Update(ctx, role); err != nil {
-		return fmt.Errorf("updating role: %w", err)
+		return Role{}, fmt.Errorf("updating role: %w", err)
 	}
 
-	return nil
+	return role, nil
 }
 
 // Delete removes a role from the system.
