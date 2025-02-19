@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// TestNewRoles is a helper method for testing
+// TestNewRoles is a helper method for testing.
 func TestNewRoles(n int) []NewRole {
 	newRoles := make([]NewRole, n)
 
@@ -21,7 +21,7 @@ func TestNewRoles(n int) []NewRole {
 	return newRoles
 }
 
-// TestSeedRoles is a helper method for testing
+// TestSeedRoles is a helper method for testing.
 func TestSeedRoles(ctx context.Context, n int, api *Business) ([]Role, error) {
 	newRoles := TestNewRoles(n)
 	roles := make([]Role, n)

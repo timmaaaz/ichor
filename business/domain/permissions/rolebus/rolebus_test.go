@@ -20,6 +20,9 @@ func Test_Role(t *testing.T) {
 		t.Fatalf("Seeding error: %s", err)
 	}
 	unitest.Run(t, query(db.BusDomain, sd), "query")
+	unitest.Run(t, create(db.BusDomain), "create")
+	unitest.Run(t, update(db.BusDomain, sd), "update")
+	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -67,6 +70,98 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				return cmp.Diff(exp, got)
+			},
+		},
+	}
+}
+
+func create(busDomain dbtest.BusDomain) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name: "Create",
+			ExpResp: rolebus.Role{
+				Name:        "TestRole",
+				Description: "TestRole Description",
+			},
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := busDomain.Role.Create(ctx, rolebus.NewRole{
+					Name:        "TestRole",
+					Description: "TestRole Description",
+				})
+				if err != nil {
+					return err
+				}
+				return resp
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(rolebus.Role)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp, exists := exp.(rolebus.Role)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp.ID = gotResp.ID
+
+				return cmp.Diff(expResp, gotResp)
+			},
+		},
+	}
+}
+
+func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name: "Update",
+			ExpResp: rolebus.Role{
+				ID:          sd.Roles[0].ID,
+				Name:        "UpdatedRole",
+				Description: "UpdatedRole Description",
+			},
+			ExcFunc: func(ctx context.Context) any {
+				resp, err := busDomain.Role.Update(ctx, sd.Roles[0], rolebus.UpdateRole{
+					Name:        dbtest.StringPointer("UpdatedRole"),
+					Description: dbtest.StringPointer("UpdatedRole Description"),
+				})
+				if err != nil {
+					return err
+				}
+				return resp
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(rolebus.Role)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp, exists := exp.(rolebus.Role)
+				if !exists {
+					return "error occurred"
+				}
+
+				return cmp.Diff(expResp, gotResp)
+			},
+		},
+	}
+}
+
+func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name:    "Delete",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				err := busDomain.Role.Delete(ctx, sd.Roles[0])
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+			CmpFunc: func(got, exp any) string {
+				return ""
 			},
 		},
 	}
