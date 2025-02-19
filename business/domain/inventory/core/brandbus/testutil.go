@@ -16,8 +16,8 @@ func TestNewBrands(n int, contacts []uuid.UUID) []NewBrand {
 	for i := 0; i < n; i++ {
 		idx++
 		nb := NewBrand{
-			Name:        fmt.Sprintf("Brand%d", idx),
-			ContactInfo: contacts[rand.Intn(len(contacts))],
+			Name:          fmt.Sprintf("Brand%d", idx),
+			ContactInfoID: contacts[rand.Intn(len(contacts))],
 		}
 		newBrands[i] = nb
 	}

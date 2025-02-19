@@ -20,6 +20,7 @@ var (
 	ErrNotFound              = errors.New("brand not found")
 	ErrAuthenticationFailure = errors.New("authentication failed")
 	ErrUniqueEntry           = errors.New("brand entry is not unique")
+	ErrForeignKeyViolation   = errors.New("foreign key violation")
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -75,7 +76,7 @@ func (b *Business) Create(ctx context.Context, na NewBrand) (Brand, error) {
 	brand := Brand{
 		BrandID:       uuid.New(),
 		Name:          na.Name,
-		ContactInfoID: na.ContactInfo,
+		ContactInfoID: na.ContactInfoID,
 		CreatedDate:   now,
 		UpdatedDate:   now,
 	}
@@ -92,8 +93,8 @@ func (b *Business) Update(ctx context.Context, brand Brand, ub UpdateBrand) (Bra
 	ctx, span := otel.AddSpan(ctx, "business.brandbus.update")
 	defer span.End()
 
-	if ub.ContactInfo != nil {
-		brand.ContactInfoID = *ub.ContactInfo
+	if ub.ContactInfoID != nil {
+		brand.ContactInfoID = *ub.ContactInfoID
 	}
 
 	if ub.Name != nil {

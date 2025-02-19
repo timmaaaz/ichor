@@ -105,7 +105,10 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ContactInfoID: sd.ContactInfo[0].ID,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				newBrand := brandbus.NewBrand{}
+				newBrand := brandbus.NewBrand{
+					Name:          "NewBrand",
+					ContactInfoID: sd.ContactInfo[0].ID,
+				}
 
 				ci, err := busDomain.Brand.Create(ctx, newBrand)
 				if err != nil {
@@ -144,8 +147,8 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				uc := brandbus.UpdateBrand{
-					ContactInfo: &sd.ContactInfo[0].ID,
-					Name:        dbtest.StringPointer("UpdatedBrand"),
+					ContactInfoID: &sd.ContactInfo[0].ID,
+					Name:          dbtest.StringPointer("UpdatedBrand"),
 				}
 
 				got, err := busDomain.Brand.Update(ctx, sd.Brands[0], uc)
@@ -158,7 +161,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(brandbus.Brand)
 				if !exists {
-					return fmt.Sprintf("got is not a contact info: %v", got)
+					return fmt.Sprintf("got is not a brand: %v", got)
 				}
 
 				expResp := exp.(brandbus.Brand)

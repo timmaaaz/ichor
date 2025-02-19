@@ -289,7 +289,7 @@ CREATE TABLE contact_info (
 );
 
 -- Version: 1.23
--- Description add inventory.brands
+-- Description: add brands
 CREATE TABLE brands (
    brand_id UUID NOT NULL,
    name TEXT NOT NULL,
@@ -297,5 +297,5 @@ CREATE TABLE brands (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (brand_id),
-   FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id) 
+   FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id) ON DELETE CASCADE
 );

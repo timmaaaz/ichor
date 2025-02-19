@@ -21,15 +21,17 @@ import (
 // lib/pq errorCodeNames
 // https://github.com/lib/pq/blob/master/error.go#L178
 const (
-	uniqueViolation = "23505"
-	undefinedTable  = "42P01"
+	uniqueViolation     = "23505"
+	undefinedTable      = "42P01"
+	foreignKeyViolation = "23503"
 )
 
 // Set of error variables for CRUD operations.
 var (
-	ErrDBNotFound        = sql.ErrNoRows
-	ErrDBDuplicatedEntry = errors.New("duplicated entry")
-	ErrUndefinedTable    = errors.New("undefined table")
+	ErrDBNotFound          = sql.ErrNoRows
+	ErrDBDuplicatedEntry   = errors.New("duplicated entry")
+	ErrUndefinedTable      = errors.New("undefined table")
+	ErrForeignKeyViolation = errors.New("foreign key violation")
 )
 
 // Config is the required properties to use the database.
@@ -143,6 +145,8 @@ func NamedExecContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContex
 				return ErrUndefinedTable
 			case uniqueViolation:
 				return ErrDBDuplicatedEntry
+			case foreignKeyViolation:
+				return ErrForeignKeyViolation
 			}
 		}
 		return err

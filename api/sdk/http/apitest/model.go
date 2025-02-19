@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/location/officeapp"
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
@@ -56,6 +57,7 @@ type SeedData struct {
 	UserAssets           []userassetapp.UserAsset
 	Assets               []assetapp.Asset
 	ContactInfo          []contactinfoapp.ContactInfo
+	Brands               []brandapp.Brand
 }
 
 // Table represent fields needed for running an api test.

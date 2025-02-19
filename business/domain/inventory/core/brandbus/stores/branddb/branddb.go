@@ -58,6 +58,9 @@ func (s *Store) Create(ctx context.Context, brand brandbus.Brand) error {
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBBrand(brand)); err != nil {
+		if errors.Is(err, sqldb.ErrForeignKeyViolation) {
+			return fmt.Errorf("namedexeccontext: %w", brandbus.ErrForeignKeyViolation)
+		}
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", brandbus.ErrUniqueEntry)
 		}
@@ -74,8 +77,7 @@ func (s *Store) Update(ctx context.Context, ass brandbus.Brand) error {
 	SET
 		name = :name,
         contact_info_id = :contact_info_id,
-        updated_date = :address,
-		
+        updated_date = :updated_date
 	WHERE
 		brand_id = :brand_id
 	`
@@ -83,6 +85,9 @@ func (s *Store) Update(ctx context.Context, ass brandbus.Brand) error {
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBBrand(ass)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", brandbus.ErrUniqueEntry)
+		}
+		if errors.Is(err, sqldb.ErrForeignKeyViolation) {
+			return fmt.Errorf("namedexeccontext: %w", brandbus.ErrForeignKeyViolation)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -169,7 +174,7 @@ func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (brandbus.
 
 	const q = `
     SELECT
-        brand_id, name, contact_info_id, created_date, updated_date,
+        brand_id, name, contact_info_id, created_date, updated_date
     FROM
         brands
     WHERE

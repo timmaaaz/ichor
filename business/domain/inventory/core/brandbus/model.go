@@ -15,11 +15,11 @@ type Brand struct {
 }
 
 type NewBrand struct {
-	Name        string
-	ContactInfo uuid.UUID
+	Name          string
+	ContactInfoID uuid.UUID
 }
 
 type UpdateBrand struct {
-	Name        *string
-	ContactInfo *uuid.UUID
+	Name          *string
+	ContactInfoID *uuid.UUID
 }
