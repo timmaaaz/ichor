@@ -154,11 +154,7 @@ func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "Delete",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.Role.Delete(ctx, sd.Roles[0])
-				if err != nil {
-					return err
-				}
-				return nil
+				return busDomain.Role.Delete(ctx, sd.Roles[0])
 			},
 			CmpFunc: func(got, exp any) string {
 				return ""

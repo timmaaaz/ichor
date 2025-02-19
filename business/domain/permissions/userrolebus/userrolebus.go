@@ -81,7 +81,7 @@ func (b *Business) Create(ctx context.Context, nur NewUserRole) (UserRole, error
 }
 
 // Update modifies a user role in the system
-func (b *Business) Update(ctx context.Context, ur UserRole, uur UpdateUserRole) error {
+func (b *Business) Update(ctx context.Context, ur UserRole, uur UpdateUserRole) (UserRole, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userrolebus.update")
 	defer span.End()
 
@@ -90,10 +90,10 @@ func (b *Business) Update(ctx context.Context, ur UserRole, uur UpdateUserRole) 
 	}
 
 	if err := b.storer.Update(ctx, ur); err != nil {
-		return fmt.Errorf("updating role: %w", err)
+		return UserRole{}, fmt.Errorf("updating role: %w", err)
 	}
 
-	return nil
+	return ur, nil
 }
 
 // Delete removes a user role from the system.
