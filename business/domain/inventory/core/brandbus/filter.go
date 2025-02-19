@@ -7,10 +7,9 @@ import (
 )
 
 type QueryFilter struct {
-	ID             *uuid.UUID
-	Name           *string
-	ManufacturerID *uuid.UUID
-	ContactInfo    *uuid.UUID
-	CreatedDate    *time.Time
-	UpdatedDate    *time.Time
+	ID          *uuid.UUID
+	Name        *string
+	ContactInfo *uuid.UUID
+	CreatedDate *time.Time
+	UpdatedDate *time.Time
 }

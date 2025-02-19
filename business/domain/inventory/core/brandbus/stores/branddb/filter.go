@@ -20,8 +20,8 @@ func applyFilter(filter brandbus.QueryFilter, data map[string]interface{}, buf *
 	}
 
 	if filter.ContactInfo != nil {
-		data["contact_info"] = *filter.ContactInfo
-		wc = append(wc, "contact_info = :contact_info")
+		data["contact_info_id"] = *filter.ContactInfo
+		wc = append(wc, "contact_info_id = :contact_info_id")
 	}
 
 	if filter.CreatedDate != nil {

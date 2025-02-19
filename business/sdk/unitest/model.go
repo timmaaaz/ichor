@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/officebus"
@@ -58,6 +59,7 @@ type SeedData struct {
 	UserAssets          []userassetbus.UserAsset
 	Assets              []assetbus.Asset
 	ContactInfo         []contactinfobus.ContactInfo
+	Brands              []brandbus.Brand
 }
 
 type Table struct {

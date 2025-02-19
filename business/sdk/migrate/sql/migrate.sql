@@ -293,7 +293,6 @@ CREATE TABLE contact_info (
 CREATE TABLE brands (
    brand_id UUID NOT NULL,
    name TEXT NOT NULL,
-   manufacturer_id UUID NOT NULL,
    contact_info_id UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,

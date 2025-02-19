@@ -31,15 +31,15 @@ func Test_ContactInfo(t *testing.T) {
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
-func insertSeedData(busdomain dbtest.BusDomain) (unitest.SeedData, error) {
+func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busdomain.User)
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 15, busdomain.ContactInfo)
+	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 15, busDomain.ContactInfo)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}

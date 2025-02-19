@@ -3,36 +3,44 @@ package brandbus
 import (
 	"context"
 	"fmt"
-	"testing"
+	"math/rand"
+	"sort"
 
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
-	"github.com/timmaaaz/ichor/business/sdk/dbtest"
-	"github.com/timmaaaz/ichor/business/sdk/unitest"
+	"github.com/google/uuid"
 )
 
-func Test_Brand(t *testing.T) {
-	t.Parallel()
+func TestNewBrands(n int, contacts []uuid.UUID) []NewBrand {
+	newBrands := make([]NewBrand, n)
 
-	db := dbtest.NewDatabase(t, "Test_Brand")
-
-	sd, err := insertSeedData(db.BusDomain)
-	if err != nil {
-		t.Fatalf("Seeding error: %s", err)
+	idx := rand.Intn(10000)
+	for i := 0; i < n; i++ {
+		idx++
+		nb := NewBrand{
+			Name:        fmt.Sprintf("Brand%d", idx),
+			ContactInfo: contacts[rand.Intn(len(contacts))],
+		}
+		newBrands[i] = nb
 	}
 
-	// -------------------------------------------------------------------------
-	unitest.Run(t, query(db.BusDomain, sd), "query")
-	unitest.Run(t, create(db.BusDomain, sd), "create")
-	unitest.Run(t, update(db.BusDomain, sd), "update")
-	unitest.Run(t, delete(db.BusDomain, sd), "delete")
+	return newBrands
 }
 
-func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
-	ctx := context.Background()
+func TestSeedBrands(ctx context.Context, n int, contacts []uuid.UUID, api *Business) ([]Brand, error) {
+	newBrands := TestNewBrands(n, contacts)
 
-	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
+	brands := make([]Brand, len(newBrands))
+
+	for i, nb := range newBrands {
+		brand, err := api.Create(ctx, nb)
+		if err != nil {
+			return nil, err
+		}
+		brands[i] = brand
 	}
 
+	sort.Slice(brands, func(i, j int) bool {
+		return brands[i].Name < brands[j].Name
+	})
+
+	return brands, nil
 }

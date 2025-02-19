@@ -73,12 +73,11 @@ func (b *Business) Create(ctx context.Context, na NewBrand) (Brand, error) {
 	now := time.Now()
 
 	brand := Brand{
-		BrandID:        uuid.New(),
-		Name:           na.Name,
-		ManufacturerID: na.ManufacturerID,
-		ContactInfo:    na.ContactInfo,
-		CreatedDate:    now,
-		UpdatedDate:    now,
+		BrandID:       uuid.New(),
+		Name:          na.Name,
+		ContactInfoID: na.ContactInfo,
+		CreatedDate:   now,
+		UpdatedDate:   now,
 	}
 
 	if err := b.storer.Create(ctx, brand); err != nil {
@@ -94,11 +93,7 @@ func (b *Business) Update(ctx context.Context, brand Brand, ub UpdateBrand) (Bra
 	defer span.End()
 
 	if ub.ContactInfo != nil {
-		brand.ContactInfo = *ub.ContactInfo
-	}
-
-	if ub.ManufacturerID != nil {
-		brand.ManufacturerID = *ub.ManufacturerID
+		brand.ContactInfoID = *ub.ContactInfo
 	}
 
 	if ub.Name != nil {

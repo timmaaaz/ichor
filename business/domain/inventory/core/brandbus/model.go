@@ -7,26 +7,19 @@ import (
 )
 
 type Brand struct {
-	BrandID        uuid.UUID
-	Name           string
-	ManufacturerID uuid.UUID
-	ContactInfo    uuid.UUID
-	CreatedDate    time.Time
-	UpdatedDate    time.Time
+	BrandID       uuid.UUID
+	Name          string
+	ContactInfoID uuid.UUID
+	CreatedDate   time.Time
+	UpdatedDate   time.Time
 }
 
 type NewBrand struct {
-	Name           string
-	ManufacturerID uuid.UUID
-	ContactInfo    uuid.UUID
-	CreatedDate    time.Time
-	UpdatedDate    time.Time
+	Name        string
+	ContactInfo uuid.UUID
 }
 
 type UpdateBrand struct {
-	Name           *string
-	ManufacturerID *uuid.UUID
-	ContactInfo    *uuid.UUID
-	CreatedDate    *time.Time
-	UpdatedDate    *time.Time
+	Name        *string
+	ContactInfo *uuid.UUID
 }

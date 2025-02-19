@@ -8,33 +8,30 @@ import (
 )
 
 type brand struct {
-	ID             uuid.UUID `db:"brand_id"`
-	Name           string    `db:"name"`
-	ManufacturerID uuid.UUID `db:"manufacturer_id"`
-	ContactInfo    uuid.UUID `db:"contact_info"`
-	CreatedDate    time.Time `db:"created_date"`
-	UpdatedDate    time.Time `db:"updated_date"`
+	ID            uuid.UUID `db:"brand_id"`
+	Name          string    `db:"name"`
+	ContactInfoID uuid.UUID `db:"contact_info_id"`
+	CreatedDate   time.Time `db:"created_date"`
+	UpdatedDate   time.Time `db:"updated_date"`
 }
 
 func toDBBrand(bus brandbus.Brand) brand {
 	return brand{
-		ID:             bus.BrandID,
-		Name:           bus.Name,
-		ManufacturerID: bus.ManufacturerID,
-		ContactInfo:    bus.ContactInfo,
-		CreatedDate:    bus.CreatedDate,
-		UpdatedDate:    bus.UpdatedDate,
+		ID:            bus.BrandID,
+		Name:          bus.Name,
+		ContactInfoID: bus.ContactInfoID,
+		CreatedDate:   bus.CreatedDate,
+		UpdatedDate:   bus.UpdatedDate,
 	}
 }
 
 func toBusBrand(db brand) brandbus.Brand {
 	return brandbus.Brand{
-		BrandID:        db.ID,
-		Name:           db.Name,
-		ManufacturerID: db.ManufacturerID,
-		ContactInfo:    db.ContactInfo,
-		CreatedDate:    db.CreatedDate.Local(),
-		UpdatedDate:    db.UpdatedDate.Local(),
+		BrandID:       db.ID,
+		Name:          db.Name,
+		ContactInfoID: db.ContactInfoID,
+		CreatedDate:   db.CreatedDate.Local(),
+		UpdatedDate:   db.UpdatedDate.Local(),
 	}
 }
 
