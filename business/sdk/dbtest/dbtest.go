@@ -21,6 +21,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/roledb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -111,7 +113,8 @@ type BusDomain struct {
 	VProduct *vproductbus.Business
 
 	// Permissions
-	Role *rolebus.Business
+	Role     *rolebus.Business
+	UserRole *userrolebus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -155,6 +158,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Permissions
 	roleBus := rolebus.NewBusiness(log, roledb.NewStore(log, db))
+	userRoleBus := userrolebus.NewBusiness(log, userroledb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:            delegate,
@@ -183,6 +187,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ContactInfo:         contactInfoBus,
 		Brand:               brandBus,
 		Role:                roleBus,
+		UserRole:            userRoleBus,
 	}
 
 }
