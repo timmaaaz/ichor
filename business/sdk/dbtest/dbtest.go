@@ -19,6 +19,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -102,7 +104,8 @@ type BusDomain struct {
 	ContactInfo *contactinfobus.Business
 
 	// Inventory
-	Brand *brandbus.Business
+	Brand           *brandbus.Business
+	ProductCategory *productcategorybus.Business
 
 	// ETC
 	Product  *productbus.Business
@@ -143,6 +146,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Inventory
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
+	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db))
 
 	// Products
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
@@ -174,6 +178,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Asset:               assetBus,
 		ContactInfo:         contactInfoBus,
 		Brand:               brandBus,
+		ProductCategory:     productCategoryBus,
 	}
 
 }

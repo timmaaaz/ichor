@@ -29,7 +29,6 @@ type Brand struct {
 }
 
 func (app Brand) Encode() ([]byte, string, error) {
-
 	data, err := json.Marshal(app)
 	return data, "application/json", err
 }

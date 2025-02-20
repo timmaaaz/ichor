@@ -299,3 +299,15 @@ CREATE TABLE brands (
    PRIMARY KEY (brand_id),
    FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id) ON DELETE CASCADE
 );
+
+-- Version: 1.24
+-- Description: add models
+CREATE TABLE product_categories (
+   category_id UUID NOT NULL,
+   name TEXT NOT NULL,
+   description text NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (category_id)
+);
+
