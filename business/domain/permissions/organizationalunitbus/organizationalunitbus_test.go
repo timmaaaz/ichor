@@ -21,12 +21,11 @@ func Test_OrganizationalUnit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Seeding error: %s", err)
 	}
-	// unitest.Run(t, query(db.BusDomain, sd), "query")
-	// unitest.Run(t, create(db.BusDomain, sd), "create")
-	// unitest.Run(t, update(db.BusDomain, sd), "update")
-	// unitest.Run(t, updatePathPropagation(db.BusDomain, sd), "updatePathPropagation")
-	// unitest.Run(t, delete(db.BusDomain, sd), "delete")
-	unitest.Run(t, deleteNode(db.BusDomain, sd), "deleteNode")
+	unitest.Run(t, query(db.BusDomain, sd), "query")
+	unitest.Run(t, create(db.BusDomain, sd), "create")
+	unitest.Run(t, update(db.BusDomain, sd), "update")
+	unitest.Run(t, updatePathPropagation(db.BusDomain, sd), "updatePathPropagation")
+	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -324,28 +323,6 @@ func updatePathPropagation(busDomain dbtest.BusDomain, sd unitest.SeedData) []un
 func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
-			Name:    "Delete",
-			ExpResp: nil,
-			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.OrganizationalUnit.Delete(ctx, sd.OrgUnits[0])
-				if err != nil {
-					return err
-				}
-				return nil
-			},
-			CmpFunc: func(got, exp any) string {
-				if got != nil {
-					return "error occurred"
-				}
-				return ""
-			},
-		},
-	}
-}
-
-func deleteNode(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	return []unitest.Table{
-		{
 			Name:    "Delete_LeafNode_Simple",
 			ExpResp: true,
 			ExcFunc: func(ctx context.Context) any {
@@ -443,10 +420,14 @@ func deleteNode(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table
 				// Get root node (index 0)
 				rootNode := sd.OrgUnits[0]
 
-				// Get all nodes in the tree before deletion
+				// Get all remaining nodes in the tree before deletion
 				var allIDs []uuid.UUID
 				for _, ou := range sd.OrgUnits {
-					// Skip already deleted nodes from previous tests
+					// Skip indices we've already deleted in previous tests
+					if ou.ID == sd.OrgUnits[1].ID || ou.ID == sd.OrgUnits[3].ID {
+						continue
+					}
+					// Verify node still exists before adding to our check list
 					_, err := busDomain.OrganizationalUnit.QueryByID(ctx, ou.ID)
 					if err == nil {
 						allIDs = append(allIDs, ou.ID)
@@ -459,7 +440,7 @@ func deleteNode(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table
 					return fmt.Errorf("failed to delete root node: %w", err)
 				}
 
-				// Verify root and ALL remaining nodes are deleted
+				// Verify all remaining nodes are deleted
 				for _, id := range allIDs {
 					_, err = busDomain.OrganizationalUnit.QueryByID(ctx, id)
 					if err == nil {
