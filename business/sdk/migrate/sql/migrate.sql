@@ -327,8 +327,7 @@ CREATE TABLE organizational_units (
     can_inherit_permissions BOOLEAN DEFAULT true,     -- Can permissions flow down?
     can_rollup_data BOOLEAN DEFAULT true,       -- Can data roll up?
     unit_type VARCHAR(50),                 -- e.g., 'DEPARTMENT', 'BRANCH', 'REGION'
-    active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    is_active BOOLEAN DEFAULT true,
 );
 
 -- Version: 1.27
