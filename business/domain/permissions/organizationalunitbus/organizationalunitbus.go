@@ -87,6 +87,6 @@ func (b *Business) Create(ctx context.Context, nou NewOrganizationalUnit) (Organ
 }
 
 // Update modifies a org unit in the system
-func (b *Business) Update(ctx context.Context, ou OrganizationalUnit, uou UpdateOrganizationalUnit) (OrganizationalUnit, error) {
-	ctx, span := otel.AddSpan(ctx, "business.organizationalroleunit.update")
-	defer span.End()
+// func (b *Business) Update(ctx context.Context, ou OrganizationalUnit, uou UpdateOrganizationalUnit) (OrganizationalUnit, error) {
+// 	ctx, span := otel.AddSpan(ctx, "business.organizationalroleunit.update")
+// 	defer span.End()

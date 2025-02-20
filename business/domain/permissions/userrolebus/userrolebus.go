@@ -74,7 +74,7 @@ func (b *Business) Create(ctx context.Context, nur NewUserRole) (UserRole, error
 	}
 
 	if err := b.storer.Create(ctx, ur); err != nil {
-		return UserRole{}, err
+		return UserRole{}, fmt.Errorf("creating role: %w", err)
 	}
 
 	return ur, nil
