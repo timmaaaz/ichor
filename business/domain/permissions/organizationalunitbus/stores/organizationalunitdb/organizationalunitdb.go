@@ -184,3 +184,25 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (organizationalunit
 
 	return toBusOrganizationalUnit(dbOrgUnit), nil
 }
+
+// You'll need to add this method to your Store
+func (s *Store) QueryByParentID(ctx context.Context, parentID uuid.UUID) ([]organizationalunitbus.OrganizationalUnit, error) {
+	const q = `
+	SELECT
+		organizational_unit_id, parent_id, name, level, path,
+		can_inherit_permissions, can_rollup_data, unit_type, is_active
+	FROM
+		organizational_units
+	WHERE
+		parent_id = :parent_id
+	`
+
+	data := map[string]any{"parent_id": parentID}
+
+	var dbOUs []organizationalUnit
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbOUs); err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return toBusOrganizationalUnits(dbOUs), nil
+}
