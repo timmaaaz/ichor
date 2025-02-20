@@ -299,11 +299,24 @@ CREATE TABLE brands (
    PRIMARY KEY (brand_id),
    FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id) ON DELETE CASCADE
 );
+
+-- Version: 1.24
+-- Description: add models
+CREATE TABLE product_categories (
+   category_id UUID NOT NULL,
+   name TEXT NOT NULL,
+   description text NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (category_id)
+);
+
+
 -- =============================================================================
 -- Permissions
 -- =============================================================================
 
--- Version: 1.24
+-- Version: 1.25
 -- Description: Create table roles
 CREATE TABLE roles (
     role_id UUID PRIMARY KEY,
@@ -311,7 +324,7 @@ CREATE TABLE roles (
     description TEXT
 );
 
--- Version: 1.25
+-- Version: 1.26
 -- Description: Create table user_roles
 CREATE TABLE user_roles (
       user_role_id UUID NOT NULL,
@@ -323,11 +336,11 @@ CREATE TABLE user_roles (
       FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
 );
 
--- Version: 1.26
+-- Version: 1.27
 -- Description: Enable ltree extension
 CREATE EXTENSION IF NOT EXISTS ltree;
 
--- Version: 1.27
+-- Version: 1.28
 -- Description: Create table organizational_units
 CREATE TABLE organizational_units (
     organizational_unit_id UUID PRIMARY KEY,
@@ -341,7 +354,7 @@ CREATE TABLE organizational_units (
     is_active BOOLEAN DEFAULT true
 );
 
--- Version: 1.28
+-- Version: 1.29
 -- Description: Create table table_permissions
 CREATE TABLE table_permissions (
     table_permissoins_id UUID PRIMARY KEY,
@@ -353,3 +366,4 @@ CREATE TABLE table_permissions (
     can_delete BOOLEAN DEFAULT FALSE,
     UNIQUE(role_id, table_name)
 );
+
