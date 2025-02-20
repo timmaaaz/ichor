@@ -355,9 +355,9 @@ CREATE TABLE organizational_units (
 );
 
 -- Version: 1.29
--- Description: Create table table_permissions
-CREATE TABLE table_permissions (
-    table_permissoins_id UUID PRIMARY KEY,
+-- Description: Create table table_access
+CREATE TABLE table_access (
+    table_access_id UUID PRIMARY KEY,
     role_id UUID REFERENCES roles(role_id),
     table_name VARCHAR(50) NOT NULL,
     can_create BOOLEAN DEFAULT FALSE,

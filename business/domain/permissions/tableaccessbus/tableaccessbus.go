@@ -1,0 +1,149 @@
+package tableaccessbus
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/convert"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/otel"
+)
+
+// Set of error variables for CRUD operations.
+var (
+	ErrNotFound              = errors.New("role not found")
+	ErrUnique                = errors.New("organizational unit is not unique")
+	ErrAuthenticationFailure = errors.New("authentication failed")
+)
+
+// Storer interface declares the behavior this package needs to persist and
+// retrieve data.
+type Storer interface {
+	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
+	Create(ctx context.Context, ta TableAccess) error
+	Update(ctx context.Context, ta TableAccess) error
+	Delete(ctx context.Context, ta TableAccess) error
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]TableAccess, error)
+	Count(ctx context.Context, filter QueryFilter) (int, error)
+	QueryByID(ctx context.Context, userID uuid.UUID) (TableAccess, error)
+}
+
+// Business manages the set of APIs for user access.
+type Business struct {
+	log    *logger.Logger
+	storer Storer
+}
+
+// NewBusiness constructs a user business API for use.
+func NewBusiness(log *logger.Logger, storer Storer) *Business {
+	return &Business{
+		log:    log,
+		storer: storer,
+	}
+}
+
+// NewWithTx constructs a new business value that will use the
+// specified transaction in any store related calls.
+func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
+	storer, err := b.storer.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	bus := Business{
+		log:    b.log,
+		storer: storer,
+	}
+
+	return &bus, nil
+}
+
+// Create adds a new table access to the system
+func (b *Business) Create(ctx context.Context, nta NewTableAccess) (TableAccess, error) {
+	ctx, span := otel.AddSpan(ctx, "business.tableaccess.create")
+	defer span.End()
+
+	ta := TableAccess{
+		ID:        uuid.New(),
+		RoleID:    nta.RoleID,
+		TableName: nta.TableName,
+		CanCreate: nta.CanCreate,
+		CanRead:   nta.CanRead,
+		CanUpdate: nta.CanUpdate,
+		CanDelete: nta.CanDelete,
+	}
+
+	if err := b.storer.Create(ctx, ta); err != nil {
+		return TableAccess{}, fmt.Errorf("creating table access: %w", err)
+	}
+
+	return ta, nil
+}
+
+// Update modifies a table access in the system
+func (b *Business) Update(ctx context.Context, ta TableAccess, uta UpdateTableAccess) (TableAccess, error) {
+	ctx, span := otel.AddSpan(ctx, "business.tableaccess.update")
+	defer span.End()
+
+	err := convert.PopulateSameTypes(uta, &ta)
+	if err != nil {
+		return TableAccess{}, fmt.Errorf("populate same types: %w", err)
+	}
+
+	if err := b.storer.Update(ctx, ta); err != nil {
+		return TableAccess{}, fmt.Errorf("updating table access: %w", err)
+	}
+
+	return ta, nil
+}
+
+// Delete removes a table access from the system
+func (b *Business) Delete(ctx context.Context, ta TableAccess) error {
+	ctx, span := otel.AddSpan(ctx, "business.tableaccess.delete")
+	defer span.End()
+
+	if err := b.storer.Delete(ctx, ta); err != nil {
+		return fmt.Errorf("deleting table access: %w", err)
+	}
+
+	return nil
+}
+
+// Query retrieves a list of table accesses from the system
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]TableAccess, error) {
+	ctx, span := otel.AddSpan(ctx, "business.tableaccess.query")
+	defer span.End()
+
+	ta, err := b.storer.Query(ctx, filter, orderBy, page)
+	if err != nil {
+		return nil, fmt.Errorf("querying table access: %w", err)
+	}
+
+	return ta, nil
+}
+
+// Count returns the number of table accesses in the system
+func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.tableaccess.count")
+	defer span.End()
+
+	return b.storer.Count(ctx, filter)
+}
+
+// QueryByID retrieves a table access by its ID
+func (b *Business) QueryByID(ctx context.Context, tableAccessID uuid.UUID) (TableAccess, error) {
+	ctx, span := otel.AddSpan(ctx, "business.tableaccess.querybyid")
+	defer span.End()
+
+	ta, err := b.storer.QueryByID(ctx, tableAccessID)
+	if err != nil {
+		return TableAccess{}, fmt.Errorf("querying table access by ID: %w", err)
+	}
+
+	return ta, nil
+}

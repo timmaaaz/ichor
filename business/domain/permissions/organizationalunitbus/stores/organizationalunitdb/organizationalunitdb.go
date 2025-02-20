@@ -176,9 +176,6 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (organizationalunit
 	data := map[string]any{"organizational_unit_id": id}
 	var dbOrgUnit organizationalUnit
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbOrgUnit); err != nil {
-		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return organizationalunitbus.OrganizationalUnit{}, organizationalunitbus.ErrUnique
-		}
 		return organizationalunitbus.OrganizationalUnit{}, fmt.Errorf("namedquerystruct: %w", err)
 	}
 
