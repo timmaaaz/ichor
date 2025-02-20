@@ -47,6 +47,33 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (tableaccessbus.Storer, err
 
 // Create adds a new table access to the system
 func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error {
+
+	// TODO: Write a test specifically for this
+	// First check if the table exists in the database
+	const checkTable = `
+    SELECT EXISTS (
+        SELECT 1 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = :table_name
+    )`
+
+	tmp := struct {
+		Exists bool
+	}{}
+	data := map[string]any{
+		"table_name": ta.TableName,
+	}
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, checkTable, data, &tmp); err != nil {
+		return fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	if !tmp.Exists {
+		return tableaccessbus.ErrNonexistentTableName
+	}
+
+	// Now we can insert
 	const q = `
 	INSERT INTO table_access (
 		table_access_id, role_id, table_name, can_create, can_read, can_update, can_delete
@@ -59,6 +86,7 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return tableaccessbus.ErrUnique
 		}
+		// TODO: Custom error for table name doesn't exist
 		return err
 	}
 

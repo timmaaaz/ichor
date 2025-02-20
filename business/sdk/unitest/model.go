@@ -23,6 +23,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
@@ -64,10 +65,11 @@ type SeedData struct {
 	Assets              []assetbus.Asset
 	ContactInfo         []contactinfobus.ContactInfo
 	Brands              []brandbus.Brand
+	ProductCategories   []productcategorybus.ProductCategory
 	Roles               []rolebus.Role
 	UserRoles           []userrolebus.UserRole
 	OrgUnits            []organizationalunitbus.OrganizationalUnit
-	ProductCategories   []productcategorybus.ProductCategory
+	TableAccesses       []tableaccessbus.TableAccess
 }
 
 type Table struct {

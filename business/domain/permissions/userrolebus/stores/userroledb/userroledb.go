@@ -58,7 +58,7 @@ func (s *Store) Create(ctx context.Context, ur userrolebus.UserRole) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserRole(ur)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", userrolebus.ErrUniqueEmail)
+			return fmt.Errorf("namedexeccontext: %w", userrolebus.ErrUnique)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}

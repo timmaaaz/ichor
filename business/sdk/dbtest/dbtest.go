@@ -25,6 +25,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus/stores/organizationalunitdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/roledb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccessdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
@@ -121,6 +123,7 @@ type BusDomain struct {
 	Role               *rolebus.Business
 	UserRole           *userrolebus.Business
 	OrganizationalUnit *organizationalunitbus.Business
+	TableAccess        *tableaccessbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -167,6 +170,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	roleBus := rolebus.NewBusiness(log, roledb.NewStore(log, db))
 	userRoleBus := userrolebus.NewBusiness(log, userroledb.NewStore(log, db))
 	organizationalunitBus := organizationalunitbus.NewBusiness(log, organizationalunitdb.NewStore(log, db))
+	tableAccessBus := tableaccessbus.NewBusiness(log, tableaccessdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:            delegate,
@@ -198,6 +202,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		UserRole:            userRoleBus,
 		OrganizationalUnit:  organizationalunitBus,
 		ProductCategory:     productCategoryBus,
+		TableAccess:         tableAccessBus,
 	}
 
 }

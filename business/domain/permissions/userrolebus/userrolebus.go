@@ -16,7 +16,7 @@ import (
 // Set of error variables for CRUD operations.
 var (
 	ErrNotFound              = errors.New("role not found")
-	ErrUniqueEmail           = errors.New("email is not unique")
+	ErrUnique                = errors.New("user role is not unique")
 	ErrAuthenticationFailure = errors.New("authentication failed")
 )
 

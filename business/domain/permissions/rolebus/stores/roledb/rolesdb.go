@@ -9,14 +9,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
-// Store manages the set of APIs for user database access.
+// Store manages the set of APIs for role database access.
 type Store struct {
 	log *logger.Logger
 	db  sqlx.ExtContext
@@ -58,7 +57,7 @@ func (s *Store) Create(ctx context.Context, r rolebus.Role) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRole(r)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", userbus.ErrUniqueEmail)
+			return fmt.Errorf("namedexeccontext: %w", rolebus.ErrUnique)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -80,7 +79,7 @@ func (s *Store) Update(ctx context.Context, r rolebus.Role) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRole(r)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", userbus.ErrUniqueEmail)
+			return fmt.Errorf("namedexeccontext: %w", rolebus.ErrUnique)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -177,7 +176,7 @@ func (s *Store) QueryByID(ctx context.Context, roleID uuid.UUID) (rolebus.Role, 
 	var dbRole role
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbRole); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return rolebus.Role{}, fmt.Errorf("db: %w", userbus.ErrNotFound)
+			return rolebus.Role{}, fmt.Errorf("db: %w", rolebus.ErrNotFound)
 		}
 		return rolebus.Role{}, fmt.Errorf("db: %w", err)
 	}

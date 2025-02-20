@@ -17,8 +17,9 @@ import (
 // Set of error variables for CRUD operations.
 var (
 	ErrNotFound              = errors.New("role not found")
-	ErrUnique                = errors.New("organizational unit is not unique")
+	ErrUnique                = errors.New("table access is not unique")
 	ErrAuthenticationFailure = errors.New("authentication failed")
+	ErrNonexistentTableName  = errors.New("table does not exist")
 )
 
 // Storer interface declares the behavior this package needs to persist and
