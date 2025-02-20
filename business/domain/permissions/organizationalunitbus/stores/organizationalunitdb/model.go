@@ -6,21 +6,26 @@ import (
 )
 
 type organizationalUnit struct {
-	ID                    uuid.UUID `db:"organizational_unit_id"`
-	ParentID              uuid.UUID `db:"parent_id"`
-	Name                  string    `db:"name"`
-	Level                 int       `db:"level"`
-	Path                  string    `db:"path"`
-	CanInheritPermissions bool      `db:"can_inherit_permissions"`
-	CanRollupData         bool      `db:"can_rollup_data"`
-	UnitType              string    `db:"unit_type"`
-	IsActive              bool      `db:"is_active"`
+	ID                    uuid.UUID  `db:"organizational_unit_id"`
+	ParentID              *uuid.UUID `db:"parent_id"` // Has to be pointer to be nullable in the db for root level org units
+	Name                  string     `db:"name"`
+	Level                 int        `db:"level"`
+	Path                  string     `db:"path"`
+	CanInheritPermissions bool       `db:"can_inherit_permissions"`
+	CanRollupData         bool       `db:"can_rollup_data"`
+	UnitType              string     `db:"unit_type"`
+	IsActive              bool       `db:"is_active"`
 }
 
 func toDBOrganizationalUnit(bus organizationalunitbus.OrganizationalUnit) organizationalUnit {
+	var parentID *uuid.UUID
+	if bus.ParentID != uuid.Nil {
+		parentID = &bus.ParentID
+	}
+
 	return organizationalUnit{
 		ID:                    bus.ID,
-		ParentID:              bus.ParentID,
+		ParentID:              parentID,
 		Name:                  bus.Name,
 		Level:                 bus.Level,
 		Path:                  bus.Path,
@@ -32,9 +37,16 @@ func toDBOrganizationalUnit(bus organizationalunitbus.OrganizationalUnit) organi
 }
 
 func toBusOrganizationalUnit(db organizationalUnit) organizationalunitbus.OrganizationalUnit {
+	var parentID uuid.UUID
+	if db.ParentID == nil {
+		parentID = uuid.Nil
+	} else {
+		parentID = *db.ParentID
+	}
+
 	return organizationalunitbus.OrganizationalUnit{
 		ID:                    db.ID,
-		ParentID:              db.ParentID,
+		ParentID:              parentID,
 		Name:                  db.Name,
 		Level:                 db.Level,
 		Path:                  db.Path,

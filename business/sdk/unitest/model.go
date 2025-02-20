@@ -20,6 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/officebus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
@@ -64,6 +65,7 @@ type SeedData struct {
 	Brands              []brandbus.Brand
 	Roles               []rolebus.Role
 	UserRoles           []userrolebus.UserRole
+	OrgUnits            []organizationalunitbus.OrganizationalUnit
 }
 
 type Table struct {

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/convert"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
@@ -67,12 +69,25 @@ func (b *Business) Create(ctx context.Context, nou NewOrganizationalUnit) (Organ
 	ctx, span := otel.AddSpan(ctx, "business.organizationalunitbus.create")
 	defer span.End()
 
+	var path string
+
+	if nou.ParentID != uuid.Nil {
+		parent, err := b.storer.QueryByID(ctx, nou.ParentID)
+		if err != nil {
+			return OrganizationalUnit{}, fmt.Errorf("querying parent organizational unit: %w", err)
+		}
+
+		path = fmt.Sprintf("%s.%s", parent.Path, strings.ReplaceAll(nou.Name, " ", "_"))
+	} else {
+		path = nou.Name
+	}
+
 	ou := OrganizationalUnit{
 		ID:                    uuid.New(),
 		ParentID:              nou.ParentID,
 		Name:                  nou.Name,
 		Level:                 nou.Level,
-		Path:                  nou.Path,
+		Path:                  path,
 		CanInheritPermissions: nou.CanInheritPermissions,
 		CanRollupData:         nou.CanRollupData,
 		UnitType:              nou.UnitType,
@@ -87,6 +102,64 @@ func (b *Business) Create(ctx context.Context, nou NewOrganizationalUnit) (Organ
 }
 
 // Update modifies a org unit in the system
-// func (b *Business) Update(ctx context.Context, ou OrganizationalUnit, uou UpdateOrganizationalUnit) (OrganizationalUnit, error) {
-// 	ctx, span := otel.AddSpan(ctx, "business.organizationalroleunit.update")
-// 	defer span.End()
+func (b *Business) Update(ctx context.Context, ou OrganizationalUnit, uou UpdateOrganizationalUnit) (OrganizationalUnit, error) {
+	ctx, span := otel.AddSpan(ctx, "business.organizationalroleunit.update")
+	defer span.End()
+
+	err := convert.PopulateSameTypes(uou, &ou)
+	if err != nil {
+		return OrganizationalUnit{}, fmt.Errorf("populate same types: %w", err)
+	}
+
+	if err := b.storer.Update(ctx, ou); err != nil {
+		return OrganizationalUnit{}, fmt.Errorf("updating organizational unit: %w", err)
+	}
+
+	return ou, nil
+}
+
+// Delete removes a org unit from the system.
+func (b *Business) Delete(ctx context.Context, ou OrganizationalUnit) error {
+	ctx, span := otel.AddSpan(ctx, "business.organizationalunitbus.delete")
+	defer span.End()
+
+	if err := b.storer.Delete(ctx, ou); err != nil {
+		return fmt.Errorf("deleting organizational unit: %w", err)
+	}
+
+	return nil
+}
+
+// Query retrieves a list of org units from the system.
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]OrganizationalUnit, error) {
+	ctx, span := otel.AddSpan(ctx, "business.organizationalunitbus.query")
+	defer span.End()
+
+	ous, err := b.storer.Query(ctx, filter, orderBy, page)
+	if err != nil {
+		return nil, fmt.Errorf("querying organizational units: %w", err)
+	}
+
+	return ous, nil
+}
+
+// Count returns the total number of org units.
+func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.organizationalunitbus.count")
+	defer span.End()
+
+	return b.storer.Count(ctx, filter)
+}
+
+// QueryByID retrieves a single org unit from the system.
+func (b *Business) QueryByID(ctx context.Context, userID uuid.UUID) (OrganizationalUnit, error) {
+	ctx, span := otel.AddSpan(ctx, "business.organizationalunitbus.querybyid")
+	defer span.End()
+
+	ou, err := b.storer.QueryByID(ctx, userID)
+	if err != nil {
+		return OrganizationalUnit{}, fmt.Errorf("querying organizational unit: %w", err)
+	}
+
+	return ou, nil
+}

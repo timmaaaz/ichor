@@ -332,13 +332,13 @@ CREATE EXTENSION IF NOT EXISTS ltree;
 CREATE TABLE organizational_units (
     organizational_unit_id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    parent_id UUID REFERENCES organizational_units(organizational_unit_id),
+    parent_id UUID REFERENCES organizational_units(organizational_unit_id) NULL,
     level INTEGER NOT NULL,
     path ltree, -- Enables efficient tree querying
     can_inherit_permissions BOOLEAN DEFAULT true,     -- Can permissions flow down?
     can_rollup_data BOOLEAN DEFAULT true,       -- Can data roll up?
     unit_type VARCHAR(50),                 -- e.g., 'DEPARTMENT', 'BRANCH', 'REGION'
-    is_active BOOLEAN DEFAULT true,
+    is_active BOOLEAN DEFAULT true
 );
 
 -- Version: 1.28
