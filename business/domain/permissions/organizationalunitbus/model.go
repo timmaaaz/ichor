@@ -17,7 +17,6 @@ type OrganizationalUnit struct {
 type NewOrganizationalUnit struct {
 	ParentID              uuid.UUID
 	Name                  string
-	Level                 int
 	CanInheritPermissions bool
 	CanRollupData         bool
 	UnitType              string

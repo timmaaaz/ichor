@@ -70,6 +70,7 @@ func (b *Business) Create(ctx context.Context, nou NewOrganizationalUnit) (Organ
 	defer span.End()
 
 	var path string
+	var level int
 
 	if nou.ParentID != uuid.Nil {
 		parent, err := b.storer.QueryByID(ctx, nou.ParentID)
@@ -78,15 +79,17 @@ func (b *Business) Create(ctx context.Context, nou NewOrganizationalUnit) (Organ
 		}
 
 		path = fmt.Sprintf("%s.%s", parent.Path, strings.ReplaceAll(nou.Name, " ", "_"))
+		level = parent.Level + 1 // Calculate level based on parent's level
 	} else {
-		path = nou.Name
+		path = strings.ReplaceAll(nou.Name, " ", "_") // Root level units have their name as the path
+		level = 0                                     // Root level is 0
 	}
 
 	ou := OrganizationalUnit{
 		ID:                    uuid.New(),
 		ParentID:              nou.ParentID,
 		Name:                  nou.Name,
-		Level:                 nou.Level,
+		Level:                 level, // Use calculated level instead of nou.Level
 		Path:                  path,
 		CanInheritPermissions: nou.CanInheritPermissions,
 		CanRollupData:         nou.CanRollupData,

@@ -3,7 +3,6 @@ package organizationalunitbus
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/google/uuid"
 )
@@ -20,7 +19,6 @@ func TestSeedOrganizationalUnits(ctx context.Context, n int, api *Business) ([]O
 	rootOU := NewOrganizationalUnit{
 		ParentID:              uuid.Nil,
 		Name:                  "Name0",
-		Level:                 0,
 		CanInheritPermissions: true,
 		CanRollupData:         true,
 		UnitType:              "UnitType0",
@@ -36,13 +34,11 @@ func TestSeedOrganizationalUnits(ctx context.Context, n int, api *Business) ([]O
 
 	// Create remaining nodes level by level
 	for i := 1; i < n; i++ {
-		level := int(math.Floor(math.Log2(float64(i + 1))))
 		parentIndex := (i - 1) / 2 // formula to find parent index
 
 		nou := NewOrganizationalUnit{
 			ParentID:              createdOUs[parentIndex].ID, // Use the ID returned from API
 			Name:                  fmt.Sprintf("Name%d", i),
-			Level:                 level,
 			CanInheritPermissions: true,
 			CanRollupData:         true,
 			UnitType:              fmt.Sprintf("UnitType%d", i),
