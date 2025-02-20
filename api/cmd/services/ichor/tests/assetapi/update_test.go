@@ -60,8 +60,8 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Input: &assetapp.UpdateAsset{
 				ValidAssetID: dbtest.StringPointer(sd.Assets[0].ID[:7]),
 			},
-			GotResp: &struct{}{},
-			ExpResp: &struct{}{},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"valid_asset_id","error":"valid_asset_id must be at least 36 characters in length"}]`),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
