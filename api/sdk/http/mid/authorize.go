@@ -33,6 +33,14 @@ func AuthorizeUser(client *authclient.Client, userBus *userbus.Business, rule st
 	return addMidFunc(midFunc)
 }
 
+func AuthorizeCheckPermissions(client *authclient.Client, userBus *userbus.Business, rule string) web.MidFunc {
+	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
+		return mid.AuthorizeCheckPermissions(ctx, client, userBus, web.Param(r, "user_id"), next)
+	}
+
+	return addMidFunc(midFunc)
+}
+
 // AuthorizeProduct executes the specified role and extracts the specified
 // product from the DB if a product id is specified in the call. Depending on
 // the rule specified, the userid from the claims may be compared with the
