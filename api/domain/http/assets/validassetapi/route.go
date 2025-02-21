@@ -21,6 +21,10 @@ type Config struct {
 	UserBus       *userbus.Business
 }
 
+const (
+	routeTable = "valid_assets"
+)
+
 // Routes adds specific routes for this group.
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
@@ -29,9 +33,9 @@ func Routes(app *web.App, cfg Config) {
 	// ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
 	api := newAPI(validassetapp.NewApp(cfg.ValidAssetBus))
-	app.HandlerFunc(http.MethodGet, version, "/assets/validassets", api.query, authen, mid.AuthorizeTable(cfg.AuthClient, "valid_assets", auth.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/assets/validassets/{valid_asset_id}", api.queryByID, authen, mid.AuthorizeTable(cfg.AuthClient, "valid_assets", auth.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/assets/validassets", api.create, authen, mid.AuthorizeTable(cfg.AuthClient, "valid_assets", auth.Actions.Create, auth.RuleAdminOnly))
-	app.HandlerFunc(http.MethodPut, version, "/assets/validassets/{valid_asset_id}", api.update, authen, mid.AuthorizeTable(cfg.AuthClient, "valid_assets", auth.Actions.Update, auth.RuleAdminOnly))
-	app.HandlerFunc(http.MethodDelete, version, "/assets/validassets/{valid_asset_id}", api.delete, authen, mid.AuthorizeTable(cfg.AuthClient, "valid_assets", auth.Actions.Delete, auth.RuleAdminOnly))
+	app.HandlerFunc(http.MethodGet, version, "/assets/validassets", api.query, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Read, auth.RuleAny))
+	app.HandlerFunc(http.MethodGet, version, "/assets/validassets/{valid_asset_id}", api.queryByID, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Read, auth.RuleAny))
+	app.HandlerFunc(http.MethodPost, version, "/assets/validassets", api.create, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Create, auth.RuleAdminOnly))
+	app.HandlerFunc(http.MethodPut, version, "/assets/validassets/{valid_asset_id}", api.update, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Update, auth.RuleAdminOnly))
+	app.HandlerFunc(http.MethodDelete, version, "/assets/validassets/{valid_asset_id}", api.delete, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Delete, auth.RuleAdminOnly))
 }
