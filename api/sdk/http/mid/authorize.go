@@ -23,7 +23,7 @@ func Authorize(client *authclient.Client, rule string) web.MidFunc {
 }
 
 // AuthorizeTable validates authorization via the auth service with table information.
-func AuthorizeTable(client *authclient.Client, tableName string, action string, rule string) web.MidFunc {
+func AuthorizeTable(client *authclient.Client, tableName string, action auth.Action, rule string) web.MidFunc {
 	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
 		// Create table information
 		tableInfo := &auth.TableInfo{

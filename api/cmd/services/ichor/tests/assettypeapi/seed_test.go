@@ -4,17 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/assets/assettypeapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
-	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {
@@ -43,43 +38,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, err
 	}
 
-	// =========================================================================
-	// PURELY FOR TESTING PERMISSIONS
-	// TODO: REMOVE THIS WHEN PERMISSIONS ARE IMPLEMENTED
-	// =========================================================================
-	roles, err := rolebus.TestSeedRoles(ctx, 4, busDomain.Role)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
-	}
-	roleIDs := make(uuid.UUIDs, len(roles))
-	for i, r := range roles {
-		roleIDs[i] = r.ID
-	}
-
-	userRoles, err := userrolebus.TestSeedUserRoles(ctx, 3, usrs[0].ID, roleIDs, busDomain.UserRole)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
-	}
-
-	seedUsers := make([]unitest.User, len(usrs))
-	for i, u := range usrs {
-		seedUsers[i] = unitest.User{
-			User: u,
-		}
-	}
-
-	tables := []string{"valid_assets", "regions", "cities"}
-	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, 3, roleIDs[0], tables, busDomain.TableAccess)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding table accesses : %w", err)
-	}
-
 	return apitest.SeedData{
-		Users:         []apitest.User{tu1},
-		Admins:        []apitest.User{tu2},
-		Roles:         roles,
-		TableAccesses: tableAccesses,
-		UserRoles:     userRoles,
-		AssetTypes:    assettypeapp.ToAppAssetTypes(ats),
+		Users:      []apitest.User{tu1},
+		Admins:     []apitest.User{tu2},
+		AssetTypes: assettypeapp.ToAppAssetTypes(ats),
 	}, nil
 }

@@ -70,6 +70,11 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
 	}
+	tmp, err := userrolebus.TestSeedUserRoles(ctx, 3, tu2.User.ID, roleIDs, busDomain.UserRole)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
+	}
+	userRoles = append(userRoles, tmp...)
 
 	tables := []string{"countries", "regions", "cities", "valid_assets"}
 	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, 4, roleIDs[0], tables, busDomain.TableAccess)

@@ -206,20 +206,20 @@ func hasTablePermission(userPerms permissionsbus.UserPermissions, tableInfo Tabl
 		for _, tableAccess := range role.Tables {
 			if strings.EqualFold(tableAccess.TableName, tableInfo.Name) {
 				// Check specific permission based on the action
-				switch strings.ToLower(tableInfo.Action) {
-				case "create":
+				switch tableInfo.Action {
+				case Actions.Create:
 					if tableAccess.CanCreate {
 						return true
 					}
-				case "read":
+				case Actions.Read:
 					if tableAccess.CanRead {
 						return true
 					}
-				case "update":
+				case Actions.Update:
 					if tableAccess.CanUpdate {
 						return true
 					}
-				case "delete":
+				case Actions.Delete:
 					if tableAccess.CanDelete {
 						return true
 					}
