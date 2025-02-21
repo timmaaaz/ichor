@@ -63,7 +63,7 @@ func (api *api) authorize(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	if err := api.auth.Authorize(ctx, auth.Claims, auth.UserID, auth.Rule); err != nil {
+	if err := api.auth.Authorize(ctx, auth.Claims, auth.UserID, auth.Rule, auth.TableInfo); err != nil {
 		return errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[%v] rule[%v]: %s", auth.Claims.Roles, auth.Rule, err)
 	}
 

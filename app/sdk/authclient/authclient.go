@@ -13,6 +13,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
@@ -36,6 +37,16 @@ var defaultClient = http.Client{
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	},
+}
+
+// AuthorizeRequest contains the information needed to authorize a user.
+type AuthorizeRequest struct {
+	Rule        string
+	Subject     string
+	Roles       []string
+	UserID      uuid.UUID
+	TableName   string // Added for table authorization
+	TableAction string // Added for table authorization
 }
 
 // Client represents a client that can talk to the auth service.

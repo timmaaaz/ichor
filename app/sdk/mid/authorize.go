@@ -24,10 +24,16 @@ func Authorize(ctx context.Context, client *authclient.Client, rule string, next
 		return errs.New(errs.Unauthenticated, err)
 	}
 
+	tInfo, ok := auth.GetTableInfo(ctx)
+	if !ok {
+		tInfo = &auth.TableInfo{}
+	}
+
 	auth := authclient.Authorize{
-		Claims: GetClaims(ctx),
-		UserID: userID,
-		Rule:   rule,
+		Claims:    GetClaims(ctx),
+		UserID:    userID,
+		Rule:      rule,
+		TableInfo: *tInfo,
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -74,44 +80,6 @@ func AuthorizeUser(ctx context.Context, client *authclient.Client, userBus *user
 		Claims: GetClaims(ctx),
 		UserID: userID,
 		Rule:   rule,
-	}
-
-	if err := client.Authorize(ctx, auth); err != nil {
-		return errs.New(errs.Unauthenticated, err)
-	}
-
-	return next(ctx)
-}
-
-func AuthorizeCheckPermissions(ctx context.Context, client *authclient.Client, userBus *userbus.Business, id string, next HandlerFunc) Encoder {
-	var userID uuid.UUID
-
-	if id != "" {
-		var err error
-		userID, err = uuid.Parse(id)
-		if err != nil {
-			return errs.New(errs.Unauthenticated, ErrInvalidID)
-		}
-
-		usr, err := userBus.QueryByID(ctx, userID)
-		if err != nil {
-			switch {
-			case errors.Is(err, userbus.ErrNotFound):
-				return errs.New(errs.Unauthenticated, err)
-			default:
-				return errs.Newf(errs.Unauthenticated, "querybyid: userID[%s]: %s", userID, err)
-			}
-		}
-
-		ctx = setUser(ctx, usr)
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	auth := authclient.Authorize{
-		Claims: GetClaims(ctx),
-		UserID: userID,
 	}
 
 	if err := client.Authorize(ctx, auth); err != nil {

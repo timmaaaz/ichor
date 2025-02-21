@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -21,6 +22,25 @@ func Authorize(client *authclient.Client, rule string) web.MidFunc {
 	return addMidFunc(midFunc)
 }
 
+// AuthorizeTable validates authorization via the auth service with table information.
+func AuthorizeTable(client *authclient.Client, tableName string, action string, rule string) web.MidFunc {
+	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
+		// Create table information
+		tableInfo := &auth.TableInfo{
+			Name:   tableName,
+			Action: action,
+		}
+
+		// Add table info to the context
+		ctx = auth.WithTableInfo(ctx, tableInfo)
+
+		// Call the standard Authorize middleware with the enhanced context
+		return mid.Authorize(ctx, client, rule, next)
+	}
+
+	return addMidFunc(midFunc)
+}
+
 // AuthorizeUser executes the specified role and extracts the specified
 // user from the DB if a user id is specified in the call. Depending on the rule
 // specified, the userid from the claims may be compared with the specified
@@ -28,14 +48,6 @@ func Authorize(client *authclient.Client, rule string) web.MidFunc {
 func AuthorizeUser(client *authclient.Client, userBus *userbus.Business, rule string) web.MidFunc {
 	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
 		return mid.AuthorizeUser(ctx, client, userBus, rule, web.Param(r, "user_id"), next)
-	}
-
-	return addMidFunc(midFunc)
-}
-
-func AuthorizeCheckPermissions(client *authclient.Client, userBus *userbus.Business, rule string) web.MidFunc {
-	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
-		return mid.AuthorizeCheckPermissions(ctx, client, userBus, web.Param(r, "user_id"), next)
 	}
 
 	return addMidFunc(midFunc)
