@@ -24,10 +24,16 @@ func Authorize(ctx context.Context, client *authclient.Client, rule string, next
 		return errs.New(errs.Unauthenticated, err)
 	}
 
+	tInfo, ok := auth.GetTableInfo(ctx)
+	if !ok {
+		tInfo = &auth.TableInfo{}
+	}
+
 	auth := authclient.Authorize{
-		Claims: GetClaims(ctx),
-		UserID: userID,
-		Rule:   rule,
+		Claims:    GetClaims(ctx),
+		UserID:    userID,
+		Rule:      rule,
+		TableInfo: *tInfo,
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

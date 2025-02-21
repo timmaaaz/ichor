@@ -21,6 +21,17 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus/stores/organizationalunitdb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/roledb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccessdb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -110,6 +121,13 @@ type BusDomain struct {
 	// ETC
 	Product  *productbus.Business
 	VProduct *vproductbus.Business
+
+	// Permissions
+	Role               *rolebus.Business
+	UserRole           *userrolebus.Business
+	OrganizationalUnit *organizationalunitbus.Business
+	TableAccess        *tableaccessbus.Business
+	Permissions        *permissionsbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -152,6 +170,13 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 
+	// Permissions
+	roleBus := rolebus.NewBusiness(log, roledb.NewStore(log, db))
+	userRoleBus := userrolebus.NewBusiness(log, userroledb.NewStore(log, db))
+	organizationalunitBus := organizationalunitbus.NewBusiness(log, organizationalunitdb.NewStore(log, db))
+	tableAccessBus := tableaccessbus.NewBusiness(log, tableaccessdb.NewStore(log, db))
+	permissionsBus := permissionsbus.NewBusiness(log, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 24*time.Hour))
+
 	return BusDomain{
 		Delegate:            delegate,
 		Home:                homeBus,
@@ -178,7 +203,12 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Asset:               assetBus,
 		ContactInfo:         contactInfoBus,
 		Brand:               brandBus,
+		Role:                roleBus,
+		UserRole:            userRoleBus,
+		OrganizationalUnit:  organizationalunitBus,
 		ProductCategory:     productCategoryBus,
+		TableAccess:         tableAccessBus,
+		Permissions:         permissionsBus,
 	}
 
 }
