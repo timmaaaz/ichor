@@ -297,7 +297,7 @@ CREATE TABLE brands (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (brand_id),
-   FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id) ON DELETE CASCADE
+   FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id)
 );
 
 -- Version: 1.24
@@ -311,3 +311,25 @@ CREATE TABLE product_categories (
    PRIMARY KEY (category_id)
 );
 
+-- Version: 1.25
+-- Description: add inventory_products. want to change name but need to get rid of products
+CREATE TABLE inventory_products (
+   product_id UUID NOT NULL,
+   sku VARCHAR(50) NOT NULL,
+   brand_id UUID NOT NULL,
+   category_id UUID NOT NULL,
+   name VARCHAR(255) NOT NULL,
+   description TEXT NOT NULL,
+   model_number VARCHAR(100),
+   upc_code VARCHAR(50) NOT NULL,
+   status VARCHAR(20) NOT NULL,
+   is_active BOOLEAN NOT NULL,
+   is_perishable BOOLEAN NOT NULL,
+   handling_instructions TEXT NULL,
+   units_per_case INT NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (product_id),
+   FOREIGN KEY (brand_id) REFERENCES brands(brand_id),
+   FOREIGN KEY (category_id) REFERENCES product_categories(category_id)
+);

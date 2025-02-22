@@ -41,6 +41,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
+	inventoryproductbus "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
+	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
@@ -104,12 +106,13 @@ type BusDomain struct {
 	ContactInfo *contactinfobus.Business
 
 	// Inventory
-	Brand           *brandbus.Business
-	ProductCategory *productcategorybus.Business
+	Brand            *brandbus.Business
+	ProductCategory  *productcategorybus.Business
+	InventoryProduct *inventoryproductbus.Business
 
 	// ETC
 	Product  *productbus.Business
-	VProduct *vproductbus.Business
+	VProduct *vproductbus.Business // TODO is this still needed
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -147,7 +150,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Inventory
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
 	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db))
-
+	inventoryProductBus := inventoryproductbus.NewBusiness(log, delegate, inventoryproductdb.NewStore(log, db))
 	// Products
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
@@ -179,6 +182,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ContactInfo:         contactInfoBus,
 		Brand:               brandBus,
 		ProductCategory:     productCategoryBus,
+		InventoryProduct:    inventoryProductBus,
 	}
 
 }
