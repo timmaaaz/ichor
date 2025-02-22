@@ -62,12 +62,15 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus/stores/titledb"
 
+	inventoryproductapi "github.com/timmaaaz/ichor/api/domain/http/inventory/core/productapi"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
 	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
+	inventoryproductbus "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
+	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
@@ -131,6 +134,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	contactInfoBus := contactinfobus.NewBusiness(cfg.Log, delegate, contactinfodb.NewStore(cfg.Log, cfg.DB))
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
+	inventoryProductBus := inventoryproductbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -299,5 +303,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		ProductCategoryBus: productCategoryBus,
 		AuthClient:         cfg.AuthClient,
 		Log:                cfg.Log,
+	})
+
+	inventoryproductapi.Routes(app, inventoryproductapi.Config{
+		ProductBus: inventoryProductBus,
+		AuthClient: cfg.AuthClient,
+		Log:        cfg.Log,
 	})
 }
