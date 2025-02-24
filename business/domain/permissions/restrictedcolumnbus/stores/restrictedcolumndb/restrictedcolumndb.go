@@ -46,6 +46,40 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (restrictedcolumnbus.Storer
 	return &store, nil
 }
 
+func (s *Store) Exists(ctx context.Context, rc restrictedcolumnbus.RestrictedColumn) error {
+	const checkExists = `
+   	SELECT EXISTS (
+    SELECT 
+		1 
+    FROM 
+		information_schema.columns 
+    WHERE 
+		table_schema = 'public' 
+        AND 
+			table_name = :table_name 
+        AND 
+			column_name = :column_name
+	)`
+
+	tmp := struct {
+		Exists bool
+	}{}
+	data := map[string]any{
+		"table_name":  rc.TableName,
+		"column_name": rc.ColumnName,
+	}
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, checkExists, data, &tmp); err != nil {
+		return fmt.Errorf("checking table/column existence: %w", err)
+	}
+
+	if !tmp.Exists {
+		return restrictedcolumnbus.ErrColumnNotExists
+	}
+
+	return nil
+}
+
 // Create adds a new restricted column to the system
 func (s *Store) Create(ctx context.Context, rc restrictedcolumnbus.RestrictedColumn) error {
 	const q = `

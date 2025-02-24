@@ -27,7 +27,7 @@ func Test_RestrictedColumn(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	restrictedColumns, err := restrictedcolumnbus.TestSeedRestrictedColumns(ctx, 5, busDomain.RestrictedColumn)
+	restrictedColumns, err := restrictedcolumnbus.TestSeedRestrictedColumns(ctx, busDomain.RestrictedColumn)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding restricted columns : %w", err)
 	}
@@ -58,6 +58,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				if !exists {
 					return "error occurred"
 				}
+
 				return cmp.Diff(exp.([]restrictedcolumnbus.RestrictedColumn), gotResp)
 			},
 		},
@@ -69,13 +70,13 @@ func create(busDomain dbtest.BusDomain) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: restrictedcolumnbus.RestrictedColumn{
-				TableName:  "test_table",
-				ColumnName: "test_column",
+				TableName:  "valid_assets",
+				ColumnName: "serial_number",
 			},
 			ExcFunc: func(ctx context.Context) any {
 				resp, err := busDomain.RestrictedColumn.Create(ctx, restrictedcolumnbus.NewRestrictedColumn{
-					TableName:  "test_table",
-					ColumnName: "test_column",
+					TableName:  "valid_assets",
+					ColumnName: "serial_number",
 				})
 
 				if err != nil {

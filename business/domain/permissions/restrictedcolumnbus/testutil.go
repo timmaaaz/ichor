@@ -6,25 +6,29 @@ import (
 )
 
 // TestNewRestrictedColumns is a helper method for testing.
-func TestNewRestrictedColumns(n int) []NewRestrictedColumn {
-	newRestrictedColumns := make([]NewRestrictedColumn, n)
+func TestNewRestrictedColumns() []NewRestrictedColumn {
+	newRestrictedColumns := make([]NewRestrictedColumn, 3)
 
-	for i := 0; i < n; i++ {
-		nrc := NewRestrictedColumn{
-			TableName:  fmt.Sprintf("TableName%d", i),
-			ColumnName: fmt.Sprintf("ColumnName%d", i),
-		}
-
-		newRestrictedColumns[i] = nrc
+	newRestrictedColumns[0] = NewRestrictedColumn{
+		TableName:  "valid_assets",
+		ColumnName: "est_price",
+	}
+	newRestrictedColumns[1] = NewRestrictedColumn{
+		TableName:  "valid_assets",
+		ColumnName: "name",
+	}
+	newRestrictedColumns[2] = NewRestrictedColumn{
+		TableName:  "valid_assets",
+		ColumnName: "price",
 	}
 
 	return newRestrictedColumns
 }
 
 // TestSeedRestrictedColumns is a helper method for testing.
-func TestSeedRestrictedColumns(ctx context.Context, n int, api *Business) ([]RestrictedColumn, error) {
-	newRestrictedColumns := TestNewRestrictedColumns(n)
-	restrictedColumns := make([]RestrictedColumn, n)
+func TestSeedRestrictedColumns(ctx context.Context, api *Business) ([]RestrictedColumn, error) {
+	newRestrictedColumns := TestNewRestrictedColumns()
+	restrictedColumns := make([]RestrictedColumn, 3)
 
 	for i, nrc := range newRestrictedColumns {
 		rc, err := api.Create(ctx, nrc)

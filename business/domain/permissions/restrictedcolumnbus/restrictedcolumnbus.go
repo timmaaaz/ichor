@@ -16,6 +16,7 @@ import (
 // Set of error variables for CRUD operations.
 var (
 	ErrNotFound              = errors.New("restricted column not found")
+	ErrColumnNotExists       = errors.New("column does not exist")
 	ErrUnique                = errors.New("not unique")
 	ErrAuthenticationFailure = errors.New("authentication failed")
 )
@@ -25,6 +26,7 @@ var (
 type Storer interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
 	Create(ctx context.Context, rc RestrictedColumn) error
+	Exists(ctx context.Context, rc RestrictedColumn) error
 	Delete(ctx context.Context, rc RestrictedColumn) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]RestrictedColumn, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
@@ -70,6 +72,10 @@ func (b *Business) Create(ctx context.Context, nrc NewRestrictedColumn) (Restric
 		ID:         uuid.New(),
 		TableName:  nrc.TableName,
 		ColumnName: nrc.ColumnName,
+	}
+
+	if err := b.storer.Exists(ctx, rc); err != nil {
+		return RestrictedColumn{}, fmt.Errorf("checking if restricted column exists: %w", err)
 	}
 
 	if err := b.storer.Create(ctx, rc); err != nil {
