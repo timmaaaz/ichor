@@ -26,6 +26,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus/stores/restrictedcolumndb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/roledb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
@@ -127,6 +129,7 @@ type BusDomain struct {
 	UserRole           *userrolebus.Business
 	OrganizationalUnit *organizationalunitbus.Business
 	TableAccess        *tableaccessbus.Business
+	RestrictedColumn   *restrictedcolumnbus.Business
 	Permissions        *permissionsbus.Business
 }
 
@@ -175,6 +178,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	userRoleBus := userrolebus.NewBusiness(log, userroledb.NewStore(log, db))
 	organizationalunitBus := organizationalunitbus.NewBusiness(log, organizationalunitdb.NewStore(log, db))
 	tableAccessBus := tableaccessbus.NewBusiness(log, tableaccessdb.NewStore(log, db))
+	restrictedColumnBus := restrictedcolumnbus.NewBusiness(log, restrictedcolumndb.NewStore(log, db))
 	permissionsBus := permissionsbus.NewBusiness(log, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 24*time.Hour))
 
 	return BusDomain{
@@ -208,6 +212,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		OrganizationalUnit:  organizationalunitBus,
 		ProductCategory:     productCategoryBus,
 		TableAccess:         tableAccessBus,
+		RestrictedColumn:    restrictedColumnBus,
 		Permissions:         permissionsBus,
 	}
 

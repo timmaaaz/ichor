@@ -35,7 +35,7 @@ func Routes(app *web.App, cfg Config) {
 	api := newAPI(validassetapp.NewApp(cfg.ValidAssetBus))
 	app.HandlerFunc(http.MethodGet, version, "/assets/validassets", api.query, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodGet, version, "/assets/validassets/{valid_asset_id}", api.queryByID, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/assets/validassets", api.create, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Create, auth.RuleAdminOnly))
-	app.HandlerFunc(http.MethodPut, version, "/assets/validassets/{valid_asset_id}", api.update, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Update, auth.RuleAdminOnly))
-	app.HandlerFunc(http.MethodDelete, version, "/assets/validassets/{valid_asset_id}", api.delete, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Delete, auth.RuleAdminOnly))
+	app.HandlerFunc(http.MethodPost, version, "/assets/validassets", api.create, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Create, auth.RuleAdminOnly))                    // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
+	app.HandlerFunc(http.MethodPut, version, "/assets/validassets/{valid_asset_id}", api.update, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Update, auth.RuleAdminOnly))    // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
+	app.HandlerFunc(http.MethodDelete, version, "/assets/validassets/{valid_asset_id}", api.delete, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Delete, auth.RuleAdminOnly)) // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
 }

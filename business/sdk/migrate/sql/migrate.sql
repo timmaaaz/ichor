@@ -313,7 +313,7 @@ CREATE TABLE product_categories (
 
 
 -- =============================================================================
--- Permissions
+-- Core Permissions
 -- =============================================================================
 
 -- Version: 1.25
@@ -341,6 +341,19 @@ CREATE TABLE user_roles (
 CREATE EXTENSION IF NOT EXISTS ltree;
 
 -- Version: 1.28
+-- Description: Create table table_access
+CREATE TABLE table_access (
+    table_access_id UUID PRIMARY KEY,
+    role_id UUID REFERENCES roles(role_id),
+    table_name VARCHAR(50) NOT NULL,
+    can_create BOOLEAN DEFAULT FALSE,
+    can_read BOOLEAN DEFAULT FALSE,
+    can_update BOOLEAN DEFAULT FALSE,
+    can_delete BOOLEAN DEFAULT FALSE,
+    UNIQUE(role_id, table_name)
+);
+
+-- Version: 1.29
 -- Description: Create table organizational_units
 CREATE TABLE organizational_units (
     organizational_unit_id UUID PRIMARY KEY,
@@ -354,16 +367,15 @@ CREATE TABLE organizational_units (
     is_active BOOLEAN DEFAULT true
 );
 
--- Version: 1.29
--- Description: Create table table_access
-CREATE TABLE table_access (
-    table_access_id UUID PRIMARY KEY,
-    role_id UUID REFERENCES roles(role_id),
-    table_name VARCHAR(50) NOT NULL,
-    can_create BOOLEAN DEFAULT FALSE,
-    can_read BOOLEAN DEFAULT FALSE,
-    can_update BOOLEAN DEFAULT FALSE,
-    can_delete BOOLEAN DEFAULT FALSE,
-    UNIQUE(role_id, table_name)
-);
+-- =============================================================================
+-- Column Level Permissions
+-- =============================================================================
 
+-- Version: 1.30
+-- Descriptions: Create restricted_columns table
+CREATE TABLE restricted_columns (
+    restricted_column_id UUID PRIMARY KEY,
+    table_name VARCHAR(50) NOT NULL,
+    column_name VARCHAR(50) NOT NULL,
+    UNIQUE(table_name, column_name)
+);
