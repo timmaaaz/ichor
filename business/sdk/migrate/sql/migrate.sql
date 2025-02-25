@@ -352,8 +352,24 @@ CREATE TABLE table_access (
     can_delete BOOLEAN DEFAULT FALSE,
     UNIQUE(role_id, table_name)
 );
+-- =============================================================================
+-- Column Level Permissions
+-- =============================================================================
 
 -- Version: 1.29
+-- Descriptions: Create restricted_columns table
+CREATE TABLE restricted_columns (
+    restricted_column_id UUID PRIMARY KEY,
+    table_name VARCHAR(50) NOT NULL,
+    column_name VARCHAR(50) NOT NULL,
+    UNIQUE(table_name, column_name)
+);
+
+-- =============================================================================
+-- Org Units
+-- =============================================================================
+
+-- Version: 1.30
 -- Description: Create table organizational_units
 CREATE TABLE organizational_units (
     organizational_unit_id UUID PRIMARY KEY,
@@ -367,15 +383,79 @@ CREATE TABLE organizational_units (
     is_active BOOLEAN DEFAULT true
 );
 
+-- Version: 1.31
+-- Description: Create user_org_assignments table
+CREATE TABLE user_org_assignments (
+    user_org_assignments_id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(user_id),
+    org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    role_id UUID REFERENCES roles(role_id),
+    is_unit_manager BOOLEAN DEFAULT FALSE,
+    start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_date TIMESTAMP,                    -- For temporary assignments
+    created_by UUID REFERENCES users(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Version: 1.32
+-- Description: Create org_unit_field_restrictions table
+CREATE TABLE org_unit_field_restrictions (
+    org_unit_field_restrictions_id UUID PRIMARY KEY,
+    org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    table_name VARCHAR(50) NOT NULL,
+    field_name VARCHAR(50) NOT NULL,
+    can_inherit_permissions BOOLEAN DEFAULT false,
+    can_rollup_data BOOLEAN DEFAULT false,
+    UNIQUE(org_unit_id, table_name, field_name)
+);
+
+-- Version: 1.33
+-- Description: Create cross_unit_permissions table
+CREATE TABLE cross_unit_permissions (
+    cross_unit_permissions_id UUID PRIMARY KEY,
+    source_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    target_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    permission_type VARCHAR(50) NOT NULL,  -- e.g., 'READ', 'WRITE', 'ADMIN'
+    granted_by UUID REFERENCES users(user_id),
+    valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    valid_until TIMESTAMP,
+    reason TEXT,
+    UNIQUE(source_unit_id, target_unit_id, permission_type)
+);
+
 -- =============================================================================
--- Column Level Permissions
+-- Temp Access
 -- =============================================================================
 
--- Version: 1.30
--- Descriptions: Create restricted_columns table
-CREATE TABLE restricted_columns (
-    restricted_column_id UUID PRIMARY KEY,
+-- Version: 1.34
+-- Description: Create permission_overrides table
+CREATE TABLE permission_overrides (
+    permission_overrides_id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(user_id),
     table_name VARCHAR(50) NOT NULL,
-    column_name VARCHAR(50) NOT NULL,
-    UNIQUE(table_name, column_name)
+    column_name VARCHAR(50),
+    org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    can_create BOOLEAN DEFAULT FALSE,
+    can_read BOOLEAN DEFAULT FALSE,
+    can_update BOOLEAN DEFAULT FALSE,
+    can_delete BOOLEAN DEFAULT FALSE,
+    reason TEXT NOT NULL,
+    granted_by UUID REFERENCES users(user_id),
+    valid_from TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_until TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Version: 1.35
+-- Description: Create temporary_unit_access table
+CREATE TABLE temporary_unit_access (
+    temporary_unit_access_id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(user_id),
+    org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    permission_type VARCHAR(50) NOT NULL,
+    reason TEXT NOT NULL,
+    granted_by UUID REFERENCES users(user_id),
+    valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    valid_until TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
