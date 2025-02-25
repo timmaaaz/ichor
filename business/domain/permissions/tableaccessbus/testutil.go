@@ -4,34 +4,20 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/permissions/testing"
 )
 
-// TestNewTableAccesses creates a slice of NewTableAccess for testing purposes.
-func TestNewTableAccesses(n int, roleID uuid.UUID, tables []string) []NewTableAccess {
-	newTableAccesses := make([]NewTableAccess, n)
-
-	for i := 0; i < n; i++ {
-		nta := NewTableAccess{
-			RoleID:    roleID,
-			TableName: tables[i],
-			CanCreate: true,
-			CanRead:   true,
-			CanUpdate: true,
-			CanDelete: true,
-		}
-
-		newTableAccesses[i] = nta
-	}
-
-	return newTableAccesses
-}
-
 // TestSeedTableAccesses is a helper method for testing.
-func TestSeedTableAccesses(ctx context.Context, n int, roleID uuid.UUID, tables []string, api *Business) ([]TableAccess, error) {
-	newTableAccesses := TestNewTableAccesses(n, roleID, tables)
-	tableAccesses := make([]TableAccess, n)
+func TestSeedTableAccesses(ctx context.Context, roleID uuid.UUID, tables []string, api *Business) ([]TableAccess, error) {
+	tableAccesses := make([]TableAccess, len(testing.TableAccess))
 
-	for i, nta := range newTableAccesses {
+	for i, taMap := range testing.TableAccess {
+		nta, err := testing.MapToStruct[NewTableAccess](taMap)
+		if err != nil {
+			return nil, err
+		}
+		nta.RoleID = roleID
+
 		ta, err := api.Create(ctx, nta)
 		if err != nil {
 			return nil, err

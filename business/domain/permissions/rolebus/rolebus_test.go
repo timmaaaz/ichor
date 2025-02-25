@@ -28,7 +28,7 @@ func Test_Role(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	roles, err := rolebus.TestSeedRoles(ctx, 5, busDomain.Role)
+	roles, err := rolebus.TestSeedRoles(ctx, busDomain.Role)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
 	}

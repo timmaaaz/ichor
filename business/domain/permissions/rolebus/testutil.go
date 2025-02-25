@@ -7,7 +7,7 @@ import (
 )
 
 // TestSeedRoles is a helper method for testing.
-func TestSeedRoles(ctx context.Context, n int, api *Business) ([]Role, error) {
+func TestSeedRoles(ctx context.Context, api *Business) ([]Role, error) {
 	roles := make([]Role, len(testing.Roles))
 
 	for i, roleMap := range testing.Roles {

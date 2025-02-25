@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
@@ -38,7 +39,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
 
-	roles, err := rolebus.TestSeedRoles(ctx, 4, busDomain.Role)
+	roles, err := rolebus.TestSeedRoles(ctx, busDomain.Role)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
 	}
@@ -50,7 +51,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 
 	tables := []string{"countries", "regions", "cities"}
 
-	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, 3, roleIDs[0], tables, busDomain.TableAccess)
+	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, roleIDs[0], tables, busDomain.TableAccess)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding table accesses : %w", err)
 	}
@@ -70,16 +71,24 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+
+	// create sorted copy of table accesses
+	tableAccesses := make([]tableaccessbus.TableAccess, len(sd.TableAccesses))
+	copy(tableAccesses, sd.TableAccesses)
+	sort.Slice(tableAccesses, func(i, j int) bool {
+		return tableAccesses[i].ID.String() < tableAccesses[j].ID.String()
+	})
+
 	return []unitest.Table{
 		{
 			Name: "Query",
 			ExpResp: []tableaccessbus.TableAccess{
-				sd.TableAccesses[0],
-				sd.TableAccesses[1],
-				sd.TableAccesses[2],
+				tableAccesses[0],
+				tableAccesses[1],
+				tableAccesses[2],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.TableAccess.Query(ctx, tableaccessbus.QueryFilter{}, tableaccessbus.DefaultOrderBy, page.MustParse("1", "3"))
+				got, err := busDomain.TableAccess.Query(ctx, tableaccessbus.QueryFilter{}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "3"))
 				if err != nil {
 					return err
 				}
@@ -96,15 +105,6 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					return fmt.Sprintf("expected %d rows, got %d", len(expResp), len(gotResp))
 				}
 
-				// Sort arrays to make sure they are in the same order.
-				sort.Slice(gotResp, func(i, j int) bool {
-					return gotResp[i].TableName < gotResp[j].TableName
-				})
-
-				sort.Slice(expResp, func(i, j int) bool {
-					return expResp[i].TableName < expResp[j].TableName
-				})
-
 				return cmp.Diff(expResp, gotResp)
 			},
 		},
@@ -117,7 +117,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "Create",
 			ExpResp: tableaccessbus.TableAccess{
 				RoleID:    sd.TableAccesses[1].RoleID,
-				TableName: "users",
+				TableName: "valid_assets",
 				CanCreate: sd.TableAccesses[0].CanCreate,
 				CanRead:   sd.TableAccesses[0].CanRead,
 				CanUpdate: sd.TableAccesses[0].CanUpdate,
@@ -126,7 +126,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				nta := tableaccessbus.NewTableAccess{
 					RoleID:    sd.TableAccesses[1].RoleID,
-					TableName: "users",
+					TableName: "valid_assets",
 					CanCreate: sd.TableAccesses[0].CanCreate,
 					CanRead:   sd.TableAccesses[0].CanRead,
 					CanUpdate: sd.TableAccesses[0].CanUpdate,
