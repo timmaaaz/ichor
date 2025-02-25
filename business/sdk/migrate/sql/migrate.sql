@@ -384,9 +384,9 @@ CREATE TABLE organizational_units (
 );
 
 -- Version: 1.31
--- Description: Create user_org_assignments table
-CREATE TABLE user_org_assignments (
-    user_org_assignments_id UUID PRIMARY KEY,
+-- Description: Create user_organizations table
+CREATE TABLE user_organizations (
+    user_organization_id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(user_id),
     org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
     role_id UUID REFERENCES roles(role_id),
