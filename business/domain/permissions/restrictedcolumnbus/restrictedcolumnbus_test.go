@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
@@ -47,7 +48,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				sd.RestrictedColumns[2],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.RestrictedColumn.Query(ctx, restrictedcolumnbus.QueryFilter{}, restrictedcolumnbus.DefaultOrderBy, page.MustParse("1", "3"))
+				got, err := busDomain.RestrictedColumn.Query(ctx, restrictedcolumnbus.QueryFilter{}, order.NewBy(restrictedcolumnbus.OrderByColumnName, order.ASC), page.MustParse("1", "3"))
 				if err != nil {
 					return err
 				}
