@@ -75,24 +75,24 @@ var Roles = []map[string]interface{}{
 		"Description": "System Administrator with full access",
 	},
 	{
-		"Name":        "MANAGER",
-		"Description": "Department manager with extended privileges",
-	},
-	{
 		"Name":        "EMPLOYEE",
 		"Description": "Regular employee with standard access",
 	},
 	{
-		"Name":        "READONLY",
-		"Description": "Read-only access to specific resources",
+		"Name":        "FINANCE_ADMIN",
+		"Description": "Finance Department Administrator",
 	},
 	{
 		"Name":        "HR_ADMIN",
 		"Description": "Human Resources Administrator",
 	},
 	{
-		"Name":        "FINANCE_ADMIN",
-		"Description": "Finance Department Administrator",
+		"Name":        "MANAGER",
+		"Description": "Department manager with extended privileges",
+	},
+	{
+		"Name":        "READONLY",
+		"Description": "Read-only access to specific resources",
 	},
 	{
 		"Name":        "TEMP_ADMIN",

@@ -2,34 +2,23 @@ package rolebus
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/timmaaaz/ichor/business/domain/permissions/testing"
 )
-
-// TestNewRoles is a helper method for testing.
-func TestNewRoles(n int) []NewRole {
-	newRoles := make([]NewRole, n)
-
-	for i := 0; i < n; i++ {
-		nr := NewRole{
-			Name:        fmt.Sprintf("Name%d", i),
-			Description: fmt.Sprintf("Description%d", i),
-		}
-
-		newRoles[i] = nr
-	}
-
-	return newRoles
-}
 
 // TestSeedRoles is a helper method for testing.
 func TestSeedRoles(ctx context.Context, n int, api *Business) ([]Role, error) {
-	newRoles := TestNewRoles(n)
-	roles := make([]Role, n)
+	roles := make([]Role, len(testing.Roles))
 
-	for i, nr := range newRoles {
+	for i, roleMap := range testing.Roles {
+		nr, err := testing.MapToStruct[NewRole](roleMap)
+		if err != nil {
+			return nil, err
+		}
+
 		r, err := api.Create(ctx, nr)
 		if err != nil {
-			return nil, fmt.Errorf("seeding role: idx: %d, : %w", i, err)
+			return nil, err
 		}
 
 		roles[i] = r
