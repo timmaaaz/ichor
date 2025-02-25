@@ -14,11 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus/stores/restrictedcolumndb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -55,12 +50,11 @@ type Config struct {
 // Auth is used to authenticate clients. It can generate a token for a
 // set of user claims and recreate the claims by parsing the token.
 type Auth struct {
-	keyLookup      KeyLookup
-	userBus        *userbus.Business
-	permissionsBus *permissionsbus.Business
-	method         jwt.SigningMethod
-	parser         *jwt.Parser
-	issuer         string
+	keyLookup KeyLookup
+	userBus   *userbus.Business
+	method    jwt.SigningMethod
+	parser    *jwt.Parser
+	issuer    string
 }
 
 // New creates an Auth to support authentication/authorization.
@@ -75,19 +69,12 @@ func New(cfg Config) (*Auth, error) {
 		userBus = userbus.NewBusiness(cfg.Log, nil, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), 10*time.Minute))
 	}
 
-	var permissionsBus *permissionsbus.Business
-	if cfg.DB != nil {
-		restrictedColumnBus := restrictedcolumnbus.NewBusiness(cfg.Log, restrictedcolumndb.NewStore(cfg.Log, cfg.DB))
-		permissionsBus = permissionsbus.NewBusiness(cfg.Log, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 24*time.Hour), restrictedColumnBus)
-	}
-
 	a := Auth{
-		keyLookup:      cfg.KeyLookup,
-		userBus:        userBus,
-		permissionsBus: permissionsBus,
-		method:         jwt.GetSigningMethod(jwt.SigningMethodRS256.Name),
-		parser:         jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name})),
-		issuer:         cfg.Issuer,
+		keyLookup: cfg.KeyLookup,
+		userBus:   userBus,
+		method:    jwt.GetSigningMethod(jwt.SigningMethodRS256.Name),
+		parser:    jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name})),
+		issuer:    cfg.Issuer,
 	}
 
 	return &a, nil

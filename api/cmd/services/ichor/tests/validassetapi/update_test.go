@@ -52,7 +52,6 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				// NOTES: This is a protected field and will be returned if you
 				// created it, but it will not be returned from queries if you
 				// do not have permission to see it and therefore wasn't
-
 				expResp.EstPrice = gotResp.EstPrice
 
 				return cmp.Diff(gotResp, expResp)
