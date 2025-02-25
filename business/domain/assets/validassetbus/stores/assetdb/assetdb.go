@@ -17,15 +17,25 @@ import (
 
 // Store manages the set of APIs for assets database access.
 type Store struct {
-	log *logger.Logger
-	db  sqlx.ExtContext
+	log          *logger.Logger
+	db           sqlx.ExtContext
+	columnFilter *sqldb.ColumnFilter
+	assetColumns []string
 }
 
 // NewStore constructs the api for data access.
 func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
+	columns := []string{
+		"valid_asset_id", "type_id", "name", "est_price", "maintenance_interval",
+		"life_expectancy", "serial_number", "model_number", "is_enabled", "date_created",
+		"date_updated", "created_by", "updated_by",
+	}
+
 	return &Store{
-		log: log,
-		db:  db,
+		log:          log,
+		db:           db,
+		assetColumns: columns,
+		columnFilter: sqldb.NewColumnFilter(log),
 	}
 }
 
@@ -118,19 +128,19 @@ func (s *Store) Delete(ctx context.Context, ass validassetbus.ValidAsset) error 
 }
 
 // Query retrieves a list of assets from the database.
-func (s *Store) Query(ctx context.Context, filter validassetbus.QueryFilter, orderBy order.By, page page.Page) ([]validassetbus.ValidAsset, error) {
+func (s *Store) Query(ctx context.Context, filter validassetbus.QueryFilter, restrictedColumns []string, orderBy order.By, page page.Page) ([]validassetbus.ValidAsset, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
 	}
 
-	const q = `
+	columnStr := s.columnFilter.GetColumnString(s.assetColumns, restrictedColumns)
+
+	q := fmt.Sprintf(`
     SELECT
-        valid_asset_id, type_id, name, est_price, maintenance_interval,
-        life_expectancy, serial_number, model_number, is_enabled, date_created,
-        date_updated, created_by, updated_by
+        %s
     FROM
-        valid_assets`
+        valid_assets`, columnStr)
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -175,23 +185,23 @@ func (s *Store) Count(ctx context.Context, filter validassetbus.QueryFilter) (in
 }
 
 // QueryByID retrieves a single asset from the database by its ID.
-func (s *Store) QueryByID(ctx context.Context, assetID uuid.UUID) (validassetbus.ValidAsset, error) {
+func (s *Store) QueryByID(ctx context.Context, restrictedColumns []string, assetID uuid.UUID) (validassetbus.ValidAsset, error) {
 	data := struct {
 		ID string `db:"valid_asset_id"`
 	}{
 		ID: assetID.String(),
 	}
 
-	const q = `
+	columnStr := s.columnFilter.GetColumnString(s.assetColumns, restrictedColumns)
+
+	q := fmt.Sprintf(`
     SELECT
-        valid_asset_id, type_id, name, est_price, maintenance_interval,
-        life_expectancy, model_number, is_enabled, date_created,
-        date_updated, created_by, updated_by
+        %s
     FROM
         valid_assets
     WHERE
         valid_asset_id = :valid_asset_id
-    `
+    `, columnStr)
 	var ass validAsset
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ass); err != nil {

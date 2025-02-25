@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -17,6 +19,12 @@ import (
 // the content type for that encoding.
 type Encoder interface {
 	Encode() (data []byte, contentType string, err error)
+}
+
+// TableInfo represents the structure and metadata of a database table
+type TableInfo struct {
+	Name   string                // Table name
+	Action permissionsbus.Action // "create", "read", "update", "delete"
 }
 
 // isError tests if the Encoder has an error inside of it.
@@ -42,6 +50,8 @@ const (
 	productKey
 	homeKey
 	trKey
+	tableInfoKey
+	restrictedColumnKey
 )
 
 func setClaims(ctx context.Context, claims auth.Claims) context.Context {
@@ -125,4 +135,31 @@ func GetTran(ctx context.Context) (sqldb.CommitRollbacker, error) {
 	}
 
 	return v, nil
+}
+
+func setTableInfo(ctx context.Context, tableInfo *TableInfo) context.Context {
+	return context.WithValue(ctx, tableInfoKey, tableInfo)
+}
+
+func GetTableInfo(ctx context.Context) (*TableInfo, error) {
+	v, ok := ctx.Value(tableInfoKey).(*TableInfo)
+	if !ok {
+		return nil, errors.New("table info not found in context")
+	}
+
+	return v, nil
+}
+
+func setRestrictedColumns(ctx context.Context, restrictedColumns restrictedcolumnbus.RestrictedColumns) context.Context {
+	columns := restrictedColumns // Make a copy to ensure stability
+	return context.WithValue(ctx, restrictedColumnKey, &columns)
+}
+
+func GetRestrictedColumns(ctx context.Context) (restrictedcolumnbus.RestrictedColumns, error) {
+	v, ok := ctx.Value(restrictedColumnKey).(*restrictedcolumnbus.RestrictedColumns)
+	if !ok {
+		return nil, errors.New("restricted columns not found in context")
+	}
+
+	return *v, nil
 }

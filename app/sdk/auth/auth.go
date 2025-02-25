@@ -17,6 +17,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus/stores/restrictedcolumndb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -75,7 +77,8 @@ func New(cfg Config) (*Auth, error) {
 
 	var permissionsBus *permissionsbus.Business
 	if cfg.DB != nil {
-		permissionsBus = permissionsbus.NewBusiness(cfg.Log, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 24*time.Hour))
+		restrictedColumnBus := restrictedcolumnbus.NewBusiness(cfg.Log, restrictedcolumndb.NewStore(cfg.Log, cfg.DB))
+		permissionsBus = permissionsbus.NewBusiness(cfg.Log, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 24*time.Hour), restrictedColumnBus)
 	}
 
 	a := Auth{
@@ -169,7 +172,7 @@ func (a *Auth) Authenticate(ctx context.Context, bearerToken string) (Claims, er
 // Authorize attempts to authorize the user with the provided input roles, if
 // none of the input roles are within the user's claims, we return an error
 // otherwise the user is authorized.
-func (a *Auth) Authorize(ctx context.Context, claims Claims, userID uuid.UUID, rule string, tableInfo TableInfo) error {
+func (a *Auth) Authorize(ctx context.Context, claims Claims, userID uuid.UUID, rule string) error {
 	input := map[string]any{
 		"Roles":   claims.Roles,
 		"Subject": claims.Subject,
@@ -180,54 +183,7 @@ func (a *Auth) Authorize(ctx context.Context, claims Claims, userID uuid.UUID, r
 		return fmt.Errorf("rego evaluation failed : %w", err)
 	}
 
-	// Authorize on our permissions
-	perms, err := a.permissionsBus.QueryUserPermissions(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("query user permissions: %w", err)
-	}
-
-	var zeroValue TableInfo
-
-	// If we have table information in the context, check table permissions
-	if tableInfo != zeroValue {
-		if !hasTablePermission(perms, tableInfo) {
-			return fmt.Errorf("user %s lacks permission for %s on table %s",
-				userID, tableInfo.Action, tableInfo.Name)
-		}
-	}
 	return nil
-}
-
-// hasTablePermission checks if the user has the required permission for the specified table
-func hasTablePermission(userPerms permissionsbus.UserPermissions, tableInfo TableInfo) bool {
-	// Search through all roles assigned to the user
-	for _, role := range userPerms.Roles {
-		// Check each table access in this role
-		for _, tableAccess := range role.Tables {
-			if strings.EqualFold(tableAccess.TableName, tableInfo.Name) {
-				// Check specific permission based on the action
-				switch tableInfo.Action {
-				case Actions.Create:
-					if tableAccess.CanCreate {
-						return true
-					}
-				case Actions.Read:
-					if tableAccess.CanRead {
-						return true
-					}
-				case Actions.Update:
-					if tableAccess.CanUpdate {
-						return true
-					}
-				case Actions.Delete:
-					if tableAccess.CanDelete {
-						return true
-					}
-				}
-			}
-		}
-	}
-	return false
 }
 
 // opaPolicyEvaluation asks opa to evaluate the token against the specified token

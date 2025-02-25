@@ -27,10 +27,45 @@ func toBusRestrictedColumn(db restrictedColumn) restrictedcolumnbus.RestrictedCo
 	}
 }
 
-func toBusRestrictedColumns(dbs []restrictedColumn) []restrictedcolumnbus.RestrictedColumn {
+func toBusRestrictedColumnSlice(dbs []restrictedColumn) []restrictedcolumnbus.RestrictedColumn {
 	restrictedColumns := make([]restrictedcolumnbus.RestrictedColumn, len(dbs))
 	for i, db := range dbs {
 		restrictedColumns[i] = toBusRestrictedColumn(db)
 	}
 	return restrictedColumns
+}
+
+// NOTE: Not using append here because this will be called all over the
+// middleware and we want to avoid the overhead of append.
+func toBusRestrictedColumns(dbs []restrictedColumn) restrictedcolumnbus.RestrictedColumns {
+	// Pre-calculate map size
+	tableCount := 0
+	tableSeen := make(map[string]bool)
+
+	for _, db := range dbs {
+		if !tableSeen[db.TableName] {
+			tableSeen[db.TableName] = true
+			tableCount++
+		}
+	}
+
+	// Pre-allocate the map
+	rcs := make(map[string][]string, tableCount)
+
+	// Pre-allocate slices
+	columnCountByTable := make(map[string]int)
+	for _, db := range dbs {
+		columnCountByTable[db.TableName]++
+	}
+
+	for tableName, count := range columnCountByTable {
+		rcs[tableName] = make([]string, 0, count)
+	}
+
+	// Fill the map
+	for _, db := range dbs {
+		rcs[db.TableName] = append(rcs[db.TableName], db.ColumnName)
+	}
+
+	return rcs
 }

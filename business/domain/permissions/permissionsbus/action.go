@@ -1,4 +1,4 @@
-package auth
+package permissionsbus
 
 import "fmt"
 
@@ -24,7 +24,7 @@ var actions = make(map[string]Action)
 
 // Action represents an action in the system.
 type Action struct {
-	name string
+	Name string
 }
 
 func newAction(action string) Action {
@@ -35,12 +35,12 @@ func newAction(action string) Action {
 
 // String returns the name of the action.
 func (a Action) String() string {
-	return a.name
+	return a.Name
 }
 
 // Equal provides support for the go-cmp package and testing.
 func (a Action) Equal(a2 Action) bool {
-	return a.name == a2.name
+	return a.Name == a2.Name
 }
 
 // =============================================================================

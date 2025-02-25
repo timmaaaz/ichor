@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -26,15 +27,17 @@ type Storer interface {
 
 // Business manages the set of APIs for user access.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log               *logger.Logger
+	storer            Storer
+	RestrictedColumns *restrictedcolumnbus.Business
 }
 
 // NewBusiness constructs a user business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, storer Storer, RestrictedColumns *restrictedcolumnbus.Business) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:               log,
+		storer:            storer,
+		RestrictedColumns: RestrictedColumns,
 	}
 }
 

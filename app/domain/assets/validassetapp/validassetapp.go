@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
@@ -59,7 +60,7 @@ func (a *App) Update(ctx context.Context, app UpdateValidAsset, id uuid.UUID) (V
 		return ValidAsset{}, errs.New(errs.InvalidArgument, err)
 	}
 
-	st, err := a.assetBus.QueryByID(ctx, id)
+	st, err := a.assetBus.QueryByID(ctx, []string{}, id)
 	if err != nil {
 		return ValidAsset{}, errs.New(errs.NotFound, validassetbus.ErrNotFound)
 	}
@@ -77,7 +78,7 @@ func (a *App) Update(ctx context.Context, app UpdateValidAsset, id uuid.UUID) (V
 
 // Delete removes an existing asset.
 func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
-	st, err := a.assetBus.QueryByID(ctx, id)
+	st, err := a.assetBus.QueryByID(ctx, []string{}, id)
 	if err != nil {
 		return errs.New(errs.NotFound, validassetbus.ErrNotFound)
 	}
@@ -107,7 +108,12 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ValidAsse
 		return query.Result[ValidAsset]{}, errs.NewFieldsError("orderby", err)
 	}
 
-	assets, err := a.assetBus.Query(ctx, filter, orderBy, page)
+	rcs, err := mid.GetRestrictedColumns(ctx)
+	if err != nil {
+		return query.Result[ValidAsset]{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+	}
+
+	assets, err := a.assetBus.Query(ctx, filter, rcs[dbName], orderBy, page)
 	if err != nil {
 		return query.Result[ValidAsset]{}, errs.Newf(errs.Internal, "query: %s", err)
 	}
@@ -122,7 +128,13 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ValidAsse
 
 // QueryByID retrieves a single asset by its id.
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (ValidAsset, error) {
-	asset, err := a.assetBus.QueryByID(ctx, id)
+	rcs, err := mid.GetRestrictedColumns(ctx)
+	if err != nil {
+		return ValidAsset{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+	}
+
+	asset, err := a.assetBus.QueryByID(ctx, rcs[dbName], id)
+
 	if err != nil {
 		return ValidAsset{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}

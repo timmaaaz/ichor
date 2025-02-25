@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -15,10 +16,11 @@ import (
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Log           *logger.Logger
-	ValidAssetBus *validassetbus.Business
-	AuthClient    *authclient.Client
-	UserBus       *userbus.Business
+	Log            *logger.Logger
+	ValidAssetBus  *validassetbus.Business
+	AuthClient     *authclient.Client
+	UserBus        *userbus.Business
+	PermissionsBus *permissionsbus.Business
 }
 
 const (
@@ -33,9 +35,9 @@ func Routes(app *web.App, cfg Config) {
 	// ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
 	api := newAPI(validassetapp.NewApp(cfg.ValidAssetBus))
-	app.HandlerFunc(http.MethodGet, version, "/assets/validassets", api.query, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/assets/validassets/{valid_asset_id}", api.queryByID, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/assets/validassets", api.create, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Create, auth.RuleAdminOnly))                    // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
-	app.HandlerFunc(http.MethodPut, version, "/assets/validassets/{valid_asset_id}", api.update, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Update, auth.RuleAdminOnly))    // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
-	app.HandlerFunc(http.MethodDelete, version, "/assets/validassets/{valid_asset_id}", api.delete, authen, mid.AuthorizeTable(cfg.AuthClient, routeTable, auth.Actions.Delete, auth.RuleAdminOnly)) // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
+	app.HandlerFunc(http.MethodGet, version, "/assets/validassets", api.query, authen, mid.AuthorizeTable(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Read, auth.RuleAny))
+	app.HandlerFunc(http.MethodGet, version, "/assets/validassets/{valid_asset_id}", api.queryByID, authen, mid.AuthorizeTable(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Read, auth.RuleAny))
+	app.HandlerFunc(http.MethodPost, version, "/assets/validassets", api.create, authen, mid.AuthorizeTable(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))                    // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
+	app.HandlerFunc(http.MethodPut, version, "/assets/validassets/{valid_asset_id}", api.update, authen, mid.AuthorizeTable(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Update, auth.RuleAdminOnly))    // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
+	app.HandlerFunc(http.MethodDelete, version, "/assets/validassets/{valid_asset_id}", api.delete, authen, mid.AuthorizeTable(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Delete, auth.RuleAdminOnly)) // change to RuleAny, it is RuleAdmin for the sake of proof-of-concept
 }

@@ -3,6 +3,8 @@ package mid
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
@@ -24,26 +27,104 @@ func Authorize(ctx context.Context, client *authclient.Client, rule string, next
 		return errs.New(errs.Unauthenticated, err)
 	}
 
-	tInfo, ok := auth.GetTableInfo(ctx)
-	if !ok {
-		tInfo = &auth.TableInfo{}
-	}
-
 	auth := authclient.Authorize{
-		Claims:    GetClaims(ctx),
-		UserID:    userID,
-		Rule:      rule,
-		TableInfo: *tInfo,
+		Claims: GetClaims(ctx),
+		UserID: userID,
+		Rule:   rule,
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// Authorize opa roles
 	if err := client.Authorize(ctx, auth); err != nil {
 		return errs.New(errs.Unauthenticated, err)
 	}
 
 	return next(ctx)
+}
+
+// AuthorizeTable validates authorization via the auth service with table information.
+func AuthorizeTable(ctx context.Context, client *authclient.Client, permissionsBus *permissionsbus.Business, tableInfo *TableInfo, rule string, next HandlerFunc) Encoder {
+	userID, err := GetUserID(ctx)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	auth := authclient.Authorize{
+		Claims: GetClaims(ctx),
+		UserID: userID,
+		Rule:   rule,
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Authorize opa roles
+	if err := client.Authorize(ctx, auth); err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	zeroValue := TableInfo{}
+	if tableInfo != nil && *tableInfo != zeroValue {
+		// Authorize on our permissions
+		perms, err := permissionsBus.QueryUserPermissions(ctx, userID)
+		if err != nil {
+			return errs.New(errs.Unauthenticated, fmt.Errorf("query user permissions: %w", err))
+		}
+
+		// If we have table information in the context, check table permissions
+		if *tableInfo != zeroValue {
+			if !hasTablePermission(perms, *tableInfo) {
+				return errs.New(errs.Unauthenticated, fmt.Errorf("user %s lacks permission for %s on table %s", userID, tableInfo.Action, tableInfo.Name))
+			}
+		}
+	}
+
+	// Add table info to context
+	ctx = setTableInfo(ctx, tableInfo)
+
+	// Add restricted columns to context
+	rcs, err := permissionsBus.RestrictedColumns.QueryAll(ctx)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, fmt.Errorf("query restricted columns: %w", err))
+	}
+	ctx = setRestrictedColumns(ctx, rcs)
+
+	// Call the standard Authorize middleware with the enhanced context
+	return Authorize(ctx, client, rule, next)
+}
+
+// hasTablePermission checks if the user has the required permission for the specified table
+func hasTablePermission(userPerms permissionsbus.UserPermissions, tableInfo TableInfo) bool {
+	// Search through all roles assigned to the user
+	for _, role := range userPerms.Roles {
+		// Check each table access in this role
+		for _, tableAccess := range role.Tables {
+			if strings.EqualFold(tableAccess.TableName, tableInfo.Name) {
+				// Check specific permission based on the action
+				switch tableInfo.Action {
+				case permissionsbus.Actions.Create:
+					if tableAccess.CanCreate {
+						return true
+					}
+				case permissionsbus.Actions.Read:
+					if tableAccess.CanRead {
+						return true
+					}
+				case permissionsbus.Actions.Update:
+					if tableAccess.CanUpdate {
+						return true
+					}
+				case permissionsbus.Actions.Delete:
+					if tableAccess.CanDelete {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // AuthorizeUser executes the specified role and extracts the specified

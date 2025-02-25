@@ -9,10 +9,9 @@ import (
 
 // Authorize defines the information required to perform an authorization.
 type Authorize struct {
-	UserID    uuid.UUID
-	Claims    auth.Claims
-	Rule      string
-	TableInfo auth.TableInfo
+	UserID uuid.UUID
+	Claims auth.Claims
+	Rule   string
 }
 
 // Decode implements the decoder interface.

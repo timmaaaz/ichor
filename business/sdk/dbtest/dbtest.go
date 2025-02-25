@@ -179,7 +179,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	organizationalunitBus := organizationalunitbus.NewBusiness(log, organizationalunitdb.NewStore(log, db))
 	tableAccessBus := tableaccessbus.NewBusiness(log, tableaccessdb.NewStore(log, db))
 	restrictedColumnBus := restrictedcolumnbus.NewBusiness(log, restrictedcolumndb.NewStore(log, db))
-	permissionsBus := permissionsbus.NewBusiness(log, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 24*time.Hour))
+	permissionsBus := permissionsbus.NewBusiness(log, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 24*time.Hour), restrictedColumnBus)
 
 	return BusDomain{
 		Delegate:            delegate,

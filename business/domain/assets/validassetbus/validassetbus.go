@@ -30,9 +30,9 @@ type Storer interface {
 	Create(ctx context.Context, asset ValidAsset) error
 	Update(ctx context.Context, asset ValidAsset) error
 	Delete(ctx context.Context, asset ValidAsset) error
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ValidAsset, error)
+	Query(ctx context.Context, filter QueryFilter, restrictedColumns []string, orderBy order.By, page page.Page) ([]ValidAsset, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	QueryByID(ctx context.Context, assetID uuid.UUID) (ValidAsset, error)
+	QueryByID(ctx context.Context, restrictedColumns []string, assetID uuid.UUID) (ValidAsset, error)
 }
 
 // Business manages the set of APIs for asset access.
@@ -129,11 +129,11 @@ func (b *Business) Delete(ctx context.Context, ass ValidAsset) error {
 }
 
 // Query retrieves a list of assets from the system.
-func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ValidAsset, error) {
+func (b *Business) Query(ctx context.Context, filter QueryFilter, restrictedColumns []string, orderBy order.By, page page.Page) ([]ValidAsset, error) {
 	ctx, span := otel.AddSpan(ctx, "business.validassetbus.Query")
 	defer span.End()
 
-	strs, err := b.storer.Query(ctx, filter, orderBy, page)
+	strs, err := b.storer.Query(ctx, filter, restrictedColumns, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
@@ -150,11 +150,11 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // QueryByID finds the asset by the specified ID.
-func (b *Business) QueryByID(ctx context.Context, assetID uuid.UUID) (ValidAsset, error) {
+func (b *Business) QueryByID(ctx context.Context, restrictedColumns []string, assetID uuid.UUID) (ValidAsset, error) {
 	ctx, span := otel.AddSpan(ctx, "business.validassetbus.querybyid")
 	defer span.End()
 
-	asset, err := b.storer.QueryByID(ctx, assetID)
+	asset, err := b.storer.QueryByID(ctx, restrictedColumns, assetID)
 	if err != nil {
 		return ValidAsset{}, fmt.Errorf("query: assetID[%s]: %w", assetID, err)
 	}

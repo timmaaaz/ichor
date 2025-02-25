@@ -24,6 +24,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
@@ -68,6 +69,7 @@ type SeedData struct {
 	UserRoles            []userrolebus.UserRole
 	OrgUnits             []organizationalunitbus.OrganizationalUnit
 	TableAccesses        []tableaccessbus.TableAccess
+	RestrictedColumns    []restrictedcolumnbus.RestrictedColumn
 }
 
 // Table represent fields needed for running an api test.

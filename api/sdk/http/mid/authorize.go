@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -23,19 +23,16 @@ func Authorize(client *authclient.Client, rule string) web.MidFunc {
 }
 
 // AuthorizeTable validates authorization via the auth service with table information.
-func AuthorizeTable(client *authclient.Client, tableName string, action auth.Action, rule string) web.MidFunc {
+func AuthorizeTable(client *authclient.Client, permissionsBus *permissionsbus.Business, tableName string, action permissionsbus.Action, rule string) web.MidFunc {
 	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
 		// Create table information
-		tableInfo := &auth.TableInfo{
+		tableInfo := &mid.TableInfo{
 			Name:   tableName,
 			Action: action,
 		}
 
-		// Add table info to the context
-		ctx = auth.WithTableInfo(ctx, tableInfo)
-
 		// Call the standard Authorize middleware with the enhanced context
-		return mid.Authorize(ctx, client, rule, next)
+		return mid.AuthorizeTable(ctx, client, permissionsBus, tableInfo, rule, next)
 	}
 
 	return addMidFunc(midFunc)

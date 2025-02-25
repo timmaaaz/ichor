@@ -3,6 +3,7 @@ package validassetdb
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/google/uuid"
@@ -97,4 +98,24 @@ func toBusAssets(assets []validAsset) ([]validassetbus.ValidAsset, error) {
 	}
 
 	return busAssets, nil
+}
+
+func GetColumns(s any) []string {
+	t := reflect.TypeOf(s)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	var dbFields []string
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		// Get the db tag
+		tag := field.Tag.Get("db")
+		if tag != "" {
+			dbFields = append(dbFields, tag)
+		}
+	}
+
+	return dbFields
 }

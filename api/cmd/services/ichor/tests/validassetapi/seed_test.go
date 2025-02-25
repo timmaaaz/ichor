@@ -13,6 +13,7 @@ import (
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
@@ -82,14 +83,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding table accesses : %w", err)
 	}
 
+	restrictedColumns, err := restrictedcolumnbus.TestSeedRestrictedColumns(ctx, busDomain.RestrictedColumn)
+
 	sd := apitest.SeedData{
-		Users:         []apitest.User{tu1},
-		Admins:        []apitest.User{tu2},
-		ValidAssets:   validassetapp.ToAppValidAssets(as),
-		AssetTypes:    assettypeapp.ToAppAssetTypes(ats),
-		Roles:         roles,
-		UserRoles:     userRoles,
-		TableAccesses: tableAccesses,
+		Users:             []apitest.User{tu1},
+		Admins:            []apitest.User{tu2},
+		ValidAssets:       validassetapp.ToAppValidAssets(as),
+		AssetTypes:        assettypeapp.ToAppAssetTypes(ats),
+		Roles:             roles,
+		UserRoles:         userRoles,
+		TableAccesses:     tableAccesses,
+		RestrictedColumns: restrictedColumns,
 	}
 
 	return sd, nil

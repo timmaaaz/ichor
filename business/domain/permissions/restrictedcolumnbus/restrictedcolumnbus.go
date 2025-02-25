@@ -31,6 +31,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]RestrictedColumn, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, userID uuid.UUID) (RestrictedColumn, error)
+	QueryAll(ctx context.Context) (RestrictedColumns, error)
 }
 
 // Business manages the set of APIs for user access.
@@ -134,4 +135,17 @@ func (b *Business) QueryByID(ctx context.Context, rcID uuid.UUID) (RestrictedCol
 	}
 
 	return rc, nil
+}
+
+// QueryAll retrieves all restricted columns from the system
+func (b *Business) QueryAll(ctx context.Context) (RestrictedColumns, error) {
+	ctx, span := otel.AddSpan(ctx, "business.restrictedcolumnbus.queryall")
+	defer span.End()
+
+	rcs, err := b.storer.QueryAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("querying all restricted columns: %w", err)
+	}
+
+	return rcs, nil
 }

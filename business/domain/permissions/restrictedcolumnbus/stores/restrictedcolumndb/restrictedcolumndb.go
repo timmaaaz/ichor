@@ -145,7 +145,7 @@ func (s *Store) Query(ctx context.Context, filter restrictedcolumnbus.QueryFilte
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	return toBusRestrictedColumns(dbRestrictedColumns), nil
+	return toBusRestrictedColumnSlice(dbRestrictedColumns), nil
 }
 
 // Count returns the number of restricted columns in the system
@@ -195,4 +195,21 @@ func (s *Store) QueryByID(ctx context.Context, rcID uuid.UUID) (restrictedcolumn
 	}
 
 	return toBusRestrictedColumn(dbRC), nil
+}
+
+// QueryAll retrieves all restricted columns from the system
+func (s *Store) QueryAll(ctx context.Context) (restrictedcolumnbus.RestrictedColumns, error) {
+	const q = `
+	SELECT
+		restricted_column_id, table_name, column_name
+	FROM
+		restricted_columns
+	`
+
+	var dbRestrictedColumns []restrictedColumn
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbRestrictedColumns); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusRestrictedColumns(dbRestrictedColumns), nil
 }

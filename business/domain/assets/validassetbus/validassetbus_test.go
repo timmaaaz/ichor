@@ -72,7 +72,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				sd.ValidAssets[2],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.ValidAsset.Query(ctx, validassetbus.QueryFilter{}, validassetbus.DefaultOrderBy, page.MustParse("1", "3"))
+				got, err := busDomain.ValidAsset.Query(ctx, validassetbus.QueryFilter{}, []string{}, validassetbus.DefaultOrderBy, page.MustParse("1", "3"))
 				if err != nil {
 					return err
 				}
