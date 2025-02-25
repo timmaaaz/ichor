@@ -3,6 +3,7 @@ package organizationalunitbus_test
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -31,7 +32,7 @@ func Test_OrganizationalUnit(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	orgUnits, err := organizationalunitbus.TestSeedOrganizationalUnits(ctx, 5, busDomain.OrganizationalUnit)
+	orgUnits, err := organizationalunitbus.TestSeedOrganizationalUnits(ctx, busDomain.OrganizationalUnit)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding organizational units : %w", err)
 	}
@@ -42,13 +43,23 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+
+	// Make a copy of the OrgUnits slice
+	sortedUnits := make([]organizationalunitbus.OrganizationalUnit, len(sd.OrgUnits))
+	copy(sortedUnits, sd.OrgUnits)
+
+	// Sort the copy
+	sort.Slice(sortedUnits, func(i, j int) bool {
+		return sortedUnits[i].Name < sortedUnits[j].Name
+	})
+
 	return []unitest.Table{
 		{
 			Name: "Query",
 			ExpResp: []organizationalunitbus.OrganizationalUnit{
-				sd.OrgUnits[0],
-				sd.OrgUnits[1],
-				sd.OrgUnits[2],
+				sortedUnits[0],
+				sortedUnits[1],
+				sortedUnits[2],
 			},
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.OrganizationalUnit.Query(ctx, organizationalunitbus.QueryFilter{}, organizationalunitbus.DefaultOrderBy, page.MustParse("1", "3"))
@@ -62,7 +73,6 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				if !exists {
 					return "error occurred"
 				}
-
 				return cmp.Diff(gotResp, exp.([]organizationalunitbus.OrganizationalUnit))
 			},
 		},
@@ -76,7 +86,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: organizationalunitbus.OrganizationalUnit{
 				ParentID:              sd.OrgUnits[0].ID,
 				Name:                  "Name5",
-				Level:                 1,
+				Level:                 sd.OrgUnits[0].Level + 1, // Calculate level based on parent's level
 				Path:                  strings.Join([]string{sd.OrgUnits[0].Path, "Name5"}, "."),
 				CanInheritPermissions: true,
 				CanRollupData:         true,
@@ -116,6 +126,12 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 }
 
 func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+
+	p := sd.OrgUnits[0].Path
+	parts := strings.Split(p, ".")
+	parts[len(parts)-1] = "NewName0"
+	newPath := strings.Join(parts, ".")
+
 	return []unitest.Table{
 		{
 			Name: "Update",
@@ -124,7 +140,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ParentID:              sd.OrgUnits[0].ParentID,
 				Name:                  "NewName0",
 				Level:                 sd.OrgUnits[0].Level,
-				Path:                  "NewName0",
+				Path:                  newPath,
 				CanInheritPermissions: sd.OrgUnits[0].CanInheritPermissions,
 				CanRollupData:         sd.OrgUnits[0].CanRollupData,
 				UnitType:              sd.OrgUnits[0].UnitType,
@@ -162,58 +178,51 @@ func updatePathPropagation(busDomain dbtest.BusDomain, sd unitest.SeedData) []un
 			Name:    "Update_RootNodeName_UpdatesAllChildPaths",
 			ExpResp: true, // We expect success verification
 			ExcFunc: func(ctx context.Context) any {
-				// 1. First rename the root node (index 0)
+				// Store original values for verification
+				originalPaths := make(map[uuid.UUID]string)
+				for _, ou := range sd.OrgUnits {
+					originalPaths[ou.ID] = ou.Path
+				}
+
+				// 1. Rename the root node (index 0)
+				rootNode := sd.OrgUnits[0]
 				newRootName := "RenamedRoot"
-				_, err := busDomain.OrganizationalUnit.Update(ctx, sd.OrgUnits[0], organizationalunitbus.UpdateOrganizationalUnit{
+				updatedRoot, err := busDomain.OrganizationalUnit.Update(ctx, rootNode, organizationalunitbus.UpdateOrganizationalUnit{
 					Name: dbtest.StringPointer(newRootName),
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to update root node: %w", err)
 				}
 
-				// 2. Query all units to verify paths were updated correctly
-				allUnits := make([]organizationalunitbus.OrganizationalUnit, 0, len(sd.OrgUnits))
-				for _, ou := range sd.OrgUnits {
-					updated, err := busDomain.OrganizationalUnit.QueryByID(ctx, ou.ID)
+				// Verify root's path was updated correctly
+				expectedRootPath := strings.ReplaceAll(newRootName, " ", "_")
+				if updatedRoot.Path != expectedRootPath {
+					return fmt.Errorf("root path not updated correctly: got %s, want %s",
+						updatedRoot.Path, expectedRootPath)
+				}
+
+				// 2. Fetch all children to verify their paths were updated
+				for i := 1; i < len(sd.OrgUnits); i++ {
+					updated, err := busDomain.OrganizationalUnit.QueryByID(ctx, sd.OrgUnits[i].ID)
 					if err != nil {
-						return err
+						return fmt.Errorf("failed to query unit %s: %w", sd.OrgUnits[i].ID, err)
 					}
-					allUnits = append(allUnits, updated)
-				}
 
-				// 3. Verify each unit's path was updated correctly
-				// Root node should have the new name as its path
-				if allUnits[0].Path != newRootName {
-					return fmt.Errorf("root path not updated correctly, got %s, want %s",
-						allUnits[0].Path, newRootName)
-				}
+					// The path should now start with the new root name instead of the old one
+					originalPath := originalPaths[sd.OrgUnits[i].ID]
+					rootPathPrefix := originalPaths[rootNode.ID]
 
-				// Level 1 nodes (indices 1 and 2) should have paths prefixed with new root name
-				expectedLevel1Prefix := newRootName + "."
-				for i := 1; i <= 2; i++ {
-					if !strings.HasPrefix(allUnits[i].Path, expectedLevel1Prefix) {
-						return fmt.Errorf("level 1 node (index %d) path not updated correctly: %s",
-							i, allUnits[i].Path)
+					if !strings.HasPrefix(originalPath, rootPathPrefix) {
+						return fmt.Errorf("original hierarchy is not valid: %s should start with %s",
+							originalPath, rootPathPrefix)
 					}
-					// Extract the node-specific part (should be unchanged except for prefix)
-					nodeName := strings.ReplaceAll(fmt.Sprintf("Name%d", i), " ", "_")
-					expectedPath := expectedLevel1Prefix + nodeName
-					if allUnits[i].Path != expectedPath {
-						return fmt.Errorf("level 1 node path mismatch, got %s, want %s",
-							allUnits[i].Path, expectedPath)
-					}
-				}
 
-				// Level 2 nodes (indices 3 and 4) should have paths with updated prefixes
-				for i := 3; i <= 4; i++ {
-					parentIndex := (i - 1) / 2
-					parentName := strings.ReplaceAll(fmt.Sprintf("Name%d", parentIndex), " ", "_")
-					nodeName := strings.ReplaceAll(fmt.Sprintf("Name%d", i), " ", "_")
+					pathSuffix := strings.TrimPrefix(originalPath, rootPathPrefix)
+					expectedPath := updatedRoot.Path + pathSuffix
 
-					expectedPath := fmt.Sprintf("%s.%s.%s", newRootName, parentName, nodeName)
-					if allUnits[i].Path != expectedPath {
-						return fmt.Errorf("level 2 node (index %d) path not updated correctly: got %s, want %s",
-							i, allUnits[i].Path, expectedPath)
+					if updated.Path != expectedPath {
+						return fmt.Errorf("child path not updated correctly: got %s, want %s",
+							updated.Path, expectedPath)
 					}
 				}
 
@@ -238,63 +247,103 @@ func updatePathPropagation(busDomain dbtest.BusDomain, sd unitest.SeedData) []un
 		},
 		{
 			Name:    "Update_MidLevelNodeName_UpdatesChildPaths",
-			ExpResp: true, // We expect success verification
+			ExpResp: true,
 			ExcFunc: func(ctx context.Context) any {
-				// 1. First rename a mid-level node (index 1, which should have children)
-				midLevelNode := sd.OrgUnits[1]
-				newMidLevelName := "RenamedMidLevel"
+				var midLevelNode organizationalunitbus.OrganizationalUnit
+				var midLevelChildren []organizationalunitbus.OrganizationalUnit
 
-				// Get current root node to determine its actual name
-				rootNode, err := busDomain.OrganizationalUnit.QueryByID(ctx, sd.OrgUnits[0].ID)
-				if err != nil {
-					return err
-				}
-				rootName := strings.ReplaceAll(rootNode.Name, " ", "_")
-
-				_, err = busDomain.OrganizationalUnit.Update(ctx, midLevelNode, organizationalunitbus.UpdateOrganizationalUnit{
-					Name: dbtest.StringPointer(newMidLevelName),
-				})
-				if err != nil {
-					return err
-				}
-
-				// 2. Find children of the renamed node
-				// According to the tree structure, index 1's children would be at indices 3
-				childIndices := []int{3}
-
-				// 3. Query all relevant units
-				updatedParent, err := busDomain.OrganizationalUnit.QueryByID(ctx, midLevelNode.ID)
-				if err != nil {
-					return err
-				}
-
-				children := make([]organizationalunitbus.OrganizationalUnit, 0, len(childIndices))
-				for _, idx := range childIndices {
-					child, err := busDomain.OrganizationalUnit.QueryByID(ctx, sd.OrgUnits[idx].ID)
-					if err != nil {
-						return err
+				// Locate a mid-level node (level == 1) in seed data, but re-query from DB for its *updated* info.
+				var midLevelCandidates []organizationalunitbus.OrganizationalUnit
+				for _, ou := range sd.OrgUnits {
+					if ou.Level == 1 {
+						midLevelCandidates = append(midLevelCandidates, ou)
 					}
-					children = append(children, child)
+				}
+				if len(midLevelCandidates) == 0 {
+					return fmt.Errorf("no mid-level nodes found in seed data")
 				}
 
-				// 4. Verify parent's path was updated correctly
-				// We use the actual root name queried above
-				expectedParentPath := fmt.Sprintf("%s.%s", rootName, newMidLevelName)
+				for _, candidate := range midLevelCandidates {
+					// Re-query the candidate from the DB to get any updated path from the first test.
+					upCandidate, err := busDomain.OrganizationalUnit.QueryByID(ctx, candidate.ID)
+					if err != nil {
+						return fmt.Errorf("error re-querying candidate: %w", err)
+					}
 
-				if updatedParent.Path != expectedParentPath {
-					return fmt.Errorf("mid-level node path not updated correctly: got %s, want %s",
-						updatedParent.Path, expectedParentPath)
+					children, err := busDomain.OrganizationalUnit.QueryByParentID(ctx, upCandidate.ID)
+					if err != nil {
+						return fmt.Errorf("error querying children for candidate %s: %w", upCandidate.ID, err)
+					}
+
+					if len(children) > 0 {
+						midLevelNode = upCandidate
+						midLevelChildren = children
+						break
+					}
 				}
 
-				// 5. Verify each child's path reflects the parent's new name
-				for i, child := range children {
-					childIdx := childIndices[i]
-					childName := strings.ReplaceAll(fmt.Sprintf("Name%d", childIdx), " ", "_")
-					expectedChildPath := fmt.Sprintf("%s.%s", expectedParentPath, childName)
+				if midLevelNode.ID == uuid.Nil {
+					return fmt.Errorf("no mid-level node with children found after re-query")
+				}
 
-					if child.Path != expectedChildPath {
-						return fmt.Errorf("child path (index %d) not updated correctly: got %s, want %s",
-							childIdx, child.Path, expectedChildPath)
+				// Keep track of original child paths before the mid-level rename.
+				originalPaths := make(map[uuid.UUID]string)
+				for _, child := range midLevelChildren {
+					originalPaths[child.ID] = child.Path
+				}
+
+				originalMidLevelPath := midLevelNode.Path
+
+				// 2. Rename the mid-level node.
+				newMidLevelName := "RenamedMidLevel"
+				updatedMidLevel, err := busDomain.OrganizationalUnit.Update(
+					ctx,
+					midLevelNode,
+					organizationalunitbus.UpdateOrganizationalUnit{
+						Name: dbtest.StringPointer(newMidLevelName),
+					},
+				)
+				if err != nil {
+					return fmt.Errorf("failed to update mid-level node: %w", err)
+				}
+
+				// 3. Verify the mid-level node's path was updated correctly.
+				parent, err := busDomain.OrganizationalUnit.QueryByID(ctx, midLevelNode.ParentID)
+				if err != nil {
+					return fmt.Errorf("failed to query parent of mid-level node: %w", err)
+				}
+				expectedMidLevelPath := fmt.Sprintf("%s.%s",
+					parent.Path,
+					strings.ReplaceAll(newMidLevelName, " ", "_"),
+				)
+
+				if updatedMidLevel.Path != expectedMidLevelPath {
+					return fmt.Errorf("mid-level path not updated correctly: got %s, want %s",
+						updatedMidLevel.Path, expectedMidLevelPath)
+				}
+
+				// 4. Verify all child paths got updated by replacing the old mid-level path prefix.
+				for _, child := range midLevelChildren {
+					updatedChild, err := busDomain.OrganizationalUnit.QueryByID(ctx, child.ID)
+					if err != nil {
+						return fmt.Errorf("failed to query child %s: %w", child.ID, err)
+					}
+
+					originalChildPath := originalPaths[child.ID]
+					if !strings.HasPrefix(originalChildPath, originalMidLevelPath) {
+						return fmt.Errorf(
+							"original child path %s doesn't start with the old mid-level path %s",
+							originalChildPath,
+							originalMidLevelPath,
+						)
+					}
+
+					pathSuffix := strings.TrimPrefix(originalChildPath, originalMidLevelPath)
+					expectedChildPath := updatedMidLevel.Path + pathSuffix
+
+					if updatedChild.Path != expectedChildPath {
+						return fmt.Errorf("child path not updated correctly: got %s, want %s",
+							updatedChild.Path, expectedChildPath)
 					}
 				}
 
@@ -309,17 +358,14 @@ func updatePathPropagation(busDomain dbtest.BusDomain, sd unitest.SeedData) []un
 					}
 					return "unexpected response type"
 				}
-
 				if !success {
 					return "path verification failed"
 				}
-
-				return "" // Empty string means test passed
+				return "" // Empty means success
 			},
 		},
 	}
 }
-
 func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
