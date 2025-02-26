@@ -33,12 +33,12 @@ func Test_UserRole(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 3, userbus.Roles.Admin, busDomain.User)
+	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 7, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
 
-	roles, err := rolebus.TestSeedRoles(ctx, 4, busDomain.Role)
+	roles, err := rolebus.TestSeedRoles(ctx, busDomain.Role)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
 	}
@@ -47,7 +47,12 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	for i, r := range roles {
 		roleIDs[i] = r.ID
 	}
-	userRoles, err := userrolebus.TestSeedUserRoles(ctx, 3, usrs[0].ID, roleIDs, busDomain.UserRole)
+	userIDs := make(uuid.UUIDs, len(usrs))
+	for i, u := range usrs {
+		userIDs[i] = u.ID
+	}
+
+	userRoles, err := userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
 	}
@@ -68,13 +73,21 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+
+	// make copy and sort by user id for comparison
+	sdUserRoles := make([]userrolebus.UserRole, len(sd.UserRoles))
+	copy(sdUserRoles, sd.UserRoles)
+	sort.Slice(sdUserRoles, func(i, j int) bool {
+		return sdUserRoles[i].UserID.String() < sdUserRoles[j].UserID.String()
+	})
+
 	return []unitest.Table{
 		{
 			Name: "Query",
 			ExpResp: []userrolebus.UserRole{
-				sd.UserRoles[0],
-				sd.UserRoles[1],
-				sd.UserRoles[2],
+				sdUserRoles[0],
+				sdUserRoles[1],
+				sdUserRoles[2],
 			},
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.UserRole.Query(ctx, userrolebus.QueryFilter{}, userrolebus.DefaultOrderBy, page.MustParse("1", "3"))
@@ -114,13 +127,13 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: userrolebus.UserRole{
-				UserID: sd.Users[1].ID,
-				RoleID: sd.Roles[1].ID,
+				UserID: sd.Users[len(sd.Users)-1].ID,
+				RoleID: sd.Roles[len(sd.Roles)-1].ID,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				resp, err := busDomain.UserRole.Create(ctx, userrolebus.NewUserRole{
-					UserID: sd.Users[1].ID,
-					RoleID: sd.Roles[1].ID,
+					UserID: sd.Users[len(sd.Users)-1].ID,
+					RoleID: sd.Roles[len(sd.Roles)-1].ID,
 				})
 				if err != nil {
 					return err
