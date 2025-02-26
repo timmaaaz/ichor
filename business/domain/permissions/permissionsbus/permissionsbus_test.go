@@ -6,9 +6,12 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
@@ -34,12 +37,24 @@ func Test_Permissions(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 3, userbus.Roles.Admin, busDomain.User)
+	// USERS
+	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 7, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
+	userIDs := make(uuid.UUIDs, len(usrs))
+	for i, u := range usrs {
+		userIDs[i] = u.ID
+	}
+	seedUsers := make([]unitest.User, len(usrs))
+	for i, u := range usrs {
+		seedUsers[i] = unitest.User{
+			User: u,
+		}
+	}
 
-	roles, err := rolebus.TestSeedRoles(ctx, 4, busDomain.Role)
+	// ROLES
+	roles, err := rolebus.TestSeedRoles(ctx, busDomain.Role)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
 	}
@@ -48,31 +63,41 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		roleIDs[i] = r.ID
 	}
 
-	userRoles, err := userrolebus.TestSeedUserRoles(ctx, 3, usrs[0].ID, roleIDs, busDomain.UserRole)
+	// USER ROLES
+	userRoles, err := userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
 	}
 
-	tables := []string{"countries", "regions", "cities"}
-	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, 3, roleIDs[0], tables, busDomain.TableAccess)
+	// RESTRICTED COLUMNS
+	restrictedColumns, err := restrictedcolumnbus.TestSeedRestrictedColumns(ctx, busDomain.RestrictedColumn)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding restricted columns : %w", err)
+	}
+
+	// TABLE ACCESS
+	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, roleIDs[0], busDomain.TableAccess)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding table accesses : %w", err)
 	}
 
-	seedUsers := make([]unitest.User, len(usrs))
-	for i, u := range usrs {
-		seedUsers[i] = unitest.User{
-			User: u,
-		}
+	// ORG UNITS
+	orgUnits, err := organizationalunitbus.TestSeedOrganizationalUnits(ctx, busDomain.OrganizationalUnit)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding organizational units : %w", err)
 	}
 
-	sd := unitest.SeedData{
-		Users:         seedUsers,
-		Roles:         roles,
-		UserRoles:     userRoles,
-		TableAccesses: tableAccesses,
-	}
-	return sd, nil
+	// USER ORGS
+
+	// CONSTRUCT SEED DATA
+	return unitest.SeedData{
+		Users:             seedUsers,
+		Roles:             roles,
+		UserRoles:         userRoles,
+		RestrictedColumns: restrictedColumns,
+		TableAccesses:     tableAccesses,
+		OrgUnits:          orgUnits,
+	}, nil
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {

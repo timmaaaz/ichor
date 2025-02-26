@@ -8,7 +8,7 @@ import (
 )
 
 // TestSeedTableAccesses is a helper method for testing.
-func TestSeedTableAccesses(ctx context.Context, roleID uuid.UUID, tables []string, api *Business) ([]TableAccess, error) {
+func TestSeedTableAccesses(ctx context.Context, roleID uuid.UUID, api *Business) ([]TableAccess, error) {
 	tableAccesses := make([]TableAccess, len(testing.TableAccess))
 
 	for i, taMap := range testing.TableAccess {

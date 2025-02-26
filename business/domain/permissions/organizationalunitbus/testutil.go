@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/permissions/testing"
 )
 
@@ -21,11 +20,13 @@ func TestSeedOrganizationalUnits(ctx context.Context, api *Business) ([]Organiza
 	// Get the test data from the testing package
 	testData := testing.OrganizationalUnits
 
+	// var parentID uuid.UUID
+
 	// Process OUs level by level to ensure parents are created before children
 	for level := 0; level <= 3; level++ {
 		for _, ouData := range testData {
-			// Skip if this OU isn't at the current level
-			if ouData["Level"].(int) != level {
+
+			if level != ouData["Level"].(int) {
 				continue
 			}
 
@@ -36,7 +37,7 @@ func TestSeedOrganizationalUnits(ctx context.Context, api *Business) ([]Organiza
 			}
 
 			// For non-root nodes, find and set the parent ID
-			expectedPath := ouData["Path"].(string)
+			expectedPath := strings.ReplaceAll(ouData["Path"].(string), " ", "_")
 			if level > 0 {
 				pathParts := strings.Split(expectedPath, ".")
 				parentPath := strings.Join(pathParts[:len(pathParts)-1], ".")
@@ -50,21 +51,9 @@ func TestSeedOrganizationalUnits(ctx context.Context, api *Business) ([]Organiza
 				newOU.ParentID = parent.ID
 			}
 
-			// Create the organizational unit
-			ou := OrganizationalUnit{
-				ID:                    uuid.New(),
-				ParentID:              newOU.ParentID,
-				Name:                  newOU.Name,
-				Level:                 ouData["Level"].(int), // Use exact level from test data
-				Path:                  expectedPath,          // Using the expected path from test data
-				CanInheritPermissions: newOU.CanInheritPermissions,
-				CanRollupData:         newOU.CanRollupData,
-				UnitType:              newOU.UnitType,
-				IsActive:              newOU.IsActive,
-			}
-
 			// Use the storer directly to bypass the path/level generation logic
-			if err := api.storer.Create(ctx, ou); err != nil {
+			var ou OrganizationalUnit
+			if ou, err = api.Create(ctx, newOU); err != nil {
 				return nil, fmt.Errorf("creating organizational unit %s: %w", ou.Name, err)
 			}
 

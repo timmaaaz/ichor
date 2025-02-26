@@ -108,7 +108,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Company Headquarters",
 		"ParentID":              nil, // Root has no parent
 		"Level":                 0,   // Root is level 0
-		"Path":                  "headquarters",
+		"Path":                  "Company_Headquarters",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "COMPANY",
@@ -119,7 +119,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Finance Department",
 		"ParentID":              nil, // Will need to be set to HQ ID
 		"Level":                 1,   // Level 1 under the root
-		"Path":                  "headquarters.finance",
+		"Path":                  "Company_Headquarters.Finance_Department",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "DEPARTMENT",
@@ -129,7 +129,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "HR Department",
 		"ParentID":              nil, // Will need to be set to HQ ID
 		"Level":                 1,   // Level 1 under the root
-		"Path":                  "headquarters.hr",
+		"Path":                  "Company_Headquarters.HR_Department",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "DEPARTMENT",
@@ -139,7 +139,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Sales Department",
 		"ParentID":              nil, // Will need to be set to HQ ID
 		"Level":                 1,   // Level 1 under the root
-		"Path":                  "headquarters.sales",
+		"Path":                  "Company_Headquarters.Sales_Department",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "DEPARTMENT",
@@ -149,7 +149,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "IT Department",
 		"ParentID":              nil, // Will need to be set to HQ ID
 		"Level":                 1,   // Level 1 under the root
-		"Path":                  "headquarters.it",
+		"Path":                  "Company_Headquarters.IT_Department",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "DEPARTMENT",
@@ -160,7 +160,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Accounting Team",
 		"ParentID":              nil, // Will need to be set to Finance Dept ID
 		"Level":                 2,   // Level 2 (under Finance department)
-		"Path":                  "headquarters.finance.accounting",
+		"Path":                  "Company_Headquarters.Finance_Department.Accounting_Team",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "TEAM",
@@ -170,7 +170,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Payroll Team",
 		"ParentID":              nil, // Will need to be set to Finance Dept ID
 		"Level":                 2,   // Level 2 (under Finance department)
-		"Path":                  "headquarters.finance.payroll",
+		"Path":                  "Company_Headquarters.Finance_Department.Payroll_Team",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "TEAM",
@@ -180,7 +180,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Recruitment Team",
 		"ParentID":              nil, // Will need to be set to HR Dept ID
 		"Level":                 2,   // Level 2 (under HR department)
-		"Path":                  "headquarters.hr.recruitment",
+		"Path":                  "Company_Headquarters.HR_Department.Recruitment_Team",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "TEAM",
@@ -190,7 +190,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Benefits Team",
 		"ParentID":              nil, // Will need to be set to HR Dept ID
 		"Level":                 2,   // Level 2 (under HR department)
-		"Path":                  "headquarters.hr.benefits",
+		"Path":                  "Company_Headquarters.HR_Department.Benefits_Team",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "TEAM",
@@ -200,7 +200,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "East Region",
 		"ParentID":              nil, // Will need to be set to Sales Dept ID
 		"Level":                 2,   // Level 2 (under Sales department)
-		"Path":                  "headquarters.sales.east",
+		"Path":                  "Company_Headquarters.Sales_Department.East_Region",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "REGION",
@@ -210,7 +210,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "West Region",
 		"ParentID":              nil, // Will need to be set to Sales Dept ID
 		"Level":                 2,   // Level 2 (under Sales department)
-		"Path":                  "headquarters.sales.west",
+		"Path":                  "Company_Headquarters.Sales_Department.West_Region",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "REGION",
@@ -220,7 +220,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Systems Team",
 		"ParentID":              nil, // Will need to be set to IT Dept ID
 		"Level":                 2,   // Level 2 (under IT department)
-		"Path":                  "headquarters.it.systems",
+		"Path":                  "Company_Headquarters.IT_Department.Systems_Team",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "TEAM",
@@ -230,7 +230,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Development Team",
 		"ParentID":              nil, // Will need to be set to IT Dept ID
 		"Level":                 2,   // Level 2 (under IT department)
-		"Path":                  "headquarters.it.development",
+		"Path":                  "Company_Headquarters.IT_Department.Development_Team",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "TEAM",
@@ -241,7 +241,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Northeast Branch",
 		"ParentID":              nil, // Will need to be set to East Region ID
 		"Level":                 3,   // Level 3 (under East region)
-		"Path":                  "headquarters.sales.east.northeast",
+		"Path":                  "Company_Headquarters.Sales_Department.East_Region.Northeast_Branch",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "BRANCH",
@@ -251,7 +251,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Southeast Branch",
 		"ParentID":              nil, // Will need to be set to East Region ID
 		"Level":                 3,   // Level 3 (under East region)
-		"Path":                  "headquarters.sales.east.southeast",
+		"Path":                  "Company_Headquarters.Sales_Department.East_Region.Southeast_Branch",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "BRANCH",
@@ -261,7 +261,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Northwest Branch",
 		"ParentID":              nil, // Will need to be set to West Region ID
 		"Level":                 3,   // Level 3 (under West region)
-		"Path":                  "headquarters.sales.west.northwest",
+		"Path":                  "Company_Headquarters.Sales_Department.West_Region.Northwest_Branch",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "BRANCH",
@@ -271,7 +271,7 @@ var OrganizationalUnits = []map[string]interface{}{
 		"Name":                  "Southwest Branch",
 		"ParentID":              nil, // Will need to be set to West Region ID
 		"Level":                 3,   // Level 3 (under West region)
-		"Path":                  "headquarters.sales.west.southwest",
+		"Path":                  "Company_Headquarters.Sales_Department.West_Region.Southwest_Branch",
 		"CanInheritPermissions": true,
 		"CanRollupData":         true,
 		"UnitType":              "BRANCH",

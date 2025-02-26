@@ -22,6 +22,7 @@ func Test_OrganizationalUnit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Seeding error: %s", err)
 	}
+
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")

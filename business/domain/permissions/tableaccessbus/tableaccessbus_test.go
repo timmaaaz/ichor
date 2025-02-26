@@ -49,9 +49,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		roleIDs[i] = r.ID
 	}
 
-	tables := []string{"countries", "regions", "cities"}
-
-	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, roleIDs[0], tables, busDomain.TableAccess)
+	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, roleIDs[0], busDomain.TableAccess)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding table accesses : %w", err)
 	}
