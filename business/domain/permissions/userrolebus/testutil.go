@@ -2,7 +2,6 @@ package userrolebus
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -14,7 +13,7 @@ func TestNewUserRoles(n int, userID uuid.UUIDs, roleIDs uuid.UUIDs) []NewUserRol
 	for i := 0; i < n; i++ {
 		nur := NewUserRole{
 			UserID: userID[i],
-			RoleID: roleIDs[i], // Should be the same length as user roles.
+			RoleID: roleIDs[i%len(roleIDs)], // Should be the same length as user roles.
 		}
 
 		newUserRoles[i] = nur
@@ -25,10 +24,6 @@ func TestNewUserRoles(n int, userID uuid.UUIDs, roleIDs uuid.UUIDs) []NewUserRol
 
 // TestSeedRoles is a helper method for testing.
 func TestSeedUserRoles(ctx context.Context, userIDs uuid.UUIDs, roleIDs uuid.UUIDs, api *Business) ([]UserRole, error) {
-	if len(userIDs) != len(roleIDs) {
-		return nil, fmt.Errorf("userIDs and roleIDs must be the same length")
-	}
-
 	newUserRoles := TestNewUserRoles(len(userIDs)-1, userIDs, roleIDs)
 	userRoles := make([]UserRole, len(newUserRoles))
 

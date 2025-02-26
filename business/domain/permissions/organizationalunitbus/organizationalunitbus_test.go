@@ -367,6 +367,7 @@ func updatePathPropagation(busDomain dbtest.BusDomain, sd unitest.SeedData) []un
 		},
 	}
 }
+
 func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{

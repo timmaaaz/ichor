@@ -33,7 +33,7 @@ func Test_UserRole(t *testing.T) {
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	ctx := context.Background()
 
-	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 7, userbus.Roles.Admin, busDomain.User)
+	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 21, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}

@@ -70,15 +70,15 @@ func (b *Business) Create(ctx context.Context, nuo NewUserOrganization) (UserOrg
 	defer span.End()
 
 	uo := UserOrganization{
-		ID:             uuid.New(),
-		UserID:         nuo.UserID,
-		OrganizationID: nuo.OrganizationID,
-		RoleID:         nuo.RoleID,
-		IsUnitManager:  nuo.IsUnitManager,
-		StartDate:      nuo.StartDate,
-		EndDate:        nuo.EndDate,
-		CreatedBy:      nuo.CreatedBy,
-		CreatedAt:      time.Now(),
+		ID:                   uuid.New(),
+		UserID:               nuo.UserID,
+		OrganizationalUnitID: nuo.OrganizationalUnitID,
+		RoleID:               nuo.RoleID,
+		IsUnitManager:        nuo.IsUnitManager,
+		StartDate:            nuo.StartDate,
+		EndDate:              nuo.EndDate,
+		CreatedBy:            nuo.CreatedBy,
+		CreatedAt:            time.Now(),
 	}
 
 	if err := b.storer.Create(ctx, uo); err != nil {

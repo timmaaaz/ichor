@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userorganizationbus.Storer
 func (s *Store) Create(ctx context.Context, ua userorganizationbus.UserOrganization) error {
 	const q = `
 	INSERT INTO user_organizations (
-		user_id, organization_id, role_id, is_unit_manager, start_date, end_date, created_by
+		user_organization_id, user_id, organizational_unit_id, role_id, is_unit_manager, start_date, end_date, created_by
 	) VALUES (
-		:user_id, :organization_id, :role_id, :is_unit_manager, :start_date, :end_date, :created_by
+		:user_organization_id, :user_id, :organizational_unit_id, :role_id, :is_unit_manager, :start_date, :end_date, :created_by
 	)
 	`
 
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, ua userorganizationbus.UserOrganizat
 		user_organizations
 	SET
 		user_id = :user_id,
-		organization_id = :organization_id,
+		organizational_unit_id = :organizational_unit_id,
 		role_id = :role_id,
 		is_unit_manager = :is_unit_manager,
 		start_date = :start_date,
@@ -117,7 +117,7 @@ func (s *Store) Query(ctx context.Context, filter userorganizationbus.QueryFilte
 
 	const q = `
 	SELECT
-		user_organization_id, user_id, organization_id, role_id, is_unit_manager, start_date, end_date, created_by, created_at
+		user_organization_id, user_id, organizational_unit_id, role_id, is_unit_manager, start_date, end_date, created_by, created_at
 	FROM
 		user_organizations`
 
@@ -174,7 +174,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (userorganizationbu
 
 	const q = `
 	SELECT
-		user_organization_id, user_id, organization_id, role_id, is_unit_manager, start_date, end_date, created_by, created_at
+		user_organization_id, user_id, organizational_unit_id, role_id, is_unit_manager, start_date, end_date, created_by, created_at
 	FROM
 		user_organizations
 	WHERE

@@ -20,9 +20,9 @@ func applyFilter(filter userorganizationbus.QueryFilter, data map[string]any, bu
 		buf.WriteString(" WHERE user_id = :user_id")
 	}
 
-	if filter.OrganizationID != nil {
-		data["organization_id"] = *filter.OrganizationID
-		buf.WriteString(" WHERE organization_id = :organization_id")
+	if filter.OrganizationalUnitID != nil {
+		data["organizational_unit_id"] = *filter.OrganizationalUnitID
+		buf.WriteString(" WHERE organizational_unit_id = :organizational_unit_id")
 	}
 
 	if filter.RoleID != nil {

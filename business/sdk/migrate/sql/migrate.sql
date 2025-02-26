@@ -388,7 +388,7 @@ CREATE TABLE organizational_units (
 CREATE TABLE user_organizations (
     user_organization_id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(user_id),
-    org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    organizational_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
     role_id UUID REFERENCES roles(role_id),
     is_unit_manager BOOLEAN DEFAULT FALSE,
     start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -401,12 +401,12 @@ CREATE TABLE user_organizations (
 -- Description: Create org_unit_field_restrictions table
 CREATE TABLE org_unit_field_restrictions (
     org_unit_field_restrictions_id UUID PRIMARY KEY,
-    org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    organizational_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
     table_name VARCHAR(50) NOT NULL,
     field_name VARCHAR(50) NOT NULL,
     can_inherit_permissions BOOLEAN DEFAULT false,
     can_rollup_data BOOLEAN DEFAULT false,
-    UNIQUE(org_unit_id, table_name, field_name)
+    UNIQUE(organizational_unit_id, table_name, field_name)
 );
 
 -- Version: 1.33
@@ -434,7 +434,7 @@ CREATE TABLE permission_overrides (
     user_id UUID REFERENCES users(user_id),
     table_name VARCHAR(50) NOT NULL,
     column_name VARCHAR(50),
-    org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    organizational_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
     can_create BOOLEAN DEFAULT FALSE,
     can_read BOOLEAN DEFAULT FALSE,
     can_update BOOLEAN DEFAULT FALSE,
@@ -451,7 +451,7 @@ CREATE TABLE permission_overrides (
 CREATE TABLE temporary_unit_access (
     temporary_unit_access_id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(user_id),
-    org_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+    organizational_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
     permission_type VARCHAR(50) NOT NULL,
     reason TEXT NOT NULL,
     granted_by UUID REFERENCES users(user_id),
