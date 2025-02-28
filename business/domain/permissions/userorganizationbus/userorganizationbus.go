@@ -82,7 +82,8 @@ func (b *Business) Create(ctx context.Context, nuo NewUserOrganization) (UserOrg
 	}
 
 	if err := b.storer.Create(ctx, uo); err != nil {
-		return UserOrganization{}, fmt.Errorf("creating user organization: %w", err)
+
+		return UserOrganization{}, fmt.Errorf("create: %w", err)
 	}
 
 	return uo, nil
@@ -95,11 +96,11 @@ func (b *Business) Update(ctx context.Context, uo UserOrganization, uuo UpdateUs
 
 	err := convert.PopulateSameTypes(uuo, &uo)
 	if err != nil {
-		return UserOrganization{}, fmt.Errorf("populate same types: %w", err)
+		return UserOrganization{}, fmt.Errorf("update: %w", err)
 	}
 
 	if err := b.storer.Update(ctx, uo); err != nil {
-		return UserOrganization{}, fmt.Errorf("updating user organization: %w", err)
+		return UserOrganization{}, fmt.Errorf("update: %w", err)
 	}
 
 	return uo, nil
@@ -111,7 +112,7 @@ func (b *Business) Delete(ctx context.Context, uo UserOrganization) error {
 	defer span.End()
 
 	if err := b.storer.Delete(ctx, uo); err != nil {
-		return fmt.Errorf("deleting user organization: %w", err)
+		return fmt.Errorf("delete: %w", err)
 	}
 
 	return nil
@@ -124,7 +125,7 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 
 	uos, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
-		return nil, fmt.Errorf("querying user organizations: %w", err)
+		return nil, fmt.Errorf("query: %w", err)
 	}
 
 	return uos, nil
@@ -145,7 +146,7 @@ func (b *Business) QueryByID(ctx context.Context, uoID uuid.UUID) (UserOrganizat
 
 	uo, err := b.storer.QueryByID(ctx, uoID)
 	if err != nil {
-		return UserOrganization{}, fmt.Errorf("querying user organization by id: id[%s]: %w", uoID, err)
+		return UserOrganization{}, fmt.Errorf("query by id: id[%s]: %w", uoID, err)
 	}
 
 	return uo, nil

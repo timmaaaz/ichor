@@ -22,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
@@ -74,6 +75,7 @@ type SeedData struct {
 	TableAccesses       []tableaccessbus.TableAccess
 	RestrictedColumns   []restrictedcolumnbus.RestrictedColumn
 	UserOrgs            []userorganizationbus.UserOrganization
+	OrgUnitColAccesses  []orgunitcolumnaccessbus.OrgUnitColumnAccess
 }
 
 type Table struct {

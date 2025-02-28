@@ -392,35 +392,43 @@ var UserOrganizations = []map[string]interface{}{
 	},
 }
 
-// OrgUnitFieldRestrictions with field names matching NewOrgUnitFieldRestriction struct
-var OrgUnitFieldRestrictions = []map[string]interface{}{
+// OrgUnitColumnAccess with field names matching NewOrgUnitFieldRestriction struct
+var OrgUnitColumnAccess = []map[string]interface{}{
 	{
 		"OrgUnitID":             nil, // Will need to be set programmatically
 		"TableName":             "users",
-		"FieldName":             "email",
+		"ColumnName":            "email",
 		"CanInheritPermissions": false,
 		"CanRollupData":         false,
+		"CanRead":               true,
+		"CanUpdate":             false,
 	},
 	{
 		"OrgUnitID":             nil, // Will need to be set programmatically
 		"TableName":             "users",
-		"FieldName":             "user_id",
+		"ColumnName":            "user_id",
 		"CanInheritPermissions": false,
 		"CanRollupData":         false,
+		"CanRead":               true,
+		"CanUpdate":             false,
 	},
 	{
 		"OrgUnitID":             nil, // Will need to be set programmatically
 		"TableName":             "user_roles",
-		"FieldName":             "role_id",
+		"ColumnName":            "role_id",
 		"CanInheritPermissions": false,
 		"CanRollupData":         false,
+		"CanRead":               true,
+		"CanUpdate":             false,
 	},
 	{
 		"OrgUnitID":             nil, // Will need to be set programmatically
 		"TableName":             "user_organizations",
-		"FieldName":             "start_date",
+		"ColumnName":            "start_date",
 		"CanInheritPermissions": false,
 		"CanRollupData":         false,
+		"CanRead":               true,
+		"CanUpdate":             false,
 	},
 }
 

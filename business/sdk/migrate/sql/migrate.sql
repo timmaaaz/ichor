@@ -398,15 +398,17 @@ CREATE TABLE user_organizations (
 );
 
 -- Version: 1.32
--- Description: Create org_unit_field_restrictions table
-CREATE TABLE org_unit_field_restrictions (
-    org_unit_field_restrictions_id UUID PRIMARY KEY,
+-- Description: Create org_unit_column_access table
+CREATE TABLE org_unit_column_access (
+    org_unit_column_access_id UUID PRIMARY KEY,
     organizational_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
     table_name VARCHAR(50) NOT NULL,
-    field_name VARCHAR(50) NOT NULL,
+    column_name VARCHAR(50) NOT NULL,
+    can_read BOOLEAN DEFAULT FALSE,
+    can_update BOOLEAN DEFAULT FALSE,
     can_inherit_permissions BOOLEAN DEFAULT false,
     can_rollup_data BOOLEAN DEFAULT false,
-    UNIQUE(organizational_unit_id, table_name, field_name)
+    UNIQUE(organizational_unit_id, table_name, column_name)
 );
 
 -- Version: 1.33
