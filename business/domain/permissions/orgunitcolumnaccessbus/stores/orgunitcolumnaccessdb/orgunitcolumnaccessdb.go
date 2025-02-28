@@ -181,7 +181,7 @@ func (s *Store) Count(ctx context.Context, filter orgunitcolumnaccessbus.QueryFi
 
 	const q = `
 	SELECT
-		COUNT(*)
+		COUNT(*) AS count
 	FROM
 		org_unit_column_access`
 
@@ -206,7 +206,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (orgunitcolumnacces
 	FROM
 		org_unit_column_access
 	WHERE
-		org_unit_column_access_id = $1
+		org_unit_column_access_id = :org_unit_column_access_id
 	`
 
 	var ouca orgUnitColumnAccess

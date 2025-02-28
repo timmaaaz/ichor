@@ -21,6 +21,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/crossunitpermissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/crossunitpermissionsbus/stores/crossunitpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus/stores/organizationalunitdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
@@ -129,14 +131,15 @@ type BusDomain struct {
 	VProduct *vproductbus.Business
 
 	// Permissions
-	Role               *rolebus.Business
-	UserRole           *userrolebus.Business
-	OrganizationalUnit *organizationalunitbus.Business
-	TableAccess        *tableaccessbus.Business
-	RestrictedColumn   *restrictedcolumnbus.Business
-	Permissions        *permissionsbus.Business
-	UserOrganization   *userorganizationbus.Business
-	OrgUnitColAccess   *orgunitcolumnaccessbus.Business
+	Role                 *rolebus.Business
+	UserRole             *userrolebus.Business
+	OrganizationalUnit   *organizationalunitbus.Business
+	TableAccess          *tableaccessbus.Business
+	RestrictedColumn     *restrictedcolumnbus.Business
+	Permissions          *permissionsbus.Business
+	UserOrganization     *userorganizationbus.Business
+	OrgUnitColAccess     *orgunitcolumnaccessbus.Business
+	CrossUnitPermissions *crossunitpermissionsbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -188,42 +191,44 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	permissionsBus := permissionsbus.NewBusiness(log, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 24*time.Hour), restrictedColumnBus)
 	userOrganizationBus := userorganizationbus.NewBusiness(log, userorganizationdb.NewStore(log, db))
 	orgUnitColAccessBus := orgunitcolumnaccessbus.NewBusiness(log, orgunitcolumnaccessdb.NewStore(log, db))
+	crossUnitPermissionsBus := crossunitpermissionsbus.NewBusiness(log, crossunitpermissionsdb.NewStore(log, db))
 
 	return BusDomain{
-		Delegate:            delegate,
-		Home:                homeBus,
-		AssetType:           assetTypeBus,
-		ValidAsset:          validAssetBus,
-		Product:             productBus,
-		User:                userBus,
-		UserApprovalStatus:  userapprovalstatusbus,
-		UserApprovalComment: userApprovalCommentBus,
-		Country:             countryBus,
-		Region:              regionBus,
-		City:                cityBus,
-		Street:              streetBus,
-		VProduct:            vproductBus,
-		ApprovalStatus:      approvalstatusBus,
-		FulfillmentStatus:   fulfillmentstatusBus,
-		AssetCondition:      assetConditionBus,
-		Tag:                 tagBus,
-		AssetTag:            assetTagBus,
-		Title:               titlebus,
-		ReportsTo:           reportsToBus,
-		Office:              officeBus,
-		UserAsset:           userAssetBus,
-		Asset:               assetBus,
-		ContactInfo:         contactInfoBus,
-		Brand:               brandBus,
-		Role:                roleBus,
-		UserRole:            userRoleBus,
-		OrganizationalUnit:  organizationalunitBus,
-		ProductCategory:     productCategoryBus,
-		TableAccess:         tableAccessBus,
-		RestrictedColumn:    restrictedColumnBus,
-		Permissions:         permissionsBus,
-		UserOrganization:    userOrganizationBus,
-		OrgUnitColAccess:    orgUnitColAccessBus,
+		Delegate:             delegate,
+		Home:                 homeBus,
+		AssetType:            assetTypeBus,
+		ValidAsset:           validAssetBus,
+		Product:              productBus,
+		User:                 userBus,
+		UserApprovalStatus:   userapprovalstatusbus,
+		UserApprovalComment:  userApprovalCommentBus,
+		Country:              countryBus,
+		Region:               regionBus,
+		City:                 cityBus,
+		Street:               streetBus,
+		VProduct:             vproductBus,
+		ApprovalStatus:       approvalstatusBus,
+		FulfillmentStatus:    fulfillmentstatusBus,
+		AssetCondition:       assetConditionBus,
+		Tag:                  tagBus,
+		AssetTag:             assetTagBus,
+		Title:                titlebus,
+		ReportsTo:            reportsToBus,
+		Office:               officeBus,
+		UserAsset:            userAssetBus,
+		Asset:                assetBus,
+		ContactInfo:          contactInfoBus,
+		Brand:                brandBus,
+		Role:                 roleBus,
+		UserRole:             userRoleBus,
+		OrganizationalUnit:   organizationalunitBus,
+		ProductCategory:      productCategoryBus,
+		TableAccess:          tableAccessBus,
+		RestrictedColumn:     restrictedColumnBus,
+		Permissions:          permissionsBus,
+		UserOrganization:     userOrganizationBus,
+		OrgUnitColAccess:     orgUnitColAccessBus,
+		CrossUnitPermissions: crossUnitPermissionsBus,
 	}
 
 }

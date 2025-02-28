@@ -5,7 +5,7 @@ import (
 )
 
 // RestrictedColumns with field names matching NewRestrictedColumn struct
-var RestrictedColumns = []map[string]interface{}{
+var RestrictedColumns = []map[string]any{
 	{
 		"TableName":  "roles",
 		"ColumnName": "description",
@@ -33,7 +33,7 @@ var RestrictedColumns = []map[string]interface{}{
 }
 
 // Users with field names matching NewUser struct
-var Users = []map[string]interface{}{
+var Users = []map[string]any{
 	{
 		"Username": "admin",
 		"Email":    "admin@example.com",
@@ -69,7 +69,7 @@ var Users = []map[string]interface{}{
 }
 
 // Roles with field names matching NewRole struct
-var Roles = []map[string]interface{}{
+var Roles = []map[string]any{
 	{
 		"Name":        "ADMIN",
 		"Description": "System Administrator with full access",
@@ -102,7 +102,7 @@ var Roles = []map[string]interface{}{
 
 // OrganizationalUnits with field names matching NewOrganizationalUnit struct
 // Properly organized to show the hierarchy relationship with level 0 for root
-var OrganizationalUnits = []map[string]interface{}{
+var OrganizationalUnits = []map[string]any{
 	// Root level - must be first since others depend on it
 	{
 		"Name":                  "Company Headquarters",
@@ -280,7 +280,7 @@ var OrganizationalUnits = []map[string]interface{}{
 }
 
 // UserRoles with field names matching NewUserRole struct
-var UserRoles = []map[string]interface{}{
+var UserRoles = []map[string]any{
 	{
 		"UserID": nil, // Will need to be set programmatically
 		"RoleID": nil, // Will need to be set programmatically
@@ -288,7 +288,7 @@ var UserRoles = []map[string]interface{}{
 }
 
 // TableAccess with field names matching NewTableAccess struct
-var TableAccess = []map[string]interface{}{
+var TableAccess = []map[string]any{
 	{
 		"RoleID":    nil, // Will need to be set programmatically
 		"TableName": "users",
@@ -380,7 +380,7 @@ var TableAccess = []map[string]interface{}{
 }
 
 // UserOrganizations with field names matching NewUserOrganization struct
-var UserOrganizations = []map[string]interface{}{
+var UserOrganizations = []map[string]any{
 	{
 		"UserID":        nil, // Will need to be set programmatically
 		"OrgUnitID":     nil, // Will need to be set programmatically
@@ -393,7 +393,7 @@ var UserOrganizations = []map[string]interface{}{
 }
 
 // OrgUnitColumnAccess with field names matching NewOrgUnitFieldRestriction struct
-var OrgUnitColumnAccess = []map[string]interface{}{
+var OrgUnitColumnAccess = []map[string]any{
 	{
 		"OrgUnitID":             nil, // Will need to be set programmatically
 		"TableName":             "users",
@@ -432,48 +432,52 @@ var OrgUnitColumnAccess = []map[string]interface{}{
 	},
 }
 
-// CrossUnitPermissions with field names matching NewCrossUnitPermission struct
-var CrossUnitPermissions = []map[string]interface{}{
+// CrossUnitPermission with field names matching NewCrossUnitPermission struct
+var CrossUnitPermission = []map[string]any{
 	{
-		"SourceUnitID":   nil, // Will need to be set programmatically
-		"TargetUnitID":   nil, // Will need to be set programmatically
-		"PermissionType": "READ",
-		"GrantedBy":      nil, // Will need to be set programmatically
-		"ValidFrom":      time.Now(),
-		"ValidUntil":     time.Now().AddDate(1, 0, 0), // 1 year
-		"Reason":         "Finance needs to read HR data for payroll processing",
+		"SourceUnitID": nil, // Will need to be set programmatically
+		"TargetUnitID": nil, // Will need to be set programmatically
+		"CanRead":      true,
+		"CanUpdate":    false,
+		"GrantedBy":    nil, // Will need to be set programmatically
+		"ValidFrom":    time.Now(),
+		"ValidUntil":   time.Now().AddDate(1, 0, 0), // 1 year
+		"Reason":       "Finance needs to read HR data for payroll processing",
 	},
 	{
-		"SourceUnitID":   nil, // Will need to be set programmatically
-		"TargetUnitID":   nil, // Will need to be set programmatically
-		"PermissionType": "READ",
-		"GrantedBy":      nil, // Will need to be set programmatically
-		"ValidFrom":      time.Now(),
-		"ValidUntil":     time.Now().AddDate(1, 0, 0), // 1 year
-		"Reason":         "HR needs to read Finance data for budget planning",
+		"SourceUnitID": nil, // Will need to be set programmatically
+		"TargetUnitID": nil, // Will need to be set programmatically
+		"CanRead":      true,
+		"CanUpdate":    false,
+		"GrantedBy":    nil, // Will need to be set programmatically
+		"ValidFrom":    time.Now(),
+		"ValidUntil":   time.Now().AddDate(1, 0, 0), // 1 year
+		"Reason":       "HR needs to read Finance data for budget planning",
 	},
 	{
-		"SourceUnitID":   nil, // Will need to be set programmatically
-		"TargetUnitID":   nil, // Will need to be set programmatically
-		"PermissionType": "WRITE",
-		"GrantedBy":      nil, // Will need to be set programmatically
-		"ValidFrom":      time.Now(),
-		"ValidUntil":     time.Now().AddDate(1, 0, 0), // 1 year
-		"Reason":         "Payroll needs to update Benefits data",
+		"SourceUnitID": nil, // Will need to be set programmatically
+		"TargetUnitID": nil, // Will need to be set programmatically
+		"CanRead":      true,
+		"CanUpdate":    false,
+		"GrantedBy":    nil, // Will need to be set programmatically
+		"ValidFrom":    time.Now(),
+		"ValidUntil":   time.Now().AddDate(1, 0, 0), // 1 year
+		"Reason":       "Payroll needs to update Benefits data",
 	},
 	{
-		"SourceUnitID":   nil, // Will need to be set programmatically
-		"TargetUnitID":   nil, // Will need to be set programmatically
-		"PermissionType": "READ",
-		"GrantedBy":      nil, // Will need to be set programmatically
-		"ValidFrom":      time.Now(),
-		"ValidUntil":     time.Now().AddDate(1, 0, 0), // 1 year
-		"Reason":         "Cross-regional data sharing",
+		"SourceUnitID": nil, // Will need to be set programmatically
+		"TargetUnitID": nil, // Will need to be set programmatically
+		"CanRead":      true,
+		"CanUpdate":    false,
+		"GrantedBy":    nil, // Will need to be set programmatically
+		"ValidFrom":    time.Now(),
+		"ValidUntil":   time.Now().AddDate(1, 0, 0), // 1 year
+		"Reason":       "Cross-regional data sharing",
 	},
 }
 
 // PermissionOverrides with field names matching NewPermissionOverride struct
-var PermissionOverrides = []map[string]interface{}{
+var PermissionOverrides = []map[string]any{
 	{
 		"UserID":     nil, // Will need to be set programmatically
 		"TableName":  "users",
@@ -505,7 +509,7 @@ var PermissionOverrides = []map[string]interface{}{
 }
 
 // TemporaryUnitAccess with field names matching NewTemporaryUnitAccess struct
-var TemporaryUnitAccess = []map[string]interface{}{
+var TemporaryUnitAccess = []map[string]any{
 	{
 		"UserID":         nil, // Will need to be set programmatically
 		"OrgUnitID":      nil, // Will need to be set programmatically

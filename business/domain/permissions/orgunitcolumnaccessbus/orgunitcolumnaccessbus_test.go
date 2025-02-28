@@ -86,7 +86,6 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		UserOrgs:           userOrgs,
 		OrgUnitColAccesses: orgUnitColAccess,
 	}, nil
-
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {

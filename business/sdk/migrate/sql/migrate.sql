@@ -414,15 +414,16 @@ CREATE TABLE org_unit_column_access (
 -- Version: 1.33
 -- Description: Create cross_unit_permissions table
 CREATE TABLE cross_unit_permissions (
-    cross_unit_permissions_id UUID PRIMARY KEY,
-    source_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
-    target_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
-    permission_type VARCHAR(50) NOT NULL,  -- e.g., 'READ', 'WRITE', 'ADMIN'
-    granted_by UUID REFERENCES users(user_id),
-    valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    valid_until TIMESTAMP,
-    reason TEXT,
-    UNIQUE(source_unit_id, target_unit_id, permission_type)
+   cross_unit_permission_id UUID PRIMARY KEY,
+   source_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+   target_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+   can_read BOOLEAN DEFAULT FALSE,
+   can_update BOOLEAN DEFAULT FALSE,
+   granted_by UUID REFERENCES users(user_id),
+   valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   valid_until TIMESTAMP,
+   reason TEXT,
+   UNIQUE(source_unit_id, target_unit_id)
 );
 
 -- =============================================================================
@@ -432,20 +433,20 @@ CREATE TABLE cross_unit_permissions (
 -- Version: 1.34
 -- Description: Create permission_overrides table
 CREATE TABLE permission_overrides (
-    permission_overrides_id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(user_id),
-    table_name VARCHAR(50) NOT NULL,
-    column_name VARCHAR(50),
-    organizational_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
-    can_create BOOLEAN DEFAULT FALSE,
-    can_read BOOLEAN DEFAULT FALSE,
-    can_update BOOLEAN DEFAULT FALSE,
-    can_delete BOOLEAN DEFAULT FALSE,
-    reason TEXT NOT NULL,
-    granted_by UUID REFERENCES users(user_id),
-    valid_from TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    valid_until TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   permission_overrides_id UUID PRIMARY KEY,
+   user_id UUID REFERENCES users(user_id),
+   table_name VARCHAR(50) NOT NULL,
+   column_name VARCHAR(50),
+   organizational_unit_id UUID REFERENCES organizational_units(organizational_unit_id),
+   can_create BOOLEAN DEFAULT FALSE,
+   can_read BOOLEAN DEFAULT FALSE,
+   can_update BOOLEAN DEFAULT FALSE,
+   can_delete BOOLEAN DEFAULT FALSE,
+   reason TEXT NOT NULL,
+   granted_by UUID REFERENCES users(user_id),
+   valid_from TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   valid_until TIMESTAMP,
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Version: 1.35
