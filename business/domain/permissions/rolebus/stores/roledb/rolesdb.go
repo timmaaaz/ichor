@@ -183,3 +183,19 @@ func (s *Store) QueryByID(ctx context.Context, roleID uuid.UUID) (rolebus.Role, 
 
 	return toBusRole(dbRole), nil
 }
+
+// QueryAll retrieves all roles from the system.
+func (s *Store) QueryAll(ctx context.Context) ([]rolebus.Role, error) {
+	const q = `
+	SELECT
+		role_id, name, description
+	FROM
+		roles`
+
+	var dbRoles []role
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, nil, &dbRoles); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusRoles(dbRoles), nil
+}

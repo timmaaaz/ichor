@@ -31,6 +31,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Role, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, userID uuid.UUID) (Role, error)
+	QueryAll(ctx context.Context) ([]Role, error)
 }
 
 // Business manages the set of APIs for user access.
@@ -142,4 +143,17 @@ func (b *Business) QueryByID(ctx context.Context, roleID uuid.UUID) (Role, error
 	}
 
 	return role, nil
+}
+
+// QueryAll retrieves all roles from the system.
+func (b *Business) QueryAll(ctx context.Context) ([]Role, error) {
+	ctx, span := otel.AddSpan(ctx, "business.rolebus.queryall")
+	defer span.End()
+
+	roles, err := b.storer.QueryAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("querying all roles: %w", err)
+	}
+
+	return roles, nil
 }

@@ -107,32 +107,31 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: permissionsbus.UserPermissions{
 				UserID:   sd.Users[0].ID,
 				Username: sd.Users[0].Username.String(),
-				Roles: []permissionsbus.UserRole{
-					{
-						RoleID: sd.Roles[0].ID,
-						Name:   sd.Roles[0].Name,
-						Tables: []permissionsbus.TableAccess{
-							{
-								TableName: "countries",
-								CanCreate: true,
-								CanRead:   true,
-								CanUpdate: true,
-								CanDelete: true,
-							},
-							{
-								TableName: "regions",
-								CanCreate: true,
-								CanRead:   true,
-								CanUpdate: true,
-								CanDelete: true,
-							},
-							{
-								TableName: "cities",
-								CanCreate: true,
-								CanRead:   true,
-								CanUpdate: true,
-								CanDelete: true,
-							},
+				Roles: permissionsbus.UserRole{
+
+					RoleID: sd.Roles[0].ID,
+					Name:   sd.Roles[0].Name,
+					Tables: []permissionsbus.TableAccess{
+						{
+							TableName: "countries",
+							CanCreate: true,
+							CanRead:   true,
+							CanUpdate: true,
+							CanDelete: true,
+						},
+						{
+							TableName: "regions",
+							CanCreate: true,
+							CanRead:   true,
+							CanUpdate: true,
+							CanDelete: true,
+						},
+						{
+							TableName: "cities",
+							CanCreate: true,
+							CanRead:   true,
+							CanUpdate: true,
+							CanDelete: true,
 						},
 					},
 				},
@@ -153,7 +152,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp := exp.(permissionsbus.UserPermissions)
 
 				// Match RoleID from the actual response since it might be dynamically generated
-				expResp.Roles[0].RoleID = gotResp.Roles[0].RoleID
+				// expResp.Roles[0].RoleID = gotResp.Roles[0].RoleID
 
 				// Create a comparison option that ignores table order
 				sortTables := cmp.Transformer("SortTables", func(in []permissionsbus.TableAccess) []permissionsbus.TableAccess {
