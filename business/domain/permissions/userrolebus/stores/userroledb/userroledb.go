@@ -182,3 +182,27 @@ func (s *Store) QueryByID(ctx context.Context, roleID uuid.UUID) (userrolebus.Us
 
 	return toBusUserRole(dbUserRole), nil
 }
+
+// QueryByUserID retrieves a single role from the system by its ID.
+func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]userrolebus.UserRole, error) {
+	data := struct {
+		ID string `db:"user_id"`
+	}{
+		ID: userID.String(),
+	}
+
+	const q = `
+	SELECT
+		user_role_id, user_id, role_id
+	FROM
+		user_roles
+	WHERE
+		user_id = :user_id`
+
+	var dbUserRoles []userRole
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbUserRoles); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusUserRoles(dbUserRoles), nil
+}

@@ -80,10 +80,10 @@ func (b *Business) QueryUserPermissions(ctx context.Context, userID uuid.UUID) (
 	// }
 
 	// QueryRoles
-	// _, err := b.RolesBus.
-	// if err != nil {
-	// 	return UserPermissions{}, err
-	// }
+	_, err := b.RolesBus.QueryAll(ctx)
+	if err != nil {
+		return UserPermissions{}, err
+	}
 
 	return UserPermissions{}, nil
 }
