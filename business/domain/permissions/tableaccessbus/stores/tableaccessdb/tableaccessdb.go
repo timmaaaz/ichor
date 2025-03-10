@@ -70,7 +70,7 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
 	}
 
 	if !tmp.Exists {
-		return tableaccessbus.ErrNonexistentTableName
+		return fmt.Errorf("table[%s]: %w", ta.TableName, tableaccessbus.ErrNonexistentTableName)
 	}
 
 	// Now we can insert
@@ -204,4 +204,25 @@ func (s *Store) QueryByID(ctx context.Context, tableAccessID uuid.UUID) (tableac
 	}
 
 	return toBusTableAccess(ta), nil
+}
+
+// QueryByRoleIDs retrieves a list of table accesses from the system by role
+func (s *Store) QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID) ([]tableaccessbus.TableAccess, error) {
+	data := map[string]any{"role_ids": roleIDs}
+
+	const q = `
+	SELECT
+		table_access_id, role_id, table_name, can_create, can_read, can_update, can_delete
+	FROM
+		table_access
+	WHERE
+		role_id IN (:role_ids)
+	`
+
+	var tas []tableAccess
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &tas); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusTableAccesses(tas), nil
 }

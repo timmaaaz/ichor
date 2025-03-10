@@ -2,44 +2,37 @@ package permissionsbus
 
 import (
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/permissions/crossunitpermissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 )
 
 // UserPermissions represents all permissions for a specific user
 type UserPermissions struct {
-	UserID                uuid.UUID
-	Username              string
-	Roles                 UserRole
-	Organizations         []organizationalunitbus.OrganizationalUnit
-	TableAccess           []tableaccessbus.TableAccess
-	CrossUnitPermissions  []crossunitpermissionsbus.CrossUnitPermission
-	OrgUnitColumnAccesses []orgunitcolumnaccessbus.OrgUnitColumnAccess
+	UserID          uuid.UUID
+	Username        string
+	RoleName        string
+	Role            *userrolebus.UserRole
+	TableAccess     map[string]tableaccessbus.TableAccess
+	OrgUnit         *organizationalunitbus.OrganizationalUnit
+	OrgColumnAccess map[string]orgunitcolumnaccessbus.OrgUnitColumnAccess
+	// CrossUnitPermissions  []crossunitpermissionsbus.CrossUnitPermission
+	// OrgUnitColumnAccesses []orgunitcolumnaccessbus.OrgUnitColumnAccess
 }
 
 // UserRole represents a role assigned to a user and its associated permissions
 type UserRole struct {
 	RoleID uuid.UUID
 	Name   string
-	Tables []TableAccess
-}
-
-// TableAccess represents permissions for a specific table
-type TableAccess struct {
-	TableName string
-	CanCreate bool
-	CanRead   bool
-	CanUpdate bool
-	CanDelete bool
+	Tables []tableaccessbus.TableAccess
 }
 
 // ConsolidatedPermissions represents simplified permissions aggregated across all roles
 type ConsolidatedPermissions struct {
 	UserID   uuid.UUID
 	Username string
-	Tables   map[string]TableAccess
+	Tables   map[string]tableaccessbus.TableAccess
 	Roles    []string
 }
 

@@ -191,3 +191,31 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (userorganizationbu
 
 	return toBusUserOrganization(ua), nil
 }
+
+// QueryByUserID retrieves a list of user organizations by user ID
+func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) (userorganizationbus.UserOrganization, error) {
+	data := struct {
+		ID string `db:"user_id"`
+	}{
+		ID: userID.String(),
+	}
+
+	const q = `
+	SELECT
+		user_organization_id, user_id, organizational_unit_id, role_id, is_unit_manager, start_date, end_date, created_by, created_at
+	FROM
+		user_organizations
+	WHERE
+		user_id = :user_id
+	`
+
+	var ua userOrganization
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ua); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return userorganizationbus.UserOrganization{}, fmt.Errorf("namedqueryslice: %w", userorganizationbus.ErrNotFound)
+		}
+		return userorganizationbus.UserOrganization{}, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusUserOrganization(ua), nil
+}

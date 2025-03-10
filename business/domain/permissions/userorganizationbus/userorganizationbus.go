@@ -32,6 +32,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]UserOrganization, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, userID uuid.UUID) (UserOrganization, error)
+	QueryByUserID(ctx context.Context, userID uuid.UUID) (UserOrganization, error)
 }
 
 // Business manages the set of APIs for user access.
@@ -150,4 +151,20 @@ func (b *Business) QueryByID(ctx context.Context, uoID uuid.UUID) (UserOrganizat
 	}
 
 	return uo, nil
+}
+
+// QueryByUserID retrieves a list of user organizations by user ID
+func (b *Business) QueryByUserID(ctx context.Context, userID uuid.UUID) (UserOrganization, error) {
+	ctx, span := otel.AddSpan(ctx, "business.userorganizationbus.querybyuserid")
+	defer span.End()
+
+	uos, err := b.storer.QueryByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return UserOrganization{}, ErrNotFound
+		}
+		return UserOrganization{}, fmt.Errorf("query by user id: id[%s]: %w", userID, err)
+	}
+
+	return uos, nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/crossunitpermissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
@@ -78,6 +79,7 @@ type SeedData struct {
 	UserOrgs             []userorganizationbus.UserOrganization
 	OrgUnitColAccesses   []orgunitcolumnaccessbus.OrgUnitColumnAccess
 	CrossUnitPermissions []crossunitpermissionsbus.CrossUnitPermission
+	UserPermissions      []permissionsbus.UserPermissions
 }
 
 type Table struct {

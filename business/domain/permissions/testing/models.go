@@ -347,7 +347,7 @@ var TableAccess = []map[string]any{
 	},
 	{
 		"RoleID":    nil, // Will need to be set programmatically
-		"TableName": "org_unit_field_restrictions",
+		"TableName": "org_unit_column_access",
 		"CanCreate": true,
 		"CanRead":   true,
 		"CanUpdate": true,
