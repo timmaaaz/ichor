@@ -6,13 +6,8 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/permissions/crossunitpermissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userorganizationbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -35,31 +30,21 @@ type Storer interface {
 
 // Business manages the set of APIs for user access.
 type Business struct {
-	log                    *logger.Logger
-	storer                 Storer
-	RolesBus               *rolebus.Business
-	UserRolesBus           *userrolebus.Business
-	UserOrganizationsBus   *userorganizationbus.Business
-	RestrictedColumnsBus   *restrictedcolumnbus.Business
-	OrgUntitsBus           *organizationalunitbus.Business
-	TableAccessBus         *tableaccessbus.Business
-	CrossUnitPermissionBus *crossunitpermissionsbus.Business
-	OrgUnitColumnAccessBus *orgunitcolumnaccessbus.Business
+	log            *logger.Logger
+	storer         Storer
+	RolesBus       *rolebus.Business
+	UserRolesBus   *userrolebus.Business
+	TableAccessBus *tableaccessbus.Business
 }
 
 // NewBusiness constructs a user business API for use.
-func NewBusiness(log *logger.Logger, storer Storer, rcb *restrictedcolumnbus.Business, uob *userorganizationbus.Business, urb *userrolebus.Business, oub *organizationalunitbus.Business, tab *tableaccessbus.Business, cupb *crossunitpermissionsbus.Business, rb *rolebus.Business, oucb *orgunitcolumnaccessbus.Business) *Business {
+func NewBusiness(log *logger.Logger, storer Storer, urb *userrolebus.Business, tab *tableaccessbus.Business, rb *rolebus.Business) *Business {
 	return &Business{
-		log:                    log,
-		storer:                 storer,
-		RolesBus:               rb,
-		UserRolesBus:           urb,
-		RestrictedColumnsBus:   rcb,
-		OrgUntitsBus:           oub,
-		TableAccessBus:         tab,
-		CrossUnitPermissionBus: cupb,
-		OrgUnitColumnAccessBus: oucb,
-		UserOrganizationsBus:   uob,
+		log:            log,
+		storer:         storer,
+		RolesBus:       rb,
+		UserRolesBus:   urb,
+		TableAccessBus: tab,
 	}
 }
 
@@ -113,29 +98,6 @@ func (b *Business) QueryUserPermissions(ctx context.Context, userID uuid.UUID) (
 		}
 	}
 
-	// UserOrganizations
-	var userOrgUnit *organizationalunitbus.OrganizationalUnit
-	tmpUsrOrg, err := b.UserOrganizationsBus.QueryByUserID(ctx, userID)
-	if err != nil {
-		if !errors.Is(err, userorganizationbus.ErrNotFound) {
-			return UserPermissions{}, err
-		}
-	}
-	if tmpUsrOrg != (userorganizationbus.UserOrganization{}) {
-		tmpOrgUnit, err := b.OrgUntitsBus.Query(
-			ctx, organizationalunitbus.QueryFilter{ID: &tmpUsrOrg.OrganizationalUnitID},
-			organizationalunitbus.DefaultOrderBy,
-			page.MustParse("1", "1"),
-		)
-		if err != nil {
-			// return UserPermissions{}, err
-
-		}
-		if len(tmpOrgUnit) > 0 {
-			userOrgUnit = &tmpOrgUnit[0]
-		}
-	}
-
 	tableAccesses := make(map[string]tableaccessbus.TableAccess, len(tables))
 	for _, table := range tables {
 		tableAccesses[table.TableName] = table
@@ -146,7 +108,6 @@ func (b *Business) QueryUserPermissions(ctx context.Context, userID uuid.UUID) (
 		UserID:      userID,
 		Role:        userRole,
 		TableAccess: tableAccesses,
-		OrgUnit:     userOrgUnit,
 	}
 
 	userPermJson, err := json.MarshalIndent(userPerms, "", "  ")

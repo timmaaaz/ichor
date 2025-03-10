@@ -2,23 +2,17 @@ package permissionsbus
 
 import (
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 )
 
 // UserPermissions represents all permissions for a specific user
 type UserPermissions struct {
-	UserID          uuid.UUID
-	Username        string
-	RoleName        string
-	Role            *userrolebus.UserRole
-	TableAccess     map[string]tableaccessbus.TableAccess
-	OrgUnit         *organizationalunitbus.OrganizationalUnit
-	OrgColumnAccess map[string]orgunitcolumnaccessbus.OrgUnitColumnAccess
-	// CrossUnitPermissions  []crossunitpermissionsbus.CrossUnitPermission
-	// OrgUnitColumnAccesses []orgunitcolumnaccessbus.OrgUnitColumnAccess
+	UserID      uuid.UUID
+	Username    string
+	RoleName    string
+	Role        *userrolebus.UserRole
+	TableAccess map[string]tableaccessbus.TableAccess
 }
 
 // UserRole represents a role assigned to a user and its associated permissions

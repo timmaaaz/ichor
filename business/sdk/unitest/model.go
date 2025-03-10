@@ -21,14 +21,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/officebus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/crossunitpermissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userorganizationbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
@@ -47,39 +42,34 @@ type User struct {
 
 // SeedData represents data that was seeded for the test.
 type SeedData struct {
-	Users                []User
-	Admins               []User
-	AssetConditions      []assetconditionbus.AssetCondition
-	ValidAssets          []validassetbus.ValidAsset
-	Countries            []countrybus.Country
-	Regions              []regionbus.Region
-	Cities               []citybus.City
-	Streets              []streetbus.Street
-	ApprovalStatus       []approvalstatusbus.ApprovalStatus
-	UserApprovalStatus   []approvalbus.UserApprovalStatus
-	UserApprovalComment  []commentbus.UserApprovalComment
-	FulfillmentStatus    []fulfillmentstatusbus.FulfillmentStatus
-	AssetCondition       []assetconditionbus.AssetCondition
-	AssetTypes           []assettypebus.AssetType
-	Tags                 []tagbus.Tag
-	AssetTags            []assettagbus.AssetTag
-	Title                []titlebus.Title
-	ReportsTo            []reportstobus.ReportsTo
-	Offices              []officebus.Office
-	UserAssets           []userassetbus.UserAsset
-	Assets               []assetbus.Asset
-	ContactInfo          []contactinfobus.ContactInfo
-	Brands               []brandbus.Brand
-	ProductCategories    []productcategorybus.ProductCategory
-	Roles                []rolebus.Role
-	UserRoles            []userrolebus.UserRole
-	OrgUnits             []organizationalunitbus.OrganizationalUnit
-	TableAccesses        []tableaccessbus.TableAccess
-	RestrictedColumns    []restrictedcolumnbus.RestrictedColumn
-	UserOrgs             []userorganizationbus.UserOrganization
-	OrgUnitColAccesses   []orgunitcolumnaccessbus.OrgUnitColumnAccess
-	CrossUnitPermissions []crossunitpermissionsbus.CrossUnitPermission
-	UserPermissions      []permissionsbus.UserPermissions
+	Users               []User
+	Admins              []User
+	AssetConditions     []assetconditionbus.AssetCondition
+	ValidAssets         []validassetbus.ValidAsset
+	Countries           []countrybus.Country
+	Regions             []regionbus.Region
+	Cities              []citybus.City
+	Streets             []streetbus.Street
+	ApprovalStatus      []approvalstatusbus.ApprovalStatus
+	UserApprovalStatus  []approvalbus.UserApprovalStatus
+	UserApprovalComment []commentbus.UserApprovalComment
+	FulfillmentStatus   []fulfillmentstatusbus.FulfillmentStatus
+	AssetCondition      []assetconditionbus.AssetCondition
+	AssetTypes          []assettypebus.AssetType
+	Tags                []tagbus.Tag
+	AssetTags           []assettagbus.AssetTag
+	Title               []titlebus.Title
+	ReportsTo           []reportstobus.ReportsTo
+	Offices             []officebus.Office
+	UserAssets          []userassetbus.UserAsset
+	Assets              []assetbus.Asset
+	ContactInfo         []contactinfobus.ContactInfo
+	Brands              []brandbus.Brand
+	ProductCategories   []productcategorybus.ProductCategory
+	Roles               []rolebus.Role
+	UserRoles           []userrolebus.UserRole
+	TableAccesses       []tableaccessbus.TableAccess
+	UserPermissions     []permissionsbus.UserPermissions
 }
 
 type Table struct {

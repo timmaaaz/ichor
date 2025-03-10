@@ -7,10 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -29,43 +26,6 @@ func Test_TableAccess(t *testing.T) {
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
-}
-
-func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
-	ctx := context.Background()
-
-	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 3, userbus.Roles.Admin, busDomain.User)
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
-	}
-
-	roles, err := rolebus.TestSeedRoles(ctx, busDomain.Role)
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
-	}
-
-	roleIDs := make(uuid.UUIDs, len(roles))
-	for i, r := range roles {
-		roleIDs[i] = r.ID
-	}
-
-	tableAccesses, err := tableaccessbus.TestSeedTableAccesses(ctx, roleIDs[0], busDomain.TableAccess)
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding table accesses : %w", err)
-	}
-
-	seedUsers := make([]unitest.User, len(usrs))
-	for i, u := range usrs {
-		seedUsers[i] = unitest.User{
-			User: u,
-		}
-	}
-
-	return unitest.SeedData{
-		Users:         seedUsers,
-		Roles:         roles,
-		TableAccesses: tableAccesses,
-	}, nil
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {

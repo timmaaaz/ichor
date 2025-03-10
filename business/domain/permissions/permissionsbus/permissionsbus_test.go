@@ -6,8 +6,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
@@ -62,19 +60,6 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		ID:     uuid.Nil, // Will be set later with got.Role.ID
 		UserID: uuid.Nil,
 		RoleID: uuid.Nil,
-	}
-
-	// Create OrgUnit
-	orgUnit := &organizationalunitbus.OrganizationalUnit{
-		ID:                    uuid.Nil, // Will be set later with got.OrgUnit.ID
-		ParentID:              uuid.Nil, // 00000000-0000-0000-0000-000000000000
-		Name:                  "Company Headquarters",
-		Level:                 0,
-		Path:                  "Company_Headquarters",
-		CanInheritPermissions: true,
-		CanRollupData:         true,
-		UnitType:              "COMPANY",
-		IsActive:              true,
 	}
 
 	// Create TableAccess map with all entries from the JSON
@@ -431,18 +416,13 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		CanDelete: true,
 	}
 
-	// Create empty OrgColumnAccess map as it's null in the JSON
-	orgColumnAccess := make(map[string]orgunitcolumnaccessbus.OrgUnitColumnAccess)
-
 	// Create UserPermissions instance
 	exp := permissionsbus.UserPermissions{
-		UserID:          uuid.Nil,
-		Username:        "", // Empty in the JSON
-		RoleName:        "ADMIN",
-		Role:            role,
-		TableAccess:     tableAccess,
-		OrgUnit:         orgUnit,
-		OrgColumnAccess: orgColumnAccess,
+		UserID:      uuid.Nil,
+		Username:    "", // Empty in the JSON
+		RoleName:    "ADMIN",
+		Role:        role,
+		TableAccess: tableAccess,
 	}
 
 	return []unitest.Table{
@@ -469,14 +449,9 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 				expResp.UserID = gotResp.UserID
 
-				expResp.OrgColumnAccess = gotResp.OrgColumnAccess // empty
-
 				expResp.Role.ID = gotResp.Role.ID
 				expResp.Role.UserID = gotResp.Role.UserID
 				expResp.Role.RoleID = gotResp.Role.RoleID
-
-				expResp.OrgUnit.ID = gotResp.OrgUnit.ID
-				expResp.OrgUnit.ParentID = gotResp.OrgUnit.ParentID
 
 				for k, v := range expResp.TableAccess {
 					v.ID = gotResp.TableAccess[k].ID

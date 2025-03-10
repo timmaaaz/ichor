@@ -2,7 +2,6 @@ package rolebus_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -15,38 +14,32 @@ import (
 func Test_Role(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_Role")
 
-	sd, err := insertSeedData(db.BusDomain)
-	if err != nil {
-		t.Fatalf("Seeding error: %s", err)
-	}
-	unitest.Run(t, query(db.BusDomain, sd), "query")
+	unitest.Run(t, query(db.BusDomain), "query")
 	unitest.Run(t, create(db.BusDomain), "create")
-	unitest.Run(t, update(db.BusDomain, sd), "update")
-	unitest.Run(t, delete(db.BusDomain, sd), "delete")
+	unitest.Run(t, update(db.BusDomain), "update")
+	unitest.Run(t, delete(db.BusDomain), "delete")
 }
 
-func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
-	ctx := context.Background()
-
-	roles, err := rolebus.TestSeedRoles(ctx, busDomain.Role)
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
+func query(busDomain dbtest.BusDomain) []unitest.Table {
+	exp := []rolebus.Role{
+		{
+			Name:        "ADMIN",
+			Description: "System Administrator with full access",
+		},
+		{
+			Name:        "EMPLOYEE",
+			Description: "Regular employee with standard access",
+		},
+		{
+			Name:        "FINANCE_ADMIN",
+			Description: "Finance Department Administrator",
+		},
 	}
 
-	return unitest.SeedData{
-		Roles: roles,
-	}, nil
-}
-
-func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
-			Name: "Query",
-			ExpResp: []rolebus.Role{
-				sd.Roles[0],
-				sd.Roles[1],
-				sd.Roles[2],
-			},
+			Name:    "Query",
+			ExpResp: exp,
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.Role.Query(ctx, rolebus.QueryFilter{}, rolebus.DefaultOrderBy, page.MustParse("1", "3"))
 				if err != nil {
@@ -112,17 +105,26 @@ func create(busDomain dbtest.BusDomain) []unitest.Table {
 	}
 }
 
-func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+func update(busDomain dbtest.BusDomain) []unitest.Table {
+	r, err := busDomain.Role.Query(context.Background(), rolebus.QueryFilter{}, rolebus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		panic(err)
+	}
+
+	if len(r) == 0 {
+		panic("no role found")
+	}
+
 	return []unitest.Table{
 		{
 			Name: "Update",
 			ExpResp: rolebus.Role{
-				ID:          sd.Roles[0].ID,
+				ID:          r[0].ID,
 				Name:        "UpdatedRole",
 				Description: "UpdatedRole Description",
 			},
 			ExcFunc: func(ctx context.Context) any {
-				resp, err := busDomain.Role.Update(ctx, sd.Roles[0], rolebus.UpdateRole{
+				resp, err := busDomain.Role.Update(ctx, r[0], rolebus.UpdateRole{
 					Name:        dbtest.StringPointer("UpdatedRole"),
 					Description: dbtest.StringPointer("UpdatedRole Description"),
 				})
@@ -148,13 +150,22 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	}
 }
 
-func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+func delete(busDomain dbtest.BusDomain) []unitest.Table {
+	r, err := busDomain.Role.Query(context.Background(), rolebus.QueryFilter{}, rolebus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		panic(err)
+	}
+
+	if len(r) == 0 {
+		panic("no role found")
+	}
+
 	return []unitest.Table{
 		{
 			Name:    "Delete",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				return busDomain.Role.Delete(ctx, sd.Roles[0])
+				return busDomain.Role.Delete(ctx, r[0])
 			},
 			CmpFunc: func(got, exp any) string {
 				return ""

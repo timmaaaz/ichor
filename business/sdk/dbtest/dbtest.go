@@ -21,23 +21,13 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/crossunitpermissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/crossunitpermissionsbus/stores/crossunitpermissionsdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/organizationalunitbus/stores/organizationalunitdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/orgunitcolumnaccessbus/stores/orgunitcolumnaccessdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus/stores/restrictedcolumndb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/roledb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccessdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userorganizationbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userorganizationbus/stores/userorganizationdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
@@ -131,15 +121,10 @@ type BusDomain struct {
 	VProduct *vproductbus.Business
 
 	// Permissions
-	Role                 *rolebus.Business
-	UserRole             *userrolebus.Business
-	OrganizationalUnit   *organizationalunitbus.Business
-	TableAccess          *tableaccessbus.Business
-	RestrictedColumn     *restrictedcolumnbus.Business
-	Permissions          *permissionsbus.Business
-	UserOrganization     *userorganizationbus.Business
-	OrgUnitColAccess     *orgunitcolumnaccessbus.Business
-	CrossUnitPermissions *crossunitpermissionsbus.Business
+	Role        *rolebus.Business
+	UserRole    *userrolebus.Business
+	TableAccess *tableaccessbus.Business
+	Permissions *permissionsbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -185,59 +170,45 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Permissions
 	roleBus := rolebus.NewBusiness(log, roledb.NewStore(log, db))
 	userRoleBus := userrolebus.NewBusiness(log, userroledb.NewStore(log, db))
-	organizationalunitBus := organizationalunitbus.NewBusiness(log, organizationalunitdb.NewStore(log, db))
 	tableAccessBus := tableaccessbus.NewBusiness(log, tableaccessdb.NewStore(log, db))
-	restrictedColumnBus := restrictedcolumnbus.NewBusiness(log, restrictedcolumndb.NewStore(log, db))
-	userOrganizationBus := userorganizationbus.NewBusiness(log, userorganizationdb.NewStore(log, db))
-	orgUnitColAccessBus := orgunitcolumnaccessbus.NewBusiness(log, orgunitcolumnaccessdb.NewStore(log, db))
-	crossUnitPermissionsBus := crossunitpermissionsbus.NewBusiness(log, crossunitpermissionsdb.NewStore(log, db))
 
 	permissionsBus := permissionsbus.NewBusiness(log, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 24*time.Hour),
-		restrictedColumnBus,
-		userOrganizationBus,
 		userRoleBus,
-		organizationalunitBus,
 		tableAccessBus,
-		crossUnitPermissionsBus,
 		roleBus,
-		orgUnitColAccessBus)
+	)
 
 	return BusDomain{
-		Delegate:             delegate,
-		Home:                 homeBus,
-		AssetType:            assetTypeBus,
-		ValidAsset:           validAssetBus,
-		Product:              productBus,
-		User:                 userBus,
-		UserApprovalStatus:   userapprovalstatusbus,
-		UserApprovalComment:  userApprovalCommentBus,
-		Country:              countryBus,
-		Region:               regionBus,
-		City:                 cityBus,
-		Street:               streetBus,
-		VProduct:             vproductBus,
-		ApprovalStatus:       approvalstatusBus,
-		FulfillmentStatus:    fulfillmentstatusBus,
-		AssetCondition:       assetConditionBus,
-		Tag:                  tagBus,
-		AssetTag:             assetTagBus,
-		Title:                titlebus,
-		ReportsTo:            reportsToBus,
-		Office:               officeBus,
-		UserAsset:            userAssetBus,
-		Asset:                assetBus,
-		ContactInfo:          contactInfoBus,
-		Brand:                brandBus,
-		Role:                 roleBus,
-		UserRole:             userRoleBus,
-		OrganizationalUnit:   organizationalunitBus,
-		ProductCategory:      productCategoryBus,
-		TableAccess:          tableAccessBus,
-		RestrictedColumn:     restrictedColumnBus,
-		Permissions:          permissionsBus,
-		UserOrganization:     userOrganizationBus,
-		OrgUnitColAccess:     orgUnitColAccessBus,
-		CrossUnitPermissions: crossUnitPermissionsBus,
+		Delegate:            delegate,
+		Home:                homeBus,
+		AssetType:           assetTypeBus,
+		ValidAsset:          validAssetBus,
+		Product:             productBus,
+		User:                userBus,
+		UserApprovalStatus:  userapprovalstatusbus,
+		UserApprovalComment: userApprovalCommentBus,
+		Country:             countryBus,
+		Region:              regionBus,
+		City:                cityBus,
+		Street:              streetBus,
+		VProduct:            vproductBus,
+		ApprovalStatus:      approvalstatusBus,
+		FulfillmentStatus:   fulfillmentstatusBus,
+		AssetCondition:      assetConditionBus,
+		Tag:                 tagBus,
+		AssetTag:            assetTagBus,
+		Title:               titlebus,
+		ReportsTo:           reportsToBus,
+		Office:              officeBus,
+		UserAsset:           userAssetBus,
+		Asset:               assetBus,
+		ContactInfo:         contactInfoBus,
+		Brand:               brandBus,
+		Role:                roleBus,
+		UserRole:            userRoleBus,
+		ProductCategory:     productCategoryBus,
+		TableAccess:         tableAccessBus,
+		Permissions:         permissionsBus,
 	}
 
 }
