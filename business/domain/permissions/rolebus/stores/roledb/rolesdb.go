@@ -193,7 +193,7 @@ func (s *Store) QueryAll(ctx context.Context) ([]rolebus.Role, error) {
 		roles`
 
 	var dbRoles []role
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, nil, &dbRoles); err != nil {
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbRoles); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
