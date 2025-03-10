@@ -3,9 +3,11 @@ package tableaccessbus_test
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -24,9 +26,10 @@ func Test_TableAccess(t *testing.T) {
 	}
 
 	unitest.Run(t, query(db.BusDomain, sd), "query")
-	// unitest.Run(t, create(db.BusDomain, sd), "create")
-	// unitest.Run(t, update(db.BusDomain, sd), "update")
-	// unitest.Run(t, delete(db.BusDomain, sd), "delete")
+	unitest.Run(t, delete(db.BusDomain, sd), "delete")
+	unitest.Run(t, create(db.BusDomain, sd), "create")
+	unitest.Run(t, update(db.BusDomain, sd), "update")
+
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -43,44 +46,45 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		}
 	}
 
-	IWork := busDomain.ApprovalStatus
-
-	IDont := busDomain.Role
-
 	roles, err := rolebus.TestSeedRoles(ctx, 3, busDomain.Role)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
+	}
+	roleIDs := make(uuid.UUIDs, len(roles))
+	for i, r := range roles {
+		roleIDs[i] = r.ID
+	}
+
+	tas, err := tableaccessbus.TestSeedTableAccess(ctx, roleIDs, busDomain.TableAccess)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding table access : %w", err)
+	}
 
 	return unitest.SeedData{
-		Users: seedUsers,
-		Roles: roles,
+		Users:         seedUsers,
+		Roles:         roles,
+		TableAccesses: tas,
 	}, nil
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	ctx := context.Background()
-
-	ta1, err := busDomain.TableAccess.Query(ctx, tableaccessbus.QueryFilter{RoleID: &sd.Roles[0].ID}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "1"))
-	if err != nil {
-		panic(err)
-	}
-	ta2, err := busDomain.TableAccess.Query(ctx, tableaccessbus.QueryFilter{RoleID: &sd.Roles[0].ID}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "1"))
-	if err != nil {
-		panic(err)
-	}
-	ta3, err := busDomain.TableAccess.Query(ctx, tableaccessbus.QueryFilter{RoleID: &sd.Roles[0].ID}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "1"))
-	if err != nil {
-		panic(err)
-	}
+	// Make sorted copy for use
+	exp := make([]tableaccessbus.TableAccess, len(sd.TableAccesses))
+	copy(exp, sd.TableAccesses)
+	sort.Slice(exp, func(i, j int) bool {
+		return exp[i].ID.String() < exp[j].ID.String()
+	})
 
 	return []unitest.Table{
 		{
 			Name: "Query",
 			ExpResp: []tableaccessbus.TableAccess{
-				ta1[0],
-				ta2[0],
-				ta3[0],
+				exp[0],
+				exp[1],
+				exp[2],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.TableAccess.Query(ctx, tableaccessbus.QueryFilter{RoleID: &sd.Roles[0].ID}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "3"))
+				got, err := busDomain.TableAccess.Query(ctx, tableaccessbus.QueryFilter{}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "3"))
 				if err != nil {
 					return err
 				}
@@ -108,8 +112,8 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: tableaccessbus.TableAccess{
-				RoleID:    sd.Roles[0].ID,
-				TableName: "valid_assets",
+				RoleID:    sd.TableAccesses[0].RoleID,
+				TableName: "asset_types",
 				CanCreate: true,
 				CanRead:   true,
 				CanUpdate: true,
@@ -117,8 +121,8 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				nta := tableaccessbus.NewTableAccess{
-					RoleID:    sd.Roles[0].ID,
-					TableName: "valid_assets",
+					RoleID:    sd.TableAccesses[0].RoleID,
+					TableName: "asset_types",
 					CanCreate: true,
 					CanRead:   true,
 					CanUpdate: true,
@@ -147,18 +151,13 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 }
 
 func update(busdomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	ta, err := busdomain.TableAccess.Query(context.Background(), tableaccessbus.QueryFilter{}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "1"))
-	if err != nil {
-		panic(err)
-	}
-
 	return []unitest.Table{
 		{
 			Name: "Update",
 			ExpResp: tableaccessbus.TableAccess{
-				ID:        ta[0].ID,
-				RoleID:    ta[0].RoleID,
-				TableName: ta[0].TableName,
+				ID:        sd.TableAccesses[0].ID,
+				RoleID:    sd.TableAccesses[0].RoleID,
+				TableName: sd.TableAccesses[0].TableName,
 				CanCreate: false,
 				CanRead:   false,
 				CanUpdate: false,
@@ -193,17 +192,12 @@ func update(busdomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 }
 
 func delete(busdomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	ta, err := busdomain.TableAccess.Query(context.Background(), tableaccessbus.QueryFilter{}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "1"))
-	if err != nil {
-		panic(err)
-	}
-
 	return []unitest.Table{
 		{
 			Name:    "Delete",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busdomain.TableAccess.Delete(ctx, ta[0])
+				err := busdomain.TableAccess.Delete(ctx, sd.TableAccesses[0])
 				if err != nil {
 					return err
 				}
