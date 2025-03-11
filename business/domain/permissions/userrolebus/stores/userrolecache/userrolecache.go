@@ -1,4 +1,4 @@
-package tableaccesscache
+package userrolecache
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/creativecreature/sturdyc"
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -16,12 +16,12 @@ import (
 // Store manages the set of apis for roles cache access.
 type Store struct {
 	log    *logger.Logger
-	storer tableaccessbus.Storer
-	cache  *sturdyc.Client[tableaccessbus.TableAccess]
+	storer userrolebus.Storer
+	cache  *sturdyc.Client[userrolebus.UserRole]
 }
 
 // NewStore constructs the api for data and caching access.
-func NewStore(log *logger.Logger, storer tableaccessbus.Storer, ttl time.Duration) *Store {
+func NewStore(log *logger.Logger, storer userrolebus.Storer, ttl time.Duration) *Store {
 	const capacity = 10000
 	const numShards = 10
 	const evictionPercentage = 10
@@ -29,18 +29,18 @@ func NewStore(log *logger.Logger, storer tableaccessbus.Storer, ttl time.Duratio
 	return &Store{
 		log:    log,
 		storer: storer,
-		cache:  sturdyc.New[tableaccessbus.TableAccess](capacity, numShards, ttl, evictionPercentage),
+		cache:  sturdyc.New[userrolebus.UserRole](capacity, numShards, ttl, evictionPercentage),
 	}
 }
 
 // NewWithTx constructs a new Store value replacing the sqlx DB
 // value with a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (tableaccessbus.Storer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userrolebus.Storer, error) {
 	return s.storer.NewWithTx(tx)
 }
 
 // Create inserts a new role into the database.
-func (s *Store) Create(ctx context.Context, r tableaccessbus.TableAccess) error {
+func (s *Store) Create(ctx context.Context, r userrolebus.UserRole) error {
 	if err := s.storer.Create(ctx, r); err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (s *Store) Create(ctx context.Context, r tableaccessbus.TableAccess) error 
 }
 
 // Update replaces a role document in the database.
-func (s *Store) Update(ctx context.Context, r tableaccessbus.TableAccess) error {
+func (s *Store) Update(ctx context.Context, r userrolebus.UserRole) error {
 	if err := s.storer.Update(ctx, r); err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (s *Store) Update(ctx context.Context, r tableaccessbus.TableAccess) error 
 }
 
 // Delete removes a role from the database.
-func (s *Store) Delete(ctx context.Context, role tableaccessbus.TableAccess) error {
+func (s *Store) Delete(ctx context.Context, role userrolebus.UserRole) error {
 	if err := s.storer.Delete(ctx, role); err != nil {
 		return err
 	}
@@ -72,17 +72,17 @@ func (s *Store) Delete(ctx context.Context, role tableaccessbus.TableAccess) err
 }
 
 // Query retrieves a list of roles from the database.
-func (s *Store) Query(ctx context.Context, filter tableaccessbus.QueryFilter, orderBy order.By, page page.Page) ([]tableaccessbus.TableAccess, error) {
+func (s *Store) Query(ctx context.Context, filter userrolebus.QueryFilter, orderBy order.By, page page.Page) ([]userrolebus.UserRole, error) {
 	return s.storer.Query(ctx, filter, orderBy, page)
 }
 
 // Count retrieves the total number of roles from the database.
-func (s *Store) Count(ctx context.Context, filter tableaccessbus.QueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter userrolebus.QueryFilter) (int, error) {
 	return s.storer.Count(ctx, filter)
 }
 
 // QueryByID retrieves a role from the database.
-func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (tableaccessbus.TableAccess, error) {
+func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (userrolebus.UserRole, error) {
 	bus, exists := s.readCache(id.String())
 	if exists {
 		return bus, nil
@@ -90,7 +90,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (tableaccessbus.Tab
 
 	bus, err := s.storer.QueryByID(ctx, id)
 	if err != nil {
-		return tableaccessbus.TableAccess{}, err
+		return userrolebus.UserRole{}, err
 	}
 
 	s.writeCache(bus)
@@ -98,36 +98,34 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (tableaccessbus.Tab
 	return bus, nil
 }
 
-// QueryByRoleIDs retrieves table access entries by role IDs with caching.
-func (s *Store) QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID) ([]tableaccessbus.TableAccess, error) {
-	tableAccesses, err := s.storer.QueryByRoleIDs(ctx, roleIDs)
+// QueryByUserID retrieves a role from the database.
+func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) (userrolebus.UserRole, error) {
+	ur, err := s.storer.QueryByUserID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return userrolebus.UserRole{}, err
 	}
 
-	for _, access := range tableAccesses {
-		s.writeCache(access)
-	}
+	s.writeCache(ur)
 
-	return tableAccesses, nil
+	return ur, nil
 }
 
 // readCache performs a safe search in the cache for the specified key.
-func (s *Store) readCache(key string) (tableaccessbus.TableAccess, bool) {
+func (s *Store) readCache(key string) (userrolebus.UserRole, bool) {
 	usr, exists := s.cache.Get(key)
 	if !exists {
-		return tableaccessbus.TableAccess{}, false
+		return userrolebus.UserRole{}, false
 	}
 
 	return usr, true
 }
 
-// writeCache performs a safe write to the cache for the specified tableaccessbus.
-func (s *Store) writeCache(bus tableaccessbus.TableAccess) {
+// writeCache performs a safe write to the cache for the specified userrolebus.
+func (s *Store) writeCache(bus userrolebus.UserRole) {
 	s.cache.Set(bus.ID.String(), bus)
 }
 
-// deleteCache performs a safe removal from the cache for the specified tableaccessbus.
-func (s *Store) deleteCache(bus tableaccessbus.TableAccess) {
+// deleteCache performs a safe removal from the cache for the specified userrolebus.
+func (s *Store) deleteCache(bus userrolebus.UserRole) {
 	s.cache.Delete(bus.ID.String())
 }

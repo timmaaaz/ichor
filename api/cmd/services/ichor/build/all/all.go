@@ -56,6 +56,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccesscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccessdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
@@ -144,7 +145,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
-	userRoleBus := userrolebus.NewBusiness(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB))
+	userRoleBus := userrolebus.NewBusiness(cfg.Log, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 
 	permissionsBus := permissionsbus.NewBusiness(cfg.Log, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
