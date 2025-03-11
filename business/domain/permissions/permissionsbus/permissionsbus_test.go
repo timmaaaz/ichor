@@ -2,11 +2,13 @@ package permissionsbus_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -28,9 +30,6 @@ func Test_Permissions(t *testing.T) {
 	}
 
 	unitest.Run(t, query(db.BusDomain, sd), "query")
-	// unitest.Run(t, create(db.BusDomain, sd), "create")
-	// unitest.Run(t, update(db.BusDomain, sd), "update")
-	// unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -47,390 +46,75 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		}
 	}
 
+	roles, err := rolebus.TestSeedRoles(ctx, len(users), busDomain.Role)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
+	}
+
+	roleIDs := make(uuid.UUIDs, len(roles))
+	for i, r := range roles {
+		roleIDs[i] = r.ID
+	}
+	userIDs := make(uuid.UUIDs, len(users))
+	for i, u := range users {
+		userIDs[i] = u.ID
+	}
+
+	userRoles, err := userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
+	}
+
+	tas, err := tableaccessbus.TestSeedTableAccess(ctx, roleIDs, busDomain.TableAccess)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding table access : %w", err)
+	}
+
 	// CONSTRUCT SEED DATA
 	return unitest.SeedData{
-		Users: seedUsers,
+		Users:         seedUsers,
+		Roles:         roles,
+		UserRoles:     userRoles,
+		TableAccesses: tas,
 	}, nil
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	testPerm := permissionsbus.UserPermissions{
+		UserID: sd.Users[0].ID,
+	}
+	testUser := sd.Users[0]
+	var testRoleID uuid.UUID
+	tas := make(map[string]tableaccessbus.TableAccess)
 
-	// Create the Role
-	role := &userrolebus.UserRole{
-		ID:     uuid.Nil, // Will be set later with got.Role.ID
-		UserID: uuid.Nil,
-		RoleID: uuid.Nil,
+	for _, ur := range sd.UserRoles {
+		if ur.UserID == testUser.ID {
+			testRoleID = ur.RoleID
+			testPerm.Role = &ur
+			break
+		}
 	}
 
-	// Create TableAccess map with all entries from the JSON
-	tableAccess := make(map[string]tableaccessbus.TableAccess)
-
-	// Add all table access entries
-	tableAccess["approval_status"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "approval_status",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
+	for _, r := range sd.Roles {
+		if r.ID == testRoleID {
+			testPerm.RoleName = r.Name
+			break
+		}
 	}
 
-	tableAccess["asset_conditions"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "asset_conditions",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
+	for _, ta := range sd.TableAccesses {
+		if ta.RoleID == testRoleID {
+			tas[ta.TableName] = ta
+		}
 	}
-
-	tableAccess["asset_tags"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "asset_tags",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["asset_types"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "asset_types",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["assets"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "assets",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["brands"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "brands",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["cities"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "cities",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["contact_info"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "contact_info",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["countries"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "countries",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["cross_unit_permissions"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "cross_unit_permissions",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["fulfillment_status"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "fulfillment_status",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["homes"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "homes",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["offices"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "offices",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["org_unit_column_access"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "org_unit_column_access",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["organizational_units"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "organizational_units",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["permission_overrides"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "permission_overrides",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["product_categories"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "product_categories",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["products"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "products",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["regions"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "regions",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["reports_to"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "reports_to",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["restricted_columns"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "restricted_columns",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["roles"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "roles",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["streets"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "streets",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["table_access"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "table_access",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["tags"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "tags",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["temporary_unit_access"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "temporary_unit_access",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["titles"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "titles",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["user_approval_comments"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "user_approval_comments",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["user_approval_status"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "user_approval_status",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["user_assets"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "user_assets",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["user_organizations"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "user_organizations",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["user_roles"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "user_roles",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["users"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "users",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["valid_assets"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "valid_assets",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	tableAccess["view_products"] = tableaccessbus.TableAccess{
-		ID:        uuid.Nil,
-		RoleID:    uuid.Nil,
-		TableName: "view_products",
-		CanCreate: true,
-		CanRead:   true,
-		CanUpdate: true,
-		CanDelete: true,
-	}
-
-	// Create UserPermissions instance
-	exp := permissionsbus.UserPermissions{
-		UserID:      uuid.Nil,
-		Username:    "", // Empty in the JSON
-		RoleName:    "ADMIN",
-		Role:        role,
-		TableAccess: tableAccess,
-	}
+	testPerm.TableAccess = tas
 
 	return []unitest.Table{
 		{
 			Name:    "Query",
-			ExpResp: exp,
+			ExpResp: testPerm,
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.Permissions.QueryUserPermissions(ctx, sd.Users[1].ID)
+				got, err := busDomain.Permissions.QueryUserPermissions(ctx, sd.Users[0].ID)
 				if err != nil {
 					return err
 				}
@@ -445,18 +129,6 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp, exists := exp.(permissionsbus.UserPermissions)
 				if !exists {
 					return "exp is not a *permissionsbus.UserPermissions"
-				}
-
-				expResp.UserID = gotResp.UserID
-
-				expResp.Role.ID = gotResp.Role.ID
-				expResp.Role.UserID = gotResp.Role.UserID
-				expResp.Role.RoleID = gotResp.Role.RoleID
-
-				for k, v := range expResp.TableAccess {
-					v.ID = gotResp.TableAccess[k].ID
-					v.RoleID = gotResp.TableAccess[k].RoleID
-					expResp.TableAccess[k] = v
 				}
 
 				return cmp.Diff(expResp, gotResp)

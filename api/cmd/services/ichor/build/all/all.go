@@ -49,8 +49,13 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus/stores/restrictedcolumndb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/rolecache"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/roledb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccessdb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
@@ -137,8 +142,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 
-	restrictedColumnBus := restrictedcolumnbus.NewBusiness(cfg.Log, restrictedcolumndb.NewStore(cfg.Log, cfg.DB))
-	permissionsBus := permissionsbus.NewBusiness(cfg.Log, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), restrictedColumnBus)
+	roleBus := rolebus.NewBusiness(cfg.Log, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
+	userRoleBus := userrolebus.NewBusiness(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB))
+	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB))
+
+	permissionsBus := permissionsbus.NewBusiness(cfg.Log, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,

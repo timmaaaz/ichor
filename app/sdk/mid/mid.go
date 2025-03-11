@@ -9,7 +9,6 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -148,18 +147,4 @@ func GetTableInfo(ctx context.Context) (*TableInfo, error) {
 	}
 
 	return v, nil
-}
-
-func setRestrictedColumns(ctx context.Context, restrictedColumns restrictedcolumnbus.RestrictedColumns) context.Context {
-	columns := restrictedColumns // Make a copy to ensure stability
-	return context.WithValue(ctx, restrictedColumnKey, &columns)
-}
-
-func GetRestrictedColumns(ctx context.Context) (restrictedcolumnbus.RestrictedColumns, error) {
-	v, ok := ctx.Value(restrictedColumnKey).(*restrictedcolumnbus.RestrictedColumns)
-	if !ok {
-		return nil, errors.New("restricted columns not found in context")
-	}
-
-	return *v, nil
 }

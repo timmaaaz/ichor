@@ -13,6 +13,9 @@ import (
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
@@ -22,21 +25,21 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	ctx := context.Background()
 	busDomain := db.BusDomain
 
-	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, busDomain.User)
+	usr, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
 	tu1 := apitest.User{
-		User:  usrs[0],
-		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
+		User:  usr[0],
+		Token: apitest.Token(db.BusDomain.User, ath, usr[0].Email.Address),
 	}
-	usrs, err = userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
+	admin, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
 	tu2 := apitest.User{
-		User:  usrs[0],
-		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
+		User:  admin[0],
+		Token: apitest.Token(db.BusDomain.User, ath, admin[0].Email.Address),
 	}
 
 	ats, err := assettypebus.TestSeedAssetTypes(ctx, 10, busDomain.AssetType)
@@ -51,6 +54,32 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	as, err := validassetbus.TestSeedValidAssets(ctx, 20, atIDs, tu1.ID, busDomain.ValidAsset)
 	if err != nil {
 		return apitest.SeedData{}, err
+	}
+
+	// =========================================================================
+	// Permissions stuff
+	// =========================================================================
+	roles, err := rolebus.TestSeedRoles(ctx, len(usr), busDomain.Role)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
+	}
+
+	roleIDs := make(uuid.UUIDs, len(roles))
+	for i, r := range roles {
+		roleIDs[i] = r.ID
+	}
+	userIDs := make(uuid.UUIDs, 2)
+	userIDs[0] = tu1.ID
+	userIDs[1] = tu2.ID
+
+	_, err = userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
+	}
+
+	_, err = tableaccessbus.TestSeedTableAccess(ctx, roleIDs, busDomain.TableAccess)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding table access : %w", err)
 	}
 
 	sd := apitest.SeedData{

@@ -24,7 +24,7 @@ func TestNewUserRoles(n int, userID uuid.UUIDs, roleIDs uuid.UUIDs) []NewUserRol
 
 // TestSeedRoles is a helper method for testing.
 func TestSeedUserRoles(ctx context.Context, userIDs uuid.UUIDs, roleIDs uuid.UUIDs, api *Business) ([]UserRole, error) {
-	newUserRoles := TestNewUserRoles(len(userIDs)-1, userIDs, roleIDs)
+	newUserRoles := TestNewUserRoles(len(userIDs), userIDs, roleIDs)
 	userRoles := make([]UserRole, len(newUserRoles))
 
 	for i, nur := range newUserRoles {
