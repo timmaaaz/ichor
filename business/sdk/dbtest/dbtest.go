@@ -25,10 +25,13 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/rolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/roledb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccesscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccessdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
@@ -168,15 +171,10 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 
 	// Permissions
-	roleBus := rolebus.NewBusiness(log, roledb.NewStore(log, db))
-	userRoleBus := userrolebus.NewBusiness(log, userroledb.NewStore(log, db))
-	tableAccessBus := tableaccessbus.NewBusiness(log, tableaccessdb.NewStore(log, db))
-
-	permissionsBus := permissionsbus.NewBusiness(log, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 24*time.Hour),
-		userRoleBus,
-		tableAccessBus,
-		roleBus,
-	)
+	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute))
+	userRoleBus := userrolebus.NewBusiness(log, delegate, userrolecache.NewStore(log, userroledb.NewStore(log, db), 60*time.Minute))
+	tableAccessBus := tableaccessbus.NewBusiness(log, delegate, tableaccesscache.NewStore(log, tableaccessdb.NewStore(log, db), 60*time.Minute))
+	permissionsBus := permissionsbus.NewBusiness(log, delegate, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
 	return BusDomain{
 		Delegate:            delegate,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -38,14 +39,16 @@ type Storer interface {
 // Business manages the set of APIs for user access.
 type Business struct {
 	log    *logger.Logger
+	del    *delegate.Delegate
 	storer Storer
 }
 
 // NewBusiness constructs a user business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Business {
 	return &Business{
 		log:    log,
 		storer: storer,
+		del:    del,
 	}
 }
 
@@ -101,6 +104,11 @@ func (b *Business) Update(ctx context.Context, ta TableAccess, uta UpdateTableAc
 		return TableAccess{}, fmt.Errorf("updating table access: %w", err)
 	}
 
+	// Inform permissions, need to clear cache
+	if err := b.del.Call(ctx, ActionUpdatedData(ta)); err != nil {
+		return TableAccess{}, fmt.Errorf("calling delegate: %w", err)
+	}
+
 	return ta, nil
 }
 
@@ -111,6 +119,11 @@ func (b *Business) Delete(ctx context.Context, ta TableAccess) error {
 
 	if err := b.storer.Delete(ctx, ta); err != nil {
 		return fmt.Errorf("deleting table access: %w", err)
+	}
+
+	// Inform permissions, need to clear cache
+	if err := b.del.Call(ctx, ActionDeletedData(ta.ID)); err != nil {
+		return fmt.Errorf("calling delegate: %w", err)
 	}
 
 	return nil

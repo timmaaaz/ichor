@@ -43,6 +43,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (permissionsbus.Storer, err
 	return &store, nil
 }
 
+func (s *Store) ClearCache() {
+	// No-op
+}
+
 func (s *Store) QueryUserPermissions(ctx context.Context, userID uuid.UUID) (permissionsbus.UserPermissions, error) {
 	data := struct {
 		ID string `db:"user_id"`

@@ -98,13 +98,12 @@ func ActionRetrievedData(roleID uuid.UUID) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	RoleID     uuid.UUID
-	UpdateRole UpdateRole
+	Role Role
 }
 
 // String returns a string representation of the action parameters.
 func (au *ActionUpdatedParms) String() string {
-	return fmt.Sprintf("&EventParamsUpdated{RoleID:%v}", au.RoleID)
+	return fmt.Sprintf("&EventParamsUpdated{RoleID:%v}", au.Role.ID)
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -113,10 +112,9 @@ func (au *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs the data for the updated action.
-func ActionUpdatedData(ur UpdateRole, roleID uuid.UUID) delegate.Data {
+func ActionUpdatedData(r Role) delegate.Data {
 	params := ActionUpdatedParms{
-		RoleID:     roleID,
-		UpdateRole: ur,
+		Role: r,
 	}
 
 	rawParams, err := params.Marshal()

@@ -148,11 +148,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 
-	roleBus := rolebus.NewBusiness(cfg.Log, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
-	userRoleBus := userrolebus.NewBusiness(cfg.Log, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
-	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
+	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
+	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
+	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, delegate, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 
-	permissionsBus := permissionsbus.NewBusiness(cfg.Log, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
+	permissionsBus := permissionsbus.NewBusiness(cfg.Log, delegate, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,

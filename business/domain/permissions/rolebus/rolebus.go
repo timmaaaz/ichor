@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -38,12 +39,14 @@ type Storer interface {
 type Business struct {
 	log    *logger.Logger
 	storer Storer
+	del    *delegate.Delegate
 }
 
 // NewBusiness constructs a user business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Business {
 	return &Business{
 		log:    log,
+		del:    del,
 		storer: storer,
 	}
 }
@@ -96,6 +99,11 @@ func (b *Business) Update(ctx context.Context, role Role, ur UpdateRole) (Role, 
 		return Role{}, fmt.Errorf("updating role: %w", err)
 	}
 
+	// Inform permissions, need to clear cache
+	if err := b.del.Call(ctx, ActionUpdatedData(role)); err != nil {
+		return Role{}, fmt.Errorf("calling delegate: %w", err)
+	}
+
 	return role, nil
 }
 
@@ -106,6 +114,11 @@ func (b *Business) Delete(ctx context.Context, role Role) error {
 
 	if err := b.storer.Delete(ctx, role); err != nil {
 		return fmt.Errorf("deleting role: %w", err)
+	}
+
+	// Inform permissions, need to clear cache
+	if err := b.del.Call(ctx, ActionDeletedData(role.ID)); err != nil {
+		return fmt.Errorf("calling delegate: %w", err)
 	}
 
 	return nil

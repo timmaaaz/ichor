@@ -9,6 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -26,11 +27,13 @@ var (
 type Storer interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
 	QueryUserPermissions(ctx context.Context, userID uuid.UUID) (UserPermissions, error)
+	ClearCache()
 }
 
 // Business manages the set of APIs for user access.
 type Business struct {
 	log            *logger.Logger
+	del            *delegate.Delegate
 	storer         Storer
 	RolesBus       *rolebus.Business
 	UserRolesBus   *userrolebus.Business
@@ -38,14 +41,39 @@ type Business struct {
 }
 
 // NewBusiness constructs a user business API for use.
-func NewBusiness(log *logger.Logger, storer Storer, urb *userrolebus.Business, tab *tableaccessbus.Business, rb *rolebus.Business) *Business {
-	return &Business{
+func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer, urb *userrolebus.Business, tab *tableaccessbus.Business, rb *rolebus.Business) *Business {
+	b := &Business{
 		log:            log,
+		del:            del,
 		storer:         storer,
 		RolesBus:       rb,
 		UserRolesBus:   urb,
 		TableAccessBus: tab,
 	}
+
+	// Register the handler as a closure that calls the ClearCache method on this business instance
+	del.Register(rolebus.DomainName, rolebus.ActionUpdated, func(ctx context.Context, data delegate.Data) error {
+		return b.ClearCache(ctx, data)
+	})
+	del.Register(rolebus.DomainName, rolebus.ActionDeleted, func(ctx context.Context, data delegate.Data) error {
+		return b.ClearCache(ctx, data)
+	})
+
+	del.Register(tableaccessbus.DomainName, tableaccessbus.ActionUpdated, func(ctx context.Context, data delegate.Data) error {
+		return b.ClearCache(ctx, data)
+	})
+	del.Register(tableaccessbus.DomainName, tableaccessbus.ActionDeleted, func(ctx context.Context, data delegate.Data) error {
+		return b.ClearCache(ctx, data)
+	})
+
+	del.Register(userrolebus.DomainName, userrolebus.ActionUpdated, func(ctx context.Context, data delegate.Data) error {
+		return b.ClearCache(ctx, data)
+	})
+	del.Register(userrolebus.DomainName, userrolebus.ActionDeleted, func(ctx context.Context, data delegate.Data) error {
+		return b.ClearCache(ctx, data)
+	})
+
+	return b
 }
 
 // NewWithTx constructs a new business value that will use the
@@ -62,6 +90,12 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}
 
 	return &bus, nil
+}
+
+// ClearCache clears the cache of the business.
+func (b *Business) ClearCache(ctx context.Context, data delegate.Data) error {
+	b.storer.ClearCache()
+	return nil
 }
 
 // QueryUserPermissions retrieves the permissions for the specified user.
