@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	routeTable = "asset_conditions"
+	RouteTable = "asset_conditions"
 )
 
 // Routes adds specific routes for this group.
@@ -33,13 +33,13 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(assetconditionapp.NewApp(cfg.AssetConditionBus))
 	app.HandlerFunc(http.MethodGet, version, "/assets/assetconditions", api.query, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodGet, version, "/assets/assetconditions/{asset_condition_id}", api.queryByID, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodPost, version, "/assets/assetconditions", api.create, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Create, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 	app.HandlerFunc(http.MethodPut, version, "/assets/assetconditions/{asset_condition_id}", api.update, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Update, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 	app.HandlerFunc(http.MethodDelete, version, "/assets/assetconditions/{asset_condition_id}", api.delete, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Delete, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

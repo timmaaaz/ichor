@@ -24,7 +24,7 @@ type Config struct {
 }
 
 const (
-	routeTable = "products"
+	RouteTable = "products"
 )
 
 // Routes adds specific routes for this group.
@@ -36,5 +36,5 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(vproductapp.NewApp(cfg.VProductBus))
 	app.HandlerFunc(http.MethodGet, version, "/vproducts", api.query, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

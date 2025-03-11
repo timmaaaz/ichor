@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	routeTable = "brands"
+	RouteTable = "brands"
 )
 
 func Routes(app *web.App, cfg Config) {
@@ -32,13 +32,13 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(brandapp.NewApp(cfg.BrandBus))
 	app.HandlerFunc(http.MethodGet, version, "/inventory/core/brands", api.query, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodGet, version, "/inventory/core/brands/{brand_id}", api.queryByID, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodPost, version, "/inventory/core/brands", api.create, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Create, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 	app.HandlerFunc(http.MethodPut, version, "/inventory/core/brands/{brand_id}", api.update, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Update, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 	app.HandlerFunc(http.MethodDelete, version, "/inventory/core/brands/{brand_id}", api.delete, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, routeTable, permissionsbus.Actions.Delete, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

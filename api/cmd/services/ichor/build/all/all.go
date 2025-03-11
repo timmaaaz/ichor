@@ -157,17 +157,19 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	homeapi.Routes(app, homeapi.Config{
-		Log:        cfg.Log,
-		UserBus:    userBus,
-		HomeBus:    homeBus,
-		AuthClient: cfg.AuthClient,
+		Log:            cfg.Log,
+		UserBus:        userBus,
+		HomeBus:        homeBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	productapi.Routes(app, productapi.Config{
-		Log:        cfg.Log,
-		UserBus:    userBus,
-		ProductBus: productBus,
-		AuthClient: cfg.AuthClient,
+		Log:            cfg.Log,
+		UserBus:        userBus,
+		ProductBus:     productBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	rawapi.Routes(app)
@@ -181,64 +183,74 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	userapi.Routes(app, userapi.Config{
-		Log:        cfg.Log,
-		UserBus:    userBus,
-		AuthClient: cfg.AuthClient,
+		Log:            cfg.Log,
+		UserBus:        userBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	vproductapi.Routes(app, vproductapi.Config{
-		Log:         cfg.Log,
-		UserBus:     userBus,
-		VProductBus: vproductBus,
-		AuthClient:  cfg.AuthClient,
+		Log:            cfg.Log,
+		UserBus:        userBus,
+		VProductBus:    vproductBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	countryapi.Routes(app, countryapi.Config{
-		CountryBus: countryBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		CountryBus:     countryBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	regionapi.Routes(app, regionapi.Config{
-		RegionBus:  regionBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		RegionBus:      regionBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	cityapi.Routes(app, cityapi.Config{
-		CityBus:    cityBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		CityBus:        cityBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	streetapi.Routes(app, streetapi.Config{
-		StreetBus:  streetBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		StreetBus:      streetBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	approvalstatusapi.Routes(app, approvalstatusapi.Config{
 		ApprovalStatusBus: approvalStatusBus,
 		AuthClient:        cfg.AuthClient,
 		Log:               cfg.Log,
+		PermissionsBus:    permissionsBus,
 	})
 
 	fulfillmentstatusapi.Routes(app, fulfillmentstatusapi.Config{
 		FulfillmentStatusBus: fulfillmentStatusBus,
 		AuthClient:           cfg.AuthClient,
 		Log:                  cfg.Log,
+		PermissionsBus:       permissionsBus,
 	})
 
 	assetconditionapi.Routes(app, assetconditionapi.Config{
 		AssetConditionBus: assetConditionBus,
 		AuthClient:        cfg.AuthClient,
 		Log:               cfg.Log,
+		PermissionsBus:    permissionsBus,
 	})
 
 	assettypeapi.Routes(app, assettypeapi.Config{
-		AssetTypeBus: assetTypeBus,
-		AuthClient:   cfg.AuthClient,
-		Log:          cfg.Log,
+		AssetTypeBus:   assetTypeBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	validassetapi.Routes(app, validassetapi.Config{
@@ -249,74 +261,86 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	tagapi.Routes(app, tagapi.Config{
-		TagBus:     tagBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		TagBus:         tagBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	titleapi.Routes(app, titleapi.Config{
-		TitleBus:   titleBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		TitleBus:       titleBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	assettagapi.Routes(app, assettagapi.Config{
-		AssetTagBus: assetTagBus,
-		AuthClient:  cfg.AuthClient,
-		Log:         cfg.Log,
+		AssetTagBus:    assetTagBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	reportstoapi.Routes(app, reportstoapi.Config{
-		ReportsToBus: reportsToBus,
-		AuthClient:   cfg.AuthClient,
-		Log:          cfg.Log,
+		ReportsToBus:   reportsToBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	officeapi.Routes(app, officeapi.Config{
-		OfficeBus:  officeBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		OfficeBus:      officeBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	userassetapi.Routes(app, userassetapi.Config{
-		UserAssetBus: userAssetBus,
-		AuthClient:   cfg.AuthClient,
-		Log:          cfg.Log,
+		UserAssetBus:   userAssetBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	assetapi.Routes(app, assetapi.Config{
-		AssetBus:   assetBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		AssetBus:       assetBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	approvalapi.Routes(app, approvalapi.Config{
 		UserApprovalStatusBus: userApprovalStatusBus,
 		AuthClient:            cfg.AuthClient,
 		Log:                   cfg.Log,
+		PermissionsBus:        permissionsBus,
 	})
 
 	commentapi.Routes(app, commentapi.Config{
 		Log:                    cfg.Log,
 		UserApprovalCommentBus: userApprovalCommentBus,
 		AuthClient:             cfg.AuthClient,
+		PermissionsBus:         permissionsBus,
 	})
 
 	contactinfoapi.Routes(app, contactinfoapi.Config{
 		ContactInfoBus: contactInfoBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	brandapi.Routes(app, brandapi.Config{
-		BrandBus:   brandBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		BrandBus:       brandBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	productcategoryapi.Routes(app, productcategoryapi.Config{
 		ProductCategoryBus: productCategoryBus,
 		AuthClient:         cfg.AuthClient,
 		Log:                cfg.Log,
+		PermissionsBus:     permissionsBus,
 	})
 }

@@ -338,3 +338,25 @@ INSERT INTO users (
     (gen_random_uuid(), 'recruitment', 'Harley', 'Hiring', NULL, 'recruitment@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2023-06-01 00:00:00', '2023-06-01 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a'),
     (gen_random_uuid(), 'benefits', 'Charlie', 'Benefits', NULL, 'benefits@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2023-06-05 00:00:00', '2023-06-05 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a')
 ;
+
+
+INSERT INTO approval_status (approval_status_id, name, icon_id) VALUES 
+    (uuid_generate_v4(), 'SUCCESS', uuid_generate_v4()),
+    (uuid_generate_v4(), 'ERROR', uuid_generate_v4()),
+    (uuid_generate_v4(), 'WAITING', uuid_generate_v4()),
+    (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
+    (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
+
+INSERT INTO fulfillment_status (fulfillment_status_id, name, icon_id) VALUES 
+    (uuid_generate_v4(), 'SUCCESS', uuid_generate_v4()),
+    (uuid_generate_v4(), 'ERROR', uuid_generate_v4()),
+    (uuid_generate_v4(), 'WAITING', uuid_generate_v4()),
+    (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
+    (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
+
+INSERT INTO asset_conditions (asset_condition_id, name) VALUES 
+    (uuid_generate_v4(), 'PERFECT'),
+    (uuid_generate_v4(), 'GOOD'),
+    (uuid_generate_v4(), 'USED'),
+    (uuid_generate_v4(), 'POOR'),
+    (uuid_generate_v4(), 'END_OF_LIFE');
