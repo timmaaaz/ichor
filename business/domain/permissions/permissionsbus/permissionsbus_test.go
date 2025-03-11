@@ -30,6 +30,8 @@ func Test_Permissions(t *testing.T) {
 	}
 
 	unitest.Run(t, query(db.BusDomain, sd), "query")
+	unitest.Run(t, cacheRole(db.BusDomain, sd), "cacheRole")
+	unitest.Run(t, cacheTableAccess(db.BusDomain, sd), "cacheTableAccess")
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -118,6 +120,123 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				if err != nil {
 					return err
 				}
+				return got
+			},
+			CmpFunc: func(exp, got any) string {
+				gotResp, exists := got.(permissionsbus.UserPermissions)
+				if !exists {
+					return "got is not a *permissionsbus.UserPermissions"
+				}
+
+				expResp, exists := exp.(permissionsbus.UserPermissions)
+				if !exists {
+					return "exp is not a *permissionsbus.UserPermissions"
+				}
+
+				return cmp.Diff(expResp, gotResp)
+			},
+		},
+	}
+}
+
+func cacheRole(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+
+	ctx := context.Background()
+
+	userPerms, err := busDomain.Permissions.QueryUserPermissions(ctx, sd.Users[0].ID)
+	if err != nil {
+		panic(err)
+	}
+	roleName := userPerms.RoleName
+	roleID := userPerms.Role.RoleID
+	newRoleName := roleName + " updated"
+
+	// make a copy of user perms for comparison into exp
+	exp := userPerms
+	exp.RoleName = newRoleName
+
+	return []unitest.Table{
+		{
+			Name:    "Query",
+			ExpResp: exp,
+			ExcFunc: func(ctx context.Context) any {
+				r, err := busDomain.Role.QueryByID(ctx, roleID)
+				if err != nil {
+					return fmt.Errorf("role not found")
+				}
+				ur := rolebus.UpdateRole{
+					Name: &newRoleName,
+				}
+
+				_, err = busDomain.Role.Update(ctx, r, ur)
+				if err != nil {
+					return err
+				}
+
+				got, err := busDomain.Permissions.QueryUserPermissions(ctx, sd.Users[0].ID)
+				if err != nil {
+					return err
+				}
+
+				return got
+			},
+			CmpFunc: func(exp, got any) string {
+				gotResp, exists := got.(permissionsbus.UserPermissions)
+				if !exists {
+					return "got is not a *permissionsbus.UserPermissions"
+				}
+
+				expResp, exists := exp.(permissionsbus.UserPermissions)
+				if !exists {
+					return "exp is not a *permissionsbus.UserPermissions"
+				}
+
+				return cmp.Diff(expResp, gotResp)
+			},
+		},
+	}
+}
+
+func cacheTableAccess(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	ctx := context.Background()
+
+	userPerms, err := busDomain.Permissions.QueryUserPermissions(ctx, sd.Users[0].ID)
+	if err != nil {
+		panic(err)
+	}
+
+	tas := userPerms.TableAccess
+	ta := tas["user_assets"]
+
+	tmp := ta
+	tmp.CanCreate = !tmp.CanCreate
+	tmp.CanRead = !tmp.CanRead
+	tmp.CanUpdate = !tmp.CanUpdate
+	tmp.CanDelete = !tmp.CanDelete
+	exp := userPerms
+	exp.TableAccess["user_assets"] = tmp
+
+	return []unitest.Table{
+		{
+			Name:    "Query",
+			ExpResp: exp,
+			ExcFunc: func(ctx context.Context) any {
+				uta := tableaccessbus.UpdateTableAccess{
+					CanCreate: dbtest.BoolPointer(tmp.CanCreate),
+					CanRead:   dbtest.BoolPointer(tmp.CanRead),
+					CanUpdate: dbtest.BoolPointer(tmp.CanUpdate),
+					CanDelete: dbtest.BoolPointer(tmp.CanDelete),
+				}
+				test, err := busDomain.TableAccess.Update(ctx, ta, uta)
+				if err != nil {
+					return err
+				}
+				_ = test
+				got, err := busDomain.Permissions.QueryUserPermissions(ctx, sd.Users[0].ID)
+				if err != nil {
+					return err
+				}
+
 				return got
 			},
 			CmpFunc: func(exp, got any) string {
