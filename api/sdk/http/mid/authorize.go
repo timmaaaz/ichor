@@ -13,17 +13,8 @@ import (
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
-// Authorize validates authorization via the auth service.
-func Authorize(client *authclient.Client, rule string) web.MidFunc {
-	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
-		return mid.Authorize(ctx, client, rule, next)
-	}
-
-	return addMidFunc(midFunc)
-}
-
-// AuthorizeTable validates authorization via the auth service with table information.
-func AuthorizeTable(client *authclient.Client, permissionsBus *permissionsbus.Business, tableName string, action permissionsbus.Action, rule string) web.MidFunc {
+// Authorize validates authorization via the auth service with table information.
+func Authorize(client *authclient.Client, permissionsBus *permissionsbus.Business, tableName string, action permissionsbus.Action, rule string) web.MidFunc {
 	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
 		// Create table information
 		tableInfo := &mid.TableInfo{
