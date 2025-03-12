@@ -14,7 +14,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "basic",
 			URL:        "/v1/location/streets?page=1&rows=10",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &query.Result[streetapp.Street]{},
@@ -38,7 +38,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "basic",
 			URL:        "/v1/location/streets/" + sd.Streets[0].ID,
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &streetapp.Street{},

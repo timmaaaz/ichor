@@ -16,7 +16,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "basic",
 			URL:        fmt.Sprintf("/v1/location/cities/%s", sd.Cities[0].ID),
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &cityapp.UpdateCity{
@@ -50,7 +50,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "bad-region",
 			URL:        fmt.Sprint("/v1/location/cities/asdf"),
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &cityapp.UpdateCity{

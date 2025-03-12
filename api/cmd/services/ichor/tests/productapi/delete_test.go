@@ -12,15 +12,8 @@ import (
 func delete200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
-			Name:       "asuser",
-			URL:        fmt.Sprintf("/v1/products/%s", sd.Users[0].Products[0].ID),
-			Token:      sd.Users[0].Token,
-			Method:     http.MethodDelete,
-			StatusCode: http.StatusNoContent,
-		},
-		{
 			Name:       "asadmin",
-			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[0].ID),
+			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNoContent,
@@ -34,7 +27,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/products/%s", sd.Users[0].Products[1].ID),
+			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[1].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -46,7 +39,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/products/%s", sd.Users[0].Products[1].ID),
+			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[1].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -58,12 +51,12 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "wronguser",
-			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[1].ID),
+			URL:        fmt.Sprintf("/v1/products/%s", sd.Users[0].Products[1].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_or_subject]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: products"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

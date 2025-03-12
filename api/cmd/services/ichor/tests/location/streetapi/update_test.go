@@ -16,7 +16,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "basic",
 			URL:        fmt.Sprintf("/v1/location/streets/%s", sd.Streets[0].ID),
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &streetapp.UpdateStreet{
@@ -53,7 +53,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "missing city",
 			URL:        fmt.Sprintf("/v1/location/streets/%s", sd.Streets[0].ID),
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &streetapp.UpdateStreet{

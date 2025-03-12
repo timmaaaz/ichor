@@ -75,7 +75,7 @@ func AuthorizeTable(ctx context.Context, client *authclient.Client, permissionsB
 		return errs.New(errs.Unauthenticated, fmt.Errorf("user does not have permission %s for table: %s", tableInfo.Action, tableInfo.Name))
 	}
 
-	return Authorize(ctx, client, rule, next)
+	return next(ctx)
 }
 
 // hasTablePermission checks if the user has the required permission for the specified table

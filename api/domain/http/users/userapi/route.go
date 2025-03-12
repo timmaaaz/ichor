@@ -39,14 +39,14 @@ func Routes(app *web.App, cfg Config) {
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny), ruleAuthorizeUser)
 	app.HandlerFunc(http.MethodPost, version, "/users", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/users/role/{user_id}", api.updateRole, authen,
+	app.HandlerFunc(http.MethodPut, version, "/users/role/{user_id}", api.updateRole, authen, ruleAuthorizeUser,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 	app.HandlerFunc(http.MethodPut, version, "/users/{user_id}", api.update, authen, ruleAuthorizeUser,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 	app.HandlerFunc(http.MethodDelete, version, "/users/{user_id}", api.delete, authen, ruleAuthorizeUser,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/users/approve/{user_id}", api.approve, authen,
+	app.HandlerFunc(http.MethodPut, version, "/users/approve/{user_id}", api.approve, authen, ruleAuthorizeUser,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/users/deny/{user_id}", api.deny, authen,
+	app.HandlerFunc(http.MethodPut, version, "/users/deny/{user_id}", api.deny, authen, ruleAuthorizeUser,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 }
