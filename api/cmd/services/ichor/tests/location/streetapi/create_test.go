@@ -14,7 +14,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "basic",
 			URL:        "/v1/location/streets",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &streetapp.NewStreet{
@@ -52,7 +52,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "missing city",
 			URL:        "/v1/location/streets",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &streetapp.NewStreet{
@@ -69,7 +69,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "missing line 1",
 			URL:        "/v1/location/streets",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &streetapp.NewStreet{
@@ -86,7 +86,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "line 1 over 100 chars",
 			URL:        "/v1/location/streets",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &streetapp.NewStreet{
@@ -104,7 +104,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "line 2 over 100 chars",
 			URL:        "/v1/location/streets",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &streetapp.NewStreet{

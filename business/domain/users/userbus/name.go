@@ -22,7 +22,7 @@ func (n Name) Equal(n2 Name) bool {
 
 // =============================================================================
 
-var nameRegEx = regexp.MustCompile("^[a-zA-Z0-9' -]{3,20}$")
+var nameRegEx = regexp.MustCompile("^[a-zA-Z0-9'_ -]{3,20}$")
 
 // ParseName parses the string value and returns a name if the value complies
 // with the rules for a name.

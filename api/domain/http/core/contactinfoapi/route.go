@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -16,19 +17,27 @@ type Config struct {
 	Log            *logger.Logger
 	ContactInfoBus *contactinfobus.Business
 	AuthClient     *authclient.Client
+	PermissionsBus *permissionsbus.Business
 }
+
+const (
+	RouteTable = "contact_info"
+)
 
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	authen := mid.Authenticate(cfg.AuthClient)
-	ruleAdmin := mid.Authorize(cfg.AuthClient, auth.RuleAdminOnly)
 
 	api := newAPI(contactinfoapp.NewApp(cfg.ContactInfoBus))
-	app.HandlerFunc(http.MethodGet, version, "/core/contactinfo", api.query, authen)
-	app.HandlerFunc(http.MethodGet, version, "/core/contactinfo/{contact_info_id}", api.queryByID, authen)
-	app.HandlerFunc(http.MethodPost, version, "/core/contactinfo", api.create, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodPut, version, "/core/contactinfo/{contact_info_id}", api.update, authen, ruleAdmin)
-	app.HandlerFunc(http.MethodDelete, version, "/core/contactinfo/{contact_info_id}", api.delete, authen, ruleAdmin)
-
+	app.HandlerFunc(http.MethodGet, version, "/core/contactinfo", api.query, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+	app.HandlerFunc(http.MethodGet, version, "/core/contactinfo/{contact_info_id}", api.queryByID, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+	app.HandlerFunc(http.MethodPost, version, "/core/contactinfo", api.create, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
+	app.HandlerFunc(http.MethodPut, version, "/core/contactinfo/{contact_info_id}", api.update, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+	app.HandlerFunc(http.MethodDelete, version, "/core/contactinfo/{contact_info_id}", api.delete, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

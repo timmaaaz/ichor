@@ -21,7 +21,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "basic",
 			URL:        "/v1/assets/fulfillmentstatus",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &fulfillmentstatusapp.NewFulfillmentStatus{
@@ -61,7 +61,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "missing icon id",
 			URL:        "/v1/assets/fulfillmentstatus",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &fulfillmentstatusapp.NewFulfillmentStatus{
@@ -76,7 +76,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "missing name",
 			URL:        "/v1/assets/fulfillmentstatus",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &fulfillmentstatusapp.NewFulfillmentStatus{

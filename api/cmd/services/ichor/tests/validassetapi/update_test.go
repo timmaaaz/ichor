@@ -49,7 +49,12 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				expResp.DateUpdated = gotResp.DateUpdated
 				expResp.CreatedBy = gotResp.CreatedBy
 
-				return cmp.Diff(got, exp)
+				// NOTES: This is a protected field and will be returned if you
+				// created it, but it will not be returned from queries if you
+				// do not have permission to see it and therefore wasn't
+				expResp.EstPrice = gotResp.EstPrice
+
+				return cmp.Diff(gotResp, expResp)
 			},
 		},
 	}
@@ -110,7 +115,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: valid_assets"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

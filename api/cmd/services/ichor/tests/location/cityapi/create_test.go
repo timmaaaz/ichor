@@ -14,7 +14,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "basic",
 			URL:        "/v1/location/cities",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &cityapp.NewCity{
@@ -48,7 +48,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "missing region",
 			URL:        "/v1/location/cities",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &cityapp.NewCity{
@@ -63,7 +63,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "missing name",
 			URL:        "/v1/location/cities",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &cityapp.NewCity{

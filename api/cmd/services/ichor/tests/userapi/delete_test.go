@@ -12,13 +12,6 @@ import (
 func delete200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
-			Name:       "asuser",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Users[1].ID),
-			Token:      sd.Users[1].Token,
-			Method:     http.MethodDelete,
-			StatusCode: http.StatusNoContent,
-		},
-		{
 			Name:       "asadmin",
 			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[1].ID),
 			Token:      sd.Admins[1].Token,

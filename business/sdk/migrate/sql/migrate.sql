@@ -311,3 +311,40 @@ CREATE TABLE product_categories (
    PRIMARY KEY (category_id)
 );
 
+
+-- =============================================================================
+-- Core Permissions
+-- =============================================================================
+
+-- Version: 1.25
+-- Description: Create table roles
+CREATE TABLE roles (
+    role_id UUID PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT
+);
+
+-- Version: 1.26
+-- Description: Create table user_roles
+CREATE TABLE user_roles (
+      user_role_id UUID NOT NULL,
+      user_id UUID NOT NULL,
+      role_id UUID NOT NULL,
+      PRIMARY KEY (user_role_id),
+      UNIQUE (user_id),
+      FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+      FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
+);
+
+-- Version: 1.27
+-- Description: Create table table_access
+CREATE TABLE table_access (
+    table_access_id UUID PRIMARY KEY,
+    role_id UUID REFERENCES roles(role_id),
+    table_name VARCHAR(50) NOT NULL,
+    can_create BOOLEAN DEFAULT FALSE,
+    can_read BOOLEAN DEFAULT FALSE,
+    can_update BOOLEAN DEFAULT FALSE,
+    can_delete BOOLEAN DEFAULT FALSE,
+    UNIQUE(role_id, table_name)
+);

@@ -8,6 +8,9 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/users/status/commentapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
@@ -55,6 +58,35 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	comments, err := commentbus.TestSeedUserApprovalComment(ctx, 10, userIDs[:5], userIDs[5:], busDomain.UserApprovalComment)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding approval comments : %w", err)
+	}
+
+	// =========================================================================
+	// Permissions stuff
+	// =========================================================================
+	roles, err := rolebus.TestSeedRoles(ctx, 3, busDomain.Role)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
+	}
+
+	roleIDs := make(uuid.UUIDs, len(roles))
+	for i, r := range roles {
+		roleIDs[i] = r.ID
+	}
+
+	// Include both users for permissions
+	userIDs = make(uuid.UUIDs, 3)
+	userIDs[0] = tu1.ID
+	userIDs[1] = tu2.ID
+	userIDs[2] = tu3.ID
+
+	_, err = userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
+	}
+
+	_, err = tableaccessbus.TestSeedTableAccess(ctx, roleIDs, busDomain.TableAccess)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding table access : %w", err)
 	}
 
 	sd := apitest.SeedData{

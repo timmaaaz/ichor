@@ -12,7 +12,7 @@ func delete200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "asuser",
 			URL:        fmt.Sprintf("/v1/location/cities/%s", sd.Cities[1].ID),
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNoContent,
 		},

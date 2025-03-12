@@ -17,8 +17,9 @@ import (
 
 // Store manages the set of APIs for assets database access.
 type Store struct {
-	log *logger.Logger
-	db  sqlx.ExtContext
+	log          *logger.Logger
+	db           sqlx.ExtContext
+	columnFilter *sqldb.ColumnFilter
 }
 
 // NewStore constructs the api for data access.
@@ -90,7 +91,6 @@ func (s *Store) Update(ctx context.Context, ass validassetbus.ValidAsset) error 
 		updated_by = :updated_by
 	WHERE
 		valid_asset_id = :valid_asset_id
-
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAsset(ass)); err != nil {
@@ -125,12 +125,24 @@ func (s *Store) Query(ctx context.Context, filter validassetbus.QueryFilter, ord
 	}
 
 	const q = `
-    SELECT
-        valid_asset_id, type_id, name, est_price, maintenance_interval,
-        life_expectancy, serial_number, model_number, is_enabled, date_created,
-        date_updated, created_by, updated_by
-    FROM
-        valid_assets`
+	SELECT
+		valid_asset_id,
+		type_id,
+		name,
+		est_price,
+		price,
+		maintenance_interval,
+		life_expectancy,
+		serial_number,
+		model_number,
+		is_enabled,
+		date_created,
+		date_updated,
+		created_by,
+		updated_by
+	FROM
+		valid_assets
+	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -184,14 +196,25 @@ func (s *Store) QueryByID(ctx context.Context, assetID uuid.UUID) (validassetbus
 
 	const q = `
     SELECT
-        valid_asset_id, type_id, name, est_price, maintenance_interval,
-        life_expectancy, model_number, is_enabled, date_created,
-        date_updated, created_by, updated_by
+		valid_asset_id,
+		type_id,
+		name,
+		est_price,
+		price,
+		maintenance_interval,
+		life_expectancy,
+		serial_number,
+		model_number,
+		is_enabled,
+		date_created,
+		date_updated,
+		created_by,
+		updated_by
     FROM
         valid_assets
     WHERE
-        valid_asset_id = :valid_asset_id
-    `
+        valid_asset_id = :valid_asset_id`
+
 	var ass validAsset
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ass); err != nil {

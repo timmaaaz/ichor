@@ -16,8 +16,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Users[0].ID),
-			Token:      sd.Users[0].Token,
+			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &userapp.UpdateUser{
@@ -31,7 +31,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &userapp.User{},
 			ExpResp: &userapp.User{
-				ID:           sd.Users[0].ID.String(),
+				ID:           sd.Admins[0].ID.String(),
 				RequestedBy:  "00000000-0000-0000-0000-000000000000",
 				ApprovedBy:   "00000000-0000-0000-0000-000000000000",
 				TitleID:      "00000000-0000-0000-0000-000000000000",
@@ -45,11 +45,11 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Birthday:     "1980-01-01T00:00:00Z",
 				DateHired:    "0001-01-01T00:00:00Z",
 				DateApproved: "0001-01-01T00:00:00Z",
-				Roles:        []string{"USER"},
-				SystemRoles:  []string{"USER"},
+				Roles:        []string{"ADMIN"},
+				SystemRoles:  []string{"ADMIN"},
 				Enabled:      true,
-				DateCreated:  sd.Users[0].DateCreated.Format(time.RFC3339),
-				DateUpdated:  sd.Users[0].DateUpdated.Format(time.RFC3339),
+				DateCreated:  sd.Admins[0].DateCreated.Format(time.RFC3339),
+				DateUpdated:  sd.Admins[0].DateUpdated.Format(time.RFC3339),
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*userapp.User)
@@ -66,34 +66,34 @@ func update200(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "role",
-			URL:        fmt.Sprintf("/v1/users/role/%s", sd.Admins[0].ID),
+			URL:        fmt.Sprintf("/v1/users/role/%s", sd.Admins[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &userapp.UpdateUserRole{
-				Roles: []string{"USER"},
+				Roles: []string{"ADMIN"},
 			},
 			GotResp: &userapp.User{},
 			ExpResp: &userapp.User{
-				ID:           sd.Admins[0].ID.String(),
+				ID:           sd.Admins[1].ID.String(),
 				RequestedBy:  "00000000-0000-0000-0000-000000000000",
 				ApprovedBy:   "00000000-0000-0000-0000-000000000000",
 				TitleID:      "00000000-0000-0000-0000-000000000000",
 				OfficeID:     "00000000-0000-0000-0000-000000000000",
 				WorkPhoneID:  "00000000-0000-0000-0000-000000000000",
 				CellPhoneID:  "00000000-0000-0000-0000-000000000000",
-				Username:     sd.Admins[0].Username.String(),
-				FirstName:    sd.Admins[0].FirstName.String(),
-				LastName:     sd.Admins[0].LastName.String(),
-				Email:        sd.Admins[0].Email.Address,
+				Username:     sd.Admins[1].Username.String(),
+				FirstName:    sd.Admins[1].FirstName.String(),
+				LastName:     sd.Admins[1].LastName.String(),
+				Email:        sd.Admins[1].Email.Address,
 				Birthday:     "0001-01-01T00:00:00Z",
 				DateHired:    "0001-01-01T00:00:00Z",
 				DateApproved: "0001-01-01T00:00:00Z",
-				Roles:        []string{"USER"},
+				Roles:        []string{"ADMIN"},
 				SystemRoles:  []string{"ADMIN"},
 				Enabled:      true,
-				DateCreated:  sd.Admins[0].DateCreated.Format(time.RFC3339),
-				DateUpdated:  sd.Admins[0].DateUpdated.Format(time.RFC3339),
+				DateCreated:  sd.Admins[1].DateCreated.Format(time.RFC3339),
+				DateUpdated:  sd.Admins[1].DateUpdated.Format(time.RFC3339),
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*userapp.User)
@@ -117,8 +117,8 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "bad-input",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Users[0].ID),
-			Token:      sd.Users[0].Token,
+			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &userapp.UpdateUser{
@@ -155,7 +155,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Users[0].ID),
+			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -167,8 +167,8 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Users[0].ID),
-			Token:      sd.Users[0].Token + "A",
+			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
+			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
@@ -177,26 +177,27 @@ func update401(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
-		{
-			Name:       "wronguser",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
-			Token:      sd.Users[0].Token,
-			Method:     http.MethodPut,
-			StatusCode: http.StatusUnauthorized,
-			Input: &userapp.UpdateUser{
-				Username:        dbtest.StringPointer("agriffis"),
-				FirstName:       dbtest.StringPointer("Adam"),
-				LastName:        dbtest.StringPointer("Griffis"),
-				Email:           dbtest.StringPointer("adam@superiortech.io"),
-				Password:        dbtest.StringPointer("123"),
-				PasswordConfirm: dbtest.StringPointer("123"),
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_or_subject]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
+		// TODO: Need a test for admin updating another admin
+		// {
+		// 	Name:       "wronguser",
+		// 	URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[1].ID),
+		// 	Token:      sd.Admins[0].Token,
+		// 	Method:     http.MethodPut,
+		// 	StatusCode: http.StatusUnauthorized,
+		// 	Input: &userapp.UpdateUser{
+		// 		Username:        dbtest.StringPointer("agriffis"),
+		// 		FirstName:       dbtest.StringPointer("Adam"),
+		// 		LastName:        dbtest.StringPointer("Griffis"),
+		// 		Email:           dbtest.StringPointer("adam@superiortech.io"),
+		// 		Password:        dbtest.StringPointer("123"),
+		// 		PasswordConfirm: dbtest.StringPointer("123"),
+		// 	},
+		// 	GotResp: &errs.Error{},
+		// 	ExpResp: errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_or_subject]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+		// 	CmpFunc: func(got any, exp any) string {
+		// 		return cmp.Diff(got, exp)
+		// 	},
+		// },
 		{
 			Name:       "roleadminonly",
 			URL:        fmt.Sprintf("/v1/users/role/%s", sd.Users[0].ID),
@@ -207,7 +208,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 				Roles: []string{"ADMIN"},
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: users"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

@@ -123,6 +123,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ValidAsse
 // QueryByID retrieves a single asset by its id.
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (ValidAsset, error) {
 	asset, err := a.assetBus.QueryByID(ctx, id)
+
 	if err != nil {
 		return ValidAsset{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}

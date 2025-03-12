@@ -16,8 +16,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/products/%s", sd.Users[0].Products[0].ID),
-			Token:      sd.Users[0].Token,
+			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[1].ID),
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &productapp.UpdateProduct{
@@ -27,13 +27,13 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &productapp.Product{},
 			ExpResp: &productapp.Product{
-				ID:          sd.Users[0].Products[0].ID.String(),
-				UserID:      sd.Users[0].ID.String(),
+				ID:          sd.Admins[0].Products[1].ID.String(),
+				UserID:      sd.Admins[0].ID.String(),
 				Name:        "Guitar",
 				Cost:        10.34,
 				Quantity:    10,
-				DateCreated: sd.Users[0].Products[0].DateCreated.Format(time.RFC3339),
-				DateUpdated: sd.Users[0].Products[0].DateCreated.Format(time.RFC3339),
+				DateCreated: sd.Admins[0].Products[1].DateCreated.Format(time.RFC3339),
+				DateUpdated: sd.Admins[0].Products[1].DateCreated.Format(time.RFC3339),
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*productapp.Product)
@@ -56,8 +56,8 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "bad-input",
-			URL:        fmt.Sprintf("/v1/products/%s", sd.Users[0].Products[0].ID),
-			Token:      sd.Users[0].Token,
+			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[1].ID),
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &productapp.UpdateProduct{
@@ -103,7 +103,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "wronguser",
-			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[0].ID),
+			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[1].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

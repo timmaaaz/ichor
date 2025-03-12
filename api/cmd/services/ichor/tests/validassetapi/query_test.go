@@ -25,7 +25,18 @@ func query200(sd apitest.SeedData) []apitest.Table {
 				Items:       sd.ValidAssets[:10],
 			},
 			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
+
+				// modify exp result to remove protected fields
+				expResp, ok := exp.(*query.Result[validassetapp.ValidAsset])
+				if !ok {
+					return "error occurred"
+				}
+				gotResp, ok := got.(*query.Result[validassetapp.ValidAsset])
+				if !ok {
+					return "error occurred"
+				}
+
+				return cmp.Diff(gotResp, expResp)
 			},
 		},
 	}
@@ -43,6 +54,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 			GotResp:    &validassetapp.ValidAsset{},
 			ExpResp:    &sd.ValidAssets[0],
 			CmpFunc: func(got any, exp any) string {
+
 				return cmp.Diff(got, exp)
 			},
 		},

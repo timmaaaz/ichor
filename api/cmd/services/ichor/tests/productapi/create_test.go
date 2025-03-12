@@ -14,7 +14,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "basic",
 			URL:        "/v1/products",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &productapp.NewProduct{
@@ -25,7 +25,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &productapp.Product{},
 			ExpResp: &productapp.Product{
 				Name:     "Guitar",
-				UserID:   sd.Users[0].ID.String(),
+				UserID:   sd.Admins[0].ID.String(),
 				Cost:     10.34,
 				Quantity: 10,
 			},
@@ -54,7 +54,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "missing-input",
 			URL:        "/v1/products",
-			Token:      sd.Users[0].Token,
+			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input:      &productapp.NewProduct{},
@@ -110,11 +110,11 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "wronguser",
 			URL:        "/v1/products",
-			Token:      sd.Admins[0].Token,
+			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[ADMIN]] rule[rule_user_only]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: products"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

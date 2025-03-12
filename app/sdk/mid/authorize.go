@@ -3,6 +3,8 @@ package mid
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
@@ -33,11 +36,81 @@ func Authorize(ctx context.Context, client *authclient.Client, rule string, next
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// Authorize opa roles
 	if err := client.Authorize(ctx, auth); err != nil {
 		return errs.New(errs.Unauthenticated, err)
 	}
 
 	return next(ctx)
+}
+
+// AuthorizeTable validates authorization via the auth service with table information.
+func AuthorizeTable(ctx context.Context, client *authclient.Client, permissionsBus *permissionsbus.Business, tableInfo *TableInfo, rule string, next HandlerFunc) Encoder {
+	userID, err := GetUserID(ctx)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	auth := authclient.Authorize{
+		Claims: GetClaims(ctx),
+		UserID: userID,
+		Rule:   rule,
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Authorize opa roles
+	if err := client.Authorize(ctx, auth); err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	// Authorize on our permissions
+	perms, err := permissionsBus.QueryUserPermissions(ctx, userID)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, fmt.Errorf("query user permissions: %w", err))
+	}
+
+	if !hasTablePermission(perms, *tableInfo) {
+		return errs.New(errs.Unauthenticated, fmt.Errorf("user does not have permission %s for table: %s", tableInfo.Action, tableInfo.Name))
+	}
+
+	return next(ctx)
+}
+
+// hasTablePermission checks if the user has the required permission for the specified table
+func hasTablePermission(userPerms permissionsbus.UserPermissions, tableInfo TableInfo) bool {
+	// Search through all roles assigned to the user
+
+	if userPerms.TableAccess != nil {
+		// Check each table access in this role
+		for _, tableAccess := range userPerms.TableAccess {
+
+			if strings.EqualFold(tableAccess.TableName, tableInfo.Name) {
+				// Check specific permission based on the action
+				switch tableInfo.Action {
+				case permissionsbus.Actions.Create:
+					if tableAccess.CanCreate {
+						return true
+					}
+				case permissionsbus.Actions.Read:
+					if tableAccess.CanRead {
+						return true
+					}
+				case permissionsbus.Actions.Update:
+					if tableAccess.CanUpdate {
+						return true
+					}
+				case permissionsbus.Actions.Delete:
+					if tableAccess.CanDelete {
+						return true
+					}
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 // AuthorizeUser executes the specified role and extracts the specified
