@@ -52,7 +52,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		userIDs[i] = u.ID
 	}
 
-	userRoles, err := userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
+	userRoles, err := userrolebus.TestSeedUserRoles(ctx, userIDs[:len(userIDs)-1], roleIDs[:len(roleIDs)-1], busDomain.UserRole)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
 	}
