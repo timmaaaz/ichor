@@ -46,6 +46,11 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
+	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus"
+	"github.com/timmaaaz/ichor/business/domain/permissions/restrictedcolumnbus/stores/restrictedcolumndb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -136,6 +141,9 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 
+	restrictedColumnBus := restrictedcolumnbus.NewBusiness(cfg.Log, restrictedcolumndb.NewStore(cfg.Log, cfg.DB))
+	permissionsBus := permissionsbus.NewBusiness(cfg.Log, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), restrictedColumnBus)
+
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
 		Log:   cfg.Log,
@@ -216,9 +224,10 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	validassetapi.Routes(app, validassetapi.Config{
-		ValidAssetBus: validAssetBus,
-		AuthClient:    cfg.AuthClient,
-		Log:           cfg.Log,
+		ValidAssetBus:  validAssetBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	tagapi.Routes(app, tagapi.Config{

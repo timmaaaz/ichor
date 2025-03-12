@@ -11,6 +11,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus/types"
 )
 
+const dbName = "valid_assets"
+
 type QueryParams struct {
 	Page                string
 	Rows                string
