@@ -29,8 +29,8 @@ func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	authen := mid.Authenticate(cfg.AuthClient)
-
 	api := newAPI(assetapp.NewApp(cfg.AssetBus))
+
 	app.HandlerFunc(http.MethodGet, version, "/assets", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodGet, version, "/assets/{asset_id}", api.queryByID, authen,

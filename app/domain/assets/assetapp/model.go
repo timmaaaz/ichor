@@ -53,7 +53,7 @@ func ToAppAssets(bus []assetbus.Asset) []Asset {
 	return app
 }
 
-// =========================================================================
+// =============================================================================
 
 type NewAsset struct {
 	ValidAssetID     string `json:"valid_asset_id" validate:"required"`
