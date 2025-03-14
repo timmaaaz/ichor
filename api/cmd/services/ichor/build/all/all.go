@@ -17,6 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/productcategoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/status/approvalapi"
@@ -357,6 +358,13 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	userroleapi.Routes(app, userroleapi.Config{
 		Log:            cfg.Log,
 		UserRoleBus:    userRoleBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	tableaccessapi.Routes(app, tableaccessapi.Config{
+		Log:            cfg.Log,
+		TableAccessBus: tableAccessBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
