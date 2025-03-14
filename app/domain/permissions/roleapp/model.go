@@ -65,7 +65,6 @@ func (app NewRole) Validate() error {
 func toBusNewRole(app NewRole) (rolebus.NewRole, error) {
 	dest := rolebus.NewRole{}
 	err := convert.PopulateTypesFromStrings(app, &dest)
-
 	return dest, err
 }
 

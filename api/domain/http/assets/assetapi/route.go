@@ -33,8 +33,10 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodGet, version, "/assets", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
 	app.HandlerFunc(http.MethodGet, version, "/assets/{asset_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
 	app.HandlerFunc(http.MethodPost, version, "/assets", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 	app.HandlerFunc(http.MethodPut, version, "/assets/{asset_id}", api.update, authen,

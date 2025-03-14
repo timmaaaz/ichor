@@ -1,13 +1,14 @@
-package role_test
+package userrole_test
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
@@ -20,7 +21,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	ctx := context.Background()
 	busDomain := db.BusDomain
 
-	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, busDomain.User)
+	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 2, userbus.Roles.User, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
@@ -55,7 +56,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	userIDs[0] = tu1.ID
 	userIDs[1] = tu2.ID
 
-	_, err = userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
+	userRoles, err := userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
 	}
@@ -85,7 +86,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// Update only tu1's role permissions
 	for _, ta := range tas {
 		// Only update for the asset table
-		if ta.TableName == roleapi.RouteTable {
+		if ta.TableName == userroleapi.RouteTable {
 			update := tableaccessbus.UpdateTableAccess{
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),
@@ -99,11 +100,13 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		}
 	}
 
+	appUserRoles := userroleapp.ToAppUserRoles(userRoles)
 	appRoles := roleapp.ToAppRoles(roles)
 
 	return apitest.SeedData{
-		Users:  []apitest.User{tu1},
-		Admins: []apitest.User{tu2},
-		Roles:  appRoles,
+		Users:     []apitest.User{tu1},
+		Admins:    []apitest.User{tu2},
+		UserRoles: appUserRoles,
+		Roles:     appRoles,
 	}, nil
 }

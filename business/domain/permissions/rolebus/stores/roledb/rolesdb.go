@@ -184,6 +184,35 @@ func (s *Store) QueryByID(ctx context.Context, roleID uuid.UUID) (rolebus.Role, 
 	return toBusRole(dbRole), nil
 }
 
+// QueryByIDs retrieves a list of roles from the system by their IDs.
+func (s *Store) QueryByIDs(ctx context.Context, roleIDs []uuid.UUID) ([]rolebus.Role, error) {
+	uuidStrings := make([]string, len(roleIDs))
+	for i, id := range roleIDs {
+		uuidStrings[i] = id.String()
+	}
+
+	data := struct {
+		RoleIDs []string `db:"role_ids"`
+	}{
+		RoleIDs: uuidStrings,
+	}
+
+	const q = `
+	SELECT
+		role_id, name, description
+	FROM
+		roles
+	WHERE
+		role_id IN (:role_ids)`
+
+	var dbRoles []role
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &dbRoles); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusRoles(dbRoles), nil
+}
+
 // QueryAll retrieves all roles from the system.
 func (s *Store) QueryAll(ctx context.Context) ([]rolebus.Role, error) {
 	const q = `

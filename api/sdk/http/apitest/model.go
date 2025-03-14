@@ -17,6 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/location/officeapp"
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
 	"github.com/timmaaaz/ichor/app/domain/users/reportstoapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/commentapp"
@@ -25,7 +26,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
@@ -64,7 +64,7 @@ type SeedData struct {
 	Brands               []brandapp.Brand
 	ProductCategories    []productcategoryapp.ProductCategory
 	Roles                []roleapp.Role
-	UserRoles            []userrolebus.UserRole
+	UserRoles            []userroleapp.UserRole
 	TableAccesses        []tableaccessbus.TableAccess
 }
 
