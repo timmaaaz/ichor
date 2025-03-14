@@ -103,6 +103,45 @@ func (s *Store) QueryAll(ctx context.Context) ([]rolebus.Role, error) {
 	return s.storer.QueryAll(ctx)
 }
 
+// QueryByIDs retrieves a list of roles from the database, using cache where possible.
+func (s *Store) QueryByIDs(ctx context.Context, ids []uuid.UUID) ([]rolebus.Role, error) {
+	if len(ids) == 0 {
+		return []rolebus.Role{}, nil
+	}
+
+	// First, try to get roles from cache
+	var foundRoles []rolebus.Role
+	var missingIDs []uuid.UUID
+
+	for _, id := range ids {
+		idStr := id.String()
+		if role, exists := s.readCache(idStr); exists {
+			foundRoles = append(foundRoles, role)
+		} else {
+			missingIDs = append(missingIDs, id)
+		}
+	}
+
+	// If all roles were in cache, return them
+	if len(missingIDs) == 0 {
+		return foundRoles, nil
+	}
+
+	// Fetch missing roles from database
+	dbRoles, err := s.storer.QueryByIDs(ctx, missingIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add newly fetched roles to cache
+	for _, role := range dbRoles {
+		s.writeCache(role)
+	}
+
+	// Combine cached and newly fetched roles
+	return append(foundRoles, dbRoles...), nil
+}
+
 // readCache performs a safe search in the cache for the specified key.
 func (s *Store) readCache(key string) (rolebus.Role, bool) {
 	usr, exists := s.cache.Get(key)

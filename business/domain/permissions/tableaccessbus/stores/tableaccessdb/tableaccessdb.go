@@ -170,19 +170,22 @@ func (s *Store) Count(ctx context.Context, filter tableaccessbus.QueryFilter) (i
 
 	const q = `
 	SELECT
-		COUNT(*)
+		COUNT(*) AS count
 	FROM
 		table_access`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
 
-	var count int
+	var count struct {
+		Count int `db:"count"`
+	}
+
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &count); err != nil {
 		return 0, fmt.Errorf("namedqueryint: %w", err)
 	}
 
-	return count, nil
+	return count.Count, nil
 }
 
 // QueryByID retrieves a single table access from the system

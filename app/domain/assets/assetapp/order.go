@@ -5,7 +5,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
-var defaultOrderBy = order.NewBy("asset_id", order.ASC)
+var defaultOrderBy = order.NewBy(assetbus.OrderByID, order.ASC)
 
 var orderByFields = map[string]string{
 	"asset_id":              assetbus.OrderByID,

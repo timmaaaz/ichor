@@ -10,8 +10,8 @@ import (
 type UserPermissions struct {
 	UserID      uuid.UUID
 	Username    string
-	RoleName    string
-	Role        *userrolebus.UserRole
+	RoleNames   []string
+	Roles       []userrolebus.UserRole
 	TableAccess map[string]tableaccessbus.TableAccess
 }
 

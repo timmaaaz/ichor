@@ -90,7 +90,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 				return got
 			},
-			CmpFunc: func(exp, got any) string {
+			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.([]tableaccessbus.TableAccess)
 				if !exists {
 					return fmt.Sprintf("expected []tableaccessbus.TableAccess, got %T", got)
@@ -135,7 +135,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 				return got
 			},
-			CmpFunc: func(exp, got any) string {
+			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(tableaccessbus.TableAccess)
 				if !exists {
 					return fmt.Sprintf("expected tableaccessbus.TableAccess, got %T", got)
@@ -177,7 +177,7 @@ func update(busdomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 				return got
 			},
-			CmpFunc: func(exp, got any) string {
+			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(tableaccessbus.TableAccess)
 				if !exists {
 					return fmt.Sprintf("expected tableaccessbus.TableAccess, got %T", got)
@@ -203,7 +203,7 @@ func delete(busdomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 				return nil
 			},
-			CmpFunc: func(exp, got any) string {
+			CmpFunc: func(got, exp any) string {
 				if got != nil {
 					return fmt.Sprintf("expected nil, got %v", got)
 				}

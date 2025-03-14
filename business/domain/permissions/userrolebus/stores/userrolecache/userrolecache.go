@@ -99,13 +99,14 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (userrolebus.UserRo
 }
 
 // QueryByUserID retrieves a role from the database.
-func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) (userrolebus.UserRole, error) {
+func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]userrolebus.UserRole, error) {
 	ur, err := s.storer.QueryByUserID(ctx, userID)
 	if err != nil {
-		return userrolebus.UserRole{}, err
+		return []userrolebus.UserRole{}, err
 	}
-
-	s.writeCache(ur)
+	for _, r := range ur {
+		s.writeCache(r)
+	}
 
 	return ur, nil
 }

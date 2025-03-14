@@ -331,7 +331,7 @@ CREATE TABLE user_roles (
       user_id UUID NOT NULL,
       role_id UUID NOT NULL,
       PRIMARY KEY (user_role_id),
-      UNIQUE (user_id),
+      UNIQUE (user_id, role_id),
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
       FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
 );
@@ -340,7 +340,7 @@ CREATE TABLE user_roles (
 -- Description: Create table table_access
 CREATE TABLE table_access (
     table_access_id UUID PRIMARY KEY,
-    role_id UUID REFERENCES roles(role_id),
+    role_id UUID REFERENCES roles(role_id) ON DELETE CASCADE,
     table_name VARCHAR(50) NOT NULL,
     can_create BOOLEAN DEFAULT FALSE,
     can_read BOOLEAN DEFAULT FALSE,

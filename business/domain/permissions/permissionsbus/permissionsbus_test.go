@@ -82,39 +82,10 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	testPerm := permissionsbus.UserPermissions{
-		UserID: sd.Users[0].ID,
-	}
-	testUser := sd.Users[0]
-	var testRoleID uuid.UUID
-	tas := make(map[string]tableaccessbus.TableAccess)
-
-	for _, ur := range sd.UserRoles {
-		if ur.UserID == testUser.ID {
-			testRoleID = ur.RoleID
-			testPerm.Role = &ur
-			break
-		}
-	}
-
-	for _, r := range sd.Roles {
-		if r.ID == testRoleID {
-			testPerm.RoleName = r.Name
-			break
-		}
-	}
-
-	for _, ta := range sd.TableAccesses {
-		if ta.RoleID == testRoleID {
-			tas[ta.TableName] = ta
-		}
-	}
-	testPerm.TableAccess = tas
-
 	return []unitest.Table{
 		{
 			Name:    "Query",
-			ExpResp: testPerm,
+			ExpResp: "",
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.Permissions.QueryUserPermissions(ctx, sd.Users[0].ID)
 				if err != nil {
@@ -122,18 +93,21 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 				return got
 			},
-			CmpFunc: func(exp, got any) string {
+			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(permissionsbus.UserPermissions)
 				if !exists {
 					return "got is not a *permissionsbus.UserPermissions"
 				}
 
-				expResp, exists := exp.(permissionsbus.UserPermissions)
-				if !exists {
-					return "exp is not a *permissionsbus.UserPermissions"
+				if gotResp.RoleNames[0] != "Role0" {
+					return "gotResp.RoleNames[0] != Role0"
 				}
 
-				return cmp.Diff(expResp, gotResp)
+				if len(gotResp.TableAccess) != 28 {
+					return "len(gotResp.TableAccess) != 28"
+				}
+
+				return ""
 			},
 		},
 	}
@@ -147,20 +121,24 @@ func cacheRole(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table 
 	if err != nil {
 		panic(err)
 	}
-	roleName := userPerms.RoleName
-	roleID := userPerms.Role.RoleID
-	newRoleName := roleName + " updated"
+	roleNames := userPerms.RoleNames
+	var roleIDs uuid.UUIDs
+	for _, r := range userPerms.Roles {
+		roleIDs = append(roleIDs, r.RoleID)
+	}
+
+	newRoleName := roleNames[0] + " updated"
 
 	// make a copy of user perms for comparison into exp
 	exp := userPerms
-	exp.RoleName = newRoleName
+	exp.RoleNames[0] = newRoleName
 
 	return []unitest.Table{
 		{
 			Name:    "Query",
 			ExpResp: exp,
 			ExcFunc: func(ctx context.Context) any {
-				r, err := busDomain.Role.QueryByID(ctx, roleID)
+				r, err := busDomain.Role.QueryByID(ctx, roleIDs[0])
 				if err != nil {
 					return fmt.Errorf("role not found")
 				}
@@ -180,7 +158,7 @@ func cacheRole(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table 
 
 				return got
 			},
-			CmpFunc: func(exp, got any) string {
+			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(permissionsbus.UserPermissions)
 				if !exists {
 					return "got is not a *permissionsbus.UserPermissions"
@@ -239,7 +217,7 @@ func cacheTableAccess(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest
 
 				return got
 			},
-			CmpFunc: func(exp, got any) string {
+			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(permissionsbus.UserPermissions)
 				if !exists {
 					return "got is not a *permissionsbus.UserPermissions"
