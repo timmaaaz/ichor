@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
+	inventoryproductapp "github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productcategoryapp"
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/location/officeapp"
@@ -66,6 +67,7 @@ type SeedData struct {
 	Roles                []roleapp.Role
 	UserRoles            []userroleapp.UserRole
 	TableAccesses        []tableaccessapp.TableAccess
+	InventoryProducts    []inventoryproductapp.Product
 }
 
 // Table represent fields needed for running an api test.
