@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/brandapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/physicalattributeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/productcategoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
@@ -47,6 +48,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
@@ -150,6 +153,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 	inventoryProductBus := inventoryproductbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB))
+	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -377,5 +381,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		ProductBus: inventoryProductBus,
 		AuthClient: cfg.AuthClient,
 		Log:        cfg.Log,
+	})
+
+	physicalattributeapi.Routes(app, physicalattributeapi.Config{
+		PhysicalAttributeBus: physicalAttributeBus,
+		AuthClient:           cfg.AuthClient,
+		Log:                  cfg.Log,
 	})
 }

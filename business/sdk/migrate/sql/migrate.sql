@@ -370,3 +370,25 @@ CREATE TABLE inventory_products (
    FOREIGN KEY (brand_id) REFERENCES brands(brand_id),
    FOREIGN KEY (category_id) REFERENCES product_categories(category_id)
 );
+
+-- Version: 1.26
+-- Description: add physical_attributes
+CREATE TABLE physical_attributes (
+   attribute_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   length NUMERIC NOT NULL,
+   width NUMERIC NOT NULL,
+   height NUMERIC NOT NULL,
+   weight NUMERIC NOT NULL,
+   weight_unit VARCHAR(10) NOT NULL,
+   color VARCHAR(50) NULL,
+   size VARCHAR(50) NULL,
+   material VARCHAR(100) NULL,
+   storage_requirements text NOT NULL,
+   hazmat_class VARCHAR(50) NOT NULL,
+   shelf_life_days INTEGER NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (attribute_id),
+   FOREIGN KEY (product_id) REFERENCES inventory_products(product_id)
+);

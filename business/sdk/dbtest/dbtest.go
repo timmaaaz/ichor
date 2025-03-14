@@ -19,6 +19,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
@@ -118,9 +120,10 @@ type BusDomain struct {
 	ContactInfo *contactinfobus.Business
 
 	// Inventory
-	Brand            *brandbus.Business
-	ProductCategory  *productcategorybus.Business
-	InventoryProduct *inventoryproductbus.Business
+	Brand             *brandbus.Business
+	ProductCategory   *productcategorybus.Business
+	InventoryProduct  *inventoryproductbus.Business
+	PhysicalAttribute *physicalattributebus.Business
 
 	// ETC
 	Product  *productbus.Business
@@ -131,7 +134,6 @@ type BusDomain struct {
 	UserRole    *userrolebus.Business
 	TableAccess *tableaccessbus.Business
 	Permissions *permissionsbus.Business
-
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -170,6 +172,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
 	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db))
 	inventoryProductBus := inventoryproductbus.NewBusiness(log, delegate, inventoryproductdb.NewStore(log, db))
+	physicalAttributeBus := physicalattributebus.NewBusiness(log, delegate, physicalattributedb.NewStore(log, db))
+
 	// Products
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
@@ -209,12 +213,10 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Role:                roleBus,
 		UserRole:            userRoleBus,
 		ProductCategory:     productCategoryBus,
-<<<<<<< HEAD
 		TableAccess:         tableAccessBus,
 		Permissions:         permissionsBus,
-=======
 		InventoryProduct:    inventoryProductBus,
->>>>>>> a8805e6 ([feat] Inventory Products)
+		PhysicalAttribute:   physicalAttributeBus,
 	}
 
 }
@@ -354,10 +356,14 @@ func IntPointer(i int) *int {
 	return &i
 }
 
-// FloatPointer is a helper to get a *float64 from a float64. It is in the tests
+// Float64Pointer is a helper to get a *float64 from a float64. It is in the tests
 // package because we normally don't want to deal with pointers to basic types
 // but it's useful in some tests.
-func FloatPointer(f float64) *float64 {
+func Float64Pointer(f float64) *float64 {
+	return &f
+}
+
+func Float32Pointer(f float32) *float32 {
 	return &f
 }
 

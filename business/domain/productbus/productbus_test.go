@@ -224,7 +224,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				up := productbus.UpdateProduct{
 					Name:     dbtest.ProductNamePointer("Guitar"),
-					Cost:     dbtest.FloatPointer(10.34),
+					Cost:     dbtest.Float64Pointer(10.34),
 					Quantity: dbtest.IntPointer(10),
 				}
 

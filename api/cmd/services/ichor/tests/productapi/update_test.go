@@ -22,7 +22,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &productapp.UpdateProduct{
 				Name:     dbtest.StringPointer("Guitar"),
-				Cost:     dbtest.FloatPointer(10.34),
+				Cost:     dbtest.Float64Pointer(10.34),
 				Quantity: dbtest.IntPointer(10),
 			},
 			GotResp: &productapp.Product{},
@@ -61,7 +61,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &productapp.UpdateProduct{
-				Cost:     dbtest.FloatPointer(-1.0),
+				Cost:     dbtest.Float64Pointer(-1.0),
 				Quantity: dbtest.IntPointer(0),
 			},
 			GotResp: &errs.Error{},
@@ -109,7 +109,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusUnauthorized,
 			Input: &productapp.UpdateProduct{
 				Name:     dbtest.StringPointer("Guitar"),
-				Cost:     dbtest.FloatPointer(10.34),
+				Cost:     dbtest.Float64Pointer(10.34),
 				Quantity: dbtest.IntPointer(10),
 			},
 			GotResp: &errs.Error{},

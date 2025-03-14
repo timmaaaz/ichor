@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
 	inventoryproductbus "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
@@ -72,6 +73,7 @@ type SeedData struct {
 	TableAccesses       []tableaccessbus.TableAccess
 	UserPermissions     []permissionsbus.UserPermissions
 	InventoryProducts   []inventoryproductbus.Product
+	PhysicalAttributes  []physicalattributebus.PhysicalAttribute
 }
 
 type Table struct {
