@@ -26,6 +26,8 @@ func (api *api) create(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
+	// Validate
+
 	userrole, err := api.userroleapp.Create(ctx, app)
 	if err != nil {
 		return errs.NewError(err)

@@ -3,6 +3,7 @@ package userroleapp
 import (
 	"encoding/json"
 
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/foundation/convert"
 )
@@ -46,8 +47,8 @@ func ToAppUserRoles(bus []userrolebus.UserRole) []UserRole {
 // =============================================================================
 
 type NewUserRole struct {
-	UserID string `json:"user_id" validate:"required"`
-	RoleID string `json:"role_id" validate:"required"`
+	UserID string `json:"user_id" validate:"required,uuid"`
+	RoleID string `json:"role_id" validate:"required,uuid"`
 }
 
 func (app *NewUserRole) Decode(data []byte) error {
@@ -55,6 +56,9 @@ func (app *NewUserRole) Decode(data []byte) error {
 }
 
 func (app NewUserRole) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "Validate: %s", err)
+	}
 	return nil
 }
 

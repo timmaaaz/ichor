@@ -159,7 +159,7 @@ func (s *Store) Count(ctx context.Context, filter userrolebus.QueryFilter) (int,
 // QueryByID retrieves a single role from the system by its ID.
 func (s *Store) QueryByID(ctx context.Context, roleID uuid.UUID) (userrolebus.UserRole, error) {
 	data := struct {
-		ID string `db:"role_id"`
+		ID string `db:"user_role_id"`
 	}{
 		ID: roleID.String(),
 	}

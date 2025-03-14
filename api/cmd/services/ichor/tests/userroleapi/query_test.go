@@ -26,14 +26,21 @@ func query200(sd apitest.SeedData) []apitest.Table {
 				Items:       sd.UserRoles,
 			},
 			CmpFunc: func(got any, exp any) string {
+				// Create sorted versions of both got and exp for comparison
+				gotResult := got.(*query.Result[userroleapp.UserRole])
+				expResult := exp.(*query.Result[userroleapp.UserRole])
 
-				// Sort by name
-				items := exp.(*query.Result[userroleapp.UserRole]).Items
-				sort.Slice(items, func(i, j int) bool {
-					return items[i].ID < items[j].ID
+				// Sort got items by ID
+				sort.Slice(gotResult.Items, func(i, j int) bool {
+					return gotResult.Items[i].ID < gotResult.Items[j].ID
 				})
 
-				return cmp.Diff(got, exp)
+				// Sort exp items by ID (although they should already be sorted now)
+				sort.Slice(expResult.Items, func(i, j int) bool {
+					return expResult.Items[i].ID < expResult.Items[j].ID
+				})
+
+				return cmp.Diff(gotResult, expResult)
 			},
 		},
 	}
