@@ -21,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/titleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/warehouse/warehouseapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assetconditionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assettypeapi"
@@ -68,6 +69,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus/stores/warehousedb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus/store/assettagdb"
@@ -155,6 +158,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 	productBus := productbus.NewBusiness(cfg.Log, delegate, productdb.NewStore(cfg.Log, cfg.DB))
 	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB))
+
+	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -303,6 +308,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		Log:                cfg.Log,
 	})
 
+	warehouseapi.Routes(app, warehouseapi.Config{
+		WarehouseBus:   warehouseBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
 	// Permissions routes
 	roleapi.Routes(app, roleapi.Config{
 		Log:            cfg.Log,

@@ -29,13 +29,11 @@ type Asset struct {
 }
 
 func (app Asset) Encode() ([]byte, string, error) {
-
 	data, err := json.Marshal(app)
 	return data, "application/json", err
 }
 
 func ToAppAsset(bus assetbus.Asset) Asset {
-
 	return Asset{
 		ID:               bus.ID.String(),
 		ValidAssetID:     bus.ValidAssetID.String(),
