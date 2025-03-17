@@ -348,7 +348,7 @@ CREATE TABLE table_access (
     can_delete BOOLEAN DEFAULT FALSE,
     UNIQUE(role_id, table_name)
 )
--- Version: 1.25
+-- Version: 1.28
 -- Description: add inventory_products. want to change name but need to get rid of products
 CREATE TABLE inventory_products (
    product_id UUID NOT NULL,
@@ -371,15 +371,15 @@ CREATE TABLE inventory_products (
    FOREIGN KEY (category_id) REFERENCES product_categories(category_id)
 );
 
--- Version: 1.26
+-- Version: 1.29
 -- Description: add physical_attributes
 CREATE TABLE physical_attributes (
    attribute_id UUID NOT NULL,
    product_id UUID NOT NULL,
-   length NUMERIC NOT NULL,
-   width NUMERIC NOT NULL,
-   height NUMERIC NOT NULL,
-   weight NUMERIC NOT NULL,
+   length NUMERIC(10, 4) NOT NULL,
+   width NUMERIC(10, 4) NOT NULL,
+   height NUMERIC(10, 4) NOT NULL,
+   weight NUMERIC(10, 4) NOT NULL,
    weight_unit VARCHAR(10) NOT NULL,
    color VARCHAR(50) NULL,
    size VARCHAR(50) NULL,

@@ -17,10 +17,10 @@ func TestNewPhysicalAttribute(n int, productIDs []uuid.UUID) []NewPhysicalAttrib
 		idx++
 		newPhysicalAttributes[i] = NewPhysicalAttribute{
 			ProductID:           productIDs[i%len(productIDs)],
-			Length:              rand.Float32(),
-			Width:               rand.Float32(),
-			Height:              rand.Float32(),
-			Weight:              rand.Float32(),
+			Length:              NewDimension(rand.Float64()),
+			Width:               NewDimension(rand.Float64()),
+			Height:              NewDimension(rand.Float64()),
+			Weight:              NewDimension(rand.Float64()),
 			WeightUnit:          fmt.Sprintf("wu%d", idx),
 			Color:               fmt.Sprintf("color%d", idx),
 			Size:                fmt.Sprintf("size%d", idx),

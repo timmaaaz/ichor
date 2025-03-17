@@ -6,7 +6,7 @@ import (
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
-	"github.com/timmaaaz/ichor/foundation/convert"
+	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -58,10 +58,10 @@ func ToAppPhysicalAttribute(bus physicalattributebus.PhysicalAttribute) Physical
 	return PhysicalAttribute{
 		ID:                  bus.AttributeID.String(),
 		ProductID:           bus.ProductID.String(),
-		Length:              fmt.Sprintf("%f", bus.Length),
-		Width:               fmt.Sprintf("%f", bus.Width),
-		Height:              fmt.Sprintf("%f", bus.Height),
-		Weight:              fmt.Sprintf("%f", bus.Weight),
+		Length:              bus.Length.String(),
+		Width:               bus.Width.String(),
+		Height:              bus.Height.String(),
+		Weight:              bus.Weight.String(),
 		WeightUnit:          bus.WeightUnit,
 		Color:               bus.Color,
 		Size:                bus.Size,
@@ -111,8 +111,29 @@ func (app NewPhysicalAttribute) Validate() error {
 
 func toBusNewPhysicalAttribute(app NewPhysicalAttribute) (physicalattributebus.NewPhysicalAttribute, error) {
 	dest := physicalattributebus.NewPhysicalAttribute{}
+	var err error
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	dest.Weight, err = physicalattributebus.ParseDimension(app.Weight)
+	if err != nil {
+		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Weight", err)
+	}
+
+	dest.Length, err = physicalattributebus.ParseDimension(app.Length)
+	if err != nil {
+		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Length", err)
+	}
+
+	dest.Width, err = physicalattributebus.ParseDimension(app.Width)
+	if err != nil {
+		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Width", err)
+	}
+
+	dest.Height, err = physicalattributebus.ParseDimension(app.Height)
+	if err != nil {
+		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Height", err)
+	}
+
+	err = convert.PopulateTypesFromStrings(app, &dest)
 	return dest, err
 }
 
@@ -147,6 +168,39 @@ func (app UpdatePhysicalAttribute) Validate() error {
 
 func toBusUpdatePhysicalAttribute(app UpdatePhysicalAttribute) (physicalattributebus.UpdatePhysicalAttribute, error) {
 	dest := physicalattributebus.UpdatePhysicalAttribute{}
+
+	if app.Weight != nil {
+		w, err := physicalattributebus.ParseDimension(*app.Weight)
+		if err != nil {
+			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Weight", err)
+		}
+		dest.Weight = &w
+	}
+
+	if app.Length != nil {
+		l, err := physicalattributebus.ParseDimension(*app.Length)
+		if err != nil {
+			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Length", err)
+		}
+
+		dest.Length = &l
+	}
+
+	if app.Width != nil {
+		w, err := physicalattributebus.ParseDimension(*app.Width)
+		if err != nil {
+			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Width", err)
+		}
+		dest.Width = &w
+	}
+
+	if app.Height != nil {
+		h, err := physicalattributebus.ParseDimension(*app.Height)
+		if err != nil {
+			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Height", err)
+		}
+		dest.Height = &h
+	}
 
 	err := convert.PopulateTypesFromStrings(app, &dest)
 

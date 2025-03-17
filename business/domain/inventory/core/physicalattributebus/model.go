@@ -9,10 +9,10 @@ import (
 type PhysicalAttribute struct {
 	AttributeID         uuid.UUID
 	ProductID           uuid.UUID
-	Length              float32
-	Width               float32
-	Height              float32
-	Weight              float32
+	Length              Dimension
+	Width               Dimension
+	Height              Dimension
+	Weight              Dimension
 	WeightUnit          string
 	Color               string
 	Size                string
@@ -26,10 +26,10 @@ type PhysicalAttribute struct {
 
 type NewPhysicalAttribute struct {
 	ProductID           uuid.UUID
-	Length              float32
-	Width               float32
-	Height              float32
-	Weight              float32
+	Length              Dimension
+	Width               Dimension
+	Height              Dimension
+	Weight              Dimension
 	WeightUnit          string
 	Color               string
 	Size                string
@@ -41,10 +41,10 @@ type NewPhysicalAttribute struct {
 
 type UpdatePhysicalAttribute struct {
 	ProductID           *uuid.UUID
-	Length              *float32
-	Width               *float32
-	Height              *float32
-	Weight              *float32
+	Length              *Dimension
+	Width               *Dimension
+	Height              *Dimension
+	Weight              *Dimension
 	WeightUnit          *string
 	Color               *string
 	Size                *string

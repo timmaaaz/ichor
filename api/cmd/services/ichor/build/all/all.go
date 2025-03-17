@@ -378,14 +378,16 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	inventoryproductapi.Routes(app, inventoryproductapi.Config{
-		ProductBus: inventoryProductBus,
-		AuthClient: cfg.AuthClient,
-		Log:        cfg.Log,
+		ProductBus:     inventoryProductBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	physicalattributeapi.Routes(app, physicalattributeapi.Config{
 		PhysicalAttributeBus: physicalAttributeBus,
 		AuthClient:           cfg.AuthClient,
 		Log:                  cfg.Log,
+		PermissionsBus:       permissionsBus,
 	})
 }

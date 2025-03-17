@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
-	"github.com/timmaaaz/ichor/foundation/convert"
 )
 
 func Test_Convert(t *testing.T) {

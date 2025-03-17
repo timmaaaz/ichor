@@ -7,20 +7,20 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
-	"github.com/timmaaaz/ichor/foundation/convert"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound              = errors.New("product category not found")
+	ErrNotFound              = errors.New("physical attribute not found")
 	ErrAuthenticationFailure = errors.New("authentication failed")
-	ErrUniqueEntry           = errors.New("product category entry is not unique")
+	ErrUniqueEntry           = errors.New("physical attribute entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
 )
 

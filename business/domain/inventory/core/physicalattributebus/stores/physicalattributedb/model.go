@@ -10,10 +10,10 @@ import (
 type physicalAttribute struct {
 	AttributeID         uuid.UUID `db:"attribute_id"`
 	ProductID           uuid.UUID `db:"product_id"`
-	Length              float32   `db:"length"`
-	Width               float32   `db:"width"`
-	Height              float32   `db:"height"`
-	Weight              float32   `db:"weight"`
+	Length              float64   `db:"length"`
+	Width               float64   `db:"width"`
+	Height              float64   `db:"height"`
+	Weight              float64   `db:"weight"`
 	WeightUnit          string    `db:"weight_unit"`
 	Color               string    `db:"color"`
 	Size                string    `db:"size"`
@@ -29,10 +29,10 @@ func toDBPhysicalAttribute(bus physicalattributebus.PhysicalAttribute) physicalA
 	return physicalAttribute{
 		AttributeID:         bus.AttributeID,
 		ProductID:           bus.ProductID,
-		Length:              bus.Length,
-		Width:               bus.Width,
-		Height:              bus.Height,
-		Weight:              bus.Weight,
+		Length:              bus.Length.Value(),
+		Width:               bus.Width.Value(),
+		Height:              bus.Height.Value(),
+		Weight:              bus.Weight.Value(),
 		WeightUnit:          bus.WeightUnit,
 		Color:               bus.Color,
 		Size:                bus.Size,
@@ -49,10 +49,10 @@ func toBusPhysicalAttribute(db physicalAttribute) physicalattributebus.PhysicalA
 	return physicalattributebus.PhysicalAttribute{
 		AttributeID:         db.AttributeID,
 		ProductID:           db.ProductID,
-		Length:              db.Length,
-		Width:               db.Width,
-		Height:              db.Height,
-		Weight:              db.Weight,
+		Length:              physicalattributebus.NewDimension(db.Length),
+		Width:               physicalattributebus.NewDimension(db.Width),
+		Height:              physicalattributebus.NewDimension(db.Height),
+		Weight:              physicalattributebus.NewDimension(db.Weight),
 		WeightUnit:          db.WeightUnit,
 		Color:               db.Color,
 		Size:                db.Size,

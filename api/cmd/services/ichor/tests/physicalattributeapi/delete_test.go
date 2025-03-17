@@ -48,7 +48,7 @@ func delete404(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNotFound,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.NotFound, "brand not found"),
+			ExpResp:    errs.Newf(errs.NotFound, "physical attribute not found"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -89,7 +89,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: physical_attributes"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

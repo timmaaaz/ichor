@@ -62,6 +62,8 @@ func (s *Store) Create(ctx context.Context, pa physicalattributebus.PhysicalAttr
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBPhysicalAttribute(pa)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", physicalattributebus.ErrUniqueEntry)
+		} else if errors.Is(err, sqldb.ErrForeignKeyViolation) {
+			return fmt.Errorf("namedexeccontext: %w", physicalattributebus.ErrForeignKeyViolation)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -96,6 +98,8 @@ func (s *Store) Update(ctx context.Context, pa physicalattributebus.PhysicalAttr
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBPhysicalAttribute(pa)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", physicalattributebus.ErrUniqueEntry)
+		} else if errors.Is(err, sqldb.ErrForeignKeyViolation) {
+			return fmt.Errorf("namedexeccontext: %w", physicalattributebus.ErrForeignKeyViolation)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
