@@ -54,8 +54,6 @@ func NewBusiness(log *logger.Logger, userBus *userbus.Business, delegate *delega
 		storer:   storer,
 	}
 
-	b.registerDelegateFunctions()
-
 	return &b
 }
 

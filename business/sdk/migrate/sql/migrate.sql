@@ -311,12 +311,26 @@ CREATE TABLE product_categories (
    PRIMARY KEY (category_id)
 );
 
+-- Version: 1.25
+-- Description: Create table warehouses
+CREATE TABLE warehouses (
+   warehouse_id UUID NOT NULL,
+   name TEXT NOT NULL,
+   street_id UUID NOT NULL,
+   is_active BOOLEAN NOT NULL,
+   date_created TIMESTAMP NOT NULL,
+   date_updated TIMESTAMP NOT NULL,
+   created_by UUID NOT NULL,
+   updated_by UUID NOT NULL,
+   PRIMARY KEY (warehouse_id),
+   FOREIGN KEY (street_id) REFERENCES streets(street_id) ON DELETE CASCADE
+);
 
 -- =============================================================================
 -- Core Permissions
 -- =============================================================================
 
--- Version: 1.25
+-- Version: 1.26
 -- Description: Create table roles
 CREATE TABLE roles (
     role_id UUID PRIMARY KEY,
@@ -324,7 +338,7 @@ CREATE TABLE roles (
     description TEXT
 );
 
--- Version: 1.26
+-- Version: 1.27
 -- Description: Create table user_roles
 CREATE TABLE user_roles (
       user_role_id UUID NOT NULL,
@@ -336,7 +350,7 @@ CREATE TABLE user_roles (
       FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
 );
 
--- Version: 1.27
+-- Version: 1.28
 -- Description: Create table table_access
 CREATE TABLE table_access (
     table_access_id UUID PRIMARY KEY,

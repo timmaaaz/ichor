@@ -37,6 +37,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
+	"github.com/timmaaaz/ichor/business/domain/warehouses/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouses/warehousebus/stores/warehousedb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
@@ -123,6 +125,9 @@ type BusDomain struct {
 	Product  *productbus.Business
 	VProduct *vproductbus.Business
 
+	// Warehouse
+	Warehouse *warehousebus.Business
+
 	// Permissions
 	Role        *rolebus.Business
 	UserRole    *userrolebus.Business
@@ -170,6 +175,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
 	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
 
+	// Warehouses
+	warehouseBus := warehousebus.NewBusiness(log, delegate, warehousedb.NewStore(log, db))
+
 	// Permissions
 	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(log, delegate, userrolecache.NewStore(log, userroledb.NewStore(log, db), 60*time.Minute))
@@ -202,6 +210,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Asset:               assetBus,
 		ContactInfo:         contactInfoBus,
 		Brand:               brandBus,
+		Warehouse:           warehouseBus,
 		Role:                roleBus,
 		UserRole:            userRoleBus,
 		ProductCategory:     productCategoryBus,
