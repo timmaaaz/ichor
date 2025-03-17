@@ -33,6 +33,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus"
 )
 
 // User represents an app user specified for the test.
@@ -68,6 +69,7 @@ type SeedData struct {
 	Brands              []brandbus.Brand
 	ProductCategories   []productcategorybus.ProductCategory
 	Warehouses          []warehousebus.Warehouse
+	Zones               []zonebus.Zone
 	Roles               []rolebus.Role
 	UserRoles           []userrolebus.UserRole
 	TableAccesses       []tableaccessbus.TableAccess

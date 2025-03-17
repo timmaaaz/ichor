@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -57,7 +56,7 @@ func (s *Store) Create(ctx context.Context, bus warehousebus.Warehouse) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBWarehouse(bus)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", userbus.ErrUniqueEmail)
+			return fmt.Errorf("namedexeccontext: %w", warehousebus.ErrUniqueEntry)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -106,7 +105,7 @@ func (s *Store) Delete(ctx context.Context, bus warehousebus.Warehouse) error {
 	return nil
 }
 
-// QueryByID gets the specified warehouses from the database.
+// Query gets the specified warehouses from the database.
 func (s *Store) Query(ctx context.Context, filter warehousebus.QueryFilter, orderBy order.By, page page.Page) ([]warehousebus.Warehouse, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
@@ -194,7 +193,7 @@ func (s *Store) QueryByID(ctx context.Context, wID uuid.UUID) (warehousebus.Ware
 	var dbW warehouse
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbW); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return warehousebus.Warehouse{}, fmt.Errorf("db: %w", warehousebus.ErrNotFound)
+			return warehousebus.Warehouse{}, fmt.Errorf("namedquerystruct: %w", warehousebus.ErrNotFound)
 		}
 		return warehousebus.Warehouse{}, fmt.Errorf("namedquerystruct: %w", err)
 	}

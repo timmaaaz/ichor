@@ -307,11 +307,25 @@ CREATE TABLE warehouses (
    FOREIGN KEY (street_id) REFERENCES streets(street_id) ON DELETE CASCADE
 );
 
+-- Version: 1.25
+-- Description: Create table zones
+CREATE TABLE zones (
+    zone_id UUID PRIMARY KEY,
+    -- TODO: Need to inforce integrity of these
+    warehouse_id UUID REFERENCES warehouses(warehouse_id),
+    name CHARACTER VARYING(50),
+    description TEXT,
+    is_active BOOLEAN NOT NULL,
+    date_created TIMESTAMP NOT NULL,
+    date_updated TIMESTAMP NOT NULL,
+    created_by UUID NOT NULL,
+    updated_by UUID NOT NULL
+);
 -- =============================================================================
 -- Core Permissions
 -- =============================================================================
 
--- Version: 1.25
+-- Version: 1.26
 -- Description: Create table roles
 CREATE TABLE roles (
     role_id UUID PRIMARY KEY,
@@ -319,7 +333,7 @@ CREATE TABLE roles (
     description TEXT
 );
 
--- Version: 1.26
+-- Version: 1.27
 -- Description: Create table user_roles
 CREATE TABLE user_roles (
       user_role_id UUID NOT NULL,
@@ -331,7 +345,7 @@ CREATE TABLE user_roles (
       FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
 );
 
--- Version: 1.27
+-- Version: 1.28
 -- Description: Create table table_access
 CREATE TABLE table_access (
     table_access_id UUID PRIMARY KEY,
@@ -343,7 +357,7 @@ CREATE TABLE table_access (
     can_delete BOOLEAN DEFAULT FALSE,
     UNIQUE(role_id, table_name)
 )
--- Version: 1.28
+-- Version: 1.29
 -- Description: add products. want to change name but need to get rid of products
 CREATE TABLE products (
    product_id UUID NOT NULL,
@@ -353,6 +367,7 @@ CREATE TABLE products (
    name VARCHAR(255) NOT NULL,
    description TEXT NOT NULL,
    model_number VARCHAR(100),
+  
    upc_code VARCHAR(50) NOT NULL,
    status VARCHAR(20) NOT NULL,
    is_active BOOLEAN NOT NULL,
@@ -366,7 +381,7 @@ CREATE TABLE products (
    FOREIGN KEY (category_id) REFERENCES product_categories(category_id)
 );
 
--- Version: 1.29
+-- Version: 1.30
 -- Description: add physical_attributes
 CREATE TABLE physical_attributes (
    attribute_id UUID NOT NULL,
