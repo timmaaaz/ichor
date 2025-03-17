@@ -42,12 +42,12 @@ func parseFilter(qp QueryParams) (physicalattributebus.QueryFilter, error) {
 	}
 
 	if qp.Weight != "" {
-		weight, err := strconv.ParseFloat(qp.Weight, 32)
+		weight, err := strconv.ParseFloat(qp.Weight, 64)
 		if err != nil {
 			return physicalattributebus.QueryFilter{}, errs.NewFieldsError("weight", err)
 		}
 
-		w := float32(weight)
+		w := float64(weight)
 
 		filter.Weight = &w
 	}
@@ -57,34 +57,34 @@ func parseFilter(qp QueryParams) (physicalattributebus.QueryFilter, error) {
 	}
 
 	if qp.Length != "" {
-		length, err := strconv.ParseFloat(qp.Length, 32)
+		length, err := strconv.ParseFloat(qp.Length, 64)
 		if err != nil {
 			return physicalattributebus.QueryFilter{}, errs.NewFieldsError("length", err)
 		}
 
-		l := float32(length)
+		l := float64(length)
 
 		filter.Length = &l
 	}
 
 	if qp.Width != "" {
-		width, err := strconv.ParseFloat(qp.Width, 32)
+		width, err := strconv.ParseFloat(qp.Width, 64)
 		if err != nil {
 			return physicalattributebus.QueryFilter{}, errs.NewFieldsError("width", err)
 		}
 
-		w := float32(width)
+		w := float64(width)
 
 		filter.Width = &w
 	}
 
 	if qp.Height != "" {
-		height, err := strconv.ParseFloat(qp.Height, 32)
+		height, err := strconv.ParseFloat(qp.Height, 64)
 		if err != nil {
 			return physicalattributebus.QueryFilter{}, errs.NewFieldsError("height", err)
 		}
 
-		h := float32(height)
+		h := float64(height)
 		filter.Height = &h
 	}
 

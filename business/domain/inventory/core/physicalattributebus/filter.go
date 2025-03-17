@@ -9,10 +9,10 @@ import (
 type QueryFilter struct {
 	ID                  *uuid.UUID
 	ProductID           *uuid.UUID
-	Length              *float32
-	Width               *float32
-	Height              *float32
-	Weight              *float32
+	Length              *float64
+	Width               *float64
+	Height              *float64
+	Weight              *float64
 	WeightUnit          *string
 	Color               *string
 	Size                *string
