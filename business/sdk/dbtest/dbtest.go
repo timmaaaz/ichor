@@ -19,6 +19,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
@@ -53,6 +55,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
+	inventoryproductbus "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
+	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
@@ -63,8 +67,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
-	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
+
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus/store/reportstodb"
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
@@ -72,8 +75,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
-	"github.com/timmaaaz/ichor/business/domain/vproductbus"
-	"github.com/timmaaaz/ichor/business/domain/vproductbus/stores/vproductdb"
+
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -116,12 +118,10 @@ type BusDomain struct {
 	ContactInfo *contactinfobus.Business
 
 	// Inventory
-	Brand           *brandbus.Business
-	ProductCategory *productcategorybus.Business
-
-	// ETC
-	Product  *productbus.Business
-	VProduct *vproductbus.Business
+	Brand             *brandbus.Business
+	ProductCategory   *productcategorybus.Business
+	InventoryProduct  *inventoryproductbus.Business
+	PhysicalAttribute *physicalattributebus.Business
 
 	// Permissions
 	Role        *rolebus.Business
@@ -165,10 +165,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Inventory
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
 	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db))
-
-	// Products
-	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
-	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
+	inventoryProductBus := inventoryproductbus.NewBusiness(log, delegate, inventoryproductdb.NewStore(log, db))
+	physicalAttributeBus := physicalattributebus.NewBusiness(log, delegate, physicalattributedb.NewStore(log, db))
 
 	// Permissions
 	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute))
@@ -181,7 +179,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Home:                homeBus,
 		AssetType:           assetTypeBus,
 		ValidAsset:          validAssetBus,
-		Product:             productBus,
 		User:                userBus,
 		UserApprovalStatus:  userapprovalstatusbus,
 		UserApprovalComment: userApprovalCommentBus,
@@ -189,7 +186,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Region:              regionBus,
 		City:                cityBus,
 		Street:              streetBus,
-		VProduct:            vproductBus,
 		ApprovalStatus:      approvalstatusBus,
 		FulfillmentStatus:   fulfillmentstatusBus,
 		AssetCondition:      assetConditionBus,
@@ -207,6 +203,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ProductCategory:     productCategoryBus,
 		TableAccess:         tableAccessBus,
 		Permissions:         permissionsBus,
+		InventoryProduct:    inventoryProductBus,
+		PhysicalAttribute:   physicalAttributeBus,
 	}
 
 }
@@ -346,10 +344,14 @@ func IntPointer(i int) *int {
 	return &i
 }
 
-// FloatPointer is a helper to get a *float64 from a float64. It is in the tests
+// Float64Pointer is a helper to get a *float64 from a float64. It is in the tests
 // package because we normally don't want to deal with pointers to basic types
 // but it's useful in some tests.
-func FloatPointer(f float64) *float64 {
+func Float64Pointer(f float64) *float64 {
+	return &f
+}
+
+func Float32Pointer(f float32) *float32 {
 	return &f
 }
 
@@ -365,14 +367,6 @@ func BoolPointer(b bool) *bool {
 // but it's useful in some tests.
 func UserNamePointer(value string) *userbus.Name {
 	name := userbus.MustParseName(value)
-	return &name
-}
-
-// ProductNamePointer is a helper to get a *Name from a string. It's in the tests
-// package because we normally don't want to deal with pointers to basic types
-// but it's useful in some tests.
-func ProductNamePointer(value string) *productbus.Name {
-	name := productbus.MustParseName(value)
 	return &name
 }
 

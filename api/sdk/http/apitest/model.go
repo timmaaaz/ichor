@@ -12,6 +12,8 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/core/physicalattributeapp"
+	inventoryproductapp "github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productcategoryapp"
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/location/officeapp"
@@ -26,16 +28,16 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
+
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
 // User extends the dbtest user for api test support.
 type User struct {
 	userbus.User
-	Products []productbus.Product
-	Homes    []homebus.Home
-	Token    string
+
+	Homes []homebus.Home
+	Token string
 }
 
 // SeedData represents users for api tests.
@@ -66,6 +68,8 @@ type SeedData struct {
 	Roles                []roleapp.Role
 	UserRoles            []userroleapp.UserRole
 	TableAccesses        []tableaccessapp.TableAccess
+	InventoryProducts    []inventoryproductapp.Product
+	PhysicalAttributes   []physicalattributeapp.PhysicalAttribute
 }
 
 // Table represent fields needed for running an api test.

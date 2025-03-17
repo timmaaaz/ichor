@@ -7,7 +7,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 )
 
-func applyFilter(filter brandbus.QueryFilter, data map[string]interface{}, buf *bytes.Buffer) {
+func applyFilter(filter brandbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {

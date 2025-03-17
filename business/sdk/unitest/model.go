@@ -15,6 +15,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
+	inventoryproductbus "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
@@ -25,7 +27,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -36,8 +37,7 @@ import (
 // User represents an app user specified for the test.
 type User struct {
 	userbus.User
-	Products []productbus.Product
-	Homes    []homebus.Home
+	Homes []homebus.Home
 }
 
 // SeedData represents data that was seeded for the test.
@@ -70,6 +70,8 @@ type SeedData struct {
 	UserRoles           []userrolebus.UserRole
 	TableAccesses       []tableaccessbus.TableAccess
 	UserPermissions     []permissionsbus.UserPermissions
+	InventoryProducts   []inventoryproductbus.Product
+	PhysicalAttributes  []physicalattributebus.PhysicalAttribute
 }
 
 type Table struct {

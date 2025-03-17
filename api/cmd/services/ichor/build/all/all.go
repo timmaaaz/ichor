@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/brandapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/physicalattributeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/productcategoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
@@ -31,11 +32,11 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/location/countryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/regionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/streetapi"
-	"github.com/timmaaaz/ichor/api/domain/http/productapi"
+
 	"github.com/timmaaaz/ichor/api/domain/http/rawapi"
-	"github.com/timmaaaz/ichor/api/domain/http/tranapi"
+
 	"github.com/timmaaaz/ichor/api/domain/http/users/userapi"
-	"github.com/timmaaaz/ichor/api/domain/http/vproductapi"
+
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus/stores/approvalstatusdb"
@@ -47,6 +48,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
@@ -77,12 +80,15 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus/stores/titledb"
 
+	productapi "github.com/timmaaaz/ichor/api/domain/http/inventory/core/productapi"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
 	fulfillmentstatusdb "github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus/stores"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
+	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
@@ -91,8 +97,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
-	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -100,8 +104,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
-	"github.com/timmaaaz/ichor/business/domain/vproductbus"
-	"github.com/timmaaaz/ichor/business/domain/vproductbus/stores/vproductdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -123,9 +125,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB))
 	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
 	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, userBus, commentdb.NewStore(cfg.Log, cfg.DB))
-	productBus := productbus.NewBusiness(cfg.Log, userBus, delegate, productdb.NewStore(cfg.Log, cfg.DB))
+
 	homeBus := homebus.NewBusiness(cfg.Log, userBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
-	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(cfg.Log, cfg.DB))
 	countryBus := countrybus.NewBusiness(cfg.Log, delegate, countrydb.NewStore(cfg.Log, cfg.DB))
 	regionBus := regionbus.NewBusiness(cfg.Log, delegate, regiondb.NewStore(cfg.Log, cfg.DB))
 	cityBus := citybus.NewBusiness(cfg.Log, delegate, citydb.NewStore(cfg.Log, cfg.DB))
@@ -146,6 +147,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	contactInfoBus := contactinfobus.NewBusiness(cfg.Log, delegate, contactinfodb.NewStore(cfg.Log, cfg.DB))
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
+	productBus := productbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB))
+	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -167,35 +170,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus: permissionsBus,
 	})
 
-	productapi.Routes(app, productapi.Config{
-		Log:            cfg.Log,
-		UserBus:        userBus,
-		ProductBus:     productBus,
-		AuthClient:     cfg.AuthClient,
-		PermissionsBus: permissionsBus,
-	})
-
 	rawapi.Routes(app)
-
-	tranapi.Routes(app, tranapi.Config{
-		Log:        cfg.Log,
-		DB:         cfg.DB,
-		UserBus:    userBus,
-		ProductBus: productBus,
-		AuthClient: cfg.AuthClient,
-	})
 
 	userapi.Routes(app, userapi.Config{
 		Log:            cfg.Log,
 		UserBus:        userBus,
-		AuthClient:     cfg.AuthClient,
-		PermissionsBus: permissionsBus,
-	})
-
-	vproductapi.Routes(app, vproductapi.Config{
-		Log:            cfg.Log,
-		UserBus:        userBus,
-		VProductBus:    vproductBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
@@ -367,5 +346,19 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		TableAccessBus: tableAccessBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+	})
+
+	productapi.Routes(app, productapi.Config{
+		ProductBus:     productBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
+
+	physicalattributeapi.Routes(app, physicalattributeapi.Config{
+		PhysicalAttributeBus: physicalAttributeBus,
+		AuthClient:           cfg.AuthClient,
+		Log:                  cfg.Log,
+		PermissionsBus:       permissionsBus,
 	})
 }
