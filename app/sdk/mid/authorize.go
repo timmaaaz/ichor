@@ -13,7 +13,6 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
@@ -147,50 +146,6 @@ func AuthorizeUser(ctx context.Context, client *authclient.Client, userBus *user
 		Claims: GetClaims(ctx),
 		UserID: userID,
 		Rule:   rule,
-	}
-
-	if err := client.Authorize(ctx, auth); err != nil {
-		return errs.New(errs.Unauthenticated, err)
-	}
-
-	return next(ctx)
-}
-
-// AuthorizeProduct executes the specified role and extracts the specified
-// product from the DB if a product id is specified in the call. Depending on
-// the rule specified, the userid from the claims may be compared with the
-// specified user id from the product.
-func AuthorizeProduct(ctx context.Context, client *authclient.Client, productBus *productbus.Business, id string, next HandlerFunc) Encoder {
-	var userID uuid.UUID
-
-	if id != "" {
-		var err error
-		productID, err := uuid.Parse(id)
-		if err != nil {
-			return errs.New(errs.Unauthenticated, ErrInvalidID)
-		}
-
-		prd, err := productBus.QueryByID(ctx, productID)
-		if err != nil {
-			switch {
-			case errors.Is(err, productbus.ErrNotFound):
-				return errs.New(errs.Unauthenticated, err)
-			default:
-				return errs.Newf(errs.Internal, "querybyid: productID[%s]: %s", productID, err)
-			}
-		}
-
-		userID = prd.UserID
-		ctx = setProduct(ctx, prd)
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	auth := authclient.Authorize{
-		UserID: userID,
-		Claims: GetClaims(ctx),
-		Rule:   auth.RuleAdminOrSubject,
 	}
 
 	if err := client.Authorize(ctx, auth); err != nil {

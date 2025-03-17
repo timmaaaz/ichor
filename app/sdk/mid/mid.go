@@ -9,7 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
+
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
@@ -89,20 +89,6 @@ func GetUser(ctx context.Context) (userbus.User, error) {
 	v, ok := ctx.Value(userKey).(userbus.User)
 	if !ok {
 		return userbus.User{}, errors.New("user not found in context")
-	}
-
-	return v, nil
-}
-
-func setProduct(ctx context.Context, prd productbus.Product) context.Context {
-	return context.WithValue(ctx, productKey, prd)
-}
-
-// GetProduct returns the product from the context.
-func GetProduct(ctx context.Context) (productbus.Product, error) {
-	v, ok := ctx.Value(productKey).(productbus.Product)
-	if !ok {
-		return productbus.Product{}, errors.New("product not found in context")
 	}
 
 	return v, nil

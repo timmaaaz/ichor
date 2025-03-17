@@ -21,8 +21,6 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 		{RoleID: uuid.Nil, TableName: "offices", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "users", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "valid_assets", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
-		{RoleID: uuid.Nil, TableName: "products", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
-		{RoleID: uuid.Nil, TableName: "view_products", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "homes", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "approval_status", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "fulfillment_status", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
@@ -36,6 +34,13 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 		{RoleID: uuid.Nil, TableName: "brands", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "product_categories", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "warehouses", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "products", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "physical_attributes", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+
+		// Permissions
+		{RoleID: uuid.Nil, TableName: "roles", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "user_roles", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "table_access", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 	}
 
 	ret := make([]TableAccess, 0)

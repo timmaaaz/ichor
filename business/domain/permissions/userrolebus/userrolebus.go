@@ -31,7 +31,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]UserRole, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, userID uuid.UUID) (UserRole, error)
-	QueryByUserID(ctx context.Context, userID uuid.UUID) (UserRole, error)
+	QueryByUserID(ctx context.Context, userID uuid.UUID) ([]UserRole, error)
 }
 
 // Business manages the set of APIs for user access.
@@ -157,13 +157,13 @@ func (b *Business) QueryByID(ctx context.Context, urID uuid.UUID) (UserRole, err
 }
 
 // QueryByUserID finds the user role by the specified user ID.
-func (b *Business) QueryByUserID(ctx context.Context, userID uuid.UUID) (UserRole, error) {
+func (b *Business) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]UserRole, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userrolebus.querybyuserid")
 	defer span.End()
 
 	urs, err := b.storer.QueryByUserID(ctx, userID)
 	if err != nil {
-		return UserRole{}, fmt.Errorf("querying role: userID[%s]: %w", userID, err)
+		return []UserRole{}, fmt.Errorf("querying role: userID[%s]: %w", userID, err)
 	}
 
 	return urs, nil

@@ -136,32 +136,7 @@ CREATE TABLE valid_assets (
    CONSTRAINT fk_assets_created_by FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE,
    CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE CASCADE
 );
--- Version: 1.09
--- Description: Create table products
-CREATE TABLE products (
-   product_id UUID NOT NULL,
-   user_id UUID NOT NULL,
-   NAME TEXT NOT NULL,
-   COST NUMERIC(10, 2) NOT NULL,
-   quantity INT NOT NULL,
-   date_created TIMESTAMP NOT NULL,
-   date_updated TIMESTAMP NOT NULL,
-   PRIMARY KEY (product_id),
-   FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
-);
--- Version: 1.10
--- Description: Add products view.
-CREATE OR REPLACE VIEW view_products AS
-SELECT p.product_id,
-   p.user_id,
-   p.name,
-   p.cost,
-   p.quantity,
-   p.date_created,
-   p.date_updated,
-   u.username AS user_name
-FROM products AS p
-   JOIN users AS u ON u.user_id = p.user_id;
+
 -- Version: 1.11
 -- Description: Create table homes
 CREATE TABLE homes (
@@ -297,7 +272,7 @@ CREATE TABLE brands (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (brand_id),
-   FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id) ON DELETE CASCADE
+   FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id)
 );
 
 -- Version: 1.24
@@ -345,7 +320,7 @@ CREATE TABLE user_roles (
       user_id UUID NOT NULL,
       role_id UUID NOT NULL,
       PRIMARY KEY (user_role_id),
-      UNIQUE (user_id),
+      UNIQUE (user_id, role_id),
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
       FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
 );
@@ -354,11 +329,55 @@ CREATE TABLE user_roles (
 -- Description: Create table table_access
 CREATE TABLE table_access (
     table_access_id UUID PRIMARY KEY,
-    role_id UUID REFERENCES roles(role_id),
+    role_id UUID REFERENCES roles(role_id) ON DELETE CASCADE,
     table_name VARCHAR(50) NOT NULL,
     can_create BOOLEAN DEFAULT FALSE,
     can_read BOOLEAN DEFAULT FALSE,
     can_update BOOLEAN DEFAULT FALSE,
     can_delete BOOLEAN DEFAULT FALSE,
     UNIQUE(role_id, table_name)
+)
+-- Version: 1.28
+-- Description: add products. want to change name but need to get rid of products
+CREATE TABLE products (
+   product_id UUID NOT NULL,
+   sku VARCHAR(50) NOT NULL,
+   brand_id UUID NOT NULL,
+   category_id UUID NOT NULL,
+   name VARCHAR(255) NOT NULL,
+   description TEXT NOT NULL,
+   model_number VARCHAR(100),
+   upc_code VARCHAR(50) NOT NULL,
+   status VARCHAR(20) NOT NULL,
+   is_active BOOLEAN NOT NULL,
+   is_perishable BOOLEAN NOT NULL,
+   handling_instructions TEXT NULL,
+   units_per_case INT NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (product_id),
+   FOREIGN KEY (brand_id) REFERENCES brands(brand_id),
+   FOREIGN KEY (category_id) REFERENCES product_categories(category_id)
+);
+
+-- Version: 1.29
+-- Description: add physical_attributes
+CREATE TABLE physical_attributes (
+   attribute_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   length NUMERIC(10, 4) NOT NULL,
+   width NUMERIC(10, 4) NOT NULL,
+   height NUMERIC(10, 4) NOT NULL,
+   weight NUMERIC(10, 4) NOT NULL,
+   weight_unit VARCHAR(10) NOT NULL,
+   color VARCHAR(50) NULL,
+   size VARCHAR(50) NULL,
+   material VARCHAR(100) NULL,
+   storage_requirements text NOT NULL,
+   hazmat_class VARCHAR(50) NOT NULL,
+   shelf_life_days INTEGER NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (attribute_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id)
 );

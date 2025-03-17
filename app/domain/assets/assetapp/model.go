@@ -5,7 +5,7 @@ import (
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
-	"github.com/timmaaaz/ichor/foundation/convert"
+	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -51,7 +51,7 @@ func ToAppAssets(bus []assetbus.Asset) []Asset {
 	return app
 }
 
-// =========================================================================
+// =============================================================================
 
 type NewAsset struct {
 	ValidAssetID     string `json:"valid_asset_id" validate:"required"`

@@ -20,6 +20,7 @@ var (
 	ErrNotFound              = errors.New("role not found")
 	ErrUnique                = errors.New("organizational unit is not unique")
 	ErrAuthenticationFailure = errors.New("authentication failed")
+	ErrNoPermissions         = errors.New("user has no permissions set")
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -100,36 +101,33 @@ func (b *Business) ClearCache(ctx context.Context, data delegate.Data) error {
 
 // QueryUserPermissions retrieves the permissions for the specified user.
 func (b *Business) QueryUserPermissions(ctx context.Context, userID uuid.UUID) (UserPermissions, error) {
-	// QueryUserRoles
-	var userRole *userrolebus.UserRole
-	tmp, err := b.UserRolesBus.QueryByUserID(ctx, userID)
+	userRoles, err := b.UserRolesBus.Query(ctx, userrolebus.QueryFilter{UserID: &userID}, userrolebus.DefaultOrderBy, page.MustParse("1", "100"))
 	if err != nil {
 		return UserPermissions{}, err
 	}
-	if tmp != (userrolebus.UserRole{}) {
-		userRole = &tmp
+	if len(userRoles) == 0 {
+		return UserPermissions{}, ErrNoPermissions
 	}
 
-	var role rolebus.Role
-	if userRole != nil {
-		role, err = b.RolesBus.QueryByID(ctx, userRole.RoleID)
-		if err != nil {
-			return UserPermissions{}, err
-		}
+	roleIDs := make(uuid.UUIDs, len(userRoles))
+	for i, r := range userRoles {
+		roleIDs[i] = r.RoleID
+	}
+
+	roles, err := b.RolesBus.QueryByIDs(ctx, roleIDs)
+	if err != nil {
+		return UserPermissions{}, err
+	}
+
+	if len(roles) == 0 {
+		return UserPermissions{}, ErrNoPermissions
 	}
 
 	var tables []tableaccessbus.TableAccess
-	if userRole != nil {
-		// TableAccesses
-		tables, err = b.TableAccessBus.Query(
-			ctx,
-			tableaccessbus.QueryFilter{RoleID: &userRole.RoleID},
-			tableaccessbus.DefaultOrderBy,
-			page.MustParse("1", "100"),
-		)
-		if err != nil {
-			return UserPermissions{}, err
-		}
+
+	tables, err = b.TableAccessBus.QueryByRoleIDs(ctx, roleIDs)
+	if err != nil {
+		return UserPermissions{}, err
 	}
 
 	tableAccesses := make(map[string]tableaccessbus.TableAccess, len(tables))
@@ -137,11 +135,33 @@ func (b *Business) QueryUserPermissions(ctx context.Context, userID uuid.UUID) (
 		tableAccesses[table.TableName] = table
 	}
 
+	// Construct the UserPermissions object
+	roleNames := make([]string, len(roles))
+	for i, r := range roles {
+		roleNames[i] = r.Name
+	}
+
+	// Combine permissions following the principle of least privilege
+	combinedTableAccesses := make(map[string]tableaccessbus.TableAccess, len(tables))
+	for _, table := range tables {
+		// Make sure table exists in map
+		if _, ok := combinedTableAccesses[table.TableName]; !ok {
+			combinedTableAccesses[table.TableName] = table
+		} else {
+			t := combinedTableAccesses[table.TableName]
+			t.CanCreate = t.CanCreate || table.CanCreate
+			t.CanRead = t.CanRead || table.CanRead
+			t.CanUpdate = t.CanUpdate || table.CanUpdate
+			t.CanDelete = t.CanDelete || table.CanDelete
+			combinedTableAccesses[table.TableName] = t
+		}
+	}
+
 	userPerms := UserPermissions{
-		RoleName:    role.Name,
+		RoleNames:   roleNames,
 		UserID:      userID,
-		Role:        userRole,
-		TableAccess: tableAccesses,
+		Roles:       userRoles,
+		TableAccess: combinedTableAccesses,
 	}
 
 	userPermJson, err := json.MarshalIndent(userPerms, "", "  ")

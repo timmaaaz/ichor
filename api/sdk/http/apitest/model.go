@@ -12,10 +12,15 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/core/physicalattributeapp"
+	inventoryproductapp "github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productcategoryapp"
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/location/officeapp"
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
+	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/permissions/tableaccessapp"
+	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
 	"github.com/timmaaaz/ichor/app/domain/users/reportstoapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/commentapp"
@@ -24,19 +29,16 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
+
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
 // User extends the dbtest user for api test support.
 type User struct {
 	userbus.User
-	Products []productbus.Product
-	Homes    []homebus.Home
-	Token    string
+
+	Homes []homebus.Home
+	Token string
 }
 
 // SeedData represents users for api tests.
@@ -65,9 +67,11 @@ type SeedData struct {
 	Brands               []brandapp.Brand
 	ProductCategories    []productcategoryapp.ProductCategory
 	Warehouses           []warehouseapp.Warehouse
-	Roles                []rolebus.Role
-	UserRoles            []userrolebus.UserRole
-	TableAccesses        []tableaccessbus.TableAccess
+	Roles                []roleapp.Role
+	UserRoles            []userroleapp.UserRole
+	TableAccesses        []tableaccessapp.TableAccess
+	InventoryProducts    []inventoryproductapp.Product
+	PhysicalAttributes   []physicalattributeapp.PhysicalAttribute
 }
 
 // Table represent fields needed for running an api test.
