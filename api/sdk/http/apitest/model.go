@@ -20,6 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/commentapp"
 	"github.com/timmaaaz/ichor/app/domain/users/titleapp"
+	"github.com/timmaaaz/ichor/app/domain/warehouse/warehouseapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
@@ -63,6 +64,7 @@ type SeedData struct {
 	ContactInfo          []contactinfoapp.ContactInfo
 	Brands               []brandapp.Brand
 	ProductCategories    []productcategoryapp.ProductCategory
+	Warehouses           []warehouseapp.Warehouse
 	Roles                []rolebus.Role
 	UserRoles            []userrolebus.UserRole
 	TableAccesses        []tableaccessbus.TableAccess

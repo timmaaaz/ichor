@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/warehouses/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 )
 
 type warehouse struct {

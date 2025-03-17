@@ -90,7 +90,7 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// Query returns a list of assets based on the filter, order and page.
+// Query returns a list of assets based on the filter, order, and page.
 func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[AssetTag], error) {
 	page, err := page.Parse(qp.Page, qp.Rows)
 	if err != nil {
@@ -126,6 +126,5 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (AssetTag, error) {
 	if err != nil {
 		return AssetTag{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
-
 	return ToAppAssetTag(asset), nil
 }

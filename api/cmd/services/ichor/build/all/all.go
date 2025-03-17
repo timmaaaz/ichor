@@ -20,6 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/users/status/approvalapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/status/commentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/titleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/warehouse/warehouseapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
@@ -58,6 +59,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus/stores/warehousedb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
@@ -143,6 +146,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	contactInfoBus := contactinfobus.NewBusiness(cfg.Log, delegate, contactinfodb.NewStore(cfg.Log, cfg.DB))
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
+
+	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -342,5 +347,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:         cfg.AuthClient,
 		Log:                cfg.Log,
 		PermissionsBus:     permissionsBus,
+	})
+
+	warehouseapi.Routes(app, warehouseapi.Config{
+		WarehouseBus:   warehouseBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
-	"github.com/timmaaaz/ichor/business/domain/warehouses/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"

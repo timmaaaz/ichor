@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
-	"github.com/timmaaaz/ichor/business/domain/warehouses/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"

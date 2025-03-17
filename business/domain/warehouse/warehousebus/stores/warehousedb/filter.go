@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/timmaaaz/ichor/business/domain/warehouses/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 )
 
 func applyFilter(filter warehousebus.QueryFilter, data map[string]any, buf *bytes.Buffer) {

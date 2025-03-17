@@ -31,7 +31,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
-	"github.com/timmaaaz/ichor/business/domain/warehouses/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 )
 
 // User represents an app user specified for the test.
