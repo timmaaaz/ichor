@@ -67,8 +67,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
-	"github.com/timmaaaz/ichor/business/domain/productbus/stores/productdb"
+
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus/store/reportstodb"
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
@@ -76,8 +75,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
-	"github.com/timmaaaz/ichor/business/domain/vproductbus"
-	"github.com/timmaaaz/ichor/business/domain/vproductbus/stores/vproductdb"
+
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -125,10 +123,6 @@ type BusDomain struct {
 	InventoryProduct  *inventoryproductbus.Business
 	PhysicalAttribute *physicalattributebus.Business
 
-	// ETC
-	Product  *productbus.Business
-	VProduct *vproductbus.Business
-
 	// Permissions
 	Role        *rolebus.Business
 	UserRole    *userrolebus.Business
@@ -174,10 +168,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	inventoryProductBus := inventoryproductbus.NewBusiness(log, delegate, inventoryproductdb.NewStore(log, db))
 	physicalAttributeBus := physicalattributebus.NewBusiness(log, delegate, physicalattributedb.NewStore(log, db))
 
-	// Products
-	productBus := productbus.NewBusiness(log, userBus, delegate, productdb.NewStore(log, db))
-	vproductBus := vproductbus.NewBusiness(vproductdb.NewStore(log, db))
-
 	// Permissions
 	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(log, delegate, userrolecache.NewStore(log, userroledb.NewStore(log, db), 60*time.Minute))
@@ -189,7 +179,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Home:                homeBus,
 		AssetType:           assetTypeBus,
 		ValidAsset:          validAssetBus,
-		Product:             productBus,
 		User:                userBus,
 		UserApprovalStatus:  userapprovalstatusbus,
 		UserApprovalComment: userApprovalCommentBus,
@@ -197,7 +186,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Region:              regionBus,
 		City:                cityBus,
 		Street:              streetBus,
-		VProduct:            vproductBus,
 		ApprovalStatus:      approvalstatusBus,
 		FulfillmentStatus:   fulfillmentstatusBus,
 		AssetCondition:      assetConditionBus,
@@ -379,14 +367,6 @@ func BoolPointer(b bool) *bool {
 // but it's useful in some tests.
 func UserNamePointer(value string) *userbus.Name {
 	name := userbus.MustParseName(value)
-	return &name
-}
-
-// ProductNamePointer is a helper to get a *Name from a string. It's in the tests
-// package because we normally don't want to deal with pointers to basic types
-// but it's useful in some tests.
-func ProductNamePointer(value string) *productbus.Name {
-	name := productbus.MustParseName(value)
 	return &name
 }
 

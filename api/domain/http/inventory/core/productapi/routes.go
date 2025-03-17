@@ -20,7 +20,7 @@ type Config struct {
 	PermissionsBus *permissionsbus.Business
 }
 
-const TableName = "inventory_products"
+const TableName = "products"
 
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"

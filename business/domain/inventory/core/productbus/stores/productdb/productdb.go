@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productbus.Storer, error) 
 // Create inserts a new product into the database.
 func (s *Store) Create(ctx context.Context, brand productbus.Product) error {
 	const q = `
-    INSERT INTO inventory_products ( 
+    INSERT INTO products ( 
 		product_id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     ) VALUES (
@@ -73,7 +73,7 @@ func (s *Store) Create(ctx context.Context, brand productbus.Product) error {
 func (s *Store) Update(ctx context.Context, prod productbus.Product) error {
 	const q = `
 	UPDATE
-		inventory_products
+		products
 	SET
 		product_id = :product_id,
 		sku = :sku,
@@ -109,7 +109,7 @@ func (s *Store) Update(ctx context.Context, prod productbus.Product) error {
 func (s *Store) Delete(ctx context.Context, product productbus.Product) error {
 	const q = `
 	DELETE FROM
-		inventory_products
+		products
 	WHERE
 		product_id = :product_id`
 
@@ -120,7 +120,7 @@ func (s *Store) Delete(ctx context.Context, product productbus.Product) error {
 	return nil
 }
 
-// Query retrieves a list of inventory_products from the database.
+// Query retrieves a list of products from the database.
 func (s *Store) Query(ctx context.Context, filter productbus.QueryFilter, orderBy order.By, page page.Page) ([]productbus.Product, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
@@ -132,7 +132,7 @@ func (s *Store) Query(ctx context.Context, filter productbus.QueryFilter, orderB
 		product_id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     FROM
-        inventory_products`
+        products`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -161,7 +161,7 @@ func (s *Store) Count(ctx context.Context, filter productbus.QueryFilter) (int, 
     SELECT
         COUNT(1) AS count
     FROM
-        inventory_products`
+        products`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -189,7 +189,7 @@ func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (productbu
        	product_id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     FROM
-        inventory_products
+        products
     WHERE
         product_id = :product_id
     `

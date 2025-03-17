@@ -136,32 +136,7 @@ CREATE TABLE valid_assets (
    CONSTRAINT fk_assets_created_by FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE,
    CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE CASCADE
 );
--- Version: 1.09
--- Description: Create table products
-CREATE TABLE products (
-   product_id UUID NOT NULL,
-   user_id UUID NOT NULL,
-   NAME TEXT NOT NULL,
-   COST NUMERIC(10, 2) NOT NULL,
-   quantity INT NOT NULL,
-   date_created TIMESTAMP NOT NULL,
-   date_updated TIMESTAMP NOT NULL,
-   PRIMARY KEY (product_id),
-   FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
-);
--- Version: 1.10
--- Description: Add products view.
-CREATE OR REPLACE VIEW view_products AS
-SELECT p.product_id,
-   p.user_id,
-   p.name,
-   p.cost,
-   p.quantity,
-   p.date_created,
-   p.date_updated,
-   u.username AS user_name
-FROM products AS p
-   JOIN users AS u ON u.user_id = p.user_id;
+
 -- Version: 1.11
 -- Description: Create table homes
 CREATE TABLE homes (
@@ -349,8 +324,8 @@ CREATE TABLE table_access (
     UNIQUE(role_id, table_name)
 )
 -- Version: 1.28
--- Description: add inventory_products. want to change name but need to get rid of products
-CREATE TABLE inventory_products (
+-- Description: add products. want to change name but need to get rid of products
+CREATE TABLE products (
    product_id UUID NOT NULL,
    sku VARCHAR(50) NOT NULL,
    brand_id UUID NOT NULL,
@@ -390,5 +365,5 @@ CREATE TABLE physical_attributes (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (attribute_id),
-   FOREIGN KEY (product_id) REFERENCES inventory_products(product_id)
+   FOREIGN KEY (product_id) REFERENCES products(product_id)
 );

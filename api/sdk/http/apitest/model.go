@@ -28,16 +28,16 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
-	"github.com/timmaaaz/ichor/business/domain/productbus"
+
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 )
 
 // User extends the dbtest user for api test support.
 type User struct {
 	userbus.User
-	Products []productbus.Product
-	Homes    []homebus.Home
-	Token    string
+
+	Homes []homebus.Home
+	Token string
 }
 
 // SeedData represents users for api tests.
