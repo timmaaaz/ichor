@@ -6,7 +6,7 @@ import (
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
-	"github.com/timmaaaz/ichor/foundation/convert"
+	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {

@@ -118,7 +118,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	// Only get table access for tu1's role specifically
-	tas, err := busDomain.TableAccess.QueryByRoleIDs(ctx, []uuid.UUID{ur1.RoleID})
+	tas, err := busDomain.TableAccess.QueryByRoleIDs(ctx, []uuid.UUID{ur1[0].RoleID})
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("querying table access : %w", err)
 	}

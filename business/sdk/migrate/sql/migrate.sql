@@ -66,12 +66,16 @@ CREATE TABLE user_approval_status (
    name TEXT NOT NULL,
    PRIMARY KEY (user_approval_status_id)
 );
+-- Version: 1.08
+-- Description: Create table valid_assets
 CREATE TABLE titles (
    title_id UUID NOT NULL, 
    name TEXT NOT NULL,
    description TEXT NULL,
    PRIMARY KEY (title_id)
 );
+-- Version: 1.09
+-- Description: Create table offices
 CREATE TABLE offices (
    office_id UUID NOT NULL, 
    name TEXT NOT NULL,
@@ -79,6 +83,8 @@ CREATE TABLE offices (
    PRIMARY KEY (office_id),
    FOREIGN KEY (street_id) REFERENCES streets(street_id) ON DELETE CASCADE
 );
+-- Version: 1.10
+-- Description: Create table phone_numbers
 CREATE TABLE users (
    user_id UUID NOT NULL,
    requested_by UUID NULL,
@@ -109,7 +115,7 @@ CREATE TABLE users (
    FOREIGN KEY (office_id) REFERENCES offices(office_id) ON DELETE CASCADE,
    FOREIGN KEY (user_approval_status) REFERENCES user_approval_status(user_approval_status_id) ON DELETE CASCADE
 );
--- Version: 1.08
+-- Version: 1.11
 -- Description: Create table valid_assets
 CREATE TABLE valid_assets (
    valid_asset_id UUID NOT NULL,
@@ -137,7 +143,7 @@ CREATE TABLE valid_assets (
    CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- Version: 1.11
+-- Version: 1.12
 -- Description: Create table homes
 CREATE TABLE homes (
    home_id UUID NOT NULL,
@@ -154,7 +160,7 @@ CREATE TABLE homes (
    PRIMARY KEY (home_id),
    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
--- Version: 1.12
+-- Version: 1.13
 -- Description: Add approval status 
 CREATE TABLE approval_status (
    approval_status_id UUID NOT NULL, 
@@ -162,7 +168,7 @@ CREATE TABLE approval_status (
    name TEXT NOT NULL,
    PRIMARY KEY (approval_status_id)
 );
--- Version: 1.13
+-- Version: 1.14
 -- Description: Add fulfillment status
 CREATE TABLE fulfillment_status (
    fulfillment_status_id UUID NOT NULL, 
@@ -170,7 +176,7 @@ CREATE TABLE fulfillment_status (
    name TEXT NOT NULL,
    PRIMARY KEY (fulfillment_status_id)
 );
--- Version: 1.14
+-- Version: 1.15
 -- Description: Add Tags
 CREATE TABLE tags (
    tag_id UUID NOT NULL, 
@@ -178,7 +184,7 @@ CREATE TABLE tags (
    description TEXT NULL,
    PRIMARY KEY (tag_id)
 );
--- Version: 1.15
+-- Version: 1.16
 -- Description: Add asset_tags
 CREATE TABLE asset_tags (
    asset_tag_id UUID NOT NULL,
@@ -198,7 +204,7 @@ CREATE TABLE reports_to(
    FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE CASCADE,
    FOREIGN KEY (boss_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
--- Version: 1.19
+-- Version: 1.18
 -- Description: Add assets
 CREATE TABLE assets (
    asset_id UUID NOT NULL,
@@ -210,7 +216,7 @@ CREATE TABLE assets (
    FOREIGN KEY (valid_asset_id) REFERENCES valid_assets(valid_asset_id) ON DELETE CASCADE,
    FOREIGN KEY (asset_condition_id) REFERENCES asset_conditions(asset_condition_id) ON DELETE CASCADE
 );
--- Version: 1.20
+-- Version: 1.19
 -- Description: Add user_assets
 CREATE TABLE user_assets (
    user_asset_id UUID NOT NULL,
@@ -230,7 +236,7 @@ CREATE TABLE user_assets (
 );
 
 
--- Version: 1.21
+-- Version: 1.20
 -- Description: Add user_approval_comments
 CREATE TABLE user_approval_comments (
    comment_id UUID NOT NULL,
@@ -245,7 +251,7 @@ CREATE TABLE user_approval_comments (
 
 CREATE TYPE contact_type as ENUM ('phone', 'email', 'mail', 'fax');
 
--- Version: 1.22
+-- Version: 1.21
 -- Description: Add contact_info
 CREATE TABLE contact_info (
    contact_info_id UUID NOT NULL,
@@ -263,7 +269,7 @@ CREATE TABLE contact_info (
    PRIMARY KEY (contact_info_id)
 );
 
--- Version: 1.23
+-- Version: 1.22
 -- Description: add brands
 CREATE TABLE brands (
    brand_id UUID NOT NULL,
@@ -275,7 +281,7 @@ CREATE TABLE brands (
    FOREIGN KEY (contact_info_id) REFERENCES contact_info(contact_info_id)
 );
 
--- Version: 1.24
+-- Version: 1.23
 -- Description: add models
 CREATE TABLE product_categories (
    category_id UUID NOT NULL,
@@ -286,7 +292,7 @@ CREATE TABLE product_categories (
    PRIMARY KEY (category_id)
 );
 
--- Version: 1.25
+-- Version: 1.24
 -- Description: Create table warehouses
 CREATE TABLE warehouses (
    warehouse_id UUID NOT NULL,
@@ -305,7 +311,7 @@ CREATE TABLE warehouses (
 -- Core Permissions
 -- =============================================================================
 
--- Version: 1.26
+-- Version: 1.25
 -- Description: Create table roles
 CREATE TABLE roles (
     role_id UUID PRIMARY KEY,
@@ -313,7 +319,7 @@ CREATE TABLE roles (
     description TEXT
 );
 
--- Version: 1.27
+-- Version: 1.26
 -- Description: Create table user_roles
 CREATE TABLE user_roles (
       user_role_id UUID NOT NULL,
@@ -325,7 +331,7 @@ CREATE TABLE user_roles (
       FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
 );
 
--- Version: 1.28
+-- Version: 1.27
 -- Description: Create table table_access
 CREATE TABLE table_access (
     table_access_id UUID PRIMARY KEY,
