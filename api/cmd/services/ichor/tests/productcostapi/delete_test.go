@@ -1,4 +1,4 @@
-package inventoryproductapi_test
+package productcostapi_test
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func delete200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "asadmin",
-			URL:        fmt.Sprintf("/v1/inventory/core/products/%s", sd.InventoryProducts[1].ProductID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[1].CostID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNoContent,
@@ -25,8 +25,8 @@ func delete200(sd apitest.SeedData) []apitest.Table {
 func delete400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
-			Name:       "malformed-product-uuid",
-			URL:        fmt.Sprintf("/v1/inventory/core/products/%s", "not-a-uuid"),
+			Name:       "malformed-brand-uuid",
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusBadRequest,
@@ -42,13 +42,13 @@ func delete400(sd apitest.SeedData) []apitest.Table {
 func delete404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
-			Name:       "product-dne",
-			URL:        fmt.Sprintf("/v1/inventory/core/products/%s", uuid.NewString()),
+			Name:       "product-cost-dne",
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNotFound,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.NotFound, "product not found"),
+			ExpResp:    errs.Newf(errs.NotFound, "productCost not found"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -60,7 +60,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/inventory/core/products/%s", sd.InventoryProducts[1].ProductID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[1].CostID),
 			Token:      "&nbsp;",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -72,7 +72,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/inventory/core/products/%s", sd.InventoryProducts[1].ProductID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[1].CostID),
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -84,12 +84,12 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/inventory/core/products/%s", sd.InventoryProducts[1].ProductID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[1].CostID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: products"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: product_costs"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

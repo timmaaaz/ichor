@@ -85,7 +85,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		Admins:            []unitest.User{{User: admins[0]}},
 		Brands:            brand,
 		ProductCategories: productCategories,
-		InventoryProducts: products,
+		Products:          products,
 	}, nil
 
 }
@@ -94,7 +94,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name:    "query",
-			ExpResp: sd.InventoryProducts[:5],
+			ExpResp: sd.Products[:5],
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.InventoryProduct.Query(ctx, productbus.QueryFilter{}, productbus.DefaultOrderBy, page.MustParse("1", "5"))
 				if err != nil {
@@ -119,7 +119,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 	idx := rand.Intn(200)
-	product := sd.InventoryProducts[idx%len(sd.InventoryProducts)]
+	product := sd.Products[idx%len(sd.Products)]
 
 	return []unitest.Table{
 		{
@@ -170,10 +170,10 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 	idx := rand.Intn(200)
-	product := sd.InventoryProducts[idx%len(sd.InventoryProducts)]
+	product := sd.Products[idx%len(sd.Products)]
 
 	idx++
-	updateProduct := sd.InventoryProducts[idx%len(sd.InventoryProducts)]
+	updateProduct := sd.Products[idx%len(sd.Products)]
 
 	return []unitest.Table{
 		{
@@ -227,7 +227,7 @@ func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "delete",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.InventoryProduct.Delete(ctx, sd.InventoryProducts[0])
+				err := busDomain.InventoryProduct.Delete(ctx, sd.Products[0])
 				return err
 			},
 			CmpFunc: func(got, exp any) string {

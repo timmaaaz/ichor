@@ -387,3 +387,25 @@ CREATE TABLE physical_attributes (
    PRIMARY KEY (attribute_id),
    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
+
+-- Version: 1.30
+-- Description: add product_costs
+CREATE TABLE product_costs (
+   cost_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   purchase_cost NUMERIC(10,2) NOT NULL,
+   selling_price NUMERIC(10,2) NOT NULL,
+   currency VARCHAR(50) NOT NULL,
+   msrp NUMERIC(10,2) NOT NULL,
+   markup_percentage NUMERIC(10,4) NOT NULL,
+   landed_cost NUMERIC(10,2) NOT NULL,
+   carrying_cost NUMERIC(10,2) NOT NULL,
+   abc_classification char(1) NOT NULL,
+   depreciation_value NUMERIC(10,4) NOT NULL,
+   insurance_value NUMERIC(10,2) NOT NULL,
+   effective_date TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (cost_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id)
+);

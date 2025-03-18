@@ -1,4 +1,4 @@
-package physicalattribute_test
+package productcostapi_test
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/inventory/core/physicalattributeapp"
+	"github.com/timmaaaz/ichor/app/domain/finance/productcostapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
@@ -16,48 +16,48 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/inventory/core/physicalattribute/%s", sd.PhysicalAttributes[1].ID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
-			Input: &physicalattributeapp.UpdatePhysicalAttribute{
-				ProductID:           &sd.Products[3].ProductID,
-				Length:              dbtest.StringPointer("32.2"),
-				Width:               dbtest.StringPointer("20.145"),
-				Height:              dbtest.StringPointer("13.98"),
-				Weight:              dbtest.StringPointer("10.5"),
-				WeightUnit:          dbtest.StringPointer("lbs"),
-				Color:               dbtest.StringPointer("red"),
-				Size:                dbtest.StringPointer("m"),
-				Material:            dbtest.StringPointer("bronze"),
-				StorageRequirements: dbtest.StringPointer("cold"),
-				HazmatClass:         dbtest.StringPointer("high"),
-				ShelfLifeDays:       dbtest.StringPointer("6"),
+			Input: &productcostapp.UpdateProductCost{
+				ProductID:         &sd.ProductCosts[1].ProductID,
+				PurchaseCost:      &sd.ProductCosts[2].PurchaseCost,
+				SellingPrice:      &sd.ProductCosts[3].SellingPrice,
+				Currency:          &sd.ProductCosts[4].Currency,
+				MSRP:              &sd.ProductCosts[5].MSRP,
+				MarkupPercentage:  &sd.ProductCosts[6].MarkupPercentage,
+				LandedCost:        &sd.ProductCosts[7].LandedCost,
+				CarryingCost:      &sd.ProductCosts[8].CarryingCost,
+				ABCClassification: &sd.ProductCosts[9].ABCClassification,
+				DepreciationValue: &sd.ProductCosts[10].DepreciationValue,
+				InsuranceValue:    &sd.ProductCosts[11].InsuranceValue,
+				EffectiveDate:     &sd.ProductCosts[12].EffectiveDate,
 			},
-			GotResp: &physicalattributeapp.PhysicalAttribute{},
-			ExpResp: &physicalattributeapp.PhysicalAttribute{
-				ID:                  sd.PhysicalAttributes[1].ID,
-				ProductID:           sd.Products[3].ProductID,
-				Length:              "32.2",
-				Width:               "20.145",
-				Height:              "13.98",
-				Weight:              "10.5",
-				WeightUnit:          "lbs",
-				Color:               "red",
-				Size:                "m",
-				Material:            "bronze",
-				StorageRequirements: "cold",
-				HazmatClass:         "high",
-				ShelfLifeDays:       "6",
-				CreatedDate:         sd.PhysicalAttributes[1].CreatedDate,
+			GotResp: &productcostapp.ProductCost{},
+			ExpResp: &productcostapp.ProductCost{
+				ProductID:         sd.ProductCosts[1].ProductID,
+				PurchaseCost:      sd.ProductCosts[2].PurchaseCost,
+				SellingPrice:      sd.ProductCosts[3].SellingPrice,
+				Currency:          sd.ProductCosts[4].Currency,
+				MSRP:              sd.ProductCosts[5].MSRP,
+				MarkupPercentage:  sd.ProductCosts[6].MarkupPercentage,
+				LandedCost:        sd.ProductCosts[7].LandedCost,
+				CarryingCost:      sd.ProductCosts[8].CarryingCost,
+				ABCClassification: sd.ProductCosts[9].ABCClassification,
+				DepreciationValue: sd.ProductCosts[10].DepreciationValue,
+				InsuranceValue:    sd.ProductCosts[11].InsuranceValue,
+				EffectiveDate:     sd.ProductCosts[12].EffectiveDate,
+				CreatedDate:       sd.ProductCosts[0].CreatedDate,
+				CostID:            sd.ProductCosts[0].CostID,
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(*physicalattributeapp.PhysicalAttribute)
+				gotResp, exists := got.(*productcostapp.ProductCost)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*physicalattributeapp.PhysicalAttribute)
+				expResp := exp.(*productcostapp.ProductCost)
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
@@ -70,11 +70,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-product-uuid",
-			URL:        fmt.Sprintf("/v1/inventory/core/physicalattribute/%s", sd.PhysicalAttributes[0].ID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &physicalattributeapp.UpdatePhysicalAttribute{
+			Input: &productcostapp.UpdateProductCost{
 				ProductID: dbtest.StringPointer("not-a-uuid"),
 			},
 			GotResp: &errs.Error{},
@@ -84,13 +84,13 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "malformed-brand-uuid",
-			URL:        fmt.Sprintf("/v1/inventory/core/physicalattribute/%s", "not-a-uuid"),
+			Name:       "malformed-product-cost-uuid",
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &physicalattributeapp.UpdatePhysicalAttribute{
-				ProductID: &sd.Products[0].ProductID,
+			Input: &productcostapp.UpdateProductCost{
+				ProductID: &sd.ProductCosts[0].CostID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "invalid UUID length: 10"),
@@ -105,7 +105,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/inventory/core/physicalattribute/%s", sd.PhysicalAttributes[0].ID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -117,7 +117,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/inventory/core/physicalattribute/%s", sd.PhysicalAttributes[0].ID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -129,12 +129,12 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/inventory/core/physicalattribute/%s", sd.PhysicalAttributes[0].ID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: physical_attributes"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: product_costs"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -146,16 +146,16 @@ func update401(sd apitest.SeedData) []apitest.Table {
 func update404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
-			Name:       "attribute-dne",
-			URL:        fmt.Sprintf("/v1/inventory/core/physicalattribute/%s", uuid.NewString()),
+			Name:       "product-dne",
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
-			Input: &physicalattributeapp.UpdatePhysicalAttribute{
+			Input: &productcostapp.UpdateProductCost{
 				ProductID: dbtest.StringPointer(uuid.NewString()),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.NotFound, "physical attribute not found"),
+			ExpResp: errs.Newf(errs.NotFound, "productCost not found"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -167,11 +167,11 @@ func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "product-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/inventory/core/physicalattribute/%s", sd.PhysicalAttributes[0].ID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,
-			Input: &physicalattributeapp.UpdatePhysicalAttribute{
+			Input: &productcostapp.UpdateProductCost{
 				ProductID: dbtest.StringPointer(uuid.NewString()),
 			},
 			GotResp: &errs.Error{},
