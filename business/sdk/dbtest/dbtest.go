@@ -4,6 +4,7 @@ package dbtest
 import (
 	"bytes"
 	"context"
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -17,6 +18,8 @@ import (
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
+	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
+	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus/stores/productcostdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
@@ -133,6 +136,9 @@ type BusDomain struct {
 	UserRole    *userrolebus.Business
 	TableAccess *tableaccessbus.Business
 	Permissions *permissionsbus.Business
+
+	// Finance
+	ProductCost *productcostbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -182,6 +188,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	tableAccessBus := tableaccessbus.NewBusiness(log, delegate, tableaccesscache.NewStore(log, tableaccessdb.NewStore(log, db), 60*time.Minute))
 	permissionsBus := permissionsbus.NewBusiness(log, delegate, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
+	// Finance
+	productCostBus := productcostbus.NewBusiness(log, delegate, productcostdb.NewStore(log, db))
+
 	return BusDomain{
 		Delegate:            delegate,
 		Home:                homeBus,
@@ -214,6 +223,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Permissions:         permissionsBus,
 		InventoryProduct:    inventoryProductBus,
 		PhysicalAttribute:   physicalAttributeBus,
+		ProductCost:         productCostBus,
 	}
 
 }
@@ -381,4 +391,12 @@ func UserNamePointer(value string) *userbus.Name {
 
 func UUIDPointer(value uuid.UUID) *uuid.UUID {
 	return &value
+}
+
+func round(num float64) int {
+	return int(num + math.Copysign(0.5, num))
+}
+func ToFixed(num float64, precision int) float64 {
+	output := math.Pow(10, float64(precision))
+	return float64(round(num*output)) / output
 }

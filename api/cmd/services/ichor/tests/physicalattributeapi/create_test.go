@@ -20,7 +20,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Length:              "32.2",
 				Width:               "20.145",
 				Height:              "13.98",
@@ -35,7 +35,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &physicalattributeapp.PhysicalAttribute{},
 			ExpResp: &physicalattributeapp.PhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Length:              "32.2",
 				Width:               "20.145",
 				Height:              "13.98",
@@ -99,7 +99,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Width:               "20.145",
 				Height:              "13.98",
 				Weight:              "10.5",
@@ -124,7 +124,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Length:              "32.2",
 				Height:              "13.98",
 				Weight:              "10.5",
@@ -149,7 +149,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Length:              "32.2",
 				Width:               "20.145",
 				Weight:              "10.5",
@@ -174,7 +174,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Length:              "32.2",
 				Width:               "20.145",
 				Height:              "13.98",
@@ -199,7 +199,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Length:              "32.2",
 				Width:               "20.145",
 				Height:              "13.98",
@@ -224,7 +224,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:     sd.InventoryProducts[3].ProductID,
+				ProductID:     sd.Products[3].ProductID,
 				Length:        "32.2",
 				Width:         "20.145",
 				Height:        "13.98",
@@ -249,7 +249,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Length:              "32.2",
 				Width:               "20.145",
 				Height:              "13.98",
@@ -274,7 +274,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &physicalattributeapp.NewPhysicalAttribute{
-				ProductID:           sd.InventoryProducts[3].ProductID,
+				ProductID:           sd.Products[3].ProductID,
 				Length:              "32.2",
 				Width:               "20.145",
 				Height:              "13.98",

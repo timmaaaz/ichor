@@ -1,18 +1,20 @@
-package inventoryproductapi_test
+package productcostapi_test
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/productapi"
+	"github.com/timmaaaz/ichor/api/domain/http/finance/productcostapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/finance/productcostapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productcategoryapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
@@ -82,6 +84,16 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding product : %w", err)
 	}
 
+	productIDs := make(uuid.UUIDs, len(products))
+	for i, p := range products {
+		productIDs[i] = p.ProductID
+	}
+
+	productCosts, err := productcostbus.TestSeedProductCosts(ctx, 30, productIDs, busDomain.ProductCost)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding product cost : %w", err)
+	}
+
 	// =========================================================================
 	// Permissions stuff
 	// =========================================================================
@@ -130,7 +142,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// Update only tu1's role permissions
 	for _, ta := range tas {
 		// Only update for the asset table
-		if ta.TableName == productapi.TableName {
+		if ta.TableName == productcostapi.RouteTable {
 			update := tableaccessbus.UpdateTableAccess{
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),
@@ -150,6 +162,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		ProductCategories: productcategoryapp.ToAppProductCategories(pc),
 		ContactInfo:       contactinfoapp.ToAppContactInfos(contacts),
 		Brands:            brandapp.ToAppBrands(brands),
-		InventoryProducts: productapp.ToAppProducts(products),
+		Products:          productapp.ToAppProducts(products),
+		ProductCosts:      productcostapp.ToAppProductCosts(productCosts),
 	}, nil
 }

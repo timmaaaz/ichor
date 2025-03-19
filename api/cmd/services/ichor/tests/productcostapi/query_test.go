@@ -1,9 +1,9 @@
-package inventoryproductapi_test
+package productcostapi_test
 
 import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
+	"github.com/timmaaaz/ichor/app/domain/finance/productcostapp"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
@@ -11,16 +11,16 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/inventory/core/products?page=1&rows=10",
+			URL:        "/v1/finance/productcosts?page=1&rows=10",
 			Token:      sd.Users[0].Token,
 			StatusCode: 200,
 			Method:     "GET",
-			GotResp:    &query.Result[productapp.Product]{},
-			ExpResp: &query.Result[productapp.Product]{
+			GotResp:    &query.Result[productcostapp.ProductCost]{},
+			ExpResp: &query.Result[productcostapp.ProductCost]{
 				Page:        1,
 				RowsPerPage: 10,
 				Total:       30,
-				Items:       sd.InventoryProducts[:10],
+				Items:       sd.ProductCosts[:10],
 			},
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
@@ -34,12 +34,12 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/inventory/core/products/" + sd.InventoryProducts[0].ProductID,
+			URL:        "/v1/finance/productcosts/" + sd.ProductCosts[0].CostID,
 			Token:      sd.Users[0].Token,
 			StatusCode: 200,
 			Method:     "GET",
-			GotResp:    &productapp.Product{},
-			ExpResp:    &sd.InventoryProducts[0],
+			GotResp:    &productcostapp.ProductCost{},
+			ExpResp:    &sd.ProductCosts[0],
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

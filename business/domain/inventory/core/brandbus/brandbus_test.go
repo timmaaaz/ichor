@@ -84,7 +84,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.([]brandbus.Brand)
 				if !exists {
-					return fmt.Sprintf("got is not a slice of brandsz: %v", got)
+					return fmt.Sprintf("got is not a slice of brands: %v", got)
 				}
 
 				expResp := exp.([]brandbus.Brand)
@@ -120,7 +120,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(brandbus.Brand)
 				if !exists {
-					return fmt.Sprintf("got is not a contact info: %v", got)
+					return fmt.Sprintf("got is not a brand: %v", got)
 				}
 
 				expResp := exp.(brandbus.Brand)
