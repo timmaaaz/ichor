@@ -13,6 +13,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
@@ -78,6 +79,7 @@ type SeedData struct {
 	PhysicalAttributes  []physicalattributebus.PhysicalAttribute
 	ProductCosts        []productcostbus.ProductCost
 	Suppliers           []supplierbus.Supplier
+	CostHistory         []costhistorybus.CostHistory
 }
 
 type Table struct {

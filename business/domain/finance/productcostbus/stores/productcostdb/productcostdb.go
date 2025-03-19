@@ -106,7 +106,7 @@ func (s *Store) Update(ctx context.Context, pc productcostbus.ProductCost) error
 	return nil
 }
 
-// Delete removes an brand from the database.
+// Delete removes an product cost from the database.
 func (s *Store) Delete(ctx context.Context, productCost productcostbus.ProductCost) error {
 	const q = `
 	DELETE FROM
