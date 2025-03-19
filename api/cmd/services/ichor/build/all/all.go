@@ -21,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/status/approvalapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/status/commentapi"
@@ -68,6 +69,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/stores/supplierdb"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus/stores/warehousedb"
 
@@ -159,6 +162,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
 
 	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB))
+
+	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -381,6 +386,13 @@ func (add) Add(app *web.App, cfg mux.Config) {
 
 	productcostapi.Routes(app, productcostapi.Config{
 		ProductCostBus: productCostBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
+
+	supplierapi.Routes(app, supplierapi.Config{
+		SupplierBus:    supplierBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
 		PermissionsBus: permissionsBus,

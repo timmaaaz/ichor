@@ -409,3 +409,19 @@ CREATE TABLE product_costs (
    PRIMARY KEY (cost_id),
    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
+
+-- Version: 1.31
+-- Description: add suppliers
+CREATE TABLE suppliers (
+   supplier_id UUID NOT NULL,
+   contact_id UUID NOT NULL,
+   name VARCHAR(100) NOT NULL,
+   payment_terms TEXT NOT NULL,
+   lead_time_days INTEGER NOT NULL,
+   rating NUMERIC(10, 2) NOT NULL,
+   is_active BOOLEAN NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (supplier_id),
+   FOREIGN KEY (contact_id) REFERENCES contact_info(contact_info_id)
+);

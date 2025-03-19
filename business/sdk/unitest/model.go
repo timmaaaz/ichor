@@ -28,6 +28,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -76,6 +77,7 @@ type SeedData struct {
 	Products            []productbus.Product
 	PhysicalAttributes  []physicalattributebus.PhysicalAttribute
 	ProductCosts        []productcostbus.ProductCost
+	Suppliers           []supplierbus.Supplier
 }
 
 type Table struct {
