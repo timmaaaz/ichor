@@ -46,7 +46,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productcostbus.Storer, err
 }
 
 // Create inserts a new product cost into the database.
-func (s *Store) Create(ctx context.Context, brand productcostbus.ProductCost) error {
+func (s *Store) Create(ctx context.Context, productcost productcostbus.ProductCost) error {
 	const q = `
     INSERT INTO product_costs (
         cost_id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
@@ -57,7 +57,7 @@ func (s *Store) Create(ctx context.Context, brand productcostbus.ProductCost) er
 	)
     `
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProductCost(brand)); err != nil {
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProductCost(productcost)); err != nil {
 		if errors.Is(err, sqldb.ErrForeignKeyViolation) {
 			return fmt.Errorf("namedexeccontext: %w", productcostbus.ErrForeignKeyViolation)
 		}

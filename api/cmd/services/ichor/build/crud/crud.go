@@ -20,6 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/titleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/warehouse/warehouseapi"
@@ -68,6 +69,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/stores/supplierdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -163,6 +166,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB))
 
 	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB))
+
+	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
 
@@ -354,6 +359,13 @@ func (add) Add(app *web.App, cfg mux.Config) {
 
 	productcostapi.Routes(app, productcostapi.Config{
 		ProductCostBus: productCostBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
+
+	supplierapi.Routes(app, supplierapi.Config{
+		SupplierBus:    supplierBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
 		PermissionsBus: permissionsBus,

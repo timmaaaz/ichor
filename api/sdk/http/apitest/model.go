@@ -22,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
+	"github.com/timmaaaz/ichor/app/domain/supplier/supplierapp"
 	"github.com/timmaaaz/ichor/app/domain/users/reportstoapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/commentapp"
@@ -74,6 +75,7 @@ type SeedData struct {
 	Products             []productapp.Product
 	PhysicalAttributes   []physicalattributeapp.PhysicalAttribute
 	ProductCosts         []productcostapp.ProductCost
+	Suppliers            []supplierapp.Supplier
 }
 
 // Table represent fields needed for running an api test.
