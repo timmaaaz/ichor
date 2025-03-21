@@ -18,6 +18,8 @@ import (
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
+	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
+	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus/stores/costhistorydb"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus/stores/productcostdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
@@ -143,7 +145,8 @@ type BusDomain struct {
 	ProductCost *productcostbus.Business
 
 	// Supplier
-	Supplier *supplierbus.Business
+	Supplier    *supplierbus.Business
+	CostHistory *costhistorybus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -195,6 +198,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Finance
 	productCostBus := productcostbus.NewBusiness(log, delegate, productcostdb.NewStore(log, db))
+	costHistoryBus := costhistorybus.NewBusiness(log, delegate, costhistorydb.NewStore(log, db))
 
 	// Suppliers
 	supplierBus := supplierbus.NewBusiness(log, delegate, supplierdb.NewStore(log, db))
@@ -233,6 +237,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		PhysicalAttribute:   physicalAttributeBus,
 		ProductCost:         productCostBus,
 		Supplier:            supplierBus,
+		CostHistory:         costHistoryBus,
 	}
 
 }

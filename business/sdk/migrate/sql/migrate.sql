@@ -425,3 +425,19 @@ CREATE TABLE suppliers (
    PRIMARY KEY (supplier_id),
    FOREIGN KEY (contact_id) REFERENCES contact_info(contact_info_id)
 );
+-- Version: 1.32
+-- Description: add cost_history
+CREATE TABLE cost_history (
+   history_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   cost_type VARCHAR(50) NOT NULL,
+   amount NUMERIC(10,2) NOT NULL,
+   currency VARCHAR(50) NOT NULL,
+   effective_date TIMESTAMP NOT NULL,
+   end_date TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (history_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+

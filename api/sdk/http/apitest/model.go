@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/finance/costhistoryapp"
 	"github.com/timmaaaz/ichor/app/domain/finance/productcostapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/physicalattributeapp"
@@ -75,7 +76,11 @@ type SeedData struct {
 	Products             []productapp.Product
 	PhysicalAttributes   []physicalattributeapp.PhysicalAttribute
 	ProductCosts         []productcostapp.ProductCost
+<<<<<<< HEAD
 	Suppliers            []supplierapp.Supplier
+=======
+	CostHistory          []costhistoryapp.CostHistory
+>>>>>>> ce9e2a5 ([feat] Cost History)
 }
 
 // Table represent fields needed for running an api test.

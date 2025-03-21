@@ -36,14 +36,14 @@ type Storer interface {
 	QueryByID(ctx context.Context, productCostID uuid.UUID) (ProductCost, error)
 }
 
-// Business manages the set of APIs for brand access.
+// Business manages the set of APIs for product cost access.
 type Business struct {
 	log      *logger.Logger
 	storer   Storer
 	delegate *delegate.Delegate
 }
 
-// NewBusiness constructs a brand business API for use.
+// NewBusiness constructs a product cost business API for use.
 func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer) *Business {
 	return &Business{
 		log:      log,
@@ -67,7 +67,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}, nil
 }
 
-// Create inserts a new brand into the database.
+// Create inserts a new product cost into the database.
 func (b *Business) Create(ctx context.Context, npc NewProductCost) (ProductCost, error) {
 	ctx, span := otel.AddSpan(ctx, "business.productcostbus.create")
 	defer span.End()
@@ -99,7 +99,7 @@ func (b *Business) Create(ctx context.Context, npc NewProductCost) (ProductCost,
 	return pc, nil
 }
 
-// Update replaces an brand document in the database.
+// Update replaces an product cost document in the database.
 func (b *Business) Update(ctx context.Context, pc ProductCost, upc UpdateProductCost) (ProductCost, error) {
 	ctx, span := otel.AddSpan(ctx, "business.productcostbus.update")
 	defer span.End()
@@ -142,7 +142,7 @@ func (b *Business) Update(ctx context.Context, pc ProductCost, upc UpdateProduct
 	return pc, nil
 }
 
-// Delete removes the specified brand.
+// Delete removes the specified product cost.
 func (b *Business) Delete(ctx context.Context, pc ProductCost) error {
 	ctx, span := otel.AddSpan(ctx, "business.productcostbus.delete")
 	defer span.End()

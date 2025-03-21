@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfoapi"
+	"github.com/timmaaaz/ichor/api/domain/http/finance/costhistoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/productcostapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/brandapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/physicalattributeapi"
@@ -48,6 +49,8 @@ import (
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
+	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
+	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus/stores/costhistorydb"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus/stores/productcostdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
@@ -170,6 +173,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
+	costHistoryBus := costhistorybus.NewBusiness(cfg.Log, delegate, costhistorydb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -366,6 +370,13 @@ func (add) Add(app *web.App, cfg mux.Config) {
 
 	supplierapi.Routes(app, supplierapi.Config{
 		SupplierBus:    supplierBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
+
+	costhistoryapi.Routes(app, costhistoryapi.Config{
+		CostHistoryBus: costHistoryBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
 		PermissionsBus: permissionsBus,
