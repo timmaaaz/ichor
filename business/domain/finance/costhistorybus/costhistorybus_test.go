@@ -18,7 +18,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
-func Tets_CostHistory(t *testing.T) {
+func Test_CostHistory(t *testing.T) {
 	t.Parallel()
 
 	db := dbtest.NewDatabase(t, "Test_CostHistory")
@@ -166,8 +166,73 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				expResp := exp.(costhistorybus.CostHistory)
+				expResp.CostHistoryID = gotResp.CostHistoryID
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+}
+
+func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name: "Update",
+			ExpResp: costhistorybus.CostHistory{
+				ProductID:     sd.Products[0].ProductID,
+				CostType:      sd.CostHistory[1].CostType,
+				Amount:        sd.CostHistory[2].Amount,
+				Currency:      sd.CostHistory[3].Currency,
+				EffectiveDate: sd.CostHistory[4].EffectiveDate,
+				EndDate:       sd.CostHistory[5].EndDate,
+				CreatedDate:   sd.CostHistory[0].CreatedDate,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				uch := costhistorybus.UpdateCostHistory{
+					ProductID:     &sd.Products[0].ProductID,
+					CostType:      &sd.CostHistory[1].CostType,
+					Amount:        &sd.CostHistory[2].Amount,
+					Currency:      &sd.CostHistory[3].Currency,
+					EffectiveDate: &sd.CostHistory[4].EffectiveDate,
+					EndDate:       &sd.CostHistory[5].EndDate,
+				}
+
+				costHistory, err := busDomain.CostHistory.Update(ctx, sd.CostHistory[0], uch)
+				if err != nil {
+					return err
+				}
+
+				return costHistory
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(costhistorybus.CostHistory)
+				if !exists {
+					return fmt.Sprintf("got is not a cost history: %v", got)
+				}
+
+				expResp := exp.(costhistorybus.CostHistory)
+				expResp.CostHistoryID = gotResp.CostHistoryID
+				expResp.UpdatedDate = gotResp.UpdatedDate
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+}
+
+func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name:    "Delete",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				err := busDomain.CostHistory.Delete(ctx, sd.CostHistory[0])
+				return err
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}

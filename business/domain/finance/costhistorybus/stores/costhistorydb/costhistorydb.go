@@ -118,7 +118,7 @@ func (s *Store) Query(ctx context.Context, filter costhistorybus.QueryFilter, or
 
 	const q = `
 	SELECT 
-		history_id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date
+		history_id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
 	FROM
 		cost_history
 	`
@@ -174,7 +174,7 @@ func (s *Store) QueryByID(ctx context.Context, costHistoryID uuid.UUID) (costhis
 
 	const q = `
 	SELECT 
-		history_id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date
+		history_id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
 	FROM
 		cost_history
 	WHERE 

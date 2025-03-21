@@ -431,7 +431,7 @@ CREATE TABLE cost_history (
    history_id UUID NOT NULL,
    product_id UUID NOT NULL,
    cost_type VARCHAR(50) NOT NULL,
-   amount NUMERIC(10,4) NOT NULL,
+   amount NUMERIC(10,2) NOT NULL,
    currency VARCHAR(50) NOT NULL,
    effective_date TIMESTAMP NOT NULL,
    end_date TIMESTAMP NOT NULL,
