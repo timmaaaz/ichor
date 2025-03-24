@@ -107,6 +107,8 @@ func (b *Business) Update(ctx context.Context, ch CostHistory, uch UpdateCostHis
 		ch.Amount = *uch.Amount
 	}
 
+	ch.UpdatedDate = time.Now()
+
 	if err := b.storer.Update(ctx, ch); err != nil {
 		return CostHistory{}, fmt.Errorf("update: %w", err)
 	}

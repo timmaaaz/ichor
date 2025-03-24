@@ -22,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierapi"
+	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierproductapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/titleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/warehouse/warehouseapi"
@@ -74,6 +75,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/stores/supplierdb"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus/stores/supplierproductdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -171,6 +174,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB))
 
 	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
+	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
 	costHistoryBus := costhistorybus.NewBusiness(cfg.Log, delegate, costhistorydb.NewStore(cfg.Log, cfg.DB))
@@ -380,5 +384,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
 		PermissionsBus: permissionsBus,
+	})
+
+	supplierproductapi.Routes(app, supplierproductapi.Config{
+		SupplierProductBus: supplierProductBus,
+		AuthClient:         cfg.AuthClient,
+		Log:                cfg.Log,
+		PermissionsBus:     permissionsBus,
 	})
 }
