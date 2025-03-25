@@ -67,7 +67,7 @@ CREATE TABLE user_approval_status (
    PRIMARY KEY (user_approval_status_id)
 );
 -- Version: 1.08
--- Description: Create table valid_assets
+-- Description: Create table titles
 CREATE TABLE titles (
    title_id UUID NOT NULL, 
    name TEXT NOT NULL,
@@ -462,3 +462,17 @@ CREATE TABLE supplier_products (
 
 
 
+
+-- Version: 1.34
+-- Description: add quality_metrics
+CREATE TABLE quality_metrics (
+   quality_metric_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   return_rate NUMERIC(10, 4) NOT NULL,
+   defect_rate NUMERIC(10, 4) NOT NULL,
+   measurement_period INTERVAL NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (quality_metric_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id)
+);

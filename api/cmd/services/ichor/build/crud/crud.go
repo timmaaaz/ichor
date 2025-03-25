@@ -21,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/quality/metricsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierapi"
 	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierproductapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
@@ -73,6 +74,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
+	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus"
+	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus/stores/metricsdb"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/stores/supplierdb"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
@@ -175,6 +178,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 
 	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
 	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
+
+	metricsBus := metricsbus.NewBusiness(cfg.Log, delegate, metricsdb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
 	costHistoryBus := costhistorybus.NewBusiness(cfg.Log, delegate, costhistorydb.NewStore(cfg.Log, cfg.DB))
@@ -391,5 +396,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:         cfg.AuthClient,
 		Log:                cfg.Log,
 		PermissionsBus:     permissionsBus,
+	})
+
+	metricsapi.Routes(app, metricsapi.Config{
+		Log:            cfg.Log,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+		MetricsBus:     metricsBus,
 	})
 }

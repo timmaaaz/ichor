@@ -29,6 +29,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
@@ -82,6 +83,7 @@ type SeedData struct {
 	Suppliers           []supplierbus.Supplier
 	CostHistory         []costhistorybus.CostHistory
 	SupplierProducts    []supplierproductbus.SupplierProduct
+	Metrics             []metricsbus.Metric
 }
 
 type Table struct {
