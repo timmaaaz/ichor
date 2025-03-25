@@ -42,6 +42,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/stores/supplierdb"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus/stores/supplierproductdb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -143,10 +145,11 @@ type BusDomain struct {
 
 	// Finance
 	ProductCost *productcostbus.Business
+	CostHistory *costhistorybus.Business
 
 	// Supplier
-	Supplier    *supplierbus.Business
-	CostHistory *costhistorybus.Business
+	Supplier        *supplierbus.Business
+	SupplierProduct *supplierproductbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -202,6 +205,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Suppliers
 	supplierBus := supplierbus.NewBusiness(log, delegate, supplierdb.NewStore(log, db))
+	supplierProductBus := supplierproductbus.NewBusiness(log, delegate, supplierproductdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:            delegate,
@@ -238,6 +242,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ProductCost:         productCostBus,
 		Supplier:            supplierBus,
 		CostHistory:         costHistoryBus,
+		SupplierProduct:     supplierProductBus,
 	}
 
 }

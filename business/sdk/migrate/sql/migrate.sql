@@ -441,3 +441,24 @@ CREATE TABLE cost_history (
    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
+-- Version: 1.33
+-- Description: add supplier_products
+CREATE TABLE supplier_products (
+   supplier_product_id UUID NOT NULL,
+   supplier_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   supplier_part_number varchar(100) NOT NULL,
+   min_order_quantity INT NOT NULL,
+   max_order_quantity INT NOT NULL,
+   lead_time_days INT NOT NULL,
+   unit_cost NUMERIC(10,2) NOT NULL,
+   is_primary_supplier BOOLEAN NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (supplier_product_id),
+   FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+
+

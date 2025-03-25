@@ -2,7 +2,7 @@ package productcostbus
 
 import "github.com/timmaaaz/ichor/business/sdk/order"
 
-var DefaultOrderBy = order.NewBy(OrderBySellingPrice, order.ASC)
+var DefaultOrderBy = order.NewBy(OrderByProductID, order.ASC)
 
 const (
 	OrderByCostID            = "cost_id"

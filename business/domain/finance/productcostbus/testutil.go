@@ -24,7 +24,7 @@ func TestNewProductCosts(n int, productIDs uuid.UUIDs) []NewProductCost {
 		newProductCosts[i] = NewProductCost{
 			ProductID:         productIDs[i%len(productIDs)],
 			PurchaseCost:      types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
-			SellingPrice:      types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
+			SellingPrice:      types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64()+float64(i))),
 			Currency:          fmt.Sprintf("CurrencyCode%d", idx),
 			MSRP:              types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
 			MarkupPercentage:  types.NewRoundedFloat(rand.Float64()),
@@ -54,7 +54,7 @@ func TestSeedProductCosts(ctx context.Context, n int, productIDs uuid.UUIDs, api
 	}
 
 	sort.Slice(productCosts, func(i, j int) bool {
-		return productCosts[i].SellingPrice.Value() < productCosts[j].SellingPrice.Value()
+		return productCosts[i].ProductID.String() < productCosts[j].ProductID.String()
 	})
 
 	return productCosts, nil

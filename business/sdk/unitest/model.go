@@ -30,6 +30,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
@@ -80,6 +81,7 @@ type SeedData struct {
 	ProductCosts        []productcostbus.ProductCost
 	Suppliers           []supplierbus.Supplier
 	CostHistory         []costhistorybus.CostHistory
+	SupplierProducts    []supplierproductbus.SupplierProduct
 }
 
 type Table struct {
