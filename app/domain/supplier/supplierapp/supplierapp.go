@@ -45,10 +45,10 @@ func (a *App) Create(ctx context.Context, app NewSupplier) (Supplier, error) {
 	supplier, err := a.supplierbus.Create(ctx, nb)
 	if err != nil {
 		if errors.Is(err, supplierbus.ErrUniqueEntry) {
-			return Supplier{}, errs.New(errs.AlreadyExists, supplierbus.ErrUniqueEntry)
+			return Supplier{}, errs.New(errs.AlreadyExists, err)
 		}
 		if errors.Is(err, supplierbus.ErrForeignKeyViolation) {
-			return Supplier{}, errs.New(errs.Aborted, supplierbus.ErrForeignKeyViolation)
+			return Supplier{}, errs.New(errs.Aborted, err)
 		}
 		return Supplier{}, errs.Newf(errs.Internal, "create: supplier[%+v]: %s", supplier, err)
 	}
