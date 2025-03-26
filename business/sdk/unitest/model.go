@@ -25,6 +25,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/officebus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
@@ -84,6 +85,7 @@ type SeedData struct {
 	CostHistory         []costhistorybus.CostHistory
 	SupplierProducts    []supplierproductbus.SupplierProduct
 	Metrics             []metricsbus.Metric
+	LotTracking         []lottrackingbus.LotTracking
 }
 
 type Table struct {

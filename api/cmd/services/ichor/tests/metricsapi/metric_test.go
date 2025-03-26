@@ -6,10 +6,10 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
-func Test_ProductCost(t *testing.T) {
+func Test_Metrics(t *testing.T) {
 	t.Parallel()
 
-	test := apitest.StartTest(t, "Test_ProductCost")
+	test := apitest.StartTest(t, "Test_Metrics")
 
 	sd, err := insertSeedData(test.DB, test.Auth)
 	if err != nil {

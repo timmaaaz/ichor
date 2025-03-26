@@ -19,6 +19,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/physicalattributeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/productcategoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
+	"github.com/timmaaaz/ichor/api/domain/http/lots/lottrackingapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
@@ -62,6 +63,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus/stores/lottrackingdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -177,6 +180,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
 
 	metricsBus := metricsbus.NewBusiness(cfg.Log, delegate, metricsdb.NewStore(cfg.Log, cfg.DB))
+
+	lotTrackingBus := lottrackingbus.NewBusiness(cfg.Log, delegate, lottrackingdb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -430,5 +435,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 		MetricsBus:     metricsBus,
+	})
+
+	lottrackingapi.Routes(app, lottrackingapi.Config{
+		LotTrackingBus: lotTrackingBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 }

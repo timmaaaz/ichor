@@ -28,6 +28,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus/stores/lottrackingdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -147,7 +149,6 @@ type BusDomain struct {
 
 	// Finance
 	ProductCost *productcostbus.Business
-	CostHistory *costhistorybus.Business
 
 	// Supplier
 	Supplier        *supplierbus.Business
@@ -156,6 +157,9 @@ type BusDomain struct {
 
 	// Quality
 	Metrics *metricsbus.Business
+
+	// Lots
+	LotTracking *lottrackingbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -216,6 +220,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Quality
 	metricsBus := metricsbus.NewBusiness(log, delegate, metricsdb.NewStore(log, db))
 
+	// Lots
+	lotTrackingBus := lottrackingbus.NewBusiness(log, delegate, lottrackingdb.NewStore(log, db))
+
 	return BusDomain{
 		Delegate:            delegate,
 		Home:                homeBus,
@@ -253,6 +260,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		CostHistory:         costHistoryBus,
 		SupplierProduct:     supplierProductBus,
 		Metrics:             metricsBus,
+		LotTracking:         lotTrackingBus,
 	}
 
 }

@@ -135,6 +135,9 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Metric], 
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (Metric, error) {
 	st, err := a.metricsbus.QueryByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, metricsbus.ErrNotFound) {
+			return Metric{}, errs.New(errs.NotFound, err)
+		}
 		return Metric{}, errs.Newf(errs.Internal, "queryByID: %v", err)
 	}
 

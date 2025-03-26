@@ -1,4 +1,4 @@
-package supplierapi_test
+package lottrackingapi_test
 
 import (
 	"testing"
@@ -6,18 +6,18 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
-func Test_Supplier(t *testing.T) {
+func Test_ProductCost(t *testing.T) {
 	t.Parallel()
 
-	test := apitest.StartTest(t, "Test_Supplier")
+	test := apitest.StartTest(t, "Test_ProductCost")
 
 	sd, err := insertSeedData(test.DB, test.Auth)
 	if err != nil {
 		t.Fatalf("Seeding error: %s", err)
 	}
 
-	test.Run(t, query200(sd), "query-200")
 	test.Run(t, queryByID200(sd), "query-by-id-200")
+	test.Run(t, query200(sd), "query-200")
 
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, create400(sd), "create-400")
