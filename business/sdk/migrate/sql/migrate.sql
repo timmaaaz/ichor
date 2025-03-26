@@ -460,9 +460,6 @@ CREATE TABLE supplier_products (
    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
-
-
-
 -- Version: 1.34
 -- Description: add quality_metrics
 CREATE TABLE quality_metrics (
@@ -475,4 +472,21 @@ CREATE TABLE quality_metrics (
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (quality_metric_id),
    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Version: 1.35
+-- Description: add lot tracking
+CREATE TABLE lot_tracking (
+   lot_id UUID NOT NULL,
+   supplier_product_id UUID NOT NULL,
+   lot_number VARCHAR(100) NOT NULL,
+   manufacture_date TIMESTAMP NOT NULL,
+   expiration_date TIMESTAMP NOT NULL,
+   received_date TIMESTAMP NOT NULL,
+   quantity INT NOT NULL,
+   quality_status varchar(20) NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (lot_id),
+   FOREIGN KEY (supplier_product_id) REFERENCES supplier_products(supplier_product_id)
 );

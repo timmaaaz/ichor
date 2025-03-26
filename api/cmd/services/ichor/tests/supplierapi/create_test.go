@@ -209,7 +209,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 				Rating:       "4.6",
 				IsActive:     "true",
 			},
-			ExpResp: errs.Newf(errs.Aborted, "foreign key violation"),
+			ExpResp: errs.Newf(errs.Aborted, "create: namedexeccontext: foreign key violation"),
 			GotResp: &errs.Error{},
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
