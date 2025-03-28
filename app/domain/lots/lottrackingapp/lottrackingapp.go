@@ -84,7 +84,7 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 	lt, err := a.lottrackingbus.QueryByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, lottrackingbus.ErrNotFound) {
-			return errs.New(errs.NotFound, lottrackingbus.ErrNotFound)
+			return errs.New(errs.NotFound, err)
 		}
 		return fmt.Errorf("delete [querybyid]: %w", err)
 	}

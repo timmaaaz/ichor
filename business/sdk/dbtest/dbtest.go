@@ -54,6 +54,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus/stores/warehousedb"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus/stores/zonedb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
@@ -140,6 +142,7 @@ type BusDomain struct {
 
 	// Warehouse
 	Warehouse *warehousebus.Business
+	Zones     *zonebus.Business
 
 	// Permissions
 	Role        *rolebus.Business
@@ -202,6 +205,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Warehouses
 	warehouseBus := warehousebus.NewBusiness(log, delegate, warehousedb.NewStore(log, db))
+	zoneBus := zonebus.NewBusiness(log, delegate, zonedb.NewStore(log, db))
 
 	// Permissions
 	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute))
@@ -261,6 +265,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		SupplierProduct:     supplierProductBus,
 		Metrics:             metricsBus,
 		LotTracking:         lotTrackingBus,
+		Zones:               zoneBus,
 	}
 
 }

@@ -490,3 +490,16 @@ CREATE TABLE lot_tracking (
    PRIMARY KEY (lot_id),
    FOREIGN KEY (supplier_product_id) REFERENCES supplier_products(supplier_product_id)
 );
+
+-- Version: 1.36
+-- Description: add zones
+CREATE TABLE zones (
+   zone_id UUID NOT NULL,
+   warehouse_id UUID NOT NULL,
+   name VARCHAR(50) NOT NULL,
+   description TEXT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (zone_id),
+   FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id)
+);

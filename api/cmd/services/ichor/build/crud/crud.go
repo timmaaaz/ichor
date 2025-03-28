@@ -28,6 +28,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/users/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/users/titleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/warehouse/warehouseapi"
+	"github.com/timmaaaz/ichor/api/domain/http/warehouse/zoneapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assetconditionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assettypeapi"
@@ -89,6 +90,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus/stores/warehousedb"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus/stores/zonedb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus/store/assettagdb"
@@ -178,6 +181,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB))
 
 	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB))
+	zoneBus := zonebus.NewBusiness(cfg.Log, delegate, zonedb.NewStore(cfg.Log, cfg.DB))
 
 	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
 	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
@@ -412,6 +416,13 @@ func (add) Add(app *web.App, cfg mux.Config) {
 
 	lottrackingapi.Routes(app, lottrackingapi.Config{
 		LotTrackingBus: lotTrackingBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
+
+	zoneapi.Routes(app, zoneapi.Config{
+		ZoneBus:        zoneBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
 		PermissionsBus: permissionsBus,
