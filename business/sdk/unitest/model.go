@@ -38,6 +38,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus"
 )
@@ -88,6 +89,7 @@ type SeedData struct {
 	Metrics             []metricsbus.Metric
 	LotTracking         []lottrackingbus.LotTracking
 	Zones               []zonebus.Zone
+	InventoryLocations  []inventorylocationbus.InventoryLocation
 }
 
 type Table struct {

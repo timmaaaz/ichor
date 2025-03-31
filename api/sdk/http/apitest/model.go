@@ -31,6 +31,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/users/status/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/users/status/commentapp"
 	"github.com/timmaaaz/ichor/app/domain/users/titleapp"
+	"github.com/timmaaaz/ichor/app/domain/warehouse/inventorylocationapp"
 	"github.com/timmaaaz/ichor/app/domain/warehouse/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/warehouse/zoneapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -86,6 +87,7 @@ type SeedData struct {
 	Metrics              []metricsapp.Metric
 	LotTracking          []lottrackingapp.LotTracking
 	Zones                []zoneapp.Zone
+	InventoryLocations   []inventorylocationapp.InventoryLocation
 }
 
 // Table represent fields needed for running an api test.

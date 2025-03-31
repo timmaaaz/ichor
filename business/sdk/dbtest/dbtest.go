@@ -52,6 +52,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus/stores/warehousedb"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus"
@@ -141,8 +143,9 @@ type BusDomain struct {
 	PhysicalAttribute *physicalattributebus.Business
 
 	// Warehouse
-	Warehouse *warehousebus.Business
-	Zones     *zonebus.Business
+	Warehouse         *warehousebus.Business
+	Zones             *zonebus.Business
+	InventoryLocation *inventorylocationbus.Business
 
 	// Permissions
 	Role        *rolebus.Business
@@ -206,6 +209,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Warehouses
 	warehouseBus := warehousebus.NewBusiness(log, delegate, warehousedb.NewStore(log, db))
 	zoneBus := zonebus.NewBusiness(log, delegate, zonedb.NewStore(log, db))
+	inventoryLocationBus := inventorylocationbus.NewBusiness(log, delegate, inventorylocationdb.NewStore(log, db))
 
 	// Permissions
 	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute))
@@ -266,6 +270,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Metrics:             metricsBus,
 		LotTracking:         lotTrackingBus,
 		Zones:               zoneBus,
+		InventoryLocation:   inventoryLocationBus,
 	}
 
 }
