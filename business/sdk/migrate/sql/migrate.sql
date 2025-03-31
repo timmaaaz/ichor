@@ -503,3 +503,24 @@ CREATE TABLE zones (
    PRIMARY KEY (zone_id),
    FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id)
 );
+
+-- Version: 1.37
+-- Description: add inventory_locations
+CREATE TABLE inventory_locations (
+   location_id UUID NOT NULL,
+   zone_id UUID NOT NULL,
+   warehouse_id UUID NOT NULL,
+   aisle varchar(20) NOT NULL,
+   rack varchar(20) NOT NULL,
+   shelf varchar(20) NOT NULL,
+   bin varchar(20) NOT NULL,
+   is_pick_location boolean NOT NULL,
+   is_reserve_location boolean NOT NULL,
+   max_capacity integer NOT NULL,
+   current_utilization numeric(10,4) NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (location_id),
+   FOREIGN KEY (zone_id) REFERENCES zones(zone_id),
+   FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id)
+);
