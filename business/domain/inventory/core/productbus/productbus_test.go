@@ -76,7 +76,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		productCategoryIDs[i] = pc.ProductCategoryID
 	}
 
-	products, err := productbus.TestSeedProducts(ctx, 20, brandIDs, productCategoryIDs, busDomain.InventoryProduct)
+	products, err := productbus.TestSeedProducts(ctx, 20, brandIDs, productCategoryIDs, busDomain.Product)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding product : %w", err)
 	}
@@ -96,7 +96,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "query",
 			ExpResp: sd.Products[:5],
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.InventoryProduct.Query(ctx, productbus.QueryFilter{}, productbus.DefaultOrderBy, page.MustParse("1", "5"))
+				got, err := busDomain.Product.Query(ctx, productbus.QueryFilter{}, productbus.DefaultOrderBy, page.MustParse("1", "5"))
 				if err != nil {
 					return err
 				}
@@ -140,7 +140,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					HandlingInstructions: product.HandlingInstructions,
 					UnitsPerCase:         product.UnitsPerCase,
 				}
-				p, err := busDomain.InventoryProduct.Create(ctx, newProduct)
+				p, err := busDomain.Product.Create(ctx, newProduct)
 				if err != nil {
 					return err
 				}
@@ -194,7 +194,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					HandlingInstructions: &updateProduct.HandlingInstructions,
 					UnitsPerCase:         &updateProduct.UnitsPerCase,
 				}
-				p, err := busDomain.InventoryProduct.Update(ctx, product, up)
+				p, err := busDomain.Product.Update(ctx, product, up)
 				if err != nil {
 					return err
 				}
@@ -227,7 +227,7 @@ func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "delete",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.InventoryProduct.Delete(ctx, sd.Products[0])
+				err := busDomain.Product.Delete(ctx, sd.Products[0])
 				return err
 			},
 			CmpFunc: func(got, exp any) string {

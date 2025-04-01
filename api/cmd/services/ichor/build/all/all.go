@@ -16,6 +16,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/finance/costhistoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/productcostapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/brandapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/inventoryitemapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/physicalattributeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/productcategoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
@@ -61,6 +62,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus/stores/productcostdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus/stores/inventoryitemdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
@@ -183,6 +186,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB))
 	zoneBus := zonebus.NewBusiness(cfg.Log, delegate, zonedb.NewStore(cfg.Log, cfg.DB))
 	inventoryLocationBus := inventorylocationbus.NewBusiness(cfg.Log, delegate, inventorylocationdb.NewStore(cfg.Log, cfg.DB))
+	inventoryItemBus := inventoryitembus.NewBusiness(cfg.Log, delegate, inventoryitemdb.NewStore(cfg.Log, cfg.DB))
 
 	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
 	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
@@ -464,5 +468,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:           cfg.AuthClient,
 		Log:                  cfg.Log,
 		PermissionsBus:       permissionsBus,
+	})
+
+	inventoryitemapi.Routes(app, inventoryitemapi.Config{
+		InventoryItemBus: inventoryItemBus,
+		AuthClient:       cfg.AuthClient,
+		Log:              cfg.Log,
+		PermissionsBus:   permissionsBus,
 	})
 }

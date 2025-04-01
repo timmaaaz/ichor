@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/finance/costhistoryapp"
 	"github.com/timmaaaz/ichor/app/domain/finance/productcostapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/core/inventoryitemapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/physicalattributeapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productcategoryapp"
@@ -88,6 +89,7 @@ type SeedData struct {
 	LotTracking          []lottrackingapp.LotTracking
 	Zones                []zoneapp.Zone
 	InventoryLocations   []inventorylocationapp.InventoryLocation
+	InventoryItems       []inventoryitemapp.InventoryItem
 }
 
 // Table represent fields needed for running an api test.

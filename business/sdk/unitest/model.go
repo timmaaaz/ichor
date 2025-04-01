@@ -17,6 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
@@ -90,6 +91,7 @@ type SeedData struct {
 	LotTracking         []lottrackingbus.LotTracking
 	Zones               []zonebus.Zone
 	InventoryLocations  []inventorylocationbus.InventoryLocation
+	InventoryItems      []inventoryitembus.InventoryItem
 }
 
 type Table struct {

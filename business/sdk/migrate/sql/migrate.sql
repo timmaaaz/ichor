@@ -524,3 +524,26 @@ CREATE TABLE inventory_locations (
    FOREIGN KEY (zone_id) REFERENCES zones(zone_id),
    FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id)
 );
+
+
+-- Version: 1.38
+-- Description: add inventory_items
+CREATE TABLE inventory_items (
+   item_id UUID NOT NULL,
+   product_id UUID NOT NULL, 
+   location_id UUID NOT NULL,
+   quantity INT NOT NULL,
+   reserved_quantity INT NOT NULL,
+   allocated_quantity INT NOT NULL,
+   minimum_stock INT NOT NULL,
+   maximum_stock INT NOT NULL,
+   reorder_point INT NOT NULL,
+   economic_order_quantity INT NOT NULL,
+   safety_stock INT NOT NULL,
+   avg_daily_usage INT NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (item_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id),
+   FOREIGN KEY (location_id) REFERENCES inventory_locations(location_id)
+);

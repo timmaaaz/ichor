@@ -77,7 +77,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		pcIDs[i] = p.ProductCategoryID
 	}
 
-	products, err := productbus.TestSeedProducts(ctx, 30, brandIDs, pcIDs, busDomain.InventoryProduct)
+	products, err := productbus.TestSeedProducts(ctx, 30, brandIDs, pcIDs, busDomain.Product)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding product : %w", err)
 	}
