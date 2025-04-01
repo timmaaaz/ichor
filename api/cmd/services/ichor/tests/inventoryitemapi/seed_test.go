@@ -1,28 +1,36 @@
-package productcostapi_test
+package inventoryinventoryitemapi_test
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/api/domain/http/finance/productcostapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/inventoryitemapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
-	"github.com/timmaaaz/ichor/app/domain/finance/productcostapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/core/inventoryitemapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productcategoryapp"
+	"github.com/timmaaaz/ichor/app/domain/warehouse/inventorylocationapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
-	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
+	"github.com/timmaaaz/ichor/business/domain/location/citybus"
+	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {
@@ -89,9 +97,72 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		productIDs[i] = p.ProductID
 	}
 
-	productCosts, err := productcostbus.TestSeedProductCosts(ctx, 30, productIDs, busDomain.ProductCost)
+	warehouseCount := 5
+
+	// ADDRESSES
+	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
 	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding product cost : %w", err)
+		return apitest.SeedData{}, fmt.Errorf("querying regions : %w", err)
+	}
+
+	ids := make([]uuid.UUID, 0, len(regions))
+	for _, r := range regions {
+		ids = append(ids, r.ID)
+	}
+
+	ctys, err := citybus.TestSeedCities(ctx, warehouseCount, ids, busDomain.City)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding cities : %w", err)
+	}
+
+	ctyIDs := make([]uuid.UUID, 0, len(ctys))
+	for _, c := range ctys {
+		ctyIDs = append(ctyIDs, c.ID)
+	}
+
+	strs, err := streetbus.TestSeedStreets(ctx, warehouseCount, ctyIDs, busDomain.Street)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding streets : %w", err)
+	}
+	strIDs := make([]uuid.UUID, 0, len(strs))
+	for _, s := range strs {
+		strIDs = append(strIDs, s.ID)
+	}
+
+	// WAREHOUSES
+	warehouses, err := warehousebus.TestSeedWarehouses(ctx, warehouseCount, tu1.ID, strIDs, busDomain.Warehouse)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding warehouses : %w", err)
+	}
+
+	warehouseIDs := make(uuid.UUIDs, len(warehouses))
+	for i, w := range warehouses {
+		warehouseIDs[i] = w.ID
+	}
+
+	zones, err := zonebus.TestSeedZone(ctx, 15, warehouseIDs, busDomain.Zones)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding zones : %w", err)
+	}
+
+	zoneIDs := make([]uuid.UUID, len(zones))
+	for i, z := range zones {
+		zoneIDs[i] = z.ZoneID
+	}
+
+	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 25, warehouseIDs, zoneIDs, busDomain.InventoryLocation)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding inventory locations : %w", err)
+	}
+
+	inventoryLocationIDs := make([]uuid.UUID, len(inventoryLocations))
+	for i, il := range inventoryLocations {
+		inventoryLocationIDs[i] = il.LocationID
+	}
+
+	inventoryItems, err := inventoryitembus.TestSeedInventoryItems(ctx, 50, inventoryLocationIDs, productIDs, busDomain.InventoryItem)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding inventory items : %w", err)
 	}
 
 	// =========================================================================
@@ -142,7 +213,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// Update only tu1's role permissions
 	for _, ta := range tas {
 		// Only update for the asset table
-		if ta.TableName == productcostapi.RouteTable {
+		if ta.TableName == inventoryitemapi.TableName {
 			update := tableaccessbus.UpdateTableAccess{
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),
@@ -157,12 +228,13 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
-		Admins:            []apitest.User{tu2},
-		Users:             []apitest.User{tu1},
-		ProductCategories: productcategoryapp.ToAppProductCategories(pc),
-		ContactInfo:       contactinfoapp.ToAppContactInfos(contacts),
-		Brands:            brandapp.ToAppBrands(brands),
-		Products:          productapp.ToAppProducts(products),
-		ProductCosts:      productcostapp.ToAppProductCosts(productCosts),
+		Admins:             []apitest.User{tu2},
+		Users:              []apitest.User{tu1},
+		ProductCategories:  productcategoryapp.ToAppProductCategories(pc),
+		ContactInfo:        contactinfoapp.ToAppContactInfos(contacts),
+		Brands:             brandapp.ToAppBrands(brands),
+		Products:           productapp.ToAppProducts(products),
+		InventoryLocations: inventorylocationapp.ToAppInventoryLocations(inventoryLocations),
+		InventoryItems:     inventoryitemapp.ToAppInventoryItems(inventoryItems),
 	}, nil
 }

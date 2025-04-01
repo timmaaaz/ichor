@@ -74,7 +74,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		productCategoryIDs[i] = pc.ProductCategoryID
 	}
 
-	products, err := productbus.TestSeedProducts(ctx, 20, brandIDs, productCategoryIDs, busDomain.InventoryProduct)
+	products, err := productbus.TestSeedProducts(ctx, 20, brandIDs, productCategoryIDs, busDomain.Product)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding product : %w", err)
 	}

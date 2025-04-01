@@ -24,6 +24,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus/stores/productcostdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus/stores/inventoryitemdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
@@ -74,8 +76,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
 	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
-	inventoryproductbus "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
-	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/inventory/core/productbus/stores/productdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
@@ -139,8 +141,9 @@ type BusDomain struct {
 	// Inventory
 	Brand             *brandbus.Business
 	ProductCategory   *productcategorybus.Business
-	InventoryProduct  *inventoryproductbus.Business
+	Product           *productbus.Business
 	PhysicalAttribute *physicalattributebus.Business
+	InventoryItem     *inventoryitembus.Business
 
 	// Warehouse
 	Warehouse         *warehousebus.Business
@@ -203,8 +206,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Inventory
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
 	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db))
-	inventoryProductBus := inventoryproductbus.NewBusiness(log, delegate, inventoryproductdb.NewStore(log, db))
+	productBus := productbus.NewBusiness(log, delegate, productdb.NewStore(log, db))
 	physicalAttributeBus := physicalattributebus.NewBusiness(log, delegate, physicalattributedb.NewStore(log, db))
+	inventoryItemBus := inventoryitembus.NewBusiness(log, delegate, inventoryitemdb.NewStore(log, db))
 
 	// Warehouses
 	warehouseBus := warehousebus.NewBusiness(log, delegate, warehousedb.NewStore(log, db))
@@ -261,7 +265,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ProductCategory:     productCategoryBus,
 		TableAccess:         tableAccessBus,
 		Permissions:         permissionsBus,
-		InventoryProduct:    inventoryProductBus,
+		Product:             productBus,
 		PhysicalAttribute:   physicalAttributeBus,
 		ProductCost:         productCostBus,
 		Supplier:            supplierBus,
@@ -271,6 +275,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		LotTracking:         lotTrackingBus,
 		Zones:               zoneBus,
 		InventoryLocation:   inventoryLocationBus,
+		InventoryItem:       inventoryItemBus,
 	}
 
 }
