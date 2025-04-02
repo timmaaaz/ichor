@@ -549,6 +549,23 @@ CREATE TABLE inventory_items (
 );
 
 
+-- Version: 1.39
+-- Description: add serial_numbers
+CREATE TABLE serial_numbers (
+   serial_id UUID NOT NULL,
+   product_id UUID NOT NULL,  
+   location_id UUID NOT NULL,
+   lot_id UUID NOT NULL,
+   serial_number VARCHAR(100) NOT NULL,
+   status VARCHAR(20) NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (serial_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id),
+   FOREIGN KEY (location_id) REFERENCES inventory_locations(location_id),
+   FOREIGN KEY (lot_id) REFERENCES lot_tracking(lot_id)
+);
+
 -- Version: 1.40
 -- Description: add quality_inspections
 CREATE TABLE quality_inspections (

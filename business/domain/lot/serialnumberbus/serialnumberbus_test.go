@@ -1,4 +1,4 @@
-package inventoryitembus_test
+package serialnumberbus_test
 
 import (
 	"context"
@@ -9,12 +9,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
@@ -24,11 +27,10 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
-func Test_InventoryItem(t *testing.T) {
+func Test_SerialNumbers(t *testing.T) {
 	t.Parallel()
 
-	db := dbtest.NewDatabase(t, "Test_InventoryItem")
-
+	db := dbtest.NewDatabase(t, "Test_SerialNumbers")
 	sd, err := insertSeedData(db.BusDomain)
 	if err != nil {
 		t.Fatalf("Seeding error: %s", err)
@@ -90,10 +92,43 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding product : %w", err)
 	}
 
-	productIDs := make([]uuid.UUID, len(products))
+	productIDs := make(uuid.UUIDs, len(products))
 	for i, p := range products {
 		productIDs[i] = p.ProductID
 	}
+
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, contactIDs, busDomain.Supplier)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
+	}
+
+	supplierIDs := make(uuid.UUIDs, len(suppliers))
+	for i, s := range suppliers {
+		supplierIDs[i] = s.SupplierID
+	}
+
+	supplierProducts, err := supplierproductbus.TestSeedSupplierProducts(ctx, 10, productIDs, supplierIDs, busDomain.SupplierProduct)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding supplier product : %w", err)
+	}
+
+	supplierProductIDs := make(uuid.UUIDs, len(supplierProducts))
+	for i, sp := range supplierProducts {
+		supplierProductIDs[i] = sp.SupplierProductID
+	}
+
+	lotTracking, err := lottrackingbus.TestSeedLotTracking(ctx, 15, supplierProductIDs, busDomain.LotTracking)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding lot tracking : %w", err)
+	}
+
+	lotTrackingIDs := make(uuid.UUIDs, len(lotTracking))
+
+	for i, lt := range lotTracking {
+		lotTrackingIDs[i] = lt.LotID
+	}
+
+	warehouseCount := 5
 
 	// ADDRESSES
 	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
@@ -105,8 +140,6 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	for _, r := range regions {
 		ids = append(ids, r.ID)
 	}
-
-	warehouseCount := 5
 
 	ctys, err := citybus.TestSeedCities(ctx, warehouseCount, ids, busDomain.City)
 	if err != nil {
@@ -153,21 +186,22 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding inventory locations : %w", err)
 	}
 
-	inventoryLocationsIDs := make([]uuid.UUID, len(inventoryLocations))
+	inventoryLocationIDs := make(uuid.UUIDs, len(inventoryLocations))
 	for i, il := range inventoryLocations {
-		inventoryLocationsIDs[i] = il.LocationID
+		inventoryLocationIDs[i] = il.LocationID
 	}
 
-	inventoryItems, err := inventoryitembus.TestSeedInventoryItems(ctx, 30, inventoryLocationsIDs, productIDs, busDomain.InventoryItem)
+	serialNumbers, err := serialnumberbus.TestSeedSerialNumbers(ctx, 50, lotTrackingIDs, productIDs, inventoryLocationIDs, busDomain.SerialNumber)
 	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding inventory products : %w", err)
+		return unitest.SeedData{}, fmt.Errorf("seeding serial numbers : %w", err)
 	}
 
 	return unitest.SeedData{
 		Admins:             []unitest.User{{User: admins[0]}},
 		Products:           products,
+		LotTracking:        lotTracking,
 		InventoryLocations: inventoryLocations,
-		InventoryItems:     inventoryItems,
+		SerialNumbers:      serialNumbers,
 	}, nil
 }
 
@@ -175,79 +209,67 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Query",
-			ExpResp: []inventoryitembus.InventoryItem{
-				sd.InventoryItems[0],
-				sd.InventoryItems[1],
-				sd.InventoryItems[2],
-				sd.InventoryItems[3],
-				sd.InventoryItems[4],
+			ExpResp: []serialnumberbus.SerialNumber{
+				sd.SerialNumbers[0],
+				sd.SerialNumbers[1],
+				sd.SerialNumbers[2],
+				sd.SerialNumbers[3],
+				sd.SerialNumbers[4],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.InventoryItem.Query(ctx, inventoryitembus.QueryFilter{}, inventoryitembus.DefaultOrderBy, page.MustParse("1", "5"))
+				got, err := busDomain.SerialNumber.Query(ctx, serialnumberbus.QueryFilter{}, serialnumberbus.DefaultOrderBy, page.MustParse("1", "5"))
 				if err != nil {
 					return err
 				}
 				return got
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.([]inventoryitembus.InventoryItem)
+				gotResp, exists := got.([]serialnumberbus.SerialNumber)
 				if !exists {
-					return fmt.Sprintf("got is not a slice of inventory products: %v", got)
+					return fmt.Sprintf("got is not a slice of lot trackings: %v", got)
 				}
 
-				expResp := exp.([]inventoryitembus.InventoryItem)
+				expResp := exp.([]serialnumberbus.SerialNumber)
 
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
 	}
-
 }
 
 func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Create",
-			ExpResp: inventoryitembus.InventoryItem{
-				LocationID:            sd.InventoryLocations[0].LocationID,
-				ProductID:             sd.Products[0].ProductID,
-				Quantity:              10,
-				ReservedQuantity:      15,
-				AllocatedQuantity:     20,
-				MinimumStock:          1,
-				MaximumStock:          100,
-				ReorderPoint:          5,
-				EconomicOrderQuantity: 25,
-				SafetyStock:           40,
-				AvgDailyUsage:         6,
+			ExpResp: serialnumberbus.SerialNumber{
+				LotID:        sd.LotTracking[0].LotID,
+				ProductID:    sd.Products[0].ProductID,
+				LocationID:   sd.InventoryLocations[0].LocationID,
+				SerialNumber: "SN123456789",
+				Status:       "active",
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.InventoryItem.Create(ctx, inventoryitembus.NewInventoryItem{
-					LocationID:            sd.InventoryLocations[0].LocationID,
-					ProductID:             sd.Products[0].ProductID,
-					Quantity:              10,
-					ReservedQuantity:      15,
-					AllocatedQuantity:     20,
-					MinimumStock:          1,
-					MaximumStock:          100,
-					ReorderPoint:          5,
-					EconomicOrderQuantity: 25,
-					SafetyStock:           40,
-					AvgDailyUsage:         6,
-				})
+				newSN := serialnumberbus.NewSerialNumber{
+					LotID:        sd.LotTracking[0].LotID,
+					ProductID:    sd.Products[0].ProductID,
+					LocationID:   sd.InventoryLocations[0].LocationID,
+					SerialNumber: "SN123456789",
+					Status:       "active",
+				}
+				got, err := busDomain.SerialNumber.Create(ctx, newSN)
 				if err != nil {
 					return err
 				}
 				return got
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(inventoryitembus.InventoryItem)
+				gotResp, exists := got.(serialnumberbus.SerialNumber)
 				if !exists {
-					return fmt.Sprintf("got is not an inventory product: %v", got)
+					return fmt.Sprintf("got is not a lot tracking: %v", got)
 				}
 
-				expResp := exp.(inventoryitembus.InventoryItem)
-				expResp.ItemID = gotResp.ItemID
+				expResp := exp.(serialnumberbus.SerialNumber)
+				expResp.SerialID = gotResp.SerialID
 				expResp.CreatedDate = gotResp.CreatedDate
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
@@ -260,49 +282,38 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
-			Name: "Update",
-			ExpResp: inventoryitembus.InventoryItem{
-				ItemID:                sd.InventoryItems[0].ItemID,
-				LocationID:            sd.InventoryLocations[0].LocationID,
-				ProductID:             sd.Products[0].ProductID,
-				Quantity:              20,
-				ReservedQuantity:      25,
-				AllocatedQuantity:     30,
-				MinimumStock:          2,
-				MaximumStock:          102,
-				ReorderPoint:          10,
-				EconomicOrderQuantity: 50,
-				SafetyStock:           60,
-				AvgDailyUsage:         10,
-				CreatedDate:           sd.InventoryItems[0].CreatedDate,
+			Name: "update",
+			ExpResp: serialnumberbus.SerialNumber{
+				SerialID:     sd.SerialNumbers[0].SerialID,
+				LotID:        sd.LotTracking[1].LotID,
+				ProductID:    sd.Products[1].ProductID,
+				LocationID:   sd.InventoryLocations[1].LocationID,
+				SerialNumber: "SN987654321",
+				Status:       "inactive",
+				CreatedDate:  sd.SerialNumbers[0].CreatedDate,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.InventoryItem.Update(ctx, sd.InventoryItems[0], inventoryitembus.UpdateInventoryItem{
-					LocationID:            &sd.InventoryLocations[0].LocationID,
-					ProductID:             &sd.Products[0].ProductID,
-					Quantity:              dbtest.IntPointer(20),
-					ReservedQuantity:      dbtest.IntPointer(25),
-					AllocatedQuantity:     dbtest.IntPointer(30),
-					MinimumStock:          dbtest.IntPointer(2),
-					MaximumStock:          dbtest.IntPointer(102),
-					ReorderPoint:          dbtest.IntPointer(10),
-					EconomicOrderQuantity: dbtest.IntPointer(50),
-					SafetyStock:           dbtest.IntPointer(60),
-					AvgDailyUsage:         dbtest.IntPointer(10),
-				})
+				updateSN := serialnumberbus.UpdateSerialNumber{
+					LotID:        &sd.LotTracking[1].LotID,
+					ProductID:    &sd.Products[1].ProductID,
+					LocationID:   &sd.InventoryLocations[1].LocationID,
+					SerialNumber: dbtest.StringPointer("SN987654321"),
+					Status:       dbtest.StringPointer("inactive"),
+				}
+				got, err := busDomain.SerialNumber.Update(ctx, sd.SerialNumbers[0], updateSN)
 				if err != nil {
 					return err
 				}
 				return got
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(inventoryitembus.InventoryItem)
+				gotResp, exists := got.(serialnumberbus.SerialNumber)
 				if !exists {
-					return fmt.Sprintf("got is not an inventory product: %v", got)
+					return fmt.Sprintf("got is not a lot tracking: %v", got)
 				}
 
-				expResp := exp.(inventoryitembus.InventoryItem)
-				expResp.ItemID = gotResp.ItemID
+				expResp := exp.(serialnumberbus.SerialNumber)
+				expResp.SerialID = gotResp.SerialID
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
@@ -316,7 +327,11 @@ func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Delete",
 			ExcFunc: func(ctx context.Context) any {
-				return busDomain.InventoryItem.Delete(ctx, sd.InventoryItems[0])
+				err := busDomain.SerialNumber.Delete(ctx, sd.SerialNumbers[0])
+				if err != nil {
+					return err
+				}
+				return nil
 			},
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
