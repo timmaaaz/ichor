@@ -177,7 +177,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
-			Name: "Create",
+			Name: "Update",
 			ExpResp: metricsbus.Metric{
 				MetricID:          sd.Metrics[1].MetricID,
 				ProductID:         sd.Products[3].ProductID,

@@ -44,6 +44,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
+	"github.com/timmaaaz/ichor/business/domain/quality/inspectionbus"
+	"github.com/timmaaaz/ichor/business/domain/quality/inspectionbus/stores/inspectiondb"
 	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus"
 	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus/stores/metricsdb"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
@@ -165,7 +167,8 @@ type BusDomain struct {
 	CostHistory     *costhistorybus.Business
 
 	// Quality
-	Metrics *metricsbus.Business
+	Metrics    *metricsbus.Business
+	Inspection *inspectionbus.Business
 
 	// Lots
 	LotTracking *lottrackingbus.Business
@@ -231,6 +234,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Quality
 	metricsBus := metricsbus.NewBusiness(log, delegate, metricsdb.NewStore(log, db))
+	inspectionBus := inspectionbus.NewBusiness(log, delegate, inspectiondb.NewStore(log, db))
 
 	// Lots
 	lotTrackingBus := lottrackingbus.NewBusiness(log, delegate, lottrackingdb.NewStore(log, db))
@@ -276,6 +280,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Zones:               zoneBus,
 		InventoryLocation:   inventoryLocationBus,
 		InventoryItem:       inventoryItemBus,
+		Inspection:          inspectionBus,
 	}
 
 }
