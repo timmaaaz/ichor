@@ -23,6 +23,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/quality/inspectionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/quality/metricsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierapi"
 	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierproductapi"
@@ -82,6 +83,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
+	"github.com/timmaaaz/ichor/business/domain/quality/inspectionbus"
+	"github.com/timmaaaz/ichor/business/domain/quality/inspectionbus/stores/inspectiondb"
 	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus"
 	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus/stores/metricsdb"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
@@ -195,6 +198,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
 
 	metricsBus := metricsbus.NewBusiness(cfg.Log, delegate, metricsdb.NewStore(cfg.Log, cfg.DB))
+	inspectionBus := inspectionbus.NewBusiness(cfg.Log, delegate, inspectiondb.NewStore(cfg.Log, cfg.DB))
 
 	lotTrackingBus := lottrackingbus.NewBusiness(cfg.Log, delegate, lottrackingdb.NewStore(cfg.Log, cfg.DB))
 
@@ -448,5 +452,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:       cfg.AuthClient,
 		Log:              cfg.Log,
 		PermissionsBus:   permissionsBus,
+	})
+
+	inspectionapi.Routes(app, inspectionapi.Config{
+		InspectionBus:  inspectionBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 }

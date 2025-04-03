@@ -547,3 +547,23 @@ CREATE TABLE inventory_items (
    FOREIGN KEY (product_id) REFERENCES products(product_id),
    FOREIGN KEY (location_id) REFERENCES inventory_locations(location_id)
 );
+
+
+-- Version: 1.40
+-- Description: add quality_inspections
+CREATE TABLE quality_inspections (
+   inspection_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   inspector_id UUID NOT NULL,
+   lot_id UUID NOT NULL,
+   inspection_date TIMESTAMP NOT NULL,
+   next_inspection_date TIMESTAMP NOT NULL,
+   status VARCHAR(20) NOT NULL,
+   notes TEXT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (inspection_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id),
+   FOREIGN KEY (inspector_id) REFERENCES users(user_id),
+   FOREIGN KEY (lot_id) REFERENCES lot_tracking(lot_id)
+);
