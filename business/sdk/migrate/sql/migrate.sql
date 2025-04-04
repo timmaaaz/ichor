@@ -584,3 +584,21 @@ CREATE TABLE quality_inspections (
    FOREIGN KEY (inspector_id) REFERENCES users(user_id),
    FOREIGN KEY (lot_id) REFERENCES lot_tracking(lot_id)
 );
+-- Version: 1.41 
+-- Description: add inventory_transactions
+CREATE TABLE inventory_transactions (
+   transaction_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   location_id UUID NOT NULL,
+   user_id UUID NOT NULL,
+   transaction_type varchar(50) NOT NULL,
+   quantity INT NOT NULL,
+   reference_number varchar(100) NOT NULL,
+   transaction_date TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (transaction_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id),
+   FOREIGN KEY (location_id) REFERENCES inventory_locations(location_id),
+   FOREIGN KEY (user_id) REFERENCES users(user_id)
+);

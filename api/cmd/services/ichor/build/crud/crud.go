@@ -21,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/lots/lottrackingapi"
 	"github.com/timmaaaz/ichor/api/domain/http/lots/serialnumberapi"
+	"github.com/timmaaaz/ichor/api/domain/http/movement/inventorytransactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
@@ -74,6 +75,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus/stores/lottrackingdb"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus/stores/serialnumberdb"
+	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -214,6 +217,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, delegate, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 
 	permissionsBus := permissionsbus.NewBusiness(cfg.Log, delegate, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
+
+	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -469,5 +474,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:      cfg.AuthClient,
 		Log:             cfg.Log,
 		PermissionsBus:  permissionsBus,
+	})
+	inventorytransactionapi.Routes(app, inventorytransactionapi.Config{
+		InventoryTransactionBus: inventoryTransactionBus,
+		AuthClient:              cfg.AuthClient,
+		Log:                     cfg.Log,
+		PermissionsBus:          permissionsBus,
 	})
 }

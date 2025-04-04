@@ -23,6 +23,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
 	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
 	"github.com/timmaaaz/ichor/app/domain/lots/serialnumberapp"
+	"github.com/timmaaaz/ichor/app/domain/movement/inventorytransactionapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
@@ -38,7 +39,6 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/warehouse/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/warehouse/zoneapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
-	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -54,49 +54,48 @@ type User struct {
 
 // SeedData represents users for api tests.
 type SeedData struct {
-	Users                []User
-	Admins               []User
-	Countries            []countrybus.Country
-	Regions              []regionbus.Region
-	Cities               []cityapp.City
-	Streets              []streetapp.Street
-	ValidAssets          []validassetapp.ValidAsset
-	AssetTypes           []assettypeapp.AssetType
-	AssetConditions      []assetconditionapp.AssetCondition
-	ApprovalStatuses     []approvalstatusapp.ApprovalStatus
-	UserApprovalStatuses []approvalapp.UserApprovalStatus
-	UserApprovalComments []commentapp.UserApprovalComment
-	FulfillmentStatuses  []fulfillmentstatusapp.FulfillmentStatus
-	Tags                 []tagapp.Tag
-	AssetTags            []assettagapp.AssetTag
-	Titles               []titleapp.Title
-	ReportsTo            []reportstoapp.ReportsTo
-	Offices              []officeapp.Office
-	UserAssets           []userassetapp.UserAsset
-	Assets               []assetapp.Asset
-	ContactInfo          []contactinfoapp.ContactInfo
-	Brands               []brandapp.Brand
-	ProductCategories    []productcategoryapp.ProductCategory
-	Warehouses           []warehouseapp.Warehouse
-	Roles                []roleapp.Role
-	UserRoles            []userroleapp.UserRole
-	TableAccesses        []tableaccessapp.TableAccess
-	Products             []productapp.Product
-	PhysicalAttributes   []physicalattributeapp.PhysicalAttribute
-	ProductCosts         []productcostapp.ProductCost
-	Suppliers            []supplierapp.Supplier
-	CostHistory          []costhistoryapp.CostHistory
-	SupplierProducts     []supplierproductapp.SupplierProduct
-	Metrics              []metricsapp.Metric
-	LotTracking          []lottrackingapp.LotTracking
-	Zones                []zoneapp.Zone
-	InventoryLocations   []inventorylocationapp.InventoryLocation
-	InventoryItems       []inventoryitemapp.InventoryItem
-	Inspections          []inspectionapp.Inspection
-	SerialNumbers        []serialnumberapp.SerialNumber
+	Users                 []User
+	Admins                []User
+	Regions               []regionbus.Region
+	Cities                []cityapp.City
+	Streets               []streetapp.Street
+	ValidAssets           []validassetapp.ValidAsset
+	AssetTypes            []assettypeapp.AssetType
+	AssetConditions       []assetconditionapp.AssetCondition
+	ApprovalStatuses      []approvalstatusapp.ApprovalStatus
+	UserApprovalStatuses  []approvalapp.UserApprovalStatus
+	UserApprovalComments  []commentapp.UserApprovalComment
+	FulfillmentStatuses   []fulfillmentstatusapp.FulfillmentStatus
+	Tags                  []tagapp.Tag
+	AssetTags             []assettagapp.AssetTag
+	Titles                []titleapp.Title
+	ReportsTo             []reportstoapp.ReportsTo
+	Offices               []officeapp.Office
+	UserAssets            []userassetapp.UserAsset
+	Assets                []assetapp.Asset
+	ContactInfo           []contactinfoapp.ContactInfo
+	Brands                []brandapp.Brand
+	ProductCategories     []productcategoryapp.ProductCategory
+	Warehouses            []warehouseapp.Warehouse
+	Roles                 []roleapp.Role
+	UserRoles             []userroleapp.UserRole
+	TableAccesses         []tableaccessapp.TableAccess
+	Products              []productapp.Product
+	PhysicalAttributes    []physicalattributeapp.PhysicalAttribute
+	ProductCosts          []productcostapp.ProductCost
+	Suppliers             []supplierapp.Supplier
+	CostHistory           []costhistoryapp.CostHistory
+	SupplierProducts      []supplierproductapp.SupplierProduct
+	Metrics               []metricsapp.Metric
+	LotTracking           []lottrackingapp.LotTracking
+	Zones                 []zoneapp.Zone
+	InventoryLocations    []inventorylocationapp.InventoryLocation
+	InventoryItems        []inventoryitemapp.InventoryItem
+	Inspections           []inspectionapp.Inspection
+	SerialNumbers         []serialnumberapp.SerialNumber
+	InventoryTransactions []inventorytransactionapp.InventoryTransaction
 }
 
-// Table represent fields needed for running an api test.
 type Table struct {
 	Name       string
 	URL        string
