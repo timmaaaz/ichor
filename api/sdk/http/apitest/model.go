@@ -22,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/location/officeapp"
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
 	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
+	"github.com/timmaaaz/ichor/app/domain/lots/serialnumberapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
@@ -92,6 +93,7 @@ type SeedData struct {
 	InventoryLocations   []inventorylocationapp.InventoryLocation
 	InventoryItems       []inventoryitemapp.InventoryItem
 	Inspections          []inspectionapp.Inspection
+	SerialNumbers        []serialnumberapp.SerialNumber
 }
 
 // Table represent fields needed for running an api test.

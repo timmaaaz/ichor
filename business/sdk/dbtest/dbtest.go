@@ -32,6 +32,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
 	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus/stores/lottrackingdb"
+	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus/stores/serialnumberdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -171,7 +173,8 @@ type BusDomain struct {
 	Inspection *inspectionbus.Business
 
 	// Lots
-	LotTracking *lottrackingbus.Business
+	LotTracking  *lottrackingbus.Business
+	SerialNumber *serialnumberbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -238,6 +241,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Lots
 	lotTrackingBus := lottrackingbus.NewBusiness(log, delegate, lottrackingdb.NewStore(log, db))
+	serialNumberBus := serialnumberbus.NewBusiness(log, delegate, serialnumberdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:            delegate,
@@ -281,6 +285,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		InventoryLocation:   inventoryLocationBus,
 		InventoryItem:       inventoryItemBus,
 		Inspection:          inspectionBus,
+		SerialNumber:        serialNumberBus,
 	}
 
 }
