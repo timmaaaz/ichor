@@ -30,6 +30,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
@@ -100,6 +101,7 @@ type SeedData struct {
 	SerialNumbers         []serialnumberbus.SerialNumber
 	InventoryTransactions []inventorytransactionbus.InventoryTransaction
 	InventoryAdjustments  []inventoryadjustmentbus.InventoryAdjustment
+	TransferOrders        []transferorderbus.TransferOrder
 }
 
 type Table struct {
