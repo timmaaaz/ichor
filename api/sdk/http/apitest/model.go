@@ -23,6 +23,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
 	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
 	"github.com/timmaaaz/ichor/app/domain/lots/serialnumberapp"
+	"github.com/timmaaaz/ichor/app/domain/movement/inventoryadjustmentapp"
 	"github.com/timmaaaz/ichor/app/domain/movement/inventorytransactionapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/tableaccessapp"
@@ -39,6 +40,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/warehouse/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/warehouse/zoneapp"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
+	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -56,6 +58,7 @@ type User struct {
 type SeedData struct {
 	Users                 []User
 	Admins                []User
+	Countries             []countrybus.Country
 	Regions               []regionbus.Region
 	Cities                []cityapp.City
 	Streets               []streetapp.Street
@@ -94,6 +97,7 @@ type SeedData struct {
 	Inspections           []inspectionapp.Inspection
 	SerialNumbers         []serialnumberapp.SerialNumber
 	InventoryTransactions []inventorytransactionapp.InventoryTransaction
+	InventoryAdjustments  []inventoryadjustmentapp.InventoryAdjustment
 }
 
 type Table struct {

@@ -22,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/lots/lottrackingapi"
 	"github.com/timmaaaz/ichor/api/domain/http/lots/serialnumberapi"
+	"github.com/timmaaaz/ichor/api/domain/http/movement/inventoryadjustmentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventorytransactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
@@ -75,6 +76,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus/stores/lottrackingdb"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus/stores/serialnumberdb"
+	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus"
+	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus/stores/inventoryadjustmentdb"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
@@ -213,6 +216,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	permissionsBus := permissionsbus.NewBusiness(cfg.Log, delegate, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB))
+	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -509,5 +513,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:              cfg.AuthClient,
 		Log:                     cfg.Log,
 		PermissionsBus:          permissionsBus,
+	})
+
+	inventoryadjustmentapi.Routes(app, inventoryadjustmentapi.Config{
+		InventoryAdjustmentBus: inventoryAdjustmentBus,
+		AuthClient:             cfg.AuthClient,
+		Log:                    cfg.Log,
+		PermissionsBus:         permissionsBus,
 	})
 }
