@@ -623,4 +623,26 @@ CREATE TABLE inventory_adjustments (
    FOREIGN KEY (location_id) REFERENCES inventory_locations(location_id),
    FOREIGN KEY (adjusted_by) REFERENCES users(user_id),
    FOREIGN KEY (approved_by) REFERENCES users(user_id)
-)
+);
+
+-- Version: 1.43
+-- Description: transfer_orders
+CREATE TABLE transfer_orders (
+   transfer_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   from_location_id UUID NOT NULL,
+   to_location_id UUID NOT NULL,
+   requested_by UUID NOT NULL,
+   approved_by UUID NOT NULL,
+   quantity int NOT NULL,
+   status varchar(20) NOT NULL,
+   transfer_date TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (transfer_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id),
+   FOREIGN KEY (from_location_id) REFERENCES inventory_locations(location_id),
+   FOREIGN KEY (to_location_id) REFERENCES inventory_locations(location_id),
+   FOREIGN KEY (requested_by) REFERENCES users(user_id),
+   FOREIGN KEY (approved_by) REFERENCES users(user_id)
+);

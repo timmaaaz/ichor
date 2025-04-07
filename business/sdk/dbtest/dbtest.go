@@ -38,6 +38,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus/stores/inventoryadjustmentdb"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
+	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus/stores/transferorderdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -183,6 +185,7 @@ type BusDomain struct {
 	// Movement
 	InventoryTransaction *inventorytransactionbus.Business
 	InventoryAdjustment  *inventoryadjustmentbus.Business
+	TransferOrder        *transferorderbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -254,6 +257,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Movement
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(log, delegate, inventorytransactiondb.NewStore(log, db))
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(log, delegate, inventoryadjustmentdb.NewStore(log, db))
+	transferOrderBus := transferorderbus.NewBusiness(log, delegate, transferorderdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:             delegate,
@@ -300,6 +304,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		SerialNumber:         serialNumberBus,
 		InventoryTransaction: inventoryTransactionBus,
 		InventoryAdjustment:  inventoryAdjustmentBus,
+		TransferOrder:        transferOrderBus,
 	}
 
 }

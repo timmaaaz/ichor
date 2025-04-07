@@ -25,6 +25,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/lots/serialnumberapp"
 	"github.com/timmaaaz/ichor/app/domain/movement/inventoryadjustmentapp"
 	"github.com/timmaaaz/ichor/app/domain/movement/inventorytransactionapp"
+	"github.com/timmaaaz/ichor/app/domain/movement/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
@@ -98,6 +99,7 @@ type SeedData struct {
 	SerialNumbers         []serialnumberapp.SerialNumber
 	InventoryTransactions []inventorytransactionapp.InventoryTransaction
 	InventoryAdjustments  []inventoryadjustmentapp.InventoryAdjustment
+	TransferOrders        []transferorderapp.TransferOrder
 }
 
 type Table struct {
