@@ -602,3 +602,25 @@ CREATE TABLE inventory_transactions (
    FOREIGN KEY (location_id) REFERENCES inventory_locations(location_id),
    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
+
+
+-- Version: 1.42
+-- Description: add inventory_adjustments
+CREATE TABLE inventory_adjustments (
+   adjustment_id UUID NOT NULL,
+   product_id UUID NOT NULL,
+   location_id UUID NOT NULL,
+   adjusted_by UUID NOT NULL,
+   approved_by UUID NOT NULL,
+   quantity_change INT NOT NULL,
+   reason_code varchar(50) NOT NULL,
+   notes TEXT NOT NULL,
+   adjustment_date TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (adjustment_id),
+   FOREIGN KEY (product_id) REFERENCES products(product_id),
+   FOREIGN KEY (location_id) REFERENCES inventory_locations(location_id),
+   FOREIGN KEY (adjusted_by) REFERENCES users(user_id),
+   FOREIGN KEY (approved_by) REFERENCES users(user_id)
+)

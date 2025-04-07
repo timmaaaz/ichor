@@ -28,6 +28,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
+	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
@@ -98,6 +99,7 @@ type SeedData struct {
 	Inspections           []inspectionbus.Inspection
 	SerialNumbers         []serialnumberbus.SerialNumber
 	InventoryTransactions []inventorytransactionbus.InventoryTransaction
+	InventoryAdjustments  []inventoryadjustmentbus.InventoryAdjustment
 }
 
 type Table struct {
