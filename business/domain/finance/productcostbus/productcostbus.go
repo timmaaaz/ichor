@@ -33,7 +33,7 @@ type Storer interface {
 	Delete(ctx context.Context, productCost ProductCost) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ProductCost, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	QueryByID(ctx context.Context, productCostID uuid.UUID) (ProductCost, error)
+	QueryByID(ctx context.Context, productID uuid.UUID) (ProductCost, error)
 }
 
 // Business manages the set of APIs for product cost access.
@@ -75,7 +75,7 @@ func (b *Business) Create(ctx context.Context, npc NewProductCost) (ProductCost,
 	now := time.Now()
 
 	pc := ProductCost{
-		CostID:            uuid.New(),
+		ID:                uuid.New(),
 		ProductID:         npc.ProductID,
 		PurchaseCost:      npc.PurchaseCost,
 		SellingPrice:      npc.SellingPrice,
@@ -176,13 +176,13 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // QueryByID finds the product cost by the specified ID.
-func (b *Business) QueryByID(ctx context.Context, productCostID uuid.UUID) (ProductCost, error) {
+func (b *Business) QueryByID(ctx context.Context, productID uuid.UUID) (ProductCost, error) {
 	ctx, span := otel.AddSpan(ctx, "business.productcostbus.querybyid")
 	defer span.End()
 
-	pc, err := b.storer.QueryByID(ctx, productCostID)
+	pc, err := b.storer.QueryByID(ctx, productID)
 	if err != nil {
-		return ProductCost{}, fmt.Errorf("query: productCostID[%s]: %w", productCostID, err)
+		return ProductCost{}, fmt.Errorf("query: productID[%s]: %w", productID, err)
 	}
 
 	return pc, nil

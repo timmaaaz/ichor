@@ -11,7 +11,7 @@ import (
 )
 
 type metric struct {
-	MetricID          uuid.UUID      `db:"quality_metric_id"`
+	MetricID          uuid.UUID      `db:"id"`
 	ProductID         uuid.UUID      `db:"product_id"`
 	ReturnRate        sql.NullString `db:"return_rate"`
 	DefectRate        sql.NullString `db:"defect_rate"`

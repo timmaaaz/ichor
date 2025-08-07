@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (productcostapp.QueryParams, error) {
 		Page:              values.Get("page"),
 		Rows:              values.Get("rows"),
 		OrderBy:           values.Get("orderBy"),
-		CostID:            values.Get("product_cost_id"),
+		ID:                values.Get("product_cost_id"),
 		ProductID:         values.Get("product_id"),
 		PurchaseCost:      values.Get("purchase_cost"),
 		CreatedDate:       values.Get("created_date"),

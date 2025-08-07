@@ -16,7 +16,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -49,7 +49,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				InsuranceValue:    sd.ProductCosts[11].InsuranceValue,
 				EffectiveDate:     sd.ProductCosts[12].EffectiveDate,
 				CreatedDate:       sd.ProductCosts[0].CreatedDate,
-				CostID:            sd.ProductCosts[0].CostID,
+				ID:                sd.ProductCosts[0].ID,
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*productcostapp.ProductCost)
@@ -70,7 +70,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-product-uuid",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -90,7 +90,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &productcostapp.UpdateProductCost{
-				ProductID: &sd.ProductCosts[0].CostID,
+				ProductID: &sd.ProductCosts[0].ID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "invalid UUID length: 10"),
@@ -105,7 +105,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].ID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -117,7 +117,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -129,7 +129,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -167,7 +167,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "product-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].CostID),
+			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,

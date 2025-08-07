@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (userassetapp.QueryParams, error) {
 		Page:                values.Get("page"),
 		Rows:                values.Get("rows"),
 		OrderBy:             values.Get("orderBy"),
-		ID:                  values.Get("user_asset_id"),
+		ID:                  values.Get("id"),
 		UserID:              values.Get("user_id"),
 		AssetID:             values.Get("asset_id"),
 		ApprovedBy:          values.Get("approved_by"),

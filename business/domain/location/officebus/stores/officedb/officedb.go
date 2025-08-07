@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (officebus.Storer, error) {
 func (s *Store) Create(ctx context.Context, at officebus.Office) error {
 	const q = `
     INSERT INTO offices (
-        office_id, name, street_id
+        id, name, street_id
     ) VALUES (
-        :office_id, :name, :street_id
+        :id, :name, :street_id
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBOffice(at)); err != nil {
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, at officebus.Office) error {
         name = :name,
         street_id = :street_id
     WHERE
-        office_id = :office_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBOffice(at)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, at officebus.Office) error {
     DELETE FROM
         offices
     WHERE
-        office_id = :office_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBOffice(at)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -109,7 +109,7 @@ func (s *Store) Query(ctx context.Context, filter officebus.QueryFilter, orderBy
 
 	const q = `
     SELECT
-        office_id, name, street_id
+        id, name, street_id
     FROM
         offices`
 
@@ -158,18 +158,18 @@ func (s *Store) Count(ctx context.Context, filter officebus.QueryFilter) (int, e
 // QueryByID retrieves a single office by its id.
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (officebus.Office, error) {
 	data := struct {
-		ID string `db:"office_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        office_id, name, street_id
+        id, name, street_id
     FROM
         offices
     WHERE
-        office_id = :office_id
+        id = :id
     `
 
 	var dbO office

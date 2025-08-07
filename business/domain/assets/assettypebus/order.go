@@ -7,7 +7,7 @@ var DefaultOrderBy = order.NewBy(OrderByName, order.ASC)
 
 // Set of fields that the results can be ordered by.
 const (
-	OrderByID          = "asset_type_id"
+	OrderByID          = "id"
 	OrderByName        = "name"
 	OrderByDescription = "description"
 )

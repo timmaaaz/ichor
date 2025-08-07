@@ -57,9 +57,9 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding assets : %w", err)
 	}
 
-	assetIDs := make([]uuid.UUID, 0, len(assets))
+	ValidAssetIDs := make([]uuid.UUID, 0, len(assets))
 	for _, a := range assets {
-		assetIDs = append(assetIDs, a.ID)
+		ValidAssetIDs = append(ValidAssetIDs, a.ID)
 	}
 
 	// ============= Tag Creation =================
@@ -76,7 +76,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 
 	// ============= Asset-Tag Creation =================
 
-	assetTags, err := assettagbus.TestSeedAssetTag(ctx, 20, assetIDs, tagIDs, busDomain.AssetTag)
+	assetTags, err := assettagbus.TestSeedAssetTag(ctx, 20, ValidAssetIDs, tagIDs, busDomain.AssetTag)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding asset tags : %w", err)
 	}
@@ -129,8 +129,8 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: sd.AssetTags[0],
 			ExcFunc: func(ctx context.Context) any {
 				nat := assettagbus.NewAssetTag{
-					AssetID: sd.AssetTags[0].AssetID,
-					TagID:   sd.AssetTags[0].TagID,
+					ValidAssetID: sd.AssetTags[0].ValidAssetID,
+					TagID:        sd.AssetTags[0].TagID,
 				}
 
 				got, err := busDomain.AssetTag.Create(ctx, nat)
@@ -163,14 +163,14 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "update",
 			ExpResp: assettagbus.AssetTag{
-				ID:      sd.AssetTags[0].ID,
-				AssetID: sd.AssetTags[1].AssetID,
-				TagID:   sd.AssetTags[1].TagID,
+				ID:           sd.AssetTags[0].ID,
+				ValidAssetID: sd.AssetTags[1].ValidAssetID,
+				TagID:        sd.AssetTags[1].TagID,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				uat := assettagbus.UpdateAssetTag{
-					AssetID: &sd.AssetTags[1].AssetID,
-					TagID:   &sd.AssetTags[1].TagID,
+					ValidAssetID: &sd.AssetTags[1].ValidAssetID,
+					TagID:        &sd.AssetTags[1].TagID,
 				}
 
 				got, err := busDomain.AssetTag.Update(ctx, sd.AssetTags[0], uat)

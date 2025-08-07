@@ -11,8 +11,8 @@ func applyFilter(filter titlebus.QueryFilter, data map[string]any, buf *bytes.Bu
 	var wc []string
 
 	if filter.ID != nil {
-		data["title_id"] = *filter.ID
-		wc = append(wc, "title_id = :title_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.Description != nil {

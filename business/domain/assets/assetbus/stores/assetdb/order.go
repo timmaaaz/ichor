@@ -8,7 +8,7 @@ import (
 )
 
 var orderByFields = map[string]string{
-	assetbus.OrderByID:              "asset_id",
+	assetbus.OrderByID:              "id",
 	assetbus.OrderByConditionID:     "asset_condition_id",
 	assetbus.OrderByLastMaintenance: "last_maintenance_time",
 	assetbus.OrderBySerialNumber:    "serial_number",

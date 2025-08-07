@@ -49,12 +49,12 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	contactIDs := make(uuid.UUIDs, len(contactInfo))
+	ContactInfoIDs := make(uuid.UUIDs, len(contactInfo))
 	for i, c := range contactInfo {
-		contactIDs[i] = c.ID
+		ContactInfoIDs[i] = c.ID
 	}
 
-	brand, err := brandbus.TestSeedBrands(ctx, 5, contactIDs, busDomain.Brand)
+	brand, err := brandbus.TestSeedBrands(ctx, 5, ContactInfoIDs, busDomain.Brand)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding brand : %w", err)
 	}
@@ -85,7 +85,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		productIDs[i] = p.ProductID
 	}
 
-	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, contactIDs, busDomain.Supplier)
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, ContactInfoIDs, busDomain.Supplier)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}

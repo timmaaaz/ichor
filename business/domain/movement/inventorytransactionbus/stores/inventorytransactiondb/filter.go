@@ -11,8 +11,8 @@ func applyFilter(filter inventorytransactionbus.QueryFilter, data map[string]any
 	var wc []string
 
 	if filter.InventoryTransactionID != nil {
-		data["transaction_id"] = *filter.InventoryTransactionID
-		wc = append(wc, "transaction_id = :transaction_id")
+		data["id"] = *filter.InventoryTransactionID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.ProductID != nil {

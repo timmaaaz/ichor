@@ -8,7 +8,7 @@ import (
 var defaultOrderBy = order.NewBy("line_1", order.ASC)
 
 var orderByFields = map[string]string{
-	"street_id":   streetbus.OrderByID,
+	"id":          streetbus.OrderByID,
 	"city_id":     streetbus.OrderByCityID,
 	"line_1":      streetbus.OrderByLine1,
 	"line_2":      streetbus.OrderByLine2,

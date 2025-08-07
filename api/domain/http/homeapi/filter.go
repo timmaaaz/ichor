@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) homeapp.QueryParams {
 		Page:             values.Get("page"),
 		Rows:             values.Get("rows"),
 		OrderBy:          values.Get("orderBy"),
-		ID:               values.Get("home_id"),
+		ID:               values.Get("id"),
 		UserID:           values.Get("user_id"),
 		Type:             values.Get("type"),
 		StartCreatedDate: values.Get("start_created_date"),

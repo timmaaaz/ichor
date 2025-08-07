@@ -9,7 +9,7 @@ import (
 )
 
 type home struct {
-	ID          uuid.UUID `db:"home_id"`
+	ID          uuid.UUID `db:"id"`
 	UserID      uuid.UUID `db:"user_id"`
 	Type        string    `db:"type"`
 	Address1    string    `db:"address_1"`

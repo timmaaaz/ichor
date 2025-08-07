@@ -10,7 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/types"
 )
 
-func TestNewSupplier(n int, contactIDs uuid.UUIDs) []NewSupplier {
+func TestNewSupplier(n int, ContactInfoIDs uuid.UUIDs) []NewSupplier {
 	newSuppliers := make([]NewSupplier, n)
 
 	idx := rand.Intn(10000)
@@ -18,20 +18,20 @@ func TestNewSupplier(n int, contactIDs uuid.UUIDs) []NewSupplier {
 		idx++
 
 		newSuppliers[i] = NewSupplier{
-			ContactID:    contactIDs[idx%len(contactIDs)],
-			Name:         fmt.Sprintf("Name%d", idx),
-			PaymentTerms: fmt.Sprintf("PaymentTerms%d", idx),
-			LeadTimeDays: idx,
-			Rating:       types.MustParseRoundedFloat(fmt.Sprintf("%.2f", rand.Float64()*10)),
-			IsActive:     idx%2 == 0,
+			ContactInfoID: ContactInfoIDs[idx%len(ContactInfoIDs)],
+			Name:          fmt.Sprintf("Name%d", idx),
+			PaymentTerms:  fmt.Sprintf("PaymentTerms%d", idx),
+			LeadTimeDays:  idx,
+			Rating:        types.MustParseRoundedFloat(fmt.Sprintf("%.2f", rand.Float64()*10)),
+			IsActive:      idx%2 == 0,
 		}
 	}
 
 	return newSuppliers
 }
 
-func TestSeedSuppliers(ctx context.Context, n int, contactIDs uuid.UUIDs, api *Business) ([]Supplier, error) {
-	newSuppliers := TestNewSupplier(n, contactIDs)
+func TestSeedSuppliers(ctx context.Context, n int, ContactInfoIDs uuid.UUIDs, api *Business) ([]Supplier, error) {
+	newSuppliers := TestNewSupplier(n, ContactInfoIDs)
 
 	suppliers := make([]Supplier, len(newSuppliers))
 

@@ -5,7 +5,7 @@ import "github.com/timmaaaz/ichor/business/sdk/order"
 var DefaultOrderBy = order.NewBy(OrderByProductID, order.ASC)
 
 const (
-	OrderByAttributeID         = "attribute_id"
+	OrderByAttributeID         = "id"
 	OrderByProductID           = "product_id"
 	OrderByLength              = "length"
 	OrderByWidth               = "width"

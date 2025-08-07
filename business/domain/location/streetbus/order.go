@@ -7,7 +7,7 @@ var DefaultOrderBy = order.NewBy(OrderByLine1, order.ASC)
 
 // Set of fields that the results can be ordered by.
 const (
-	OrderByID         = "street_id"
+	OrderByID         = "id"
 	OrderByCityID     = "city_id"
 	OrderByLine1      = "line_1"
 	OrderByLine2      = "line_2"

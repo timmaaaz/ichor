@@ -6,7 +6,7 @@ import (
 )
 
 type street struct {
-	ID         uuid.UUID `db:"street_id"`
+	ID         uuid.UUID `db:"id"`
 	CityID     uuid.UUID `db:"city_id"`
 	Line1      string    `db:"line_1"`
 	Line2      string    `db:"line_2"`

@@ -6,7 +6,7 @@ import (
 )
 
 type assetType struct {
-	ID          uuid.UUID `db:"asset_type_id"`
+	ID          uuid.UUID `db:"id"`
 	Name        string    `db:"name"`
 	Description string    `db:"description"`
 }

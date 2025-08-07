@@ -76,9 +76,9 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
 	// Now we can insert
 	const q = `
 	INSERT INTO table_access (
-		table_access_id, role_id, table_name, can_create, can_read, can_update, can_delete
+		id, role_id, table_name, can_create, can_read, can_update, can_delete
 	) VALUES (
-		:table_access_id, :role_id, :table_name, :can_create, :can_read, :can_update, :can_delete
+		:id, :role_id, :table_name, :can_create, :can_read, :can_update, :can_delete
 	)
 	`
 
@@ -106,7 +106,7 @@ func (s *Store) Update(ctx context.Context, ta tableaccessbus.TableAccess) error
 		can_update = :can_update,
 		can_delete = :can_delete
 	WHERE 
-		table_access_id = :table_access_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTableAccess(ta)); err != nil {
@@ -122,7 +122,7 @@ func (s *Store) Delete(ctx context.Context, ta tableaccessbus.TableAccess) error
 	DELETE FROM 
 		table_access
 	WHERE 
-		table_access_id = :table_access_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTableAccess(ta)); err != nil {
@@ -141,7 +141,7 @@ func (s *Store) Query(ctx context.Context, filter tableaccessbus.QueryFilter, or
 
 	const q = `
 	SELECT
-		table_access_id, role_id, table_name, can_create, can_read, can_update, can_delete
+		id, role_id, table_name, can_create, can_read, can_update, can_delete
 	FROM
 		table_access`
 
@@ -192,14 +192,14 @@ func (s *Store) Count(ctx context.Context, filter tableaccessbus.QueryFilter) (i
 func (s *Store) QueryByID(ctx context.Context, tableAccessID uuid.UUID) (tableaccessbus.TableAccess, error) {
 	const q = `
 	SELECT
-		table_access_id, role_id, table_name, can_create, can_read, can_update, can_delete
+		id, role_id, table_name, can_create, can_read, can_update, can_delete
 	FROM
 		table_access
 	WHERE
-		table_access_id = :table_access_id
+		id = :id
 	`
 
-	data := map[string]any{"table_access_id": tableAccessID}
+	data := map[string]any{"id": tableAccessID}
 
 	var ta tableAccess
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ta); err != nil {
@@ -215,7 +215,7 @@ func (s *Store) QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID) ([]tabl
 
 	const q = `
 	SELECT
-		table_access_id, role_id, table_name, can_create, can_read, can_update, can_delete
+		id, role_id, table_name, can_create, can_read, can_update, can_delete
 	FROM
 		table_access
 	WHERE

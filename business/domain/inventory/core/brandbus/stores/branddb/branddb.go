@@ -51,9 +51,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (brandbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, brand brandbus.Brand) error {
 	const q = `
     INSERT INTO brands (
-        brand_id, name, contact_info_id, created_date, updated_date
+        id, name, contact_info_id, created_date, updated_date
     ) VALUES (
-		:brand_id, :name, :contact_info_id, :created_date, :updated_date
+		:id, :name, :contact_info_id, :created_date, :updated_date
 	)
     `
 
@@ -79,7 +79,7 @@ func (s *Store) Update(ctx context.Context, ass brandbus.Brand) error {
         contact_info_id = :contact_info_id,
         updated_date = :updated_date
 	WHERE
-		brand_id = :brand_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBBrand(ass)); err != nil {
@@ -100,7 +100,7 @@ func (s *Store) Delete(ctx context.Context, brand brandbus.Brand) error {
 	DELETE FROM
 		brands
 	WHERE
-		brand_id = :brand_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBBrand(brand)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -118,7 +118,7 @@ func (s *Store) Query(ctx context.Context, filter brandbus.QueryFilter, orderBy 
 
 	const q = `
     SELECT
-		brand_id, name, contact_info_id, created_date, updated_date
+		id, name, contact_info_id, created_date, updated_date
     FROM
         brands`
 
@@ -167,18 +167,18 @@ func (s *Store) Count(ctx context.Context, filter brandbus.QueryFilter) (int, er
 // QueryByID retrieves a single asset from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (brandbus.Brand, error) {
 	data := struct {
-		ID string `db:"brand_id"`
+		ID string `db:"id"`
 	}{
 		ID: userBrandID.String(),
 	}
 
 	const q = `
     SELECT
-        brand_id, name, contact_info_id, created_date, updated_date
+        id, name, contact_info_id, created_date, updated_date
     FROM
         brands
     WHERE
-        brand_id = :brand_id
+        id = :id
     `
 	var ci brand
 

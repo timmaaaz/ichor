@@ -6,7 +6,7 @@ import (
 )
 
 type contactInfo struct {
-	ID                   uuid.UUID `db:"contact_info_id"`
+	ID                   uuid.UUID `db:"id"`
 	FirstName            string    `db:"first_name"`
 	LastName             string    `db:"last_name"`
 	PrimaryPhone         string    `db:"primary_phone_number"`

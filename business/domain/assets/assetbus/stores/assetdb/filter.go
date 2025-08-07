@@ -11,8 +11,8 @@ func applyFilter(filter assetbus.QueryFilter, data map[string]interface{}, buf *
 	var wc []string
 
 	if filter.ID != nil {
-		data["asset_id"] = *filter.ID
-		wc = append(wc, "asset_id = :asset_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.LastMaintenance != nil {

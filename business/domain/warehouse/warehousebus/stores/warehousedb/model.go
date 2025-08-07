@@ -8,7 +8,7 @@ import (
 )
 
 type warehouse struct {
-	ID          uuid.UUID `db:"warehouse_id"`
+	ID          uuid.UUID `db:"id"`
 	StreetID    uuid.UUID `db:"street_id"`
 	Name        string    `db:"name"`
 	IsActive    bool      `db:"is_active"`

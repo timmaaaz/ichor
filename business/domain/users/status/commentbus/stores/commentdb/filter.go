@@ -11,8 +11,8 @@ func applyFilter(filter commentbus.QueryFilter, data map[string]any, buf *bytes.
 	var wc []string
 
 	if filter.ID != nil {
-		data["comment_id"] = *filter.ID
-		wc = append(wc, "comment_id = :comment_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.Comment != nil {

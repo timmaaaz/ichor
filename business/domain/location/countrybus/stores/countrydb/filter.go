@@ -12,8 +12,8 @@ func applyFilter(filter countrybus.QueryFilter, data map[string]interface{}, buf
 	var wc []string
 
 	if filter.ID != nil {
-		data["country_id"] = *filter.ID
-		wc = append(wc, "country_id = :country_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.Number != nil {

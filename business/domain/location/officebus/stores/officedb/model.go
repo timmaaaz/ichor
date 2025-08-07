@@ -6,7 +6,7 @@ import (
 )
 
 type office struct {
-	ID       uuid.UUID `db:"office_id"`
+	ID       uuid.UUID `db:"id"`
 	Name     string    `db:"name"`
 	StreetID uuid.UUID `db:"street_id"`
 }

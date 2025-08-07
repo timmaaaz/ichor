@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (approvalbus.Storer, error)
 func (s *Store) Create(ctx context.Context, as approvalbus.UserApprovalStatus) error {
 	const q = `
     INSERT INTO user_approval_status (
-        user_approval_status_id, icon_id, name
+        id, icon_id, name
     ) VALUES (
-        :user_approval_status_id, :icon_id, :name
+        :id, :icon_id, :name
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserApprovalStatus(as)); err != nil {
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, as approvalbus.UserApprovalStatus) e
 	    icon_id = :icon_id,
         name = :name
 	WHERE 
-		user_approval_status_id = :user_approval_status_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserApprovalStatus(as)); err != nil {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, as approvalbus.UserApprovalStatus) e
 	DELETE FROM
 		user_approval_status
 	WHERE
-		user_approval_status_id = :user_approval_status_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserApprovalStatus(as)); err != nil {
@@ -110,7 +110,7 @@ func (s *Store) Query(ctx context.Context, filter approvalbus.QueryFilter, order
 
 	const q = `
 	SELECT 
-		user_approval_status_id, icon_id, name
+		id, icon_id, name
 	FROM
 		user_approval_status
 	`
@@ -161,18 +161,18 @@ func (s *Store) Count(ctx context.Context, filter approvalbus.QueryFilter) (int,
 // QueryByID finds the approval status by the specified ID.
 func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (approvalbus.UserApprovalStatus, error) {
 	data := struct {
-		ID string `db:"user_approval_status_id"`
+		ID string `db:"id"`
 	}{
 		ID: aprvlStatusID.String(),
 	}
 
 	const q = `
     SELECT
-        user_approval_status_id, icon_id, name
+        id, icon_id, name
     FROM
         user_approval_status
     WHERE
-        user_approval_status_id = :user_approval_status_id
+        id = :id
     `
 
 	var userApprovalStatus userApprovalStatus

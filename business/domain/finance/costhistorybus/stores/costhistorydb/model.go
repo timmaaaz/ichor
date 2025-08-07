@@ -11,7 +11,7 @@ import (
 )
 
 type costHistory struct {
-	CostHistoryID uuid.UUID      `db:"history_id"`
+	CostHistoryID uuid.UUID      `db:"id"`
 	ProductID     uuid.UUID      `db:"product_id"`
 	CostType      string         `db:"cost_type"`
 	Amount        sql.NullString `db:"amount"`

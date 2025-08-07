@@ -48,9 +48,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (metricsbus.Storer, error) 
 func (s *Store) Create(ctx context.Context, metric metricsbus.Metric) error {
 	const q = `
 	INSERT INTO quality_metrics (
-		quality_metric_id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
+		id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
 	) VALUES (
-		:quality_metric_id, :product_id, :return_rate, :defect_rate, :measurement_period, :created_date, :updated_date
+		:id, :product_id, :return_rate, :defect_rate, :measurement_period, :created_date, :updated_date
 	)
 	`
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBMetric(metric)); err != nil {
@@ -70,14 +70,14 @@ func (s *Store) Update(ctx context.Context, metric metricsbus.Metric) error {
 	UPDATE
 	    quality_metrics
 	SET
-		quality_metric_id = :quality_metric_id,
+		id = :id,
 		product_id = :product_id,
 		return_rate = :return_rate,
 		defect_rate = :defect_rate,
 		measurement_period = :measurement_period,
 		updated_date = :updated_date
 	WHERE 
-	    quality_metric_id = :quality_metric_id
+	    id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBMetric(metric)); err != nil {
@@ -97,7 +97,7 @@ func (s *Store) Delete(ctx context.Context, metric metricsbus.Metric) error {
     DELETE FROM
         quality_metrics
     WHERE
-        quality_metric_id = :quality_metric_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBMetric(metric)); err != nil {
@@ -114,7 +114,7 @@ func (s *Store) Query(ctx context.Context, filter metricsbus.QueryFilter, orderB
 
 	const q = `
     SELECT
-        quality_metric_id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
+        id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
     FROM
         quality_metrics
 	`
@@ -165,18 +165,18 @@ func (s *Store) Count(ctx context.Context, filter metricsbus.QueryFilter) (int, 
 
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (metricsbus.Metric, error) {
 	data := struct {
-		ID string `db:"quality_metric_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        quality_metric_id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
+        id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
     FROM
         quality_metrics
 	WHERE
-		quality_metric_id = :quality_metric_id
+		id = :id
 	`
 
 	var dbMetric metric

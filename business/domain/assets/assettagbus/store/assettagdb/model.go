@@ -6,24 +6,24 @@ import (
 )
 
 type assetTag struct {
-	ID      uuid.UUID `db:"asset_tag_id"`
-	AssetID uuid.UUID `db:"asset_id"`
-	TagID   uuid.UUID `db:"tag_id"`
+	ID           uuid.UUID `db:"id"`
+	ValidAssetID uuid.UUID `db:"valid_asset_id"`
+	TagID        uuid.UUID `db:"tag_id"`
 }
 
 func toDBAssetTag(bus assettagbus.AssetTag) assetTag {
 	return assetTag{
-		ID:      bus.ID,
-		AssetID: bus.AssetID,
-		TagID:   bus.TagID,
+		ID:           bus.ID,
+		ValidAssetID: bus.ValidAssetID,
+		TagID:        bus.TagID,
 	}
 }
 
 func toBusAssetTag(at assetTag) assettagbus.AssetTag {
 	return assettagbus.AssetTag{
-		ID:      at.ID,
-		AssetID: at.AssetID,
-		TagID:   at.TagID,
+		ID:           at.ID,
+		ValidAssetID: at.ValidAssetID,
+		TagID:        at.TagID,
 	}
 }
 

@@ -50,9 +50,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userrolebus.Storer, error)
 func (s *Store) Create(ctx context.Context, ur userrolebus.UserRole) error {
 	const q = `
 	INSERT INTO user_roles (
-		user_role_id, user_id, role_id
+		id, user_id, role_id
 	) VALUES (
-		:user_role_id, :user_id, :role_id
+		:id, :user_id, :role_id
 	)
 	`
 
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, ur userrolebus.UserRole) error {
 	SET
 		role_id = :role_id
 	WHERE
-		user_role_id = :user_role_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserRole(ur)); err != nil {
@@ -92,7 +92,7 @@ func (s *Store) Delete(ctx context.Context, ur userrolebus.UserRole) error {
 	DELETE FROM 
 		user_roles
 	WHERE 
-		user_role_id = :user_role_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserRole(ur)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -110,7 +110,7 @@ func (s *Store) Query(ctx context.Context, filter userrolebus.QueryFilter, order
 
 	const q = `
 	SELECT
-		user_role_id, user_id, role_id
+		id, user_id, role_id
 	FROM
 		user_roles`
 
@@ -159,18 +159,18 @@ func (s *Store) Count(ctx context.Context, filter userrolebus.QueryFilter) (int,
 // QueryByID retrieves a single role from the system by its ID.
 func (s *Store) QueryByID(ctx context.Context, roleID uuid.UUID) (userrolebus.UserRole, error) {
 	data := struct {
-		ID string `db:"user_role_id"`
+		ID string `db:"id"`
 	}{
 		ID: roleID.String(),
 	}
 
 	const q = `
 	SELECT
-		user_role_id, user_id, role_id
+		id, user_id, role_id
 	FROM
 		user_roles
 	WHERE
-		user_role_id = :user_role_id`
+		id = :id`
 
 	var dbUserRole userRole
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbUserRole); err != nil {
@@ -193,7 +193,7 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]userrole
 
 	const q = `
 	SELECT
-		user_role_id, user_id, role_id
+		id, user_id, role_id
 	FROM
 		user_roles
 	WHERE

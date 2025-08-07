@@ -8,7 +8,7 @@ import (
 var defaultOrderBy = order.NewBy("first_name", order.ASC)
 
 var orderByFields = map[string]string{
-	"contact_info_id":        contactinfobus.OrderByID,
+	"id":                     contactinfobus.OrderByID,
 	"first_name":             contactinfobus.OrderByFirstName,
 	"last_name":              contactinfobus.OrderByLastName,
 	"email_address":          contactinfobus.OrderByEmail,

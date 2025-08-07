@@ -8,7 +8,7 @@ import (
 var defaultOrderBy = order.NewBy("name", order.ASC)
 
 var orderByFields = map[string]string{
-	"fulfillment_status_id": fulfillmentstatusbus.OrderByID,
-	"icon_id":               fulfillmentstatusbus.OrderByIconID,
-	"name":                  fulfillmentstatusbus.OrderByName,
+	"id":      fulfillmentstatusbus.OrderByID,
+	"icon_id": fulfillmentstatusbus.OrderByIconID,
+	"name":    fulfillmentstatusbus.OrderByName,
 }

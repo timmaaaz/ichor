@@ -8,7 +8,7 @@ import (
 var defaultOrderBy = order.NewBy("name", order.ASC)
 
 var orderByFields = map[string]string{
-	"asset_id":             validassetbus.OrderByID,
+	"id":                   validassetbus.OrderByID,
 	"type_id":              validassetbus.OrderByTypeID,
 	"name":                 validassetbus.OrderByName,
 	"est_price":            validassetbus.OrderByEstPrice,

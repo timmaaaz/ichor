@@ -11,8 +11,8 @@ func applyFilter(filter tableaccessbus.QueryFilter, data map[string]any, buf *by
 	var wc []string
 
 	if filter.ID != nil {
-		data["table_access_id"] = *filter.ID
-		buf.WriteString(" WHERE table_access_id = :table_access_id")
+		data["id"] = *filter.ID
+		buf.WriteString(" WHERE id = :id")
 	}
 
 	if filter.RoleID != nil {

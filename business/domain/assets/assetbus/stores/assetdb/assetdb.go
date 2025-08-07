@@ -50,9 +50,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assetbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, ass assetbus.Asset) error {
 	const q = `
     INSERT INTO assets (
-        asset_id, valid_asset_id, last_maintenance_time, serial_number, asset_condition_id
+        id, valid_asset_id, last_maintenance_time, serial_number, asset_condition_id
     ) VALUES (
-		:asset_id, :valid_asset_id, :last_maintenance_time, :serial_number, :asset_condition_id
+		:id, :valid_asset_id, :last_maintenance_time, :serial_number, :asset_condition_id
 	)
     `
 
@@ -71,13 +71,13 @@ func (s *Store) Update(ctx context.Context, ass assetbus.Asset) error {
 	UPDATE
 		assets
 	SET
-		asset_id = :asset_id,
+		id = :id,
 		valid_asset_id = :valid_asset_id,
         last_maintenance_time = :last_maintenance_time,
         serial_number = :serial_number,
         asset_condition_id = :asset_condition_id
 	WHERE
-		asset_id = :asset_id
+		id = :id
 
 	`
 
@@ -96,7 +96,7 @@ func (s *Store) Delete(ctx context.Context, ass assetbus.Asset) error {
 	DELETE FROM
 		assets
 	WHERE
-		asset_id = :asset_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAsset(ass)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -114,7 +114,7 @@ func (s *Store) Query(ctx context.Context, filter assetbus.QueryFilter, orderBy 
 
 	const q = `
     SELECT
-		asset_id, valid_asset_id, last_maintenance_time, serial_number, asset_condition_id
+		id, valid_asset_id, last_maintenance_time, serial_number, asset_condition_id
     FROM
         assets`
 
@@ -163,18 +163,18 @@ func (s *Store) Count(ctx context.Context, filter assetbus.QueryFilter) (int, er
 // QueryByID retrieves a single asset from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, userAssetID uuid.UUID) (assetbus.Asset, error) {
 	data := struct {
-		ID string `db:"asset_id"`
+		ID string `db:"id"`
 	}{
 		ID: userAssetID.String(),
 	}
 
 	const q = `
     SELECT
-        asset_id, valid_asset_id, asset_condition_id, serial_number, last_maintenance_time
+        id, valid_asset_id, asset_condition_id, serial_number, last_maintenance_time
     FROM
         assets
     WHERE
-        asset_id = :asset_id
+        id = :id
     `
 	var ass asset
 

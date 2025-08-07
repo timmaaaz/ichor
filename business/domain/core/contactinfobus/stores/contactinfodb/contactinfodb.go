@@ -50,10 +50,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (contactinfobus.Storer, err
 func (s *Store) Create(ctx context.Context, ass contactinfobus.ContactInfo) error {
 	const q = `
     INSERT INTO contact_info (
-        contact_info_id, first_name, last_name, email_address, primary_phone_number, secondary_phone_number, address,
+        id, first_name, last_name, email_address, primary_phone_number, secondary_phone_number, address,
 		available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     ) VALUES (
-		:contact_info_id, :first_name, :last_name, :email_address, :primary_phone_number, :secondary_phone_number, :address,
+		:id, :first_name, :last_name, :email_address, :primary_phone_number, :secondary_phone_number, :address,
 		:available_hours_start, :available_hours_end, :timezone, :preferred_contact_type, :notes
 	)
     `
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, ass contactinfobus.ContactInfo) erro
 	UPDATE
 		contact_info
 	SET
-		contact_info_id = :contact_info_id,
+		id = :id,
 		first_name = :first_name,
         last_name = :last_name,
         primary_phone_number = :primary_phone_number,
@@ -86,7 +86,7 @@ func (s *Store) Update(ctx context.Context, ass contactinfobus.ContactInfo) erro
         preferred_contact_type = :preferred_contact_type,
 		notes = :notes
 	WHERE
-		contact_info_id = :contact_info_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfo(ass)); err != nil {
@@ -104,7 +104,7 @@ func (s *Store) Delete(ctx context.Context, ass contactinfobus.ContactInfo) erro
 	DELETE FROM
 		contact_info
 	WHERE
-		contact_info_id = :contact_info_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfo(ass)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -122,7 +122,7 @@ func (s *Store) Query(ctx context.Context, filter contactinfobus.QueryFilter, or
 
 	const q = `
     SELECT
-		contact_info_id, first_name, last_name, email_address, primary_phone_number, address, 
+		id, first_name, last_name, email_address, primary_phone_number, address, 
 		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     FROM
         contact_info`
@@ -172,19 +172,19 @@ func (s *Store) Count(ctx context.Context, filter contactinfobus.QueryFilter) (i
 // QueryByID retrieves a single asset from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, userContactInfoID uuid.UUID) (contactinfobus.ContactInfo, error) {
 	data := struct {
-		ID string `db:"contact_info_id"`
+		ID string `db:"id"`
 	}{
 		ID: userContactInfoID.String(),
 	}
 
 	const q = `
     SELECT
-        contact_info_id, first_name, last_name, email_address, primary_phone_number, address,
+        id, first_name, last_name, email_address, primary_phone_number, address,
 		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     FROM
         contact_info
     WHERE
-        contact_info_id = :contact_info_id
+        id = :id
     `
 	var ci contactInfo
 

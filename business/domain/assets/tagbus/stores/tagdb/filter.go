@@ -11,8 +11,8 @@ func applyFilter(filter tagbus.QueryFilter, data map[string]interface{}, buf *by
 	var wc []string
 
 	if filter.ID != nil {
-		data["tag_id"] = *filter.ID
-		wc = append(wc, "tag_id = :tag_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.Name != nil {

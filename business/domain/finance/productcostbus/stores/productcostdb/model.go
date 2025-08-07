@@ -11,7 +11,7 @@ import (
 )
 
 type productCost struct {
-	CostID            uuid.UUID      `db:"cost_id"`
+	ID                uuid.UUID      `db:"id"`
 	ProductID         uuid.UUID      `db:"product_id"`
 	PurchaseCost      sql.NullString `db:"purchase_cost"`
 	SellingPrice      sql.NullString `db:"selling_price"`
@@ -30,7 +30,7 @@ type productCost struct {
 
 func toDBProductCost(bus productcostbus.ProductCost) productCost {
 	return productCost{
-		CostID:            bus.CostID,
+		ID:                bus.ID,
 		ProductID:         bus.ProductID,
 		PurchaseCost:      bus.PurchaseCost.DBValue(),
 		SellingPrice:      bus.SellingPrice.DBValue(),
@@ -91,7 +91,7 @@ func toBusProductCost(db productCost) (productcostbus.ProductCost, error) {
 	}
 
 	return productcostbus.ProductCost{
-		CostID:            db.CostID,
+		ID:                db.ID,
 		ProductID:         db.ProductID,
 		PurchaseCost:      purchaseCost,
 		SellingPrice:      sellingPrice,

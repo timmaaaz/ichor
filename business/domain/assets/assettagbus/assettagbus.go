@@ -73,9 +73,9 @@ func (b *Business) Create(ctx context.Context, nat NewAssetTag) (AssetTag, error
 	defer span.End()
 
 	t := AssetTag{
-		ID:      uuid.New(),
-		AssetID: nat.AssetID,
-		TagID:   nat.TagID,
+		ID:           uuid.New(),
+		ValidAssetID: nat.ValidAssetID,
+		TagID:        nat.TagID,
 	}
 
 	if err := b.storer.Create(ctx, t); err != nil {
@@ -97,8 +97,8 @@ func (b *Business) Update(ctx context.Context, at AssetTag, uat UpdateAssetTag) 
 		at.TagID = *uat.TagID
 	}
 
-	if uat.AssetID != nil {
-		at.AssetID = *uat.AssetID
+	if uat.ValidAssetID != nil {
+		at.ValidAssetID = *uat.ValidAssetID
 	}
 
 	if err := b.storer.Update(ctx, at); err != nil {

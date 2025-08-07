@@ -42,10 +42,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventorytransactionbus.St
 func (s *Store) Create(ctx context.Context, it inventorytransactionbus.InventoryTransaction) error {
 	const q = `
 	INSERT INTO inventory_transactions (
-		transaction_id, product_id, location_id, user_id, transaction_type, reference_number, 
+		id, product_id, location_id, user_id, transaction_type, reference_number, 
 		quantity, transaction_date, created_date, updated_date
 	) VALUES (
-		:transaction_id, :product_id, :location_id, :user_id, :transaction_type, :reference_number, 
+		:id, :product_id, :location_id, :user_id, :transaction_type, :reference_number, 
         :quantity, :transaction_date, :created_date, :updated_date
     )
 	`
@@ -69,7 +69,7 @@ func (s *Store) Update(ctx context.Context, it inventorytransactionbus.Inventory
     UPDATE
         inventory_transactions
     SET
-        transaction_id = :transaction_id,
+        id = :id,
         product_id = :product_id,
         location_id = :location_id,
         user_id = :user_id,
@@ -79,7 +79,7 @@ func (s *Store) Update(ctx context.Context, it inventorytransactionbus.Inventory
         transaction_date = :transaction_date,
         updated_date = :updated_date
     WHERE
-        transaction_id = :transaction_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInventoryTransaction(it)); err != nil {
@@ -101,7 +101,7 @@ func (s *Store) Delete(ctx context.Context, transaction inventorytransactionbus.
     DELETE FROM
         inventory_transactions
     WHERE
-        transaction_id = :transaction_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInventoryTransaction(transaction)); err != nil {
@@ -119,7 +119,7 @@ func (s *Store) Query(ctx context.Context, filter inventorytransactionbus.QueryF
 
 	const q = `
 	SELECT
-	    transaction_id, product_id, location_id, user_id, transaction_type, reference_number, 
+	    id, product_id, location_id, user_id, transaction_type, reference_number, 
         quantity, transaction_date, created_date, updated_date
 	FROM 
 	    inventory_transactions
@@ -172,19 +172,19 @@ func (s *Store) Count(ctx context.Context, filter inventorytransactionbus.QueryF
 
 func (s *Store) QueryByID(ctx context.Context, transactionID uuid.UUID) (inventorytransactionbus.InventoryTransaction, error) {
 	data := struct {
-		TransactionID string `db:"transaction_id"`
+		TransactionID string `db:"id"`
 	}{
 		TransactionID: transactionID.String(),
 	}
 
 	const q = `
     SELECT
-        transaction_id, product_id, location_id, user_id, transaction_type, reference_number, 
+        id, product_id, location_id, user_id, transaction_type, reference_number, 
         quantity, transaction_date, created_date, updated_date
     FROM
         inventory_transactions
     WHERE
-        transaction_id = :transaction_id
+        id = :id
     `
 
 	var dbInvTran inventoryTransaction

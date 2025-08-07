@@ -8,7 +8,7 @@ import (
 )
 
 type inventoryItem struct {
-	ItemID                uuid.UUID `db:"item_id"`
+	ItemID                uuid.UUID `db:"id"`
 	ProductID             uuid.UUID `db:"product_id"`
 	LocationID            uuid.UUID `db:"location_id"`
 	Quantity              int       `db:"quantity"`

@@ -13,8 +13,8 @@ import (
 func parseFilter(qp QueryParams) (productcostbus.QueryFilter, error) {
 	var filter productcostbus.QueryFilter
 
-	if qp.CostID != "" {
-		id, err := uuid.Parse(qp.CostID)
+	if qp.ID != "" {
+		id, err := uuid.Parse(qp.ID)
 		if err != nil {
 			return productcostbus.QueryFilter{}, errs.NewFieldsError("id", err)
 		}

@@ -8,13 +8,13 @@ import (
 )
 
 type QueryFilter struct {
-	SupplierID   *uuid.UUID
-	ContactID    *uuid.UUID
-	Name         *string
-	PaymentTerms *string
-	LeadTimeDays *int
-	Rating       *types.RoundedFloat
-	IsActive     *bool
-	CreatedDate  *time.Time
-	UpdatedDate  *time.Time
+	SupplierID    *uuid.UUID
+	ContactInfoID *uuid.UUID
+	Name          *string
+	PaymentTerms  *string
+	LeadTimeDays  *int
+	Rating        *types.RoundedFloat
+	IsActive      *bool
+	CreatedDate   *time.Time
+	UpdatedDate   *time.Time
 }

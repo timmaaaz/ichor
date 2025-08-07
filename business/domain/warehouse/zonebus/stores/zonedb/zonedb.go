@@ -48,9 +48,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (zonebus.Storer, error) {
 func (s *Store) Create(ctx context.Context, zone zonebus.Zone) error {
 	const q = `
 	INSERT INTO zones (
-		zone_id, warehouse_id, name, description, created_date, updated_date
+		id, warehouse_id, name, description, created_date, updated_date
 	) VALUES (
-		:zone_id, :warehouse_id, :name, :description, :created_date, :updated_date
+		:id, :warehouse_id, :name, :description, :created_date, :updated_date
     )
 	`
 
@@ -72,13 +72,13 @@ func (s *Store) Update(ctx context.Context, zone zonebus.Zone) error {
     UPDATE
         zones
     SET
-        zone_id = :zone_id, 
+        id = :id, 
 		warehouse_id = :warehouse_id, 
 		name = :name, 
 		description = :description, 
 		updated_date = :updated_date
     WHERE
-        zone_id = :zone_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBZone(zone)); err != nil {
@@ -98,7 +98,7 @@ func (s *Store) Delete(ctx context.Context, zone zonebus.Zone) error {
 	DELETE FROM
 		zones
 	WHERE 
-		zone_id = :zone_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBZone(zone)); err != nil {
@@ -116,7 +116,7 @@ func (s *Store) Query(ctx context.Context, filter zonebus.QueryFilter, orderBy o
 
 	const q = `
 	SELECT
-	    zone_id, warehouse_id, name, description, created_date, updated_date
+	    id, warehouse_id, name, description, created_date, updated_date
 	FROM
 		zones
 		`
@@ -165,18 +165,18 @@ func (s *Store) Count(ctx context.Context, filter zonebus.QueryFilter) (int, err
 
 func (s *Store) QueryByID(ctx context.Context, zoneID uuid.UUID) (zonebus.Zone, error) {
 	data := struct {
-		ID string `db:"zone_id"`
+		ID string `db:"id"`
 	}{
 		ID: zoneID.String(),
 	}
 
 	const q = `
 	SELECT 
-	    zone_id, warehouse_id, name, description, created_date, updated_date
+	    id, warehouse_id, name, description, created_date, updated_date
 	FROM
 		zones
 	WHERE
-		zone_id = :zone_id
+		id = :id
 	`
 
 	var dbZone zone

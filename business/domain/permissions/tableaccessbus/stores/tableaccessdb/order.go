@@ -8,7 +8,7 @@ import (
 )
 
 var orderByFields = map[string]string{
-	tableaccessbus.OrderByID:        "table_access_id",
+	tableaccessbus.OrderByID:        "id",
 	tableaccessbus.OrderByRoleID:    "role_id",
 	tableaccessbus.OrderByTableName: "table_name",
 	tableaccessbus.OrderByCanCreate: "can_create",

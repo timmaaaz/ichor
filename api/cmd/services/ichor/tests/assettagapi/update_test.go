@@ -20,14 +20,14 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &assettagapp.UpdateAssetTag{
-				AssetID: dbtest.StringPointer(sd.ValidAssets[0].ID),
-				TagID:   dbtest.StringPointer(sd.Tags[0].ID),
+				ValidAssetID: dbtest.StringPointer(sd.ValidAssets[0].ID),
+				TagID:        dbtest.StringPointer(sd.Tags[0].ID),
 			},
 			GotResp: &assettagapp.AssetTag{},
 			ExpResp: &assettagapp.AssetTag{
-				ID:      sd.AssetTags[2].ID,
-				AssetID: sd.ValidAssets[0].ID,
-				TagID:   sd.Tags[0].ID,
+				ID:           sd.AssetTags[2].ID,
+				ValidAssetID: sd.ValidAssets[0].ID,
+				TagID:        sd.Tags[0].ID,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*assettagapp.AssetTag)

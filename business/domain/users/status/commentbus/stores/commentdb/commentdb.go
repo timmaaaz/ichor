@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (commentbus.Storer, error) 
 func (s *Store) Create(ctx context.Context, as commentbus.UserApprovalComment) error {
 	const q = `
     INSERT INTO user_approval_comments (
-        comment_id, commenter_id, user_id, comment, created_date
+        id, commenter_id, user_id, comment, created_date
     ) VALUES (
-        :comment_id, :commenter_id, :user_id, :comment, :created_date
+        :id, :commenter_id, :user_id, :comment, :created_date
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserApprovalComment(as)); err != nil {
@@ -71,7 +71,7 @@ func (s *Store) Update(ctx context.Context, as commentbus.UserApprovalComment) e
 	SET 
 	    comment = :comment
 	WHERE 
-		comment_id = :comment_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserApprovalComment(as)); err != nil {
@@ -90,7 +90,7 @@ func (s *Store) Delete(ctx context.Context, as commentbus.UserApprovalComment) e
 	DELETE FROM
 		user_approval_comments
 	WHERE
-		comment_id = :comment_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserApprovalComment(as)); err != nil {
@@ -109,7 +109,7 @@ func (s *Store) Query(ctx context.Context, filter commentbus.QueryFilter, orderB
 
 	const q = `
 	SELECT 
-		comment_id, comment, user_id, commenter_id, created_date
+		id, comment, user_id, commenter_id, created_date
 	FROM
 		user_approval_comments
 	`
@@ -160,18 +160,18 @@ func (s *Store) Count(ctx context.Context, filter commentbus.QueryFilter) (int, 
 // QueryByID finds the approval status by the specified ID.
 func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (commentbus.UserApprovalComment, error) {
 	data := struct {
-		ID string `db:"comment_id"`
+		ID string `db:"id"`
 	}{
 		ID: aprvlStatusID.String(),
 	}
 
 	const q = `
     SELECT
-        comment_id, comment, user_id, commenter_id, created_date
+        id, comment, user_id, commenter_id, created_date
     FROM
         user_approval_comments
     WHERE
-        comment_id = :comment_id
+        id = :id
     `
 
 	var comment userApprovalComment

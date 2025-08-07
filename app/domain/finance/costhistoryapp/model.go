@@ -28,7 +28,7 @@ type QueryParams struct {
 }
 
 type CostHistory struct {
-	CostHistoryID string `json:"history_id"`
+	CostHistoryID string `json:"id"`
 	ProductID     string `json:"product_id"`
 	CostType      string `json:"cost_type"`
 	Amount        string `json:"amount"`

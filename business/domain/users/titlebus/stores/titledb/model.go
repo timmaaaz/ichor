@@ -6,7 +6,7 @@ import (
 )
 
 type title struct {
-	ID          uuid.UUID `db:"title_id"`
+	ID          uuid.UUID `db:"id"`
 	Name        string    `db:"name"`
 	Description string    `db:"description"`
 }

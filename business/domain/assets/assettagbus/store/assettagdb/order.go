@@ -8,9 +8,9 @@ import (
 )
 
 var orderByFields = map[string]string{
-	assettagbus.OrderByID:      "asset_tag_id",
-	assettagbus.OrderByAssetID: "asset_id",
-	assettagbus.OrderByTagID:   "tag_id",
+	assettagbus.OrderByID:           "id",
+	assettagbus.OrderByValidAssetID: "valid_asset_id",
+	assettagbus.OrderByTagID:        "tag_id",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

@@ -11,8 +11,8 @@ func (s *Store) applyFilter(filter homebus.QueryFilter, data map[string]any, buf
 	var wc []string
 
 	if filter.ID != nil {
-		data["home_id"] = *filter.ID
-		wc = append(wc, "home_id = :home_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.UserID != nil {

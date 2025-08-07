@@ -18,13 +18,13 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &assettagapp.NewAssetTag{
-				AssetID: sd.ValidAssets[0].ID,
-				TagID:   sd.Tags[0].ID,
+				ValidAssetID: sd.ValidAssets[0].ID,
+				TagID:        sd.Tags[0].ID,
 			},
 			GotResp: &assettagapp.AssetTag{},
 			ExpResp: &assettagapp.AssetTag{
-				AssetID: sd.ValidAssets[0].ID,
-				TagID:   sd.Tags[0].ID,
+				ValidAssetID: sd.ValidAssets[0].ID,
+				TagID:        sd.Tags[0].ID,
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*assettagapp.AssetTag)
@@ -52,7 +52,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &assettagapp.NewAssetTag{
-				AssetID: sd.ValidAssets[0].ID,
+				ValidAssetID: sd.ValidAssets[0].ID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"tag_id\",\"error\":\"tag_id is a required field\"}]"),
@@ -70,7 +70,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				TagID: sd.Tags[0].ID,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"asset_id\",\"error\":\"asset_id is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"valid_asset_id\",\"error\":\"valid_asset_id is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

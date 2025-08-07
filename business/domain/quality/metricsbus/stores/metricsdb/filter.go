@@ -11,8 +11,8 @@ func applyFilter(filter metricsbus.QueryFilter, data map[string]any, buf *bytes.
 	var wc []string
 
 	if filter.MetricID != nil {
-		data["quality_metric_id"] = *filter.MetricID
-		wc = append(wc, "quality_metric_id = :quality_metric_id")
+		data["id"] = *filter.MetricID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.ProductID != nil {

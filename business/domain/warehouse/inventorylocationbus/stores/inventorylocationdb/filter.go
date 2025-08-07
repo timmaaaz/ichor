@@ -11,8 +11,8 @@ func applyFilter(filter inventorylocationbus.QueryFilter, data map[string]any, b
 	var wc []string
 
 	if filter.LocationID != nil {
-		data["location_id"] = *filter.LocationID
-		wc = append(wc, "location_id = :location_id")
+		data["id"] = *filter.LocationID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.ZoneID != nil {

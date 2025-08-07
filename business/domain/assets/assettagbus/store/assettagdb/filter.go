@@ -15,9 +15,9 @@ func applyFilter(filter assettagbus.QueryFilter, data map[string]interface{}, bu
 		wc = append(wc, "asset_tag_id = :asset_tag_id")
 	}
 
-	if filter.AssetID != nil {
-		data["asset_id"] = *filter.AssetID
-		wc = append(wc, "asset_id = :asset_id")
+	if filter.ValidAssetID != nil {
+		data["valid_asset_id"] = *filter.ValidAssetID
+		wc = append(wc, "valid_asset_id = :valid_asset_id")
 	}
 
 	if filter.TagID != nil {

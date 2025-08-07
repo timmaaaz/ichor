@@ -8,7 +8,7 @@ import (
 
 // First, create a new struct to match the query result structure
 type userPermissionsRow struct {
-	UserID    uuid.UUID      `db:"user_id"`
+	UserID    uuid.UUID      `db:"id"`
 	Username  string         `db:"username"`
 	TableName string         `db:"table_name"`
 	CanCreate bool           `db:"can_create"`

@@ -59,7 +59,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				expResp := exp.(*productcostapp.ProductCost)
-				expResp.CostID = gotResp.CostID
+				expResp.ID = gotResp.ID
 				expResp.UpdatedDate = gotResp.UpdatedDate
 				expResp.CreatedDate = gotResp.CreatedDate
 

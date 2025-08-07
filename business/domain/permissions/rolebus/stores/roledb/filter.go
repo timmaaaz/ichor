@@ -11,8 +11,8 @@ func applyFilter(filter rolebus.QueryFilter, data map[string]any, buf *bytes.Buf
 	var wc []string
 
 	if filter.ID != nil {
-		data["role_id"] = *filter.ID
-		wc = append(wc, "role_id = :role_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.Name != nil {

@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (citybus.Storer, error) {
 func (s *Store) Create(ctx context.Context, cty citybus.City) error {
 	const q = `
     INSERT INTO cities (
-        city_id, region_id, name
+        id, region_id, name
     ) VALUES (
-        :city_id, :region_id, :name
+        :id, :region_id, :name
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCity(cty)); err != nil {
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, cty citybus.City) error {
         region_id = :region_id,
         name = :name
     WHERE
-        city_id = :city_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCity(cty)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -90,7 +90,7 @@ func (s *Store) Delete(ctx context.Context, cty citybus.City) error {
     DELETE FROM 
         cities
     WHERE
-        city_id = :city_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCity(cty)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -108,7 +108,7 @@ func (s *Store) Query(ctx context.Context, filter citybus.QueryFilter, orderBy o
 
 	const q = `
     SELECT
-        city_id, region_id, name
+        id, region_id, name
     FROM
         cities`
 
@@ -158,18 +158,18 @@ func (s *Store) Count(ctx context.Context, filter citybus.QueryFilter) (int, err
 // QueryByID finds the city by the specified ID.
 func (s *Store) QueryByID(ctx context.Context, cityID uuid.UUID) (citybus.City, error) {
 	data := struct {
-		ID string `db:"city_id"`
+		ID string `db:"id"`
 	}{
 		ID: cityID.String(),
 	}
 
 	const q = `
     SELECT
-        city_id, region_id, name
+        id, region_id, name
     FROM
         cities
     WHERE
-        city_id = :city_id
+        id = :id
     `
 
 	var city city

@@ -49,10 +49,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productcostbus.Storer, err
 func (s *Store) Create(ctx context.Context, productcost productcostbus.ProductCost) error {
 	const q = `
     INSERT INTO product_costs (
-        cost_id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
+        id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     ) VALUES (
-		:cost_id, :product_id, :purchase_cost, :selling_price, :currency, :msrp, :markup_percentage, :landed_cost, :carrying_cost,
+		:id, :product_id, :purchase_cost, :selling_price, :currency, :msrp, :markup_percentage, :landed_cost, :carrying_cost,
 		:abc_classification, :depreciation_value, :insurance_value, :effective_date, :created_date, :updated_date
 	)
     `
@@ -75,7 +75,7 @@ func (s *Store) Update(ctx context.Context, pc productcostbus.ProductCost) error
 	UPDATE
 		product_costs
 	SET
-		cost_id = :cost_id,
+		id = :id,
 		product_id = :product_id,
 		purchase_cost = :purchase_cost,
 		selling_price = :selling_price,
@@ -91,7 +91,7 @@ func (s *Store) Update(ctx context.Context, pc productcostbus.ProductCost) error
 		created_date = :created_date,
 		updated_date = :updated_date
 	WHERE
-		cost_id = :cost_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProductCost(pc)); err != nil {
@@ -112,7 +112,7 @@ func (s *Store) Delete(ctx context.Context, productCost productcostbus.ProductCo
 	DELETE FROM
 		product_costs
 	WHERE
-		cost_id = :cost_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProductCost(productCost)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -130,7 +130,7 @@ func (s *Store) Query(ctx context.Context, filter productcostbus.QueryFilter, or
 
 	const q = `
     SELECT
-		cost_id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
+		id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     FROM
         product_costs`
@@ -178,21 +178,21 @@ func (s *Store) Count(ctx context.Context, filter productcostbus.QueryFilter) (i
 }
 
 // QueryByID retrieves a single asset from the database by its ID.
-func (s *Store) QueryByID(ctx context.Context, productCostID uuid.UUID) (productcostbus.ProductCost, error) {
+func (s *Store) QueryByID(ctx context.Context, productID uuid.UUID) (productcostbus.ProductCost, error) {
 	data := struct {
-		ID string `db:"cost_id"`
+		ID string `db:"id"`
 	}{
-		ID: productCostID.String(),
+		ID: productID.String(),
 	}
 
 	const q = `
     SELECT
-        cost_id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
+        id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     FROM
         product_costs
     WHERE
-        cost_id = :cost_id
+        id = :id
     `
 	var ci productCost
 

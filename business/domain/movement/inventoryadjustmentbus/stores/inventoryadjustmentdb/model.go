@@ -8,7 +8,7 @@ import (
 )
 
 type inventoryAdjustment struct {
-	InventoryAdjustmentID uuid.UUID `db:"adjustment_id"`
+	InventoryAdjustmentID uuid.UUID `db:"id"`
 	ProductID             uuid.UUID `db:"product_id"`
 	LocationID            uuid.UUID `db:"location_id"`
 	AdjustedBy            uuid.UUID `db:"adjusted_by"`

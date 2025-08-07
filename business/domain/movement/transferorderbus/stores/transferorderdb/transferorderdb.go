@@ -42,10 +42,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (transferorderbus.Storer, e
 func (s *Store) Create(ctx context.Context, transferOrder transferorderbus.TransferOrder) error {
 	const q = `
 	INSERT INTO transfer_orders (
-	    transfer_id, product_id, from_location_id, to_location_id, requested_by, 
+	    id, product_id, from_location_id, to_location_id, requested_by, 
 		approved_by, quantity, status, transfer_date, created_date, updated_date
     ) VALUES (
-        :transfer_id, :product_id, :from_location_id, :to_location_id, :requested_by, 
+        :id, :product_id, :from_location_id, :to_location_id, :requested_by, 
         :approved_by, :quantity, :status, :transfer_date, :created_date, :updated_date
     )
 	`
@@ -79,7 +79,7 @@ func (s *Store) Update(ctx context.Context, transferOrder transferorderbus.Trans
 		transfer_date = :transfer_date, 
 		updated_date = :updated_date
     WHERE
-        transfer_id = :transfer_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTransferOrder(transferOrder)); err != nil {
@@ -98,7 +98,7 @@ func (s *Store) Update(ctx context.Context, transferOrder transferorderbus.Trans
 func (s *Store) Delete(ctx context.Context, transferOrder transferorderbus.TransferOrder) error {
 	const q = `
     DELETE FROM transfer_orders
-    WHERE transfer_id = :transfer_id
+    WHERE id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTransferOrder(transferOrder)); err != nil {
@@ -116,7 +116,7 @@ func (s *Store) Query(ctx context.Context, filter transferorderbus.QueryFilter, 
 
 	const q = `
 	SELECT
-		transfer_id, product_id, from_location_id, to_location_id, requested_by, approved_by, 
+		id, product_id, from_location_id, to_location_id, requested_by, approved_by, 
 		quantity, status, transfer_date, created_date, updated_date
     FROM
 	    transfer_orders
@@ -163,19 +163,19 @@ func (s *Store) Count(ctx context.Context, filter transferorderbus.QueryFilter) 
 
 func (s *Store) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (transferorderbus.TransferOrder, error) {
 	data := struct {
-		TransferID string `db:"transfer_id"`
+		TransferID string `db:"id"`
 	}{
 		TransferID: transferOrderID.String(),
 	}
 
 	const q = `
     SELECT
-        transfer_id, product_id, from_location_id, to_location_id, requested_by, approved_by, 
+        id, product_id, from_location_id, to_location_id, requested_by, approved_by, 
         quantity, status, transfer_date, created_date, updated_date
     FROM
         transfer_orders
     WHERE
-        transfer_id = :transfer_id
+        id = :id
     `
 
 	var dbTO transferOrder

@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (tagbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, t tagbus.Tag) error {
 	const q = `
     INSERT INTO tags (
-        tag_id, name, description
+        id, name, description
     ) VALUES (
-        :tag_id, :name, :description
+        :id, :name, :description
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTag(t)); err != nil {
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, t tagbus.Tag) error {
         name = :name,
         description = :description
     WHERE
-        tag_id = :tag_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTag(t)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, at tagbus.Tag) error {
     DELETE FROM
         tags
     WHERE
-        tag_id = :tag_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTag(at)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -109,7 +109,7 @@ func (s *Store) Query(ctx context.Context, filter tagbus.QueryFilter, orderBy or
 
 	const q = `
     SELECT
-        tag_id, name, description
+        id, name, description
     FROM
         tags`
 
@@ -158,18 +158,18 @@ func (s *Store) Count(ctx context.Context, filter tagbus.QueryFilter) (int, erro
 // QueryByID retrieves a single tag by its id.
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (tagbus.Tag, error) {
 	data := struct {
-		ID string `db:"tag_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        tag_id, name, description
+        id, name, description
     FROM
         tags
     WHERE
-        tag_id = :tag_id
+        id = :id
     `
 
 	var dbT tag

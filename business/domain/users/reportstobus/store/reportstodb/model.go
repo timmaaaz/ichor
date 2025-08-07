@@ -6,7 +6,7 @@ import (
 )
 
 type reportsTo struct {
-	ID         uuid.UUID `db:"reports_to_id"`
+	ID         uuid.UUID `db:"id"`
 	BossID     uuid.UUID `db:"boss_id"`
 	ReporterID uuid.UUID `db:"reporter_id"`
 }

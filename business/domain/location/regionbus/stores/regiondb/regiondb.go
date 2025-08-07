@@ -53,7 +53,7 @@ func (s *Store) Query(ctx context.Context, filter regionbus.QueryFilter, orderBy
 
 	const q = `
     SELECT
-        region_id, country_id, name, code
+        id, country_id, name, code
     FROM
         regions`
 	buf := bytes.NewBufferString(q)
@@ -101,16 +101,16 @@ func (s *Store) Count(ctx context.Context, filter regionbus.QueryFilter) (int, e
 // QueryByID retrieves a single region by its ID.
 func (s *Store) QueryByID(ctx context.Context, regionID uuid.UUID) (regionbus.Region, error) {
 	data := map[string]interface{}{
-		"region_id": regionID,
+		"id": regionID,
 	}
 
 	const q = `
 	SELECT
-		region_id, country_id, name, code
+		id, country_id, name, code
 	FROM
 		regions
 	WHERE
-		region_id = :region_id`
+		id = :id`
 
 	var dbRgn region
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbRgn); err != nil {

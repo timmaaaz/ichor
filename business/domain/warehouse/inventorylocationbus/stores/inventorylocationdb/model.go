@@ -11,7 +11,7 @@ import (
 )
 
 type inventoryLocation struct {
-	LocationID         uuid.UUID      `db:"location_id"`
+	LocationID         uuid.UUID      `db:"id"`
 	WarehouseID        uuid.UUID      `db:"warehouse_id"`
 	ZoneID             uuid.UUID      `db:"zone_id"`
 	Aisle              string         `db:"aisle"`

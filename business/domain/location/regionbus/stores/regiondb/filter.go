@@ -12,8 +12,8 @@ func applyFilter(filter regionbus.QueryFilter, data map[string]interface{}, buf 
 	var wc []string
 
 	if filter.ID != nil {
-		data["region_id"] = *filter.ID
-		wc = append(wc, "region_id = :region_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.Name != nil {

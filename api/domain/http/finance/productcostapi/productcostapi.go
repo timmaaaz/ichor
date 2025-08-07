@@ -85,9 +85,9 @@ func (api *api) query(ctx context.Context, r *http.Request) web.Encoder {
 }
 
 func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
-	productCostID := web.Param(r, "product_cost_id")
+	productID := web.Param(r, "product_cost_id")
 
-	parsed, err := uuid.Parse(productCostID)
+	parsed, err := uuid.Parse(productID)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}

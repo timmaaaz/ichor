@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (titlebus.Storer, error) {
 func (s *Store) Create(ctx context.Context, fs titlebus.Title) error {
 	const q = `
     INSERT INTO titles (
-        title_id, description, name
+        id, description, name
     ) VALUES (
-        :title_id, :description, :name
+        :id, :description, :name
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTitle(fs)); err != nil {
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, fs titlebus.Title) error {
 	    description = :description,
         name = :name
 	WHERE 
-		title_id = :title_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTitle(fs)); err != nil {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, as titlebus.Title) error {
 	DELETE FROM
 		titles
 	WHERE
-		title_id = :title_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTitle(as)); err != nil {
@@ -110,7 +110,7 @@ func (s *Store) Query(ctx context.Context, filter titlebus.QueryFilter, orderBy 
 
 	const q = `
 	SELECT 
-		title_id, description, name
+		id, description, name
 	FROM
 		titles
 	`
@@ -161,18 +161,18 @@ func (s *Store) Count(ctx context.Context, filter titlebus.QueryFilter) (int, er
 // QueryByID finds the title by the specified ID.
 func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (titlebus.Title, error) {
 	data := struct {
-		ID string `db:"title_id"`
+		ID string `db:"id"`
 	}{
 		ID: aprvlStatusID.String(),
 	}
 
 	const q = `
     SELECT
-        title_id, description, name
+        id, description, name
     FROM
         titles
     WHERE
-        title_id = :title_id
+        id = :id
     `
 
 	var titles title

@@ -8,7 +8,7 @@ import (
 )
 
 type userApprovalComment struct {
-	ID          uuid.UUID `db:"comment_id"`
+	ID          uuid.UUID `db:"id"`
 	Comment     string    `db:"comment"`
 	UserID      uuid.UUID `db:"user_id"`
 	CommenterID uuid.UUID `db:"commenter_id"`

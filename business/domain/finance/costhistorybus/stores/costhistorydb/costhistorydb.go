@@ -48,9 +48,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (costhistorybus.Storer, err
 func (s *Store) Create(ctx context.Context, ch costhistorybus.CostHistory) error {
 	const q = `
     INSERT INTO cost_history (
-        history_id, product_id, cost_type, amount, currency,  effective_date, end_date, created_date, updated_date
+        id, product_id, cost_type, amount, currency,  effective_date, end_date, created_date, updated_date
     ) VALUES (
-        :history_id, :product_id, :cost_type, :amount, :currency, :effective_date, :end_date, :created_date, :updated_date
+        :id, :product_id, :cost_type, :amount, :currency, :effective_date, :end_date, :created_date, :updated_date
     )
     `
 
@@ -71,7 +71,7 @@ func (s *Store) Update(ctx context.Context, ch costhistorybus.CostHistory) error
     UPDATE
         cost_history
     SET
-        history_id = :history_id,
+        id = :id,
         product_id = :product_id,
         cost_type = :cost_type,
         amount = :amount,
@@ -80,7 +80,7 @@ func (s *Store) Update(ctx context.Context, ch costhistorybus.CostHistory) error
         end_date = :end_date,
         updated_date = :updated_date
     WHERE
-        history_id = :history_id`
+        id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCostHistory(ch)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -100,7 +100,7 @@ func (s *Store) Delete(ctx context.Context, ch costhistorybus.CostHistory) error
 	DELETE FROM
 		cost_history
 	WHERE
-		history_id = :history_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCostHistory(ch)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -118,7 +118,7 @@ func (s *Store) Query(ctx context.Context, filter costhistorybus.QueryFilter, or
 
 	const q = `
 	SELECT 
-		history_id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
+		id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
 	FROM
 		cost_history
 	`
@@ -167,18 +167,18 @@ func (s *Store) Count(ctx context.Context, filter costhistorybus.QueryFilter) (i
 
 func (s *Store) QueryByID(ctx context.Context, costHistoryID uuid.UUID) (costhistorybus.CostHistory, error) {
 	data := struct {
-		ID string `db:"history_id"`
+		ID string `db:"id"`
 	}{
 		ID: costHistoryID.String(),
 	}
 
 	const q = `
 	SELECT 
-		history_id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
+		id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
 	FROM
 		cost_history
 	WHERE 
-	    history_id = :history_id`
+	    id = :id`
 
 	var ch costHistory
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ch); err != nil {

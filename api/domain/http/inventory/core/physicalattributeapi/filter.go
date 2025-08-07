@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (physicalattributeapp.QueryParams, error)
 		Page:                values.Get("page"),
 		Rows:                values.Get("rows"),
 		OrderBy:             values.Get("orderBy"),
-		ID:                  values.Get("attribute_id"),
+		ID:                  values.Get("id"),
 		ProductID:           values.Get("product_id"),
 		Length:              values.Get("length"),
 		Width:               values.Get("width"),

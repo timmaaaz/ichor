@@ -48,10 +48,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inspectionbus.Storer, erro
 func (s *Store) Create(ctx context.Context, inspection inspectionbus.Inspection) error {
 	const q = `
     INSERT INTO quality_inspections (
-        inspection_id, product_id, inspector_id, lot_id, inspection_date, 
+        id, product_id, inspector_id, lot_id, inspection_date, 
 		next_inspection_date, status, notes,  created_date, updated_date
     ) VALUES (
-        :inspection_id, :product_id, :inspector_id, :lot_id, :inspection_date, 
+        :id, :product_id, :inspector_id, :lot_id, :inspection_date, 
 		:next_inspection_date, :status, :notes, :created_date, :updated_date
     )
     `
@@ -74,7 +74,7 @@ func (s *Store) Update(ctx context.Context, inspection inspectionbus.Inspection)
     UPDATE
         quality_inspections
     SET
-        inspection_id = :inspection_id,
+        id = :id,
         product_id = :product_id,
         inspector_id = :inspector_id,
         lot_id = :lot_id,
@@ -84,7 +84,7 @@ func (s *Store) Update(ctx context.Context, inspection inspectionbus.Inspection)
         notes = :notes,
         updated_date = :updated_date
     WHERE
-        inspection_id = :inspection_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInspection(inspection)); err != nil {
@@ -105,7 +105,7 @@ func (s *Store) Delete(ctx context.Context, inspection inspectionbus.Inspection)
     DELETE FROM
         quality_inspections
     WHERE
-        inspection_id = :inspection_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInspection(inspection)); err != nil {
@@ -123,7 +123,7 @@ func (s *Store) Query(ctx context.Context, filter inspectionbus.QueryFilter, ord
 
 	const q = `
 	SELECT
-	    inspection_id, product_id, inspector_id, lot_id, inspection_date, 
+	    id, product_id, inspector_id, lot_id, inspection_date, 
         next_inspection_date, status, notes,  created_date, updated_date
 	FROM
 		quality_inspections
@@ -175,19 +175,19 @@ func (s *Store) Count(ctx context.Context, filter inspectionbus.QueryFilter) (in
 
 func (s *Store) QueryByID(ctx context.Context, inspectionID uuid.UUID) (inspectionbus.Inspection, error) {
 	data := struct {
-		InspectionID uuid.UUID `db:"inspection_id"`
+		InspectionID uuid.UUID `db:"id"`
 	}{
 		InspectionID: inspectionID,
 	}
 
 	const q = `
     SELECT
-        inspection_id, product_id, inspector_id, lot_id, inspection_date, 
+        id, product_id, inspector_id, lot_id, inspection_date, 
         next_inspection_date, status, notes,  created_date, updated_date
     FROM
         quality_inspections
     WHERE
-        inspection_id = :inspection_id
+        id = :id
     `
 
 	var inspection inspection

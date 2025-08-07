@@ -5,7 +5,7 @@ import "github.com/timmaaaz/ichor/business/sdk/order"
 var DefaultOrderBy = order.NewBy(OrderByMetricID, order.ASC)
 
 const (
-	OrderByMetricID          = "quality_metric_id"
+	OrderByMetricID          = "id"
 	OrderByProductID         = "product_id"
 	OrderByReturnRate        = "return_rate"
 	OrderByDefectRate        = "defect_rate"

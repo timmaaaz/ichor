@@ -11,8 +11,8 @@ func applyFilter(filter reportstobus.QueryFilter, data map[string]interface{}, b
 	var wc []string
 
 	if filter.ID != nil {
-		data["reports_to_id"] = *filter.ID
-		wc = append(wc, "reports_to_id = :reports_to_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.BossID != nil {

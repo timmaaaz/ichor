@@ -18,12 +18,12 @@ func parseFilter(qp QueryParams) (assettagbus.QueryFilter, error) {
 		filter.ID = &id
 	}
 
-	if qp.AssetID != "" {
-		id, err := uuid.Parse(qp.AssetID)
+	if qp.ValidAssetID != "" {
+		id, err := uuid.Parse(qp.ValidAssetID)
 		if err != nil {
-			return assettagbus.QueryFilter{}, errs.NewFieldsError("asset_id", err)
+			return assettagbus.QueryFilter{}, errs.NewFieldsError("valid_asset_id", err)
 		}
-		filter.AssetID = &id
+		filter.ValidAssetID = &id
 	}
 
 	if qp.TagID != "" {

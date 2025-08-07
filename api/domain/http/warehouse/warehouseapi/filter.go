@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (warehouseapp.QueryParams, error) {
 		Page:             values.Get("page"),
 		Rows:             values.Get("rows"),
 		OrderBy:          values.Get("orderBy"),
-		ID:               values.Get("warehouse_id"),
+		ID:               values.Get("id"),
 		StreetID:         values.Get("street_id"),
 		Name:             values.Get("name"),
 		IsActive:         values.Get("is_active"),

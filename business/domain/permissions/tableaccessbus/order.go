@@ -7,7 +7,7 @@ var DefaultOrderBy = order.NewBy(OrderByTableName, order.ASC)
 
 // Set of fields that the results can be ordered by.
 const (
-	OrderByID        = "table_access_id"
+	OrderByID        = "id"
 	OrderByRoleID    = "role_id"
 	OrderByTableName = "table_name"
 	OrderByCanCreate = "can_create"

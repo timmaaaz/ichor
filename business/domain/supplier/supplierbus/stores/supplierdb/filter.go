@@ -11,13 +11,13 @@ func applyFilter(filter supplierbus.QueryFilter, data map[string]any, buf *bytes
 	var wc []string
 
 	if filter.SupplierID != nil {
-		data["supplier_id"] = *filter.SupplierID
-		wc = append(wc, "supplier_id = :supplier_id")
+		data["id"] = *filter.SupplierID
+		wc = append(wc, "id = :id")
 	}
 
-	if filter.ContactID != nil {
-		data["contact_id"] = *filter.ContactID
-		wc = append(wc, "contact_id = :contact_id")
+	if filter.ContactInfoID != nil {
+		data["contact_info_id"] = *filter.ContactInfoID
+		wc = append(wc, "contact_info_id = :contact_info_id")
 	}
 
 	if filter.Name != nil {

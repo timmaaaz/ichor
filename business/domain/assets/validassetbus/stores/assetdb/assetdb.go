@@ -50,11 +50,11 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (validassetbus.Storer, erro
 func (s *Store) Create(ctx context.Context, ass validassetbus.ValidAsset) error {
 	const q = `
     INSERT INTO valid_assets (
-        valid_asset_id, type_id, name, est_price, maintenance_interval,
+        id, type_id, name, est_price, maintenance_interval,
         life_expectancy, serial_number, model_number, is_enabled, date_created,
         date_updated, created_by, updated_by
     ) VALUES (
-        :valid_asset_id, :type_id, :name, :est_price, :maintenance_interval,
+        :id, :type_id, :name, :est_price, :maintenance_interval,
         :life_expectancy, :serial_number, :model_number, :is_enabled, :date_created,
         :date_updated, :created_by, :updated_by
     )   
@@ -75,7 +75,7 @@ func (s *Store) Update(ctx context.Context, ass validassetbus.ValidAsset) error 
 	UPDATE
 		valid_assets
 	SET
-		valid_asset_id = :valid_asset_id,
+		id = :id,
 		type_id = :type_id,
 		name = :name,
 		est_price = :est_price,
@@ -90,7 +90,7 @@ func (s *Store) Update(ctx context.Context, ass validassetbus.ValidAsset) error 
 		created_by = :created_by,
 		updated_by = :updated_by
 	WHERE
-		valid_asset_id = :valid_asset_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAsset(ass)); err != nil {
@@ -108,7 +108,7 @@ func (s *Store) Delete(ctx context.Context, ass validassetbus.ValidAsset) error 
 	DELETE FROM
 		valid_assets
 	WHERE
-		valid_asset_id = :valid_asset_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAsset(ass)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -126,7 +126,7 @@ func (s *Store) Query(ctx context.Context, filter validassetbus.QueryFilter, ord
 
 	const q = `
 	SELECT
-		valid_asset_id,
+		id,
 		type_id,
 		name,
 		est_price,
@@ -189,14 +189,14 @@ func (s *Store) Count(ctx context.Context, filter validassetbus.QueryFilter) (in
 // QueryByID retrieves a single asset from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, assetID uuid.UUID) (validassetbus.ValidAsset, error) {
 	data := struct {
-		ID string `db:"valid_asset_id"`
+		ID string `db:"id"`
 	}{
 		ID: assetID.String(),
 	}
 
 	const q = `
     SELECT
-		valid_asset_id,
+		id,
 		type_id,
 		name,
 		est_price,
@@ -213,7 +213,7 @@ func (s *Store) QueryByID(ctx context.Context, assetID uuid.UUID) (validassetbus
     FROM
         valid_assets
     WHERE
-        valid_asset_id = :valid_asset_id`
+        id = :id`
 
 	var ass validAsset
 

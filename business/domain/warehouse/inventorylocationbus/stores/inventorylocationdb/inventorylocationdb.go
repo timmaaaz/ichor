@@ -48,10 +48,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventorylocationbus.Store
 func (s *Store) Create(ctx context.Context, il inventorylocationbus.InventoryLocation) error {
 	const q = `
 	INSERT INTO inventory_locations (
-		location_id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
+		id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
 		is_reserve_location, max_capacity, current_utilization, created_date, updated_date
 	) VALUES (
-		:location_id, :zone_id, :warehouse_id, :aisle, :rack, :shelf, :bin, :is_pick_location, 
+		:id, :zone_id, :warehouse_id, :aisle, :rack, :shelf, :bin, :is_pick_location, 
         :is_reserve_location, :max_capacity, :current_utilization, :created_date, :updated_date
     )
 	`
@@ -75,7 +75,7 @@ func (s *Store) Update(ctx context.Context, il inventorylocationbus.InventoryLoc
     UPDATE
         inventory_locations
     SET
-		location_id = :location_id, 
+		id = :id, 
 		zone_id = :zone_id, 
 		warehouse_id = :warehouse_id, 
 		aisle = :aisle, 
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, il inventorylocationbus.InventoryLoc
 		created_date = :created_date, 
 		updated_date = :updated_date
 	WHERE 
-		location_id = :location_id
+		id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInvLocation(il)); err != nil {
@@ -110,7 +110,7 @@ func (s *Store) Delete(ctx context.Context, il inventorylocationbus.InventoryLoc
     DELETE FROM
         inventory_locations
     WHERE
-        location_id = :location_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInvLocation(il)); err != nil {
@@ -128,7 +128,7 @@ func (s *Store) Query(ctx context.Context, filter inventorylocationbus.QueryFilt
 
 	const q = `
 	SELECT
-		location_id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
+		id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
 		is_reserve_location, max_capacity, current_utilization, created_date, updated_date
 	FROM 
 		inventory_locations
@@ -179,19 +179,19 @@ func (s *Store) Count(ctx context.Context, filter inventorylocationbus.QueryFilt
 
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (inventorylocationbus.InventoryLocation, error) {
 	data := struct {
-		ID string `db:"location_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        location_id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
+        id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
         is_reserve_location, max_capacity, current_utilization, created_date, updated_date
     FROM 
         inventory_locations
     WHERE
-        location_id = :location_id
+        id = :id
     `
 
 	var dbIL inventoryLocation

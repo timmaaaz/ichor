@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (streetapp.QueryParams, error) {
 		Page:       values.Get("page"),
 		Rows:       values.Get("rows"),
 		OrderBy:    values.Get("orderBy"),
-		ID:         values.Get("street_id"),
+		ID:         values.Get("id"),
 		CityID:     values.Get("city_id"),
 		Line1:      values.Get("line_1"),
 		Line2:      values.Get("line_2"),
