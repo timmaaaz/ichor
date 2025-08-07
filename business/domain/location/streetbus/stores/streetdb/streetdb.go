@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (streetbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, str streetbus.Street) error {
 	const q = `
     INSERT INTO streets (
-        street_id, city_id, line_1, line_2, postal_code
+        id, city_id, line_1, line_2, postal_code
     ) VALUES (
-        :street_id, :city_id, :line_1, :line_2, :postal_code
+        :id, :city_id, :line_1, :line_2, :postal_code
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBStreet(str)); err != nil {
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, str streetbus.Street) error {
         line_2 = :line_2,
         postal_code = :postal_code
     WHERE
-        street_id = :street_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBStreet(str)); err != nil {
 		// No duplicate entry check because there is no unique constraint.
@@ -88,7 +88,7 @@ func (s *Store) Delete(ctx context.Context, str streetbus.Street) error {
     DELETE FROM 
         streets
     WHERE
-        street_id = :street_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBStreet(str)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -106,7 +106,7 @@ func (s *Store) Query(ctx context.Context, filter streetbus.QueryFilter, orderBy
 
 	const q = `
     SELECT
-        street_id, city_id, line_1, line_2, postal_code
+        id, city_id, line_1, line_2, postal_code
     FROM
         streets`
 
@@ -155,18 +155,18 @@ func (s *Store) Count(ctx context.Context, filter streetbus.QueryFilter) (int, e
 // QueryByID retrieves a single street from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, streetID uuid.UUID) (streetbus.Street, error) {
 	data := struct {
-		ID string `db:"street_id"`
+		ID string `db:"id"`
 	}{
 		ID: streetID.String(),
 	}
 
 	const q = `
     SELECT
-        street_id, city_id, line_1, line_2, postal_code
+        id, city_id, line_1, line_2, postal_code
     FROM
         streets
     WHERE
-        street_id = :street_id
+        id = :id
     `
 	var str street
 

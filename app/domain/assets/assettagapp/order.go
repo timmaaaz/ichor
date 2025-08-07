@@ -5,10 +5,10 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
-var defaultOrderBy = order.NewBy("asset_tag_id", order.ASC)
+var defaultOrderBy = order.NewBy("id", order.ASC)
 
 var orderByFields = map[string]string{
-	"asset_tag_id": assettagbus.OrderByID,
-	"asset_id":     assettagbus.OrderByAssetID,
-	"tag_id":       assettagbus.OrderByTagID,
+	"id":             assettagbus.OrderByID,
+	"valid_asset_id": assettagbus.OrderByValidAssetID,
+	"tag_id":         assettagbus.OrderByTagID,
 }

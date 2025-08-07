@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (reportstobus.Storer, error
 func (s *Store) Create(ctx context.Context, t reportstobus.ReportsTo) error {
 	const q = `
     INSERT INTO reports_to (
-        reports_to_id, boss_id, reporter_id
+        id, boss_id, reporter_id
     ) VALUES (
-        :reports_to_id, :boss_id, :reporter_id
+        :id, :boss_id, :reporter_id
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBReportsTo(t)); err != nil {
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, t reportstobus.ReportsTo) error {
         boss_id = :boss_id,
         reporter_id = :reporter_id
     WHERE
-        reports_to_id = :reports_to_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBReportsTo(t)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, at reportstobus.ReportsTo) error {
     DELETE FROM
         reports_to
     WHERE
-        reports_to_id = :reports_to_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBReportsTo(at)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -109,7 +109,7 @@ func (s *Store) Query(ctx context.Context, filter reportstobus.QueryFilter, orde
 
 	const q = `
     SELECT
-        reports_to_id, boss_id, reporter_id
+        id, boss_id, reporter_id
     FROM
         reports_to `
 
@@ -158,18 +158,18 @@ func (s *Store) Count(ctx context.Context, filter reportstobus.QueryFilter) (int
 // QueryByID retrieves a single tag by its id.
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (reportstobus.ReportsTo, error) {
 	data := struct {
-		ID string `db:"reports_to_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        reports_to_id, boss_id, reporter_id
+        id, boss_id, reporter_id
     FROM
         reports_to
     WHERE
-        reports_to_id = :reports_to_id
+        id = :id
     `
 
 	var dbRT reportsTo

@@ -11,8 +11,8 @@ func applyFilter(filter physicalattributebus.QueryFilter, data map[string]interf
 	var wc []string
 
 	if filter.ID != nil {
-		data["attribute_id"] = *filter.ID
-		wc = append(wc, "attribute_id = :attribute_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.ProductID != nil {

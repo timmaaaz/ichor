@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (brandapp.QueryParams, error) {
 		Page:          values.Get("page"),
 		Rows:          values.Get("rows"),
 		OrderBy:       values.Get("orderBy"),
-		ID:            values.Get("brand_id"),
+		ID:            values.Get("id"),
 		Name:          values.Get("name"),
 		ContactInfoID: values.Get("contact_info_id"),
 		CreatedDate:   values.Get("created_date"),

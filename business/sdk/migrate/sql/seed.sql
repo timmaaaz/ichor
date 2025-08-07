@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-INSERT INTO countries (country_id, number, name, alpha_2, alpha_3) VALUES
+INSERT INTO countries (id, number, name, alpha_2, alpha_3) VALUES
     (uuid_generate_v4(),1,'Andorra','AD','AND'),
     (uuid_generate_v4(),2,'United Arab Emirates','AE','ARE'),
     (uuid_generate_v4(),3,'Afghanistan','AF','AFG'),
@@ -251,61 +251,61 @@ INSERT INTO countries (country_id, number, name, alpha_2, alpha_3) VALUES
 ;
 -- Version: 1.02
 -- Description: Insert data into regions table
-INSERT INTO regions (region_id, country_id, name, code) VALUES
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Alabama', 'AL'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Alaska', 'AK'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Arizona', 'AZ'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Arkansas', 'AR'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'California', 'CA'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Colorado', 'CO'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Connecticut', 'CT'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Delaware', 'DE'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Florida', 'FL'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Georgia', 'GA'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Hawaii', 'HI'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Idaho', 'ID'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Illinois', 'IL'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Indiana', 'IN'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Iowa', 'IA'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Kansas', 'KS'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Kentucky', 'KY'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Louisiana', 'LA'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Maine', 'ME'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Maryland', 'MD'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Massachusetts', 'MA'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Michigan', 'MI'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Minnesota', 'MN'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Mississippi', 'MS'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Missouri', 'MO'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Montana', 'MT'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Nebraska', 'NE'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Nevada', 'NV'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'New Hampshire', 'NH'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'New Jersey', 'NJ'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'New Mexico', 'NM'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'New York', 'NY'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'North Carolina', 'NC'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'North Dakota', 'ND'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Ohio', 'OH'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Oklahoma', 'OK'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Oregon', 'OR'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Pennsylvania', 'PA'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Rhode Island', 'RI'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'South Carolina', 'SC'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'South Dakota', 'SD'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Tennessee', 'TN'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Texas', 'TX'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Utah', 'UT'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Vermont', 'VT'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Virginia', 'VA'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Washington', 'WA'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'West Virginia', 'WV'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Wisconsin', 'WI'),
-    (uuid_generate_v4(), (SELECT country_id FROM countries WHERE alpha_2 = 'US'), 'Wyoming', 'WY')
+INSERT INTO regions (id, country_id, name, code) VALUES
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Alabama', 'AL'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Alaska', 'AK'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Arizona', 'AZ'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Arkansas', 'AR'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'California', 'CA'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Colorado', 'CO'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Connecticut', 'CT'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Delaware', 'DE'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Florida', 'FL'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Georgia', 'GA'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Hawaii', 'HI'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Idaho', 'ID'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Illinois', 'IL'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Indiana', 'IN'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Iowa', 'IA'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Kansas', 'KS'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Kentucky', 'KY'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Louisiana', 'LA'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Maine', 'ME'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Maryland', 'MD'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Massachusetts', 'MA'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Michigan', 'MI'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Minnesota', 'MN'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Mississippi', 'MS'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Missouri', 'MO'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Montana', 'MT'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Nebraska', 'NE'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Nevada', 'NV'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'New Hampshire', 'NH'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'New Jersey', 'NJ'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'New Mexico', 'NM'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'New York', 'NY'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'North Carolina', 'NC'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'North Dakota', 'ND'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Ohio', 'OH'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Oklahoma', 'OK'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Oregon', 'OR'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Pennsylvania', 'PA'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Rhode Island', 'RI'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'South Carolina', 'SC'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'South Dakota', 'SD'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Tennessee', 'TN'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Texas', 'TX'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Utah', 'UT'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Vermont', 'VT'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Virginia', 'VA'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Washington', 'WA'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'West Virginia', 'WV'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Wisconsin', 'WI'),
+    (uuid_generate_v4(), (SELECT id FROM countries WHERE alpha_2 = 'US'), 'Wyoming', 'WY')
 ;
 
 
-INSERT INTO user_approval_status (user_approval_status_id, name, icon_id) VALUES
+INSERT INTO user_approval_status (id, name, icon_id) VALUES
     ('89173300-3f4e-4606-872c-f34914bbee19', 'PENDING', uuid_generate_v4()),
     ('0394acac-ace4-4e8f-b64e-68625b0af14a', 'APPROVED', uuid_generate_v4()),
     ('7b901e2e-3f33-40c1-9201-b4e8b1718b4b', 'DENIED', uuid_generate_v4()),
@@ -313,9 +313,9 @@ INSERT INTO user_approval_status (user_approval_status_id, name, icon_id) VALUES
 
 -- Insert 20 users with the provided structure
 INSERT INTO users (
-    user_id, username, first_name, last_name, birthday, email, title_id, work_phone_id, cell_phone_id, 
+    id, username, first_name, last_name, birthday, email, title_id, work_phone_id, cell_phone_id, 
     requested_by, approved_by, roles, system_roles, password_hash, office_id, enabled, 
-    date_requested, date_approved, date_created, date_updated, user_approval_status
+    date_requested, date_approved, date_created, date_updated, user_approval_status_id
 ) VALUES
     ('5cf37266-3473-4006-984f-9325122678b7', 'admin_gopher', 'Admin', 'Gopher', NULL, 'admin@example.com', NULL, NULL, NULL, NULL, NULL, '{ADMIN}', '{}', '$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a', NULL, true, NULL, NULL, '2019-03-24 00:00:00', '2019-03-24 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a'),
     ('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'user_gopher', 'User', 'Gopher', NULL, 'user@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2019-03-24 00:00:00', '2019-03-24 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a'),
@@ -340,21 +340,21 @@ INSERT INTO users (
 ;
 
 
-INSERT INTO approval_status (approval_status_id, name, icon_id) VALUES 
+INSERT INTO approval_status (id, name, icon_id) VALUES 
     (uuid_generate_v4(), 'SUCCESS', uuid_generate_v4()),
     (uuid_generate_v4(), 'ERROR', uuid_generate_v4()),
     (uuid_generate_v4(), 'WAITING', uuid_generate_v4()),
     (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
     (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
 
-INSERT INTO fulfillment_status (fulfillment_status_id, name, icon_id) VALUES 
+INSERT INTO fulfillment_status (id, name, icon_id) VALUES 
     (uuid_generate_v4(), 'SUCCESS', uuid_generate_v4()),
     (uuid_generate_v4(), 'ERROR', uuid_generate_v4()),
     (uuid_generate_v4(), 'WAITING', uuid_generate_v4()),
     (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
     (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
 
-INSERT INTO asset_conditions (asset_condition_id, name) VALUES 
+INSERT INTO asset_conditions (id, name) VALUES 
     (uuid_generate_v4(), 'PERFECT'),
     (uuid_generate_v4(), 'GOOD'),
     (uuid_generate_v4(), 'USED'),

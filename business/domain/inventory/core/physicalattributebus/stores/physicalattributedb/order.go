@@ -8,7 +8,7 @@ import (
 )
 
 var orderByFields = map[string]string{
-	physicalattributebus.OrderByAttributeID:         "attribute_id",
+	physicalattributebus.OrderByAttributeID:         "id",
 	physicalattributebus.OrderByProductID:           "product_id",
 	physicalattributebus.OrderByLength:              "length",
 	physicalattributebus.OrderByWidth:               "width",

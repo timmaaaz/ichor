@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (tableaccessapp.QueryParams, error) {
 		Page:      values.Get("page"),
 		Rows:      values.Get("rows"),
 		OrderBy:   values.Get("orderBy"),
-		ID:        values.Get("table_access_id"),
+		ID:        values.Get("id"),
 		TableName: values.Get("table_name"),
 		CanCreate: values.Get("can_create"),
 		CanRead:   values.Get("can_read"),

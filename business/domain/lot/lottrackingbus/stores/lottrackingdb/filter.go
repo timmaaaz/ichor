@@ -11,8 +11,8 @@ func applyFilter(filter lottrackingbus.QueryFilter, data map[string]any, buf *by
 	var wc []string
 
 	if filter.LotID != nil {
-		data["lot_id"] = *filter.LotID
-		wc = append(wc, "lot_id = :lot_id")
+		data["id"] = *filter.LotID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.SupplierProductID != nil {

@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (fulfillmentstatusbus.Store
 func (s *Store) Create(ctx context.Context, fs fulfillmentstatusbus.FulfillmentStatus) error {
 	const q = `
     INSERT INTO fulfillment_status (
-        fulfillment_status_id, icon_id, name
+        id, icon_id, name
     ) VALUES (
-        :fulfillment_status_id, :icon_id, :name
+        :id, :icon_id, :name
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBFulfillmentStatus(fs)); err != nil {
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, fs fulfillmentstatusbus.FulfillmentS
 	    icon_id = :icon_id,
         name = :name
 	WHERE 
-		fulfillment_status_id = :fulfillment_status_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBFulfillmentStatus(fs)); err != nil {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, as fulfillmentstatusbus.FulfillmentS
 	DELETE FROM
 		fulfillment_status
 	WHERE
-		fulfillment_status_id = :fulfillment_status_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBFulfillmentStatus(as)); err != nil {
@@ -110,7 +110,7 @@ func (s *Store) Query(ctx context.Context, filter fulfillmentstatusbus.QueryFilt
 
 	const q = `
 	SELECT 
-		fulfillment_status_id, icon_id, name
+		id, icon_id, name
 	FROM
 		fulfillment_status
 	`
@@ -161,18 +161,18 @@ func (s *Store) Count(ctx context.Context, filter fulfillmentstatusbus.QueryFilt
 // QueryByID finds the approval status by the specified ID.
 func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (fulfillmentstatusbus.FulfillmentStatus, error) {
 	data := struct {
-		ID string `db:"fulfillment_status_id"`
+		ID string `db:"id"`
 	}{
 		ID: aprvlStatusID.String(),
 	}
 
 	const q = `
     SELECT
-        fulfillment_status_id, icon_id, name
+        id, icon_id, name
     FROM
         fulfillment_status
     WHERE
-        fulfillment_status_id = :fulfillment_status_id
+        id = :id
     `
 
 	var fulfillmentStatus fulfillmentStatus

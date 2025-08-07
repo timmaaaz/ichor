@@ -11,8 +11,8 @@ func applyFilter(filter serialnumberbus.QueryFilter, data map[string]any, buf *b
 	var wc []string
 
 	if filter.SerialID != nil {
-		data["serial_id"] = *filter.SerialID
-		wc = append(wc, "serial_id = :serial_id")
+		data["id"] = *filter.SerialID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.LotID != nil {

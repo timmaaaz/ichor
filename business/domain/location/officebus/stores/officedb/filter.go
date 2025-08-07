@@ -11,8 +11,8 @@ func applyFilter(filter officebus.QueryFilter, data map[string]interface{}, buf 
 	var wc []string
 
 	if filter.ID != nil {
-		data["office_id"] = *filter.ID
-		wc = append(wc, "office_id = :office_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.StreetID != nil {

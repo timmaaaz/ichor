@@ -18,7 +18,7 @@ func init() {
 }
 
 type userAsset struct {
-	ID                  uuid.UUID `db:"user_asset_id"`
+	ID                  uuid.UUID `db:"id"`
 	UserID              uuid.UUID `db:"user_id"`
 	AssetID             uuid.UUID `db:"asset_id"`
 	ApprovedBy          uuid.UUID `db:"approved_by"`

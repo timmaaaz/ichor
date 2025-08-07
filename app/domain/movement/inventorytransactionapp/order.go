@@ -5,10 +5,10 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
-var defaultOrderBy = order.NewBy("transaction_id", order.ASC)
+var defaultOrderBy = order.NewBy("id", order.ASC)
 
 var orderByFields = map[string]string{
-	"transaction_id":   inventorytransactionbus.OrderByInventoryTransactionID,
+	"id":               inventorytransactionbus.OrderByInventoryTransactionID,
 	"product_id":       inventorytransactionbus.OrderByProductID,
 	"location_id":      inventorytransactionbus.OrderByLocationID,
 	"user_id":          inventorytransactionbus.OrderByUserID,

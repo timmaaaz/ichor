@@ -11,7 +11,7 @@ import (
 )
 
 type supplierProduct struct {
-	SupplierProductID  uuid.UUID      `db:"supplier_product_id"`
+	SupplierProductID  uuid.UUID      `db:"id"`
 	SupplierID         uuid.UUID      `db:"supplier_id"`
 	ProductID          uuid.UUID      `db:"product_id"`
 	SupplierPartNumber string         `db:"supplier_part_number"`

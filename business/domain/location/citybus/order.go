@@ -7,7 +7,7 @@ var DefaultOrderBy = order.NewBy(OrderByName, order.ASC)
 
 // Set of fields that the results can be ordered by.
 const (
-	OrderByID       = "city_id"
+	OrderByID       = "id"
 	OrderByRegionID = "region_id"
 	OrderByName     = "name"
 )

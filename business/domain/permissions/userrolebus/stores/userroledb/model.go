@@ -6,7 +6,7 @@ import (
 )
 
 type userRole struct {
-	ID     uuid.UUID `db:"user_role_id"`
+	ID     uuid.UUID `db:"id"`
 	UserID uuid.UUID `db:"user_id"`
 	RoleID uuid.UUID `db:"role_id"`
 }

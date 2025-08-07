@@ -13,10 +13,10 @@ import (
 )
 
 type user struct {
-	ID                 uuid.UUID      `db:"user_id"`
+	ID                 uuid.UUID      `db:"id"`
 	RequestedBy        sql.NullString `db:"requested_by"`
 	ApprovedBy         sql.NullString `db:"approved_by"`
-	UserApprovalStatus uuid.UUID      `db:"user_approval_status"`
+	UserApprovalStatus uuid.UUID      `db:"user_approval_status_id"`
 	TitleID            sql.NullString `db:"title_id"`
 	OfficeID           sql.NullString `db:"office_id"`
 	WorkPhoneID        uuid.UUID      `db:"work_phone_id"`

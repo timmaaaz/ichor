@@ -23,7 +23,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/permissions/table_access?page=1&rows=10&orderBy=table_access_id,ASC",
+			URL:        "/v1/permissions/table_access?page=1&rows=10&orderBy=id,ASC",
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

@@ -131,7 +131,7 @@ CREATE TABLE users (
 -- Description: Create table valid_assets
 CREATE TABLE valid_assets (
    id UUID NOT NULL,
-   asset_type_id UUID NOT NULL,
+   type_id UUID NOT NULL,
    name TEXT NOT NULL,
    est_price NUMERIC(10,2) NULL,
    price NUMERIC(10,2) NULL,
@@ -150,7 +150,7 @@ CREATE TABLE valid_assets (
    CONSTRAINT unique_asset_name UNIQUE (name),
 
    -- named foreign keys
-   CONSTRAINT fk_assets_type_id FOREIGN KEY (asset_type_id) REFERENCES asset_types(id) ON DELETE CASCADE,
+   CONSTRAINT fk_assets_type_id FOREIGN KEY (type_id) REFERENCES asset_types(id) ON DELETE CASCADE,
    CONSTRAINT fk_assets_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
    CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE CASCADE
 );

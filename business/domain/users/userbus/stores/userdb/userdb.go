@@ -51,16 +51,16 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, usr userbus.User) error {
 	const q = `
 	INSERT INTO users (
-		user_id, requested_by, approved_by, title_id, office_id, work_phone_id, 
+		id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
-		date_approved, date_created, date_updated, user_approval_status
+		date_approved, date_created, date_updated, user_approval_status_id
 	) VALUES (
-		:user_id, :requested_by, :approved_by, :title_id, :office_id, 
+		:id, :requested_by, :approved_by, :title_id, :office_id, 
 		:work_phone_id, :cell_phone_id, :username, :first_name, :last_name, 
 		:email, :birthday, :roles, :system_roles, :password_hash, :enabled, 
 		:date_hired, :date_requested, :date_approved, :date_created, 
-		:date_updated, :user_approval_status
+		:date_updated, :user_approval_status_id
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUser(usr)); err != nil {
@@ -99,7 +99,7 @@ func (s *Store) Update(ctx context.Context, usr userbus.User) error {
 		date_approved = :date_approved,
 		date_updated = :date_updated
 	WHERE
-		user_id = :user_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUser(usr)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -117,7 +117,7 @@ func (s *Store) Delete(ctx context.Context, usr userbus.User) error {
 	DELETE FROM
 		users
 	WHERE
-		user_id = :user_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUser(usr)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -135,10 +135,10 @@ func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy o
 
 	const q = `
 	SELECT
-		user_id, requested_by, approved_by, title_id, office_id, work_phone_id, 
+		id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
-		date_approved, date_created, date_updated, user_approval_status
+		date_approved, date_created, date_updated, user_approval_status_id
 	FROM
 		users`
 
@@ -187,21 +187,21 @@ func (s *Store) Count(ctx context.Context, filter userbus.QueryFilter) (int, err
 // QueryByID gets the specified user from the database.
 func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (userbus.User, error) {
 	data := struct {
-		ID string `db:"user_id"`
+		ID string `db:"id"`
 	}{
 		ID: userID.String(),
 	}
 
 	const q = `
 	SELECT
-        user_id, requested_by, approved_by, title_id, office_id, work_phone_id, 
+        id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
-		date_approved, date_created, date_updated, user_approval_status
+		date_approved, date_created, date_updated, user_approval_status_id
 	FROM
 		users
 	WHERE 
-		user_id = :user_id`
+		id = :id`
 
 	var dbUsr user
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbUsr); err != nil {
@@ -224,10 +224,10 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.U
 
 	const q = `
 	SELECT
-        user_id, requested_by, approved_by, title_id, office_id, work_phone_id, 
+        id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
-		date_approved, date_created, date_updated, user_approval_status
+		date_approved, date_created, date_updated, user_approval_status_id
 	FROM
 		users
 	WHERE

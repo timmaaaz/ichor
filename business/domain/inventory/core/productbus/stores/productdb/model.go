@@ -8,7 +8,7 @@ import (
 )
 
 type product struct {
-	ProductID            uuid.UUID `db:"product_id"`
+	ProductID            uuid.UUID `db:"id"`
 	SKU                  string    `db:"sku"`
 	BrandID              uuid.UUID `db:"brand_id"`
 	ProductCategoryID    uuid.UUID `db:"category_id"`

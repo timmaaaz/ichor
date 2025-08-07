@@ -48,12 +48,12 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	contactIDs := make(uuid.UUIDs, len(contacts))
+	ContactInfoIDs := make(uuid.UUIDs, len(contacts))
 	for i, c := range contacts {
-		contactIDs[i] = c.ID
+		ContactInfoIDs[i] = c.ID
 	}
 
-	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 10, contactIDs, busDomain.Supplier)
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 10, ContactInfoIDs, busDomain.Supplier)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}

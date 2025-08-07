@@ -8,7 +8,7 @@ import (
 )
 
 type lotTracking struct {
-	LotID             uuid.UUID `db:"lot_id"`
+	LotID             uuid.UUID `db:"id"`
 	SupplierProductID uuid.UUID `db:"supplier_product_id"`
 	LotNumber         string    `db:"lot_number"`
 	ManufactureDate   time.Time `db:"manufacture_date"`

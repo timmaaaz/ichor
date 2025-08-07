@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (rolebus.Storer, error) {
 func (s *Store) Create(ctx context.Context, r rolebus.Role) error {
 	const q = `
 	INSERT INTO roles (
-		role_id, name, description
+		id, name, description
 	) VALUES (
-		:role_id, :name, :description
+		:id, :name, :description
 	)
 	`
 
@@ -74,7 +74,7 @@ func (s *Store) Update(ctx context.Context, r rolebus.Role) error {
 		name = :name,
 		description = :description
 	WHERE 
-		role_id = :role_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRole(r)); err != nil {
@@ -93,7 +93,7 @@ func (s *Store) Delete(ctx context.Context, r rolebus.Role) error {
 	DELETE FROM 
 		roles
 	WHERE 
-		role_id = :role_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRole(r)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -111,7 +111,7 @@ func (s *Store) Query(ctx context.Context, filter rolebus.QueryFilter, orderBy o
 
 	const q = `
 	SELECT
-		role_id, name, description
+		id, name, description
 	FROM
 		roles`
 
@@ -160,18 +160,18 @@ func (s *Store) Count(ctx context.Context, filter rolebus.QueryFilter) (int, err
 // QueryByID retrieves a single role from the system by its ID.
 func (s *Store) QueryByID(ctx context.Context, roleID uuid.UUID) (rolebus.Role, error) {
 	data := struct {
-		ID string `db:"role_id"`
+		ID string `db:"id"`
 	}{
 		ID: roleID.String(),
 	}
 
 	const q = `
 	SELECT
-		role_id, name, description
+		id, name, description
 	FROM
 		roles
 	WHERE
-		role_id = :role_id`
+		id = :id`
 
 	var dbRole role
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbRole); err != nil {
@@ -199,11 +199,11 @@ func (s *Store) QueryByIDs(ctx context.Context, roleIDs []uuid.UUID) ([]rolebus.
 
 	const q = `
 	SELECT
-		role_id, name, description
+		id, name, description
 	FROM
 		roles
 	WHERE
-		role_id IN (:role_ids)`
+		id IN (:role_ids)`
 
 	var dbRoles []role
 	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &dbRoles); err != nil {
@@ -217,7 +217,7 @@ func (s *Store) QueryByIDs(ctx context.Context, roleIDs []uuid.UUID) ([]rolebus.
 func (s *Store) QueryAll(ctx context.Context) ([]rolebus.Role, error) {
 	const q = `
 	SELECT
-		role_id, name, description
+		id, name, description
 	FROM
 		roles`
 

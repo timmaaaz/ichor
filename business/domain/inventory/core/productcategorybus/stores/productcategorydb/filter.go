@@ -11,8 +11,8 @@ func applyFilter(filter productcategorybus.QueryFilter, data map[string]interfac
 	var wc []string
 
 	if filter.ID != nil {
-		data["category_id"] = *filter.ID
-		wc = append(wc, "category_id = :category_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.Name != nil {

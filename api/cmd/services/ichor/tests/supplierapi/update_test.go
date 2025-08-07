@@ -22,23 +22,23 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &supplierapp.UpdateSupplier{
-				ContactID:    &sd.ContactInfo[0].ID,
-				Name:         dbtest.StringPointer("UpdateSupplier"),
-				PaymentTerms: dbtest.StringPointer("UpdatePaymentTerms"),
-				LeadTimeDays: dbtest.StringPointer("10"),
-				Rating:       dbtest.StringPointer("2.22"),
-				IsActive:     dbtest.StringPointer("true"),
+				ContactInfoID: &sd.ContactInfo[0].ID,
+				Name:          dbtest.StringPointer("UpdateSupplier"),
+				PaymentTerms:  dbtest.StringPointer("UpdatePaymentTerms"),
+				LeadTimeDays:  dbtest.StringPointer("10"),
+				Rating:        dbtest.StringPointer("2.22"),
+				IsActive:      dbtest.StringPointer("true"),
 			},
 			GotResp: &supplierapp.Supplier{},
 			ExpResp: &supplierapp.Supplier{
-				ContactID:    sd.ContactInfo[0].ID,
-				Name:         "UpdateSupplier",
-				PaymentTerms: "UpdatePaymentTerms",
-				LeadTimeDays: "10",
-				Rating:       "2.22",
-				IsActive:     "true",
-				CreatedDate:  sd.Suppliers[0].CreatedDate,
-				SupplierID:   sd.Suppliers[0].SupplierID,
+				ContactInfoID: sd.ContactInfo[0].ID,
+				Name:          "UpdateSupplier",
+				PaymentTerms:  "UpdatePaymentTerms",
+				LeadTimeDays:  "10",
+				Rating:        "2.22",
+				IsActive:      "true",
+				CreatedDate:   sd.Suppliers[0].CreatedDate,
+				SupplierID:    sd.Suppliers[0].SupplierID,
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*supplierapp.Supplier)
@@ -64,10 +64,10 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.UpdateSupplier{
-				ContactID: dbtest.StringPointer("not-a-uuid"),
+				ContactInfoID: dbtest.StringPointer("not-a-uuid"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_id","error":"contact_id must be at least 36 characters in length"}]`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_info_id","error":"contact_info_id must be at least 36 characters in length"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -79,7 +79,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.UpdateSupplier{
-				ContactID: &sd.Suppliers[0].ContactID,
+				ContactInfoID: &sd.Suppliers[0].ContactInfoID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "invalid UUID length: 10"),
@@ -141,7 +141,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
 			Input: &supplierapp.UpdateSupplier{
-				ContactID: dbtest.StringPointer(uuid.NewString()),
+				ContactInfoID: dbtest.StringPointer(uuid.NewString()),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.NotFound, "supplier not found"),
@@ -161,7 +161,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,
 			Input: &supplierapp.UpdateSupplier{
-				ContactID: dbtest.StringPointer(uuid.NewString()),
+				ContactInfoID: dbtest.StringPointer(uuid.NewString()),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.Aborted, "foreign key violation"),

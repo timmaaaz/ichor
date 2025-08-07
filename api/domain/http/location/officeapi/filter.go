@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (officeapp.QueryParams, error) {
 		Page:     values.Get("page"),
 		Rows:     values.Get("rows"),
 		OrderBy:  values.Get("orderBy"),
-		ID:       values.Get("office_id"),
+		ID:       values.Get("id"),
 		Name:     values.Get("name"),
 		StreetID: values.Get("street_id"),
 	}

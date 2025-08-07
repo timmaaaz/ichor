@@ -8,13 +8,13 @@ import (
 var defaultOrderBy = order.NewBy("name", order.ASC)
 
 var orderByFields = map[string]string{
-	"supplier_id":    supplierbus.OrderBySupplierID,
-	"contact_id":     supplierbus.OrderByContactID,
-	"name":           supplierbus.OrderByName,
-	"payment_terms":  supplierbus.OrderByPaymentTerms,
-	"lead_time_days": supplierbus.OrderByLeadTimeDays,
-	"rating":         supplierbus.OrderByRating,
-	"is_active":      supplierbus.OrderByIsActive,
-	"created_date":   supplierbus.OrderByCreatedDate,
-	"updated_date":   supplierbus.OrderByUpdatedDate,
+	"id":              supplierbus.OrderBySupplierID,
+	"contact_info_id": supplierbus.OrderByContactInfoID,
+	"name":            supplierbus.OrderByName,
+	"payment_terms":   supplierbus.OrderByPaymentTerms,
+	"lead_time_days":  supplierbus.OrderByLeadTimeDays,
+	"rating":          supplierbus.OrderByRating,
+	"is_active":       supplierbus.OrderByIsActive,
+	"created_date":    supplierbus.OrderByCreatedDate,
+	"updated_date":    supplierbus.OrderByUpdatedDate,
 }

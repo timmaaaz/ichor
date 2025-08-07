@@ -8,7 +8,7 @@ import (
 )
 
 type inspection struct {
-	InspectionID       uuid.UUID `db:"inspection_id"`
+	InspectionID       uuid.UUID `db:"id"`
 	ProductID          uuid.UUID `db:"product_id"`
 	InspectorID        uuid.UUID `db:"inspector_id"`
 	LotID              uuid.UUID `db:"lot_id"`

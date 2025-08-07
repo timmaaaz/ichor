@@ -50,9 +50,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (homebus.Storer, error) {
 func (s *Store) Create(ctx context.Context, hme homebus.Home) error {
 	const q = `
     INSERT INTO homes
-        (home_id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated)
+        (id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated)
     VALUES
-        (:home_id, :user_id, :type, :address_1, :address_2, :zip_code, :city, :state, :country, :date_created, :date_updated)`
+        (:id, :user_id, :type, :address_1, :address_2, :zip_code, :city, :state, :country, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBHome(hme)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -64,7 +64,7 @@ func (s *Store) Create(ctx context.Context, hme homebus.Home) error {
 // Delete removes a home from the database.
 func (s *Store) Delete(ctx context.Context, hme homebus.Home) error {
 	data := struct {
-		ID string `db:"home_id"`
+		ID string `db:"id"`
 	}{
 		ID: hme.ID.String(),
 	}
@@ -73,7 +73,7 @@ func (s *Store) Delete(ctx context.Context, hme homebus.Home) error {
     DELETE FROM
 	    homes
 	WHERE
-	  	home_id = :home_id`
+	  	id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -97,7 +97,7 @@ func (s *Store) Update(ctx context.Context, hme homebus.Home) error {
         "type"          = :type,
         "date_updated"  = :date_updated
     WHERE
-        home_id = :home_id`
+        id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBHome(hme)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -115,7 +115,7 @@ func (s *Store) Query(ctx context.Context, filter homebus.QueryFilter, orderBy o
 
 	const q = `
     SELECT
-	    home_id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
+	    id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
 	FROM
 	  	homes`
 
@@ -169,18 +169,18 @@ func (s *Store) Count(ctx context.Context, filter homebus.QueryFilter) (int, err
 // QueryByID gets the specified home from the database.
 func (s *Store) QueryByID(ctx context.Context, homeID uuid.UUID) (homebus.Home, error) {
 	data := struct {
-		ID string `db:"home_id"`
+		ID string `db:"id"`
 	}{
 		ID: homeID.String(),
 	}
 
 	const q = `
     SELECT
-	  	home_id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
+	  	id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
     FROM
         homes
     WHERE
-        home_id = :home_id`
+        id = :id`
 
 	var dbHme home
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbHme); err != nil {
@@ -203,7 +203,7 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]homebus.
 
 	const q = `
 	SELECT
-	    home_id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
+	    id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
 	FROM
 		homes
 	WHERE

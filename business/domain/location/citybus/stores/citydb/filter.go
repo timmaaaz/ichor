@@ -11,8 +11,8 @@ func applyFilter(filter citybus.QueryFilter, data map[string]any, buf *bytes.Buf
 	var wc []string
 
 	if filter.ID != nil {
-		data["city_id"] = *filter.ID
-		wc = append(wc, "city_id = :city_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.RegionID != nil {

@@ -8,7 +8,7 @@ import (
 var defaultOrderBy = order.NewBy(assetbus.OrderByID, order.ASC)
 
 var orderByFields = map[string]string{
-	"asset_id":              assetbus.OrderByID,
+	"id":                    assetbus.OrderByID,
 	"valid_asset_id":        assetbus.OrderByValidAssetID,
 	"asset_condition_id":    assetbus.OrderByConditionID,
 	"last_maintenance_time": assetbus.OrderByLastMaintenance,

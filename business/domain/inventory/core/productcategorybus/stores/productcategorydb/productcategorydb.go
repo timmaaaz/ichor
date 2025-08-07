@@ -51,9 +51,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productcategorybus.Storer,
 func (s *Store) Create(ctx context.Context, pc productcategorybus.ProductCategory) error {
 	const q = `
     INSERT INTO product_categories (
-        category_id, name, description, created_date, updated_date
+        id, name, description, created_date, updated_date
     ) VALUES (
-		:category_id, :name, :description, :created_date, :updated_date
+		:id, :name, :description, :created_date, :updated_date
 	)
     `
 
@@ -76,7 +76,7 @@ func (s *Store) Update(ctx context.Context, pc productcategorybus.ProductCategor
         description = :description,
         updated_date = :updated_date
 	WHERE
-		category_id = :category_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProductCategory(pc)); err != nil {
@@ -94,7 +94,7 @@ func (s *Store) Delete(ctx context.Context, pc productcategorybus.ProductCategor
 	DELETE FROM
 		product_categories
 	WHERE
-		category_id = :category_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProductCategory(pc)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -112,7 +112,7 @@ func (s *Store) Query(ctx context.Context, filter productcategorybus.QueryFilter
 
 	const q = `
     SELECT
-		category_id, name, description, created_date, updated_date
+		id, name, description, created_date, updated_date
     FROM
         product_categories`
 
@@ -161,18 +161,18 @@ func (s *Store) Count(ctx context.Context, filter productcategorybus.QueryFilter
 // QueryByID retrieves a single product category  from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, userProductCategoryID uuid.UUID) (productcategorybus.ProductCategory, error) {
 	data := struct {
-		ID string `db:"category_id"`
+		ID string `db:"id"`
 	}{
 		ID: userProductCategoryID.String(),
 	}
 
 	const q = `
     SELECT
-        category_id, name, description, created_date, updated_date
+        id, name, description, created_date, updated_date
     FROM
         product_categories
     WHERE
-        category_id = :category_id
+        id = :id
     `
 	var ci productCategory
 

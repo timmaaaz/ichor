@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assettagbus.Storer, error)
 func (s *Store) Create(ctx context.Context, t assettagbus.AssetTag) error {
 	const q = `
     INSERT INTO asset_tags (
-        asset_tag_id, asset_id, tag_id
+        id, valid_asset_id, tag_id
     ) VALUES (
-        :asset_tag_id, :asset_id, :tag_id
+        :id, :valid_asset_id, :tag_id
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetTag(t)); err != nil {
@@ -70,10 +70,10 @@ func (s *Store) Update(ctx context.Context, t assettagbus.AssetTag) error {
     UPDATE 
         asset_tags
     SET
-        asset_id = :asset_id,
+        valid_asset_id = :valid_asset_id,
         tag_id = :tag_id
     WHERE
-        asset_tag_id = :asset_tag_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetTag(t)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, at assettagbus.AssetTag) error {
     DELETE FROM
         asset_tags
     WHERE
-        asset_tag_id = :asset_tag_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetTag(at)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -109,7 +109,7 @@ func (s *Store) Query(ctx context.Context, filter assettagbus.QueryFilter, order
 
 	const q = `
     SELECT
-        asset_tag_id, asset_id, tag_id
+        id, valid_asset_id, tag_id
     FROM
         asset_tags `
 
@@ -158,18 +158,18 @@ func (s *Store) Count(ctx context.Context, filter assettagbus.QueryFilter) (int,
 // QueryByID retrieves a single tag by its id.
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (assettagbus.AssetTag, error) {
 	data := struct {
-		ID string `db:"asset_tag_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        asset_tag_id, asset_id, tag_id
+        id, valid_asset_id, tag_id
     FROM
         asset_tags
     WHERE
-        asset_tag_id = :asset_tag_id
+        id = :id
     `
 
 	var dbAT assetTag

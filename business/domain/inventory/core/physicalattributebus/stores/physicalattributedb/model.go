@@ -8,7 +8,7 @@ import (
 )
 
 type physicalAttribute struct {
-	AttributeID         uuid.UUID `db:"attribute_id"`
+	AttributeID         uuid.UUID `db:"id"`
 	ProductID           uuid.UUID `db:"product_id"`
 	Length              float64   `db:"length"`
 	Width               float64   `db:"width"`

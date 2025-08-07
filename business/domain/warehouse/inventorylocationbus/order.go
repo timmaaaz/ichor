@@ -5,7 +5,7 @@ import "github.com/timmaaaz/ichor/business/sdk/order"
 var DefaultOrderBy = order.NewBy(OrderByLocationID, order.ASC)
 
 const (
-	OrderByLocationID         = "location_id"
+	OrderByLocationID         = "id"
 	OrderByWarehouseID        = "zone_id"
 	OrderByZoneID             = "warehouse_id"
 	OrderByAisle              = "aisle"

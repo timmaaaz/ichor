@@ -48,10 +48,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (lottrackingbus.Storer, err
 func (s *Store) Create(ctx context.Context, lot lottrackingbus.LotTracking) error {
 	const q = `
 	INSERT INTO lot_tracking (
-		lot_id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
+		id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
 		quantity, quality_status, created_date, updated_date
 	) VALUES (
-		:lot_id, :supplier_product_id, :lot_number, :manufacture_date, :expiration_date, :received_date, 
+		:id, :supplier_product_id, :lot_number, :manufacture_date, :expiration_date, :received_date, 
         :quantity, :quality_status, :created_date, :updated_date
     )
 	`
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, lot lottrackingbus.LotTracking) erro
     UPDATE
         lot_tracking
     SET
-        lot_id = :lot_id,
+        id = :id,
         supplier_product_id = :supplier_product_id,
         lot_number = :lot_number,
         manufacture_date = :manufacture_date,
@@ -83,7 +83,7 @@ func (s *Store) Update(ctx context.Context, lot lottrackingbus.LotTracking) erro
         quality_status = :quality_status,
         updated_date = :updated_date
     WHERE
-        lot_id = :lot_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBLotTracking(lot)); err != nil {
@@ -105,7 +105,7 @@ func (s *Store) Delete(ctx context.Context, lot lottrackingbus.LotTracking) erro
 	DELETE FROM
 	    lot_tracking
 	WHERE
-	    lot_id = :lot_id
+	    id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBLotTracking(lot)); err != nil {
@@ -123,7 +123,7 @@ func (s *Store) Query(ctx context.Context, filter lottrackingbus.QueryFilter, or
 
 	const q = `
 	SELECT
-	    lot_id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
+	    id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
         quantity, quality_status, created_date, updated_date
 	FROM 
 		lot_tracking
@@ -174,19 +174,19 @@ func (s *Store) Count(ctx context.Context, filter lottrackingbus.QueryFilter) (i
 
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lottrackingbus.LotTracking, error) {
 	data := struct {
-		ID string `db:"lot_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        lot_id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
+        id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
         quantity, quality_status, created_date, updated_date
     FROM 
         lot_tracking
     WHERE
-        lot_id = :lot_id
+        id = :id
     `
 
 	var dbLot lotTracking

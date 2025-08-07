@@ -8,7 +8,7 @@ import (
 )
 
 type productCategory struct {
-	ID          uuid.UUID `db:"category_id"`
+	ID          uuid.UUID `db:"id"`
 	Name        string    `db:"name"`
 	Description string    `db:"description"`
 	CreatedDate time.Time `db:"created_date"`

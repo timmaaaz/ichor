@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (cityapp.QueryParams, error) {
 		Page:     values.Get("page"),
 		Rows:     values.Get("rows"),
 		OrderBy:  values.Get("orderBy"),
-		ID:       values.Get("city_id"),
+		ID:       values.Get("id"),
 		RegionID: values.Get("region_id"),
 		Name:     values.Get("name"),
 	}

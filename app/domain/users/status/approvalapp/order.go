@@ -8,7 +8,7 @@ import (
 var defaultOrderBy = order.NewBy("name", order.ASC)
 
 var orderByFields = map[string]string{
-	"user_approval_status_id": approvalbus.OrderByID,
-	"icon_id":                 approvalbus.OrderByIconID,
-	"name":                    approvalbus.OrderByName,
+	"id":      approvalbus.OrderByID,
+	"icon_id": approvalbus.OrderByIconID,
+	"name":    approvalbus.OrderByName,
 }

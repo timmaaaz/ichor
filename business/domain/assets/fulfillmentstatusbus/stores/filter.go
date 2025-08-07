@@ -11,8 +11,8 @@ func applyFilter(filter fulfillmentstatusbus.QueryFilter, data map[string]any, b
 	var wc []string
 
 	if filter.ID != nil {
-		data["fulfillment_status_id"] = *filter.ID
-		wc = append(wc, "fulfillment_status_id = :fulfillment_status_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.IconID != nil {

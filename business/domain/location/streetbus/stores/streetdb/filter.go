@@ -11,8 +11,8 @@ func applyFilter(filter streetbus.QueryFilter, data map[string]interface{}, buf 
 	var wc []string
 
 	if filter.ID != nil {
-		data["street_id"] = *filter.ID
-		wc = append(wc, "street_id = :street_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.CityID != nil {

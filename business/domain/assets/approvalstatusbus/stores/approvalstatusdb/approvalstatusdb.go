@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (approvalstatusbus.Storer, 
 func (s *Store) Create(ctx context.Context, as approvalstatusbus.ApprovalStatus) error {
 	const q = `
     INSERT INTO approval_status (
-        approval_status_id, icon_id, name
+        id, icon_id, name
     ) VALUES (
-        :approval_status_id, :icon_id, :name
+        :id, :icon_id, :name
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBApprovalStatus(as)); err != nil {
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, as approvalstatusbus.ApprovalStatus)
 	    icon_id = :icon_id,
         name = :name
 	WHERE 
-		approval_status_id = :approval_status_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBApprovalStatus(as)); err != nil {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, as approvalstatusbus.ApprovalStatus)
 	DELETE FROM
 		approval_status
 	WHERE
-		approval_status_id = :approval_status_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBApprovalStatus(as)); err != nil {
@@ -110,7 +110,7 @@ func (s *Store) Query(ctx context.Context, filter approvalstatusbus.QueryFilter,
 
 	const q = `
 	SELECT 
-		approval_status_id, icon_id, name
+		id, icon_id, name
 	FROM
 		approval_status
 	`
@@ -161,18 +161,18 @@ func (s *Store) Count(ctx context.Context, filter approvalstatusbus.QueryFilter)
 // QueryByID finds the approval status by the specified ID.
 func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (approvalstatusbus.ApprovalStatus, error) {
 	data := struct {
-		ID string `db:"approval_status_id"`
+		ID string `db:"id"`
 	}{
 		ID: aprvlStatusID.String(),
 	}
 
 	const q = `
     SELECT
-        approval_status_id, icon_id, name
+        id, icon_id, name
     FROM
         approval_status
     WHERE
-        approval_status_id = :approval_status_id
+        id = :id
     `
 
 	var approvalStatus approvalStatus

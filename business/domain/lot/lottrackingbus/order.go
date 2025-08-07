@@ -5,7 +5,7 @@ import "github.com/timmaaaz/ichor/business/sdk/order"
 var DefaultOrderBy = order.NewBy(OrderByLotID, order.ASC)
 
 const (
-	OrderByLotID             = "lot_id"
+	OrderByLotID             = "id"
 	OrderBySupplierProductID = "supplier_product_id"
 	OrderByLotNumber         = "lot_number"
 	OrderByManufactureDate   = "manufacture_date"

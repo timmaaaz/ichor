@@ -8,7 +8,7 @@ import (
 )
 
 type zone struct {
-	ZoneID      uuid.UUID `db:"zone_id"`
+	ZoneID      uuid.UUID `db:"id"`
 	WarehouseID uuid.UUID `db:"warehouse_id"`
 	Name        string    `db:"name"`
 	Description string    `db:"description"`

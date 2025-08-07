@@ -6,7 +6,7 @@ import (
 )
 
 type region struct {
-	ID        uuid.UUID `db:"region_id"`
+	ID        uuid.UUID `db:"id"`
 	CountryID uuid.UUID `db:"country_id"`
 	Name      string    `db:"name"`
 	Code      string    `db:"code"`

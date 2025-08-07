@@ -8,7 +8,7 @@ import (
 )
 
 type transferOrder struct {
-	TransferID     uuid.UUID `db:"transfer_id"`
+	TransferID     uuid.UUID `db:"id"`
 	ProductID      uuid.UUID `db:"product_id"`
 	FromLocationID uuid.UUID `db:"from_location_id"`
 	ToLocationID   uuid.UUID `db:"to_location_id"`

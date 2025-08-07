@@ -49,11 +49,11 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventoryitembus.Storer, e
 func (s *Store) Create(ctx context.Context, ip inventoryitembus.InventoryItem) error {
 	const q = `
 	INSERT INTO inventory_items (
-		item_id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
+		id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
 		minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
 		avg_daily_usage, created_date, updated_date
 	) VALUES (
-        :item_id, :product_id, :location_id, :quantity, :reserved_quantity, :allocated_quantity, 
+        :id, :product_id, :location_id, :quantity, :reserved_quantity, :allocated_quantity, 
         :minimum_stock, :maximum_stock, :reorder_point, :economic_order_quantity, :safety_stock, 
         :avg_daily_usage, :created_date, :updated_date
     )
@@ -78,7 +78,7 @@ func (s *Store) Update(ctx context.Context, ip inventoryitembus.InventoryItem) e
     UPDATE
         inventory_items
     SET
-		item_id = :item_id,
+		id = :id,
 		product_id = :product_id,
         location_id = :location_id,
         quantity = :quantity,
@@ -92,7 +92,7 @@ func (s *Store) Update(ctx context.Context, ip inventoryitembus.InventoryItem) e
         avg_daily_usage = :avg_daily_usage,
         updated_date = :updated_date
     WHERE
-        item_id = :item_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInventoryItem(ip)); err != nil {
@@ -114,7 +114,7 @@ func (s *Store) Delete(ctx context.Context, ip inventoryitembus.InventoryItem) e
 	DELETE FROM
 	    inventory_items
 	WHERE
-		item_id = :item_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInventoryItem(ip)); err != nil {
@@ -133,7 +133,7 @@ func (s *Store) Query(ctx context.Context, filter inventoryitembus.QueryFilter, 
 
 	const q = `
     SELECT
-        item_id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
+        id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
         minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
         avg_daily_usage, created_date, updated_date
     FROM
@@ -185,20 +185,20 @@ func (s *Store) Count(ctx context.Context, filter inventoryitembus.QueryFilter) 
 
 func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (inventoryitembus.InventoryItem, error) {
 	data := struct {
-		ItemID string `db:"item_id"`
+		ItemID string `db:"id"`
 	}{
 		ItemID: itemID.String(),
 	}
 
 	const q = `
     SELECT
-        item_id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
+        id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
         minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
         avg_daily_usage, created_date, updated_date
     FROM
         inventory_items
     WHERE
-        item_id = :item_id
+        id = :id
 
     `
 

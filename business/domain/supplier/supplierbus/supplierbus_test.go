@@ -45,12 +45,12 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	contactIDs := make(uuid.UUIDs, len(contactInfo))
+	ContactInfoIDs := make(uuid.UUIDs, len(contactInfo))
 	for i, c := range contactInfo {
-		contactIDs[i] = c.ID
+		ContactInfoIDs[i] = c.ID
 	}
 
-	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, contactIDs, busDomain.Supplier)
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, ContactInfoIDs, busDomain.Supplier)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}
@@ -99,21 +99,21 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: supplierbus.Supplier{
-				ContactID:    sd.ContactInfo[0].ID,
-				Name:         "Name",
-				PaymentTerms: "PaymentTerms",
-				LeadTimeDays: 8,
-				Rating:       types.NewRoundedFloat(8.76),
-				IsActive:     true,
+				ContactInfoID: sd.ContactInfo[0].ID,
+				Name:          "Name",
+				PaymentTerms:  "PaymentTerms",
+				LeadTimeDays:  8,
+				Rating:        types.NewRoundedFloat(8.76),
+				IsActive:      true,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				newSupplier := supplierbus.NewSupplier{
-					ContactID:    sd.ContactInfo[0].ID,
-					Name:         "Name",
-					PaymentTerms: "PaymentTerms",
-					LeadTimeDays: 8,
-					Rating:       types.NewRoundedFloat(8.76),
-					IsActive:     true,
+					ContactInfoID: sd.ContactInfo[0].ID,
+					Name:          "Name",
+					PaymentTerms:  "PaymentTerms",
+					LeadTimeDays:  8,
+					Rating:        types.NewRoundedFloat(8.76),
+					IsActive:      true,
 				}
 
 				s, err := busDomain.Supplier.Create(ctx, newSupplier)
@@ -146,23 +146,23 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Update",
 			ExpResp: supplierbus.Supplier{
-				ContactID:    sd.ContactInfo[2].ID,
-				SupplierID:   sd.Suppliers[0].SupplierID,
-				Name:         "UpdatedName",
-				PaymentTerms: "UpdatedPaymentTerms",
-				LeadTimeDays: 10,
-				Rating:       types.MustParseRoundedFloat("9.87"),
-				IsActive:     false,
-				CreatedDate:  sd.Suppliers[0].CreatedDate,
+				ContactInfoID: sd.ContactInfo[2].ID,
+				SupplierID:    sd.Suppliers[0].SupplierID,
+				Name:          "UpdatedName",
+				PaymentTerms:  "UpdatedPaymentTerms",
+				LeadTimeDays:  10,
+				Rating:        types.MustParseRoundedFloat("9.87"),
+				IsActive:      false,
+				CreatedDate:   sd.Suppliers[0].CreatedDate,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				updateSupplier := supplierbus.UpdateSupplier{
-					ContactID:    &sd.ContactInfo[2].ID,
-					Name:         dbtest.StringPointer("UpdatedName"),
-					PaymentTerms: dbtest.StringPointer("UpdatedPaymentTerms"),
-					LeadTimeDays: dbtest.IntPointer(10),
-					Rating:       types.NewRoundedFloat(9.87).ToPtr(),
-					IsActive:     dbtest.BoolPointer(false),
+					ContactInfoID: &sd.ContactInfo[2].ID,
+					Name:          dbtest.StringPointer("UpdatedName"),
+					PaymentTerms:  dbtest.StringPointer("UpdatedPaymentTerms"),
+					LeadTimeDays:  dbtest.IntPointer(10),
+					Rating:        types.NewRoundedFloat(9.87).ToPtr(),
+					IsActive:      dbtest.BoolPointer(false),
 				}
 
 				s, err := busDomain.Supplier.Update(ctx, sd.Suppliers[0], updateSupplier)

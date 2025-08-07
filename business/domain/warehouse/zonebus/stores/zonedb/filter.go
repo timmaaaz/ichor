@@ -11,8 +11,8 @@ func applyFilter(filter zonebus.QueryFilter, data map[string]any, buf *bytes.Buf
 	var wc []string
 
 	if filter.ZoneID != nil {
-		data["zone_id"] = *filter.ZoneID
-		wc = append(wc, "zone_id = :zone_id")
+		data["id"] = *filter.ZoneID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.WarehouseID != nil {

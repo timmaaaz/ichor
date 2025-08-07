@@ -11,8 +11,8 @@ func applyFilter(filter inventoryitembus.QueryFilter, data map[string]interface{
 	var wc []string
 
 	if filter.ItemID != nil {
-		data["item_id"] = *filter.ItemID
-		wc = append(wc, "item_id = :item_id")
+		data["id"] = *filter.ItemID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.ProductID != nil {

@@ -11,8 +11,8 @@ func applyFilter(filter validassetbus.QueryFilter, data map[string]interface{}, 
 	var wc []string
 
 	if filter.ID != nil {
-		data["valid_asset_id"] = *filter.ID
-		wc = append(wc, "valid_asset_id = :valid_asset_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.TypeID != nil {

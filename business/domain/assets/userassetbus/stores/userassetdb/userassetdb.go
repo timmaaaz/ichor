@@ -49,10 +49,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userassetbus.Storer, error
 func (s *Store) Create(ctx context.Context, ass userassetbus.UserAsset) error {
 	const q = `
     INSERT INTO user_assets (
-        user_asset_id, asset_id, user_id, approved_by, approval_status_id, fulfillment_status_id,
+        id, asset_id, user_id, approved_by, approval_status_id, fulfillment_status_id,
 		date_received, last_maintenance
     ) VALUES (
-        :user_asset_id, :asset_id,   :user_id, :approved_by, :approval_status_id, :fulfillment_status_id,
+        :id, :asset_id,   :user_id, :approved_by, :approval_status_id, :fulfillment_status_id,
 		:date_received, :last_maintenance
 	)   
     `
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, ass userassetbus.UserAsset) error {
 	UPDATE
 		user_assets
 	SET
-		user_asset_id = :user_asset_id,
+		id = :id,
 		asset_id = :asset_id,
 		user_id = :user_id,
         approved_by = :approved_by,
@@ -81,7 +81,7 @@ func (s *Store) Update(ctx context.Context, ass userassetbus.UserAsset) error {
         date_received = :date_received,
 		last_maintenance = :last_maintenance
 	WHERE
-		user_asset_id = :user_asset_id
+		id = :id
 
 	`
 
@@ -100,7 +100,7 @@ func (s *Store) Delete(ctx context.Context, ass userassetbus.UserAsset) error {
 	DELETE FROM
 		user_assets
 	WHERE
-		user_asset_id = :user_asset_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserAsset(ass)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -118,7 +118,7 @@ func (s *Store) Query(ctx context.Context, filter userassetbus.QueryFilter, orde
 
 	const q = `
     SELECT
-        user_asset_id, user_id, asset_id, approved_by, approval_status_id, fulfillment_status_id,
+        id, user_id, asset_id, approved_by, approval_status_id, fulfillment_status_id,
 		date_received, last_maintenance
     FROM
         user_assets`
@@ -168,19 +168,19 @@ func (s *Store) Count(ctx context.Context, filter userassetbus.QueryFilter) (int
 // QueryByID retrieves a single asset from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, userAssetID uuid.UUID) (userassetbus.UserAsset, error) {
 	data := struct {
-		ID string `db:"user_asset_id"`
+		ID string `db:"id"`
 	}{
 		ID: userAssetID.String(),
 	}
 
 	const q = `
     SELECT
-        user_asset_id, user_id, asset_id, approved_by, approval_status_id, fulfillment_status_id,
+        id, user_id, asset_id, approved_by, approval_status_id, fulfillment_status_id,
 		date_received, last_maintenance
     FROM
         user_assets
     WHERE
-        user_asset_id = :user_asset_id
+        id = :id
     `
 	var ass userAsset
 

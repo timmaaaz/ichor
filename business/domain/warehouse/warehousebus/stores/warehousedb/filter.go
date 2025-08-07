@@ -11,8 +11,8 @@ func applyFilter(filter warehousebus.QueryFilter, data map[string]any, buf *byte
 	var wc []string
 
 	if filter.ID != nil {
-		data["warehouse_id"] = *filter.ID
-		wc = append(wc, "warehouse_id = :warehouse_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.Name != nil {

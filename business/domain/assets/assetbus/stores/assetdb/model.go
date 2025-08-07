@@ -8,7 +8,7 @@ import (
 )
 
 type asset struct {
-	ID               uuid.UUID `db:"asset_id"`
+	ID               uuid.UUID `db:"id"`
 	ValidAssetID     uuid.UUID `db:"valid_asset_id"`
 	LastMaintenance  time.Time `db:"last_maintenance_time"`
 	SerialNumber     string    `db:"serial_number"`

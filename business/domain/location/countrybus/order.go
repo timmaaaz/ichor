@@ -8,7 +8,7 @@ var DefaultOrderBy = order.NewBy(OrderByNumber, order.ASC)
 
 // Set of fields that the results can be ordered by.
 const (
-	OrderByID     = "country_id"
+	OrderByID     = "id"
 	OrderByNumber = "number"
 	OrderByName   = "name"
 	OrderByAlpha2 = "alpha_2"

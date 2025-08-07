@@ -42,10 +42,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventoryadjustmentbus.Sto
 func (s *Store) Create(ctx context.Context, ia inventoryadjustmentbus.InventoryAdjustment) error {
 	const q = `
     INSERT INTO inventory_adjustments (
-        adjustment_id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
+        id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
 		notes, adjustment_date, created_date, updated_date
     ) VALUES (
-        :adjustment_id, :product_id, :location_id, :adjusted_by, :approved_by, :quantity_change, :reason_code, 
+        :id, :product_id, :location_id, :adjusted_by, :approved_by, :quantity_change, :reason_code, 
 		:notes, :adjustment_date, :created_date, :updated_date
     )
     `
@@ -68,7 +68,7 @@ func (s *Store) Update(ctx context.Context, ia inventoryadjustmentbus.InventoryA
     UPDATE
         inventory_adjustments
     SET
-        adjustment_id = :adjustment_id,
+        id = :id,
         product_id = :product_id,
         location_id = :location_id,
         adjusted_by = :adjusted_by,
@@ -79,7 +79,7 @@ func (s *Store) Update(ctx context.Context, ia inventoryadjustmentbus.InventoryA
         adjustment_date = :adjustment_date,
         updated_date = :updated_date
     WHERE
-        adjustment_id = :adjustment_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInventoryAdjustment(ia)); err != nil {
@@ -100,7 +100,7 @@ func (s *Store) Delete(ctx context.Context, inventoryAdjument inventoryadjustmen
 		DELETE FROM
 		    inventory_adjustments
 		WHERE
-			adjustment_id = :adjustment_id
+			id = :id
 		`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBInventoryAdjustment(inventoryAdjument)); err != nil {
@@ -117,7 +117,7 @@ func (s *Store) Query(ctx context.Context, filter inventoryadjustmentbus.QueryFi
 
 	const q = `
 	SELECT
-	    adjustment_id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
+	    id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
         notes, adjustment_date, created_date, updated_date
 	FROM
 		inventory_adjustments`
@@ -166,19 +166,19 @@ func (s *Store) Count(ctx context.Context, filter inventoryadjustmentbus.QueryFi
 
 func (s *Store) QueryByID(ctx context.Context, adjustmentID uuid.UUID) (inventoryadjustmentbus.InventoryAdjustment, error) {
 	data := struct {
-		AdjustmentID string `db:"adjustment_id"`
+		AdjustmentID string `db:"id"`
 	}{
 		AdjustmentID: adjustmentID.String(),
 	}
 
 	const q = `
 	SELECT
-	    adjustment_id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
+	    id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
         notes, adjustment_date, created_date, updated_date
 	FROM 
 		inventory_adjustments
 	WHERE
-		adjustment_id = :adjustment_id
+		id = :id
     `
 
 	var dbInvAdj inventoryAdjustment

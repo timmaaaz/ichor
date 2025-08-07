@@ -8,7 +8,7 @@ import (
 )
 
 var orderByFields = map[string]string{
-	commentbus.OrderByID:          "comment_id",
+	commentbus.OrderByID:          "id",
 	commentbus.OrderByComment:     "comment",
 	commentbus.OrderByCommenterID: "commenter_id",
 	commentbus.OrderByUserID:      "user_id",

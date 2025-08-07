@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assetconditionbus.Storer, 
 func (s *Store) Create(ctx context.Context, at assetconditionbus.AssetCondition) error {
 	const q = `
     INSERT INTO asset_conditions (
-        asset_condition_id, name, description
+        id, name, description
     ) VALUES (
-        :asset_condition_id, :name, :description
+        :id, :name, :description
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(at)); err != nil {
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, at assetconditionbus.AssetCondition)
         name = :name,
         description = :description
     WHERE
-        asset_condition_id = :asset_condition_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(at)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, at assetconditionbus.AssetCondition)
     DELETE FROM
         asset_conditions
     WHERE
-        asset_condition_id = :asset_condition_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetCondition(at)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -109,7 +109,7 @@ func (s *Store) Query(ctx context.Context, filter assetconditionbus.QueryFilter,
 
 	const q = `
     SELECT
-        asset_condition_id, name, description
+        id, name, description
     FROM
         asset_conditions`
 
@@ -158,18 +158,18 @@ func (s *Store) Count(ctx context.Context, filter assetconditionbus.QueryFilter)
 // QueryByID retrieves a single asset condition by its id.
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (assetconditionbus.AssetCondition, error) {
 	data := struct {
-		ID string `db:"asset_condition_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        asset_condition_id, name, description
+        id, name, description
     FROM
         asset_conditions
     WHERE
-        asset_condition_id = :asset_condition_id
+        id = :id
     `
 
 	var dbAc assetCondition

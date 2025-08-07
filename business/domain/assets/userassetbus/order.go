@@ -5,7 +5,7 @@ import "github.com/timmaaaz/ichor/business/sdk/order"
 var DefaultOrderBy = order.NewBy(OrderByID, order.ASC)
 
 const (
-	OrderByID                  = "user_asset_id"
+	OrderByID                  = "id"
 	OrderByUserID              = "user_id"
 	OrderByAssetID             = "asset_id"
 	OrderByApprovedBy          = "approved_by"

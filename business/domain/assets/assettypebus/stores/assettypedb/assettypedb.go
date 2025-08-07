@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assettypebus.Storer, error
 func (s *Store) Create(ctx context.Context, at assettypebus.AssetType) error {
 	const q = `
     INSERT INTO asset_types (
-        asset_type_id, name, description
+        id, name, description
     ) VALUES (
-        :asset_type_id, :name, :description
+        :id, :name, :description
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetType(at)); err != nil {
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, at assettypebus.AssetType) error {
         name = :name,
         description = :description
     WHERE
-        asset_type_id = :asset_type_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetType(at)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, at assettypebus.AssetType) error {
     DELETE FROM
         asset_types
     WHERE
-        asset_type_id = :asset_type_id
+        id = :id
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAssetType(at)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -109,7 +109,7 @@ func (s *Store) Query(ctx context.Context, filter assettypebus.QueryFilter, orde
 
 	const q = `
     SELECT
-        asset_type_id, name, description
+        id, name, description
     FROM
         asset_types`
 
@@ -158,18 +158,18 @@ func (s *Store) Count(ctx context.Context, filter assettypebus.QueryFilter) (int
 // QueryByID retrieves a single asset type by its id.
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (assettypebus.AssetType, error) {
 	data := struct {
-		ID string `db:"asset_type_id"`
+		ID string `db:"id"`
 	}{
 		ID: id.String(),
 	}
 
 	const q = `
     SELECT
-        asset_type_id, name, description
+        id, name, description
     FROM
         asset_types
     WHERE
-        asset_type_id = :asset_type_id
+        id = :id
     `
 
 	var dbAt assetType

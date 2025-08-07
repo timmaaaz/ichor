@@ -54,7 +54,7 @@ func (s *Store) Query(ctx context.Context, filter countrybus.QueryFilter, orderB
 
 	const q = `
 	SELECT
-		country_id, number, name, alpha_2, alpha_3
+		id, number, name, alpha_2, alpha_3
 	FROM
 		countries`
 	buf := bytes.NewBufferString(q)
@@ -102,18 +102,18 @@ func (s *Store) Count(ctx context.Context, filter countrybus.QueryFilter) (int, 
 // QueryByID gets the specified country from the database.
 func (s *Store) QueryByID(ctx context.Context, countryID uuid.UUID) (countrybus.Country, error) {
 	data := struct {
-		ID string `db:"country_id"`
+		ID string `db:"id"`
 	}{
 		ID: countryID.String(),
 	}
 
 	const q = `
 	SELECT
-		country_id, number, name, alpha_2, alpha_3
+		id, number, name, alpha_2, alpha_3
 	FROM
 		countries
 	WHERE 
-		country_id = :country_id`
+		id = :id`
 
 	var dbCtry country
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbCtry); err != nil {

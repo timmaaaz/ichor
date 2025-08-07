@@ -10,20 +10,20 @@ import (
 )
 
 type QueryParams struct {
-	Page    string
-	Rows    string
-	OrderBy string
-	ID      string
-	AssetID string
-	TagID   string
+	Page         string
+	Rows         string
+	OrderBy      string
+	ID           string
+	ValidAssetID string
+	TagID        string
 }
 
 // =============================================================================
 
 type AssetTag struct {
-	ID      string `json:"id"`
-	AssetID string `json:"asset_id"`
-	TagID   string `json:"tag_id"`
+	ID           string `json:"id"`
+	ValidAssetID string `json:"valid_asset_id"`
+	TagID        string `json:"tag_id"`
 }
 
 func (app AssetTag) Encode() ([]byte, string, error) {
@@ -33,9 +33,9 @@ func (app AssetTag) Encode() ([]byte, string, error) {
 
 func ToAppAssetTag(bus assettagbus.AssetTag) AssetTag {
 	return AssetTag{
-		ID:      bus.ID.String(),
-		AssetID: bus.AssetID.String(),
-		TagID:   bus.TagID.String(),
+		ID:           bus.ID.String(),
+		ValidAssetID: bus.ValidAssetID.String(),
+		TagID:        bus.TagID.String(),
 	}
 }
 
@@ -50,8 +50,8 @@ func ToAppAssetTags(bus []assettagbus.AssetTag) []AssetTag {
 // =============================================================================
 
 type NewAssetTag struct {
-	AssetID string `json:"asset_id" validate:"required"`
-	TagID   string `json:"tag_id" validate:"required"`
+	ValidAssetID string `json:"valid_asset_id" validate:"required"`
+	TagID        string `json:"tag_id" validate:"required"`
 }
 
 // Decode implements the decoder interface.
@@ -69,10 +69,10 @@ func (app NewAssetTag) Validate() error {
 }
 
 func toBusNewAssetTag(app NewAssetTag) (assettagbus.NewAssetTag, error) {
-	var assetID, tagID uuid.UUID
+	var ValidAssetID, tagID uuid.UUID
 	var err error
 
-	if assetID, err = uuid.Parse(app.AssetID); err != nil {
+	if ValidAssetID, err = uuid.Parse(app.ValidAssetID); err != nil {
 		return assettagbus.NewAssetTag{}, err
 	}
 
@@ -81,16 +81,16 @@ func toBusNewAssetTag(app NewAssetTag) (assettagbus.NewAssetTag, error) {
 	}
 
 	return assettagbus.NewAssetTag{
-		AssetID: assetID,
-		TagID:   tagID,
+		ValidAssetID: ValidAssetID,
+		TagID:        tagID,
 	}, nil
 }
 
 // =============================================================================
 
 type UpdateAssetTag struct {
-	AssetID *string `json:"asset_id"`
-	TagID   *string `json:"tag_id"`
+	ValidAssetID *string `json:"valid_asset_id"`
+	TagID        *string `json:"tag_id"`
 }
 
 func (app *UpdateAssetTag) Decode(data []byte) error {
@@ -107,15 +107,15 @@ func (app UpdateAssetTag) Validate() error {
 }
 
 func toBusUpdateAssetTag(app UpdateAssetTag) (assettagbus.UpdateAssetTag, error) {
-	var assetID, tagID *uuid.UUID
+	var ValidAssetID, tagID *uuid.UUID
 
-	if app.AssetID != nil {
-		id, err := uuid.Parse(*app.AssetID)
+	if app.ValidAssetID != nil {
+		id, err := uuid.Parse(*app.ValidAssetID)
 		if err != nil {
 			return assettagbus.UpdateAssetTag{}, err
 		}
 
-		assetID = &id
+		ValidAssetID = &id
 	}
 
 	if app.TagID != nil {
@@ -127,7 +127,7 @@ func toBusUpdateAssetTag(app UpdateAssetTag) (assettagbus.UpdateAssetTag, error)
 	}
 
 	return assettagbus.UpdateAssetTag{
-		AssetID: assetID,
-		TagID:   tagID,
+		ValidAssetID: ValidAssetID,
+		TagID:        tagID,
 	}, nil
 }

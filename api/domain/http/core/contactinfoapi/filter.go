@@ -19,7 +19,7 @@ func parseQueryParams(r *http.Request) (contactinfoapp.QueryParams, error) {
 		PrimaryPhone:         values.Get("primary_phone"),
 		SecondaryPhone:       values.Get("secondary_phone"),
 		Address:              values.Get("address"),
-		ID:                   values.Get("contact_info_id"),
+		ID:                   values.Get("id"),
 		AvailableHoursStart:  values.Get("available_hours_start"),
 		AvailableHoursEnd:    values.Get("available_hours_end"),
 		Timezone:             values.Get("timezone"),

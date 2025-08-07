@@ -34,7 +34,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/finance/productcosts/" + sd.ProductCosts[0].CostID,
+			URL:        "/v1/finance/productcosts/" + sd.ProductCosts[0].ID,
 			Token:      sd.Users[0].Token,
 			StatusCode: 200,
 			Method:     "GET",

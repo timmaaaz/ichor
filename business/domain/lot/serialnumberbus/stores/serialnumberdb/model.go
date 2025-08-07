@@ -8,7 +8,7 @@ import (
 )
 
 type serialNumber struct {
-	SerialID     uuid.UUID `db:"serial_id"`
+	SerialID     uuid.UUID `db:"id"`
 	LotID        uuid.UUID `db:"lot_id"`
 	ProductID    uuid.UUID `db:"product_id"`
 	LocationID   uuid.UUID `db:"location_id"`

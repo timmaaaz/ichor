@@ -50,9 +50,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (warehousebus.Storer, error
 func (s *Store) Create(ctx context.Context, bus warehousebus.Warehouse) error {
 	const q = `
 		INSERT INTO warehouses
-			(warehouse_id, street_id, name, is_active, date_created, date_updated, created_by, updated_by)
+			(id, street_id, name, is_active, date_created, date_updated, created_by, updated_by)
 		VALUES
-			(:warehouse_id, :street_id, :name, :is_active, :date_created, :date_updated, :created_by, :updated_by)
+			(:id, :street_id, :name, :is_active, :date_created, :date_updated, :created_by, :updated_by)
 		`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBWarehouse(bus)); err != nil {
@@ -77,7 +77,7 @@ func (s *Store) Update(ctx context.Context, bus warehousebus.Warehouse) error {
 			date_updated = :date_updated,
 			updated_by = :updated_by
 		WHERE
-			warehouse_id = :warehouse_id
+			id = :id
 		`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBWarehouse(bus)); err != nil {
@@ -96,7 +96,7 @@ func (s *Store) Delete(ctx context.Context, bus warehousebus.Warehouse) error {
 		DELETE FROM
 			warehouses
 		WHERE
-			warehouse_id = :warehouse_id
+			id = :id
 		`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBWarehouse(bus)); err != nil {
@@ -115,7 +115,7 @@ func (s *Store) Query(ctx context.Context, filter warehousebus.QueryFilter, orde
 
 	const q = `
 	SELECT
-		warehouse_id,
+		id,
 		street_id,
 		name,
 		is_active,
@@ -171,14 +171,14 @@ func (s *Store) Count(ctx context.Context, filter warehousebus.QueryFilter) (int
 // QueryByID gets the specified warehouse from the database.
 func (s *Store) QueryByID(ctx context.Context, wID uuid.UUID) (warehousebus.Warehouse, error) {
 	data := struct {
-		WarehouseID uuid.UUID `db:"warehouse_id"`
+		WarehouseID uuid.UUID `db:"id"`
 	}{
 		WarehouseID: wID,
 	}
 
 	const q = `
 	SELECT
-		warehouse_id,
+		id,
 		street_id,
 		name,
 		is_active,
@@ -189,7 +189,7 @@ func (s *Store) QueryByID(ctx context.Context, wID uuid.UUID) (warehousebus.Ware
 	FROM
 		warehouses
 	WHERE
-		warehouse_id = :warehouse_id`
+		id = :id`
 
 	var dbW warehouse
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbW); err != nil {

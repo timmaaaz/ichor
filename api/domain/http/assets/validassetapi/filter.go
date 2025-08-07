@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (validassetapp.QueryParams, error) {
 		Page:                values.Get("page"),
 		Rows:                values.Get("rows"),
 		OrderBy:             values.Get("orderBy"),
-		ID:                  values.Get("asset_id"),
+		ID:                  values.Get("id"),
 		TypeID:              values.Get("type_id"),
 		Name:                values.Get("name"),
 		EstPrice:            values.Get("est_price"),

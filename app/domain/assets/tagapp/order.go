@@ -8,7 +8,7 @@ import (
 var defaultOrderBy = order.NewBy("name", order.ASC)
 
 var orderByFields = map[string]string{
-	"tag_id":      tagbus.OrderByID,
+	"id":          tagbus.OrderByID,
 	"name":        tagbus.OrderByName,
 	"description": tagbus.OrderByDescription,
 }

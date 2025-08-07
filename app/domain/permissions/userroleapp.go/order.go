@@ -8,7 +8,7 @@ import (
 var defaultOrderBy = order.NewBy(userrolebus.OrderByUserID, order.ASC)
 
 var orderByFields = map[string]string{
-	"user_role_id": userrolebus.OrderByID,
-	"user_id":      userrolebus.OrderByUserID,
-	"role_id":      userrolebus.OrderByRoleID,
+	"id":      userrolebus.OrderByID,
+	"user_id": userrolebus.OrderByUserID,
+	"role_id": userrolebus.OrderByRoleID,
 }

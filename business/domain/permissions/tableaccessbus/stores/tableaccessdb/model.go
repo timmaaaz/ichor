@@ -6,7 +6,7 @@ import (
 )
 
 type tableAccess struct {
-	ID        uuid.UUID `db:"table_access_id"`
+	ID        uuid.UUID `db:"id"`
 	RoleID    uuid.UUID `db:"role_id"`
 	TableName string    `db:"table_name"`
 	CanCreate bool      `db:"can_create"`

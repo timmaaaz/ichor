@@ -8,7 +8,7 @@ import (
 )
 
 var orderByFields = map[string]string{
-	inventoryadjustmentbus.OrderByInventoryAdjustmentID: "adjustment_id",
+	inventoryadjustmentbus.OrderByInventoryAdjustmentID: "id",
 	inventoryadjustmentbus.OrderByProductID:             "product_id",
 	inventoryadjustmentbus.OrderByLocationID:            "location_id",
 	inventoryadjustmentbus.OrderByAdjustedBy:            "adjusted_by",

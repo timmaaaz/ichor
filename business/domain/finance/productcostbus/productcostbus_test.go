@@ -180,7 +180,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 				expResp := exp.(productcostbus.ProductCost)
 
-				expResp.CostID = gotResp.CostID
+				expResp.ID = gotResp.ID
 				expResp.CreatedDate = gotResp.CreatedDate
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
@@ -240,7 +240,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 				expResp := exp.(productcostbus.ProductCost)
 
-				expResp.CostID = gotResp.CostID
+				expResp.ID = gotResp.ID
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)

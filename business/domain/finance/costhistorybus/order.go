@@ -5,7 +5,7 @@ import "github.com/timmaaaz/ichor/business/sdk/order"
 var DefaultOrderBy = order.NewBy(OrderByAmount, order.ASC)
 
 const (
-	OrderByCostHistoryID = "history_id"
+	OrderByCostHistoryID = "id"
 	OrderByProductID     = "product_id"
 	OrderByCostType      = "cost_type"
 	OrderByAmount        = "amount"

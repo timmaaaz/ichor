@@ -48,9 +48,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (serialnumberbus.Storer, er
 func (s *Store) Create(ctx context.Context, sn serialnumberbus.SerialNumber) error {
 	const q = `
     INSERT INTO serial_numbers (
-        serial_id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
+        id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
     ) VALUES (
-        :serial_id, :lot_id, :product_id, :location_id, :serial_number, :status, :created_date, :updated_date
+        :id, :lot_id, :product_id, :location_id, :serial_number, :status, :created_date, :updated_date
     )
     `
 
@@ -72,7 +72,7 @@ func (s *Store) Update(ctx context.Context, sn serialnumberbus.SerialNumber) err
     UPDATE
         serial_numbers
     SET
-        serial_id = :serial_id,
+        id = :id,
         lot_id = :lot_id,
         product_id = :product_id,
         location_id = :location_id,
@@ -80,7 +80,7 @@ func (s *Store) Update(ctx context.Context, sn serialnumberbus.SerialNumber) err
         status = :status,
         updated_date = :updated_date
     WHERE
-        serial_id = :serial_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBSerialNumber(sn)); err != nil {
@@ -100,7 +100,7 @@ func (s *Store) Delete(ctx context.Context, sn serialnumberbus.SerialNumber) err
     DELETE FROM
         serial_numbers
     WHERE
-        serial_id = :serial_id
+        id = :id
     `
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBSerialNumber(sn)); err != nil {
@@ -117,7 +117,7 @@ func (s *Store) Query(ctx context.Context, filter serialnumberbus.QueryFilter, o
 
 	const q = `
 	SELECT
-		serial_id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
+		id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
 	FROM 
 		serial_numbers
 	`
@@ -169,18 +169,18 @@ func (s *Store) Count(ctx context.Context, filter serialnumberbus.QueryFilter) (
 // QueryByID gets the specified serial number from the database.
 func (s *Store) QueryByID(ctx context.Context, serialID uuid.UUID) (serialnumberbus.SerialNumber, error) {
 	data := struct {
-		ID string `db:"serial_id"`
+		ID string `db:"id"`
 	}{
 		ID: serialID.String(),
 	}
 
 	const q = `
     SELECT
-        serial_id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
+        id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
     FROM 
         serial_numbers
     WHERE
-        serial_id = :serial_id
+        id = :id
     `
 
 	var sn serialNumber

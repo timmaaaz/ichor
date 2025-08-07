@@ -49,10 +49,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productbus.Storer, error) 
 func (s *Store) Create(ctx context.Context, brand productbus.Product) error {
 	const q = `
     INSERT INTO products ( 
-		product_id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
+		id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     ) VALUES (
-		:product_id, :sku, :brand_id, :category_id, :name, :description, :model_number, :upc_code, :status, 
+		:id, :sku, :brand_id, :category_id, :name, :description, :model_number, :upc_code, :status, 
 		:is_active, :is_perishable, :handling_instructions, :units_per_case, :created_date, :updated_date
 	)
     `
@@ -75,7 +75,7 @@ func (s *Store) Update(ctx context.Context, prod productbus.Product) error {
 	UPDATE
 		products
 	SET
-		product_id = :product_id,
+		id = :id,
 		sku = :sku,
 		brand_id = :brand_id,
 		category_id = :category_id,
@@ -90,7 +90,7 @@ func (s *Store) Update(ctx context.Context, prod productbus.Product) error {
 		units_per_case = :units_per_case,
 		updated_date = :updated_date
 	WHERE
-		product_id = :product_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProduct(prod)); err != nil {
@@ -111,7 +111,7 @@ func (s *Store) Delete(ctx context.Context, product productbus.Product) error {
 	DELETE FROM
 		products
 	WHERE
-		product_id = :product_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProduct(product)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -129,7 +129,7 @@ func (s *Store) Query(ctx context.Context, filter productbus.QueryFilter, orderB
 
 	const q = `
     SELECT
-		product_id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
+		id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     FROM
         products`
@@ -179,19 +179,19 @@ func (s *Store) Count(ctx context.Context, filter productbus.QueryFilter) (int, 
 // QueryByID retrieves a single asset from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (productbus.Product, error) {
 	data := struct {
-		ID string `db:"product_id"`
+		ID string `db:"id"`
 	}{
 		ID: userBrandID.String(),
 	}
 
 	const q = `
     SELECT
-       	product_id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
+       	id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     FROM
         products
     WHERE
-        product_id = :product_id
+        id = :id
     `
 	var ci product
 

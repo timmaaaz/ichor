@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (supplierbus.Storer, error)
 func (s *Store) Create(ctx context.Context, supplier supplierbus.Supplier) error {
 	const q = `
 	INSERT INTO suppliers (
-		supplier_id, contact_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
+		id, contact_info_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	) VALUES (
-		:supplier_id, :contact_id, :name, :payment_terms, :lead_time_days, :rating, :is_active, :created_date, :updated_date
+		:id, :contact_info_id, :name, :payment_terms, :lead_time_days, :rating, :is_active, :created_date, :updated_date
 	)
 	`
 
@@ -73,8 +73,8 @@ func (s *Store) Update(ctx context.Context, supplier supplierbus.Supplier) error
 	UPDATE
 		suppliers
 	SET
-	    supplier_id = :supplier_id,
-        contact_id = :contact_id,
+	    id = :id,
+        contact_info_id = :contact_info_id,
         name = :name,
         payment_terms = :payment_terms,
         lead_time_days = :lead_time_days,
@@ -82,7 +82,7 @@ func (s *Store) Update(ctx context.Context, supplier supplierbus.Supplier) error
         is_active = :is_active,
         updated_date = :updated_date
 	WHERE
-		supplier_id = :supplier_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBSupplier(supplier)); err != nil {
@@ -103,7 +103,7 @@ func (s *Store) Delete(ctx context.Context, supplier supplierbus.Supplier) error
     DELETE FROM
         suppliers
     WHERE
-        supplier_id = :supplier_id`
+        id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBSupplier(supplier)); err != nil {
 		return fmt.Errorf("execcontext: %w", err)
@@ -120,7 +120,7 @@ func (s *Store) Query(ctx context.Context, filter supplierbus.QueryFilter, order
 
 	const q = `
 	SELECT
-	    supplier_id, contact_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
+	    id, contact_info_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
 		suppliers
 	`
@@ -171,18 +171,18 @@ func (s *Store) Count(ctx context.Context, filter supplierbus.QueryFilter) (int,
 // QueryByID retrieves a single supplier from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, supplierID uuid.UUID) (supplierbus.Supplier, error) {
 	data := struct {
-		ID string `db:"supplier_id"`
+		ID string `db:"id"`
 	}{
 		ID: supplierID.String(),
 	}
 
 	const q = `
 	SELECT
-	    supplier_id, contact_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
+	    id, contact_info_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
 		suppliers
 	WHERE 
-		supplier_id = :supplier_id
+		id = :id
 	`
 
 	var dbSupplier supplier

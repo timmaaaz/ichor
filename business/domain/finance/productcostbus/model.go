@@ -8,7 +8,7 @@ import (
 )
 
 type ProductCost struct {
-	CostID            uuid.UUID
+	ID                uuid.UUID
 	ProductID         uuid.UUID
 	PurchaseCost      types.Money
 	SellingPrice      types.Money

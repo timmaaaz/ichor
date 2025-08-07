@@ -6,7 +6,7 @@ import (
 )
 
 type fulfillmentStatus struct {
-	ID     uuid.UUID `db:"fulfillment_status_id"`
+	ID     uuid.UUID `db:"id"`
 	Name   string    `db:"name"`
 	IconID uuid.UUID `db:"icon_id"`
 }

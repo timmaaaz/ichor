@@ -7,7 +7,7 @@ var DefaultOrderBy = order.NewBy(OrderByName, order.ASC)
 
 // Set of fields that the results can be ordered by.
 const (
-	OrderByID     = "user_approval_status_id"
+	OrderByID     = "id"
 	OrderByIconID = "icon_id"
 	OrderByName   = "name"
 )

@@ -8,13 +8,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestNewAssetTag(n int, assetIDs, tagIDs []uuid.UUID) []NewAssetTag {
+func TestNewAssetTag(n int, ValidAssetIDs, tagIDs []uuid.UUID) []NewAssetTag {
 	newAssetTag := make([]NewAssetTag, n)
 
 	for i := 0; i < n; i++ {
 		nat := NewAssetTag{
-			AssetID: assetIDs[rand.Intn(len(assetIDs))],
-			TagID:   tagIDs[rand.Intn(len(tagIDs))],
+			ValidAssetID: ValidAssetIDs[rand.Intn(len(ValidAssetIDs))],
+			TagID:        tagIDs[rand.Intn(len(tagIDs))],
 		}
 		newAssetTag[i] = nat
 	}
@@ -22,9 +22,9 @@ func TestNewAssetTag(n int, assetIDs, tagIDs []uuid.UUID) []NewAssetTag {
 	return newAssetTag
 }
 
-func TestSeedAssetTag(ctx context.Context, n int, assetIDs, tagIDs []uuid.UUID, api *Business) ([]AssetTag, error) {
+func TestSeedAssetTag(ctx context.Context, n int, ValidAssetIDs, tagIDs []uuid.UUID, api *Business) ([]AssetTag, error) {
 
-	newAssetTags := TestNewAssetTag(n, assetIDs, tagIDs)
+	newAssetTags := TestNewAssetTag(n, ValidAssetIDs, tagIDs)
 
 	assetTags := make([]AssetTag, len(newAssetTags))
 	for i, nat := range newAssetTags {

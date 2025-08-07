@@ -13,7 +13,7 @@ import (
 )
 
 type validAsset struct {
-	ID                  uuid.UUID      `db:"valid_asset_id"`
+	ID                  uuid.UUID      `db:"id"`
 	TypeID              uuid.UUID      `db:"type_id"`
 	Name                string         `db:"name"`
 	EstPrice            sql.NullString `db:"est_price"`

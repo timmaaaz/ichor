@@ -5,10 +5,10 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 )
 
-var defaultOrderBy = order.NewBy("quality_metric_id", order.ASC)
+var defaultOrderBy = order.NewBy("id", order.ASC)
 
 var orderByFields = map[string]string{
-	"quality_metric_id":  metricsbus.OrderByMetricID,
+	"id":                 metricsbus.OrderByMetricID,
 	"product_id":         metricsbus.OrderByProductID,
 	"return_rate":        metricsbus.OrderByReturnRate,
 	"defect_rate":        metricsbus.OrderByDefectRate,

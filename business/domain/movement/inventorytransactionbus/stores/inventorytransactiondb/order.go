@@ -10,7 +10,7 @@ import (
 var orderByFields = map[string]string{
 	inventorytransactionbus.OrderByCreatedDate:            "created_date",
 	inventorytransactionbus.OrderByUpdatedDate:            "updated_date",
-	inventorytransactionbus.OrderByInventoryTransactionID: "transaction_id",
+	inventorytransactionbus.OrderByInventoryTransactionID: "id",
 	inventorytransactionbus.OrderByProductID:              "product_id",
 	inventorytransactionbus.OrderByQuantity:               "quantity",
 	inventorytransactionbus.OrderByLocationID:             "location_id",

@@ -16,7 +16,7 @@ type QueryParams struct {
 	Rows    string
 	OrderBy string
 
-	CostID            string
+	ID                string
 	ProductID         string
 	PurchaseCost      string
 	SellingPrice      string
@@ -34,7 +34,7 @@ type QueryParams struct {
 }
 
 type ProductCost struct {
-	CostID            string `json:"cost_id"`
+	ID                string `json:"cost_id"` // TODO: Take a look at what the proper id of this should be
 	ProductID         string `json:"product_id"`
 	PurchaseCost      string `json:"purchase_cost"`
 	SellingPrice      string `json:"selling_price"`
@@ -58,7 +58,7 @@ func (app ProductCost) Encode() ([]byte, string, error) {
 
 func ToAppProductCost(bus productcostbus.ProductCost) ProductCost {
 	return ProductCost{
-		CostID:            bus.CostID.String(),
+		ID:                bus.ID.String(),
 		ProductID:         bus.ProductID.String(),
 		PurchaseCost:      bus.PurchaseCost.Value(),
 		SellingPrice:      bus.SellingPrice.Value(),

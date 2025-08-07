@@ -11,8 +11,8 @@ func applyFilter(filter contactinfobus.QueryFilter, data map[string]interface{},
 	var wc []string
 
 	if filter.ID != nil {
-		data["contact_info_id"] = *filter.ID
-		wc = append(wc, "contact_info_id = :contact_info_id")
+		data["id"] = *filter.ID
+		wc = append(wc, "id = :id")
 	}
 
 	if filter.FirstName != nil {

@@ -48,10 +48,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (supplierproductbus.Storer,
 func (s *Store) Create(ctx context.Context, ch supplierproductbus.SupplierProduct) error {
 	const q = `
     INSERT INTO supplier_products ( 
-		supplier_product_id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
+		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
 		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
     ) VALUES (
-		:supplier_product_id, :supplier_id, :product_id, :supplier_part_number, :min_order_quantity, :max_order_quantity, 
+		:id, :supplier_id, :product_id, :supplier_part_number, :min_order_quantity, :max_order_quantity, 
 		:lead_time_days, :unit_cost, :is_primary_supplier, :created_date, :updated_date
     )
     `
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, ch supplierproductbus.SupplierProduc
     UPDATE
         supplier_products
     SET
-		supplier_product_id = :supplier_product_id,
+		id = :id,
 		supplier_id = :supplier_id,
 		product_id = :product_id,
 		supplier_part_number = :supplier_part_number,
@@ -85,7 +85,7 @@ func (s *Store) Update(ctx context.Context, ch supplierproductbus.SupplierProduc
 		created_date = :created_date,
 		updated_date = :updated_date
     WHERE
-        supplier_product_id = :supplier_product_id`
+        id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBSupplierProduct(ch)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
@@ -104,7 +104,7 @@ func (s *Store) Delete(ctx context.Context, ch supplierproductbus.SupplierProduc
 	DELETE FROM
 		supplier_products
 	WHERE
-		supplier_product_id = :supplier_product_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBSupplierProduct(ch)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -121,7 +121,7 @@ func (s *Store) Query(ctx context.Context, filter supplierproductbus.QueryFilter
 
 	const q = `
 	SELECT
-		supplier_product_id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
+		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
 		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
 	FROM 
 		supplier_products
@@ -170,19 +170,19 @@ func (s *Store) Count(ctx context.Context, filter supplierproductbus.QueryFilter
 
 func (s *Store) QueryByID(ctx context.Context, supplierProductID uuid.UUID) (supplierproductbus.SupplierProduct, error) {
 	data := struct {
-		ID string `db:"supplier_product_id"`
+		ID string `db:"id"`
 	}{
 		ID: supplierProductID.String(),
 	}
 
 	const q = `
 	SELECT
-		supplier_product_id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
+		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
 		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
 	FROM 
 		supplier_products
 	WHERE 
-	    supplier_product_id = :supplier_product_id`
+	    id = :id`
 
 	var sp supplierProduct
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &sp); err != nil {

@@ -51,10 +51,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (physicalattributebus.Store
 func (s *Store) Create(ctx context.Context, pa physicalattributebus.PhysicalAttribute) error {
 	const q = `
     INSERT INTO physical_attributes (
-        attribute_id, product_id, length, width, height, weight, weight_unit, color, size,
+        id, product_id, length, width, height, weight, weight_unit, color, size,
 		material, storage_requirements, hazmat_class, shelf_life_days, created_date, updated_date
     ) VALUES (
-		:attribute_id, :product_id, :length, :width, :height, :weight, :weight_unit, :color, :size,
+		:id, :product_id, :length, :width, :height, :weight, :weight_unit, :color, :size,
 		:material, :storage_requirements, :hazmat_class, :shelf_life_days, :created_date, :updated_date
 	)
     `
@@ -76,7 +76,7 @@ func (s *Store) Update(ctx context.Context, pa physicalattributebus.PhysicalAttr
 	UPDATE
 		physical_attributes
 	SET
-		attribute_id = :attribute_id,
+		id = :id,
 		product_id = :product_id,
 		length = :length,
 		width = :width,
@@ -92,7 +92,7 @@ func (s *Store) Update(ctx context.Context, pa physicalattributebus.PhysicalAttr
 		created_date = :created_date,
 		updated_date = :updated_date
 	WHERE
-		attribute_id = :attribute_id
+		id = :id
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBPhysicalAttribute(pa)); err != nil {
@@ -112,7 +112,7 @@ func (s *Store) Delete(ctx context.Context, pa physicalattributebus.PhysicalAttr
 	DELETE FROM
 		physical_attributes
 	WHERE
-		attribute_id = :attribute_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBPhysicalAttribute(pa)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -130,7 +130,7 @@ func (s *Store) Query(ctx context.Context, filter physicalattributebus.QueryFilt
 
 	const q = `
     SELECT
-		attribute_id, product_id, length, width, height, weight, weight_unit, color, size,
+		id, product_id, length, width, height, weight, weight_unit, color, size,
 		material, storage_requirements, hazmat_class, shelf_life_days, created_date, updated_date
     FROM
         physical_attributes`
@@ -180,19 +180,19 @@ func (s *Store) Count(ctx context.Context, filter physicalattributebus.QueryFilt
 // QueryByID retrieves a single product category  from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, userPhysicalAttributeID uuid.UUID) (physicalattributebus.PhysicalAttribute, error) {
 	data := struct {
-		ID string `db:"attribute_id"`
+		ID string `db:"id"`
 	}{
 		ID: userPhysicalAttributeID.String(),
 	}
 
 	const q = `
     SELECT
-        attribute_id, product_id, length, width, height, weight, weight_unit, color, size,
+        id, product_id, length, width, height, weight, weight_unit, color, size,
 		material, storage_requirements, hazmat_class, shelf_life_days, created_date, updated_date
     FROM
         physical_attributes
     WHERE
-        attribute_id = :attribute_id
+        id = :id
     `
 	var pa physicalAttribute
 
