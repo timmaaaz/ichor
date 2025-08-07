@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (supplierbus.Storer, error)
 func (s *Store) Create(ctx context.Context, supplier supplierbus.Supplier) error {
 	const q = `
 	INSERT INTO suppliers (
-		id, contact_info_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
+		id, contact_infos_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	) VALUES (
-		:id, :contact_info_id, :name, :payment_terms, :lead_time_days, :rating, :is_active, :created_date, :updated_date
+		:id, :contact_infos_id, :name, :payment_terms, :lead_time_days, :rating, :is_active, :created_date, :updated_date
 	)
 	`
 
@@ -74,7 +74,7 @@ func (s *Store) Update(ctx context.Context, supplier supplierbus.Supplier) error
 		suppliers
 	SET
 	    id = :id,
-        contact_info_id = :contact_info_id,
+        contact_infos_id = :contact_infos_id,
         name = :name,
         payment_terms = :payment_terms,
         lead_time_days = :lead_time_days,
@@ -120,7 +120,7 @@ func (s *Store) Query(ctx context.Context, filter supplierbus.QueryFilter, order
 
 	const q = `
 	SELECT
-	    id, contact_info_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
+	    id, contact_infos_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
 		suppliers
 	`
@@ -178,7 +178,7 @@ func (s *Store) QueryByID(ctx context.Context, supplierID uuid.UUID) (supplierbu
 
 	const q = `
 	SELECT
-	    id, contact_info_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
+	    id, contact_infos_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
 		suppliers
 	WHERE 

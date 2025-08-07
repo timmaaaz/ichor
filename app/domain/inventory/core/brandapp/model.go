@@ -10,22 +10,22 @@ import (
 )
 
 type QueryParams struct {
-	Page          string
-	Rows          string
-	OrderBy       string
-	ID            string
-	Name          string
-	ContactInfoID string
-	CreatedDate   string
-	UpdatedDate   string
+	Page           string
+	Rows           string
+	OrderBy        string
+	ID             string
+	Name           string
+	ContactInfosID string
+	CreatedDate    string
+	UpdatedDate    string
 }
 
 type Brand struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	ContactInfoID string `json:"contact_info_id"`
-	CreatedDate   string `json:"created_date"`
-	UpdatedDate   string `json:"updated_date"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	ContactInfosID string `json:"contact_infos_id"`
+	CreatedDate    string `json:"created_date"`
+	UpdatedDate    string `json:"updated_date"`
 }
 
 func (app Brand) Encode() ([]byte, string, error) {
@@ -35,11 +35,11 @@ func (app Brand) Encode() ([]byte, string, error) {
 
 func ToAppBrand(bus brandbus.Brand) Brand {
 	return Brand{
-		ID:            bus.BrandID.String(),
-		Name:          bus.Name,
-		ContactInfoID: bus.ContactInfoID.String(),
-		CreatedDate:   bus.CreatedDate.Format(timeutil.FORMAT),
-		UpdatedDate:   bus.UpdatedDate.Format(timeutil.FORMAT),
+		ID:             bus.BrandID.String(),
+		Name:           bus.Name,
+		ContactInfosID: bus.ContactInfosID.String(),
+		CreatedDate:    bus.CreatedDate.Format(timeutil.FORMAT),
+		UpdatedDate:    bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
 }
 
@@ -54,8 +54,8 @@ func ToAppBrands(bus []brandbus.Brand) []Brand {
 // =========================================================================
 
 type NewBrand struct {
-	Name          string `json:"name" validate:"required"`
-	ContactInfoID string `json:"contact_info_id" validate:"required,min=36,max=36"`
+	Name           string `json:"name" validate:"required"`
+	ContactInfosID string `json:"contact_infos_id" validate:"required,min=36,max=36"`
 }
 
 func (app *NewBrand) Decode(data []byte) error {
@@ -78,8 +78,8 @@ func toBusNewBrand(app NewBrand) (brandbus.NewBrand, error) {
 }
 
 type UpdateBrand struct {
-	Name          *string `json:"name" validate:"omitempty"`
-	ContactInfoID *string `json:"contact_info_id" validate:"omitempty,min=36,max=36"`
+	Name           *string `json:"name" validate:"omitempty"`
+	ContactInfosID *string `json:"contact_infos_id" validate:"omitempty,min=36,max=36"`
 }
 
 // Decode implements the decoder interface.

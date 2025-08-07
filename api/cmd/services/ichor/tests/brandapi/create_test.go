@@ -20,13 +20,13 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &brandapp.NewBrand{
-				Name:          "Test Brand",
-				ContactInfoID: sd.ContactInfo[0].ID,
+				Name:           "Test Brand",
+				ContactInfosID: sd.ContactInfos[0].ID,
 			},
 			GotResp: &brandapp.Brand{},
 			ExpResp: &brandapp.Brand{
-				Name:          "Test Brand",
-				ContactInfoID: sd.ContactInfo[0].ID,
+				Name:           "Test Brand",
+				ContactInfosID: sd.ContactInfos[0].ID,
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*brandapp.Brand)
@@ -54,7 +54,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &brandapp.NewBrand{
-				ContactInfoID: sd.ContactInfo[0].ID,
+				ContactInfosID: sd.ContactInfos[0].ID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"name\",\"error\":\"name is a required field\"}]"),
@@ -72,7 +72,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				Name: "test name",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"contact_info_id\",\"error\":\"contact_info_id is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"contact_infos_id\",\"error\":\"contact_infos_id is a required field\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -84,11 +84,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &brandapp.NewBrand{
-				Name:          "test name",
-				ContactInfoID: "not-a-uuid",
+				Name:           "test name",
+				ContactInfosID: "not-a-uuid",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_info_id","error":"contact_info_id must be at least 36 characters in length"}]`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_infos_id","error":"contact_infos_id must be at least 36 characters in length"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -105,8 +105,8 @@ func create409(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
 			Input: &brandapp.NewBrand{
-				Name:          "test name",
-				ContactInfoID: uuid.NewString(),
+				Name:           "test name",
+				ContactInfosID: uuid.NewString(),
 			},
 			ExpResp: errs.Newf(errs.Aborted, "foreign key violation"),
 			GotResp: &errs.Error{},

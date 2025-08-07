@@ -22,7 +22,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &serialnumberapp.UpdateSerialNumber{
-				LotID:        &sd.LotTracking[0].LotID,
+				LotID:        &sd.LotTrackings[0].LotID,
 				ProductID:    &sd.Products[0].ProductID,
 				LocationID:   &sd.InventoryLocations[0].LocationID,
 				SerialNumber: dbtest.StringPointer("UpdateSerialNumber"),
@@ -30,7 +30,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &serialnumberapp.SerialNumber{},
 			ExpResp: &serialnumberapp.SerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    sd.Products[0].ProductID,
 				LocationID:   sd.InventoryLocations[0].LocationID,
 				SerialNumber: "UpdateSerialNumber",
@@ -81,7 +81,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.UpdateSerialNumber{
-				LotID:        &sd.LotTracking[0].LotID,
+				LotID:        &sd.LotTrackings[0].LotID,
 				ProductID:    dbtest.StringPointer("not-a-uuid"),
 				LocationID:   &sd.InventoryLocations[0].LocationID,
 				SerialNumber: dbtest.StringPointer("UpdateSerialNumber"),
@@ -100,7 +100,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.UpdateSerialNumber{
-				LotID:        &sd.LotTracking[0].LotID,
+				LotID:        &sd.LotTrackings[0].LotID,
 				ProductID:    &sd.Products[0].ProductID,
 				LocationID:   dbtest.StringPointer("not-a-uuid"),
 				SerialNumber: dbtest.StringPointer("UpdateSerialNumber"),
@@ -119,7 +119,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.UpdateSerialNumber{
-				LotID: &sd.LotTracking[0].LotID,
+				LotID: &sd.LotTrackings[0].LotID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "invalid UUID length: 10"),
@@ -181,7 +181,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
 			Input: &serialnumberapp.UpdateSerialNumber{
-				LotID:        &sd.LotTracking[0].LotID,
+				LotID:        &sd.LotTrackings[0].LotID,
 				ProductID:    &sd.Products[0].ProductID,
 				LocationID:   &sd.InventoryLocations[0].LocationID,
 				SerialNumber: dbtest.StringPointer("UpdateSerialNumber"),
@@ -224,7 +224,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,
 			Input: &serialnumberapp.UpdateSerialNumber{
-				LotID:        &sd.LotTracking[0].LotID,
+				LotID:        &sd.LotTrackings[0].LotID,
 				ProductID:    dbtest.StringPointer(uuid.NewString()),
 				LocationID:   &sd.InventoryLocations[0].LocationID,
 				SerialNumber: dbtest.StringPointer("UpdateSerialNumber"),
@@ -243,7 +243,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,
 			Input: &serialnumberapp.UpdateSerialNumber{
-				LotID:        &sd.LotTracking[0].LotID,
+				LotID:        &sd.LotTrackings[0].LotID,
 				ProductID:    &sd.Products[0].ProductID,
 				LocationID:   dbtest.StringPointer(uuid.NewString()),
 				SerialNumber: dbtest.StringPointer("UpdateSerialNumber"),

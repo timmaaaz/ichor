@@ -24,12 +24,12 @@ func parseFilter(qp QueryParams) (brandbus.QueryFilter, error) {
 		filter.Name = &qp.Name
 	}
 
-	if qp.ContactInfoID != "" {
+	if qp.ContactInfosID != "" {
 		id, err := uuid.Parse(qp.ID)
 		if err != nil {
-			return brandbus.QueryFilter{}, errs.NewFieldsError("contact_info_id", err)
+			return brandbus.QueryFilter{}, errs.NewFieldsError("contact_infos_id", err)
 		}
-		filter.ContactInfoID = &id
+		filter.ContactInfosID = &id
 	}
 
 	if qp.CreatedDate != "" {

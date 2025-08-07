@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
@@ -44,17 +44,17 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	ContactInfoIDs := make(uuid.UUIDs, len(contactInfo))
-	for i, c := range contactInfo {
-		ContactInfoIDs[i] = c.ID
+	ContactInfosIDs := make(uuid.UUIDs, len(contactInfos))
+	for i, c := range contactInfos {
+		ContactInfosIDs[i] = c.ID
 	}
 
-	brand, err := brandbus.TestSeedBrands(ctx, 5, ContactInfoIDs, busDomain.Brand)
+	brand, err := brandbus.TestSeedBrands(ctx, 5, ContactInfosIDs, busDomain.Brand)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding brand : %w", err)
 	}
@@ -85,7 +85,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		productIDs[i] = p.ProductID
 	}
 
-	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, ContactInfoIDs, busDomain.Supplier)
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, ContactInfosIDs, busDomain.Supplier)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}
@@ -102,7 +102,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 
 	return unitest.SeedData{
 		Admins:            []unitest.User{{User: admins[0]}},
-		ContactInfo:       contactInfo,
+		ContactInfos:      contactInfos,
 		Brands:            brand,
 		ProductCategories: productCategories,
 		Products:          products,

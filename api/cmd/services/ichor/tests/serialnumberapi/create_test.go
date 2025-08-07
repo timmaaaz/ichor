@@ -21,7 +21,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    sd.Products[0].ProductID,
 				LocationID:   sd.InventoryLocations[0].LocationID,
 				SerialNumber: "SN-1234567890",
@@ -29,7 +29,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &serialnumberapp.SerialNumber{},
 			ExpResp: &serialnumberapp.SerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    sd.Products[0].ProductID,
 				LocationID:   sd.InventoryLocations[0].LocationID,
 				SerialNumber: "SN-1234567890",
@@ -80,7 +80,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				LocationID:   sd.InventoryLocations[0].LocationID,
 				SerialNumber: "SN-1234567890",
 				Status:       "active",
@@ -98,7 +98,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:     sd.LotTracking[0].LotID,
+				LotID:     sd.LotTrackings[0].LotID,
 				ProductID: sd.Products[0].ProductID,
 
 				SerialNumber: "SN-1234567890",
@@ -117,7 +117,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:      sd.LotTracking[0].LotID,
+				LotID:      sd.LotTrackings[0].LotID,
 				ProductID:  sd.Products[0].ProductID,
 				LocationID: sd.InventoryLocations[0].LocationID,
 
@@ -136,7 +136,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    sd.Products[0].ProductID,
 				LocationID:   sd.InventoryLocations[0].LocationID,
 				SerialNumber: "SN-1234567890",
@@ -174,7 +174,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    sd.Products[0].ProductID,
 				LocationID:   "not-a-uuid",
 				SerialNumber: "SN-1234567890",
@@ -193,7 +193,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    "not-a-uuid",
 				LocationID:   sd.InventoryLocations[0].LocationID,
 				SerialNumber: "SN-1234567890",
@@ -236,7 +236,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    uuid.NewString(),
 				LocationID:   sd.InventoryLocations[0].LocationID,
 				SerialNumber: "SN-1234567890",
@@ -255,7 +255,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
 			Input: &serialnumberapp.NewSerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    sd.Products[0].ProductID,
 				LocationID:   uuid.NewString(),
 				SerialNumber: "SN-1234567890",

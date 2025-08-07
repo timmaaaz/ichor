@@ -29,7 +29,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &inspectionapp.UpdateInspection{
 				ProductID:          &sd.Products[3].ProductID,
-				LotID:              &sd.LotTracking[0].LotID,
+				LotID:              &sd.LotTrackings[0].LotID,
 				InspectorID:        dbtest.StringPointer(sd.Users[1].ID.String()),
 				Status:             dbtest.StringPointer("passed"),
 				Notes:              dbtest.StringPointer("Sample Notes"),
@@ -39,7 +39,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &inspectionapp.Inspection{},
 			ExpResp: &inspectionapp.Inspection{
 				ProductID:          sd.Products[3].ProductID,
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				InspectorID:        sd.Users[1].ID.String(),
 				Status:             "passed",
 				Notes:              "Sample Notes",

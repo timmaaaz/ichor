@@ -16,8 +16,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus/stores/costhistorydb"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
@@ -30,8 +30,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus/stores/lottrackingdb"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus/stores/lottrackingsdb"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus/stores/serialnumberdb"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus"
@@ -146,7 +146,7 @@ type BusDomain struct {
 	Asset             *assetbus.Business
 
 	// Core
-	ContactInfo *contactinfobus.Business
+	ContactInfos *contactinfosbus.Business
 
 	// Inventory
 	Brand             *brandbus.Business
@@ -179,7 +179,7 @@ type BusDomain struct {
 	Inspection *inspectionbus.Business
 
 	// Lots
-	LotTracking  *lottrackingbus.Business
+	LotTrackings *lottrackingsbus.Business
 	SerialNumber *serialnumberbus.Business
 
 	// Movement
@@ -218,7 +218,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
 
 	// Core
-	contactInfoBus := contactinfobus.NewBusiness(log, delegate, contactinfodb.NewStore(log, db))
+	contactInfosBus := contactinfosbus.NewBusiness(log, delegate, contactinfosdb.NewStore(log, db))
 
 	// Inventory
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
@@ -251,7 +251,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	inspectionBus := inspectionbus.NewBusiness(log, delegate, inspectiondb.NewStore(log, db))
 
 	// Lots
-	lotTrackingBus := lottrackingbus.NewBusiness(log, delegate, lottrackingdb.NewStore(log, db))
+	lotTrackingsBus := lottrackingsbus.NewBusiness(log, delegate, lottrackingsdb.NewStore(log, db))
 	serialNumberBus := serialnumberbus.NewBusiness(log, delegate, serialnumberdb.NewStore(log, db))
 
 	// Movement
@@ -281,7 +281,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Office:               officeBus,
 		UserAsset:            userAssetBus,
 		Asset:                assetBus,
-		ContactInfo:          contactInfoBus,
+		ContactInfos:         contactInfosBus,
 		Brand:                brandBus,
 		Warehouse:            warehouseBus,
 		Role:                 roleBus,
@@ -296,7 +296,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		CostHistory:          costHistoryBus,
 		SupplierProduct:      supplierProductBus,
 		Metrics:              metricsBus,
-		LotTracking:          lotTrackingBus,
+		LotTrackings:         lotTrackingsBus,
 		Zones:                zoneBus,
 		InventoryLocation:    inventoryLocationBus,
 		InventoryItem:        inventoryItemBus,

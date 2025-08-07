@@ -12,7 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
-	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfoapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/costhistoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/productcostapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/brandapi"
@@ -20,7 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/physicalattributeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/productcategoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/location/officeapi"
-	"github.com/timmaaaz/ichor/api/domain/http/lots/lottrackingapi"
+	"github.com/timmaaaz/ichor/api/domain/http/lots/lottrackingsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/lots/serialnumberapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventoryadjustmentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventorytransactionapi"
@@ -59,8 +59,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus/stores/costhistorydb"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
@@ -73,8 +73,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus/stores/lottrackingdb"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus/stores/lottrackingsdb"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus/stores/serialnumberdb"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus"
@@ -189,7 +189,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	userAssetBus := userassetbus.NewBusiness(cfg.Log, delegate, userassetdb.NewStore(cfg.Log, cfg.DB))
 	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
 
-	contactInfoBus := contactinfobus.NewBusiness(cfg.Log, delegate, contactinfodb.NewStore(cfg.Log, cfg.DB))
+	contactInfosBus := contactinfosbus.NewBusiness(cfg.Log, delegate, contactinfosdb.NewStore(cfg.Log, cfg.DB))
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 	productBus := productbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB))
@@ -209,7 +209,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	metricsBus := metricsbus.NewBusiness(cfg.Log, delegate, metricsdb.NewStore(cfg.Log, cfg.DB))
 	inspectionBus := inspectionbus.NewBusiness(cfg.Log, delegate, inspectiondb.NewStore(cfg.Log, cfg.DB))
 
-	lotTrackingBus := lottrackingbus.NewBusiness(cfg.Log, delegate, lottrackingdb.NewStore(cfg.Log, cfg.DB))
+	lotTrackingsBus := lottrackingsbus.NewBusiness(cfg.Log, delegate, lottrackingsdb.NewStore(cfg.Log, cfg.DB))
 	serialNumberBus := serialnumberbus.NewBusiness(cfg.Log, delegate, serialnumberdb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -371,11 +371,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus:         permissionsBus,
 	})
 
-	contactinfoapi.Routes(app, contactinfoapi.Config{
-		ContactInfoBus: contactInfoBus,
-		AuthClient:     cfg.AuthClient,
-		Log:            cfg.Log,
-		PermissionsBus: permissionsBus,
+	contactinfosapi.Routes(app, contactinfosapi.Config{
+		ContactInfosBus: contactInfosBus,
+		AuthClient:      cfg.AuthClient,
+		Log:             cfg.Log,
+		PermissionsBus:  permissionsBus,
 	})
 
 	brandapi.Routes(app, brandapi.Config{
@@ -470,11 +470,11 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		MetricsBus:     metricsBus,
 	})
 
-	lottrackingapi.Routes(app, lottrackingapi.Config{
-		LotTrackingBus: lotTrackingBus,
-		AuthClient:     cfg.AuthClient,
-		Log:            cfg.Log,
-		PermissionsBus: permissionsBus,
+	lottrackingsapi.Routes(app, lottrackingsapi.Config{
+		LotTrackingsBus: lotTrackingsBus,
+		AuthClient:      cfg.AuthClient,
+		Log:             cfg.Log,
+		PermissionsBus:  permissionsBus,
 	})
 
 	zoneapi.Routes(app, zoneapi.Config{

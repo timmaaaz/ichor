@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/domain/http/supplier/supplierapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/supplier/supplierapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
@@ -43,17 +43,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, admins[0].Email.Address),
 	}
 
-	contacts, err := contactinfobus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	ContactInfoIDs := make(uuid.UUIDs, len(contacts))
+	ContactInfosIDs := make(uuid.UUIDs, len(contacts))
 	for i, c := range contacts {
-		ContactInfoIDs[i] = c.ID
+		ContactInfosIDs[i] = c.ID
 	}
 
-	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 10, ContactInfoIDs, busDomain.Supplier)
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 10, ContactInfosIDs, busDomain.Supplier)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}
@@ -121,9 +121,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
-		Admins:      []apitest.User{tu2},
-		Users:       []apitest.User{tu1},
-		ContactInfo: contactinfoapp.ToAppContactInfos(contacts),
-		Suppliers:   supplierapp.ToAppSuppliers(suppliers),
+		Admins:       []apitest.User{tu2},
+		Users:        []apitest.User{tu1},
+		ContactInfos: contactinfosapp.ToAppContactInfoss(contacts),
+		Suppliers:    supplierapp.ToAppSuppliers(suppliers),
 	}, nil
 }

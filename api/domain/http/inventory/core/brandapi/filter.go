@@ -10,14 +10,14 @@ func parseQueryParams(r *http.Request) (brandapp.QueryParams, error) {
 	values := r.URL.Query()
 
 	filter := brandapp.QueryParams{
-		Page:          values.Get("page"),
-		Rows:          values.Get("rows"),
-		OrderBy:       values.Get("orderBy"),
-		ID:            values.Get("id"),
-		Name:          values.Get("name"),
-		ContactInfoID: values.Get("contact_info_id"),
-		CreatedDate:   values.Get("created_date"),
-		UpdatedDate:   values.Get("updated_date"),
+		Page:           values.Get("page"),
+		Rows:           values.Get("rows"),
+		OrderBy:        values.Get("orderBy"),
+		ID:             values.Get("id"),
+		Name:           values.Get("name"),
+		ContactInfosID: values.Get("contact_infos_id"),
+		CreatedDate:    values.Get("created_date"),
+		UpdatedDate:    values.Get("updated_date"),
 	}
 
 	return filter, nil

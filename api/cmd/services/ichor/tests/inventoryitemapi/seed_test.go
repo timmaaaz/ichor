@@ -7,14 +7,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/inventoryitemapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/inventoryitemapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productcategoryapp"
 	"github.com/timmaaaz/ichor/app/domain/warehouse/inventorylocationapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
@@ -57,7 +57,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, admins[0].Email.Address),
 	}
 
-	contacts, err := contactinfobus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
@@ -231,7 +231,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Admins:             []apitest.User{tu2},
 		Users:              []apitest.User{tu1},
 		ProductCategories:  productcategoryapp.ToAppProductCategories(pc),
-		ContactInfo:        contactinfoapp.ToAppContactInfos(contacts),
+		ContactInfos:       contactinfosapp.ToAppContactInfoss(contacts),
 		Brands:             brandapp.ToAppBrands(brands),
 		Products:           productapp.ToAppProducts(products),
 		InventoryLocations: inventorylocationapp.ToAppInventoryLocations(inventoryLocations),

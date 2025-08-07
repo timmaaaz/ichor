@@ -8,31 +8,31 @@ import (
 )
 
 type Supplier struct {
-	SupplierID    uuid.UUID
-	ContactInfoID uuid.UUID
-	Name          string
-	PaymentTerms  string
-	LeadTimeDays  int
-	Rating        types.RoundedFloat
-	IsActive      bool
-	CreatedDate   time.Time
-	UpdatedDate   time.Time
+	SupplierID     uuid.UUID
+	ContactInfosID uuid.UUID
+	Name           string
+	PaymentTerms   string
+	LeadTimeDays   int
+	Rating         types.RoundedFloat
+	IsActive       bool
+	CreatedDate    time.Time
+	UpdatedDate    time.Time
 }
 
 type NewSupplier struct {
-	ContactInfoID uuid.UUID
-	Name          string
-	PaymentTerms  string
-	LeadTimeDays  int
-	Rating        types.RoundedFloat
-	IsActive      bool
+	ContactInfosID uuid.UUID
+	Name           string
+	PaymentTerms   string
+	LeadTimeDays   int
+	Rating         types.RoundedFloat
+	IsActive       bool
 }
 
 type UpdateSupplier struct {
-	ContactInfoID *uuid.UUID
-	Name          *string
-	PaymentTerms  *string
-	LeadTimeDays  *int
-	Rating        *types.RoundedFloat
-	IsActive      *bool
+	ContactInfosID *uuid.UUID
+	Name           *string
+	PaymentTerms   *string
+	LeadTimeDays   *int
+	Rating         *types.RoundedFloat
+	IsActive       *bool
 }

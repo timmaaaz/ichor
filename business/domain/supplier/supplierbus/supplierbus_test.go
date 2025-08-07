@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/types"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -40,25 +40,25 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 20, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 20, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	ContactInfoIDs := make(uuid.UUIDs, len(contactInfo))
-	for i, c := range contactInfo {
-		ContactInfoIDs[i] = c.ID
+	ContactInfosIDs := make(uuid.UUIDs, len(contactInfos))
+	for i, c := range contactInfos {
+		ContactInfosIDs[i] = c.ID
 	}
 
-	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, ContactInfoIDs, busDomain.Supplier)
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, ContactInfosIDs, busDomain.Supplier)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}
 
 	return unitest.SeedData{
-		Admins:      []unitest.User{{User: admins[0]}},
-		ContactInfo: contactInfo,
-		Suppliers:   suppliers,
+		Admins:       []unitest.User{{User: admins[0]}},
+		ContactInfos: contactInfos,
+		Suppliers:    suppliers,
 	}, nil
 }
 
@@ -99,21 +99,21 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: supplierbus.Supplier{
-				ContactInfoID: sd.ContactInfo[0].ID,
-				Name:          "Name",
-				PaymentTerms:  "PaymentTerms",
-				LeadTimeDays:  8,
-				Rating:        types.NewRoundedFloat(8.76),
-				IsActive:      true,
+				ContactInfosID: sd.ContactInfos[0].ID,
+				Name:           "Name",
+				PaymentTerms:   "PaymentTerms",
+				LeadTimeDays:   8,
+				Rating:         types.NewRoundedFloat(8.76),
+				IsActive:       true,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				newSupplier := supplierbus.NewSupplier{
-					ContactInfoID: sd.ContactInfo[0].ID,
-					Name:          "Name",
-					PaymentTerms:  "PaymentTerms",
-					LeadTimeDays:  8,
-					Rating:        types.NewRoundedFloat(8.76),
-					IsActive:      true,
+					ContactInfosID: sd.ContactInfos[0].ID,
+					Name:           "Name",
+					PaymentTerms:   "PaymentTerms",
+					LeadTimeDays:   8,
+					Rating:         types.NewRoundedFloat(8.76),
+					IsActive:       true,
 				}
 
 				s, err := busDomain.Supplier.Create(ctx, newSupplier)
@@ -146,23 +146,23 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Update",
 			ExpResp: supplierbus.Supplier{
-				ContactInfoID: sd.ContactInfo[2].ID,
-				SupplierID:    sd.Suppliers[0].SupplierID,
-				Name:          "UpdatedName",
-				PaymentTerms:  "UpdatedPaymentTerms",
-				LeadTimeDays:  10,
-				Rating:        types.MustParseRoundedFloat("9.87"),
-				IsActive:      false,
-				CreatedDate:   sd.Suppliers[0].CreatedDate,
+				ContactInfosID: sd.ContactInfos[2].ID,
+				SupplierID:     sd.Suppliers[0].SupplierID,
+				Name:           "UpdatedName",
+				PaymentTerms:   "UpdatedPaymentTerms",
+				LeadTimeDays:   10,
+				Rating:         types.MustParseRoundedFloat("9.87"),
+				IsActive:       false,
+				CreatedDate:    sd.Suppliers[0].CreatedDate,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				updateSupplier := supplierbus.UpdateSupplier{
-					ContactInfoID: &sd.ContactInfo[2].ID,
-					Name:          dbtest.StringPointer("UpdatedName"),
-					PaymentTerms:  dbtest.StringPointer("UpdatedPaymentTerms"),
-					LeadTimeDays:  dbtest.IntPointer(10),
-					Rating:        types.NewRoundedFloat(9.87).ToPtr(),
-					IsActive:      dbtest.BoolPointer(false),
+					ContactInfosID: &sd.ContactInfos[2].ID,
+					Name:           dbtest.StringPointer("UpdatedName"),
+					PaymentTerms:   dbtest.StringPointer("UpdatedPaymentTerms"),
+					LeadTimeDays:   dbtest.IntPointer(10),
+					Rating:         types.NewRoundedFloat(9.87).ToPtr(),
+					IsActive:       dbtest.BoolPointer(false),
 				}
 
 				s, err := busDomain.Supplier.Update(ctx, sd.Suppliers[0], updateSupplier)

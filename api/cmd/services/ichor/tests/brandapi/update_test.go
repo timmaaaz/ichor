@@ -21,15 +21,15 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &brandapp.UpdateBrand{
-				Name:          dbtest.StringPointer("Updated Brand"),
-				ContactInfoID: dbtest.StringPointer(sd.ContactInfo[1].ID),
+				Name:           dbtest.StringPointer("Updated Brand"),
+				ContactInfosID: dbtest.StringPointer(sd.ContactInfos[1].ID),
 			},
 			GotResp: &brandapp.Brand{},
 			ExpResp: &brandapp.Brand{
-				ID:            sd.Brands[1].ID,
-				Name:          "Updated Brand",
-				ContactInfoID: sd.ContactInfo[1].ID,
-				CreatedDate:   sd.Brands[1].CreatedDate,
+				ID:             sd.Brands[1].ID,
+				Name:           "Updated Brand",
+				ContactInfosID: sd.ContactInfos[1].ID,
+				CreatedDate:    sd.Brands[1].CreatedDate,
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*brandapp.Brand)
@@ -55,10 +55,10 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &brandapp.UpdateBrand{
-				ContactInfoID: dbtest.StringPointer("not-a-uuid"),
+				ContactInfosID: dbtest.StringPointer("not-a-uuid"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_info_id","error":"contact_info_id must be at least 36 characters in length"}]`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_infos_id","error":"contact_infos_id must be at least 36 characters in length"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -70,7 +70,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &brandapp.UpdateBrand{
-				ContactInfoID: &sd.ContactInfo[0].ID,
+				ContactInfosID: &sd.ContactInfos[0].ID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "invalid UUID length: 10"),
@@ -132,7 +132,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
 			Input: &brandapp.UpdateBrand{
-				ContactInfoID: dbtest.StringPointer(uuid.NewString()),
+				ContactInfosID: dbtest.StringPointer(uuid.NewString()),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.NotFound, "brand not found"),
@@ -152,7 +152,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,
 			Input: &brandapp.UpdateBrand{
-				ContactInfoID: dbtest.StringPointer(uuid.NewString()),
+				ContactInfosID: dbtest.StringPointer(uuid.NewString()),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.Aborted, "foreign key violation"),

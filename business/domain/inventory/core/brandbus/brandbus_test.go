@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
@@ -41,13 +41,13 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 15, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 15, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	contactIDs := make(uuid.UUIDs, len(contactInfo))
-	for i, c := range contactInfo {
+	contactIDs := make(uuid.UUIDs, len(contactInfos))
+	for i, c := range contactInfos {
 		contactIDs[i] = c.ID
 	}
 
@@ -57,9 +57,9 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	}
 
 	return unitest.SeedData{
-		Admins:      []unitest.User{{User: admins[0]}},
-		ContactInfo: contactInfo,
-		Brands:      brands,
+		Admins:       []unitest.User{{User: admins[0]}},
+		ContactInfos: contactInfos,
+		Brands:       brands,
 	}, nil
 }
 
@@ -101,13 +101,13 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: brandbus.Brand{
-				Name:          "NewBrand",
-				ContactInfoID: sd.ContactInfo[0].ID,
+				Name:           "NewBrand",
+				ContactInfosID: sd.ContactInfos[0].ID,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				newBrand := brandbus.NewBrand{
-					Name:          "NewBrand",
-					ContactInfoID: sd.ContactInfo[0].ID,
+					Name:           "NewBrand",
+					ContactInfosID: sd.ContactInfos[0].ID,
 				}
 
 				ci, err := busDomain.Brand.Create(ctx, newBrand)
@@ -140,15 +140,15 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Update",
 			ExpResp: brandbus.Brand{
-				BrandID:       sd.Brands[0].BrandID,
-				Name:          "UpdatedBrand",
-				ContactInfoID: sd.ContactInfo[0].ID,
-				CreatedDate:   sd.Brands[0].CreatedDate,
+				BrandID:        sd.Brands[0].BrandID,
+				Name:           "UpdatedBrand",
+				ContactInfosID: sd.ContactInfos[0].ID,
+				CreatedDate:    sd.Brands[0].CreatedDate,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				uc := brandbus.UpdateBrand{
-					ContactInfoID: &sd.ContactInfo[0].ID,
-					Name:          dbtest.StringPointer("UpdatedBrand"),
+					ContactInfosID: &sd.ContactInfos[0].ID,
+					Name:           dbtest.StringPointer("UpdatedBrand"),
 				}
 
 				got, err := busDomain.Brand.Update(ctx, sd.Brands[0], uc)

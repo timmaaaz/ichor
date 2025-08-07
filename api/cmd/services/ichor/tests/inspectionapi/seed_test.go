@@ -8,16 +8,16 @@ import (
 
 	"github.com/timmaaaz/ichor/api/domain/http/quality/inspectionapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
-	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
+	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/domain/quality/inspectionapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
@@ -52,7 +52,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, admins[0].Email.Address),
 	}
 
-	contacts, err := contactinfobus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
@@ -112,14 +112,14 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		supplierProductIDs[i] = sp.SupplierProductID
 	}
 
-	lotTracking, err := lottrackingbus.TestSeedLotTracking(ctx, 15, supplierProductIDs, busDomain.LotTracking)
+	lotTrackings, err := lottrackingsbus.TestSeedLotTrackings(ctx, 15, supplierProductIDs, busDomain.LotTrackings)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding lot tracking : %w", err)
 	}
 
-	lotTrackingIDs := make(uuid.UUIDs, len(lotTracking))
-	for i, lt := range lotTracking {
-		lotTrackingIDs[i] = lt.LotID
+	lotTrackingsIDs := make(uuid.UUIDs, len(lotTrackings))
+	for i, lt := range lotTrackings {
+		lotTrackingsIDs[i] = lt.LotID
 	}
 
 	users, err := userbus.TestSeedUsersWithNoFKs(ctx, 3, userbus.Roles.User, busDomain.User)
@@ -133,7 +133,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		usrIDs[i] = u.ID
 	}
 
-	inspections, err := inspectionbus.TestSeedInspections(ctx, 25, productIDs, usrIDs, lotTrackingIDs, busDomain.Inspection)
+	inspections, err := inspectionbus.TestSeedInspections(ctx, 25, productIDs, usrIDs, lotTrackingsIDs, busDomain.Inspection)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding inspections : %w", err)
 	}
@@ -201,11 +201,11 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
-		Admins:      []apitest.User{tu2},
-		Users:       []apitest.User{tu1, {User: users[0]}, {User: users[1]}, {User: users[2]}},
-		ContactInfo: contactinfoapp.ToAppContactInfos(contacts),
-		Products:    productapp.ToAppProducts(products),
-		LotTracking: lottrackingapp.ToAppLotTrackings(lotTracking),
-		Inspections: inspectionapp.ToAppInspections(inspections),
+		Admins:       []apitest.User{tu2},
+		Users:        []apitest.User{tu1, {User: users[0]}, {User: users[1]}, {User: users[2]}},
+		ContactInfos: contactinfosapp.ToAppContactInfoss(contacts),
+		Products:     productapp.ToAppProducts(products),
+		LotTrackings: lottrackingsapp.ToAppLotTrackingss(lotTrackings),
+		Inspections:  inspectionapp.ToAppInspections(inspections),
 	}, nil
 }

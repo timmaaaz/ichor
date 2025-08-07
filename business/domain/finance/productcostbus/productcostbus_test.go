@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
@@ -42,13 +42,13 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	contactIDs := make(uuid.UUIDs, len(contactInfo))
-	for i, c := range contactInfo {
+	contactIDs := make(uuid.UUIDs, len(contactInfos))
+	for i, c := range contactInfos {
 		contactIDs[i] = c.ID
 	}
 
@@ -94,7 +94,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		ProductCategories: productCategories,
 		Products:          products,
 		ProductCosts:      productCosts,
-		ContactInfo:       contactInfo,
+		ContactInfos:      contactInfos,
 	}, nil
 }
 

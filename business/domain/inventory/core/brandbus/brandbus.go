@@ -74,11 +74,11 @@ func (b *Business) Create(ctx context.Context, na NewBrand) (Brand, error) {
 	now := time.Now()
 
 	brand := Brand{
-		BrandID:       uuid.New(),
-		Name:          na.Name,
-		ContactInfoID: na.ContactInfoID,
-		CreatedDate:   now,
-		UpdatedDate:   now,
+		BrandID:        uuid.New(),
+		Name:           na.Name,
+		ContactInfosID: na.ContactInfosID,
+		CreatedDate:    now,
+		UpdatedDate:    now,
 	}
 
 	if err := b.storer.Create(ctx, brand); err != nil {
@@ -93,8 +93,8 @@ func (b *Business) Update(ctx context.Context, brand Brand, ub UpdateBrand) (Bra
 	ctx, span := otel.AddSpan(ctx, "business.brandbus.update")
 	defer span.End()
 
-	if ub.ContactInfoID != nil {
-		brand.ContactInfoID = *ub.ContactInfoID
+	if ub.ContactInfosID != nil {
+		brand.ContactInfosID = *ub.ContactInfosID
 	}
 
 	if ub.Name != nil {
