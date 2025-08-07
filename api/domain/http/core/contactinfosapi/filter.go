@@ -18,7 +18,7 @@ func parseQueryParams(r *http.Request) (contactinfosapp.QueryParams, error) {
 		EmailAddress:         values.Get("email_address"),
 		PrimaryPhone:         values.Get("primary_phone"),
 		SecondaryPhone:       values.Get("secondary_phone"),
-		Address:              values.Get("address"),
+		StreetID:             values.Get("street_id"),
 		ID:                   values.Get("id"),
 		AvailableHoursStart:  values.Get("available_hours_start"),
 		AvailableHoursEnd:    values.Get("available_hours_end"),

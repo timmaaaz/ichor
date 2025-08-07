@@ -20,7 +20,7 @@ type QueryParams struct {
 	EmailAddress         string
 	PrimaryPhone         string
 	SecondaryPhone       string
-	Address              string
+	StreetID             string
 	AvailableHoursStart  string
 	AvailableHoursEnd    string
 	Timezone             string
@@ -35,7 +35,7 @@ type ContactInfos struct {
 	EmailAddress         string `json:"email_address"`
 	PrimaryPhone         string `json:"primary_phone"`
 	SecondaryPhone       string `json:"secondary_phone"`
-	Address              string `json:"address"`
+	StreetID             string `json:"street_id"`
 	AvailableHoursStart  string `json:"available_hours_start"`
 	AvailableHoursEnd    string `json:"available_hours_end"`
 	Timezone             string `json:"timezone"`
@@ -57,7 +57,7 @@ func ToAppContactInfos(bus contactinfosbus.ContactInfos) ContactInfos {
 		EmailAddress:         bus.EmailAddress,
 		PrimaryPhone:         bus.PrimaryPhone,
 		SecondaryPhone:       bus.SecondaryPhone,
-		Address:              bus.Address,
+		StreetID:             bus.StreetID.String(),
 		AvailableHoursStart:  bus.AvailableHoursStart,
 		AvailableHoursEnd:    bus.AvailableHoursEnd,
 		Timezone:             bus.Timezone,
@@ -80,7 +80,7 @@ type NewContactInfos struct {
 	EmailAddress         string `json:"email_address" validate:"required"`
 	PrimaryPhone         string `json:"primary_phone" validate:"required"`
 	SecondaryPhone       string `json:"secondary_phone"`
-	Address              string `json:"address" validate:"required"`
+	StreetID             string `json:"street_id" validate:"required"`
 	AvailableHoursStart  string `json:"available_hours_start" validate:"required"`
 	AvailableHoursEnd    string `json:"available_hours_end" validate:"required"`
 	Timezone             string `json:"timezone" validate:"required"`
@@ -121,7 +121,7 @@ type UpdateContactInfos struct {
 	EmailAddress         *string `json:"email_address"`
 	PrimaryPhone         *string `json:"primary_phone"`
 	SecondaryPhone       *string `json:"secondary_phone"`
-	Address              *string `json:"address"`
+	StreetID             *string `json:"street_id"`
 	AvailableHoursStart  *string `json:"available_hours_start"`
 	AvailableHoursEnd    *string `json:"available_hours_end"`
 	Timezone             *string `json:"timezone"`

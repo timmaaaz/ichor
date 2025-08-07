@@ -40,8 +40,12 @@ func parseFilter(qp QueryParams) (contactinfosbus.QueryFilter, error) {
 		filter.SecondaryPhone = &qp.SecondaryPhone
 	}
 
-	if qp.Address != "" {
-		filter.Address = &qp.Address
+	if qp.StreetID != "" {
+		id, err := uuid.Parse(qp.StreetID)
+		if err != nil {
+			return contactinfosbus.QueryFilter{}, errs.NewFieldsError("street_id", err)
+		}
+		filter.StreetID = &id
 	}
 
 	if qp.AvailableHoursStart != "" {

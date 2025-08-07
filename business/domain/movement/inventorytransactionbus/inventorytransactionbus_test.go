@@ -56,7 +56,38 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		adminIDs[i] = admin.ID
 	}
 
-	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
+	count := 5
+
+	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("querying regions : %w", err)
+	}
+
+	ids := make([]uuid.UUID, 0, len(regions))
+	for _, r := range regions {
+		ids = append(ids, r.ID)
+	}
+
+	ctys, err := citybus.TestSeedCities(ctx, count, ids, busDomain.City)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding cities : %w", err)
+	}
+
+	ctyIDs := make([]uuid.UUID, 0, len(ctys))
+	for _, c := range ctys {
+		ctyIDs = append(ctyIDs, c.ID)
+	}
+
+	strs, err := streetbus.TestSeedStreets(ctx, count, ctyIDs, busDomain.Street)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding streets : %w", err)
+	}
+	strIDs := make([]uuid.UUID, 0, len(strs))
+	for _, s := range strs {
+		strIDs = append(strIDs, s.ID)
+	}
+
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, strIDs, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
@@ -95,36 +126,6 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	productIDs := make(uuid.UUIDs, len(products))
 	for i, p := range products {
 		productIDs[i] = p.ProductID
-	}
-
-	// ADDRESSES
-	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("querying regions : %w", err)
-	}
-
-	ids := make([]uuid.UUID, 0, len(regions))
-	for _, r := range regions {
-		ids = append(ids, r.ID)
-	}
-
-	ctys, err := citybus.TestSeedCities(ctx, warehouseCount, ids, busDomain.City)
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding cities : %w", err)
-	}
-
-	ctyIDs := make([]uuid.UUID, 0, len(ctys))
-	for _, c := range ctys {
-		ctyIDs = append(ctyIDs, c.ID)
-	}
-
-	strs, err := streetbus.TestSeedStreets(ctx, warehouseCount, ctyIDs, busDomain.Street)
-	if err != nil {
-		return unitest.SeedData{}, fmt.Errorf("seeding streets : %w", err)
-	}
-	strIDs := make([]uuid.UUID, 0, len(strs))
-	for _, s := range strs {
-		strIDs = append(strIDs, s.ID)
 	}
 
 	// WAREHOUSES

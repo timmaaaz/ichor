@@ -40,9 +40,9 @@ func applyFilter(filter contactinfosbus.QueryFilter, data map[string]interface{}
 		wc = append(wc, "secondary_phone_number = :secondary_phone_number")
 	}
 
-	if filter.Address != nil {
-		data["address"] = *filter.Address
-		wc = append(wc, "address = :address")
+	if filter.StreetID != nil {
+		data["street_id"] = *filter.StreetID
+		wc = append(wc, "street_id = :street_id")
 	}
 
 	// TODO figure out how to filter available hours properly through a query

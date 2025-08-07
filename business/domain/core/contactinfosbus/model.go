@@ -11,7 +11,7 @@ type ContactInfos struct {
 	EmailAddress         string
 	PrimaryPhone         string
 	SecondaryPhone       string
-	Address              string
+	StreetID             uuid.UUID
 	AvailableHoursStart  string
 	AvailableHoursEnd    string
 	Timezone             string
@@ -25,7 +25,7 @@ type NewContactInfos struct {
 	EmailAddress         string
 	PrimaryPhone         string
 	SecondaryPhone       string
-	Address              string
+	StreetID             uuid.UUID
 	AvailableHoursStart  string
 	AvailableHoursEnd    string
 	Timezone             string
@@ -40,7 +40,7 @@ type UpdateContactInfos struct {
 	EmailAddress         *string
 	PrimaryPhone         *string
 	SecondaryPhone       *string
-	Address              *string
+	StreetID             *uuid.UUID
 	AvailableHoursStart  *string
 	AvailableHoursEnd    *string
 	Timezone             *string

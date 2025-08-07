@@ -9,7 +9,7 @@ import (
 
 var orderByFields = map[string]string{
 	contactinfosbus.OrderByID:                   "id",
-	contactinfosbus.OrderByAddress:              "address",
+	contactinfosbus.OrderByStreetID:             "street_id",
 	contactinfosbus.OrderByEmail:                "email_address",
 	contactinfosbus.OrderByPrimaryPhoneNumber:   "primary_phone_number",
 	contactinfosbus.OrderBySecondaryPhoneNumber: "secondary_phone_number",
