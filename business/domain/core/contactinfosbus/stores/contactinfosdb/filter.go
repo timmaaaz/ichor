@@ -1,13 +1,13 @@
-package contactinfodb
+package contactinfosdb
 
 import (
 	"bytes"
 	"strings"
 
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 )
 
-func applyFilter(filter contactinfobus.QueryFilter, data map[string]interface{}, buf *bytes.Buffer) {
+func applyFilter(filter contactinfosbus.QueryFilter, data map[string]interface{}, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {

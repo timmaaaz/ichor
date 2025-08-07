@@ -30,7 +30,7 @@ type QueryParams struct {
 
 type Supplier struct {
 	SupplierID    string `json:"supplier_id"`
-	ContactInfoID string `json:"contact_info_id"`
+	ContactInfoID string `json:"contact_infos_id"`
 	Name          string `json:"name"`
 	PaymentTerms  string `json:"payment_terms"`
 	LeadTimeDays  string `json:"lead_time_days"`
@@ -68,7 +68,7 @@ func ToAppSuppliers(bus []supplierbus.Supplier) []Supplier {
 }
 
 type NewSupplier struct {
-	ContactInfoID string `json:"contact_info_id" validate:"required,min=36,max=36"`
+	ContactInfoID string `json:"contact_infos_id" validate:"required,min=36,max=36"`
 	Name          string `json:"name" validate:"required"`
 	PaymentTerms  string `json:"payment_terms" validate:"required"`
 	LeadTimeDays  string `json:"lead_time_days" validate:"required"`
@@ -119,7 +119,7 @@ func toBusNewSupplier(app NewSupplier) (supplierbus.NewSupplier, error) {
 }
 
 type UpdateSupplier struct {
-	ContactInfoID *string `json:"contact_info_id" validate:"omitempty,min=36,max=36"`
+	ContactInfoID *string `json:"contact_infos_id" validate:"omitempty,min=36,max=36"`
 	Name          *string `json:"name" validate:"omitempty"`
 	PaymentTerms  *string `json:"payment_terms" validate:"omitempty"`
 	LeadTimeDays  *string `json:"lead_time_days" validate:"omitempty"`
@@ -145,7 +145,7 @@ func toBusUpdateSupplier(app UpdateSupplier) (supplierbus.UpdateSupplier, error)
 	if app.ContactInfoID != nil {
 		ContactInfoID, err := uuid.Parse(*app.ContactInfoID)
 		if err != nil {
-			return supplierbus.UpdateSupplier{}, errs.NewFieldsError("contact_info_id", err)
+			return supplierbus.UpdateSupplier{}, errs.NewFieldsError("contact_infos_id", err)
 		}
 		dest.ContactInfoID = &ContactInfoID
 	}

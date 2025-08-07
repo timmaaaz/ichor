@@ -23,7 +23,7 @@ type QueryParams struct {
 type Brand struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
-	ContactInfoID string `json:"contact_info_id"`
+	ContactInfoID string `json:"contact_infos_id"`
 	CreatedDate   string `json:"created_date"`
 	UpdatedDate   string `json:"updated_date"`
 }
@@ -55,7 +55,7 @@ func ToAppBrands(bus []brandbus.Brand) []Brand {
 
 type NewBrand struct {
 	Name          string `json:"name" validate:"required"`
-	ContactInfoID string `json:"contact_info_id" validate:"required,min=36,max=36"`
+	ContactInfoID string `json:"contact_infos_id" validate:"required,min=36,max=36"`
 }
 
 func (app *NewBrand) Decode(data []byte) error {
@@ -79,7 +79,7 @@ func toBusNewBrand(app NewBrand) (brandbus.NewBrand, error) {
 
 type UpdateBrand struct {
 	Name          *string `json:"name" validate:"omitempty"`
-	ContactInfoID *string `json:"contact_info_id" validate:"omitempty,min=36,max=36"`
+	ContactInfoID *string `json:"contact_infos_id" validate:"omitempty,min=36,max=36"`
 }
 
 // Decode implements the decoder interface.

@@ -1,15 +1,15 @@
-package contactinfoapi
+package contactinfosapi
 
 import (
 	"net/http"
 
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 )
 
-func parseQueryParams(r *http.Request) (contactinfoapp.QueryParams, error) {
+func parseQueryParams(r *http.Request) (contactinfosapp.QueryParams, error) {
 	values := r.URL.Query()
 
-	filter := contactinfoapp.QueryParams{
+	filter := contactinfosapp.QueryParams{
 		Page:                 values.Get("page"),
 		Rows:                 values.Get("rows"),
 		OrderBy:              values.Get("orderBy"),

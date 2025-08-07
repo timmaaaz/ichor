@@ -25,7 +25,7 @@ func parseFilter(qp QueryParams) (supplierbus.QueryFilter, error) {
 	if qp.ContactInfoID != "" {
 		id, err := uuid.Parse(qp.ContactInfoID)
 		if err != nil {
-			return supplierbus.QueryFilter{}, errs.NewFieldsError("contact_info_id", err)
+			return supplierbus.QueryFilter{}, errs.NewFieldsError("contact_infos_id", err)
 		}
 		filter.ContactInfoID = &id
 	}

@@ -12,7 +12,7 @@ import (
 
 type supplier struct {
 	SupplierID    uuid.UUID      `db:"id"`
-	ContactInfoID uuid.UUID      `db:"contact_info_id"`
+	ContactInfoID uuid.UUID      `db:"contact_infos_id"`
 	Name          string         `db:"name"`
 	PaymentTerms  string         `db:"payment_terms"`
 	LeadTimeDays  int            `db:"lead_time_days"`

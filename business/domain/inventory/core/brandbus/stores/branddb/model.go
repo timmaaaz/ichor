@@ -10,7 +10,7 @@ import (
 type brand struct {
 	ID            uuid.UUID `db:"id"`
 	Name          string    `db:"name"`
-	ContactInfoID uuid.UUID `db:"contact_info_id"`
+	ContactInfoID uuid.UUID `db:"contact_infos_id"`
 	CreatedDate   time.Time `db:"created_date"`
 	UpdatedDate   time.Time `db:"updated_date"`
 }

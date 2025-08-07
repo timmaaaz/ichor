@@ -14,7 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/warehouse/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/warehouse/zoneapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
@@ -120,7 +120,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		locationIDs[i] = il.LocationID
 	}
 
-	contacts, err := contactinfobus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contacts, err := contactinfosbus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}

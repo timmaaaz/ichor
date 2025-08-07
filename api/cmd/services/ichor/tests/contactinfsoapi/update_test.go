@@ -1,4 +1,4 @@
-package contactinfoapi_test
+package contactinfosapi_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
@@ -15,15 +15,15 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/core/contactinfo/%s", sd.ContactInfo[1].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
-			Input: &contactinfoapp.UpdateContactInfo{
+			Input: &contactinfosapp.UpdateContactInfo{
 				FirstName: dbtest.StringPointer("Conner"),
 			},
-			GotResp: &contactinfoapp.ContactInfo{},
-			ExpResp: &contactinfoapp.ContactInfo{
+			GotResp: &contactinfosapp.ContactInfo{},
+			ExpResp: &contactinfosapp.ContactInfo{
 				ID:                   sd.ContactInfo[1].ID,
 				FirstName:            "Conner",
 				LastName:             sd.ContactInfo[1].LastName,
@@ -38,12 +38,12 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				SecondaryPhone:       sd.ContactInfo[1].SecondaryPhone,
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(*contactinfoapp.ContactInfo)
+				gotResp, exists := got.(*contactinfosapp.ContactInfo)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*contactinfoapp.ContactInfo)
+				expResp := exp.(*contactinfosapp.ContactInfo)
 
 				return cmp.Diff(gotResp, expResp)
 			},
@@ -56,11 +56,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "bad-id",
-			URL:        "/v1/core/contactinfo/abc",
+			URL:        "/v1/core/contactinfos/abc",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input:      &contactinfoapp.UpdateContactInfo{},
+			Input:      &contactinfosapp.UpdateContactInfo{},
 			GotResp:    &errs.Error{},
 			ExpResp:    errs.Newf(errs.InvalidArgument, "invalid UUID length: 3"),
 			CmpFunc: func(got, exp any) string {
@@ -69,11 +69,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-available-hours-start",
-			URL:        "/v1/core/contactinfo/" + sd.ContactInfo[1].ID,
+			URL:        "/v1/core/contactinfos/" + sd.ContactInfo[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.UpdateContactInfo{
+			Input: &contactinfosapp.UpdateContactInfo{
 				AvailableHoursStart: dbtest.StringPointer("abcdefghij"),
 			},
 			GotResp: &errs.Error{},
@@ -84,11 +84,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-available-hours-end",
-			URL:        "/v1/core/contactinfo/" + sd.ContactInfo[1].ID,
+			URL:        "/v1/core/contactinfos/" + sd.ContactInfo[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.UpdateContactInfo{
+			Input: &contactinfosapp.UpdateContactInfo{
 				AvailableHoursEnd: dbtest.StringPointer("abcdefghij"),
 			},
 			GotResp: &errs.Error{},
@@ -105,7 +105,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/core/contactinfo/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -117,7 +117,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/core/contactinfo/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -129,12 +129,12 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/core/contactinfo/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: contact_info"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: contact_infos"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

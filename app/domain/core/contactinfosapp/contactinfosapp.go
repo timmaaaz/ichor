@@ -1,4 +1,4 @@
-package contactinfoapp
+package contactinfosapp
 
 import (
 	"context"
@@ -8,29 +8,29 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/query"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 // App manages the set of app layer api functions for the  contact info domain.
 type App struct {
-	contactinfobus *contactinfobus.Business
-	auth           *auth.Auth
+	contactinfosbus *contactinfosbus.Business
+	auth            *auth.Auth
 }
 
 // NewApp constructs a  contact info app API for use.
-func NewApp(contactinfobus *contactinfobus.Business) *App {
+func NewApp(contactinfosbus *contactinfosbus.Business) *App {
 	return &App{
-		contactinfobus: contactinfobus,
+		contactinfosbus: contactinfosbus,
 	}
 }
 
 // NewAppWithAuth constructs a  contact info app API for use with auth support.
-func NewAppWithAuth(contactinfobus *contactinfobus.Business, ath *auth.Auth) *App {
+func NewAppWithAuth(contactinfosbus *contactinfosbus.Business, ath *auth.Auth) *App {
 	return &App{
-		auth:           ath,
-		contactinfobus: contactinfobus,
+		auth:            ath,
+		contactinfosbus: contactinfosbus,
 	}
 }
 
@@ -41,10 +41,10 @@ func (a *App) Create(ctx context.Context, app NewContactInfo) (ContactInfo, erro
 		return ContactInfo{}, errs.New(errs.InvalidArgument, err)
 	}
 
-	ass, err := a.contactinfobus.Create(ctx, na)
+	ass, err := a.contactinfosbus.Create(ctx, na)
 	if err != nil {
-		if errors.Is(err, contactinfobus.ErrUniqueEntry) {
-			return ContactInfo{}, errs.New(errs.Aborted, contactinfobus.ErrUniqueEntry)
+		if errors.Is(err, contactinfosbus.ErrUniqueEntry) {
+			return ContactInfo{}, errs.New(errs.Aborted, contactinfosbus.ErrUniqueEntry)
 		}
 		return ContactInfo{}, errs.Newf(errs.Internal, "create:  contact info[%+v]: %s", ass, err)
 	}
@@ -59,14 +59,14 @@ func (a *App) Update(ctx context.Context, app UpdateContactInfo, id uuid.UUID) (
 		return ContactInfo{}, errs.New(errs.InvalidArgument, err)
 	}
 
-	st, err := a.contactinfobus.QueryByID(ctx, id)
+	st, err := a.contactinfosbus.QueryByID(ctx, id)
 	if err != nil {
-		return ContactInfo{}, errs.New(errs.NotFound, contactinfobus.ErrNotFound)
+		return ContactInfo{}, errs.New(errs.NotFound, contactinfosbus.ErrNotFound)
 	}
 
-	contactInfo, err := a.contactinfobus.Update(ctx, st, us)
+	contactInfo, err := a.contactinfosbus.Update(ctx, st, us)
 	if err != nil {
-		if errors.Is(err, contactinfobus.ErrNotFound) {
+		if errors.Is(err, contactinfosbus.ErrNotFound) {
 			return ContactInfo{}, errs.New(errs.NotFound, err)
 		}
 		return ContactInfo{}, errs.Newf(errs.Internal, "update:  contact info[%+v]: %s", contactInfo, err)
@@ -77,12 +77,12 @@ func (a *App) Update(ctx context.Context, app UpdateContactInfo, id uuid.UUID) (
 
 // Delete removes an existing  contact info.
 func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
-	st, err := a.contactinfobus.QueryByID(ctx, id)
+	st, err := a.contactinfosbus.QueryByID(ctx, id)
 	if err != nil {
-		return errs.New(errs.NotFound, contactinfobus.ErrNotFound)
+		return errs.New(errs.NotFound, contactinfosbus.ErrNotFound)
 	}
 
-	err = a.contactinfobus.Delete(ctx, st)
+	err = a.contactinfosbus.Delete(ctx, st)
 	if err != nil {
 		return errs.Newf(errs.Internal, "delete:  contact info[%+v]: %s", st, err)
 	}
@@ -107,12 +107,12 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ContactIn
 		return query.Result[ContactInfo]{}, errs.NewFieldsError("orderby", err)
 	}
 
-	contactInfos, err := a.contactinfobus.Query(ctx, filter, orderBy, page)
+	contactInfos, err := a.contactinfosbus.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return query.Result[ContactInfo]{}, errs.Newf(errs.Internal, "query: %s", err)
 	}
 
-	total, err := a.contactinfobus.Count(ctx, filter)
+	total, err := a.contactinfosbus.Count(ctx, filter)
 	if err != nil {
 		return query.Result[ContactInfo]{}, errs.Newf(errs.Internal, "count: %s", err)
 	}
@@ -122,7 +122,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ContactIn
 
 // QueryByID retrieves a single contact info by its id.
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (ContactInfo, error) {
-	contactInfo, err := a.contactinfobus.QueryByID(ctx, id)
+	contactInfo, err := a.contactinfosbus.QueryByID(ctx, id)
 	if err != nil {
 		return ContactInfo{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -78,7 +78,7 @@ type SeedData struct {
 	Offices               []officebus.Office
 	UserAssets            []userassetbus.UserAsset
 	Assets                []assetbus.Asset
-	ContactInfo           []contactinfobus.ContactInfo
+	ContactInfo           []contactinfosbus.ContactInfo
 	Brands                []brandbus.Brand
 	ProductCategories     []productcategorybus.ProductCategory
 	Warehouses            []warehousebus.Warehouse

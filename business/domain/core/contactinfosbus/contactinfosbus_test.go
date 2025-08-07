@@ -1,4 +1,4 @@
-package contactinfobus_test
+package contactinfosbus_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/order"
@@ -39,7 +39,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 15, busDomain.ContactInfo)
+	contactInfo, err := contactinfosbus.TestSeedContactInfo(ctx, 15, busDomain.ContactInfo)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
@@ -54,7 +54,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Query",
-			ExpResp: []contactinfobus.ContactInfo{
+			ExpResp: []contactinfosbus.ContactInfo{
 				sd.ContactInfo[0],
 				sd.ContactInfo[1],
 				sd.ContactInfo[2],
@@ -62,19 +62,19 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				sd.ContactInfo[4],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.ContactInfo.Query(ctx, contactinfobus.QueryFilter{}, order.NewBy(contactinfobus.OrderByFirstName, order.ASC), page.MustParse("1", "5"))
+				got, err := busDomain.ContactInfo.Query(ctx, contactinfosbus.QueryFilter{}, order.NewBy(contactinfosbus.OrderByFirstName, order.ASC), page.MustParse("1", "5"))
 				if err != nil {
 					return err
 				}
 				return got
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.([]contactinfobus.ContactInfo)
+				gotResp, exists := got.([]contactinfosbus.ContactInfo)
 				if !exists {
 					return fmt.Sprintf("got is not a slice of contact info: %v", got)
 				}
 
-				expResp := exp.([]contactinfobus.ContactInfo)
+				expResp := exp.([]contactinfosbus.ContactInfo)
 
 				return cmp.Diff(gotResp, expResp)
 
@@ -87,7 +87,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Create",
-			ExpResp: contactinfobus.ContactInfo{
+			ExpResp: contactinfosbus.ContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@email.com",
@@ -100,7 +100,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				PreferredContactType: "phone",
 			},
 			ExcFunc: func(ctx context.Context) any {
-				newContactInfo := contactinfobus.NewContactInfo{
+				newContactInfo := contactinfosbus.NewContactInfo{
 					FirstName:            "John",
 					LastName:             "Doe",
 					EmailAddress:         "johndoe@email.com",
@@ -121,12 +121,12 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				return ci
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(contactinfobus.ContactInfo)
+				gotResp, exists := got.(contactinfosbus.ContactInfo)
 				if !exists {
 					return fmt.Sprintf("got is not a contact info: %v", got)
 				}
 
-				expResp := exp.(contactinfobus.ContactInfo)
+				expResp := exp.(contactinfosbus.ContactInfo)
 
 				expResp.ID = gotResp.ID
 
@@ -140,7 +140,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Update",
-			ExpResp: contactinfobus.ContactInfo{
+			ExpResp: contactinfosbus.ContactInfo{
 				ID:                   sd.ContactInfo[0].ID,
 				FirstName:            "Jane",
 				LastName:             "Doe",
@@ -155,7 +155,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				Notes:                sd.ContactInfo[0].Notes,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				uc := contactinfobus.UpdateContactInfo{
+				uc := contactinfosbus.UpdateContactInfo{
 					FirstName:            dbtest.StringPointer("Jane"),
 					LastName:             dbtest.StringPointer("Doe"),
 					EmailAddress:         dbtest.StringPointer("janedoe@email.com"),
@@ -176,12 +176,12 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				return got
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(contactinfobus.ContactInfo)
+				gotResp, exists := got.(contactinfosbus.ContactInfo)
 				if !exists {
 					return fmt.Sprintf("got is not a contact info: %v", got)
 				}
 
-				expResp := exp.(contactinfobus.ContactInfo)
+				expResp := exp.(contactinfosbus.ContactInfo)
 
 				expResp.ID = gotResp.ID
 

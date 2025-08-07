@@ -58,7 +58,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				ContactInfoID: dbtest.StringPointer("not-a-uuid"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_info_id","error":"contact_info_id must be at least 36 characters in length"}]`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_infos_id","error":"contact_infos_id must be at least 36 characters in length"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

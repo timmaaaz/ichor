@@ -10,7 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/finance/costhistoryapp"
 	"github.com/timmaaaz/ichor/app/domain/finance/productcostapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
@@ -77,7 +77,7 @@ type SeedData struct {
 	Offices               []officeapp.Office
 	UserAssets            []userassetapp.UserAsset
 	Assets                []assetapp.Asset
-	ContactInfo           []contactinfoapp.ContactInfo
+	ContactInfo           []contactinfosapp.ContactInfo
 	Brands                []brandapp.Brand
 	ProductCategories     []productcategoryapp.ProductCategory
 	Warehouses            []warehouseapp.Warehouse

@@ -1,15 +1,15 @@
-package contactinfoapi_test
+package contactinfosapi_test
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfoapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
@@ -38,7 +38,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
 	}
 
-	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 15, busDomain.ContactInfo)
+	contactInfo, err := contactinfosbus.TestSeedContactInfo(ctx, 15, busDomain.ContactInfo)
 	if err != nil {
 		return apitest.SeedData{}, err
 	}
@@ -91,7 +91,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// Update only tu1's role permissions
 	for _, ta := range tas {
 		// Only update for the asset table
-		if ta.TableName == contactinfoapi.RouteTable {
+		if ta.TableName == contactinfosapi.RouteTable {
 			update := tableaccessbus.UpdateTableAccess{
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),
@@ -108,6 +108,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	return apitest.SeedData{
 		Users:       []apitest.User{tu1},
 		Admins:      []apitest.User{tu2},
-		ContactInfo: contactinfoapp.ToAppContactInfos(contactInfo),
+		ContactInfo: contactinfosapp.ToAppContactInfos(contactInfo),
 	}, nil
 }

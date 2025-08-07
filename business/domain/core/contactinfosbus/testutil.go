@@ -1,4 +1,4 @@
-package contactinfobus
+package contactinfosbus
 
 import (
 	"context"

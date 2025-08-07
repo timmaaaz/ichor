@@ -270,8 +270,8 @@ CREATE TABLE user_approval_comments (
 CREATE TYPE contact_type as ENUM ('phone', 'email', 'mail', 'fax');
 
 -- Version: 1.21
--- Description: Add contact_info
-CREATE TABLE contact_info (
+-- Description: Add contact_infos
+CREATE TABLE contact_infos (
    id UUID NOT NULL,
    first_name VARCHAR(50) NOT NULL,
    last_name VARCHAR(50) NOT NULL,
@@ -292,11 +292,11 @@ CREATE TABLE contact_info (
 CREATE TABLE brands (
    id UUID NOT NULL,
    name TEXT NOT NULL,
-   contact_info_id UUID NOT NULL,
+   contact_infos_id UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_info_id) REFERENCES contact_info(id)
+   FOREIGN KEY (contact_infos_id) REFERENCES contact_infos(id)
 );
 
 -- Version: 1.23
@@ -433,7 +433,7 @@ CREATE TABLE product_costs (
 -- Description: add suppliers
 CREATE TABLE suppliers (
    id UUID NOT NULL,
-   contact_info_id UUID NOT NULL,
+   contact_infos_id UUID NOT NULL,
    name VARCHAR(100) NOT NULL,
    payment_terms TEXT NOT NULL,
    lead_time_days INTEGER NOT NULL,
@@ -442,7 +442,7 @@ CREATE TABLE suppliers (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_info_id) REFERENCES contact_info(id)
+   FOREIGN KEY (contact_infos_id) REFERENCES contact_infos(id)
 );
 
 -- Version: 1.32

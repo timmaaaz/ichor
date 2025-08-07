@@ -1,11 +1,11 @@
-package contactinfoapi_test
+package contactinfosapi_test
 
 import (
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
@@ -13,11 +13,11 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
-			Input: &contactinfoapp.NewContactInfo{
+			Input: &contactinfosapp.NewContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -28,8 +28,8 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				Timezone:             "America/New_York",
 				PreferredContactType: "email",
 			},
-			GotResp: &contactinfoapp.ContactInfo{},
-			ExpResp: &contactinfoapp.ContactInfo{
+			GotResp: &contactinfosapp.ContactInfo{},
+			ExpResp: &contactinfosapp.ContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -41,12 +41,12 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				PreferredContactType: "email",
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(*contactinfoapp.ContactInfo)
+				gotResp, exists := got.(*contactinfosapp.ContactInfo)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*contactinfoapp.ContactInfo)
+				expResp := exp.(*contactinfosapp.ContactInfo)
 				expResp.ID = gotResp.ID
 
 				return cmp.Diff(gotResp, expResp)
@@ -61,11 +61,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "missing first name",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
 				PrimaryPhone:         "+1234567890",
@@ -83,11 +83,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing last name",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				FirstName:            "John",
 				EmailAddress:         "johndoe@example.com",
 				PrimaryPhone:         "+1234567890",
@@ -105,11 +105,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing email",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				PrimaryPhone:         "+1234567890",
@@ -127,11 +127,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing primary phone",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -149,11 +149,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing address",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -171,11 +171,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing available hours start",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -193,11 +193,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing available hours end",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -215,11 +215,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing timezone",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -237,11 +237,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing preferred contact types",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfoapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfo{
 				FirstName:           "John",
 				LastName:            "Doe",
 				EmailAddress:        "johndoe@example.com",
@@ -266,7 +266,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -278,7 +278,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad token",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -290,7 +290,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -302,12 +302,12 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        "/v1/core/contactinfo",
+			URL:        "/v1/core/contactinfos",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: contact_info"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: contact_infos"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

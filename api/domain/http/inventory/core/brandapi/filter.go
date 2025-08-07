@@ -15,7 +15,7 @@ func parseQueryParams(r *http.Request) (brandapp.QueryParams, error) {
 		OrderBy:       values.Get("orderBy"),
 		ID:            values.Get("id"),
 		Name:          values.Get("name"),
-		ContactInfoID: values.Get("contact_info_id"),
+		ContactInfoID: values.Get("contact_infos_id"),
 		CreatedDate:   values.Get("created_date"),
 		UpdatedDate:   values.Get("updated_date"),
 	}

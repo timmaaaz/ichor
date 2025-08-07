@@ -8,7 +8,7 @@ var DefaultOrderBy = order.NewBy(OrderByName, order.ASC)
 
 const (
 	OrderBySupplierID    = "id"
-	OrderByContactInfoID = "contact_info_id"
+	OrderByContactInfoID = "contact_infos_id"
 	OrderByName          = "name"
 	OrderByPaymentTerms  = "payment_terms"
 	OrderByLeadTimeDays  = "lead_time_days"

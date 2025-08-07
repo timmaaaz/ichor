@@ -12,7 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
-	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfoapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/costhistoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/productcostapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/brandapi"
@@ -59,8 +59,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus/stores/contactinfodb"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus/stores/costhistorydb"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
@@ -189,7 +189,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	userAssetBus := userassetbus.NewBusiness(cfg.Log, delegate, userassetdb.NewStore(cfg.Log, cfg.DB))
 	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
 
-	contactInfoBus := contactinfobus.NewBusiness(cfg.Log, delegate, contactinfodb.NewStore(cfg.Log, cfg.DB))
+	contactInfoBus := contactinfosbus.NewBusiness(cfg.Log, delegate, contactinfosdb.NewStore(cfg.Log, cfg.DB))
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 	productBus := productbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB))
@@ -371,7 +371,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus:         permissionsBus,
 	})
 
-	contactinfoapi.Routes(app, contactinfoapi.Config{
+	contactinfosapi.Routes(app, contactinfosapi.Config{
 		ContactInfoBus: contactInfoBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,

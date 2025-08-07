@@ -1,21 +1,21 @@
-package contactinfoapp
+package contactinfosapp
 
 import (
 	"errors"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/foundation/timeutil/timeonly"
 )
 
-func parseFilter(qp QueryParams) (contactinfobus.QueryFilter, error) {
-	var filter contactinfobus.QueryFilter
+func parseFilter(qp QueryParams) (contactinfosbus.QueryFilter, error) {
+	var filter contactinfosbus.QueryFilter
 
 	if qp.ID != "" {
 		id, err := uuid.Parse(qp.ID)
 		if err != nil {
-			return contactinfobus.QueryFilter{}, errs.NewFieldsError("id", err)
+			return contactinfosbus.QueryFilter{}, errs.NewFieldsError("id", err)
 		}
 		filter.ID = &id
 	}
@@ -47,7 +47,7 @@ func parseFilter(qp QueryParams) (contactinfobus.QueryFilter, error) {
 	if qp.AvailableHoursStart != "" {
 		valid := timeonly.ValidateTimeOnlyFmt(qp.AvailableHoursStart)
 		if !valid {
-			return contactinfobus.QueryFilter{}, errs.NewFieldsError("available_hours_start", errors.New("not valid"))
+			return contactinfosbus.QueryFilter{}, errs.NewFieldsError("available_hours_start", errors.New("not valid"))
 		}
 		filter.AvailableHoursStart = &qp.AvailableHoursStart
 	}
@@ -55,7 +55,7 @@ func parseFilter(qp QueryParams) (contactinfobus.QueryFilter, error) {
 	if qp.AvailableHoursEnd != "" {
 		valid := timeonly.ValidateTimeOnlyFmt(qp.AvailableHoursEnd)
 		if !valid {
-			return contactinfobus.QueryFilter{}, errs.NewFieldsError("available_hours_end", errors.New("not valid"))
+			return contactinfosbus.QueryFilter{}, errs.NewFieldsError("available_hours_end", errors.New("not valid"))
 		}
 		filter.AvailableHoursEnd = &qp.AvailableHoursEnd
 	}

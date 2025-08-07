@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/types"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -40,7 +40,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfobus.TestSeedContactInfo(ctx, 20, busDomain.ContactInfo)
+	contactInfo, err := contactinfosbus.TestSeedContactInfo(ctx, 20, busDomain.ContactInfo)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}

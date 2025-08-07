@@ -1,4 +1,4 @@
-package contactinfoapi_test
+package contactinfosapi_test
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 
-	"github.com/timmaaaz/ichor/app/domain/core/contactinfoapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
@@ -14,12 +14,12 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/core/contactinfo?page=1&rows=10",
+			URL:        "/v1/core/contactinfos?page=1&rows=10",
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &query.Result[contactinfoapp.ContactInfo]{},
-			ExpResp: &query.Result[contactinfoapp.ContactInfo]{
+			GotResp:    &query.Result[contactinfosapp.ContactInfo]{},
+			ExpResp: &query.Result[contactinfosapp.ContactInfo]{
 				Page:        1,
 				RowsPerPage: 10,
 				Total:       15,
@@ -37,11 +37,11 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/core/contactinfo/" + sd.ContactInfo[0].ID,
+			URL:        "/v1/core/contactinfos/" + sd.ContactInfo[0].ID,
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &contactinfoapp.ContactInfo{},
+			GotResp:    &contactinfosapp.ContactInfo{},
 			ExpResp:    &sd.ContactInfo[0],
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)

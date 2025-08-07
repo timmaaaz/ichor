@@ -1,11 +1,11 @@
-package contactinfoapp
+package contactinfosapp
 
 import (
 	"encoding/json"
 	"fmt"
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil/timeonly"
 )
@@ -49,7 +49,7 @@ func (app ContactInfo) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func ToAppContactInfo(bus contactinfobus.ContactInfo) ContactInfo {
+func ToAppContactInfo(bus contactinfosbus.ContactInfo) ContactInfo {
 	return ContactInfo{
 		ID:                   bus.ID.String(),
 		FirstName:            bus.FirstName,
@@ -66,7 +66,7 @@ func ToAppContactInfo(bus contactinfobus.ContactInfo) ContactInfo {
 	}
 }
 
-func ToAppContactInfos(bus []contactinfobus.ContactInfo) []ContactInfo {
+func ToAppContactInfos(bus []contactinfosbus.ContactInfo) []ContactInfo {
 	app := make([]ContactInfo, len(bus))
 	for i, v := range bus {
 		app[i] = ToAppContactInfo(v)
@@ -100,15 +100,15 @@ func (app NewContactInfo) Validate() error {
 	return nil
 }
 
-func toBusNewContactInfo(app NewContactInfo) (contactinfobus.NewContactInfo, error) {
-	dest := contactinfobus.NewContactInfo{}
+func toBusNewContactInfo(app NewContactInfo) (contactinfosbus.NewContactInfo, error) {
+	dest := contactinfosbus.NewContactInfo{}
 
 	if !timeonly.ValidateTimeOnlyFmt(app.AvailableHoursEnd) {
-		return contactinfobus.NewContactInfo{}, fmt.Errorf("invalid time format for ending hours: %q", app.AvailableHoursEnd)
+		return contactinfosbus.NewContactInfo{}, fmt.Errorf("invalid time format for ending hours: %q", app.AvailableHoursEnd)
 	}
 
 	if !timeonly.ValidateTimeOnlyFmt(app.AvailableHoursStart) {
-		return contactinfobus.NewContactInfo{}, fmt.Errorf("invalid time format for starting hours: %q", app.AvailableHoursStart)
+		return contactinfosbus.NewContactInfo{}, fmt.Errorf("invalid time format for starting hours: %q", app.AvailableHoursStart)
 	}
 
 	err := convert.PopulateTypesFromStrings(app, &dest)
@@ -143,15 +143,15 @@ func (app UpdateContactInfo) Validate() error {
 	return nil
 }
 
-func toBusUpdateContactInfo(app UpdateContactInfo) (contactinfobus.UpdateContactInfo, error) {
-	dest := contactinfobus.UpdateContactInfo{}
+func toBusUpdateContactInfo(app UpdateContactInfo) (contactinfosbus.UpdateContactInfo, error) {
+	dest := contactinfosbus.UpdateContactInfo{}
 
 	if app.AvailableHoursEnd != nil && !timeonly.ValidateTimeOnlyFmt(*app.AvailableHoursEnd) {
-		return contactinfobus.UpdateContactInfo{}, fmt.Errorf("invalid time format for ending hours: %q", *app.AvailableHoursEnd)
+		return contactinfosbus.UpdateContactInfo{}, fmt.Errorf("invalid time format for ending hours: %q", *app.AvailableHoursEnd)
 	}
 
 	if app.AvailableHoursStart != nil && !timeonly.ValidateTimeOnlyFmt(*app.AvailableHoursStart) {
-		return contactinfobus.UpdateContactInfo{}, fmt.Errorf("invalid time format for starting hours: %q", *app.AvailableHoursStart)
+		return contactinfosbus.UpdateContactInfo{}, fmt.Errorf("invalid time format for starting hours: %q", *app.AvailableHoursStart)
 	}
 
 	err := convert.PopulateTypesFromStrings(app, &dest)

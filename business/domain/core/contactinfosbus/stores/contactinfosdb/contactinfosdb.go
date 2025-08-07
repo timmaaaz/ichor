@@ -1,4 +1,4 @@
-package contactinfodb
+package contactinfosdb
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -32,7 +32,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 
 // NewWithTx constructs a new Store value replacing the sqlx DB
 // value with a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (contactinfobus.Storer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (contactinfosbus.Storer, error) {
 	ec, err := sqldb.GetExtContext(tx)
 	if err != nil {
 		return nil, err
@@ -47,9 +47,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (contactinfobus.Storer, err
 }
 
 // Create inserts a new user asset into the database.
-func (s *Store) Create(ctx context.Context, ass contactinfobus.ContactInfo) error {
+func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfo) error {
 	const q = `
-    INSERT INTO contact_info (
+    INSERT INTO contact_infos (
         id, first_name, last_name, email_address, primary_phone_number, secondary_phone_number, address,
 		available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     ) VALUES (
@@ -60,7 +60,7 @@ func (s *Store) Create(ctx context.Context, ass contactinfobus.ContactInfo) erro
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfo(ass)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", contactinfobus.ErrUniqueEntry)
+			return fmt.Errorf("namedexeccontext: %w", contactinfosbus.ErrUniqueEntry)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -68,10 +68,10 @@ func (s *Store) Create(ctx context.Context, ass contactinfobus.ContactInfo) erro
 }
 
 // Update replaces a user asset document in the database.
-func (s *Store) Update(ctx context.Context, ass contactinfobus.ContactInfo) error {
+func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfo) error {
 	const q = `
 	UPDATE
-		contact_info
+		contact_infos
 	SET
 		id = :id,
 		first_name = :first_name,
@@ -91,7 +91,7 @@ func (s *Store) Update(ctx context.Context, ass contactinfobus.ContactInfo) erro
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfo(ass)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", contactinfobus.ErrUniqueEntry)
+			return fmt.Errorf("namedexeccontext: %w", contactinfosbus.ErrUniqueEntry)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -99,10 +99,10 @@ func (s *Store) Update(ctx context.Context, ass contactinfobus.ContactInfo) erro
 }
 
 // Delete removes an user asset from the database.
-func (s *Store) Delete(ctx context.Context, ass contactinfobus.ContactInfo) error {
+func (s *Store) Delete(ctx context.Context, ass contactinfosbus.ContactInfo) error {
 	const q = `
 	DELETE FROM
-		contact_info
+		contact_infos
 	WHERE
 		id = :id`
 
@@ -114,7 +114,7 @@ func (s *Store) Delete(ctx context.Context, ass contactinfobus.ContactInfo) erro
 }
 
 // Query retrieves a list of user assets from the database.
-func (s *Store) Query(ctx context.Context, filter contactinfobus.QueryFilter, orderBy order.By, page page.Page) ([]contactinfobus.ContactInfo, error) {
+func (s *Store) Query(ctx context.Context, filter contactinfosbus.QueryFilter, orderBy order.By, page page.Page) ([]contactinfosbus.ContactInfo, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -125,7 +125,7 @@ func (s *Store) Query(ctx context.Context, filter contactinfobus.QueryFilter, or
 		id, first_name, last_name, email_address, primary_phone_number, address, 
 		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     FROM
-        contact_info`
+        contact_infos`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -147,14 +147,14 @@ func (s *Store) Query(ctx context.Context, filter contactinfobus.QueryFilter, or
 }
 
 // Count returns the number of assets in the database.
-func (s *Store) Count(ctx context.Context, filter contactinfobus.QueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter contactinfosbus.QueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `
     SELECT
         COUNT(1) AS count
     FROM
-        contact_info`
+        contact_infos`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -170,7 +170,7 @@ func (s *Store) Count(ctx context.Context, filter contactinfobus.QueryFilter) (i
 }
 
 // QueryByID retrieves a single asset from the database by its ID.
-func (s *Store) QueryByID(ctx context.Context, userContactInfoID uuid.UUID) (contactinfobus.ContactInfo, error) {
+func (s *Store) QueryByID(ctx context.Context, userContactInfoID uuid.UUID) (contactinfosbus.ContactInfo, error) {
 	data := struct {
 		ID string `db:"id"`
 	}{
@@ -182,7 +182,7 @@ func (s *Store) QueryByID(ctx context.Context, userContactInfoID uuid.UUID) (con
         id, first_name, last_name, email_address, primary_phone_number, address,
 		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     FROM
-        contact_info
+        contact_infos
     WHERE
         id = :id
     `
@@ -190,9 +190,9 @@ func (s *Store) QueryByID(ctx context.Context, userContactInfoID uuid.UUID) (con
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ci); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return contactinfobus.ContactInfo{}, contactinfobus.ErrNotFound
+			return contactinfosbus.ContactInfo{}, contactinfosbus.ErrNotFound
 		}
-		return contactinfobus.ContactInfo{}, fmt.Errorf("querystruct: %w", err)
+		return contactinfosbus.ContactInfo{}, fmt.Errorf("querystruct: %w", err)
 	}
 
 	return toBusContactInfo(ci), nil

@@ -51,9 +51,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (brandbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, brand brandbus.Brand) error {
 	const q = `
     INSERT INTO brands (
-        id, name, contact_info_id, created_date, updated_date
+        id, name, contact_infos_id, created_date, updated_date
     ) VALUES (
-		:id, :name, :contact_info_id, :created_date, :updated_date
+		:id, :name, :contact_infos_id, :created_date, :updated_date
 	)
     `
 
@@ -76,7 +76,7 @@ func (s *Store) Update(ctx context.Context, ass brandbus.Brand) error {
 		brands
 	SET
 		name = :name,
-        contact_info_id = :contact_info_id,
+        contact_infos_id = :contact_infos_id,
         updated_date = :updated_date
 	WHERE
 		id = :id
@@ -118,7 +118,7 @@ func (s *Store) Query(ctx context.Context, filter brandbus.QueryFilter, orderBy 
 
 	const q = `
     SELECT
-		id, name, contact_info_id, created_date, updated_date
+		id, name, contact_infos_id, created_date, updated_date
     FROM
         brands`
 
@@ -174,7 +174,7 @@ func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (brandbus.
 
 	const q = `
     SELECT
-        id, name, contact_info_id, created_date, updated_date
+        id, name, contact_infos_id, created_date, updated_date
     FROM
         brands
     WHERE

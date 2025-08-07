@@ -1,4 +1,4 @@
-package contactinfoapi_test
+package contactinfosapi_test
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ func delete200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "asadmin",
-			URL:        fmt.Sprintf("/v1/core/contactinfo/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNoContent,
@@ -27,7 +27,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/core/contactinfo/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -39,7 +39,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/core/contactinfo/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -51,12 +51,12 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/core/contactinfo/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: contact_info"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: contact_infos"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

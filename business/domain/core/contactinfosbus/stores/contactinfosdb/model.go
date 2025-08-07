@@ -1,8 +1,8 @@
-package contactinfodb
+package contactinfosdb
 
 import (
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/core/contactinfobus"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 )
 
 type contactInfo struct {
@@ -20,7 +20,7 @@ type contactInfo struct {
 	Notes                string    `db:"notes"`
 }
 
-func toDBContactInfo(bus contactinfobus.ContactInfo) contactInfo {
+func toDBContactInfo(bus contactinfosbus.ContactInfo) contactInfo {
 	return contactInfo{
 		ID:                   bus.ID,
 		FirstName:            bus.FirstName,
@@ -37,8 +37,8 @@ func toDBContactInfo(bus contactinfobus.ContactInfo) contactInfo {
 	}
 }
 
-func toBusContactInfo(db contactInfo) contactinfobus.ContactInfo {
-	return contactinfobus.ContactInfo{
+func toBusContactInfo(db contactInfo) contactinfosbus.ContactInfo {
+	return contactinfosbus.ContactInfo{
 		ID:                   db.ID,
 		FirstName:            db.FirstName,
 		LastName:             db.LastName,
@@ -54,8 +54,8 @@ func toBusContactInfo(db contactInfo) contactinfobus.ContactInfo {
 	}
 }
 
-func toBusContactInfos(dbs []contactInfo) []contactinfobus.ContactInfo {
-	bus := make([]contactinfobus.ContactInfo, len(dbs))
+func toBusContactInfos(dbs []contactInfo) []contactinfosbus.ContactInfo {
+	bus := make([]contactinfosbus.ContactInfo, len(dbs))
 	for i, db := range dbs {
 		bus[i] = toBusContactInfo(db)
 	}
