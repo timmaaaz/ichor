@@ -1,4 +1,4 @@
-package lottrackingapi_test
+package lottrackingsapi_test
 
 import (
 	"testing"

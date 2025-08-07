@@ -1,4 +1,4 @@
-package lottrackingapi_test
+package lottrackingsapi_test
 
 import (
 	"net/http"
@@ -8,27 +8,27 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 
-	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
+	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
 func create200(sd apitest.SeedData) []apitest.Table {
 
-	md := lottrackingbus.RandomDate()
-	ed := lottrackingbus.RandomDate()
-	rd := lottrackingbus.RandomDate()
+	md := lottrackingsbus.RandomDate()
+	ed := lottrackingsbus.RandomDate()
+	rd := lottrackingsbus.RandomDate()
 
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -37,8 +37,8 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				Quantity:          "15",
 				QualityStatus:     "poor",
 			},
-			GotResp: &lottrackingapp.LotTracking{},
-			ExpResp: &lottrackingapp.LotTracking{
+			GotResp: &lottrackingsapp.LotTrackings{},
+			ExpResp: &lottrackingsapp.LotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -48,12 +48,12 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				QualityStatus:     "poor",
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(*lottrackingapp.LotTracking)
+				gotResp, exists := got.(*lottrackingsapp.LotTrackings)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*lottrackingapp.LotTracking)
+				expResp := exp.(*lottrackingsapp.LotTrackings)
 				expResp.LotID = gotResp.LotID
 				expResp.UpdatedDate = gotResp.UpdatedDate
 				expResp.CreatedDate = gotResp.CreatedDate
@@ -66,18 +66,18 @@ func create200(sd apitest.SeedData) []apitest.Table {
 
 func create400(sd apitest.SeedData) []apitest.Table {
 
-	md := lottrackingbus.RandomDate()
-	ed := lottrackingbus.RandomDate()
-	rd := lottrackingbus.RandomDate()
+	md := lottrackingsbus.RandomDate()
+	ed := lottrackingsbus.RandomDate()
+	rd := lottrackingsbus.RandomDate()
 
 	return []apitest.Table{
 		{
 			Name:       "missing-supplier-product-id",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				LotNumber:       "LotNumber",
 				ManufactureDate: md.Format(timeutil.FORMAT),
 				ExpirationDate:  ed.Format(timeutil.FORMAT),
@@ -93,11 +93,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-lot-number",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				ManufactureDate:   md.Format(timeutil.FORMAT),
 				ExpirationDate:    ed.Format(timeutil.FORMAT),
@@ -113,11 +113,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-manufacture-date",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ExpirationDate:    ed.Format(timeutil.FORMAT),
@@ -133,11 +133,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-expiration-date",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -153,11 +153,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-recieved-date",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -173,11 +173,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-quantity",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -193,11 +193,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-quality-status",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -213,11 +213,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-manufacture-date",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(time.RFC1123),
@@ -227,7 +227,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				QualityStatus:     "poor",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTracking: failed to parse time: parsing time "`+md.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+md.Format(time.RFC1123)+`" as "2006"`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTrackings: failed to parse time: parsing time "`+md.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+md.Format(time.RFC1123)+`" as "2006"`),
 			CmpFunc: func(got, exp any) string {
 
 				gotResp, exists := got.(*errs.Error)
@@ -245,11 +245,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-expiration-date",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -259,7 +259,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				QualityStatus:     "poor",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTracking: failed to parse time: parsing time "`+ed.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+ed.Format(time.RFC1123)+`" as "2006"`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTrackings: failed to parse time: parsing time "`+ed.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+ed.Format(time.RFC1123)+`" as "2006"`),
 			CmpFunc: func(got, exp any) string {
 
 				gotResp, exists := got.(*errs.Error)
@@ -277,11 +277,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-recieved-date",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -291,7 +291,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				QualityStatus:     "poor",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTracking: failed to parse time: parsing time "`+rd.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+rd.Format(time.RFC1123)+`" as "2006"`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTrackings: failed to parse time: parsing time "`+rd.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+rd.Format(time.RFC1123)+`" as "2006"`),
 			CmpFunc: func(got, exp any) string {
 
 				gotResp, exists := got.(*errs.Error)
@@ -310,11 +310,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 
 		{
 			Name:       "malformed-supplier-product-id",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: "not-a-uuid",
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -333,17 +333,17 @@ func create400(sd apitest.SeedData) []apitest.Table {
 }
 
 func create409(sd apitest.SeedData) []apitest.Table {
-	md := lottrackingbus.RandomDate()
-	ed := lottrackingbus.RandomDate()
-	rd := lottrackingbus.RandomDate()
+	md := lottrackingsbus.RandomDate()
+	ed := lottrackingsbus.RandomDate()
+	rd := lottrackingsbus.RandomDate()
 	return []apitest.Table{
 		{
 			Name:       "supplier-product-id-not-valid-fk",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
-			Input: &lottrackingapp.NewLotTracking{
+			Input: &lottrackingsapp.NewLotTrackings{
 				SupplierProductID: uuid.New().String(),
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -365,7 +365,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -377,7 +377,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad token",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -389,7 +389,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -401,12 +401,12 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        "/v1/lots/lottracking",
+			URL:        "/v1/lots/lottrackings",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: lot_tracking"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: lot_trackings"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

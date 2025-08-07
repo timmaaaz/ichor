@@ -26,7 +26,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/officebus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
@@ -78,7 +78,7 @@ type SeedData struct {
 	Offices               []officebus.Office
 	UserAssets            []userassetbus.UserAsset
 	Assets                []assetbus.Asset
-	ContactInfo           []contactinfosbus.ContactInfo
+	ContactInfos          []contactinfosbus.ContactInfos
 	Brands                []brandbus.Brand
 	ProductCategories     []productcategorybus.ProductCategory
 	Warehouses            []warehousebus.Warehouse
@@ -93,7 +93,7 @@ type SeedData struct {
 	CostHistory           []costhistorybus.CostHistory
 	SupplierProducts      []supplierproductbus.SupplierProduct
 	Metrics               []metricsbus.Metric
-	LotTracking           []lottrackingbus.LotTracking
+	LotTrackings          []lottrackingsbus.LotTrackings
 	Zones                 []zonebus.Zone
 	InventoryLocations    []inventorylocationbus.InventoryLocation
 	InventoryItems        []inventoryitembus.InventoryItem

@@ -1,11 +1,11 @@
-package lottrackingapp
+package lottrackingsapp
 
 import (
 	"encoding/json"
 	"fmt"
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
@@ -27,7 +27,7 @@ type QueryParams struct {
 	UpdatedDate       string
 }
 
-type LotTracking struct {
+type LotTrackings struct {
 	LotID             string `json:"lot_id"`
 	SupplierProductID string `json:"supplier_product_id"`
 	LotNumber         string `json:"lot_number"`
@@ -40,13 +40,13 @@ type LotTracking struct {
 	UpdatedDate       string `json:"updated_date"`
 }
 
-func (app LotTracking) Encode() ([]byte, string, error) {
+func (app LotTrackings) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(app)
 	return data, "application/json", err
 }
 
-func ToAppLotTracking(bus lottrackingbus.LotTracking) LotTracking {
-	return LotTracking{
+func ToAppLotTrackings(bus lottrackingsbus.LotTrackings) LotTrackings {
+	return LotTrackings{
 		LotID:             bus.LotID.String(),
 		SupplierProductID: bus.SupplierProductID.String(),
 		LotNumber:         bus.LotNumber,
@@ -60,15 +60,15 @@ func ToAppLotTracking(bus lottrackingbus.LotTracking) LotTracking {
 	}
 }
 
-func ToAppLotTrackings(bus []lottrackingbus.LotTracking) []LotTracking {
-	app := make([]LotTracking, len(bus))
+func ToAppLotTrackingss(bus []lottrackingsbus.LotTrackings) []LotTrackings {
+	app := make([]LotTrackings, len(bus))
 	for i, v := range bus {
-		app[i] = ToAppLotTracking(v)
+		app[i] = ToAppLotTrackings(v)
 	}
 	return app
 }
 
-type NewLotTracking struct {
+type NewLotTrackings struct {
 	SupplierProductID string `json:"supplier_product_id" validate:"required,min=36,max=36"`
 	LotNumber         string `json:"lot_number" validate:"required"`
 	ManufactureDate   string `json:"manufacture_date" validate:"required"`
@@ -78,28 +78,28 @@ type NewLotTracking struct {
 	QualityStatus     string `json:"quality_status" validate:"required"`
 }
 
-func (app *NewLotTracking) Decode(data []byte) error {
+func (app *NewLotTrackings) Decode(data []byte) error {
 	return json.Unmarshal(data, &app)
 }
 
-func (app NewLotTracking) Validate() error {
+func (app NewLotTrackings) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
 	return nil
 }
 
-func toBusNewLotTracking(app NewLotTracking) (lottrackingbus.NewLotTracking, error) {
-	dest := lottrackingbus.NewLotTracking{}
+func toBusNewLotTrackings(app NewLotTrackings) (lottrackingsbus.NewLotTrackings, error) {
+	dest := lottrackingsbus.NewLotTrackings{}
 	err := convert.PopulateTypesFromStrings(app, &dest)
 	if err != nil {
-		return lottrackingbus.NewLotTracking{}, fmt.Errorf("toBusNewLotTracking: %w", err)
+		return lottrackingsbus.NewLotTrackings{}, fmt.Errorf("toBusNewLotTrackings: %w", err)
 	}
 
 	return dest, nil
 }
 
-type UpdateLotTracking struct {
+type UpdateLotTrackings struct {
 	SupplierProductID *string `json:"supplier_product_id" validate:"omitempty,min=36,max=36"`
 	LotNumber         *string `json:"lot_number"`
 	ManufactureDate   *string `json:"manufacture_date"`
@@ -109,22 +109,22 @@ type UpdateLotTracking struct {
 	QualityStatus     *string `json:"quality_status"`
 }
 
-func (app *UpdateLotTracking) Decode(data []byte) error {
+func (app *UpdateLotTrackings) Decode(data []byte) error {
 	return json.Unmarshal(data, &app)
 }
 
-func (app UpdateLotTracking) Validate() error {
+func (app UpdateLotTrackings) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
 	return nil
 }
 
-func toBusUpdateLotTracking(app UpdateLotTracking) (lottrackingbus.UpdateLotTracking, error) {
-	dest := lottrackingbus.UpdateLotTracking{}
+func toBusUpdateLotTrackings(app UpdateLotTrackings) (lottrackingsbus.UpdateLotTrackings, error) {
+	dest := lottrackingsbus.UpdateLotTrackings{}
 	err := convert.PopulateTypesFromStrings(app, &dest)
 	if err != nil {
-		return lottrackingbus.UpdateLotTracking{}, fmt.Errorf("toBusUpdateLotTracking: %w", err)
+		return lottrackingsbus.UpdateLotTrackings{}, fmt.Errorf("toBusUpdateLotTrackings: %w", err)
 	}
 
 	return dest, nil

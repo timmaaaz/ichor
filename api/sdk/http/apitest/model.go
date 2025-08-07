@@ -21,7 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/location/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/location/officeapp"
 	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
-	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
+	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/domain/lots/serialnumberapp"
 	"github.com/timmaaaz/ichor/app/domain/movement/inventoryadjustmentapp"
 	"github.com/timmaaaz/ichor/app/domain/movement/inventorytransactionapp"
@@ -77,7 +77,7 @@ type SeedData struct {
 	Offices               []officeapp.Office
 	UserAssets            []userassetapp.UserAsset
 	Assets                []assetapp.Asset
-	ContactInfo           []contactinfosapp.ContactInfo
+	ContactInfos          []contactinfosapp.ContactInfos
 	Brands                []brandapp.Brand
 	ProductCategories     []productcategoryapp.ProductCategory
 	Warehouses            []warehouseapp.Warehouse
@@ -91,7 +91,7 @@ type SeedData struct {
 	CostHistory           []costhistoryapp.CostHistory
 	SupplierProducts      []supplierproductapp.SupplierProduct
 	Metrics               []metricsapp.Metric
-	LotTracking           []lottrackingapp.LotTracking
+	LotTrackings          []lottrackingsapp.LotTrackings
 	Zones                 []zoneapp.Zone
 	InventoryLocations    []inventorylocationapp.InventoryLocation
 	InventoryItems        []inventoryitemapp.InventoryItem

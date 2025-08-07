@@ -1,4 +1,4 @@
-package lottrackingbus_test
+package lottrackingsbus_test
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
@@ -20,10 +20,10 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
-func Test_LotTracking(t *testing.T) {
+func Test_LotTrackings(t *testing.T) {
 	t.Parallel()
 
-	db := dbtest.NewDatabase(t, "Test_LotTracking")
+	db := dbtest.NewDatabase(t, "Test_LotTrackings")
 
 	sd, err := insertSeedData(db.BusDomain)
 	if err != nil {
@@ -43,13 +43,13 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
-	contactInfo, err := contactinfosbus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	contactIDs := make(uuid.UUIDs, len(contactInfo))
-	for i, c := range contactInfo {
+	contactIDs := make(uuid.UUIDs, len(contactInfos))
+	for i, c := range contactInfos {
 		contactIDs[i] = c.ID
 	}
 
@@ -104,7 +104,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		supplierProductIDs[i] = sp.SupplierProductID
 	}
 
-	lotTracking, err := lottrackingbus.TestSeedLotTracking(ctx, 15, supplierProductIDs, busDomain.LotTracking)
+	lotTrackings, err := lottrackingsbus.TestSeedLotTrackings(ctx, 15, supplierProductIDs, busDomain.LotTrackings)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding lot tracking : %w", err)
 	}
@@ -116,7 +116,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		Products:          products,
 		Suppliers:         suppliers,
 		SupplierProducts:  supplierProducts,
-		LotTracking:       lotTracking,
+		LotTrackings:      lotTrackings,
 	}, nil
 }
 
@@ -124,27 +124,27 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Query",
-			ExpResp: []lottrackingbus.LotTracking{
-				sd.LotTracking[0],
-				sd.LotTracking[1],
-				sd.LotTracking[2],
-				sd.LotTracking[3],
-				sd.LotTracking[4],
+			ExpResp: []lottrackingsbus.LotTrackings{
+				sd.LotTrackings[0],
+				sd.LotTrackings[1],
+				sd.LotTrackings[2],
+				sd.LotTrackings[3],
+				sd.LotTrackings[4],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.LotTracking.Query(ctx, lottrackingbus.QueryFilter{}, lottrackingbus.DefaultOrderBy, page.MustParse("1", "5"))
+				got, err := busDomain.LotTrackings.Query(ctx, lottrackingsbus.QueryFilter{}, lottrackingsbus.DefaultOrderBy, page.MustParse("1", "5"))
 				if err != nil {
 					return err
 				}
 				return got
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.([]lottrackingbus.LotTracking)
+				gotResp, exists := got.([]lottrackingsbus.LotTrackings)
 				if !exists {
 					return fmt.Sprintf("got is not a slice of lot trackings: %v", got)
 				}
 
-				expResp := exp.([]lottrackingbus.LotTracking)
+				expResp := exp.([]lottrackingsbus.LotTrackings)
 
 				return cmp.Diff(gotResp, expResp)
 			},
@@ -154,14 +154,14 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
-	md := lottrackingbus.RandomDate()
-	ed := lottrackingbus.RandomDate()
-	rd := lottrackingbus.RandomDate()
+	md := lottrackingsbus.RandomDate()
+	ed := lottrackingsbus.RandomDate()
+	rd := lottrackingsbus.RandomDate()
 
 	return []unitest.Table{
 		{
 			Name: "Create",
-			ExpResp: lottrackingbus.LotTracking{
+			ExpResp: lottrackingsbus.LotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "LotNumber",
 				ManufactureDate:   md,
@@ -171,7 +171,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				QualityStatus:     "good",
 			},
 			ExcFunc: func(ctx context.Context) any {
-				newLotTracking := lottrackingbus.NewLotTracking{
+				newLotTrackings := lottrackingsbus.NewLotTrackings{
 					SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 					LotNumber:         "LotNumber",
 					ManufactureDate:   md,
@@ -181,7 +181,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					QualityStatus:     "good",
 				}
 
-				s, err := busDomain.LotTracking.Create(ctx, newLotTracking)
+				s, err := busDomain.LotTrackings.Create(ctx, newLotTrackings)
 				if err != nil {
 					return err
 				}
@@ -190,12 +190,12 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(lottrackingbus.LotTracking)
+				gotResp, exists := got.(lottrackingsbus.LotTrackings)
 				if !exists {
 					return fmt.Sprintf("got is not a product cost: %v", got)
 				}
 
-				expResp := exp.(lottrackingbus.LotTracking)
+				expResp := exp.(lottrackingsbus.LotTrackings)
 
 				expResp.LotID = gotResp.LotID
 				expResp.CreatedDate = gotResp.CreatedDate
@@ -209,14 +209,14 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
-	md := lottrackingbus.RandomDate()
-	ed := lottrackingbus.RandomDate()
-	rd := lottrackingbus.RandomDate()
+	md := lottrackingsbus.RandomDate()
+	ed := lottrackingsbus.RandomDate()
+	rd := lottrackingsbus.RandomDate()
 
 	return []unitest.Table{
 		{
 			Name: "Update",
-			ExpResp: lottrackingbus.LotTracking{
+			ExpResp: lottrackingsbus.LotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "UpdatedLotNumber",
 				ManufactureDate:   md,
@@ -226,7 +226,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				QualityStatus:     "good",
 			},
 			ExcFunc: func(ctx context.Context) any {
-				updatedLotTracking := lottrackingbus.UpdateLotTracking{
+				updatedLotTrackings := lottrackingsbus.UpdateLotTrackings{
 					SupplierProductID: &sd.SupplierProducts[0].SupplierProductID,
 					LotNumber:         dbtest.StringPointer("UpdatedLotNumber"),
 					ManufactureDate:   &md,
@@ -236,7 +236,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					QualityStatus:     dbtest.StringPointer("good"),
 				}
 
-				lt, err := busDomain.LotTracking.Update(ctx, sd.LotTracking[3], updatedLotTracking)
+				lt, err := busDomain.LotTrackings.Update(ctx, sd.LotTrackings[3], updatedLotTrackings)
 				if err != nil {
 					return err
 				}
@@ -244,12 +244,12 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				return lt
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(lottrackingbus.LotTracking)
+				gotResp, exists := got.(lottrackingsbus.LotTrackings)
 				if !exists {
 					return fmt.Sprintf("got is not a product cost: %v", got)
 				}
 
-				expResp := exp.(lottrackingbus.LotTracking)
+				expResp := exp.(lottrackingsbus.LotTrackings)
 
 				expResp.LotID = gotResp.LotID
 				expResp.CreatedDate = gotResp.CreatedDate
@@ -267,7 +267,7 @@ func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "delete",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.LotTracking.Delete(ctx, sd.LotTracking[0])
+				err := busDomain.LotTrackings.Delete(ctx, sd.LotTrackings[0])
 				return err
 			},
 			CmpFunc: func(got, exp any) string {

@@ -21,7 +21,7 @@ func newAPI(contactinfosapp *contactinfosapp.App) *api {
 }
 
 func (api *api) create(ctx context.Context, r *http.Request) web.Encoder {
-	var app contactinfosapp.NewContactInfo
+	var app contactinfosapp.NewContactInfos
 	if err := web.Decode(r, &app); err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}
@@ -35,7 +35,7 @@ func (api *api) create(ctx context.Context, r *http.Request) web.Encoder {
 }
 
 func (api *api) update(ctx context.Context, r *http.Request) web.Encoder {
-	var app contactinfosapp.UpdateContactInfo
+	var app contactinfosapp.UpdateContactInfos
 	if err := web.Decode(r, &app); err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}

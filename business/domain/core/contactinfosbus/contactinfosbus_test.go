@@ -14,10 +14,10 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
-func Test_ContactInfo(t *testing.T) {
+func Test_ContactInfos(t *testing.T) {
 	t.Parallel()
 
-	db := dbtest.NewDatabase(t, "Test_ContactInfo")
+	db := dbtest.NewDatabase(t, "Test_ContactInfos")
 
 	sd, err := insertSeedData(db.BusDomain)
 	if err != nil {
@@ -39,14 +39,14 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfosbus.TestSeedContactInfo(ctx, 15, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 15, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
 	return unitest.SeedData{
-		Admins:      []unitest.User{{User: admins[0]}},
-		ContactInfo: contactInfo,
+		Admins:       []unitest.User{{User: admins[0]}},
+		ContactInfos: contactInfos,
 	}, nil
 }
 
@@ -54,27 +54,27 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Query",
-			ExpResp: []contactinfosbus.ContactInfo{
-				sd.ContactInfo[0],
-				sd.ContactInfo[1],
-				sd.ContactInfo[2],
-				sd.ContactInfo[3],
-				sd.ContactInfo[4],
+			ExpResp: []contactinfosbus.ContactInfos{
+				sd.ContactInfos[0],
+				sd.ContactInfos[1],
+				sd.ContactInfos[2],
+				sd.ContactInfos[3],
+				sd.ContactInfos[4],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.ContactInfo.Query(ctx, contactinfosbus.QueryFilter{}, order.NewBy(contactinfosbus.OrderByFirstName, order.ASC), page.MustParse("1", "5"))
+				got, err := busDomain.ContactInfos.Query(ctx, contactinfosbus.QueryFilter{}, order.NewBy(contactinfosbus.OrderByFirstName, order.ASC), page.MustParse("1", "5"))
 				if err != nil {
 					return err
 				}
 				return got
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.([]contactinfosbus.ContactInfo)
+				gotResp, exists := got.([]contactinfosbus.ContactInfos)
 				if !exists {
 					return fmt.Sprintf("got is not a slice of contact info: %v", got)
 				}
 
-				expResp := exp.([]contactinfosbus.ContactInfo)
+				expResp := exp.([]contactinfosbus.ContactInfos)
 
 				return cmp.Diff(gotResp, expResp)
 
@@ -87,7 +87,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Create",
-			ExpResp: contactinfosbus.ContactInfo{
+			ExpResp: contactinfosbus.ContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@email.com",
@@ -100,7 +100,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				PreferredContactType: "phone",
 			},
 			ExcFunc: func(ctx context.Context) any {
-				newContactInfo := contactinfosbus.NewContactInfo{
+				newContactInfos := contactinfosbus.NewContactInfos{
 					FirstName:            "John",
 					LastName:             "Doe",
 					EmailAddress:         "johndoe@email.com",
@@ -113,7 +113,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					PreferredContactType: "phone",
 				}
 
-				ci, err := busDomain.ContactInfo.Create(ctx, newContactInfo)
+				ci, err := busDomain.ContactInfos.Create(ctx, newContactInfos)
 				if err != nil {
 					return err
 				}
@@ -121,12 +121,12 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				return ci
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(contactinfosbus.ContactInfo)
+				gotResp, exists := got.(contactinfosbus.ContactInfos)
 				if !exists {
 					return fmt.Sprintf("got is not a contact info: %v", got)
 				}
 
-				expResp := exp.(contactinfosbus.ContactInfo)
+				expResp := exp.(contactinfosbus.ContactInfos)
 
 				expResp.ID = gotResp.ID
 
@@ -140,8 +140,8 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
 			Name: "Update",
-			ExpResp: contactinfosbus.ContactInfo{
-				ID:                   sd.ContactInfo[0].ID,
+			ExpResp: contactinfosbus.ContactInfos{
+				ID:                   sd.ContactInfos[0].ID,
 				FirstName:            "Jane",
 				LastName:             "Doe",
 				EmailAddress:         "janedoe@email.com",
@@ -152,10 +152,10 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				AvailableHoursEnd:    "6:00:00",
 				Timezone:             "PST",
 				PreferredContactType: "email",
-				Notes:                sd.ContactInfo[0].Notes,
+				Notes:                sd.ContactInfos[0].Notes,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				uc := contactinfosbus.UpdateContactInfo{
+				uc := contactinfosbus.UpdateContactInfos{
 					FirstName:            dbtest.StringPointer("Jane"),
 					LastName:             dbtest.StringPointer("Doe"),
 					EmailAddress:         dbtest.StringPointer("janedoe@email.com"),
@@ -168,7 +168,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					PreferredContactType: dbtest.StringPointer("email"),
 				}
 
-				got, err := busDomain.ContactInfo.Update(ctx, sd.ContactInfo[0], uc)
+				got, err := busDomain.ContactInfos.Update(ctx, sd.ContactInfos[0], uc)
 				if err != nil {
 					return err
 				}
@@ -176,12 +176,12 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				return got
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(contactinfosbus.ContactInfo)
+				gotResp, exists := got.(contactinfosbus.ContactInfos)
 				if !exists {
 					return fmt.Sprintf("got is not a contact info: %v", got)
 				}
 
-				expResp := exp.(contactinfosbus.ContactInfo)
+				expResp := exp.(contactinfosbus.ContactInfos)
 
 				expResp.ID = gotResp.ID
 
@@ -197,7 +197,7 @@ func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "Delete",
 			ExpResp: nil,
 			ExcFunc: func(ctx context.Context) any {
-				err := busDomain.ContactInfo.Delete(ctx, sd.ContactInfo[0])
+				err := busDomain.ContactInfos.Delete(ctx, sd.ContactInfos[0])
 				if err != nil {
 					return err
 				}

@@ -1,4 +1,4 @@
-package lottrackingbus
+package lottrackingsbus
 
 import (
 	"context"
@@ -28,12 +28,12 @@ var (
 // retrieve data.
 type Storer interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
-	Create(ctx context.Context, lotTracking LotTracking) error
-	Update(ctx context.Context, lotTracking LotTracking) error
-	Delete(ctx context.Context, lotTracking LotTracking) error
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]LotTracking, error)
+	Create(ctx context.Context, lotTrackings LotTrackings) error
+	Update(ctx context.Context, lotTrackings LotTrackings) error
+	Delete(ctx context.Context, lotTrackings LotTrackings) error
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]LotTrackings, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	QueryByID(ctx context.Context, lotTrackingID uuid.UUID) (LotTracking, error)
+	QueryByID(ctx context.Context, lotTrackingsID uuid.UUID) (LotTrackings, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -67,13 +67,13 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}, nil
 }
 
-func (b *Business) Create(ctx context.Context, nlt NewLotTracking) (LotTracking, error) {
-	ctx, span := otel.AddSpan(ctx, "business.lottrackingbus.create")
+func (b *Business) Create(ctx context.Context, nlt NewLotTrackings) (LotTrackings, error) {
+	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.create")
 	defer span.End()
 
 	now := time.Now()
 
-	lt := LotTracking{
+	lt := LotTrackings{
 		LotID:             uuid.New(),
 		SupplierProductID: nlt.SupplierProductID,
 		LotNumber:         nlt.LotNumber,
@@ -88,35 +88,35 @@ func (b *Business) Create(ctx context.Context, nlt NewLotTracking) (LotTracking,
 
 	err := b.storer.Create(ctx, lt)
 	if err != nil {
-		return LotTracking{}, fmt.Errorf("create: %w", err)
+		return LotTrackings{}, fmt.Errorf("create: %w", err)
 	}
 
 	return lt, nil
 }
 
 // Update modifies a lot tracking in the system.
-func (b *Business) Update(ctx context.Context, lt LotTracking, ul UpdateLotTracking) (LotTracking, error) {
-	ctx, span := otel.AddSpan(ctx, "business.lottrackingbus.update")
+func (b *Business) Update(ctx context.Context, lt LotTrackings, ul UpdateLotTrackings) (LotTrackings, error) {
+	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.update")
 	defer span.End()
 
 	err := convert.PopulateSameTypes(ul, &lt)
 	if err != nil {
-		return LotTracking{}, fmt.Errorf("populate lot tracking from update lot tracking: %w", err)
+		return LotTrackings{}, fmt.Errorf("populate lot tracking from update lot tracking: %w", err)
 	}
 
 	lt.UpdatedDate = time.Now()
 
 	err = b.storer.Update(ctx, lt)
 	if err != nil {
-		return LotTracking{}, fmt.Errorf("update: %w", err)
+		return LotTrackings{}, fmt.Errorf("update: %w", err)
 	}
 
 	return lt, nil
 }
 
 // Delete removes a lot tracking from the system.
-func (b *Business) Delete(ctx context.Context, lt LotTracking) error {
-	ctx, span := otel.AddSpan(ctx, "business.lottrackingbus.delete")
+func (b *Business) Delete(ctx context.Context, lt LotTrackings) error {
+	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.delete")
 	defer span.End()
 
 	err := b.storer.Delete(ctx, lt)
@@ -129,8 +129,8 @@ func (b *Business) Delete(ctx context.Context, lt LotTracking) error {
 
 // Query retrieves a list of lot trackings based on the provided query filter,
 // order, and pagination options.
-func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]LotTracking, error) {
-	ctx, span := otel.AddSpan(ctx, "business.lottrackingbus.query")
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]LotTrackings, error) {
+	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.query")
 	defer span.End()
 
 	items, err := b.storer.Query(ctx, filter, orderBy, page)
@@ -143,7 +143,7 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 
 // Count returns the total number of lot trackings.
 func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
-	ctx, span := otel.AddSpan(ctx, "business.lottrackingbus.count")
+	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.count")
 	defer span.End()
 
 	count, err := b.storer.Count(ctx, filter)
@@ -155,13 +155,13 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // QueryByID retrieves a lot tracking by its unique ID.
-func (b *Business) QueryByID(ctx context.Context, lotTrackingID uuid.UUID) (LotTracking, error) {
-	ctx, span := otel.AddSpan(ctx, "business.lottrackingbus.querybyid")
+func (b *Business) QueryByID(ctx context.Context, lotTrackingsID uuid.UUID) (LotTrackings, error) {
+	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.querybyid")
 	defer span.End()
 
-	lt, err := b.storer.QueryByID(ctx, lotTrackingID)
+	lt, err := b.storer.QueryByID(ctx, lotTrackingsID)
 	if err != nil {
-		return LotTracking{}, fmt.Errorf("query by id: %w", err)
+		return LotTrackings{}, fmt.Errorf("query by id: %w", err)
 	}
 
 	return lt, nil

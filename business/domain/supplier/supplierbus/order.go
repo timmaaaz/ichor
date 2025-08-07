@@ -7,13 +7,13 @@ import (
 var DefaultOrderBy = order.NewBy(OrderByName, order.ASC)
 
 const (
-	OrderBySupplierID    = "id"
-	OrderByContactInfoID = "contact_infos_id"
-	OrderByName          = "name"
-	OrderByPaymentTerms  = "payment_terms"
-	OrderByLeadTimeDays  = "lead_time_days"
-	OrderByRating        = "rating"
-	OrderByIsActive      = "is_active"
-	OrderByCreatedDate   = "created_date"
-	OrderByUpdatedDate   = "updated_date"
+	OrderBySupplierID     = "id"
+	OrderByContactInfosID = "contact_infos_id"
+	OrderByName           = "name"
+	OrderByPaymentTerms   = "payment_terms"
+	OrderByLeadTimeDays   = "lead_time_days"
+	OrderByRating         = "rating"
+	OrderByIsActive       = "is_active"
+	OrderByCreatedDate    = "created_date"
+	OrderByUpdatedDate    = "updated_date"
 )

@@ -47,7 +47,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (contactinfosbus.Storer, er
 }
 
 // Create inserts a new user asset into the database.
-func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfo) error {
+func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfos) error {
 	const q = `
     INSERT INTO contact_infos (
         id, first_name, last_name, email_address, primary_phone_number, secondary_phone_number, address,
@@ -58,7 +58,7 @@ func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfo) err
 	)
     `
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfo(ass)); err != nil {
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfos(ass)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", contactinfosbus.ErrUniqueEntry)
 		}
@@ -68,7 +68,7 @@ func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfo) err
 }
 
 // Update replaces a user asset document in the database.
-func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfo) error {
+func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfos) error {
 	const q = `
 	UPDATE
 		contact_infos
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfo) err
 		id = :id
 	`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfo(ass)); err != nil {
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfos(ass)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", contactinfosbus.ErrUniqueEntry)
 		}
@@ -99,14 +99,14 @@ func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfo) err
 }
 
 // Delete removes an user asset from the database.
-func (s *Store) Delete(ctx context.Context, ass contactinfosbus.ContactInfo) error {
+func (s *Store) Delete(ctx context.Context, ass contactinfosbus.ContactInfos) error {
 	const q = `
 	DELETE FROM
 		contact_infos
 	WHERE
 		id = :id`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfo(ass)); err != nil {
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBContactInfos(ass)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 
@@ -114,7 +114,7 @@ func (s *Store) Delete(ctx context.Context, ass contactinfosbus.ContactInfo) err
 }
 
 // Query retrieves a list of user assets from the database.
-func (s *Store) Query(ctx context.Context, filter contactinfosbus.QueryFilter, orderBy order.By, page page.Page) ([]contactinfosbus.ContactInfo, error) {
+func (s *Store) Query(ctx context.Context, filter contactinfosbus.QueryFilter, orderBy order.By, page page.Page) ([]contactinfosbus.ContactInfos, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -138,12 +138,12 @@ func (s *Store) Query(ctx context.Context, filter contactinfosbus.QueryFilter, o
 	buf.WriteString(orderByClause)
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
 
-	var ci []contactInfo
+	var ci []contactInfos
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &ci); err != nil {
 		return nil, fmt.Errorf("namedselectcontext: %w", err)
 	}
 
-	return toBusContactInfos(ci), nil
+	return toBusContactInfoss(ci), nil
 }
 
 // Count returns the number of assets in the database.
@@ -170,11 +170,11 @@ func (s *Store) Count(ctx context.Context, filter contactinfosbus.QueryFilter) (
 }
 
 // QueryByID retrieves a single asset from the database by its ID.
-func (s *Store) QueryByID(ctx context.Context, userContactInfoID uuid.UUID) (contactinfosbus.ContactInfo, error) {
+func (s *Store) QueryByID(ctx context.Context, userContactInfosID uuid.UUID) (contactinfosbus.ContactInfos, error) {
 	data := struct {
 		ID string `db:"id"`
 	}{
-		ID: userContactInfoID.String(),
+		ID: userContactInfosID.String(),
 	}
 
 	const q = `
@@ -186,14 +186,14 @@ func (s *Store) QueryByID(ctx context.Context, userContactInfoID uuid.UUID) (con
     WHERE
         id = :id
     `
-	var ci contactInfo
+	var ci contactInfos
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ci); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return contactinfosbus.ContactInfo{}, contactinfosbus.ErrNotFound
+			return contactinfosbus.ContactInfos{}, contactinfosbus.ErrNotFound
 		}
-		return contactinfosbus.ContactInfo{}, fmt.Errorf("querystruct: %w", err)
+		return contactinfosbus.ContactInfos{}, fmt.Errorf("querystruct: %w", err)
 	}
 
-	return toBusContactInfo(ci), nil
+	return toBusContactInfos(ci), nil
 }

@@ -1,4 +1,4 @@
-package lottrackingbus
+package lottrackingsbus
 
 import (
 	"context"
@@ -18,13 +18,13 @@ func RandomDate() time.Time {
 	return start.Add(time.Duration(randomDays) * 24 * time.Hour)
 }
 
-func TestNewLotTracking(n int, supplierProductIDs uuid.UUIDs) []NewLotTracking {
-	newLotTrackings := make([]NewLotTracking, n)
+func TestNewLotTrackings(n int, supplierProductIDs uuid.UUIDs) []NewLotTrackings {
+	newLotTrackingss := make([]NewLotTrackings, n)
 
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
-		newLotTrackings[i] = NewLotTracking{
+		newLotTrackingss[i] = NewLotTrackings{
 			SupplierProductID: supplierProductIDs[i%len(supplierProductIDs)],
 			LotNumber:         fmt.Sprintf("LotNumber%d", idx),
 			ManufactureDate:   RandomDate(),
@@ -35,26 +35,26 @@ func TestNewLotTracking(n int, supplierProductIDs uuid.UUIDs) []NewLotTracking {
 		}
 	}
 
-	return newLotTrackings
+	return newLotTrackingss
 
 }
 
-func TestSeedLotTracking(ctx context.Context, n int, supplierProductIDs uuid.UUIDs, api *Business) ([]LotTracking, error) {
-	newLotTracking := TestNewLotTracking(n, supplierProductIDs)
+func TestSeedLotTrackings(ctx context.Context, n int, supplierProductIDs uuid.UUIDs, api *Business) ([]LotTrackings, error) {
+	newLotTrackings := TestNewLotTrackings(n, supplierProductIDs)
 
-	lotTrackings := make([]LotTracking, len(newLotTracking))
+	lotTrackingss := make([]LotTrackings, len(newLotTrackings))
 
-	for i, nl := range newLotTracking {
+	for i, nl := range newLotTrackings {
 		lt, err := api.Create(ctx, nl)
 		if err != nil {
 			return nil, fmt.Errorf("seeding error: %v", err)
 		}
-		lotTrackings[i] = lt
+		lotTrackingss[i] = lt
 	}
 
-	sort.Slice(lotTrackings, func(i, j int) bool {
-		return lotTrackings[i].LotID.String() < lotTrackings[j].LotID.String()
+	sort.Slice(lotTrackingss, func(i, j int) bool {
+		return lotTrackingss[i].LotID.String() < lotTrackingss[j].LotID.String()
 	})
 
-	return lotTrackings, nil
+	return lotTrackingss, nil
 }

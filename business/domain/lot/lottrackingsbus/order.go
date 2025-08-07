@@ -1,4 +1,4 @@
-package lottrackingbus
+package lottrackingsbus
 
 import "github.com/timmaaaz/ichor/business/sdk/order"
 

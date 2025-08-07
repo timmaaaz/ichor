@@ -6,10 +6,10 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
-func Test_ContactInfo(t *testing.T) {
+func Test_ContactInfos(t *testing.T) {
 	t.Parallel()
 
-	test := apitest.StartTest(t, "Test_ContactInfo")
+	test := apitest.StartTest(t, "Test_ContactInfos")
 
 	// -------------------------------------------------------------------------
 

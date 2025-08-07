@@ -20,8 +20,8 @@ func applyFilter(filter brandbus.QueryFilter, data map[string]any, buf *bytes.Bu
 		wc = append(wc, "name ILIKE :name")
 	}
 
-	if filter.ContactInfoID != nil {
-		data["contact_infos_id"] = *filter.ContactInfoID
+	if filter.ContactInfosID != nil {
+		data["contact_infos_id"] = *filter.ContactInfosID
 		wc = append(wc, "contact_infos_id = :contact_infos_id")
 	}
 

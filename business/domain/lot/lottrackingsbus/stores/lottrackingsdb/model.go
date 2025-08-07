@@ -1,13 +1,13 @@
-package lottrackingdb
+package lottrackingsdb
 
 import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 )
 
-type lotTracking struct {
+type lotTrackings struct {
 	LotID             uuid.UUID `db:"id"`
 	SupplierProductID uuid.UUID `db:"supplier_product_id"`
 	LotNumber         string    `db:"lot_number"`
@@ -20,8 +20,8 @@ type lotTracking struct {
 	UpdatedDate       time.Time `db:"updated_date"`
 }
 
-func toDBLotTracking(bus lottrackingbus.LotTracking) lotTracking {
-	return lotTracking{
+func toDBLotTrackings(bus lottrackingsbus.LotTrackings) lotTrackings {
+	return lotTrackings{
 		LotID:             bus.LotID,
 		SupplierProductID: bus.SupplierProductID,
 		LotNumber:         bus.LotNumber,
@@ -35,8 +35,8 @@ func toDBLotTracking(bus lottrackingbus.LotTracking) lotTracking {
 	}
 }
 
-func toBusLotTracking(db lotTracking) lottrackingbus.LotTracking {
-	return lottrackingbus.LotTracking{
+func toBusLotTrackings(db lotTrackings) lottrackingsbus.LotTrackings {
+	return lottrackingsbus.LotTrackings{
 		LotID:             db.LotID,
 		SupplierProductID: db.SupplierProductID,
 		LotNumber:         db.LotNumber,
@@ -50,11 +50,11 @@ func toBusLotTracking(db lotTracking) lottrackingbus.LotTracking {
 	}
 }
 
-func toBusLotTrackings(db []lotTracking) []lottrackingbus.LotTracking {
-	bus := make([]lottrackingbus.LotTracking, len(db))
+func toBusLotTrackingss(db []lotTrackings) []lottrackingsbus.LotTrackings {
+	bus := make([]lottrackingsbus.LotTrackings, len(db))
 
 	for i, db := range db {
-		bus[i] = toBusLotTracking(db)
+		bus[i] = toBusLotTrackings(db)
 	}
 
 	return bus

@@ -28,7 +28,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:          sd.Products[0].ProductID,
 				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),
@@ -38,7 +38,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &inspectionapp.Inspection{
 				ProductID:          sd.Products[0].ProductID,
 				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),
@@ -75,7 +75,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &inspectionapp.NewInspection{
 				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),
@@ -95,7 +95,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &inspectionapp.NewInspection{
 				ProductID:          sd.Products[0].ProductID,
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),
@@ -136,7 +136,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:          sd.Products[0].ProductID,
 				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),
 				NextInspectionDate: later.Format(timeutil.FORMAT),
@@ -156,7 +156,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:          sd.Products[0].ProductID,
 				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				InspectionDate:     now.Format(timeutil.FORMAT),
 				NextInspectionDate: later.Format(timeutil.FORMAT),
@@ -176,7 +176,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:          sd.Products[0].ProductID,
 				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				NextInspectionDate: later.Format(timeutil.FORMAT),
@@ -196,7 +196,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:      sd.Products[0].ProductID,
 				InspectorID:    sd.Users[0].ID.String(),
-				LotID:          sd.LotTracking[0].LotID,
+				LotID:          sd.LotTrackings[0].LotID,
 				Status:         "pending",
 				Notes:          "Sample Notes",
 				InspectionDate: later.Format(timeutil.FORMAT),
@@ -217,7 +217,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:          "not-a-uuid",
 				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),
@@ -238,7 +238,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:          sd.Products[0].ProductID,
 				InspectorID:        "not-a-uuid",
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),
@@ -287,7 +287,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:          uuid.NewString(),
 				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),
@@ -308,7 +308,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.NewInspection{
 				ProductID:          sd.Products[0].ProductID,
 				InspectorID:        uuid.NewString(),
-				LotID:              sd.LotTracking[0].LotID,
+				LotID:              sd.LotTrackings[0].LotID,
 				Status:             "pending",
 				Notes:              "Sample Notes",
 				InspectionDate:     now.Format(timeutil.FORMAT),

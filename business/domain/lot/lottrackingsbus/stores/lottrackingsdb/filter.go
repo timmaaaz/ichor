@@ -1,13 +1,13 @@
-package lottrackingdb
+package lottrackingsdb
 
 import (
 	"bytes"
 	"strings"
 
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 )
 
-func applyFilter(filter lottrackingbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
+func applyFilter(filter lottrackingsbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.LotID != nil {

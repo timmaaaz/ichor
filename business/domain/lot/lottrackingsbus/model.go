@@ -1,4 +1,4 @@
-package lottrackingbus
+package lottrackingsbus
 
 import (
 	"time"
@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type LotTracking struct {
+type LotTrackings struct {
 	LotID             uuid.UUID
 	SupplierProductID uuid.UUID
 	LotNumber         string
@@ -19,7 +19,7 @@ type LotTracking struct {
 	UpdatedDate       time.Time
 }
 
-type NewLotTracking struct {
+type NewLotTrackings struct {
 	SupplierProductID uuid.UUID
 	LotNumber         string
 	ManufactureDate   time.Time
@@ -29,7 +29,7 @@ type NewLotTracking struct {
 	QualityStatus     string
 }
 
-type UpdateLotTracking struct {
+type UpdateLotTrackings struct {
 	SupplierProductID *uuid.UUID
 	LotNumber         *string
 	ManufactureDate   *time.Time

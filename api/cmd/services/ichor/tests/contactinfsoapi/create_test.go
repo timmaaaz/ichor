@@ -17,7 +17,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
-			Input: &contactinfosapp.NewContactInfo{
+			Input: &contactinfosapp.NewContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -28,8 +28,8 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				Timezone:             "America/New_York",
 				PreferredContactType: "email",
 			},
-			GotResp: &contactinfosapp.ContactInfo{},
-			ExpResp: &contactinfosapp.ContactInfo{
+			GotResp: &contactinfosapp.ContactInfos{},
+			ExpResp: &contactinfosapp.ContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -41,12 +41,12 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				PreferredContactType: "email",
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(*contactinfosapp.ContactInfo)
+				gotResp, exists := got.(*contactinfosapp.ContactInfos)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*contactinfosapp.ContactInfo)
+				expResp := exp.(*contactinfosapp.ContactInfos)
 				expResp.ID = gotResp.ID
 
 				return cmp.Diff(gotResp, expResp)
@@ -65,7 +65,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
 				PrimaryPhone:         "+1234567890",
@@ -87,7 +87,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				FirstName:            "John",
 				EmailAddress:         "johndoe@example.com",
 				PrimaryPhone:         "+1234567890",
@@ -109,7 +109,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				PrimaryPhone:         "+1234567890",
@@ -131,7 +131,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -153,7 +153,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -175,7 +175,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -197,7 +197,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -219,7 +219,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				FirstName:            "John",
 				LastName:             "Doe",
 				EmailAddress:         "johndoe@example.com",
@@ -241,7 +241,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.ContactInfo{
+			Input: &contactinfosapp.ContactInfos{
 				FirstName:           "John",
 				LastName:            "Doe",
 				EmailAddress:        "johndoe@example.com",

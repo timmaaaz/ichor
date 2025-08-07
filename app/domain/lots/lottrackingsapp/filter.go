@@ -1,4 +1,4 @@
-package lottrackingapp
+package lottrackingsapp
 
 import (
 	"strconv"
@@ -6,17 +6,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
-func parseFilter(qp QueryParams) (lottrackingbus.QueryFilter, error) {
-	var filter lottrackingbus.QueryFilter
+func parseFilter(qp QueryParams) (lottrackingsbus.QueryFilter, error) {
+	var filter lottrackingsbus.QueryFilter
 
 	if qp.LotID != "" {
 		id, err := uuid.Parse(qp.LotID)
 		if err != nil {
-			return lottrackingbus.QueryFilter{}, errs.NewFieldsError("lot_id", err)
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("lot_id", err)
 		}
 		filter.LotID = &id
 	}
@@ -24,7 +24,7 @@ func parseFilter(qp QueryParams) (lottrackingbus.QueryFilter, error) {
 	if qp.SupplierProductID != "" {
 		id, err := uuid.Parse(qp.SupplierProductID)
 		if err != nil {
-			return lottrackingbus.QueryFilter{}, errs.NewFieldsError("supplier_product_id", err)
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("supplier_product_id", err)
 		}
 		filter.SupplierProductID = &id
 	}
@@ -36,7 +36,7 @@ func parseFilter(qp QueryParams) (lottrackingbus.QueryFilter, error) {
 	if qp.ManufactureDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.ManufactureDate)
 		if err != nil {
-			return lottrackingbus.QueryFilter{}, errs.NewFieldsError("manufacture_date", err)
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("manufacture_date", err)
 		}
 		filter.ManufactureDate = &date
 	}
@@ -44,7 +44,7 @@ func parseFilter(qp QueryParams) (lottrackingbus.QueryFilter, error) {
 	if qp.ExpirationDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.ExpirationDate)
 		if err != nil {
-			return lottrackingbus.QueryFilter{}, errs.NewFieldsError("expiration_date", err)
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("expiration_date", err)
 		}
 		filter.ExpirationDate = &date
 	}
@@ -52,7 +52,7 @@ func parseFilter(qp QueryParams) (lottrackingbus.QueryFilter, error) {
 	if qp.RecievedDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.RecievedDate)
 		if err != nil {
-			return lottrackingbus.QueryFilter{}, errs.NewFieldsError("received_date", err)
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("received_date", err)
 		}
 		filter.RecievedDate = &date
 	}
@@ -60,7 +60,7 @@ func parseFilter(qp QueryParams) (lottrackingbus.QueryFilter, error) {
 	if qp.Quantity != "" {
 		quantity, err := strconv.Atoi(qp.Quantity)
 		if err != nil {
-			return lottrackingbus.QueryFilter{}, errs.NewFieldsError("quantity", err)
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("quantity", err)
 		}
 		filter.Quantity = &quantity
 	}
@@ -72,7 +72,7 @@ func parseFilter(qp QueryParams) (lottrackingbus.QueryFilter, error) {
 	if qp.CreatedDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.CreatedDate)
 		if err != nil {
-			return lottrackingbus.QueryFilter{}, errs.NewFieldsError("created_date", err)
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("created_date", err)
 		}
 		filter.CreatedDate = &date
 	}
@@ -80,7 +80,7 @@ func parseFilter(qp QueryParams) (lottrackingbus.QueryFilter, error) {
 	if qp.UpdatedDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.UpdatedDate)
 		if err != nil {
-			return lottrackingbus.QueryFilter{}, errs.NewFieldsError("updated_date", err)
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("updated_date", err)
 		}
 		filter.UpdatedDate = &date
 	}

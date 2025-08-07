@@ -28,7 +28,7 @@ type QueryParams struct {
 	Notes                string
 }
 
-type ContactInfo struct {
+type ContactInfos struct {
 	ID                   string `json:"id"`
 	FirstName            string `json:"first_name"`
 	LastName             string `json:"last_name"`
@@ -43,14 +43,14 @@ type ContactInfo struct {
 	Notes                string `json:"notes"`
 }
 
-func (app ContactInfo) Encode() ([]byte, string, error) {
+func (app ContactInfos) Encode() ([]byte, string, error) {
 
 	data, err := json.Marshal(app)
 	return data, "application/json", err
 }
 
-func ToAppContactInfo(bus contactinfosbus.ContactInfo) ContactInfo {
-	return ContactInfo{
+func ToAppContactInfos(bus contactinfosbus.ContactInfos) ContactInfos {
+	return ContactInfos{
 		ID:                   bus.ID.String(),
 		FirstName:            bus.FirstName,
 		LastName:             bus.LastName,
@@ -66,15 +66,15 @@ func ToAppContactInfo(bus contactinfosbus.ContactInfo) ContactInfo {
 	}
 }
 
-func ToAppContactInfos(bus []contactinfosbus.ContactInfo) []ContactInfo {
-	app := make([]ContactInfo, len(bus))
+func ToAppContactInfoss(bus []contactinfosbus.ContactInfos) []ContactInfos {
+	app := make([]ContactInfos, len(bus))
 	for i, v := range bus {
-		app[i] = ToAppContactInfo(v)
+		app[i] = ToAppContactInfos(v)
 	}
 	return app
 }
 
-type NewContactInfo struct {
+type NewContactInfos struct {
 	FirstName            string `json:"first_name" validate:"required"`
 	LastName             string `json:"last_name" validate:"required"`
 	EmailAddress         string `json:"email_address" validate:"required"`
@@ -88,11 +88,11 @@ type NewContactInfo struct {
 	Notes                string `json:"notes"`
 }
 
-func (app *NewContactInfo) Decode(data []byte) error {
+func (app *NewContactInfos) Decode(data []byte) error {
 	return json.Unmarshal(data, &app)
 }
 
-func (app NewContactInfo) Validate() error {
+func (app NewContactInfos) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
 	}
@@ -100,22 +100,22 @@ func (app NewContactInfo) Validate() error {
 	return nil
 }
 
-func toBusNewContactInfo(app NewContactInfo) (contactinfosbus.NewContactInfo, error) {
-	dest := contactinfosbus.NewContactInfo{}
+func toBusNewContactInfos(app NewContactInfos) (contactinfosbus.NewContactInfos, error) {
+	dest := contactinfosbus.NewContactInfos{}
 
 	if !timeonly.ValidateTimeOnlyFmt(app.AvailableHoursEnd) {
-		return contactinfosbus.NewContactInfo{}, fmt.Errorf("invalid time format for ending hours: %q", app.AvailableHoursEnd)
+		return contactinfosbus.NewContactInfos{}, fmt.Errorf("invalid time format for ending hours: %q", app.AvailableHoursEnd)
 	}
 
 	if !timeonly.ValidateTimeOnlyFmt(app.AvailableHoursStart) {
-		return contactinfosbus.NewContactInfo{}, fmt.Errorf("invalid time format for starting hours: %q", app.AvailableHoursStart)
+		return contactinfosbus.NewContactInfos{}, fmt.Errorf("invalid time format for starting hours: %q", app.AvailableHoursStart)
 	}
 
 	err := convert.PopulateTypesFromStrings(app, &dest)
 	return dest, err
 }
 
-type UpdateContactInfo struct {
+type UpdateContactInfos struct {
 	FirstName            *string `json:"first_name"`
 	LastName             *string `json:"last_name"`
 	EmailAddress         *string `json:"email_address"`
@@ -130,12 +130,12 @@ type UpdateContactInfo struct {
 }
 
 // Decode implements the decoder interface.
-func (app *UpdateContactInfo) Decode(data []byte) error {
+func (app *UpdateContactInfos) Decode(data []byte) error {
 	return json.Unmarshal(data, &app)
 }
 
 // Validate checks the data in the model is considered clean.
-func (app UpdateContactInfo) Validate() error {
+func (app UpdateContactInfos) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
 	}
@@ -143,15 +143,15 @@ func (app UpdateContactInfo) Validate() error {
 	return nil
 }
 
-func toBusUpdateContactInfo(app UpdateContactInfo) (contactinfosbus.UpdateContactInfo, error) {
-	dest := contactinfosbus.UpdateContactInfo{}
+func toBusUpdateContactInfos(app UpdateContactInfos) (contactinfosbus.UpdateContactInfos, error) {
+	dest := contactinfosbus.UpdateContactInfos{}
 
 	if app.AvailableHoursEnd != nil && !timeonly.ValidateTimeOnlyFmt(*app.AvailableHoursEnd) {
-		return contactinfosbus.UpdateContactInfo{}, fmt.Errorf("invalid time format for ending hours: %q", *app.AvailableHoursEnd)
+		return contactinfosbus.UpdateContactInfos{}, fmt.Errorf("invalid time format for ending hours: %q", *app.AvailableHoursEnd)
 	}
 
 	if app.AvailableHoursStart != nil && !timeonly.ValidateTimeOnlyFmt(*app.AvailableHoursStart) {
-		return contactinfosbus.UpdateContactInfo{}, fmt.Errorf("invalid time format for starting hours: %q", *app.AvailableHoursStart)
+		return contactinfosbus.UpdateContactInfos{}, fmt.Errorf("invalid time format for starting hours: %q", *app.AvailableHoursStart)
 	}
 
 	err := convert.PopulateTypesFromStrings(app, &dest)

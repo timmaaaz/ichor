@@ -12,7 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/quality/inspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
@@ -56,13 +56,13 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	contactInfo, err := contactinfosbus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	contactIDs := make(uuid.UUIDs, len(contactInfo))
-	for i, c := range contactInfo {
+	contactIDs := make(uuid.UUIDs, len(contactInfos))
+	for i, c := range contactInfos {
 		contactIDs[i] = c.ID
 	}
 
@@ -117,27 +117,27 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		supplierProductIDs[i] = sp.SupplierProductID
 	}
 
-	lotTracking, err := lottrackingbus.TestSeedLotTracking(ctx, 15, supplierProductIDs, busDomain.LotTracking)
+	lotTrackings, err := lottrackingsbus.TestSeedLotTrackings(ctx, 15, supplierProductIDs, busDomain.LotTrackings)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding lot tracking : %w", err)
 	}
 
-	lotTrackingIDs := make(uuid.UUIDs, len(lotTracking))
-	for i, lt := range lotTracking {
-		lotTrackingIDs[i] = lt.LotID
+	lotTrackingsIDs := make(uuid.UUIDs, len(lotTrackings))
+	for i, lt := range lotTrackings {
+		lotTrackingsIDs[i] = lt.LotID
 	}
 
-	inspections, err := inspectionbus.TestSeedInspections(ctx, 10, productIDs, usrIDs, lotTrackingIDs, busDomain.Inspection)
+	inspections, err := inspectionbus.TestSeedInspections(ctx, 10, productIDs, usrIDs, lotTrackingsIDs, busDomain.Inspection)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding inspections : %w", err)
 	}
 
 	return unitest.SeedData{
-		Products:    products,
-		LotTracking: lotTracking,
-		Users:       []unitest.User{{User: usrs[0]}, {User: usrs[1]}, {User: usrs[2]}, {User: usrs[3]}, {User: usrs[4]}, {User: usrs[5]}},
-		Admins:      []unitest.User{{User: admins[0]}},
-		Inspections: inspections,
+		Products:     products,
+		LotTrackings: lotTrackings,
+		Users:        []unitest.User{{User: usrs[0]}, {User: usrs[1]}, {User: usrs[2]}, {User: usrs[3]}, {User: usrs[4]}, {User: usrs[5]}},
+		Admins:       []unitest.User{{User: admins[0]}},
+		Inspections:  inspections,
 	}, nil
 }
 

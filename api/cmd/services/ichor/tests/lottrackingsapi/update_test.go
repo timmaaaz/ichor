@@ -1,4 +1,4 @@
-package lottrackingapi_test
+package lottrackingsapi_test
 
 import (
 	"fmt"
@@ -9,16 +9,16 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 
-	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
+	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
 
 var (
-	md = lottrackingbus.RandomDate()
-	ed = lottrackingbus.RandomDate()
-	rd = lottrackingbus.RandomDate()
+	md = lottrackingsbus.RandomDate()
+	ed = lottrackingsbus.RandomDate()
+	rd = lottrackingsbus.RandomDate()
 )
 
 func update200(sd apitest.SeedData) []apitest.Table {
@@ -26,11 +26,11 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
-			Input: &lottrackingapp.UpdateLotTracking{
+			Input: &lottrackingsapp.UpdateLotTrackings{
 				SupplierProductID: &sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         dbtest.StringPointer("UpdateLotNumber"),
 				ManufactureDate:   dbtest.StringPointer(md.Format(timeutil.FORMAT)),
@@ -39,8 +39,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Quantity:          dbtest.StringPointer("15"),
 				QualityStatus:     dbtest.StringPointer("perfect"),
 			},
-			GotResp: &lottrackingapp.LotTracking{},
-			ExpResp: &lottrackingapp.LotTracking{
+			GotResp: &lottrackingsapp.LotTrackings{},
+			ExpResp: &lottrackingsapp.LotTrackings{
 				SupplierProductID: sd.SupplierProducts[0].SupplierProductID,
 				LotNumber:         "UpdateLotNumber",
 				ManufactureDate:   md.Format(timeutil.FORMAT),
@@ -48,16 +48,16 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				RecievedDate:      rd.Format(timeutil.FORMAT),
 				Quantity:          "15",
 				QualityStatus:     "perfect",
-				LotID:             sd.LotTracking[0].LotID,
-				CreatedDate:       sd.LotTracking[0].CreatedDate,
+				LotID:             sd.LotTrackings[0].LotID,
+				CreatedDate:       sd.LotTrackings[0].CreatedDate,
 			},
 			CmpFunc: func(got, exp any) string {
-				gotResp, exists := got.(*lottrackingapp.LotTracking)
+				gotResp, exists := got.(*lottrackingsapp.LotTrackings)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*lottrackingapp.LotTracking)
+				expResp := exp.(*lottrackingsapp.LotTrackings)
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
@@ -70,11 +70,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-supplier-product-id",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.UpdateLotTracking{
+			Input: &lottrackingsapp.UpdateLotTrackings{
 				SupplierProductID: dbtest.StringPointer("not-a-uuid"),
 			},
 			GotResp: &errs.Error{},
@@ -85,11 +85,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-lot-uuid",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &lottrackingapp.UpdateLotTracking{
+			Input: &lottrackingsapp.UpdateLotTrackings{
 				Quantity:      dbtest.StringPointer("15"),
 				QualityStatus: dbtest.StringPointer("perfect"),
 			},
@@ -106,7 +106,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -118,7 +118,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -130,12 +130,12 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: lot_tracking"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: lot_trackings"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -148,11 +148,11 @@ func update404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "supplier-dne",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
-			Input: &lottrackingapp.UpdateLotTracking{
+			Input: &lottrackingsapp.UpdateLotTrackings{
 				Quantity:      dbtest.StringPointer("15"),
 				QualityStatus: dbtest.StringPointer("perfect"),
 			},
@@ -169,11 +169,11 @@ func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "contact-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,
-			Input: &lottrackingapp.UpdateLotTracking{
+			Input: &lottrackingsapp.UpdateLotTrackings{
 				SupplierProductID: dbtest.StringPointer(uuid.NewString()),
 			},
 			GotResp: &errs.Error{},

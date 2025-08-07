@@ -18,12 +18,12 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &query.Result[contactinfosapp.ContactInfo]{},
-			ExpResp: &query.Result[contactinfosapp.ContactInfo]{
+			GotResp:    &query.Result[contactinfosapp.ContactInfos]{},
+			ExpResp: &query.Result[contactinfosapp.ContactInfos]{
 				Page:        1,
 				RowsPerPage: 10,
 				Total:       15,
-				Items:       sd.ContactInfo[:10],
+				Items:       sd.ContactInfos[:10],
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
@@ -37,12 +37,12 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/core/contactinfos/" + sd.ContactInfo[0].ID,
+			URL:        "/v1/core/contactinfos/" + sd.ContactInfos[0].ID,
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
-			GotResp:    &contactinfosapp.ContactInfo{},
-			ExpResp:    &sd.ContactInfo[0],
+			GotResp:    &contactinfosapp.ContactInfos{},
+			ExpResp:    &sd.ContactInfos[0],
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

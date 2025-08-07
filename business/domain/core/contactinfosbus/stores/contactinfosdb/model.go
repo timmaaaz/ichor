@@ -5,7 +5,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 )
 
-type contactInfo struct {
+type contactInfos struct {
 	ID                   uuid.UUID `db:"id"`
 	FirstName            string    `db:"first_name"`
 	LastName             string    `db:"last_name"`
@@ -20,8 +20,8 @@ type contactInfo struct {
 	Notes                string    `db:"notes"`
 }
 
-func toDBContactInfo(bus contactinfosbus.ContactInfo) contactInfo {
-	return contactInfo{
+func toDBContactInfos(bus contactinfosbus.ContactInfos) contactInfos {
+	return contactInfos{
 		ID:                   bus.ID,
 		FirstName:            bus.FirstName,
 		LastName:             bus.LastName,
@@ -37,8 +37,8 @@ func toDBContactInfo(bus contactinfosbus.ContactInfo) contactInfo {
 	}
 }
 
-func toBusContactInfo(db contactInfo) contactinfosbus.ContactInfo {
-	return contactinfosbus.ContactInfo{
+func toBusContactInfos(db contactInfos) contactinfosbus.ContactInfos {
+	return contactinfosbus.ContactInfos{
 		ID:                   db.ID,
 		FirstName:            db.FirstName,
 		LastName:             db.LastName,
@@ -54,10 +54,10 @@ func toBusContactInfo(db contactInfo) contactinfosbus.ContactInfo {
 	}
 }
 
-func toBusContactInfos(dbs []contactInfo) []contactinfosbus.ContactInfo {
-	bus := make([]contactinfosbus.ContactInfo, len(dbs))
+func toBusContactInfoss(dbs []contactInfos) []contactinfosbus.ContactInfos {
+	bus := make([]contactinfosbus.ContactInfos, len(dbs))
 	for i, db := range dbs {
-		bus[i] = toBusContactInfo(db)
+		bus[i] = toBusContactInfos(db)
 	}
 	return bus
 }

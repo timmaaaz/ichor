@@ -11,28 +11,28 @@ import (
 )
 
 type supplier struct {
-	SupplierID    uuid.UUID      `db:"id"`
-	ContactInfoID uuid.UUID      `db:"contact_infos_id"`
-	Name          string         `db:"name"`
-	PaymentTerms  string         `db:"payment_terms"`
-	LeadTimeDays  int            `db:"lead_time_days"`
-	Rating        sql.NullString `db:"rating"`
-	IsActive      bool           `db:"is_active"`
-	CreatedDate   time.Time      `db:"created_date"`
-	UpdatedDate   time.Time      `db:"updated_date"`
+	SupplierID     uuid.UUID      `db:"id"`
+	ContactInfosID uuid.UUID      `db:"contact_infos_id"`
+	Name           string         `db:"name"`
+	PaymentTerms   string         `db:"payment_terms"`
+	LeadTimeDays   int            `db:"lead_time_days"`
+	Rating         sql.NullString `db:"rating"`
+	IsActive       bool           `db:"is_active"`
+	CreatedDate    time.Time      `db:"created_date"`
+	UpdatedDate    time.Time      `db:"updated_date"`
 }
 
 func toDBSupplier(bus supplierbus.Supplier) supplier {
 	return supplier{
-		SupplierID:    bus.SupplierID,
-		ContactInfoID: bus.ContactInfoID,
-		Name:          bus.Name,
-		PaymentTerms:  bus.PaymentTerms,
-		LeadTimeDays:  bus.LeadTimeDays,
-		Rating:        bus.Rating.DBValue(),
-		IsActive:      bus.IsActive,
-		CreatedDate:   bus.CreatedDate,
-		UpdatedDate:   bus.UpdatedDate,
+		SupplierID:     bus.SupplierID,
+		ContactInfosID: bus.ContactInfosID,
+		Name:           bus.Name,
+		PaymentTerms:   bus.PaymentTerms,
+		LeadTimeDays:   bus.LeadTimeDays,
+		Rating:         bus.Rating.DBValue(),
+		IsActive:       bus.IsActive,
+		CreatedDate:    bus.CreatedDate,
+		UpdatedDate:    bus.UpdatedDate,
 	}
 }
 
@@ -44,15 +44,15 @@ func toBusSupplier(db supplier) (supplierbus.Supplier, error) {
 	}
 
 	return supplierbus.Supplier{
-		SupplierID:    db.SupplierID,
-		ContactInfoID: db.ContactInfoID,
-		Name:          db.Name,
-		PaymentTerms:  db.PaymentTerms,
-		LeadTimeDays:  db.LeadTimeDays,
-		Rating:        rating,
-		IsActive:      db.IsActive,
-		CreatedDate:   db.CreatedDate,
-		UpdatedDate:   db.UpdatedDate,
+		SupplierID:     db.SupplierID,
+		ContactInfosID: db.ContactInfosID,
+		Name:           db.Name,
+		PaymentTerms:   db.PaymentTerms,
+		LeadTimeDays:   db.LeadTimeDays,
+		Rating:         rating,
+		IsActive:       db.IsActive,
+		CreatedDate:    db.CreatedDate,
+		UpdatedDate:    db.UpdatedDate,
 	}, nil
 }
 

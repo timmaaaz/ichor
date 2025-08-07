@@ -17,31 +17,31 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound              = errors.New("contactInfo not found")
+	ErrNotFound              = errors.New("contactInfos not found")
 	ErrAuthenticationFailure = errors.New("authentication failed")
-	ErrUniqueEntry           = errors.New("contactInfo entry is not unique")
+	ErrUniqueEntry           = errors.New("contactInfos entry is not unique")
 )
 
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
 type Storer interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
-	Create(ctx context.Context, contactInfo ContactInfo) error
-	Update(ctx context.Context, contactInfo ContactInfo) error
-	Delete(ctx context.Context, contactInfo ContactInfo) error
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ContactInfo, error)
+	Create(ctx context.Context, contactInfos ContactInfos) error
+	Update(ctx context.Context, contactInfos ContactInfos) error
+	Delete(ctx context.Context, contactInfos ContactInfos) error
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ContactInfos, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	QueryByID(ctx context.Context, contactInfoID uuid.UUID) (ContactInfo, error)
+	QueryByID(ctx context.Context, contactInfosID uuid.UUID) (ContactInfos, error)
 }
 
-// Business manages the set of APIs for contactInfo access.
+// Business manages the set of APIs for contactInfos access.
 type Business struct {
 	log      *logger.Logger
 	storer   Storer
 	delegate *delegate.Delegate
 }
 
-// NewBusiness constructs a contactInfo business API for use.
+// NewBusiness constructs a contactInfos business API for use.
 func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer) *Business {
 	return &Business{
 		log:      log,
@@ -65,12 +65,12 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}, nil
 }
 
-// Create inserts a new contactInfo into the database.
-func (b *Business) Create(ctx context.Context, nci NewContactInfo) (ContactInfo, error) {
-	ctx, span := otel.AddSpan(ctx, "business.contactInfobus.create")
+// Create inserts a new contactInfos into the database.
+func (b *Business) Create(ctx context.Context, nci NewContactInfos) (ContactInfos, error) {
+	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.create")
 	defer span.End()
 
-	contactInfo := ContactInfo{
+	contactInfos := ContactInfos{
 		ID:                   uuid.New(),
 		FirstName:            nci.FirstName,
 		LastName:             nci.LastName,
@@ -85,32 +85,32 @@ func (b *Business) Create(ctx context.Context, nci NewContactInfo) (ContactInfo,
 		Notes:                nci.Notes,
 	}
 
-	if err := b.storer.Create(ctx, contactInfo); err != nil {
-		return ContactInfo{}, fmt.Errorf("create: %w", err)
+	if err := b.storer.Create(ctx, contactInfos); err != nil {
+		return ContactInfos{}, fmt.Errorf("create: %w", err)
 	}
 
-	return contactInfo, nil
+	return contactInfos, nil
 }
 
-// Update replaces an contactInfo document in the database.
-func (b *Business) Update(ctx context.Context, ci ContactInfo, uci UpdateContactInfo) (ContactInfo, error) {
-	ctx, span := otel.AddSpan(ctx, "business.contactInfobus.update")
+// Update replaces an contactInfos document in the database.
+func (b *Business) Update(ctx context.Context, ci ContactInfos, uci UpdateContactInfos) (ContactInfos, error) {
+	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.update")
 	defer span.End()
 
 	if err := convert.PopulateSameTypes(uci, &ci); err != nil {
-		return ContactInfo{}, fmt.Errorf("populate contactInfo from update contactInfo: %w", err)
+		return ContactInfos{}, fmt.Errorf("populate contactInfos from update contactInfos: %w", err)
 	}
 
 	if err := b.storer.Update(ctx, ci); err != nil {
-		return ContactInfo{}, fmt.Errorf("update: %w", err)
+		return ContactInfos{}, fmt.Errorf("update: %w", err)
 	}
 
 	return ci, nil
 }
 
-// Delete removes the specified contactInfo.
-func (b *Business) Delete(ctx context.Context, ci ContactInfo) error {
-	ctx, span := otel.AddSpan(ctx, "business.contactInfobus.delete")
+// Delete removes the specified contactInfos.
+func (b *Business) Delete(ctx context.Context, ci ContactInfos) error {
+	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.delete")
 	defer span.End()
 
 	if err := b.storer.Delete(ctx, ci); err != nil {
@@ -120,9 +120,9 @@ func (b *Business) Delete(ctx context.Context, ci ContactInfo) error {
 	return nil
 }
 
-// Query retrieves a list of contactInfos from the system.
-func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ContactInfo, error) {
-	ctx, span := otel.AddSpan(ctx, "business.contactInfobus.Query")
+// Query retrieves a list of contactInfoss from the system.
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]ContactInfos, error) {
+	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.Query")
 	defer span.End()
 
 	contacts, err := b.storer.Query(ctx, filter, orderBy, page)
@@ -133,23 +133,23 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 	return contacts, nil
 }
 
-// Count returns the total number of contactInfos.
+// Count returns the total number of contactInfoss.
 func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
-	ctx, span := otel.AddSpan(ctx, "business.contactInfobus.count")
+	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.count")
 	defer span.End()
 
 	return b.storer.Count(ctx, filter)
 }
 
-// QueryByID finds the contactInfo by the specified ID.
-func (b *Business) QueryByID(ctx context.Context, contactInfoID uuid.UUID) (ContactInfo, error) {
-	ctx, span := otel.AddSpan(ctx, "business.contactInfobus.querybyid")
+// QueryByID finds the contactInfos by the specified ID.
+func (b *Business) QueryByID(ctx context.Context, contactInfosID uuid.UUID) (ContactInfos, error) {
+	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.querybyid")
 	defer span.End()
 
-	contactInfo, err := b.storer.QueryByID(ctx, contactInfoID)
+	contactInfos, err := b.storer.QueryByID(ctx, contactInfosID)
 	if err != nil {
-		return ContactInfo{}, fmt.Errorf("query: contactInfoID[%s]: %w", contactInfoID, err)
+		return ContactInfos{}, fmt.Errorf("query: contactInfosID[%s]: %w", contactInfosID, err)
 	}
 
-	return contactInfo, nil
+	return contactInfos, nil
 }

@@ -15,35 +15,35 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[1].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfos[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
-			Input: &contactinfosapp.UpdateContactInfo{
+			Input: &contactinfosapp.UpdateContactInfos{
 				FirstName: dbtest.StringPointer("Conner"),
 			},
-			GotResp: &contactinfosapp.ContactInfo{},
-			ExpResp: &contactinfosapp.ContactInfo{
-				ID:                   sd.ContactInfo[1].ID,
+			GotResp: &contactinfosapp.ContactInfos{},
+			ExpResp: &contactinfosapp.ContactInfos{
+				ID:                   sd.ContactInfos[1].ID,
 				FirstName:            "Conner",
-				LastName:             sd.ContactInfo[1].LastName,
-				EmailAddress:         sd.ContactInfo[1].EmailAddress,
-				PrimaryPhone:         sd.ContactInfo[1].PrimaryPhone,
-				Address:              sd.ContactInfo[1].Address,
-				AvailableHoursStart:  sd.ContactInfo[1].AvailableHoursStart,
-				AvailableHoursEnd:    sd.ContactInfo[1].AvailableHoursEnd,
-				Timezone:             sd.ContactInfo[1].Timezone,
-				PreferredContactType: sd.ContactInfo[1].PreferredContactType,
-				Notes:                sd.ContactInfo[1].Notes,
-				SecondaryPhone:       sd.ContactInfo[1].SecondaryPhone,
+				LastName:             sd.ContactInfos[1].LastName,
+				EmailAddress:         sd.ContactInfos[1].EmailAddress,
+				PrimaryPhone:         sd.ContactInfos[1].PrimaryPhone,
+				Address:              sd.ContactInfos[1].Address,
+				AvailableHoursStart:  sd.ContactInfos[1].AvailableHoursStart,
+				AvailableHoursEnd:    sd.ContactInfos[1].AvailableHoursEnd,
+				Timezone:             sd.ContactInfos[1].Timezone,
+				PreferredContactType: sd.ContactInfos[1].PreferredContactType,
+				Notes:                sd.ContactInfos[1].Notes,
+				SecondaryPhone:       sd.ContactInfos[1].SecondaryPhone,
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(*contactinfosapp.ContactInfo)
+				gotResp, exists := got.(*contactinfosapp.ContactInfos)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(*contactinfosapp.ContactInfo)
+				expResp := exp.(*contactinfosapp.ContactInfos)
 
 				return cmp.Diff(gotResp, expResp)
 			},
@@ -60,7 +60,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input:      &contactinfosapp.UpdateContactInfo{},
+			Input:      &contactinfosapp.UpdateContactInfos{},
 			GotResp:    &errs.Error{},
 			ExpResp:    errs.Newf(errs.InvalidArgument, "invalid UUID length: 3"),
 			CmpFunc: func(got, exp any) string {
@@ -69,11 +69,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-available-hours-start",
-			URL:        "/v1/core/contactinfos/" + sd.ContactInfo[1].ID,
+			URL:        "/v1/core/contactinfos/" + sd.ContactInfos[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.UpdateContactInfo{
+			Input: &contactinfosapp.UpdateContactInfos{
 				AvailableHoursStart: dbtest.StringPointer("abcdefghij"),
 			},
 			GotResp: &errs.Error{},
@@ -84,11 +84,11 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-available-hours-end",
-			URL:        "/v1/core/contactinfos/" + sd.ContactInfo[1].ID,
+			URL:        "/v1/core/contactinfos/" + sd.ContactInfos[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
-			Input: &contactinfosapp.UpdateContactInfo{
+			Input: &contactinfosapp.UpdateContactInfos{
 				AvailableHoursEnd: dbtest.StringPointer("abcdefghij"),
 			},
 			GotResp: &errs.Error{},
@@ -105,7 +105,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfos[0].ID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -117,7 +117,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfos[0].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -129,7 +129,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/contactinfos/%s", sd.ContactInfos[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

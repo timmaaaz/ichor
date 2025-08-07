@@ -43,17 +43,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, admins[0].Email.Address),
 	}
 
-	contacts, err := contactinfosbus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	ContactInfoIDs := make(uuid.UUIDs, len(contacts))
+	ContactInfosIDs := make(uuid.UUIDs, len(contacts))
 	for i, c := range contacts {
-		ContactInfoIDs[i] = c.ID
+		ContactInfosIDs[i] = c.ID
 	}
 
-	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 10, ContactInfoIDs, busDomain.Supplier)
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 10, ContactInfosIDs, busDomain.Supplier)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}
@@ -121,9 +121,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
-		Admins:      []apitest.User{tu2},
-		Users:       []apitest.User{tu1},
-		ContactInfo: contactinfosapp.ToAppContactInfos(contacts),
-		Suppliers:   supplierapp.ToAppSuppliers(suppliers),
+		Admins:       []apitest.User{tu2},
+		Users:        []apitest.User{tu1},
+		ContactInfos: contactinfosapp.ToAppContactInfoss(contacts),
+		Suppliers:    supplierapp.ToAppSuppliers(suppliers),
 	}, nil
 }

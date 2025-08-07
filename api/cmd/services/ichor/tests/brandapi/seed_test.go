@@ -43,7 +43,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, admins[0].Email.Address),
 	}
 
-	contacts, err := contactinfosbus.TestSeedContactInfo(ctx, 10, busDomain.ContactInfo)
+	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, 10, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
@@ -121,9 +121,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
-		Admins:      []apitest.User{tu2},
-		Users:       []apitest.User{tu1},
-		ContactInfo: contactinfosapp.ToAppContactInfos(contacts),
-		Brands:      brandapp.ToAppBrands(brands),
+		Admins:       []apitest.User{tu2},
+		Users:        []apitest.User{tu1},
+		ContactInfos: contactinfosapp.ToAppContactInfoss(contacts),
+		Brands:       brandapp.ToAppBrands(brands),
 	}, nil
 }

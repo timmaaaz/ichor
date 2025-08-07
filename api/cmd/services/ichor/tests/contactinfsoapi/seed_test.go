@@ -38,7 +38,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
 	}
 
-	contactInfo, err := contactinfosbus.TestSeedContactInfo(ctx, 15, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 15, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, err
 	}
@@ -106,8 +106,8 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
-		Users:       []apitest.User{tu1},
-		Admins:      []apitest.User{tu2},
-		ContactInfo: contactinfosapp.ToAppContactInfos(contactInfo),
+		Users:        []apitest.User{tu1},
+		Admins:       []apitest.User{tu2},
+		ContactInfos: contactinfosapp.ToAppContactInfoss(contactInfos),
 	}, nil
 }

@@ -75,15 +75,15 @@ func (b *Business) Create(ctx context.Context, newSupplier NewSupplier) (Supplie
 	now := time.Now()
 
 	supplier := Supplier{
-		SupplierID:    uuid.New(),
-		Name:          newSupplier.Name,
-		ContactInfoID: newSupplier.ContactInfoID,
-		IsActive:      newSupplier.IsActive,
-		PaymentTerms:  newSupplier.PaymentTerms,
-		LeadTimeDays:  newSupplier.LeadTimeDays,
-		Rating:        newSupplier.Rating,
-		CreatedDate:   now,
-		UpdatedDate:   now,
+		SupplierID:     uuid.New(),
+		Name:           newSupplier.Name,
+		ContactInfosID: newSupplier.ContactInfosID,
+		IsActive:       newSupplier.IsActive,
+		PaymentTerms:   newSupplier.PaymentTerms,
+		LeadTimeDays:   newSupplier.LeadTimeDays,
+		Rating:         newSupplier.Rating,
+		CreatedDate:    now,
+		UpdatedDate:    now,
 	}
 
 	if err := b.storer.Create(ctx, supplier); err != nil {

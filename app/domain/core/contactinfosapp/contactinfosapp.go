@@ -35,44 +35,44 @@ func NewAppWithAuth(contactinfosbus *contactinfosbus.Business, ath *auth.Auth) *
 }
 
 // Create adds a new  contact info to the system.
-func (a *App) Create(ctx context.Context, app NewContactInfo) (ContactInfo, error) {
-	na, err := toBusNewContactInfo(app)
+func (a *App) Create(ctx context.Context, app NewContactInfos) (ContactInfos, error) {
+	na, err := toBusNewContactInfos(app)
 	if err != nil {
-		return ContactInfo{}, errs.New(errs.InvalidArgument, err)
+		return ContactInfos{}, errs.New(errs.InvalidArgument, err)
 	}
 
 	ass, err := a.contactinfosbus.Create(ctx, na)
 	if err != nil {
 		if errors.Is(err, contactinfosbus.ErrUniqueEntry) {
-			return ContactInfo{}, errs.New(errs.Aborted, contactinfosbus.ErrUniqueEntry)
+			return ContactInfos{}, errs.New(errs.Aborted, contactinfosbus.ErrUniqueEntry)
 		}
-		return ContactInfo{}, errs.Newf(errs.Internal, "create:  contact info[%+v]: %s", ass, err)
+		return ContactInfos{}, errs.Newf(errs.Internal, "create:  contact info[%+v]: %s", ass, err)
 	}
 
-	return ToAppContactInfo(ass), err
+	return ToAppContactInfos(ass), err
 }
 
 // Update updates an existing  contact info.
-func (a *App) Update(ctx context.Context, app UpdateContactInfo, id uuid.UUID) (ContactInfo, error) {
-	us, err := toBusUpdateContactInfo(app)
+func (a *App) Update(ctx context.Context, app UpdateContactInfos, id uuid.UUID) (ContactInfos, error) {
+	us, err := toBusUpdateContactInfos(app)
 	if err != nil {
-		return ContactInfo{}, errs.New(errs.InvalidArgument, err)
+		return ContactInfos{}, errs.New(errs.InvalidArgument, err)
 	}
 
 	st, err := a.contactinfosbus.QueryByID(ctx, id)
 	if err != nil {
-		return ContactInfo{}, errs.New(errs.NotFound, contactinfosbus.ErrNotFound)
+		return ContactInfos{}, errs.New(errs.NotFound, contactinfosbus.ErrNotFound)
 	}
 
-	contactInfo, err := a.contactinfosbus.Update(ctx, st, us)
+	contactInfos, err := a.contactinfosbus.Update(ctx, st, us)
 	if err != nil {
 		if errors.Is(err, contactinfosbus.ErrNotFound) {
-			return ContactInfo{}, errs.New(errs.NotFound, err)
+			return ContactInfos{}, errs.New(errs.NotFound, err)
 		}
-		return ContactInfo{}, errs.Newf(errs.Internal, "update:  contact info[%+v]: %s", contactInfo, err)
+		return ContactInfos{}, errs.Newf(errs.Internal, "update:  contact info[%+v]: %s", contactInfos, err)
 	}
 
-	return ToAppContactInfo(contactInfo), nil
+	return ToAppContactInfos(contactInfos), nil
 }
 
 // Delete removes an existing  contact info.
@@ -91,41 +91,41 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // Query returns a list of  contact infos based on the filter, order and page.
-func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ContactInfo], error) {
+func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ContactInfos], error) {
 	page, err := page.Parse(qp.Page, qp.Rows)
 	if err != nil {
-		return query.Result[ContactInfo]{}, errs.NewFieldsError("page", err)
+		return query.Result[ContactInfos]{}, errs.NewFieldsError("page", err)
 	}
 
 	filter, err := parseFilter(qp)
 	if err != nil {
-		return query.Result[ContactInfo]{}, errs.NewFieldsError("filter", err)
+		return query.Result[ContactInfos]{}, errs.NewFieldsError("filter", err)
 	}
 
 	orderBy, err := order.Parse(orderByFields, qp.OrderBy, defaultOrderBy)
 	if err != nil {
-		return query.Result[ContactInfo]{}, errs.NewFieldsError("orderby", err)
+		return query.Result[ContactInfos]{}, errs.NewFieldsError("orderby", err)
 	}
 
-	contactInfos, err := a.contactinfosbus.Query(ctx, filter, orderBy, page)
+	contactInfoss, err := a.contactinfosbus.Query(ctx, filter, orderBy, page)
 	if err != nil {
-		return query.Result[ContactInfo]{}, errs.Newf(errs.Internal, "query: %s", err)
+		return query.Result[ContactInfos]{}, errs.Newf(errs.Internal, "query: %s", err)
 	}
 
 	total, err := a.contactinfosbus.Count(ctx, filter)
 	if err != nil {
-		return query.Result[ContactInfo]{}, errs.Newf(errs.Internal, "count: %s", err)
+		return query.Result[ContactInfos]{}, errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(ToAppContactInfos(contactInfos), total, page), nil
+	return query.NewResult(ToAppContactInfoss(contactInfoss), total, page), nil
 }
 
 // QueryByID retrieves a single contact info by its id.
-func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (ContactInfo, error) {
-	contactInfo, err := a.contactinfosbus.QueryByID(ctx, id)
+func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (ContactInfos, error) {
+	contactInfos, err := a.contactinfosbus.QueryByID(ctx, id)
 	if err != nil {
-		return ContactInfo{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+		return ContactInfos{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
-	return ToAppContactInfo(contactInfo), nil
+	return ToAppContactInfos(contactInfos), nil
 }

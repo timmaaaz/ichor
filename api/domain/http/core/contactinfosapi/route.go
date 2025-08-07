@@ -14,10 +14,10 @@ import (
 )
 
 type Config struct {
-	Log            *logger.Logger
-	ContactInfoBus *contactinfosbus.Business
-	AuthClient     *authclient.Client
-	PermissionsBus *permissionsbus.Business
+	Log             *logger.Logger
+	ContactInfosBus *contactinfosbus.Business
+	AuthClient      *authclient.Client
+	PermissionsBus  *permissionsbus.Business
 }
 
 const (
@@ -29,7 +29,7 @@ func Routes(app *web.App, cfg Config) {
 
 	authen := mid.Authenticate(cfg.AuthClient)
 
-	api := newAPI(contactinfosapp.NewApp(cfg.ContactInfoBus))
+	api := newAPI(contactinfosapp.NewApp(cfg.ContactInfosBus))
 	app.HandlerFunc(http.MethodGet, version, "/core/contactinfos", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodGet, version, "/core/contactinfos/{contact_infos_id}", api.queryByID, authen,

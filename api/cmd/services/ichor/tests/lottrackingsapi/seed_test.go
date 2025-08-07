@@ -1,4 +1,4 @@
-package lottrackingapi_test
+package lottrackingsapi_test
 
 import (
 	"context"
@@ -6,18 +6,18 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/timmaaaz/ichor/api/domain/http/lots/lottrackingapi"
+	"github.com/timmaaaz/ichor/api/domain/http/lots/lottrackingsapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
-	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
+	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/domain/supplier/supplierproductapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
@@ -51,7 +51,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, admins[0].Email.Address),
 	}
 
-	contacts, err := contactinfosbus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
@@ -111,7 +111,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		supplierProductIDs[i] = sp.SupplierProductID
 	}
 
-	lotTracking, err := lottrackingbus.TestSeedLotTracking(ctx, 15, supplierProductIDs, busDomain.LotTracking)
+	lotTrackings, err := lottrackingsbus.TestSeedLotTrackings(ctx, 15, supplierProductIDs, busDomain.LotTrackings)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding lot tracking : %w", err)
 	}
@@ -164,7 +164,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// Update only tu1's role permissions
 	for _, ta := range tas {
 		// Only update for the asset table
-		if ta.TableName == lottrackingapi.RouteTable {
+		if ta.TableName == lottrackingsapi.RouteTable {
 			update := tableaccessbus.UpdateTableAccess{
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),
@@ -181,9 +181,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	return apitest.SeedData{
 		Admins:           []apitest.User{tu2},
 		Users:            []apitest.User{tu1},
-		ContactInfo:      contactinfosapp.ToAppContactInfos(contacts),
+		ContactInfos:     contactinfosapp.ToAppContactInfoss(contacts),
 		Products:         productapp.ToAppProducts(products),
 		SupplierProducts: supplierproductapp.ToAppSupplierProducts(supplierProducts),
-		LotTracking:      lottrackingapp.ToAppLotTrackings(lotTracking),
+		LotTrackings:     lottrackingsapp.ToAppLotTrackingss(lotTrackings),
 	}, nil
 }

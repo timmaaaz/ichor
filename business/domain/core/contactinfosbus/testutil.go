@@ -7,14 +7,14 @@ import (
 	"sort"
 )
 
-func TestNewContactInfo(n int) []NewContactInfo {
-	newContactInfo := make([]NewContactInfo, n)
+func TestNewContactInfos(n int) []NewContactInfos {
+	newContactInfos := make([]NewContactInfos, n)
 
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
 
-		nc := NewContactInfo{
+		nc := NewContactInfos{
 			FirstName:            fmt.Sprintf("FirstName%d", idx),
 			LastName:             fmt.Sprintf("LastName%d", idx),
 			EmailAddress:         fmt.Sprintf("EmailAddress%d", idx),
@@ -27,29 +27,29 @@ func TestNewContactInfo(n int) []NewContactInfo {
 			PreferredContactType: "phone",
 			Notes:                fmt.Sprintf("Notes%d", idx),
 		}
-		newContactInfo[i] = nc
+		newContactInfos[i] = nc
 	}
 
-	return newContactInfo
+	return newContactInfos
 }
 
-func TestSeedContactInfo(ctx context.Context, n int, api *Business) ([]ContactInfo, error) {
-	newContactInfos := TestNewContactInfo(n)
+func TestSeedContactInfos(ctx context.Context, n int, api *Business) ([]ContactInfos, error) {
+	newContactInfoss := TestNewContactInfos(n)
 
-	contactInfos := make([]ContactInfo, len(newContactInfos))
+	contactInfoss := make([]ContactInfos, len(newContactInfoss))
 
-	for i, nci := range newContactInfos {
-		contactInfo, err := api.Create(ctx, nci)
+	for i, nci := range newContactInfoss {
+		contactInfos, err := api.Create(ctx, nci)
 		if err != nil {
 			return nil, fmt.Errorf("seeding contact info: idx: %d : %w", i, err)
 		}
 
-		contactInfos[i] = contactInfo
+		contactInfoss[i] = contactInfos
 	}
 
-	sort.Slice(contactInfos, func(i, j int) bool {
-		return contactInfos[i].FirstName <= contactInfos[j].FirstName
+	sort.Slice(contactInfoss, func(i, j int) bool {
+		return contactInfoss[i].FirstName <= contactInfoss[j].FirstName
 	})
 
-	return contactInfos, nil
+	return contactInfoss, nil
 }

@@ -4,7 +4,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type ContactInfo struct {
+type ContactInfos struct {
 	ID                   uuid.UUID
 	FirstName            string
 	LastName             string
@@ -19,7 +19,7 @@ type ContactInfo struct {
 	Notes                string
 }
 
-type NewContactInfo struct {
+type NewContactInfos struct {
 	FirstName            string
 	LastName             string
 	EmailAddress         string
@@ -33,7 +33,7 @@ type NewContactInfo struct {
 	Notes                string
 }
 
-type UpdateContactInfo struct {
+type UpdateContactInfos struct {
 	ID                   *uuid.UUID
 	FirstName            *string
 	LastName             *string

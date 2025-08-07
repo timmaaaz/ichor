@@ -1,4 +1,4 @@
-package lottrackingapi_test
+package lottrackingsapi_test
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func delete200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "asadmin",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[1].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[1].LotID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNoContent,
@@ -26,7 +26,7 @@ func delete400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-metric-id",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusBadRequest,
@@ -43,7 +43,7 @@ func delete404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "metric-id-dne",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNotFound,
@@ -60,7 +60,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[1].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[1].LotID),
 			Token:      "&nbsp;",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -72,7 +72,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[1].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[1].LotID),
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -84,12 +84,12 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/lots/lottracking/%s", sd.LotTracking[1].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[1].LotID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: lot_tracking"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: lot_trackings"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

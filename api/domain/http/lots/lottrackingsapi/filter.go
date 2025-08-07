@@ -1,15 +1,15 @@
-package lottrackingapi
+package lottrackingsapi
 
 import (
 	"net/http"
 
-	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingapp"
+	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingsapp"
 )
 
-func parseQueryParams(r *http.Request) (lottrackingapp.QueryParams, error) {
+func parseQueryParams(r *http.Request) (lottrackingsapp.QueryParams, error) {
 	values := r.URL.Query()
 
-	filter := lottrackingapp.QueryParams{
+	filter := lottrackingsapp.QueryParams{
 		Page:              values.Get("page"),
 		Rows:              values.Get("rows"),
 		OrderBy:           values.Get("orderBy"),

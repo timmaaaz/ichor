@@ -14,7 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingbus"
+	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
@@ -56,13 +56,13 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		adminIDs[i] = admin.ID
 	}
 
-	contactInfo, err := contactinfosbus.TestSeedContactInfo(ctx, 5, busDomain.ContactInfo)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
 
-	contactIDs := make(uuid.UUIDs, len(contactInfo))
-	for i, c := range contactInfo {
+	contactIDs := make(uuid.UUIDs, len(contactInfos))
+	for i, c := range contactInfos {
 		contactIDs[i] = c.ID
 	}
 
@@ -117,15 +117,15 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		supplierProductIDs[i] = sp.SupplierProductID
 	}
 
-	lotTracking, err := lottrackingbus.TestSeedLotTracking(ctx, 15, supplierProductIDs, busDomain.LotTracking)
+	lotTrackings, err := lottrackingsbus.TestSeedLotTrackings(ctx, 15, supplierProductIDs, busDomain.LotTrackings)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding lot tracking : %w", err)
 	}
 
-	lotTrackingIDs := make(uuid.UUIDs, len(lotTracking))
+	lotTrackingsIDs := make(uuid.UUIDs, len(lotTrackings))
 
-	for i, lt := range lotTracking {
-		lotTrackingIDs[i] = lt.LotID
+	for i, lt := range lotTrackings {
+		lotTrackingsIDs[i] = lt.LotID
 	}
 
 	warehouseCount := 5
@@ -191,7 +191,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		inventoryLocationIDs[i] = il.LocationID
 	}
 
-	serialNumbers, err := serialnumberbus.TestSeedSerialNumbers(ctx, 50, lotTrackingIDs, productIDs, inventoryLocationIDs, busDomain.SerialNumber)
+	serialNumbers, err := serialnumberbus.TestSeedSerialNumbers(ctx, 50, lotTrackingsIDs, productIDs, inventoryLocationIDs, busDomain.SerialNumber)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding serial numbers : %w", err)
 	}
@@ -199,7 +199,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	return unitest.SeedData{
 		Admins:             []unitest.User{{User: admins[0]}},
 		Products:           products,
-		LotTracking:        lotTracking,
+		LotTrackings:       lotTrackings,
 		InventoryLocations: inventoryLocations,
 		SerialNumbers:      serialNumbers,
 	}, nil
@@ -242,7 +242,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: serialnumberbus.SerialNumber{
-				LotID:        sd.LotTracking[0].LotID,
+				LotID:        sd.LotTrackings[0].LotID,
 				ProductID:    sd.Products[0].ProductID,
 				LocationID:   sd.InventoryLocations[0].LocationID,
 				SerialNumber: "SN123456789",
@@ -250,7 +250,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				newSN := serialnumberbus.NewSerialNumber{
-					LotID:        sd.LotTracking[0].LotID,
+					LotID:        sd.LotTrackings[0].LotID,
 					ProductID:    sd.Products[0].ProductID,
 					LocationID:   sd.InventoryLocations[0].LocationID,
 					SerialNumber: "SN123456789",
@@ -285,7 +285,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "update",
 			ExpResp: serialnumberbus.SerialNumber{
 				SerialID:     sd.SerialNumbers[0].SerialID,
-				LotID:        sd.LotTracking[1].LotID,
+				LotID:        sd.LotTrackings[1].LotID,
 				ProductID:    sd.Products[1].ProductID,
 				LocationID:   sd.InventoryLocations[1].LocationID,
 				SerialNumber: "SN987654321",
@@ -294,7 +294,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				updateSN := serialnumberbus.UpdateSerialNumber{
-					LotID:        &sd.LotTracking[1].LotID,
+					LotID:        &sd.LotTrackings[1].LotID,
 					ProductID:    &sd.Products[1].ProductID,
 					LocationID:   &sd.InventoryLocations[1].LocationID,
 					SerialNumber: dbtest.StringPointer("SN987654321"),

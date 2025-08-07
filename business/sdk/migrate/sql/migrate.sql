@@ -496,7 +496,7 @@ CREATE TABLE quality_metrics (
 
 -- Version: 1.35
 -- Description: add lot tracking
-CREATE TABLE lot_tracking (
+CREATE TABLE lot_trackings (
    id UUID NOT NULL,
    supplier_product_id UUID NOT NULL,
    lot_number VARCHAR(100) NOT NULL,
@@ -581,7 +581,7 @@ CREATE TABLE serial_numbers (
    PRIMARY KEY (id),
    FOREIGN KEY (product_id) REFERENCES products(id),
    FOREIGN KEY (location_id) REFERENCES inventory_locations(id),
-   FOREIGN KEY (lot_id) REFERENCES lot_tracking(id)
+   FOREIGN KEY (lot_id) REFERENCES lot_trackings(id)
 );
 
 -- Version: 1.40
@@ -600,7 +600,7 @@ CREATE TABLE quality_inspections (
    PRIMARY KEY (id),
    FOREIGN KEY (product_id) REFERENCES products(id),
    FOREIGN KEY (inspector_id) REFERENCES users(id),
-   FOREIGN KEY (lot_id) REFERENCES lot_tracking(id)
+   FOREIGN KEY (lot_id) REFERENCES lot_trackings(id)
 );
 
 -- Version: 1.41 
