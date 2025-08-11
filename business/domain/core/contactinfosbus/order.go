@@ -12,6 +12,7 @@ const (
 	OrderByPrimaryPhoneNumber   = "primary_phone_number"
 	OrderBySecondaryPhoneNumber = "secondary_phone_number"
 	OrderByStreetID             = "street_id"
+	OrderByDeliveryAddressID    = "delivery_address_id"
 	OrderByAvailableHoursStart  = "available_hours_start"
 	OrderByAvailableHoursEnd    = "available_hours_end"
 	OrderByTimezone             = "timezone"

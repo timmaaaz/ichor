@@ -78,6 +78,7 @@ func (b *Business) Create(ctx context.Context, nci NewContactInfos) (ContactInfo
 		PrimaryPhone:         nci.PrimaryPhone,
 		SecondaryPhone:       nci.SecondaryPhone,
 		StreetID:             nci.StreetID,
+		DeliveryAddressID:    nci.DeliveryAddressID,
 		AvailableHoursStart:  nci.AvailableHoursStart,
 		AvailableHoursEnd:    nci.AvailableHoursEnd,
 		Timezone:             nci.Timezone,

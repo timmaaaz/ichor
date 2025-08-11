@@ -279,6 +279,7 @@ CREATE TABLE contact_infos (
    secondary_phone_number VARCHAR(50) NULL,
    email_address VARCHAR(50) NOT NULL,
    street_id UUID NOT NULL,
+   delivery_address_id UUID NULL,
    available_hours_start VARCHAR(50) NOT NULL,
    available_hours_end VARCHAR(50) NOT NULL,
    timezone VARCHAR(50) NOT NULL,

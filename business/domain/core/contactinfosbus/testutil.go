@@ -23,6 +23,7 @@ func TestNewContactInfos(n int, streetIDs uuid.UUIDs) []NewContactInfos {
 			PrimaryPhone:         fmt.Sprintf("PrimaryPhone%d", idx),
 			SecondaryPhone:       fmt.Sprintf("SecondaryPhone%d", idx),
 			StreetID:             streetIDs[i%len(streetIDs)],
+			DeliveryAddressID:    streetIDs[(i+1)%len(streetIDs)],
 			AvailableHoursStart:  "8:00:00",
 			AvailableHoursEnd:    "5:00:00",
 			Timezone:             "EST",

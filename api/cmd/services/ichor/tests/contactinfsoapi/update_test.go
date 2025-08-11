@@ -30,6 +30,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				EmailAddress:         sd.ContactInfos[1].EmailAddress,
 				PrimaryPhone:         sd.ContactInfos[1].PrimaryPhone,
 				StreetID:             sd.ContactInfos[1].StreetID,
+				DeliveryAddressID:    sd.ContactInfos[1].DeliveryAddressID,
 				AvailableHoursStart:  sd.ContactInfos[1].AvailableHoursStart,
 				AvailableHoursEnd:    sd.ContactInfos[1].AvailableHoursEnd,
 				Timezone:             sd.ContactInfos[1].Timezone,

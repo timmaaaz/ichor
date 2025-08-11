@@ -21,6 +21,7 @@ type QueryParams struct {
 	PrimaryPhone         string
 	SecondaryPhone       string
 	StreetID             string
+	DeliveryAddressID    string
 	AvailableHoursStart  string
 	AvailableHoursEnd    string
 	Timezone             string
@@ -36,6 +37,7 @@ type ContactInfos struct {
 	PrimaryPhone         string `json:"primary_phone"`
 	SecondaryPhone       string `json:"secondary_phone"`
 	StreetID             string `json:"street_id"`
+	DeliveryAddressID    string `json:"delivery_address_id"`
 	AvailableHoursStart  string `json:"available_hours_start"`
 	AvailableHoursEnd    string `json:"available_hours_end"`
 	Timezone             string `json:"timezone"`
@@ -58,6 +60,7 @@ func ToAppContactInfos(bus contactinfosbus.ContactInfos) ContactInfos {
 		PrimaryPhone:         bus.PrimaryPhone,
 		SecondaryPhone:       bus.SecondaryPhone,
 		StreetID:             bus.StreetID.String(),
+		DeliveryAddressID:    bus.DeliveryAddressID.String(),
 		AvailableHoursStart:  bus.AvailableHoursStart,
 		AvailableHoursEnd:    bus.AvailableHoursEnd,
 		Timezone:             bus.Timezone,
@@ -81,6 +84,7 @@ type NewContactInfos struct {
 	PrimaryPhone         string `json:"primary_phone" validate:"required"`
 	SecondaryPhone       string `json:"secondary_phone"`
 	StreetID             string `json:"street_id" validate:"required"`
+	DeliveryAddressID    string `json:"delivery_address_id" validate:"omitempty"`
 	AvailableHoursStart  string `json:"available_hours_start" validate:"required"`
 	AvailableHoursEnd    string `json:"available_hours_end" validate:"required"`
 	Timezone             string `json:"timezone" validate:"required"`
@@ -122,6 +126,7 @@ type UpdateContactInfos struct {
 	PrimaryPhone         *string `json:"primary_phone"`
 	SecondaryPhone       *string `json:"secondary_phone"`
 	StreetID             *string `json:"street_id"`
+	DeliveryAddressID    *string `json:"delivery_address_id"`
 	AvailableHoursStart  *string `json:"available_hours_start"`
 	AvailableHoursEnd    *string `json:"available_hours_end"`
 	Timezone             *string `json:"timezone"`

@@ -13,6 +13,7 @@ type contactInfos struct {
 	SecondaryPhone       string    `db:"secondary_phone_number"`
 	Email                string    `db:"email_address"`
 	StreetID             uuid.UUID `db:"street_id"`
+	DeliveryAddressID    uuid.UUID `db:"delivery_address_id"`
 	AvailableHoursStart  string    `db:"available_hours_start"`
 	AvailableHoursEnd    string    `db:"available_hours_end"`
 	Timezone             string    `db:"timezone"`
@@ -28,6 +29,7 @@ func toDBContactInfos(bus contactinfosbus.ContactInfos) contactInfos {
 		PrimaryPhone:         bus.PrimaryPhone,
 		Email:                bus.EmailAddress,
 		StreetID:             bus.StreetID,
+		DeliveryAddressID:    bus.DeliveryAddressID,
 		SecondaryPhone:       bus.SecondaryPhone,
 		AvailableHoursStart:  bus.AvailableHoursStart,
 		AvailableHoursEnd:    bus.AvailableHoursEnd,
@@ -45,6 +47,7 @@ func toBusContactInfos(db contactInfos) contactinfosbus.ContactInfos {
 		PrimaryPhone:         db.PrimaryPhone,
 		EmailAddress:         db.Email,
 		StreetID:             db.StreetID,
+		DeliveryAddressID:    db.DeliveryAddressID,
 		SecondaryPhone:       db.SecondaryPhone,
 		AvailableHoursStart:  db.AvailableHoursStart,
 		AvailableHoursEnd:    db.AvailableHoursEnd,

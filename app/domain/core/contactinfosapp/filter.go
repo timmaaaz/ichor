@@ -48,6 +48,14 @@ func parseFilter(qp QueryParams) (contactinfosbus.QueryFilter, error) {
 		filter.StreetID = &id
 	}
 
+	if qp.DeliveryAddressID != "" {
+		id, err := uuid.Parse(qp.DeliveryAddressID)
+		if err != nil {
+			return contactinfosbus.QueryFilter{}, errs.NewFieldsError("delivery_address_id", err)
+		}
+		filter.DeliveryAddressID = &id
+	}
+
 	if qp.AvailableHoursStart != "" {
 		valid := timeonly.ValidateTimeOnlyFmt(qp.AvailableHoursStart)
 		if !valid {

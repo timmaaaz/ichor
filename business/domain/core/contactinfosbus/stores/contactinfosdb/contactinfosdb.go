@@ -50,10 +50,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (contactinfosbus.Storer, er
 func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfos) error {
 	const q = `
     INSERT INTO contact_infos (
-        id, first_name, last_name, email_address, primary_phone_number, secondary_phone_number, street_id,
+        id, first_name, last_name, email_address, primary_phone_number, secondary_phone_number, street_id, delivery_address_id,
 		available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     ) VALUES (
-		:id, :first_name, :last_name, :email_address, :primary_phone_number, :secondary_phone_number, :street_id,
+		:id, :first_name, :last_name, :email_address, :primary_phone_number, :secondary_phone_number, :street_id, :delivery_address_id,
 		:available_hours_start, :available_hours_end, :timezone, :preferred_contact_type, :notes
 	)
     `
@@ -79,6 +79,7 @@ func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfos) er
         primary_phone_number = :primary_phone_number,
         email_address = :email_address,
         street_id = :street_id,
+        delivery_address_id = :delivery_address_id,
 		secondary_phone_number = :secondary_phone_number,
         available_hours_start = :available_hours_start,
         available_hours_end = :available_hours_end,
@@ -122,7 +123,7 @@ func (s *Store) Query(ctx context.Context, filter contactinfosbus.QueryFilter, o
 
 	const q = `
     SELECT
-		id, first_name, last_name, email_address, primary_phone_number, street_id, 
+		id, first_name, last_name, email_address, primary_phone_number, street_id, delivery_address_id,
 		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     FROM
         contact_infos`
@@ -179,7 +180,7 @@ func (s *Store) QueryByID(ctx context.Context, userContactInfosID uuid.UUID) (co
 
 	const q = `
     SELECT
-        id, first_name, last_name, email_address, primary_phone_number, street_id,
+        id, first_name, last_name, email_address, primary_phone_number, street_id, delivery_address_id,
 		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     FROM
         contact_infos

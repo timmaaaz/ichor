@@ -12,6 +12,7 @@ type ContactInfos struct {
 	PrimaryPhone         string
 	SecondaryPhone       string
 	StreetID             uuid.UUID
+	DeliveryAddressID    uuid.UUID
 	AvailableHoursStart  string
 	AvailableHoursEnd    string
 	Timezone             string
@@ -26,6 +27,7 @@ type NewContactInfos struct {
 	PrimaryPhone         string
 	SecondaryPhone       string
 	StreetID             uuid.UUID
+	DeliveryAddressID    uuid.UUID
 	AvailableHoursStart  string
 	AvailableHoursEnd    string
 	Timezone             string
@@ -41,6 +43,7 @@ type UpdateContactInfos struct {
 	PrimaryPhone         *string
 	SecondaryPhone       *string
 	StreetID             *uuid.UUID
+	DeliveryAddressID    *uuid.UUID
 	AvailableHoursStart  *string
 	AvailableHoursEnd    *string
 	Timezone             *string

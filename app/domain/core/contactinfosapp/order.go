@@ -15,6 +15,7 @@ var orderByFields = map[string]string{
 	"primary_phone_number":   contactinfosbus.OrderByPrimaryPhoneNumber,
 	"secondary_phone_number": contactinfosbus.OrderBySecondaryPhoneNumber,
 	"street_id":              contactinfosbus.OrderByStreetID,
+	"delivery_address_id":    contactinfosbus.OrderByDeliveryAddressID,
 	"available_hours_start":  contactinfosbus.OrderByAvailableHoursStart,
 	"available_hours_end":    contactinfosbus.OrderByAvailableHoursEnd,
 	"timezone":               contactinfosbus.OrderByTimezone,
