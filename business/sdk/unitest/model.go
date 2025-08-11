@@ -31,6 +31,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
+	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
@@ -57,51 +58,52 @@ type User struct {
 
 // SeedData represents data that was seeded for the test.
 type SeedData struct {
-	Users                 []User
-	Admins                []User
-	AssetConditions       []assetconditionbus.AssetCondition
-	ValidAssets           []validassetbus.ValidAsset
-	Countries             []countrybus.Country
-	Regions               []regionbus.Region
-	Cities                []citybus.City
-	Streets               []streetbus.Street
-	ApprovalStatus        []approvalstatusbus.ApprovalStatus
-	UserApprovalStatus    []approvalbus.UserApprovalStatus
-	UserApprovalComment   []commentbus.UserApprovalComment
-	FulfillmentStatus     []fulfillmentstatusbus.FulfillmentStatus
-	AssetCondition        []assetconditionbus.AssetCondition
-	AssetTypes            []assettypebus.AssetType
-	Tags                  []tagbus.Tag
-	AssetTags             []assettagbus.AssetTag
-	Title                 []titlebus.Title
-	ReportsTo             []reportstobus.ReportsTo
-	Offices               []officebus.Office
-	UserAssets            []userassetbus.UserAsset
-	Assets                []assetbus.Asset
-	ContactInfos          []contactinfosbus.ContactInfos
-	Brands                []brandbus.Brand
-	ProductCategories     []productcategorybus.ProductCategory
-	Warehouses            []warehousebus.Warehouse
-	Roles                 []rolebus.Role
-	UserRoles             []userrolebus.UserRole
-	TableAccesses         []tableaccessbus.TableAccess
-	UserPermissions       []permissionsbus.UserPermissions
-	Products              []productbus.Product
-	PhysicalAttributes    []physicalattributebus.PhysicalAttribute
-	ProductCosts          []productcostbus.ProductCost
-	Suppliers             []supplierbus.Supplier
-	CostHistory           []costhistorybus.CostHistory
-	SupplierProducts      []supplierproductbus.SupplierProduct
-	Metrics               []metricsbus.Metric
-	LotTrackings          []lottrackingsbus.LotTrackings
-	Zones                 []zonebus.Zone
-	InventoryLocations    []inventorylocationbus.InventoryLocation
-	InventoryItems        []inventoryitembus.InventoryItem
-	Inspections           []inspectionbus.Inspection
-	SerialNumbers         []serialnumberbus.SerialNumber
-	InventoryTransactions []inventorytransactionbus.InventoryTransaction
-	InventoryAdjustments  []inventoryadjustmentbus.InventoryAdjustment
-	TransferOrders        []transferorderbus.TransferOrder
+	Users                    []User
+	Admins                   []User
+	AssetConditions          []assetconditionbus.AssetCondition
+	ValidAssets              []validassetbus.ValidAsset
+	Countries                []countrybus.Country
+	Regions                  []regionbus.Region
+	Cities                   []citybus.City
+	Streets                  []streetbus.Street
+	ApprovalStatus           []approvalstatusbus.ApprovalStatus
+	UserApprovalStatus       []approvalbus.UserApprovalStatus
+	UserApprovalComment      []commentbus.UserApprovalComment
+	FulfillmentStatus        []fulfillmentstatusbus.FulfillmentStatus
+	AssetCondition           []assetconditionbus.AssetCondition
+	AssetTypes               []assettypebus.AssetType
+	Tags                     []tagbus.Tag
+	AssetTags                []assettagbus.AssetTag
+	Title                    []titlebus.Title
+	ReportsTo                []reportstobus.ReportsTo
+	Offices                  []officebus.Office
+	UserAssets               []userassetbus.UserAsset
+	Assets                   []assetbus.Asset
+	ContactInfos             []contactinfosbus.ContactInfos
+	Brands                   []brandbus.Brand
+	ProductCategories        []productcategorybus.ProductCategory
+	Warehouses               []warehousebus.Warehouse
+	Roles                    []rolebus.Role
+	UserRoles                []userrolebus.UserRole
+	TableAccesses            []tableaccessbus.TableAccess
+	UserPermissions          []permissionsbus.UserPermissions
+	Products                 []productbus.Product
+	PhysicalAttributes       []physicalattributebus.PhysicalAttribute
+	ProductCosts             []productcostbus.ProductCost
+	Suppliers                []supplierbus.Supplier
+	CostHistory              []costhistorybus.CostHistory
+	SupplierProducts         []supplierproductbus.SupplierProduct
+	Metrics                  []metricsbus.Metric
+	LotTrackings             []lottrackingsbus.LotTrackings
+	Zones                    []zonebus.Zone
+	InventoryLocations       []inventorylocationbus.InventoryLocation
+	InventoryItems           []inventoryitembus.InventoryItem
+	Inspections              []inspectionbus.Inspection
+	SerialNumbers            []serialnumberbus.SerialNumber
+	InventoryTransactions    []inventorytransactionbus.InventoryTransaction
+	InventoryAdjustments     []inventoryadjustmentbus.InventoryAdjustment
+	TransferOrders           []transferorderbus.TransferOrder
+	OrderFulfillmentStatuses []orderfulfillmentstatusbus.OrderFulfillmentStatus
 }
 
 type Table struct {

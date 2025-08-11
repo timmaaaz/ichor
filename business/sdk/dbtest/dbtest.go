@@ -40,6 +40,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus/stores/transferorderdb"
+	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus/stores/orderfulfillmentstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -186,6 +188,9 @@ type BusDomain struct {
 	InventoryTransaction *inventorytransactionbus.Business
 	InventoryAdjustment  *inventoryadjustmentbus.Business
 	TransferOrder        *transferorderbus.Business
+
+	// Order
+	OrderFulfillmentStatus *orderfulfillmentstatusbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -259,52 +264,56 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(log, delegate, inventoryadjustmentdb.NewStore(log, db))
 	transferOrderBus := transferorderbus.NewBusiness(log, delegate, transferorderdb.NewStore(log, db))
 
+	// Orders
+	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
+
 	return BusDomain{
-		Delegate:             delegate,
-		Home:                 homeBus,
-		AssetType:            assetTypeBus,
-		ValidAsset:           validAssetBus,
-		User:                 userBus,
-		UserApprovalStatus:   userapprovalstatusbus,
-		UserApprovalComment:  userApprovalCommentBus,
-		Country:              countryBus,
-		Region:               regionBus,
-		City:                 cityBus,
-		Street:               streetBus,
-		ApprovalStatus:       approvalstatusBus,
-		FulfillmentStatus:    fulfillmentstatusBus,
-		AssetCondition:       assetConditionBus,
-		Tag:                  tagBus,
-		AssetTag:             assetTagBus,
-		Title:                titlebus,
-		ReportsTo:            reportsToBus,
-		Office:               officeBus,
-		UserAsset:            userAssetBus,
-		Asset:                assetBus,
-		ContactInfos:         contactInfosBus,
-		Brand:                brandBus,
-		Warehouse:            warehouseBus,
-		Role:                 roleBus,
-		UserRole:             userRoleBus,
-		ProductCategory:      productCategoryBus,
-		TableAccess:          tableAccessBus,
-		Permissions:          permissionsBus,
-		Product:              productBus,
-		PhysicalAttribute:    physicalAttributeBus,
-		ProductCost:          productCostBus,
-		Supplier:             supplierBus,
-		CostHistory:          costHistoryBus,
-		SupplierProduct:      supplierProductBus,
-		Metrics:              metricsBus,
-		LotTrackings:         lotTrackingsBus,
-		Zones:                zoneBus,
-		InventoryLocation:    inventoryLocationBus,
-		InventoryItem:        inventoryItemBus,
-		Inspection:           inspectionBus,
-		SerialNumber:         serialNumberBus,
-		InventoryTransaction: inventoryTransactionBus,
-		InventoryAdjustment:  inventoryAdjustmentBus,
-		TransferOrder:        transferOrderBus,
+		Delegate:               delegate,
+		Home:                   homeBus,
+		AssetType:              assetTypeBus,
+		ValidAsset:             validAssetBus,
+		User:                   userBus,
+		UserApprovalStatus:     userapprovalstatusbus,
+		UserApprovalComment:    userApprovalCommentBus,
+		Country:                countryBus,
+		Region:                 regionBus,
+		City:                   cityBus,
+		Street:                 streetBus,
+		ApprovalStatus:         approvalstatusBus,
+		FulfillmentStatus:      fulfillmentstatusBus,
+		AssetCondition:         assetConditionBus,
+		Tag:                    tagBus,
+		AssetTag:               assetTagBus,
+		Title:                  titlebus,
+		ReportsTo:              reportsToBus,
+		Office:                 officeBus,
+		UserAsset:              userAssetBus,
+		Asset:                  assetBus,
+		ContactInfos:           contactInfosBus,
+		Brand:                  brandBus,
+		Warehouse:              warehouseBus,
+		Role:                   roleBus,
+		UserRole:               userRoleBus,
+		ProductCategory:        productCategoryBus,
+		TableAccess:            tableAccessBus,
+		Permissions:            permissionsBus,
+		Product:                productBus,
+		PhysicalAttribute:      physicalAttributeBus,
+		ProductCost:            productCostBus,
+		Supplier:               supplierBus,
+		CostHistory:            costHistoryBus,
+		SupplierProduct:        supplierProductBus,
+		Metrics:                metricsBus,
+		LotTrackings:           lotTrackingsBus,
+		Zones:                  zoneBus,
+		InventoryLocation:      inventoryLocationBus,
+		InventoryItem:          inventoryItemBus,
+		Inspection:             inspectionBus,
+		SerialNumber:           serialNumberBus,
+		InventoryTransaction:   inventoryTransactionBus,
+		InventoryAdjustment:    inventoryAdjustmentBus,
+		TransferOrder:          transferOrderBus,
+		OrderFulfillmentStatus: orderFulfillmentStatusBus,
 	}
 
 }
