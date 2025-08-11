@@ -11,7 +11,8 @@ type QueryFilter struct {
 	EmailAddress         *string
 	PrimaryPhone         *string
 	SecondaryPhone       *string
-	Address              *string
+	StreetID             *uuid.UUID
+	DeliveryAddressID    *uuid.UUID
 	AvailableHoursStart  *string
 	AvailableHoursEnd    *string
 	Timezone             *string

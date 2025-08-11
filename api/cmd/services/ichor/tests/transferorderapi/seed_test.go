@@ -89,6 +89,16 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		strIDs = append(strIDs, s.ID)
 	}
 
+	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, 5, strIDs, busDomain.ContactInfos)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
+	}
+
+	contactIDs := make(uuid.UUIDs, len(contacts))
+	for i, c := range contacts {
+		contactIDs[i] = c.ID
+	}
+
 	// WAREHOUSES
 	warehouses, err := warehousebus.TestSeedWarehouses(ctx, warehouseCount, tu1.ID, strIDs, busDomain.Warehouse)
 	if err != nil {
@@ -118,16 +128,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	locationIDs := make([]uuid.UUID, len(inventoryLocations))
 	for i, il := range inventoryLocations {
 		locationIDs[i] = il.LocationID
-	}
-
-	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, 5, busDomain.ContactInfos)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
-	}
-
-	contactIDs := make(uuid.UUIDs, len(contacts))
-	for i, c := range contacts {
-		contactIDs[i] = c.ID
 	}
 
 	brands, err := brandbus.TestSeedBrands(ctx, 10, contactIDs, busDomain.Brand)
