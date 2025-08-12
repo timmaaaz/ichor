@@ -25,6 +25,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventoryadjustmentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventorytransactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/transferorderapi"
+	"github.com/timmaaaz/ichor/api/domain/http/order/lineitemfulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/order/orderfulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
@@ -84,6 +85,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus/stores/transferorderdb"
+	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus/stores/lineitemfulfillmentstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus/stores/orderfulfillmentstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
@@ -226,6 +229,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB))
 
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, orderfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
+	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, lineitemfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -543,5 +547,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		OrderFulfillmentStatusBus: orderFulfillmentStatusBus,
 		AuthClient:                cfg.AuthClient,
 		PermissionsBus:            permissionsBus,
+	})
+
+	lineitemfulfillmentstatusapi.Routes(app, lineitemfulfillmentstatusapi.Config{
+		Log:                          cfg.Log,
+		LineItemFulfillmentStatusBus: lineItemFulfillmentStatusBus,
+		AuthClient:                   cfg.AuthClient,
+		PermissionsBus:               permissionsBus,
 	})
 }

@@ -62,7 +62,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				sd.LineItemFulfillmentStatuses[5],
 			},
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.LineItemFulfillmentStatus.Query(ctx, lineitemfulfillmentstatusbus.QueryFilter{}, lineitemfulfillmentstatusbus.DefaultLineItemBy, page.MustParse("1", "6"))
+				got, err := busDomain.LineItemFulfillmentStatus.Query(ctx, lineitemfulfillmentstatusbus.QueryFilter{}, lineitemfulfillmentstatusbus.DefaultOrderBy, page.MustParse("1", "6"))
 				if err != nil {
 					return err
 				}
