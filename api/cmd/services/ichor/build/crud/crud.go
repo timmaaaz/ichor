@@ -24,6 +24,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventoryadjustmentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventorytransactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/transferorderapi"
+	"github.com/timmaaaz/ichor/api/domain/http/order/orderfulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
@@ -83,6 +84,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus/stores/transferorderdb"
+	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus/stores/orderfulfillmentstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -227,6 +230,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB))
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB))
 	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB))
+
+	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, orderfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -502,5 +507,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:       cfg.AuthClient,
 		Log:              cfg.Log,
 		PermissionsBus:   permissionsBus,
+	})
+
+	orderfulfillmentstatusapi.Routes(app, orderfulfillmentstatusapi.Config{
+		Log:                       cfg.Log,
+		OrderFulfillmentStatusBus: orderFulfillmentStatusBus,
+		AuthClient:                cfg.AuthClient,
+		PermissionsBus:            permissionsBus,
 	})
 }

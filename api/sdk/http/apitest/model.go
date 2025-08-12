@@ -26,6 +26,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/movement/inventoryadjustmentapp"
 	"github.com/timmaaaz/ichor/app/domain/movement/inventorytransactionapp"
 	"github.com/timmaaaz/ichor/app/domain/movement/transferorderapp"
+	"github.com/timmaaaz/ichor/app/domain/order/orderfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
@@ -57,49 +58,50 @@ type User struct {
 
 // SeedData represents users for api tests.
 type SeedData struct {
-	Users                 []User
-	Admins                []User
-	Countries             []countrybus.Country
-	Regions               []regionbus.Region
-	Cities                []cityapp.City
-	Streets               []streetapp.Street
-	ValidAssets           []validassetapp.ValidAsset
-	AssetTypes            []assettypeapp.AssetType
-	AssetConditions       []assetconditionapp.AssetCondition
-	ApprovalStatuses      []approvalstatusapp.ApprovalStatus
-	UserApprovalStatuses  []approvalapp.UserApprovalStatus
-	UserApprovalComments  []commentapp.UserApprovalComment
-	FulfillmentStatuses   []fulfillmentstatusapp.FulfillmentStatus
-	Tags                  []tagapp.Tag
-	AssetTags             []assettagapp.AssetTag
-	Titles                []titleapp.Title
-	ReportsTo             []reportstoapp.ReportsTo
-	Offices               []officeapp.Office
-	UserAssets            []userassetapp.UserAsset
-	Assets                []assetapp.Asset
-	ContactInfos          []contactinfosapp.ContactInfos
-	Brands                []brandapp.Brand
-	ProductCategories     []productcategoryapp.ProductCategory
-	Warehouses            []warehouseapp.Warehouse
-	Roles                 []roleapp.Role
-	UserRoles             []userroleapp.UserRole
-	TableAccesses         []tableaccessapp.TableAccess
-	Products              []productapp.Product
-	PhysicalAttributes    []physicalattributeapp.PhysicalAttribute
-	ProductCosts          []productcostapp.ProductCost
-	Suppliers             []supplierapp.Supplier
-	CostHistory           []costhistoryapp.CostHistory
-	SupplierProducts      []supplierproductapp.SupplierProduct
-	Metrics               []metricsapp.Metric
-	LotTrackings          []lottrackingsapp.LotTrackings
-	Zones                 []zoneapp.Zone
-	InventoryLocations    []inventorylocationapp.InventoryLocation
-	InventoryItems        []inventoryitemapp.InventoryItem
-	Inspections           []inspectionapp.Inspection
-	SerialNumbers         []serialnumberapp.SerialNumber
-	InventoryTransactions []inventorytransactionapp.InventoryTransaction
-	InventoryAdjustments  []inventoryadjustmentapp.InventoryAdjustment
-	TransferOrders        []transferorderapp.TransferOrder
+	Users                    []User
+	Admins                   []User
+	Countries                []countrybus.Country
+	Regions                  []regionbus.Region
+	Cities                   []cityapp.City
+	Streets                  []streetapp.Street
+	ValidAssets              []validassetapp.ValidAsset
+	AssetTypes               []assettypeapp.AssetType
+	AssetConditions          []assetconditionapp.AssetCondition
+	ApprovalStatuses         []approvalstatusapp.ApprovalStatus
+	UserApprovalStatuses     []approvalapp.UserApprovalStatus
+	UserApprovalComments     []commentapp.UserApprovalComment
+	FulfillmentStatuses      []fulfillmentstatusapp.FulfillmentStatus
+	Tags                     []tagapp.Tag
+	AssetTags                []assettagapp.AssetTag
+	Titles                   []titleapp.Title
+	ReportsTo                []reportstoapp.ReportsTo
+	Offices                  []officeapp.Office
+	UserAssets               []userassetapp.UserAsset
+	Assets                   []assetapp.Asset
+	ContactInfos             []contactinfosapp.ContactInfos
+	Brands                   []brandapp.Brand
+	ProductCategories        []productcategoryapp.ProductCategory
+	Warehouses               []warehouseapp.Warehouse
+	Roles                    []roleapp.Role
+	UserRoles                []userroleapp.UserRole
+	TableAccesses            []tableaccessapp.TableAccess
+	Products                 []productapp.Product
+	PhysicalAttributes       []physicalattributeapp.PhysicalAttribute
+	ProductCosts             []productcostapp.ProductCost
+	Suppliers                []supplierapp.Supplier
+	CostHistory              []costhistoryapp.CostHistory
+	SupplierProducts         []supplierproductapp.SupplierProduct
+	Metrics                  []metricsapp.Metric
+	LotTrackings             []lottrackingsapp.LotTrackings
+	Zones                    []zoneapp.Zone
+	InventoryLocations       []inventorylocationapp.InventoryLocation
+	InventoryItems           []inventoryitemapp.InventoryItem
+	Inspections              []inspectionapp.Inspection
+	SerialNumbers            []serialnumberapp.SerialNumber
+	InventoryTransactions    []inventorytransactionapp.InventoryTransaction
+	InventoryAdjustments     []inventoryadjustmentapp.InventoryAdjustment
+	TransferOrders           []transferorderapp.TransferOrder
+	OrderFulfillmentStatuses []orderfulfillmentstatusapp.OrderFulfillmentStatus
 }
 
 type Table struct {
