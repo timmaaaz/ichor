@@ -69,7 +69,7 @@ func ToAppContactInfos(bus contactinfosbus.ContactInfos) ContactInfos {
 	}
 }
 
-func ToAppContactInfoss(bus []contactinfosbus.ContactInfos) []ContactInfos {
+func ToAppContactInfosSlice(bus []contactinfosbus.ContactInfos) []ContactInfos {
 	app := make([]ContactInfos, len(bus))
 	for i, v := range bus {
 		app[i] = ToAppContactInfos(v)

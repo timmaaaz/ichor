@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/customersapp"
 	"github.com/timmaaaz/ichor/app/domain/finance/costhistoryapp"
 	"github.com/timmaaaz/ichor/app/domain/finance/productcostapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/core/brandapp"
@@ -80,6 +81,7 @@ type SeedData struct {
 	UserAssets                  []userassetapp.UserAsset
 	Assets                      []assetapp.Asset
 	ContactInfos                []contactinfosapp.ContactInfos
+	Customers                   []customersapp.Customers
 	Brands                      []brandapp.Brand
 	ProductCategories           []productcategoryapp.ProductCategory
 	Warehouses                  []warehouseapp.Warehouse

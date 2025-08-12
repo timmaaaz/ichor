@@ -1,32 +1,24 @@
-package inspectionapi_test
+package customersapi_test
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-
-	"github.com/timmaaaz/ichor/api/domain/http/quality/inspectionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/customersapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
-	"github.com/timmaaaz/ichor/app/domain/inventory/core/productapp"
-	"github.com/timmaaaz/ichor/app/domain/lots/lottrackingsapp"
-	"github.com/timmaaaz/ichor/app/domain/quality/inspectionapp"
+	"github.com/timmaaaz/ichor/app/domain/core/customersapp"
+	"github.com/timmaaaz/ichor/app/domain/location/streetapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
+	"github.com/timmaaaz/ichor/business/domain/core/customersbus"
 	"github.com/timmaaaz/ichor/business/domain/location/citybus"
 	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
-	"github.com/timmaaaz/ichor/business/domain/quality/inspectionbus"
-	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
-	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/users/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -40,25 +32,21 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
-
 	tu1 := apitest.User{
 		User:  usrs[0],
 		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
 	}
-
-	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
+	usrs, err = userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding admin : %w", err)
+		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
 	}
-
 	tu2 := apitest.User{
-		User:  admins[0],
-		Token: apitest.Token(db.BusDomain.User, ath, admins[0].Email.Address),
+		User:  usrs[0],
+		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
 	}
 
 	// ADDRESSES
-
-	count := 5
+	count := 15
 	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("querying regions : %w", err)
@@ -88,90 +76,18 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		strIDs = append(strIDs, s.ID)
 	}
 
-	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, count, strIDs, busDomain.ContactInfos)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, count, strIDs, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
-
-	contactIDs := make(uuid.UUIDs, len(contacts))
-	for i, c := range contacts {
-		contactIDs[i] = c.ID
+	contactInfoIDs := make([]uuid.UUID, 0, len(contactInfos))
+	for _, ci := range contactInfos {
+		contactInfoIDs = append(contactInfoIDs, ci.ID)
 	}
 
-	brands, err := brandbus.TestSeedBrands(ctx, 10, contactIDs, busDomain.Brand)
+	customers, err := customersbus.TestSeedCustomers(ctx, count, strIDs, contactInfoIDs, uuid.UUIDs{tu2.ID}, busDomain.Customers)
 	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding brands : %w", err)
-	}
-
-	brandIDs := make(uuid.UUIDs, len(brands))
-	for i, b := range brands {
-		brandIDs[i] = b.BrandID
-	}
-
-	pc, err := productcategorybus.TestSeedProductCategories(ctx, 10, busDomain.ProductCategory)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding product category : %w", err)
-	}
-
-	pcIDs := make(uuid.UUIDs, len(pc))
-	for i, p := range pc {
-		pcIDs[i] = p.ProductCategoryID
-	}
-
-	products, err := productbus.TestSeedProducts(ctx, 30, brandIDs, pcIDs, busDomain.Product)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding product : %w", err)
-	}
-
-	productIDs := make(uuid.UUIDs, len(products))
-	for i, p := range products {
-		productIDs[i] = p.ProductID
-	}
-
-	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 10, contactIDs, busDomain.Supplier)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
-	}
-
-	supplierIDs := make(uuid.UUIDs, len(suppliers))
-	for i, s := range suppliers {
-		supplierIDs[i] = s.SupplierID
-	}
-
-	supplierProducts, err := supplierproductbus.TestSeedSupplierProducts(ctx, 15, productIDs, supplierIDs, busDomain.SupplierProduct)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding supplier product : %w", err)
-	}
-
-	supplierProductIDs := make(uuid.UUIDs, len(supplierProducts))
-	for i, sp := range supplierProducts {
-		supplierProductIDs[i] = sp.SupplierProductID
-	}
-
-	lotTrackings, err := lottrackingsbus.TestSeedLotTrackings(ctx, 15, supplierProductIDs, busDomain.LotTrackings)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding lot tracking : %w", err)
-	}
-
-	lotTrackingsIDs := make(uuid.UUIDs, len(lotTrackings))
-	for i, lt := range lotTrackings {
-		lotTrackingsIDs[i] = lt.LotID
-	}
-
-	users, err := userbus.TestSeedUsersWithNoFKs(ctx, 3, userbus.Roles.User, busDomain.User)
-
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
-	}
-
-	usrIDs := make(uuid.UUIDs, len(users))
-	for i, u := range users {
-		usrIDs[i] = u.ID
-	}
-
-	inspections, err := inspectionbus.TestSeedInspections(ctx, 25, productIDs, usrIDs, lotTrackingsIDs, busDomain.Inspection)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding inspections : %w", err)
+		return apitest.SeedData{}, fmt.Errorf("seeding customers : %w", err)
 	}
 
 	// =========================================================================
@@ -222,7 +138,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// Update only tu1's role permissions
 	for _, ta := range tas {
 		// Only update for the asset table
-		if ta.TableName == inspectionapi.RouteTable {
+		if ta.TableName == customersapi.RouteTable {
 			update := tableaccessbus.UpdateTableAccess{
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),
@@ -237,11 +153,10 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
+		Users:        []apitest.User{tu1},
 		Admins:       []apitest.User{tu2},
-		Users:        []apitest.User{tu1, {User: users[0]}, {User: users[1]}, {User: users[2]}},
-		ContactInfos: contactinfosapp.ToAppContactInfosSlice(contacts),
-		Products:     productapp.ToAppProducts(products),
-		LotTrackings: lottrackingsapp.ToAppLotTrackingss(lotTrackings),
-		Inspections:  inspectionapp.ToAppInspections(inspections),
+		Streets:      streetapp.ToAppStreets(strs),
+		ContactInfos: contactinfosapp.ToAppContactInfosSlice(contactInfos),
+		Customers:    customersapp.ToAppCustomers(customers),
 	}, nil
 }

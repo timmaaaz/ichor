@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/customersapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/costhistoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/productcostapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/brandapi"
@@ -62,6 +63,8 @@ import (
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/core/customersbus"
+	customersdb "github.com/timmaaaz/ichor/business/domain/core/customersbus/stores/contactinfosdb"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus/stores/costhistorydb"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
@@ -202,6 +205,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
 
 	contactInfosBus := contactinfosbus.NewBusiness(cfg.Log, delegate, contactinfosdb.NewStore(cfg.Log, cfg.DB))
+	customersBus := customersbus.NewBusiness(cfg.Log, delegate, customersdb.NewStore(cfg.Log, cfg.DB))
+
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 	productBus := productbus.NewBusiness(cfg.Log, delegate, productdb.NewStore(cfg.Log, cfg.DB))
@@ -364,6 +369,13 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		ContactInfosBus: contactInfosBus,
 		AuthClient:      cfg.AuthClient,
 		Log:             cfg.Log,
+	})
+
+	customersapi.Routes(app, customersapi.Config{
+		CustomersBus:   customersBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	brandapi.Routes(app, brandapi.Config{
