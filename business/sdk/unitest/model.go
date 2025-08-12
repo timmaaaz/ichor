@@ -13,6 +13,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/customersbus"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/homebus"
@@ -106,6 +107,7 @@ type SeedData struct {
 	TransferOrders              []transferorderbus.TransferOrder
 	OrderFulfillmentStatuses    []orderfulfillmentstatusbus.OrderFulfillmentStatus
 	LineItemFulfillmentStatuses []lineitemfulfillmentstatusbus.LineItemFulfillmentStatus
+	Customers                   []customersbus.Customers
 }
 
 type Table struct {

@@ -693,6 +693,8 @@ CREATE TABLE customers (
    contact_id UUID NOT NULL,
    delivery_address_id UUID NOT NULL,
    notes TEXT NULL,
+   created_by UUID NOT NULL,
+   updated_by UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
