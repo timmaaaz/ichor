@@ -34,6 +34,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/order/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
@@ -108,6 +109,7 @@ type SeedData struct {
 	OrderFulfillmentStatuses    []orderfulfillmentstatusbus.OrderFulfillmentStatus
 	LineItemFulfillmentStatuses []lineitemfulfillmentstatusbus.LineItemFulfillmentStatus
 	Customers                   []customersbus.Customers
+	Orders                      []ordersbus.Order
 }
 
 type Table struct {

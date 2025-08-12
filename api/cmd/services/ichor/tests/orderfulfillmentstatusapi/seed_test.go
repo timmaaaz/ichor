@@ -38,7 +38,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(db.BusDomain.User, ath, admin[0].Email.Address),
 	}
 
-	ofls, err := orderfulfillmentstatusbus.TestSeedOrderFulfillmentStatuses(ctx, 5, busDomain.OrderFulfillmentStatus)
+	ofls, err := orderfulfillmentstatusbus.TestSeedOrderFulfillmentStatuses(ctx, busDomain.OrderFulfillmentStatus)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding order fulfillment statuses: %w", err)
 	}

@@ -46,6 +46,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus/stores/lineitemfulfillmentstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus/stores/orderfulfillmentstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/order/ordersbus"
+	"github.com/timmaaaz/ichor/business/domain/order/ordersbus/stores/ordersdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -197,6 +199,7 @@ type BusDomain struct {
 	// Order
 	OrderFulfillmentStatus    *orderfulfillmentstatusbus.Business
 	LineItemFulfillmentStatus *lineitemfulfillmentstatusbus.Business
+	Order                     *ordersbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -274,6 +277,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Orders
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
 	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(log, delegate, lineitemfulfillmentstatusdb.NewStore(log, db))
+	ordersBus := ordersbus.NewBusiness(log, delegate, ordersdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:                  delegate,
@@ -324,6 +328,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		TransferOrder:             transferOrderBus,
 		OrderFulfillmentStatus:    orderFulfillmentStatusBus,
 		LineItemFulfillmentStatus: lineItemFulfillmentStatusBus,
+		Order:                     ordersBus,
 	}
 
 }

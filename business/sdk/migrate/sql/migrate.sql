@@ -699,21 +699,26 @@ CREATE TABLE customers (
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
    FOREIGN KEY (contact_id) REFERENCES contact_infos(id) ON DELETE CASCADE,
-   FOREIGN KEY (delivery_address_id) REFERENCES streets(id) ON DELETE CASCADE
+   FOREIGN KEY (delivery_address_id) REFERENCES streets(id) ON DELETE CASCADE,
+   FOREIGN KEY (created_by) REFERENCES users(id),
+   FOREIGN KEY (updated_by) REFERENCES users(id)
 );
 
 CREATE TABLE orders (
    id UUID NOT NULL,
-   order_number VARCHAR(50) NOT NULL,
+   number VARCHAR(50) NOT NULL,
    customer_id UUID NOT NULL,
-   order_date TIMESTAMP NOT NULL,
    due_date TIMESTAMP NOT NULL,
-   order_fulfillment_statuses_id UUID NOT NULL,
+   order_fulfillment_status_id UUID NOT NULL,
+   created_by UUID NOT NULL,
+   updated_by UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
    FOREIGN KEY (customer_id) REFERENCES customers(id),
-   FOREIGN KEY (order_fulfillment_statuses_id) REFERENCES order_fulfillment_statuses(id) ON DELETE SET NULL
+   FOREIGN KEY (order_fulfillment_status_id) REFERENCES order_fulfillment_statuses(id) ON DELETE SET NULL,
+   FOREIGN KEY (created_by) REFERENCES users(id),
+   FOREIGN KEY (updated_by) REFERENCES users(id)
 );
 
 CREATE TABLE order_line_items (

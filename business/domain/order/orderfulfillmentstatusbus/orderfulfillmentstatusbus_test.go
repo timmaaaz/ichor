@@ -38,9 +38,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding user : %w", err)
 	}
 
-	count := 5
-
-	ofls, err := orderfulfillmentstatusbus.TestSeedOrderFulfillmentStatuses(ctx, count, busDomain.OrderFulfillmentStatus)
+	ofls, err := orderfulfillmentstatusbus.TestSeedOrderFulfillmentStatuses(ctx, busDomain.OrderFulfillmentStatus)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding order fulfillment statuses: %w", err)
 	}
