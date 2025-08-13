@@ -117,7 +117,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ContactIn
 		return query.Result[ContactInfos]{}, errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(ToAppContactInfoss(contactInfoss), total, page), nil
+	return query.NewResult(ToAppContactInfosSlice(contactInfoss), total, page), nil
 }
 
 // QueryByID retrieves a single contact info by its id.

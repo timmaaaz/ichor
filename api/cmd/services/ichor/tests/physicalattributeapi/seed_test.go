@@ -195,7 +195,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Admins:             []apitest.User{tu2},
 		Users:              []apitest.User{tu1},
 		ProductCategories:  productcategoryapp.ToAppProductCategories(pc),
-		ContactInfos:       contactinfosapp.ToAppContactInfoss(contacts),
+		ContactInfos:       contactinfosapp.ToAppContactInfosSlice(contacts),
 		Brands:             brandapp.ToAppBrands(brands),
 		Products:           productapp.ToAppProducts(products),
 		PhysicalAttributes: physicalattributeapp.ToAppPhysicalAttributes(physicalAttributes),

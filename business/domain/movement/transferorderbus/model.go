@@ -7,7 +7,7 @@ import (
 )
 
 type TransferOrder struct {
-	TransferID     uuid.UUID
+	TransferID     uuid.UUID // TODO: these should be id
 	ProductID      uuid.UUID
 	FromLocationID uuid.UUID
 	ToLocationID   uuid.UUID

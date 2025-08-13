@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/customersapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/costhistoryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/finance/productcostapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/core/brandapi"
@@ -24,6 +25,9 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventoryadjustmentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/inventorytransactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/movement/transferorderapi"
+	"github.com/timmaaaz/ichor/api/domain/http/order/lineitemfulfillmentstatusapi"
+	"github.com/timmaaaz/ichor/api/domain/http/order/orderfulfillmentstatusapi"
+	"github.com/timmaaaz/ichor/api/domain/http/order/ordersapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/userroleapi"
@@ -60,6 +64,8 @@ import (
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/core/customersbus"
+	customersdb "github.com/timmaaaz/ichor/business/domain/core/customersbus/stores/contactinfosdb"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus/stores/costhistorydb"
 	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
@@ -83,6 +89,12 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus/stores/transferorderdb"
+	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus/stores/lineitemfulfillmentstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus/stores/orderfulfillmentstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/order/ordersbus"
+	"github.com/timmaaaz/ichor/business/domain/order/ordersbus/stores/ordersdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
@@ -196,6 +208,8 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
 
 	contactInfosBus := contactinfosbus.NewBusiness(cfg.Log, delegate, contactinfosdb.NewStore(cfg.Log, cfg.DB))
+	customersBus := customersbus.NewBusiness(cfg.Log, delegate, customersdb.NewStore(cfg.Log, cfg.DB))
+
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 	productBus := productbus.NewBusiness(cfg.Log, delegate, productdb.NewStore(cfg.Log, cfg.DB))
@@ -227,6 +241,10 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB))
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB))
 	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB))
+
+	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, orderfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
+	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, lineitemfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
+	ordersBus := ordersbus.NewBusiness(cfg.Log, delegate, ordersdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -355,6 +373,13 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		ContactInfosBus: contactInfosBus,
 		AuthClient:      cfg.AuthClient,
 		Log:             cfg.Log,
+	})
+
+	customersapi.Routes(app, customersapi.Config{
+		CustomersBus:   customersBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	brandapi.Routes(app, brandapi.Config{
@@ -502,5 +527,26 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:       cfg.AuthClient,
 		Log:              cfg.Log,
 		PermissionsBus:   permissionsBus,
+	})
+
+	orderfulfillmentstatusapi.Routes(app, orderfulfillmentstatusapi.Config{
+		Log:                       cfg.Log,
+		OrderFulfillmentStatusBus: orderFulfillmentStatusBus,
+		AuthClient:                cfg.AuthClient,
+		PermissionsBus:            permissionsBus,
+	})
+
+	lineitemfulfillmentstatusapi.Routes(app, lineitemfulfillmentstatusapi.Config{
+		Log:                          cfg.Log,
+		LineItemFulfillmentStatusBus: lineItemFulfillmentStatusBus,
+		AuthClient:                   cfg.AuthClient,
+		PermissionsBus:               permissionsBus,
+	})
+
+	ordersapi.Routes(app, ordersapi.Config{
+		Log:            cfg.Log,
+		OrderBus:       ordersBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 }
