@@ -728,10 +728,14 @@ CREATE TABLE order_line_items (
    quantity INT NOT NULL, 
    discount NUMERIC(10,2) NULL, -- TODO: Refactor this to be either percent or flat amount
    line_item_fulfillment_statuses_id UUID NOT NULL,
+   created_by UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
+   updated_by UUID NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-   FOREIGN KEY (line_item_fulfillment_statuses_id) REFERENCES line_item_fulfillment_statuses(id) ON DELETE SET NULL
+   FOREIGN KEY (line_item_fulfillment_statuses_id) REFERENCES line_item_fulfillment_statuses(id) ON DELETE SET NULL,
+   FOREIGN KEY (created_by) REFERENCES users(id),
+   FOREIGN KEY (updated_by) REFERENCES users(id)
 );

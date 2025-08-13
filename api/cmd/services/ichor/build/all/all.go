@@ -28,6 +28,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/movement/transferorderapi"
 	"github.com/timmaaaz/ichor/api/domain/http/order/lineitemfulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/order/orderfulfillmentstatusapi"
+	"github.com/timmaaaz/ichor/api/domain/http/order/orderlineitemsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/order/ordersapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/permissions/tableaccessapi"
@@ -93,6 +94,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus/stores/lineitemfulfillmentstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus/stores/orderfulfillmentstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/order/orderlineitemsbus"
+	"github.com/timmaaaz/ichor/business/domain/order/orderlineitemsbus/stores/orderlineitemsdb"
 	"github.com/timmaaaz/ichor/business/domain/order/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/order/ordersbus/stores/ordersdb"
 	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
@@ -239,6 +242,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, orderfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
 	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, lineitemfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
 	ordersBus := ordersbus.NewBusiness(cfg.Log, delegate, ordersdb.NewStore(cfg.Log, cfg.DB))
+	orderLineItemsBus := orderlineitemsbus.NewBusiness(cfg.Log, delegate, orderlineitemsdb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -577,5 +581,12 @@ func (add) Add(app *web.App, cfg mux.Config) {
 		OrderBus:       ordersBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+	})
+
+	orderlineitemsapi.Routes(app, orderlineitemsapi.Config{
+		Log:               cfg.Log,
+		OrderLineItemsBus: orderLineItemsBus,
+		AuthClient:        cfg.AuthClient,
+		PermissionsBus:    permissionsBus,
 	})
 }
