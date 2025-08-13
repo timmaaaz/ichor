@@ -29,6 +29,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/movement/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/order/lineitemfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/order/orderfulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/order/ordersapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/permissions/userroleapp.go"
@@ -106,6 +107,7 @@ type SeedData struct {
 	TransferOrders              []transferorderapp.TransferOrder
 	OrderFulfillmentStatuses    []orderfulfillmentstatusapp.OrderFulfillmentStatus
 	LineItemFulfillmentStatuses []lineitemfulfillmentstatusapp.LineItemFulfillmentStatus
+	Orders                      []ordersapp.Order
 }
 
 type Table struct {
