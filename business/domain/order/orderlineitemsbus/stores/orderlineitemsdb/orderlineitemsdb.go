@@ -131,7 +131,7 @@ func (s *Store) Query(ctx context.Context, filter orderlineitemsbus.QueryFilter,
 	buf.WriteString(orderByClause)
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
 
-	var dbStatuses []orderFulfillmentStatus
+	var dbStatuses []orderLineItem
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbStatuses); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
@@ -175,7 +175,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (orderlineite
         id = :id
     `
 
-	var dbStatus orderFulfillmentStatus
+	var dbStatus orderLineItem
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbStatus); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return orderlineitemsbus.OrderLineItem{}, orderlineitemsbus.ErrNotFound

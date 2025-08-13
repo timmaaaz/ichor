@@ -7,7 +7,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/order/orderlineitemsbus"
 )
 
-type orderFulfillmentStatus struct {
+type orderLineItem struct {
 	ID                            uuid.UUID `db:"id"`
 	OrderID                       uuid.UUID `db:"order_id"`
 	ProductID                     uuid.UUID `db:"product_id"`
@@ -20,7 +20,7 @@ type orderFulfillmentStatus struct {
 	UpdatedDate                   time.Time `db:"updated_date"`
 }
 
-func toBusOrderLineItem(db orderFulfillmentStatus) orderlineitemsbus.OrderLineItem {
+func toBusOrderLineItem(db orderLineItem) orderlineitemsbus.OrderLineItem {
 	return orderlineitemsbus.OrderLineItem{
 		ID:                            db.ID,
 		OrderID:                       db.OrderID,
@@ -35,7 +35,7 @@ func toBusOrderLineItem(db orderFulfillmentStatus) orderlineitemsbus.OrderLineIt
 	}
 }
 
-func toBusOrderLineItems(dbs []orderFulfillmentStatus) []orderlineitemsbus.OrderLineItem {
+func toBusOrderLineItems(dbs []orderLineItem) []orderlineitemsbus.OrderLineItem {
 	app := make([]orderlineitemsbus.OrderLineItem, len(dbs))
 	for i, db := range dbs {
 		app[i] = toBusOrderLineItem(db)
@@ -43,8 +43,8 @@ func toBusOrderLineItems(dbs []orderFulfillmentStatus) []orderlineitemsbus.Order
 	return app
 }
 
-func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderFulfillmentStatus {
-	return orderFulfillmentStatus{
+func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderLineItem {
+	return orderLineItem{
 		ID:                            app.ID,
 		OrderID:                       app.OrderID,
 		ProductID:                     app.ProductID,
