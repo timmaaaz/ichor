@@ -45,9 +45,10 @@ func Test_TableBuilder(t *testing.T) {
 		t.Fatalf("failed to insert seed data: %v", err)
 	}
 
-	// simpleExample(context.Background(), store)
-	// complexExample(context.Background(), store)
+	simpleExample(context.Background(), store)
+	complexExample(context.Background(), store)
 	storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
+	paginationExample(context.Background(), store)
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -502,6 +503,71 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 	result, err := store.FetchTableData(ctx, loadedConfig, params)
 	if err != nil {
 		log.Printf("Error fetching data with stored config: %v", err)
+		return
+	}
+
+	printResults(result)
+}
+
+func paginationExample(ctx context.Context, store *tablebuilder.Store) {
+	config := &tablebuilder.Config{
+		Title:           "Products List",
+		WidgetType:      "table",
+		Visualization:   "table",
+		PositionX:       0,
+		PositionY:       0,
+		Width:           12,
+		Height:          8,
+		RefreshInterval: 300,
+		RefreshMode:     "polling",
+		DataSource: []tablebuilder.DataSource{
+			{
+				Type:   "query",
+				Source: "products",
+				Select: tablebuilder.SelectConfig{
+					Columns: []tablebuilder.ColumnDefinition{
+						{Name: "id"},
+						{Name: "name"},
+						{Name: "sku"},
+						{Name: "is_active"},
+					},
+				},
+			},
+		},
+		VisualSettings: tablebuilder.VisualSettings{
+			Pagination: &tablebuilder.PaginationConfig{
+				Enabled:         true,
+				PageSizes:       []int{10, 25, 50, 100},
+				DefaultPageSize: 25,
+			},
+		},
+		Permissions: tablebuilder.Permissions{
+			Roles:   []string{"admin"},
+			Actions: []string{"view"},
+		},
+	}
+
+	// Use with page.Page
+	pg := page.MustParse("1", "10")
+
+	result, err := store.QueryByPage(ctx, config, pg)
+	if err != nil {
+		log.Printf("Error fetching paginated data: %v", err)
+		return
+	}
+
+	printResults(result)
+
+	fmt.Printf("Page %d of %d (Total records: %d)\n",
+		result.Meta.Page,
+		result.Meta.TotalPages,
+		result.Meta.Total)
+
+	// Get next page
+	pg = page.MustParse("2", "10")
+	result, err = store.QueryByPage(ctx, config, pg)
+	if err != nil {
+		log.Printf("Error fetching page 2: %v", err)
 		return
 	}
 
