@@ -140,6 +140,11 @@ dev-gotooling:
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install golang.org/x/tools/cmd/goimports@latest
+	# Required dependencies
+	go install github.com/doug-martin/goqu/v9
+	go install github.com/Knetic/govaluate
+	go install github.com/jmoiron/sqlx
+	go install github.com/jackc/pgx/v5
 
 dev-brew:
 	brew update

@@ -3,10 +3,12 @@ module github.com/timmaaaz/ichor
 go 1.23.0
 
 require (
+	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/ardanlabs/conf/v3 v3.1.8
 	github.com/ardanlabs/darwin/v3 v3.3.1
 	github.com/arl/statsviz v0.6.0
 	github.com/creativecreature/sturdyc v1.0.5
+	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-json-experiment/json v0.0.0-20240524174822-2d9f40f7385b
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1

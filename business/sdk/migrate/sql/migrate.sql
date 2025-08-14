@@ -739,3 +739,62 @@ CREATE TABLE order_line_items (
    FOREIGN KEY (created_by) REFERENCES users(id),
    FOREIGN KEY (updated_by) REFERENCES users(id)
 );
+
+-- Migration: Create table_configs table for storing table configurations
+-- Version: 2.01
+-- Description: Create table for storing dynamic table configurations
+CREATE TABLE IF NOT EXISTS table_configs (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    config JSONB NOT NULL,
+    created_by UUID NOT NULL,
+    updated_by UUID NOT NULL,
+    created_date TIMESTAMP NOT NULL,
+    updated_date TIMESTAMP NOT NULL,
+    
+    -- Foreign keys
+    CONSTRAINT fk_table_configs_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_table_configs_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for better query performance
+CREATE INDEX idx_table_configs_name ON table_configs(name);
+CREATE INDEX idx_table_configs_created_by ON table_configs(created_by);
+CREATE INDEX idx_table_configs_updated_date ON table_configs(updated_date DESC);
+
+-- GIN index for JSONB queries
+CREATE INDEX idx_table_configs_config ON table_configs USING GIN (config);
+
+-- Comments
+COMMENT ON TABLE table_configs IS 'Stores user-defined table configurations for dynamic table generation';
+COMMENT ON COLUMN table_configs.id IS 'Unique identifier for the configuration';
+COMMENT ON COLUMN table_configs.name IS 'Unique name for the configuration';
+COMMENT ON COLUMN table_configs.description IS 'Optional description of what this configuration displays';
+COMMENT ON COLUMN table_configs.config IS 'JSON configuration matching the TableConfig structure';
+COMMENT ON COLUMN table_configs.created_by IS 'User who created this configuration';
+COMMENT ON COLUMN table_configs.updated_by IS 'User who last updated this configuration';
+
+-- Optional: Create a view for commonly accessed configurations
+CREATE OR REPLACE VIEW active_table_configs AS
+SELECT 
+    tc.id,
+    tc.name,
+    tc.description,
+    tc.config,
+    tc.created_by,
+    tc.updated_by,
+    tc.created_date,
+    tc.updated_date,
+    u1.username as created_by_username,
+    u2.username as updated_by_username
+FROM table_configs tc
+JOIN users u1 ON tc.created_by = u1.id
+JOIN users u2 ON tc.updated_by = u2.id
+WHERE u1.enabled = true
+ORDER BY tc.updated_date DESC;
+
+-- Grant appropriate permissions (adjust based on your needs)
+-- GRANT SELECT ON table_configs TO authenticated;
+-- GRANT INSERT, UPDATE, DELETE ON table_configs TO authenticated;
+-- GRANT SELECT ON active_table_configs TO authenticated;
