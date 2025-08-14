@@ -105,6 +105,8 @@ func (s *Store) processDataSource(ctx context.Context, ds *DataSource, params Qu
 		return nil, fmt.Errorf("build query: %w", err)
 	}
 
+	fmt.Println("query: ", query)
+
 	s.log.Infoc(ctx, 4, "executing query", "query", query, "args", args)
 
 	// Execute the query based on type

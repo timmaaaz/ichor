@@ -40,10 +40,14 @@ func Test_TableBuilder(t *testing.T) {
 	log := logger.New(io.Discard, logger.LevelInfo, "ADMIN", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
 
 	store := tablebuilder.NewStore(log, db.DB)
-	insertSeedData(db.BusDomain)
+	sd, err := insertSeedData(db.BusDomain)
+	if err != nil {
+		t.Fatalf("failed to insert seed data: %v", err)
+	}
 
 	// simpleExample(context.Background(), store)
-	complexExample(context.Background(), store)
+	// complexExample(context.Background(), store)
+	storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -414,6 +418,93 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 	}
 
 	fmt.Printf("Complex query returned %d rows\n", len(result.Data))
+	printResults(result)
+}
+
+func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configStore *tablebuilder.ConfigStore, sd unitest.SeedData) {
+	// Create a configuration to save
+	config := &tablebuilder.Config{
+		Title:           "Orders Dashboard",
+		WidgetType:      "table",
+		Visualization:   "table",
+		PositionX:       0,
+		PositionY:       0,
+		Width:           12,
+		Height:          8,
+		RefreshInterval: 60,
+		RefreshMode:     "polling",
+		DataSource: []tablebuilder.DataSource{
+			{
+				Type:   "view",
+				Source: "orders_base",
+				Select: tablebuilder.SelectConfig{
+					Columns: []tablebuilder.ColumnDefinition{
+						{Name: "order_id", TableColumn: "orders.id"},
+						{Name: "order_number", TableColumn: "orders.order_number"},
+						{Name: "customer_name", TableColumn: "customers.name"},
+						{Name: "order_fulfillment_statuses_name", TableColumn: "order_fulfillment_statuses.name"},
+					},
+				},
+				Filters: []tablebuilder.Filter{
+					{
+						Column:   "order_fulfillment_statuses_name",
+						Operator: "in",
+						Value:    []string{"PENDING", "PROCESSING", "SHIPPED"},
+					},
+				},
+			},
+		},
+		VisualSettings: tablebuilder.VisualSettings{
+			Columns: map[string]tablebuilder.ColumnConfig{
+				"order_number": {
+					Name:       "order_number",
+					Header:     "Order #",
+					Width:      150,
+					Sortable:   true,
+					Filterable: true,
+				},
+				"customer_name": {
+					Name:       "customer_name",
+					Header:     "Customer",
+					Width:      200,
+					Sortable:   true,
+					Filterable: true,
+				},
+			},
+		},
+		Permissions: tablebuilder.Permissions{
+			Roles:   []string{"admin", "sales"},
+			Actions: []string{"view"},
+		},
+	}
+
+	stored, err := configStore.Create(ctx, "orders_dashboard", "Main orders dashboard configuration", config, sd.Admins[0].ID)
+	if err != nil {
+		log.Printf("Error saving config: %v", err)
+		return
+	}
+
+	fmt.Printf("Saved configuration with ID: %s\n", stored.ID)
+
+	// Load and use the configuration
+	loadedConfig, err := configStore.LoadConfig(ctx, stored.ID)
+	if err != nil {
+		log.Printf("Error loading config: %v", err)
+		return
+	}
+
+	// Use the loaded configuration
+	params := tablebuilder.QueryParams{
+		Page:  1,
+		Limit: 25,
+	}
+
+	result, err := store.FetchTableData(ctx, loadedConfig, params)
+	if err != nil {
+		log.Printf("Error fetching data with stored config: %v", err)
+		return
+	}
+
 	printResults(result)
 }
 

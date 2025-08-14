@@ -798,3 +798,68 @@ ORDER BY tc.updated_date DESC;
 -- GRANT SELECT ON table_configs TO authenticated;
 -- GRANT INSERT, UPDATE, DELETE ON table_configs TO authenticated;
 -- GRANT SELECT ON active_table_configs TO authenticated;
+
+CREATE OR REPLACE VIEW orders_base AS
+SELECT
+   o.id AS order_id,
+   o.number AS order_number,
+   o.created_date AS order_order_date,
+   o.due_date AS order_due_date,
+   o.created_date AS order_created_date,
+   o.updated_date AS order_updated_date,
+   o.order_fulfillment_status_id AS order_fulfillment_status_id,
+   o.customer_id AS order_customer_id,
+
+   c.name AS customer_name,
+   c.contact_id AS customer_contact_id,
+   c.delivery_address_id AS customer_delivery_address_id,
+   c.notes AS customer_notes,
+   c.created_date AS customer_created_date,
+   c.updated_date AS customer_updated_date,
+
+   ofs.name AS order_fulfillment_statuses_name,
+   ofs.description AS order_fulfillment_statuses_description
+FROM orders o
+   INNER JOIN customers c ON o.customer_id = c.id
+   LEFT JOIN order_fulfillment_statuses ofs ON o.order_fulfillment_status_id = ofs.id;
+
+CREATE OR REPLACE VIEW order_line_items_base AS
+SELECT
+   oli.id AS order_line_item_id,
+   oli.order_id AS order_line_item_order_id,
+   oli.product_id AS order_line_item_product_id,
+   oli.quantity AS order_line_item_quantity,
+   oli.discount AS order_line_item_discount, 
+   oli.line_item_fulfillment_statuses_id AS line_item_fulfillment_statuses_id,
+   oli.created_date AS order_line_item_created_date,
+   oli.updated_date AS order_line_item_updated_date,
+
+   p.name AS product_name,
+   p.sku AS product_sku,
+   p.brand_id AS product_brand_id,
+   p.category_id AS product_category_id,
+   p.description AS product_description,
+   p.model_number AS product_model_number,
+   p.upc_code AS product_upc_code,
+   p.status AS product_status,
+   p.is_active AS product_is_active,
+   p.is_perishable AS product_is_perishable,
+   p.handling_instructions AS product_handling_instructions,
+   p.units_per_case AS product_units_per_case,
+   p.created_date AS product_created_date,
+   p.updated_date AS product_updated_date,
+
+   b.name AS product_brand_name,
+   b.contact_infos_id AS product_brand_contact_infos_id,
+   b.created_date AS product_brand_created_date,
+   b.updated_date AS product_brand_updated_date,
+
+   c.name AS product_category_name,
+   c.created_date AS product_category_created_date,
+   c.updated_date AS product_category_updated_date
+
+FROM order_line_items oli
+   INNER JOIN products p ON oli.product_id = p.id
+   LEFT JOIN brands b ON p.brand_id = b.id
+   LEFT JOIN product_categories c ON p.category_id = c.id
+   LEFT JOIN line_item_fulfillment_statuses ofs ON oli.id = ofs.id;
