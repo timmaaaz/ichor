@@ -1,0 +1,80 @@
+graph TB
+    subgraph "Your Application"
+        WE[Workflow Engine]
+        APP[Application Code]
+    end
+
+    subgraph "RabbitMQ Client Package"
+        CLIENT[Client<br/>- Singleton<br/>- Auto-reconnect<br/>- Connection pool]
+        WQ[WorkflowQueue<br/>- Publish methods<br/>- Consume methods<br/>- Queue management]
+    end
+
+    subgraph "RabbitMQ Broker"
+        subgraph "Exchanges"
+            WEX[workflow<br/>Topic Exchange]
+            DLX[workflow.dlx<br/>Direct Exchange]
+        end
+
+        subgraph "Queues with Different Configs"
+            Q1[workflow.general<br/>TTL: 24h<br/>Priority: 1-10<br/>Retries: 3]
+            Q2[workflow.approval<br/>TTL: 72h<br/>Priority: 1-10<br/>Retries: 5]
+            Q3[workflow.notification<br/>TTL: 1h<br/>Priority: 1-5<br/>Retries: 3]
+            Q4[workflow.inventory<br/>TTL: 2h<br/>Priority: 1-8<br/>Retries: 3]
+            Q5[workflow.email<br/>TTL: 24h<br/>Priority: 1-3<br/>Retries: 5]
+            Q6[workflow.alert<br/>TTL: 30m<br/>Priority: 1-10<br/>Retries: 1]
+            DLQ[workflow.dead_letter<br/>TTL: 30 days]
+        end
+    end
+
+    subgraph "Message Flow"
+        MSG[Message<br/>- ID<br/>- Type<br/>- EntityName<br/>- EntityID<br/>- EventType<br/>- Priority<br/>- Payload]
+    end
+
+    subgraph "Consumers"
+        C1[Consumer 1<br/>Processing]
+        C2[Consumer 2<br/>Processing]
+        C3[Consumer N<br/>Processing]
+    end
+
+    %% Connections
+    WE --> WQ
+    APP --> WQ
+    WQ --> CLIENT
+    CLIENT -.->|Reconnect on failure| CLIENT
+
+    %% Publishing flow
+    WQ -->|Publish| WEX
+    WEX -->|Route by key:<br/>workflow.*| Q1
+    WEX -->|Route by key:<br/>approval.*| Q2
+    WEX -->|Route by key:<br/>notification.*| Q3
+    WEX -->|Route by key:<br/>inventory.*| Q4
+    WEX -->|Route by key:<br/>email.*| Q5
+    WEX -->|Route by key:<br/>alert.*| Q6
+
+    %% Consumer flow
+    Q1 --> C1
+    Q2 --> C2
+    Q3 --> C3
+
+    %% Error handling
+    C1 -->|Error + Retry| Q1
+    C1 -->|Max retries exceeded| DLX
+    DLX --> DLQ
+
+    %% Message structure
+    MSG -.->|Structure| WQ
+
+    style WE fill:#e1f5fe
+    style APP fill:#e1f5fe
+    style CLIENT fill:#fff3e0
+    style WQ fill:#fff3e0
+    style WEX fill:#f3e5f5
+    style DLX fill:#ffebee
+    style Q1 fill:#e8f5e9
+    style Q2 fill:#e8f5e9
+    style Q3 fill:#e8f5e9
+    style Q4 fill:#e8f5e9
+    style Q5 fill:#e8f5e9
+    style Q6 fill:#e8f5e9
+    style DLQ fill:#ffcdd2
+    style MSG fill:#fafafa

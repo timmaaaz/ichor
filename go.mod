@@ -21,6 +21,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/markbates/goth v1.80.0
 	github.com/open-policy-agent/opa v0.67.1
+	github.com/rabbitmq/amqp091-go v1.10.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0
 	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0

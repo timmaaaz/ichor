@@ -118,6 +118,7 @@ PROMETHEUS      := prom/prometheus:v2.54.0
 TEMPO           := grafana/tempo:2.5.0
 LOKI            := grafana/loki:3.1.0
 PROMTAIL        := grafana/promtail:3.1.0
+RABBITMQ       := rabbitmq:3.11.0
 
 KIND_CLUSTER    := superior-starter-cluster
 NAMESPACE       := ichor-system
@@ -164,6 +165,7 @@ dev-docker:
 	docker pull $(TEMPO) & \
 	docker pull $(LOKI) & \
 	docker pull $(PROMTAIL) & \
+	docker pull $(RABBITMQ) & \
 	wait;
 
 # ==============================================================================
