@@ -3,15 +3,14 @@ package workflow_test
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
-	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
@@ -21,14 +20,14 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		action workflowdb.RuleActionView
+		action workflow.RuleActionView
 		want   workflow.ActionValidationResult
 	}{
 		{
 			name: "valid seek_approval action",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_001",
-				TemplateActionType: sql.NullString{String: "seek_approval", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "seek_approval",
 				ActionConfig: json.RawMessage(`{
 					"approvers": ["user1@example.com", "user2@example.com"],
 					"approval_type": "any"
@@ -42,9 +41,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "invalid seek_approval - missing approvers",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_002",
-				TemplateActionType: sql.NullString{String: "seek_approval", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "seek_approval",
 				ActionConfig: json.RawMessage(`{
 					"approvers": [],
 					"approval_type": "any"
@@ -58,9 +57,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "invalid seek_approval - invalid approval type",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_003",
-				TemplateActionType: sql.NullString{String: "seek_approval", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "seek_approval",
 				ActionConfig: json.RawMessage(`{
 					"approvers": ["user1@example.com"],
 					"approval_type": "invalid"
@@ -74,9 +73,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "valid send_email action",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_004",
-				TemplateActionType: sql.NullString{String: "send_email", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "send_email",
 				ActionConfig: json.RawMessage(`{
 					"recipients": ["user@example.com"],
 					"subject": "Test Email"
@@ -90,9 +89,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "invalid send_email - missing subject",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_005",
-				TemplateActionType: sql.NullString{String: "send_email", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "send_email",
 				ActionConfig: json.RawMessage(`{
 					"recipients": ["user@example.com"],
 					"subject": ""
@@ -106,9 +105,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "valid create_alert action",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_006",
-				TemplateActionType: sql.NullString{String: "create_alert", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "create_alert",
 				ActionConfig: json.RawMessage(`{
 					"message": "Alert message",
 					"recipients": ["user@example.com"],
@@ -123,9 +122,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "invalid create_alert - invalid priority",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_007",
-				TemplateActionType: sql.NullString{String: "create_alert", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "create_alert",
 				ActionConfig: json.RawMessage(`{
 					"message": "Alert message",
 					"recipients": ["user@example.com"],
@@ -140,9 +139,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "valid update_field action",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_008",
-				TemplateActionType: sql.NullString{String: "update_field", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "update_field",
 				ActionConfig: json.RawMessage(`{
 					"target_entity": "customers",
 					"target_field": "status",
@@ -157,9 +156,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "action with no type",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_009",
-				TemplateActionType: sql.NullString{Valid: false},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "",
 				ActionConfig:       json.RawMessage(`{}`),
 			},
 			want: workflow.ActionValidationResult{
@@ -170,9 +169,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "unsupported action type",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_010",
-				TemplateActionType: sql.NullString{String: "unsupported_type", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "unsupported_type",
 				ActionConfig:       json.RawMessage(`{}`),
 			},
 			want: workflow.ActionValidationResult{
@@ -183,9 +182,9 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 		{
 			name: "action with template defaults merged",
-			action: workflowdb.RuleActionView{
-				ID:                 "action_011",
-				TemplateActionType: sql.NullString{String: "send_email", Valid: true},
+			action: workflow.RuleActionView{
+				ID:                 uuid.New(),
+				TemplateActionType: "send_email",
 				TemplateDefaultConfig: json.RawMessage(`{
 					"recipients": ["default@example.com"],
 					"subject": "Default Subject",
@@ -231,12 +230,12 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		action workflowdb.RuleActionView
+		action workflow.RuleActionView
 		want   map[string]interface{}
 	}{
 		{
 			name: "merge template defaults with action config",
-			action: workflowdb.RuleActionView{
+			action: workflow.RuleActionView{
 				TemplateDefaultConfig: json.RawMessage(`{
 					"field1": "default1",
 					"field2": "default2",
@@ -256,7 +255,7 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 		},
 		{
 			name: "only template defaults",
-			action: workflowdb.RuleActionView{
+			action: workflow.RuleActionView{
 				TemplateDefaultConfig: json.RawMessage(`{
 					"field1": "value1",
 					"field2": "value2"
@@ -270,7 +269,7 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 		},
 		{
 			name: "only action config",
-			action: workflowdb.RuleActionView{
+			action: workflow.RuleActionView{
 				TemplateDefaultConfig: nil,
 				ActionConfig: json.RawMessage(`{
 					"field1": "value1",
@@ -284,7 +283,7 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 		},
 		{
 			name: "nested object merge",
-			action: workflowdb.RuleActionView{
+			action: workflow.RuleActionView{
 				TemplateDefaultConfig: json.RawMessage(`{
 					"settings": {
 						"timeout": 30,
@@ -307,7 +306,7 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 		},
 		{
 			name: "no config at all",
-			action: workflowdb.RuleActionView{
+			action: workflow.RuleActionView{
 				TemplateDefaultConfig: nil,
 				ActionConfig:          nil,
 			},
@@ -562,20 +561,20 @@ func TestActionExecutor_GetActionType(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		action workflowdb.RuleActionView
+		action workflow.RuleActionView
 		want   string
 	}{
 		{
 			name: "action with template type",
-			action: workflowdb.RuleActionView{
-				TemplateActionType: sql.NullString{String: "send_email", Valid: true},
+			action: workflow.RuleActionView{
+				TemplateActionType: "send_email",
 			},
 			want: "send_email",
 		},
 		{
 			name: "action without template type",
-			action: workflowdb.RuleActionView{
-				TemplateActionType: sql.NullString{Valid: false},
+			action: workflow.RuleActionView{
+				TemplateActionType: "",
 			},
 			want: "",
 		},
@@ -601,27 +600,27 @@ func TestActionExecutor_ShouldStopOnFailure(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		action workflowdb.RuleActionView
+		action workflow.RuleActionView
 		want   bool
 	}{
 		{
 			name: "seek_approval should stop on failure",
-			action: workflowdb.RuleActionView{
-				TemplateActionType: sql.NullString{String: "seek_approval", Valid: true},
+			action: workflow.RuleActionView{
+				TemplateActionType: "seek_approval",
 			},
 			want: true,
 		},
 		{
 			name: "send_email should not stop on failure",
-			action: workflowdb.RuleActionView{
-				TemplateActionType: sql.NullString{String: "send_email", Valid: true},
+			action: workflow.RuleActionView{
+				TemplateActionType: "send_email",
 			},
 			want: false,
 		},
 		{
 			name: "create_alert should not stop on failure",
-			action: workflowdb.RuleActionView{
-				TemplateActionType: sql.NullString{String: "create_alert", Valid: true},
+			action: workflow.RuleActionView{
+				TemplateActionType: "create_alert",
 			},
 			want: false,
 		},
@@ -889,7 +888,7 @@ func TestActionHandler_Implementations(t *testing.T) {
 // Test helper functions to access private methods
 // In a real scenario, you might want to make these methods public or use an interface
 
-func testMergeActionConfig(ae *workflow.ActionExecutor, action workflowdb.RuleActionView) json.RawMessage {
+func testMergeActionConfig(ae *workflow.ActionExecutor, action workflow.RuleActionView) json.RawMessage {
 	// This simulates calling the private mergeActionConfig method
 	// In practice, you'd test this through public methods that use it
 	var merged map[string]interface{}
@@ -958,14 +957,12 @@ func testProcessTemplates(ae *workflow.ActionExecutor, config json.RawMessage, c
 	return processed, nil
 }
 
-func testGetActionType(ae *workflow.ActionExecutor, action workflowdb.RuleActionView) string {
-	if action.TemplateActionType.Valid {
-		return action.TemplateActionType.String
-	}
-	return ""
+func testGetActionType(ae *workflow.ActionExecutor, action workflow.RuleActionView) string {
+	// TODO: Don't think this is necessary anymore, validation happens elsewhere
+	return action.TemplateActionType
 }
 
-func testShouldStopOnFailure(ae *workflow.ActionExecutor, action workflowdb.RuleActionView) bool {
+func testShouldStopOnFailure(ae *workflow.ActionExecutor, action workflow.RuleActionView) bool {
 	actionType := testGetActionType(ae, action)
 	return actionType == "seek_approval"
 }
@@ -995,9 +992,9 @@ func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ae := workflow.NewActionExecutor(log, nil)
 
-	action := workflowdb.RuleActionView{
-		ID:                 "action_001",
-		TemplateActionType: sql.NullString{String: "send_email", Valid: true},
+	action := workflow.RuleActionView{
+		ID:                 uuid.New(),
+		TemplateActionType: "send_email",
 		ActionConfig: json.RawMessage(`{
 			"recipients": ["user@example.com"],
 			"subject": "Test Email"
@@ -1015,7 +1012,7 @@ func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ae := workflow.NewActionExecutor(log, nil)
 
-	action := workflowdb.RuleActionView{
+	action := workflow.RuleActionView{
 		TemplateDefaultConfig: json.RawMessage(`{
 			"field1": "default1",
 			"field2": "default2",

@@ -1,7 +1,10 @@
 package workflow
 
 import (
+	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // TriggerEvent represents an event that triggers workflow execution
@@ -134,4 +137,297 @@ type ActionExecutionContext struct {
 	RuleID       string                 `json:"rule_id"`
 	RuleName     string                 `json:"rule_name"`
 	ExecutionID  string                 `json:"execution_id,omitempty"`
+}
+
+// =============================================================================
+// CRUD MODELS
+// =============================================================================
+
+// =============================================================================
+// Trigger Type
+// =============================================================================
+// TriggerType represents types of triggers for automation rules
+type TriggerType struct {
+	ID          uuid.UUID
+	Name        string
+	Description string
+}
+
+// NewTriggerType contains information needed to create a new trigger type
+type NewTriggerType struct {
+	Name        string
+	Description string
+}
+
+// UpdateTriggerType contains information needed to update a trigger type
+type UpdateTriggerType struct {
+	Name        *string
+	Description *string
+}
+
+// =============================================================================
+// Entity Type
+// =============================================================================
+// EntityType represents types of entities that can be monitored
+type EntityType struct {
+	ID          uuid.UUID
+	Name        string
+	Description string
+}
+
+// NewEntityType contains information needed to create a new entity type
+type NewEntityType struct {
+	Name        string
+	Description string
+}
+
+// UpdateEntityType contains information needed to update an entity type
+type UpdateEntityType struct {
+	Name        *string
+	Description *string
+}
+
+// =============================================================================
+// Entity
+// =============================================================================
+// Entity represents a monitored database entity
+type Entity struct {
+	ID           uuid.UUID
+	Name         string
+	EntityTypeID uuid.UUID
+	SchemaName   string
+	IsActive     bool
+	DateCreated  time.Time
+}
+
+// NewEntity contains information needed to create a new entity
+type NewEntity struct {
+	Name         string
+	EntityTypeID uuid.UUID
+	SchemaName   string
+	IsActive     bool
+}
+
+// UpdateEntity contains information needed to update an entity
+type UpdateEntity struct {
+	Name         *string
+	EntityTypeID *uuid.UUID
+	SchemaName   *string
+	IsActive     *bool
+}
+
+// =============================================================================
+// Automation Rule
+// =============================================================================
+// AutomationRule represents a workflow automation rule
+type AutomationRule struct {
+	ID                uuid.UUID
+	Name              string
+	Description       string
+	EntityID          uuid.UUID
+	EntityTypeID      uuid.UUID
+	TriggerTypeID     uuid.UUID
+	TriggerConditions json.RawMessage
+	IsActive          bool
+	DateCreated       time.Time
+	DateUpdated       time.Time
+	CreatedBy         uuid.UUID
+	UpdatedBy         uuid.UUID
+}
+
+// NewAutomationRule contains information needed to create a new automation rule
+type NewAutomationRule struct {
+	Name              string
+	Description       string
+	EntityID          uuid.UUID
+	EntityTypeID      uuid.UUID
+	TriggerTypeID     uuid.UUID
+	TriggerConditions json.RawMessage
+	IsActive          bool
+	CreatedBy         uuid.UUID
+}
+
+// UpdateAutomationRule contains information needed to update an automation rule
+type UpdateAutomationRule struct {
+	Name              *string
+	Description       *string
+	EntityID          *uuid.UUID
+	EntityTypeID      *uuid.UUID
+	TriggerTypeID     *uuid.UUID
+	TriggerConditions *json.RawMessage
+	IsActive          *bool
+	UpdatedBy         *uuid.UUID
+}
+
+// =============================================================================
+// Action Template
+// =============================================================================
+// ActionTemplate represents a reusable action configuration template
+type ActionTemplate struct {
+	ID            uuid.UUID
+	Name          string
+	Description   string
+	ActionType    string
+	DefaultConfig json.RawMessage
+	DateCreated   time.Time
+	CreatedBy     uuid.UUID
+}
+
+// NewActionTemplate contains information needed to create a new action template
+type NewActionTemplate struct {
+	Name          string
+	Description   string
+	ActionType    string
+	DefaultConfig json.RawMessage
+	CreatedBy     uuid.UUID
+}
+
+// UpdateActionTemplate contains information needed to update an action template
+type UpdateActionTemplate struct {
+	Name          *string
+	Description   *string
+	ActionType    *string
+	DefaultConfig *json.RawMessage
+}
+
+// =============================================================================
+// Rule Action
+// =============================================================================
+// RuleAction represents an action within an automation rule
+type RuleAction struct {
+	ID               uuid.UUID
+	AutomationRuleID uuid.UUID
+	Name             string
+	Description      string
+	ActionConfig     json.RawMessage
+	ExecutionOrder   int
+	IsActive         bool
+	TemplateID       *uuid.UUID // Nullable
+}
+
+// NewRuleAction contains information needed to create a new rule action
+type NewRuleAction struct {
+	AutomationRuleID uuid.UUID
+	Name             string
+	Description      string
+	ActionConfig     json.RawMessage
+	ExecutionOrder   int
+	IsActive         bool
+	TemplateID       *uuid.UUID
+}
+
+// UpdateRuleAction contains information needed to update a rule action
+type UpdateRuleAction struct {
+	Name           *string
+	Description    *string
+	ActionConfig   *json.RawMessage
+	ExecutionOrder *int
+	IsActive       *bool
+	TemplateID     *uuid.UUID
+}
+
+// =============================================================================
+// Rule Dependency
+// =============================================================================
+// RuleDependency represents a dependency between two automation rules
+type RuleDependency struct {
+	ParentRuleID uuid.UUID
+	ChildRuleID  uuid.UUID
+}
+
+// NewRuleDependency contains information needed to create a new rule dependency
+type NewRuleDependency struct {
+	ParentRuleID uuid.UUID
+	ChildRuleID  uuid.UUID
+}
+
+// =============================================================================
+// Automation Execution
+// =============================================================================
+// AutomationExecution represents an execution record of an automation rule
+type AutomationExecution struct {
+	ID               uuid.UUID
+	AutomationRuleID uuid.UUID
+	EntityType       string
+	TriggerData      json.RawMessage
+	ActionsExecuted  json.RawMessage
+	Status           ExecutionStatus
+	ErrorMessage     string
+	ExecutionTimeMs  int
+	ExecutedAt       time.Time
+}
+
+// NewAutomationExecution contains information needed to record a new execution
+type NewAutomationExecution struct {
+	AutomationRuleID uuid.UUID
+	EntityType       string
+	TriggerData      json.RawMessage
+	ActionsExecuted  json.RawMessage
+	Status           ExecutionStatus
+	ErrorMessage     string
+	ExecutionTimeMs  int
+}
+
+// ActionExecutionStatusExecutionStatus represents the status of an automation execution
+type ActionExecutionStatus string
+
+const (
+	ActionExecutionStatusSuccess ActionExecutionStatus = "success"
+	ActionExecutionStatusFailed  ActionExecutionStatus = "failed"
+	ActionExecutionStatusPartial ActionExecutionStatus = "partial"
+)
+
+// QueryFilter represents common query filters for listing operations
+type QueryFilter struct {
+	IsActive  *bool
+	EntityID  *uuid.UUID
+	RuleID    *uuid.UUID
+	CreatedBy *uuid.UUID
+	StartDate *time.Time
+	EndDate   *time.Time
+	OrderBy   string
+	Limit     int
+	Offset    int
+}
+
+// AutomationRuleView represents a flattened view of a rule with all related data
+type AutomationRuleView struct {
+	ID                uuid.UUID
+	Name              string
+	Description       string
+	EntityID          *uuid.UUID
+	TriggerConditions json.RawMessage
+	Actions           json.RawMessage
+	IsActive          bool
+	DateCreated       time.Time
+	DateUpdated       time.Time
+	CreatedBy         uuid.UUID
+	UpdatedBy         uuid.UUID
+	// Trigger type information
+	TriggerTypeID          *uuid.UUID
+	TriggerTypeName        string
+	TriggerTypeDescription string
+	// Entity type information
+	EntityTypeID          *uuid.UUID
+	EntityTypeName        string
+	EntityTypeDescription string
+	// Entity information
+	EntityName       string
+	EntitySchemaName string
+}
+
+// RuleActionView represents a flattened view of an action with template info
+type RuleActionView struct {
+	ID               uuid.UUID
+	AutomationRuleID *uuid.UUID
+	Name             string
+	Description      string
+	ActionConfig     json.RawMessage
+	ExecutionOrder   int
+	IsActive         bool
+	TemplateID       *uuid.UUID
+	// Template information
+	TemplateName          string
+	TemplateActionType    string
+	TemplateDefaultConfig json.RawMessage
 }

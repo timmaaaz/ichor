@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -24,7 +23,7 @@ type ActionExecution struct {
 	ActionID  string
 	RuleID    string
 	StartedAt time.Time
-	Status    string
+	Status    string // TODO: Make into execution status
 	Context   ActionExecutionContext
 }
 
@@ -179,11 +178,11 @@ func (ae *ActionExecutor) ExecuteRuleActions(ctx context.Context, ruleID string,
 	skippedCount := 0
 
 	for _, action := range actions {
-		if !action.IsActive.Bool {
+		if !action.IsActive {
 			skippedCount++
 			actionResults = append(actionResults, ActionResult{
-				ActionID:   action.ID,
-				ActionName: action.Name.String,
+				ActionID:   action.ID.String(),
+				ActionName: action.Name,
 				ActionType: ae.getActionType(action),
 				Status:     "skipped",
 				StartedAt:  time.Now(),
@@ -253,13 +252,13 @@ func (ae *ActionExecutor) ExecuteRuleActions(ctx context.Context, ruleID string,
 }
 
 // executeAction executes a single action
-func (ae *ActionExecutor) executeAction(ctx context.Context, action workflowdb.RuleActionView, executionContext ActionExecutionContext) ActionResult {
+func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionView, executionContext ActionExecutionContext) ActionResult {
 	startTime := time.Now()
 	actionID := action.ID
 
 	// Track active execution
 	exec := &ActionExecution{
-		ActionID:  actionID,
+		ActionID:  actionID.String(),
 		RuleID:    executionContext.RuleID,
 		StartedAt: startTime,
 		Status:    "running",
@@ -269,8 +268,8 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action workflowdb.R
 	defer ae.activeExecs.Delete(actionID)
 
 	result := ActionResult{
-		ActionID:   actionID,
-		ActionName: action.Name.String,
+		ActionID:   actionID.String(),
+		ActionName: action.Name,
 		ActionType: ae.getActionType(action),
 		Status:     "failed",
 		StartedAt:  startTime,
@@ -360,7 +359,7 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action workflowdb.R
 }
 
 // loadRuleActions loads actions for a rule from the database
-func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID string) ([]workflowdb.RuleActionView, error) {
+func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID string) ([]RuleActionView, error) {
 	query := `
 		SELECT 
 			ra.id,
@@ -380,7 +379,7 @@ func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID string) ([
 		ORDER BY ra.execution_order ASC
 	`
 
-	var actions []workflowdb.RuleActionView
+	var actions []RuleActionView
 	if err := ae.db.SelectContext(ctx, &actions, query, ruleID); err != nil {
 		return nil, fmt.Errorf("failed to load rule actions: %w", err)
 	}
@@ -404,7 +403,7 @@ func (ae *ActionExecutor) getRuleName(ctx context.Context, ruleID string) string
 }
 
 // ValidateActionConfig validates an action's configuration
-func (ae *ActionExecutor) ValidateActionConfig(action workflowdb.RuleActionView) ActionValidationResult {
+func (ae *ActionExecutor) ValidateActionConfig(action RuleActionView) ActionValidationResult {
 	errors := make([]string, 0)
 	warnings := make([]string, 0)
 
@@ -446,7 +445,7 @@ func (ae *ActionExecutor) ValidateActionConfig(action workflowdb.RuleActionView)
 }
 
 // mergeActionConfig merges template defaults with action-specific config
-func (ae *ActionExecutor) mergeActionConfig(action workflowdb.RuleActionView) json.RawMessage {
+func (ae *ActionExecutor) mergeActionConfig(action RuleActionView) json.RawMessage {
 	var merged map[string]interface{}
 
 	// Start with template defaults if available
@@ -542,15 +541,14 @@ func (ae *ActionExecutor) buildTemplateContext(execContext ActionExecutionContex
 }
 
 // getActionType determines the action type from the action view
-func (ae *ActionExecutor) getActionType(action workflowdb.RuleActionView) string {
-	if action.TemplateActionType.Valid {
-		return action.TemplateActionType.String
-	}
+func (ae *ActionExecutor) getActionType(action RuleActionView) string {
+	// TODO: Check if this is necessary after type revamp
+	return action.TemplateActionType
 	return ""
 }
 
 // shouldStopOnFailure determines if execution should stop after this action fails
-func (ae *ActionExecutor) shouldStopOnFailure(action workflowdb.RuleActionView) bool {
+func (ae *ActionExecutor) shouldStopOnFailure(action RuleActionView) bool {
 	// Could be configured per action or action type
 	// For now, only stop on seek_approval failures
 	actionType := ae.getActionType(action)

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -53,8 +53,8 @@ type DependencyResolver struct {
 	db  *sqlx.DB
 
 	// Cached data
-	dependencies []workflowdb.RuleDependency
-	rules        []workflowdb.AutomationRule
+	dependencies []RuleDependency
+	rules        []AutomationRule
 	graph        *DependencyGraph
 	lastLoadTime time.Time
 	cacheTimeout time.Duration
@@ -102,7 +102,7 @@ func (dr *DependencyResolver) loadDependencies(ctx context.Context) error {
         FROM rule_dependencies
     `
 
-	var deps []workflowdb.RuleDependency
+	var deps []RuleDependency
 	if err := dr.db.SelectContext(ctx, &deps, depQuery); err != nil {
 		return fmt.Errorf("failed to load dependencies: %w", err)
 	}
@@ -116,7 +116,7 @@ func (dr *DependencyResolver) loadDependencies(ctx context.Context) error {
         WHERE is_active = true
     `
 
-	var rules []workflowdb.AutomationRule
+	var rules []AutomationRule
 	if err := dr.db.SelectContext(ctx, &rules, ruleQuery); err != nil {
 		return fmt.Errorf("failed to load rules: %w", err)
 	}
@@ -143,8 +143,8 @@ func (dr *DependencyResolver) buildDependencyGraph(ctx context.Context) error {
 	// Initialize nodes for all rules
 	for _, rule := range dr.rules {
 		if rule.IsActive {
-			dr.graph.Nodes[rule.ID] = &DependencyNode{
-				RuleID:   rule.ID,
+			dr.graph.Nodes[rule.ID.String()] = &DependencyNode{
+				RuleID:   rule.ID.String(),
 				RuleName: rule.Name,
 				Parents:  make([]string, 0),
 				Children: make([]string, 0),
@@ -155,12 +155,12 @@ func (dr *DependencyResolver) buildDependencyGraph(ctx context.Context) error {
 
 	// Build parent/child relationships
 	for _, dep := range dr.dependencies {
-		parentNode, parentExists := dr.graph.Nodes[dep.ParentRuleID]
-		childNode, childExists := dr.graph.Nodes[dep.ChildRuleID]
+		parentNode, parentExists := dr.graph.Nodes[dep.ParentRuleID.String()]
+		childNode, childExists := dr.graph.Nodes[dep.ChildRuleID.String()]
 
 		if parentExists && childExists {
-			parentNode.Children = append(parentNode.Children, dep.ChildRuleID)
-			childNode.Parents = append(childNode.Parents, dep.ParentRuleID)
+			parentNode.Children = append(parentNode.Children, dep.ChildRuleID.String())
+			childNode.Parents = append(childNode.Parents, dep.ParentRuleID.String())
 		}
 	}
 
@@ -231,7 +231,7 @@ func (dr *DependencyResolver) CalculateBatchOrder(ctx context.Context, matchedRu
 	// Create a set of matched rule IDs for quick lookup
 	matchedRuleIDs := make(map[string]bool)
 	for _, match := range matchedRules {
-		matchedRuleIDs[match.Rule.ID] = true
+		matchedRuleIDs[match.Rule.ID.String()] = true
 	}
 
 	// Build batches based on dependency levels
@@ -336,7 +336,7 @@ func (dr *DependencyResolver) DetectCycles() *CycleDetectionResult {
 }
 
 // ValidateDependencies validates a set of dependencies
-func (dr *DependencyResolver) ValidateDependencies(newDependencies []workflowdb.RuleDependency) []ValidationError {
+func (dr *DependencyResolver) ValidateDependencies(newDependencies []RuleDependency) []ValidationError {
 	errors := make([]ValidationError, 0)
 
 	// Check for self-dependencies
@@ -345,7 +345,7 @@ func (dr *DependencyResolver) ValidateDependencies(newDependencies []workflowdb.
 			errors = append(errors, ValidationError{
 				Type:          "self_dependency",
 				Message:       fmt.Sprintf("Rule cannot depend on itself: %s", dep.ParentRuleID),
-				AffectedRules: []string{dep.ParentRuleID},
+				AffectedRules: []string{dep.ParentRuleID.String()},
 			})
 		}
 	}
@@ -353,22 +353,22 @@ func (dr *DependencyResolver) ValidateDependencies(newDependencies []workflowdb.
 	// Check for missing rules
 	allRuleIDs := make(map[string]bool)
 	for _, rule := range dr.rules {
-		allRuleIDs[rule.ID] = true
+		allRuleIDs[rule.ID.String()] = true
 	}
 
 	for _, dep := range newDependencies {
-		if !allRuleIDs[dep.ParentRuleID] {
+		if !allRuleIDs[dep.ParentRuleID.String()] {
 			errors = append(errors, ValidationError{
 				Type:          "missing_rule",
 				Message:       fmt.Sprintf("Parent rule not found: %s", dep.ParentRuleID),
-				AffectedRules: []string{dep.ParentRuleID},
+				AffectedRules: []string{dep.ParentRuleID.String()},
 			})
 		}
-		if !allRuleIDs[dep.ChildRuleID] {
+		if !allRuleIDs[dep.ChildRuleID.String()] {
 			errors = append(errors, ValidationError{
 				Type:          "missing_rule",
 				Message:       fmt.Sprintf("Child rule not found: %s", dep.ChildRuleID),
-				AffectedRules: []string{dep.ChildRuleID},
+				AffectedRules: []string{dep.ChildRuleID.String()},
 			})
 		}
 	}
@@ -403,7 +403,7 @@ func (dr *DependencyResolver) ValidateDependencies(newDependencies []workflowdb.
 }
 
 // simulateDependencyGraph creates a temporary graph with new dependencies
-func (dr *DependencyResolver) simulateDependencyGraph(newDeps []workflowdb.RuleDependency) *DependencyGraph {
+func (dr *DependencyResolver) simulateDependencyGraph(newDeps []RuleDependency) *DependencyGraph {
 	tempGraph := &DependencyGraph{
 		Nodes:  make(map[string]*DependencyNode),
 		Levels: make(map[int][]string),
@@ -425,19 +425,19 @@ func (dr *DependencyResolver) simulateDependencyGraph(newDeps []workflowdb.RuleD
 
 	// Rebuild relationships
 	for _, dep := range allDeps {
-		if parentNode, exists := tempGraph.Nodes[dep.ParentRuleID]; exists {
-			if childNode, exists := tempGraph.Nodes[dep.ChildRuleID]; exists {
+		if parentNode, exists := tempGraph.Nodes[dep.ParentRuleID.String()]; exists {
+			if childNode, exists := tempGraph.Nodes[dep.ChildRuleID.String()]; exists {
 				// Check if dependency already exists
 				hasChild := false
 				for _, child := range parentNode.Children {
-					if child == dep.ChildRuleID {
+					if child == dep.ChildRuleID.String() {
 						hasChild = true
 						break
 					}
 				}
 				if !hasChild {
-					parentNode.Children = append(parentNode.Children, dep.ChildRuleID)
-					childNode.Parents = append(childNode.Parents, dep.ParentRuleID)
+					parentNode.Children = append(parentNode.Children, dep.ChildRuleID.String())
+					childNode.Parents = append(childNode.Parents, dep.ParentRuleID.String())
 				}
 			}
 		}
@@ -532,13 +532,23 @@ func (dr *DependencyResolver) GetRuleDependencies(ruleID string) []string {
 
 // AddDependency adds a new dependency to the database
 func (dr *DependencyResolver) AddDependency(ctx context.Context, parentRuleID, childRuleID string) error {
-	// Validate before adding
-	newDep := workflowdb.RuleDependency{
-		ParentRuleID: parentRuleID,
-		ChildRuleID:  childRuleID,
+	prID, err := uuid.Parse(parentRuleID)
+	if err != nil {
+		return fmt.Errorf("adddependency: %w", err)
 	}
 
-	validationErrors := dr.ValidateDependencies([]workflowdb.RuleDependency{newDep})
+	crID, err := uuid.Parse(childRuleID)
+	if err != nil {
+		return fmt.Errorf("adddependency: %w", err)
+	}
+
+	// Validate before adding
+	newDep := RuleDependency{
+		ParentRuleID: prID,
+		ChildRuleID:  crID,
+	}
+
+	validationErrors := dr.ValidateDependencies([]RuleDependency{newDep})
 	if len(validationErrors) > 0 {
 		return fmt.Errorf("validation failed: %s", validationErrors[0].Message)
 	}

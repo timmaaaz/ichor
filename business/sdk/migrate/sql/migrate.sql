@@ -740,6 +740,93 @@ CREATE TABLE order_line_items (
    FOREIGN KEY (updated_by) REFERENCES users(id)
 );
 
+-- =============================================================================
+-- WORKFLOW TABLES
+-- =============================================================================
+CREATE TABLE trigger_types (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   name VARCHAR(50) NOT NULL UNIQUE,
+   description TEXT NULL
+);
+
+CREATE TABLE entity_types (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   name VARCHAR(50) NOT NULL UNIQUE,
+   description TEXT NULL
+);
+
+-- Define automation rules
+CREATE TABLE automation_rules (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   name VARCHAR(100) NOT NULL,
+   description TEXT,
+   entity_id UUID NOT NULL, -- table or view name, maybe others in the future
+   entity_type_id UUID NOT NULL REFERENCES entity_types(id),
+   
+   -- Trigger conditions
+   trigger_type_id UUID NOT NULL REFERENCES trigger_types(id),
+
+   trigger_conditions JSONB, -- When to trigger
+      
+   -- Control
+   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+   
+   created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+   updated_date TIMESTAMP NOT NULL DEFAULT NOW(),
+   created_by UUID NOT NULL REFERENCES profiles(id),
+   updated_by UUID NOT NULL REFERENCES profiles(id)
+);
+
+-- Track rule executions
+CREATE TABLE automation_executions (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   automation_rules_id UUID NOT NULL REFERENCES automation_rules(id),
+   entity_type VARCHAR(50) NOT NULL,
+   trigger_data JSONB,
+   actions_executed JSONB,
+   status VARCHAR(20) NOT NULL, -- 'success', 'failed', 'partial'
+   error_message TEXT,
+   execution_time_ms INTEGER,
+   executed_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE action_templates (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   name VARCHAR(100) NOT NULL UNIQUE,
+   description TEXT,
+   action_type VARCHAR(50) NOT NULL,
+   default_config JSONB NOT NULL,
+   created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+   created_by UUID NOT NULL REFERENCES profiles(id)
+);
+
+CREATE TABLE rule_actions (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   automation_rules_id UUID NOT NULL REFERENCES automation_rules(id),
+   name VARCHAR(100) NOT NULL,
+   description TEXT,
+   action_config JSONB NOT NULL,
+   execution_order INTEGER NOT NULL DEFAULT 1,
+   is_active BOOLEAN DEFAULT TRUE,
+   template_id UUID NULL REFERENCES action_templates(id)
+);
+
+CREATE TABLE rule_dependencies (
+   parent_rule_id UUID REFERENCES automation_rules(id),
+   child_rule_id UUID REFERENCES automation_rules(id),
+   PRIMARY KEY (parent_rule_id, child_rule_id)
+);
+
+-- Create entities table
+CREATE TABLE entities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    entity_type_id UUID NOT NULL REFERENCES entity_types(id),
+    schema_name VARCHAR(50) DEFAULT 'public',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_date TIMESTAMP DEFAULT NOW()
+);
+
 -- Migration: Create table_configs table for storing table configurations
 -- Version: 2.01
 -- Description: Create table for storing dynamic table configurations
