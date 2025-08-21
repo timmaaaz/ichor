@@ -208,7 +208,7 @@ type Entity struct {
 	EntityTypeID  uuid.UUID
 	SchemaName    string
 	IsActive      bool
-	DateCreated   time.Time
+	CreatedDate   time.Time
 	DeactivatedBy uuid.UUID
 }
 
@@ -241,10 +241,11 @@ type AutomationRule struct {
 	TriggerTypeID     uuid.UUID
 	TriggerConditions json.RawMessage
 	IsActive          bool
-	DateCreated       time.Time
-	DateUpdated       time.Time
+	CreatedDate       time.Time
+	UpdatedDate       time.Time
 	CreatedBy         uuid.UUID
 	UpdatedBy         uuid.UUID
+	DeactivatedBy     uuid.UUID
 }
 
 // NewAutomationRule contains information needed to create a new automation rule
@@ -281,7 +282,7 @@ type ActionTemplate struct {
 	Description   string
 	ActionType    string
 	DefaultConfig json.RawMessage
-	DateCreated   time.Time
+	CreatedDate   time.Time
 	CreatedBy     uuid.UUID
 }
 
@@ -411,8 +412,8 @@ type AutomationRuleView struct {
 	TriggerConditions json.RawMessage
 	Actions           json.RawMessage
 	IsActive          bool
-	DateCreated       time.Time
-	DateUpdated       time.Time
+	CreatedDate       time.Time
+	UpdatedDate       time.Time
 	CreatedBy         uuid.UUID
 	UpdatedBy         uuid.UUID
 	// Trigger type information

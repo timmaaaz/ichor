@@ -412,11 +412,32 @@ func (s *Store) UpdateRule(ctx context.Context, rule workflow.AutomationRule) er
 	return nil
 }
 
-// DeleteRule removes an automation rule from the database.
-func (s *Store) DeleteRule(ctx context.Context, rule workflow.AutomationRule) error {
+// DeactivateRule deactivates an automation rule in the database.
+func (s *Store) DeactivateRule(ctx context.Context, rule workflow.AutomationRule) error {
 	const q = `
-	DELETE FROM
+	UPDATE
 		automation_rules
+	SET
+		deactivated_by = :deactivated_by,
+		is_active = false
+	WHERE
+		id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAutomationRule(rule)); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateRule activates an automation rule in the database.
+func (s *Store) ActivateRule(ctx context.Context, rule workflow.AutomationRule) error {
+	const q = `
+	UPDATE
+		automation_rules
+	SET
+		deactivated_by = NULL,
+		is_active = true
 	WHERE
 		id = :id`
 

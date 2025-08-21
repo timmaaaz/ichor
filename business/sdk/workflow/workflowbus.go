@@ -33,9 +33,10 @@ type Storer interface {
 
 	CreateRule(ctx context.Context, rule AutomationRule) error
 	UpdateRule(ctx context.Context, rule AutomationRule) error
-	DeleteRule(ctx context.Context, rule AutomationRule) error
 	QueryRuleByID(ctx context.Context, id uuid.UUID) (AutomationRule, error)
 	QueryRulesByEntity(ctx context.Context, entityid uuid.UUID) ([]AutomationRule, error)
+	DeactivateRule(ctx context.Context, rule AutomationRule) error
+	ActivateRule(ctx context.Context, rule AutomationRule) error
 
 	CreateRuleAction(ctx context.Context, action RuleAction) error
 	UpdateRuleAction(ctx context.Context, action RuleAction) error
@@ -271,7 +272,7 @@ func (b *Business) CreateEntity(ctx context.Context, ne NewEntity) (Entity, erro
 		EntityTypeID: ne.EntityTypeID,
 		SchemaName:   ne.SchemaName,
 		IsActive:     ne.IsActive,
-		DateCreated:  now,
+		CreatedDate:  now,
 	}
 
 	if err := b.storer.CreateEntity(ctx, entity); err != nil {
@@ -362,8 +363,8 @@ func (b *Business) CreateRule(ctx context.Context, nar NewAutomationRule) (Autom
 		TriggerTypeID:     nar.TriggerTypeID,
 		TriggerConditions: nar.TriggerConditions,
 		IsActive:          nar.IsActive,
-		DateCreated:       now,
-		DateUpdated:       now,
+		CreatedDate:       now,
+		UpdatedDate:       now,
 		CreatedBy:         nar.CreatedBy,
 		UpdatedBy:         nar.CreatedBy,
 	}
@@ -405,7 +406,7 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 		rule.UpdatedBy = *uar.UpdatedBy
 	}
 
-	rule.DateUpdated = time.Now()
+	rule.UpdatedDate = time.Now()
 
 	if err := b.storer.UpdateRule(ctx, rule); err != nil {
 		return AutomationRule{}, fmt.Errorf("update: %w", err)
@@ -414,13 +415,25 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 	return rule, nil
 }
 
-// DeleteRule removes the specified automation rule.
-func (b *Business) DeleteRule(ctx context.Context, rule AutomationRule) error {
-	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deleterule")
+// DeactivateRule deactivates the specified automation rule.
+func (b *Business) DeactivateRule(ctx context.Context, rule AutomationRule) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deactivaterule")
 	defer span.End()
 
-	if err := b.storer.DeleteRule(ctx, rule); err != nil {
-		return fmt.Errorf("delete: %w", err)
+	if err := b.storer.DeactivateRule(ctx, rule); err != nil {
+		return fmt.Errorf("deactivate: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateRule reactivates the specified automation rule.
+func (b *Business) ActivateRule(ctx context.Context, rule AutomationRule) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.activaterule")
+	defer span.End()
+
+	if err := b.storer.ActivateRule(ctx, rule); err != nil {
+		return fmt.Errorf("activate: %w", err)
 	}
 
 	return nil
@@ -603,7 +616,7 @@ func (b *Business) CreateActionTemplate(ctx context.Context, nat NewActionTempla
 		Description:   nat.Description,
 		ActionType:    nat.ActionType,
 		DefaultConfig: nat.DefaultConfig,
-		DateCreated:   now,
+		CreatedDate:   now,
 		CreatedBy:     nat.CreatedBy,
 	}
 

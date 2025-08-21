@@ -140,8 +140,8 @@ CREATE TABLE valid_assets (
    serial_number TEXT NULL,
    model_number TEXT NULL,
    is_enabled BOOLEAN NOT NULL,
-   date_created TIMESTAMP NOT NULL,
-   date_updated TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
    created_by UUID NOT NULL,
    updated_by UUID NOT NULL,
    PRIMARY KEY (id),
@@ -167,8 +167,8 @@ CREATE TABLE homes (
    city TEXT NOT NULL,
    state TEXT NOT NULL,
    country TEXT NOT NULL,
-   date_created TIMESTAMP NOT NULL,
-   date_updated TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -318,8 +318,8 @@ CREATE TABLE warehouses (
    name TEXT NOT NULL,
    street_id UUID NOT NULL,
    is_active BOOLEAN NOT NULL,
-   date_created TIMESTAMP NOT NULL,
-   date_updated TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
    created_by UUID NOT NULL,
    updated_by UUID NOT NULL,
    PRIMARY KEY (id),
@@ -784,7 +784,7 @@ CREATE TABLE automation_rules (
    created_by UUID NOT NULL REFERENCES users(id),
    updated_by UUID NOT NULL REFERENCES users(id),
 
-   deactivated_by UUID NULL REFERENCES users(id),
+   deactivated_by UUID NULL REFERENCES users(id)
 );
 
 -- Track rule executions

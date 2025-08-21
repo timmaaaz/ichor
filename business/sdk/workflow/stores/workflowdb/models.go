@@ -143,7 +143,7 @@ func toCoreEntity(dbEntity entity) workflow.Entity {
 		EntityTypeID:  uuid.MustParse(dbEntity.EntityTypeID),
 		SchemaName:    dbEntity.SchemaName,
 		IsActive:      dbEntity.IsActive,
-		DateCreated:   dbEntity.CreatedDate,
+		CreatedDate:   dbEntity.CreatedDate,
 		DeactivatedBy: deactivatedBy,
 	}
 }
@@ -187,10 +187,16 @@ type automationRule struct {
 	UpdatedDate       time.Time       `db:"updated_date"`
 	CreatedBy         string          `db:"created_by"`
 	UpdatedBy         string          `db:"updated_by"`
+	DeactivatedBy     sql.NullString  `db:"deactivated_by"`
 }
 
 // toCoreAutomationRule converts a store automationRule to core AutomationRule
 func toCoreAutomationRule(dbRule automationRule) workflow.AutomationRule {
+	deactivatedBy := uuid.Nil
+	if dbRule.DeactivatedBy.Valid {
+		deactivatedBy = uuid.MustParse(dbRule.DeactivatedBy.String)
+	}
+
 	ar := workflow.AutomationRule{
 		ID:                uuid.MustParse(dbRule.ID),
 		Name:              dbRule.Name,
@@ -200,10 +206,11 @@ func toCoreAutomationRule(dbRule automationRule) workflow.AutomationRule {
 		TriggerTypeID:     uuid.MustParse(dbRule.TriggerTypeID),
 		TriggerConditions: dbRule.TriggerConditions,
 		IsActive:          dbRule.IsActive,
-		DateCreated:       dbRule.CreatedDate,
-		DateUpdated:       dbRule.UpdatedDate,
+		CreatedDate:       dbRule.CreatedDate,
+		UpdatedDate:       dbRule.UpdatedDate,
 		CreatedBy:         uuid.MustParse(dbRule.CreatedBy),
 		UpdatedBy:         uuid.MustParse(dbRule.UpdatedBy),
+		DeactivatedBy:     deactivatedBy,
 	}
 
 	return ar
@@ -219,7 +226,11 @@ func toCoreAutomationRuleSlice(dbRules []automationRule) []workflow.AutomationRu
 
 // toDBAutomationRule converts a core AutomationRule to store values
 func toDBAutomationRule(ar workflow.AutomationRule) automationRule {
-	now := time.Now()
+	deactivatedBy := sql.NullString{
+		String: ar.DeactivatedBy.String(),
+		Valid:  ar.DeactivatedBy != uuid.Nil,
+	}
+
 	return automationRule{
 		ID:                ar.ID.String(),
 		Name:              ar.Name,
@@ -229,10 +240,11 @@ func toDBAutomationRule(ar workflow.AutomationRule) automationRule {
 		TriggerTypeID:     ar.TriggerTypeID.String(),
 		TriggerConditions: ar.TriggerConditions,
 		IsActive:          ar.IsActive,
-		CreatedDate:       now,
-		UpdatedDate:       now,
+		CreatedDate:       ar.CreatedDate,
+		UpdatedDate:       ar.UpdatedDate,
 		CreatedBy:         ar.CreatedBy.String(),
-		UpdatedBy:         ar.CreatedBy.String(),
+		UpdatedBy:         ar.UpdatedBy.String(),
+		DeactivatedBy:     deactivatedBy,
 	}
 }
 
@@ -255,7 +267,7 @@ func toCoreActionTemplate(dbTemplate actionTemplate) workflow.ActionTemplate {
 		Description:   dbTemplate.Description,
 		ActionType:    dbTemplate.ActionType,
 		DefaultConfig: dbTemplate.DefaultConfig,
-		DateCreated:   dbTemplate.CreatedDate,
+		CreatedDate:   dbTemplate.CreatedDate,
 		CreatedBy:     uuid.MustParse(dbTemplate.CreatedBy),
 	}
 	return at
@@ -453,8 +465,8 @@ func toCoreAutomationRuleView(dbView automationRulesView) workflow.AutomationRul
 		TriggerConditions: dbView.TriggerConditions,
 		Actions:           dbView.Actions,
 		IsActive:          dbView.IsActive,
-		DateCreated:       dbView.CreatedDate,
-		DateUpdated:       dbView.UpdatedDate,
+		CreatedDate:       dbView.CreatedDate,
+		UpdatedDate:       dbView.UpdatedDate,
 		CreatedBy:         uuid.MustParse(dbView.CreatedBy),
 		UpdatedBy:         uuid.MustParse(dbView.UpdatedBy),
 	}

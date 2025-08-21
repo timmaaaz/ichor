@@ -532,8 +532,8 @@ func createEntity(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table
 
 			expResp := exp.(workflow.Entity)
 			expResp.ID = gotResp.ID
-			expResp.DateCreated = gotResp.DateCreated.Round(0).Truncate(time.Microsecond)
-			gotResp.DateCreated = gotResp.DateCreated.Round(0).Truncate(time.Microsecond)
+			expResp.CreatedDate = gotResp.CreatedDate.Round(0).Truncate(time.Microsecond)
+			gotResp.CreatedDate = gotResp.CreatedDate.Round(0).Truncate(time.Microsecond)
 
 			return cmp.Diff(gotResp, expResp)
 		},
@@ -581,8 +581,8 @@ func queryEntities(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Tabl
 			for i := range filtered {
 				for j := range expResp {
 					if filtered[i].ID == expResp[j].ID {
-						if filtered[i].DateCreated.Format(time.RFC3339) == expResp[j].DateCreated.Format(time.RFC3339) {
-							expResp[j].DateCreated = filtered[i].DateCreated
+						if filtered[i].CreatedDate.Format(time.RFC3339) == expResp[j].CreatedDate.Format(time.RFC3339) {
+							expResp[j].CreatedDate = filtered[i].CreatedDate
 						}
 						break
 					}
@@ -603,7 +603,7 @@ func updateEntity(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table
 			EntityTypeID: sd.Entities[0].EntityTypeID,
 			SchemaName:   "custom_schema",
 			IsActive:     false,
-			DateCreated:  sd.Entities[0].DateCreated,
+			CreatedDate:  sd.Entities[0].CreatedDate,
 		},
 		ExcFunc: func(ctx context.Context) any {
 			ue := workflow.UpdateEntity{
@@ -629,8 +629,8 @@ func updateEntity(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table
 				return "error occurred"
 			}
 
-			expResp.DateCreated = gotResp.DateCreated.Round(0).Truncate(time.Microsecond)
-			gotResp.DateCreated = gotResp.DateCreated.Round(0).Truncate(time.Microsecond)
+			expResp.CreatedDate = gotResp.CreatedDate.Round(0).Truncate(time.Microsecond)
+			gotResp.CreatedDate = gotResp.CreatedDate.Round(0).Truncate(time.Microsecond)
 
 			return cmp.Diff(gotResp, expResp)
 		},
@@ -678,7 +678,8 @@ func automationRuleTests(busDomain dbtest.BusDomain, sd workflowSeedData) []unit
 		queryAutomationRuleByID(busDomain, sd),
 		queryAutomationRulesByEntity(busDomain, sd),
 		updateAutomationRule(busDomain, sd),
-		deleteAutomationRule(busDomain, sd),
+		deactivateAutomationRule(busDomain, sd),
+		activateAutomationRule(busDomain, sd),
 	}
 }
 
@@ -729,8 +730,8 @@ func createAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 
 			expResp := exp.(workflow.AutomationRule)
 			expResp.ID = gotResp.ID
-			expResp.DateCreated = gotResp.DateCreated
-			expResp.DateUpdated = gotResp.DateUpdated
+			expResp.CreatedDate = gotResp.CreatedDate
+			expResp.UpdatedDate = gotResp.UpdatedDate
 
 			return cmp.Diff(gotResp, expResp)
 		},
@@ -757,12 +758,12 @@ func queryAutomationRuleByID(busDomain dbtest.BusDomain, sd workflowSeedData) un
 
 			expResp := exp.(workflow.AutomationRule)
 
-			if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
-				expResp.DateCreated = gotResp.DateCreated
+			if gotResp.CreatedDate.Format(time.RFC3339) == expResp.CreatedDate.Format(time.RFC3339) {
+				expResp.CreatedDate = gotResp.CreatedDate
 			}
 
-			if gotResp.DateUpdated.Format(time.RFC3339) == expResp.DateUpdated.Format(time.RFC3339) {
-				expResp.DateUpdated = gotResp.DateUpdated
+			if gotResp.UpdatedDate.Format(time.RFC3339) == expResp.UpdatedDate.Format(time.RFC3339) {
+				expResp.UpdatedDate = gotResp.UpdatedDate
 			}
 
 			dbtest.NormalizeJSONFields(gotResp, &expResp)
@@ -803,11 +804,11 @@ func queryAutomationRulesByEntity(busDomain dbtest.BusDomain, sd workflowSeedDat
 			for i := range gotResp {
 				for j := range expResp {
 					if gotResp[i].ID == expResp[j].ID {
-						if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[j].DateCreated.Format(time.RFC3339) {
-							expResp[j].DateCreated = gotResp[i].DateCreated
+						if gotResp[i].CreatedDate.Format(time.RFC3339) == expResp[j].CreatedDate.Format(time.RFC3339) {
+							expResp[j].CreatedDate = gotResp[i].CreatedDate
 						}
-						if gotResp[i].DateUpdated.Format(time.RFC3339) == expResp[j].DateUpdated.Format(time.RFC3339) {
-							expResp[j].DateUpdated = gotResp[i].DateUpdated
+						if gotResp[i].UpdatedDate.Format(time.RFC3339) == expResp[j].UpdatedDate.Format(time.RFC3339) {
+							expResp[j].UpdatedDate = gotResp[i].UpdatedDate
 						}
 						break
 					}
@@ -840,7 +841,7 @@ func updateAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			TriggerTypeID:     sd.AutomationRules[0].TriggerTypeID,
 			TriggerConditions: newConditionsJSON,
 			IsActive:          false,
-			DateCreated:       sd.AutomationRules[0].DateCreated,
+			CreatedDate:       sd.AutomationRules[0].CreatedDate,
 			CreatedBy:         sd.AutomationRules[0].CreatedBy,
 			UpdatedBy:         sd.Admins[0].ID,
 		},
@@ -867,20 +868,35 @@ func updateAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			}
 
 			expResp := exp.(workflow.AutomationRule)
-			expResp.DateUpdated = gotResp.DateUpdated
+			expResp.UpdatedDate = gotResp.UpdatedDate
 
 			return cmp.Diff(gotResp, expResp)
 		},
 	}
 }
 
-func deleteAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+func deactivateAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
 	return unitest.Table{
-		Name:    "delete",
+		Name:    "deactivate",
 		ExpResp: nil,
 		ExcFunc: func(ctx context.Context) any {
-			// Delete the last rule to avoid FK constraints
-			if err := busDomain.Workflow.DeleteRule(ctx, sd.AutomationRules[len(sd.AutomationRules)-1]); err != nil {
+			if err := busDomain.Workflow.DeactivateRule(ctx, sd.AutomationRules[0]); err != nil {
+				return err
+			}
+			return nil
+		},
+		CmpFunc: func(got any, exp any) string {
+			return cmp.Diff(got, exp)
+		},
+	}
+}
+
+func activateAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+	return unitest.Table{
+		Name:    "activate",
+		ExpResp: nil,
+		ExcFunc: func(ctx context.Context) any {
+			if err := busDomain.Workflow.ActivateRule(ctx, sd.AutomationRules[0]); err != nil {
 				return err
 			}
 			return nil
@@ -943,7 +959,7 @@ func createActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 
 			expResp := exp.(workflow.ActionTemplate)
 			expResp.ID = gotResp.ID
-			expResp.DateCreated = gotResp.DateCreated
+			expResp.CreatedDate = gotResp.CreatedDate
 
 			return cmp.Diff(gotResp, expResp)
 		},
@@ -970,8 +986,8 @@ func queryActionTemplateByID(busDomain dbtest.BusDomain, sd workflowSeedData) un
 
 			expResp := exp.(workflow.ActionTemplate)
 
-			if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
-				expResp.DateCreated = gotResp.DateCreated
+			if gotResp.CreatedDate.Format(time.RFC3339) == expResp.CreatedDate.Format(time.RFC3339) {
+				expResp.CreatedDate = gotResp.CreatedDate
 			}
 
 			return cmp.Diff(gotResp, expResp)
@@ -995,7 +1011,7 @@ func updateActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			Description:   "Updated template description",
 			ActionType:    "api_call",
 			DefaultConfig: newConfigJSON,
-			DateCreated:   sd.ActionTemplates[0].DateCreated,
+			CreatedDate:   sd.ActionTemplates[0].CreatedDate,
 			CreatedBy:     sd.ActionTemplates[0].CreatedBy,
 		},
 		ExcFunc: func(ctx context.Context) any {
