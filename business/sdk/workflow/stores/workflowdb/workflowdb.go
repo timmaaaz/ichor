@@ -229,12 +229,7 @@ func (s *Store) QueryEntityTypes(ctx context.Context) ([]workflow.EntityType, er
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	entityTypes := make([]workflow.EntityType, len(dbEntityTypes))
-	for i, dbET := range dbEntityTypes {
-		entityTypes[i] = toCoreEntityType(dbET)
-	}
-
-	return entityTypes, nil
+	return toCoreEntityTypeSlice(dbEntityTypes), nil
 }
 
 // =============================================================================
@@ -303,13 +298,7 @@ func (s *Store) QueryEntities(ctx context.Context) ([]workflow.Entity, error) {
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbEntities); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
-
-	entities := make([]workflow.Entity, len(dbEntities))
-	for i, dbEntity := range dbEntities {
-		entities[i] = toCoreEntity(dbEntity)
-	}
-
-	return entities, nil
+	return toCoreEntitySlice(dbEntities), nil
 }
 
 // =============================================================================
@@ -427,12 +416,7 @@ func (s *Store) QueryRulesByEntity(ctx context.Context, entityID uuid.UUID) ([]w
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	rules := make([]workflow.AutomationRule, len(dbRules))
-	for i, dbRule := range dbRules {
-		rules[i] = toCoreAutomationRule(dbRule)
-	}
-
-	return rules, nil
+	return toCoreAutomationRuleSlice(dbRules), nil
 }
 
 // =============================================================================
@@ -516,12 +500,7 @@ func (s *Store) QueryActionsByRule(ctx context.Context, ruleID uuid.UUID) ([]wor
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	actions := make([]workflow.RuleAction, len(dbActions))
-	for i, dbAction := range dbActions {
-		actions[i] = toCoreRuleAction(dbAction)
-	}
-
-	return actions, nil
+	return toCoreRuleActionSlice(dbActions), nil
 }
 
 // =============================================================================
@@ -571,12 +550,7 @@ func (s *Store) QueryDependencies(ctx context.Context) ([]workflow.RuleDependenc
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	dependencies := make([]workflow.RuleDependency, len(dbDependencies))
-	for i, dbDep := range dbDependencies {
-		dependencies[i] = toCoreRuleDependency(dbDep)
-	}
-
-	return dependencies, nil
+	return toCoreRuleDependencySlice(dbDependencies), nil
 }
 
 // =============================================================================

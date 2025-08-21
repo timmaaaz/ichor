@@ -63,6 +63,14 @@ func toCoreEntityType(dbEntityType entityType) workflow.EntityType {
 	return et
 }
 
+func toCoreEntityTypeSlice(dbEntityTypes []entityType) []workflow.EntityType {
+	etSlice := make([]workflow.EntityType, len(dbEntityTypes))
+	for i, dbET := range dbEntityTypes {
+		etSlice[i] = toCoreEntityType(dbET)
+	}
+	return etSlice
+}
+
 // toDBEntityType converts a core EntityType to store values
 func toDBEntityType(et workflow.EntityType) entityType {
 	return entityType{
@@ -92,6 +100,14 @@ func toCoreEntity(dbEntity entity) workflow.Entity {
 		IsActive:     dbEntity.IsActive,
 		DateCreated:  dbEntity.CreatedDate,
 	}
+}
+
+func toCoreEntitySlice(dbEntities []entity) []workflow.Entity {
+	entities := make([]workflow.Entity, len(dbEntities))
+	for i, dbEntity := range dbEntities {
+		entities[i] = toCoreEntity(dbEntity)
+	}
+	return entities
 }
 
 // toDBEntity converts a core Entity to store values
@@ -140,6 +156,14 @@ func toCoreAutomationRule(dbRule automationRule) workflow.AutomationRule {
 	}
 
 	return ar
+}
+
+func toCoreAutomationRuleSlice(dbRules []automationRule) []workflow.AutomationRule {
+	rules := make([]workflow.AutomationRule, len(dbRules))
+	for i, dbRule := range dbRules {
+		rules[i] = toCoreAutomationRule(dbRule)
+	}
+	return rules
 }
 
 // toDBAutomationRule converts a core AutomationRule to store values
@@ -228,6 +252,14 @@ func toCoreRuleAction(dbAction ruleAction) workflow.RuleAction {
 	return ra
 }
 
+func toCoreRuleActionSlice(dbActions []ruleAction) []workflow.RuleAction {
+	actions := make([]workflow.RuleAction, len(dbActions))
+	for i, dbAction := range dbActions {
+		actions[i] = toCoreRuleAction(dbAction)
+	}
+	return actions
+}
+
 // toDBRuleAction converts a core RuleAction to store values
 func toDBRuleAction(ra workflow.RuleAction) ruleAction {
 	dbAction := ruleAction{
@@ -257,6 +289,14 @@ func toCoreRuleDependency(dbDep ruleDependency) workflow.RuleDependency {
 		ParentRuleID: uuid.MustParse(dbDep.ParentRuleID),
 		ChildRuleID:  uuid.MustParse(dbDep.ChildRuleID),
 	}
+}
+
+func toCoreRuleDependencySlice(dbDeps []ruleDependency) []workflow.RuleDependency {
+	dependencies := make([]workflow.RuleDependency, len(dbDeps))
+	for i, dbDep := range dbDeps {
+		dependencies[i] = toCoreRuleDependency(dbDep)
+	}
+	return dependencies
 }
 
 // toDBRuleDependency converts a core RuleDependency to store values
