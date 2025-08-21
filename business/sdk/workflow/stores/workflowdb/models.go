@@ -38,10 +38,10 @@ func toCoreTriggerType(dbTriggerType triggerType) workflow.TriggerType {
 	return tt
 }
 
-// toDBTriggerType converts a core NewTriggerType to store values
-func toDBTriggerType(tt workflow.NewTriggerType) triggerType {
+// toDBTriggerType converts a core TriggerType to store values
+func toDBTriggerType(tt workflow.TriggerType) triggerType {
 	return triggerType{
-		ID:          uuid.New().String(),
+		ID:          tt.ID.String(),
 		Name:        tt.Name,
 		Description: tt.Description,
 	}
@@ -63,10 +63,10 @@ func toCoreEntityType(dbEntityType entityType) workflow.EntityType {
 	return et
 }
 
-// toDBEntityType converts a core NewEntityType to store values
-func toDBEntityType(et workflow.NewEntityType) entityType {
+// toDBEntityType converts a core EntityType to store values
+func toDBEntityType(et workflow.EntityType) entityType {
 	return entityType{
-		ID:          uuid.New().String(),
+		ID:          et.ID.String(),
 		Name:        et.Name,
 		Description: et.Description,
 	}
@@ -94,10 +94,10 @@ func toCoreEntity(dbEntity entity) workflow.Entity {
 	}
 }
 
-// toDBEntity converts a core NewEntity to store values
-func toDBEntity(e workflow.NewEntity) entity {
+// toDBEntity converts a core Entity to store values
+func toDBEntity(e workflow.Entity) entity {
 	return entity{
-		ID:           uuid.New().String(),
+		ID:           e.ID.String(),
 		Name:         e.Name,
 		EntityTypeID: e.EntityTypeID.String(),
 		SchemaName:   e.SchemaName,
@@ -142,11 +142,11 @@ func toCoreAutomationRule(dbRule automationRule) workflow.AutomationRule {
 	return ar
 }
 
-// toDBAutomationRule converts a core NewAutomationRule to store values
-func toDBAutomationRule(ar workflow.NewAutomationRule) automationRule {
+// toDBAutomationRule converts a core AutomationRule to store values
+func toDBAutomationRule(ar workflow.AutomationRule) automationRule {
 	now := time.Now()
 	return automationRule{
-		ID:                uuid.New().String(),
+		ID:                ar.ID.String(),
 		Name:              ar.Name,
 		Description:       ar.Description,
 		EntityID:          ar.EntityID.String(),
@@ -186,10 +186,10 @@ func toCoreActionTemplate(dbTemplate actionTemplate) workflow.ActionTemplate {
 	return at
 }
 
-// toDBActionTemplate converts a core NewActionTemplate to store values
-func toDBActionTemplate(at workflow.NewActionTemplate) actionTemplate {
+// toDBActionTemplate converts a core ActionTemplate to store values
+func toDBActionTemplate(at workflow.ActionTemplate) actionTemplate {
 	return actionTemplate{
-		ID:            uuid.New().String(),
+		ID:            at.ID.String(),
 		Name:          at.Name,
 		Description:   at.Description,
 		ActionType:    at.ActionType,
@@ -228,10 +228,10 @@ func toCoreRuleAction(dbAction ruleAction) workflow.RuleAction {
 	return ra
 }
 
-// toDBRuleAction converts a core NewRuleAction to store values
-func toDBRuleAction(ra workflow.NewRuleAction) ruleAction {
+// toDBRuleAction converts a core RuleAction to store values
+func toDBRuleAction(ra workflow.RuleAction) ruleAction {
 	dbAction := ruleAction{
-		ID:                uuid.New().String(),
+		ID:                ra.ID.String(),
 		AutomationRulesID: ra.AutomationRuleID.String(),
 		Name:              ra.Name,
 		Description:       ra.Description,
@@ -259,8 +259,8 @@ func toCoreRuleDependency(dbDep ruleDependency) workflow.RuleDependency {
 	}
 }
 
-// toDBRuleDependency converts a core NewRuleDependency to store values
-func toDBRuleDependency(rd workflow.NewRuleDependency) ruleDependency {
+// toDBRuleDependency converts a core RuleDependency to store values
+func toDBRuleDependency(rd workflow.RuleDependency) ruleDependency {
 	return ruleDependency{
 		ParentRuleID: rd.ParentRuleID.String(),
 		ChildRuleID:  rd.ChildRuleID.String(),
@@ -300,10 +300,18 @@ func toCoreAutomationExecution(dbExec automationExecution) workflow.AutomationEx
 	return ae
 }
 
-// toDBAutomationExecution converts a core NewAutomationExecution to store values
-func toDBAutomationExecution(ae workflow.NewAutomationExecution) automationExecution {
+func toCoreAutomationExecutionSlice(dbExecs []automationExecution) []workflow.AutomationExecution {
+	aeSlice := make([]workflow.AutomationExecution, len(dbExecs))
+	for i, dbExec := range dbExecs {
+		aeSlice[i] = toCoreAutomationExecution(dbExec)
+	}
+	return aeSlice
+}
+
+// toDBAutomationExecution converts a core AutomationExecution to store values
+func toDBAutomationExecution(ae workflow.AutomationExecution) automationExecution {
 	dbExec := automationExecution{
-		ID:                uuid.New().String(),
+		ID:                ae.ID.String(),
 		AutomationRulesID: ae.AutomationRuleID.String(),
 		EntityType:        ae.EntityType,
 		TriggerData:       ae.TriggerData,
