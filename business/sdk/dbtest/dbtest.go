@@ -4,8 +4,10 @@ package dbtest
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"math"
 	"math/rand"
+	"reflect"
 	"testing"
 	"time"
 
@@ -120,6 +122,8 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/docker"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
@@ -203,6 +207,9 @@ type BusDomain struct {
 	LineItemFulfillmentStatus *lineitemfulfillmentstatusbus.Business
 	Order                     *ordersbus.Business
 	OrderLineItem             *orderlineitemsbus.Business
+
+	// Workflow
+	Workflow *workflow.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -283,6 +290,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	ordersBus := ordersbus.NewBusiness(log, delegate, ordersdb.NewStore(log, db))
 	orderLineItemsBus := orderlineitemsbus.NewBusiness(log, delegate, orderlineitemsdb.NewStore(log, db))
 
+	// Workflow
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+
 	return BusDomain{
 		Delegate:                  delegate,
 		Home:                      homeBus,
@@ -334,6 +344,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		LineItemFulfillmentStatus: lineItemFulfillmentStatusBus,
 		Order:                     ordersBus,
 		OrderLineItem:             orderLineItemsBus,
+		Workflow:                  workflowBus,
 	}
 
 }
@@ -509,4 +520,105 @@ func round(num float64) int {
 func ToFixed(num float64, precision int) float64 {
 	output := math.Pow(10, float64(precision))
 	return float64(round(num*output)) / output
+}
+
+// normalizeJSON compares two json.RawMessage values semantically and if they're equal,
+// returns the 'got' value to use for both (to avoid formatting differences in comparison).
+func normalizeJSON(got, exp json.RawMessage) (json.RawMessage, json.RawMessage) {
+	// Handle nil/empty cases
+	if len(got) == 0 && len(exp) == 0 {
+		return got, exp
+	}
+	if len(got) == 0 || len(exp) == 0 {
+		return got, exp
+	}
+
+	// Parse both JSON values
+	var gotJSON, expJSON interface{}
+	if err := json.Unmarshal(got, &gotJSON); err != nil {
+		return got, exp
+	}
+	if err := json.Unmarshal(exp, &expJSON); err != nil {
+		return got, exp
+	}
+
+	// If semantically equal, use 'got' for both to avoid formatting diffs
+	if reflect.DeepEqual(gotJSON, expJSON) {
+		return got, got
+	}
+
+	return got, exp
+}
+
+// NormalizeJSONFields handles both single structs and slices of structs
+func NormalizeJSONFields(got, exp interface{}) {
+	gotVal := reflect.ValueOf(got)
+	expVal := reflect.ValueOf(exp)
+
+	// Handle pointers
+	if gotVal.Kind() == reflect.Ptr {
+		gotVal = gotVal.Elem()
+	}
+	if expVal.Kind() == reflect.Ptr {
+		expVal = expVal.Elem()
+	}
+
+	switch gotVal.Kind() {
+	case reflect.Slice:
+		// Handle slices
+		if expVal.Kind() != reflect.Slice {
+			return
+		}
+
+		minLen := gotVal.Len()
+		if expVal.Len() < minLen {
+			minLen = expVal.Len()
+		}
+
+		for i := 0; i < minLen; i++ {
+			normalizeJSONInStruct(gotVal.Index(i), expVal.Index(i))
+		}
+
+	case reflect.Struct:
+		// Handle single struct
+		normalizeJSONInStruct(gotVal, expVal)
+	}
+}
+
+// normalizeJSONInStruct normalizes JSON fields within a single struct
+func normalizeJSONInStruct(gotVal, expVal reflect.Value) {
+	// Handle pointer types
+	if gotVal.Kind() == reflect.Ptr {
+		if gotVal.IsNil() || expVal.IsNil() {
+			return
+		}
+		gotVal = gotVal.Elem()
+		expVal = expVal.Elem()
+	}
+
+	if gotVal.Kind() != reflect.Struct {
+		return
+	}
+
+	gotType := gotVal.Type()
+
+	for i := 0; i < gotVal.NumField(); i++ {
+		field := gotType.Field(i)
+
+		// Skip unexported fields
+		if !field.IsExported() {
+			continue
+		}
+
+		// Check if field is json.RawMessage
+		if field.Type == reflect.TypeOf(json.RawMessage{}) {
+			gotField := gotVal.Field(i).Interface().(json.RawMessage)
+			expField := expVal.Field(i).Interface().(json.RawMessage)
+
+			_, normalized := normalizeJSON(gotField, expField)
+			if expVal.Field(i).CanSet() {
+				expVal.Field(i).Set(reflect.ValueOf(normalized))
+			}
+		}
+	}
 }

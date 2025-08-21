@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -36,12 +35,12 @@ type ConditionEvaluationResult struct {
 
 // RuleMatchResult represents the result of matching a rule against an event
 type RuleMatchResult struct {
-	Rule             workflowdb.AutomationRulesView `json:"rule"`
-	Matched          bool                           `json:"matched"`
-	TriggerEvent     TriggerEvent                   `json:"trigger_event"`
-	ConditionResults []ConditionEvaluationResult    `json:"condition_results"`
-	MatchReason      string                         `json:"match_reason,omitempty"`
-	ExecutionContext map[string]interface{}         `json:"execution_context"`
+	Rule             AutomationRuleView          `json:"rule"`
+	Matched          bool                        `json:"matched"`
+	TriggerEvent     TriggerEvent                `json:"trigger_event"`
+	ConditionResults []ConditionEvaluationResult `json:"condition_results"`
+	MatchReason      string                      `json:"match_reason,omitempty"`
+	ExecutionContext map[string]interface{}      `json:"execution_context"`
 }
 
 // ProcessingResult represents the result of processing a trigger event
@@ -66,7 +65,7 @@ type TriggerProcessor struct {
 	db  *sqlx.DB
 
 	// Cached data
-	activeRules  []workflowdb.AutomationRulesView
+	activeRules  []AutomationRuleView
 	lastLoadTime time.Time
 	cacheTimeout time.Duration
 }
@@ -126,7 +125,7 @@ func (tp *TriggerProcessor) loadMetadata(ctx context.Context) error {
         WHERE ar.is_active = true
     `
 
-	var rules []workflowdb.AutomationRulesView
+	var rules []AutomationRuleView
 	if err := tp.db.SelectContext(ctx, &rules, query); err != nil {
 		return fmt.Errorf("failed to load active rules: %w", err)
 	}
@@ -216,7 +215,7 @@ func (tp *TriggerProcessor) validateEvent(event TriggerEvent) EventValidationRes
 }
 
 // checkRuleMatch checks if a rule matches the given event
-func (tp *TriggerProcessor) checkRuleMatch(rule workflowdb.AutomationRulesView, event TriggerEvent) RuleMatchResult {
+func (tp *TriggerProcessor) checkRuleMatch(rule AutomationRuleView, event TriggerEvent) RuleMatchResult {
 	result := RuleMatchResult{
 		Rule:             rule,
 		Matched:          false,
@@ -226,20 +225,18 @@ func (tp *TriggerProcessor) checkRuleMatch(rule workflowdb.AutomationRulesView, 
 	}
 
 	// Check if rule applies to this entity
-	if rule.EntityName.Valid && rule.EntityName.String != event.EntityName {
+	if rule.EntityName != event.EntityName {
 		result.MatchReason = fmt.Sprintf("Entity mismatch: rule for %s, event for %s",
-			rule.EntityName.String, event.EntityName)
+			rule.EntityName, event.EntityName)
 		return result
 	}
 
 	// Check if rule applies to this trigger type
-	if rule.TriggerTypeName.Valid {
-		expectedTriggerType := rule.TriggerTypeName.String
-		if expectedTriggerType != event.EventType {
-			result.MatchReason = fmt.Sprintf("Trigger type mismatch: rule for %s, event for %s",
-				expectedTriggerType, event.EventType)
-			return result
-		}
+	expectedTriggerType := rule.TriggerTypeName
+	if expectedTriggerType != event.EventType {
+		result.MatchReason = fmt.Sprintf("Trigger type mismatch: rule for %s, event for %s",
+			expectedTriggerType, event.EventType)
+		return result
 	}
 
 	// Evaluate field conditions
@@ -290,7 +287,7 @@ func (tp *TriggerProcessor) checkRuleMatch(rule workflowdb.AutomationRulesView, 
 }
 
 // evaluateRuleConditions evaluates all conditions for a rule
-func (tp *TriggerProcessor) evaluateRuleConditions(rule workflowdb.AutomationRulesView, event TriggerEvent) []ConditionEvaluationResult {
+func (tp *TriggerProcessor) evaluateRuleConditions(rule AutomationRuleView, event TriggerEvent) []ConditionEvaluationResult {
 	// TODO: Write validation function for this
 	// if !rule.TriggerConditions.Valid {
 	// 	return []ConditionEvaluationResult{}
@@ -469,17 +466,17 @@ func (tp *TriggerProcessor) isSupportedEventType(eventType string) bool {
 
 func (tp *TriggerProcessor) hasRulesForEntity(entityName string) bool {
 	for _, rule := range tp.activeRules {
-		if rule.EntityName.Valid && rule.EntityName.String == entityName {
+		if rule.EntityName == entityName {
 			return true
 		}
 	}
 	return false
 }
 
-func (tp *TriggerProcessor) getRulesForEntity(entityName string) []workflowdb.AutomationRulesView {
-	rules := make([]workflowdb.AutomationRulesView, 0)
+func (tp *TriggerProcessor) getRulesForEntity(entityName string) []AutomationRuleView {
+	rules := make([]AutomationRuleView, 0)
 	for _, rule := range tp.activeRules {
-		if rule.EntityName.Valid && rule.EntityName.String == entityName && rule.IsActive {
+		if rule.EntityName == entityName && rule.IsActive {
 			rules = append(rules, rule)
 		}
 	}
@@ -487,13 +484,13 @@ func (tp *TriggerProcessor) getRulesForEntity(entityName string) []workflowdb.Au
 }
 
 // GetMatchedRulesForEntity returns rules that would match for a given entity and event type
-func (tp *TriggerProcessor) GetMatchedRulesForEntity(entityName string, eventType string) []workflowdb.AutomationRulesView {
-	matched := make([]workflowdb.AutomationRulesView, 0)
+func (tp *TriggerProcessor) GetMatchedRulesForEntity(entityName string, eventType string) []AutomationRuleView {
+	matched := make([]AutomationRuleView, 0)
 	expectedTriggerType := eventType
 
 	for _, rule := range tp.activeRules {
-		if rule.EntityName.Valid && rule.EntityName.String == entityName {
-			if rule.TriggerTypeName.Valid && rule.TriggerTypeName.String == expectedTriggerType {
+		if rule.EntityName == entityName {
+			if rule.TriggerTypeName == expectedTriggerType {
 				matched = append(matched, rule)
 			}
 		}
