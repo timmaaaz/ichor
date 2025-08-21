@@ -807,7 +807,9 @@ CREATE TABLE action_templates (
    action_type VARCHAR(50) NOT NULL,
    default_config JSONB NOT NULL,
    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
-   created_by UUID NOT NULL REFERENCES users(id)
+   created_by UUID NOT NULL REFERENCES users(id),
+   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+   deactivated_by UUID NULL REFERENCES users(id)
 );
 
 CREATE TABLE rule_actions (

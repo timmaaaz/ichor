@@ -49,8 +49,9 @@ type Storer interface {
 
 	CreateActionTemplate(ctx context.Context, template ActionTemplate) error
 	UpdateActionTemplate(ctx context.Context, template ActionTemplate) error
-	DeleteActionTemplate(ctx context.Context, template ActionTemplate) error
-	QueryTemplateByID(ctx context.Context, id uuid.UUID) (ActionTemplate, error)
+	DeactivateActionTemplate(ctx context.Context, templateID uuid.UUID, deactivatedBy uuid.UUID) error
+	ActivateActionTemplate(ctx context.Context, templateID uuid.UUID, activatedBy uuid.UUID) error
+	QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (ActionTemplate, error)
 
 	CreateEntity(ctx context.Context, entity Entity) error
 	UpdateEntity(ctx context.Context, entity Entity) error
@@ -652,13 +653,25 @@ func (b *Business) UpdateActionTemplate(ctx context.Context, template ActionTemp
 	return template, nil
 }
 
-// DeleteActionTemplate removes the specified action template.
-func (b *Business) DeleteActionTemplate(ctx context.Context, template ActionTemplate) error {
-	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deleteactiontemplate")
+// DeactivateActionTemplate deactivates an action template in the system.
+func (b *Business) DeactivateActionTemplate(ctx context.Context, templateID uuid.UUID, deactivatedBy uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deactivateactiontemplate")
 	defer span.End()
 
-	if err := b.storer.DeleteActionTemplate(ctx, template); err != nil {
-		return fmt.Errorf("delete: %w", err)
+	if err := b.storer.DeactivateActionTemplate(ctx, templateID, deactivatedBy); err != nil {
+		return fmt.Errorf("deactivate: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateActionTemplate reactivates an action template in the system.
+func (b *Business) ActivateActionTemplate(ctx context.Context, templateID uuid.UUID, activatedBy uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.activateactiontemplate")
+	defer span.End()
+
+	if err := b.storer.ActivateActionTemplate(ctx, templateID, activatedBy); err != nil {
+		return fmt.Errorf("activate: %w", err)
 	}
 
 	return nil

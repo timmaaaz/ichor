@@ -678,15 +678,52 @@ func (s *Store) UpdateActionTemplate(ctx context.Context, template workflow.Acti
 	return nil
 }
 
-// DeleteActionTemplate removes an action template from the database.
-func (s *Store) DeleteActionTemplate(ctx context.Context, template workflow.ActionTemplate) error {
+// DeactivateActionTemplate deactivates an action template in the database.
+func (s *Store) DeactivateActionTemplate(ctx context.Context, templateID uuid.UUID, deactivatedBy uuid.UUID) error {
 	const q = `
-	DELETE FROM
+	UPDATE
 		action_templates
+	SET
+		is_active = false,
+		deactivated_by = :deactivated_by
 	WHERE
 		id = :id`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBActionTemplate(template)); err != nil {
+	data := struct {
+		ID            string `db:"id"`
+		DeactivatedBy string `db:"deactivated_by"`
+	}{
+		ID:            templateID.String(),
+		DeactivatedBy: deactivatedBy.String(),
+	}
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateActionTemplate activates an action template in the database.
+func (s *Store) ActivateActionTemplate(ctx context.Context, templateID uuid.UUID, activatedBy uuid.UUID) error {
+	const q = `
+	UPDATE
+		action_templates
+	SET
+		is_active = true,
+		deactivated_by = NULL
+	WHERE
+		id = :id`
+
+	data := struct {
+		ID          string `db:"id"`
+		ActivatedBy string `db:"activated_by"`
+	}{
+		ID:          templateID.String(),
+		ActivatedBy: activatedBy.String(),
+	}
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 

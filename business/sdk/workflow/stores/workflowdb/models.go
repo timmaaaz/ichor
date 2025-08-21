@@ -257,10 +257,17 @@ type actionTemplate struct {
 	DefaultConfig json.RawMessage `db:"default_config"`
 	CreatedDate   time.Time       `db:"created_date"`
 	CreatedBy     string          `db:"created_by"`
+	IsActive      bool            `db:"is_active"`
+	DeactivatedBy sql.NullString  `db:"deactivated_by"`
 }
 
 // toCoreActionTemplate converts a store ActionTemplate to core ActionTemplate
 func toCoreActionTemplate(dbTemplate actionTemplate) workflow.ActionTemplate {
+	deactivatedBy := uuid.Nil
+	if dbTemplate.DeactivatedBy.Valid {
+		deactivatedBy = uuid.MustParse(dbTemplate.DeactivatedBy.String)
+	}
+
 	at := workflow.ActionTemplate{
 		ID:            uuid.MustParse(dbTemplate.ID),
 		Name:          dbTemplate.Name,
@@ -269,12 +276,19 @@ func toCoreActionTemplate(dbTemplate actionTemplate) workflow.ActionTemplate {
 		DefaultConfig: dbTemplate.DefaultConfig,
 		CreatedDate:   dbTemplate.CreatedDate,
 		CreatedBy:     uuid.MustParse(dbTemplate.CreatedBy),
+		IsActive:      dbTemplate.IsActive,
+		DeactivatedBy: deactivatedBy,
 	}
 	return at
 }
 
 // toDBActionTemplate converts a core ActionTemplate to store values
 func toDBActionTemplate(at workflow.ActionTemplate) actionTemplate {
+	deactivatedBy := sql.NullString{
+		String: at.DeactivatedBy.String(),
+		Valid:  at.DeactivatedBy != uuid.Nil,
+	}
+
 	return actionTemplate{
 		ID:            at.ID.String(),
 		Name:          at.Name,
@@ -283,6 +297,8 @@ func toDBActionTemplate(at workflow.ActionTemplate) actionTemplate {
 		DefaultConfig: at.DefaultConfig,
 		CreatedDate:   time.Now(),
 		CreatedBy:     at.CreatedBy.String(),
+		IsActive:      at.IsActive,
+		DeactivatedBy: deactivatedBy,
 	}
 }
 
@@ -303,6 +319,7 @@ func toCoreRuleAction(dbAction ruleAction) workflow.RuleAction {
 	ra := workflow.RuleAction{
 		ID:               uuid.MustParse(dbAction.ID),
 		AutomationRuleID: uuid.MustParse(dbAction.AutomationRulesID),
+		Description:      dbAction.Description,
 		Name:             dbAction.Name,
 		ActionConfig:     dbAction.ActionConfig,
 		ExecutionOrder:   dbAction.ExecutionOrder,

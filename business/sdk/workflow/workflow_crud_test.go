@@ -32,8 +32,8 @@ func Test_Workflow(t *testing.T) {
 	unitest.Run(t, entityTypeTests(db.BusDomain, sd), "entityType")
 	unitest.Run(t, entityTests(db.BusDomain, sd), "entity")
 	unitest.Run(t, automationRuleTests(db.BusDomain, sd), "automationRule")
-	// unitest.Run(t, actionTemplateTests(db.BusDomain, sd), "actionTemplate")
-	// unitest.Run(t, ruleActionTests(db.BusDomain, sd), "ruleAction")
+	unitest.Run(t, actionTemplateTests(db.BusDomain, sd), "actionTemplate")
+	unitest.Run(t, ruleActionTests(db.BusDomain, sd), "ruleAction")
 	// unitest.Run(t, ruleDependencyTests(db.BusDomain, sd), "ruleDependency")
 	// unitest.Run(t, automationExecutionTests(db.BusDomain, sd), "automationExecution")
 }
@@ -915,7 +915,8 @@ func actionTemplateTests(busDomain dbtest.BusDomain, sd workflowSeedData) []unit
 		createActionTemplate(busDomain, sd),
 		queryActionTemplateByID(busDomain, sd),
 		updateActionTemplate(busDomain, sd),
-		deleteActionTemplate(busDomain, sd),
+		deactivateActionTemplate(busDomain, sd),
+		activateActionTemplate(busDomain, sd),
 	}
 }
 
@@ -969,9 +970,9 @@ func createActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 func queryActionTemplateByID(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
 	return unitest.Table{
 		Name:    "queryByID",
-		ExpResp: sd.ActionTemplates[0],
+		ExpResp: sd.ActionTemplates[2],
 		ExcFunc: func(ctx context.Context) any {
-			resp, err := busDomain.Workflow.QueryTemplateByID(ctx, sd.ActionTemplates[0].ID)
+			resp, err := busDomain.Workflow.QueryTemplateByID(ctx, sd.ActionTemplates[2].ID)
 			if err != nil {
 				return err
 			}
@@ -989,6 +990,8 @@ func queryActionTemplateByID(busDomain dbtest.BusDomain, sd workflowSeedData) un
 			if gotResp.CreatedDate.Format(time.RFC3339) == expResp.CreatedDate.Format(time.RFC3339) {
 				expResp.CreatedDate = gotResp.CreatedDate
 			}
+
+			dbtest.NormalizeJSONFields(gotResp, &expResp)
 
 			return cmp.Diff(gotResp, expResp)
 		},
@@ -1040,13 +1043,28 @@ func updateActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 	}
 }
 
-func deleteActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+func deactivateActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
 	return unitest.Table{
-		Name:    "delete",
+		Name:    "deactivate",
 		ExpResp: nil,
 		ExcFunc: func(ctx context.Context) any {
-			// Delete a template that isn't referenced by actions
-			if err := busDomain.Workflow.DeleteActionTemplate(ctx, sd.ActionTemplates[len(sd.ActionTemplates)-1]); err != nil {
+			if err := busDomain.Workflow.DeactivateActionTemplate(ctx, sd.ActionTemplates[0].ID, sd.Admins[0].ID); err != nil {
+				return err
+			}
+			return nil
+		},
+		CmpFunc: func(got any, exp any) string {
+			return cmp.Diff(got, exp)
+		},
+	}
+}
+
+func activateActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+	return unitest.Table{
+		Name:    "activate",
+		ExpResp: nil,
+		ExcFunc: func(ctx context.Context) any {
+			if err := busDomain.Workflow.ActivateActionTemplate(ctx, sd.ActionTemplates[0].ID, sd.Admins[0].ID); err != nil {
 				return err
 			}
 			return nil
@@ -1079,7 +1097,7 @@ func createRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 	return unitest.Table{
 		Name: "create",
 		ExpResp: workflow.RuleAction{
-			AutomationRuleID: sd.AutomationRules[0].ID,
+			AutomationRuleID: sd.AutomationRules[1].ID,
 			Name:             "test_action",
 			Description:      "Test rule action",
 			ActionConfig:     configJSON,
@@ -1089,7 +1107,7 @@ func createRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 		},
 		ExcFunc: func(ctx context.Context) any {
 			nra := workflow.NewRuleAction{
-				AutomationRuleID: sd.AutomationRules[0].ID,
+				AutomationRuleID: sd.AutomationRules[1].ID,
 				Name:             "test_action",
 				Description:      "Test rule action",
 				ActionConfig:     configJSON,
@@ -1152,8 +1170,11 @@ func queryActionsByRule(busDomain dbtest.BusDomain, sd workflowSeedData) unitest
 			if !exists {
 				return "error occurred"
 			}
+			expResp := exp.([]workflow.RuleAction)
 
-			return cmp.Diff(gotResp, exp)
+			dbtest.NormalizeJSONFields(gotResp, &expResp)
+
+			return cmp.Diff(gotResp, expResp)
 		},
 	}
 }
@@ -1176,7 +1197,7 @@ func updateRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 			ActionConfig:     newConfigJSON,
 			ExecutionOrder:   50,
 			IsActive:         false,
-			TemplateID:       nil,
+			TemplateID:       dbtest.UUIDPointer(sd.ActionTemplates[1].ID),
 		},
 		ExcFunc: func(ctx context.Context) any {
 			ura := workflow.UpdateRuleAction{
@@ -1185,7 +1206,7 @@ func updateRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 				ActionConfig:   &raw,
 				ExecutionOrder: dbtest.IntPointer(50),
 				IsActive:       dbtest.BoolPointer(false),
-				TemplateID:     nil,
+				TemplateID:     dbtest.UUIDPointer(sd.ActionTemplates[1].ID), //
 			}
 
 			resp, err := busDomain.Workflow.UpdateRuleAction(ctx, sd.RuleActions[0], ura)

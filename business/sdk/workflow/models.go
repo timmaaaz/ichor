@@ -284,6 +284,8 @@ type ActionTemplate struct {
 	DefaultConfig json.RawMessage
 	CreatedDate   time.Time
 	CreatedBy     uuid.UUID
+	IsActive      bool
+	DeactivatedBy uuid.UUID
 }
 
 // NewActionTemplate contains information needed to create a new action template
