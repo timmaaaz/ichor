@@ -34,8 +34,8 @@ func Test_Workflow(t *testing.T) {
 	unitest.Run(t, automationRuleTests(db.BusDomain, sd), "automationRule")
 	unitest.Run(t, actionTemplateTests(db.BusDomain, sd), "actionTemplate")
 	unitest.Run(t, ruleActionTests(db.BusDomain, sd), "ruleAction")
-	// unitest.Run(t, ruleDependencyTests(db.BusDomain, sd), "ruleDependency")
-	// unitest.Run(t, automationExecutionTests(db.BusDomain, sd), "automationExecution")
+	unitest.Run(t, ruleDependencyTests(db.BusDomain, sd), "ruleDependency")
+	unitest.Run(t, automationExecutionTests(db.BusDomain, sd), "automationExecution")
 }
 
 // =============================================================================
@@ -1457,6 +1457,8 @@ func queryExecutionHistory(busDomain dbtest.BusDomain, sd workflowSeedData) unit
 			if len(gotResp) > len(expResp) {
 				gotResp = gotResp[:len(expResp)]
 			}
+
+			dbtest.NormalizeJSONFields(gotResp, &expResp)
 
 			return cmp.Diff(gotResp, expResp)
 		},
