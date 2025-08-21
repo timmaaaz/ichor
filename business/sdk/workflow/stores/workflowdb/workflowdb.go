@@ -128,11 +128,32 @@ func (s *Store) UpdateTriggerType(ctx context.Context, tt workflow.TriggerType) 
 	return nil
 }
 
-// DeleteTriggerType removes a trigger type from the database.
-func (s *Store) DeleteTriggerType(ctx context.Context, tt workflow.TriggerType) error {
+// DeactivateTriggerType deactivates a trigger type in the database.
+func (s *Store) DeactivateTriggerType(ctx context.Context, tt workflow.TriggerType) error {
 	const q = `
-	DELETE FROM
+	UPDATE
 		trigger_types
+	SET
+		deactivated_by = :deactivated_by,
+		is_active = false
+	WHERE
+		id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTriggerType(tt)); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateTriggerType reactivates a trigger type in the database.
+func (s *Store) ActivateTriggerType(ctx context.Context, tt workflow.TriggerType) error {
+	const q = `
+	UPDATE
+		trigger_types
+	SET
+		deactivated_by = NULL,
+		is_active = true
 	WHERE
 		id = :id`
 
@@ -201,11 +222,32 @@ func (s *Store) UpdateEntityType(ctx context.Context, et workflow.EntityType) er
 	return nil
 }
 
-// DeleteEntityType removes an entity type from the database.
-func (s *Store) DeleteEntityType(ctx context.Context, et workflow.EntityType) error {
+// DeactivateEntityType deactivates an entity type from the database.
+func (s *Store) DeactivateEntityType(ctx context.Context, et workflow.EntityType) error {
 	const q = `
-	DELETE FROM
+	UPDATE
 		entity_types
+	SET
+		deactivated_by = :deactivated_by,
+		is_active = false
+	WHERE
+		id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBEntityType(et)); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateEntityType reactivates an entity type in the database.
+func (s *Store) ActivateEntityType(ctx context.Context, et workflow.EntityType) error {
+	const q = `
+	UPDATE
+		entity_types
+	SET
+		deactivated_by = NULL,
+		is_active = true
 	WHERE
 		id = :id`
 
@@ -271,11 +313,32 @@ func (s *Store) UpdateEntity(ctx context.Context, entity workflow.Entity) error 
 	return nil
 }
 
-// DeleteEntity removes an entity from the database.
-func (s *Store) DeleteEntity(ctx context.Context, entity workflow.Entity) error {
+// DeactivateEntity deactivates an entity in the database.
+func (s *Store) DeactivateEntity(ctx context.Context, entity workflow.Entity) error {
 	const q = `
-	DELETE FROM
+	UPDATE
 		entities
+	SET
+		deactivated_by = :deactivated_by,
+		is_active = false
+	WHERE
+		id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBEntity(entity)); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateEntity reactivates an entity in the database.
+func (s *Store) ActivateEntity(ctx context.Context, entity workflow.Entity) error {
+	const q = `
+	UPDATE
+		entities
+	SET
+		deactivated_by = NULL,
+		is_active = true
 	WHERE
 		id = :id`
 

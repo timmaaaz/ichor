@@ -14,14 +14,14 @@ type TriggerEvent struct {
 	EntityID     string                 `json:"entity_id,omitempty"`
 	FieldChanges map[string]FieldChange `json:"field_changes,omitempty"`
 	Timestamp    time.Time              `json:"timestamp"`
-	RawData      map[string]interface{} `json:"raw_data,omitempty"`
+	RawData      map[string]any         `json:"raw_data,omitempty"`
 	UserID       string                 `json:"user_id,omitempty"`
 }
 
 // FieldChange represents a change in a field value
 type FieldChange struct {
-	OldValue interface{} `json:"old_value"`
-	NewValue interface{} `json:"new_value"`
+	OldValue any `json:"old_value"`
+	NewValue any `json:"new_value"`
 }
 
 // ExecutionBatch represents a batch of rules that can execute in parallel
@@ -148,21 +148,27 @@ type ActionExecutionContext struct {
 // =============================================================================
 // TriggerType represents types of triggers for automation rules
 type TriggerType struct {
-	ID          uuid.UUID
-	Name        string
-	Description string
+	ID            uuid.UUID
+	Name          string
+	Description   string
+	IsActive      bool
+	DeactivatedBy uuid.UUID
 }
 
 // NewTriggerType contains information needed to create a new trigger type
 type NewTriggerType struct {
-	Name        string
-	Description string
+	Name          string
+	Description   string
+	IsActive      bool
+	DeactivatedBy uuid.UUID
 }
 
 // UpdateTriggerType contains information needed to update a trigger type
 type UpdateTriggerType struct {
 	Name        *string
 	Description *string
+	IsActive    *bool
+	// DeactivatedBy *uuid.UUID // Specific endpoint for deactivating trigger types
 }
 
 // =============================================================================
@@ -170,21 +176,26 @@ type UpdateTriggerType struct {
 // =============================================================================
 // EntityType represents types of entities that can be monitored
 type EntityType struct {
-	ID          uuid.UUID
-	Name        string
-	Description string
+	ID            uuid.UUID
+	Name          string
+	Description   string
+	IsActive      bool
+	DeactivatedBy uuid.UUID
 }
 
 // NewEntityType contains information needed to create a new entity type
 type NewEntityType struct {
 	Name        string
 	Description string
+	IsActive    bool
 }
 
 // UpdateEntityType contains information needed to update an entity type
 type UpdateEntityType struct {
 	Name        *string
 	Description *string
+	IsActive    *bool
+	// DeactivatedBy *uuid.UUID // Specific endpoint for deactivating entity types
 }
 
 // =============================================================================
@@ -192,12 +203,13 @@ type UpdateEntityType struct {
 // =============================================================================
 // Entity represents a monitored database entity
 type Entity struct {
-	ID           uuid.UUID
-	Name         string
-	EntityTypeID uuid.UUID
-	SchemaName   string
-	IsActive     bool
-	DateCreated  time.Time
+	ID            uuid.UUID
+	Name          string
+	EntityTypeID  uuid.UUID
+	SchemaName    string
+	IsActive      bool
+	DateCreated   time.Time
+	DeactivatedBy uuid.UUID
 }
 
 // NewEntity contains information needed to create a new entity

@@ -23,42 +23,71 @@ const (
 
 // triggerType represents types of triggers (on_create, on_update, etc.)
 type triggerType struct {
-	ID          string `db:"id"`
-	Name        string `db:"name"`
-	Description string `db:"description"`
+	ID            string         `db:"id"`
+	Name          string         `db:"name"`
+	Description   string         `db:"description"`
+	IsActive      bool           `db:"is_active"` // Indicates if the trigger type is active
+	DeactivatedBy sql.NullString `db:"deactivated_by"`
 }
 
 // toCoreTriggerType converts a store triggerType to core TriggerType
 func toCoreTriggerType(dbTriggerType triggerType) workflow.TriggerType {
+
+	deactivatedBy := uuid.Nil
+	if dbTriggerType.DeactivatedBy.Valid {
+		deactivatedBy = uuid.MustParse(dbTriggerType.DeactivatedBy.String)
+	}
+
 	tt := workflow.TriggerType{
-		ID:          uuid.MustParse(dbTriggerType.ID),
-		Name:        dbTriggerType.Name,
-		Description: dbTriggerType.Description,
+		ID:            uuid.MustParse(dbTriggerType.ID),
+		Name:          dbTriggerType.Name,
+		Description:   dbTriggerType.Description,
+		IsActive:      dbTriggerType.IsActive,
+		DeactivatedBy: deactivatedBy,
 	}
 	return tt
 }
 
 // toDBTriggerType converts a core TriggerType to store values
 func toDBTriggerType(tt workflow.TriggerType) triggerType {
+	valid := false
+	if tt.DeactivatedBy != uuid.Nil {
+		valid = true
+	}
 	return triggerType{
 		ID:          tt.ID.String(),
 		Name:        tt.Name,
 		Description: tt.Description,
+		IsActive:    tt.IsActive,
+		DeactivatedBy: sql.NullString{
+			String: tt.DeactivatedBy.String(),
+			Valid:  valid,
+		},
 	}
 }
 
 // entityType represents types of entities (table, view, etc.)
 type entityType struct {
-	ID          string `db:"id"`
-	Name        string `db:"name"`
-	Description string `db:"description"`
+	ID            string         `db:"id"`
+	Name          string         `db:"name"`
+	Description   string         `db:"description"`
+	IsActive      bool           `db:"is_active"` // Indicates if the entity type is active
+	DeactivatedBy sql.NullString `db:"deactivated_by"`
 }
 
 // toCoreEntityType converts a store entityType to core EntityType
 func toCoreEntityType(dbEntityType entityType) workflow.EntityType {
+	deactivatedBy := uuid.Nil
+	if dbEntityType.DeactivatedBy.Valid {
+		deactivatedBy = uuid.MustParse(dbEntityType.DeactivatedBy.String)
+	}
+
 	et := workflow.EntityType{
-		ID:   uuid.MustParse(dbEntityType.ID),
-		Name: dbEntityType.Name,
+		ID:            uuid.MustParse(dbEntityType.ID),
+		Name:          dbEntityType.Name,
+		Description:   dbEntityType.Description,
+		IsActive:      dbEntityType.IsActive,
+		DeactivatedBy: deactivatedBy,
 	}
 	return et
 }
@@ -73,32 +102,49 @@ func toCoreEntityTypeSlice(dbEntityTypes []entityType) []workflow.EntityType {
 
 // toDBEntityType converts a core EntityType to store values
 func toDBEntityType(et workflow.EntityType) entityType {
+	valid := false
+	if et.DeactivatedBy != uuid.Nil {
+		valid = true
+	}
+
 	return entityType{
 		ID:          et.ID.String(),
 		Name:        et.Name,
 		Description: et.Description,
+		IsActive:    et.IsActive,
+		DeactivatedBy: sql.NullString{
+			String: et.DeactivatedBy.String(),
+			Valid:  valid,
+		},
 	}
 }
 
 // Entity represents a monitored database entity
 type entity struct {
-	ID           string    `db:"id"`
-	Name         string    `db:"name"`
-	EntityTypeID string    `db:"entity_type_id"`
-	SchemaName   string    `db:"schema_name"`
-	IsActive     bool      `db:"is_active"`
-	CreatedDate  time.Time `db:"created_date"`
+	ID            string         `db:"id"`
+	Name          string         `db:"name"`
+	EntityTypeID  string         `db:"entity_type_id"`
+	SchemaName    string         `db:"schema_name"`
+	IsActive      bool           `db:"is_active"`
+	CreatedDate   time.Time      `db:"created_date"`
+	DeactivatedBy sql.NullString `db:"deactivated_by"`
 }
 
 // toCoreEntity converts a store entity to core Entity
 func toCoreEntity(dbEntity entity) workflow.Entity {
+	deactivatedBy := uuid.Nil
+	if dbEntity.DeactivatedBy.Valid {
+		deactivatedBy = uuid.MustParse(dbEntity.DeactivatedBy.String)
+	}
+
 	return workflow.Entity{
-		ID:           uuid.MustParse(dbEntity.ID),
-		Name:         dbEntity.Name,
-		EntityTypeID: uuid.MustParse(dbEntity.EntityTypeID),
-		SchemaName:   dbEntity.SchemaName,
-		IsActive:     dbEntity.IsActive,
-		DateCreated:  dbEntity.CreatedDate,
+		ID:            uuid.MustParse(dbEntity.ID),
+		Name:          dbEntity.Name,
+		EntityTypeID:  uuid.MustParse(dbEntity.EntityTypeID),
+		SchemaName:    dbEntity.SchemaName,
+		IsActive:      dbEntity.IsActive,
+		DateCreated:   dbEntity.CreatedDate,
+		DeactivatedBy: deactivatedBy,
 	}
 }
 
@@ -112,13 +158,18 @@ func toCoreEntitySlice(dbEntities []entity) []workflow.Entity {
 
 // toDBEntity converts a core Entity to store values
 func toDBEntity(e workflow.Entity) entity {
+	deactivatedBy := sql.NullString{
+		String: e.DeactivatedBy.String(),
+		Valid:  e.DeactivatedBy != uuid.Nil,
+	}
 	return entity{
-		ID:           e.ID.String(),
-		Name:         e.Name,
-		EntityTypeID: e.EntityTypeID.String(),
-		SchemaName:   e.SchemaName,
-		IsActive:     e.IsActive,
-		CreatedDate:  time.Now(),
+		ID:            e.ID.String(),
+		Name:          e.Name,
+		EntityTypeID:  e.EntityTypeID.String(),
+		SchemaName:    e.SchemaName,
+		IsActive:      e.IsActive,
+		CreatedDate:   time.Now(),
+		DeactivatedBy: deactivatedBy,
 	}
 }
 

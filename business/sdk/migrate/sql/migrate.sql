@@ -746,13 +746,21 @@ CREATE TABLE order_line_items (
 CREATE TABLE trigger_types (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(50) NOT NULL UNIQUE,
-   description TEXT NULL
+   description TEXT NULL,
+   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+   deactivated_by UUID NULL,
+   FOREIGN KEY (deactivated_by) REFERENCES users(id)
 );
+
+
 
 CREATE TABLE entity_types (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(50) NOT NULL UNIQUE,
-   description TEXT NULL
+   description TEXT NULL,
+   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+   deactivated_by UUID NULL,
+   FOREIGN KEY (deactivated_by) REFERENCES users(id)
 );
 
 -- Define automation rules
@@ -773,8 +781,10 @@ CREATE TABLE automation_rules (
    
    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
    updated_date TIMESTAMP NOT NULL DEFAULT NOW(),
-   created_by UUID NOT NULL REFERENCES profiles(id),
-   updated_by UUID NOT NULL REFERENCES profiles(id)
+   created_by UUID NOT NULL REFERENCES users(id),
+   updated_by UUID NOT NULL REFERENCES users(id),
+
+   deactivated_by UUID NULL REFERENCES users(id),
 );
 
 -- Track rule executions
@@ -797,7 +807,7 @@ CREATE TABLE action_templates (
    action_type VARCHAR(50) NOT NULL,
    default_config JSONB NOT NULL,
    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
-   created_by UUID NOT NULL REFERENCES profiles(id)
+   created_by UUID NOT NULL REFERENCES users(id)
 );
 
 CREATE TABLE rule_actions (
@@ -824,7 +834,8 @@ CREATE TABLE entities (
     entity_type_id UUID NOT NULL REFERENCES entity_types(id),
     schema_name VARCHAR(50) DEFAULT 'public',
     is_active BOOLEAN DEFAULT TRUE,
-    created_date TIMESTAMP DEFAULT NOW()
+    created_date TIMESTAMP DEFAULT NOW(),
+    deactivated_by UUID NULL REFERENCES users(id)
 );
 
 -- Migration: Create table_configs table for storing table configurations
