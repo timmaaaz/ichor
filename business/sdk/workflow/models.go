@@ -11,11 +11,11 @@ import (
 type TriggerEvent struct {
 	EventType    string                 `json:"event_type"` // on_create, on_update, on_delete
 	EntityName   string                 `json:"entity_name"`
-	EntityID     string                 `json:"entity_id,omitempty"`
+	EntityID     uuid.UUID              `json:"entity_id,omitempty"`
 	FieldChanges map[string]FieldChange `json:"field_changes,omitempty"`
 	Timestamp    time.Time              `json:"timestamp"`
 	RawData      map[string]any         `json:"raw_data,omitempty"`
-	UserID       string                 `json:"user_id,omitempty"`
+	UserID       uuid.UUID              `json:"user_id,omitempty"`
 }
 
 // FieldChange represents a change in a field value
@@ -27,7 +27,7 @@ type FieldChange struct {
 // ExecutionBatch represents a batch of rules that can execute in parallel
 type ExecutionBatch struct {
 	BatchNumber       int           `json:"batch_number"`
-	RuleIDs           []string      `json:"rule_ids"`
+	RuleIDs           uuid.UUIDs    `json:"rule_ids"`
 	CanRunParallel    bool          `json:"can_run_parallel"`
 	EstimatedDuration time.Duration `json:"estimated_duration_ms"`
 	DependencyLevel   int           `json:"dependency_level"`
@@ -35,7 +35,7 @@ type ExecutionBatch struct {
 
 // ExecutionPlan represents the planned execution of matched rules
 type ExecutionPlan struct {
-	PlanID                 string           `json:"plan_id"`
+	PlanID                 uuid.UUID        `json:"plan_id"`
 	TriggerEvent           TriggerEvent     `json:"trigger_event"`
 	MatchedRuleCount       int              `json:"matched_rule_count"`
 	ExecutionBatches       []ExecutionBatch `json:"execution_batches"`
@@ -46,7 +46,7 @@ type ExecutionPlan struct {
 
 // WorkflowExecution represents an active or completed workflow execution
 type WorkflowExecution struct {
-	ExecutionID   string          `json:"execution_id"`
+	ExecutionID   uuid.UUID       `json:"execution_id"`
 	TriggerEvent  TriggerEvent    `json:"trigger_event"`
 	ExecutionPlan ExecutionPlan   `json:"execution_plan"`
 	CurrentBatch  int             `json:"current_batch"`
@@ -81,7 +81,7 @@ type BatchResult struct {
 
 // RuleResult represents the result of executing a single rule
 type RuleResult struct {
-	RuleID        string         `json:"rule_id"`
+	RuleID        uuid.UUID      `json:"rule_id"`
 	RuleName      string         `json:"rule_name"`
 	Status        string         `json:"status"`
 	ActionResults []ActionResult `json:"action_results"`
@@ -93,7 +93,7 @@ type RuleResult struct {
 
 // ActionResult represents the result of executing a single action
 type ActionResult struct {
-	ActionID     string                 `json:"action_id"`
+	ActionID     uuid.UUID              `json:"action_id"`
 	ActionName   string                 `json:"action_name"`
 	ActionType   string                 `json:"action_type"`
 	Status       string                 `json:"status"`
@@ -127,16 +127,16 @@ type WorkflowStats struct {
 
 // ActionExecutionContext provides context for action execution
 type ActionExecutionContext struct {
-	EntityID     string                 `json:"entity_id,omitempty"`
+	EntityID     uuid.UUID              `json:"entity_id,omitempty"`
 	EntityName   string                 `json:"entity_name"`
 	EventType    string                 `json:"event_type"`
 	FieldChanges map[string]FieldChange `json:"field_changes,omitempty"`
 	RawData      map[string]interface{} `json:"raw_data,omitempty"`
 	Timestamp    time.Time              `json:"timestamp"`
-	UserID       string                 `json:"user_id,omitempty"`
-	RuleID       string                 `json:"rule_id"`
+	UserID       uuid.UUID              `json:"user_id,omitempty"`
+	RuleID       uuid.UUID              `json:"rule_id"`
 	RuleName     string                 `json:"rule_name"`
-	ExecutionID  string                 `json:"execution_id,omitempty"`
+	ExecutionID  uuid.UUID              `json:"execution_id,omitempty"`
 }
 
 // =============================================================================
@@ -391,6 +391,77 @@ const (
 	ActionExecutionStatusFailed  ActionExecutionStatus = "failed"
 	ActionExecutionStatusPartial ActionExecutionStatus = "partial"
 )
+
+// DeliveryStatus represents the status of a notification delivery
+type DeliveryStatus string
+
+const (
+	DeliveryStatusPending   DeliveryStatus = "pending"
+	DeliveryStatusSent      DeliveryStatus = "sent"
+	DeliveryStatusDelivered DeliveryStatus = "delivered"
+	DeliveryStatusFailed    DeliveryStatus = "failed"
+	DeliveryStatusBounced   DeliveryStatus = "bounced"
+	DeliveryStatusRetrying  DeliveryStatus = "retrying"
+)
+
+// NotificationDelivery represents a delivery attempt for a notification
+type NotificationDelivery struct {
+	ID                    uuid.UUID       `json:"id"`
+	NotificationID        uuid.UUID       `json:"notification_id"`
+	AutomationExecutionID uuid.UUID       `json:"workflow_id,omitempty"`
+	RuleID                uuid.UUID       `json:"rule_id,omitempty"`
+	ActionID              uuid.UUID       `json:"action_id,omitempty"`
+	RecipientID           uuid.UUID       `json:"recipient_id"`
+	Channel               string          `json:"channel"`
+	Status                DeliveryStatus  `json:"status"`
+	Attempts              int             `json:"attempts"`
+	SentAt                *time.Time      `json:"sent_at,omitempty"`
+	DeliveredAt           *time.Time      `json:"delivered_at,omitempty"`
+	FailedAt              *time.Time      `json:"failed_at,omitempty"`
+	ErrorMessage          *string         `json:"error_message,omitempty"`
+	ProviderResponse      json.RawMessage `json:"provider_response,omitempty"`
+	CreatedDate           time.Time       `json:"created_date"`
+	UpdatedDate           time.Time       `json:"updated_date"`
+}
+
+// TODO: Double check this, I think there's a good chance we don't want to update these
+// UpdateNotificationDelivery contains information needed to update a notification delivery
+type UpdateNotificationDelivery struct {
+	NotificationID        *uuid.UUID
+	AutomationExecutionID *uuid.UUID
+	RuleID                *uuid.UUID
+	ActionID              *uuid.UUID
+	RecipientID           *uuid.UUID
+	Channel               *string
+	Status                *DeliveryStatus
+	Attempts              *int
+	SentAt                **time.Time
+	DeliveredAt           **time.Time
+	FailedAt              **time.Time
+	ErrorMessage          **string
+	ProviderResponse      *json.RawMessage
+	CreatedDate           *time.Time
+	UpdatedDate           *time.Time
+}
+
+// NewNotificationDelivery contains information needed to create a new notification delivery
+type NewNotificationDelivery struct {
+	NotificationID        uuid.UUID
+	AutomationExecutionID uuid.UUID
+	RuleID                uuid.UUID
+	ActionID              uuid.UUID
+	RecipientID           uuid.UUID
+	Channel               string
+	Status                DeliveryStatus
+	Attempts              int
+	SentAt                *time.Time
+	DeliveredAt           *time.Time
+	FailedAt              *time.Time
+	ErrorMessage          *string
+	ProviderResponse      json.RawMessage
+	CreatedDate           time.Time
+	UpdatedDate           time.Time
+}
 
 // QueryFilter represents common query filters for listing operations
 type QueryFilter struct {

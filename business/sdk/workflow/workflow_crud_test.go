@@ -36,20 +36,22 @@ func Test_Workflow(t *testing.T) {
 	unitest.Run(t, ruleActionTests(db.BusDomain, sd), "ruleAction")
 	unitest.Run(t, ruleDependencyTests(db.BusDomain, sd), "ruleDependency")
 	unitest.Run(t, automationExecutionTests(db.BusDomain, sd), "automationExecution")
+	unitest.Run(t, notificationDeliveryTests(db.BusDomain, sd), "notificationDelivery")
 }
 
 // =============================================================================
 
 type workflowSeedData struct {
 	unitest.SeedData
-	TriggerTypes         []workflow.TriggerType
-	EntityTypes          []workflow.EntityType
-	Entities             []workflow.Entity
-	AutomationRules      []workflow.AutomationRule
-	ActionTemplates      []workflow.ActionTemplate
-	RuleActions          []workflow.RuleAction
-	RuleDependencies     []workflow.RuleDependency
-	AutomationExecutions []workflow.AutomationExecution
+	TriggerTypes           []workflow.TriggerType
+	EntityTypes            []workflow.EntityType
+	Entities               []workflow.Entity
+	AutomationRules        []workflow.AutomationRule
+	ActionTemplates        []workflow.ActionTemplate
+	RuleActions            []workflow.RuleAction
+	RuleDependencies       []workflow.RuleDependency
+	AutomationExecutions   []workflow.AutomationExecution
+	NotificationDeliveries []workflow.NotificationDelivery
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
@@ -59,6 +61,10 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 2, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return workflowSeedData{}, fmt.Errorf("seeding users : %w", err)
+	}
+	userIDs := make([]uuid.UUID, len(usrs))
+	for i, u := range usrs {
+		userIDs[i] = u.ID
 	}
 
 	adminUser := usrs[0]
@@ -128,6 +134,11 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 		return workflowSeedData{}, fmt.Errorf("seeding rule actions : %w", err)
 	}
 
+	actionIDs := make([]uuid.UUID, len(actions))
+	for i, a := range actions {
+		actionIDs[i] = a.ID
+	}
+
 	// Seed rule dependencies
 	var dependencies []workflow.RuleDependency
 	if len(ruleIDs) >= 3 {
@@ -145,6 +156,17 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 		return workflowSeedData{}, fmt.Errorf("seeding automation executions : %w", err)
 	}
 
+	executionIDs := make([]uuid.UUID, len(executions))
+	for i, e := range executions {
+		executionIDs[i] = e.ID
+	}
+
+	// Seed notification deliveries
+	notificationDeliveries, err := workflow.TestSeedNotificationDeliveries(ctx, 10, executionIDs, ruleIDs, actionIDs, userIDs, busDomain.Workflow)
+	if err != nil {
+		return workflowSeedData{}, fmt.Errorf("seeding notification deliveries : %w", err)
+	}
+
 	// -------------------------------------------------------------------------
 
 	sd := workflowSeedData{
@@ -152,14 +174,15 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 			Users:  []unitest.User{{User: usrs[0]}, {User: usrs[1]}},
 			Admins: []unitest.User{{User: adminUser}},
 		},
-		TriggerTypes:         triggerTypes,
-		EntityTypes:          entityTypes,
-		Entities:             entities,
-		AutomationRules:      rules,
-		ActionTemplates:      templates,
-		RuleActions:          actions,
-		RuleDependencies:     dependencies,
-		AutomationExecutions: executions,
+		TriggerTypes:           triggerTypes,
+		EntityTypes:            entityTypes,
+		Entities:               entities,
+		AutomationRules:        rules,
+		ActionTemplates:        templates,
+		RuleActions:            actions,
+		RuleDependencies:       dependencies,
+		AutomationExecutions:   executions,
+		NotificationDeliveries: notificationDeliveries,
 	}
 
 	return sd, nil
@@ -1459,6 +1482,75 @@ func queryExecutionHistory(busDomain dbtest.BusDomain, sd workflowSeedData) unit
 			}
 
 			dbtest.NormalizeJSONFields(gotResp, &expResp)
+
+			return cmp.Diff(gotResp, expResp)
+		},
+	}
+}
+
+// =============================================================================
+// Notification Delivery Tests
+func notificationDeliveryTests(busDomain dbtest.BusDomain, sd workflowSeedData) []unitest.Table {
+	return []unitest.Table{
+		createNotificationDelivery(busDomain, sd),
+	}
+}
+
+func createNotificationDelivery(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+	return unitest.Table{
+
+		Name: "create",
+		ExpResp: workflow.NotificationDelivery{
+
+			NotificationID:        uuid.New(),
+			AutomationExecutionID: sd.AutomationExecutions[0].ID,
+			RuleID:                sd.AutomationRules[0].ID,
+			ActionID:              sd.RuleActions[0].ID,
+			RecipientID:           sd.Users[0].ID,
+			Channel:               "email",   // TODO: Make these constants
+			Status:                "pending", // TODO: Make these constants
+			Attempts:              0,
+			SentAt:                nil,
+			DeliveredAt:           nil,
+			FailedAt:              nil,
+			ErrorMessage:          dbtest.StringPointer(""),
+			ProviderResponse:      json.RawMessage(`{}`),
+		},
+		ExcFunc: func(ctx context.Context) any {
+			nd := workflow.NewNotificationDelivery{
+				AutomationExecutionID: sd.AutomationExecutions[0].ID,
+				RuleID:                sd.AutomationRules[0].ID,
+				ActionID:              sd.RuleActions[0].ID,
+				RecipientID:           sd.Users[0].ID,
+				Channel:               "email",   // TODO: Make these constants
+				Status:                "pending", // TODO: Make these constants
+				Attempts:              0,
+				SentAt:                nil,
+				DeliveredAt:           nil,
+				FailedAt:              nil,
+				ErrorMessage:          dbtest.StringPointer(""),
+				ProviderResponse:      json.RawMessage(`{}`),
+			}
+
+			resp, err := busDomain.Workflow.CreateNotificationDelivery(ctx, nd)
+			if err != nil {
+				return err
+			}
+
+			return resp
+		},
+		CmpFunc: func(got any, exp any) string {
+			gotResp, exists := got.(workflow.NotificationDelivery)
+			if !exists {
+				return "error occurred"
+			}
+
+			expResp := exp.(workflow.NotificationDelivery)
+			expResp.ID = gotResp.ID
+			expResp.DeliveredAt = gotResp.DeliveredAt
+			expResp.NotificationID = gotResp.NotificationID
+			expResp.CreatedDate = gotResp.CreatedDate.Round(0).Truncate(time.Microsecond)
+			expResp.UpdatedDate = gotResp.UpdatedDate.Round(0).Truncate(time.Microsecond)
 
 			return cmp.Diff(gotResp, expResp)
 		},

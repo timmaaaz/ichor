@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -281,10 +282,10 @@ func (c *Client) WaitForConnection(timeout time.Duration) error {
 
 // Message represents a workflow queue message
 type Message struct {
-	ID            string                 `json:"id"`
+	ID            uuid.UUID              `json:"id"`
 	Type          string                 `json:"type"`
 	EntityName    string                 `json:"entity_name"`
-	EntityID      string                 `json:"entity_id,omitempty"`
+	EntityID      uuid.UUID              `json:"entity_id,omitempty"`
 	EventType     string                 `json:"event_type"`
 	Payload       map[string]interface{} `json:"payload"`
 	Priority      uint8                  `json:"priority"`
@@ -292,8 +293,8 @@ type Message struct {
 	MaxAttempts   int                    `json:"max_attempts"`
 	CreatedAt     time.Time              `json:"created_at"`
 	ScheduledFor  time.Time              `json:"scheduled_for"`
-	CorrelationID string                 `json:"correlation_id,omitempty"`
-	UserID        string                 `json:"user_id,omitempty"`
+	CorrelationID uuid.UUID              `json:"correlation_id,omitempty"`
+	UserID        uuid.UUID              `json:"user_id,omitempty"`
 }
 
 // QueuePriority defines message priority levels
@@ -530,8 +531,8 @@ func (wq *WorkflowQueue) PublishWithDelay(ctx context.Context, queueType QueueTy
 	}
 
 	// Set message defaults
-	if msg.ID == "" {
-		msg.ID = generateMessageID()
+	if msg.ID == uuid.Nil {
+		msg.ID = uuid.New()
 	}
 	if msg.CreatedAt.IsZero() {
 		msg.CreatedAt = time.Now()
@@ -577,11 +578,11 @@ func (wq *WorkflowQueue) PublishWithDelay(ctx context.Context, queueType QueueTy
 			Body:          body,
 			DeliveryMode:  amqp.Persistent,
 			Priority:      msg.Priority,
-			MessageId:     msg.ID,
+			MessageId:     msg.ID.String(),
 			Timestamp:     msg.CreatedAt,
 			Headers:       headers,
-			CorrelationId: msg.CorrelationID,
-			UserId:        msg.UserID,
+			CorrelationId: msg.CorrelationID.String(),
+			UserId:        msg.UserID.String(),
 		},
 	)
 

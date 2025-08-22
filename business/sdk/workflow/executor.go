@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -20,8 +21,8 @@ type ActionHandler interface {
 
 // ActionExecution represents an active action execution
 type ActionExecution struct {
-	ActionID  string
-	RuleID    string
+	ActionID  uuid.UUID
+	RuleID    uuid.UUID
 	StartedAt time.Time
 	Status    string // TODO: Make into execution status
 	Context   ActionExecutionContext
@@ -61,7 +62,7 @@ type ActionExecutor struct {
 
 // BatchExecutionResult represents the result of executing all actions for a rule
 type BatchExecutionResult struct {
-	RuleID             string                 `json:"rule_id"`
+	RuleID             uuid.UUID              `json:"rule_id"`
 	RuleName           string                 `json:"rule_name"`
 	TotalActions       int                    `json:"total_actions"`
 	SuccessfulActions  int                    `json:"successful_actions"`
@@ -153,7 +154,7 @@ func (ae *ActionExecutor) Initialize(ctx context.Context) error {
 }
 
 // ExecuteRuleActions executes all actions for a given rule
-func (ae *ActionExecutor) ExecuteRuleActions(ctx context.Context, ruleID string, executionContext ActionExecutionContext) (BatchExecutionResult, error) {
+func (ae *ActionExecutor) ExecuteRuleActions(ctx context.Context, ruleID uuid.UUID, executionContext ActionExecutionContext) (BatchExecutionResult, error) {
 	startTime := time.Now()
 
 	// Load actions for the rule
@@ -181,7 +182,7 @@ func (ae *ActionExecutor) ExecuteRuleActions(ctx context.Context, ruleID string,
 		if !action.IsActive {
 			skippedCount++
 			actionResults = append(actionResults, ActionResult{
-				ActionID:   action.ID.String(),
+				ActionID:   action.ID,
 				ActionName: action.Name,
 				ActionType: ae.getActionType(action),
 				Status:     "skipped",
@@ -258,7 +259,7 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 
 	// Track active execution
 	exec := &ActionExecution{
-		ActionID:  actionID.String(),
+		ActionID:  actionID,
 		RuleID:    executionContext.RuleID,
 		StartedAt: startTime,
 		Status:    "running",
@@ -268,7 +269,7 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 	defer ae.activeExecs.Delete(actionID)
 
 	result := ActionResult{
-		ActionID:   actionID.String(),
+		ActionID:   actionID,
 		ActionName: action.Name,
 		ActionType: ae.getActionType(action),
 		Status:     "failed",
@@ -359,7 +360,7 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 }
 
 // loadRuleActions loads actions for a rule from the database
-func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID string) ([]RuleActionView, error) {
+func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error) {
 	query := `
 		SELECT 
 			ra.id,
@@ -388,7 +389,7 @@ func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID string) ([
 }
 
 // getRuleName gets the name of a rule
-func (ae *ActionExecutor) getRuleName(ctx context.Context, ruleID string) string {
+func (ae *ActionExecutor) getRuleName(ctx context.Context, ruleID uuid.UUID) string {
 	var name string
 	query := `SELECT name FROM automation_rules WHERE id = $1`
 

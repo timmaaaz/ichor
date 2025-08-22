@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb/nulltypes"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 )
 
@@ -597,4 +598,96 @@ func toCoreRuleActionViews(dbViews []ruleActionView) []workflow.RuleActionView {
 		views[i] = toCoreRuleActionView(dbView)
 	}
 	return views
+}
+
+// notificationDelivery represents a delivery record for notifications
+type notificationDelivery struct {
+	ID                    string          `db:"id"`
+	NotificationID        string          `db:"notification_id"`
+	AutomationExecutionID string          `db:"automation_execution_id"`
+	RuleID                string          `db:"rule_id"`
+	ActionID              string          `db:"action_id"`
+	RecipientID           string          `db:"recipient_id"`
+	Channel               string          `db:"channel"`
+	Status                string          `db:"status"`
+	Attempts              int             `db:"attempts"`
+	SentAt                sql.NullTime    `db:"sent_at"`
+	DeliveredAt           sql.NullTime    `db:"delivered_at"`
+	FailedAt              sql.NullTime    `db:"failed_at"`
+	ErrorMessage          sql.NullString  `db:"error_message"`
+	ProviderResponse      json.RawMessage `db:"provider_response"`
+	CreatedDate           time.Time       `db:"created_date"`
+	UpdatedDate           time.Time       `db:"updated_date"`
+}
+
+func toCoreNotificationDelivery(dbDelivery notificationDelivery) workflow.NotificationDelivery {
+	return workflow.NotificationDelivery{
+		ID:                    uuid.MustParse(dbDelivery.ID),
+		NotificationID:        uuid.MustParse(dbDelivery.NotificationID),
+		AutomationExecutionID: uuid.MustParse(dbDelivery.AutomationExecutionID),
+		RuleID:                uuid.MustParse(dbDelivery.RuleID),
+		ActionID:              uuid.MustParse(dbDelivery.ActionID),
+		RecipientID:           uuid.MustParse(dbDelivery.RecipientID),
+		Channel:               dbDelivery.Channel,
+		Status:                workflow.DeliveryStatus(dbDelivery.Status),
+		Attempts:              dbDelivery.Attempts,
+		SentAt:                nulltypes.TimePtr(dbDelivery.SentAt),
+		DeliveredAt:           nulltypes.TimePtr(dbDelivery.DeliveredAt),
+		FailedAt:              nulltypes.TimePtr(dbDelivery.FailedAt),
+		ErrorMessage:          nulltypes.StringPtr(dbDelivery.ErrorMessage),
+		ProviderResponse:      dbDelivery.ProviderResponse,
+		CreatedDate:           dbDelivery.CreatedDate,
+		UpdatedDate:           dbDelivery.UpdatedDate,
+	}
+}
+
+func toCoreNotificationDeliverySlice(dbDeliveries []notificationDelivery) []workflow.NotificationDelivery {
+	deliveries := make([]workflow.NotificationDelivery, len(dbDeliveries))
+	for i, dbDelivery := range dbDeliveries {
+		deliveries[i] = toCoreNotificationDelivery(dbDelivery)
+	}
+	return deliveries
+}
+
+// toDBNotificationDelivery converts a core NotificationDelivery to a store notificationDelivery
+func toDBNotificationDelivery(delivery workflow.NotificationDelivery) notificationDelivery {
+	sentAt := sql.NullTime{}
+	if delivery.SentAt != nil {
+		sentAt = sql.NullTime{Time: *delivery.SentAt, Valid: true}
+	}
+
+	deliveredAt := sql.NullTime{}
+	if delivery.DeliveredAt != nil {
+		deliveredAt = sql.NullTime{Time: *delivery.DeliveredAt, Valid: true}
+	}
+
+	failedAt := sql.NullTime{}
+	if delivery.FailedAt != nil {
+		failedAt = sql.NullTime{Time: *delivery.FailedAt, Valid: true}
+	}
+
+	errorMessage := sql.NullString{}
+	if delivery.ErrorMessage != nil {
+		errorMessage = sql.NullString{String: *delivery.ErrorMessage, Valid: true}
+	}
+
+	return notificationDelivery{
+		ID:                    delivery.ID.String(),
+		NotificationID:        delivery.NotificationID.String(),
+		AutomationExecutionID: delivery.AutomationExecutionID.String(),
+		RuleID:                delivery.RuleID.String(),
+		ActionID:              delivery.ActionID.String(),
+		RecipientID:           delivery.RecipientID.String(),
+		Channel:               delivery.Channel,
+		Status:                string(delivery.Status),
+		Attempts:              delivery.Attempts,
+		SentAt:                sentAt,
+		DeliveredAt:           deliveredAt,
+		FailedAt:              failedAt,
+		ErrorMessage:          errorMessage,
+		ProviderResponse:      delivery.ProviderResponse,
+		CreatedDate:           delivery.CreatedDate,
+		UpdatedDate:           delivery.UpdatedDate,
+	}
+
 }

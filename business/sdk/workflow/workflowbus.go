@@ -59,6 +59,11 @@ type Storer interface {
 	DeactivateEntity(ctx context.Context, entity Entity) error
 	ActivateEntity(ctx context.Context, entity Entity) error
 
+	// Notification Delivery Tracking
+	CreateNotificationDelivery(ctx context.Context, delivery NotificationDelivery) error
+	UpdateNotificationDelivery(ctx context.Context, delivery NotificationDelivery) error
+	QueryDeliveriesByAutomationExecution(ctx context.Context, executionID uuid.UUID) ([]NotificationDelivery, error)
+
 	CreateExecution(ctx context.Context, exec AutomationExecution) error
 	QueryExecutionHistory(ctx context.Context, ruleid uuid.UUID, limit int) ([]AutomationExecution, error)
 }
@@ -689,6 +694,43 @@ func (b *Business) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) 
 
 	return template, nil
 }
+
+// CreateNotificationDelivery creates a new notification delivery record.
+
+func (b *Business) CreateNotificationDelivery(ctx context.Context, nd NewNotificationDelivery) (NotificationDelivery, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createnotificationdelivery")
+	defer span.End()
+
+	now := time.Now()
+
+	delivery := NotificationDelivery{
+		ID:                    uuid.New(),
+		NotificationID:        nd.NotificationID,
+		AutomationExecutionID: nd.AutomationExecutionID,
+		RuleID:                nd.RuleID,
+		ActionID:              nd.ActionID,
+		RecipientID:           nd.RecipientID,
+		Channel:               nd.Channel,
+		Status:                nd.Status,
+		Attempts:              nd.Attempts,
+		SentAt:                nd.SentAt,
+		DeliveredAt:           nd.DeliveredAt,
+		FailedAt:              nd.FailedAt,
+		ErrorMessage:          nd.ErrorMessage,
+		ProviderResponse:      nd.ProviderResponse,
+		CreatedDate:           now,
+		UpdatedDate:           now,
+	}
+
+	if err := b.storer.CreateNotificationDelivery(ctx, delivery); err != nil {
+		return NotificationDelivery{}, fmt.Errorf("create: %w", err)
+	}
+
+	return delivery, nil
+}
+
+// UpdateNotificationDelivery(ctx context.Context, delivery NotificationDelivery) error
+// QueryDeliveriesByWorkflow(ctx context.Context, workflowID uuid.UUID) ([]NotificationDelivery, error)
 
 // =============================================================================
 // Automation Executions

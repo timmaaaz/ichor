@@ -12,39 +12,39 @@ import (
 
 // DependencyNode represents a node in the dependency graph
 type DependencyNode struct {
-	RuleID   string   `json:"rule_id"`
-	RuleName string   `json:"rule_name"`
-	Parents  []string `json:"parents"`
-	Children []string `json:"children"`
-	Level    int      `json:"level"` // Execution batch level
+	RuleID   uuid.UUID  `json:"rule_id"`
+	RuleName string     `json:"rule_name"`
+	Parents  uuid.UUIDs `json:"parents"`
+	Children uuid.UUIDs `json:"children"`
+	Level    int        `json:"level"` // Execution batch level
 }
 
 // DependencyGraph represents the complete dependency graph
 type DependencyGraph struct {
-	Nodes    map[string]*DependencyNode `json:"nodes"`
-	Levels   map[int][]string           `json:"levels"` // level -> rule_ids
-	MaxLevel int                        `json:"max_level"`
+	Nodes    map[uuid.UUID]*DependencyNode `json:"nodes"`
+	Levels   map[int]uuid.UUIDs            `json:"levels"` // level -> rule_ids
+	MaxLevel int                           `json:"max_level"`
 }
 
 // BatchOrder represents the execution order of rules
 type BatchOrder struct {
-	Batches           [][]string    `json:"batches"` // Array of batches, each batch contains rule_ids
+	Batches           []uuid.UUIDs  `json:"batches"` // Array of batches, each batch contains rule_ids
 	TotalBatches      int           `json:"total_batches"`
 	EstimatedDuration time.Duration `json:"estimated_duration"`
 }
 
 // CycleDetectionResult represents the result of cycle detection
 type CycleDetectionResult struct {
-	HasCycles     bool       `json:"has_cycles"`
-	Cycles        [][]string `json:"cycles"` // Array of cycles
-	AffectedRules []string   `json:"affected_rules"`
+	HasCycles     bool         `json:"has_cycles"`
+	Cycles        []uuid.UUIDs `json:"cycles"` // Array of cycles
+	AffectedRules uuid.UUIDs   `json:"affected_rules"`
 }
 
 // ValidationError represents a dependency validation error
 type ValidationError struct {
-	Type          string   `json:"type"` // cycle, missing_rule, self_dependency
-	Message       string   `json:"message"`
-	AffectedRules []string `json:"affected_rules"`
+	Type          string     `json:"type"` // cycle, missing_rule, self_dependency
+	Message       string     `json:"message"`
+	AffectedRules uuid.UUIDs `json:"affected_rules"`
 }
 
 // DependencyResolver manages rule dependencies and execution order
@@ -67,8 +67,8 @@ func NewDependencyResolver(log *logger.Logger, db *sqlx.DB) *DependencyResolver 
 		db:           db,
 		cacheTimeout: 5 * time.Minute,
 		graph: &DependencyGraph{
-			Nodes:  make(map[string]*DependencyNode),
-			Levels: make(map[int][]string),
+			Nodes:  make(map[uuid.UUID]*DependencyNode),
+			Levels: make(map[int]uuid.UUIDs),
 		},
 	}
 }
@@ -136,18 +136,18 @@ func (dr *DependencyResolver) loadDependencies(ctx context.Context) error {
 func (dr *DependencyResolver) buildDependencyGraph(ctx context.Context) error {
 	// Reset graph
 	dr.graph = &DependencyGraph{
-		Nodes:  make(map[string]*DependencyNode),
-		Levels: make(map[int][]string),
+		Nodes:  make(map[uuid.UUID]*DependencyNode),
+		Levels: make(map[int]uuid.UUIDs),
 	}
 
 	// Initialize nodes for all rules
 	for _, rule := range dr.rules {
 		if rule.IsActive {
-			dr.graph.Nodes[rule.ID.String()] = &DependencyNode{
-				RuleID:   rule.ID.String(),
+			dr.graph.Nodes[rule.ID] = &DependencyNode{
+				RuleID:   rule.ID,
 				RuleName: rule.Name,
-				Parents:  make([]string, 0),
-				Children: make([]string, 0),
+				Parents:  make(uuid.UUIDs, 0),
+				Children: make(uuid.UUIDs, 0),
 				Level:    0,
 			}
 		}
@@ -155,21 +155,21 @@ func (dr *DependencyResolver) buildDependencyGraph(ctx context.Context) error {
 
 	// Build parent/child relationships
 	for _, dep := range dr.dependencies {
-		parentNode, parentExists := dr.graph.Nodes[dep.ParentRuleID.String()]
-		childNode, childExists := dr.graph.Nodes[dep.ChildRuleID.String()]
+		parentNode, parentExists := dr.graph.Nodes[dep.ParentRuleID]
+		childNode, childExists := dr.graph.Nodes[dep.ChildRuleID]
 
 		if parentExists && childExists {
-			parentNode.Children = append(parentNode.Children, dep.ChildRuleID.String())
-			childNode.Parents = append(childNode.Parents, dep.ParentRuleID.String())
+			parentNode.Children = append(parentNode.Children, dep.ChildRuleID)
+			childNode.Parents = append(childNode.Parents, dep.ParentRuleID)
 		}
 	}
 
 	// Calculate levels using topological sort
-	visited := make(map[string]bool)
-	calculating := make(map[string]bool)
+	visited := make(map[uuid.UUID]bool)
+	calculating := make(map[uuid.UUID]bool)
 
-	var calculateLevel func(ruleID string) int
-	calculateLevel = func(ruleID string) int {
+	var calculateLevel func(ruleID uuid.UUID) int
+	calculateLevel = func(ruleID uuid.UUID) int {
 		if calculating[ruleID] {
 			// Cycle detected during level calculation
 			return 0
@@ -208,7 +208,7 @@ func (dr *DependencyResolver) buildDependencyGraph(ctx context.Context) error {
 	// Group by levels
 	for _, node := range dr.graph.Nodes {
 		if _, exists := dr.graph.Levels[node.Level]; !exists {
-			dr.graph.Levels[node.Level] = make([]string, 0)
+			dr.graph.Levels[node.Level] = make(uuid.UUIDs, 0)
 		}
 		dr.graph.Levels[node.Level] = append(dr.graph.Levels[node.Level], node.RuleID)
 	}
@@ -229,18 +229,18 @@ func (dr *DependencyResolver) CalculateBatchOrder(ctx context.Context, matchedRu
 	}
 
 	// Create a set of matched rule IDs for quick lookup
-	matchedRuleIDs := make(map[string]bool)
+	matchedRuleIDs := make(map[uuid.UUID]bool)
 	for _, match := range matchedRules {
-		matchedRuleIDs[match.Rule.ID.String()] = true
+		matchedRuleIDs[match.Rule.ID] = true
 	}
 
 	// Build batches based on dependency levels
-	batches := make([][]string, 0)
+	batches := make([]uuid.UUIDs, 0)
 	totalDuration := time.Duration(0)
 
 	for level := 0; level <= dr.graph.MaxLevel; level++ {
 		levelRules := dr.graph.Levels[level]
-		batchRules := make([]string, 0)
+		batchRules := make(uuid.UUIDs, 0)
 
 		// Filter to only include matched rules
 		for _, ruleID := range levelRules {
@@ -266,13 +266,13 @@ func (dr *DependencyResolver) CalculateBatchOrder(ctx context.Context, matchedRu
 
 // DetectCycles detects cycles in the dependency graph
 func (dr *DependencyResolver) DetectCycles() *CycleDetectionResult {
-	cycles := make([][]string, 0)
-	visited := make(map[string]bool)
-	recursionStack := make(map[string]bool)
-	currentPath := make([]string, 0)
+	cycles := make([]uuid.UUIDs, 0)
+	visited := make(map[uuid.UUID]bool)
+	recursionStack := make(map[uuid.UUID]bool)
+	currentPath := make(uuid.UUIDs, 0)
 
-	var dfs func(ruleID string)
-	dfs = func(ruleID string) {
+	var dfs func(ruleID uuid.UUID)
+	dfs = func(ruleID uuid.UUID) {
 		if recursionStack[ruleID] {
 			// Found a cycle - extract it from current path
 			cycleStart := -1
@@ -283,7 +283,7 @@ func (dr *DependencyResolver) DetectCycles() *CycleDetectionResult {
 				}
 			}
 			if cycleStart >= 0 {
-				cycle := append([]string{}, currentPath[cycleStart:]...)
+				cycle := append([]uuid.UUID{}, currentPath[cycleStart:]...)
 				cycle = append(cycle, ruleID)
 				cycles = append(cycles, cycle)
 			}
@@ -316,14 +316,14 @@ func (dr *DependencyResolver) DetectCycles() *CycleDetectionResult {
 	}
 
 	// Collect affected rules
-	affectedRules := make(map[string]bool)
+	affectedRules := make(map[uuid.UUID]bool)
 	for _, cycle := range cycles {
 		for _, ruleID := range cycle {
 			affectedRules[ruleID] = true
 		}
 	}
 
-	affectedRulesList := make([]string, 0, len(affectedRules))
+	affectedRulesList := make([]uuid.UUID, 0, len(affectedRules))
 	for ruleID := range affectedRules {
 		affectedRulesList = append(affectedRulesList, ruleID)
 	}
@@ -345,30 +345,30 @@ func (dr *DependencyResolver) ValidateDependencies(newDependencies []RuleDepende
 			errors = append(errors, ValidationError{
 				Type:          "self_dependency",
 				Message:       fmt.Sprintf("Rule cannot depend on itself: %s", dep.ParentRuleID),
-				AffectedRules: []string{dep.ParentRuleID.String()},
+				AffectedRules: uuid.UUIDs{dep.ParentRuleID},
 			})
 		}
 	}
 
 	// Check for missing rules
-	allRuleIDs := make(map[string]bool)
+	allRuleIDs := make(map[uuid.UUID]bool)
 	for _, rule := range dr.rules {
-		allRuleIDs[rule.ID.String()] = true
+		allRuleIDs[rule.ID] = true
 	}
 
 	for _, dep := range newDependencies {
-		if !allRuleIDs[dep.ParentRuleID.String()] {
+		if !allRuleIDs[dep.ParentRuleID] {
 			errors = append(errors, ValidationError{
 				Type:          "missing_rule",
 				Message:       fmt.Sprintf("Parent rule not found: %s", dep.ParentRuleID),
-				AffectedRules: []string{dep.ParentRuleID.String()},
+				AffectedRules: uuid.UUIDs{dep.ParentRuleID},
 			})
 		}
-		if !allRuleIDs[dep.ChildRuleID.String()] {
+		if !allRuleIDs[dep.ChildRuleID] {
 			errors = append(errors, ValidationError{
 				Type:          "missing_rule",
 				Message:       fmt.Sprintf("Child rule not found: %s", dep.ChildRuleID),
-				AffectedRules: []string{dep.ChildRuleID.String()},
+				AffectedRules: uuid.UUIDs{dep.ChildRuleID},
 			})
 		}
 	}
@@ -379,21 +379,28 @@ func (dr *DependencyResolver) ValidateDependencies(newDependencies []RuleDepende
 		cycleResult := dr.detectCyclesInGraph(tempGraph)
 
 		if cycleResult.HasCycles {
-			cycleStrings := make([]string, 0)
+			// FIX: Changed from uuid.UUIDs to []string since we're building string descriptions
+			cycleDescriptions := make([]string, 0, len(cycleResult.Cycles))
+
 			for _, cycle := range cycleResult.Cycles {
 				cycleStr := ""
 				for i, ruleID := range cycle {
 					if i > 0 {
 						cycleStr += " -> "
 					}
-					cycleStr += ruleID
+					if node, exists := dr.graph.Nodes[ruleID]; exists && node.RuleName != "" {
+						cycleStr += fmt.Sprintf("%s (%s)", node.RuleName, ruleID.String()[:8])
+					} else {
+						cycleStr += ruleID.String()
+					}
 				}
-				cycleStrings = append(cycleStrings, cycleStr)
+				cycleDescriptions = append(cycleDescriptions, cycleStr)
 			}
 
+			// FIX: Format the cycle descriptions properly in the message
 			errors = append(errors, ValidationError{
 				Type:          "cycle",
-				Message:       fmt.Sprintf("Adding dependencies would create cycles: %s", cycleStrings),
+				Message:       fmt.Sprintf("Adding dependencies would create cycles: %v", cycleDescriptions),
 				AffectedRules: cycleResult.AffectedRules,
 			})
 		}
@@ -405,8 +412,8 @@ func (dr *DependencyResolver) ValidateDependencies(newDependencies []RuleDepende
 // simulateDependencyGraph creates a temporary graph with new dependencies
 func (dr *DependencyResolver) simulateDependencyGraph(newDeps []RuleDependency) *DependencyGraph {
 	tempGraph := &DependencyGraph{
-		Nodes:  make(map[string]*DependencyNode),
-		Levels: make(map[int][]string),
+		Nodes:  make(map[uuid.UUID]*DependencyNode),
+		Levels: make(map[int]uuid.UUIDs),
 	}
 
 	// Copy existing nodes
@@ -414,8 +421,8 @@ func (dr *DependencyResolver) simulateDependencyGraph(newDeps []RuleDependency) 
 		tempGraph.Nodes[ruleID] = &DependencyNode{
 			RuleID:   node.RuleID,
 			RuleName: node.RuleName,
-			Parents:  append([]string{}, node.Parents...),
-			Children: append([]string{}, node.Children...),
+			Parents:  append([]uuid.UUID{}, node.Parents...),
+			Children: append([]uuid.UUID{}, node.Children...),
 			Level:    node.Level,
 		}
 	}
@@ -425,19 +432,19 @@ func (dr *DependencyResolver) simulateDependencyGraph(newDeps []RuleDependency) 
 
 	// Rebuild relationships
 	for _, dep := range allDeps {
-		if parentNode, exists := tempGraph.Nodes[dep.ParentRuleID.String()]; exists {
-			if childNode, exists := tempGraph.Nodes[dep.ChildRuleID.String()]; exists {
+		if parentNode, exists := tempGraph.Nodes[dep.ParentRuleID]; exists {
+			if childNode, exists := tempGraph.Nodes[dep.ChildRuleID]; exists {
 				// Check if dependency already exists
 				hasChild := false
 				for _, child := range parentNode.Children {
-					if child == dep.ChildRuleID.String() {
+					if child == dep.ChildRuleID {
 						hasChild = true
 						break
 					}
 				}
 				if !hasChild {
-					parentNode.Children = append(parentNode.Children, dep.ChildRuleID.String())
-					childNode.Parents = append(childNode.Parents, dep.ParentRuleID.String())
+					parentNode.Children = append(parentNode.Children, dep.ChildRuleID)
+					childNode.Parents = append(childNode.Parents, dep.ParentRuleID)
 				}
 			}
 		}
@@ -448,13 +455,13 @@ func (dr *DependencyResolver) simulateDependencyGraph(newDeps []RuleDependency) 
 
 // detectCyclesInGraph detects cycles in a specific graph
 func (dr *DependencyResolver) detectCyclesInGraph(graph *DependencyGraph) *CycleDetectionResult {
-	cycles := make([][]string, 0)
-	visited := make(map[string]bool)
-	recursionStack := make(map[string]bool)
-	currentPath := make([]string, 0)
+	cycles := make([]uuid.UUIDs, 0)
+	visited := make(map[uuid.UUID]bool)
+	recursionStack := make(map[uuid.UUID]bool)
+	currentPath := make(uuid.UUIDs, 0)
 
-	var dfs func(ruleID string)
-	dfs = func(ruleID string) {
+	var dfs func(ruleID uuid.UUID)
+	dfs = func(ruleID uuid.UUID) {
 		if recursionStack[ruleID] {
 			cycleStart := -1
 			for i, id := range currentPath {
@@ -464,7 +471,7 @@ func (dr *DependencyResolver) detectCyclesInGraph(graph *DependencyGraph) *Cycle
 				}
 			}
 			if cycleStart >= 0 {
-				cycle := append([]string{}, currentPath[cycleStart:]...)
+				cycle := append(uuid.UUIDs{}, currentPath[cycleStart:]...)
 				cycle = append(cycle, ruleID)
 				cycles = append(cycles, cycle)
 			}
@@ -495,14 +502,14 @@ func (dr *DependencyResolver) detectCyclesInGraph(graph *DependencyGraph) *Cycle
 		}
 	}
 
-	affectedRules := make(map[string]bool)
+	affectedRules := make(map[uuid.UUID]bool)
 	for _, cycle := range cycles {
 		for _, ruleID := range cycle {
 			affectedRules[ruleID] = true
 		}
 	}
 
-	affectedRulesList := make([]string, 0, len(affectedRules))
+	affectedRulesList := make([]uuid.UUID, 0, len(affectedRules))
 	for ruleID := range affectedRules {
 		affectedRulesList = append(affectedRulesList, ruleID)
 	}
@@ -515,19 +522,19 @@ func (dr *DependencyResolver) detectCyclesInGraph(graph *DependencyGraph) *Cycle
 }
 
 // GetRuleDependents returns the rules that depend on the given rule
-func (dr *DependencyResolver) GetRuleDependents(ruleID string) []string {
+func (dr *DependencyResolver) GetRuleDependents(ruleID uuid.UUID) []uuid.UUID {
 	if node, exists := dr.graph.Nodes[ruleID]; exists {
 		return node.Children
 	}
-	return []string{}
+	return []uuid.UUID{}
 }
 
 // GetRuleDependencies returns the rules that the given rule depends on
-func (dr *DependencyResolver) GetRuleDependencies(ruleID string) []string {
+func (dr *DependencyResolver) GetRuleDependencies(ruleID uuid.UUID) []uuid.UUID {
 	if node, exists := dr.graph.Nodes[ruleID]; exists {
 		return node.Parents
 	}
-	return []string{}
+	return []uuid.UUID{}
 }
 
 // AddDependency adds a new dependency to the database

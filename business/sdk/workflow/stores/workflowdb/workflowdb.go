@@ -806,3 +806,74 @@ func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, lim
 
 	return toCoreAutomationExecutionSlice(dbExecutions), nil
 }
+
+// CreateNotificationDelivery inserts a notification delivery record
+func (s *Store) CreateNotificationDelivery(ctx context.Context, delivery workflow.NotificationDelivery) error {
+	const q = `
+	INSERT INTO notification_deliveries (
+		id, notification_id, automation_execution_id, rule_id, action_id,
+		recipient_id, channel, status, attempts,
+		sent_at, delivered_at, failed_at, error_message,
+		provider_response, created_date, updated_date
+	) VALUES (
+		:id, :notification_id, :automation_execution_id, :rule_id, :action_id,
+		:recipient_id, :channel, :status, :attempts,
+		:sent_at, :delivered_at, :failed_at, :error_message,
+		:provider_response, :created_date, :updated_date
+	)`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBNotificationDelivery(delivery)); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateNotificationDelivery updates a delivery record (for retries, status changes)
+func (s *Store) UpdateNotificationDelivery(ctx context.Context, delivery workflow.NotificationDelivery) error {
+	const q = `
+	UPDATE notification_deliveries 
+	SET 
+		status = :status,
+		attempts = :attempts,
+		delivered_at = :delivered_at,
+		failed_at = :failed_at,
+		error_message = :error_message,
+		provider_response = :provider_response,
+		updated_date = :updated_date
+	WHERE
+		id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBNotificationDelivery(delivery)); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// QueryDeliveriesByAutomationExecution gets notification deliveries for the specified automation execution from the database.
+func (s *Store) QueryDeliveriesByAutomationExecution(ctx context.Context, executionID uuid.UUID) ([]workflow.NotificationDelivery, error) {
+	data := struct {
+		ExecutionID string `db:"automation_execution_id"`
+	}{
+		ExecutionID: executionID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, notification_id, automation_execution_id, rule_id, action_id,
+		recipient_id, channel, status, attempts,
+		sent_at, delivered_at, failed_at, error_message,
+		provider_response, created_date, updated_date
+	FROM
+		notification_deliveries
+	WHERE
+		automation_execution_id = :automation_execution_id`
+
+	var dbDeliveries []notificationDelivery
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbDeliveries); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreNotificationDeliverySlice(dbDeliveries), nil
+}

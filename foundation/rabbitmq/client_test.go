@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
@@ -107,11 +108,13 @@ func TestWorkflowQueue_PublishAndConsume(t *testing.T) {
 	// Purge queue to start fresh
 	wq.PurgeQueue(ctx, rabbitmq.QueueTypeWorkflow)
 
+	messageUUID := uuid.New()
+
 	// Create test message
 	msg := &rabbitmq.Message{
 		Type:       "test_workflow",
 		EntityName: "test_entity",
-		EntityID:   "test_123",
+		EntityID:   messageUUID,
 		EventType:  "on_create",
 		Priority:   uint8(rabbitmq.PriorityNormal),
 		Payload: map[string]interface{}{
@@ -141,7 +144,7 @@ func TestWorkflowQueue_PublishAndConsume(t *testing.T) {
 		if receivedMsg.Type != "test_workflow" {
 			t.Errorf("Expected message type 'test_workflow', got '%s'", receivedMsg.Type)
 		}
-		if receivedMsg.EntityID != "test_123" {
+		if receivedMsg.EntityID != messageUUID {
 			t.Errorf("Expected entity ID 'test_123', got '%s'", receivedMsg.EntityID)
 		}
 	case <-time.After(2 * time.Second):
@@ -178,7 +181,7 @@ func TestWorkflowQueue_BatchPublish(t *testing.T) {
 		messages[i] = &rabbitmq.Message{
 			Type:       "batch_test",
 			EntityName: "test_entity",
-			EntityID:   fmt.Sprintf("batch_%d", i),
+			EntityID:   uuid.New(),
 			EventType:  "on_create",
 		}
 	}
@@ -222,11 +225,13 @@ func TestWorkflowQueue_ErrorHandling(t *testing.T) {
 	// Purge queue to start fresh
 	wq.PurgeQueue(ctx, rabbitmq.QueueTypeWorkflow)
 
+	messageUUID := uuid.New()
+
 	// Create message that will fail processing
 	msg := &rabbitmq.Message{
 		Type:        "error_workflow",
 		EntityName:  "test_entity",
-		EntityID:    "error_123",
+		EntityID:    messageUUID,
 		EventType:   "on_error",
 		MaxAttempts: 2,
 	}
@@ -240,7 +245,7 @@ func TestWorkflowQueue_ErrorHandling(t *testing.T) {
 	attempts := 0
 	var mu sync.Mutex
 	consumer, err := wq.Consume(ctx, rabbitmq.QueueTypeWorkflow, func(ctx context.Context, msg *rabbitmq.Message) error {
-		if msg.EntityID == "error_123" {
+		if msg.EntityID == messageUUID {
 			mu.Lock()
 			attempts++
 			mu.Unlock()
@@ -291,11 +296,13 @@ func TestWorkflowQueue_PurgeQueue(t *testing.T) {
 		t.Fatalf("Failed to purge queue before test: %s", err)
 	}
 
+	messageUUID := uuid.New()
+
 	// Publish a message
 	msg := &rabbitmq.Message{
 		Type:       "purge_test",
 		EntityName: "test_entity",
-		EntityID:   "purge_123",
+		EntityID:   messageUUID,
 		EventType:  "on_create",
 	}
 
@@ -360,11 +367,13 @@ func TestWorkflowQueue_MultipleQueueTypes(t *testing.T) {
 		// Purge first
 		wq.PurgeQueue(ctx, qt)
 
+		messageUUID := uuid.New()
+
 		// Publish to each queue type
 		msg := &rabbitmq.Message{
 			Type:       string(qt),
 			EntityName: "test_entity",
-			EntityID:   fmt.Sprintf("%s_123", qt),
+			EntityID:   messageUUID,
 			EventType:  "on_create",
 		}
 

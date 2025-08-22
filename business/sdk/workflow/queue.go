@@ -149,7 +149,7 @@ func (qm *QueueManager) QueueEvent(ctx context.Context, event TriggerEvent) erro
 
 	// Convert TriggerEvent to RabbitMQ Message
 	msg := &rabbitmq.Message{
-		ID:         uuid.New().String(),
+		ID:         uuid.New(),
 		Type:       "workflow_trigger",
 		EntityName: event.EntityName,
 		EntityID:   event.EntityID,
@@ -319,7 +319,11 @@ func (qm *QueueManager) processMessage(ctx context.Context, msg *rabbitmq.Messag
 	}
 
 	if payload, ok := msg.Payload["user_id"]; ok {
-		if uid, ok := payload.(string); ok {
+		// if uid, ok := payload.(string); ok {
+		// 	event.UserID = uid
+		// }
+		uid, err := uuid.Parse(payload.(string))
+		if err == nil {
 			event.UserID = uid
 		}
 	}

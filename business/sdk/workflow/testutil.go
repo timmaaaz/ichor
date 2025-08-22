@@ -361,7 +361,7 @@ func TestNewAutomationExecutions(n int, ruleIDs []uuid.UUID) []NewAutomationExec
 }
 
 // TestSeedAutomationExecutions is a helper method for testing.
-func TestSeedAutomationExecutions(ctx context.Context, n int, ruleIDs []uuid.UUID, api *Business) ([]AutomationExecution, error) {
+func TestSeedAutomationExecutions(ctx context.Context, n int, ruleIDs uuid.UUIDs, api *Business) ([]AutomationExecution, error) {
 	newExecutions := TestNewAutomationExecutions(n, ruleIDs)
 
 	executions := make([]AutomationExecution, len(newExecutions))
@@ -375,6 +375,51 @@ func TestSeedAutomationExecutions(ctx context.Context, n int, ruleIDs []uuid.UUI
 	}
 
 	return executions, nil
+}
+
+// TestNewNotificationDeliveries creates test notification deliveries.
+func TestNewNotificationDeliveries(n int, automationExecutionIDs uuid.UUIDs, ruleIDs uuid.UUIDs, actionIDs uuid.UUIDs, recipientIDs uuid.UUIDs) []NewNotificationDelivery {
+	deliveries := make([]NewNotificationDelivery, n)
+
+	for i := 0; i < n; i++ {
+		tmp := ""
+
+		delivery := NewNotificationDelivery{
+			NotificationID:        uuid.New(),
+			AutomationExecutionID: automationExecutionIDs[i%len(automationExecutionIDs)],
+			RuleID:                ruleIDs[i%len(ruleIDs)],
+			ActionID:              actionIDs[i%len(actionIDs)],
+			RecipientID:           recipientIDs[i%len(recipientIDs)],
+			Channel:               "email",
+			Status:                "pending",
+			Attempts:              0,
+			SentAt:                nil,
+			DeliveredAt:           nil,
+			FailedAt:              nil,
+			ErrorMessage:          &tmp,
+			ProviderResponse:      json.RawMessage(`{}`),
+		}
+		deliveries[i] = delivery
+	}
+
+	return deliveries
+}
+
+// TestSeedNotificationDeliveries is a helper method for testing.
+func TestSeedNotificationDeliveries(ctx context.Context, n int, automationExecutionIDs uuid.UUIDs, ruleIDs uuid.UUIDs, actionIDs uuid.UUIDs, recipientIDs uuid.UUIDs, api *Business) ([]NotificationDelivery, error) {
+	newDeliveries := TestNewNotificationDeliveries(n, automationExecutionIDs, ruleIDs, actionIDs, recipientIDs)
+
+	deliveries := make([]NotificationDelivery, len(newDeliveries))
+	for i, nnd := range newDeliveries {
+		delivery, err := api.CreateNotificationDelivery(ctx, nnd)
+		if err != nil {
+			return nil, fmt.Errorf("seeding notification delivery: idx: %d : %w", i, err)
+		}
+
+		deliveries[i] = delivery
+	}
+
+	return deliveries, nil
 }
 
 // TestSeedFullWorkflow seeds a complete workflow setup for testing.
@@ -452,6 +497,11 @@ func TestSeedFullWorkflow(ctx context.Context, userID uuid.UUID, api *Business) 
 	}
 	data.RuleActions = actions
 
+	actionIDs := make([]uuid.UUID, len(actions))
+	for i, a := range actions {
+		actionIDs[i] = a.ID
+	}
+
 	// Seed rule dependencies (using first 3 rules as parents and last 2 as children)
 	if len(ruleIDs) >= 3 {
 		parentIDs := ruleIDs[:3]
@@ -470,17 +520,30 @@ func TestSeedFullWorkflow(ctx context.Context, userID uuid.UUID, api *Business) 
 	}
 	data.AutomationExecutions = executions
 
+	executionIDs := make([]uuid.UUID, len(executions))
+	for i, e := range executions {
+		executionIDs[i] = e.ID
+	}
+
+	// Seed notification deliveries
+	notificationDeliveries, err := TestSeedNotificationDeliveries(ctx, 10, executionIDs, ruleIDs, actionIDs, uuid.UUIDs{userID}, api)
+	if err != nil {
+		return nil, fmt.Errorf("seeding notification deliveries: %w", err)
+	}
+	data.NotificationDeliveries = notificationDeliveries
+
 	return data, nil
 }
 
 // TestWorkflowData holds all seeded workflow data for testing.
 type TestWorkflowData struct {
-	TriggerTypes         []TriggerType
-	EntityTypes          []EntityType
-	Entities             []Entity
-	AutomationRules      []AutomationRule
-	ActionTemplates      []ActionTemplate
-	RuleActions          []RuleAction
-	RuleDependencies     []RuleDependency
-	AutomationExecutions []AutomationExecution
+	TriggerTypes           []TriggerType
+	EntityTypes            []EntityType
+	Entities               []Entity
+	AutomationRules        []AutomationRule
+	ActionTemplates        []ActionTemplate
+	RuleActions            []RuleAction
+	RuleDependencies       []RuleDependency
+	AutomationExecutions   []AutomationExecution
+	NotificationDeliveries []NotificationDelivery
 }

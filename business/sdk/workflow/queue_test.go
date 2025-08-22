@@ -51,10 +51,10 @@ func (e *stubEngine) ExecuteWorkflow(ctx context.Context, event workflow.Trigger
 
 	now := time.Now()
 	return &workflow.WorkflowExecution{
-		ExecutionID:  fmt.Sprintf("exec_%d_%s", e.executionCount, uuid.New().String()[:8]),
+		ExecutionID:  uuid.New(),
 		TriggerEvent: event,
 		ExecutionPlan: workflow.ExecutionPlan{
-			PlanID:           fmt.Sprintf("plan_%d", e.executionCount),
+			PlanID:           uuid.New(),
 			MatchedRuleCount: 1,
 			TotalBatches:     1,
 			CreatedAt:        now,
@@ -148,6 +148,12 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 		t.Fatalf("initializing queue manager: %s", err)
 	}
 
+	entityID1 := uuid.New()
+	entityID2 := uuid.New()
+	entityID3 := uuid.New()
+
+	userID2 := uuid.New()
+
 	tests := []struct {
 		name    string
 		event   workflow.TriggerEvent
@@ -158,13 +164,13 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 			event: workflow.TriggerEvent{
 				EventType:  "on_create",
 				EntityName: "customers",
-				EntityID:   "cust_123",
+				EntityID:   entityID1,
 				Timestamp:  time.Now(),
 				RawData: map[string]interface{}{
 					"name":  "John Doe",
 					"email": "john@example.com",
 				},
-				UserID: "user_456",
+				UserID: userID2,
 			},
 			wantErr: false,
 		},
@@ -173,7 +179,7 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 			event: workflow.TriggerEvent{
 				EventType:  "on_update",
 				EntityName: "customers",
-				EntityID:   "cust_123",
+				EntityID:   entityID1,
 				Timestamp:  time.Now(),
 				FieldChanges: map[string]workflow.FieldChange{
 					"status": {
@@ -185,7 +191,7 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 					"name":   "John Doe",
 					"status": "premium",
 				},
-				UserID: "user_456",
+				UserID: userID2,
 			},
 			wantErr: false,
 		},
@@ -194,9 +200,9 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 			event: workflow.TriggerEvent{
 				EventType:  "on_delete",
 				EntityName: "customers",
-				EntityID:   "cust_123",
+				EntityID:   entityID1,
 				Timestamp:  time.Now(),
-				UserID:     "user_456",
+				UserID:     userID2,
 			},
 			wantErr: false,
 		},
@@ -205,7 +211,7 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 			event: workflow.TriggerEvent{
 				EventType:  "on_create",
 				EntityName: "approvals",
-				EntityID:   "appr_789",
+				EntityID:   entityID2,
 				Timestamp:  time.Now(),
 				RawData: map[string]interface{}{
 					"request_id": "req_123",
@@ -219,7 +225,7 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 			event: workflow.TriggerEvent{
 				EventType:  "on_update",
 				EntityName: "inventory",
-				EntityID:   "inv_456",
+				EntityID:   entityID3,
 				Timestamp:  time.Now(),
 				FieldChanges: map[string]workflow.FieldChange{
 					"quantity": {
@@ -347,11 +353,13 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 	}
 	defer qm.Stop(ctx)
 
+	entityID1 := uuid.New()
+
 	// Queue an event
 	event := workflow.TriggerEvent{
 		EventType:  "on_create",
 		EntityName: "customers",
-		EntityID:   "cust_999",
+		EntityID:   entityID1,
 		Timestamp:  time.Now(),
 		RawData: map[string]interface{}{
 			"name":  "Test Customer",
@@ -418,7 +426,7 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 		event := workflow.TriggerEvent{
 			EventType:  "on_create",
 			EntityName: "customers",
-			EntityID:   fmt.Sprintf("cust_%d", i),
+			EntityID:   uuid.New(),
 			Timestamp:  time.Now(),
 		}
 
@@ -442,7 +450,7 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 	event := workflow.TriggerEvent{
 		EventType:  "on_create",
 		EntityName: "customers",
-		EntityID:   "cust_blocked",
+		EntityID:   uuid.New(),
 		Timestamp:  time.Now(),
 	}
 
@@ -485,7 +493,7 @@ func TestQueueManager_ClearQueue(t *testing.T) {
 		event := workflow.TriggerEvent{
 			EventType:  "on_create",
 			EntityName: "customers",
-			EntityID:   fmt.Sprintf("cust_%d", i),
+			EntityID:   uuid.New(),
 			Timestamp:  time.Now(),
 		}
 		if err := qm.QueueEvent(ctx, event); err != nil {
@@ -549,7 +557,7 @@ func TestQueueManager_Metrics(t *testing.T) {
 		event := workflow.TriggerEvent{
 			EventType:  "on_create",
 			EntityName: "customers",
-			EntityID:   fmt.Sprintf("cust_%d", i),
+			EntityID:   uuid.New(),
 			Timestamp:  time.Now(),
 		}
 		if err := qm.QueueEvent(ctx, event); err != nil {
@@ -656,6 +664,8 @@ func TestQueueManager_DetermineQueueType(t *testing.T) {
 		t.Fatalf("creating queue manager: %s", err)
 	}
 
+	entityID := uuid.New()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// This tests the queue routing logic indirectly through QueueEvent
@@ -666,7 +676,7 @@ func TestQueueManager_DetermineQueueType(t *testing.T) {
 
 			// Queue the event (internally uses determineQueueType)
 			tt.event.EventType = "on_create"
-			tt.event.EntityID = "test_123"
+			tt.event.EntityID = entityID
 			tt.event.Timestamp = time.Now()
 
 			if err := qm.QueueEvent(ctx, tt.event); err != nil {
@@ -739,7 +749,7 @@ func (m *mockEngine) ExecuteWorkflow(ctx context.Context, event workflow.Trigger
 		return m.executeFunc(ctx, event)
 	}
 	return &workflow.WorkflowExecution{
-		ExecutionID: uuid.New().String(),
+		ExecutionID: uuid.New(),
 		Status:      "completed",
 	}, nil
 }
@@ -776,7 +786,7 @@ func BenchmarkQueueManager_QueueEvent(b *testing.B) {
 	event := workflow.TriggerEvent{
 		EventType:  "on_create",
 		EntityName: "customers",
-		EntityID:   "cust_bench",
+		EntityID:   uuid.New(),
 		Timestamp:  time.Now(),
 		RawData: map[string]interface{}{
 			"name":  "Benchmark Customer",
@@ -786,7 +796,7 @@ func BenchmarkQueueManager_QueueEvent(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		event.EntityID = fmt.Sprintf("cust_%d", i)
+		event.EntityID = uuid.New()
 		_ = qm.QueueEvent(ctx, event)
 	}
 }
@@ -828,7 +838,7 @@ func BenchmarkQueueManager_ProcessMessage(b *testing.B) {
 		event := workflow.TriggerEvent{
 			EventType:  "on_create",
 			EntityName: "customers",
-			EntityID:   fmt.Sprintf("cust_%d", i),
+			EntityID:   uuid.New(),
 			Timestamp:  time.Now(),
 		}
 		_ = qm.QueueEvent(ctx, event)

@@ -26,7 +26,7 @@ type Engine struct {
 	// State management
 	mu               sync.RWMutex
 	isInitialized    bool
-	activeExecutions map[string]*WorkflowExecution
+	activeExecutions map[uuid.UUID]*WorkflowExecution
 	executionHistory []*WorkflowExecution
 	stats            WorkflowStats
 	config           WorkflowConfig
@@ -43,7 +43,7 @@ func NewEngine(log *logger.Logger, db *sqlx.DB) *Engine {
 		engineInstance = &Engine{
 			log:              log,
 			db:               db,
-			activeExecutions: make(map[string]*WorkflowExecution),
+			activeExecutions: make(map[uuid.UUID]*WorkflowExecution),
 			executionHistory: make([]*WorkflowExecution, 0),
 			config: WorkflowConfig{
 				MaxParallelRules:      5,
@@ -108,7 +108,7 @@ func (e *Engine) ExecuteWorkflow(ctx context.Context, event TriggerEvent) (*Work
 		}
 	}
 
-	executionID := e.generateExecutionID()
+	executionID := uuid.New()
 	startTime := time.Now()
 
 	// Create execution plan
@@ -180,7 +180,7 @@ func (e *Engine) createExecutionPlan(ctx context.Context, event TriggerEvent) (*
 
 	if len(triggerResult.MatchedRules) == 0 {
 		return &ExecutionPlan{
-			PlanID:           e.generatePlanID(),
+			PlanID:           uuid.New(),
 			TriggerEvent:     event,
 			MatchedRuleCount: 0,
 			ExecutionBatches: []ExecutionBatch{},
@@ -215,7 +215,7 @@ func (e *Engine) createExecutionPlan(ctx context.Context, event TriggerEvent) (*
 	}
 
 	return &ExecutionPlan{
-		PlanID:                 e.generatePlanID(),
+		PlanID:                 uuid.New(),
 		TriggerEvent:           event,
 		MatchedRuleCount:       len(triggerResult.MatchedRules),
 		ExecutionBatches:       executionBatches,
@@ -251,7 +251,7 @@ func (e *Engine) executeWorkflowInternal(ctx context.Context, execution *Workflo
 }
 
 // executeBatch executes a batch of rules
-func (e *Engine) executeBatch(ctx context.Context, batch ExecutionBatch, event TriggerEvent, executionID string) (*BatchResult, error) {
+func (e *Engine) executeBatch(ctx context.Context, batch ExecutionBatch, event TriggerEvent, executionID uuid.UUID) (*BatchResult, error) {
 	batchStartTime := time.Now()
 	ruleResults := make([]RuleResult, 0, len(batch.RuleIDs))
 
@@ -308,7 +308,7 @@ func (e *Engine) executeBatch(ctx context.Context, batch ExecutionBatch, event T
 }
 
 // executeRulesParallel executes multiple rules in parallel
-func (e *Engine) executeRulesParallel(ctx context.Context, ruleIDs []string, event TriggerEvent, executionID string) []RuleResult {
+func (e *Engine) executeRulesParallel(ctx context.Context, ruleIDs uuid.UUIDs, event TriggerEvent, executionID uuid.UUID) []RuleResult {
 	parallelLimit := e.config.MaxParallelRules
 	if len(ruleIDs) < parallelLimit {
 		parallelLimit = len(ruleIDs)
@@ -320,7 +320,7 @@ func (e *Engine) executeRulesParallel(ctx context.Context, ruleIDs []string, eve
 
 	for i, ruleID := range ruleIDs {
 		wg.Add(1)
-		go func(index int, id string) {
+		go func(index int, id uuid.UUID) {
 			defer wg.Done()
 
 			semaphore <- struct{}{}
@@ -345,7 +345,7 @@ func (e *Engine) executeRulesParallel(ctx context.Context, ruleIDs []string, eve
 }
 
 // executeRule executes a single rule with all its actions
-func (e *Engine) executeRule(ctx context.Context, ruleID string, event TriggerEvent, executionID string) (*RuleResult, error) {
+func (e *Engine) executeRule(ctx context.Context, ruleID uuid.UUID, event TriggerEvent, executionID uuid.UUID) (*RuleResult, error) {
 	ruleStartTime := time.Now()
 
 	// Create execution context for the rule
@@ -381,16 +381,6 @@ func (e *Engine) executeRule(ctx context.Context, ruleID string, event TriggerEv
 		Duration:      time.Since(ruleStartTime),
 		ErrorMessage:  batchResult.ErrorMessage,
 	}, nil
-}
-
-// Helper methods
-
-func (e *Engine) generateExecutionID() string {
-	return fmt.Sprintf("exec_%d_%s", time.Now().Unix(), uuid.New().String()[:8])
-}
-
-func (e *Engine) generatePlanID() string {
-	return fmt.Sprintf("plan_%d_%s", time.Now().Unix(), uuid.New().String()[:8])
 }
 
 func (e *Engine) estimateBatchDuration(ruleCount int) time.Duration {
@@ -442,12 +432,12 @@ func (e *Engine) GetStats() WorkflowStats {
 }
 
 // GetActiveExecutions returns the currently active executions
-func (e *Engine) GetActiveExecutions() map[string]*WorkflowExecution {
+func (e *Engine) GetActiveExecutions() map[uuid.UUID]*WorkflowExecution {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
 	// Return a copy to prevent external modification
-	result := make(map[string]*WorkflowExecution)
+	result := make(map[uuid.UUID]*WorkflowExecution)
 	for k, v := range e.activeExecutions {
 		result[k] = v
 	}
@@ -476,7 +466,7 @@ func (e *Engine) GetExecutionHistory(limit int) []*WorkflowExecution {
 }
 
 // CancelWorkflow attempts to cancel an active workflow
-func (e *Engine) CancelWorkflow(ctx context.Context, executionID string) error {
+func (e *Engine) CancelWorkflow(ctx context.Context, executionID uuid.UUID) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 

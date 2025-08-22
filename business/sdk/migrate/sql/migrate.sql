@@ -840,6 +840,34 @@ CREATE TABLE entities (
     deactivated_by UUID NULL REFERENCES users(id)
 );
 
+-- Track notification deliveries from workflow actions
+CREATE TABLE notification_deliveries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    notification_id UUID NOT NULL, -- References the data structure NotificationPayload in the notification queue, probably this will be referencing logs
+    automation_execution_id UUID NULL REFERENCES automation_executions(id), -- Links to workflow execution
+    rule_id UUID REFERENCES automation_rules(id),
+    action_id UUID REFERENCES rule_actions(id),
+    recipient_id UUID NOT NULL, -- User ID or email
+    channel VARCHAR(50) NOT NULL, -- email, sms, push, in_app
+    status VARCHAR(20) NOT NULL, -- pending, sent, delivered, failed, bounced, retrying
+    attempts INTEGER DEFAULT 1,
+    sent_at TIMESTAMP,
+    delivered_at TIMESTAMP,
+    failed_at TIMESTAMP,
+    error_message TEXT,
+    provider_response JSONB, -- Store provider-specific response data
+    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_date TIMESTAMP NOT NULL DEFAULT NOW()
+    
+    -- Indexes for common queries
+   --  INDEX idx_notification_deliveries_notification_id (notification_id),
+   --  INDEX idx_notification_deliveries_workflow_id (workflow_id),
+   --  INDEX idx_notification_deliveries_recipient_id (recipient_id),
+   --  INDEX idx_notification_deliveries_status (status),
+   --  INDEX idx_notification_deliveries_created_at (created_at)
+);
+
+
 -- Migration: Create table_configs table for storing table configurations
 -- Version: 2.01
 -- Description: Create table for storing dynamic table configurations

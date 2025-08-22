@@ -338,6 +338,15 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 	t.Parallel()
 
+	entityID1 := uuid.New()
+	entityID2 := uuid.New()
+
+	userID1 := uuid.New()
+	userID2 := uuid.New()
+
+	ruleID1 := uuid.New()
+	ruleID2 := uuid.New()
+
 	tests := []struct {
 		name    string
 		context workflow.ActionExecutionContext
@@ -346,33 +355,33 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 		{
 			name: "basic context",
 			context: workflow.ActionExecutionContext{
-				EntityID:   "ent_123",
+				EntityID:   entityID1,
 				EntityName: "customers",
 				EventType:  "on_update",
 				Timestamp:  time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
-				UserID:     "user_456",
-				RuleID:     "rule_789",
+				UserID:     userID1,
+				RuleID:     ruleID1,
 				RuleName:   "Update Customer Status",
 			},
 			want: workflow.TemplateContext{
-				"entity_id":   "ent_123",
+				"entity_id":   entityID1,
 				"entity_name": "customers",
 				"event_type":  "on_update",
 				"timestamp":   time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
-				"user_id":     "user_456",
-				"rule_id":     "rule_789",
+				"user_id":     userID1,
+				"rule_id":     ruleID1,
 				"rule_name":   "Update Customer Status",
 			},
 		},
 		{
 			name: "context with raw data",
 			context: workflow.ActionExecutionContext{
-				EntityID:   "ent_123",
+				EntityID:   entityID2,
 				EntityName: "orders",
 				EventType:  "on_create",
 				Timestamp:  time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
-				UserID:     "user_456",
-				RuleID:     "rule_789",
+				UserID:     userID2,
+				RuleID:     ruleID2,
 				RuleName:   "Process New Order",
 				RawData: map[string]interface{}{
 					"order_total":  199.99,
@@ -381,12 +390,12 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 				},
 			},
 			want: workflow.TemplateContext{
-				"entity_id":    "ent_123",
+				"entity_id":    entityID2,
 				"entity_name":  "orders",
 				"event_type":   "on_create",
 				"timestamp":    time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
-				"user_id":      "user_456",
-				"rule_id":      "rule_789",
+				"user_id":      userID2,
+				"rule_id":      ruleID2,
 				"rule_name":    "Process New Order",
 				"order_total":  199.99,
 				"customer_id":  "cust_123",
@@ -396,12 +405,12 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 		{
 			name: "context with field changes",
 			context: workflow.ActionExecutionContext{
-				EntityID:   "ent_123",
+				EntityID:   entityID1,
 				EntityName: "customers",
 				EventType:  "on_update",
 				Timestamp:  time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
-				UserID:     "user_456",
-				RuleID:     "rule_789",
+				UserID:     userID1,
+				RuleID:     ruleID1,
 				RuleName:   "Track Status Changes",
 				FieldChanges: map[string]workflow.FieldChange{
 					"status": {
@@ -415,12 +424,12 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 				},
 			},
 			want: workflow.TemplateContext{
-				"entity_id":   "ent_123",
+				"entity_id":   entityID1,
 				"entity_name": "customers",
 				"event_type":  "on_update",
 				"timestamp":   time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
-				"user_id":     "user_456",
-				"rule_id":     "rule_789",
+				"user_id":     userID1,
+				"rule_id":     ruleID1,
 				"rule_name":   "Track Status Changes",
 				"field_changes": map[string]workflow.FieldChange{
 					"status": {
@@ -701,7 +710,7 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
 	// Add some execution results
 	for i := 0; i < 5; i++ {
 		result := workflow.BatchExecutionResult{
-			RuleID:            fmt.Sprintf("rule_%d", i),
+			RuleID:            uuid.New(),
 			RuleName:          fmt.Sprintf("Rule %d", i),
 			TotalActions:      i + 1,
 			SuccessfulActions: i,
@@ -867,10 +876,10 @@ func TestActionHandler_Implementations(t *testing.T) {
 			// Test Execute (stub implementation should succeed)
 			ctx := context.Background()
 			execContext := workflow.ActionExecutionContext{
-				EntityID:   "test_entity",
+				EntityID:   uuid.New(),
 				EntityName: "test",
 				EventType:  "on_create",
-				RuleID:     "rule_123",
+				RuleID:     uuid.New(),
 				RuleName:   "Test Rule",
 			}
 
