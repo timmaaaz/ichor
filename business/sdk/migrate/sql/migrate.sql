@@ -820,7 +820,8 @@ CREATE TABLE rule_actions (
    action_config JSONB NOT NULL,
    execution_order INTEGER NOT NULL DEFAULT 1,
    is_active BOOLEAN DEFAULT TRUE,
-   template_id UUID NULL REFERENCES action_templates(id)
+   template_id UUID NULL REFERENCES action_templates(id),
+   deactivated_by UUID NULL REFERENCES users(id)
 );
 
 CREATE TABLE rule_dependencies (

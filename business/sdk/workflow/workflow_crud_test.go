@@ -1106,7 +1106,8 @@ func ruleActionTests(busDomain dbtest.BusDomain, sd workflowSeedData) []unitest.
 		createRuleAction(busDomain, sd),
 		queryActionsByRule(busDomain, sd),
 		updateRuleAction(busDomain, sd),
-		deleteRuleAction(busDomain, sd),
+		deactivateRuleAction(busDomain, sd),
+		activateRuleAction(busDomain, sd),
 	}
 }
 
@@ -1250,12 +1251,28 @@ func updateRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 	}
 }
 
-func deleteRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+func deactivateRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
 	return unitest.Table{
-		Name:    "delete",
+		Name:    "deactivate",
 		ExpResp: nil,
 		ExcFunc: func(ctx context.Context) any {
-			if err := busDomain.Workflow.DeleteRuleAction(ctx, sd.RuleActions[1]); err != nil {
+			if err := busDomain.Workflow.DeactivateRuleAction(ctx, sd.RuleActions[1]); err != nil {
+				return err
+			}
+			return nil
+		},
+		CmpFunc: func(got any, exp any) string {
+			return cmp.Diff(got, exp)
+		},
+	}
+}
+
+func activateRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+	return unitest.Table{
+		Name:    "activate",
+		ExpResp: nil,
+		ExcFunc: func(ctx context.Context) any {
+			if err := busDomain.Workflow.ActivateRuleAction(ctx, sd.RuleActions[1]); err != nil {
 				return err
 			}
 			return nil
@@ -1493,6 +1510,8 @@ func queryExecutionHistory(busDomain dbtest.BusDomain, sd workflowSeedData) unit
 func notificationDeliveryTests(busDomain dbtest.BusDomain, sd workflowSeedData) []unitest.Table {
 	return []unitest.Table{
 		createNotificationDelivery(busDomain, sd),
+		updateNotificationDelivery(busDomain, sd),
+		queryNotificationDeliveriesByAutomationExecution(busDomain, sd),
 	}
 }
 
@@ -1551,6 +1570,102 @@ func createNotificationDelivery(busDomain dbtest.BusDomain, sd workflowSeedData)
 			expResp.NotificationID = gotResp.NotificationID
 			expResp.CreatedDate = gotResp.CreatedDate.Round(0).Truncate(time.Microsecond)
 			expResp.UpdatedDate = gotResp.UpdatedDate.Round(0).Truncate(time.Microsecond)
+
+			return cmp.Diff(gotResp, expResp)
+		},
+	}
+}
+
+func updateNotificationDelivery(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+	now := time.Now().UTC()
+	return unitest.Table{
+		Name: "update",
+		ExpResp: workflow.NotificationDelivery{
+			ID:                    sd.NotificationDeliveries[0].ID,
+			NotificationID:        sd.NotificationDeliveries[0].NotificationID,
+			AutomationExecutionID: sd.NotificationDeliveries[0].AutomationExecutionID,
+			RuleID:                sd.NotificationDeliveries[0].RuleID,
+			ActionID:              sd.NotificationDeliveries[0].ActionID,
+			RecipientID:           sd.NotificationDeliveries[0].RecipientID,
+			Channel:               sd.NotificationDeliveries[0].Channel,
+			Status:                "sent",
+			Attempts:              1,
+			SentAt:                &now,
+			CreatedDate:           sd.NotificationDeliveries[0].CreatedDate,
+			ErrorMessage:          sd.NotificationDeliveries[0].ErrorMessage,
+			ProviderResponse:      sd.NotificationDeliveries[0].ProviderResponse,
+		},
+		ExcFunc: func(ctx context.Context) any {
+			ud := workflow.UpdateNotificationDelivery{
+				Status:   (*workflow.DeliveryStatus)(dbtest.StringPointer("sent")),
+				Attempts: dbtest.IntPointer(1),
+				SentAt:   &now,
+			}
+
+			ret, err := busDomain.Workflow.UpdateNotificationDelivery(ctx, sd.NotificationDeliveries[0], ud)
+			if err != nil {
+				return err
+			}
+
+			return ret
+		},
+		CmpFunc: func(got any, exp any) string {
+			gotResp, ok := got.(workflow.NotificationDelivery)
+			if !ok {
+				return "type assertion failed"
+			}
+
+			expResp, ok := exp.(workflow.NotificationDelivery)
+			if !ok {
+				return "type assertion failed"
+			}
+
+			// Normalize timestamps for comparison
+			expResp.CreatedDate = gotResp.CreatedDate
+			expResp.UpdatedDate = gotResp.UpdatedDate
+
+			return cmp.Diff(gotResp, expResp)
+		},
+	}
+}
+
+func queryNotificationDeliveriesByAutomationExecution(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+
+	var expectedDeliveries []workflow.NotificationDelivery
+	for i := range sd.NotificationDeliveries {
+		// Use index instead of value to avoid reuse issues
+		if sd.NotificationDeliveries[i].AutomationExecutionID == sd.AutomationExecutions[2].ID {
+			// Make a proper copy
+			delivery := sd.NotificationDeliveries[i]
+			expectedDeliveries = append(expectedDeliveries, delivery)
+		}
+	}
+
+	return unitest.Table{
+		Name:    "queryByAutomationExecution",
+		ExpResp: expectedDeliveries,
+		ExcFunc: func(ctx context.Context) any {
+			resp, err := busDomain.Workflow.QueryDeliveriesByAutomationExecution(ctx, sd.AutomationExecutions[2].ID)
+			if err != nil {
+				return err
+			}
+
+			return resp
+		},
+		CmpFunc: func(got any, exp any) string {
+			gotResp, exists := got.([]workflow.NotificationDelivery)
+			if !exists {
+				return "error occurred"
+			}
+
+			expResp := exp.([]workflow.NotificationDelivery)
+
+			// Only compare what we expect
+			if len(gotResp) > len(expResp) {
+				gotResp = gotResp[:len(expResp)]
+			}
+
+			dbtest.NormalizeJSONFields(gotResp, &expResp)
 
 			return cmp.Diff(gotResp, expResp)
 		},

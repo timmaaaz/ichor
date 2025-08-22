@@ -313,10 +313,15 @@ type ruleAction struct {
 	ExecutionOrder    int             `db:"execution_order"`
 	IsActive          bool            `db:"is_active"`
 	TemplateID        sql.NullString  `db:"template_id"`
+	DeactivatedBy     sql.NullString  `db:"deactivated_by"`
 }
 
 // toCoreRuleAction converts a store ruleAction to core RuleAction
 func toCoreRuleAction(dbAction ruleAction) workflow.RuleAction {
+	deactivatedBy := uuid.Nil
+	if dbAction.DeactivatedBy.Valid {
+		deactivatedBy = uuid.MustParse(dbAction.DeactivatedBy.String)
+	}
 	ra := workflow.RuleAction{
 		ID:               uuid.MustParse(dbAction.ID),
 		AutomationRuleID: uuid.MustParse(dbAction.AutomationRulesID),
@@ -325,6 +330,7 @@ func toCoreRuleAction(dbAction ruleAction) workflow.RuleAction {
 		ActionConfig:     dbAction.ActionConfig,
 		ExecutionOrder:   dbAction.ExecutionOrder,
 		IsActive:         dbAction.IsActive,
+		DeactivatedBy:    deactivatedBy,
 	}
 	if dbAction.TemplateID.Valid {
 		templateID := uuid.MustParse(dbAction.TemplateID.String)
@@ -343,6 +349,12 @@ func toCoreRuleActionSlice(dbActions []ruleAction) []workflow.RuleAction {
 
 // toDBRuleAction converts a core RuleAction to store values
 func toDBRuleAction(ra workflow.RuleAction) ruleAction {
+
+	deactivatedBy := sql.NullString{
+		String: ra.DeactivatedBy.String(),
+		Valid:  ra.DeactivatedBy != uuid.Nil,
+	}
+
 	dbAction := ruleAction{
 		ID:                ra.ID.String(),
 		AutomationRulesID: ra.AutomationRuleID.String(),
@@ -351,6 +363,7 @@ func toDBRuleAction(ra workflow.RuleAction) ruleAction {
 		ActionConfig:      ra.ActionConfig,
 		ExecutionOrder:    ra.ExecutionOrder,
 		IsActive:          ra.IsActive,
+		DeactivatedBy:     deactivatedBy,
 	}
 	if ra.TemplateID != nil {
 		dbAction.TemplateID = sql.NullString{String: ra.TemplateID.String(), Valid: true}

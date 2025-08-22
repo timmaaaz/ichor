@@ -16,6 +16,7 @@ import (
 )
 
 // TODO: Implement delegate stuff here
+// TODO: Make sure all time.now are utc
 
 type Storer interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
@@ -40,8 +41,9 @@ type Storer interface {
 
 	CreateRuleAction(ctx context.Context, action RuleAction) error
 	UpdateRuleAction(ctx context.Context, action RuleAction) error
-	DeleteRuleAction(ctx context.Context, action RuleAction) error
 	QueryActionsByRule(ctx context.Context, ruleid uuid.UUID) ([]RuleAction, error)
+	DeactivateRuleAction(ctx context.Context, action RuleAction) error
+	ActivateRuleAction(ctx context.Context, action RuleAction) error
 
 	CreateDependency(ctx context.Context, dep RuleDependency) error
 	DeleteDependency(ctx context.Context, dep RuleDependency) error
@@ -270,7 +272,7 @@ func (b *Business) CreateEntity(ctx context.Context, ne NewEntity) (Entity, erro
 	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createentity")
 	defer span.End()
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	entity := Entity{
 		ID:           uuid.New(),
@@ -358,7 +360,7 @@ func (b *Business) CreateRule(ctx context.Context, nar NewAutomationRule) (Autom
 	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createrule")
 	defer span.End()
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	rule := AutomationRule{
 		ID:                uuid.New(),
@@ -412,7 +414,7 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 		rule.UpdatedBy = *uar.UpdatedBy
 	}
 
-	rule.UpdatedDate = time.Now()
+	rule.UpdatedDate = time.Now().UTC()
 
 	if err := b.storer.UpdateRule(ctx, rule); err != nil {
 		return AutomationRule{}, fmt.Errorf("update: %w", err)
@@ -528,13 +530,25 @@ func (b *Business) UpdateRuleAction(ctx context.Context, action RuleAction, ura 
 	return action, nil
 }
 
-// DeleteRuleAction removes the specified rule action.
-func (b *Business) DeleteRuleAction(ctx context.Context, action RuleAction) error {
-	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deleteruleaction")
+// DeactivateRuleAction deactivates the specified rule action.
+func (b *Business) DeactivateRuleAction(ctx context.Context, action RuleAction) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deactivateruleaction")
 	defer span.End()
 
-	if err := b.storer.DeleteRuleAction(ctx, action); err != nil {
-		return fmt.Errorf("delete: %w", err)
+	if err := b.storer.DeactivateRuleAction(ctx, action); err != nil {
+		return fmt.Errorf("deactivate: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateRuleAction reactivates the specified rule action.
+func (b *Business) ActivateRuleAction(ctx context.Context, action RuleAction) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.activateruleaction")
+	defer span.End()
+
+	if err := b.storer.ActivateRuleAction(ctx, action); err != nil {
+		return fmt.Errorf("activate: %w", err)
 	}
 
 	return nil
@@ -614,7 +628,7 @@ func (b *Business) CreateActionTemplate(ctx context.Context, nat NewActionTempla
 	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createactiontemplate")
 	defer span.End()
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	template := ActionTemplate{
 		ID:            uuid.New(),
@@ -696,12 +710,11 @@ func (b *Business) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) 
 }
 
 // CreateNotificationDelivery creates a new notification delivery record.
-
 func (b *Business) CreateNotificationDelivery(ctx context.Context, nd NewNotificationDelivery) (NotificationDelivery, error) {
 	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createnotificationdelivery")
 	defer span.End()
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	delivery := NotificationDelivery{
 		ID:                    uuid.New(),
@@ -729,8 +742,74 @@ func (b *Business) CreateNotificationDelivery(ctx context.Context, nd NewNotific
 	return delivery, nil
 }
 
-// UpdateNotificationDelivery(ctx context.Context, delivery NotificationDelivery) error
-// QueryDeliveriesByWorkflow(ctx context.Context, workflowID uuid.UUID) ([]NotificationDelivery, error)
+func (b *Business) UpdateNotificationDelivery(ctx context.Context, nd NotificationDelivery, und UpdateNotificationDelivery) (NotificationDelivery, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.updatenotificationdelivery")
+	defer span.End()
+
+	now := time.Now().UTC()
+
+	if und.NotificationID != nil {
+		nd.NotificationID = *und.NotificationID
+	}
+	if und.AutomationExecutionID != nil {
+		nd.AutomationExecutionID = *und.AutomationExecutionID
+	}
+	if und.RuleID != nil {
+		nd.RuleID = *und.RuleID
+	}
+	if und.ActionID != nil {
+		nd.ActionID = *und.ActionID
+	}
+	if und.RecipientID != nil {
+		nd.RecipientID = *und.RecipientID
+	}
+	if und.Channel != nil {
+		nd.Channel = *und.Channel
+	}
+	if und.Status != nil {
+		nd.Status = *und.Status
+	}
+	if und.Attempts != nil {
+		nd.Attempts = *und.Attempts
+	}
+	if und.SentAt != nil {
+		nd.SentAt = und.SentAt
+	}
+	if und.DeliveredAt != nil {
+		nd.DeliveredAt = und.DeliveredAt
+	}
+	if und.FailedAt != nil {
+		nd.FailedAt = und.FailedAt
+	}
+	if und.ErrorMessage != nil {
+		nd.ErrorMessage = und.ErrorMessage
+	}
+	if und.ProviderResponse != nil {
+		nd.ProviderResponse = *und.ProviderResponse
+	}
+	if und.UpdatedDate != nil {
+		nd.UpdatedDate = now
+	}
+
+	if err := b.storer.UpdateNotificationDelivery(ctx, nd); err != nil {
+		return NotificationDelivery{}, fmt.Errorf("update: %w", err)
+	}
+
+	return nd, nil
+}
+
+// QueryDeliveriesByAutomationExecution retrieves notification deliveries for a specific automation execution.
+func (b *Business) QueryDeliveriesByAutomationExecution(ctx context.Context, executionID uuid.UUID) ([]NotificationDelivery, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.querydeliveriesbyautomationexecution")
+	defer span.End()
+
+	deliveries, err := b.storer.QueryDeliveriesByAutomationExecution(ctx, executionID)
+	if err != nil {
+		return nil, fmt.Errorf("query: executionID[%s]: %w", executionID, err)
+	}
+
+	return deliveries, nil
+}
 
 // =============================================================================
 // Automation Executions
@@ -740,7 +819,7 @@ func (b *Business) CreateExecution(ctx context.Context, nae NewAutomationExecuti
 	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createexecution")
 	defer span.End()
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	execution := AutomationExecution{
 		ID:               uuid.New(),

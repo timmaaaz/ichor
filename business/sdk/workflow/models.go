@@ -7,6 +7,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// TODO: Sort *uuid.UUID types. Either nullable uuids must be uuid.Nil or use
+// pointers but we cannot mix and match approaches.
+
 // TriggerEvent represents an event that triggers workflow execution
 type TriggerEvent struct {
 	EventType    string                 `json:"event_type"` // on_create, on_update, on_delete
@@ -318,6 +321,7 @@ type RuleAction struct {
 	ExecutionOrder   int
 	IsActive         bool
 	TemplateID       *uuid.UUID // Nullable
+	DeactivatedBy    uuid.UUID  // Nullable, tracks who deactivated the action
 }
 
 // NewRuleAction contains information needed to create a new rule action
@@ -435,12 +439,11 @@ type UpdateNotificationDelivery struct {
 	Channel               *string
 	Status                *DeliveryStatus
 	Attempts              *int
-	SentAt                **time.Time
-	DeliveredAt           **time.Time
-	FailedAt              **time.Time
-	ErrorMessage          **string
+	SentAt                *time.Time
+	DeliveredAt           *time.Time
+	FailedAt              *time.Time
+	ErrorMessage          *string
 	ProviderResponse      *json.RawMessage
-	CreatedDate           *time.Time
 	UpdatedDate           *time.Time
 }
 
@@ -516,4 +519,5 @@ type RuleActionView struct {
 	TemplateName          string
 	TemplateActionType    string
 	TemplateDefaultConfig json.RawMessage
+	DeactivatedBy         uuid.UUID
 }
