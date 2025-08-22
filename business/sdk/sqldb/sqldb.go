@@ -155,6 +155,38 @@ func NamedExecContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContex
 	return nil
 }
 
+// NamedExecContextWithCount is a helper function to execute a CUD operation that returns rows affected
+func NamedExecContextWithCount(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, data any) (rowsAffected int64, err error) {
+	q := queryString(query, data)
+
+	defer func() {
+		if err != nil {
+			log.Infoc(ctx, 5, "database.NamedExecContextWithCount", "query", q, "ERROR", err)
+		}
+	}()
+
+	ctx, span := otel.AddSpan(ctx, "business.sdk.sqldb.exec", attribute.String("query", q))
+	defer span.End()
+
+	result, err := sqlx.NamedExecContext(ctx, db, query, data)
+	if err != nil {
+		var pqerr *pgconn.PgError
+		if errors.As(err, &pqerr) {
+			switch pqerr.Code {
+			case undefinedTable:
+				return 0, ErrUndefinedTable
+			case uniqueViolation:
+				return 0, ErrDBDuplicatedEntry
+			case foreignKeyViolation:
+				return 0, ErrForeignKeyViolation
+			}
+		}
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
 // QuerySlice is a helper function for executing queries that return a
 // collection of data to be unmarshalled into a slice.
 func QuerySlice[T any](ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, dest *[]T) error {

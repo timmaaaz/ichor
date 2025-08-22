@@ -37,6 +37,19 @@ var (
 	engineOnce     sync.Once
 )
 
+// GetRegistry returns the action registry from the executor
+func (e *Engine) GetRegistry() *ActionRegistry {
+	if e.executor != nil {
+		return e.executor.GetRegistry()
+	}
+	return nil
+}
+
+// GetActionExecutor returns the action executor (if you need direct access)
+func (e *Engine) GetActionExecutor() *ActionExecutor {
+	return e.executor
+}
+
 // NewEngine creates or returns the singleton workflow engine instance
 func NewEngine(log *logger.Logger, db *sqlx.DB) *Engine {
 	engineOnce.Do(func() {
@@ -74,7 +87,7 @@ func (e *Engine) Initialize(ctx context.Context) error {
 	// Initialize sub-components
 	e.triggerProcessor = NewTriggerProcessor(e.log, e.db)
 	e.dependencies = NewDependencyResolver(e.log, e.db)
-	// e.executor = NewActionExecutor(e.log, e.db)
+	e.executor = NewActionExecutor(e.log, e.db)
 	// e.queue = NewQueueManager(e.log)
 
 	// Initialize each component
