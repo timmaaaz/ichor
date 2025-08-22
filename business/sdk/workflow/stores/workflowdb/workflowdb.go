@@ -511,10 +511,10 @@ func (s *Store) CreateRuleAction(ctx context.Context, action workflow.RuleAction
 	const q = `
 	INSERT INTO rule_actions (
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id
+		execution_order, is_active, template_id, deactivated_by
 	) VALUES (
 		:id, :automation_rules_id, :name, :description, :action_config,
-		:execution_order, :is_active, :template_id
+		:execution_order, :is_active, :template_id, :deactivated_by
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRuleAction(action)); err != nil {
@@ -547,11 +547,32 @@ func (s *Store) UpdateRuleAction(ctx context.Context, action workflow.RuleAction
 	return nil
 }
 
-// DeleteRuleAction removes a rule action from the database.
-func (s *Store) DeleteRuleAction(ctx context.Context, action workflow.RuleAction) error {
+// DeactivateRuleAction sets a rule action's is_active flag to false.
+func (s *Store) DeactivateRuleAction(ctx context.Context, action workflow.RuleAction) error {
 	const q = `
-	DELETE FROM
+	UPDATE
 		rule_actions
+	SET
+		is_active = false,
+		deactivated_by = NULL
+	WHERE
+		id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRuleAction(action)); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// ActivateRuleAction sets a rule action's is_active flag to true.
+func (s *Store) ActivateRuleAction(ctx context.Context, action workflow.RuleAction) error {
+	const q = `
+	UPDATE
+		rule_actions
+	SET
+		is_active = true,
+		deactivated_by = NULL
 	WHERE
 		id = :id`
 
