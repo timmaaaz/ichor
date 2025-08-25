@@ -125,7 +125,7 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 	}
 
 	// Initialize result
-	result := map[string]interface{}{
+	result := map[string]any{
 		"update_id":        updateID,
 		"status":           "failed",
 		"target_entity":    cfg.TargetEntity,
@@ -156,11 +156,8 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 		}
 	}
 
-	// Check for transaction in context
-	var execer sqlx.ExtContext
-
-	// Execute update
-	recordsAffected, err := h.executeUpdate(ctx, execer, cfg, resolvedValue, templateContext)
+	// Execute update - use h.db directly, no transaction support for now
+	recordsAffected, err := h.executeUpdate(ctx, h.db, cfg, resolvedValue, templateContext)
 	if err != nil {
 		result["error_message"] = err.Error()
 		result["completed_at"] = time.Now()
@@ -195,7 +192,7 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 func (h *UpdateFieldHandler) executeUpdate(ctx context.Context, execer sqlx.ExtContext, cfg UpdateFieldConfig, value any, templateContext workflow.TemplateContext) (int64, error) {
 	// Build UPDATE query
 	query := fmt.Sprintf("UPDATE %s SET %s = :value", cfg.TargetEntity, cfg.TargetField)
-	args := map[string]interface{}{
+	args := map[string]any{
 		"value": value,
 	}
 
@@ -296,7 +293,7 @@ func (h *UpdateFieldHandler) resolveForeignKey(ctx context.Context, value any, f
 
 	// Record not found - create if allowed
 	if fkConfig.AllowCreate && fkConfig.CreateConfig != nil {
-		createData := make(map[string]interface{})
+		createData := make(map[string]any)
 		for k, v := range fkConfig.CreateConfig {
 			createData[k] = v
 		}
