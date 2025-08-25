@@ -706,7 +706,7 @@ CREATE TABLE customers (
 
 CREATE TABLE orders (
    id UUID NOT NULL,
-   number VARCHAR(50) NOT NULL,
+   number VARCHAR(100) NOT NULL,
    customer_id UUID NOT NULL,
    due_date TIMESTAMP NOT NULL,
    order_fulfillment_status_id UUID NOT NULL,

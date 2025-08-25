@@ -10,10 +10,48 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
+
+/*
+Package workflow_test tests the ActionExecutor component of the workflow system.
+
+WHAT THIS TESTS:
+- Action configuration validation (ValidateActionConfig)
+- Configuration merging between template defaults and action-specific configs
+- Template variable processing in action configurations
+- Template context building from execution context
+- Action execution failure handling logic (shouldStopOnFailure)
+- Execution statistics tracking
+- Execution history management
+- Action handler registration and retrieval
+- All registered action types (seek_approval, send_email, create_alert, etc.)
+- Database integration for loading rule actions (with real PostgreSQL)
+- Database integration for retrieving rule names (with real PostgreSQL)
+- SQL query correctness and data mapping
+- Action ordering by execution_order field
+
+WHAT THIS DOES NOT TEST:
+- Real action execution side effects (emails, alerts, actual inventory allocation)
+- Concurrent execution of multiple actions simultaneously
+- Retry logic with actual time delays
+- External service integrations (email providers, notification services)
+- Transaction rollback scenarios under failure conditions
+- Authentication/authorization for action execution
+- Rate limiting or throttling of action execution
+- Cascading failures across dependent actions
+- Performance under production load
+- Network failures or timeout scenarios
+- Actual template engine edge cases (circular references, infinite loops)
+
+NOTE: Integration tests use real PostgreSQL database connections for data operations
+while benchmarks use mock connections to measure pure algorithmic performance.
+*/
 
 func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 	t.Parallel()
@@ -202,9 +240,18 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 			},
 		},
 	}
+
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+
+	// Create a mock DB connection (or use sqlx.NewDb with a test driver)
+	ndb := dbtest.NewDatabase(t, "Test_Workflow")
+	db := ndb.DB
+
+	// Create registry and register all actions
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -316,7 +363,11 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	ndb := dbtest.NewDatabase(t, "Test_Workflow")
+	db := ndb.DB
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -447,7 +498,11 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	ndb := dbtest.NewDatabase(t, "Test_Workflow")
+	db := ndb.DB
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -541,7 +596,11 @@ func TestActionExecutor_ProcessTemplates(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	ndb := dbtest.NewDatabase(t, "Test_Workflow")
+	db := ndb.DB
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -560,45 +619,6 @@ func TestActionExecutor_ProcessTemplates(t *testing.T) {
 				if diff := cmp.Diff(tt.want, result); diff != "" {
 					t.Errorf("processTemplates() mismatch (-want +got):\n%s", diff)
 				}
-			}
-		})
-	}
-}
-
-func TestActionExecutor_GetActionType(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name   string
-		action workflow.RuleActionView
-		want   string
-	}{
-		{
-			name: "action with template type",
-			action: workflow.RuleActionView{
-				TemplateActionType: "send_email",
-			},
-			want: "send_email",
-		},
-		{
-			name: "action without template type",
-			action: workflow.RuleActionView{
-				TemplateActionType: "",
-			},
-			want: "",
-		},
-	}
-
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := testGetActionType(ae, tt.action)
-
-			if got != tt.want {
-				t.Errorf("getActionType() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -637,7 +657,11 @@ func TestActionExecutor_ShouldStopOnFailure(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	ndb := dbtest.NewDatabase(t, "Test_Workflow")
+	db := ndb.DB
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -655,7 +679,11 @@ func TestActionExecutor_Stats(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	ndb := dbtest.NewDatabase(t, "Test_Workflow")
+	db := ndb.DB
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	// Initial stats should be zero
 	stats := ae.GetStats()
@@ -699,7 +727,11 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	ndb := dbtest.NewDatabase(t, "Test_Workflow")
+	db := ndb.DB
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	// Initially empty
 	history := ae.GetExecutionHistory(10)
@@ -744,7 +776,16 @@ func TestActionHandler_Implementations(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	ndb := dbtest.NewDatabase(t, "Test_Workflow")
+	db := ndb.DB
+
+	// Create registry and register all actions
+	registry := workflow.NewActionRegistry()
+	workflowactions.RegisterAll(registry, log, db)
+
+	// Note: ActionExecutor is created but not used in this test
+	// as we're testing the handlers directly from the registry
+	_ = workflow.NewActionExecutor(log, db)
 
 	tests := []struct {
 		name          string
@@ -841,21 +882,10 @@ func TestActionHandler_Implementations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var handler workflow.ActionHandler
-
-			switch tt.handlerType {
-			case "seek_approval":
-				handler = ae.NewSeekApprovalHandler()
-			case "allocate_inventory":
-				handler = ae.NewAllocateInventoryHandler()
-			case "create_alert":
-				handler = ae.NewCreateAlertHandler()
-			case "send_email":
-				handler = ae.NewSendEmailHandler()
-			case "update_field":
-				handler = ae.NewUpdateFieldHandler()
-			case "send_notification":
-				handler = ae.NewSendNotificationHandler()
+			// Get handler from registry
+			handler, exists := registry.Get(tt.handlerType)
+			if !exists {
+				t.Fatalf("Handler %s not found in registry", tt.handlerType)
 			}
 
 			// Test GetType
@@ -873,7 +903,7 @@ func TestActionHandler_Implementations(t *testing.T) {
 				t.Errorf("Validate() with invalid config should have failed")
 			}
 
-			// Test Execute (stub implementation should succeed)
+			// Test Execute
 			ctx := context.Background()
 			execContext := workflow.ActionExecutionContext{
 				EntityID:   uuid.New(),
@@ -966,13 +996,8 @@ func testProcessTemplates(ae *workflow.ActionExecutor, config json.RawMessage, c
 	return processed, nil
 }
 
-func testGetActionType(ae *workflow.ActionExecutor, action workflow.RuleActionView) string {
-	// TODO: Don't think this is necessary anymore, validation happens elsewhere
-	return action.TemplateActionType
-}
-
 func testShouldStopOnFailure(ae *workflow.ActionExecutor, action workflow.RuleActionView) bool {
-	actionType := testGetActionType(ae, action)
+	actionType := action.TemplateActionType
 	return actionType == "seek_approval"
 }
 
@@ -999,7 +1024,10 @@ func testAddToHistory(ae *workflow.ActionExecutor, result workflow.BatchExecutio
 func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+
+	db := &sqlx.DB{}
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	action := workflow.RuleActionView{
 		ID:                 uuid.New(),
@@ -1019,7 +1047,10 @@ func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
 func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	db := &sqlx.DB{}
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	action := workflow.RuleActionView{
 		TemplateDefaultConfig: json.RawMessage(`{
@@ -1042,7 +1073,10 @@ func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
 func BenchmarkActionExecutor_ProcessTemplates(b *testing.B) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	ae := workflow.NewActionExecutor(log, nil)
+	db := &sqlx.DB{}
+
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
 
 	config := json.RawMessage(`{
 		"recipient": "{{customer_email}}",

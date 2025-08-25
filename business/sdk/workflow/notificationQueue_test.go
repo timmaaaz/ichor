@@ -44,6 +44,8 @@ import (
 // UpdateConfig functionality
 // Provider-specific error response handling
 
+// We do want to add tests for the above
+
 func TestNotificationQueueProcessor_Initialize(t *testing.T) {
 	t.Parallel()
 

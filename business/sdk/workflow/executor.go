@@ -12,13 +12,6 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
-// ActionHandler defines the interface for action type handlers
-type ActionHandler interface {
-	Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (any, error)
-	Validate(config json.RawMessage) error
-	GetType() string
-}
-
 // ActionExecution represents an active action execution
 type ActionExecution struct {
 	ActionID  uuid.UUID
@@ -42,8 +35,7 @@ type ActionExecutor struct {
 	log *logger.Logger
 	db  *sqlx.DB
 
-	// Action handlers registry
-	handlers map[string]ActionHandler
+	registry *ActionRegistry
 
 	// Template processor
 	templateProc *TemplateProcessor
@@ -89,7 +81,7 @@ func NewActionExecutor(log *logger.Logger, db *sqlx.DB) *ActionExecutor {
 	ae := &ActionExecutor{
 		log:                log,
 		db:                 db,
-		handlers:           make(map[string]ActionHandler),
+		registry:           NewActionRegistry(),
 		templateProc:       NewTemplateProcessor(DefaultTemplateProcessingOptions()),
 		history:            make([]BatchExecutionResult, 0),
 		maxParallelActions: 10,
@@ -97,50 +89,12 @@ func NewActionExecutor(log *logger.Logger, db *sqlx.DB) *ActionExecutor {
 		maxRetries:         3,
 	}
 
-	// Register action handlers
-	ae.registerHandlers()
-
 	return ae
 }
 
-func (ae *ActionExecutor) NewSeekApprovalHandler() *SeekApprovalHandler {
-	return &SeekApprovalHandler{log: ae.log, db: ae.db}
-}
-
-func (ae *ActionExecutor) NewAllocateInventoryHandler() *AllocateInventoryHandler {
-	return &AllocateInventoryHandler{log: ae.log, db: ae.db}
-}
-
-func (ae *ActionExecutor) NewCreateAlertHandler() *CreateAlertHandler {
-	return &CreateAlertHandler{log: ae.log, db: ae.db}
-}
-
-func (ae *ActionExecutor) NewSendEmailHandler() *SendEmailHandler {
-	return &SendEmailHandler{log: ae.log, db: ae.db}
-}
-
-func (ae *ActionExecutor) NewUpdateFieldHandler() *UpdateFieldHandler {
-	return &UpdateFieldHandler{log: ae.log, db: ae.db}
-}
-
-func (ae *ActionExecutor) NewSendNotificationHandler() *SendNotificationHandler {
-	return &SendNotificationHandler{log: ae.log, db: ae.db}
-}
-
-// registerHandlers registers all available action handlers
-func (ae *ActionExecutor) registerHandlers() {
-	// Register all action type handlers
-	ae.RegisterHandler(&SeekApprovalHandler{log: ae.log, db: ae.db})
-	ae.RegisterHandler(&AllocateInventoryHandler{log: ae.log, db: ae.db})
-	ae.RegisterHandler(&CreateAlertHandler{log: ae.log, db: ae.db})
-	ae.RegisterHandler(&SendEmailHandler{log: ae.log, db: ae.db})
-	ae.RegisterHandler(&UpdateFieldHandler{log: ae.log, db: ae.db})
-	ae.RegisterHandler(&SendNotificationHandler{log: ae.log, db: ae.db})
-}
-
-// RegisterHandler registers an action handler
-func (ae *ActionExecutor) RegisterHandler(handler ActionHandler) {
-	ae.handlers[handler.GetType()] = handler
+// GetRegistry returns the action registry for external registration
+func (ae *ActionExecutor) GetRegistry() *ActionRegistry {
+	return ae.registry
 }
 
 // Initialize initializes the action executor
@@ -301,7 +255,7 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 
 	// Get handler for action type
 	actionType := ae.getActionType(action)
-	handler, exists := ae.handlers[actionType]
+	handler, exists := ae.registry.Get(actionType)
 	if !exists {
 		result.ErrorMessage = fmt.Sprintf("No handler for action type: %s", actionType)
 		result.CompletedAt = timePtr(time.Now())
@@ -420,7 +374,7 @@ func (ae *ActionExecutor) ValidateActionConfig(action RuleActionView) ActionVali
 	}
 
 	// Check if handler exists
-	handler, exists := ae.handlers[actionType]
+	handler, exists := ae.registry.Get(actionType)
 	if !exists {
 		errors = append(errors, fmt.Sprintf("Unsupported action type: %s", actionType))
 		return ActionValidationResult{
@@ -613,314 +567,4 @@ func (ae *ActionExecutor) ClearHistory() {
 // Helper function to create time pointer
 func timePtr(t time.Time) *time.Time {
 	return &t
-}
-
-// Action Handler Implementations (Stubbed)
-
-// SeekApprovalHandler handles seek_approval actions
-type SeekApprovalHandler struct {
-	log *logger.Logger
-	db  *sqlx.DB
-}
-
-func (h *SeekApprovalHandler) GetType() string {
-	return "seek_approval"
-}
-
-func (h *SeekApprovalHandler) Validate(config json.RawMessage) error {
-	var cfg struct {
-		Approvers    []string `json:"approvers"`
-		ApprovalType string   `json:"approval_type"`
-	}
-
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return fmt.Errorf("invalid configuration format: %w", err)
-	}
-
-	if len(cfg.Approvers) == 0 {
-		return fmt.Errorf("approvers list is required and must not be empty")
-	}
-
-	validTypes := map[string]bool{"any": true, "all": true, "majority": true}
-	if !validTypes[cfg.ApprovalType] {
-		return fmt.Errorf("invalid approval_type, must be: any, all, or majority")
-	}
-
-	return nil
-}
-
-func (h *SeekApprovalHandler) Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (interface{}, error) {
-	h.log.Info(ctx, "STUB: Executing seek_approval action",
-		"entityID", context.EntityID,
-		"ruleName", context.RuleName)
-
-	// Stub implementation
-	result := map[string]interface{}{
-		"approval_id":    fmt.Sprintf("approval_%d", time.Now().Unix()),
-		"status":         "pending",
-		"requested_at":   time.Now().Format(time.RFC3339),
-		"reference_id":   context.EntityID,
-		"reference_type": fmt.Sprintf("%s_%s", context.EntityName, context.EventType),
-	}
-
-	return result, nil
-}
-
-// AllocateInventoryHandler handles allocate_inventory actions
-type AllocateInventoryHandler struct {
-	log *logger.Logger
-	db  *sqlx.DB
-}
-
-func (h *AllocateInventoryHandler) GetType() string {
-	return "allocate_inventory"
-}
-
-func (h *AllocateInventoryHandler) Validate(config json.RawMessage) error {
-	var cfg struct {
-		InventoryItems []struct {
-			ItemID   string `json:"item_id"`
-			Quantity int    `json:"quantity"`
-		} `json:"inventory_items"`
-		AllocationStrategy string `json:"allocation_strategy"`
-	}
-
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return fmt.Errorf("invalid configuration format: %w", err)
-	}
-
-	if len(cfg.InventoryItems) == 0 {
-		return fmt.Errorf("inventory_items list is required and must not be empty")
-	}
-
-	validStrategies := map[string]bool{
-		"fifo": true, "lifo": true, "nearest_expiry": true, "lowest_cost": true,
-	}
-	if !validStrategies[cfg.AllocationStrategy] {
-		return fmt.Errorf("invalid allocation_strategy")
-	}
-
-	return nil
-}
-
-func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (interface{}, error) {
-	h.log.Info(ctx, "STUB: Executing allocate_inventory action",
-		"entityID", context.EntityID,
-		"ruleName", context.RuleName)
-
-	// Stub implementation
-	result := map[string]interface{}{
-		"allocation_id": fmt.Sprintf("alloc_%d", time.Now().Unix()),
-		"status":        "allocated",
-		"allocated_at":  time.Now().Format(time.RFC3339),
-	}
-
-	return result, nil
-}
-
-// CreateAlertHandler handles create_alert actions
-type CreateAlertHandler struct {
-	log *logger.Logger
-	db  *sqlx.DB
-}
-
-func (h *CreateAlertHandler) GetType() string {
-	return "create_alert"
-}
-
-func (h *CreateAlertHandler) Validate(config json.RawMessage) error {
-	var cfg struct {
-		Message    string   `json:"message"`
-		Recipients []string `json:"recipients"`
-		Priority   string   `json:"priority"`
-	}
-
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return fmt.Errorf("invalid configuration format: %w", err)
-	}
-
-	if cfg.Message == "" {
-		return fmt.Errorf("alert message is required")
-	}
-
-	if len(cfg.Recipients) == 0 {
-		return fmt.Errorf("recipients list is required and must not be empty")
-	}
-
-	validPriorities := map[string]bool{
-		"low": true, "medium": true, "high": true, "critical": true,
-	}
-	if !validPriorities[cfg.Priority] {
-		return fmt.Errorf("invalid priority level")
-	}
-
-	return nil
-}
-
-func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (interface{}, error) {
-	h.log.Info(ctx, "STUB: Executing create_alert action",
-		"entityID", context.EntityID,
-		"ruleName", context.RuleName)
-
-	// Stub implementation
-	result := map[string]interface{}{
-		"alert_id":   fmt.Sprintf("alert_%d", time.Now().Unix()),
-		"status":     "created",
-		"created_at": time.Now().Format(time.RFC3339),
-	}
-
-	return result, nil
-}
-
-// SendEmailHandler handles send_email actions
-type SendEmailHandler struct {
-	log *logger.Logger
-	db  *sqlx.DB
-}
-
-func (h *SendEmailHandler) GetType() string {
-	return "send_email"
-}
-
-func (h *SendEmailHandler) Validate(config json.RawMessage) error {
-	var cfg struct {
-		Recipients []string `json:"recipients"`
-		Subject    string   `json:"subject"`
-	}
-
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return fmt.Errorf("invalid configuration format: %w", err)
-	}
-
-	if len(cfg.Recipients) == 0 {
-		return fmt.Errorf("email recipients list is required and must not be empty")
-	}
-
-	if cfg.Subject == "" {
-		return fmt.Errorf("email subject is required")
-	}
-
-	return nil
-}
-
-func (h *SendEmailHandler) Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (interface{}, error) {
-	h.log.Info(ctx, "STUB: Executing send_email action",
-		"entityID", context.EntityID,
-		"ruleName", context.RuleName)
-
-	// Stub implementation
-	result := map[string]interface{}{
-		"email_id": fmt.Sprintf("email_%d", time.Now().Unix()),
-		"status":   "sent",
-		"sent_at":  time.Now().Format(time.RFC3339),
-	}
-
-	return result, nil
-}
-
-// UpdateFieldHandler handles update_field actions
-type UpdateFieldHandler struct {
-	log *logger.Logger
-	db  *sqlx.DB
-}
-
-func (h *UpdateFieldHandler) GetType() string {
-	return "update_field"
-}
-
-func (h *UpdateFieldHandler) Validate(config json.RawMessage) error {
-	var cfg struct {
-		TargetEntity string      `json:"target_entity"`
-		TargetField  string      `json:"target_field"`
-		NewValue     interface{} `json:"new_value"`
-	}
-
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return fmt.Errorf("invalid configuration format: %w", err)
-	}
-
-	if cfg.TargetEntity == "" {
-		return fmt.Errorf("target entity is required")
-	}
-
-	if cfg.TargetField == "" {
-		return fmt.Errorf("target field is required")
-	}
-
-	if cfg.NewValue == nil {
-		return fmt.Errorf("new value is required")
-	}
-
-	return nil
-}
-
-func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (interface{}, error) {
-	h.log.Info(ctx, "STUB: Executing update_field action",
-		"entityID", context.EntityID,
-		"ruleName", context.RuleName)
-
-	// Stub implementation
-	result := map[string]interface{}{
-		"update_id":  fmt.Sprintf("update_%d", time.Now().Unix()),
-		"status":     "updated",
-		"updated_at": time.Now().Format(time.RFC3339),
-	}
-
-	return result, nil
-}
-
-// SendNotificationHandler handles send_notification actions
-type SendNotificationHandler struct {
-	log *logger.Logger
-	db  *sqlx.DB
-}
-
-func (h *SendNotificationHandler) GetType() string {
-	return "send_notification"
-}
-
-func (h *SendNotificationHandler) Validate(config json.RawMessage) error {
-	var cfg struct {
-		Recipients []string `json:"recipients"`
-		Channels   []struct {
-			Type string `json:"type"`
-		} `json:"channels"`
-		Priority string `json:"priority"`
-	}
-
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return fmt.Errorf("invalid configuration format: %w", err)
-	}
-
-	if len(cfg.Recipients) == 0 {
-		return fmt.Errorf("recipients list is required and must not be empty")
-	}
-
-	if len(cfg.Channels) == 0 {
-		return fmt.Errorf("at least one notification channel is required")
-	}
-
-	validPriorities := map[string]bool{
-		"low": true, "medium": true, "high": true, "critical": true,
-	}
-	if !validPriorities[cfg.Priority] {
-		return fmt.Errorf("invalid priority level")
-	}
-
-	return nil
-}
-
-func (h *SendNotificationHandler) Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (interface{}, error) {
-	h.log.Info(ctx, "STUB: Executing send_notification action",
-		"entityID", context.EntityID,
-		"ruleName", context.RuleName)
-
-	// Stub implementation
-	result := map[string]interface{}{
-		"notification_id": fmt.Sprintf("notif_%d", time.Now().Unix()),
-		"status":          "sent",
-		"sent_at":         time.Now().Format(time.RFC3339),
-	}
-
-	return result, nil
 }
