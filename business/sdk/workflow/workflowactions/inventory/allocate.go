@@ -342,7 +342,7 @@ func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, reques
 	}
 
 	// Determine final status
-	if len(result.FailedItems) == 0 {
+	if len(result.FailedItems) == 0 && result.TotalAllocated == result.TotalRequested {
 		result.Status = "success"
 	} else if len(result.AllocatedItems) > 0 {
 		result.Status = "partial"

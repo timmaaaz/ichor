@@ -40,9 +40,6 @@ func Test_AllocateInventory(t *testing.T) {
 
 	db := dbtest.NewDatabase(t, "Test_AllocateInventory")
 
-	// Create allocation_results table for idempotency
-	createAllocationResultsTable(t, db.DB)
-
 	sd, err := insertAllocateSeedData(db.BusDomain)
 	if err != nil {
 		t.Fatalf("Seeding error: %s", err)
@@ -84,21 +81,6 @@ func Test_AllocateInventory(t *testing.T) {
 
 	if err := rabbitmq.StopRabbitMQ(testContainer); err != nil {
 		fmt.Printf("Failed to stop RabbitMQ container: %v\n", err)
-	}
-}
-
-func createAllocationResultsTable(t *testing.T, db *sqlx.DB) {
-	const q = `
-	CREATE TABLE IF NOT EXISTS allocation_results (
-		id UUID PRIMARY KEY,
-		idempotency_key VARCHAR(255) UNIQUE NOT NULL,
-		allocation_data JSONB NOT NULL,
-		created_at TIMESTAMP NOT NULL
-	);
-	CREATE INDEX IF NOT EXISTS idx_allocation_idempotency ON allocation_results(idempotency_key);`
-
-	if _, err := db.Exec(q); err != nil {
-		t.Fatalf("creating allocation_results table: %v", err)
 	}
 }
 
