@@ -117,8 +117,8 @@ CREATE TABLE users (
    date_hired TIMESTAMP NULL,
    date_requested TIMESTAMP NULL,
    date_approved TIMESTAMP NULL,
-   date_created TIMESTAMP NOT NULL,
-   date_updated TIMESTAMP NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
    FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE SET NULL, -- we don't want to delete someone if their boss is deleted
    FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL, -- we don't want to delete someone if their boss is deleted
@@ -868,6 +868,14 @@ CREATE TABLE notification_deliveries (
    --  INDEX idx_notification_deliveries_created_at (created_at)
 );
 
+-- Add to your migration file
+CREATE TABLE allocation_results (
+    id UUID PRIMARY KEY,
+    idempotency_key VARCHAR(255) UNIQUE NOT NULL,
+    allocation_data JSONB NOT NULL,
+    created_at TIMESTAMP NOT NULL
+);
+CREATE INDEX idx_allocation_idempotency ON allocation_results(idempotency_key);
 
 -- Migration: Create table_configs table for storing table configurations
 -- Version: 2.01

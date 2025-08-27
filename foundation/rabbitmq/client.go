@@ -558,7 +558,7 @@ func (wq *WorkflowQueue) PublishWithDelay(ctx context.Context, queueType QueueTy
 		"x-retry-count": msg.Attempts,
 		"x-max-retries": msg.MaxAttempts,
 		"entity-name":   msg.EntityName,
-		"entity-id":     msg.EntityID,
+		"entity-id":     msg.EntityID.String(),
 		"event-type":    msg.EventType,
 	}
 
@@ -582,7 +582,7 @@ func (wq *WorkflowQueue) PublishWithDelay(ctx context.Context, queueType QueueTy
 			Timestamp:     msg.CreatedAt,
 			Headers:       headers,
 			CorrelationId: msg.CorrelationID.String(),
-			UserId:        msg.UserID.String(),
+			// UserId:        msg.UserID.String(), // Needs rabbitmq permissions setup, also this is for request based users not background processes
 		},
 	)
 

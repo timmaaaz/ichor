@@ -60,24 +60,24 @@ func applyFilter(filter validassetbus.QueryFilter, data map[string]interface{}, 
 		wc = append(wc, "is_enabled = :is_enabled")
 	}
 
-	if filter.StartDateCreated != nil {
-		data["start_date_created"] = *filter.StartDateCreated
-		wc = append(wc, "date_created >= :start_date_created")
+	if filter.StartCreatedDate != nil {
+		data["start_created_date"] = *filter.StartCreatedDate
+		wc = append(wc, "created_date >= :start_created_date")
 	}
 
-	if filter.EndDateCreated != nil {
-		data["end_date_created"] = *filter.EndDateCreated
-		wc = append(wc, "date_created <= :end_date_created")
+	if filter.EndCreatedDate != nil {
+		data["end_created_date"] = *filter.EndCreatedDate
+		wc = append(wc, "created_date <= :end_created_date")
 	}
 
-	if filter.StartDateUpdated != nil {
-		data["start_date_updated"] = *filter.StartDateUpdated
-		wc = append(wc, "date_updated >= :start_date_updated")
+	if filter.StartUpdatedDate != nil {
+		data["start_updated_date"] = *filter.StartUpdatedDate
+		wc = append(wc, "updated_date >= :start_updated_date")
 	}
 
-	if filter.EndDateUpdated != nil {
-		data["end_date_updated"] = *filter.EndDateUpdated
-		wc = append(wc, "date_updated <= :end_date_updated")
+	if filter.EndUpdatedDate != nil {
+		data["end_updated_date"] = *filter.EndUpdatedDate
+		wc = append(wc, "updated_date <= :end_updated_date")
 	}
 
 	if filter.CreatedBy != nil {

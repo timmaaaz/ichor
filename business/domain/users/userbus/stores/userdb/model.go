@@ -33,8 +33,8 @@ type user struct {
 	DateHired          sql.NullTime   `db:"date_hired"`
 	DateRequested      sql.NullTime   `db:"date_requested"`
 	DateApproved       sql.NullTime   `db:"date_approved"`
-	DateCreated        time.Time      `db:"date_created"`
-	DateUpdated        time.Time      `db:"date_updated"`
+	CreatedDate        time.Time      `db:"created_date"`
+	UpdatedDate        time.Time      `db:"updated_date"`
 }
 
 func toDBUser(bus userbus.User) user {
@@ -88,8 +88,8 @@ func toDBUser(bus userbus.User) user {
 		DateHired:          dateHired,
 		DateRequested:      dateRequested,
 		DateApproved:       dateApproved,
-		DateCreated:        bus.DateCreated.UTC(),
-		DateUpdated:        bus.DateUpdated.UTC(),
+		CreatedDate:        bus.CreatedDate.UTC(),
+		UpdatedDate:        bus.UpdatedDate.UTC(),
 	}
 }
 
@@ -169,8 +169,8 @@ func toBusUser(db user) (userbus.User, error) {
 		DateHired:          dateHired,
 		DateRequested:      dateRequested,
 		DateApproved:       dateApproved,
-		DateCreated:        db.DateCreated.In(time.Local),
-		DateUpdated:        db.DateUpdated.In(time.Local),
+		CreatedDate:        db.CreatedDate.In(time.Local),
+		UpdatedDate:        db.UpdatedDate.In(time.Local),
 	}
 
 	return bus, nil

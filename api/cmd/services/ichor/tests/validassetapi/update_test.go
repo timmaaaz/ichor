@@ -45,8 +45,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 
 				expResp := exp.(*validassetapp.ValidAsset)
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 				expResp.CreatedBy = gotResp.CreatedBy
 
 				// NOTES: This is a protected field and will be returned if you

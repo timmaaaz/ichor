@@ -17,8 +17,8 @@ var orderByFields = map[string]string{
 	"life_expectancy":      validassetbus.OrderByLifeExpectancy,
 	"model_number":         validassetbus.OrderByModelNumber,
 	"is_enabled":           validassetbus.OrderByIsEnabled,
-	"date_created":         validassetbus.OrderByDateCreated,
-	"date_updated":         validassetbus.OrderByDateUpdated,
+	"created_date":         validassetbus.OrderByCreatedDate,
+	"updated_date":         validassetbus.OrderByUpdatedDate,
 	"created_by":           validassetbus.OrderByCreatedBy,
 	"updated_by":           validassetbus.OrderByUpdatedBy,
 }

@@ -51,12 +51,12 @@ func (s *Store) Create(ctx context.Context, ass validassetbus.ValidAsset) error 
 	const q = `
     INSERT INTO valid_assets (
         id, type_id, name, est_price, maintenance_interval,
-        life_expectancy, serial_number, model_number, is_enabled, date_created,
-        date_updated, created_by, updated_by
+        life_expectancy, serial_number, model_number, is_enabled, created_date,
+        updated_date, created_by, updated_by
     ) VALUES (
         :id, :type_id, :name, :est_price, :maintenance_interval,
-        :life_expectancy, :serial_number, :model_number, :is_enabled, :date_created,
-        :date_updated, :created_by, :updated_by
+        :life_expectancy, :serial_number, :model_number, :is_enabled, :created_date,
+        :updated_date, :created_by, :updated_by
     )   
     `
 
@@ -85,8 +85,8 @@ func (s *Store) Update(ctx context.Context, ass validassetbus.ValidAsset) error 
 		serial_number = :serial_number,
 		model_number = :model_number,
 		is_enabled = :is_enabled,
-		date_created = :date_created,
-		date_updated = :date_updated,
+		created_date = :created_date,
+		updated_date = :updated_date,
 		created_by = :created_by,
 		updated_by = :updated_by
 	WHERE
@@ -136,8 +136,8 @@ func (s *Store) Query(ctx context.Context, filter validassetbus.QueryFilter, ord
 		serial_number,
 		model_number,
 		is_enabled,
-		date_created,
-		date_updated,
+		created_date,
+		updated_date,
 		created_by,
 		updated_by
 	FROM
@@ -206,8 +206,8 @@ func (s *Store) QueryByID(ctx context.Context, assetID uuid.UUID) (validassetbus
 		serial_number,
 		model_number,
 		is_enabled,
-		date_created,
-		date_updated,
+		created_date,
+		updated_date,
 		created_by,
 		updated_by
     FROM

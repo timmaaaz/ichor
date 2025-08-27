@@ -49,8 +49,8 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				expResp := exp.(*userapp.User)
 
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 				expResp.RequestedBy = "00000000-0000-0000-0000-000000000000"
 				expResp.ApprovedBy = "00000000-0000-0000-0000-000000000000"
 				expResp.TitleID = "00000000-0000-0000-0000-000000000000"

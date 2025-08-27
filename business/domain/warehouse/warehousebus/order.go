@@ -9,8 +9,8 @@ const (
 	OrderByStreetID    = "street_id"
 	OrderByName        = "name"
 	OrderByIsActive    = "is_active"
-	OrderByDateCreated = "date_created"
-	OrderByDateUpdated = "date_updated"
+	OrderByCreatedDate = "created_date"
+	OrderByUpdatedDate = "updated_date"
 	OrderByCreatedBy   = "created_by"
 	OrderByUpdatedBy   = "updated_by"
 )

@@ -24,6 +24,6 @@ var orderByFields = map[string]string{
 	"date_hired":     userbus.OrderByDateHired,
 	"date_requested": userbus.OrderByDateRequested,
 	"date_approved":  userbus.OrderByDateApproved,
-	"date_created":   userbus.OrderByDateCreated,
+	"created_date":   userbus.OrderByCreatedDate,
 	"date_modified":  userbus.OrderByDateModified,
 }

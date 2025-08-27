@@ -28,8 +28,8 @@ func toAppUser(bus userbus.User) userapp.User {
 		DateHired:     bus.DateHired.Format(time.RFC3339),
 		DateRequested: bus.DateRequested.Format(time.RFC3339),
 		DateApproved:  bus.DateApproved.Format(time.RFC3339),
-		DateCreated:   bus.DateCreated.Format(time.RFC3339),
-		DateUpdated:   bus.DateUpdated.Format(time.RFC3339),
+		CreatedDate:   bus.CreatedDate.Format(time.RFC3339),
+		UpdatedDate:   bus.UpdatedDate.Format(time.RFC3339),
 	}
 }
 

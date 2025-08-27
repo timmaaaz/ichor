@@ -37,8 +37,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 
 				expResp := exp.(*warehouseapp.Warehouse)
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 				expResp.CreatedBy = gotResp.CreatedBy
 				expResp.StreetID = gotResp.StreetID
 

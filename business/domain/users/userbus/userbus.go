@@ -121,8 +121,8 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 		DateHired:          time.Time{}, // Zero-value
 		DateRequested:      now,
 		DateApproved:       time.Time{}, // Zero-value
-		DateCreated:        now,
-		DateUpdated:        now,
+		CreatedDate:        now,
+		UpdatedDate:        now,
 	}
 
 	if err := b.storer.Create(ctx, usr); err != nil {
@@ -150,7 +150,7 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 		usr.PasswordHash = pw
 	}
 
-	usr.DateUpdated = time.Now()
+	usr.UpdatedDate = time.Now()
 
 	if err := b.storer.Update(ctx, usr); err != nil {
 		return User{}, fmt.Errorf("update: %w", err)

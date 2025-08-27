@@ -23,8 +23,8 @@ type validAsset struct {
 	SerialNumber        string         `db:"serial_number"`
 	ModelNumber         string         `db:"model_number"`
 	IsEnabled           bool           `db:"is_enabled"`
-	DateCreated         time.Time      `db:"date_created"`
-	DateUpdated         time.Time      `db:"date_updated"`
+	CreatedDate         time.Time      `db:"created_date"`
+	UpdatedDate         time.Time      `db:"updated_date"`
 	CreatedBy           uuid.UUID      `db:"created_by"`
 	UpdatedBy           uuid.UUID      `db:"updated_by"`
 }
@@ -41,8 +41,8 @@ func toDBAsset(bus validassetbus.ValidAsset) validAsset {
 		SerialNumber:        bus.SerialNumber,
 		ModelNumber:         bus.ModelNumber,
 		IsEnabled:           bus.IsEnabled,
-		DateCreated:         bus.DateCreated.UTC(),
-		DateUpdated:         bus.DateUpdated.UTC(),
+		CreatedDate:         bus.CreatedDate.UTC(),
+		UpdatedDate:         bus.UpdatedDate.UTC(),
 		CreatedBy:           bus.CreatedBy,
 		UpdatedBy:           bus.UpdatedBy,
 	}
@@ -80,8 +80,8 @@ func toBusAsset(db validAsset) (validassetbus.ValidAsset, error) {
 		SerialNumber:        db.SerialNumber,
 		ModelNumber:         db.ModelNumber,
 		IsEnabled:           db.IsEnabled,
-		DateCreated:         db.DateCreated.In(time.Local),
-		DateUpdated:         db.DateUpdated.In(time.Local),
+		CreatedDate:         db.CreatedDate.In(time.Local),
+		UpdatedDate:         db.UpdatedDate.In(time.Local),
 		CreatedBy:           db.CreatedBy,
 		UpdatedBy:           db.UpdatedBy,
 	}, nil

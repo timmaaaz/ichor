@@ -19,8 +19,8 @@ type ValidAsset struct {
 	SerialNumber        string
 	ModelNumber         string
 	IsEnabled           bool
-	DateCreated         time.Time
-	DateUpdated         time.Time
+	CreatedDate         time.Time
+	UpdatedDate         time.Time
 	CreatedBy           uuid.UUID
 	UpdatedBy           uuid.UUID
 }

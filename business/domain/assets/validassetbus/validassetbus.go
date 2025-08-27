@@ -83,8 +83,8 @@ func (b *Business) Create(ctx context.Context, na NewValidAsset) (ValidAsset, er
 		SerialNumber:        na.SerialNumber,
 		ModelNumber:         na.ModelNumber,
 		IsEnabled:           na.IsEnabled,
-		DateCreated:         now,
-		DateUpdated:         now,
+		CreatedDate:         now,
+		UpdatedDate:         now,
 		CreatedBy:           na.CreatedBy,
 		UpdatedBy:           na.CreatedBy,
 	}
@@ -107,7 +107,7 @@ func (b *Business) Update(ctx context.Context, ass ValidAsset, ua UpdateValidAss
 		return ValidAsset{}, fmt.Errorf("populate asset struct: %w", err)
 	}
 
-	ass.DateUpdated = now
+	ass.UpdatedDate = now
 
 	if err := b.storer.Update(ctx, ass); err != nil {
 		return ValidAsset{}, fmt.Errorf("update: %w", err)

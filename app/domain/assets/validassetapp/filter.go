@@ -79,36 +79,36 @@ func parseFilter(qp QueryParams) (validassetbus.QueryFilter, error) {
 		filter.IsEnabled = &isEnabled
 	}
 
-	if qp.StartDateCreated != "" {
-		startDateCreated, err := time.Parse(time.RFC3339, qp.StartDateCreated)
+	if qp.StartCreatedDate != "" {
+		startCreatedDate, err := time.Parse(time.RFC3339, qp.StartCreatedDate)
 		if err != nil {
-			return validassetbus.QueryFilter{}, errs.NewFieldsError("start_date_created", err)
+			return validassetbus.QueryFilter{}, errs.NewFieldsError("start_created_date", err)
 		}
-		filter.StartDateCreated = &startDateCreated
+		filter.StartCreatedDate = &startCreatedDate
 	}
 
-	if qp.EndDateCreated != "" {
-		endDateCreated, err := time.Parse(time.RFC3339, qp.EndDateCreated)
+	if qp.EndCreatedDate != "" {
+		endCreatedDate, err := time.Parse(time.RFC3339, qp.EndCreatedDate)
 		if err != nil {
-			return validassetbus.QueryFilter{}, errs.NewFieldsError("end_date_created", err)
+			return validassetbus.QueryFilter{}, errs.NewFieldsError("end_created_date", err)
 		}
-		filter.EndDateCreated = &endDateCreated
+		filter.EndCreatedDate = &endCreatedDate
 	}
 
-	if qp.StartDateUpdated != "" {
-		startDateUpdated, err := time.Parse(time.RFC3339, qp.StartDateUpdated)
+	if qp.StartUpdatedDate != "" {
+		startUpdatedDate, err := time.Parse(time.RFC3339, qp.StartUpdatedDate)
 		if err != nil {
-			return validassetbus.QueryFilter{}, errs.NewFieldsError("start_date_updated", err)
+			return validassetbus.QueryFilter{}, errs.NewFieldsError("start_updated_date", err)
 		}
-		filter.StartDateUpdated = &startDateUpdated
+		filter.StartUpdatedDate = &startUpdatedDate
 	}
 
-	if qp.EndDateUpdated != "" {
-		endDateUpdated, err := time.Parse(time.RFC3339, qp.EndDateUpdated)
+	if qp.EndUpdatedDate != "" {
+		endUpdatedDate, err := time.Parse(time.RFC3339, qp.EndUpdatedDate)
 		if err != nil {
-			return validassetbus.QueryFilter{}, errs.NewFieldsError("end_date_updated", err)
+			return validassetbus.QueryFilter{}, errs.NewFieldsError("end_updated_date", err)
 		}
-		filter.EndDateUpdated = &endDateUpdated
+		filter.EndUpdatedDate = &endUpdatedDate
 	}
 
 	if qp.CreatedBy != "" {

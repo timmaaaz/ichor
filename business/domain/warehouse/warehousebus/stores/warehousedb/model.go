@@ -12,8 +12,8 @@ type warehouse struct {
 	StreetID    uuid.UUID `db:"street_id"`
 	Name        string    `db:"name"`
 	IsActive    bool      `db:"is_active"`
-	DateCreated time.Time `db:"date_created"`
-	DateUpdated time.Time `db:"date_updated"`
+	CreatedDate time.Time `db:"created_date"`
+	UpdatedDate time.Time `db:"updated_date"`
 	CreatedBy   uuid.UUID `db:"created_by"`
 	UpdatedBy   uuid.UUID `db:"updated_by"`
 }
@@ -24,8 +24,8 @@ func toDBWarehouse(bus warehousebus.Warehouse) warehouse {
 		StreetID:    bus.StreetID,
 		Name:        bus.Name,
 		IsActive:    bus.IsActive,
-		DateCreated: bus.DateCreated,
-		DateUpdated: bus.DateUpdated,
+		CreatedDate: bus.CreatedDate,
+		UpdatedDate: bus.UpdatedDate,
 		CreatedBy:   bus.CreatedBy,
 		UpdatedBy:   bus.UpdatedBy,
 	}
@@ -37,8 +37,8 @@ func toBusWarehouse(db warehouse) warehousebus.Warehouse {
 		StreetID:    db.StreetID,
 		Name:        db.Name,
 		IsActive:    db.IsActive,
-		DateCreated: db.DateCreated,
-		DateUpdated: db.DateUpdated,
+		CreatedDate: db.CreatedDate,
+		UpdatedDate: db.UpdatedDate,
 		CreatedBy:   db.CreatedBy,
 		UpdatedBy:   db.UpdatedBy,
 	}

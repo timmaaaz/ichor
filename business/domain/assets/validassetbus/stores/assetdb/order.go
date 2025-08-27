@@ -18,8 +18,8 @@ var orderByFields = map[string]string{
 	validassetbus.OrderBySerialNumber:   "serial_number",
 	validassetbus.OrderByModelNumber:    "model_number",
 	validassetbus.OrderByIsEnabled:      "is_enabled",
-	validassetbus.OrderByDateCreated:    "date_created",
-	validassetbus.OrderByDateUpdated:    "date_updated",
+	validassetbus.OrderByCreatedDate:    "created_date",
+	validassetbus.OrderByUpdatedDate:    "updated_date",
 	validassetbus.OrderByCreatedBy:      "created_by",
 	validassetbus.OrderByUpdatedBy:      "updated_by",
 }

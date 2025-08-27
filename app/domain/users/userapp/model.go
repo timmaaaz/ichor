@@ -64,8 +64,8 @@ type User struct {
 	DateHired     string   `json:"dateHired"`
 	DateRequested string   `json:"dateRequested"`
 	DateApproved  string   `json:"dateApproved"`
-	DateCreated   string   `json:"dateCreated"`
-	DateUpdated   string   `json:"dateUpdated"`
+	CreatedDate   string   `json:"dateCreated"`
+	UpdatedDate   string   `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.
@@ -95,8 +95,8 @@ func toAppUser(bus userbus.User) User {
 		DateHired:     bus.DateHired.Format(time.RFC3339),
 		DateRequested: bus.DateRequested.Format(time.RFC3339),
 		DateApproved:  bus.DateApproved.Format(time.RFC3339),
-		DateCreated:   bus.DateCreated.Format(time.RFC3339),
-		DateUpdated:   bus.DateUpdated.Format(time.RFC3339),
+		CreatedDate:   bus.CreatedDate.Format(time.RFC3339),
+		UpdatedDate:   bus.UpdatedDate.Format(time.RFC3339),
 	}
 }
 

@@ -48,8 +48,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Roles:        []string{"ADMIN"},
 				SystemRoles:  []string{"ADMIN"},
 				Enabled:      true,
-				DateCreated:  sd.Admins[0].DateCreated.Format(time.RFC3339),
-				DateUpdated:  sd.Admins[0].DateUpdated.Format(time.RFC3339),
+				CreatedDate:  sd.Admins[0].CreatedDate.Format(time.RFC3339),
+				UpdatedDate:  sd.Admins[0].UpdatedDate.Format(time.RFC3339),
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*userapp.User)
@@ -58,7 +58,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				expResp := exp.(*userapp.User)
-				gotResp.DateUpdated = expResp.DateUpdated
+				gotResp.UpdatedDate = expResp.UpdatedDate
 				gotResp.DateRequested = expResp.DateRequested
 
 				return cmp.Diff(gotResp, expResp)
@@ -92,8 +92,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Roles:        []string{"ADMIN"},
 				SystemRoles:  []string{"ADMIN"},
 				Enabled:      true,
-				DateCreated:  sd.Admins[1].DateCreated.Format(time.RFC3339),
-				DateUpdated:  sd.Admins[1].DateUpdated.Format(time.RFC3339),
+				CreatedDate:  sd.Admins[1].CreatedDate.Format(time.RFC3339),
+				UpdatedDate:  sd.Admins[1].UpdatedDate.Format(time.RFC3339),
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*userapp.User)
@@ -102,7 +102,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				expResp := exp.(*userapp.User)
-				gotResp.DateUpdated = expResp.DateUpdated
+				gotResp.UpdatedDate = expResp.UpdatedDate
 				gotResp.DateRequested = expResp.DateRequested
 
 				return cmp.Diff(gotResp, expResp)

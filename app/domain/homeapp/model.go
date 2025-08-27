@@ -41,8 +41,8 @@ type Home struct {
 	UserID      string  `json:"userID"`
 	Type        string  `json:"type"`
 	Address     Address `json:"address"`
-	DateCreated string  `json:"dateCreated"`
-	DateUpdated string  `json:"dateUpdated"`
+	CreatedDate string  `json:"dateCreated"`
+	UpdatedDate string  `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.
@@ -64,8 +64,8 @@ func toAppHome(hme homebus.Home) Home {
 			State:    hme.Address.State,
 			Country:  hme.Address.Country,
 		},
-		DateCreated: hme.DateCreated.Format(time.RFC3339),
-		DateUpdated: hme.DateUpdated.Format(time.RFC3339),
+		CreatedDate: hme.CreatedDate.Format(time.RFC3339),
+		UpdatedDate: hme.UpdatedDate.Format(time.RFC3339),
 	}
 }
 

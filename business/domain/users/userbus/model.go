@@ -29,8 +29,8 @@ type User struct {
 	DateHired          time.Time
 	DateRequested      time.Time
 	DateApproved       time.Time
-	DateCreated        time.Time
-	DateUpdated        time.Time
+	CreatedDate        time.Time
+	UpdatedDate        time.Time
 }
 
 // NewUser contains information needed to create a new user.
