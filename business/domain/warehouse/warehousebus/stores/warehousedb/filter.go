@@ -41,23 +41,23 @@ func applyFilter(filter warehousebus.QueryFilter, data map[string]any, buf *byte
 	}
 
 	if filter.StartCreatedDate != nil {
-		data["start_date_created"] = filter.StartCreatedDate.UTC()
-		wc = append(wc, "date_created >= :start_date_created")
+		data["start_created_date"] = filter.StartCreatedDate.UTC()
+		wc = append(wc, "created_date >= :start_created_date")
 	}
 
 	if filter.EndCreatedDate != nil {
-		data["end_date_created"] = filter.EndCreatedDate.UTC()
-		wc = append(wc, "date_created <= :end_date_created")
+		data["end_created_date"] = filter.EndCreatedDate.UTC()
+		wc = append(wc, "created_date <= :end_created_date")
 	}
 
 	if filter.StartUpdatedDate != nil {
-		data["start_date_updated"] = filter.StartUpdatedDate.UTC()
-		wc = append(wc, "date_updated >= :start_date_updated")
+		data["start_updated_date"] = filter.StartUpdatedDate.UTC()
+		wc = append(wc, "updated_date >= :start_updated_date")
 	}
 
 	if filter.EndUpdatedDate != nil {
-		data["end_date_updated"] = filter.EndUpdatedDate.UTC()
-		wc = append(wc, "date_updated <= :end_date_updated")
+		data["end_updated_date"] = filter.EndUpdatedDate.UTC()
+		wc = append(wc, "updated_date <= :end_updated_date")
 	}
 
 	if len(wc) > 0 {

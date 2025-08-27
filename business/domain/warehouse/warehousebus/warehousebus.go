@@ -80,8 +80,8 @@ func (b *Business) Create(ctx context.Context, nw NewWarehouse) (Warehouse, erro
 		IsActive:    true,
 		CreatedBy:   nw.CreatedBy,
 		UpdatedBy:   nw.CreatedBy,
-		DateCreated: now,
-		DateUpdated: now,
+		CreatedDate: now,
+		UpdatedDate: now,
 	}
 
 	if err := b.storer.Create(ctx, warehouse); err != nil {

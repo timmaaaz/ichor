@@ -11,12 +11,24 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus/stores/inventoryitemdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus/stores/productdb"
+	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
+
+// TODO: Streamline workflow actions register all
 
 /*
 Package workflow_test tests the ActionExecutor component of the workflow system.
@@ -251,7 +263,24 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 	// Create registry and register all actions
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -367,7 +396,23 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 	db := ndb.DB
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -502,7 +547,23 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 	db := ndb.DB
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -600,7 +661,23 @@ func TestActionExecutor_ProcessTemplates(t *testing.T) {
 	db := ndb.DB
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -661,7 +738,23 @@ func TestActionExecutor_ShouldStopOnFailure(t *testing.T) {
 	db := ndb.DB
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -683,7 +776,23 @@ func TestActionExecutor_Stats(t *testing.T) {
 	db := ndb.DB
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	// Initial stats should be zero
 	stats := ae.GetStats()
@@ -731,7 +840,23 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
 	db := ndb.DB
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	// Initially empty
 	history := ae.GetExecutionHistory(10)
@@ -780,8 +905,24 @@ func TestActionHandler_Implementations(t *testing.T) {
 	db := ndb.DB
 
 	// Create registry and register all actions
-	registry := workflow.NewActionRegistry()
-	workflowactions.RegisterAll(registry, log, db)
+	ae := workflow.NewActionExecutor(log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	// Note: ActionExecutor is created but not used in this test
 	// as we're testing the handlers directly from the registry
@@ -883,7 +1024,7 @@ func TestActionHandler_Implementations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Get handler from registry
-			handler, exists := registry.Get(tt.handlerType)
+			handler, exists := ae.GetRegistry().Get(tt.handlerType)
 			if !exists {
 				t.Fatalf("Handler %s not found in registry", tt.handlerType)
 			}
@@ -1027,7 +1168,23 @@ func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
 
 	db := &sqlx.DB{}
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	action := workflow.RuleActionView{
 		ID:                 uuid.New(),
@@ -1050,7 +1207,23 @@ func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
 	db := &sqlx.DB{}
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	action := workflow.RuleActionView{
 		TemplateDefaultConfig: json.RawMessage(`{
@@ -1076,7 +1249,23 @@ func BenchmarkActionExecutor_ProcessTemplates(b *testing.B) {
 	db := &sqlx.DB{}
 
 	ae := workflow.NewActionExecutor(log, db)
-	workflowactions.RegisterAll(ae.GetRegistry(), log, db)
+	workflowactions.RegisterAll(
+		ae.GetRegistry(),
+		workflowactions.ActionConfig{
+			Log: log,
+			DB:  db,
+			QueueClient: rabbitmq.NewWorkflowQueue(
+				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
+				log,
+			),
+			Buses: workflowactions.BusDependencies{
+				InventoryItem:        inventoryitembus.NewBusiness(log, delegate.New(log), inventoryitemdb.NewStore(log, db)),
+				InventoryLocation:    inventorylocationbus.NewBusiness(log, delegate.New(log), inventorylocationdb.NewStore(log, db)),
+				InventoryTransaction: inventorytransactionbus.NewBusiness(log, delegate.New(log), inventorytransactiondb.NewStore(log, db)),
+				Product:              productbus.NewBusiness(log, delegate.New(log), productdb.NewStore(log, db)),
+			},
+		},
+	)
 
 	config := json.RawMessage(`{
 		"recipient": "{{customer_email}}",

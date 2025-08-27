@@ -105,8 +105,8 @@ func (b *Business) Create(ctx context.Context, nh NewHome) (Home, error) {
 			Country:  nh.Address.Country,
 		},
 		UserID:      nh.UserID,
-		DateCreated: now,
-		DateUpdated: now,
+		CreatedDate: now,
+		UpdatedDate: now,
 	}
 
 	if err := b.storer.Create(ctx, hme); err != nil {
@@ -151,7 +151,7 @@ func (b *Business) Update(ctx context.Context, hme Home, uh UpdateHome) (Home, e
 		}
 	}
 
-	hme.DateUpdated = time.Now()
+	hme.UpdatedDate = time.Now()
 
 	if err := b.storer.Update(ctx, hme); err != nil {
 		return Home{}, fmt.Errorf("update: %w", err)

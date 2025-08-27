@@ -30,8 +30,8 @@ type Warehouse struct {
 	StreetID    string `json:"street_id"`
 	Name        string `json:"name"`
 	IsActive    bool   `json:"is_active"`
-	DateCreated string `json:"date_created"`
-	DateUpdated string `json:"date_updated"`
+	CreatedDate string `json:"created_date"`
+	UpdatedDate string `json:"updated_date"`
 	CreatedBy   string `json:"created_by"`
 	UpdatedBy   string `json:"updated_by"`
 }
@@ -47,8 +47,8 @@ func ToAppWarehouse(bus warehousebus.Warehouse) Warehouse {
 		StreetID:    bus.StreetID.String(),
 		Name:        bus.Name,
 		IsActive:    bus.IsActive,
-		DateCreated: bus.DateCreated.Format(time.RFC3339),
-		DateUpdated: bus.DateUpdated.Format(time.RFC3339),
+		CreatedDate: bus.CreatedDate.Format(time.RFC3339),
+		UpdatedDate: bus.UpdatedDate.Format(time.RFC3339),
 		CreatedBy:   bus.CreatedBy.String(),
 		UpdatedBy:   bus.UpdatedBy.String(),
 	}

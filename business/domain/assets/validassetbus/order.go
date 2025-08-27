@@ -17,8 +17,8 @@ const (
 	OrderBySerialNumber   = "serial_number"
 	OrderByModelNumber    = "model_number"
 	OrderByIsEnabled      = "is_enabled"
-	OrderByDateCreated    = "date_created"
-	OrderByDateUpdated    = "date_updated"
+	OrderByCreatedDate    = "created_date"
+	OrderByUpdatedDate    = "updated_date"
 	OrderByCreatedBy      = "created_by"
 	OrderByUpdatedBy      = "updated_by"
 )

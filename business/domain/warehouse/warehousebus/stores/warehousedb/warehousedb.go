@@ -50,9 +50,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (warehousebus.Storer, error
 func (s *Store) Create(ctx context.Context, bus warehousebus.Warehouse) error {
 	const q = `
 		INSERT INTO warehouses
-			(id, street_id, name, is_active, date_created, date_updated, created_by, updated_by)
+			(id, street_id, name, is_active, created_date, updated_date, created_by, updated_by)
 		VALUES
-			(:id, :street_id, :name, :is_active, :date_created, :date_updated, :created_by, :updated_by)
+			(:id, :street_id, :name, :is_active, :created_date, :updated_date, :created_by, :updated_by)
 		`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBWarehouse(bus)); err != nil {
@@ -74,7 +74,7 @@ func (s *Store) Update(ctx context.Context, bus warehousebus.Warehouse) error {
 			street_id = :street_id,
 			name = :name,
 			is_active = :is_active,
-			date_updated = :date_updated,
+			updated_date = :updated_date,
 			updated_by = :updated_by
 		WHERE
 			id = :id
@@ -119,8 +119,8 @@ func (s *Store) Query(ctx context.Context, filter warehousebus.QueryFilter, orde
 		street_id,
 		name,
 		is_active,
-		date_created,
-		date_updated,
+		created_date,
+		updated_date,
 		created_by,
 		updated_by
 	FROM
@@ -182,8 +182,8 @@ func (s *Store) QueryByID(ctx context.Context, wID uuid.UUID) (warehousebus.Ware
 		street_id,
 		name,
 		is_active,
-		date_created,
-		date_updated,
+		created_date,
+		updated_date,
 		created_by,
 		updated_by
 	FROM

@@ -18,8 +18,8 @@ type home struct {
 	City        string    `db:"city"`
 	Country     string    `db:"country"`
 	State       string    `db:"state"`
-	DateCreated time.Time `db:"date_created"`
-	DateUpdated time.Time `db:"date_updated"`
+	CreatedDate time.Time `db:"created_date"`
+	UpdatedDate time.Time `db:"updated_date"`
 }
 
 func toDBHome(bus homebus.Home) home {
@@ -33,8 +33,8 @@ func toDBHome(bus homebus.Home) home {
 		City:        bus.Address.City,
 		Country:     bus.Address.Country,
 		State:       bus.Address.State,
-		DateCreated: bus.DateCreated.UTC(),
-		DateUpdated: bus.DateUpdated.UTC(),
+		CreatedDate: bus.CreatedDate.UTC(),
+		UpdatedDate: bus.UpdatedDate.UTC(),
 	}
 
 	return db
@@ -58,8 +58,8 @@ func toBusHome(db home) (homebus.Home, error) {
 			Country:  db.Country,
 			State:    db.State,
 		},
-		DateCreated: db.DateCreated.In(time.Local),
-		DateUpdated: db.DateUpdated.In(time.Local),
+		CreatedDate: db.CreatedDate.In(time.Local),
+		UpdatedDate: db.UpdatedDate.In(time.Local),
 	}
 
 	return bus, nil

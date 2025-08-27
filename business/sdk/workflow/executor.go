@@ -499,7 +499,6 @@ func (ae *ActionExecutor) buildTemplateContext(execContext ActionExecutionContex
 func (ae *ActionExecutor) getActionType(action RuleActionView) string {
 	// TODO: Check if this is necessary after type revamp
 	return action.TemplateActionType
-	return ""
 }
 
 // shouldStopOnFailure determines if execution should stop after this action fails

@@ -11,8 +11,8 @@ type Warehouse struct {
 	StreetID    uuid.UUID
 	Name        string
 	IsActive    bool
-	DateCreated time.Time
-	DateUpdated time.Time
+	CreatedDate time.Time
+	UpdatedDate time.Time
 	CreatedBy   uuid.UUID
 	UpdatedBy   uuid.UUID
 }

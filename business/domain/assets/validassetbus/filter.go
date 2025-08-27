@@ -22,10 +22,10 @@ type QueryFilter struct {
 	SerialNumber        *string
 
 	// Date filters
-	StartDateCreated *time.Time
-	EndDateCreated   *time.Time
-	StartDateUpdated *time.Time
-	EndDateUpdated   *time.Time
+	StartCreatedDate *time.Time
+	EndCreatedDate   *time.Time
+	StartUpdatedDate *time.Time
+	EndUpdatedDate   *time.Time
 
 	// User filters
 	CreatedBy *uuid.UUID

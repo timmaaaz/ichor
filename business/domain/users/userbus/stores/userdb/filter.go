@@ -91,13 +91,13 @@ func applyFilter(filter userbus.QueryFilter, data map[string]any, buf *bytes.Buf
 	}
 
 	if filter.StartCreatedDate != nil {
-		data["start_date_created"] = filter.StartCreatedDate.UTC()
-		wc = append(wc, "date_created >= :start_date_created")
+		data["start_created_date"] = filter.StartCreatedDate.UTC()
+		wc = append(wc, "created_date >= :start_created_date")
 	}
 
 	if filter.EndCreatedDate != nil {
-		data["end_date_created"] = filter.EndCreatedDate.UTC()
-		wc = append(wc, "date_created <= :end_date_created")
+		data["end_created_date"] = filter.EndCreatedDate.UTC()
+		wc = append(wc, "created_date <= :end_created_date")
 	}
 
 	if len(wc) > 0 {

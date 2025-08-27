@@ -141,8 +141,8 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(expResp, gotResp)
 			},
@@ -193,8 +193,8 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					return "error occurred"
 				}
 
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(expResp, gotResp)
 			},

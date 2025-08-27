@@ -175,8 +175,8 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(expResp, gotResp)
 			},
@@ -215,8 +215,8 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				expResp := exp.(warehousebus.Warehouse)
-				expResp.DateUpdated = gotResp.DateUpdated
-				expResp.DateCreated = gotResp.DateCreated
+				expResp.UpdatedDate = gotResp.UpdatedDate
+				expResp.CreatedDate = gotResp.CreatedDate
 
 				return cmp.Diff(expResp, gotResp)
 			},

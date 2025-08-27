@@ -24,6 +24,6 @@ const (
 	OrderByDateHired          = "date_hired"
 	OrderByDateRequested      = "date_requested"
 	OrderByDateApproved       = "date_approved"
-	OrderByDateCreated        = "date_created"
+	OrderByCreatedDate        = "created_date"
 	OrderByDateModified       = "date_modified"
 )

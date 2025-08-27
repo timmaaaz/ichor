@@ -26,10 +26,10 @@ type QueryParams struct {
 	LifeExpectancy      string
 	ModelNumber         string
 	IsEnabled           string
-	StartDateCreated    string
-	EndDateCreated      string
-	StartDateUpdated    string
-	EndDateUpdated      string
+	StartCreatedDate    string
+	EndCreatedDate      string
+	StartUpdatedDate    string
+	EndUpdatedDate      string
 	CreatedBy           string
 	UpdatedBy           string
 }
@@ -46,8 +46,8 @@ type ValidAsset struct {
 	LifeExpectancy      string `json:"life_expectancy"`
 	ModelNumber         string `json:"model_number"`
 	IsEnabled           bool   `json:"is_enabled"`
-	DateCreated         string `json:"date_created"`
-	DateUpdated         string `json:"date_updated"`
+	CreatedDate         string `json:"created_date"`
+	UpdatedDate         string `json:"updated_date"`
 	CreatedBy           string `json:"created_by"`
 	UpdatedBy           string `json:"updated_by"`
 }
@@ -69,8 +69,8 @@ func ToAppValidAsset(bus validassetbus.ValidAsset) ValidAsset {
 		LifeExpectancy:      bus.LifeExpectancy.Value(),
 		ModelNumber:         bus.ModelNumber,
 		IsEnabled:           bus.IsEnabled,
-		DateCreated:         bus.DateCreated.Format(time.RFC3339),
-		DateUpdated:         bus.DateUpdated.Format(time.RFC3339),
+		CreatedDate:         bus.CreatedDate.Format(time.RFC3339),
+		UpdatedDate:         bus.UpdatedDate.Format(time.RFC3339),
 		CreatedBy:           bus.CreatedBy.String(),
 		UpdatedBy:           bus.UpdatedBy.String(),
 	}

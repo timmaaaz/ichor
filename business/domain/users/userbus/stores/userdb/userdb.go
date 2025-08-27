@@ -54,13 +54,13 @@ func (s *Store) Create(ctx context.Context, usr userbus.User) error {
 		id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
-		date_approved, date_created, date_updated, user_approval_status_id
+		date_approved, created_date, updated_date, user_approval_status_id
 	) VALUES (
 		:id, :requested_by, :approved_by, :title_id, :office_id, 
 		:work_phone_id, :cell_phone_id, :username, :first_name, :last_name, 
 		:email, :birthday, :roles, :system_roles, :password_hash, :enabled, 
-		:date_hired, :date_requested, :date_approved, :date_created, 
-		:date_updated, :user_approval_status_id
+		:date_hired, :date_requested, :date_approved, :created_date, 
+		:updated_date, :user_approval_status_id
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUser(usr)); err != nil {
@@ -97,7 +97,7 @@ func (s *Store) Update(ctx context.Context, usr userbus.User) error {
 		date_hired = :date_hired,
 		date_requested = :date_requested,
 		date_approved = :date_approved,
-		date_updated = :date_updated
+		updated_date = :updated_date
 	WHERE
 		id = :id`
 
@@ -138,7 +138,7 @@ func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy o
 		id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
-		date_approved, date_created, date_updated, user_approval_status_id
+		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
 		users`
 
@@ -197,7 +197,7 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (userbus.User, 
         id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
-		date_approved, date_created, date_updated, user_approval_status_id
+		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
 		users
 	WHERE 
@@ -227,7 +227,7 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.U
         id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
-		date_approved, date_created, date_updated, user_approval_status_id
+		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
 		users
 	WHERE

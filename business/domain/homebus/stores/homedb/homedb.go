@@ -50,9 +50,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (homebus.Storer, error) {
 func (s *Store) Create(ctx context.Context, hme homebus.Home) error {
 	const q = `
     INSERT INTO homes
-        (id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated)
+        (id, user_id, type, address_1, address_2, zip_code, city, state, country, created_date, updated_date)
     VALUES
-        (:id, :user_id, :type, :address_1, :address_2, :zip_code, :city, :state, :country, :date_created, :date_updated)`
+        (:id, :user_id, :type, :address_1, :address_2, :zip_code, :city, :state, :country, :created_date, :updated_date)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBHome(hme)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -95,7 +95,7 @@ func (s *Store) Update(ctx context.Context, hme homebus.Home) error {
         "state"         = :state,
         "country"       = :country,
         "type"          = :type,
-        "date_updated"  = :date_updated
+        "updated_date"  = :updated_date
     WHERE
         id = :id`
 
@@ -115,7 +115,7 @@ func (s *Store) Query(ctx context.Context, filter homebus.QueryFilter, orderBy o
 
 	const q = `
     SELECT
-	    id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
+	    id, user_id, type, address_1, address_2, zip_code, city, state, country, created_date, updated_date
 	FROM
 	  	homes`
 
@@ -176,7 +176,7 @@ func (s *Store) QueryByID(ctx context.Context, homeID uuid.UUID) (homebus.Home, 
 
 	const q = `
     SELECT
-	  	id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
+	  	id, user_id, type, address_1, address_2, zip_code, city, state, country, created_date, updated_date
     FROM
         homes
     WHERE
@@ -203,7 +203,7 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]homebus.
 
 	const q = `
 	SELECT
-	    id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated
+	    id, user_id, type, address_1, address_2, zip_code, city, state, country, created_date, updated_date
 	FROM
 		homes
 	WHERE

@@ -39,8 +39,8 @@ func create200(sd apitest.SeedData) []apitest.Table {
 
 				expResp := exp.(*validassetapp.ValidAsset)
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(got, exp)
 			},

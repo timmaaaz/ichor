@@ -22,8 +22,8 @@ type Home struct {
 	UserID      uuid.UUID
 	Type        Type
 	Address     Address
-	DateCreated time.Time
-	DateUpdated time.Time
+	CreatedDate time.Time
+	UpdatedDate time.Time
 }
 
 // NewHome is what we require from clients when adding a Home.

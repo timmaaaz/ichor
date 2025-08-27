@@ -134,12 +134,12 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp := exp.([]homebus.Home)
 
 				for i := range gotResp {
-					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {
-						expResp[i].DateCreated = gotResp[i].DateCreated
+					if gotResp[i].CreatedDate.Format(time.RFC3339) == expResp[i].CreatedDate.Format(time.RFC3339) {
+						expResp[i].CreatedDate = gotResp[i].CreatedDate
 					}
 
-					if gotResp[i].DateUpdated.Format(time.RFC3339) == expResp[i].DateUpdated.Format(time.RFC3339) {
-						expResp[i].DateUpdated = gotResp[i].DateUpdated
+					if gotResp[i].UpdatedDate.Format(time.RFC3339) == expResp[i].UpdatedDate.Format(time.RFC3339) {
+						expResp[i].UpdatedDate = gotResp[i].UpdatedDate
 					}
 				}
 
@@ -165,12 +165,12 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 				expResp := exp.(homebus.Home)
 
-				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
-					expResp.DateCreated = gotResp.DateCreated
+				if gotResp.CreatedDate.Format(time.RFC3339) == expResp.CreatedDate.Format(time.RFC3339) {
+					expResp.CreatedDate = gotResp.CreatedDate
 				}
 
-				if gotResp.DateUpdated.Format(time.RFC3339) == expResp.DateUpdated.Format(time.RFC3339) {
-					expResp.DateUpdated = gotResp.DateUpdated
+				if gotResp.UpdatedDate.Format(time.RFC3339) == expResp.UpdatedDate.Format(time.RFC3339) {
+					expResp.UpdatedDate = gotResp.UpdatedDate
 				}
 
 				return cmp.Diff(gotResp, expResp)
@@ -225,8 +225,8 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp := exp.(homebus.Home)
 
 				expResp.ID = gotResp.ID
-				expResp.DateCreated = gotResp.DateCreated
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
 			},
@@ -252,8 +252,8 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					State:    "AL",
 					Country:  "US",
 				},
-				DateCreated: sd.Users[0].Homes[0].DateCreated,
-				DateUpdated: sd.Users[0].Homes[0].DateCreated,
+				CreatedDate: sd.Users[0].Homes[0].CreatedDate,
+				UpdatedDate: sd.Users[0].Homes[0].CreatedDate,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				uh := homebus.UpdateHome{
@@ -273,7 +273,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					return err
 				}
 
-				resp.DateUpdated = resp.DateCreated
+				resp.UpdatedDate = resp.CreatedDate
 
 				return resp
 			},
@@ -285,7 +285,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 				expResp := exp.(homebus.Home)
 
-				expResp.DateUpdated = gotResp.DateUpdated
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
 			},

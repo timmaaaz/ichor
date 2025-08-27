@@ -12,8 +12,8 @@ var orderByFields = map[string]string{
 	"street_id":    warehousebus.OrderByStreetID,
 	"name":         warehousebus.OrderByName,
 	"is_active":    warehousebus.OrderByIsActive,
-	"date_created": warehousebus.OrderByDateCreated,
-	"date_updated": warehousebus.OrderByDateUpdated,
+	"created_date": warehousebus.OrderByCreatedDate,
+	"updated_date": warehousebus.OrderByUpdatedDate,
 	"created_by":   warehousebus.OrderByCreatedBy,
 	"updated_by":   warehousebus.OrderByUpdatedBy,
 }
