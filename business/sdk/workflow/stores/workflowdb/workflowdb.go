@@ -615,9 +615,9 @@ func (s *Store) QueryActionsByRule(ctx context.Context, ruleID uuid.UUID) ([]wor
 func (s *Store) CreateDependency(ctx context.Context, dep workflow.RuleDependency) error {
 	const q = `
 	INSERT INTO rule_dependencies (
-		parent_rule_id, child_rule_id
+		id, parent_rule_id, child_rule_id
 	) VALUES (
-		:parent_rule_id, :child_rule_id
+		:id, :parent_rule_id, :child_rule_id
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRuleDependency(dep)); err != nil {
@@ -633,7 +633,7 @@ func (s *Store) DeleteDependency(ctx context.Context, dep workflow.RuleDependenc
 	DELETE FROM
 		rule_dependencies
 	WHERE
-		parent_rule_id = :parent_rule_id AND child_rule_id = :child_rule_id`
+		id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRuleDependency(dep)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -646,7 +646,7 @@ func (s *Store) DeleteDependency(ctx context.Context, dep workflow.RuleDependenc
 func (s *Store) QueryDependencies(ctx context.Context) ([]workflow.RuleDependency, error) {
 	const q = `
 	SELECT
-		parent_rule_id, child_rule_id
+		id, parent_rule_id, child_rule_id
 	FROM
 		rule_dependencies`
 

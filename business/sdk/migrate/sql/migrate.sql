@@ -825,9 +825,9 @@ CREATE TABLE rule_actions (
 );
 
 CREATE TABLE rule_dependencies (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    parent_rule_id UUID REFERENCES automation_rules(id),
-   child_rule_id UUID REFERENCES automation_rules(id),
-   PRIMARY KEY (parent_rule_id, child_rule_id)
+   child_rule_id UUID REFERENCES automation_rules(id)
 );
 
 -- Create entities table

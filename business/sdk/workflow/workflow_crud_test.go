@@ -1323,8 +1323,14 @@ func createRuleDependency(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			if !exists {
 				return "error occurred"
 			}
+			expResp, exists := exp.(workflow.RuleDependency)
+			if !exists {
+				return "error occurred"
+			}
 
-			return cmp.Diff(gotResp, exp)
+			expResp.ID = gotResp.ID
+
+			return cmp.Diff(gotResp, expResp)
 		},
 	}
 }

@@ -350,12 +350,14 @@ type UpdateRuleAction struct {
 // =============================================================================
 // RuleDependency represents a dependency between two automation rules
 type RuleDependency struct {
+	ID           uuid.UUID
 	ParentRuleID uuid.UUID
 	ChildRuleID  uuid.UUID
 }
 
 // NewRuleDependency contains information needed to create a new rule dependency
 type NewRuleDependency struct {
+	ID           uuid.UUID
 	ParentRuleID uuid.UUID
 	ChildRuleID  uuid.UUID
 }

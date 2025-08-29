@@ -584,6 +584,7 @@ func (b *Business) CreateDependency(ctx context.Context, nrd NewRuleDependency) 
 	// This would require traversing the dependency graph
 
 	dependency := RuleDependency{
+		ID:           uuid.New(),
 		ParentRuleID: nrd.ParentRuleID,
 		ChildRuleID:  nrd.ChildRuleID,
 	}

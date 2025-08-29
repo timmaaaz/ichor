@@ -360,3 +360,67 @@ INSERT INTO asset_conditions (id, name) VALUES
     (uuid_generate_v4(), 'USED'),
     (uuid_generate_v4(), 'POOR'),
     (uuid_generate_v4(), 'END_OF_LIFE');
+
+-- Add this after your users INSERT statement
+
+-- First, ensure we have an ADMIN role in the roles table
+INSERT INTO roles (id, name, description) VALUES 
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'ADMIN', 'Administrator role with full access')
+ON CONFLICT (id) DO NOTHING;
+
+-- Link the admin user to the ADMIN role
+INSERT INTO user_roles (id, user_id, role_id) VALUES 
+    (gen_random_uuid(), '5cf37266-3473-4006-984f-9325122678b7', '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1')
+ON CONFLICT DO NOTHING;
+
+-- Grant full table access to the ADMIN role
+INSERT INTO table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete) VALUES
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'users', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'asset_types', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'asset_conditions', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'countries', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'regions', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'cities', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'streets', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'user_approval_status', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'titles', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'offices', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'valid_assets', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'homes', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'approval_status', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'fulfillment_status', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'tags', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'asset_tags', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'reports_to', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'assets', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'user_assets', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'user_approval_comments', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'contact_infos', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'brands', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'product_categories', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'warehouses', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'products', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'physical_attributes', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'product_costs', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'suppliers', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'cost_history', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'supplier_products', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'quality_metrics', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'lot_trackings', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'zones', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory_locations', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory_items', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'quality_inspections', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'serial_numbers', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory_transactions', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory_adjustments', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'transfer_orders', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'order_fulfillment_statuses', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'line_item_fulfillment_statuses', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'customers', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'orders', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'order_line_items', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'roles', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'user_roles', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'table_access', true, true, true, true)
+ON CONFLICT DO NOTHING;

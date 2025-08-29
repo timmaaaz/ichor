@@ -373,6 +373,7 @@ func toDBRuleAction(ra workflow.RuleAction) ruleAction {
 
 // ruleDependency represents a dependency between rules
 type ruleDependency struct {
+	ID           string `db:"id"`
 	ParentRuleID string `db:"parent_rule_id"`
 	ChildRuleID  string `db:"child_rule_id"`
 }
@@ -380,6 +381,7 @@ type ruleDependency struct {
 // toCoreRuleDependency converts a store ruleDependency to core RuleDependency
 func toCoreRuleDependency(dbDep ruleDependency) workflow.RuleDependency {
 	return workflow.RuleDependency{
+		ID:           uuid.MustParse(dbDep.ID),
 		ParentRuleID: uuid.MustParse(dbDep.ParentRuleID),
 		ChildRuleID:  uuid.MustParse(dbDep.ChildRuleID),
 	}
@@ -396,6 +398,7 @@ func toCoreRuleDependencySlice(dbDeps []ruleDependency) []workflow.RuleDependenc
 // toDBRuleDependency converts a core RuleDependency to store values
 func toDBRuleDependency(rd workflow.RuleDependency) ruleDependency {
 	return ruleDependency{
+		ID:           rd.ID.String(),
 		ParentRuleID: rd.ParentRuleID.String(),
 		ChildRuleID:  rd.ChildRuleID.String(),
 	}
