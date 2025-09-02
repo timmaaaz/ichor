@@ -30,14 +30,14 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	api := newAPI(orderfulfillmentstatusapp.NewApp(cfg.OrderFulfillmentStatusBus))
-	app.HandlerFunc(http.MethodGet, version, "/order/orderfulfillmentstatuses", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/order/order-fulfillment-statuses", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/order/orderfulfillmentstatuses/{order_fulfillment_status_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/order/order-fulfillment-statuses/{order_fulfillment_status_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/order/orderfulfillmentstatuses", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/order/order-fulfillment-statuses", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/order/orderfulfillmentstatuses/{order_fulfillment_status_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/order/order-fulfillment-statuses/{order_fulfillment_status_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/order/orderfulfillmentstatuses/{order_fulfillment_status_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/order/order-fulfillment-statuses/{order_fulfillment_status_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

@@ -30,18 +30,18 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(inventoryadjustmentapp.NewApp(cfg.InventoryAdjustmentBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/movement/inventoryadjustment", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/movement/inventory-adjustment", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/movement/inventoryadjustment/{adjustment_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/movement/inventory-adjustment/{adjustment_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPost, version, "/movement/inventoryadjustment", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/movement/inventory-adjustment", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPut, version, "/movement/inventoryadjustment/{adjustment_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/movement/inventory-adjustment/{adjustment_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodDelete, version, "/movement/inventoryadjustment/{adjustment_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/movement/inventory-adjustment/{adjustment_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

@@ -32,14 +32,14 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	api := newAPI(assettypeapp.NewApp(cfg.AssetTypeBus))
-	app.HandlerFunc(http.MethodGet, version, "/assets/assettypes", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/asset-types", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/assets/assettypes/{asset_type_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/asset-types/{asset_type_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/assets/assettypes", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/assets/asset-types", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/assets/assettypes/{asset_type_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/assets/asset-types/{asset_type_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/assets/assettypes/{asset_type_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/assets/asset-types/{asset_type_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

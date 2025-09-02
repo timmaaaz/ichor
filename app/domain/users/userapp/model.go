@@ -46,26 +46,26 @@ type QueryParams struct {
 // User represents information about an individual user.
 type User struct {
 	ID            string   `json:"id"`
-	RequestedBy   string   `json:"requestedBy"`
-	ApprovedBy    string   `json:"approvedBy"`
-	TitleID       string   `json:"titleID"`
-	OfficeID      string   `json:"officeID"`
-	WorkPhoneID   string   `json:"workPhoneID"`
-	CellPhoneID   string   `json:"cellPhoneID"`
+	RequestedBy   string   `json:"requested_by"`
+	ApprovedBy    string   `json:"approved_by"`
+	TitleID       string   `json:"title_id"`
+	OfficeID      string   `json:"office_id"`
+	WorkPhoneID   string   `json:"work_phone_id"`
+	CellPhoneID   string   `json:"cell_phone_id"`
 	Username      string   `json:"username"`
-	FirstName     string   `json:"firstName"`
-	LastName      string   `json:"lastName"`
+	FirstName     string   `json:"first_name"`
+	LastName      string   `json:"last_name"`
 	Email         string   `json:"email"`
 	Birthday      string   `json:"birthday"`
 	Roles         []string `json:"roles"`
-	SystemRoles   []string `json:"systemRoles"`
+	SystemRoles   []string `json:"system_roles"`
 	PasswordHash  []byte   `json:"-"`
 	Enabled       bool     `json:"enabled"`
-	DateHired     string   `json:"dateHired"`
-	DateRequested string   `json:"dateRequested"`
-	DateApproved  string   `json:"dateApproved"`
-	CreatedDate   string   `json:"dateCreated"`
-	UpdatedDate   string   `json:"dateUpdated"`
+	DateHired     string   `json:"date_hired"`
+	DateRequested string   `json:"date_requested"`
+	DateApproved  string   `json:"date_approved"`
+	CreatedDate   string   `json:"date_created"`
+	UpdatedDate   string   `json:"date_updated"`
 }
 
 // Encode implements the encoder interface.
@@ -113,20 +113,20 @@ func toAppUsers(users []userbus.User) []User {
 
 // NewUser defines the data needed to add a new user.
 type NewUser struct {
-	RequestedBy     string   `json:"requestedBy" validate:"omitempty"`
-	TitleID         string   `json:"titleID" validate:"omitempty"`
-	OfficeID        string   `json:"officeID" validate:"omitempty"`
-	WorkPhoneID     string   `json:"workPhoneID" validate:"omitempty"`
-	CellPhoneID     string   `json:"cellPhoneID" validate:"omitempty"`
+	RequestedBy     string   `json:"requested_by" validate:"omitempty"`
+	TitleID         string   `json:"title_id" validate:"omitempty"`
+	OfficeID        string   `json:"office_id" validate:"omitempty"`
+	WorkPhoneID     string   `json:"work_phone_id" validate:"omitempty"`
+	CellPhoneID     string   `json:"cell_phone_id" validate:"omitempty"`
 	Username        string   `json:"username" validate:"required"`
-	FirstName       string   `json:"firstName" validate:"required"`
-	LastName        string   `json:"lastName" validate:"required"`
+	FirstName       string   `json:"first_name" validate:"required"`
+	LastName        string   `json:"last_name" validate:"required"`
 	Email           string   `json:"email" validate:"required,email"`
 	Birthday        string   `json:"birthday" validate:"required"`
 	Roles           []string `json:"roles" validate:"required"`
-	SystemRoles     []string `json:"systemRoles" validate:"required"`
+	SystemRoles     []string `json:"system_roles" validate:"required"`
 	Password        string   `json:"password" validate:"required"`
-	PasswordConfirm string   `json:"passwordConfirm" validate:"eqfield=Password"`
+	PasswordConfirm string   `json:"password_confirm" validate:"eqfield=Password"`
 	Enabled         bool     `json:"enabled"`
 }
 
@@ -325,19 +325,19 @@ func toBusUpdateApproveUser(app UpdateApproveUser) (userbus.UpdateUser, error) {
 
 // UpdateUser defines the data needed to update a user.
 type UpdateUser struct {
-	TitleID         *string `json:"titleID"`
-	OfficeID        *string `json:"officeID"`
-	WorkPhoneID     *string `json:"workPhoneID"`
-	CellPhoneID     *string `json:"cellPhoneID"`
+	TitleID         *string `json:"title_id"`
+	OfficeID        *string `json:"office_id"`
+	WorkPhoneID     *string `json:"work_phone_id"`
+	CellPhoneID     *string `json:"cell_phone_id"`
 	Username        *string `json:"username"`
-	FirstName       *string `json:"firstName"`
-	LastName        *string `json:"lastName"`
+	FirstName       *string `json:"first_name"`
+	LastName        *string `json:"last_name"`
 	Email           *string `json:"email" validate:"omitempty,email"`
 	Birthday        *string `json:"birthday"`
 	Password        *string `json:"password"`
-	PasswordConfirm *string `json:"passwordConfirm" validate:"omitempty,eqfield=Password"`
+	PasswordConfirm *string `json:"password_confirm" validate:"omitempty,eqfield=Password"`
 	Enabled         *bool   `json:"enabled"`
-	DateHired       *string `json:"dateHired"`
+	DateHired       *string `json:"date_hired"`
 }
 
 // Decode implements the decoder interface.

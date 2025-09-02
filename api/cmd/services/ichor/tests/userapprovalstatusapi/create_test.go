@@ -68,7 +68,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				Name: "missing icon id",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "Validate: [{\"field\":\"iconID\",\"error\":\"iconID is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "Validate: [{\"field\":\"icon_id\",\"error\":\"iconID is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

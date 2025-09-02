@@ -14,15 +14,15 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/permissions/roles?page=1&rows=10",
+			URL:        "/v1/permissions/roles?page=2&rows=5",
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &query.Result[roleapp.Role]{},
 			ExpResp: &query.Result[roleapp.Role]{
-				Page:        1,
-				RowsPerPage: 10,
-				Total:       12,
+				Page:        2,
+				RowsPerPage: 5,
+				Total:       13,
 				Items:       sd.Roles,
 			},
 			CmpFunc: func(got any, exp any) string {
@@ -33,7 +33,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 					return items[i].Name < items[j].Name
 				})
 				// Grab the first 10
-				exp.(*query.Result[roleapp.Role]).Items = items[:10]
+				exp.(*query.Result[roleapp.Role]).Items = items[5:10]
 
 				return cmp.Diff(got, exp)
 			},

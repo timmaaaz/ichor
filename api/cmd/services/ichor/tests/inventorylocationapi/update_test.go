@@ -17,7 +17,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/warehouses/inventorylocations/%s", sd.InventoryLocations[0].LocationID),
+			URL:        fmt.Sprintf("/v1/warehouses/inventory-locations/%s", sd.InventoryLocations[0].LocationID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -67,7 +67,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-warehouse-id",
-			URL:        fmt.Sprintf("/v1/warehouses/inventorylocations/%s", sd.InventoryLocations[0].LocationID),
+			URL:        fmt.Sprintf("/v1/warehouses/inventory-locations/%s", sd.InventoryLocations[0].LocationID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -82,7 +82,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-zone-id",
-			URL:        fmt.Sprintf("/v1/warehouses/inventorylocations/%s", sd.InventoryLocations[0].LocationID),
+			URL:        fmt.Sprintf("/v1/warehouses/inventory-locations/%s", sd.InventoryLocations[0].LocationID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -102,7 +102,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/warehouses/inventorylocations/%s", sd.InventoryLocations[0].LocationID),
+			URL:        fmt.Sprintf("/v1/warehouses/inventory-locations/%s", sd.InventoryLocations[0].LocationID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -114,7 +114,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/warehouses/inventorylocations/%s", sd.InventoryLocations[0].LocationID),
+			URL:        fmt.Sprintf("/v1/warehouses/inventory-locations/%s", sd.InventoryLocations[0].LocationID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -126,7 +126,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/warehouses/inventorylocations/%s", sd.InventoryLocations[0].LocationID),
+			URL:        fmt.Sprintf("/v1/warehouses/inventory-locations/%s", sd.InventoryLocations[0].LocationID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -144,7 +144,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "zone-dne",
-			URL:        fmt.Sprintf("/v1/warehouses/inventorylocations/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/warehouses/inventory-locations/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
@@ -164,7 +164,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "contact-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/warehouses/inventorylocations/%s", sd.InventoryLocations[0].LocationID),
+			URL:        fmt.Sprintf("/v1/warehouses/inventory-locations/%s", sd.InventoryLocations[0].LocationID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,

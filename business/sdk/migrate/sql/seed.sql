@@ -365,10 +365,10 @@ INSERT INTO asset_conditions (id, name) VALUES
 
 -- First, ensure we have an ADMIN role in the roles table
 INSERT INTO roles (id, name, description) VALUES 
-    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'ADMIN', 'Administrator role with full access')
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'ZZZADMIN', 'Administrator role with full access')
 ON CONFLICT (id) DO NOTHING;
 
--- Link the admin user to the ADMIN role
+-- -- Link the admin user to the ADMIN role
 INSERT INTO user_roles (id, user_id, role_id) VALUES 
     (gen_random_uuid(), '5cf37266-3473-4006-984f-9325122678b7', '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1')
 ON CONFLICT DO NOTHING;

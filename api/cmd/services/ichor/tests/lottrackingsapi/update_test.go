@@ -26,7 +26,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lot-trackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -70,7 +70,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-supplier-product-id",
-			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lot-trackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -85,7 +85,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-lot-uuid",
-			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/lots/lot-trackings/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -106,7 +106,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lot-trackings/%s", sd.LotTrackings[0].LotID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -118,7 +118,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lot-trackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -130,7 +130,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lot-trackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -148,7 +148,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "supplier-dne",
-			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/lots/lot-trackings/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
@@ -169,7 +169,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "contact-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/lots/lottrackings/%s", sd.LotTrackings[0].LotID),
+			URL:        fmt.Sprintf("/v1/lots/lot-trackings/%s", sd.LotTrackings[0].LotID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,

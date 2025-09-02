@@ -28,18 +28,18 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	api := newAPI(inventoryitemapp.NewApp(cfg.InventoryItemBus))
-	app.HandlerFunc(http.MethodGet, version, "/inventory/core/inventoryitems", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/inventory/core/inventory-items", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/inventory/core/inventoryitems/{item_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/inventory/core/inventory-items/{item_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPost, version, "/inventory/core/inventoryitems", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/inventory/core/inventory-items", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Create, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPut, version, "/inventory/core/inventoryitems/{item_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/inventory/core/inventory-items/{item_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Update, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodDelete, version, "/inventory/core/inventoryitems/{item_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/inventory/core/inventory-items/{item_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Delete, auth.RuleAny))
 }

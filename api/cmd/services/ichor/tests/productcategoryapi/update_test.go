@@ -17,7 +17,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/inventory/core/productcategories/%s", sd.ProductCategories[1].ID),
+			URL:        fmt.Sprintf("/v1/inventory/core/product-categories/%s", sd.ProductCategories[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -51,7 +51,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/inventory/core/productcategories/%s", sd.ProductCategories[0].ID),
+			URL:        fmt.Sprintf("/v1/inventory/core/product-categories/%s", sd.ProductCategories[0].ID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -63,7 +63,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/inventory/core/productcategories/%s", sd.ProductCategories[0].ID),
+			URL:        fmt.Sprintf("/v1/inventory/core/product-categories/%s", sd.ProductCategories[0].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -75,7 +75,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/inventory/core/productcategories/%s", sd.ProductCategories[0].ID),
+			URL:        fmt.Sprintf("/v1/inventory/core/product-categories/%s", sd.ProductCategories[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -93,7 +93,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "product-category-dne",
-			URL:        fmt.Sprintf("/v1/inventory/core/productcategories/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/inventory/core/product-categories/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,

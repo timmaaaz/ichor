@@ -30,15 +30,15 @@ func Routes(app *web.App, cfg Config) {
 	api := newAPI(tableaccessapp.NewApp(cfg.TableAccessBus))
 	authen := mid.Authenticate(cfg.AuthClient)
 
-	app.HandlerFunc(http.MethodGet, version, "/permissions/table_access", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/permissions/table-access", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/permissions/table_access/{table_access_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/permissions/table-access/{table_access_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/permissions/table_access", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/permissions/table-access", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
-	app.HandlerFunc(http.MethodPut, version, "/permissions/table_access/{table_access_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/permissions/table-access/{table_access_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAdminOnly))
-	app.HandlerFunc(http.MethodDelete, version, "/permissions/table_access/{table_access_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/permissions/table-access/{table_access_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAdminOnly))
 
 }

@@ -30,14 +30,14 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	api := newAPI(productcategoryapp.NewApp(cfg.ProductCategoryBus))
-	app.HandlerFunc(http.MethodGet, version, "/inventory/core/productcategories", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/inventory/core/product-categories", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/inventory/core/productcategories/{product_category_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/inventory/core/product-categories/{product_category_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/inventory/core/productcategories", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/inventory/core/product-categories", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/inventory/core/productcategories/{product_category_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/inventory/core/product-categories/{product_category_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/inventory/core/productcategories/{product_category_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/inventory/core/product-categories/{product_category_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

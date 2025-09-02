@@ -30,18 +30,18 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(serialnumberapp.NewApp(cfg.SerialNumberBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/lots/serialnumber", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/lots/serial-number", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/lots/serialnumber/{serial_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/lots/serial-numbers/{serial_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPost, version, "/lots/serialnumber", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/lots/serial-number", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPut, version, "/lots/serialnumber/{serial_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/lots/serial-numbers/{serial_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodDelete, version, "/lots/serialnumber/{serial_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/lots/serial-numbers/{serial_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

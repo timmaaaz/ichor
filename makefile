@@ -354,8 +354,17 @@ migrate:
 seed: migrate
 	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed
 
+seed-frontend:
+	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed-frontend
+
 pgcli:
 	pgcli postgresql://postgres:postgres@localhost
+
+dev-database-recreate:
+	kustomize build zarf/k8s/dev/database | kubectl delete -f - --ignore-not-found=true
+	kubectl delete pvc --namespace=$(NAMESPACE) -l app=database --ignore-not-found=true
+	kustomize build zarf/k8s/dev/database | kubectl apply -f -
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
 liveness:
 	curl -il http://localhost:3000/v1/liveness

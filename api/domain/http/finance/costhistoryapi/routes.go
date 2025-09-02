@@ -30,19 +30,19 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(costhistoryapp.NewApp(cfg.CostHistoryBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/finance/costhistory", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/finance/cost-history", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/finance/costhistory/{cost_history_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/finance/cost-history/{cost_history_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPost, version, "/finance/costhistory", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/finance/cost-history", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPut, version, "/finance/costhistory/{cost_history_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/finance/cost-history/{cost_history_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodDelete, version, "/finance/costhistory/{cost_history_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/finance/cost-history/{cost_history_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 
 }

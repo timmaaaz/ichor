@@ -14,7 +14,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/permissions/user_roles?page=1&rows=10",
+			URL:        "/v1/permissions/user-roles?page=1&rows=10",
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
@@ -51,7 +51,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/permissions/user_roles/" + sd.UserRoles[0].ID,
+			URL:        "/v1/permissions/user-roles/" + sd.UserRoles[0].ID,
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
@@ -69,7 +69,7 @@ func query401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/permissions/user_roles?page=1&rows=10",
+			URL:        "/v1/permissions/user-roles?page=1&rows=10",
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusUnauthorized,
 			Method:     http.MethodGet,

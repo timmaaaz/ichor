@@ -14,7 +14,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/core/contactinfos?page=1&rows=10",
+			URL:        "/v1/core/contact-infos?page=1&rows=10",
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
@@ -37,7 +37,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/core/contactinfos/" + sd.ContactInfos[0].ID,
+			URL:        "/v1/core/contact-infos/" + sd.ContactInfos[0].ID,
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

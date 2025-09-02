@@ -30,18 +30,18 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(lottrackingsapp.NewApp(cfg.LotTrackingsBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/lots/lottrackings", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/lots/lot-trackings", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/lots/lottrackings/{lot_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/lots/lot-trackings/{lot_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPost, version, "/lots/lottrackings", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/lots/lot-trackings", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPut, version, "/lots/lottrackings/{lot_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/lots/lot-trackings/{lot_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodDelete, version, "/lots/lottrackings/{lot_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/lots/lot-trackings/{lot_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

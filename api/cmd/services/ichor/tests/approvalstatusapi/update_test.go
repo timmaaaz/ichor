@@ -18,7 +18,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/assets/approvalstatus/" + sd.ApprovalStatuses[0].ID,
+			URL:        "/v1/assets/approval-status/" + sd.ApprovalStatuses[0].ID,
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -49,7 +49,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "bad-id",
-			URL:        "/v1/assets/approvalstatus/abc",
+			URL:        "/v1/assets/approval-status/abc",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,

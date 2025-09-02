@@ -47,7 +47,7 @@ func ToAppApprovalStatuses(bus []approvalstatusbus.ApprovalStatus) []ApprovalSta
 // =============================================================================
 
 type NewApprovalStatus struct {
-	IconID string `json:"iconID" validate:"required"`
+	IconID string `json:"icon_id" validate:"required"`
 	Name   string `json:"name" validate:"required,min=3,max=100"`
 }
 

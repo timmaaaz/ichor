@@ -21,7 +21,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -69,7 +69,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "missing-product-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -90,7 +90,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-from-location-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -111,7 +111,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-to-location-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -132,7 +132,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-requested-by-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -153,7 +153,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-approved-by-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -174,7 +174,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-quantity",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -195,7 +195,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-status",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -216,7 +216,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-transfer-date",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -238,7 +238,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 
 		{
 			Name:       "malformed-product-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -260,7 +260,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-from-location-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -282,7 +282,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-to-location-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -304,7 +304,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-request-by-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -326,7 +326,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-approved-by-id",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -356,7 +356,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "product-id-not-valid-fk",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -378,7 +378,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "from-location-id-not-valid-fk",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -400,7 +400,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "to-location-id-not-valid-fk",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -422,7 +422,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "requested-by-id-not-valid-fk",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -444,7 +444,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "approved-by-not-valid-fk",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -471,7 +471,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -483,7 +483,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad token",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -495,7 +495,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -507,7 +507,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        "/v1/movement/transferorders",
+			URL:        "/v1/movement/transfer-orders",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

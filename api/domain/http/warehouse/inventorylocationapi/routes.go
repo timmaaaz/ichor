@@ -31,14 +31,14 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(inventorylocationapp.NewApp(cfg.InventoryLocationBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/warehouses/inventorylocations", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/warehouses/inventory-locations", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/warehouses/inventorylocations/{location_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/warehouses/inventory-locations/{location_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/warehouses/inventorylocations", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/warehouses/inventory-locations", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/warehouses/inventorylocations/{location_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/warehouses/inventory-locations/{location_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/warehouses/inventorylocations/{location_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/warehouses/inventory-locations/{location_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

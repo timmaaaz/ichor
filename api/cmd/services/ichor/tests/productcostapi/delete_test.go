@@ -14,7 +14,7 @@ func delete200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "asadmin",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[1].ID),
+			URL:        fmt.Sprintf("/v1/finance/product-costs/%s", sd.ProductCosts[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNoContent,
@@ -26,7 +26,7 @@ func delete400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-brand-uuid",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/finance/product-costs/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusBadRequest,
@@ -43,7 +43,7 @@ func delete404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "product-cost-dne",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/finance/product-costs/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNotFound,
@@ -60,7 +60,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[1].ID),
+			URL:        fmt.Sprintf("/v1/finance/product-costs/%s", sd.ProductCosts[1].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -72,7 +72,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[1].ID),
+			URL:        fmt.Sprintf("/v1/finance/product-costs/%s", sd.ProductCosts[1].ID),
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -84,7 +84,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/finance/productcosts/%s", sd.ProductCosts[1].ID),
+			URL:        fmt.Sprintf("/v1/finance/product-costs/%s", sd.ProductCosts[1].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,

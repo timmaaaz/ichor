@@ -32,7 +32,7 @@ type QueryParams struct {
 }
 
 type InventoryItem struct {
-	ItemID                string `json:"item_id"`
+	ItemID                string `json:"id"`
 	ProductID             string `json:"product_id"`
 	LocationID            string `json:"location_id"`
 	Quantity              string `json:"quantity"`
