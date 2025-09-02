@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (rolebus.Storer, error) {
 // Create adds a new role to the system
 func (s *Store) Create(ctx context.Context, r rolebus.Role) error {
 	const q = `
-	INSERT INTO roles (
+	INSERT INTO core.roles (
 		id, name, description
 	) VALUES (
 		:id, :name, :description
@@ -68,8 +68,8 @@ func (s *Store) Create(ctx context.Context, r rolebus.Role) error {
 // Update modifies a role in the system
 func (s *Store) Update(ctx context.Context, r rolebus.Role) error {
 	const q = `
-	UPDATE 
-		roles
+	UPDATE
+		core.roles
 	SET
 		name = :name,
 		description = :description
@@ -91,7 +91,7 @@ func (s *Store) Update(ctx context.Context, r rolebus.Role) error {
 func (s *Store) Delete(ctx context.Context, r rolebus.Role) error {
 	const q = `
 	DELETE FROM 
-		roles
+		core.roles
 	WHERE 
 		id = :id`
 
@@ -113,7 +113,7 @@ func (s *Store) Query(ctx context.Context, filter rolebus.QueryFilter, orderBy o
 	SELECT
 		id, name, description
 	FROM
-		roles`
+		core.roles`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -142,7 +142,7 @@ func (s *Store) Count(ctx context.Context, filter rolebus.QueryFilter) (int, err
 	SELECT
 		COUNT(1) AS count
 	FROM
-		roles`
+		core.roles`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -169,7 +169,7 @@ func (s *Store) QueryByID(ctx context.Context, roleID uuid.UUID) (rolebus.Role, 
 	SELECT
 		id, name, description
 	FROM
-		roles
+		core.roles
 	WHERE
 		id = :id`
 
@@ -201,7 +201,7 @@ func (s *Store) QueryByIDs(ctx context.Context, roleIDs []uuid.UUID) ([]rolebus.
 	SELECT
 		id, name, description
 	FROM
-		roles
+		core.roles
 	WHERE
 		id IN (:role_ids)`
 
@@ -219,7 +219,7 @@ func (s *Store) QueryAll(ctx context.Context) ([]rolebus.Role, error) {
 	SELECT
 		id, name, description
 	FROM
-		roles`
+		core.roles`
 
 	var dbRoles []role
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbRoles); err != nil {

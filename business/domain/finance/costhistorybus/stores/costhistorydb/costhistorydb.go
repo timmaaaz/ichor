@@ -47,7 +47,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (costhistorybus.Storer, err
 
 func (s *Store) Create(ctx context.Context, ch costhistorybus.CostHistory) error {
 	const q = `
-    INSERT INTO cost_history (
+    INSERT INTO products.cost_history (
         id, product_id, cost_type, amount, currency,  effective_date, end_date, created_date, updated_date
     ) VALUES (
         :id, :product_id, :cost_type, :amount, :currency, :effective_date, :end_date, :created_date, :updated_date
@@ -69,7 +69,7 @@ func (s *Store) Create(ctx context.Context, ch costhistorybus.CostHistory) error
 func (s *Store) Update(ctx context.Context, ch costhistorybus.CostHistory) error {
 	const q = `
     UPDATE
-        cost_history
+        products.cost_history
     SET
         id = :id,
         product_id = :product_id,
@@ -98,7 +98,7 @@ func (s *Store) Update(ctx context.Context, ch costhistorybus.CostHistory) error
 func (s *Store) Delete(ctx context.Context, ch costhistorybus.CostHistory) error {
 	const q = `
 	DELETE FROM
-		cost_history
+		products.cost_history
 	WHERE
 		id = :id`
 
@@ -120,7 +120,7 @@ func (s *Store) Query(ctx context.Context, filter costhistorybus.QueryFilter, or
 	SELECT 
 		id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
 	FROM
-		cost_history
+		products.cost_history
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -150,7 +150,7 @@ func (s *Store) Count(ctx context.Context, filter costhistorybus.QueryFilter) (i
     SELECT
         COUNT(1) AS count
     FROM
-        cost_history`
+        products.cost_history`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -176,7 +176,7 @@ func (s *Store) QueryByID(ctx context.Context, costHistoryID uuid.UUID) (costhis
 	SELECT 
 		id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
 	FROM
-		cost_history
+		products.cost_history
 	WHERE 
 	    id = :id`
 

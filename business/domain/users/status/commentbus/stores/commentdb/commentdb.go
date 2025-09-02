@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (commentbus.Storer, error) 
 // Create inserts a new approval status into the database.
 func (s *Store) Create(ctx context.Context, as commentbus.UserApprovalComment) error {
 	const q = `
-    INSERT INTO user_approval_comments (
+    INSERT INTO hr.user_approval_comments (
         id, commenter_id, user_id, comment, created_date
     ) VALUES (
         :id, :commenter_id, :user_id, :comment, :created_date
@@ -67,7 +67,7 @@ func (s *Store) Create(ctx context.Context, as commentbus.UserApprovalComment) e
 // Update replaces an approval status document in the database.
 func (s *Store) Update(ctx context.Context, as commentbus.UserApprovalComment) error {
 	const q = `
-	UPDATE user_approval_comments
+	UPDATE hr.user_approval_comments
 	SET 
 	    comment = :comment
 	WHERE 
@@ -88,7 +88,7 @@ func (s *Store) Update(ctx context.Context, as commentbus.UserApprovalComment) e
 func (s *Store) Delete(ctx context.Context, as commentbus.UserApprovalComment) error {
 	const q = `
 	DELETE FROM
-		user_approval_comments
+		hr.user_approval_comments
 	WHERE
 		id = :id
 	`
@@ -111,7 +111,7 @@ func (s *Store) Query(ctx context.Context, filter commentbus.QueryFilter, orderB
 	SELECT 
 		id, comment, user_id, commenter_id, created_date
 	FROM
-		user_approval_comments
+		hr.user_approval_comments
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -142,7 +142,7 @@ func (s *Store) Count(ctx context.Context, filter commentbus.QueryFilter) (int, 
     SELECT
         COUNT(1) AS count
     FROM
-        user_approval_comments`
+        hr.user_approval_comments`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -169,7 +169,7 @@ func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (comment
     SELECT
         id, comment, user_id, commenter_id, created_date
     FROM
-        user_approval_comments
+        hr.user_approval_comments
     WHERE
         id = :id
     `

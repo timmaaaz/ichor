@@ -75,7 +75,7 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
 
 	// Now we can insert
 	const q = `
-	INSERT INTO table_access (
+	INSERT INTO core.table_access (
 		id, role_id, table_name, can_create, can_read, can_update, can_delete
 	) VALUES (
 		:id, :role_id, :table_name, :can_create, :can_read, :can_update, :can_delete
@@ -97,7 +97,7 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
 func (s *Store) Update(ctx context.Context, ta tableaccessbus.TableAccess) error {
 	const q = `
 	UPDATE 
-		table_access
+		core.table_access
 	SET 
 		role_id = :role_id,
 		table_name = :table_name,
@@ -120,7 +120,7 @@ func (s *Store) Update(ctx context.Context, ta tableaccessbus.TableAccess) error
 func (s *Store) Delete(ctx context.Context, ta tableaccessbus.TableAccess) error {
 	const q = `
 	DELETE FROM 
-		table_access
+		core.table_access
 	WHERE 
 		id = :id
 	`
@@ -143,7 +143,7 @@ func (s *Store) Query(ctx context.Context, filter tableaccessbus.QueryFilter, or
 	SELECT
 		id, role_id, table_name, can_create, can_read, can_update, can_delete
 	FROM
-		table_access`
+		core.table_access`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -172,7 +172,7 @@ func (s *Store) Count(ctx context.Context, filter tableaccessbus.QueryFilter) (i
 	SELECT
 		COUNT(*) AS count
 	FROM
-		table_access`
+		core.table_access`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -194,7 +194,7 @@ func (s *Store) QueryByID(ctx context.Context, tableAccessID uuid.UUID) (tableac
 	SELECT
 		id, role_id, table_name, can_create, can_read, can_update, can_delete
 	FROM
-		table_access
+		core.table_access
 	WHERE
 		id = :id
 	`
@@ -217,7 +217,7 @@ func (s *Store) QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID) ([]tabl
 	SELECT
 		id, role_id, table_name, can_create, can_read, can_update, can_delete
 	FROM
-		table_access
+		core.table_access
 	WHERE
 		role_id IN (:role_ids)
 	`

@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (officebus.Storer, error) {
 // Create inserts a new office into the database.
 func (s *Store) Create(ctx context.Context, at officebus.Office) error {
 	const q = `
-    INSERT INTO offices (
+    INSERT INTO hr.offices (
         id, name, street_id
     ) VALUES (
         :id, :name, :street_id
@@ -68,7 +68,7 @@ func (s *Store) Create(ctx context.Context, at officebus.Office) error {
 func (s *Store) Update(ctx context.Context, at officebus.Office) error {
 	const q = `
     UPDATE 
-        offices
+        hr.offices
     SET
         name = :name,
         street_id = :street_id
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, at officebus.Office) error {
 func (s *Store) Delete(ctx context.Context, at officebus.Office) error {
 	const q = `
     DELETE FROM
-        offices
+        hr.offices
     WHERE
         id = :id
     `
@@ -111,7 +111,7 @@ func (s *Store) Query(ctx context.Context, filter officebus.QueryFilter, orderBy
     SELECT
         id, name, street_id
     FROM
-        offices`
+        hr.offices`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -140,7 +140,7 @@ func (s *Store) Count(ctx context.Context, filter officebus.QueryFilter) (int, e
     SELECT
         COUNT(1) AS count
     FROM
-        offices`
+        hr.offices`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -167,7 +167,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (officebus.Office, 
     SELECT
         id, name, street_id
     FROM
-        offices
+        hr.offices
     WHERE
         id = :id
     `

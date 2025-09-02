@@ -47,7 +47,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inspectionbus.Storer, erro
 
 func (s *Store) Create(ctx context.Context, inspection inspectionbus.Inspection) error {
 	const q = `
-    INSERT INTO quality_inspections (
+    INSERT INTO inventory.quality_inspections (
         id, product_id, inspector_id, lot_id, inspection_date, 
 		next_inspection_date, status, notes,  created_date, updated_date
     ) VALUES (
@@ -72,7 +72,7 @@ func (s *Store) Create(ctx context.Context, inspection inspectionbus.Inspection)
 func (s *Store) Update(ctx context.Context, inspection inspectionbus.Inspection) error {
 	const q = `
     UPDATE
-        quality_inspections
+        inventory.quality_inspections
     SET
         id = :id,
         product_id = :product_id,
@@ -103,7 +103,7 @@ func (s *Store) Update(ctx context.Context, inspection inspectionbus.Inspection)
 func (s *Store) Delete(ctx context.Context, inspection inspectionbus.Inspection) error {
 	const q = `
     DELETE FROM
-        quality_inspections
+        inventory.quality_inspections
     WHERE
         id = :id
     `
@@ -126,7 +126,7 @@ func (s *Store) Query(ctx context.Context, filter inspectionbus.QueryFilter, ord
 	    id, product_id, inspector_id, lot_id, inspection_date, 
         next_inspection_date, status, notes,  created_date, updated_date
 	FROM
-		quality_inspections
+		inventory.quality_inspections
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -156,7 +156,7 @@ func (s *Store) Count(ctx context.Context, filter inspectionbus.QueryFilter) (in
     SELECT
         COUNT(1) AS count
     FROM
-        quality_inspections
+        inventory.quality_inspections
     `
 
 	buf := bytes.NewBufferString(q)
@@ -185,7 +185,7 @@ func (s *Store) QueryByID(ctx context.Context, inspectionID uuid.UUID) (inspecti
         id, product_id, inspector_id, lot_id, inspection_date, 
         next_inspection_date, status, notes,  created_date, updated_date
     FROM
-        quality_inspections
+        inventory.quality_inspections
     WHERE
         id = :id
     `

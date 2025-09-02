@@ -50,7 +50,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (brandbus.Storer, error) {
 // Create inserts a new brand into the database.
 func (s *Store) Create(ctx context.Context, brand brandbus.Brand) error {
 	const q = `
-    INSERT INTO brands (
+    INSERT INTO products.brands (
         id, name, contact_infos_id, created_date, updated_date
     ) VALUES (
 		:id, :name, :contact_infos_id, :created_date, :updated_date
@@ -73,7 +73,7 @@ func (s *Store) Create(ctx context.Context, brand brandbus.Brand) error {
 func (s *Store) Update(ctx context.Context, ass brandbus.Brand) error {
 	const q = `
 	UPDATE
-		brands
+		products.brands
 	SET
 		name = :name,
         contact_infos_id = :contact_infos_id,
@@ -98,7 +98,7 @@ func (s *Store) Update(ctx context.Context, ass brandbus.Brand) error {
 func (s *Store) Delete(ctx context.Context, brand brandbus.Brand) error {
 	const q = `
 	DELETE FROM
-		brands
+		products.brands
 	WHERE
 		id = :id`
 
@@ -120,7 +120,7 @@ func (s *Store) Query(ctx context.Context, filter brandbus.QueryFilter, orderBy 
     SELECT
 		id, name, contact_infos_id, created_date, updated_date
     FROM
-        brands`
+        products.brands`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -149,7 +149,7 @@ func (s *Store) Count(ctx context.Context, filter brandbus.QueryFilter) (int, er
     SELECT
         COUNT(1) AS count
     FROM
-        brands`
+        products.brands`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -176,7 +176,7 @@ func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (brandbus.
     SELECT
         id, name, contact_infos_id, created_date, updated_date
     FROM
-        brands
+        products.brands
     WHERE
         id = :id
     `

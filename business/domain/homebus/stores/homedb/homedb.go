@@ -49,7 +49,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (homebus.Storer, error) {
 // Create inserts a new home into the database.
 func (s *Store) Create(ctx context.Context, hme homebus.Home) error {
 	const q = `
-    INSERT INTO homes
+    INSERT INTO hr.homes
         (id, user_id, type, address_1, address_2, zip_code, city, state, country, created_date, updated_date)
     VALUES
         (:id, :user_id, :type, :address_1, :address_2, :zip_code, :city, :state, :country, :created_date, :updated_date)`
@@ -71,7 +71,7 @@ func (s *Store) Delete(ctx context.Context, hme homebus.Home) error {
 
 	const q = `
     DELETE FROM
-	    homes
+	    hr.homes
 	WHERE
 	  	id = :id`
 
@@ -86,7 +86,7 @@ func (s *Store) Delete(ctx context.Context, hme homebus.Home) error {
 func (s *Store) Update(ctx context.Context, hme homebus.Home) error {
 	const q = `
     UPDATE
-        homes
+        hr.homes
     SET
         "address_1"     = :address_1,
         "address_2"     = :address_2,
@@ -117,7 +117,7 @@ func (s *Store) Query(ctx context.Context, filter homebus.QueryFilter, orderBy o
     SELECT
 	    id, user_id, type, address_1, address_2, zip_code, city, state, country, created_date, updated_date
 	FROM
-	  	homes`
+	  	hr.homes`
 
 	buf := bytes.NewBufferString(q)
 	s.applyFilter(filter, data, buf)
@@ -151,7 +151,7 @@ func (s *Store) Count(ctx context.Context, filter homebus.QueryFilter) (int, err
     SELECT
         count(1)
     FROM
-        homes`
+        hr.homes`
 
 	buf := bytes.NewBufferString(q)
 	s.applyFilter(filter, data, buf)
@@ -178,7 +178,7 @@ func (s *Store) QueryByID(ctx context.Context, homeID uuid.UUID) (homebus.Home, 
     SELECT
 	  	id, user_id, type, address_1, address_2, zip_code, city, state, country, created_date, updated_date
     FROM
-        homes
+        hr.homes
     WHERE
         id = :id`
 
@@ -205,7 +205,7 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]homebus.
 	SELECT
 	    id, user_id, type, address_1, address_2, zip_code, city, state, country, created_date, updated_date
 	FROM
-		homes
+		hr.homes
 	WHERE
 		user_id = :user_id`
 

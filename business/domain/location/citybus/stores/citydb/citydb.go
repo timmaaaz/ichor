@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (citybus.Storer, error) {
 // Create inserts a new city into the database.
 func (s *Store) Create(ctx context.Context, cty citybus.City) error {
 	const q = `
-    INSERT INTO cities (
+    INSERT INTO geography.cities (
         id, region_id, name
     ) VALUES (
         :id, :region_id, :name
@@ -67,7 +67,7 @@ func (s *Store) Create(ctx context.Context, cty citybus.City) error {
 // Update replaces a city document in the database.
 func (s *Store) Update(ctx context.Context, cty citybus.City) error {
 	const q = `
-    UPDATE cities
+    UPDATE geography.cities
     SET
         region_id = :region_id,
         name = :name
@@ -88,7 +88,7 @@ func (s *Store) Update(ctx context.Context, cty citybus.City) error {
 func (s *Store) Delete(ctx context.Context, cty citybus.City) error {
 	const q = `
     DELETE FROM 
-        cities
+        geography.cities
     WHERE
         id = :id
     `
@@ -110,7 +110,7 @@ func (s *Store) Query(ctx context.Context, filter citybus.QueryFilter, orderBy o
     SELECT
         id, region_id, name
     FROM
-        cities`
+        geography.cities`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -140,7 +140,7 @@ func (s *Store) Count(ctx context.Context, filter citybus.QueryFilter) (int, err
     SELECT
         COUNT(1) AS count
     FROM
-        cities`
+        geography.cities`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -167,7 +167,7 @@ func (s *Store) QueryByID(ctx context.Context, cityID uuid.UUID) (citybus.City, 
     SELECT
         id, region_id, name
     FROM
-        cities
+        geography.cities
     WHERE
         id = :id
     `

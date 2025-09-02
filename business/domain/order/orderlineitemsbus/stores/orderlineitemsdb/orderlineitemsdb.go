@@ -42,7 +42,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (orderlineitemsbus.Storer, 
 
 func (s *Store) Create(ctx context.Context, status orderlineitemsbus.OrderLineItem) error {
 	const q = `
-	INSERT INTO order_line_items (
+	INSERT INTO sales.order_line_items (
 	  id, order_id, product_id, quantity, discount, line_item_fulfillment_statuses_id, created_by, created_date, updated_by, updated_date
     ) VALUES (
         :id, :order_id, :product_id, :quantity, :discount, :line_item_fulfillment_statuses_id, :created_by, :created_date, :updated_by, :updated_date
@@ -66,7 +66,7 @@ func (s *Store) Create(ctx context.Context, status orderlineitemsbus.OrderLineIt
 func (s *Store) Update(ctx context.Context, status orderlineitemsbus.OrderLineItem) error {
 	const q = `
     UPDATE
-        order_line_items
+        sales.order_line_items
     SET
        order_id = :order_id,
        product_id = :product_id,
@@ -96,7 +96,7 @@ func (s *Store) Update(ctx context.Context, status orderlineitemsbus.OrderLineIt
 
 func (s *Store) Delete(ctx context.Context, status orderlineitemsbus.OrderLineItem) error {
 	const q = `
-    DELETE FROM order_line_items
+    DELETE FROM sales.order_line_items
     WHERE id = :id
     `
 
@@ -117,7 +117,7 @@ func (s *Store) Query(ctx context.Context, filter orderlineitemsbus.QueryFilter,
 	SELECT
 		id, order_id, product_id, quantity, discount, line_item_fulfillment_statuses_id, created_by, created_date, updated_by, updated_date
     FROM
-	    order_line_items
+	    sales.order_line_items
 		`
 
 	buf := bytes.NewBufferString(q)
@@ -146,7 +146,7 @@ func (s *Store) Count(ctx context.Context, filter orderlineitemsbus.QueryFilter)
     SELECT
         COUNT(1) AS count
     FROM
-        order_line_items
+        sales.order_line_items
     `
 
 	var count struct {
@@ -170,7 +170,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (orderlineite
     SELECT
         id, order_id, product_id, quantity, discount, line_item_fulfillment_statuses_id, created_by, created_date, updated_by, updated_date
     FROM
-        order_line_items
+        sales.order_line_items
     WHERE
         id = :id
     `

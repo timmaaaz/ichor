@@ -50,7 +50,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productcategorybus.Storer,
 // Create inserts a new product category into the database.
 func (s *Store) Create(ctx context.Context, pc productcategorybus.ProductCategory) error {
 	const q = `
-    INSERT INTO product_categories (
+    INSERT INTO products.product_categories (
         id, name, description, created_date, updated_date
     ) VALUES (
 		:id, :name, :description, :created_date, :updated_date
@@ -70,7 +70,7 @@ func (s *Store) Create(ctx context.Context, pc productcategorybus.ProductCategor
 func (s *Store) Update(ctx context.Context, pc productcategorybus.ProductCategory) error {
 	const q = `
 	UPDATE
-		product_categories
+		products.product_categories
 	SET
 		name = :name,
         description = :description,
@@ -92,7 +92,7 @@ func (s *Store) Update(ctx context.Context, pc productcategorybus.ProductCategor
 func (s *Store) Delete(ctx context.Context, pc productcategorybus.ProductCategory) error {
 	const q = `
 	DELETE FROM
-		product_categories
+		products.product_categories
 	WHERE
 		id = :id`
 
@@ -114,7 +114,7 @@ func (s *Store) Query(ctx context.Context, filter productcategorybus.QueryFilter
     SELECT
 		id, name, description, created_date, updated_date
     FROM
-        product_categories`
+        products.product_categories`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -143,7 +143,7 @@ func (s *Store) Count(ctx context.Context, filter productcategorybus.QueryFilter
     SELECT
         COUNT(1) AS count
     FROM
-        product_categories`
+        products.product_categories`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -170,7 +170,7 @@ func (s *Store) QueryByID(ctx context.Context, userProductCategoryID uuid.UUID) 
     SELECT
         id, name, description, created_date, updated_date
     FROM
-        product_categories
+        products.product_categories
     WHERE
         id = :id
     `

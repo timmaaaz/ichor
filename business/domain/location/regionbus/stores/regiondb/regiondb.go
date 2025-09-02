@@ -55,7 +55,7 @@ func (s *Store) Query(ctx context.Context, filter regionbus.QueryFilter, orderBy
     SELECT
         id, country_id, name, code
     FROM
-        regions`
+        geography.regions`
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
 
@@ -83,7 +83,7 @@ func (s *Store) Count(ctx context.Context, filter regionbus.QueryFilter) (int, e
 	SELECT
 		count(1)
 	FROM
-		regions`
+		geography.regions`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -108,7 +108,7 @@ func (s *Store) QueryByID(ctx context.Context, regionID uuid.UUID) (regionbus.Re
 	SELECT
 		id, country_id, name, code
 	FROM
-		regions
+		geography.regions
 	WHERE
 		id = :id`
 

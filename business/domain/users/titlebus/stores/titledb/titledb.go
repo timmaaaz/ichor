@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (titlebus.Storer, error) {
 // Create inserts a new title into the database.
 func (s *Store) Create(ctx context.Context, fs titlebus.Title) error {
 	const q = `
-    INSERT INTO titles (
+    INSERT INTO hr.titles (
         id, description, name
     ) VALUES (
         :id, :description, :name
@@ -67,7 +67,7 @@ func (s *Store) Create(ctx context.Context, fs titlebus.Title) error {
 // Update replaces an title document in the database.
 func (s *Store) Update(ctx context.Context, fs titlebus.Title) error {
 	const q = `
-	UPDATE titles
+	UPDATE hr.titles
 	SET 
 	    description = :description,
         name = :name
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, fs titlebus.Title) error {
 func (s *Store) Delete(ctx context.Context, as titlebus.Title) error {
 	const q = `
 	DELETE FROM
-		titles
+		hr.titles
 	WHERE
 		id = :id
 	`
@@ -112,7 +112,7 @@ func (s *Store) Query(ctx context.Context, filter titlebus.QueryFilter, orderBy 
 	SELECT 
 		id, description, name
 	FROM
-		titles
+		hr.titles
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -143,7 +143,7 @@ func (s *Store) Count(ctx context.Context, filter titlebus.QueryFilter) (int, er
     SELECT
         COUNT(1) AS count
     FROM
-        titles`
+        hr.titles`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -170,7 +170,7 @@ func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (titlebu
     SELECT
         id, description, name
     FROM
-        titles
+        hr.titles
     WHERE
         id = :id
     `

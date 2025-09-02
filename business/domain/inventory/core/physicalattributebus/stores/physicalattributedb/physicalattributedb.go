@@ -50,7 +50,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (physicalattributebus.Store
 // Create inserts a new product category into the database.
 func (s *Store) Create(ctx context.Context, pa physicalattributebus.PhysicalAttribute) error {
 	const q = `
-    INSERT INTO physical_attributes (
+    INSERT INTO products.physical_attributes (
         id, product_id, length, width, height, weight, weight_unit, color, size,
 		material, storage_requirements, hazmat_class, shelf_life_days, created_date, updated_date
     ) VALUES (
@@ -74,7 +74,7 @@ func (s *Store) Create(ctx context.Context, pa physicalattributebus.PhysicalAttr
 func (s *Store) Update(ctx context.Context, pa physicalattributebus.PhysicalAttribute) error {
 	const q = `
 	UPDATE
-		physical_attributes
+		products.physical_attributes
 	SET
 		id = :id,
 		product_id = :product_id,
@@ -110,7 +110,7 @@ func (s *Store) Update(ctx context.Context, pa physicalattributebus.PhysicalAttr
 func (s *Store) Delete(ctx context.Context, pa physicalattributebus.PhysicalAttribute) error {
 	const q = `
 	DELETE FROM
-		physical_attributes
+		products.physical_attributes
 	WHERE
 		id = :id`
 
@@ -133,7 +133,7 @@ func (s *Store) Query(ctx context.Context, filter physicalattributebus.QueryFilt
 		id, product_id, length, width, height, weight, weight_unit, color, size,
 		material, storage_requirements, hazmat_class, shelf_life_days, created_date, updated_date
     FROM
-        physical_attributes`
+        products.physical_attributes`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -162,7 +162,7 @@ func (s *Store) Count(ctx context.Context, filter physicalattributebus.QueryFilt
     SELECT
         COUNT(1) AS count
     FROM
-        physical_attributes`
+        products.physical_attributes`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -190,7 +190,7 @@ func (s *Store) QueryByID(ctx context.Context, userPhysicalAttributeID uuid.UUID
         id, product_id, length, width, height, weight, weight_unit, color, size,
 		material, storage_requirements, hazmat_class, shelf_life_days, created_date, updated_date
     FROM
-        physical_attributes
+        products.physical_attributes
     WHERE
         id = :id
     `

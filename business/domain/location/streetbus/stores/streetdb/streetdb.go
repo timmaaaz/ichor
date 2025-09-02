@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (streetbus.Storer, error) {
 // Create inserts a new street into the database.
 func (s *Store) Create(ctx context.Context, str streetbus.Street) error {
 	const q = `
-    INSERT INTO streets (
+    INSERT INTO geography.streets (
         id, city_id, line_1, line_2, postal_code
     ) VALUES (
         :id, :city_id, :line_1, :line_2, :postal_code
@@ -65,7 +65,7 @@ func (s *Store) Create(ctx context.Context, str streetbus.Street) error {
 // Update modifies a street in the database.
 func (s *Store) Update(ctx context.Context, str streetbus.Street) error {
 	const q = `
-    UPDATE streets
+    UPDATE geography.streets
     SET
         city_id = :city_id,
         line_1 = :line_1,
@@ -86,7 +86,7 @@ func (s *Store) Update(ctx context.Context, str streetbus.Street) error {
 func (s *Store) Delete(ctx context.Context, str streetbus.Street) error {
 	const q = `
     DELETE FROM 
-        streets
+        geography.streets
     WHERE
         id = :id
     `
@@ -108,7 +108,7 @@ func (s *Store) Query(ctx context.Context, filter streetbus.QueryFilter, orderBy
     SELECT
         id, city_id, line_1, line_2, postal_code
     FROM
-        streets`
+        geography.streets`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -137,7 +137,7 @@ func (s *Store) Count(ctx context.Context, filter streetbus.QueryFilter) (int, e
     SELECT
         COUNT(1) AS count
     FROM
-        streets`
+        geography.streets`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -164,7 +164,7 @@ func (s *Store) QueryByID(ctx context.Context, streetID uuid.UUID) (streetbus.St
     SELECT
         id, city_id, line_1, line_2, postal_code
     FROM
-        streets
+        geography.streets
     WHERE
         id = :id
     `

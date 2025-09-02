@@ -47,7 +47,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (metricsbus.Storer, error) 
 
 func (s *Store) Create(ctx context.Context, metric metricsbus.Metric) error {
 	const q = `
-	INSERT INTO quality_metrics (
+	INSERT INTO products.quality_metrics (
 		id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
 	) VALUES (
 		:id, :product_id, :return_rate, :defect_rate, :measurement_period, :created_date, :updated_date
@@ -68,7 +68,7 @@ func (s *Store) Create(ctx context.Context, metric metricsbus.Metric) error {
 func (s *Store) Update(ctx context.Context, metric metricsbus.Metric) error {
 	const q = `
 	UPDATE
-	    quality_metrics
+	    products.quality_metrics
 	SET
 		id = :id,
 		product_id = :product_id,
@@ -95,7 +95,7 @@ func (s *Store) Update(ctx context.Context, metric metricsbus.Metric) error {
 func (s *Store) Delete(ctx context.Context, metric metricsbus.Metric) error {
 	const q = `
     DELETE FROM
-        quality_metrics
+        products.quality_metrics
     WHERE
         id = :id
     `
@@ -116,7 +116,7 @@ func (s *Store) Query(ctx context.Context, filter metricsbus.QueryFilter, orderB
     SELECT
         id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
     FROM
-        quality_metrics
+        products.quality_metrics
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -146,7 +146,7 @@ func (s *Store) Count(ctx context.Context, filter metricsbus.QueryFilter) (int, 
     SELECT
         COUNT(1) AS count
     FROM
-        quality_metrics
+        products.quality_metrics
     `
 
 	buf := bytes.NewBufferString(q)
@@ -174,7 +174,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (metricsbus.Metric,
     SELECT
         id, product_id, return_rate, defect_rate, measurement_period, created_date, updated_date
     FROM
-        quality_metrics
+        products.quality_metrics
 	WHERE
 		id = :id
 	`

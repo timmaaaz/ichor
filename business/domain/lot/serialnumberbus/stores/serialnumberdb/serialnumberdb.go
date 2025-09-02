@@ -47,7 +47,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (serialnumberbus.Storer, er
 
 func (s *Store) Create(ctx context.Context, sn serialnumberbus.SerialNumber) error {
 	const q = `
-    INSERT INTO serial_numbers (
+    INSERT INTO inventory.serial_numbers (
         id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
     ) VALUES (
         :id, :lot_id, :product_id, :location_id, :serial_number, :status, :created_date, :updated_date
@@ -70,7 +70,7 @@ func (s *Store) Create(ctx context.Context, sn serialnumberbus.SerialNumber) err
 func (s *Store) Update(ctx context.Context, sn serialnumberbus.SerialNumber) error {
 	const q = `
     UPDATE
-        serial_numbers
+        inventory.serial_numbers
     SET
         id = :id,
         lot_id = :lot_id,
@@ -98,7 +98,7 @@ func (s *Store) Update(ctx context.Context, sn serialnumberbus.SerialNumber) err
 func (s *Store) Delete(ctx context.Context, sn serialnumberbus.SerialNumber) error {
 	const q = `
     DELETE FROM
-        serial_numbers
+        inventory.serial_numbers
     WHERE
         id = :id
     `
@@ -119,7 +119,7 @@ func (s *Store) Query(ctx context.Context, filter serialnumberbus.QueryFilter, o
 	SELECT
 		id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
 	FROM 
-		serial_numbers
+		inventory.serial_numbers
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -149,7 +149,7 @@ func (s *Store) Count(ctx context.Context, filter serialnumberbus.QueryFilter) (
 	SELECT
 		COUNT(1) AS count
 	FROM 
-		serial_numbers
+		inventory.serial_numbers
 		`
 
 	buf := bytes.NewBufferString(q)
@@ -178,7 +178,7 @@ func (s *Store) QueryByID(ctx context.Context, serialID uuid.UUID) (serialnumber
     SELECT
         id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
     FROM 
-        serial_numbers
+        inventory.serial_numbers
     WHERE
         id = :id
     `

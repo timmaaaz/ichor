@@ -49,7 +49,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (warehousebus.Storer, error
 // Create inserts a new warehouse into the database.
 func (s *Store) Create(ctx context.Context, bus warehousebus.Warehouse) error {
 	const q = `
-		INSERT INTO warehouses
+		INSERT INTO inventory.warehouses
 			(id, street_id, name, is_active, created_date, updated_date, created_by, updated_by)
 		VALUES
 			(:id, :street_id, :name, :is_active, :created_date, :updated_date, :created_by, :updated_by)
@@ -68,8 +68,8 @@ func (s *Store) Create(ctx context.Context, bus warehousebus.Warehouse) error {
 // Update replaces a warehouse document in the database.
 func (s *Store) Update(ctx context.Context, bus warehousebus.Warehouse) error {
 	const q = `
-		UPDATE 
-			warehouses
+		UPDATE
+			inventory.warehouses
 		SET
 			street_id = :street_id,
 			name = :name,
@@ -94,7 +94,7 @@ func (s *Store) Update(ctx context.Context, bus warehousebus.Warehouse) error {
 func (s *Store) Delete(ctx context.Context, bus warehousebus.Warehouse) error {
 	const q = `
 		DELETE FROM
-			warehouses
+			inventory.warehouses
 		WHERE
 			id = :id
 		`
@@ -124,7 +124,7 @@ func (s *Store) Query(ctx context.Context, filter warehousebus.QueryFilter, orde
 		created_by,
 		updated_by
 	FROM
-		warehouses`
+		inventory.warehouses`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -153,7 +153,7 @@ func (s *Store) Count(ctx context.Context, filter warehousebus.QueryFilter) (int
 	SELECT
 		COUNT(*) AS count
 	FROM
-		warehouses`
+		inventory.warehouses`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -187,7 +187,7 @@ func (s *Store) QueryByID(ctx context.Context, wID uuid.UUID) (warehousebus.Ware
 		created_by,
 		updated_by
 	FROM
-		warehouses
+		inventory.warehouses
 	WHERE
 		id = :id`
 

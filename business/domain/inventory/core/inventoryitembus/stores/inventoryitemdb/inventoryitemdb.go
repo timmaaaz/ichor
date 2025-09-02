@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventoryitembus.Storer, e
 // Create inserts a new inventory product into the database.
 func (s *Store) Create(ctx context.Context, ip inventoryitembus.InventoryItem) error {
 	const q = `
-	INSERT INTO inventory_items (
+	INSERT INTO inventory.inventory_items (
 		id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
 		minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
 		avg_daily_usage, created_date, updated_date
@@ -76,7 +76,7 @@ func (s *Store) Create(ctx context.Context, ip inventoryitembus.InventoryItem) e
 func (s *Store) Update(ctx context.Context, ip inventoryitembus.InventoryItem) error {
 	const q = `
     UPDATE
-        inventory_items
+        inventory.inventory_items
     SET
 		id = :id,
 		product_id = :product_id,
@@ -112,7 +112,7 @@ func (s *Store) Update(ctx context.Context, ip inventoryitembus.InventoryItem) e
 func (s *Store) Delete(ctx context.Context, ip inventoryitembus.InventoryItem) error {
 	const q = `
 	DELETE FROM
-	    inventory_items
+	    inventory.inventory_items
 	WHERE
 		id = :id
 	`
@@ -137,7 +137,7 @@ func (s *Store) Query(ctx context.Context, filter inventoryitembus.QueryFilter, 
         minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
         avg_daily_usage, created_date, updated_date
     FROM
-        inventory_items
+        inventory.inventory_items
     `
 
 	buf := bytes.NewBufferString(q)
@@ -167,7 +167,7 @@ func (s *Store) Count(ctx context.Context, filter inventoryitembus.QueryFilter) 
     SELECT
         COUNT(1) as count
     FROM
-        inventory_items
+        inventory.inventory_items
     `
 
 	buf := bytes.NewBufferString(q)
@@ -196,7 +196,7 @@ func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (inventoryitemb
         minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
         avg_daily_usage, created_date, updated_date
     FROM
-        inventory_items
+        inventory.inventory_items
     WHERE
         id = :id
 

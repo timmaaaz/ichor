@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (reportstobus.Storer, error
 // Create inserts a new reports to into the database.
 func (s *Store) Create(ctx context.Context, t reportstobus.ReportsTo) error {
 	const q = `
-    INSERT INTO reports_to (
+    INSERT INTO hr.reports_to (
         id, boss_id, reporter_id
     ) VALUES (
         :id, :boss_id, :reporter_id
@@ -68,7 +68,7 @@ func (s *Store) Create(ctx context.Context, t reportstobus.ReportsTo) error {
 func (s *Store) Update(ctx context.Context, t reportstobus.ReportsTo) error {
 	const q = `
     UPDATE 
-        reports_to
+        hr.reports_to
     SET
         boss_id = :boss_id,
         reporter_id = :reporter_id
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, t reportstobus.ReportsTo) error {
 func (s *Store) Delete(ctx context.Context, at reportstobus.ReportsTo) error {
 	const q = `
     DELETE FROM
-        reports_to
+        hr.reports_to
     WHERE
         id = :id
     `
@@ -100,7 +100,7 @@ func (s *Store) Delete(ctx context.Context, at reportstobus.ReportsTo) error {
 	return nil
 }
 
-// Query retrieves a list of existing reports_to from the database.
+// Query retrieves a list of existing hr.reports_to from the database.
 func (s *Store) Query(ctx context.Context, filter reportstobus.QueryFilter, orderBy order.By, page page.Page) ([]reportstobus.ReportsTo, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
@@ -111,7 +111,7 @@ func (s *Store) Query(ctx context.Context, filter reportstobus.QueryFilter, orde
     SELECT
         id, boss_id, reporter_id
     FROM
-        reports_to `
+        hr.reports_to `
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -132,7 +132,7 @@ func (s *Store) Query(ctx context.Context, filter reportstobus.QueryFilter, orde
 	return toBusReportsTos(dbRTs), nil
 }
 
-// Count returns the total number of reports_to in the DB.
+// Count returns the total number of hr.reports_to in the DB.
 func (s *Store) Count(ctx context.Context, filter reportstobus.QueryFilter) (int, error) {
 	data := map[string]any{}
 
@@ -140,7 +140,7 @@ func (s *Store) Count(ctx context.Context, filter reportstobus.QueryFilter) (int
     SELECT
         COUNT(1) AS count
     FROM
-        reports_to`
+        hr.reports_to`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -167,7 +167,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (reportstobus.Repor
     SELECT
         id, boss_id, reporter_id
     FROM
-        reports_to
+        hr.reports_to
     WHERE
         id = :id
     `

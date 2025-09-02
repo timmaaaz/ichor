@@ -50,7 +50,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userbus.Storer, error) {
 // Create inserts a new user into the database.
 func (s *Store) Create(ctx context.Context, usr userbus.User) error {
 	const q = `
-	INSERT INTO users (
+	INSERT INTO core.users (
 		id, requested_by, approved_by, title_id, office_id, work_phone_id, 
 		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
@@ -77,7 +77,7 @@ func (s *Store) Create(ctx context.Context, usr userbus.User) error {
 func (s *Store) Update(ctx context.Context, usr userbus.User) error {
 	const q = `
 	UPDATE
-		users
+		core.users
 	SET 
 		requested_by = :requested_by,
 		approved_by = :approved_by,
@@ -115,7 +115,7 @@ func (s *Store) Update(ctx context.Context, usr userbus.User) error {
 func (s *Store) Delete(ctx context.Context, usr userbus.User) error {
 	const q = `
 	DELETE FROM
-		users
+		core.users
 	WHERE
 		id = :id`
 
@@ -140,7 +140,7 @@ func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy o
 		system_roles, password_hash, enabled, date_hired, date_requested, 
 		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
-		users`
+		core.users`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -169,7 +169,7 @@ func (s *Store) Count(ctx context.Context, filter userbus.QueryFilter) (int, err
 	SELECT
 		COUNT(1) AS count
 	FROM
-		users`
+		core.users`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -199,7 +199,7 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (userbus.User, 
 		system_roles, password_hash, enabled, date_hired, date_requested, 
 		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
-		users
+		core.users
 	WHERE 
 		id = :id`
 
@@ -229,7 +229,7 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.U
 		system_roles, password_hash, enabled, date_hired, date_requested, 
 		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
-		users
+		core.users
 	WHERE
 		email = :email`
 

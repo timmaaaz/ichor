@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (supplierbus.Storer, error)
 // Create inserts a new supplier into the database.
 func (s *Store) Create(ctx context.Context, supplier supplierbus.Supplier) error {
 	const q = `
-	INSERT INTO suppliers (
+	INSERT INTO procurement.suppliers (
 		id, contact_infos_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	) VALUES (
 		:id, :contact_infos_id, :name, :payment_terms, :lead_time_days, :rating, :is_active, :created_date, :updated_date
@@ -71,7 +71,7 @@ func (s *Store) Create(ctx context.Context, supplier supplierbus.Supplier) error
 func (s *Store) Update(ctx context.Context, supplier supplierbus.Supplier) error {
 	const q = `
 	UPDATE
-		suppliers
+		procurement.suppliers
 	SET
 	    id = :id,
         contact_infos_id = :contact_infos_id,
@@ -101,7 +101,7 @@ func (s *Store) Update(ctx context.Context, supplier supplierbus.Supplier) error
 func (s *Store) Delete(ctx context.Context, supplier supplierbus.Supplier) error {
 	const q = `
     DELETE FROM
-        suppliers
+        procurement.suppliers
     WHERE
         id = :id`
 
@@ -122,7 +122,7 @@ func (s *Store) Query(ctx context.Context, filter supplierbus.QueryFilter, order
 	SELECT
 	    id, contact_infos_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
-		suppliers
+		procurement.suppliers
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -153,7 +153,7 @@ func (s *Store) Count(ctx context.Context, filter supplierbus.QueryFilter) (int,
     SELECT
         COUNT(1) AS count
     FROM
-        suppliers`
+        procurement.suppliers`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -180,7 +180,7 @@ func (s *Store) QueryByID(ctx context.Context, supplierID uuid.UUID) (supplierbu
 	SELECT
 	    id, contact_infos_id, name, payment_terms, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
-		suppliers
+		procurement.suppliers
 	WHERE 
 		id = :id
 	`

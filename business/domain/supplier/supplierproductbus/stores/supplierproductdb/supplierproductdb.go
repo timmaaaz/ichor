@@ -47,7 +47,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (supplierproductbus.Storer,
 
 func (s *Store) Create(ctx context.Context, ch supplierproductbus.SupplierProduct) error {
 	const q = `
-    INSERT INTO supplier_products ( 
+    INSERT INTO procurement.supplier_products ( 
 		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
 		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
     ) VALUES (
@@ -71,7 +71,7 @@ func (s *Store) Create(ctx context.Context, ch supplierproductbus.SupplierProduc
 func (s *Store) Update(ctx context.Context, ch supplierproductbus.SupplierProduct) error {
 	const q = `
     UPDATE
-        supplier_products
+        procurement.supplier_products
     SET
 		id = :id,
 		supplier_id = :supplier_id,
@@ -102,7 +102,7 @@ func (s *Store) Update(ctx context.Context, ch supplierproductbus.SupplierProduc
 func (s *Store) Delete(ctx context.Context, ch supplierproductbus.SupplierProduct) error {
 	const q = `
 	DELETE FROM
-		supplier_products
+		procurement.supplier_products
 	WHERE
 		id = :id`
 
@@ -124,7 +124,7 @@ func (s *Store) Query(ctx context.Context, filter supplierproductbus.QueryFilter
 		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
 		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
 	FROM 
-		supplier_products
+		procurement.supplier_products
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -153,7 +153,7 @@ func (s *Store) Count(ctx context.Context, filter supplierproductbus.QueryFilter
     SELECT
         COUNT(1) AS count
     FROM
-        supplier_products`
+        procurement.supplier_products`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -180,7 +180,7 @@ func (s *Store) QueryByID(ctx context.Context, supplierProductID uuid.UUID) (sup
 		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
 		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
 	FROM 
-		supplier_products
+		procurement.supplier_products
 	WHERE 
 	    id = :id`
 

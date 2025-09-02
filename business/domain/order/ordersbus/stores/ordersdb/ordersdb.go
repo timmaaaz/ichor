@@ -42,7 +42,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (ordersbus.Storer, error) {
 
 func (s *Store) Create(ctx context.Context, status ordersbus.Order) error {
 	const q = `
-	INSERT INTO orders (
+	INSERT INTO sales.orders (
 	  id, number, customer_id, due_date, order_fulfillment_status_id, created_by, updated_by, created_date, updated_date
     ) VALUES (
         :id, :number, :customer_id, :due_date, :order_fulfillment_status_id, :created_by, :updated_by, :created_date, :updated_date
@@ -66,7 +66,7 @@ func (s *Store) Create(ctx context.Context, status ordersbus.Order) error {
 func (s *Store) Update(ctx context.Context, status ordersbus.Order) error {
 	const q = `
     UPDATE
-        orders
+        sales.orders
     SET
         number = :number,
         customer_id = :customer_id,
@@ -95,7 +95,7 @@ func (s *Store) Update(ctx context.Context, status ordersbus.Order) error {
 
 func (s *Store) Delete(ctx context.Context, status ordersbus.Order) error {
 	const q = `
-    DELETE FROM orders
+    DELETE FROM sales.orders
     WHERE id = :id
     `
 
@@ -116,7 +116,7 @@ func (s *Store) Query(ctx context.Context, filter ordersbus.QueryFilter, orderBy
 	SELECT
 		id, number, customer_id, due_date, order_fulfillment_status_id, created_by, updated_by, created_date, updated_date
     FROM
-	    orders
+	    sales.orders
 		`
 
 	buf := bytes.NewBufferString(q)
@@ -145,7 +145,7 @@ func (s *Store) Count(ctx context.Context, filter ordersbus.QueryFilter) (int, e
     SELECT
         COUNT(1) AS count
     FROM
-        orders
+        sales.orders
     `
 
 	var count struct {
@@ -169,7 +169,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (ordersbus.Or
     SELECT
         id, number, customer_id, due_date, order_fulfillment_status_id, created_by, updated_by, created_date, updated_date
     FROM
-        orders
+        sales.orders
     WHERE
         id = :id
     `

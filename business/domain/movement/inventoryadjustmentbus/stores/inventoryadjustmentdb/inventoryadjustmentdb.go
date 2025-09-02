@@ -41,7 +41,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventoryadjustmentbus.Sto
 
 func (s *Store) Create(ctx context.Context, ia inventoryadjustmentbus.InventoryAdjustment) error {
 	const q = `
-    INSERT INTO inventory_adjustments (
+    INSERT INTO inventory.inventory_adjustments (
         id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
 		notes, adjustment_date, created_date, updated_date
     ) VALUES (
@@ -66,7 +66,7 @@ func (s *Store) Create(ctx context.Context, ia inventoryadjustmentbus.InventoryA
 func (s *Store) Update(ctx context.Context, ia inventoryadjustmentbus.InventoryAdjustment) error {
 	const q = `
     UPDATE
-        inventory_adjustments
+        inventory.inventory_adjustments
     SET
         id = :id,
         product_id = :product_id,
@@ -98,7 +98,7 @@ func (s *Store) Update(ctx context.Context, ia inventoryadjustmentbus.InventoryA
 func (s *Store) Delete(ctx context.Context, inventoryAdjument inventoryadjustmentbus.InventoryAdjustment) error {
 	const q = `
 		DELETE FROM
-		    inventory_adjustments
+		    inventory.inventory_adjustments
 		WHERE
 			id = :id
 		`
@@ -120,7 +120,7 @@ func (s *Store) Query(ctx context.Context, filter inventoryadjustmentbus.QueryFi
 	    id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
         notes, adjustment_date, created_date, updated_date
 	FROM
-		inventory_adjustments`
+		inventory.inventory_adjustments`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -148,7 +148,7 @@ func (s *Store) Count(ctx context.Context, filter inventoryadjustmentbus.QueryFi
     SELECT
         COUNT(1) AS count
     FROM
-        inventory_adjustments`
+        inventory.inventory_adjustments`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -176,7 +176,7 @@ func (s *Store) QueryByID(ctx context.Context, adjustmentID uuid.UUID) (inventor
 	    id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
         notes, adjustment_date, created_date, updated_date
 	FROM 
-		inventory_adjustments
+		inventory.inventory_adjustments
 	WHERE
 		id = :id
     `

@@ -65,13 +65,13 @@ func (s *Store) QueryUserPermissions(ctx context.Context, userID uuid.UUID) (per
 	    bool_or(ta.can_delete) AS can_delete,
 	    array_agg(DISTINCT r.name) AS roles
 	FROM
-	    users u
+	    core.users u
 	JOIN
-	    user_roles ur ON u.user_id = ur.user_id
+	    core.user_roles ur ON u.user_id = ur.user_id
 	JOIN
-	    roles r ON ur.role_id = r.role_id
+	    core.roles r ON ur.role_id = r.role_id
 	JOIN
-	    table_access ta ON r.role_id = ta.role_id
+	    core.table_access ta ON r.role_id = ta.role_id
 	WHERE
 	    u.user_id = :user_id
 	GROUP BY

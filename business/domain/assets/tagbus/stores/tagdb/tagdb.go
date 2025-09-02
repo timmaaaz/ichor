@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (tagbus.Storer, error) {
 // Create inserts a new tag into the database.
 func (s *Store) Create(ctx context.Context, t tagbus.Tag) error {
 	const q = `
-    INSERT INTO tags (
+    INSERT INTO assets.tags (
         id, name, description
     ) VALUES (
         :id, :name, :description
@@ -68,7 +68,7 @@ func (s *Store) Create(ctx context.Context, t tagbus.Tag) error {
 func (s *Store) Update(ctx context.Context, t tagbus.Tag) error {
 	const q = `
     UPDATE 
-        tags
+        assets.tags
     SET
         name = :name,
         description = :description
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, t tagbus.Tag) error {
 func (s *Store) Delete(ctx context.Context, at tagbus.Tag) error {
 	const q = `
     DELETE FROM
-        tags
+        assets.tags
     WHERE
         id = :id
     `
@@ -111,7 +111,7 @@ func (s *Store) Query(ctx context.Context, filter tagbus.QueryFilter, orderBy or
     SELECT
         id, name, description
     FROM
-        tags`
+        assets.tags`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -140,7 +140,7 @@ func (s *Store) Count(ctx context.Context, filter tagbus.QueryFilter) (int, erro
     SELECT
         COUNT(1) AS count
     FROM
-        tags`
+        assets.tags`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -167,7 +167,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (tagbus.Tag, error)
     SELECT
         id, name, description
     FROM
-        tags
+        assets.tags
     WHERE
         id = :id
     `

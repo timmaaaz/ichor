@@ -41,7 +41,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventorytransactionbus.St
 
 func (s *Store) Create(ctx context.Context, it inventorytransactionbus.InventoryTransaction) error {
 	const q = `
-	INSERT INTO inventory_transactions (
+	INSERT INTO inventory.inventory_transactions (
 		id, product_id, location_id, user_id, transaction_type, reference_number, 
 		quantity, transaction_date, created_date, updated_date
 	) VALUES (
@@ -67,7 +67,7 @@ func (s *Store) Create(ctx context.Context, it inventorytransactionbus.Inventory
 func (s *Store) Update(ctx context.Context, it inventorytransactionbus.InventoryTransaction) error {
 	const q = `
     UPDATE
-        inventory_transactions
+        inventory.inventory_transactions
     SET
         id = :id,
         product_id = :product_id,
@@ -99,7 +99,7 @@ func (s *Store) Update(ctx context.Context, it inventorytransactionbus.Inventory
 func (s *Store) Delete(ctx context.Context, transaction inventorytransactionbus.InventoryTransaction) error {
 	const q = `
     DELETE FROM
-        inventory_transactions
+        inventory.inventory_transactions
     WHERE
         id = :id
     `
@@ -122,7 +122,7 @@ func (s *Store) Query(ctx context.Context, filter inventorytransactionbus.QueryF
 	    id, product_id, location_id, user_id, transaction_type, reference_number, 
         quantity, transaction_date, created_date, updated_date
 	FROM 
-	    inventory_transactions
+	    inventory.inventory_transactions
 		`
 
 	buf := bytes.NewBufferString(q)
@@ -153,7 +153,7 @@ func (s *Store) Count(ctx context.Context, filter inventorytransactionbus.QueryF
     SELECT 
         COUNT(1) AS count
     FROM 
-        inventory_transactions
+        inventory.inventory_transactions
     `
 
 	buf := bytes.NewBufferString(q)
@@ -182,7 +182,7 @@ func (s *Store) QueryByID(ctx context.Context, transactionID uuid.UUID) (invento
         id, product_id, location_id, user_id, transaction_type, reference_number, 
         quantity, transaction_date, created_date, updated_date
     FROM
-        inventory_transactions
+        inventory.inventory_transactions
     WHERE
         id = :id
     `

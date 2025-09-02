@@ -42,7 +42,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (orderfulfillmentstatusbus.
 
 func (s *Store) Create(ctx context.Context, status orderfulfillmentstatusbus.OrderFulfillmentStatus) error {
 	const q = `
-	INSERT INTO order_fulfillment_statuses (
+	INSERT INTO sales.order_fulfillment_statuses (
 	  id, name, description
     ) VALUES (
         :id, :name, :description
@@ -66,7 +66,7 @@ func (s *Store) Create(ctx context.Context, status orderfulfillmentstatusbus.Ord
 func (s *Store) Update(ctx context.Context, status orderfulfillmentstatusbus.OrderFulfillmentStatus) error {
 	const q = `
     UPDATE
-        order_fulfillment_statuses
+        sales.order_fulfillment_statuses
     SET
         name = :name,
         description = :description
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, status orderfulfillmentstatusbus.Ord
 
 func (s *Store) Delete(ctx context.Context, status orderfulfillmentstatusbus.OrderFulfillmentStatus) error {
 	const q = `
-    DELETE FROM order_fulfillment_statuses
+    DELETE FROM sales.order_fulfillment_statuses
     WHERE id = :id
     `
 
@@ -110,7 +110,7 @@ func (s *Store) Query(ctx context.Context, filter orderfulfillmentstatusbus.Quer
 	SELECT
 		id, name, description
     FROM
-	    order_fulfillment_statuses
+	    sales.order_fulfillment_statuses
 		`
 
 	buf := bytes.NewBufferString(q)
@@ -139,7 +139,7 @@ func (s *Store) Count(ctx context.Context, filter orderfulfillmentstatusbus.Quer
     SELECT
         COUNT(1) AS count
     FROM
-        order_fulfillment_statuses
+        sales.order_fulfillment_statuses
     `
 
 	var count struct {
@@ -163,7 +163,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (orderfulfill
     SELECT
         id, name, description
     FROM
-        order_fulfillment_statuses
+        sales.order_fulfillment_statuses
     WHERE
         id = :id
     `

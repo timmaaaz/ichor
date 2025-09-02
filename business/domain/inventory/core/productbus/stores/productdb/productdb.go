@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productbus.Storer, error) 
 // Create inserts a new product into the database.
 func (s *Store) Create(ctx context.Context, brand productbus.Product) error {
 	const q = `
-    INSERT INTO products ( 
+    INSERT INTO products.products ( 
 		id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     ) VALUES (
@@ -73,7 +73,7 @@ func (s *Store) Create(ctx context.Context, brand productbus.Product) error {
 func (s *Store) Update(ctx context.Context, prod productbus.Product) error {
 	const q = `
 	UPDATE
-		products
+		products.products
 	SET
 		id = :id,
 		sku = :sku,
@@ -109,7 +109,7 @@ func (s *Store) Update(ctx context.Context, prod productbus.Product) error {
 func (s *Store) Delete(ctx context.Context, product productbus.Product) error {
 	const q = `
 	DELETE FROM
-		products
+		products.products
 	WHERE
 		id = :id`
 
@@ -132,7 +132,7 @@ func (s *Store) Query(ctx context.Context, filter productbus.QueryFilter, orderB
 		id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     FROM
-        products`
+        products.products`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -161,7 +161,7 @@ func (s *Store) Count(ctx context.Context, filter productbus.QueryFilter) (int, 
     SELECT
         COUNT(1) AS count
     FROM
-        products`
+        products.products`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -189,7 +189,7 @@ func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (productbu
        	id, sku, brand_id, category_id, name, description, model_number, upc_code, status, 
 		is_active, is_perishable, handling_instructions, units_per_case, created_date, updated_date
     FROM
-        products
+        products.products
     WHERE
         id = :id
     `

@@ -41,7 +41,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (transferorderbus.Storer, e
 
 func (s *Store) Create(ctx context.Context, transferOrder transferorderbus.TransferOrder) error {
 	const q = `
-	INSERT INTO transfer_orders (
+	INSERT INTO inventory.transfer_orders (
 	    id, product_id, from_location_id, to_location_id, requested_by, 
 		approved_by, quantity, status, transfer_date, created_date, updated_date
     ) VALUES (
@@ -67,7 +67,7 @@ func (s *Store) Create(ctx context.Context, transferOrder transferorderbus.Trans
 func (s *Store) Update(ctx context.Context, transferOrder transferorderbus.TransferOrder) error {
 	const q = `
     UPDATE
-        transfer_orders
+        inventory.transfer_orders
     SET
         product_id = :product_id, 
 		from_location_id = :from_location_id, 
@@ -97,7 +97,7 @@ func (s *Store) Update(ctx context.Context, transferOrder transferorderbus.Trans
 
 func (s *Store) Delete(ctx context.Context, transferOrder transferorderbus.TransferOrder) error {
 	const q = `
-    DELETE FROM transfer_orders
+    DELETE FROM inventory.transfer_orders
     WHERE id = :id
     `
 
@@ -119,7 +119,7 @@ func (s *Store) Query(ctx context.Context, filter transferorderbus.QueryFilter, 
 		id, product_id, from_location_id, to_location_id, requested_by, approved_by, 
 		quantity, status, transfer_date, created_date, updated_date
     FROM
-	    transfer_orders
+	    inventory.transfer_orders
 		`
 
 	buf := bytes.NewBufferString(q)
@@ -148,7 +148,7 @@ func (s *Store) Count(ctx context.Context, filter transferorderbus.QueryFilter) 
     SELECT
         COUNT(1) AS count
     FROM
-        transfer_orders
+        inventory.transfer_orders
     `
 
 	var count struct {
@@ -173,7 +173,7 @@ func (s *Store) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (trans
         id, product_id, from_location_id, to_location_id, requested_by, approved_by, 
         quantity, status, transfer_date, created_date, updated_date
     FROM
-        transfer_orders
+        inventory.transfer_orders
     WHERE
         id = :id
     `

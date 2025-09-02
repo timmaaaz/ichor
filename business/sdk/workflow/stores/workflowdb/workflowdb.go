@@ -280,7 +280,7 @@ func (s *Store) QueryEntityTypes(ctx context.Context) ([]workflow.EntityType, er
 // CreateEntity inserts a new entity into the database.
 func (s *Store) CreateEntity(ctx context.Context, entity workflow.Entity) error {
 	const q = `
-	INSERT INTO entities (
+	INSERT INTO workflow.entities (
 		id, name, entity_type_id, schema_name, is_active, created_date
 	) VALUES (
 		:id, :name, :entity_type_id, :schema_name, :is_active, :created_date
@@ -297,7 +297,7 @@ func (s *Store) CreateEntity(ctx context.Context, entity workflow.Entity) error 
 func (s *Store) UpdateEntity(ctx context.Context, entity workflow.Entity) error {
 	const q = `
 	UPDATE
-		entities
+		workflow.entities
 	SET 
 		name = :name,
 		entity_type_id = :entity_type_id,
@@ -317,7 +317,7 @@ func (s *Store) UpdateEntity(ctx context.Context, entity workflow.Entity) error 
 func (s *Store) DeactivateEntity(ctx context.Context, entity workflow.Entity) error {
 	const q = `
 	UPDATE
-		entities
+		workflow.entities
 	SET
 		deactivated_by = :deactivated_by,
 		is_active = false
@@ -335,7 +335,7 @@ func (s *Store) DeactivateEntity(ctx context.Context, entity workflow.Entity) er
 func (s *Store) ActivateEntity(ctx context.Context, entity workflow.Entity) error {
 	const q = `
 	UPDATE
-		entities
+		workflow.entities
 	SET
 		deactivated_by = NULL,
 		is_active = true
@@ -349,13 +349,13 @@ func (s *Store) ActivateEntity(ctx context.Context, entity workflow.Entity) erro
 	return nil
 }
 
-// QueryEntities retrieves a list of existing entities from the database.
+// QueryEntities retrieves a list of existing workflow.entities from the database.
 func (s *Store) QueryEntities(ctx context.Context) ([]workflow.Entity, error) {
 	const q = `
 	SELECT
 		id, name, entity_type_id, schema_name, is_active, created_date
 	FROM
-		entities`
+		workflow.entities`
 
 	var dbEntities []entity
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbEntities); err != nil {
@@ -370,7 +370,7 @@ func (s *Store) QueryEntities(ctx context.Context) ([]workflow.Entity, error) {
 // CreateRule inserts a new automation rule into the database.
 func (s *Store) CreateRule(ctx context.Context, rule workflow.AutomationRule) error {
 	const q = `
-	INSERT INTO automation_rules (
+	INSERT INTO workflow.automation_rules (
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
 		trigger_conditions, is_active, created_date, updated_date,
 		created_by, updated_by
@@ -391,7 +391,7 @@ func (s *Store) CreateRule(ctx context.Context, rule workflow.AutomationRule) er
 func (s *Store) UpdateRule(ctx context.Context, rule workflow.AutomationRule) error {
 	const q = `
 	UPDATE
-		automation_rules
+		workflow.automation_rules
 	SET 
 		name = :name,
 		description = :description,
@@ -416,7 +416,7 @@ func (s *Store) UpdateRule(ctx context.Context, rule workflow.AutomationRule) er
 func (s *Store) DeactivateRule(ctx context.Context, rule workflow.AutomationRule) error {
 	const q = `
 	UPDATE
-		automation_rules
+		workflow.automation_rules
 	SET
 		deactivated_by = :deactivated_by,
 		is_active = false
@@ -434,7 +434,7 @@ func (s *Store) DeactivateRule(ctx context.Context, rule workflow.AutomationRule
 func (s *Store) ActivateRule(ctx context.Context, rule workflow.AutomationRule) error {
 	const q = `
 	UPDATE
-		automation_rules
+		workflow.automation_rules
 	SET
 		deactivated_by = NULL,
 		is_active = true
@@ -462,7 +462,7 @@ func (s *Store) QueryRuleByID(ctx context.Context, userID uuid.UUID) (workflow.A
 		trigger_conditions, is_active, created_date, updated_date,
 		created_by, updated_by
 	FROM
-		automation_rules
+		workflow.automation_rules
 	WHERE 
 		id = :id`
 
@@ -491,7 +491,7 @@ func (s *Store) QueryRulesByEntity(ctx context.Context, entityID uuid.UUID) ([]w
 		trigger_conditions, is_active, created_date, updated_date,
 		created_by, updated_by
 	FROM
-		automation_rules
+		workflow.automation_rules
 	WHERE 
 		entity_id = :entity_id`
 
@@ -509,11 +509,11 @@ func (s *Store) QueryRulesByEntity(ctx context.Context, entityID uuid.UUID) ([]w
 // CreateRuleAction inserts a new rule action into the database.
 func (s *Store) CreateRuleAction(ctx context.Context, action workflow.RuleAction) error {
 	const q = `
-	INSERT INTO rule_actions (
-		id, automation_rules_id, name, description, action_config,
+	INSERT INTO workflow.rule_actions (
+		id, workflow.automation_rules_id, name, description, action_config,
 		execution_order, is_active, template_id, deactivated_by
 	) VALUES (
-		:id, :automation_rules_id, :name, :description, :action_config,
+		:id, :workflow.automation_rules_id, :name, :description, :action_config,
 		:execution_order, :is_active, :template_id, :deactivated_by
 	)`
 
@@ -528,9 +528,9 @@ func (s *Store) CreateRuleAction(ctx context.Context, action workflow.RuleAction
 func (s *Store) UpdateRuleAction(ctx context.Context, action workflow.RuleAction) error {
 	const q = `
 	UPDATE
-		rule_actions
+		workflow.rule_actions
 	SET 
-		automation_rules_id = :automation_rules_id,
+		workflow.automation_rules_id = :workflow.automation_rules_id,
 		name = :name,
 		description = :description,
 		action_config = :action_config,
@@ -551,7 +551,7 @@ func (s *Store) UpdateRuleAction(ctx context.Context, action workflow.RuleAction
 func (s *Store) DeactivateRuleAction(ctx context.Context, action workflow.RuleAction) error {
 	const q = `
 	UPDATE
-		rule_actions
+		workflow.rule_actions
 	SET
 		is_active = false,
 		deactivated_by = NULL
@@ -569,7 +569,7 @@ func (s *Store) DeactivateRuleAction(ctx context.Context, action workflow.RuleAc
 func (s *Store) ActivateRuleAction(ctx context.Context, action workflow.RuleAction) error {
 	const q = `
 	UPDATE
-		rule_actions
+		workflow.rule_actions
 	SET
 		is_active = true,
 		deactivated_by = NULL
@@ -586,19 +586,19 @@ func (s *Store) ActivateRuleAction(ctx context.Context, action workflow.RuleActi
 // QueryActionsByRule gets rule actions for the specified automation rule from the database.
 func (s *Store) QueryActionsByRule(ctx context.Context, ruleID uuid.UUID) ([]workflow.RuleAction, error) {
 	data := struct {
-		RuleID string `db:"automation_rules_id"`
+		RuleID string `db:"workflow.automation_rules_id"`
 	}{
 		RuleID: ruleID.String(),
 	}
 
 	const q = `
 	SELECT
-		id, automation_rules_id, name, description, action_config,
+		id, workflow.automation_rules_id, name, description, action_config,
 		execution_order, is_active, template_id
 	FROM
-		rule_actions
+		workflow.rule_actions
 	WHERE 
-		automation_rules_id = :automation_rules_id`
+		workflow.automation_rules_id = :workflow.automation_rules_id`
 
 	var dbActions []ruleAction
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbActions); err != nil {
@@ -614,7 +614,7 @@ func (s *Store) QueryActionsByRule(ctx context.Context, ruleID uuid.UUID) ([]wor
 // CreateDependency inserts a new rule dependency into the database.
 func (s *Store) CreateDependency(ctx context.Context, dep workflow.RuleDependency) error {
 	const q = `
-	INSERT INTO rule_dependencies (
+	INSERT INTO workflow.rule_dependencies (
 		id, parent_rule_id, child_rule_id
 	) VALUES (
 		:id, :parent_rule_id, :child_rule_id
@@ -631,7 +631,7 @@ func (s *Store) CreateDependency(ctx context.Context, dep workflow.RuleDependenc
 func (s *Store) DeleteDependency(ctx context.Context, dep workflow.RuleDependency) error {
 	const q = `
 	DELETE FROM
-		rule_dependencies
+		workflow.rule_dependencies
 	WHERE
 		id = :id`
 
@@ -648,7 +648,7 @@ func (s *Store) QueryDependencies(ctx context.Context) ([]workflow.RuleDependenc
 	SELECT
 		id, parent_rule_id, child_rule_id
 	FROM
-		rule_dependencies`
+		workflow.rule_dependencies`
 
 	var dbDependencies []ruleDependency
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbDependencies); err != nil {
@@ -664,7 +664,7 @@ func (s *Store) QueryDependencies(ctx context.Context) ([]workflow.RuleDependenc
 // CreateActionTemplate inserts a new action template into the database.
 func (s *Store) CreateActionTemplate(ctx context.Context, template workflow.ActionTemplate) error {
 	const q = `
-	INSERT INTO action_templates (
+	INSERT INTO workflow.action_templates (
 		id, name, description, action_type, default_config,
 		created_date, created_by
 	) VALUES (
@@ -683,7 +683,7 @@ func (s *Store) CreateActionTemplate(ctx context.Context, template workflow.Acti
 func (s *Store) UpdateActionTemplate(ctx context.Context, template workflow.ActionTemplate) error {
 	const q = `
 	UPDATE
-		action_templates
+		workflow.action_templates
 	SET 
 		name = :name,
 		description = :description,
@@ -703,7 +703,7 @@ func (s *Store) UpdateActionTemplate(ctx context.Context, template workflow.Acti
 func (s *Store) DeactivateActionTemplate(ctx context.Context, templateID uuid.UUID, deactivatedBy uuid.UUID) error {
 	const q = `
 	UPDATE
-		action_templates
+		workflow.action_templates
 	SET
 		is_active = false,
 		deactivated_by = :deactivated_by
@@ -729,7 +729,7 @@ func (s *Store) DeactivateActionTemplate(ctx context.Context, templateID uuid.UU
 func (s *Store) ActivateActionTemplate(ctx context.Context, templateID uuid.UUID, activatedBy uuid.UUID) error {
 	const q = `
 	UPDATE
-		action_templates
+		workflow.action_templates
 	SET
 		is_active = true,
 		deactivated_by = NULL
@@ -764,7 +764,7 @@ func (s *Store) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (wo
 		id, name, description, action_type, default_config,
 		created_date, created_by
 	FROM
-		action_templates
+		workflow.action_templates
 	WHERE 
 		id = :id`
 
@@ -785,11 +785,11 @@ func (s *Store) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (wo
 // CreateExecution inserts a new automation execution into the database.
 func (s *Store) CreateExecution(ctx context.Context, exec workflow.AutomationExecution) error {
 	const q = `
-	INSERT INTO automation_executions (
-		id, automation_rules_id, entity_type, trigger_data, actions_executed,
+	INSERT INTO workflow.automation_executions (
+		id, workflow.automation_rules_id, entity_type, trigger_data, actions_executed,
 		status, error_message, execution_time_ms, executed_at
 	) VALUES (
-		:id, :automation_rules_id, :entity_type, :trigger_data, :actions_executed,
+		:id, :workflow.automation_rules_id, :entity_type, :trigger_data, :actions_executed,
 		:status, :error_message, :execution_time_ms, :executed_at
 	)`
 
@@ -803,7 +803,7 @@ func (s *Store) CreateExecution(ctx context.Context, exec workflow.AutomationExe
 // QueryExecutionHistory gets execution history for the specified automation rule from the database.
 func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, limit int) ([]workflow.AutomationExecution, error) {
 	data := struct {
-		RuleID string `db:"automation_rules_id"`
+		RuleID string `db:"workflow.automation_rules_id"`
 		Limit  int    `db:"limit"`
 	}{
 		RuleID: ruleID.String(),
@@ -812,12 +812,12 @@ func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, lim
 
 	const q = `
 	SELECT
-		id, automation_rules_id, entity_type, trigger_data, actions_executed,
+		id, workflow.automation_rules_id, entity_type, trigger_data, actions_executed,
 		status, error_message, execution_time_ms, executed_at
 	FROM
-		automation_executions
+		workflow.automation_executions
 	WHERE 
-		automation_rules_id = :automation_rules_id
+		workflow.automation_rules_id = :workflow.automation_rules_id
 	LIMIT :limit`
 
 	var dbExecutions []automationExecution
@@ -831,7 +831,7 @@ func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, lim
 // CreateNotificationDelivery inserts a notification delivery record
 func (s *Store) CreateNotificationDelivery(ctx context.Context, delivery workflow.NotificationDelivery) error {
 	const q = `
-	INSERT INTO notification_deliveries (
+	INSERT INTO workflow.notification_deliveries (
 		id, notification_id, automation_execution_id, rule_id, action_id,
 		recipient_id, channel, status, attempts,
 		sent_at, delivered_at, failed_at, error_message,
@@ -853,7 +853,7 @@ func (s *Store) CreateNotificationDelivery(ctx context.Context, delivery workflo
 // UpdateNotificationDelivery updates a delivery record (for retries, status changes)
 func (s *Store) UpdateNotificationDelivery(ctx context.Context, delivery workflow.NotificationDelivery) error {
 	const q = `
-	UPDATE notification_deliveries 
+	UPDATE workflow.notification_deliveries 
 	SET 
 		status = :status,
 		attempts = :attempts,
@@ -887,7 +887,7 @@ func (s *Store) QueryDeliveriesByAutomationExecution(ctx context.Context, execut
 		sent_at, delivered_at, failed_at, error_message,
 		provider_response, created_date, updated_date
 	FROM
-		notification_deliveries
+		workflow.notification_deliveries
 	WHERE
 		automation_execution_id = :automation_execution_id`
 

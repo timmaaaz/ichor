@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productcostbus.Storer, err
 // Create inserts a new product cost into the database.
 func (s *Store) Create(ctx context.Context, productcost productcostbus.ProductCost) error {
 	const q = `
-    INSERT INTO product_costs (
+    INSERT INTO products.products.product_costs (
         id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     ) VALUES (
@@ -73,7 +73,7 @@ func (s *Store) Create(ctx context.Context, productcost productcostbus.ProductCo
 func (s *Store) Update(ctx context.Context, pc productcostbus.ProductCost) error {
 	const q = `
 	UPDATE
-		product_costs
+		products.product_costs
 	SET
 		id = :id,
 		product_id = :product_id,
@@ -110,7 +110,7 @@ func (s *Store) Update(ctx context.Context, pc productcostbus.ProductCost) error
 func (s *Store) Delete(ctx context.Context, productCost productcostbus.ProductCost) error {
 	const q = `
 	DELETE FROM
-		product_costs
+		products.product_costs
 	WHERE
 		id = :id`
 
@@ -133,7 +133,7 @@ func (s *Store) Query(ctx context.Context, filter productcostbus.QueryFilter, or
 		id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     FROM
-        product_costs`
+        products.product_costs`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -162,7 +162,7 @@ func (s *Store) Count(ctx context.Context, filter productcostbus.QueryFilter) (i
     SELECT
         COUNT(1) AS count
     FROM
-        product_costs`
+        products.product_costs`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -190,7 +190,7 @@ func (s *Store) QueryByID(ctx context.Context, productID uuid.UUID) (productcost
         id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     FROM
-        product_costs
+        products.product_costs
     WHERE
         id = :id
     `

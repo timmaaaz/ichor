@@ -56,7 +56,7 @@ func (s *Store) Query(ctx context.Context, filter countrybus.QueryFilter, orderB
 	SELECT
 		id, number, name, alpha_2, alpha_3
 	FROM
-		countries`
+		geography.countries`
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
 
@@ -84,7 +84,7 @@ func (s *Store) Count(ctx context.Context, filter countrybus.QueryFilter) (int, 
 	SELECT
 		count(1)
 	FROM
-		countries`
+		geography.countries`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -111,7 +111,7 @@ func (s *Store) QueryByID(ctx context.Context, countryID uuid.UUID) (countrybus.
 	SELECT
 		id, number, name, alpha_2, alpha_3
 	FROM
-		countries
+		geography.countries
 	WHERE 
 		id = :id`
 

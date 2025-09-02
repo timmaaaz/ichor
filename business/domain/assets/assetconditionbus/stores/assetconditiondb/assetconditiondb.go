@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assetconditionbus.Storer, 
 // Create inserts a new asset condition into the database.
 func (s *Store) Create(ctx context.Context, at assetconditionbus.AssetCondition) error {
 	const q = `
-    INSERT INTO asset_conditions (
+    INSERT INTO assets.asset_conditions (
         id, name, description
     ) VALUES (
         :id, :name, :description
@@ -68,7 +68,7 @@ func (s *Store) Create(ctx context.Context, at assetconditionbus.AssetCondition)
 func (s *Store) Update(ctx context.Context, at assetconditionbus.AssetCondition) error {
 	const q = `
     UPDATE 
-        asset_conditions
+        assets.asset_conditions
     SET
         name = :name,
         description = :description
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, at assetconditionbus.AssetCondition)
 func (s *Store) Delete(ctx context.Context, at assetconditionbus.AssetCondition) error {
 	const q = `
     DELETE FROM
-        asset_conditions
+        assets.asset_conditions
     WHERE
         id = :id
     `
@@ -111,7 +111,7 @@ func (s *Store) Query(ctx context.Context, filter assetconditionbus.QueryFilter,
     SELECT
         id, name, description
     FROM
-        asset_conditions`
+        assets.asset_conditions`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -140,7 +140,7 @@ func (s *Store) Count(ctx context.Context, filter assetconditionbus.QueryFilter)
     SELECT
         COUNT(1) AS count
     FROM
-        asset_conditions`
+        assets.asset_conditions`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -167,7 +167,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (assetconditionbus.
     SELECT
         id, name, description
     FROM
-        asset_conditions
+        assets.asset_conditions
     WHERE
         id = :id
     `

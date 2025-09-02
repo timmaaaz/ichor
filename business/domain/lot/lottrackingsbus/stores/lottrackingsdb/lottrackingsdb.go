@@ -47,7 +47,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (lottrackingsbus.Storer, er
 
 func (s *Store) Create(ctx context.Context, lot lottrackingsbus.LotTrackings) error {
 	const q = `
-	INSERT INTO lot_trackings (
+	INSERT INTO inventory.lot_trackings (
 		id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
 		quantity, quality_status, created_date, updated_date
 	) VALUES (
@@ -71,7 +71,7 @@ func (s *Store) Create(ctx context.Context, lot lottrackingsbus.LotTrackings) er
 func (s *Store) Update(ctx context.Context, lot lottrackingsbus.LotTrackings) error {
 	const q = `
     UPDATE
-        lot_trackings
+        inventory.lot_trackings
     SET
         id = :id,
         supplier_product_id = :supplier_product_id,
@@ -103,7 +103,7 @@ func (s *Store) Update(ctx context.Context, lot lottrackingsbus.LotTrackings) er
 func (s *Store) Delete(ctx context.Context, lot lottrackingsbus.LotTrackings) error {
 	const q = `
 	DELETE FROM
-	    lot_trackings
+	    inventory.lot_trackings
 	WHERE
 	    id = :id
 	`
@@ -126,7 +126,7 @@ func (s *Store) Query(ctx context.Context, filter lottrackingsbus.QueryFilter, o
 	    id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
         quantity, quality_status, created_date, updated_date
 	FROM 
-		lot_trackings
+		inventory.lot_trackings
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -156,7 +156,7 @@ func (s *Store) Count(ctx context.Context, filter lottrackingsbus.QueryFilter) (
     SELECT
         COUNT(1) AS count
     FROM 
-        lot_trackings
+        inventory.lot_trackings
     `
 
 	buf := bytes.NewBufferString(q)
@@ -184,7 +184,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lottrackingsbus.Lo
         id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
         quantity, quality_status, created_date, updated_date
     FROM 
-        lot_trackings
+        inventory.lot_trackings
     WHERE
         id = :id
     `
