@@ -98,3 +98,12 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 
 	return tableaccess
 }
+
+func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
+	tableaccesses, err := api.tableaccessapp.QueryAll(ctx)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return tableaccessapp.TableAccesses(tableaccesses)
+}

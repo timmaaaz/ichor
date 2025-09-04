@@ -36,6 +36,13 @@ func (app TableAccess) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
+type TableAccesses []TableAccess
+
+func (app TableAccesses) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
 func ToAppTableAccess(bus tableaccessbus.TableAccess) TableAccess {
 	return TableAccess{
 		ID:        bus.ID.String(),

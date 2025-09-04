@@ -1,51 +1,61 @@
 -- UPDATED SCHEMA - Primary keys changed to 'id', foreign keys remain descriptive
 
+-- Version: 0.01
 -- Core/System schema for authentication and base configuration
-CREATE SCHEMA core;
+CREATE SCHEMA IF NOT EXISTS  core;
 -- users, roles, user_roles, table_access, contact_infos
 
+-- Version: 0.02
 -- Human Resources schema
-CREATE SCHEMA hr;
+CREATE SCHEMA IF NOT EXISTS  hr;
 -- titles, offices, reports_to, user_approval_status, 
 -- user_approval_comments, homes
 
+-- Version: 0.03
 -- Location/Geography schema (shared reference data)
-CREATE SCHEMA geography;
+CREATE SCHEMA IF NOT EXISTS  geography;
 -- countries, regions, cities, streets
 
+-- Version: 0.04
 -- Asset Management schema
-CREATE SCHEMA assets;
+CREATE SCHEMA IF NOT EXISTS  assets;
 -- asset_types, asset_conditions, valid_assets, assets, 
 -- user_assets, asset_tags, tags, approval_status, fulfillment_status
 
+-- Version: 0.05
 -- Inventory/Warehouse Management schema
-CREATE SCHEMA inventory;
+CREATE SCHEMA IF NOT EXISTS  inventory;
 -- warehouses, zones, inventory_locations, inventory_items, 
 -- inventory_transactions, inventory_adjustments, transfer_orders,
 -- serial_numbers, lot_trackings, quality_inspections
 
+-- Version: 0.06
 -- Product Information Management schema
-CREATE SCHEMA products;
+CREATE SCHEMA IF NOT EXISTS  products;
 -- products, product_categories, product_costs, physical_attributes,
 -- brands, quality_metrics, cost_history
 
+-- Version: 0.07
 -- Supply Chain/Procurement schema
-CREATE SCHEMA procurement;
+CREATE SCHEMA IF NOT EXISTS  procurement;
 -- suppliers, supplier_products
 
+-- Version: 0.08
 -- Sales/Order Management schema
-CREATE SCHEMA sales;
+CREATE SCHEMA IF NOT EXISTS  sales;
 -- customers, orders, order_line_items, order_fulfillment_statuses,
 -- line_item_fulfillment_statuses
 
+-- Version: 0.09
 -- Workflow/Automation schema
-CREATE SCHEMA workflow;
+CREATE SCHEMA IF NOT EXISTS  workflow;
 -- automation_rules, automation_executions, action_templates, 
 -- rule_actions, rule_dependencies, trigger_types, entity_types,
 -- entities, notification_deliveries, allocation_results
 
+-- Version: 0.10
 -- Configuration schema
-CREATE SCHEMA config;
+CREATE SCHEMA IF NOT EXISTS  config;
 -- table_configs
 
 -- Version: 1.01
@@ -118,7 +128,7 @@ CREATE TABLE geography.streets (
 -- Description: Create table user_approval_status
 CREATE TABLE hr.user_approval_status (
    id UUID NOT NULL, 
-   icon_id UUID NOT NULL, 
+   icon_id UUID NULL, 
    name TEXT NOT NULL,
    PRIMARY KEY (id)
 );
@@ -345,7 +355,7 @@ CREATE TABLE products.brands (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_infos_id) REFERENCES procurement.contact_infos(id)
+   FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
 );
 
 -- Version: 1.23
@@ -491,7 +501,7 @@ CREATE TABLE procurement.suppliers (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_infos_id) REFERENCES procurement.contact_infos(id)
+   FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
 );
 
 -- Version: 1.32
@@ -746,7 +756,7 @@ CREATE TABLE sales.customers (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_id) REFERENCES procurement.contact_infos(id) ON DELETE CASCADE,
+   FOREIGN KEY (contact_id) REFERENCES core.contact_infos(id) ON DELETE CASCADE,
    FOREIGN KEY (delivery_address_id) REFERENCES geography.streets(id) ON DELETE CASCADE,
    FOREIGN KEY (created_by) REFERENCES core.users(id),
    FOREIGN KEY (updated_by) REFERENCES core.users(id)

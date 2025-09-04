@@ -29,6 +29,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		User:  usrs[0],
 		Token: apitest.Token(db.BusDomain.User, ath, usrs[0].Email.Address),
 	}
+
 	usrs, err = userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding users : %w", err)
@@ -51,28 +52,37 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		roleIDs[i] = r.ID
 	}
 
+	// Assign roles to users - EXCLUDE the last role from both users
+	// This ensures we have a role available for the create test
+	userRoleIDs := roleIDs[:len(roleIDs)-1]
+
 	// Include both users for permissions
 	userIDs := make(uuid.UUIDs, 2)
 	userIDs[0] = tu1.ID
 	userIDs[1] = tu2.ID
 
-	_, err = userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
+	_, err = userrolebus.TestSeedUserRoles(ctx, userIDs, userRoleIDs, busDomain.UserRole)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
 	}
 
-	allTAs, err := tableaccessbus.TestSeedTableAccess(ctx, roleIDs[:len(roleIDs)-1], busDomain.TableAccess)
+	// Seed table access for ALL roles (including the unassigned one)
+	_, err = tableaccessbus.TestSeedTableAccess(ctx, roleIDs, busDomain.TableAccess)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding table access : %w", err)
 	}
 
-	// We need to ensure ONLY tu1's permissions are updated
+	allTAs, err := busDomain.TableAccess.QueryAll(ctx)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("querying all table access : %w", err)
+	}
+
+	// Only modify tu1's permissions for the table_access table
 	ur1, err := busDomain.UserRole.QueryByUserID(ctx, tu1.ID)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("querying user1 roles : %w", err)
 	}
 
-	// Only get table access for tu1's role specifically
 	usrRoleIDs := make(uuid.UUIDs, len(ur1))
 	for i, r := range ur1 {
 		usrRoleIDs[i] = r.RoleID
@@ -83,9 +93,14 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("querying table access : %w", err)
 	}
 
-	// Update only tu1's role permissions
+	countCheck, err := busDomain.TableAccess.Count(ctx, tableaccessbus.QueryFilter{})
+	if err != nil {
+		fmt.Println("Error counting table access:", countCheck)
+		return apitest.SeedData{}, fmt.Errorf("counting table access : %w", err)
+	}
+
+	// Update only tu1's role permissions - set CanRead to TRUE!
 	for _, ta := range tas {
-		// Only update for the asset table
 		if ta.TableName == tableaccessapi.RouteTable {
 			update := tableaccessbus.UpdateTableAccess{
 				CanCreate: dbtest.BoolPointer(false),

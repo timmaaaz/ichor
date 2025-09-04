@@ -34,6 +34,7 @@ type Storer interface {
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, userID uuid.UUID) (TableAccess, error)
 	QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID) ([]TableAccess, error)
+	QueryAll(ctx context.Context) ([]TableAccess, error)
 }
 
 // Business manages the set of APIs for user access.
@@ -171,6 +172,19 @@ func (b *Business) QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID) ([]T
 	ta, err := b.storer.QueryByRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return nil, fmt.Errorf("querying table access by role IDs: %w", err)
+	}
+
+	return ta, nil
+}
+
+// QueryAll retrieves all table accesses from the system
+func (b *Business) QueryAll(ctx context.Context) ([]TableAccess, error) {
+	ctx, span := otel.AddSpan(ctx, "business.tableaccess.QueryAll")
+	defer span.End()
+
+	ta, err := b.storer.QueryAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("querying all table access: %w", err)
 	}
 
 	return ta, nil

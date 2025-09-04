@@ -12,11 +12,6 @@ import (
 
 func create200(sd apitest.SeedData) []apitest.Table {
 
-	newUUID, err := uuid.NewUUID()
-	if err != nil {
-		panic(err)
-	}
-
 	table := []apitest.Table{
 		{
 			Name:       "basic",
@@ -25,13 +20,12 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &approvalapp.NewUserApprovalStatus{
-				IconID: newUUID.String(),
-				Name:   "TestUserApprovalStatus",
+				Name: "TestUserApprovalStatus",
 			},
 			GotResp: &approvalapp.UserApprovalStatus{},
 			ExpResp: &approvalapp.UserApprovalStatus{
-				IconID: newUUID.String(),
 				Name:   "TestUserApprovalStatus",
+				IconID: "00000000-0000-0000-0000-000000000000",
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*approvalapp.UserApprovalStatus)
@@ -58,21 +52,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	}
 
 	table := []apitest.Table{
-		{
-			Name:       "missing icon id",
-			URL:        "/v1/users/status/approvals",
-			Token:      sd.Users[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &approvalapp.NewUserApprovalStatus{
-				Name: "missing icon id",
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "Validate: [{\"field\":\"icon_id\",\"error\":\"iconID is a required field\"}]"),
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
 		{
 			Name:       "missing name",
 			URL:        "/v1/users/status/approvals",

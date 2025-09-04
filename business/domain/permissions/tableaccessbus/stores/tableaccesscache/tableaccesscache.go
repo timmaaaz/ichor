@@ -112,6 +112,21 @@ func (s *Store) QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID) ([]tabl
 	return tableAccesses, nil
 }
 
+// QueryAll retrieves all table accesses from the system.
+func (s *Store) QueryAll(ctx context.Context) ([]tableaccessbus.TableAccess, error) {
+	// fill cache
+	tas, err := s.storer.QueryAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ta := range tas {
+		s.writeCache(ta)
+	}
+
+	return tas, nil
+}
+
 // readCache performs a safe search in the cache for the specified key.
 func (s *Store) readCache(key string) (tableaccessbus.TableAccess, bool) {
 	usr, exists := s.cache.Get(key)

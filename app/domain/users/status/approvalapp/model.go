@@ -47,7 +47,7 @@ func ToAppUserApprovalStatuses(bus []approvalbus.UserApprovalStatus) []UserAppro
 // =============================================================================
 
 type NewUserApprovalStatus struct {
-	IconID string `json:"iconID" validate:"required"`
+	IconID string `json:"icon_id" validate:"omitempty,uuid"`
 	Name   string `json:"name" validate:"required,min=3,max=100"`
 }
 
@@ -65,21 +65,24 @@ func (app NewUserApprovalStatus) Validate() error {
 
 func toBusNewUserApprovalStatus(app NewUserApprovalStatus) (approvalbus.NewUserApprovalStatus, error) {
 	var iconID uuid.UUID
-	var err error
 
-	if iconID, err = uuid.Parse(app.IconID); err != nil {
-		return approvalbus.NewUserApprovalStatus{}, err
+	if app.IconID != "" {
+		var err error
+		if iconID, err = uuid.Parse(app.IconID); err != nil {
+			return approvalbus.NewUserApprovalStatus{}, err
+		}
 	}
+	// If app.IconID is empty, iconID remains the zero value (uuid.Nil)
 
 	return approvalbus.NewUserApprovalStatus{
 		IconID: iconID,
-		Name:   app.Name, // TODO: Look at defining custom type
+		Name:   app.Name,
 	}, nil
 }
 
 type UpdateUserApprovalStatus struct {
-	IconID *string `json:"icon_id" validate:"required"`
-	Name   *string `json:"name" validate:"required,min=3,max=100"`
+	IconID *string `json:"icon_id" validate:"omitempty,uuid"`
+	Name   *string `json:"name" validate:"omitempty,min=3,max=100"`
 }
 
 func (app *UpdateUserApprovalStatus) Decode(data []byte) error {

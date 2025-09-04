@@ -1,21 +1,24 @@
 package approvaldb
 
 import (
+	"database/sql"
+
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb/nulltypes"
 )
 
 type userApprovalStatus struct {
-	ID     uuid.UUID `db:"id"`
-	Name   string    `db:"name"`
-	IconID uuid.UUID `db:"icon_id"`
+	ID     uuid.UUID      `db:"id"`
+	Name   string         `db:"name"`
+	IconID sql.NullString `db:"icon_id"`
 }
 
 func toDBUserApprovalStatus(as approvalbus.UserApprovalStatus) userApprovalStatus {
 	return userApprovalStatus{
 		ID:     as.ID,
 		Name:   as.Name,
-		IconID: as.IconID,
+		IconID: nulltypes.ToNullableUUID(as.IconID),
 	}
 }
 
@@ -23,7 +26,7 @@ func toBusUserApprovalStatus(dbAS userApprovalStatus) approvalbus.UserApprovalSt
 	return approvalbus.UserApprovalStatus{
 		ID:     dbAS.ID,
 		Name:   dbAS.Name,
-		IconID: dbAS.IconID,
+		IconID: nulltypes.FromNullableUUID(dbAS.IconID),
 	}
 }
 

@@ -31,7 +31,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &query.Result[tableaccessapp.TableAccess]{
 				Page:        1,
 				RowsPerPage: 10,
-				Total:       336,
+				Total:       624,
 				Items:       exp[:10],
 			},
 			CmpFunc: func(got any, exp any) string {

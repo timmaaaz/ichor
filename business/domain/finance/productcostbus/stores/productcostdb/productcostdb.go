@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productcostbus.Storer, err
 // Create inserts a new product cost into the database.
 func (s *Store) Create(ctx context.Context, productcost productcostbus.ProductCost) error {
 	const q = `
-    INSERT INTO products.products.product_costs (
+    INSERT INTO products.product_costs (
         id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     ) VALUES (

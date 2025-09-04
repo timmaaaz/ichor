@@ -124,3 +124,13 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (TableAccess, error) 
 
 	return ToAppTableAccess(ta), err
 }
+
+// QueryAll retrieves all tableaccesses from the system.
+func (a *App) QueryAll(ctx context.Context) ([]TableAccess, error) {
+	ta, err := a.tableaccessbus.QueryAll(ctx)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "queryall: %s", err)
+	}
+
+	return ToAppTableAccesses(ta), nil
+}

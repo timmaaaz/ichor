@@ -24,11 +24,11 @@ func Test_Metrics(t *testing.T) {
 	test.Run(t, create401(sd), "create-401")
 	test.Run(t, create409(sd), "create-409")
 
-	test.Run(t, update200(sd), "update-200")
 	test.Run(t, update400(sd), "update-400")
 	test.Run(t, update401(sd), "update-401")
 	test.Run(t, update404(sd), "update-404")
 	test.Run(t, update409(sd), "update-409")
+	test.Run(t, update200(sd), "update-200")
 
 	test.Run(t, delete200(sd), "delete-200")
 	test.Run(t, delete400(sd), "delete-400")

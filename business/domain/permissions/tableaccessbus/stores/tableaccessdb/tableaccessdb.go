@@ -54,7 +54,7 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
     SELECT EXISTS (
         SELECT 1 
         FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
         AND table_name = :table_name
     )`
 
@@ -225,6 +225,23 @@ func (s *Store) QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID) ([]tabl
 	var tas []tableAccess
 	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &tas); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusTableAccesses(tas), nil
+}
+
+// QueryAll retrieves all table accesses from the system
+func (s *Store) QueryAll(ctx context.Context) ([]tableaccessbus.TableAccess, error) {
+	const q = `
+	SELECT
+		id, role_id, table_name, can_create, can_read, can_update, can_delete
+	FROM
+		core.table_access
+	`
+
+	var tas []tableAccess
+	if err := sqldb.QuerySlice(ctx, s.log, s.db, q, &tas); err != nil {
+		return nil, fmt.Errorf("queryslice: %w", err)
 	}
 
 	return toBusTableAccesses(tas), nil
