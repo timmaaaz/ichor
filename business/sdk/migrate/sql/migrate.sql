@@ -904,8 +904,8 @@ CREATE TABLE workflow.notification_deliveries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     notification_id UUID NOT NULL, -- References the data structure NotificationPayload in the notification queue, probably this will be referencing logs
     automation_execution_id UUID NULL REFERENCES workflow.automation_executions(id), -- Links to workflow execution
-    rule_id UUID REFERENCES workflow.automation_rules(id),
-    action_id UUID REFERENCES workflow.rule_actions(id),
+    rule_id UUID NULL REFERENCES workflow.automation_rules(id),
+    action_id UUID NULL REFERENCES workflow.rule_actions(id),
     recipient_id UUID NOT NULL, -- User ID or email
     channel VARCHAR(50) NOT NULL, -- email, sms, push, in_app
     status VARCHAR(20) NOT NULL, -- pending, sent, delivered, failed, bounced, retrying

@@ -302,21 +302,21 @@ func (np *NotificationQueueProcessor) processNotificationMessage(ctx context.Con
 			"channel", payload.Channel,
 			"messageID", msg.ID,
 			"error", err,
-			"processingTime", processingTime)
+			"processingTime", processingTime,
+			"attempts", msg.Attempts)
 
-		// Check if we should retry
-		if msg.Attempts < msg.MaxAttempts {
-			return err // Let RabbitMQ handle retry
+		// Check if we should retry (attempts are now properly counted)
+		if msg.Attempts >= msg.MaxAttempts {
+			// Max retries exceeded, record failure
+			if err := np.recordDeliveryFailure(ctx, payload, err); err != nil {
+				np.log.Error(ctx, "Failed to record delivery failure", "error", err)
+			}
+
+			return err // Return error to trigger retry via DLX
 		}
 
-		// Max retries exceeded, record failure
-		if err := np.recordDeliveryFailure(ctx, payload, err); err != nil {
-			np.log.Error(ctx, "Failed to record delivery failure", "error", err)
-		}
-
-		return nil // Don't retry further
+		return nil // Don't retry further (message will be acked)
 	}
-
 	// Record successful delivery
 	if err := np.recordDeliverySuccess(ctx, payload); err != nil {
 		np.log.Error(ctx, "Failed to record delivery success", "error", err)
@@ -371,6 +371,12 @@ func (np *NotificationQueueProcessor) processAlertMessage(ctx context.Context, m
 		} else {
 			successCount++
 			np.updateStats(channel, true, time.Since(startTime))
+
+			if err := np.recordDeliverySuccess(ctx, &channelPayload); err != nil {
+				np.log.Error(ctx, "Failed to record alert delivery success",
+					"channel", channel,
+					"error", err)
+			}
 		}
 	}
 
@@ -384,6 +390,7 @@ func (np *NotificationQueueProcessor) processAlertMessage(ctx context.Context, m
 // Helper methods
 
 func (np *NotificationQueueProcessor) parseNotificationPayload(msg *rabbitmq.Message) (*NotificationPayload, error) {
+
 	payload := &NotificationPayload{
 		ID:                    msg.ID,
 		CreatedAt:             msg.CreatedAt,
@@ -453,6 +460,7 @@ func (np *NotificationQueueProcessor) recordDeliverySuccess(ctx context.Context,
 
 	// Create a delivery record for each recipient
 	for _, recipientID := range payload.Recipients {
+
 		delivery := NotificationDelivery{
 			ID:                    uuid.New(),
 			NotificationID:        payload.ID,
@@ -673,14 +681,18 @@ func (np *NotificationQueueProcessor) QueueNotification(ctx context.Context, not
 
 	// Determine queue type based on channel/priority
 	queueType := np.determineQueueType(notification)
-
 	// Publish to queue
 	return np.queue.Publish(ctx, queueType, msg)
 }
 
 func (np *NotificationQueueProcessor) payloadToMap(notification *NotificationPayload) map[string]any {
+	recipientStrings := make([]string, len(notification.Recipients))
+	for i, id := range notification.Recipients {
+		recipientStrings[i] = id.String()
+	}
+
 	return map[string]any{
-		"recipients":     notification.Recipients,
+		"recipients":     recipientStrings,
 		"title":          notification.Title,
 		"body":           notification.Body,
 		"priority":       notification.Priority,

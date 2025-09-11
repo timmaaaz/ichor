@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
+	"sync"
+	"testing"
 	"time"
 
 	"github.com/timmaaaz/ichor/foundation/docker"
@@ -136,4 +139,62 @@ func NewTestClient(url string) *Client {
 		log:    log,
 		config: config,
 	}
+}
+
+var (
+	testContainer *Container
+	testMu        sync.Mutex
+	testStarted   bool
+)
+
+// GetTestContainer returns a shared RabbitMQ container for tests
+func GetTestContainer(t *testing.T) Container {
+	t.Helper()
+
+	testMu.Lock()
+	defer testMu.Unlock()
+
+	if !testStarted {
+		const image = "rabbitmq:3-management"
+		const name = "servicetest-rabbit"
+		const port = "5672"
+
+		// Clean up any existing container
+		docker.StopContainer(name)
+
+		dockerArgs := []string{
+			"-e", "RABBITMQ_DEFAULT_USER=guest",
+			"-e", "RABBITMQ_DEFAULT_PASS=guest",
+			"-p", "5672:5672",
+			"-p", "15672:15672",
+		}
+
+		c, err := docker.StartContainer(image, name, port, dockerArgs, []string{})
+		if err != nil {
+			t.Fatalf("starting rabbitmq container: %s", err)
+		}
+
+		// Fix the host address if it's 0.0.0.0
+		hostPort := c.HostPort
+		if strings.HasPrefix(hostPort, "0.0.0.0:") {
+			hostPort = strings.Replace(hostPort, "0.0.0.0:", "localhost:", 1)
+		}
+
+		container := Container{
+			Container: c,
+			URL:       fmt.Sprintf("amqp://guest:guest@%s/", hostPort),
+		}
+
+		if err := waitForReady(container.URL); err != nil {
+			docker.StopContainer(c.Name)
+			t.Fatalf("waiting for rabbitmq: %s", err)
+		}
+
+		testContainer = &container
+		testStarted = true
+
+		t.Logf("RabbitMQ Started: %s at %s (URL: %s)", c.Name, hostPort, container.URL)
+	}
+
+	return *testContainer
 }

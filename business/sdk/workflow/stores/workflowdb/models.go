@@ -618,31 +618,31 @@ func toCoreRuleActionViews(dbViews []ruleActionView) []workflow.RuleActionView {
 
 // notificationDelivery represents a delivery record for notifications
 type notificationDelivery struct {
-	ID                    string          `db:"id"`
-	NotificationID        string          `db:"notification_id"`
-	AutomationExecutionID string          `db:"automation_execution_id"`
-	RuleID                string          `db:"rule_id"`
-	ActionID              string          `db:"action_id"`
-	RecipientID           string          `db:"recipient_id"`
-	Channel               string          `db:"channel"`
-	Status                string          `db:"status"`
-	Attempts              int             `db:"attempts"`
-	SentAt                sql.NullTime    `db:"sent_at"`
-	DeliveredAt           sql.NullTime    `db:"delivered_at"`
-	FailedAt              sql.NullTime    `db:"failed_at"`
-	ErrorMessage          sql.NullString  `db:"error_message"`
-	ProviderResponse      json.RawMessage `db:"provider_response"`
-	CreatedDate           time.Time       `db:"created_date"`
-	UpdatedDate           time.Time       `db:"updated_date"`
+	ID                    string         `db:"id"`
+	NotificationID        string         `db:"notification_id"`
+	AutomationExecutionID sql.NullString `db:"automation_execution_id"`
+	RuleID                sql.NullString `db:"rule_id"`
+	ActionID              sql.NullString `db:"action_id"`
+	RecipientID           string         `db:"recipient_id"`
+	Channel               string         `db:"channel"`
+	Status                string         `db:"status"`
+	Attempts              int            `db:"attempts"`
+	SentAt                sql.NullTime   `db:"sent_at"`
+	DeliveredAt           sql.NullTime   `db:"delivered_at"`
+	FailedAt              sql.NullTime   `db:"failed_at"`
+	ErrorMessage          sql.NullString `db:"error_message"`
+	ProviderResponse      sql.NullString `db:"provider_response"`
+	CreatedDate           time.Time      `db:"created_date"`
+	UpdatedDate           time.Time      `db:"updated_date"`
 }
 
 func toCoreNotificationDelivery(dbDelivery notificationDelivery) workflow.NotificationDelivery {
-	return workflow.NotificationDelivery{
+	delivery := workflow.NotificationDelivery{
 		ID:                    uuid.MustParse(dbDelivery.ID),
 		NotificationID:        uuid.MustParse(dbDelivery.NotificationID),
-		AutomationExecutionID: uuid.MustParse(dbDelivery.AutomationExecutionID),
-		RuleID:                uuid.MustParse(dbDelivery.RuleID),
-		ActionID:              uuid.MustParse(dbDelivery.ActionID),
+		AutomationExecutionID: nulltypes.FromNullableUUID(dbDelivery.AutomationExecutionID),
+		RuleID:                nulltypes.FromNullableUUID(dbDelivery.RuleID),
+		ActionID:              nulltypes.FromNullableUUID(dbDelivery.ActionID),
 		RecipientID:           uuid.MustParse(dbDelivery.RecipientID),
 		Channel:               dbDelivery.Channel,
 		Status:                workflow.DeliveryStatus(dbDelivery.Status),
@@ -651,10 +651,14 @@ func toCoreNotificationDelivery(dbDelivery notificationDelivery) workflow.Notifi
 		DeliveredAt:           nulltypes.TimePtr(dbDelivery.DeliveredAt),
 		FailedAt:              nulltypes.TimePtr(dbDelivery.FailedAt),
 		ErrorMessage:          nulltypes.StringPtr(dbDelivery.ErrorMessage),
-		ProviderResponse:      dbDelivery.ProviderResponse,
 		CreatedDate:           dbDelivery.CreatedDate,
 		UpdatedDate:           dbDelivery.UpdatedDate,
 	}
+
+	if dbDelivery.ProviderResponse.Valid {
+		delivery.ProviderResponse = json.RawMessage(dbDelivery.ProviderResponse.String)
+	}
+	return delivery
 }
 
 func toCoreNotificationDeliverySlice(dbDeliveries []notificationDelivery) []workflow.NotificationDelivery {
@@ -687,12 +691,17 @@ func toDBNotificationDelivery(delivery workflow.NotificationDelivery) notificati
 		errorMessage = sql.NullString{String: *delivery.ErrorMessage, Valid: true}
 	}
 
+	providerResponse := sql.NullString{}
+	if len(delivery.ProviderResponse) > 0 {
+		providerResponse = sql.NullString{String: string(delivery.ProviderResponse), Valid: true}
+	}
+
 	return notificationDelivery{
 		ID:                    delivery.ID.String(),
 		NotificationID:        delivery.NotificationID.String(),
-		AutomationExecutionID: delivery.AutomationExecutionID.String(),
-		RuleID:                delivery.RuleID.String(),
-		ActionID:              delivery.ActionID.String(),
+		AutomationExecutionID: nulltypes.ToNullableUUID(delivery.AutomationExecutionID),
+		RuleID:                nulltypes.ToNullableUUID(delivery.RuleID),
+		ActionID:              nulltypes.ToNullableUUID(delivery.ActionID),
 		RecipientID:           delivery.RecipientID.String(),
 		Channel:               delivery.Channel,
 		Status:                string(delivery.Status),
@@ -701,9 +710,8 @@ func toDBNotificationDelivery(delivery workflow.NotificationDelivery) notificati
 		DeliveredAt:           deliveredAt,
 		FailedAt:              failedAt,
 		ErrorMessage:          errorMessage,
-		ProviderResponse:      delivery.ProviderResponse,
+		ProviderResponse:      providerResponse,
 		CreatedDate:           delivery.CreatedDate,
 		UpdatedDate:           delivery.UpdatedDate,
 	}
-
 }

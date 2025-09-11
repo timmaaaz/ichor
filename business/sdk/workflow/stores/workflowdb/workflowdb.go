@@ -898,3 +898,23 @@ func (s *Store) QueryDeliveriesByAutomationExecution(ctx context.Context, execut
 
 	return toCoreNotificationDeliverySlice(dbDeliveries), nil
 }
+
+// QueryAllDeliveries gets all notification deliveries from the database.
+func (s *Store) QueryAllDeliveries(ctx context.Context) ([]workflow.NotificationDelivery, error) {
+	const q = `
+	SELECT
+		id, notification_id, automation_execution_id, rule_id, action_id,
+		recipient_id, channel, status, attempts,
+		sent_at, delivered_at, failed_at, error_message,
+		provider_response, created_date, updated_date
+	FROM
+		workflow.notification_deliveries`
+
+	var dbDeliveries []notificationDelivery
+
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbDeliveries); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreNotificationDeliverySlice(dbDeliveries), nil
+}

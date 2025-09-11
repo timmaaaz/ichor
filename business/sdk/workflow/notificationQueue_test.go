@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ import (
 // Message queuing and basic processing flow
 // Handler availability checks
 // Failure handling and delivery record creation
-// Priority-based queue routing (critical→alert, normal→notification)
+// Priority-based queue routing (criticalâ†’alert, normalâ†’notification)
 // Concurrent message processing
 // Statistics tracking
 // Integration with RabbitMQ
@@ -52,16 +53,8 @@ func TestNotificationQueueProcessor_Initialize(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	// Start RabbitMQ container
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer func() {
-		if err := rabbitmq.StopRabbitMQ(container); err != nil {
-			t.Errorf("stopping rabbitmq: %s", err)
-		}
-	}()
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	// Create RabbitMQ client
 	client := rabbitmq.NewTestClient(container.URL)
@@ -93,11 +86,8 @@ func TestNotificationQueueProcessor_RegisterHandler(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
@@ -157,11 +147,8 @@ func TestNotificationQueueProcessor_StartStop(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
@@ -213,11 +200,8 @@ func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
@@ -231,13 +215,11 @@ func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
-	// Create test store
-	store := &testStore{
-		deliveries: make([]workflow.NotificationDelivery, 0),
-	}
-
+	// Create database store
 	db := dbtest.NewDatabase(t, "Test_Workflow")
-	np := workflow.NewNotificationQueueProcessor(log, client, workflowdb.NewStore(log, db.DB))
+	dbStore := workflowdb.NewStore(log, db.DB)
+
+	np := workflow.NewNotificationQueueProcessor(log, client, dbStore)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
@@ -265,11 +247,34 @@ func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
 	}
 	defer np.Stop(ctx)
 
+	time.Sleep(1 * time.Second) // Give consumers time to start
+
+	// Check queue stats to see if messages are stuck
+	for _, qt := range []rabbitmq.QueueType{
+		rabbitmq.QueueTypeNotification,
+		rabbitmq.QueueTypeEmail,
+		rabbitmq.QueueTypeAlert,
+	} {
+		stats, err := queue.GetQueueStats(ctx, qt)
+		if err != nil {
+			fmt.Printf("Error getting stats for %s: %v\n", qt, err)
+		} else {
+			fmt.Printf("Queue %s: %d messages, %d consumers\n", qt, stats.Messages, stats.Consumers)
+		}
+	}
+
+	// Use the seeded user IDs
+	adminUserID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7") // admin_gopher
+	testUserID := uuid.MustParse("45b5fbd3-755f-4379-8f07-a58d4a30fa2f")  // user_gopher
+
+	id1 := uuid.New()
+	id2 := uuid.New()
+
 	// Create test notifications
 	notifications := []workflow.NotificationPayload{
 		{
-			ID:         uuid.New(),
-			Recipients: []uuid.UUID{uuid.New(), uuid.New()},
+			ID:         id1,
+			Recipients: []uuid.UUID{adminUserID, testUserID},
 			Title:      "Test Email",
 			Body:       "This is a test email body",
 			Priority:   "normal",
@@ -277,8 +282,8 @@ func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
 			CreatedAt:  time.Now(),
 		},
 		{
-			ID:         uuid.New(),
-			Recipients: []uuid.UUID{uuid.New()},
+			ID:         id2,
+			Recipients: []uuid.UUID{adminUserID},
 			Title:      "Push Notification",
 			Body:       "Important update",
 			Priority:   "high",
@@ -306,9 +311,21 @@ func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
 		t.Error("Push handler should have received messages")
 	}
 
-	// Verify delivery records were created
-	if len(store.deliveries) == 0 {
-		t.Error("Delivery records should have been created")
+	// Verify delivery records were created using the store's query method
+	deliveries, err := dbStore.QueryAllDeliveries(ctx)
+	if err != nil {
+		t.Fatalf("Failed to query deliveries: %v", err)
+	}
+
+	// NOTE: There are 4 expected delivery records because the high priority
+	// channel will try emails AND pushes regardless of the type specified.
+	// We can always revisit this but high priority channels right now basically
+	// go out on all available channels.
+
+	// Calculate expected deliveries: 2 recipients for first notification + 1 for second
+	expectedDeliveries := 4
+	if len(deliveries) != expectedDeliveries {
+		t.Errorf("Expected %d delivery records, got %d", expectedDeliveries, len(deliveries))
 	}
 
 	// Check statistics
@@ -327,11 +344,8 @@ func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
@@ -345,12 +359,11 @@ func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
-	store := &testStore{
-		deliveries: make([]workflow.NotificationDelivery, 0),
-	}
-
+	// Create database store
 	db := dbtest.NewDatabase(t, "Test_Workflow")
-	np := workflow.NewNotificationQueueProcessor(log, client, workflowdb.NewStore(log, db.DB))
+	dbStore := workflowdb.NewStore(log, db.DB)
+
+	np := workflow.NewNotificationQueueProcessor(log, client, dbStore)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
@@ -372,10 +385,13 @@ func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
 	}
 	defer np.Stop(ctx)
 
+	// Use a valid user ID from seed data
+	adminUserID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
+
 	// Queue notification that will fail
 	notification := workflow.NotificationPayload{
 		ID:         uuid.New(),
-		Recipients: []uuid.UUID{uuid.New()},
+		Recipients: []uuid.UUID{adminUserID},
 		Title:      "Test Email",
 		Body:       "This will fail",
 		Priority:   "normal",
@@ -399,19 +415,43 @@ func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
 		t.Error("FailedDeliveries should be > 0")
 	}
 
+	// Query deliveries from the database
+	deliveries, err := dbStore.QueryAllDeliveries(ctx)
+	if err != nil {
+		t.Fatalf("Failed to query deliveries: %v", err)
+	}
+
 	// Verify failure was recorded
 	hasFailedDelivery := false
-	for _, delivery := range store.deliveries {
+	for _, delivery := range deliveries {
 		if delivery.Status == workflow.DeliveryStatusFailed {
 			hasFailedDelivery = true
 			if delivery.ErrorMessage == nil || *delivery.ErrorMessage == "" {
 				t.Error("Failed delivery should have error message")
 			}
+			if *delivery.ErrorMessage != "simulated failure" {
+				t.Errorf("Expected error message 'simulated failure', got %s", *delivery.ErrorMessage)
+			}
 			break
 		}
 	}
+
 	if !hasFailedDelivery {
 		t.Error("Should have recorded failed delivery")
+	}
+
+	// Verify the failed delivery is for the correct notification
+	for _, delivery := range deliveries {
+		if delivery.NotificationID == notification.ID {
+			if delivery.Status != workflow.DeliveryStatusFailed {
+				t.Errorf("Delivery for notification %s should have failed status, got %s",
+					notification.ID, delivery.Status)
+			}
+			if delivery.RecipientID != adminUserID {
+				t.Errorf("Delivery recipient should be %s, got %s",
+					adminUserID, delivery.RecipientID)
+			}
+		}
 	}
 }
 
@@ -421,11 +461,8 @@ func TestNotificationQueueProcessor_AlertPriorities(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
@@ -496,11 +533,8 @@ func TestNotificationQueueProcessor_ConcurrentMessages(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
