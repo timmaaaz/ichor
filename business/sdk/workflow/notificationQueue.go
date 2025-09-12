@@ -259,30 +259,51 @@ func (np *NotificationQueueProcessor) startConsumer(ctx context.Context, queueTy
 func (np *NotificationQueueProcessor) processNotificationMessage(ctx context.Context, msg *rabbitmq.Message) error {
 	startTime := time.Now()
 
-	// Create processing context with timeout
+	// Check if this is a final failure recording call
+	if finalFailure, ok := msg.Payload["_final_failure"].(bool); ok && finalFailure {
+		payload, err := np.parseNotificationPayload(msg)
+		if err != nil {
+			return nil // Can't record if we can't parse
+		}
+
+		errorMsg := "max retries exceeded"
+		if errStr, ok := msg.Payload["_final_failure_error"].(string); ok {
+			errorMsg = errStr
+		}
+
+		if err := np.recordDeliveryFailure(ctx, payload, fmt.Errorf(errorMsg)); err != nil {
+			np.log.Error(ctx, "Failed to record delivery failure", "error", err)
+		}
+
+		return nil // Always return nil for final failure recording
+	}
+
+	// Normal processing path
 	processCtx, cancel := context.WithTimeout(ctx, np.config.ProcessingTimeout)
 	defer cancel()
 
-	// Parse notification payload
 	payload, err := np.parseNotificationPayload(msg)
 	if err != nil {
 		np.log.Error(ctx, "Failed to parse notification payload",
 			"messageID", msg.ID,
 			"error", err)
-		return err // Will be retried by RabbitMQ
+		return err
 	}
 
-	// Route to appropriate channel handler
+	np.log.Info(ctx, "Processing notification",
+		"messageID", msg.ID,
+		"channel", payload.Channel,
+		"attempt", msg.Attempts,
+		"maxAttempts", msg.MaxAttempts)
+
 	handler, exists := np.handlers[payload.Channel]
 	if !exists {
 		np.log.Error(ctx, "No handler for channel",
 			"channel", payload.Channel,
 			"messageID", msg.ID)
-		// Don't retry if handler doesn't exist
-		return nil
+		return nil // Don't retry if handler doesn't exist
 	}
 
-	// Check if handler is available
 	if !handler.IsAvailable() {
 		np.log.Warn(ctx, "Handler not available",
 			"channel", payload.Channel,
@@ -294,7 +315,6 @@ func (np *NotificationQueueProcessor) processNotificationMessage(ctx context.Con
 	err = handler.Send(processCtx, payload)
 	processingTime := time.Since(startTime)
 
-	// Update statistics
 	np.updateStats(payload.Channel, err == nil, processingTime)
 
 	if err != nil {
@@ -303,20 +323,12 @@ func (np *NotificationQueueProcessor) processNotificationMessage(ctx context.Con
 			"messageID", msg.ID,
 			"error", err,
 			"processingTime", processingTime,
-			"attempts", msg.Attempts)
+			"attempts", msg.Attempts,
+			"maxAttempts", msg.MaxAttempts)
 
-		// Check if we should retry (attempts are now properly counted)
-		if msg.Attempts >= msg.MaxAttempts {
-			// Max retries exceeded, record failure
-			if err := np.recordDeliveryFailure(ctx, payload, err); err != nil {
-				np.log.Error(ctx, "Failed to record delivery failure", "error", err)
-			}
-
-			return err // Return error to trigger retry via DLX
-		}
-
-		return nil // Don't retry further (message will be acked)
+		return err // Return error for retry
 	}
+
 	// Record successful delivery
 	if err := np.recordDeliverySuccess(ctx, payload); err != nil {
 		np.log.Error(ctx, "Failed to record delivery success", "error", err)

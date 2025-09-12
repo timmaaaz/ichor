@@ -404,7 +404,7 @@ func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
 	}
 
 	// Wait for processing and retries
-	time.Sleep(5 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	// Check statistics
 	stats := np.GetStats()
