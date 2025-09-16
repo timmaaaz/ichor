@@ -1,10 +1,10 @@
 package workflow_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -253,8 +253,7 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Create a mock DB connection (or use sqlx.NewDb with a test driver)
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
@@ -390,8 +389,7 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
 
@@ -541,8 +539,7 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
 
@@ -655,8 +652,7 @@ func TestActionExecutor_ProcessTemplates(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
 
@@ -732,8 +728,7 @@ func TestActionExecutor_ShouldStopOnFailure(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
 
@@ -770,8 +765,7 @@ func TestActionExecutor_ShouldStopOnFailure(t *testing.T) {
 func TestActionExecutor_Stats(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
 
@@ -834,8 +828,7 @@ func TestActionExecutor_Stats(t *testing.T) {
 func TestActionExecutor_ExecutionHistory(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
 
@@ -899,8 +892,7 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
 func TestActionHandler_Implementations(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
 
@@ -1163,8 +1155,7 @@ func testAddToHistory(ae *workflow.ActionExecutor, result workflow.BatchExecutio
 // Benchmark tests
 
 func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	db := &sqlx.DB{}
 	ae := workflow.NewActionExecutor(log, db)
@@ -1202,8 +1193,7 @@ func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
 }
 
 func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	db := &sqlx.DB{}
 
 	ae := workflow.NewActionExecutor(log, db)
@@ -1244,8 +1234,7 @@ func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
 }
 
 func BenchmarkActionExecutor_ProcessTemplates(b *testing.B) {
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	db := &sqlx.DB{}
 
 	ae := workflow.NewActionExecutor(log, db)

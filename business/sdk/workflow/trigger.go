@@ -61,8 +61,9 @@ type EventValidationResult struct {
 
 // TriggerProcessor processes trigger events and determines which rules should execute
 type TriggerProcessor struct {
-	log *logger.Logger
-	db  *sqlx.DB
+	log         *logger.Logger
+	db          *sqlx.DB
+	workflowBus *Business
 
 	// Cached data
 	activeRules  []AutomationRuleView
@@ -71,10 +72,11 @@ type TriggerProcessor struct {
 }
 
 // NewTriggerProcessor creates a new trigger processor
-func NewTriggerProcessor(log *logger.Logger, db *sqlx.DB) *TriggerProcessor {
+func NewTriggerProcessor(log *logger.Logger, db *sqlx.DB, workflowBus *Business) *TriggerProcessor {
 	return &TriggerProcessor{
 		log:          log,
 		db:           db,
+		workflowBus:  workflowBus,
 		cacheTimeout: 5 * time.Minute,
 	}
 }
@@ -98,41 +100,14 @@ func (tp *TriggerProcessor) loadMetadata(ctx context.Context) error {
 		return nil
 	}
 
-	query := `
-        SELECT 
-            ar.id,
-            ar.name,
-            ar.description,
-            ar.entity_name,
-            ar.trigger_conditions,
-            ar.is_active,
-            ar.created_date,
-            ar.updated_date,
-            ar.created_by,
-            ar.updated_by,
-            tt.id as trigger_type_id,
-            tt.name as trigger_type_name,
-            tt.description as trigger_type_description,
-            et.id as entity_type_id,
-            et.name as entity_type_name,
-            et.description as entity_type_description,
-            e.name as entity_name,
-            e.id as entity_id
-        FROM automation_rules ar
-        LEFT JOIN trigger_types tt ON ar.trigger_type_id = tt.id
-        LEFT JOIN entities e ON ar.entity_name = e.name
-        LEFT JOIN entity_types et ON e.entity_type_id = et.id
-        WHERE ar.is_active = true
-    `
-
-	var rules []AutomationRuleView
-	if err := tp.db.SelectContext(ctx, &rules, query); err != nil {
+	rules, err := tp.workflowBus.QueryAutomationRulesView(ctx)
+	if err != nil {
+		tp.log.Error(ctx, "Failed to load active rules", "error", err)
 		return fmt.Errorf("failed to load active rules: %w", err)
 	}
 
 	tp.activeRules = rules
 	tp.lastLoadTime = time.Now()
-
 	tp.log.Info(ctx, "Loaded active rules", "count", len(rules))
 	return nil
 }
@@ -288,24 +263,26 @@ func (tp *TriggerProcessor) checkRuleMatch(rule AutomationRuleView, event Trigge
 
 // evaluateRuleConditions evaluates all conditions for a rule
 func (tp *TriggerProcessor) evaluateRuleConditions(rule AutomationRuleView, event TriggerEvent) []ConditionEvaluationResult {
-	// TODO: Write validation function for this
-	// if !rule.TriggerConditions.Valid {
-	// 	return []ConditionEvaluationResult{}
-	// }
+	// Check if trigger conditions are empty/null - no conditions means match all
+	if rule.TriggerConditions == nil || len(*rule.TriggerConditions) == 0 {
+		// Return empty slice - no conditions to evaluate means automatic match
+		return []ConditionEvaluationResult{}
+	}
 
 	var conditions TriggerConditions
-	if err := json.Unmarshal(rule.TriggerConditions, &conditions); err != nil {
-		// TODO: Check on use of context.Background here
+	if err := json.Unmarshal(*rule.TriggerConditions, &conditions); err != nil {
 		tp.log.Error(context.Background(), "Failed to unmarshal trigger conditions",
 			"rule", rule.ID,
 			"error", err)
 		return []ConditionEvaluationResult{}
 	}
 
+	// If after unmarshaling there are still no field conditions, return empty (auto-match)
 	if len(conditions.FieldConditions) == 0 {
 		return []ConditionEvaluationResult{}
 	}
 
+	// Evaluate each field condition
 	results := make([]ConditionEvaluationResult, 0, len(conditions.FieldConditions))
 	for _, condition := range conditions.FieldConditions {
 		result := tp.evaluateFieldCondition(condition, event)

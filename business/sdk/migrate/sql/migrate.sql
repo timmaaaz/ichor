@@ -810,8 +810,6 @@ CREATE TABLE workflow.trigger_types (
    FOREIGN KEY (deactivated_by) REFERENCES core.users(id)
 );
 
-
-
 CREATE TABLE workflow.entity_types (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(50) NOT NULL UNIQUE,
@@ -832,7 +830,7 @@ CREATE TABLE workflow.automation_rules (
    -- Trigger conditions
    trigger_type_id UUID NOT NULL REFERENCES workflow.trigger_types(id),
 
-   trigger_conditions JSONB, -- When to trigger
+   trigger_conditions JSONB NULL, -- When to trigger
       
    -- Control
    is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -1058,3 +1056,45 @@ FROM sales.order_line_items oli
    LEFT JOIN products.brands b ON p.brand_id = b.id
    LEFT JOIN products.product_categories c ON p.category_id = c.id
    LEFT JOIN sales.line_item_fulfillment_statuses ofs ON oli.id = ofs.id;
+
+CREATE OR REPLACE VIEW workflow.automation_rules_view AS 
+SELECT 
+    ar.id,
+    ar.name,
+    ar.description,
+    ar.trigger_conditions,
+    ar.is_active,
+    ar.created_date,
+    ar.updated_date,
+    ar.created_by,
+    ar.updated_by,
+    ar.deactivated_by,
+    
+    -- Trigger type fields
+    tt.id as trigger_type_id,
+    tt.name as trigger_type_name,
+    tt.description as trigger_type_description,
+    
+    -- Entity type fields (from automation_rules.entity_type_id)
+    et.id as entity_type_id,
+    et.name as entity_type_name,
+    et.description as entity_type_description,
+    
+    -- Entity fields (from automation_rules.entity_id)
+    e.id as entity_id,
+    e.name as entity_name,
+    e.schema_name as entity_schema_name,
+    
+    -- User fields for better context
+    cu.username as created_by_username,
+    uu.username as updated_by_username,
+    du.username as deactivated_by_username
+    
+FROM workflow.automation_rules ar
+LEFT JOIN workflow.trigger_types tt ON ar.trigger_type_id = tt.id
+LEFT JOIN workflow.entity_types et ON ar.entity_type_id = et.id
+LEFT JOIN workflow.entities e ON ar.entity_id = e.id
+LEFT JOIN core.users cu ON ar.created_by = cu.id
+LEFT JOIN core.users uu ON ar.updated_by = uu.id
+LEFT JOIN core.users du ON ar.deactivated_by = du.id
+WHERE ar.is_active = true;

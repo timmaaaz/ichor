@@ -25,12 +25,14 @@ type Storer interface {
 	DeactivateTriggerType(ctx context.Context, tt TriggerType) error
 	ActivateTriggerType(ctx context.Context, tt TriggerType) error
 	QueryTriggerTypes(ctx context.Context) ([]TriggerType, error)
+	QueryTriggerTypeByName(ctx context.Context, name string) (TriggerType, error)
 
 	CreateEntityType(ctx context.Context, et EntityType) error
 	UpdateEntityType(ctx context.Context, et EntityType) error
 	DeactivateEntityType(ctx context.Context, et EntityType) error
 	ActivateEntityType(ctx context.Context, et EntityType) error
 	QueryEntityTypes(ctx context.Context) ([]EntityType, error)
+	QueryEntityTypeByName(ctx context.Context, name string) (EntityType, error)
 
 	CreateRule(ctx context.Context, rule AutomationRule) error
 	UpdateRule(ctx context.Context, rule AutomationRule) error
@@ -38,6 +40,7 @@ type Storer interface {
 	QueryRulesByEntity(ctx context.Context, entityid uuid.UUID) ([]AutomationRule, error)
 	DeactivateRule(ctx context.Context, rule AutomationRule) error
 	ActivateRule(ctx context.Context, rule AutomationRule) error
+	QueryActiveRules(ctx context.Context) ([]AutomationRule, error)
 
 	CreateRuleAction(ctx context.Context, action RuleAction) error
 	UpdateRuleAction(ctx context.Context, action RuleAction) error
@@ -60,6 +63,8 @@ type Storer interface {
 	QueryEntities(ctx context.Context) ([]Entity, error)
 	DeactivateEntity(ctx context.Context, entity Entity) error
 	ActivateEntity(ctx context.Context, entity Entity) error
+	QueryEntitiesByType(ctx context.Context, entityTypeID uuid.UUID) ([]Entity, error)
+	QueryEntityByName(ctx context.Context, name string) (Entity, error)
 
 	// Notification Delivery Tracking
 	CreateNotificationDelivery(ctx context.Context, delivery NotificationDelivery) error
@@ -68,6 +73,8 @@ type Storer interface {
 
 	CreateExecution(ctx context.Context, exec AutomationExecution) error
 	QueryExecutionHistory(ctx context.Context, ruleid uuid.UUID, limit int) ([]AutomationExecution, error)
+
+	QueryAutomationRulesView(ctx context.Context) ([]AutomationRuleView, error)
 }
 
 // Set of error variables for CRUD operations.
@@ -186,6 +193,19 @@ func (b *Business) QueryTriggerTypes(ctx context.Context) ([]TriggerType, error)
 	return triggerTypes, nil
 }
 
+// QueryTriggerTypeByName retrieves a trigger type by its name.
+func (b *Business) QueryTriggerTypeByName(ctx context.Context, name string) (TriggerType, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.querytriggertypebyname")
+	defer span.End()
+
+	tt, err := b.storer.QueryTriggerTypeByName(ctx, name)
+	if err != nil {
+		return TriggerType{}, fmt.Errorf("query: name[%s]: %w", name, err)
+	}
+
+	return tt, nil
+}
+
 // =============================================================================
 // Entity Types
 
@@ -262,6 +282,42 @@ func (b *Business) QueryEntityTypes(ctx context.Context) ([]EntityType, error) {
 	}
 
 	return entityTypes, nil
+}
+
+// QueryEntityTypeByName retrieves an entity type by its name.
+func (b *Business) QueryEntityTypeByName(ctx context.Context, name string) (EntityType, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryentitytypebyname")
+	defer span.End()
+
+	et, err := b.storer.QueryEntityTypeByName(ctx, name)
+	if err != nil {
+		return EntityType{}, fmt.Errorf("query: name[%s]: %w", name, err)
+	}
+
+	return et, nil
+}
+
+// QueryEntitiesByType retrieves a list of entities by their type.
+func (b *Business) QueryEntitiesByType(ctx context.Context, entityTypeID uuid.UUID) ([]Entity, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryentitiesbytype")
+	defer span.End()
+	entities, err := b.storer.QueryEntitiesByType(ctx, entityTypeID)
+	if err != nil {
+		return nil, fmt.Errorf("query: entityTypeID[%s]: %w", entityTypeID, err)
+	}
+	return entities, nil
+}
+
+// QueryEntityByName retrieves an entity by its name.
+func (b *Business) QueryEntityByName(ctx context.Context, name string) (Entity, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryentitybyname")
+	defer span.End()
+
+	entity, err := b.storer.QueryEntityByName(ctx, name)
+	if err != nil {
+		return Entity{}, fmt.Errorf("query: name[%s]: %w", name, err)
+	}
+	return entity, nil
 }
 
 // =============================================================================
@@ -405,7 +461,7 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 		rule.TriggerTypeID = *uar.TriggerTypeID
 	}
 	if uar.TriggerConditions != nil {
-		rule.TriggerConditions = *uar.TriggerConditions
+		rule.TriggerConditions = uar.TriggerConditions
 	}
 	if uar.IsActive != nil {
 		rule.IsActive = *uar.IsActive
@@ -445,6 +501,17 @@ func (b *Business) ActivateRule(ctx context.Context, rule AutomationRule) error 
 	}
 
 	return nil
+}
+
+// QueryActiveRules retrieves all active automation rules.
+func (b *Business) QueryActiveRules(ctx context.Context) ([]AutomationRule, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryactiverules")
+	defer span.End()
+	rules, err := b.storer.QueryActiveRules(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("queryactiverules: %w", err)
+	}
+	return rules, nil
 }
 
 // QueryRuleByID finds the automation rule by the specified ID.
@@ -852,4 +919,17 @@ func (b *Business) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, 
 	}
 
 	return executions, nil
+}
+
+// QueryAutomationRulesView retrieves a comprehensive view of automation rules.
+func (b *Business) QueryAutomationRulesView(ctx context.Context) ([]AutomationRuleView, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryautomationrulesview")
+	defer span.End()
+
+	rulesView, err := b.storer.QueryAutomationRulesView(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return rulesView, nil
 }

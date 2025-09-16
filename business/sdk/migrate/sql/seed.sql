@@ -424,3 +424,75 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'user_roles', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'table_access', true, true, true, true)
 ON CONFLICT DO NOTHING;
+
+-- First, ensure we have the required entity types
+INSERT INTO workflow.entity_types (id, name, description, is_active) 
+VALUES 
+    (gen_random_uuid(), 'table', 'Database table entity', true),
+    (gen_random_uuid(), 'view', 'Database view entity', true)
+ON CONFLICT (name) DO NOTHING;
+
+-- Dynamic population script for workflow.entities
+-- This will populate all tables and views from your schemas
+WITH entity_data AS (
+    -- Get all tables from your schemas
+    SELECT DISTINCT
+        t.table_name as name,
+        t.table_schema as schema_name,
+        'table' as entity_type_name,
+        CASE 
+            WHEN t.table_schema = 'core' THEN 'Core system tables for authentication and base configuration'
+            WHEN t.table_schema = 'hr' THEN 'Human Resources tables'
+            WHEN t.table_schema = 'geography' THEN 'Location and geography reference tables'
+            WHEN t.table_schema = 'assets' THEN 'Asset management tables'
+            WHEN t.table_schema = 'inventory' THEN 'Inventory and warehouse management tables'
+            WHEN t.table_schema = 'products' THEN 'Product information management tables'
+            WHEN t.table_schema = 'procurement' THEN 'Supply chain and procurement tables'
+            WHEN t.table_schema = 'sales' THEN 'Sales and order management tables'
+            WHEN t.table_schema = 'workflow' THEN 'Workflow and automation tables'
+            WHEN t.table_schema = 'config' THEN 'Configuration tables'
+            ELSE 'Database table'
+        END as description
+    FROM information_schema.tables t
+    WHERE t.table_schema IN ('core', 'hr', 'geography', 'assets', 'inventory', 'products', 'procurement', 'sales', 'workflow', 'config')
+      AND t.table_type = 'BASE TABLE'
+    
+    UNION ALL
+    
+    -- Get all views from your schemas
+    SELECT DISTINCT
+        v.table_name as name,
+        v.table_schema as schema_name,
+        'view' as entity_type_name,
+        CASE 
+            WHEN v.table_schema = 'sales' THEN 'Sales management view'
+            WHEN v.table_schema = 'workflow' THEN 'Workflow management view'
+            WHEN v.table_schema = 'config' THEN 'Configuration view'
+            ELSE 'Database view'
+        END as description
+    FROM information_schema.views v
+    WHERE v.table_schema IN ('core', 'hr', 'geography', 'assets', 'inventory', 'products', 'procurement', 'sales', 'workflow', 'config')
+)
+INSERT INTO workflow.entities (
+    id,
+    name, 
+    entity_type_id,
+    schema_name,
+    is_active,
+    created_date
+)
+SELECT 
+    gen_random_uuid(),
+    ed.name,
+    et.id as entity_type_id,
+    ed.schema_name,
+    true,
+    NOW()
+FROM entity_data ed
+JOIN workflow.entity_types et ON et.name = ed.entity_type_name
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM workflow.entities we 
+    WHERE we.name = ed.name 
+      AND we.schema_name = ed.schema_name
+);

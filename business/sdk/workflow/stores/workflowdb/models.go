@@ -176,19 +176,19 @@ func toDBEntity(e workflow.Entity) entity {
 
 // automationRule represents a workflow automation rule
 type automationRule struct {
-	ID                string          `db:"id"`
-	Name              string          `db:"name"`
-	Description       string          `db:"description"`
-	EntityID          string          `db:"entity_id"`
-	EntityTypeID      string          `db:"entity_type_id"`
-	TriggerTypeID     string          `db:"trigger_type_id"`
-	TriggerConditions json.RawMessage `db:"trigger_conditions"`
-	IsActive          bool            `db:"is_active"`
-	CreatedDate       time.Time       `db:"created_date"`
-	UpdatedDate       time.Time       `db:"updated_date"`
-	CreatedBy         string          `db:"created_by"`
-	UpdatedBy         string          `db:"updated_by"`
-	DeactivatedBy     sql.NullString  `db:"deactivated_by"`
+	ID                string         `db:"id"`
+	Name              string         `db:"name"`
+	Description       string         `db:"description"`
+	EntityID          string         `db:"entity_id"`
+	EntityTypeID      string         `db:"entity_type_id"`
+	TriggerTypeID     string         `db:"trigger_type_id"`
+	TriggerConditions sql.NullString `db:"trigger_conditions"`
+	IsActive          bool           `db:"is_active"`
+	CreatedDate       time.Time      `db:"created_date"`
+	UpdatedDate       time.Time      `db:"updated_date"`
+	CreatedBy         string         `db:"created_by"`
+	UpdatedBy         string         `db:"updated_by"`
+	DeactivatedBy     sql.NullString `db:"deactivated_by"`
 }
 
 // toCoreAutomationRule converts a store automationRule to core AutomationRule
@@ -199,19 +199,25 @@ func toCoreAutomationRule(dbRule automationRule) workflow.AutomationRule {
 	}
 
 	ar := workflow.AutomationRule{
-		ID:                uuid.MustParse(dbRule.ID),
-		Name:              dbRule.Name,
-		Description:       dbRule.Description,
-		EntityID:          uuid.MustParse(dbRule.EntityID),
-		EntityTypeID:      uuid.MustParse(dbRule.EntityTypeID),
-		TriggerTypeID:     uuid.MustParse(dbRule.TriggerTypeID),
-		TriggerConditions: dbRule.TriggerConditions,
-		IsActive:          dbRule.IsActive,
-		CreatedDate:       dbRule.CreatedDate,
-		UpdatedDate:       dbRule.UpdatedDate,
-		CreatedBy:         uuid.MustParse(dbRule.CreatedBy),
-		UpdatedBy:         uuid.MustParse(dbRule.UpdatedBy),
-		DeactivatedBy:     deactivatedBy,
+		ID:            uuid.MustParse(dbRule.ID),
+		Name:          dbRule.Name,
+		Description:   dbRule.Description,
+		EntityID:      uuid.MustParse(dbRule.EntityID),
+		EntityTypeID:  uuid.MustParse(dbRule.EntityTypeID),
+		TriggerTypeID: uuid.MustParse(dbRule.TriggerTypeID),
+		IsActive:      dbRule.IsActive,
+		CreatedDate:   dbRule.CreatedDate,
+		UpdatedDate:   dbRule.UpdatedDate,
+		CreatedBy:     uuid.MustParse(dbRule.CreatedBy),
+		UpdatedBy:     uuid.MustParse(dbRule.UpdatedBy),
+		DeactivatedBy: deactivatedBy,
+	}
+
+	if dbRule.TriggerConditions.Valid {
+		var tc json.RawMessage
+		if err := json.Unmarshal([]byte(dbRule.TriggerConditions.String), &tc); err == nil {
+			ar.TriggerConditions = &tc
+		}
 	}
 
 	return ar
@@ -226,27 +232,36 @@ func toCoreAutomationRuleSlice(dbRules []automationRule) []workflow.AutomationRu
 }
 
 // toDBAutomationRule converts a core AutomationRule to store values
-func toDBAutomationRule(ar workflow.AutomationRule) automationRule {
+func toDBAutomationRule(ar workflow.AutomationRule) (automationRule, error) {
 	deactivatedBy := sql.NullString{
 		String: ar.DeactivatedBy.String(),
 		Valid:  ar.DeactivatedBy != uuid.Nil,
 	}
 
-	return automationRule{
-		ID:                ar.ID.String(),
-		Name:              ar.Name,
-		Description:       ar.Description,
-		EntityID:          ar.EntityID.String(),
-		EntityTypeID:      ar.EntityTypeID.String(),
-		TriggerTypeID:     ar.TriggerTypeID.String(),
-		TriggerConditions: ar.TriggerConditions,
-		IsActive:          ar.IsActive,
-		CreatedDate:       ar.CreatedDate,
-		UpdatedDate:       ar.UpdatedDate,
-		CreatedBy:         ar.CreatedBy.String(),
-		UpdatedBy:         ar.UpdatedBy.String(),
-		DeactivatedBy:     deactivatedBy,
+	ret := automationRule{
+		ID:            ar.ID.String(),
+		Name:          ar.Name,
+		Description:   ar.Description,
+		EntityID:      ar.EntityID.String(),
+		EntityTypeID:  ar.EntityTypeID.String(),
+		TriggerTypeID: ar.TriggerTypeID.String(),
+		IsActive:      ar.IsActive,
+		CreatedDate:   ar.CreatedDate,
+		UpdatedDate:   ar.UpdatedDate,
+		CreatedBy:     ar.CreatedBy.String(),
+		UpdatedBy:     ar.UpdatedBy.String(),
+		DeactivatedBy: deactivatedBy,
 	}
+
+	if ar.TriggerConditions != nil {
+		tcBytes, err := json.Marshal(ar.TriggerConditions)
+		if err != nil {
+			return automationRule{}, err
+		}
+		ret.TriggerConditions = sql.NullString{String: string(tcBytes), Valid: true}
+	}
+
+	return ret, nil
 }
 
 // actionTemplate represents a reusable action configuration
@@ -471,7 +486,7 @@ type automationRulesView struct {
 	Name              string          `db:"name"`
 	Description       sql.NullString  `db:"description"`
 	EntityID          sql.NullString  `db:"entity_id"`
-	TriggerConditions json.RawMessage `db:"trigger_conditions"`
+	TriggerConditions sql.NullString  `db:"trigger_conditions"`
 	Actions           json.RawMessage `db:"actions"`
 	IsActive          bool            `db:"is_active"`
 	CreatedDate       time.Time       `db:"created_date"`
@@ -494,21 +509,18 @@ type automationRulesView struct {
 // toCoreAutomationRuleView converts a store AutomationRulesView to core AutomationRuleView
 func toCoreAutomationRuleView(dbView automationRulesView) workflow.AutomationRuleView {
 	view := workflow.AutomationRuleView{
-		ID:                uuid.MustParse(dbView.ID),
-		Name:              dbView.Name,
-		TriggerConditions: dbView.TriggerConditions,
-		Actions:           dbView.Actions,
-		IsActive:          dbView.IsActive,
-		CreatedDate:       dbView.CreatedDate,
-		UpdatedDate:       dbView.UpdatedDate,
-		CreatedBy:         uuid.MustParse(dbView.CreatedBy),
-		UpdatedBy:         uuid.MustParse(dbView.UpdatedBy),
+		ID:          uuid.MustParse(dbView.ID),
+		Name:        dbView.Name,
+		Description: nulltypes.StringPtr(dbView.Description),
+		Actions:     dbView.Actions,
+		IsActive:    dbView.IsActive,
+		CreatedDate: dbView.CreatedDate,
+		UpdatedDate: dbView.UpdatedDate,
+		CreatedBy:   uuid.MustParse(dbView.CreatedBy),
+		UpdatedBy:   uuid.MustParse(dbView.UpdatedBy),
 	}
 
 	// Handle nullable fields
-	if dbView.Description.Valid {
-		view.Description = dbView.Description.String
-	}
 	if dbView.EntityID.Valid {
 		entityID := uuid.MustParse(dbView.EntityID.String)
 		view.EntityID = &entityID
@@ -538,6 +550,12 @@ func toCoreAutomationRuleView(dbView automationRulesView) workflow.AutomationRul
 	}
 	if dbView.EntitySchemaName.Valid {
 		view.EntitySchemaName = dbView.EntitySchemaName.String
+	}
+	if dbView.TriggerConditions.Valid {
+		var tc json.RawMessage
+		if err := json.Unmarshal([]byte(dbView.TriggerConditions.String), &tc); err == nil {
+			view.TriggerConditions = &tc
+		}
 	}
 
 	return view

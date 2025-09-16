@@ -1,14 +1,17 @@
 package workflow_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
@@ -34,9 +37,12 @@ type stubEngine struct {
 	failNext       bool // For testing failure scenarios
 }
 
-func newStubEngine(log *logger.Logger) *stubEngine {
+func newStubEngine(log *logger.Logger, db *sqlx.DB) *stubEngine {
+
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+
 	return &stubEngine{
-		Engine: workflow.NewEngine(log, nil), // Real engine structure, no DB needed
+		Engine: workflow.NewEngine(log, db, workflowBus),
 	}
 }
 
@@ -68,32 +74,27 @@ func (e *stubEngine) ExecuteWorkflow(ctx context.Context, event workflow.Trigger
 }
 
 func TestQueueManager_Initialize(t *testing.T) {
-	t.Parallel()
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
-	// Start RabbitMQ container
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer func() {
-		if err := rabbitmq.StopRabbitMQ(container); err != nil {
-			t.Errorf("stopping rabbitmq: %s", err)
-		}
-	}()
-
-	// Create RabbitMQ client
-	// config := rabbitmq.NewTestConfig(container.URL)
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("connecting to rabbitmq: %s", err)
 	}
 	defer client.Close()
 
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
+
+	db := dbtest.NewDatabase(t, "Test_Workflow")
+
 	// Create workflow engine (mock)
-	engine := newStubEngine(log)
+	engine := newStubEngine(log, db.DB)
 
 	// Create queue manager
 	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client)
@@ -120,22 +121,22 @@ func TestQueueManager_Initialize(t *testing.T) {
 }
 
 func TestQueueManager_QueueEvent(t *testing.T) {
-	t.Parallel()
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("connecting to rabbitmq: %s", err)
 	}
 	defer client.Close()
+
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
 
 	engine := &workflow.Engine{}
 	qm, err := workflow.NewQueueManager(log, nil, engine, client)
@@ -257,22 +258,23 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 }
 
 func TestQueueManager_StartStop(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("connecting to rabbitmq: %s", err)
 	}
 	defer client.Close()
+
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
 
 	engine := &workflow.Engine{}
 	qm, err := workflow.NewQueueManager(log, nil, engine, client)
@@ -316,87 +318,245 @@ func TestQueueManager_StartStop(t *testing.T) {
 }
 
 func TestQueueManager_ProcessMessage(t *testing.T) {
-	t.Parallel()
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
-
+	// Setup RabbitMQ
+	container := rabbitmq.GetTestContainer(t)
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("connecting to rabbitmq: %s", err)
 	}
 	defer client.Close()
 
-	// Create a mock engine that tracks executions
-	executedEvents := make([]workflow.TriggerEvent, 0)
-	engine := newStubEngine(log)
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
 
-	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client)
+	// Setup database with test data
+	db := dbtest.NewDatabase(t, "Test_Workflow")
+	ctx := context.Background()
+
+	// Create workflow business layer
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+
+	// Seed
+	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)
+	if err != nil {
+		t.Fatalf("seeding workflow: %s", err)
+	}
+
+	entity, err := workflowBus.QueryEntityByName(ctx, "customers")
+	if err != nil {
+		t.Fatalf("querying entity: %s", err)
+	}
+
+	entityType, err := workflowBus.QueryEntityTypeByName(ctx, "table")
+	if err != nil {
+		t.Fatalf("querying entity type: %s", err)
+	}
+
+	triggerType, err := workflowBus.QueryTriggerTypeByName(ctx, "on_create")
+	if err != nil {
+		t.Fatalf("querying trigger type: %s", err)
+	}
+
+	// Create rule BEFORE initializing engine
+	ret, err := workflowBus.CreateRule(ctx, workflow.NewAutomationRule{
+		Name:              "Test Rule",
+		Description:       "A rule for testing",
+		EntityID:          entity.ID,
+		EntityTypeID:      entityType.ID,
+		TriggerTypeID:     triggerType.ID,
+		TriggerConditions: nil, // No conditions = matches all events of this type
+		IsActive:          true,
+		CreatedBy:         uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
+	})
+	if err != nil {
+		t.Fatalf("creating rule: %s", err)
+	}
+
+	testRule, err := workflowBus.QueryRuleByID(ctx, ret.ID)
+	if err != nil {
+		t.Fatalf("querying created rule: %s", err)
+	}
+	t.Logf("Created test rule with ID: %s", testRule.ID)
+
+	// Optional: Create an action for the rule to make it complete
+	// Note: You'll need to have an action template set up first, or register a handler
+	/*
+		_, err = workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+			AutomationRuleID: testRule.ID,
+			Name:            "Test Action",
+			Description:     "Log the event",
+			ActionConfig:    json.RawMessage(`{"message": "Customer created: {{entity_name}}"}`),
+			ExecutionOrder:  1,
+			IsActive:        true,
+			TemplateID:      nil, // Or use a real template ID if you have one
+		})
+		if err != nil {
+			t.Logf("Could not create action: %v (this is okay for now)", err)
+		}
+	*/
+
+	// Create and initialize the engine AFTER creating the rule
+	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	if err := engine.Initialize(ctx, workflowBus); err != nil {
+		t.Fatalf("initializing engine: %s", err)
+	}
+
+	// Create queue manager with real engine
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
 
-	ctx := context.Background()
 	if err := qm.Initialize(ctx); err != nil {
 		t.Fatalf("initializing queue manager: %s", err)
 	}
 
-	// Start the queue manager to begin consuming
+	// Clear any lingering messages from previous test runs
+	if err := qm.ClearQueue(ctx); err != nil {
+		t.Logf("Warning: could not clear queue: %v", err)
+	}
+
+	// Get initial metrics for comparison
+	initialMetrics := qm.GetMetrics()
+
+	// Start the queue manager
 	if err := qm.Start(ctx); err != nil {
 		t.Fatalf("starting queue manager: %s", err)
 	}
 	defer qm.Stop(ctx)
 
-	entityID1 := uuid.New()
+	// Small delay to ensure consumers are ready
+	time.Sleep(100 * time.Millisecond)
 
-	// Queue an event
+	// Create and queue a test event
+	entityID := uuid.New()
+	adminUserID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
+
 	event := workflow.TriggerEvent{
 		EventType:  "on_create",
 		EntityName: "customers",
-		EntityID:   entityID1,
+		EntityID:   entityID,
 		Timestamp:  time.Now(),
 		RawData: map[string]interface{}{
-			"name":  "Test Customer",
-			"email": "test@example.com",
+			"name":    "Test Customer",
+			"email":   "test@example.com",
+			"status":  "active",
+			"revenue": 10000,
 		},
+		UserID: adminUserID,
 	}
 
+	// Queue the event
 	if err := qm.QueueEvent(ctx, event); err != nil {
 		t.Fatalf("queueing event: %s", err)
 	}
 
-	// Wait for processing
-	time.Sleep(2 * time.Second)
+	// Wait for processing with timeout
+	processed := false
+	timeout := time.After(5 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 
-	// Verify the event was processed
-	if len(executedEvents) != 1 {
-		t.Errorf("Expected 1 event to be executed, got %d", len(executedEvents))
+	for !processed {
+		select {
+		case <-timeout:
+			metrics := qm.GetMetrics()
+			t.Logf("Final metrics - Enqueued: %d, Processed: %d, Failed: %d",
+				metrics.TotalEnqueued, metrics.TotalProcessed, metrics.TotalFailed)
+			t.Fatal("Timeout waiting for event processing")
+
+		case <-ticker.C:
+			metrics := qm.GetMetrics()
+
+			// Check if processing completed (successfully or with failure)
+			if metrics.TotalProcessed > initialMetrics.TotalProcessed ||
+				metrics.TotalFailed > initialMetrics.TotalFailed {
+				processed = true
+			}
+		}
 	}
 
-	// Check metrics
-	metrics := qm.GetMetrics()
-	if metrics.TotalProcessed == 0 {
-		t.Error("TotalProcessed should be > 0 after processing")
+	// Verify the results
+	finalMetrics := qm.GetMetrics()
+
+	// Should have enqueued exactly one event
+	if finalMetrics.TotalEnqueued != initialMetrics.TotalEnqueued+1 {
+		t.Errorf("Expected TotalEnqueued to increase by 1, got %d -> %d",
+			initialMetrics.TotalEnqueued, finalMetrics.TotalEnqueued)
 	}
+
+	// Should have processed the event
+	if finalMetrics.TotalProcessed != initialMetrics.TotalProcessed+1 {
+		t.Errorf("Expected TotalProcessed to increase by 1, got %d -> %d",
+			initialMetrics.TotalProcessed, finalMetrics.TotalProcessed)
+	}
+
+	// Should not have failed
+	if finalMetrics.TotalFailed > initialMetrics.TotalFailed {
+		t.Errorf("Unexpected failures: %d", finalMetrics.TotalFailed-initialMetrics.TotalFailed)
+	}
+
+	// Verify processing time was recorded
+	if finalMetrics.LastProcessedAt == nil {
+		t.Error("LastProcessedAt should be set after processing")
+	}
+
+	// For very fast processing, AverageProcessTimeMs might be 0
+	// This is okay - just log it
+	if finalMetrics.AverageProcessTimeMs == 0 && finalMetrics.TotalProcessed > 0 {
+		t.Logf("Note: AverageProcessTimeMs is 0 (processing was < 1ms)")
+	}
+
+	// Check engine's execution history
+	execHistory := engine.GetExecutionHistory(10)
+	if len(execHistory) == 0 {
+		t.Error("Expected at least one execution in history")
+	} else {
+		lastExecution := execHistory[0]
+
+		// Verify the correct event was processed
+		if lastExecution.TriggerEvent.EntityID != entityID {
+			t.Errorf("Expected execution for entity %s, got %s",
+				entityID, lastExecution.TriggerEvent.EntityID)
+		}
+
+		// Check if rules matched (should be 1 with our test rule)
+		if lastExecution.ExecutionPlan.MatchedRuleCount != 1 {
+			t.Errorf("Expected 1 matched rule, got %d",
+				lastExecution.ExecutionPlan.MatchedRuleCount)
+		}
+
+		// Log execution details for debugging
+		t.Logf("Execution completed with status: %s, matched rules: %d, batches: %d",
+			lastExecution.Status,
+			lastExecution.ExecutionPlan.MatchedRuleCount,
+			lastExecution.ExecutionPlan.TotalBatches)
+	}
+
+	// Verify queue is now empty (message was consumed)
+	status, err := qm.GetQueueStatus(ctx)
+	if err != nil {
+		t.Errorf("Failed to get queue status: %v", err)
+	} else {
+		if status.QueueDepth > 0 {
+			t.Logf("Warning: Queue still has %d messages", status.QueueDepth)
+		}
+	}
+
+	t.Logf("Integration test completed successfully - Event was queued and processed")
 }
 
 func TestQueueManager_CircuitBreaker(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
@@ -404,8 +564,16 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 	}
 	defer client.Close()
 
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
+
+	db := dbtest.NewDatabase(t, "Test_Workflow")
+
 	// Create an engine that always fails
-	engine := newStubEngine(log)
+	engine := newStubEngine(log, db.DB)
 	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
@@ -460,22 +628,22 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 }
 
 func TestQueueManager_ClearQueue(t *testing.T) {
-	t.Parallel()
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("connecting to rabbitmq: %s", err)
 	}
 	defer client.Close()
+
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
 
 	engine := &workflow.Engine{}
 	qm, err := workflow.NewQueueManager(log, nil, engine, client)
@@ -518,16 +686,10 @@ func TestQueueManager_ClearQueue(t *testing.T) {
 }
 
 func TestQueueManager_Metrics(t *testing.T) {
-	t.Parallel()
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-
-	container, err := rabbitmq.StartRabbitMQ()
-	if err != nil {
-		t.Fatalf("starting rabbitmq: %s", err)
-	}
-	defer rabbitmq.StopRabbitMQ(container)
+	// Get RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
 
 	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
@@ -535,7 +697,15 @@ func TestQueueManager_Metrics(t *testing.T) {
 	}
 	defer client.Close()
 
-	engine := newStubEngine(log)
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
+
+	db := dbtest.NewDatabase(t, "Test_Workflow")
+
+	engine := newStubEngine(log, db.DB)
 
 	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client)
 	if err != nil {
@@ -593,7 +763,6 @@ func TestQueueManager_Metrics(t *testing.T) {
 }
 
 func TestQueueManager_DetermineQueueType(t *testing.T) {
-	t.Parallel()
 
 	tests := []struct {
 		name      string
@@ -644,8 +813,7 @@ func TestQueueManager_DetermineQueueType(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	container, err := rabbitmq.StartRabbitMQ()
 	if err != nil {
 		t.Fatalf("starting rabbitmq: %s", err)
@@ -687,10 +855,8 @@ func TestQueueManager_DetermineQueueType(t *testing.T) {
 }
 
 func TestQueueManager_ProcessingResult(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	container, err := rabbitmq.StartRabbitMQ()
 	if err != nil {
@@ -757,8 +923,7 @@ func (m *mockEngine) ExecuteWorkflow(ctx context.Context, event workflow.Trigger
 // Benchmark tests
 
 func BenchmarkQueueManager_QueueEvent(b *testing.B) {
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	container, err := rabbitmq.StartRabbitMQ()
 	if err != nil {
@@ -802,8 +967,7 @@ func BenchmarkQueueManager_QueueEvent(b *testing.B) {
 }
 
 func BenchmarkQueueManager_ProcessMessage(b *testing.B) {
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	container, err := rabbitmq.StartRabbitMQ()
 	if err != nil {
@@ -816,8 +980,9 @@ func BenchmarkQueueManager_ProcessMessage(b *testing.B) {
 		b.Fatalf("connecting to rabbitmq: %s", err)
 	}
 	defer client.Close()
+	db := sqlx.DB{}
 
-	engine := newStubEngine(log)
+	engine := newStubEngine(log, &db)
 	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client)
 	if err != nil {
 		b.Fatalf("creating queue manager: %s", err)

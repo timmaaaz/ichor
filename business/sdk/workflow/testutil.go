@@ -10,27 +10,35 @@ import (
 )
 
 // TestNewTriggerTypes is a helper method for testing.
-func TestNewTriggerTypes(n int) []NewTriggerType {
-	triggerTypes := make([]NewTriggerType, n)
-
-	idx := rand.Intn(10000)
-	for i := 0; i < n; i++ {
-		idx++
-
-		tt := NewTriggerType{
-			Name:        fmt.Sprintf("TriggerType%d", idx),
-			Description: fmt.Sprintf("Description for trigger type %d", idx),
-		}
-
-		triggerTypes[i] = tt
+func TestNewTriggerTypes() []NewTriggerType {
+	triggerTypes := []NewTriggerType{
+		{
+			Name:        "on_create",
+			Description: "Triggered when a new entity is created",
+			IsActive:    true,
+		},
+		{
+			Name:        "on_update",
+			Description: "Triggered when an existing entity is updated",
+			IsActive:    true,
+		},
+		{
+			Name:        "on_delete",
+			Description: "Triggered when an entity is deleted",
+			IsActive:    true,
+		},
+		{
+			Name:        "scheduled",
+			Description: "Triggered based on a schedule.",
+			IsActive:    true,
+		},
 	}
-
 	return triggerTypes
 }
 
 // TestSeedTriggerTypes is a helper method for testing.
 func TestSeedTriggerTypes(ctx context.Context, n int, api *Business) ([]TriggerType, error) {
-	newTriggerTypes := TestNewTriggerTypes(n)
+	newTriggerTypes := TestNewTriggerTypes()
 
 	triggerTypes := make([]TriggerType, len(newTriggerTypes))
 	for i, ntt := range newTriggerTypes {
@@ -45,77 +53,21 @@ func TestSeedTriggerTypes(ctx context.Context, n int, api *Business) ([]TriggerT
 	return triggerTypes, nil
 }
 
-// TestNewEntityTypes is a helper method for testing.
-func TestNewEntityTypes(n int) []NewEntityType {
-	entityTypes := make([]NewEntityType, n)
-
-	idx := rand.Intn(10000)
-	for i := 0; i < n; i++ {
-		idx++
-
-		et := NewEntityType{
-			Name:        fmt.Sprintf("EntityType%d", idx),
-			Description: fmt.Sprintf("Description for entity type %d", idx),
-		}
-
-		entityTypes[i] = et
+// GetEntityTypes
+func GetEntityTypes(ctx context.Context, api *Business) ([]EntityType, error) {
+	entityTypes, err := api.QueryEntityTypes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("querying entity types: %w", err)
 	}
-
-	return entityTypes
-}
-
-// TestSeedEntityTypes is a helper method for testing.
-func TestSeedEntityTypes(ctx context.Context, n int, api *Business) ([]EntityType, error) {
-	newEntityTypes := TestNewEntityTypes(n)
-
-	entityTypes := make([]EntityType, len(newEntityTypes))
-	for i, net := range newEntityTypes {
-		et, err := api.CreateEntityType(ctx, net)
-		if err != nil {
-			return nil, fmt.Errorf("seeding entity type: idx: %d : %w", i, err)
-		}
-
-		entityTypes[i] = et
-	}
-
 	return entityTypes, nil
 }
 
-// TestNewEntities is a helper method for testing.
-func TestNewEntities(n int, entityTypeIDs []uuid.UUID) []NewEntity {
-	entities := make([]NewEntity, n)
-
-	idx := rand.Intn(10000)
-	for i := 0; i < n; i++ {
-		idx++
-
-		e := NewEntity{
-			Name:         fmt.Sprintf("Entity%d", idx),
-			EntityTypeID: entityTypeIDs[i%len(entityTypeIDs)],
-			SchemaName:   "public",
-			IsActive:     true,
-		}
-
-		entities[i] = e
+// GetEntities
+func GetEntities(ctx context.Context, api *Business) ([]Entity, error) {
+	entities, err := api.QueryEntities(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("querying entities: %w", err)
 	}
-
-	return entities
-}
-
-// TestSeedEntities is a helper method for testing.
-func TestSeedEntities(ctx context.Context, n int, entityTypeIDs []uuid.UUID, api *Business) ([]Entity, error) {
-	newEntities := TestNewEntities(n, entityTypeIDs)
-
-	entities := make([]Entity, len(newEntities))
-	for i, ne := range newEntities {
-		e, err := api.CreateEntity(ctx, ne)
-		if err != nil {
-			return nil, fmt.Errorf("seeding entity: idx: %d : %w", i, err)
-		}
-
-		entities[i] = e
-	}
-
 	return entities, nil
 }
 
@@ -134,6 +86,7 @@ func TestNewAutomationRules(n int, entityIDs, entityTypeIDs, triggerTypeIDs []uu
 			"value":    fmt.Sprintf("value_%d", idx),
 		}
 		conditionsJSON, _ := json.Marshal(conditions)
+		triggerConditions := json.RawMessage(conditionsJSON)
 
 		rule := NewAutomationRule{
 			Name:              fmt.Sprintf("Rule%d", idx),
@@ -141,7 +94,7 @@ func TestNewAutomationRules(n int, entityIDs, entityTypeIDs, triggerTypeIDs []uu
 			EntityID:          entityIDs[i%len(entityIDs)],
 			EntityTypeID:      entityTypeIDs[i%len(entityTypeIDs)],
 			TriggerTypeID:     triggerTypeIDs[i%len(triggerTypeIDs)],
-			TriggerConditions: conditionsJSON,
+			TriggerConditions: &triggerConditions,
 			IsActive:          true,
 			CreatedBy:         createdBy,
 		}
@@ -434,7 +387,7 @@ func TestSeedFullWorkflow(ctx context.Context, userID uuid.UUID, api *Business) 
 	data.TriggerTypes = triggerTypes
 
 	// Seed entity types
-	entityTypes, err := TestSeedEntityTypes(ctx, 2, api)
+	entityTypes, err := GetEntityTypes(ctx, api)
 	if err != nil {
 		return nil, fmt.Errorf("seeding entity types: %w", err)
 	}
@@ -447,7 +400,7 @@ func TestSeedFullWorkflow(ctx context.Context, userID uuid.UUID, api *Business) 
 	}
 
 	// Seed entities
-	entities, err := TestSeedEntities(ctx, 4, entityTypeIDs, api)
+	entities, err := GetEntities(ctx, api)
 	if err != nil {
 		return nil, fmt.Errorf("seeding entities: %w", err)
 	}

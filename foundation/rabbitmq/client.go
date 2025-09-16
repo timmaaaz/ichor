@@ -545,6 +545,7 @@ func (wq *WorkflowQueue) Publish(ctx context.Context, queueType QueueType, msg *
 
 // PublishWithDelay publishes a message with a delay
 func (wq *WorkflowQueue) PublishWithDelay(ctx context.Context, queueType QueueType, msg *Message, delay time.Duration) error {
+
 	config, exists := wq.queues[queueType]
 	if !exists {
 		return fmt.Errorf("unknown queue type: %s", queueType)

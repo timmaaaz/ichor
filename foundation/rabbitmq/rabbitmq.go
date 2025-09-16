@@ -2,9 +2,9 @@
 package rabbitmq
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -74,8 +74,7 @@ func waitForReady(url string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	config := Config{
 		URL:                url,
@@ -129,8 +128,7 @@ func NewTestConfig(url string) Config {
 // NewTestClient creates a new RabbitMQ client configured for testing
 // This bypasses the singleton pattern for test isolation
 func NewTestClient(url string) *Client {
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	config := NewTestConfig(url)
 

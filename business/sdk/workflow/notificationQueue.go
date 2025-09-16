@@ -313,6 +313,9 @@ func (np *NotificationQueueProcessor) processNotificationMessage(ctx context.Con
 
 	// Send notification
 	err = handler.Send(processCtx, payload)
+	if err != nil {
+		fmt.Println("Failed to send notification:", err)
+	}
 	processingTime := time.Since(startTime)
 
 	np.updateStats(payload.Channel, err == nil, processingTime)

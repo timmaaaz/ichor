@@ -76,7 +76,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 	}
 
 	// Seed entity types
-	entityTypes, err := workflow.TestSeedEntityTypes(ctx, 2, busDomain.Workflow)
+	entityTypes, err := workflow.GetEntityTypes(ctx, busDomain.Workflow)
 	if err != nil {
 		return workflowSeedData{}, fmt.Errorf("seeding entity types : %w", err)
 	}
@@ -88,7 +88,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 	}
 
 	// Seed entities
-	entities, err := workflow.TestSeedEntities(ctx, 4, entityTypeIDs, busDomain.Workflow)
+	entities, err := workflow.GetEntities(ctx, busDomain.Workflow)
 	if err != nil {
 		return workflowSeedData{}, fmt.Errorf("seeding entities : %w", err)
 	}
@@ -712,6 +712,7 @@ func createAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 		"value": "active",
 	}
 	conditionsJSON, _ := json.Marshal(conditions)
+	triggerConditions := json.RawMessage(conditionsJSON)
 
 	return unitest.Table{
 		Name: "create",
@@ -721,7 +722,7 @@ func createAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			EntityID:          sd.Entities[1].ID,
 			EntityTypeID:      sd.EntityTypes[0].ID,
 			TriggerTypeID:     sd.TriggerTypes[0].ID,
-			TriggerConditions: conditionsJSON,
+			TriggerConditions: &triggerConditions,
 			IsActive:          true,
 			CreatedBy:         sd.Admins[0].ID,
 			UpdatedBy:         sd.Admins[0].ID,
@@ -733,7 +734,7 @@ func createAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 				EntityID:          sd.Entities[1].ID,
 				EntityTypeID:      sd.EntityTypes[0].ID,
 				TriggerTypeID:     sd.TriggerTypes[0].ID,
-				TriggerConditions: conditionsJSON,
+				TriggerConditions: &triggerConditions,
 				IsActive:          true,
 				CreatedBy:         sd.Admins[0].ID,
 			}
@@ -862,7 +863,7 @@ func updateAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			EntityID:          sd.AutomationRules[0].EntityID,
 			EntityTypeID:      sd.AutomationRules[0].EntityTypeID,
 			TriggerTypeID:     sd.AutomationRules[0].TriggerTypeID,
-			TriggerConditions: newConditionsJSON,
+			TriggerConditions: &raw,
 			IsActive:          false,
 			CreatedDate:       sd.AutomationRules[0].CreatedDate,
 			CreatedBy:         sd.AutomationRules[0].CreatedBy,

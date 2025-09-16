@@ -2,7 +2,6 @@
 package rabbitmq_test
 
 import (
-	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -96,8 +95,7 @@ func TestWorkflowQueue_PublishAndConsume(t *testing.T) {
 	}
 	defer client.Close()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	wq := rabbitmq.NewWorkflowQueue(client, log)
 
 	ctx := context.Background()
@@ -163,8 +161,7 @@ func TestWorkflowQueue_BatchPublish(t *testing.T) {
 	}
 	defer client.Close()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	wq := rabbitmq.NewWorkflowQueue(client, log)
 
 	ctx := context.Background()
@@ -213,8 +210,7 @@ func TestWorkflowQueue_ErrorHandling(t *testing.T) {
 	}
 	defer client.Close()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	wq := rabbitmq.NewWorkflowQueue(client, log)
 
 	ctx := context.Background()
@@ -282,8 +278,7 @@ func TestWorkflowQueue_PurgeQueue(t *testing.T) {
 	}
 	defer client.Close()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	wq := rabbitmq.NewWorkflowQueue(client, log)
 
 	ctx := context.Background()
@@ -347,8 +342,7 @@ func TestWorkflowQueue_MultipleQueueTypes(t *testing.T) {
 	}
 	defer client.Close()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	wq := rabbitmq.NewWorkflowQueue(client, log)
 
 	ctx := context.Background()

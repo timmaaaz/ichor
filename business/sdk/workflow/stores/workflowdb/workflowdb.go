@@ -97,7 +97,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (workflow.Storer, error) {
 // CreateTriggerType inserts a new trigger type into the database.
 func (s *Store) CreateTriggerType(ctx context.Context, tt workflow.TriggerType) error {
 	const q = `
-	INSERT INTO trigger_types (
+	INSERT INTO workflow.trigger_types (
 		id, name, description
 	) VALUES (
 		:id, :name, :description
@@ -114,7 +114,7 @@ func (s *Store) CreateTriggerType(ctx context.Context, tt workflow.TriggerType) 
 func (s *Store) UpdateTriggerType(ctx context.Context, tt workflow.TriggerType) error {
 	const q = `
 	UPDATE
-		trigger_types
+		workflow.trigger_types
 	SET 
 		name = :name,
 		description = :description
@@ -132,7 +132,7 @@ func (s *Store) UpdateTriggerType(ctx context.Context, tt workflow.TriggerType) 
 func (s *Store) DeactivateTriggerType(ctx context.Context, tt workflow.TriggerType) error {
 	const q = `
 	UPDATE
-		trigger_types
+		workflow.trigger_types
 	SET
 		deactivated_by = :deactivated_by,
 		is_active = false
@@ -150,7 +150,7 @@ func (s *Store) DeactivateTriggerType(ctx context.Context, tt workflow.TriggerTy
 func (s *Store) ActivateTriggerType(ctx context.Context, tt workflow.TriggerType) error {
 	const q = `
 	UPDATE
-		trigger_types
+		workflow.trigger_types
 	SET
 		deactivated_by = NULL,
 		is_active = true
@@ -170,7 +170,7 @@ func (s *Store) QueryTriggerTypes(ctx context.Context) ([]workflow.TriggerType, 
 	SELECT
 		id, name, description
 	FROM
-		trigger_types`
+		workflow.trigger_types`
 
 	var dbTriggerTypes []triggerType
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbTriggerTypes); err != nil {
@@ -185,13 +185,38 @@ func (s *Store) QueryTriggerTypes(ctx context.Context) ([]workflow.TriggerType, 
 	return triggerTypes, nil
 }
 
+// QueryTriggerTypeByName retrieves a single trigger type by name from the database.
+func (s *Store) QueryTriggerTypeByName(ctx context.Context, name string) (workflow.TriggerType, error) {
+	data := struct {
+		Name string `db:"name"`
+	}{
+		Name: name,
+	}
+
+	const q = `
+	SELECT
+		id, name, description
+	FROM
+		workflow.trigger_types
+	WHERE
+		name = :name`
+
+	var dbTriggerType triggerType
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbTriggerType); err != nil {
+		return workflow.TriggerType{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreTriggerType(dbTriggerType), nil
+}
+
 // =============================================================================
 // Entity Types
 
 // CreateEntityType inserts a new entity type into the database.
 func (s *Store) CreateEntityType(ctx context.Context, et workflow.EntityType) error {
 	const q = `
-	INSERT INTO entity_types (
+	INSERT INTO workflow.entity_types (
 		id, name, description
 	) VALUES (
 		:id, :name, :description
@@ -208,7 +233,7 @@ func (s *Store) CreateEntityType(ctx context.Context, et workflow.EntityType) er
 func (s *Store) UpdateEntityType(ctx context.Context, et workflow.EntityType) error {
 	const q = `
 	UPDATE
-		entity_types
+		workflow.entity_types
 	SET 
 		name = :name,
 		description = :description
@@ -226,7 +251,7 @@ func (s *Store) UpdateEntityType(ctx context.Context, et workflow.EntityType) er
 func (s *Store) DeactivateEntityType(ctx context.Context, et workflow.EntityType) error {
 	const q = `
 	UPDATE
-		entity_types
+		workflow.entity_types
 	SET
 		deactivated_by = :deactivated_by,
 		is_active = false
@@ -244,7 +269,7 @@ func (s *Store) DeactivateEntityType(ctx context.Context, et workflow.EntityType
 func (s *Store) ActivateEntityType(ctx context.Context, et workflow.EntityType) error {
 	const q = `
 	UPDATE
-		entity_types
+		workflow.entity_types
 	SET
 		deactivated_by = NULL,
 		is_active = true
@@ -264,7 +289,7 @@ func (s *Store) QueryEntityTypes(ctx context.Context) ([]workflow.EntityType, er
 	SELECT
 		id, name, description
 	FROM
-		entity_types`
+		workflow.entity_types`
 
 	var dbEntityTypes []entityType
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbEntityTypes); err != nil {
@@ -272,6 +297,31 @@ func (s *Store) QueryEntityTypes(ctx context.Context) ([]workflow.EntityType, er
 	}
 
 	return toCoreEntityTypeSlice(dbEntityTypes), nil
+}
+
+// QueryEntityTypeByName retrieves a single entity type by name from the database.
+func (s *Store) QueryEntityTypeByName(ctx context.Context, name string) (workflow.EntityType, error) {
+	data := struct {
+		Name string `db:"name"`
+	}{
+		Name: name,
+	}
+
+	const q = `
+	SELECT
+		id, name, description
+	FROM
+		workflow.entity_types
+	WHERE
+		name = :name`
+
+	var dbEntityType entityType
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbEntityType); err != nil {
+		return workflow.EntityType{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreEntityType(dbEntityType), nil
 }
 
 // =============================================================================
@@ -364,6 +414,56 @@ func (s *Store) QueryEntities(ctx context.Context) ([]workflow.Entity, error) {
 	return toCoreEntitySlice(dbEntities), nil
 }
 
+// QueryEntityByName retrieves a single entity by name from the database.
+func (s *Store) QueryEntityByName(ctx context.Context, name string) (workflow.Entity, error) {
+	data := struct {
+		Name string `db:"name"`
+	}{
+		Name: name,
+	}
+
+	const q = `
+	SELECT
+		id, name, entity_type_id, schema_name, is_active, created_date
+	FROM
+		workflow.entities
+	WHERE
+		name = :name`
+
+	var dbEntity entity
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbEntity); err != nil {
+		return workflow.Entity{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreEntity(dbEntity), nil
+}
+
+// QueryEntitiesByType retrieves a list of entities for the specified entity type from the database.
+func (s *Store) QueryEntitiesByType(ctx context.Context, entityTypeID uuid.UUID) ([]workflow.Entity, error) {
+	data := struct {
+		EntityTypeID string `db:"entity_type_id"`
+	}{
+		EntityTypeID: entityTypeID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, name, entity_type_id, schema_name, is_active, created_date
+	FROM
+		workflow.entities
+	WHERE
+		entity_type_id = :entity_type_id`
+
+	var dbEntities []entity
+
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbEntities); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreEntitySlice(dbEntities), nil
+}
+
 // =============================================================================
 // Automation Rules
 
@@ -380,7 +480,12 @@ func (s *Store) CreateRule(ctx context.Context, rule workflow.AutomationRule) er
 		:created_by, :updated_by
 	)`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAutomationRule(rule)); err != nil {
+	dbAR, err := toDBAutomationRule(rule)
+	if err != nil {
+		return fmt.Errorf("toDBAutomationRule: %w", err)
+	}
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, dbAR); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 
@@ -405,7 +510,12 @@ func (s *Store) UpdateRule(ctx context.Context, rule workflow.AutomationRule) er
 	WHERE
 		id = :id`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAutomationRule(rule)); err != nil {
+	dbAR, err := toDBAutomationRule(rule)
+	if err != nil {
+		return fmt.Errorf("toDBAutomationRule: %w", err)
+	}
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, dbAR); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 
@@ -423,7 +533,12 @@ func (s *Store) DeactivateRule(ctx context.Context, rule workflow.AutomationRule
 	WHERE
 		id = :id`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAutomationRule(rule)); err != nil {
+	dbAR, err := toDBAutomationRule(rule)
+	if err != nil {
+		return fmt.Errorf("toDBAutomationRule: %w", err)
+	}
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, dbAR); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 
@@ -441,7 +556,12 @@ func (s *Store) ActivateRule(ctx context.Context, rule workflow.AutomationRule) 
 	WHERE
 		id = :id`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAutomationRule(rule)); err != nil {
+	dbAR, err := toDBAutomationRule(rule)
+	if err != nil {
+		return fmt.Errorf("toDBAutomationRule: %w", err)
+	}
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, dbAR); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 
@@ -503,6 +623,26 @@ func (s *Store) QueryRulesByEntity(ctx context.Context, entityID uuid.UUID) ([]w
 	return toCoreAutomationRuleSlice(dbRules), nil
 }
 
+// QueryActiveRules gets all active automation rules from the database.
+func (s *Store) QueryActiveRules(ctx context.Context) ([]workflow.AutomationRule, error) {
+	const q = `
+	SELECT
+		id, name, description, entity_id, entity_type_id, trigger_type_id,
+		trigger_conditions, is_active, created_date, updated_date,
+		created_by, updated_by
+	FROM
+		workflow.automation_rules
+	WHERE 
+		is_active = true`
+
+	var dbRules []automationRule
+
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbRules); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+	return toCoreAutomationRuleSlice(dbRules), nil
+}
+
 // =============================================================================
 // Rule Actions
 
@@ -510,10 +650,10 @@ func (s *Store) QueryRulesByEntity(ctx context.Context, entityID uuid.UUID) ([]w
 func (s *Store) CreateRuleAction(ctx context.Context, action workflow.RuleAction) error {
 	const q = `
 	INSERT INTO workflow.rule_actions (
-		id, workflow.automation_rules_id, name, description, action_config,
+		id, automation_rules_id, name, description, action_config,
 		execution_order, is_active, template_id, deactivated_by
 	) VALUES (
-		:id, :workflow.automation_rules_id, :name, :description, :action_config,
+		:id, :automation_rules_id, :name, :description, :action_config,
 		:execution_order, :is_active, :template_id, :deactivated_by
 	)`
 
@@ -530,7 +670,7 @@ func (s *Store) UpdateRuleAction(ctx context.Context, action workflow.RuleAction
 	UPDATE
 		workflow.rule_actions
 	SET 
-		workflow.automation_rules_id = :workflow.automation_rules_id,
+		automation_rules_id = :automation_rules_id,
 		name = :name,
 		description = :description,
 		action_config = :action_config,
@@ -586,19 +726,19 @@ func (s *Store) ActivateRuleAction(ctx context.Context, action workflow.RuleActi
 // QueryActionsByRule gets rule actions for the specified automation rule from the database.
 func (s *Store) QueryActionsByRule(ctx context.Context, ruleID uuid.UUID) ([]workflow.RuleAction, error) {
 	data := struct {
-		RuleID string `db:"workflow.automation_rules_id"`
+		RuleID string `db:"automation_rules_id"`
 	}{
 		RuleID: ruleID.String(),
 	}
 
 	const q = `
 	SELECT
-		id, workflow.automation_rules_id, name, description, action_config,
+		id, automation_rules_id, name, description, action_config,
 		execution_order, is_active, template_id
 	FROM
 		workflow.rule_actions
 	WHERE 
-		workflow.automation_rules_id = :workflow.automation_rules_id`
+		automation_rules_id = :automation_rules_id`
 
 	var dbActions []ruleAction
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbActions); err != nil {
@@ -786,10 +926,10 @@ func (s *Store) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (wo
 func (s *Store) CreateExecution(ctx context.Context, exec workflow.AutomationExecution) error {
 	const q = `
 	INSERT INTO workflow.automation_executions (
-		id, workflow.automation_rules_id, entity_type, trigger_data, actions_executed,
+		id, automation_rules_id, entity_type, trigger_data, actions_executed,
 		status, error_message, execution_time_ms, executed_at
 	) VALUES (
-		:id, :workflow.automation_rules_id, :entity_type, :trigger_data, :actions_executed,
+		:id, :automation_rules_id, :entity_type, :trigger_data, :actions_executed,
 		:status, :error_message, :execution_time_ms, :executed_at
 	)`
 
@@ -803,7 +943,7 @@ func (s *Store) CreateExecution(ctx context.Context, exec workflow.AutomationExe
 // QueryExecutionHistory gets execution history for the specified automation rule from the database.
 func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, limit int) ([]workflow.AutomationExecution, error) {
 	data := struct {
-		RuleID string `db:"workflow.automation_rules_id"`
+		RuleID string `db:"automation_rules_id"`
 		Limit  int    `db:"limit"`
 	}{
 		RuleID: ruleID.String(),
@@ -812,12 +952,12 @@ func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, lim
 
 	const q = `
 	SELECT
-		id, workflow.automation_rules_id, entity_type, trigger_data, actions_executed,
+		id, automation_rules_id, entity_type, trigger_data, actions_executed,
 		status, error_message, execution_time_ms, executed_at
 	FROM
 		workflow.automation_executions
 	WHERE 
-		workflow.automation_rules_id = :workflow.automation_rules_id
+		automation_rules_id = :automation_rules_id
 	LIMIT :limit`
 
 	var dbExecutions []automationExecution
@@ -917,4 +1057,56 @@ func (s *Store) QueryAllDeliveries(ctx context.Context) ([]workflow.Notification
 	}
 
 	return toCoreNotificationDeliverySlice(dbDeliveries), nil
+}
+
+// =============================================================================
+// VIEWS
+// =============================================================================
+
+/*
+CREATE OR REPLACE VIEW workflow.automation_rules_view AS
+
+	SELECT
+	    ar.id,
+	    ar.name,
+	    ar.description,
+	    ar.name,
+	    ar.trigger_conditions,
+	    ar.is_active,
+	    ar.created_date,
+	    ar.updated_date,
+	    ar.created_by,
+	    ar.updated_by,
+	    tt.id as trigger_type_id,
+	    tt.name as trigger_type_name,
+	    tt.description as trigger_type_description,
+	    et.id as entity_type_id,
+	    et.name as entity_type_name,
+	    et.description as entity_type_description,
+	    e.name as entity_name,
+	    e.id as entity_id
+	FROM workflow.automation_rules ar
+	LEFT JOIN workflow.trigger_types tt ON ar.trigger_type_id = tt.id
+	LEFT JOIN workflow.entities e ON ar.name = e.name
+	LEFT JOIN workflow.entity_types et ON e.entity_type_id = et.id
+	WHERE ar.is_active = true
+	;
+*/
+func (s *Store) QueryAutomationRulesView(ctx context.Context) ([]workflow.AutomationRuleView, error) {
+	const q = `
+	SELECT
+		id, name, description, trigger_conditions, is_active, created_date, updated_date,
+		created_by, updated_by, trigger_type_id, trigger_type_name, trigger_type_description,
+		entity_type_id, entity_type_name, entity_type_description, entity_name, entity_id
+	FROM
+		workflow.automation_rules_view
+	WHERE
+		is_active = true`
+
+	var dbAutomationRulesViews []automationRulesView
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbAutomationRulesViews); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreAutomationRuleViews(dbAutomationRulesViews), nil
 }

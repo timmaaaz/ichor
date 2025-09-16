@@ -49,8 +49,9 @@ type ValidationError struct {
 
 // DependencyResolver manages rule dependencies and execution order
 type DependencyResolver struct {
-	log *logger.Logger
-	db  *sqlx.DB
+	log         *logger.Logger
+	db          *sqlx.DB
+	workflowBus *Business
 
 	// Cached data
 	dependencies []RuleDependency
@@ -61,10 +62,11 @@ type DependencyResolver struct {
 }
 
 // NewDependencyResolver creates a new dependency resolver
-func NewDependencyResolver(log *logger.Logger, db *sqlx.DB) *DependencyResolver {
+func NewDependencyResolver(log *logger.Logger, db *sqlx.DB, workflowBus *Business) *DependencyResolver {
 	return &DependencyResolver{
 		log:          log,
 		db:           db,
+		workflowBus:  workflowBus,
 		cacheTimeout: 5 * time.Minute,
 		graph: &DependencyGraph{
 			Nodes:  make(map[uuid.UUID]*DependencyNode),
@@ -96,28 +98,15 @@ func (dr *DependencyResolver) loadDependencies(ctx context.Context) error {
 		return nil
 	}
 
-	// Load dependencies
-	depQuery := `
-        SELECT parent_rule_id, child_rule_id, created_date, updated_date
-        FROM rule_dependencies
-    `
-
-	var deps []RuleDependency
-	if err := dr.db.SelectContext(ctx, &deps, depQuery); err != nil {
+	deps, err := dr.workflowBus.QueryDependencies(ctx)
+	if err != nil {
+		dr.log.Error(ctx, "Failed to load dependencies", "error", err)
 		return fmt.Errorf("failed to load dependencies: %w", err)
 	}
 
-	// Load active rules
-	ruleQuery := `
-        SELECT id, name, description, entity_name, entity_type_id, 
-               trigger_type_id, trigger_conditions, is_active,
-               created_date, updated_date, created_by, updated_by
-        FROM automation_rules
-        WHERE is_active = true
-    `
-
-	var rules []AutomationRule
-	if err := dr.db.SelectContext(ctx, &rules, ruleQuery); err != nil {
+	rules, err := dr.workflowBus.QueryActiveRules(ctx)
+	if err != nil {
+		dr.log.Error(ctx, "Failed to load rules", "error", err)
 		return fmt.Errorf("failed to load rules: %w", err)
 	}
 

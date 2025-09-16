@@ -242,7 +242,7 @@ type AutomationRule struct {
 	EntityID          uuid.UUID
 	EntityTypeID      uuid.UUID
 	TriggerTypeID     uuid.UUID
-	TriggerConditions json.RawMessage
+	TriggerConditions *json.RawMessage
 	IsActive          bool
 	CreatedDate       time.Time
 	UpdatedDate       time.Time
@@ -258,7 +258,7 @@ type NewAutomationRule struct {
 	EntityID          uuid.UUID
 	EntityTypeID      uuid.UUID
 	TriggerTypeID     uuid.UUID
-	TriggerConditions json.RawMessage
+	TriggerConditions *json.RawMessage
 	IsActive          bool
 	CreatedBy         uuid.UUID
 }
@@ -485,9 +485,9 @@ type QueryFilter struct {
 type AutomationRuleView struct {
 	ID                uuid.UUID
 	Name              string
-	Description       string
+	Description       *string
 	EntityID          *uuid.UUID
-	TriggerConditions json.RawMessage
+	TriggerConditions *json.RawMessage
 	Actions           json.RawMessage
 	IsActive          bool
 	CreatedDate       time.Time

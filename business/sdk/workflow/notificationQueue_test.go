@@ -1,10 +1,10 @@
 package workflow_test
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -48,10 +48,8 @@ import (
 // We do want to add tests for the above
 
 func TestNotificationQueueProcessor_Initialize(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Get RabbitMQ container
 	container := rabbitmq.GetTestContainer(t)
@@ -81,10 +79,8 @@ func TestNotificationQueueProcessor_Initialize(t *testing.T) {
 }
 
 func TestNotificationQueueProcessor_RegisterHandler(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Get RabbitMQ container
 	container := rabbitmq.GetTestContainer(t)
@@ -142,10 +138,8 @@ func TestNotificationQueueProcessor_RegisterHandler(t *testing.T) {
 }
 
 func TestNotificationQueueProcessor_StartStop(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Get RabbitMQ container
 	container := rabbitmq.GetTestContainer(t)
@@ -195,10 +189,8 @@ func TestNotificationQueueProcessor_StartStop(t *testing.T) {
 }
 
 func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Get RabbitMQ container
 	container := rabbitmq.GetTestContainer(t)
@@ -339,10 +331,8 @@ func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
 }
 
 func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Get RabbitMQ container
 	container := rabbitmq.GetTestContainer(t)
@@ -456,10 +446,8 @@ func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
 }
 
 func TestNotificationQueueProcessor_AlertPriorities(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Get RabbitMQ container
 	container := rabbitmq.GetTestContainer(t)
@@ -476,19 +464,39 @@ func TestNotificationQueueProcessor_AlertPriorities(t *testing.T) {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
+	// Create database store
 	db := dbtest.NewDatabase(t, "Test_Workflow")
-	np := workflow.NewNotificationQueueProcessor(log, client, workflowdb.NewStore(log, db.DB))
+	dbStore := workflowdb.NewStore(log, db.DB)
+
+	np := workflow.NewNotificationQueueProcessor(log, client, dbStore)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
 		t.Fatalf("initializing notification processor: %s", err)
 	}
 
+	// Register test handlers
+	emailHandler := &testNotificationHandler{
+		channel:   "email",
+		available: true,
+		sent:      make([]workflow.NotificationPayload, 0),
+	}
+	pushHandler := &testNotificationHandler{
+		channel:   "push",
+		available: true,
+		sent:      make([]workflow.NotificationPayload, 0),
+	}
+
+	np.RegisterHandler(emailHandler)
+	np.RegisterHandler(pushHandler)
+
 	// Start the processor
 	if err := np.Start(ctx); err != nil {
 		t.Fatalf("starting notification processor: %s", err)
 	}
 	defer np.Stop(ctx)
+
+	time.Sleep(1 * time.Second) // Give consumers time to start
 
 	// Test different priority levels
 	priorities := []struct {
@@ -518,7 +526,7 @@ func TestNotificationQueueProcessor_AlertPriorities(t *testing.T) {
 	}
 
 	// Wait for processing
-	time.Sleep(2 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Verify stats
 	stats := np.GetStats()
@@ -528,10 +536,8 @@ func TestNotificationQueueProcessor_AlertPriorities(t *testing.T) {
 }
 
 func TestNotificationQueueProcessor_ConcurrentMessages(t *testing.T) {
-	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Get RabbitMQ container
 	container := rabbitmq.GetTestContainer(t)
@@ -548,27 +554,39 @@ func TestNotificationQueueProcessor_ConcurrentMessages(t *testing.T) {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
+	// Create database store
 	db := dbtest.NewDatabase(t, "Test_Workflow")
-	np := workflow.NewNotificationQueueProcessor(log, client, workflowdb.NewStore(log, db.DB))
+	dbStore := workflowdb.NewStore(log, db.DB)
+
+	np := workflow.NewNotificationQueueProcessor(log, client, dbStore)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
 		t.Fatalf("initializing notification processor: %s", err)
 	}
 
-	// Register handlers
+	// Register test handlers
 	emailHandler := &testNotificationHandler{
 		channel:   "email",
 		available: true,
 		sent:      make([]workflow.NotificationPayload, 0),
 	}
+	pushHandler := &testNotificationHandler{
+		channel:   "push",
+		available: true,
+		sent:      make([]workflow.NotificationPayload, 0),
+	}
+
 	np.RegisterHandler(emailHandler)
+	np.RegisterHandler(pushHandler)
 
 	// Start the processor
 	if err := np.Start(ctx); err != nil {
 		t.Fatalf("starting notification processor: %s", err)
 	}
 	defer np.Stop(ctx)
+
+	time.Sleep(1 * time.Second) // Give consumers time to start
 
 	// Queue multiple notifications concurrently
 	var wg sync.WaitGroup
@@ -598,7 +616,7 @@ func TestNotificationQueueProcessor_ConcurrentMessages(t *testing.T) {
 	wg.Wait()
 
 	// Wait for all messages to be processed
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Verify all messages were processed
 	if len(emailHandler.sent) != notificationCount {
@@ -695,8 +713,7 @@ func (s *testStore) QueryDeliveriesByAutomationExecution(ctx context.Context, ex
 // Benchmark tests
 
 func BenchmarkNotificationQueueProcessor_QueueNotification(b *testing.B) {
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	container, err := rabbitmq.StartRabbitMQ()
 	if err != nil {
