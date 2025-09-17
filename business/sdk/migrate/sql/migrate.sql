@@ -1098,3 +1098,20 @@ LEFT JOIN core.users cu ON ar.created_by = cu.id
 LEFT JOIN core.users uu ON ar.updated_by = uu.id
 LEFT JOIN core.users du ON ar.deactivated_by = du.id
 WHERE ar.is_active = true;
+
+
+CREATE OR REPLACE VIEW workflow.rule_actions_view AS 
+   SELECT 
+      ra.id,
+      ra.automation_rules_id,
+      ra.name,
+      ra.description,
+      ra.action_config,
+      ra.execution_order,
+      ra.is_active,
+      ra.template_id,
+      at.name as template_name,
+      at.action_type as template_action_type,
+      at.default_config as template_default_config
+   FROM workflow.rule_actions ra
+   LEFT JOIN workflow.action_templates at ON ra.template_id = at.id;

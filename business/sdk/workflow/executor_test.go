@@ -22,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
@@ -260,8 +261,8 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 	db := ndb.DB
 
 	// Create registry and register all actions
-
-	ae := workflow.NewActionExecutor(log, db)
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
@@ -392,8 +393,9 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
-	ae := workflow.NewActionExecutor(log, db)
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -542,8 +544,9 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
-	ae := workflow.NewActionExecutor(log, db)
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -656,7 +659,8 @@ func TestActionExecutor_ProcessTemplates(t *testing.T) {
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
 
-	ae := workflow.NewActionExecutor(log, db)
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -731,8 +735,9 @@ func TestActionExecutor_ShouldStopOnFailure(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
-	ae := workflow.NewActionExecutor(log, db)
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -768,8 +773,9 @@ func TestActionExecutor_Stats(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
-	ae := workflow.NewActionExecutor(log, db)
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -831,8 +837,9 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
-	ae := workflow.NewActionExecutor(log, db)
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -895,9 +902,10 @@ func TestActionHandler_Implementations(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	ndb := dbtest.NewDatabase(t, "Test_Workflow")
 	db := ndb.DB
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
 	// Create registry and register all actions
-	ae := workflow.NewActionExecutor(log, db)
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -918,7 +926,7 @@ func TestActionHandler_Implementations(t *testing.T) {
 
 	// Note: ActionExecutor is created but not used in this test
 	// as we're testing the handlers directly from the registry
-	_ = workflow.NewActionExecutor(log, db)
+	_ = workflow.NewActionExecutor(log, db, workflowBus)
 
 	tests := []struct {
 		name          string
@@ -1156,9 +1164,9 @@ func testAddToHistory(ae *workflow.ActionExecutor, result workflow.BatchExecutio
 
 func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-
 	db := &sqlx.DB{}
-	ae := workflow.NewActionExecutor(log, db)
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -1195,8 +1203,9 @@ func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
 func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	db := &sqlx.DB{}
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
-	ae := workflow.NewActionExecutor(log, db)
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{
@@ -1236,8 +1245,9 @@ func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
 func BenchmarkActionExecutor_ProcessTemplates(b *testing.B) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 	db := &sqlx.DB{}
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
-	ae := workflow.NewActionExecutor(log, db)
+	ae := workflow.NewActionExecutor(log, db, workflowBus)
 	workflowactions.RegisterAll(
 		ae.GetRegistry(),
 		workflowactions.ActionConfig{

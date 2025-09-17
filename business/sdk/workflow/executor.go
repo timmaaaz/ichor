@@ -32,8 +32,9 @@ type ActionExecutionStats struct {
 
 // ActionExecutor manages the execution of rule actions
 type ActionExecutor struct {
-	log *logger.Logger
-	db  *sqlx.DB
+	log         *logger.Logger
+	db          *sqlx.DB
+	workflowBus *Business
 
 	registry *ActionRegistry
 
@@ -77,10 +78,11 @@ type ActionValidationResult struct {
 }
 
 // NewActionExecutor creates a new action executor
-func NewActionExecutor(log *logger.Logger, db *sqlx.DB) *ActionExecutor {
+func NewActionExecutor(log *logger.Logger, db *sqlx.DB, workflowBus *Business) *ActionExecutor {
 	ae := &ActionExecutor{
 		log:                log,
 		db:                 db,
+		workflowBus:        workflowBus,
 		registry:           NewActionRegistry(),
 		templateProc:       NewTemplateProcessor(DefaultTemplateProcessingOptions()),
 		history:            make([]BatchExecutionResult, 0),
@@ -112,7 +114,7 @@ func (ae *ActionExecutor) ExecuteRuleActions(ctx context.Context, ruleID uuid.UU
 	startTime := time.Now()
 
 	// Load actions for the rule
-	actions, err := ae.loadRuleActions(ctx, ruleID)
+	actions, err := ae.workflowBus.QueryRoleActionsViewByRuleID(ctx, ruleID)
 	if err != nil {
 		return BatchExecutionResult{}, fmt.Errorf("failed to load rule actions: %w", err)
 	}
@@ -314,38 +316,38 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 }
 
 // loadRuleActions loads actions for a rule from the database
-func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error) {
-	query := `
-		SELECT 
-			ra.id,
-			ra.automation_rules_id,
-			ra.name,
-			ra.description,
-			ra.action_config,
-			ra.execution_order,
-			ra.is_active,
-			ra.template_id,
-			at.name as template_name,
-			at.action_type as template_action_type,
-			at.default_config as template_default_config
-		FROM rule_actions ra
-		LEFT JOIN action_templates at ON ra.template_id = at.id
-		WHERE ra.automation_rules_id = $1
-		ORDER BY ra.execution_order ASC
-	`
+// func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error) {
+// 	query := `
+// 		SELECT
+// 			ra.id,
+// 			ra.automation_rules_id,
+// 			ra.name,
+// 			ra.description,
+// 			ra.action_config,
+// 			ra.execution_order,
+// 			ra.is_active,
+// 			ra.template_id,
+// 			at.name as template_name,
+// 			at.action_type as template_action_type,
+// 			at.default_config as template_default_config
+// 		FROM workflow.rule_actions ra
+// 		LEFT JOIN workflow.action_templates at ON ra.template_id = at.id
+// 		WHERE ra.automation_rules_id = $1
+// 		ORDER BY ra.execution_order ASC
+// 	`
 
-	var actions []RuleActionView
-	if err := ae.db.SelectContext(ctx, &actions, query, ruleID); err != nil {
-		return nil, fmt.Errorf("failed to load rule actions: %w", err)
-	}
+// 	var actions []RuleActionView
+// 	if err := ae.db.SelectContext(ctx, &actions, query, ruleID); err != nil {
+// 		return nil, fmt.Errorf("failed to load rule actions: %w", err)
+// 	}
 
-	return actions, nil
-}
+// 	return actions, nil
+// }
 
 // getRuleName gets the name of a rule
 func (ae *ActionExecutor) getRuleName(ctx context.Context, ruleID uuid.UUID) string {
 	var name string
-	query := `SELECT name FROM automation_rules WHERE id = $1`
+	query := `SELECT name FROM workflow.automation_rules WHERE id = $1`
 
 	if err := ae.db.GetContext(ctx, &name, query, ruleID); err != nil {
 		ae.log.Error(ctx, "Failed to get rule name",

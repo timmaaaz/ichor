@@ -320,15 +320,15 @@ func toDBActionTemplate(at workflow.ActionTemplate) actionTemplate {
 
 // ruleAction represents an action within a rule
 type ruleAction struct {
-	ID                string          `db:"id"`
-	AutomationRulesID string          `db:"automation_rules_id"`
-	Name              string          `db:"name"`
-	Description       string          `db:"description"`
-	ActionConfig      json.RawMessage `db:"action_config"`
-	ExecutionOrder    int             `db:"execution_order"`
-	IsActive          bool            `db:"is_active"`
-	TemplateID        sql.NullString  `db:"template_id"`
-	DeactivatedBy     sql.NullString  `db:"deactivated_by"`
+	ID               string          `db:"id"`
+	AutomationRuleID string          `db:"automation_rules_id"`
+	Name             string          `db:"name"`
+	Description      string          `db:"description"`
+	ActionConfig     json.RawMessage `db:"action_config"`
+	ExecutionOrder   int             `db:"execution_order"`
+	IsActive         bool            `db:"is_active"`
+	TemplateID       sql.NullString  `db:"template_id"`
+	DeactivatedBy    sql.NullString  `db:"deactivated_by"`
 }
 
 // toCoreRuleAction converts a store ruleAction to core RuleAction
@@ -339,7 +339,7 @@ func toCoreRuleAction(dbAction ruleAction) workflow.RuleAction {
 	}
 	ra := workflow.RuleAction{
 		ID:               uuid.MustParse(dbAction.ID),
-		AutomationRuleID: uuid.MustParse(dbAction.AutomationRulesID),
+		AutomationRuleID: uuid.MustParse(dbAction.AutomationRuleID),
 		Description:      dbAction.Description,
 		Name:             dbAction.Name,
 		ActionConfig:     dbAction.ActionConfig,
@@ -371,14 +371,14 @@ func toDBRuleAction(ra workflow.RuleAction) ruleAction {
 	}
 
 	dbAction := ruleAction{
-		ID:                ra.ID.String(),
-		AutomationRulesID: ra.AutomationRuleID.String(),
-		Name:              ra.Name,
-		Description:       ra.Description,
-		ActionConfig:      ra.ActionConfig,
-		ExecutionOrder:    ra.ExecutionOrder,
-		IsActive:          ra.IsActive,
-		DeactivatedBy:     deactivatedBy,
+		ID:               ra.ID.String(),
+		AutomationRuleID: ra.AutomationRuleID.String(),
+		Name:             ra.Name,
+		Description:      ra.Description,
+		ActionConfig:     ra.ActionConfig,
+		ExecutionOrder:   ra.ExecutionOrder,
+		IsActive:         ra.IsActive,
+		DeactivatedBy:    deactivatedBy,
 	}
 	if ra.TemplateID != nil {
 		dbAction.TemplateID = sql.NullString{String: ra.TemplateID.String(), Valid: true}
@@ -572,15 +572,15 @@ func toCoreAutomationRuleViews(dbViews []automationRulesView) []workflow.Automat
 
 // ruleActionView is a view with template information
 type ruleActionView struct {
-	ID                string          `db:"id"`
-	AutomationRulesID sql.NullString  `db:"automation_rules_id"`
-	Name              sql.NullString  `db:"name"`
-	Description       sql.NullString  `db:"description"`
-	ActionConfig      json.RawMessage `db:"action_config"`
-	ExecutionOrder    sql.NullInt32   `db:"execution_order"`
-	IsActive          sql.NullBool    `db:"is_active"`
-	TemplateID        sql.NullString  `db:"template_id"`
+	ID               string          `db:"id"`
+	AutomationRuleID sql.NullString  `db:"automation_rules_id"`
+	Name             sql.NullString  `db:"name"`
+	Description      sql.NullString  `db:"description"`
+	ActionConfig     json.RawMessage `db:"action_config"`
+	ExecutionOrder   sql.NullInt32   `db:"execution_order"`
+	IsActive         sql.NullBool    `db:"is_active"`
 	// Template information
+	TemplateID            sql.NullString  `db:"template_id"`
 	TemplateName          sql.NullString  `db:"template_name"`
 	TemplateActionType    sql.NullString  `db:"template_action_type"`
 	TemplateDefaultConfig json.RawMessage `db:"template_default_config"`
@@ -594,9 +594,9 @@ func toCoreRuleActionView(dbView ruleActionView) workflow.RuleActionView {
 	}
 
 	// Handle nullable fields
-	if dbView.AutomationRulesID.Valid {
-		ruleID := uuid.MustParse(dbView.AutomationRulesID.String)
-		view.AutomationRuleID = &ruleID
+	if dbView.AutomationRuleID.Valid {
+		ruleID := uuid.MustParse(dbView.AutomationRuleID.String)
+		view.AutomationRulesID = &ruleID
 	}
 	if dbView.Name.Valid {
 		view.Name = dbView.Name.String

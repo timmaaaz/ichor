@@ -1062,36 +1062,6 @@ func (s *Store) QueryAllDeliveries(ctx context.Context) ([]workflow.Notification
 // =============================================================================
 // VIEWS
 // =============================================================================
-
-/*
-CREATE OR REPLACE VIEW workflow.automation_rules_view AS
-
-	SELECT
-	    ar.id,
-	    ar.name,
-	    ar.description,
-	    ar.name,
-	    ar.trigger_conditions,
-	    ar.is_active,
-	    ar.created_date,
-	    ar.updated_date,
-	    ar.created_by,
-	    ar.updated_by,
-	    tt.id as trigger_type_id,
-	    tt.name as trigger_type_name,
-	    tt.description as trigger_type_description,
-	    et.id as entity_type_id,
-	    et.name as entity_type_name,
-	    et.description as entity_type_description,
-	    e.name as entity_name,
-	    e.id as entity_id
-	FROM workflow.automation_rules ar
-	LEFT JOIN workflow.trigger_types tt ON ar.trigger_type_id = tt.id
-	LEFT JOIN workflow.entities e ON ar.name = e.name
-	LEFT JOIN workflow.entity_types et ON e.entity_type_id = et.id
-	WHERE ar.is_active = true
-	;
-*/
 func (s *Store) QueryAutomationRulesView(ctx context.Context) ([]workflow.AutomationRuleView, error) {
 	const q = `
 	SELECT
@@ -1109,4 +1079,31 @@ func (s *Store) QueryAutomationRulesView(ctx context.Context) ([]workflow.Automa
 	}
 
 	return toCoreAutomationRuleViews(dbAutomationRulesViews), nil
+}
+
+func (s *Store) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UUID) ([]workflow.RuleActionView, error) {
+	data := struct {
+		RuleID string `db:"automation_rules_id"`
+	}{
+		RuleID: ruleID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, automation_rules_id, name, description, action_config,
+		execution_order, is_active, template_id, template_name, 
+		template_action_type, template_default_config
+	FROM
+		workflow.rule_actions_view
+	WHERE 
+		automation_rules_id = :automation_rules_id
+	ORDER BY
+		execution_order ASC`
+
+	var dbRuleActionsViews []ruleActionView
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbRuleActionsViews); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreRuleActionViews(dbRuleActionsViews), nil
 }

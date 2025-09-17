@@ -75,6 +75,7 @@ type Storer interface {
 	QueryExecutionHistory(ctx context.Context, ruleid uuid.UUID, limit int) ([]AutomationExecution, error)
 
 	QueryAutomationRulesView(ctx context.Context) ([]AutomationRuleView, error)
+	QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error)
 }
 
 // Set of error variables for CRUD operations.
@@ -932,4 +933,17 @@ func (b *Business) QueryAutomationRulesView(ctx context.Context) ([]AutomationRu
 	}
 
 	return rulesView, nil
+}
+
+// QueryRoleActionsViewByRuleID retrieves a comprehensive view of rule actions for a specific rule.
+func (b *Business) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryroleactionsviewbyruleid")
+	defer span.End()
+
+	actionsView, err := b.storer.QueryRoleActionsViewByRuleID(ctx, ruleID)
+	if err != nil {
+		return nil, fmt.Errorf("query: ruleID[%s]: %w", ruleID, err)
+	}
+
+	return actionsView, nil
 }

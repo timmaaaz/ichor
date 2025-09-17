@@ -169,7 +169,7 @@ func insertUpdateFieldSeedData(t *testing.T, busDomain dbtest.BusDomain) (update
 		EntityID:          entity.ID,
 		EntityTypeID:      entityType.ID,
 		TriggerTypeID:     triggerType.ID,
-		TriggerConditions: json.RawMessage(`{}`),
+		TriggerConditions: nil,
 		IsActive:          true,
 		CreatedBy:         adminUser.ID,
 	})

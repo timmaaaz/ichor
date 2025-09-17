@@ -2,8 +2,10 @@ package workflow_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
@@ -318,6 +321,8 @@ func TestQueueManager_StartStop(t *testing.T) {
 }
 
 func TestQueueManager_ProcessMessage(t *testing.T) {
+
+	// TEST SETUP ==============================================================
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Setup RabbitMQ
@@ -347,6 +352,7 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 		t.Fatalf("seeding workflow: %s", err)
 	}
 
+	// CREATE RULE =============================================================
 	entity, err := workflowBus.QueryEntityByName(ctx, "customers")
 	if err != nil {
 		t.Fatalf("querying entity: %s", err)
@@ -383,28 +389,51 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 	}
 	t.Logf("Created test rule with ID: %s", testRule.ID)
 
-	// Optional: Create an action for the rule to make it complete
-	// Note: You'll need to have an action template set up first, or register a handler
-	/*
-		_, err = workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
-			AutomationRuleID: testRule.ID,
-			Name:            "Test Action",
-			Description:     "Log the event",
-			ActionConfig:    json.RawMessage(`{"message": "Customer created: {{entity_name}}"}`),
-			ExecutionOrder:  1,
-			IsActive:        true,
-			TemplateID:      nil, // Or use a real template ID if you have one
-		})
-		if err != nil {
-			t.Logf("Could not create action: %v (this is okay for now)", err)
-		}
-	*/
+	// CREATE ACTION TEMPLATE ==================================================
+	emailTemplate, err := workflowBus.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+		Name:        "Send Email Template",
+		Description: "Template for sending emails",
+		ActionType:  "send_email",
+		DefaultConfig: json.RawMessage(`{
+			"recipients": ["test@example.com"],
+			"subject": "Default Subject"
+		}`),
+		CreatedBy: uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
+	})
+	if err != nil {
+		t.Fatalf("creating email template: %s", err)
+	}
 
-	// Create and initialize the engine AFTER creating the rule
+	// CREATE RULE ACTION ======================================================
+	_, err = workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+		AutomationRuleID: testRule.ID,
+		Name:             "Send Test Email",
+		Description:      "Send email when customer is created",
+		ActionConfig: json.RawMessage(`{
+			"recipients": ["admin@example.com", "manager@example.com"],
+			"subject": "New Customer: {{name}}",
+			"body": "A new customer {{name}} with email {{email}} has been created."
+		}`),
+		ExecutionOrder: 1,
+		IsActive:       true,
+		TemplateID:     &emailTemplate.ID,
+	})
+	if err != nil {
+		t.Fatalf("creating rule action: %s", err)
+	}
+
+	// INITIALIZE ENGINE =======================================================
+	// Create engine
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
+
+	// Now initialize the engine
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
+
+	// Register the email handler
+	registry := engine.GetRegistry()
+	registry.Register(communication.NewSendEmailHandler(log, db.DB))
 
 	// Create queue manager with real engine
 	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
@@ -531,6 +560,44 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 				lastExecution.ExecutionPlan.MatchedRuleCount)
 		}
 
+		// VERIFY EMAIL ACTION WAS EXECUTED ===================================
+		actionExecuted := false
+		for _, batchResult := range lastExecution.BatchResults {
+			for _, ruleResult := range batchResult.RuleResults {
+				t.Logf("Rule %s executed with %d actions", ruleResult.RuleName, len(ruleResult.ActionResults))
+
+				for _, actionResult := range ruleResult.ActionResults {
+					if actionResult.ActionType == "send_email" {
+						actionExecuted = true
+
+						// Check the action succeeded
+						if actionResult.Status != "success" {
+							t.Errorf("Email action failed: %s", actionResult.ErrorMessage)
+						}
+
+						// Check result data
+						if actionResult.ResultData != nil {
+							t.Logf("Email action result: %v", actionResult.ResultData)
+
+							// Verify expected fields in result
+							if emailID, ok := actionResult.ResultData["email_id"]; ok {
+								t.Logf("Email sent with ID: %v", emailID)
+							}
+							if status, ok := actionResult.ResultData["status"]; ok {
+								if status != "sent" {
+									t.Errorf("Expected email status 'sent', got %v", status)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if !actionExecuted {
+			t.Error("Expected email action to be executed")
+		}
+
 		// Log execution details for debugging
 		t.Logf("Execution completed with status: %s, matched rules: %d, batches: %d",
 			lastExecution.Status,
@@ -548,11 +615,10 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 		}
 	}
 
-	t.Logf("Integration test completed successfully - Event was queued and processed")
+	t.Logf("Integration test completed successfully - Event was queued and processed with email action")
 }
 
 func TestQueueManager_CircuitBreaker(t *testing.T) {
-
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
 
 	// Get RabbitMQ container
@@ -570,61 +636,236 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
-	db := dbtest.NewDatabase(t, "Test_Workflow")
+	// Setup database
+	db := dbtest.NewDatabase(t, "Test_CircuitBreaker")
+	ctx := context.Background()
 
-	// Create an engine that always fails
-	engine := newStubEngine(log, db.DB)
-	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client)
+	// Create workflow business layer
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+
+	// Seed basic data
+	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)
+	if err != nil {
+		t.Fatalf("seeding workflow: %s", err)
+	}
+
+	// Get entities
+	entity, err := workflowBus.QueryEntityByName(ctx, "customers")
+	if err != nil {
+		t.Fatalf("querying entity: %s", err)
+	}
+
+	entityType, err := workflowBus.QueryEntityTypeByName(ctx, "table")
+	if err != nil {
+		t.Fatalf("querying entity type: %s", err)
+	}
+
+	triggerType, err := workflowBus.QueryTriggerTypeByName(ctx, "on_create")
+	if err != nil {
+		t.Fatalf("querying trigger type: %s", err)
+	}
+
+	// Create a rule for circuit breaker testing
+	rule, err := workflowBus.CreateRule(ctx, workflow.NewAutomationRule{
+		Name:              "Circuit Breaker Test Rule",
+		Description:       "Rule to test circuit breaker with simulated email failures",
+		EntityID:          entity.ID,
+		EntityTypeID:      entityType.ID,
+		TriggerTypeID:     triggerType.ID,
+		TriggerConditions: nil, // Match all
+		IsActive:          true,
+		CreatedBy:         uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
+	})
+	if err != nil {
+		t.Fatalf("creating rule: %s", err)
+	}
+
+	// Create email template
+	emailTemplate, err := workflowBus.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+		Name:        "Send Email Template",
+		Description: "Template for sending emails",
+		ActionType:  "send_email",
+		DefaultConfig: json.RawMessage(`{
+			"recipients": ["default@example.com"],
+			"subject": "Default Subject"
+		}`),
+		CreatedBy: uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
+	})
+	if err != nil {
+		t.Fatalf("creating email template: %s", err)
+	}
+
+	// Create email action configured to simulate SMTP failure
+	_, err = workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+		AutomationRuleID: rule.ID,
+		Name:             "Send Email with Simulated Failure",
+		Description:      "Email action that simulates SMTP server failure",
+		ActionConfig: json.RawMessage(`{
+			"recipients": ["admin@example.com"],
+			"subject": "Circuit Breaker Test",
+			"body": "This email will fail to trigger circuit breaker",
+			"simulate_failure": true,
+			"failure_message": "Connection refused: SMTP server at smtp.example.com:587 is not responding"
+		}`),
+		ExecutionOrder: 1,
+		IsActive:       true,
+		TemplateID:     &emailTemplate.ID,
+	})
+	if err != nil {
+		t.Fatalf("creating rule action: %s", err)
+	}
+
+	// Create real engine
+	engine := workflow.NewEngine(log, db.DB, workflowBus)
+
+	// Initialize the engine
+	if err := engine.Initialize(ctx, workflowBus); err != nil {
+		t.Fatalf("initializing engine: %s", err)
+	}
+
+	// Register the real email handler (which supports failure simulation)
+	registry := engine.GetRegistry()
+	registry.Register(communication.NewSendEmailHandler(log, db.DB))
+
+	// Create queue manager with real engine
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
 
-	ctx := context.Background()
 	if err := qm.Initialize(ctx); err != nil {
 		t.Fatalf("initializing queue manager: %s", err)
 	}
 
+	// Clear any existing messages
+	if err := qm.ClearQueue(ctx); err != nil {
+		t.Logf("Warning: could not clear queue: %v", err)
+	}
+
+	// Get initial metrics
+	initialMetrics := qm.GetMetrics()
+
+	// Start the queue manager
 	if err := qm.Start(ctx); err != nil {
 		t.Fatalf("starting queue manager: %s", err)
 	}
 	defer qm.Stop(ctx)
 
-	// Queue multiple events to trigger circuit breaker
+	// Wait for consumers to be ready
+	time.Sleep(500 * time.Millisecond)
+
+	// Queue events to trigger circuit breaker (need at least 5 failures)
+	eventsQueued := 0
 	for i := 0; i < 6; i++ {
 		event := workflow.TriggerEvent{
 			EventType:  "on_create",
 			EntityName: "customers",
 			EntityID:   uuid.New(),
 			Timestamp:  time.Now(),
+			RawData: map[string]interface{}{
+				"name":  fmt.Sprintf("Customer %d", i),
+				"email": fmt.Sprintf("customer%d@example.com", i),
+			},
+			UserID: uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
 		}
 
-		_ = qm.QueueEvent(ctx, event) // Ignore errors initially
+		if err := qm.QueueEvent(ctx, event); err != nil {
+			// Circuit breaker might open partway through
+			if strings.Contains(err.Error(), "circuit breaker") {
+				t.Logf("Circuit breaker opened after %d events", i)
+				break
+			}
+			t.Logf("Failed to queue event %d: %v", i, err)
+		} else {
+			eventsQueued++
+		}
 	}
 
-	// Wait for processing attempts
-	time.Sleep(3 * time.Second)
+	t.Logf("Successfully queued %d events", eventsQueued)
 
-	// Circuit breaker should be open now
+	// Wait for processing and circuit breaker to trigger
+	maxWait := 30 * time.Second
+	checkInterval := 500 * time.Millisecond
+	timeout := time.After(maxWait)
+	ticker := time.NewTicker(checkInterval)
+	defer ticker.Stop()
+
+	circuitBreakerOpened := false
+	for !circuitBreakerOpened {
+		select {
+		case <-timeout:
+			metrics := qm.GetMetrics()
+			t.Logf("Timeout - Metrics: Enqueued=%d, Processed=%d, Failed=%d",
+				metrics.TotalEnqueued-initialMetrics.TotalEnqueued,
+				metrics.TotalProcessed-initialMetrics.TotalProcessed,
+				metrics.TotalFailed-initialMetrics.TotalFailed)
+			t.Fatal("Circuit breaker did not open within timeout period")
+
+		case <-ticker.C:
+			metrics := qm.GetMetrics()
+			failuresSinceStart := metrics.TotalFailed - initialMetrics.TotalFailed
+
+			t.Logf("Check %v - Failures: %d/5, Processed: %d, Enqueued: %d",
+				time.Since(time.Now().Add(-maxWait+10*time.Second)),
+				failuresSinceStart,
+				metrics.TotalProcessed-initialMetrics.TotalProcessed,
+				metrics.TotalEnqueued-initialMetrics.TotalEnqueued)
+
+			// Check if we have enough failures
+			if failuresSinceStart >= 5 {
+				status, err := qm.GetQueueStatus(ctx)
+				if err != nil {
+					t.Fatalf("GetQueueStatus() error = %v", err)
+				}
+
+				if status.CircuitBreakerOn {
+					circuitBreakerOpened = true
+					t.Log("✓ Circuit breaker has opened after 5+ failures")
+				}
+			}
+		}
+	}
+
+	// Verify circuit breaker is still open
 	status, err := qm.GetQueueStatus(ctx)
 	if err != nil {
 		t.Fatalf("GetQueueStatus() error = %v", err)
 	}
 
 	if !status.CircuitBreakerOn {
-		t.Error("Circuit breaker should be open after multiple failures")
+		t.Error("Circuit breaker should remain open")
 	}
 
-	// Try to queue another event - should fail
+	// Try to queue another event - should fail because circuit breaker is open
 	event := workflow.TriggerEvent{
 		EventType:  "on_create",
 		EntityName: "customers",
 		EntityID:   uuid.New(),
 		Timestamp:  time.Now(),
+		RawData: map[string]interface{}{
+			"name":  "Should Fail Customer",
+			"email": "fail@example.com",
+		},
+		UserID: uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
 	}
 
-	if err := qm.QueueEvent(ctx, event); err == nil {
+	err = qm.QueueEvent(ctx, event)
+	if err == nil {
 		t.Error("QueueEvent() should fail when circuit breaker is open")
+	} else if !strings.Contains(err.Error(), "circuit breaker") {
+		t.Errorf("Expected circuit breaker error, got: %v", err)
+	} else {
+		t.Logf("✓ Queue correctly rejected event with circuit breaker open: %v", err)
 	}
+
+	// Verify final metrics
+	finalMetrics := qm.GetMetrics()
+	t.Logf("Final metrics - Failed: %d, Processed: %d, Enqueued: %d",
+		finalMetrics.TotalFailed-initialMetrics.TotalFailed,
+		finalMetrics.TotalProcessed-initialMetrics.TotalProcessed,
+		finalMetrics.TotalEnqueued-initialMetrics.TotalEnqueued)
+
+	t.Log("✓ Circuit breaker test completed successfully")
 }
 
 func TestQueueManager_ClearQueue(t *testing.T) {

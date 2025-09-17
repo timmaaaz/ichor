@@ -89,7 +89,7 @@ func (e *Engine) Initialize(ctx context.Context, workflowBus *Business) error {
 	// Initialize sub-components
 	e.triggerProcessor = NewTriggerProcessor(e.log, e.db, workflowBus)
 	e.dependencies = NewDependencyResolver(e.log, e.db, workflowBus)
-	e.executor = NewActionExecutor(e.log, e.db)
+	e.executor = NewActionExecutor(e.log, e.db, workflowBus)
 	// e.queue = NewQueueManager(e.log)
 
 	// Initialize each component

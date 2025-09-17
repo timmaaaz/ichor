@@ -509,14 +509,14 @@ type AutomationRuleView struct {
 
 // RuleActionView represents a flattened view of an action with template info
 type RuleActionView struct {
-	ID               uuid.UUID
-	AutomationRuleID *uuid.UUID
-	Name             string
-	Description      string
-	ActionConfig     json.RawMessage
-	ExecutionOrder   int
-	IsActive         bool
-	TemplateID       *uuid.UUID
+	ID                uuid.UUID
+	AutomationRulesID *uuid.UUID
+	Name              string
+	Description       string
+	ActionConfig      json.RawMessage
+	ExecutionOrder    int
+	IsActive          bool
+	TemplateID        *uuid.UUID
 	// Template information
 	TemplateName          string
 	TemplateActionType    string

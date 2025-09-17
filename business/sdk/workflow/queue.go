@@ -332,7 +332,7 @@ func (qm *QueueManager) processMessage(ctx context.Context, msg *rabbitmq.Messag
 	defer cancel()
 
 	// Execute workflow
-	_, err := qm.engine.ExecuteWorkflow(processCtx, event)
+	execution, err := qm.engine.ExecuteWorkflow(processCtx, event)
 
 	processingTime := time.Since(startTime)
 
@@ -349,6 +349,17 @@ func (qm *QueueManager) processMessage(ctx context.Context, msg *rabbitmq.Messag
 
 		// Let RabbitMQ handle retries through its built-in mechanism
 		return err
+	}
+
+	// Check if the workflow execution itself failed
+	if execution.Status == StatusFailed {
+		qm.recordFailure()
+		qm.updateMetric(func(m *QueueMetrics) {
+			m.TotalFailed++
+		})
+
+		// Return an error so RabbitMQ knows the message processing failed
+		return fmt.Errorf("workflow execution failed: %d errors", len(execution.Errors))
 	}
 
 	// Success
