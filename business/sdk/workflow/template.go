@@ -77,6 +77,9 @@ func NewTemplateProcessor(opts TemplateProcessingOptions) *TemplateProcessor {
 
 // ProcessTemplate processes template variables in a string
 func (tp *TemplateProcessor) ProcessTemplate(template string, context TemplateContext) TemplateProcessingResult {
+	fmt.Printf("DEBUG: Processing template: '%s'\n", template)
+	fmt.Printf("DEBUG: Context: %+v\n", context)
+
 	result := TemplateProcessingResult{
 		VariablesUsed: make([]TemplateVariable, 0),
 		Warnings:      make([]string, 0),
@@ -86,9 +89,13 @@ func (tp *TemplateProcessor) ProcessTemplate(template string, context TemplateCo
 	processed := template
 	matches := tp.variableRegex.FindAllStringSubmatch(template, -1)
 
+	fmt.Printf("DEBUG: Found %d variable matches: %+v\n", len(matches), matches)
+
 	for _, match := range matches {
-		fullMatch := match[0]                       // "{{variable_name}}"
-		variablePath := strings.TrimSpace(match[1]) // "variable_name"
+		fullMatch := match[0]                             // "{{variable_name}}"
+		variablePath := strings.TrimLeft(match[1], " \t") // "variable_name"
+
+		fmt.Printf("DEBUG: Processing variable: '%s' from match: '%s'\n", variablePath, fullMatch)
 
 		// Validate syntax
 		if err := tp.validateVariable(variablePath); err != nil {
@@ -205,54 +212,142 @@ type ResolutionResult struct {
 
 // resolve resolves a variable path with optional filters
 func (tp *TemplateProcessor) resolve(variablePath string, context TemplateContext) ResolutionResult {
+	fmt.Printf("DEBUG: Resolving variable path: '%s'\n", variablePath)
 	// Parse variable path and filters: "user.name | uppercase"
 	path, filters := tp.parseVariablePath(variablePath)
 
-	// Resolve the base value
-	value := tp.resolveNestedPath(path, context)
-	found := value != nil
+	// Resolve the base value and check if key exists
+	value, keyExists := tp.resolveNestedPathWithExistence(path, context)
 	source := "context"
 
-	if !found {
+	// Only use default value if the key doesn't exist at all
+	if !keyExists {
 		value = tp.defaultValue
 		source = "default"
 	}
 
-	// Apply filters if any
-	if found && len(filters) > 0 {
+	// Apply filters if any - filters should run even on nil values
+	// This allows the "default" filter to work with nil values
+	if len(filters) > 0 {
 		var err error
 		value, err = tp.applyFilters(value, filters)
-		if err == nil {
+		if err == nil && keyExists {
 			source = "computed"
 		}
 		// If filter application fails, keep original value
 	}
 
 	return ResolutionResult{
-		Found:  found,
+		Found:  keyExists,
 		Value:  value,
 		Path:   path,
 		Source: source,
 	}
 }
 
-// parseVariablePath parses a variable path into base path and filters
+// resolveNestedPathWithExistence resolves a nested path and returns if the key exists
+func (tp *TemplateProcessor) resolveNestedPathWithExistence(path string, context TemplateContext) (interface{}, bool) {
+	if !tp.allowNested {
+		val, exists := context[path]
+		return val, exists
+	}
+
+	segments := strings.Split(path, ".")
+	var current interface{} = context
+	keyExists := true
+
+	for _, segment := range segments {
+		switch v := current.(type) {
+		case map[string]interface{}:
+			val, ok := v[segment]
+			if !ok {
+				return nil, false
+			}
+			current = val
+		case TemplateContext:
+			val, ok := v[segment]
+			if !ok {
+				return nil, false
+			}
+			current = val
+		default:
+			// Try reflection for struct fields
+			rv := reflect.ValueOf(current)
+			if rv.Kind() == reflect.Ptr {
+				rv = rv.Elem()
+			}
+			if rv.Kind() != reflect.Struct {
+				return nil, false
+			}
+
+			field := rv.FieldByName(segment)
+			if !field.IsValid() {
+				return nil, false
+			}
+			current = field.Interface()
+		}
+	}
+
+	return current, keyExists
+}
+
 func (tp *TemplateProcessor) parseVariablePath(variablePath string) (string, []filterSpec) {
 	parts := strings.Split(variablePath, "|")
 	path := strings.TrimSpace(parts[0])
 
+	fmt.Printf("DEBUG: Parsing variable path: '%s'\n", variablePath)
+	fmt.Printf("DEBUG: Base path: '%s'\n", path)
+	fmt.Printf("DEBUG: Filters parts: %v\n", parts[1:])
+
 	filters := make([]filterSpec, 0, len(parts)-1)
 	for i := 1; i < len(parts); i++ {
-		filterStr := strings.TrimSpace(parts[i])
-		filterParts := strings.Split(filterStr, ":")
+		// Trim only leading whitespace from the filter expression
+		filterStr := strings.TrimLeft(parts[i], " \t")
+
+		// Find the colon
+		colonIndex := strings.Index(filterStr, ":")
+		if colonIndex == -1 {
+			// No arguments, just filter name
+			filters = append(filters, filterSpec{
+				name: strings.TrimSpace(filterStr),
+				args: make([]string, 0),
+			})
+			continue
+		}
 
 		filter := filterSpec{
-			name: strings.TrimSpace(filterParts[0]),
+			name: strings.TrimSpace(filterStr[:colonIndex]),
 			args: make([]string, 0),
 		}
 
-		for j := 1; j < len(filterParts); j++ {
-			filter.args = append(filter.args, strings.TrimSpace(filterParts[j]))
+		// Get everything after the colon, INCLUDING any spaces that follow
+		if colonIndex < len(filterStr)-1 {
+			argStr := filterStr[colonIndex+1:]
+			// The key insight: for "join:, " we want to keep ", " as the argument
+			// Only trim the very trailing whitespace at the end of the entire filter expression
+			argStr = strings.TrimRight(argStr, " \t")
+
+			// Wait, that's the problem! We're trimming the space we want to keep!
+			// Don't trim at all - keep the full argument including spaces
+			argStr = filterStr[colonIndex+1:]
+
+			// But we need to handle the trailing space from the original expression
+			// The space at the very end (before }}) should be removed
+			// For "join:, " we want to keep ", " not ", " with extra trailing space
+
+			// Actually, let me reconsider...
+			// Original: " join:, " (after split by |)
+			// After TrimLeft: "join:, "
+			// After colon: ", "
+			// This is correct! We want ", " as the argument
+
+			fmt.Printf("DEBUG: Filter '%s', argStr: '%s'\n", filter.name, argStr)
+
+			// Split remaining arguments by colon
+			argParts := strings.Split(argStr, ":")
+			for _, arg := range argParts {
+				filter.args = append(filter.args, arg)
+			}
 		}
 
 		filters = append(filters, filter)
@@ -344,7 +439,7 @@ func (tp *TemplateProcessor) validateVariable(variablePath string) error {
 	}
 
 	// Check for invalid characters
-	invalidChars := regexp.MustCompile(`[^a-zA-Z0-9._|:\s]`)
+	invalidChars := regexp.MustCompile(`[^a-zA-Z0-9._|:,\s]`)
 	if invalidChars.MatchString(variablePath) {
 		return fmt.Errorf("invalid characters in variable")
 	}
