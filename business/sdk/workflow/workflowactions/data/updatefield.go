@@ -212,13 +212,14 @@ func (h *UpdateFieldHandler) executeUpdate(ctx context.Context, execer sqlx.ExtC
 		// Default to updating the triggering entity
 		query += " WHERE id = :entity_id"
 		args["entity_id"] = entityID
-	} else {
+	} else {)
 		return 0, errors.New("no conditions specified and no entity_id in context")
 	}
 
 	// Execute query
 	rowsAffected, err := sqldb.NamedExecContextWithCount(ctx, h.log, execer, query, args)
 	if err != nil {
+		fmt.Infof("Update query failed: %s with args %+v", query, args)
 		return 0, fmt.Errorf("update failed: %w", err)
 	}
 
