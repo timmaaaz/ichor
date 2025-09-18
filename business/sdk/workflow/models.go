@@ -389,6 +389,26 @@ type NewAutomationExecution struct {
 	ExecutionTimeMs  int
 }
 
+// =============================================================================
+// Allocation Results
+// =============================================================================
+
+// AllocationResult represents the result of an inventory allocation action
+// TODO: Figure out how to work this with the one that exists in the allocate.go
+// file
+type AllocationResult struct {
+	ID             uuid.UUID
+	IdempotencyKey string
+	AllocationData []byte
+	CreatedDate    time.Time
+}
+
+type NewAllocationResult struct {
+	ID             uuid.UUID
+	IdempotencyKey string
+	AllocationData []byte
+}
+
 // ActionExecutionStatusExecutionStatus represents the status of an automation execution
 type ActionExecutionStatus string
 

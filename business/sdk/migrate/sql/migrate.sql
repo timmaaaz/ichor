@@ -929,7 +929,7 @@ CREATE TABLE workflow.allocation_results (
     id UUID PRIMARY KEY,
     idempotency_key VARCHAR(255) UNIQUE NOT NULL,
     allocation_data JSONB NOT NULL,
-    created_at TIMESTAMP NOT NULL
+    created_date TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_allocation_idempotency ON workflow.allocation_results(idempotency_key);
 

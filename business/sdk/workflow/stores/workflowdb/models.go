@@ -733,3 +733,36 @@ func toDBNotificationDelivery(delivery workflow.NotificationDelivery) notificati
 		UpdatedDate:           delivery.UpdatedDate,
 	}
 }
+
+type allocationResult struct {
+	ID             string    `db:"id"`
+	IdempotencyKey string    `db:"idempotency_key"`
+	AllocationData []byte    `db:"allocation_data"`
+	CreatedDate    time.Time `db:"created_date"`
+}
+
+func toCoreAllocationResult(dbAR allocationResult) workflow.AllocationResult {
+	return workflow.AllocationResult{
+		ID:             uuid.MustParse(dbAR.ID),
+		IdempotencyKey: dbAR.IdempotencyKey,
+		AllocationData: dbAR.AllocationData,
+		CreatedDate:    dbAR.CreatedDate,
+	}
+}
+
+func toCoreAllocationResultSlice(dbARs []allocationResult) []workflow.AllocationResult {
+	ars := make([]workflow.AllocationResult, len(dbARs))
+	for i, dbAR := range dbARs {
+		ars[i] = toCoreAllocationResult(dbAR)
+	}
+	return ars
+}
+
+func toDBAllocationResult(ar workflow.AllocationResult) allocationResult {
+	return allocationResult{
+		ID:             ar.ID.String(),
+		IdempotencyKey: ar.IdempotencyKey,
+		AllocationData: ar.AllocationData,
+		CreatedDate:    time.Now(),
+	}
+}

@@ -74,6 +74,9 @@ type Storer interface {
 	CreateExecution(ctx context.Context, exec AutomationExecution) error
 	QueryExecutionHistory(ctx context.Context, ruleid uuid.UUID, limit int) ([]AutomationExecution, error)
 
+	CreateAllocationResult(ctx context.Context, ar AllocationResult) error
+	QueryAllocationResultByIdempotencyKey(ctx context.Context, idempotencyKey string) (AllocationResult, IdempotencyResult, error)
+
 	QueryAutomationRulesView(ctx context.Context) ([]AutomationRuleView, error)
 	QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error)
 }
@@ -84,6 +87,14 @@ var (
 	ErrAuthenticationFailure = errors.New("authentication failed")
 	ErrInvalidDependency     = errors.New("invalid rule dependency")
 	ErrCircularDependency    = errors.New("circular dependency detected")
+	ErrIdempotencyFailure    = errors.New("idempotency failure")
+)
+
+type IdempotencyResult int
+
+const (
+	IdempotencyNotFound = iota // This is the case we want
+	IdempotencyExists          // This is a failure of the idempotency check
 )
 
 // Business manages the set of APIs for workflow automation access.
@@ -920,6 +931,40 @@ func (b *Business) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, 
 	}
 
 	return executions, nil
+}
+
+// CreateAllocationResult records a new allocation result in the system.
+func (b *Business) CreateAllocationResult(ctx context.Context, nar NewAllocationResult) (AllocationResult, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createallocationresult")
+	defer span.End()
+
+	now := time.Now().UTC()
+
+	allocationResult := AllocationResult{
+		ID:             uuid.New(),
+		IdempotencyKey: nar.IdempotencyKey,
+		AllocationData: nar.AllocationData,
+		CreatedDate:    now,
+	}
+
+	if err := b.storer.CreateAllocationResult(ctx, allocationResult); err != nil {
+		return AllocationResult{}, fmt.Errorf("create: %w", err)
+	}
+
+	return allocationResult, nil
+}
+
+// QueryAllocationResultByIdempotencyKey retrieves an allocation result by its idempotency key.
+func (b *Business) QueryAllocationResultByIdempotencyKey(ctx context.Context, idempotencyKey string) (AllocationResult, IdempotencyResult, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryallocationresultbyidempotencykey")
+	defer span.End()
+
+	allocationResult, idempotencyResult, err := b.storer.QueryAllocationResultByIdempotencyKey(ctx, idempotencyKey)
+	if err != nil {
+		return AllocationResult{}, 0, fmt.Errorf("query: idempotencyKey[%s]: %w", idempotencyKey, err)
+	}
+
+	return allocationResult, idempotencyResult, nil
 }
 
 // QueryAutomationRulesView retrieves a comprehensive view of automation rules.

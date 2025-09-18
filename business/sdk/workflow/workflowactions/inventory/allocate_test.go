@@ -71,6 +71,7 @@ func Test_AllocateInventory(t *testing.T) {
 		db.BusDomain.InventoryLocation,
 		db.BusDomain.InventoryTransaction,
 		db.BusDomain.Product,
+		db.BusDomain.Workflow,
 	)
 
 	// -------------------------------------------------------------------------
@@ -396,7 +397,7 @@ func executeBasicAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocate
 			return allocationResult
 		},
 		CmpFunc: func(got any, exp any) string {
-			result, ok := got.(*inventory.AllocationResult)
+			result, ok := got.(*inventory.InventoryAllocationResult)
 			if !ok {
 				return fmt.Sprintf("expected AllocationResult, got %T", got)
 			}

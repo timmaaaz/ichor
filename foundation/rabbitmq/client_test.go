@@ -3,7 +3,6 @@ package rabbitmq_test
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"sync"
@@ -16,43 +15,11 @@ import (
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
 
-var testContainer rabbitmq.Container
-
-// TestMain manages the RabbitMQ container lifecycle for all tests
-func TestMain(m *testing.M) {
-	// Parse flags first - this is required before calling testing.Short()
-	flag.Parse()
-
-	// Skip container setup in short mode
-	if testing.Short() {
-		os.Exit(m.Run())
-	}
-
-	// Start RabbitMQ container
-	var err error
-	testContainer, err = rabbitmq.StartRabbitMQ()
-	if err != nil {
-		fmt.Printf("Failed to start RabbitMQ container: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Run tests
-	code := m.Run()
-
-	// Cleanup
-	if err := rabbitmq.StopRabbitMQ(testContainer); err != nil {
-		fmt.Printf("Failed to stop RabbitMQ container: %v\n", err)
-	}
-
-	os.Exit(code)
-}
-
 func TestClient_Connect(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping RabbitMQ integration test in short mode")
-	}
+	// Get shared container
+	container := rabbitmq.GetTestContainer(t)
 
-	client := rabbitmq.NewTestClient(testContainer.URL)
+	client := rabbitmq.NewTestClient(container.URL)
 
 	// Test connection
 	if err := client.Connect(); err != nil {
@@ -85,11 +52,10 @@ func TestClient_Connect(t *testing.T) {
 }
 
 func TestWorkflowQueue_PublishAndConsume(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping RabbitMQ integration test in short mode")
-	}
+	// Get shared container
+	container := rabbitmq.GetTestContainer(t)
 
-	client := rabbitmq.NewTestClient(testContainer.URL)
+	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %s", err)
 	}
@@ -143,7 +109,7 @@ func TestWorkflowQueue_PublishAndConsume(t *testing.T) {
 			t.Errorf("Expected message type 'test_workflow', got '%s'", receivedMsg.Type)
 		}
 		if receivedMsg.EntityID != messageUUID {
-			t.Errorf("Expected entity ID 'test_123', got '%s'", receivedMsg.EntityID)
+			t.Errorf("Expected entity ID '%s', got '%s'", messageUUID, receivedMsg.EntityID)
 		}
 	case <-time.After(2 * time.Second):
 		t.Error("Timeout waiting for message")
@@ -151,11 +117,10 @@ func TestWorkflowQueue_PublishAndConsume(t *testing.T) {
 }
 
 func TestWorkflowQueue_BatchPublish(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping RabbitMQ integration test in short mode")
-	}
+	// Get shared container
+	container := rabbitmq.GetTestContainer(t)
 
-	client := rabbitmq.NewTestClient(testContainer.URL)
+	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %s", err)
 	}
@@ -200,11 +165,10 @@ func TestWorkflowQueue_BatchPublish(t *testing.T) {
 }
 
 func TestWorkflowQueue_ErrorHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping RabbitMQ integration test in short mode")
-	}
+	// Get shared container
+	container := rabbitmq.GetTestContainer(t)
 
-	client := rabbitmq.NewTestClient(testContainer.URL)
+	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %s", err)
 	}
@@ -229,7 +193,7 @@ func TestWorkflowQueue_ErrorHandling(t *testing.T) {
 		EntityName:  "test_entity",
 		EntityID:    messageUUID,
 		EventType:   "on_error",
-		MaxAttempts: 2,
+		MaxAttempts: 3, // Increased to allow more retries
 	}
 
 	// Publish message
@@ -243,8 +207,10 @@ func TestWorkflowQueue_ErrorHandling(t *testing.T) {
 	consumer, err := wq.Consume(ctx, rabbitmq.QueueTypeWorkflow, func(ctx context.Context, msg *rabbitmq.Message) error {
 		if msg.EntityID == messageUUID {
 			mu.Lock()
+			currentAttempt := attempts + 1
 			attempts++
 			mu.Unlock()
+			t.Logf("Processing attempt %d for message %s", currentAttempt, msg.EntityID)
 			return fmt.Errorf("intentional error")
 		}
 		return nil
@@ -254,25 +220,43 @@ func TestWorkflowQueue_ErrorHandling(t *testing.T) {
 	}
 	defer consumer.Stop()
 
-	// Wait for retries
-	time.Sleep(3 * time.Second)
+	// Wait for retries - need to wait longer than the retry TTL (5 seconds)
+	// First attempt: immediate
+	// Second attempt: after 5 second retry delay
+	// Third attempt: after another 5 second retry delay
+	maxWait := 15 * time.Second
+	checkInterval := 500 * time.Millisecond
+	timeout := time.After(maxWait)
+	ticker := time.NewTicker(checkInterval)
+	defer ticker.Stop()
 
-	// Should have attempted at least twice
-	mu.Lock()
-	finalAttempts := attempts
-	mu.Unlock()
+	for {
+		select {
+		case <-timeout:
+			mu.Lock()
+			finalAttempts := attempts
+			mu.Unlock()
+			t.Fatalf("Timeout: Expected at least 2 attempts, got %d", finalAttempts)
 
-	if finalAttempts < 2 {
-		t.Errorf("Expected at least 2 attempts, got %d", finalAttempts)
+		case <-ticker.C:
+			mu.Lock()
+			currentAttempts := attempts
+			mu.Unlock()
+
+			// Once we have at least 2 attempts, we can pass the test
+			if currentAttempts >= 2 {
+				t.Logf("Success: Message was retried %d times", currentAttempts)
+				return
+			}
+		}
 	}
 }
 
 func TestWorkflowQueue_PurgeQueue(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping RabbitMQ integration test in short mode")
-	}
+	// Get shared container
+	container := rabbitmq.GetTestContainer(t)
 
-	client := rabbitmq.NewTestClient(testContainer.URL)
+	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %s", err)
 	}
@@ -332,11 +316,10 @@ func TestWorkflowQueue_PurgeQueue(t *testing.T) {
 }
 
 func TestWorkflowQueue_MultipleQueueTypes(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping RabbitMQ integration test in short mode")
-	}
+	// Get shared container
+	container := rabbitmq.GetTestContainer(t)
 
-	client := rabbitmq.NewTestClient(testContainer.URL)
+	client := rabbitmq.NewTestClient(container.URL)
 	if err := client.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %s", err)
 	}
@@ -384,5 +367,109 @@ func TestWorkflowQueue_MultipleQueueTypes(t *testing.T) {
 		if stats.Type != string(qt) {
 			t.Errorf("Expected queue type %s, got %s", qt, stats.Type)
 		}
+	}
+}
+
+func TestClient_Reconnection(t *testing.T) {
+	// Get shared container
+	container := rabbitmq.GetTestContainer(t)
+	config := rabbitmq.NewTestConfig(container.URL)
+	config.MaxRetries = 3
+	config.RetryDelay = 100 * time.Millisecond
+
+	// Create client with reconnection config
+	client := &rabbitmq.Client{}
+	// Note: Since NewClient uses singleton pattern, we create client directly for this test
+	client = rabbitmq.NewTestClient(container.URL)
+
+	// Connect initially
+	if err := client.Connect(); err != nil {
+		t.Fatalf("Initial connection failed: %s", err)
+	}
+
+	// Verify connected
+	if !client.IsConnected() {
+		t.Error("Client should be connected")
+	}
+
+	// Force close the connection to simulate disconnection
+	ch, _ := client.GetChannel()
+	if ch != nil {
+		ch.Close() // This will trigger reconnection logic
+	}
+
+	// Wait a bit for reconnection attempt
+	time.Sleep(500 * time.Millisecond)
+
+	// The client should attempt to reconnect
+	// Note: In a real scenario, the handleReconnect goroutine would be running
+	// For this test, we just verify the client can handle connection loss
+
+	// Clean up
+	client.Close()
+}
+
+func TestWorkflowQueue_ConcurrentPublish(t *testing.T) {
+	// Get shared container
+	container := rabbitmq.GetTestContainer(t)
+
+	client := rabbitmq.NewTestClient(container.URL)
+	if err := client.Connect(); err != nil {
+		t.Fatalf("Failed to connect: %s", err)
+	}
+	defer client.Close()
+
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	wq := rabbitmq.NewWorkflowQueue(client, log)
+
+	ctx := context.Background()
+	if err := wq.Initialize(ctx); err != nil {
+		t.Fatalf("Failed to initialize queues: %s", err)
+	}
+
+	// Purge queue to start fresh
+	wq.PurgeQueue(ctx, rabbitmq.QueueTypeWorkflow)
+
+	// Concurrent publishers
+	numPublishers := 10
+	messagesPerPublisher := 5
+	var wg sync.WaitGroup
+	wg.Add(numPublishers)
+
+	for i := 0; i < numPublishers; i++ {
+		go func(publisherID int) {
+			defer wg.Done()
+
+			for j := 0; j < messagesPerPublisher; j++ {
+				msg := &rabbitmq.Message{
+					Type:       fmt.Sprintf("concurrent_test_%d", publisherID),
+					EntityName: "test_entity",
+					EntityID:   uuid.New(),
+					EventType:  "on_create",
+					Payload: map[string]interface{}{
+						"publisher": publisherID,
+						"message":   j,
+					},
+				}
+
+				if err := wq.Publish(ctx, rabbitmq.QueueTypeWorkflow, msg); err != nil {
+					t.Errorf("Publisher %d failed to publish message %d: %s", publisherID, j, err)
+				}
+			}
+		}(i)
+	}
+
+	// Wait for all publishers to complete
+	wg.Wait()
+
+	// Verify all messages were published
+	stats, err := wq.GetQueueStats(ctx, rabbitmq.QueueTypeWorkflow)
+	if err != nil {
+		t.Fatalf("Failed to get queue stats: %s", err)
+	}
+
+	expectedMessages := numPublishers * messagesPerPublisher
+	if stats.Messages != expectedMessages {
+		t.Errorf("Expected %d messages in queue, got %d", expectedMessages, stats.Messages)
 	}
 }

@@ -29,6 +29,7 @@ type Storer interface {
 	Update(ctx context.Context, inventoryItem InventoryItem) error
 	Delete(ctx context.Context, inventoryItem InventoryItem) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]InventoryItem, error)
+	QueryAvailableForAllocation(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID, warehouseID *uuid.UUID, strategy string, limit int) ([]InventoryItem, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, inventoryItemID uuid.UUID) (InventoryItem, error)
 }
@@ -130,6 +131,19 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 	inventoryItems, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return inventoryItems, nil
+}
+
+// QueryAvailableForAllocation retrieves inventory items that have available quantity for allocation.
+func (b *Business) QueryAvailableForAllocation(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID, warehouseID *uuid.UUID, strategy string, limit int) ([]InventoryItem, error) {
+	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.queryavailableforallocation")
+	defer span.End()
+
+	inventoryItems, err := b.storer.QueryAvailableForAllocation(ctx, productID, locationID, warehouseID, strategy, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query available for allocation: %w", err)
 	}
 
 	return inventoryItems, nil

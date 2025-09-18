@@ -159,6 +159,98 @@ func (s *Store) Query(ctx context.Context, filter inventoryitembus.QueryFilter, 
 	return toBusInventoryItems(ips), nil
 }
 
+// QueryAvailableForAllocation queries inventory items that have available quantity for allocation
+// with row-level locking for transaction safety
+func (s *Store) QueryAvailableForAllocation(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID, warehouseID *uuid.UUID, strategy string, limit int) ([]inventoryitembus.InventoryItem, error) {
+	args := map[string]interface{}{
+		"product_id": productID.String(),
+		"limit":      limit,
+	}
+
+	q := `
+    SELECT
+        ii.id, ii.product_id, ii.location_id, ii.quantity, ii.reserved_quantity, 
+        ii.allocated_quantity, ii.minimum_stock, ii.maximum_stock, ii.reorder_point, 
+        ii.economic_order_quantity, ii.safety_stock, ii.avg_daily_usage, 
+        ii.created_date, ii.updated_date
+    FROM
+        inventory.inventory_items ii
+    WHERE
+        ii.product_id = :product_id
+        AND (ii.quantity - ii.reserved_quantity - ii.allocated_quantity) > 0`
+
+	// Add location filtering if specified
+	if locationID != nil {
+		q += ` AND ii.location_id = :location_id`
+		args["location_id"] = locationID.String()
+	}
+
+	// Add warehouse filtering if specified
+	if warehouseID != nil {
+		q = `
+        SELECT
+            ii.id, ii.product_id, ii.location_id, ii.quantity, ii.reserved_quantity, 
+            ii.allocated_quantity, ii.minimum_stock, ii.maximum_stock, ii.reorder_point, 
+            ii.economic_order_quantity, ii.safety_stock, ii.avg_daily_usage, 
+            ii.created_date, ii.updated_date
+        FROM
+            inventory.inventory_items ii
+            INNER JOIN inventory.inventory_locations il ON ii.location_id = il.id
+        WHERE
+            ii.product_id = :product_id
+            AND il.warehouse_id = :warehouse_id
+            AND (ii.quantity - ii.reserved_quantity - ii.allocated_quantity) > 0`
+		args["warehouse_id"] = warehouseID.String()
+	}
+
+	// Apply ordering based on strategy
+	switch strategy {
+	case "fifo":
+		q += " ORDER BY ii.created_date ASC"
+	case "lifo":
+		q += " ORDER BY ii.created_date DESC"
+	default:
+		q += " ORDER BY ii.created_date ASC"
+	}
+
+	/* TODO: Advanced Allocation Strategies
+	 *
+	 * nearest_expiry: Requires joining with lot_trackings table
+	 *   - Need to link inventory_items to lot_trackings (currently no FK relationship)
+	 *   - ORDER BY lt.expiration_date ASC
+	 *   - Consider adding lot_id to inventory_items table
+	 *
+	 * lowest_cost: Requires location-specific cost data
+	 *   - product_costs table exists but is product-level, not location-specific
+	 *   - Consider: carrying costs vary by warehouse, landed costs differ by location
+	 *   - May need inventory_location_costs table with warehouse-specific costs
+	 *
+	 * nearest_location: Requires customer shipping address
+	 *   - Need to calculate distance from warehouse to customer
+	 *   - Could use geography tables (countries, regions, cities, streets)
+	 *   - Consider caching distance calculations or using geospatial queries
+	 *
+	 * load_balancing: Requires warehouse utilization metrics
+	 *   - inventory_locations has current_utilization field
+	 *   - Need to aggregate by warehouse and factor into allocation decision
+	 *   - Consider warehouse capacity and current workload
+	 *
+	 * priority_zone: Requires zone prioritization logic
+	 *   - Use is_pick_location vs is_reserve_location flags
+	 *   - May need zone_priorities table for customer-specific rules
+	 *   - VIP customers get allocation from premium/faster zones
+	 */
+
+	q += " LIMIT :limit FOR UPDATE" // Row-level locking for transaction safety
+
+	var items []inventoryItem
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, args, &items); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusInventoryItems(items), nil
+}
+
 // Count retrieves the count of inventory products from the database.
 func (s *Store) Count(ctx context.Context, filter inventoryitembus.QueryFilter) (int, error) {
 	data := map[string]any{}

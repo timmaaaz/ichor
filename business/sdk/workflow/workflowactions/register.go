@@ -35,6 +35,7 @@ type BusDependencies struct {
 	InventoryLocation    *inventorylocationbus.Business
 	InventoryTransaction *inventorytransactionbus.Business
 	Product              *productbus.Business
+	Workflow             *workflow.Business
 }
 
 // RegisterAll registers all standard workflow actions using the config
@@ -59,6 +60,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 		config.Buses.InventoryLocation,
 		config.Buses.InventoryTransaction,
 		config.Buses.Product,
+		config.Buses.Workflow,
 	))
 }
 
@@ -72,5 +74,6 @@ func RegisterInventoryActions(registry *workflow.ActionRegistry, config ActionCo
 		config.Buses.InventoryLocation,
 		config.Buses.InventoryTransaction,
 		config.Buses.Product,
+		config.Buses.Workflow,
 	))
 }

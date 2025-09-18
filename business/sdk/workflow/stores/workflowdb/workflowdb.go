@@ -1060,6 +1060,51 @@ func (s *Store) QueryAllDeliveries(ctx context.Context) ([]workflow.Notification
 }
 
 // =============================================================================
+// Allocation Results
+
+func (s *Store) CreateAllocationResult(ctx context.Context, result workflow.AllocationResult) error {
+	const q = `
+	INSERT INTO 
+		workflow.allocation_results (id, idempotency_key, allocation_data, created_date)
+	VALUES 
+		(:id, :idempotency_key, :allocation_data, :created_date)`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAllocationResult(result)); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) QueryAllocationResultByIdempotencyKey(ctx context.Context, idempotencyKey string) (workflow.AllocationResult, workflow.IdempotencyResult, error) {
+	data := struct {
+		IdempotencyKey string `db:"idempotency_key"`
+	}{
+		IdempotencyKey: idempotencyKey,
+	}
+
+	const q = `	
+	SELECT
+		id, idempotency_key, allocation_data, created_date
+	FROM
+		workflow.allocation_results
+	WHERE 
+		idempotency_key = :idempotency_key`
+
+	var dbResult allocationResult
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbResult); err != nil {
+		// NOTE: Because we are checking for idempotency, the ErrNotFound is the
+		// case we WANT, there is a problem if we find a record here.
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.AllocationResult{}, workflow.IdempotencyNotFound, nil
+		}
+		return workflow.AllocationResult{}, 0, fmt.Errorf("db: %w", err)
+	}
+
+	return toCoreAllocationResult(dbResult), workflow.IdempotencyExists, nil
+}
+
+// =============================================================================
 // VIEWS
 // =============================================================================
 func (s *Store) QueryAutomationRulesView(ctx context.Context) ([]workflow.AutomationRuleView, error) {
