@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -51,22 +50,23 @@ func Test_AllocateInventory(t *testing.T) {
 		return otel.GetTraceID(context.Background())
 	})
 
-	// Start RabbitMQ container
-	testContainer, err = rabbitmq.StartRabbitMQ()
-	if err != nil {
-		fmt.Printf("Failed to start RabbitMQ container: %v\n", err)
-		os.Exit(1)
+	container := rabbitmq.GetTestContainer(t)
+	client := rabbitmq.NewTestClient(container.URL)
+	if err := client.Connect(); err != nil {
+		t.Fatalf("connecting to rabbitmq: %s", err)
 	}
+	defer client.Close()
 
-	// Create mock RabbitMQ client for testing
-	rabbitConfig := rabbitmq.DefaultConfig()
-	rabbitClient := rabbitmq.NewClient(log, rabbitConfig)
-	queueClient := rabbitmq.NewWorkflowQueue(rabbitClient, log)
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
 
 	sd.Handler = inventory.NewAllocateInventoryHandler(
 		log,
 		db.DB,
-		queueClient,
+		queue,
 		db.BusDomain.InventoryItem,
 		db.BusDomain.InventoryLocation,
 		db.BusDomain.InventoryTransaction,

@@ -558,12 +558,12 @@ func NormalizeJSONFields(got, exp interface{}) {
 	gotVal := reflect.ValueOf(got)
 	expVal := reflect.ValueOf(exp)
 
-	// Handle pointers
-	if gotVal.Kind() == reflect.Ptr {
-		gotVal = gotVal.Elem()
-	}
+	// Handle pointers - need to get the element we can actually modify
 	if expVal.Kind() == reflect.Ptr {
 		expVal = expVal.Elem()
+	}
+	if gotVal.Kind() == reflect.Ptr {
+		gotVal = gotVal.Elem()
 	}
 
 	switch gotVal.Kind() {
@@ -613,8 +613,31 @@ func normalizeJSONInStruct(gotVal, expVal reflect.Value) {
 			continue
 		}
 
-		// Check if field is json.RawMessage
-		if field.Type == reflect.TypeOf(json.RawMessage{}) {
+		// Check if field is *json.RawMessage (pointer)
+		if field.Type == reflect.TypeOf((*json.RawMessage)(nil)) {
+			gotFieldPtr := gotVal.Field(i)
+			expFieldPtr := expVal.Field(i)
+
+			// Skip if either is nil
+			if gotFieldPtr.IsNil() || expFieldPtr.IsNil() {
+				continue
+			}
+
+			// Dereference the pointers to get the actual json.RawMessage values
+			gotField := gotFieldPtr.Elem().Interface().(json.RawMessage)
+			expField := expFieldPtr.Elem().Interface().(json.RawMessage)
+
+			// Compare and normalize
+			_, normalized := normalizeJSON(gotField, expField)
+
+			// Update the expected field by setting the value through the pointer
+			if expFieldPtr.CanSet() {
+				normalizedCopy := make(json.RawMessage, len(normalized))
+				copy(normalizedCopy, normalized)
+				expFieldPtr.Set(reflect.ValueOf(&normalizedCopy))
+			}
+		} else if field.Type == reflect.TypeOf(json.RawMessage{}) {
+			// Handle non-pointer json.RawMessage
 			gotField := gotVal.Field(i).Interface().(json.RawMessage)
 			expField := expVal.Field(i).Interface().(json.RawMessage)
 

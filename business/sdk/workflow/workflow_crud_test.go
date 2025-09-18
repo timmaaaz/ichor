@@ -193,8 +193,8 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 
 func triggerTypeTests(busDomain dbtest.BusDomain, sd workflowSeedData) []unitest.Table {
 	return []unitest.Table{
-		createTriggerType(busDomain),
 		queryTriggerTypes(busDomain, sd),
+		createTriggerType(busDomain),
 		updateTriggerType(busDomain, sd),
 		deactivateTriggerType(busDomain, sd),
 		activateTriggerType(busDomain, sd),
@@ -284,6 +284,7 @@ func updateTriggerType(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.
 			ID:          sd.TriggerTypes[0].ID,
 			Name:        "updated_trigger",
 			Description: "Updated description",
+			IsActive:    true,
 		},
 		ExcFunc: func(ctx context.Context) any {
 			utt := workflow.UpdateTriggerType{
@@ -445,6 +446,7 @@ func updateEntityType(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 			ID:          sd.EntityTypes[0].ID,
 			Name:        "updated_entity_type",
 			Description: "Updated entity description",
+			IsActive:    true,
 		},
 		ExcFunc: func(ctx context.Context) any {
 			uet := workflow.UpdateEntityType{

@@ -98,9 +98,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (workflow.Storer, error) {
 func (s *Store) CreateTriggerType(ctx context.Context, tt workflow.TriggerType) error {
 	const q = `
 	INSERT INTO workflow.trigger_types (
-		id, name, description
+		id, name, description, is_active
 	) VALUES (
-		:id, :name, :description
+		:id, :name, :description, :is_active
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBTriggerType(tt)); err != nil {
@@ -168,7 +168,7 @@ func (s *Store) ActivateTriggerType(ctx context.Context, tt workflow.TriggerType
 func (s *Store) QueryTriggerTypes(ctx context.Context) ([]workflow.TriggerType, error) {
 	const q = `
 	SELECT
-		id, name, description
+		id, name, description, is_active
 	FROM
 		workflow.trigger_types`
 
@@ -195,7 +195,7 @@ func (s *Store) QueryTriggerTypeByName(ctx context.Context, name string) (workfl
 
 	const q = `
 	SELECT
-		id, name, description
+		id, name, description, is_active
 	FROM
 		workflow.trigger_types
 	WHERE
@@ -217,9 +217,9 @@ func (s *Store) QueryTriggerTypeByName(ctx context.Context, name string) (workfl
 func (s *Store) CreateEntityType(ctx context.Context, et workflow.EntityType) error {
 	const q = `
 	INSERT INTO workflow.entity_types (
-		id, name, description
+		id, name, description, is_active
 	) VALUES (
-		:id, :name, :description
+		:id, :name, :description, :is_active
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBEntityType(et)); err != nil {
@@ -287,7 +287,7 @@ func (s *Store) ActivateEntityType(ctx context.Context, et workflow.EntityType) 
 func (s *Store) QueryEntityTypes(ctx context.Context) ([]workflow.EntityType, error) {
 	const q = `
 	SELECT
-		id, name, description
+		id, name, description, is_active
 	FROM
 		workflow.entity_types`
 
@@ -309,7 +309,7 @@ func (s *Store) QueryEntityTypeByName(ctx context.Context, name string) (workflo
 
 	const q = `
 	SELECT
-		id, name, description
+		id, name, description, is_active
 	FROM
 		workflow.entity_types
 	WHERE
