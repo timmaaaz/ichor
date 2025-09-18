@@ -68,23 +68,36 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	// Make sorted copy for use
-	exp := make([]tableaccessbus.TableAccess, len(sd.TableAccesses))
-	copy(exp, sd.TableAccesses)
-	sort.Slice(exp, func(i, j int) bool {
-		return exp[i].ID.String() < exp[j].ID.String()
+	// Filter and sort only the test data for the first role
+	var roleSpecificAccess []tableaccessbus.TableAccess
+	for _, ta := range sd.TableAccesses {
+		if ta.RoleID == sd.Roles[0].ID {
+			roleSpecificAccess = append(roleSpecificAccess, ta)
+		}
+	}
+
+	sort.Slice(roleSpecificAccess, func(i, j int) bool {
+		return roleSpecificAccess[i].ID.String() < roleSpecificAccess[j].ID.String()
 	})
+
+	// Take first 3 for expected response
+	exp := roleSpecificAccess
+	if len(exp) > 3 {
+		exp = exp[:3]
+	}
 
 	return []unitest.Table{
 		{
-			Name: "Query",
-			ExpResp: []tableaccessbus.TableAccess{
-				exp[0],
-				exp[1],
-				exp[2],
-			},
+			Name:    "Query",
+			ExpResp: exp,
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.TableAccess.Query(ctx, tableaccessbus.QueryFilter{}, order.NewBy(tableaccessbus.OrderByID, order.ASC), page.MustParse("1", "3"))
+				// Query with filter for the specific test role
+				filter := tableaccessbus.QueryFilter{
+					RoleID: &sd.Roles[0].ID,
+				}
+				got, err := busDomain.TableAccess.Query(ctx, filter,
+					order.NewBy(tableaccessbus.OrderByID, order.ASC),
+					page.MustParse("1", "3"))
 				if err != nil {
 					return err
 				}
