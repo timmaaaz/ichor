@@ -15,7 +15,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/hr/comments/" + sd.UserApprovalComments[0].ID,
+			URL:        "/v1/hr/user-approval-comments/" + sd.UserApprovalComments[0].ID,
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -45,7 +45,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "bad-id",
-			URL:        "/v1/hr/comments/abc",
+			URL:        "/v1/hr/user-approval-comments/abc",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -60,7 +60,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "no comment",
-			URL:        "/v1/hr/comments/" + sd.UserApprovalComments[0].ID,
+			URL:        "/v1/hr/user-approval-comments/" + sd.UserApprovalComments[0].ID,
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,

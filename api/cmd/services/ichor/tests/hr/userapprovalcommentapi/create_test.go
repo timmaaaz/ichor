@@ -14,7 +14,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/hr/comments",
+			URL:        "/v1/hr/user-approval-comments",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -52,7 +52,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "missing comment",
-			URL:        "/v1/hr/comments",
+			URL:        "/v1/hr/user-approval-comments",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -68,7 +68,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing user id",
-			URL:        "/v1/hr/comments",
+			URL:        "/v1/hr/user-approval-comments",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -84,7 +84,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing commenter id",
-			URL:        "/v1/hr/comments",
+			URL:        "/v1/hr/user-approval-comments",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
