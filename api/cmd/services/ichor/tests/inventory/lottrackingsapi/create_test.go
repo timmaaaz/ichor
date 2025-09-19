@@ -24,7 +24,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -73,7 +73,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "missing-supplier-product-id",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -93,7 +93,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-lot-number",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -113,7 +113,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-manufacture-date",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -133,7 +133,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-expiration-date",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -153,7 +153,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-recieved-date",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -173,7 +173,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-quantity",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -193,7 +193,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-quality-status",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -213,7 +213,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-manufacture-date",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -245,7 +245,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-expiration-date",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -277,7 +277,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-recieved-date",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -310,7 +310,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 
 		{
 			Name:       "malformed-supplier-product-id",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -339,7 +339,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "supplier-product-id-not-valid-fk",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -365,7 +365,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -377,7 +377,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad token",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -389,7 +389,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -401,7 +401,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        "/v1/lots/lot-trackings",
+			URL:        "/v1/inventory/lot-trackings",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

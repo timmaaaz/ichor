@@ -11,7 +11,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/inventory/core/inventory-items?page=1&rows=10",
+			URL:        "/v1/inventory/inventory-items?page=1&rows=10",
 			Token:      sd.Users[0].Token,
 			StatusCode: 200,
 			Method:     "GET",
@@ -34,7 +34,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/inventory/core/inventory-items/" + sd.InventoryItems[0].ItemID,
+			URL:        "/v1/inventory/inventory-items/" + sd.InventoryItems[0].ItemID,
 			Token:      sd.Users[0].Token,
 			StatusCode: 200,
 			Method:     "GET",

@@ -19,7 +19,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -74,7 +74,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "missing-product-id",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -99,7 +99,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-purchase-cost",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -124,7 +124,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-selling-price",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -149,7 +149,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-currency",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -174,7 +174,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-msrp",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -199,7 +199,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-markup-percentage",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -224,7 +224,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-landed-cost",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -249,7 +249,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-carrying-cost",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -274,7 +274,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-abc-classification",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -299,7 +299,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-depreciation-value",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -324,7 +324,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-insurance-value",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -349,7 +349,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-effective-date",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -374,7 +374,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-product-id",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -405,7 +405,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "contact-info-not-valid-fk",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -436,7 +436,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -448,7 +448,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad token",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -460,7 +460,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -472,7 +472,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        "/v1/finance/product-costs",
+			URL:        "/v1/products/product-costs",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

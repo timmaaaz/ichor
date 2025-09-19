@@ -13,7 +13,7 @@ func approve200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/users/approve/%s", sd.Users[0].ID.String()),
+			URL:        fmt.Sprintf("/v1/core/users/approve/%s", sd.Users[0].ID.String()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNoContent,
@@ -26,7 +26,7 @@ func approve401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "invalidID",
-			URL:        "/v1/users/approve/invalid-id",
+			URL:        "/v1/core/users/approve/invalid-id",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -38,7 +38,7 @@ func approve401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "invalidToken",
-			URL:        fmt.Sprintf("/v1/users/approve/%s", sd.Users[0].ID.String()),
+			URL:        fmt.Sprintf("/v1/core/users/approve/%s", sd.Users[0].ID.String()),
 			Token:      "&nbsp;",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -50,7 +50,7 @@ func approve401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "invalidRole",
-			URL:        fmt.Sprintf("/v1/users/approve/%s", sd.Users[0].ID.String()),
+			URL:        fmt.Sprintf("/v1/core/users/approve/%s", sd.Users[0].ID.String()),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

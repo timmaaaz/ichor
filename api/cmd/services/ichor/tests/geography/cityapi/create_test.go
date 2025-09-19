@@ -13,7 +13,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/location/cities",
+			URL:        "/v1/geography/cities",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -47,7 +47,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "missing region",
-			URL:        "/v1/location/cities",
+			URL:        "/v1/geography/cities",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -62,7 +62,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing name",
-			URL:        "/v1/location/cities",
+			URL:        "/v1/geography/cities",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,

@@ -30,19 +30,19 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(productcostapp.NewApp(cfg.ProductCostBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/finance/product-costs", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/products/product-costs", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/finance/product-costs/{product_cost_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/products/product-costs/{product_cost_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPost, version, "/finance/product-costs", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/products/product-costs", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPut, version, "/finance/product-costs/{product_cost_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/products/product-costs/{product_cost_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodDelete, version, "/finance/product-costs/{product_cost_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/products/product-costs/{product_cost_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 
 }

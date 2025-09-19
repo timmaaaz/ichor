@@ -129,7 +129,7 @@ export default {
       const { id } = this.dialogs.confirmation.item;
       try {
         const fetchCall = await fetch(
-          `${import.meta.env.VITE_SERVICE_API}/homes/${id}`,
+          `${import.meta.env.VITE_SERVICE_API}/hr/homes/${id}`,
           {
             method: "DELETE",
             headers: {

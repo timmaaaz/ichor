@@ -13,7 +13,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -58,7 +58,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "missing order id",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -81,7 +81,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing product id",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -104,7 +104,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing quantity",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -127,7 +127,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing line item fulfillment status id",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -150,7 +150,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing created by",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -179,7 +179,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -191,7 +191,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badtoken",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -203,7 +203,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -215,7 +215,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "wronguser",
-			URL:        "/v1/order/order-line-items",
+			URL:        "/v1/sales/order-line-items",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

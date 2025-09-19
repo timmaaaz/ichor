@@ -33,14 +33,14 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(titleapp.NewApp(cfg.TitleBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/users/titles", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/titles", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/users/titles/{title_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/titles/{title_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/users/titles", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/hr/titles", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/users/titles/{title_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/hr/titles/{title_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/users/titles/{title_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/hr/titles/{title_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

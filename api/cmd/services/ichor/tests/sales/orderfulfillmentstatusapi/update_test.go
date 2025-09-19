@@ -15,7 +15,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/order/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -47,7 +47,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "invalid name",
-			URL:        fmt.Sprintf("/v1/order/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -73,7 +73,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/order/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -85,7 +85,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/order/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
 			Token:      sd.Admins[0].Token + "bad",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -97,7 +97,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/order/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-fulfillment-statuses/%s", sd.OrderFulfillmentStatuses[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

@@ -17,7 +17,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/warehouses/zones/%s", sd.Zones[0].ZoneID),
+			URL:        fmt.Sprintf("/v1/inventory/zones/%s", sd.Zones[0].ZoneID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -53,7 +53,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-warehouse-id",
-			URL:        fmt.Sprintf("/v1/warehouses/zones/%s", sd.Zones[0].ZoneID),
+			URL:        fmt.Sprintf("/v1/inventory/zones/%s", sd.Zones[0].ZoneID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -73,7 +73,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/warehouses/zones/%s", sd.Zones[0].ZoneID),
+			URL:        fmt.Sprintf("/v1/inventory/zones/%s", sd.Zones[0].ZoneID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -85,7 +85,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/warehouses/zones/%s", sd.Zones[0].ZoneID),
+			URL:        fmt.Sprintf("/v1/inventory/zones/%s", sd.Zones[0].ZoneID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -97,7 +97,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/warehouses/zones/%s", sd.Zones[0].ZoneID),
+			URL:        fmt.Sprintf("/v1/inventory/zones/%s", sd.Zones[0].ZoneID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -115,7 +115,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "zone-dne",
-			URL:        fmt.Sprintf("/v1/warehouses/zones/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/inventory/zones/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
@@ -135,7 +135,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "contact-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/warehouses/zones/%s", sd.Zones[0].ZoneID),
+			URL:        fmt.Sprintf("/v1/inventory/zones/%s", sd.Zones[0].ZoneID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,

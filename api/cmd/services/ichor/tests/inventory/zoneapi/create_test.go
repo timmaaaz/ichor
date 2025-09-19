@@ -17,7 +17,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -53,7 +53,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "missing-warehouse-id",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -69,7 +69,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-name",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -85,7 +85,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-description",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -102,7 +102,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 
 		{
 			Name:       "malformed-warehouse-id",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -124,7 +124,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "warehouse-id-not-valid-fk",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -146,7 +146,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -158,7 +158,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad token",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -170,7 +170,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -182,7 +182,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        "/v1/warehouses/zones",
+			URL:        "/v1/inventory/zones",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

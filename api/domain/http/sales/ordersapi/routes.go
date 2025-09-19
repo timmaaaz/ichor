@@ -30,14 +30,14 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	api := newAPI(ordersapp.NewApp(cfg.OrderBus))
-	app.HandlerFunc(http.MethodGet, version, "/order/orders", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/sales/orders", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/order/orders/{orders_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/sales/orders/{orders_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/order/orders", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/sales/orders", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/order/orders/{orders_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/sales/orders/{orders_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/order/orders/{orders_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/sales/orders/{orders_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

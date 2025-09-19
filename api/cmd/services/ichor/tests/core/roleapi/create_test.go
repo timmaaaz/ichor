@@ -13,7 +13,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/permissions/roles",
+			URL:        "/v1/core/roles",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -45,7 +45,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/permissions/roles",
+			URL:        "/v1/core/roles",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -63,7 +63,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/permissions/roles",
+			URL:        "/v1/core/roles",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

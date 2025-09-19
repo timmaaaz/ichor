@@ -14,7 +14,7 @@ import (
 func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{Name: "basic",
-			URL:        fmt.Sprintf("/v1/users/reports-to/%s", sd.ReportsTo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/hr/reports-to/%s", sd.ReportsTo[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -45,7 +45,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{Name: "invalid boss_id",
-			URL:        fmt.Sprintf("/v1/users/reports-to/%s", sd.ReportsTo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/hr/reports-to/%s", sd.ReportsTo[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -63,7 +63,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{Name: "invalid reporter_id",
-			URL:        fmt.Sprintf("/v1/users/reports-to/%s", sd.ReportsTo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/hr/reports-to/%s", sd.ReportsTo[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -88,7 +88,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/users/reports-to/%s", sd.ReportsTo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/hr/reports-to/%s", sd.ReportsTo[0].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -100,7 +100,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/users/reports-to/%s", sd.ReportsTo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/hr/reports-to/%s", sd.ReportsTo[0].ID),
 			Token:      sd.Admins[0].Token + "bad",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -112,7 +112,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/users/reports-to/%s", sd.ReportsTo[0].ID),
+			URL:        fmt.Sprintf("/v1/core/hr/reports-to/%s", sd.ReportsTo[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

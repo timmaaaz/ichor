@@ -169,7 +169,7 @@ export default {
       }
 
       if (this.valid) {
-        let url = `${import.meta.env.VITE_SERVICE_API}/homes`;
+        let url = `${import.meta.env.VITE_SERVICE_API}/hr/homes`;
 
         if (this.edit) {
           url += `/${this.form.id}`;

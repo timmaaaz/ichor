@@ -15,7 +15,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/permissions/roles/%s", sd.Roles[1].ID),
+			URL:        fmt.Sprintf("/v1/core/roles/%s", sd.Roles[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -47,7 +47,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "the name is empty",
-			URL:        fmt.Sprintf("/v1/permissions/roles/%s", sd.Roles[0].ID),
+			URL:        fmt.Sprintf("/v1/core/roles/%s", sd.Roles[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -67,7 +67,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        fmt.Sprintf("/v1/permissions/roles/%s", sd.Roles[0].ID),
+			URL:        fmt.Sprintf("/v1/core/roles/%s", sd.Roles[0].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -79,7 +79,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        fmt.Sprintf("/v1/permissions/roles/%s", sd.Roles[0].ID),
+			URL:        fmt.Sprintf("/v1/core/roles/%s", sd.Roles[0].ID),
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -91,7 +91,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "role admin only",
-			URL:        fmt.Sprintf("/v1/permissions/roles/%s", sd.Roles[0].ID),
+			URL:        fmt.Sprintf("/v1/core/roles/%s", sd.Roles[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

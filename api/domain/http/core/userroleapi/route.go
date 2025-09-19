@@ -30,12 +30,12 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(userroleapp.NewApp(cfg.UserRoleBus))
 
-	app.HandlerFunc(http.MethodPost, version, "/permissions/user-roles", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/core/user-roles", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
-	app.HandlerFunc(http.MethodDelete, version, "/permissions/user-roles/{user_role_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/core/user-roles/{user_role_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAdminOnly))
-	app.HandlerFunc(http.MethodGet, version, "/permissions/user-roles", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/core/user-roles", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/permissions/user-roles/{user_role_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/core/user-roles/{user_role_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

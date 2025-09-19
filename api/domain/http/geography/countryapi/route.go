@@ -33,8 +33,8 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(countryapp.NewApp(cfg.CountryBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/location/countries", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/geography/countries", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/location/countries/{country_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/geography/countries/{country_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

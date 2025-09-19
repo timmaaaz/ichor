@@ -35,14 +35,14 @@ func Routes(app *web.App, cfg Config) {
 	ruleAuthorizeHome := mid.AuthorizeHome(cfg.AuthClient, cfg.HomeBus)
 
 	api := newAPI(homeapp.NewApp(cfg.HomeBus))
-	app.HandlerFunc(http.MethodGet, version, "/homes", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/homes", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/homes/{home_id}", api.queryByID, authen, ruleAuthorizeHome,
+	app.HandlerFunc(http.MethodGet, version, "/hr/homes/{home_id}", api.queryByID, authen, ruleAuthorizeHome,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/homes", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/hr/homes", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/homes/{home_id}", api.update, authen, ruleAuthorizeHome,
+	app.HandlerFunc(http.MethodPut, version, "/hr/homes/{home_id}", api.update, authen, ruleAuthorizeHome,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/homes/{home_id}", api.delete, authen, ruleAuthorizeHome,
+	app.HandlerFunc(http.MethodDelete, version, "/hr/homes/{home_id}", api.delete, authen, ruleAuthorizeHome,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

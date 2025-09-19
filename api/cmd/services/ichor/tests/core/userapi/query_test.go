@@ -32,7 +32,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/users?page=1&rows=10&orderBy=id,ASC&username=Username",
+			URL:        "/v1/core/users?page=1&rows=10&orderBy=id,ASC&username=Username",
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
@@ -59,7 +59,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Users[0].ID),
+			URL:        fmt.Sprintf("/v1/core/users/%s", sd.Users[0].ID),
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

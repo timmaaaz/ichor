@@ -48,7 +48,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/location/countries?page=1&rows=10&orderBy=number,ASC&name=United",
+			URL:        "/v1/geography/countries?page=1&rows=10&orderBy=number,ASC&name=United",
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
@@ -83,7 +83,7 @@ func countryQueryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/location/countries/%s", sd.Countries[0].ID),
+			URL:        fmt.Sprintf("/v1/geography/countries/%s", sd.Countries[0].ID),
 			Token:      sd.Users[0].Token, // Want to test this with no permission
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

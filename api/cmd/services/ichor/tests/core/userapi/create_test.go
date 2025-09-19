@@ -13,7 +13,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/users",
+			URL:        "/v1/core/users",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -75,7 +75,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "missing-input",
-			URL:        "/v1/users",
+			URL:        "/v1/core/users",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -88,7 +88,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad-role",
-			URL:        "/v1/users",
+			URL:        "/v1/core/users",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -112,7 +112,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad-name",
-			URL:        "/v1/users",
+			URL:        "/v1/core/users",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -143,7 +143,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        "/v1/users",
+			URL:        "/v1/core/users",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -155,7 +155,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badtoken",
-			URL:        "/v1/users",
+			URL:        "/v1/core/users",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -167,7 +167,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        "/v1/users",
+			URL:        "/v1/core/users",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -179,7 +179,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "wronguser",
-			URL:        "/v1/users",
+			URL:        "/v1/core/users",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

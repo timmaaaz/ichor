@@ -32,14 +32,14 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	api := newAPI(reportstoapp.NewApp(cfg.ReportsToBus))
-	app.HandlerFunc(http.MethodGet, version, "/users/reports-to", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/reports-to", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/users/reports-to/{reports_to_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/reports-to/{reports_to_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/users/reports-to", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/hr/reports-to", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/users/reports-to/{reports_to_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/hr/reports-to/{reports_to_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/users/reports-to/{reports_to_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/hr/reports-to/{reports_to_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

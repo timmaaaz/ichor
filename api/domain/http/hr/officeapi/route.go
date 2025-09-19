@@ -32,14 +32,14 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	api := newAPI(officeapp.NewApp(cfg.OfficeBus))
-	app.HandlerFunc(http.MethodGet, version, "/location/offices", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/offices", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/location/offices/{office_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/offices/{office_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/location/offices", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/hr/offices", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/location/offices/{office_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/hr/offices/{office_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/location/offices/{office_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/hr/offices/{office_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

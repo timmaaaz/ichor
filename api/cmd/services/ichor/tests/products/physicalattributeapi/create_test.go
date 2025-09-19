@@ -15,7 +15,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -69,7 +69,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "missing-product-id",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -94,7 +94,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-length",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -119,7 +119,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-width",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -144,7 +144,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-height",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -169,7 +169,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-weight",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -194,7 +194,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-weight-unit",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -219,7 +219,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-storage-requirement",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -244,7 +244,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-hazmat-class",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -269,7 +269,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-shelf-life-days",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -294,7 +294,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-product-id",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -325,7 +325,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "product-id-not-valid-fk",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -356,7 +356,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -368,7 +368,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad token",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -380,7 +380,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -392,7 +392,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        "/v1/inventory/core/physical-attributes",
+			URL:        "/v1/products/physical-attributes",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

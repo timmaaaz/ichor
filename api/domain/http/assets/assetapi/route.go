@@ -31,16 +31,16 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(assetapp.NewApp(cfg.AssetBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/assets", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/assets", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/assets/{asset_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/assets/{asset_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPost, version, "/assets", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/assets/assets", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/assets/{asset_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/assets/assets/{asset_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/assets/{asset_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/assets/assets/{asset_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

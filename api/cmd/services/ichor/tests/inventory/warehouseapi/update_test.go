@@ -14,7 +14,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/warehouses/" + sd.Warehouses[0].ID,
+			URL:        "/v1/inventory/warehouses/" + sd.Warehouses[0].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     "PUT",
 			StatusCode: 200,
@@ -52,7 +52,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/warehouses/" + sd.Warehouses[0].ID,
+			URL:        "/v1/inventory/warehouses/" + sd.Warehouses[0].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -72,7 +72,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/warehouses/%s", sd.Warehouses[0].ID),
+			URL:        fmt.Sprintf("/v1/inventory/warehouses/%s", sd.Warehouses[0].ID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -84,7 +84,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/warehouses/%s", sd.Warehouses[0].ID),
+			URL:        fmt.Sprintf("/v1/inventory/warehouses/%s", sd.Warehouses[0].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -96,7 +96,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/warehouses/%s", sd.Warehouses[0].ID),
+			URL:        fmt.Sprintf("/v1/inventory/warehouses/%s", sd.Warehouses[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

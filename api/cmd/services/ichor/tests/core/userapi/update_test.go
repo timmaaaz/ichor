@@ -16,7 +16,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
+			URL:        fmt.Sprintf("/v1/core/users/%s", sd.Admins[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -66,7 +66,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "role",
-			URL:        fmt.Sprintf("/v1/users/role/%s", sd.Admins[1].ID),
+			URL:        fmt.Sprintf("/v1/core/users/role/%s", sd.Admins[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -117,7 +117,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "bad-input",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
+			URL:        fmt.Sprintf("/v1/core/users/%s", sd.Admins[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -133,7 +133,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad-role",
-			URL:        fmt.Sprintf("/v1/users/role/%s", sd.Admins[0].ID),
+			URL:        fmt.Sprintf("/v1/core/users/role/%s", sd.Admins[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -155,7 +155,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
+			URL:        fmt.Sprintf("/v1/core/users/%s", sd.Admins[0].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -167,7 +167,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[0].ID),
+			URL:        fmt.Sprintf("/v1/core/users/%s", sd.Admins[0].ID),
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -180,7 +180,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		// TODO: Need a test for admin updating another admin
 		// {
 		// 	Name:       "wronguser",
-		// 	URL:        fmt.Sprintf("/v1/users/%s", sd.Admins[1].ID),
+		// 	URL:        fmt.Sprintf("/v1/core/users/%s", sd.Admins[1].ID),
 		// 	Token:      sd.Admins[0].Token,
 		// 	Method:     http.MethodPut,
 		// 	StatusCode: http.StatusUnauthorized,
@@ -200,7 +200,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		// },
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/users/role/%s", sd.Users[0].ID),
+			URL:        fmt.Sprintf("/v1/core/users/role/%s", sd.Users[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

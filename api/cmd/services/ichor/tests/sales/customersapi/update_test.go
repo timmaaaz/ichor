@@ -15,7 +15,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/core/customers/%s", sd.Customers[1].ID),
+			URL:        fmt.Sprintf("/v1/sales/customers/%s", sd.Customers[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -59,7 +59,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "bad-name",
-			URL:        "/v1/core/customers/abc",
+			URL:        "/v1/sales/customers/abc",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -74,7 +74,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-contact-id",
-			URL:        "/v1/core/customers/" + sd.Customers[1].ID,
+			URL:        "/v1/sales/customers/" + sd.Customers[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -89,7 +89,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-delivery-address-id",
-			URL:        "/v1/core/customers/" + sd.Customers[1].ID,
+			URL:        "/v1/sales/customers/" + sd.Customers[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -104,7 +104,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-notes",
-			URL:        "/v1/core/customers/" + sd.Customers[1].ID,
+			URL:        "/v1/sales/customers/" + sd.Customers[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -125,7 +125,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/core/customers/%s", sd.Customers[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/customers/%s", sd.Customers[0].ID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -137,7 +137,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/core/customers/%s", sd.Customers[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/customers/%s", sd.Customers[0].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -149,7 +149,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/core/customers/%s", sd.Customers[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/customers/%s", sd.Customers[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,

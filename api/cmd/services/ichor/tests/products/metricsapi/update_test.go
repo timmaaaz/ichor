@@ -17,7 +17,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", sd.Metrics[0].MetricID),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", sd.Metrics[0].MetricID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -55,7 +55,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-product-id",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", sd.Metrics[0].MetricID),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", sd.Metrics[0].MetricID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -70,7 +70,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-product-cost-uuid",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -85,7 +85,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-product-defect-rate",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -101,7 +101,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-product-return-rate",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -117,7 +117,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-interval",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -138,7 +138,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", sd.Metrics[0].MetricID),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", sd.Metrics[0].MetricID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -150,7 +150,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", sd.Metrics[0].MetricID),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", sd.Metrics[0].MetricID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -162,7 +162,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", sd.Metrics[0].MetricID),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", sd.Metrics[0].MetricID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -180,7 +180,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "supplier-dne",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusNotFound,
@@ -200,7 +200,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "contact-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/quality/metrics/%s", sd.Metrics[0].MetricID),
+			URL:        fmt.Sprintf("/v1/products/quality-metrics/%s", sd.Metrics[0].MetricID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,
