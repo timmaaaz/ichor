@@ -142,6 +142,7 @@ func (qm *QueueManager) Initialize(ctx context.Context) error {
 
 // QueueEvent adds a trigger event to the queue
 func (qm *QueueManager) QueueEvent(ctx context.Context, event TriggerEvent) error {
+
 	// Check circuit breaker
 	if qm.circuitBreaker.IsOpen() {
 		return fmt.Errorf("circuit breaker is open, refusing new events")
@@ -191,6 +192,7 @@ func (qm *QueueManager) QueueEvent(ctx context.Context, event TriggerEvent) erro
 
 // ProcessEvents processes queued events (batch processing for compatibility)
 func (qm *QueueManager) ProcessEvents(ctx context.Context, batchSize int) (*QueueProcessingResult, error) {
+
 	if !qm.isRunning.Load() {
 		return nil, fmt.Errorf("queue manager is not running")
 	}
@@ -319,9 +321,6 @@ func (qm *QueueManager) processMessage(ctx context.Context, msg *rabbitmq.Messag
 	}
 
 	if payload, ok := msg.Payload["user_id"]; ok {
-		// if uid, ok := payload.(string); ok {
-		// 	event.UserID = uid
-		// }
 		uid, err := uuid.Parse(payload.(string))
 		if err == nil {
 			event.UserID = uid
@@ -333,7 +332,7 @@ func (qm *QueueManager) processMessage(ctx context.Context, msg *rabbitmq.Messag
 	defer cancel()
 
 	// Execute workflow
-	_, err := qm.engine.ExecuteWorkflow(processCtx, event)
+	execution, err := qm.engine.ExecuteWorkflow(processCtx, event)
 
 	processingTime := time.Since(startTime)
 
@@ -350,6 +349,17 @@ func (qm *QueueManager) processMessage(ctx context.Context, msg *rabbitmq.Messag
 
 		// Let RabbitMQ handle retries through its built-in mechanism
 		return err
+	}
+
+	// Check if the workflow execution itself failed
+	if execution.Status == StatusFailed {
+		qm.recordFailure()
+		qm.updateMetric(func(m *QueueMetrics) {
+			m.TotalFailed++
+		})
+
+		// Return an error so RabbitMQ knows the message processing failed
+		return fmt.Errorf("workflow execution failed: %d errors", len(execution.Errors))
 	}
 
 	// Success

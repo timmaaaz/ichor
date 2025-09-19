@@ -1,8 +1,66 @@
 -- UPDATED SCHEMA - Primary keys changed to 'id', foreign keys remain descriptive
 
+-- Version: 0.01
+-- Core/System schema for authentication and base configuration
+CREATE SCHEMA IF NOT EXISTS  core;
+-- users, roles, user_roles, table_access, contact_infos
+
+-- Version: 0.02
+-- Human Resources schema
+CREATE SCHEMA IF NOT EXISTS  hr;
+-- titles, offices, reports_to, user_approval_status, 
+-- user_approval_comments, homes
+
+-- Version: 0.03
+-- Location/Geography schema (shared reference data)
+CREATE SCHEMA IF NOT EXISTS  geography;
+-- countries, regions, cities, streets
+
+-- Version: 0.04
+-- Asset Management schema
+CREATE SCHEMA IF NOT EXISTS  assets;
+-- asset_types, asset_conditions, valid_assets, assets, 
+-- user_assets, asset_tags, tags, approval_status, fulfillment_status
+
+-- Version: 0.05
+-- Inventory/Warehouse Management schema
+CREATE SCHEMA IF NOT EXISTS  inventory;
+-- warehouses, zones, inventory_locations, inventory_items, 
+-- inventory_transactions, inventory_adjustments, transfer_orders,
+-- serial_numbers, lot_trackings, quality_inspections
+
+-- Version: 0.06
+-- Product Information Management schema
+CREATE SCHEMA IF NOT EXISTS  products;
+-- products, product_categories, product_costs, physical_attributes,
+-- brands, quality_metrics, cost_history
+
+-- Version: 0.07
+-- Supply Chain/Procurement schema
+CREATE SCHEMA IF NOT EXISTS  procurement;
+-- suppliers, supplier_products
+
+-- Version: 0.08
+-- Sales/Order Management schema
+CREATE SCHEMA IF NOT EXISTS  sales;
+-- customers, orders, order_line_items, order_fulfillment_statuses,
+-- line_item_fulfillment_statuses
+
+-- Version: 0.09
+-- Workflow/Automation schema
+CREATE SCHEMA IF NOT EXISTS  workflow;
+-- automation_rules, automation_executions, action_templates, 
+-- rule_actions, rule_dependencies, trigger_types, entity_types,
+-- entities, notification_deliveries, allocation_results
+
+-- Version: 0.10
+-- Configuration schema
+CREATE SCHEMA IF NOT EXISTS  config;
+-- table_configs
+
 -- Version: 1.01
 -- Description: Create table asset_types
-CREATE TABLE asset_types (
+CREATE TABLE assets.asset_types (
    id UUID NOT NULL,
    name TEXT NOT NULL,
    description TEXT NULL,
@@ -12,7 +70,7 @@ CREATE TABLE asset_types (
 
 -- Version: 1.02
 -- Description: Create table asset_conditions
-CREATE TABLE asset_conditions (
+CREATE TABLE assets.asset_conditions (
    id UUID NOT NULL,
    name TEXT NOT NULL,
    description TEXT NULL,
@@ -22,7 +80,7 @@ CREATE TABLE asset_conditions (
 
 -- Version: 1.03
 -- Description: Create table countries
-CREATE TABLE countries (
+CREATE TABLE geography.countries (
    id UUID NOT NULL,
    number INT NOT NULL,
    name TEXT NOT NULL,
@@ -33,51 +91,51 @@ CREATE TABLE countries (
 
 -- Version: 1.04
 -- Description: Create table regions
-CREATE TABLE regions (
+CREATE TABLE geography.regions (
    id UUID NOT NULL,
    country_id UUID NOT NULL,
    name TEXT NOT NULL,
    code TEXT NOT NULL,
    -- TODO: determine if these should be enforced unique.
    PRIMARY KEY (id),
-   FOREIGN KEY (country_id) REFERENCES countries(id) ON DELETE CASCADE
+   FOREIGN KEY (country_id) REFERENCES geography.countries(id) ON DELETE CASCADE
 );
 
 -- Version: 1.05
 -- Description: create table cities
-CREATE TABLE cities (
+CREATE TABLE geography.cities (
    id UUID NOT NULL,
    region_id UUID NOT NULL,
    name TEXT NOT NULL,
    PRIMARY KEY (id),
    UNIQUE (region_id, name),
-   FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE CASCADE
+   FOREIGN KEY (region_id) REFERENCES geography.regions(id) ON DELETE CASCADE
 );
 
 -- Version: 1.06
 -- Description: create table streets
-CREATE TABLE streets (
+CREATE TABLE geography.streets (
    id UUID NOT NULL,
    city_id UUID NOT NULL,
    line_1 TEXT NOT NULL,
    line_2 TEXT NULL,
    postal_code VARCHAR(20) NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (city_id) REFERENCES cities(id) ON DELETE SET NULL-- Check this cascade relationship
+   FOREIGN KEY (city_id) REFERENCES geography.cities(id) ON DELETE SET NULL-- Check this cascade relationship
 );
 
 -- Version: 1.07
 -- Description: Create table user_approval_status
-CREATE TABLE user_approval_status (
+CREATE TABLE hr.user_approval_status (
    id UUID NOT NULL, 
-   icon_id UUID NOT NULL, 
+   icon_id UUID NULL, 
    name TEXT NOT NULL,
    PRIMARY KEY (id)
 );
 
 -- Version: 1.08
 -- Description: Create table titles
-CREATE TABLE titles (
+CREATE TABLE hr.titles (
    id UUID NOT NULL, 
    name TEXT NOT NULL,
    description TEXT NULL,
@@ -86,17 +144,17 @@ CREATE TABLE titles (
 
 -- Version: 1.09
 -- Description: Create table offices
-CREATE TABLE offices (
+CREATE TABLE hr.offices (
    id UUID NOT NULL, 
    name TEXT NOT NULL,
    street_id UUID NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (street_id) REFERENCES streets(id) ON DELETE CASCADE
+   FOREIGN KEY (street_id) REFERENCES geography.streets(id) ON DELETE CASCADE
 );
 
 -- Version: 1.10
 -- Description: Create table users
-CREATE TABLE users (
+CREATE TABLE core.users (
    id UUID NOT NULL,
    requested_by UUID NULL,
    approved_by UUID NULL,
@@ -120,16 +178,16 @@ CREATE TABLE users (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE SET NULL, -- we don't want to delete someone if their boss is deleted
-   FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL, -- we don't want to delete someone if their boss is deleted
-   FOREIGN KEY (title_id) REFERENCES titles(id) ON DELETE CASCADE,
-   FOREIGN KEY (office_id) REFERENCES offices(id) ON DELETE CASCADE,
-   FOREIGN KEY (user_approval_status_id) REFERENCES user_approval_status(id) ON DELETE CASCADE
+   FOREIGN KEY (requested_by) REFERENCES core.users(id) ON DELETE SET NULL, -- we don't want to delete someone if their boss is deleted
+   FOREIGN KEY (approved_by) REFERENCES core.users(id) ON DELETE SET NULL, -- we don't want to delete someone if their boss is deleted
+   FOREIGN KEY (title_id) REFERENCES hr.titles(id) ON DELETE CASCADE,
+   FOREIGN KEY (office_id) REFERENCES hr.offices(id) ON DELETE CASCADE,
+   FOREIGN KEY (user_approval_status_id) REFERENCES hr.user_approval_status(id) ON DELETE CASCADE
 );
 
 -- Version: 1.11
 -- Description: Create table valid_assets
-CREATE TABLE valid_assets (
+CREATE TABLE assets.valid_assets (
    id UUID NOT NULL,
    type_id UUID NOT NULL,
    name TEXT NOT NULL,
@@ -150,14 +208,14 @@ CREATE TABLE valid_assets (
    CONSTRAINT unique_asset_name UNIQUE (name),
 
    -- named foreign keys
-   CONSTRAINT fk_assets_type_id FOREIGN KEY (type_id) REFERENCES asset_types(id) ON DELETE CASCADE,
-   CONSTRAINT fk_assets_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-   CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE CASCADE
+   CONSTRAINT fk_assets_type_id FOREIGN KEY (type_id) REFERENCES assets.asset_types(id) ON DELETE CASCADE,
+   CONSTRAINT fk_assets_created_by FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE CASCADE,
+   CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE CASCADE
 );
 
 -- Version: 1.12
 -- Description: Create table homes
-CREATE TABLE homes (
+CREATE TABLE hr.homes (
    id UUID NOT NULL,
    TYPE TEXT NOT NULL,
    user_id UUID NOT NULL,
@@ -170,12 +228,12 @@ CREATE TABLE homes (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+   FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE CASCADE
 );
 
 -- Version: 1.13
 -- Description: Add approval status 
-CREATE TABLE approval_status (
+CREATE TABLE assets.approval_status (
    id UUID NOT NULL, 
    icon_id UUID NOT NULL, 
    name TEXT NOT NULL,
@@ -184,7 +242,7 @@ CREATE TABLE approval_status (
 
 -- Version: 1.14
 -- Description: Add fulfillment status
-CREATE TABLE fulfillment_status (
+CREATE TABLE assets.fulfillment_status (
    id UUID NOT NULL, 
    icon_id UUID NOT NULL, 
    name TEXT NOT NULL,
@@ -193,7 +251,7 @@ CREATE TABLE fulfillment_status (
 
 -- Version: 1.15
 -- Description: Add Tags
-CREATE TABLE tags (
+CREATE TABLE assets.tags (
    id UUID NOT NULL, 
    name TEXT NOT NULL,
    description TEXT NULL,
@@ -202,42 +260,42 @@ CREATE TABLE tags (
 
 -- Version: 1.16
 -- Description: Add asset_tags
-CREATE TABLE asset_tags (
+CREATE TABLE assets.asset_tags (
    id UUID NOT NULL,
    valid_asset_id UUID NOT NULL,
    tag_id UUID NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (valid_asset_id) REFERENCES valid_assets(id) ON DELETE CASCADE,
-   FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+   FOREIGN KEY (valid_asset_id) REFERENCES assets.valid_assets(id) ON DELETE CASCADE,
+   FOREIGN KEY (tag_id) REFERENCES assets.tags(id) ON DELETE CASCADE
 );
 
 -- Version: 1.17
 -- Description: Creates reports to table
-CREATE TABLE reports_to(
+CREATE TABLE hr.reports_to (
    id UUID NOT NULL,
    reporter_id UUID NOT NULL,
    boss_id UUID NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
-   FOREIGN KEY (boss_id) REFERENCES users(id) ON DELETE CASCADE
+   FOREIGN KEY (reporter_id) REFERENCES core.users(id) ON DELETE CASCADE,
+   FOREIGN KEY (boss_id) REFERENCES core.users(id) ON DELETE CASCADE
 );
 
 -- Version: 1.18
 -- Description: Add assets
-CREATE TABLE assets (
+CREATE TABLE assets.assets (
    id UUID NOT NULL,
    valid_asset_id UUID NOT NULL,
    last_maintenance_time TIMESTAMP NOT NULL,
    serial_number TEXT NOT NULL,
    asset_condition_id UUID NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (valid_asset_id) REFERENCES valid_assets(id) ON DELETE CASCADE,
-   FOREIGN KEY (asset_condition_id) REFERENCES asset_conditions(id) ON DELETE CASCADE
+   FOREIGN KEY (valid_asset_id) REFERENCES assets.valid_assets(id) ON DELETE CASCADE,
+   FOREIGN KEY (asset_condition_id) REFERENCES assets.asset_conditions(id) ON DELETE CASCADE
 );
 
 -- Version: 1.19
 -- Description: Add user_assets
-CREATE TABLE user_assets (
+CREATE TABLE assets.user_assets (
    id UUID NOT NULL,
    user_id UUID NOT NULL,
    asset_id UUID NOT NULL,
@@ -247,31 +305,31 @@ CREATE TABLE user_assets (
    approved_by UUID NOT NULL,
    fulfillment_status_id UUID NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-   FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE CASCADE,
-   FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE,
-   FOREIGN KEY (approval_status_id) REFERENCES approval_status(id) ON DELETE CASCADE,
-   FOREIGN KEY (fulfillment_status_id) REFERENCES fulfillment_status(id) ON DELETE CASCADE
+   FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE CASCADE,
+   FOREIGN KEY (approved_by) REFERENCES core.users(id) ON DELETE CASCADE,
+   FOREIGN KEY (asset_id) REFERENCES assets.assets(id) ON DELETE CASCADE,
+   FOREIGN KEY (approval_status_id) REFERENCES assets.approval_status(id) ON DELETE CASCADE,
+   FOREIGN KEY (fulfillment_status_id) REFERENCES assets.fulfillment_status(id) ON DELETE CASCADE
 );
 
 -- Version: 1.20
 -- Description: Add user_approval_comments
-CREATE TABLE user_approval_comments (
+CREATE TABLE hr.user_approval_comments (
    id UUID NOT NULL,
    comment VARCHAR(255) NOT NULL,
    commenter_id UUID NOT NULL,
    user_id UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (commenter_id) REFERENCES users(id) ON DELETE SET NULL,
-   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+   FOREIGN KEY (commenter_id) REFERENCES core.users(id) ON DELETE SET NULL,
+   FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE SET NULL
 );
 
 CREATE TYPE contact_type as ENUM ('phone', 'email', 'mail', 'fax');
 
 -- Version: 1.21
 -- Description: Add contact_infos
-CREATE TABLE contact_infos (
+CREATE TABLE core.contact_infos (
    id UUID NOT NULL,
    first_name VARCHAR(50) NOT NULL,
    last_name VARCHAR(50) NOT NULL,
@@ -290,19 +348,19 @@ CREATE TABLE contact_infos (
 
 -- Version: 1.22
 -- Description: add brands
-CREATE TABLE brands (
+CREATE TABLE products.brands (
    id UUID NOT NULL,
    name TEXT NOT NULL,
    contact_infos_id UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_infos_id) REFERENCES contact_infos(id)
+   FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
 );
 
 -- Version: 1.23
 -- Description: add product_categoriesp
-CREATE TABLE product_categories (
+CREATE TABLE products.product_categories (
    id UUID NOT NULL,
    name TEXT NOT NULL,
    description text NOT NULL,
@@ -313,7 +371,7 @@ CREATE TABLE product_categories (
 
 -- Version: 1.24
 -- Description: Create table warehouses
-CREATE TABLE warehouses (
+CREATE TABLE inventory.warehouses (
    id UUID NOT NULL,
    name TEXT NOT NULL,
    street_id UUID NOT NULL,
@@ -323,7 +381,7 @@ CREATE TABLE warehouses (
    created_by UUID NOT NULL,
    updated_by UUID NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (street_id) REFERENCES streets(id) ON DELETE CASCADE
+   FOREIGN KEY (street_id) REFERENCES geography.streets(id) ON DELETE CASCADE
 );
 
 -- =============================================================================
@@ -332,7 +390,7 @@ CREATE TABLE warehouses (
 
 -- Version: 1.25
 -- Description: Create table roles
-CREATE TABLE roles (
+CREATE TABLE core.roles (
     id UUID PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT
@@ -340,21 +398,21 @@ CREATE TABLE roles (
 
 -- Version: 1.26
 -- Description: Create table user_roles
-CREATE TABLE user_roles (
+CREATE TABLE core.user_roles (
       id UUID NOT NULL,
       user_id UUID NOT NULL,
       role_id UUID NOT NULL,
       PRIMARY KEY (id),
       UNIQUE (user_id, role_id),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE CASCADE,
+      FOREIGN KEY (role_id) REFERENCES core.roles(id) ON DELETE CASCADE
 );
 
 -- Version: 1.27
 -- Description: Create table table_access
-CREATE TABLE table_access (
+CREATE TABLE core.table_access (
     id UUID PRIMARY KEY,
-    role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
+    role_id UUID REFERENCES core.roles(id) ON DELETE CASCADE,
     table_name VARCHAR(50) NOT NULL,
     can_create BOOLEAN DEFAULT FALSE,
     can_read BOOLEAN DEFAULT FALSE,
@@ -365,7 +423,7 @@ CREATE TABLE table_access (
 
 -- Version: 1.28
 -- Description: add products
-CREATE TABLE products (
+CREATE TABLE products.products (
    id UUID NOT NULL,
    sku VARCHAR(50) NOT NULL,
    brand_id UUID NOT NULL,
@@ -382,13 +440,13 @@ CREATE TABLE products (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (brand_id) REFERENCES brands(id),
-   FOREIGN KEY (category_id) REFERENCES product_categories(id)
+   FOREIGN KEY (brand_id) REFERENCES products.brands(id),
+   FOREIGN KEY (category_id) REFERENCES products.product_categories(id)
 );
 
 -- Version: 1.29
 -- Description: add physical_attributes
-CREATE TABLE physical_attributes (
+CREATE TABLE products.physical_attributes (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    length NUMERIC(10, 4) NOT NULL,
@@ -405,12 +463,12 @@ CREATE TABLE physical_attributes (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
 -- Version: 1.30
 -- Description: add product_costs
-CREATE TABLE product_costs (
+CREATE TABLE products.product_costs (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    purchase_cost NUMERIC(10,2) NOT NULL,
@@ -427,12 +485,12 @@ CREATE TABLE product_costs (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
 -- Version: 1.31
 -- Description: add suppliers
-CREATE TABLE suppliers (
+CREATE TABLE procurement.suppliers (
    id UUID NOT NULL,
    contact_infos_id UUID NOT NULL,
    name VARCHAR(100) NOT NULL,
@@ -443,12 +501,12 @@ CREATE TABLE suppliers (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_infos_id) REFERENCES contact_infos(id)
+   FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
 );
 
 -- Version: 1.32
 -- Description: add cost_history
-CREATE TABLE cost_history (
+CREATE TABLE products.cost_history (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    cost_type VARCHAR(50) NOT NULL,
@@ -459,12 +517,12 @@ CREATE TABLE cost_history (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
 -- Version: 1.33
 -- Description: add supplier_products
-CREATE TABLE supplier_products (
+CREATE TABLE procurement.supplier_products (
    id UUID NOT NULL,
    supplier_id UUID NOT NULL,
    product_id UUID NOT NULL,
@@ -477,13 +535,13 @@ CREATE TABLE supplier_products (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
-   FOREIGN KEY (product_id) REFERENCES products(id)
+   FOREIGN KEY (supplier_id) REFERENCES procurement.suppliers(id),
+   FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
 -- Version: 1.34
 -- Description: add quality_metrics
-CREATE TABLE quality_metrics (
+CREATE TABLE products.quality_metrics (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    return_rate NUMERIC(10, 4) NOT NULL,
@@ -492,12 +550,12 @@ CREATE TABLE quality_metrics (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
 -- Version: 1.35
 -- Description: add lot tracking
-CREATE TABLE lot_trackings (
+CREATE TABLE inventory.lot_trackings (
    id UUID NOT NULL,
    supplier_product_id UUID NOT NULL,
    lot_number VARCHAR(100) NOT NULL,
@@ -509,12 +567,12 @@ CREATE TABLE lot_trackings (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (supplier_product_id) REFERENCES supplier_products(id)
+   FOREIGN KEY (supplier_product_id) REFERENCES procurement.supplier_products(id)
 );
 
 -- Version: 1.36
 -- Description: add zones
-CREATE TABLE zones (
+CREATE TABLE inventory.zones (
    id UUID NOT NULL,
    warehouse_id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
@@ -522,12 +580,12 @@ CREATE TABLE zones (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+   FOREIGN KEY (warehouse_id) REFERENCES inventory.warehouses(id)
 );
 
 -- Version: 1.37
 -- Description: add inventory_locations
-CREATE TABLE inventory_locations (
+CREATE TABLE inventory.inventory_locations (
    id UUID NOT NULL,
    zone_id UUID NOT NULL,
    warehouse_id UUID NOT NULL,
@@ -542,13 +600,13 @@ CREATE TABLE inventory_locations (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (zone_id) REFERENCES zones(id),
-   FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+   FOREIGN KEY (zone_id) REFERENCES inventory.zones(id),
+   FOREIGN KEY (warehouse_id) REFERENCES inventory.warehouses(id)
 );
 
 -- Version: 1.38
 -- Description: add inventory_items
-CREATE TABLE inventory_items (
+CREATE TABLE inventory.inventory_items (
    id UUID NOT NULL,
    product_id UUID NOT NULL, 
    location_id UUID NOT NULL,
@@ -564,13 +622,13 @@ CREATE TABLE inventory_items (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id),
-   FOREIGN KEY (location_id) REFERENCES inventory_locations(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id),
+   FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id)
 );
 
 -- Version: 1.39
 -- Description: add serial_numbers
-CREATE TABLE serial_numbers (
+CREATE TABLE inventory.serial_numbers (
    id UUID NOT NULL,
    product_id UUID NOT NULL,  
    location_id UUID NOT NULL,
@@ -580,14 +638,14 @@ CREATE TABLE serial_numbers (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id),
-   FOREIGN KEY (location_id) REFERENCES inventory_locations(id),
-   FOREIGN KEY (lot_id) REFERENCES lot_trackings(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id),
+   FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id),
+   FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
 -- Version: 1.40
 -- Description: add quality_inspections
-CREATE TABLE quality_inspections (
+CREATE TABLE inventory.quality_inspections (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    inspector_id UUID NOT NULL,
@@ -599,14 +657,14 @@ CREATE TABLE quality_inspections (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id),
-   FOREIGN KEY (inspector_id) REFERENCES users(id),
-   FOREIGN KEY (lot_id) REFERENCES lot_trackings(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id),
+   FOREIGN KEY (inspector_id) REFERENCES core.users(id),
+   FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
 -- Version: 1.41 
 -- Description: add inventory_transactions
-CREATE TABLE inventory_transactions (
+CREATE TABLE inventory.inventory_transactions (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    location_id UUID NOT NULL,
@@ -618,14 +676,14 @@ CREATE TABLE inventory_transactions (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id),
-   FOREIGN KEY (location_id) REFERENCES inventory_locations(id),
-   FOREIGN KEY (user_id) REFERENCES users(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id),
+   FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id),
+   FOREIGN KEY (user_id) REFERENCES core.users(id)
 );
 
 -- Version: 1.42
 -- Description: add inventory_adjustments
-CREATE TABLE inventory_adjustments (
+CREATE TABLE inventory.inventory_adjustments (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    location_id UUID NOT NULL,
@@ -638,15 +696,15 @@ CREATE TABLE inventory_adjustments (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id),
-   FOREIGN KEY (location_id) REFERENCES inventory_locations(id),
-   FOREIGN KEY (adjusted_by) REFERENCES users(id),
-   FOREIGN KEY (approved_by) REFERENCES users(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id),
+   FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id),
+   FOREIGN KEY (adjusted_by) REFERENCES core.users(id),
+   FOREIGN KEY (approved_by) REFERENCES core.users(id)
 );
 
 -- Version: 1.43
 -- Description: transfer_orders
-CREATE TABLE transfer_orders (
+CREATE TABLE inventory.transfer_orders (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    from_location_id UUID NOT NULL,
@@ -659,18 +717,18 @@ CREATE TABLE transfer_orders (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products(id),
-   FOREIGN KEY (from_location_id) REFERENCES inventory_locations(id),
-   FOREIGN KEY (to_location_id) REFERENCES inventory_locations(id),
-   FOREIGN KEY (requested_by) REFERENCES users(id),
-   FOREIGN KEY (approved_by) REFERENCES users(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id),
+   FOREIGN KEY (from_location_id) REFERENCES inventory.inventory_locations(id),
+   FOREIGN KEY (to_location_id) REFERENCES inventory.inventory_locations(id),
+   FOREIGN KEY (requested_by) REFERENCES core.users(id),
+   FOREIGN KEY (approved_by) REFERENCES core.users(id)
 );
 
 
 -- =============================================================================
 -- ORDERS
 -- =============================================================================
-CREATE TABLE order_fulfillment_statuses (
+CREATE TABLE sales.order_fulfillment_statuses (
    id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
    description TEXT NULL,
@@ -678,7 +736,7 @@ CREATE TABLE order_fulfillment_statuses (
    UNIQUE (name)
 );
 
-CREATE TABLE line_item_fulfillment_statuses (
+CREATE TABLE sales.line_item_fulfillment_statuses (
    id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
    description TEXT NULL,
@@ -687,7 +745,7 @@ CREATE TABLE line_item_fulfillment_statuses (
 );
 
 
-CREATE TABLE customers (
+CREATE TABLE sales.customers (
    id UUID NOT NULL,
    name VARCHAR(100) NOT NULL,
    contact_id UUID NOT NULL,
@@ -698,13 +756,13 @@ CREATE TABLE customers (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_id) REFERENCES contact_infos(id) ON DELETE CASCADE,
-   FOREIGN KEY (delivery_address_id) REFERENCES streets(id) ON DELETE CASCADE,
-   FOREIGN KEY (created_by) REFERENCES users(id),
-   FOREIGN KEY (updated_by) REFERENCES users(id)
+   FOREIGN KEY (contact_id) REFERENCES core.contact_infos(id) ON DELETE CASCADE,
+   FOREIGN KEY (delivery_address_id) REFERENCES geography.streets(id) ON DELETE CASCADE,
+   FOREIGN KEY (created_by) REFERENCES core.users(id),
+   FOREIGN KEY (updated_by) REFERENCES core.users(id)
 );
 
-CREATE TABLE orders (
+CREATE TABLE sales.orders (
    id UUID NOT NULL,
    number VARCHAR(100) NOT NULL,
    customer_id UUID NOT NULL,
@@ -715,13 +773,13 @@ CREATE TABLE orders (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (customer_id) REFERENCES customers(id),
-   FOREIGN KEY (order_fulfillment_status_id) REFERENCES order_fulfillment_statuses(id) ON DELETE SET NULL,
-   FOREIGN KEY (created_by) REFERENCES users(id),
-   FOREIGN KEY (updated_by) REFERENCES users(id)
+   FOREIGN KEY (customer_id) REFERENCES sales.customers(id),
+   FOREIGN KEY (order_fulfillment_status_id) REFERENCES sales.order_fulfillment_statuses(id) ON DELETE SET NULL,
+   FOREIGN KEY (created_by) REFERENCES core.users(id),
+   FOREIGN KEY (updated_by) REFERENCES core.users(id)
 );
 
-CREATE TABLE order_line_items (
+CREATE TABLE sales.order_line_items (
    id UUID NOT NULL,
    order_id UUID NOT NULL,
    product_id UUID NOT NULL,
@@ -733,64 +791,62 @@ CREATE TABLE order_line_items (
    updated_by UUID NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-   FOREIGN KEY (line_item_fulfillment_statuses_id) REFERENCES line_item_fulfillment_statuses(id) ON DELETE SET NULL,
-   FOREIGN KEY (created_by) REFERENCES users(id),
-   FOREIGN KEY (updated_by) REFERENCES users(id)
+   FOREIGN KEY (order_id) REFERENCES sales.orders(id) ON DELETE CASCADE,
+   FOREIGN KEY (product_id) REFERENCES products.products(id) ON DELETE CASCADE,
+   FOREIGN KEY (line_item_fulfillment_statuses_id) REFERENCES sales.line_item_fulfillment_statuses(id) ON DELETE SET NULL,
+   FOREIGN KEY (created_by) REFERENCES core.users(id),
+   FOREIGN KEY (updated_by) REFERENCES core.users(id)
 );
 
 -- =============================================================================
 -- WORKFLOW TABLES
 -- =============================================================================
-CREATE TABLE trigger_types (
+CREATE TABLE workflow.trigger_types (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(50) NOT NULL UNIQUE,
    description TEXT NULL,
    is_active BOOLEAN NOT NULL DEFAULT TRUE,
    deactivated_by UUID NULL,
-   FOREIGN KEY (deactivated_by) REFERENCES users(id)
+   FOREIGN KEY (deactivated_by) REFERENCES core.users(id)
 );
 
-
-
-CREATE TABLE entity_types (
+CREATE TABLE workflow.entity_types (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(50) NOT NULL UNIQUE,
    description TEXT NULL,
    is_active BOOLEAN NOT NULL DEFAULT TRUE,
    deactivated_by UUID NULL,
-   FOREIGN KEY (deactivated_by) REFERENCES users(id)
+   FOREIGN KEY (deactivated_by) REFERENCES core.users(id)
 );
 
 -- Define automation rules
-CREATE TABLE automation_rules (
+CREATE TABLE workflow.automation_rules (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(100) NOT NULL,
    description TEXT,
    entity_id UUID NOT NULL, -- table or view name, maybe others in the future
-   entity_type_id UUID NOT NULL REFERENCES entity_types(id),
+   entity_type_id UUID NOT NULL REFERENCES workflow.entity_types(id),
    
    -- Trigger conditions
-   trigger_type_id UUID NOT NULL REFERENCES trigger_types(id),
+   trigger_type_id UUID NOT NULL REFERENCES workflow.trigger_types(id),
 
-   trigger_conditions JSONB, -- When to trigger
+   trigger_conditions JSONB NULL, -- When to trigger
       
    -- Control
    is_active BOOLEAN NOT NULL DEFAULT TRUE,
    
    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
    updated_date TIMESTAMP NOT NULL DEFAULT NOW(),
-   created_by UUID NOT NULL REFERENCES users(id),
-   updated_by UUID NOT NULL REFERENCES users(id),
+   created_by UUID NOT NULL REFERENCES core.users(id),
+   updated_by UUID NOT NULL REFERENCES core.users(id),
 
-   deactivated_by UUID NULL REFERENCES users(id)
+   deactivated_by UUID NULL REFERENCES core.users(id)
 );
 
 -- Track rule executions
-CREATE TABLE automation_executions (
+CREATE TABLE workflow.automation_executions (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-   automation_rules_id UUID NOT NULL REFERENCES automation_rules(id),
+   automation_rules_id UUID NOT NULL REFERENCES workflow.automation_rules(id),
    entity_type VARCHAR(50) NOT NULL,
    trigger_data JSONB,
    actions_executed JSONB,
@@ -800,54 +856,54 @@ CREATE TABLE automation_executions (
    executed_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE action_templates (
+CREATE TABLE workflow.action_templates (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(100) NOT NULL UNIQUE,
    description TEXT,
    action_type VARCHAR(50) NOT NULL,
    default_config JSONB NOT NULL,
    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
-   created_by UUID NOT NULL REFERENCES users(id),
+   created_by UUID NOT NULL REFERENCES core.users(id),
    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-   deactivated_by UUID NULL REFERENCES users(id)
+   deactivated_by UUID NULL REFERENCES core.users(id)
 );
 
-CREATE TABLE rule_actions (
+CREATE TABLE workflow.rule_actions (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-   automation_rules_id UUID NOT NULL REFERENCES automation_rules(id),
+   automation_rules_id UUID NOT NULL REFERENCES workflow.automation_rules(id),
    name VARCHAR(100) NOT NULL,
    description TEXT,
    action_config JSONB NOT NULL,
    execution_order INTEGER NOT NULL DEFAULT 1,
    is_active BOOLEAN DEFAULT TRUE,
-   template_id UUID NULL REFERENCES action_templates(id),
-   deactivated_by UUID NULL REFERENCES users(id)
+   template_id UUID NULL REFERENCES workflow.action_templates(id),
+   deactivated_by UUID NULL REFERENCES core.users(id)
 );
 
-CREATE TABLE rule_dependencies (
+CREATE TABLE workflow.rule_dependencies (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-   parent_rule_id UUID REFERENCES automation_rules(id),
-   child_rule_id UUID REFERENCES automation_rules(id)
+   parent_rule_id UUID REFERENCES workflow.automation_rules(id),
+   child_rule_id UUID REFERENCES workflow.automation_rules(id)
 );
 
 -- Create entities table
-CREATE TABLE entities (
+CREATE TABLE workflow.entities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
-    entity_type_id UUID NOT NULL REFERENCES entity_types(id),
+    entity_type_id UUID NOT NULL REFERENCES workflow.entity_types(id),
     schema_name VARCHAR(50) DEFAULT 'public',
     is_active BOOLEAN DEFAULT TRUE,
     created_date TIMESTAMP DEFAULT NOW(),
-    deactivated_by UUID NULL REFERENCES users(id)
+    deactivated_by UUID NULL REFERENCES core.users(id)
 );
 
 -- Track notification deliveries from workflow actions
-CREATE TABLE notification_deliveries (
+CREATE TABLE workflow.notification_deliveries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     notification_id UUID NOT NULL, -- References the data structure NotificationPayload in the notification queue, probably this will be referencing logs
-    automation_execution_id UUID NULL REFERENCES automation_executions(id), -- Links to workflow execution
-    rule_id UUID REFERENCES automation_rules(id),
-    action_id UUID REFERENCES rule_actions(id),
+    automation_execution_id UUID NULL REFERENCES workflow.automation_executions(id), -- Links to workflow execution
+    rule_id UUID NULL REFERENCES workflow.automation_rules(id),
+    action_id UUID NULL REFERENCES workflow.rule_actions(id),
     recipient_id UUID NOT NULL, -- User ID or email
     channel VARCHAR(50) NOT NULL, -- email, sms, push, in_app
     status VARCHAR(20) NOT NULL, -- pending, sent, delivered, failed, bounced, retrying
@@ -869,18 +925,18 @@ CREATE TABLE notification_deliveries (
 );
 
 -- Add to your migration file
-CREATE TABLE allocation_results (
+CREATE TABLE workflow.allocation_results (
     id UUID PRIMARY KEY,
     idempotency_key VARCHAR(255) UNIQUE NOT NULL,
     allocation_data JSONB NOT NULL,
-    created_at TIMESTAMP NOT NULL
+    created_date TIMESTAMP NOT NULL
 );
-CREATE INDEX idx_allocation_idempotency ON allocation_results(idempotency_key);
+CREATE INDEX idx_allocation_idempotency ON workflow.allocation_results(idempotency_key);
 
 -- Migration: Create table_configs table for storing table configurations
 -- Version: 2.01
 -- Description: Create table for storing dynamic table configurations
-CREATE TABLE IF NOT EXISTS table_configs (
+CREATE TABLE IF NOT EXISTS config.table_configs (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
@@ -891,29 +947,29 @@ CREATE TABLE IF NOT EXISTS table_configs (
     updated_date TIMESTAMP NOT NULL,
     
     -- Foreign keys
-    CONSTRAINT fk_table_configs_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_table_configs_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_table_configs_created_by FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_table_configs_updated_by FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE CASCADE
 );
 
 -- Create indexes for better query performance
-CREATE INDEX idx_table_configs_name ON table_configs(name);
-CREATE INDEX idx_table_configs_created_by ON table_configs(created_by);
-CREATE INDEX idx_table_configs_updated_date ON table_configs(updated_date DESC);
+CREATE INDEX idx_table_configs_name ON config.table_configs(name);
+CREATE INDEX idx_table_configs_created_by ON config.table_configs(created_by);
+CREATE INDEX idx_table_configs_updated_date ON config.table_configs(updated_date DESC);
 
 -- GIN index for JSONB queries
-CREATE INDEX idx_table_configs_config ON table_configs USING GIN (config);
+CREATE INDEX idx_table_configs_config ON config.table_configs USING GIN (config);
 
 -- Comments
-COMMENT ON TABLE table_configs IS 'Stores user-defined table configurations for dynamic table generation';
-COMMENT ON COLUMN table_configs.id IS 'Unique identifier for the configuration';
-COMMENT ON COLUMN table_configs.name IS 'Unique name for the configuration';
-COMMENT ON COLUMN table_configs.description IS 'Optional description of what this configuration displays';
-COMMENT ON COLUMN table_configs.config IS 'JSON configuration matching the TableConfig structure';
-COMMENT ON COLUMN table_configs.created_by IS 'User who created this configuration';
-COMMENT ON COLUMN table_configs.updated_by IS 'User who last updated this configuration';
+COMMENT ON TABLE config.table_configs IS 'Stores user-defined table configurations for dynamic table generation';
+COMMENT ON COLUMN config.table_configs.id IS 'Unique identifier for the configuration';
+COMMENT ON COLUMN config.table_configs.name IS 'Unique name for the configuration';
+COMMENT ON COLUMN config.table_configs.description IS 'Optional description of what this configuration displays';
+COMMENT ON COLUMN config.table_configs.config IS 'JSON configuration matching the TableConfig structure';
+COMMENT ON COLUMN config.table_configs.created_by IS 'User who created this configuration';
+COMMENT ON COLUMN config.table_configs.updated_by IS 'User who last updated this configuration';
 
 -- Optional: Create a view for commonly accessed configurations
-CREATE OR REPLACE VIEW active_table_configs AS
+CREATE OR REPLACE VIEW config.active_table_configs AS
 SELECT 
     tc.id,
     tc.name,
@@ -925,18 +981,18 @@ SELECT
     tc.updated_date,
     u1.username as created_by_username,
     u2.username as updated_by_username
-FROM table_configs tc
-JOIN users u1 ON tc.created_by = u1.id
-JOIN users u2 ON tc.updated_by = u2.id
+FROM config.table_configs tc
+JOIN core.users u1 ON tc.created_by = u1.id
+JOIN core.users u2 ON tc.updated_by = u2.id
 WHERE u1.enabled = true
 ORDER BY tc.updated_date DESC;
 
 -- Grant appropriate permissions (adjust based on your needs)
--- GRANT SELECT ON table_configs TO authenticated;
--- GRANT INSERT, UPDATE, DELETE ON table_configs TO authenticated;
--- GRANT SELECT ON active_table_configs TO authenticated;
+-- GRANT SELECT ON config.table_configs TO authenticated;
+-- GRANT INSERT, UPDATE, DELETE ON config.table_configs TO authenticated;
+-- GRANT SELECT ON config.active_table_configs TO authenticated;
 
-CREATE OR REPLACE VIEW orders_base AS
+CREATE OR REPLACE VIEW sales.orders_base AS
 SELECT
    o.id AS order_id,
    o.number AS order_number,
@@ -956,11 +1012,11 @@ SELECT
 
    ofs.name AS order_fulfillment_statuses_name,
    ofs.description AS order_fulfillment_statuses_description
-FROM orders o
-   INNER JOIN customers c ON o.customer_id = c.id
-   LEFT JOIN order_fulfillment_statuses ofs ON o.order_fulfillment_status_id = ofs.id;
+FROM sales.orders o
+   INNER JOIN sales.customers c ON o.customer_id = c.id
+   LEFT JOIN sales.order_fulfillment_statuses ofs ON o.order_fulfillment_status_id = ofs.id;
 
-CREATE OR REPLACE VIEW order_line_items_base AS
+CREATE OR REPLACE VIEW sales.order_line_items_base AS
 SELECT
    oli.id AS order_line_item_id,
    oli.order_id AS order_line_item_order_id,
@@ -995,8 +1051,67 @@ SELECT
    c.created_date AS product_category_created_date,
    c.updated_date AS product_category_updated_date
 
-FROM order_line_items oli
-   INNER JOIN products p ON oli.product_id = p.id
-   LEFT JOIN brands b ON p.brand_id = b.id
-   LEFT JOIN product_categories c ON p.category_id = c.id
-   LEFT JOIN line_item_fulfillment_statuses ofs ON oli.id = ofs.id;
+FROM sales.order_line_items oli
+   INNER JOIN products.products p ON oli.product_id = p.id
+   LEFT JOIN products.brands b ON p.brand_id = b.id
+   LEFT JOIN products.product_categories c ON p.category_id = c.id
+   LEFT JOIN sales.line_item_fulfillment_statuses ofs ON oli.id = ofs.id;
+
+CREATE OR REPLACE VIEW workflow.automation_rules_view AS 
+SELECT 
+    ar.id,
+    ar.name,
+    ar.description,
+    ar.trigger_conditions,
+    ar.is_active,
+    ar.created_date,
+    ar.updated_date,
+    ar.created_by,
+    ar.updated_by,
+    ar.deactivated_by,
+    
+    -- Trigger type fields
+    tt.id as trigger_type_id,
+    tt.name as trigger_type_name,
+    tt.description as trigger_type_description,
+    
+    -- Entity type fields (from automation_rules.entity_type_id)
+    et.id as entity_type_id,
+    et.name as entity_type_name,
+    et.description as entity_type_description,
+    
+    -- Entity fields (from automation_rules.entity_id)
+    e.id as entity_id,
+    e.name as entity_name,
+    e.schema_name as entity_schema_name,
+    
+    -- User fields for better context
+    cu.username as created_by_username,
+    uu.username as updated_by_username,
+    du.username as deactivated_by_username
+    
+FROM workflow.automation_rules ar
+LEFT JOIN workflow.trigger_types tt ON ar.trigger_type_id = tt.id
+LEFT JOIN workflow.entity_types et ON ar.entity_type_id = et.id
+LEFT JOIN workflow.entities e ON ar.entity_id = e.id
+LEFT JOIN core.users cu ON ar.created_by = cu.id
+LEFT JOIN core.users uu ON ar.updated_by = uu.id
+LEFT JOIN core.users du ON ar.deactivated_by = du.id
+WHERE ar.is_active = true;
+
+
+CREATE OR REPLACE VIEW workflow.rule_actions_view AS 
+   SELECT 
+      ra.id,
+      ra.automation_rules_id,
+      ra.name,
+      ra.description,
+      ra.action_config,
+      ra.execution_order,
+      ra.is_active,
+      ra.template_id,
+      at.name as template_name,
+      at.action_type as template_action_type,
+      at.default_config as template_default_config
+   FROM workflow.rule_actions ra
+   LEFT JOIN workflow.action_templates at ON ra.template_id = at.id;

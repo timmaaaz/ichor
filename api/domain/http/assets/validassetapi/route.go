@@ -8,8 +8,8 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -34,14 +34,14 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(validassetapp.NewApp(cfg.ValidAssetBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/assets/validassets", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/valid-assets", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/assets/validassets/{valid_asset_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/valid-assets/{valid_asset_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/assets/validassets", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/assets/valid-assets", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/assets/validassets/{valid_asset_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/assets/valid-assets/{valid_asset_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/assets/validassets/{valid_asset_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/assets/valid-assets/{valid_asset_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

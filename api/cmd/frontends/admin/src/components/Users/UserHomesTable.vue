@@ -97,7 +97,7 @@ export default {
 
       try {
         const fetchCall = await fetch(
-          `${import.meta.env.VITE_SERVICE_API}/homes?user_id=${
+          `${import.meta.env.VITE_SERVICE_API}/hr/homes?user_id=${
             this.userId
           }&page=${page}&rows=${itemsPerPage}${sort ? sort : ""}`,
           {

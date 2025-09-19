@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"math"
 	"math/rand"
-	"os/exec"
 	"reflect"
 	"testing"
 	"time"
@@ -21,68 +20,68 @@ import (
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
-	"github.com/timmaaaz/ichor/business/domain/core/customersbus"
-	customersdb "github.com/timmaaaz/ichor/business/domain/core/customersbus/stores/contactinfosdb"
-	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus"
-	"github.com/timmaaaz/ichor/business/domain/finance/costhistorybus/stores/costhistorydb"
-	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus"
-	"github.com/timmaaaz/ichor/business/domain/finance/productcostbus/stores/productcostdb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus/stores/branddb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus/stores/inventoryitemdb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/physicalattributebus/stores/physicalattributedb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus/stores/productcategorydb"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus"
-	"github.com/timmaaaz/ichor/business/domain/lot/lottrackingsbus/stores/lottrackingsdb"
-	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus"
-	"github.com/timmaaaz/ichor/business/domain/lot/serialnumberbus/stores/serialnumberdb"
-	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus"
-	"github.com/timmaaaz/ichor/business/domain/movement/inventoryadjustmentbus/stores/inventoryadjustmentdb"
-	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
-	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus/stores/inventorytransactiondb"
-	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus"
-	"github.com/timmaaaz/ichor/business/domain/movement/transferorderbus/stores/transferorderdb"
-	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/order/lineitemfulfillmentstatusbus/stores/lineitemfulfillmentstatusdb"
-	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/order/orderfulfillmentstatusbus/stores/orderfulfillmentstatusdb"
-	"github.com/timmaaaz/ichor/business/domain/order/orderlineitemsbus"
-	"github.com/timmaaaz/ichor/business/domain/order/orderlineitemsbus/stores/orderlineitemsdb"
-	"github.com/timmaaaz/ichor/business/domain/order/ordersbus"
-	"github.com/timmaaaz/ichor/business/domain/order/ordersbus/stores/ordersdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionscache"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus/stores/permissionsdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/rolecache"
-	"github.com/timmaaaz/ichor/business/domain/permissions/rolebus/stores/roledb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccesscache"
-	"github.com/timmaaaz/ichor/business/domain/permissions/tableaccessbus/stores/tableaccessdb"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userrolecache"
-	"github.com/timmaaaz/ichor/business/domain/permissions/userrolebus/stores/userroledb"
-	"github.com/timmaaaz/ichor/business/domain/quality/inspectionbus"
-	"github.com/timmaaaz/ichor/business/domain/quality/inspectionbus/stores/inspectiondb"
-	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus"
-	"github.com/timmaaaz/ichor/business/domain/quality/metricsbus/stores/metricsdb"
-	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus"
-	"github.com/timmaaaz/ichor/business/domain/supplier/supplierbus/stores/supplierdb"
-	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus"
-	"github.com/timmaaaz/ichor/business/domain/supplier/supplierproductbus/stores/supplierproductdb"
-	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
-	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
-	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus"
-	"github.com/timmaaaz/ichor/business/domain/users/status/commentbus/stores/commentdb"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus/stores/inventorylocationdb"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus/stores/warehousedb"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus/stores/zonedb"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionscache"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionsdb"
+	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/rolecache"
+	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/roledb"
+	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
+	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus/stores/tableaccesscache"
+	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus/stores/tableaccessdb"
+	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/core/userrolebus/stores/userrolecache"
+	"github.com/timmaaaz/ichor/business/domain/core/userrolebus/stores/userroledb"
+	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus"
+	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus/stores/approvaldb"
+	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
+	"github.com/timmaaaz/ichor/business/domain/hr/commentbus/stores/commentdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus/stores/inspectiondb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus/stores/inventoryadjustmentdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus/stores/inventoryitemdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus/stores/lottrackingsdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus/stores/serialnumberdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus/stores/transferorderdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus/stores/warehousedb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus/stores/zonedb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus/stores/supplierdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus/stores/supplierproductdb"
+	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/products/brandbus/stores/branddb"
+	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus"
+	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus/stores/costhistorydb"
+	"github.com/timmaaaz/ichor/business/domain/products/metricsbus"
+	"github.com/timmaaaz/ichor/business/domain/products/metricsbus/stores/metricsdb"
+	"github.com/timmaaaz/ichor/business/domain/products/physicalattributebus"
+	"github.com/timmaaaz/ichor/business/domain/products/physicalattributebus/stores/physicalattributedb"
+	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
+	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus/stores/productcategorydb"
+	"github.com/timmaaaz/ichor/business/domain/products/productcostbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productcostbus/stores/productcostdb"
+	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
+	customersdb "github.com/timmaaaz/ichor/business/domain/sales/customersbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus/stores/lineitemfulfillmentstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus/stores/orderfulfillmentstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus/stores/orderlineitemsdb"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/stores/ordersdb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
@@ -97,28 +96,28 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus/stores/userassetdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
-	"github.com/timmaaaz/ichor/business/domain/homebus"
-	"github.com/timmaaaz/ichor/business/domain/homebus/stores/homedb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus/stores/productdb"
-	"github.com/timmaaaz/ichor/business/domain/location/citybus"
-	citydb "github.com/timmaaaz/ichor/business/domain/location/citybus/stores/citydb"
-	"github.com/timmaaaz/ichor/business/domain/location/countrybus"
-	"github.com/timmaaaz/ichor/business/domain/location/countrybus/stores/countrydb"
-	"github.com/timmaaaz/ichor/business/domain/location/officebus"
-	"github.com/timmaaaz/ichor/business/domain/location/officebus/stores/officedb"
-	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
-	"github.com/timmaaaz/ichor/business/domain/location/regionbus/stores/regiondb"
-	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	streetdb "github.com/timmaaaz/ichor/business/domain/location/streetbus/stores/streetdb"
+	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
+	citydb "github.com/timmaaaz/ichor/business/domain/geography/citybus/stores/citydb"
+	"github.com/timmaaaz/ichor/business/domain/geography/countrybus"
+	"github.com/timmaaaz/ichor/business/domain/geography/countrybus/stores/countrydb"
+	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/regionbus/stores/regiondb"
+	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	streetdb "github.com/timmaaaz/ichor/business/domain/geography/streetbus/stores/streetdb"
+	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
+	"github.com/timmaaaz/ichor/business/domain/hr/homebus/stores/homedb"
+	"github.com/timmaaaz/ichor/business/domain/hr/officebus"
+	"github.com/timmaaaz/ichor/business/domain/hr/officebus/stores/officedb"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
 
-	"github.com/timmaaaz/ichor/business/domain/users/reportstobus"
-	"github.com/timmaaaz/ichor/business/domain/users/reportstobus/store/reportstodb"
-	"github.com/timmaaaz/ichor/business/domain/users/titlebus"
-	"github.com/timmaaaz/ichor/business/domain/users/titlebus/stores/titledb"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/usercache"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/usercache"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/hr/reportstobus"
+	"github.com/timmaaaz/ichor/business/domain/hr/reportstobus/store/reportstodb"
+	"github.com/timmaaaz/ichor/business/domain/hr/titlebus"
+	"github.com/timmaaaz/ichor/business/domain/hr/titlebus/stores/titledb"
 
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
@@ -369,8 +368,8 @@ func NewDatabase(t *testing.T, testName string) *Database {
 	dockerArgs := []string{"-e", "POSTGRES_PASSWORD=postgres"}
 	appArgs := []string{"-c", "log_statement=all"}
 
-	cmd := exec.Command("docker", "rm", "-f", name)
-	cmd.Run() // Ignore error - container might not exist
+	// cmd := exec.Command("docker", "rm", "-f", name)
+	// cmd.Run() // Ignore error - container might not exist
 
 	c, err := docker.StartContainer(image, name, port, dockerArgs, appArgs)
 	if err != nil {
@@ -559,12 +558,12 @@ func NormalizeJSONFields(got, exp interface{}) {
 	gotVal := reflect.ValueOf(got)
 	expVal := reflect.ValueOf(exp)
 
-	// Handle pointers
-	if gotVal.Kind() == reflect.Ptr {
-		gotVal = gotVal.Elem()
-	}
+	// Handle pointers - need to get the element we can actually modify
 	if expVal.Kind() == reflect.Ptr {
 		expVal = expVal.Elem()
+	}
+	if gotVal.Kind() == reflect.Ptr {
+		gotVal = gotVal.Elem()
 	}
 
 	switch gotVal.Kind() {
@@ -614,8 +613,31 @@ func normalizeJSONInStruct(gotVal, expVal reflect.Value) {
 			continue
 		}
 
-		// Check if field is json.RawMessage
-		if field.Type == reflect.TypeOf(json.RawMessage{}) {
+		// Check if field is *json.RawMessage (pointer)
+		if field.Type == reflect.TypeOf((*json.RawMessage)(nil)) {
+			gotFieldPtr := gotVal.Field(i)
+			expFieldPtr := expVal.Field(i)
+
+			// Skip if either is nil
+			if gotFieldPtr.IsNil() || expFieldPtr.IsNil() {
+				continue
+			}
+
+			// Dereference the pointers to get the actual json.RawMessage values
+			gotField := gotFieldPtr.Elem().Interface().(json.RawMessage)
+			expField := expFieldPtr.Elem().Interface().(json.RawMessage)
+
+			// Compare and normalize
+			_, normalized := normalizeJSON(gotField, expField)
+
+			// Update the expected field by setting the value through the pointer
+			if expFieldPtr.CanSet() {
+				normalizedCopy := make(json.RawMessage, len(normalized))
+				copy(normalizedCopy, normalized)
+				expFieldPtr.Set(reflect.ValueOf(&normalizedCopy))
+			}
+		} else if field.Type == reflect.TypeOf(json.RawMessage{}) {
+			// Handle non-pointer json.RawMessage
 			gotField := gotVal.Field(i).Interface().(json.RawMessage)
 			expField := expVal.Field(i).Interface().(json.RawMessage)
 

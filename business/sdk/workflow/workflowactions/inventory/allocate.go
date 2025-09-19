@@ -10,13 +10,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
-	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
-	"github.com/timmaaaz/ichor/business/sdk/order"
-	"github.com/timmaaaz/ichor/business/sdk/page"
-	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
@@ -63,8 +60,8 @@ type AllocationRequest struct {
 	MaxRetries  int                             `json:"max_retries"`
 }
 
-// AllocationResult represents the result of an allocation
-type AllocationResult struct {
+// InventoryAllocationResult represents the result of an inventory allocation
+type InventoryAllocationResult struct {
 	AllocationID    uuid.UUID       `json:"allocation_id"`
 	Status          string          `json:"status"` // 'success', 'partial', 'failed'
 	AllocatedItems  []AllocatedItem `json:"allocated_items"`
@@ -114,16 +111,16 @@ type QueuedAllocationResponse struct {
 // ErrAlreadyProcessed is returned when an allocation has already been processed
 type ErrAlreadyProcessed struct {
 	IdempotencyKey string
-	Result         *AllocationResult
+	Result         *InventoryAllocationResult
 }
 
 // Database models for allocation tracking
-type allocationResult struct {
-	ID             string    `db:"id"`
-	IdempotencyKey string    `db:"idempotency_key"`
-	AllocationData []byte    `db:"allocation_data"`
-	CreatedAt      time.Time `db:"created_at"`
-}
+// type allocationResult struct {
+// 	ID             string    `db:"id"`
+// 	IdempotencyKey string    `db:"idempotency_key"`
+// 	AllocationData []byte    `db:"allocation_data"`
+// 	CreatedAt      time.Time `db:"created_at"`
+// }
 
 type inventoryItemLock struct {
 	ID                string    `db:"id"`
@@ -144,6 +141,7 @@ type AllocateInventoryHandler struct {
 	locationBus      *inventorylocationbus.Business
 	transactionBus   *inventorytransactionbus.Business
 	productBus       *productbus.Business
+	workflowBus      *workflow.Business
 }
 
 // NewAllocateInventoryHandler creates a new allocate inventory handler
@@ -155,6 +153,7 @@ func NewAllocateInventoryHandler(
 	locationBus *inventorylocationbus.Business,
 	transactionBus *inventorytransactionbus.Business,
 	productBus *productbus.Business,
+	workflowBus *workflow.Business,
 ) *AllocateInventoryHandler {
 	return &AllocateInventoryHandler{
 		log:              log,
@@ -164,6 +163,7 @@ func NewAllocateInventoryHandler(
 		locationBus:      locationBus,
 		transactionBus:   transactionBus,
 		productBus:       productBus,
+		workflowBus:      workflowBus,
 	}
 }
 
@@ -228,16 +228,20 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 	idempotencyKey := fmt.Sprintf("%s_%s_%s", execContext.ExecutionID, execContext.RuleID, h.GetType())
 
 	// Check if this allocation was already processed (idempotency)
-	existing, err := h.checkIdempotency(ctx, idempotencyKey)
+	existing, idempotencyResult, err := h.workflowBus.QueryAllocationResultByIdempotencyKey(ctx, idempotencyKey)
 	if err != nil {
-		return QueuedAllocationResponse{}, fmt.Errorf("idempotency check failed: %w", err)
+		return QueuedAllocationResponse{}, fmt.Errorf("execute: %w", err)
 	}
-	if existing != nil {
+
+	switch idempotencyResult {
+	case workflow.IdempotencyNotFound:
+		// Good - no existing allocation, we can proceed with processing
+	case workflow.IdempotencyExists:
 		h.log.Info(ctx, "Allocation already processed, returning existing result",
 			"idempotency_key", idempotencyKey,
-			"allocation_id", existing.AllocationID)
+			"allocation_id", existing.ID)
 		// Return error for already processed - caller should use GetResult
-		return QueuedAllocationResponse{}, fmt.Errorf("allocation already processed with key: %s", idempotencyKey)
+		return QueuedAllocationResponse{}, fmt.Errorf("allocation already processed with key: %s, allocation_id: %s", idempotencyKey, existing.ID)
 	}
 
 	// Create allocation request
@@ -284,23 +288,27 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 	}, nil
 }
 
-// GetResult retrieves the result of a previously processed allocation
-func (h *AllocateInventoryHandler) GetResult(ctx context.Context, idempotencyKey string) (*AllocationResult, error) {
-	return h.checkIdempotency(ctx, idempotencyKey)
-}
-
 // ProcessAllocation handles the actual allocation logic (called by queue consumer)
-func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, request AllocationRequest) (*AllocationResult, error) {
+func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, request AllocationRequest) (*InventoryAllocationResult, error) {
 	startTime := time.Now()
 	idempotencyKey := fmt.Sprintf("%s_%s_%s", request.ExecutionID, request.Context.RuleID, h.GetType())
 
 	// Double-check idempotency in case of race conditions
-	existing, err := h.checkIdempotency(ctx, idempotencyKey)
+	existing, idempotencyResult, err := h.workflowBus.QueryAllocationResultByIdempotencyKey(ctx, idempotencyKey)
 	if err != nil {
 		return nil, fmt.Errorf("idempotency check failed: %w", err)
 	}
-	if existing != nil {
-		return existing, nil
+
+	switch idempotencyResult {
+	case workflow.IdempotencyExists:
+		// Allocation was already processed, return the existing result
+		var cachedResult InventoryAllocationResult // <-- Use renamed struct
+		if err := json.Unmarshal(existing.AllocationData, &cachedResult); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal cached result: %w", err)
+		}
+		return &cachedResult, nil
+	case workflow.IdempotencyNotFound:
+		// Good - proceed with allocation
 	}
 
 	// Start transaction with appropriate isolation level
@@ -312,7 +320,7 @@ func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, reques
 	}
 	defer tx.Rollback()
 
-	result := &AllocationResult{
+	result := &InventoryAllocationResult{
 		AllocationID:   request.ID,
 		Status:         "processing",
 		AllocatedItems: []AllocatedItem{},
@@ -350,8 +358,21 @@ func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, reques
 		result.Status = "failed"
 	}
 
-	// Store result for idempotency
-	if err := h.storeAllocationResult(ctx, tx, result); err != nil {
+	data, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal result: %w", err)
+	}
+
+	txWorkflowBus, err := h.workflowBus.NewWithTx(tx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create transactional workflow bus: %w", err)
+	}
+
+	_, err = txWorkflowBus.CreateAllocationResult(ctx, workflow.NewAllocationResult{
+		IdempotencyKey: idempotencyKey,
+		AllocationData: data,
+	})
+	if err != nil {
 		return nil, fmt.Errorf("failed to store allocation result: %w", err)
 	}
 
@@ -380,7 +401,7 @@ func (h *AllocateInventoryHandler) allocateItem(
 	config AllocateInventoryConfig,
 	execContext workflow.ActionExecutionContext,
 ) (*AllocatedItem, *FailedItem) {
-	// Create transactional business instances
+	// Create transactional business instance
 	txItemBus, err := h.inventoryItemBus.NewWithTx(tx)
 	if err != nil {
 		return nil, &FailedItem{
@@ -390,20 +411,51 @@ func (h *AllocateInventoryHandler) allocateItem(
 		}
 	}
 
-	// Query available inventory
-	filter := inventoryitembus.QueryFilter{
-		ProductID:  &item.ProductID,
-		LocationID: item.LocationID,
-		// Need custom filter for available quantity
-	}
+	// Use the specialized query method for allocation
+	items, err := txItemBus.QueryAvailableForAllocation(
+		ctx,
+		item.ProductID,
+		item.LocationID,  // Optional: specific location
+		item.WarehouseID, // Optional: specific warehouse
+		config.AllocationStrategy,
+		10, // Process in batches to avoid locking too many rows
+	)
 
-	// Order by created_date for FIFO/LIFO
-	orderBy := inventoryitembus.DefaultOrderBy
-	if config.AllocationStrategy == "lifo" {
-		orderBy = order.NewBy("created_date", order.DESC)
-	}
+	/* TODO: Advanced Allocation Strategy Requirements
+	 *
+	 * For nearest_expiry:
+	 *   - Fetch lot tracking data along with inventory
+	 *   - Prioritize lots nearing expiration
+	 *   - May need to split allocation across multiple lots
+	 *
+	 * For lowest_cost:
+	 *   - Factor in warehouse-specific costs (storage, labor, shipping)
+	 *   - Calculate total landed cost including shipping to customer
+	 *   - May need real-time shipping rate calculations
+	 *
+	 * For nearest_location:
+	 *   - Get customer delivery address from order/context
+	 *   - Calculate distances from available warehouses
+	 *   - Consider shipping zones and transit times
+	 *   - Cache distance calculations for performance
+	 *
+	 * For load_balancing:
+	 *   - Query current warehouse utilization levels
+	 *   - Factor in pending picks and current workload
+	 *   - Distribute evenly across warehouses with capacity
+	 *
+	 * For priority_zone:
+	 *   - Check customer tier/priority level
+	 *   - Route VIP orders to pick locations vs reserve
+	 *   - Consider zone-specific SLAs and handling requirements
+	 *
+	 * Additional considerations:
+	 *   - Multi-warehouse allocation for large orders
+	 *   - Minimum order quantities per warehouse
+	 *   - Shipping cutoff times by warehouse
+	 *   - Weekend/holiday warehouse schedules
+	 */
 
-	items, err := txItemBus.Query(ctx, filter, orderBy, page.MustParse("1", "10"))
 	if err != nil {
 		return nil, &FailedItem{
 			ProductID:         item.ProductID,
@@ -423,17 +475,17 @@ func (h *AllocateInventoryHandler) allocateItem(
 		}
 	}
 
-	// Allocate from available inventory
+	// Rest of allocation logic remains the same...
 	remaining := item.Quantity
 	totalAllocated := 0
 	var allocatedItem *AllocatedItem
 
+	// Process available inventory using selected strategy
 	for _, invItem := range items {
 		if remaining <= 0 {
 			break
 		}
 
-		// Calculate available quantity
 		available := invItem.Quantity - invItem.ReservedQuantity - invItem.AllocatedQuantity
 		if available <= 0 {
 			continue
@@ -441,7 +493,7 @@ func (h *AllocateInventoryHandler) allocateItem(
 
 		toAllocate := min(remaining, available)
 
-		// Update inventory item based on allocation mode
+		// Update inventory based on allocation mode
 		var update inventoryitembus.UpdateInventoryItem
 		if config.AllocationMode == "reserve" {
 			newReserved := invItem.ReservedQuantity + toAllocate
@@ -461,39 +513,21 @@ func (h *AllocateInventoryHandler) allocateItem(
 			}
 		}
 
-		// Create inventory transaction record
-		txTransBus, err := h.transactionBus.NewWithTx(tx)
-		if err != nil {
-			h.log.Error(ctx, "Failed to create transaction bus", "error", err)
-		} else {
-			transaction := inventorytransactionbus.NewInventoryTransaction{
-				ProductID:       item.ProductID,
-				LocationID:      invItem.LocationID,
-				UserID:          execContext.UserID,
-				TransactionType: config.AllocationMode,
-				Quantity:        -toAllocate,
-				ReferenceNumber: config.ReferenceID,
+		// Track allocation details
+		if allocatedItem == nil {
+			allocatedItem = &AllocatedItem{
+				ProductID:         item.ProductID,
+				LocationID:        invItem.LocationID,
+				RequestedQuantity: item.Quantity,
+				AllocatedQuantity: 0,
+				InventoryItemID:   invItem.ItemID,
+				AllocationMode:    config.AllocationMode,
 			}
 
-			if _, err := txTransBus.Create(ctx, transaction); err != nil {
-				h.log.Error(ctx, "Failed to create transaction record", "error", err)
-				// Decide if this should fail the allocation or just log
+			if config.AllocationMode == "reserve" {
+				expiresAt := time.Now().Add(time.Duration(config.ReservationHours) * time.Hour)
+				allocatedItem.ExpiresAt = &expiresAt
 			}
-		}
-
-		// Track allocation
-		allocatedItem = &AllocatedItem{
-			ProductID:         item.ProductID,
-			LocationID:        invItem.LocationID,
-			RequestedQuantity: item.Quantity,
-			AllocatedQuantity: toAllocate,
-			InventoryItemID:   invItem.ItemID,
-			AllocationMode:    config.AllocationMode,
-		}
-
-		if config.AllocationMode == "reserve" {
-			expiresAt := time.Now().Add(time.Duration(config.ReservationHours) * time.Hour)
-			allocatedItem.ExpiresAt = &expiresAt
 		}
 
 		remaining -= toAllocate
@@ -511,62 +545,14 @@ func (h *AllocateInventoryHandler) allocateItem(
 		}
 	}
 
-	if allocatedItem == nil {
-		return nil, &FailedItem{
-			ProductID:         item.ProductID,
-			RequestedQuantity: item.Quantity,
-			AvailableQuantity: 0,
-			Reason:            "no_allocation",
-			ErrorMessage:      "Unable to allocate any inventory",
-		}
+	if allocatedItem != nil {
+		allocatedItem.AllocatedQuantity = totalAllocated
 	}
 
-	allocatedItem.AllocatedQuantity = totalAllocated
 	return allocatedItem, nil
 }
 
-// buildInventoryQuery builds the query based on allocation strategy
-func (h *AllocateInventoryHandler) buildInventoryQuery(strategy string, item AllocationItem) string {
-	baseQuery := `
-		SELECT id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, created_date
-		FROM inventory_items
-		WHERE product_id = :product_id
-		AND (quantity - reserved_quantity - allocated_quantity) > 0`
-
-	if item.WarehouseID != nil {
-		baseQuery += ` AND location_id IN (SELECT id FROM inventory_locations WHERE warehouse_id = :warehouse_id)`
-	}
-	if item.LocationID != nil {
-		baseQuery = `
-		SELECT id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, created_date
-		FROM inventory_items
-		WHERE product_id = :product_id
-		AND location_id = :location_id
-		AND (quantity - reserved_quantity - allocated_quantity) > 0`
-	}
-
-	// Add ordering based on strategy
-	switch strategy {
-	case "fifo":
-		baseQuery += " ORDER BY created_date ASC"
-	case "lifo":
-		baseQuery += " ORDER BY created_date DESC"
-	case "nearest_expiry":
-		// Would need to join with lot_trackings table
-		baseQuery += " ORDER BY created_date ASC" // Simplified for now
-	case "lowest_cost":
-		// Would need to join with product_costs table
-		baseQuery += " ORDER BY created_date ASC" // Simplified for now
-	default:
-		baseQuery += " ORDER BY created_date ASC"
-	}
-
-	baseQuery += " LIMIT 10 FOR UPDATE" // Lock rows for update
-	return baseQuery
-}
-
 // Helper functions
-
 func (h *AllocateInventoryHandler) calculatePriority(priority string) int {
 	priorities := map[string]int{
 		"low":      1,
@@ -585,59 +571,6 @@ func (h *AllocateInventoryHandler) requestToPayload(request AllocationRequest) m
 	var payload map[string]interface{}
 	json.Unmarshal(data, &payload)
 	return payload
-}
-
-func (h *AllocateInventoryHandler) checkIdempotency(ctx context.Context, key string) (*AllocationResult, error) {
-	data := struct {
-		IdempotencyKey string `db:"idempotency_key"`
-	}{
-		IdempotencyKey: key,
-	}
-
-	const q = `
-		SELECT id, idempotency_key, allocation_data, created_at
-		FROM allocation_results 
-		WHERE idempotency_key = :idempotency_key`
-
-	var dbResult allocationResult
-	if err := sqldb.NamedQueryStruct(ctx, h.log, h.db, q, data, &dbResult); err != nil {
-		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	var result AllocationResult
-	if err := json.Unmarshal(dbResult.AllocationData, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
-func (h *AllocateInventoryHandler) storeAllocationResult(ctx context.Context, tx *sqlx.Tx, result *AllocationResult) error {
-	data, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-
-	storeData := struct {
-		ID             string    `db:"id"`
-		IdempotencyKey string    `db:"idempotency_key"`
-		AllocationData []byte    `db:"allocation_data"`
-		CreatedAt      time.Time `db:"created_at"`
-	}{
-		ID:             result.AllocationID.String(),
-		IdempotencyKey: result.IdempotencyKey,
-		AllocationData: data,
-		CreatedAt:      result.CreatedAt,
-	}
-
-	const q = `
-		INSERT INTO allocation_results (id, idempotency_key, allocation_data, created_at)
-		VALUES (:id, :idempotency_key, :allocation_data, :created_at)
-		ON CONFLICT (idempotency_key) DO NOTHING`
-
-	return sqldb.NamedExecContext(ctx, h.log, tx, q, storeData)
 }
 
 func min(a, b int) int {

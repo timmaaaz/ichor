@@ -49,7 +49,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assetbus.Storer, error) {
 // Create inserts a new user asset into the database.
 func (s *Store) Create(ctx context.Context, ass assetbus.Asset) error {
 	const q = `
-    INSERT INTO assets (
+    INSERT INTO assets.assets (
         id, valid_asset_id, last_maintenance_time, serial_number, asset_condition_id
     ) VALUES (
 		:id, :valid_asset_id, :last_maintenance_time, :serial_number, :asset_condition_id
@@ -69,7 +69,7 @@ func (s *Store) Create(ctx context.Context, ass assetbus.Asset) error {
 func (s *Store) Update(ctx context.Context, ass assetbus.Asset) error {
 	const q = `
 	UPDATE
-		assets
+		assets.assets
 	SET
 		id = :id,
 		valid_asset_id = :valid_asset_id,
@@ -94,7 +94,7 @@ func (s *Store) Update(ctx context.Context, ass assetbus.Asset) error {
 func (s *Store) Delete(ctx context.Context, ass assetbus.Asset) error {
 	const q = `
 	DELETE FROM
-		assets
+		assets.assets
 	WHERE
 		id = :id`
 
@@ -116,7 +116,7 @@ func (s *Store) Query(ctx context.Context, filter assetbus.QueryFilter, orderBy 
     SELECT
 		id, valid_asset_id, last_maintenance_time, serial_number, asset_condition_id
     FROM
-        assets`
+        assets.assets`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -145,7 +145,7 @@ func (s *Store) Count(ctx context.Context, filter assetbus.QueryFilter) (int, er
     SELECT
         COUNT(1) AS count
     FROM
-        assets`
+        assets.assets`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -172,7 +172,7 @@ func (s *Store) QueryByID(ctx context.Context, userAssetID uuid.UUID) (assetbus.
     SELECT
         id, valid_asset_id, asset_condition_id, serial_number, last_maintenance_time
     FROM
-        assets
+        assets.assets
     WHERE
         id = :id
     `

@@ -219,7 +219,7 @@ func (h *UpdateFieldHandler) executeUpdate(ctx context.Context, execer sqlx.ExtC
 	// Execute query
 	rowsAffected, err := sqldb.NamedExecContextWithCount(ctx, h.log, execer, query, args)
 	if err != nil {
-		return 0, fmt.Errorf("update failed: %w", err)
+		return 0, fmt.Errorf("update failed: %w, query: %s, args: %+v", err, query, args)
 	}
 
 	return rowsAffected, nil

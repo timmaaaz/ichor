@@ -8,7 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -33,14 +33,14 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(approvalstatusapp.NewApp(cfg.ApprovalStatusBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/assets/approvalstatus", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/approval-status", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/assets/approvalstatus/{approval_status_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/approval-status/{approval_status_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/assets/approvalstatus", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/assets/approval-status", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/assets/approvalstatus/{approval_status_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/assets/approval-status/{approval_status_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/assets/approvalstatus/{approval_status_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/assets/approval-status/{approval_status_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

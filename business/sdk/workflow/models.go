@@ -242,7 +242,7 @@ type AutomationRule struct {
 	EntityID          uuid.UUID
 	EntityTypeID      uuid.UUID
 	TriggerTypeID     uuid.UUID
-	TriggerConditions json.RawMessage
+	TriggerConditions *json.RawMessage
 	IsActive          bool
 	CreatedDate       time.Time
 	UpdatedDate       time.Time
@@ -258,7 +258,7 @@ type NewAutomationRule struct {
 	EntityID          uuid.UUID
 	EntityTypeID      uuid.UUID
 	TriggerTypeID     uuid.UUID
-	TriggerConditions json.RawMessage
+	TriggerConditions *json.RawMessage
 	IsActive          bool
 	CreatedBy         uuid.UUID
 }
@@ -389,6 +389,26 @@ type NewAutomationExecution struct {
 	ExecutionTimeMs  int
 }
 
+// =============================================================================
+// Allocation Results
+// =============================================================================
+
+// AllocationResult represents the result of an inventory allocation action
+// TODO: Figure out how to work this with the one that exists in the allocate.go
+// file
+type AllocationResult struct {
+	ID             uuid.UUID
+	IdempotencyKey string
+	AllocationData []byte
+	CreatedDate    time.Time
+}
+
+type NewAllocationResult struct {
+	ID             uuid.UUID
+	IdempotencyKey string
+	AllocationData []byte
+}
+
 // ActionExecutionStatusExecutionStatus represents the status of an automation execution
 type ActionExecutionStatus string
 
@@ -485,9 +505,9 @@ type QueryFilter struct {
 type AutomationRuleView struct {
 	ID                uuid.UUID
 	Name              string
-	Description       string
+	Description       *string
 	EntityID          *uuid.UUID
-	TriggerConditions json.RawMessage
+	TriggerConditions *json.RawMessage
 	Actions           json.RawMessage
 	IsActive          bool
 	CreatedDate       time.Time
@@ -509,14 +529,14 @@ type AutomationRuleView struct {
 
 // RuleActionView represents a flattened view of an action with template info
 type RuleActionView struct {
-	ID               uuid.UUID
-	AutomationRuleID *uuid.UUID
-	Name             string
-	Description      string
-	ActionConfig     json.RawMessage
-	ExecutionOrder   int
-	IsActive         bool
-	TemplateID       *uuid.UUID
+	ID                uuid.UUID
+	AutomationRulesID *uuid.UUID
+	Name              string
+	Description       string
+	ActionConfig      json.RawMessage
+	ExecutionOrder    int
+	IsActive          bool
+	TemplateID        *uuid.UUID
 	// Template information
 	TemplateName          string
 	TemplateActionType    string

@@ -49,7 +49,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (contactinfosbus.Storer, er
 // Create inserts a new user asset into the database.
 func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfos) error {
 	const q = `
-    INSERT INTO contact_infos (
+    INSERT INTO core.contact_infos (
         id, first_name, last_name, email_address, primary_phone_number, secondary_phone_number, street_id, delivery_address_id,
 		available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     ) VALUES (
@@ -71,7 +71,7 @@ func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfos) er
 func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfos) error {
 	const q = `
 	UPDATE
-		contact_infos
+		core.contact_infos
 	SET
 		id = :id,
 		first_name = :first_name,
@@ -103,7 +103,7 @@ func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfos) er
 func (s *Store) Delete(ctx context.Context, ass contactinfosbus.ContactInfos) error {
 	const q = `
 	DELETE FROM
-		contact_infos
+		core.contact_infos
 	WHERE
 		id = :id`
 
@@ -126,7 +126,7 @@ func (s *Store) Query(ctx context.Context, filter contactinfosbus.QueryFilter, o
 		id, first_name, last_name, email_address, primary_phone_number, street_id, delivery_address_id,
 		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     FROM
-        contact_infos`
+        core.contact_infos`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -155,7 +155,7 @@ func (s *Store) Count(ctx context.Context, filter contactinfosbus.QueryFilter) (
     SELECT
         COUNT(1) AS count
     FROM
-        contact_infos`
+        core.contact_infos`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -183,7 +183,7 @@ func (s *Store) QueryByID(ctx context.Context, userContactInfosID uuid.UUID) (co
         id, first_name, last_name, email_address, primary_phone_number, street_id, delivery_address_id,
 		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
     FROM
-        contact_infos
+        core.contact_infos
     WHERE
         id = :id
     `

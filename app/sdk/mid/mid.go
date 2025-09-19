@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	"github.com/timmaaaz/ichor/business/domain/homebus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
 
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 

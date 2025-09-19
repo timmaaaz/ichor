@@ -3,10 +3,10 @@ package workflowactions
 
 import (
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
-	"github.com/timmaaaz/ichor/business/domain/movement/inventorytransactionbus"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
@@ -35,6 +35,7 @@ type BusDependencies struct {
 	InventoryLocation    *inventorylocationbus.Business
 	InventoryTransaction *inventorytransactionbus.Business
 	Product              *productbus.Business
+	Workflow             *workflow.Business
 }
 
 // RegisterAll registers all standard workflow actions using the config
@@ -59,6 +60,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 		config.Buses.InventoryLocation,
 		config.Buses.InventoryTransaction,
 		config.Buses.Product,
+		config.Buses.Workflow,
 	))
 }
 
@@ -72,5 +74,6 @@ func RegisterInventoryActions(registry *workflow.ActionRegistry, config ActionCo
 		config.Buses.InventoryLocation,
 		config.Buses.InventoryTransaction,
 		config.Buses.Product,
+		config.Buses.Workflow,
 	))
 }

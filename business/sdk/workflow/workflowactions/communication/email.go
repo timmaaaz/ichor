@@ -31,12 +31,19 @@ func (h *SendEmailHandler) GetType() string {
 
 func (h *SendEmailHandler) Validate(config json.RawMessage) error {
 	var cfg struct {
-		Recipients []string `json:"recipients"`
-		Subject    string   `json:"subject"`
+		Recipients      []string `json:"recipients"`
+		Subject         string   `json:"subject"`
+		SimulateFailure bool     `json:"simulate_failure,omitempty"`
+		FailureMessage  string   `json:"failure_message,omitempty"`
 	}
 
 	if err := json.Unmarshal(config, &cfg); err != nil {
 		return fmt.Errorf("invalid configuration format: %w", err)
+	}
+
+	// Skip validation if we're simulating failure for testing
+	if cfg.SimulateFailure {
+		return nil
 	}
 
 	if len(cfg.Recipients) == 0 {
@@ -51,14 +58,46 @@ func (h *SendEmailHandler) Validate(config json.RawMessage) error {
 }
 
 func (h *SendEmailHandler) Execute(ctx context.Context, config json.RawMessage, context workflow.ActionExecutionContext) (interface{}, error) {
+	var cfg struct {
+		Recipients      []string `json:"recipients"`
+		Subject         string   `json:"subject"`
+		Body            string   `json:"body"`
+		SimulateFailure bool     `json:"simulate_failure,omitempty"`
+		FailureMessage  string   `json:"failure_message,omitempty"`
+	}
+
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse email configuration: %w", err)
+	}
+
+	// Handle test failure simulation
+	if cfg.SimulateFailure {
+		failureMsg := cfg.FailureMessage
+		if failureMsg == "" {
+			failureMsg = "simulated email delivery failure: SMTP connection refused"
+		}
+		h.log.Warn(ctx, "Simulating email failure for testing",
+			"entityID", context.EntityID,
+			"ruleName", context.RuleName,
+			"error", failureMsg)
+		return nil, fmt.Errorf(failureMsg)
+	}
+
 	h.log.Info(ctx, "Executing send_email action",
 		"entityID", context.EntityID,
-		"ruleName", context.RuleName)
+		"ruleName", context.RuleName,
+		"recipients", cfg.Recipients,
+		"subject", cfg.Subject)
+
+	// TODO: Implement actual email sending here
+	// smtp.SendMail(server, auth, from, recipients, message)
 
 	result := map[string]interface{}{
-		"email_id": fmt.Sprintf("email_%d", time.Now().Unix()),
-		"status":   "sent",
-		"sent_at":  time.Now().Format(time.RFC3339),
+		"email_id":   fmt.Sprintf("email_%d", time.Now().Unix()),
+		"status":     "sent",
+		"sent_at":    time.Now().Format(time.RFC3339),
+		"recipients": cfg.Recipients,
+		"subject":    cfg.Subject,
 	}
 
 	return result, nil

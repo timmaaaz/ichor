@@ -10,14 +10,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
-	"github.com/timmaaaz/ichor/business/domain/core/customersbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
-	"github.com/timmaaaz/ichor/business/domain/location/citybus"
-	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
-	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	"github.com/timmaaaz/ichor/business/domain/order/ordersbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
+	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
@@ -130,26 +130,14 @@ func insertUpdateFieldSeedData(t *testing.T, busDomain dbtest.BusDomain) (update
 	}
 	customer := customers[0]
 
-	// ===== CREATE WORKFLOW ENTITIES =====
-	// Create entity type
-	entityType, err := busDomain.Workflow.CreateEntityType(ctx, workflow.NewEntityType{
-		Name:        "table_entity",
-		Description: "Entity for table updates",
-		IsActive:    true,
-	})
+	entityType, err := busDomain.Workflow.QueryEntityTypeByName(ctx, "table")
 	if err != nil {
-		return updateFieldSeedData{}, fmt.Errorf("creating entity type : %w", err)
+		return updateFieldSeedData{}, fmt.Errorf("querying entity type : %w", err)
 	}
 
-	// Create entity
-	entity, err := busDomain.Workflow.CreateEntity(ctx, workflow.NewEntity{
-		Name:         "customers",
-		EntityTypeID: entityType.ID,
-		SchemaName:   "public",
-		IsActive:     true,
-	})
+	entity, err := busDomain.Workflow.QueryEntityByName(ctx, "customers")
 	if err != nil {
-		return updateFieldSeedData{}, fmt.Errorf("creating entity : %w", err)
+		return updateFieldSeedData{}, fmt.Errorf("querying entity : %w", err)
 	}
 
 	// Create trigger type
@@ -169,7 +157,7 @@ func insertUpdateFieldSeedData(t *testing.T, busDomain dbtest.BusDomain) (update
 		EntityID:          entity.ID,
 		EntityTypeID:      entityType.ID,
 		TriggerTypeID:     triggerType.ID,
-		TriggerConditions: json.RawMessage(`{}`),
+		TriggerConditions: nil,
 		IsActive:          true,
 		CreatedBy:         adminUser.ID,
 	})
@@ -183,7 +171,7 @@ func insertUpdateFieldSeedData(t *testing.T, busDomain dbtest.BusDomain) (update
 		Description: "Template for update field action",
 		ActionType:  "update_field",
 		DefaultConfig: json.RawMessage(`{
-			"target_entity": "customers",
+			"target_entity": "sales.customers",
 			"target_field": "name"
 		}`),
 		CreatedBy: adminUser.ID,
@@ -198,7 +186,7 @@ func insertUpdateFieldSeedData(t *testing.T, busDomain dbtest.BusDomain) (update
 		Name:             "Test Update Action",
 		Description:      "Action for testing field updates",
 		ActionConfig: json.RawMessage(`{
-			"target_entity": "customers",
+			"target_entity": "sales.customers",
 			"target_field": "name",
 			"new_value": "Updated Name"
 		}`),
@@ -294,7 +282,7 @@ func executeBasicFieldUpdate(busDomain dbtest.BusDomain, sd updateFieldSeedData)
 		Name: "execute_basic_field_update",
 		ExpResp: map[string]any{
 			"status":           "success",
-			"target_entity":    "customers",
+			"target_entity":    "sales.customers",
 			"target_field":     "name",
 			"new_value":        newName,
 			"records_affected": int64(1),
@@ -302,7 +290,7 @@ func executeBasicFieldUpdate(busDomain dbtest.BusDomain, sd updateFieldSeedData)
 		ExcFunc: func(ctx context.Context) any {
 			// Update the rule action config
 			config := json.RawMessage(fmt.Sprintf(`{
-				"target_entity": "customers",
+				"target_entity": "sales.customers",
 				"target_field": "name",
 				"new_value": "%s",
 				"conditions": [
@@ -326,7 +314,7 @@ func executeBasicFieldUpdate(busDomain dbtest.BusDomain, sd updateFieldSeedData)
 			// Execute the action directly through the handler
 			execContext := workflow.ActionExecutionContext{
 				EntityID:    sd.Customer.ID,
-				EntityName:  "customers",
+				EntityName:  "sales.customers",
 				EventType:   "on_update",
 				UserID:      sd.Admins[0].ID,
 				RuleID:      sd.AutomationRule.ID,
@@ -381,13 +369,13 @@ func executeTemplateFieldUpdate(busDomain dbtest.BusDomain, sd updateFieldSeedDa
 		Name: "execute_template_field_update",
 		ExpResp: map[string]any{
 			"status":        "success",
-			"target_entity": "orders",
+			"target_entity": "sales.orders",
 			"target_field":  "number",
 		},
 		ExcFunc: func(ctx context.Context) any {
 			// Update order number with template
 			config := json.RawMessage(fmt.Sprintf(`{
-				"target_entity": "orders",
+				"target_entity": "sales.orders",
 				"target_field": "number",
 				"new_value": "ORD-{{user_id}}-{{timestamp}}",
 				"conditions": [
@@ -411,7 +399,7 @@ func executeTemplateFieldUpdate(busDomain dbtest.BusDomain, sd updateFieldSeedDa
 			// Execute with template context
 			execContext := workflow.ActionExecutionContext{
 				EntityID:    sd.Order.ID,
-				EntityName:  "orders",
+				EntityName:  "sales.orders",
 				EventType:   "on_update",
 				UserID:      sd.Admins[0].ID,
 				RuleID:      sd.AutomationRule.ID,
@@ -449,13 +437,13 @@ func executeForeignKeyUpdate(busDomain dbtest.BusDomain, sd updateFieldSeedData)
 		Name: "execute_foreign_key_update",
 		ExpResp: map[string]any{
 			"status":        "success",
-			"target_entity": "products",
+			"target_entity": "products.products",
 			"target_field":  "brand_id",
 		},
 		ExcFunc: func(ctx context.Context) any {
 			// Update product's brand using brand name (foreign key resolution)
 			config := json.RawMessage(fmt.Sprintf(`{
-				"target_entity": "products",
+				"target_entity": "products.products",
 				"target_field": "brand_id",
 				"new_value": "%s",
 				"field_type": "foreign_key",

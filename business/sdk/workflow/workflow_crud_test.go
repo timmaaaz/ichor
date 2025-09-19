@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -76,7 +76,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 	}
 
 	// Seed entity types
-	entityTypes, err := workflow.TestSeedEntityTypes(ctx, 2, busDomain.Workflow)
+	entityTypes, err := workflow.GetEntityTypes(ctx, busDomain.Workflow)
 	if err != nil {
 		return workflowSeedData{}, fmt.Errorf("seeding entity types : %w", err)
 	}
@@ -88,7 +88,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 	}
 
 	// Seed entities
-	entities, err := workflow.TestSeedEntities(ctx, 4, entityTypeIDs, busDomain.Workflow)
+	entities, err := workflow.GetEntities(ctx, busDomain.Workflow)
 	if err != nil {
 		return workflowSeedData{}, fmt.Errorf("seeding entities : %w", err)
 	}
@@ -193,8 +193,8 @@ func insertSeedData(busDomain dbtest.BusDomain) (workflowSeedData, error) {
 
 func triggerTypeTests(busDomain dbtest.BusDomain, sd workflowSeedData) []unitest.Table {
 	return []unitest.Table{
-		createTriggerType(busDomain),
 		queryTriggerTypes(busDomain, sd),
+		createTriggerType(busDomain),
 		updateTriggerType(busDomain, sd),
 		deactivateTriggerType(busDomain, sd),
 		activateTriggerType(busDomain, sd),
@@ -284,6 +284,7 @@ func updateTriggerType(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.
 			ID:          sd.TriggerTypes[0].ID,
 			Name:        "updated_trigger",
 			Description: "Updated description",
+			IsActive:    true,
 		},
 		ExcFunc: func(ctx context.Context) any {
 			utt := workflow.UpdateTriggerType{
@@ -445,6 +446,7 @@ func updateEntityType(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 			ID:          sd.EntityTypes[0].ID,
 			Name:        "updated_entity_type",
 			Description: "Updated entity description",
+			IsActive:    true,
 		},
 		ExcFunc: func(ctx context.Context) any {
 			uet := workflow.UpdateEntityType{
@@ -712,6 +714,7 @@ func createAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 		"value": "active",
 	}
 	conditionsJSON, _ := json.Marshal(conditions)
+	triggerConditions := json.RawMessage(conditionsJSON)
 
 	return unitest.Table{
 		Name: "create",
@@ -721,7 +724,7 @@ func createAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			EntityID:          sd.Entities[1].ID,
 			EntityTypeID:      sd.EntityTypes[0].ID,
 			TriggerTypeID:     sd.TriggerTypes[0].ID,
-			TriggerConditions: conditionsJSON,
+			TriggerConditions: &triggerConditions,
 			IsActive:          true,
 			CreatedBy:         sd.Admins[0].ID,
 			UpdatedBy:         sd.Admins[0].ID,
@@ -733,7 +736,7 @@ func createAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 				EntityID:          sd.Entities[1].ID,
 				EntityTypeID:      sd.EntityTypes[0].ID,
 				TriggerTypeID:     sd.TriggerTypes[0].ID,
-				TriggerConditions: conditionsJSON,
+				TriggerConditions: &triggerConditions,
 				IsActive:          true,
 				CreatedBy:         sd.Admins[0].ID,
 			}
@@ -862,7 +865,7 @@ func updateAutomationRule(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			EntityID:          sd.AutomationRules[0].EntityID,
 			EntityTypeID:      sd.AutomationRules[0].EntityTypeID,
 			TriggerTypeID:     sd.AutomationRules[0].TriggerTypeID,
-			TriggerConditions: newConditionsJSON,
+			TriggerConditions: &raw,
 			IsActive:          false,
 			CreatedDate:       sd.AutomationRules[0].CreatedDate,
 			CreatedBy:         sd.AutomationRules[0].CreatedBy,

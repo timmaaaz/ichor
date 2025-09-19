@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (approvalstatusbus.Storer, 
 // Create inserts a new approval status into the database.
 func (s *Store) Create(ctx context.Context, as approvalstatusbus.ApprovalStatus) error {
 	const q = `
-    INSERT INTO approval_status (
+    INSERT INTO assets.approval_status (
         id, icon_id, name
     ) VALUES (
         :id, :icon_id, :name
@@ -67,7 +67,7 @@ func (s *Store) Create(ctx context.Context, as approvalstatusbus.ApprovalStatus)
 // Update replaces an approval status document in the database.
 func (s *Store) Update(ctx context.Context, as approvalstatusbus.ApprovalStatus) error {
 	const q = `
-	UPDATE approval_status
+	UPDATE assets.approval_status
 	SET 
 	    icon_id = :icon_id,
         name = :name
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, as approvalstatusbus.ApprovalStatus)
 func (s *Store) Delete(ctx context.Context, as approvalstatusbus.ApprovalStatus) error {
 	const q = `
 	DELETE FROM
-		approval_status
+		assets.approval_status
 	WHERE
 		id = :id
 	`
@@ -112,7 +112,7 @@ func (s *Store) Query(ctx context.Context, filter approvalstatusbus.QueryFilter,
 	SELECT 
 		id, icon_id, name
 	FROM
-		approval_status
+		assets.approval_status
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -143,7 +143,7 @@ func (s *Store) Count(ctx context.Context, filter approvalstatusbus.QueryFilter)
     SELECT
         COUNT(1) AS count
     FROM
-        approval_status`
+        assets.approval_status`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -170,7 +170,7 @@ func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (approva
     SELECT
         id, icon_id, name
     FROM
-        approval_status
+        assets.approval_status
     WHERE
         id = :id
     `

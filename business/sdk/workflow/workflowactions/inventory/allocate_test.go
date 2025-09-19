@@ -5,24 +5,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/brandbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/inventoryitembus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/core/productcategorybus"
-	"github.com/timmaaaz/ichor/business/domain/location/citybus"
-	"github.com/timmaaaz/ichor/business/domain/location/regionbus"
-	"github.com/timmaaaz/ichor/business/domain/location/streetbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/inventorylocationbus"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/warehousebus"
-	"github.com/timmaaaz/ichor/business/domain/warehouse/zonebus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
+	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
+	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
@@ -51,26 +50,28 @@ func Test_AllocateInventory(t *testing.T) {
 		return otel.GetTraceID(context.Background())
 	})
 
-	// Start RabbitMQ container
-	testContainer, err = rabbitmq.StartRabbitMQ()
-	if err != nil {
-		fmt.Printf("Failed to start RabbitMQ container: %v\n", err)
-		os.Exit(1)
+	container := rabbitmq.GetTestContainer(t)
+	client := rabbitmq.NewTestClient(container.URL)
+	if err := client.Connect(); err != nil {
+		t.Fatalf("connecting to rabbitmq: %s", err)
 	}
+	defer client.Close()
 
-	// Create mock RabbitMQ client for testing
-	rabbitConfig := rabbitmq.DefaultConfig()
-	rabbitClient := rabbitmq.NewClient(log, rabbitConfig)
-	queueClient := rabbitmq.NewWorkflowQueue(rabbitClient, log)
+	// Initialize workflow queue
+	queue := rabbitmq.NewWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
 
 	sd.Handler = inventory.NewAllocateInventoryHandler(
 		log,
 		db.DB,
-		queueClient,
+		queue,
 		db.BusDomain.InventoryItem,
 		db.BusDomain.InventoryLocation,
 		db.BusDomain.InventoryTransaction,
 		db.BusDomain.Product,
+		db.BusDomain.Workflow,
 	)
 
 	// -------------------------------------------------------------------------
@@ -396,7 +397,7 @@ func executeBasicAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocate
 			return allocationResult
 		},
 		CmpFunc: func(got any, exp any) string {
-			result, ok := got.(*inventory.AllocationResult)
+			result, ok := got.(*inventory.InventoryAllocationResult)
 			if !ok {
 				return fmt.Sprintf("expected AllocationResult, got %T", got)
 			}

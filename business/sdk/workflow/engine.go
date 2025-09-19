@@ -14,8 +14,9 @@ import (
 // Engine is the main workflow orchestration engine
 // Singleton pattern - use NewEngine() to get instance
 type Engine struct {
-	log *logger.Logger
-	db  *sqlx.DB
+	log         *logger.Logger
+	db          *sqlx.DB
+	workflowBus *Business
 
 	// Sub-components
 	triggerProcessor *TriggerProcessor
@@ -51,11 +52,12 @@ func (e *Engine) GetActionExecutor() *ActionExecutor {
 }
 
 // NewEngine creates or returns the singleton workflow engine instance
-func NewEngine(log *logger.Logger, db *sqlx.DB) *Engine {
+func NewEngine(log *logger.Logger, db *sqlx.DB, workflowBus *Business) *Engine {
 	engineOnce.Do(func() {
 		engineInstance = &Engine{
 			log:              log,
 			db:               db,
+			workflowBus:      workflowBus,
 			activeExecutions: make(map[uuid.UUID]*WorkflowExecution),
 			executionHistory: make([]*WorkflowExecution, 0),
 			config: WorkflowConfig{
@@ -74,7 +76,7 @@ func NewEngine(log *logger.Logger, db *sqlx.DB) *Engine {
 }
 
 // Initialize initializes the workflow engine and its components
-func (e *Engine) Initialize(ctx context.Context) error {
+func (e *Engine) Initialize(ctx context.Context, workflowBus *Business) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -85,9 +87,9 @@ func (e *Engine) Initialize(ctx context.Context) error {
 	e.log.Info(ctx, "Initializing workflow engine...")
 
 	// Initialize sub-components
-	e.triggerProcessor = NewTriggerProcessor(e.log, e.db)
-	e.dependencies = NewDependencyResolver(e.log, e.db)
-	e.executor = NewActionExecutor(e.log, e.db)
+	e.triggerProcessor = NewTriggerProcessor(e.log, e.db, workflowBus)
+	e.dependencies = NewDependencyResolver(e.log, e.db, workflowBus)
+	e.executor = NewActionExecutor(e.log, e.db, workflowBus)
 	// e.queue = NewQueueManager(e.log)
 
 	// Initialize each component
@@ -116,7 +118,7 @@ func (e *Engine) Initialize(ctx context.Context) error {
 // ExecuteWorkflow executes a complete workflow for the given trigger event
 func (e *Engine) ExecuteWorkflow(ctx context.Context, event TriggerEvent) (*WorkflowExecution, error) {
 	if !e.isInitialized {
-		if err := e.Initialize(ctx); err != nil {
+		if err := e.Initialize(ctx, e.workflowBus); err != nil {
 			return nil, fmt.Errorf("failed to initialize engine: %w", err)
 		}
 	}

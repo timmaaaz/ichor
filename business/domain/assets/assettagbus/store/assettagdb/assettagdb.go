@@ -48,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (assettagbus.Storer, error)
 // Create inserts a new asset tag into the database.
 func (s *Store) Create(ctx context.Context, t assettagbus.AssetTag) error {
 	const q = `
-    INSERT INTO asset_tags (
+    INSERT INTO assets.asset_tags (
         id, valid_asset_id, tag_id
     ) VALUES (
         :id, :valid_asset_id, :tag_id
@@ -68,7 +68,7 @@ func (s *Store) Create(ctx context.Context, t assettagbus.AssetTag) error {
 func (s *Store) Update(ctx context.Context, t assettagbus.AssetTag) error {
 	const q = `
     UPDATE 
-        asset_tags
+        assets.asset_tags
     SET
         valid_asset_id = :valid_asset_id,
         tag_id = :tag_id
@@ -89,7 +89,7 @@ func (s *Store) Update(ctx context.Context, t assettagbus.AssetTag) error {
 func (s *Store) Delete(ctx context.Context, at assettagbus.AssetTag) error {
 	const q = `
     DELETE FROM
-        asset_tags
+        assets.asset_tags
     WHERE
         id = :id
     `
@@ -100,7 +100,7 @@ func (s *Store) Delete(ctx context.Context, at assettagbus.AssetTag) error {
 	return nil
 }
 
-// Query retrieves a list of existing asset_tags from the database.
+// Query retrieves a list of existing assets.asset_tags from the database.
 func (s *Store) Query(ctx context.Context, filter assettagbus.QueryFilter, orderBy order.By, page page.Page) ([]assettagbus.AssetTag, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
@@ -111,7 +111,7 @@ func (s *Store) Query(ctx context.Context, filter assettagbus.QueryFilter, order
     SELECT
         id, valid_asset_id, tag_id
     FROM
-        asset_tags `
+        assets.asset_tags `
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -132,7 +132,7 @@ func (s *Store) Query(ctx context.Context, filter assettagbus.QueryFilter, order
 	return toBusAssetTags(dbATs), nil
 }
 
-// Count returns the total number of asset_tags in the DB.
+// Count returns the total number of assets.asset_tags in the DB.
 func (s *Store) Count(ctx context.Context, filter assettagbus.QueryFilter) (int, error) {
 	data := map[string]any{}
 
@@ -140,7 +140,7 @@ func (s *Store) Count(ctx context.Context, filter assettagbus.QueryFilter) (int,
     SELECT
         COUNT(1) AS count
     FROM
-        asset_tags`
+        assets.asset_tags`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -167,7 +167,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (assettagbus.AssetT
     SELECT
         id, valid_asset_id, tag_id
     FROM
-        asset_tags
+        assets.asset_tags
     WHERE
         id = :id
     `

@@ -8,7 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -32,14 +32,14 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	api := newAPI(assettagapp.NewApp(cfg.AssetTagBus))
-	app.HandlerFunc(http.MethodGet, version, "/assets/assettags", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/asset-tags", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/assets/assettags/{asset_tag_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/assets/asset-tags/{asset_tag_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/assets/assettags", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/assets/asset-tags", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/assets/assettags/{asset_tag_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/assets/asset-tags/{asset_tag_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/assets/assettags/{asset_tag_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/assets/asset-tags/{asset_tag_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

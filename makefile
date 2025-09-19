@@ -354,8 +354,17 @@ migrate:
 seed: migrate
 	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed
 
+seed-frontend:
+	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed-frontend
+
 pgcli:
 	pgcli postgresql://postgres:postgres@localhost
+
+dev-database-recreate:
+	kustomize build zarf/k8s/dev/database | kubectl delete -f - --ignore-not-found=true
+	kubectl delete pvc --namespace=$(NAMESPACE) -l app=database --ignore-not-found=true
+	kustomize build zarf/k8s/dev/database | kubectl apply -f -
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
 liveness:
 	curl -il http://localhost:3000/v1/liveness
@@ -430,7 +439,7 @@ load:
 otel-test:
 	curl -il \
 	-H "Traceparent: 00-918dd5ecf264712262b68cf2ef8b5239-896d90f23f69f006-01" \
-	--user "admin@example.com:gophers" http://localhost:3000/v1/users/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+	--user "admin@example.com:gophers" http://localhost:3000/v1/core/users/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
 
 # ==============================================================================
 # Modules support

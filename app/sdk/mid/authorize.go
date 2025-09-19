@@ -11,9 +11,9 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/domain/homebus"
-	"github.com/timmaaaz/ichor/business/domain/permissions/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
+	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
 )
 
 // ErrInvalidID represents a condition where the id is not a uuid.

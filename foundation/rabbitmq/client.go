@@ -421,66 +421,91 @@ func (wq *WorkflowQueue) setupDefaultQueues() {
 	}
 }
 
-// Initialize creates all required queues
+// In WorkflowQueue.Initialize method, after declaring the main queue:
 func (wq *WorkflowQueue) Initialize(ctx context.Context) error {
 	ch, err := wq.client.GetChannel()
 	if err != nil {
 		return fmt.Errorf("failed to get channel: %w", err)
 	}
 
-	for queueType, config := range wq.queues {
+	// Create retry exchange first
+	retryExchangeName := wq.client.config.ExchangeName + ".retry"
+	if err := ch.ExchangeDeclare(
+		retryExchangeName,
+		"topic", // Change to topic to handle patterns
+		true, false, false, false, nil,
+	); err != nil {
+		return fmt.Errorf("failed to declare retry exchange: %w", err)
+	}
+
+	for _, config := range wq.queues {
+		// Main queue args - dead-letters to retry exchange
 		args := amqp.Table{
 			"x-max-priority": config.MaxPriority,
 			"x-message-ttl":  int64(config.MessageTTL.Milliseconds()),
 		}
 
 		if config.DeadLetterEnabled {
-			args["x-dead-letter-exchange"] = wq.client.config.DeadLetterExchange
-			args["x-dead-letter-routing-key"] = fmt.Sprintf("dead.%s", config.Name)
+			// Main queue dead-letters to retry exchange, preserving the original routing key
+			args["x-dead-letter-exchange"] = retryExchangeName
+			// Don't specify x-dead-letter-routing-key - it will preserve the original
 		}
 
-		// Merge with any custom arguments
-		for k, v := range config.Arguments {
-			args[k] = v
-		}
-
-		// Declare the queue
+		// Declare main queue
 		_, err := ch.QueueDeclare(
 			config.Name,
 			config.Durable,
-			false, // auto-delete
-			false, // exclusive
-			false, // no-wait
+			false, false, false,
 			args,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to declare queue %s: %w", config.Name, err)
 		}
 
-		// Bind queue to exchange
+		// Create retry queue
+		if config.DeadLetterEnabled {
+			retryQueueName := config.Name + ".retry"
+			retryArgs := amqp.Table{
+				"x-message-ttl":          5000,
+				"x-dead-letter-exchange": wq.client.config.ExchangeName,
+				// Don't specify routing key - preserve original
+			}
+
+			_, err = ch.QueueDeclare(
+				retryQueueName,
+				config.Durable,
+				false, false, false,
+				retryArgs,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to declare retry queue %s: %w", retryQueueName, err)
+			}
+
+			// Bind retry queue to retry exchange with the same pattern
+			err = ch.QueueBind(
+				retryQueueName,
+				config.RoutingKey, // Use the same pattern (e.g., "email.*")
+				retryExchangeName,
+				false, nil,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to bind retry queue %s: %w", retryQueueName, err)
+			}
+		}
+
+		// Bind main queue to main exchange
 		err = ch.QueueBind(
 			config.Name,
 			config.RoutingKey,
 			wq.client.config.ExchangeName,
-			false, // no-wait
-			nil,   // args
+			false, nil,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to bind queue %s: %w", config.Name, err)
 		}
-
-		wq.log.Info(ctx, "Queue initialized",
-			"type", queueType,
-			"name", config.Name,
-			"routing_key", config.RoutingKey)
 	}
 
-	// Create dead letter queue
-	if err := wq.createDeadLetterQueue(ch); err != nil {
-		return fmt.Errorf("failed to create DLQ: %w", err)
-	}
-
-	return nil
+	return wq.createDeadLetterQueue(ch)
 }
 
 // createDeadLetterQueue creates the dead letter queue
@@ -520,6 +545,7 @@ func (wq *WorkflowQueue) Publish(ctx context.Context, queueType QueueType, msg *
 
 // PublishWithDelay publishes a message with a delay
 func (wq *WorkflowQueue) PublishWithDelay(ctx context.Context, queueType QueueType, msg *Message, delay time.Duration) error {
+
 	config, exists := wq.queues[queueType]
 	if !exists {
 		return fmt.Errorf("unknown queue type: %s", queueType)
@@ -705,6 +731,8 @@ func (wq *WorkflowQueue) Consume(ctx context.Context, queueType QueueType, handl
 }
 
 // process handles incoming messages
+// In consumer's process method in client.go
+// In consumer's process method in client.go
 func (c *Consumer) process(ctx context.Context, log *logger.Logger) {
 	for {
 		select {
@@ -714,22 +742,35 @@ func (c *Consumer) process(ctx context.Context, log *logger.Logger) {
 				return
 			}
 
-			// Parse message
 			var msg Message
 			if err := json.Unmarshal(delivery.Body, &msg); err != nil {
 				log.Error(ctx, "Failed to unmarshal message",
 					"error", err,
 					"body", string(delivery.Body))
-				delivery.Nack(false, false) // Don't requeue malformed messages
+				delivery.Nack(false, false)
 				continue
 			}
 
-			// Update attempts
-			if retryCount, ok := delivery.Headers["x-retry-count"].(int32); ok {
-				msg.Attempts = int(retryCount)
+			// Calculate actual attempt number based on rejection count
+			actualAttempts := 1
+
+			if xDeath, ok := delivery.Headers["x-death"].([]interface{}); ok {
+				for _, death := range xDeath {
+					if deathTable, ok := death.(amqp.Table); ok {
+						reason, _ := deathTable["reason"].(string)
+						count, _ := deathTable["count"].(int64)
+						queue, _ := deathTable["queue"].(string)
+
+						// Count rejections from the main queue
+						if reason == "rejected" && queue == c.queue.Name {
+							actualAttempts = int(count) + 1
+						}
+					}
+				}
 			}
 
-			// Process message
+			msg.Attempts = actualAttempts
+
 			startTime := time.Now()
 			err := c.handler(ctx, &msg)
 			duration := time.Since(startTime)
@@ -739,24 +780,35 @@ func (c *Consumer) process(ctx context.Context, log *logger.Logger) {
 					"error", err,
 					"message_id", msg.ID,
 					"attempts", msg.Attempts,
+					"max_attempts", msg.MaxAttempts,
 					"duration", duration)
 
-				// Check if we should retry
 				if msg.Attempts < msg.MaxAttempts {
-					// Requeue with updated retry count
-					delivery.Nack(false, true)
-				} else {
-					// Max retries exceeded, send to DLQ
-					log.Error(ctx, "Message max retries exceeded, sending to DLQ",
+					log.Info(ctx, "Retrying message",
 						"message_id", msg.ID,
-						"attempts", msg.Attempts)
-					delivery.Nack(false, false)
+						"attempt", msg.Attempts,
+						"max_attempts", msg.MaxAttempts)
+					delivery.Nack(false, false) // Send to DLX/retry queue
+				} else {
+					log.Error(ctx, "Message max retries exceeded",
+						"message_id", msg.ID,
+						"attempts", msg.Attempts,
+						"max_attempts", msg.MaxAttempts)
+
+					// Store the error for final failure recording
+					msg.Payload["_final_failure_error"] = err.Error()
+					msg.Payload["_final_failure"] = true
+
+					// Call handler one more time to record the failure
+					_ = c.handler(ctx, &msg)
+
+					delivery.Ack(false) // Remove from queue
 				}
 			} else {
-				// Success
 				delivery.Ack(false)
 				log.Info(ctx, "Message processed successfully",
 					"message_id", msg.ID,
+					"attempts", msg.Attempts,
 					"duration", duration)
 			}
 

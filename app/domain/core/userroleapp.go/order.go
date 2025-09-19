@@ -1,0 +1,14 @@
+package userroleapp
+
+import (
+	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+)
+
+var defaultOrderBy = order.NewBy(userrolebus.OrderByUserID, order.ASC)
+
+var orderByFields = map[string]string{
+	"id":      userrolebus.OrderByID,
+	"user_id": userrolebus.OrderByUserID,
+	"role_id": userrolebus.OrderByRoleID,
+}
