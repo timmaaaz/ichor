@@ -13,6 +13,8 @@ import (
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
+// TODO: Change domain file names for consistency with endpoints and schema
+
 // Config contains all the mandatory systems required by handlers
 type Config struct {
 	Log                   *logger.Logger
@@ -33,14 +35,14 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(approvalapp.NewApp(cfg.UserApprovalStatusBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/hr/approvals", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/user-approval-status", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/hr/approvals/{user_approval_status_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/hr/user-approval-status/{user_approval_status_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodPost, version, "/hr/approvals", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/hr/user-approval-status", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-	app.HandlerFunc(http.MethodPut, version, "/hr/approvals/{user_approval_status_id}", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/hr/user-approval-status/{user_approval_status_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/hr/approvals/{user_approval_status_id}", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/hr/user-approval-status/{user_approval_status_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

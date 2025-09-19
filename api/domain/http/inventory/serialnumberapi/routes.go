@@ -30,13 +30,13 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(serialnumberapp.NewApp(cfg.SerialNumberBus))
 
-	app.HandlerFunc(http.MethodGet, version, "/inventory/serial-number", api.query, authen,
+	app.HandlerFunc(http.MethodGet, version, "/inventory/serial-numbers", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodGet, version, "/inventory/serial-numbers/{serial_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPost, version, "/inventory/serial-number", api.create, authen,
+	app.HandlerFunc(http.MethodPost, version, "/inventory/serial-numbers", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodPut, version, "/inventory/serial-numbers/{serial_id}", api.update, authen,
