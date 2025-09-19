@@ -14,7 +14,7 @@ func delete200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "asadmin",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustment/%s", sd.InventoryAdjustments[1].InventoryAdjustmentID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustments/%s", sd.InventoryAdjustments[1].InventoryAdjustmentID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNoContent,
@@ -26,7 +26,7 @@ func delete400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-inventory-transaction-id",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustment/%s", "not-a-uuid"),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustments/%s", "not-a-uuid"),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusBadRequest,
@@ -43,7 +43,7 @@ func delete404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "inventory-transaction-id-dne",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustment/%s", uuid.NewString()),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustments/%s", uuid.NewString()),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusNotFound,
@@ -60,7 +60,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustment/%s", sd.InventoryAdjustments[1].InventoryAdjustmentID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustments/%s", sd.InventoryAdjustments[1].InventoryAdjustmentID),
 			Token:      "&nbsp;",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -72,7 +72,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustment/%s", sd.InventoryAdjustments[1].InventoryAdjustmentID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustments/%s", sd.InventoryAdjustments[1].InventoryAdjustmentID),
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -84,7 +84,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustment/%s", sd.InventoryAdjustments[1].InventoryAdjustmentID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-adjustments/%s", sd.InventoryAdjustments[1].InventoryAdjustmentID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
