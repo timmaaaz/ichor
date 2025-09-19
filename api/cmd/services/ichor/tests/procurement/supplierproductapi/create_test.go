@@ -16,7 +16,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -62,7 +62,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "missing-supplier-id",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -83,7 +83,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-product-id",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -104,7 +104,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-supplier-part-number",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -125,7 +125,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-min-order-quantity",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -146,7 +146,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-max-order-quantity",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -167,7 +167,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-lead-time-days",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -188,7 +188,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-unit-cost",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -209,7 +209,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "missing-is-primary-supplier",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -231,7 +231,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 
 		{
 			Name:       "malformed-supplier-id",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -253,7 +253,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-product-id",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -280,7 +280,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "supplier-id-not-valid-fk",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -302,7 +302,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "product-id-not-valid-fk",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusConflict,
@@ -329,7 +329,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "empty token",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      "&nbsp;",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -341,7 +341,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad token",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token[:10],
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -353,7 +353,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad sig",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -365,7 +365,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        "/v1/supplier/supplier-products",
+			URL:        "/v1/procurement/supplier-products",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,

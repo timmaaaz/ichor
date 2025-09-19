@@ -5,18 +5,43 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
+	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
+	"github.com/timmaaaz/ichor/business/domain/hr/officebus"
+	"github.com/timmaaaz/ichor/business/domain/hr/reportstobus"
+	"github.com/timmaaaz/ichor/business/domain/hr/titlebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus"
+	"github.com/timmaaaz/ichor/business/domain/products/metricsbus"
+	"github.com/timmaaaz/ichor/business/domain/products/physicalattributebus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
+	"github.com/timmaaaz/ichor/business/domain/products/productcostbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
@@ -46,7 +71,117 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		userIDs = append(userIDs, a.ID)
 	}
 
+	// Extra users for hierarchy
+	reporters, err := userbus.TestSeedUsersWithNoFKs(ctx, 20, userbus.Roles.User, busDomain.User)
+	if err != nil {
+		return fmt.Errorf("seeding reporter : %w", err)
+	}
+
+	reporterIDs := make([]uuid.UUID, len(reporters))
+	for i, r := range reporters {
+		reporterIDs[i] = r.ID
+	}
+
+	bosses, err := userbus.TestSeedUsersWithNoFKs(ctx, 10, userbus.Roles.User, busDomain.User)
+	if err != nil {
+		return fmt.Errorf("seeding reporter : %w", err)
+	}
+
+	bossIDs := make([]uuid.UUID, len(bosses))
+	for i, b := range bosses {
+		bossIDs[i] = b.ID
+	}
+
+	_, err = reportstobus.TestSeedReportsTo(ctx, 30, reporterIDs, bossIDs, busDomain.ReportsTo)
+	if err != nil {
+		return fmt.Errorf("seeding reportsto : %w", err)
+	}
+
+	_, err = commentbus.TestSeedUserApprovalComment(ctx, 10, reporterIDs[:5], reporterIDs[5:], busDomain.UserApprovalComment)
+	if err != nil {
+		return fmt.Errorf("seeding approval comments : %w", err)
+	}
+
+	_, err = titlebus.TestSeedTitles(ctx, 10, busDomain.Title)
+	if err != nil {
+		return fmt.Errorf("seeding fulfillment statues : %w", err)
+	}
+
 	count := 5
+
+	assetTypes, err := assettypebus.TestSeedAssetTypes(ctx, 10, busDomain.AssetType)
+	if err != nil {
+		return fmt.Errorf("seeding asset types : %w", err)
+	}
+	assetTypeIDs := make([]uuid.UUID, 0, len(assetTypes))
+	for _, at := range assetTypes {
+		assetTypeIDs = append(assetTypeIDs, at.ID)
+	}
+
+	validAssets, err := validassetbus.TestSeedValidAssets(ctx, 10, assetTypeIDs, admins[0].ID, busDomain.ValidAsset)
+	if err != nil {
+		return fmt.Errorf("seeding assets : %w", err)
+	}
+	validAssetIDs := make([]uuid.UUID, 0, len(validAssets))
+	for _, va := range validAssets {
+		validAssetIDs = append(validAssetIDs, va.ID)
+	}
+
+	conditions, err := assetconditionbus.TestSeedAssetConditions(ctx, 8, busDomain.AssetCondition)
+	if err != nil {
+		return fmt.Errorf("seeding asset conditions : %w", err)
+	}
+
+	conditionIDs := make([]uuid.UUID, len(conditions))
+	for i, c := range conditions {
+		conditionIDs[i] = c.ID
+	}
+
+	assets, err := assetbus.TestSeedAssets(ctx, 15, validAssetIDs, conditionIDs, busDomain.Asset)
+	if err != nil {
+		return fmt.Errorf("seeding assets : %w", err)
+	}
+	assetIDs := make([]uuid.UUID, 0, len(assets))
+	for _, a := range assets {
+		assetIDs = append(assetIDs, a.ID)
+	}
+
+	approvalStatuses, err := approvalstatusbus.TestSeedApprovalStatus(ctx, 12, busDomain.ApprovalStatus)
+	if err != nil {
+		return fmt.Errorf("seeding approval statuses : %w", err)
+	}
+	approvalStatusIDs := make([]uuid.UUID, len(approvalStatuses))
+	for i, as := range approvalStatuses {
+		approvalStatusIDs[i] = as.ID
+	}
+
+	fulfillmentStatuses, err := fulfillmentstatusbus.TestSeedFulfillmentStatus(ctx, 8, busDomain.FulfillmentStatus)
+	if err != nil {
+		return fmt.Errorf("seeding fulfillment statuses : %w", err)
+	}
+	fulfillmentStatusIDs := make([]uuid.UUID, len(fulfillmentStatuses))
+	for i, fs := range fulfillmentStatuses {
+		fulfillmentStatusIDs[i] = fs.ID
+	}
+
+	_, err = userassetbus.TestSeedUserAssets(ctx, 25, reporterIDs[:15], assetIDs, reporterIDs[15:], conditionIDs, approvalStatusIDs, fulfillmentStatusIDs, busDomain.UserAsset)
+	if err != nil {
+		return fmt.Errorf("seeding user assets : %w", err)
+	}
+
+	tags, err := tagbus.TestSeedTag(ctx, 10, busDomain.Tag)
+	if err != nil {
+		return fmt.Errorf("seeding approval statues : %w", err)
+	}
+	tagIDs := make([]uuid.UUID, 0, len(tags))
+	for _, t := range tags {
+		tagIDs = append(tagIDs, t.ID)
+	}
+
+	_, err = assettagbus.TestSeedAssetTag(ctx, 20, validAssetIDs, tagIDs, busDomain.AssetTag)
+	if err != nil {
+		return fmt.Errorf("seeding asset tags : %w", err)
+	}
 
 	// ADDRESSES
 	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
@@ -75,6 +210,11 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	strIDs := make([]uuid.UUID, 0, len(strs))
 	for _, s := range strs {
 		strIDs = append(strIDs, s.ID)
+	}
+
+	_, err = officebus.TestSeedOffices(ctx, 10, strIDs, busDomain.Office)
+	if err != nil {
+		return fmt.Errorf("seeding offices : %w", err)
 	}
 
 	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, count, strIDs, busDomain.ContactInfos)
@@ -148,6 +288,26 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		productIDs = append(productIDs, p.ProductID)
 	}
 
+	_, err = productcostbus.TestSeedProductCosts(ctx, 20, productIDs, busDomain.ProductCost)
+	if err != nil {
+		return fmt.Errorf("seeding product cost : %w", err)
+	}
+
+	_, err = physicalattributebus.TestSeedPhysicalAttributes(ctx, 20, productIDs, busDomain.PhysicalAttribute)
+	if err != nil {
+		return fmt.Errorf("seeding physical attribute : %w", err)
+	}
+
+	_, err = metricsbus.TestSeedMetrics(ctx, 40, productIDs, busDomain.Metrics)
+	if err != nil {
+		return fmt.Errorf("seeding metrics : %w", err)
+	}
+
+	_, err = costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, busDomain.CostHistory)
+	if err != nil {
+		return fmt.Errorf("seeding cost history : %w", err)
+	}
+
 	olStatuses, err := lineitemfulfillmentstatusbus.TestSeedLineItemFulfillmentStatuses(ctx, busDomain.LineItemFulfillmentStatus)
 	if err != nil {
 		return fmt.Errorf("seeding line item fulfillment statuses: %w", err)
@@ -198,6 +358,66 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	_, err = inventoryitembus.TestSeedInventoryItems(ctx, 30, inventoryLocationsIDs, productIDs, busDomain.InventoryItem)
 	if err != nil {
 		return fmt.Errorf("seeding inventory products : %w", err)
+	}
+
+	_, err = inventoryitembus.TestSeedInventoryItems(ctx, 30, inventoryLocationsIDs, productIDs, busDomain.InventoryItem)
+	if err != nil {
+		return fmt.Errorf("seeding inventory products : %w", err)
+	}
+
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, contactIDs, busDomain.Supplier)
+	if err != nil {
+		return fmt.Errorf("seeding suppliers : %w", err)
+	}
+
+	supplierIDs := make(uuid.UUIDs, len(suppliers))
+	for i, s := range suppliers {
+		supplierIDs[i] = s.SupplierID
+	}
+
+	supplierProducts, err := supplierproductbus.TestSeedSupplierProducts(ctx, 10, productIDs, supplierIDs, busDomain.SupplierProduct)
+	if err != nil {
+		return fmt.Errorf("seeding supplier product : %w", err)
+	}
+
+	supplierProductIDs := make(uuid.UUIDs, len(supplierProducts))
+	for i, sp := range supplierProducts {
+		supplierProductIDs[i] = sp.SupplierProductID
+	}
+
+	lotTrackings, err := lottrackingsbus.TestSeedLotTrackings(ctx, 15, supplierProductIDs, busDomain.LotTrackings)
+	if err != nil {
+		return fmt.Errorf("seeding lot tracking : %w", err)
+	}
+	lotTrackingsIDs := make(uuid.UUIDs, len(lotTrackings))
+	for i, lt := range lotTrackings {
+		lotTrackingsIDs[i] = lt.LotID
+	}
+
+	_, err = inspectionbus.TestSeedInspections(ctx, 10, productIDs, userIDs, lotTrackingsIDs, busDomain.Inspection)
+	if err != nil {
+		return fmt.Errorf("seeding inspections : %w", err)
+	}
+
+	_, err = serialnumberbus.TestSeedSerialNumbers(ctx, 50, lotTrackingsIDs, productIDs, inventoryLocationsIDs, busDomain.SerialNumber)
+	if err != nil {
+		return fmt.Errorf("seeding serial numbers : %w", err)
+	}
+
+	_, err = transferorderbus.TestSeedTransferOrders(ctx, 20, productIDs, inventoryLocationsIDs[:15], inventoryLocationsIDs[15:], reporterIDs[:4], bossIDs[4:], busDomain.TransferOrder)
+	if err != nil {
+		return fmt.Errorf("seeding transfer orders : %w", err)
+	}
+
+	_, err = inventorytransactionbus.TestSeedInventoryTransaction(ctx, 40, inventoryLocationsIDs, productIDs, userIDs, busDomain.InventoryTransaction)
+
+	if err != nil {
+		return fmt.Errorf("seeding inventory transactions : %w", err)
+	}
+
+	_, err = inventoryadjustmentbus.TestSeedInventoryAdjustments(ctx, 20, productIDs, inventoryLocationsIDs, reporterIDs[:2], reporterIDs[2:], busDomain.InventoryAdjustment)
+	if err != nil {
+		return fmt.Errorf("seeding inventory adjustments : %w", err)
 	}
 
 	return nil
