@@ -1,0 +1,23 @@
+package lineitemfulfillmentstatusdb
+
+import (
+	"fmt"
+
+	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+)
+
+var orderByFields = map[string]string{
+	lineitemfulfillmentstatusbus.OrderByID:          "id",
+	lineitemfulfillmentstatusbus.OrderByName:        "name",
+	lineitemfulfillmentstatusbus.OrderByDescription: "description",
+}
+
+func orderByClause(orderBy order.By) (string, error) {
+	by, exists := orderByFields[orderBy.Field]
+	if !exists {
+		return "", fmt.Errorf("field %q does not exist", orderBy.Field)
+	}
+
+	return " ORDER BY " + by + " " + orderBy.Direction, nil
+}

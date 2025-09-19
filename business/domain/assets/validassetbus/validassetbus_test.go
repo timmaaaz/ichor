@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"

@@ -17,7 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"

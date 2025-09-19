@@ -6,10 +6,10 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus"
-	"github.com/timmaaaz/ichor/business/domain/users/status/approvalbus/stores/approvaldb"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus"
-	"github.com/timmaaaz/ichor/business/domain/users/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus"
+	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
