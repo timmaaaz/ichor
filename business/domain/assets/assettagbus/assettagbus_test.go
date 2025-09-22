@@ -57,9 +57,9 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding assets : %w", err)
 	}
 
-	ValidAssetIDs := make([]uuid.UUID, 0, len(assets))
+	validAssetIDs := make([]uuid.UUID, 0, len(assets))
 	for _, a := range assets {
-		ValidAssetIDs = append(ValidAssetIDs, a.ID)
+		validAssetIDs = append(validAssetIDs, a.ID)
 	}
 
 	// ============= Tag Creation =================
@@ -76,7 +76,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 
 	// ============= Asset-Tag Creation =================
 
-	assetTags, err := assettagbus.TestSeedAssetTag(ctx, 20, ValidAssetIDs, tagIDs, busDomain.AssetTag)
+	assetTags, err := assettagbus.TestSeedAssetTag(ctx, 20, validAssetIDs, tagIDs, busDomain.AssetTag)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding asset tags : %w", err)
 	}
