@@ -34,6 +34,7 @@ type Config struct {
 type DataSource struct {
 	Type         string         `json:"type"`   // "query", "view", "viewcount", "rpc"
 	Source       string         `json:"source"` // Table/view/function name
+	Schema       string         `json:"schema,omitempty"`
 	Select       SelectConfig   `json:"select"`
 	Args         map[string]any `json:"args,omitempty"`
 	SelectBy     string         `json:"select_by,omitempty"`
@@ -60,8 +61,8 @@ type ColumnDefinition struct {
 
 // ForeignTable represents a related table configuration
 type ForeignTable struct {
-	Table string `json:"table"`
-	// Relationship          string             `json:"relationship"`
+	Table                 string             `json:"table"`
+	Schema                string             `json:"schema,omitempty"` // Optional, defaults to public
 	RelationshipFrom      string             `json:"relationship_from"`
 	RelationshipTo        string             `json:"relationship_to"`
 	JoinType              string             `json:"join_type,omitempty"` // inner, left, right, full
@@ -78,9 +79,10 @@ type ComputedColumn struct {
 
 // Join represents a table join
 type Join struct {
-	Table string `json:"table"`
-	Type  string `json:"type"` // inner, left, right, full
-	On    string `json:"on"`
+	Table  string `json:"table"`
+	Schema string `json:"schema,omitempty"` // Optional, defaults to public
+	Type   string `json:"type"`             // inner, left, right, full
+	On     string `json:"on"`
 }
 
 // Filter represents a query filter

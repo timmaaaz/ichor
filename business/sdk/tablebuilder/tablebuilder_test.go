@@ -241,6 +241,7 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 			{
 				Type:   "query",
 				Source: "inventory_items",
+				Schema: "inventory",
 				Select: tablebuilder.SelectConfig{
 					Columns: []tablebuilder.ColumnDefinition{
 						{Name: "id", TableColumn: "inventory_items.id"},
@@ -321,6 +322,7 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 			{
 				Type:   "query",
 				Source: "inventory_items",
+				Schema: "inventory",
 				Select: tablebuilder.SelectConfig{
 					Columns: []tablebuilder.ColumnDefinition{
 						{Name: "id"},
@@ -331,6 +333,7 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 					ForeignTables: []tablebuilder.ForeignTable{
 						{
 							Table:            "products",
+							Schema:           "products",                   // Optional, defaults to public
 							RelationshipFrom: "inventory_items.product_id", // CHANGED
 							RelationshipTo:   "products.id",                // CHANGED
 							JoinType:         "inner",                      // Optional, defaults to inner

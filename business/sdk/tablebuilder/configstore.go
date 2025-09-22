@@ -54,7 +54,7 @@ func (s *ConfigStore) Create(ctx context.Context, name, description string, conf
 
 	// Insert into database
 	const q = `
-		INSERT INTO table_configs (
+		INSERT INTO config.table_configs (
 			id, name, description, config,
 			created_by, updated_by, created_date, updated_date
 		) VALUES (
@@ -96,7 +96,7 @@ func (s *ConfigStore) Update(ctx context.Context, id uuid.UUID, name, descriptio
 	}
 
 	const q = `
-		UPDATE table_configs SET
+		UPDATE config.table_configs SET
 			name = :name,
 			description = :description,
 			config = :config,
@@ -123,7 +123,7 @@ func (s *ConfigStore) Delete(ctx context.Context, id uuid.UUID) error {
 		ID: id,
 	}
 
-	const q = `DELETE FROM table_configs WHERE id = :id`
+	const q = `DELETE FROM config.table_configs WHERE id = :id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
 		return fmt.Errorf("delete config: %w", err)
@@ -145,7 +145,7 @@ func (s *ConfigStore) QueryByID(ctx context.Context, id uuid.UUID) (*StoredConfi
 			id, name, description, config,
 			created_by, updated_by, created_date, updated_date
 		FROM
-			table_configs
+			config.table_configs
 		WHERE
 			id = :id`
 
@@ -173,7 +173,7 @@ func (s *ConfigStore) QueryByName(ctx context.Context, name string) (*StoredConf
 			id, name, description, config,
 			created_by, updated_by, created_date, updated_date
 		FROM
-			table_configs
+			config.table_configs
 		WHERE
 			name = :name`
 
@@ -201,7 +201,7 @@ func (s *ConfigStore) QueryByUser(ctx context.Context, userID uuid.UUID) ([]Stor
 			id, name, description, config,
 			created_by, updated_by, created_date, updated_date
 		FROM
-			table_configs
+			config.table_configs
 		WHERE
 			created_by = :user_id
 		ORDER BY
