@@ -9,20 +9,31 @@ import (
 
 // Evaluator handles expression evaluation for computed columns
 type Evaluator struct {
-	cache map[string]*govaluate.EvaluableExpression
+	cache        map[string]*govaluate.EvaluableExpression
+	maxCacheSize int // ADD: Prevent unbounded cache growth
 }
 
 // NewEvaluator creates a new expression evaluator
 func NewEvaluator() *Evaluator {
 	return &Evaluator{
-		cache: make(map[string]*govaluate.EvaluableExpression),
+		cache:        make(map[string]*govaluate.EvaluableExpression),
+		maxCacheSize: 100, // ADD: Set a reasonable limit
 	}
 }
 
 // Evaluate evaluates an expression with the given row context
 func (e *Evaluator) Evaluate(expression string, row TableRow) (interface{}, error) {
+	// ADD: Basic safety checks
+	if len(expression) > 500 {
+		return nil, fmt.Errorf("expression too long")
+	}
+
+	// ADD: Cache management
+	if len(e.cache) > e.maxCacheSize {
+		e.cache = make(map[string]*govaluate.EvaluableExpression)
+	}
+
 	// Transform the expression to work with govaluate
-	// Convert JavaScript-style property access to variable names
 	transformedExpr := e.transformExpression(expression, row)
 
 	// Check cache for compiled expression
@@ -47,6 +58,53 @@ func (e *Evaluator) Evaluate(expression string, row TableRow) (interface{}, erro
 
 	return result, nil
 }
+
+// KEEP ALL YOUR EXISTING METHODS AS-IS, just modify flattenValue:
+
+// flattenValue flattens nested structures for evaluation
+func (e *Evaluator) flattenValue(prefix string, value interface{}, params map[string]interface{}) {
+	e.flattenValueWithDepth(prefix, value, params, 0)
+}
+
+// ADD: New method with depth protection
+func (e *Evaluator) flattenValueWithDepth(prefix string, value interface{}, params map[string]interface{}, depth int) {
+	// ADD: Depth protection
+	if depth > 5 {
+		return
+	}
+
+	// Clean the prefix
+	prefix = strings.ReplaceAll(prefix, ".", "_")
+
+	switch v := value.(type) {
+	case map[string]any:
+		// ADD: Limit map size
+		count := 0
+		for k, nested := range v {
+			if count > 100 { // Reasonable limit
+				break
+			}
+			newKey := prefix + "_" + k
+			e.flattenValueWithDepth(newKey, nested, params, depth+1)
+			count++
+		}
+	case []any:
+		// ADD: Limit array processing
+		maxItems := 10
+		if len(v) < maxItems {
+			maxItems = len(v)
+		}
+		for i := 0; i < maxItems; i++ {
+			newKey := fmt.Sprintf("%s_%d", prefix, i)
+			e.flattenValueWithDepth(newKey, v[i], params, depth+1)
+		}
+	default:
+		// Simple value
+		params[prefix] = value
+	}
+}
+
+// KEEP ALL YOUR OTHER METHODS UNCHANGED
 
 // transformExpression transforms JavaScript-style expressions to govaluate format
 func (e *Evaluator) transformExpression(expr string, row TableRow) string {
@@ -131,30 +189,6 @@ func (e *Evaluator) buildParameters(row TableRow) map[string]interface{} {
 	}
 
 	return params
-}
-
-// flattenValue flattens nested structures for evaluation
-func (e *Evaluator) flattenValue(prefix string, value interface{}, params map[string]interface{}) {
-	// Clean the prefix
-	prefix = strings.ReplaceAll(prefix, ".", "_")
-
-	switch v := value.(type) {
-	case map[string]interface{}:
-		// Nested map - flatten it
-		for k, nested := range v {
-			newKey := prefix + "_" + k
-			e.flattenValue(newKey, nested, params)
-		}
-	case []interface{}:
-		// Array - add indexed values
-		for i, item := range v {
-			newKey := fmt.Sprintf("%s_%d", prefix, i)
-			e.flattenValue(newKey, item, params)
-		}
-	default:
-		// Simple value
-		params[prefix] = value
-	}
 }
 
 // CompileExpressions pre-compiles a list of expressions
