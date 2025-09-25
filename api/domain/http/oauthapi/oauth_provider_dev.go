@@ -46,8 +46,11 @@ func (d *DevProvider) SetName(name string) {
 }
 
 func (d *DevProvider) BeginAuth(state string) (goth.Session, error) {
+	// Construct the full callback URL properly
+	callbackPath := fmt.Sprintf("%s/api/auth/development/callback?state=%s", d.callbackURL, state)
+
 	return &DevSession{
-		AuthURL:   fmt.Sprintf("%s?state=%s", d.callbackURL, state),
+		AuthURL:   callbackPath,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}, nil
 }

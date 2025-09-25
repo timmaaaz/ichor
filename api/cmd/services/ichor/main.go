@@ -117,7 +117,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			GoogleSecret       string        `conf:"default:abc-123,mask"`
 			Callback           string        `conf:"default:http://localhost:3000"`
 			StoreKey           string        `conf:"default:dev-session-key-32-bytes-long!!!,mask"`
-			TokenKey           string        `conf:"default:dev-jwt-key,mask"`
+			TokenKey           string        `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1,mask"`
 			UIAdminRedirect    string        `conf:"default:http://localhost:3001/admin?token="`
 			UILoginRedirect    string        `conf:"default:http://localhost:3001/login"`
 			TokenExpiration    time.Duration `conf:"default:20m"`

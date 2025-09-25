@@ -2,7 +2,9 @@
 package oauthapi
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -26,20 +28,59 @@ type api struct {
 }
 
 func newAPI(cfg Config) *api {
-	goth.UseProviders(
-		google.New(cfg.GoogleKey, cfg.GoogleSecret, cfg.Callback),
-	)
-
-	gothic.GetProviderName = func(r *http.Request) (string, error) {
-		return "google", nil
+	// Set up providers based on environment
+	if cfg.Environment == "production" {
+		goth.UseProviders(
+			google.New(cfg.GoogleKey, cfg.GoogleSecret, cfg.Callback),
+		)
+	} else {
+		// Development/Staging - add dev provider
+		providers := []goth.Provider{
+			NewDevelopmentProvider(cfg.Callback),
+		}
+		if cfg.GoogleKey != "" && cfg.GoogleSecret != "" {
+			providers = append(providers,
+				google.New(cfg.GoogleKey, cfg.GoogleSecret, cfg.Callback))
+		}
+		goth.UseProviders(providers...)
 	}
 
+	// Configure Gothic's session store
 	store := sessions.NewCookieStore([]byte(cfg.StoreKey))
 	store.Options = &sessions.Options{
-		Path: "/",
+		Path:     "/",
+		MaxAge:   86400 * 30, // 30 days
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+	}
+
+	gothic.Store = store
+
+	// Fix the provider extraction
+	gothic.GetProviderName = func(r *http.Request) (string, error) {
+		// Extract provider from path: /api/auth/{provider}
+		segments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+
+		// Should be ["api", "auth", "provider"] or ["api", "auth", "provider", "callback"]
+		if len(segments) >= 3 && segments[0] == "api" && segments[1] == "auth" {
+			provider := segments[2]
+			// Remove "callback" if present
+			if provider == "callback" && len(segments) >= 4 {
+				provider = segments[3]
+			}
+			return provider, nil
+		}
+
+		// Fallback to query parameter
+		if provider := r.URL.Query().Get("provider"); provider != "" {
+			return provider, nil
+		}
+
+		return "", errors.New("provider not found in path")
 	}
 
 	return &api{
+		log:             cfg.Log,
 		auth:            cfg.Auth,
 		store:           store,
 		tokenKey:        cfg.TokenKey,
