@@ -22,6 +22,7 @@ type api struct {
 	tokenKey        string
 	uiAdminRedirect string
 	uiLoginRedirect string
+	tokenExpiration time.Duration
 }
 
 func newAPI(cfg Config) *api {
@@ -44,6 +45,7 @@ func newAPI(cfg Config) *api {
 		tokenKey:        cfg.TokenKey,
 		uiAdminRedirect: cfg.UIAdminRedirect,
 		uiLoginRedirect: cfg.UILoginRedirect,
+		tokenExpiration: cfg.TokenExpiration,
 	}
 }
 
@@ -78,7 +80,7 @@ func (a *api) authCallback(w http.ResponseWriter, r *http.Request) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.UserID,
 			Issuer:    a.auth.Issuer(),
-			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(20 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(a.tokenExpiration)), // Use variable
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		},
 		Roles: []string{userbus.Roles.Admin.String()},

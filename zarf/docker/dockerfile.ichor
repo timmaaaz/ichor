@@ -31,6 +31,7 @@ RUN addgroup -g 1000 -S ichor && \
     adduser -u 1000 -h /service -G ichor -S ichor
 COPY --from=build_ichor --chown=ichor:ichor /service/api/cmd/tooling/admin/admin /service/admin
 COPY --from=build_ichor --chown=ichor:ichor /service/api/cmd/services/ichor/ichor /service/ichor
+COPY --from=build_ichor --chown=ichor:ichor /service/zarf/keys/. /service/zarf/keys/.
 WORKDIR /service
 USER ichor
 CMD ["./ichor"]

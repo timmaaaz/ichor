@@ -3,6 +3,7 @@ package oauthapi
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -22,6 +23,7 @@ type Config struct {
 	UILoginRedirect string
 	Environment     string
 	EnableDevAuth   bool
+	TokenExpiration time.Duration
 }
 
 // Routes adds the OAuth routes to the web.App.

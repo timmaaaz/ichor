@@ -89,7 +89,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		}
 		Auth struct {
 			Host       string `conf:"default:http://auth-service:6000"`
-			KeysEnvVar string
+			KeysEnvVar string `conf:"default:ICHOR_KEYS"`
 			KeysFolder string `conf:"default:zarf/keys/"`
 			ActiveKID  string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
 			Issuer     string `conf:"default:service project"`
@@ -113,8 +113,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 		}
 		OAuth struct {
 			Environment        string        `conf:"default:development"`
-			GoogleKey          string        `conf:"default:,mask"`
-			GoogleSecret       string        `conf:"default:,mask"`
+			GoogleKey          string        `conf:"default:abc-123,mask"`
+			GoogleSecret       string        `conf:"default:abc-123,mask"`
 			Callback           string        `conf:"default:http://localhost:3000"`
 			StoreKey           string        `conf:"default:dev-session-key-32-bytes-long!!!,mask"`
 			TokenKey           string        `conf:"default:dev-jwt-key,mask"`
@@ -296,6 +296,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 		StoreKey:        cfg.OAuth.StoreKey,
 		UIAdminRedirect: cfg.OAuth.UIAdminRedirect,
 		UILoginRedirect: cfg.OAuth.UILoginRedirect,
+	}
+
+	// Set token expiration based on environment
+	if cfg.OAuth.Environment == "production" {
+		oauthCfg.TokenExpiration = cfg.OAuth.TokenExpiration // 20m from config
+	} else {
+		oauthCfg.TokenExpiration = cfg.OAuth.DevTokenExpiration // 8h from config
 	}
 
 	// Cast webAPI to *web.App to add routes
