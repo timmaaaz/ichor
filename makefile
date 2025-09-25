@@ -227,6 +227,13 @@ dev-status-all:
 dev-status:
 	watch -n 2 kubectl get pods -o wide --all-namespaces
 
+dev-bounce:
+	make dev-down
+	make dev-up
+	make dev-update-apply
+	make migrate
+	make seed-frontend
+
 # ------------------------------------------------------------------------------
 
 dev-load:

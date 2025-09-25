@@ -14,15 +14,21 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf/v3"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/providers/google"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/crud"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/reporting"
+	"github.com/timmaaaz/ichor/api/domain/http/oauthapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/debug"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/foundation/keystore"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
+	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 /*
@@ -82,7 +88,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 			CORSAllowedOrigins []string      `conf:"default:*"`
 		}
 		Auth struct {
-			Host string `conf:"default:http://auth-service:6000"`
+			Host       string `conf:"default:http://auth-service:6000"`
+			KeysEnvVar string
+			KeysFolder string `conf:"default:zarf/keys/"`
+			ActiveKID  string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
+			Issuer     string `conf:"default:service project"`
 		}
 		DB struct {
 			User         string `conf:"default:postgres"`
@@ -100,6 +110,18 @@ func run(ctx context.Context, log *logger.Logger) error {
 			// Shouldn't use a high Probability value in non-developer systems.
 			// 0.05 should be enough for most systems. Some might want to have
 			// this even lower.
+		}
+		OAuth struct {
+			Environment        string        `conf:"default:development"`
+			GoogleKey          string        `conf:"default:,mask"`
+			GoogleSecret       string        `conf:"default:,mask"`
+			Callback           string        `conf:"default:http://localhost:3000"`
+			StoreKey           string        `conf:"default:dev-session-key-32-bytes-long!!!,mask"`
+			TokenKey           string        `conf:"default:dev-jwt-key,mask"`
+			UIAdminRedirect    string        `conf:"default:http://localhost:3001/admin?token="`
+			UILoginRedirect    string        `conf:"default:http://localhost:3001/login"`
+			TokenExpiration    time.Duration `conf:"default:20m"`
+			DevTokenExpiration time.Duration `conf:"default:8h"`
 		}
 	}{
 		Version: conf.Version{
@@ -155,11 +177,61 @@ func run(ctx context.Context, log *logger.Logger) error {
 	defer db.Close()
 
 	// -------------------------------------------------------------------------
+	// Configure OAuth Providers based on environment
+
+	log.Info(ctx, "startup", "status", "configuring OAuth providers")
+
+	if cfg.OAuth.Environment == "production" {
+		if cfg.OAuth.GoogleKey == "" || cfg.OAuth.GoogleSecret == "" {
+			return errors.New("Google OAuth credentials required in production")
+		}
+		goth.UseProviders(
+			google.New(cfg.OAuth.GoogleKey, cfg.OAuth.GoogleSecret, cfg.OAuth.Callback),
+		)
+	} else {
+		// Development/Staging - add dev provider
+		providers := []goth.Provider{
+			oauthapi.NewDevelopmentProvider(cfg.OAuth.Callback),
+		}
+		if cfg.OAuth.GoogleKey != "" && cfg.OAuth.GoogleSecret != "" {
+			providers = append(providers,
+				google.New(cfg.OAuth.GoogleKey, cfg.OAuth.GoogleSecret, cfg.OAuth.Callback))
+		}
+		goth.UseProviders(providers...)
+	}
+
+	// -------------------------------------------------------------------------
 	// Initialize authentication support
 
 	log.Info(ctx, "startup", "status", "initializing authentication support")
 
 	authClient := authclient.New(log, cfg.Auth.Host)
+
+	ks := keystore.New()
+
+	n1, err := ks.LoadByEnv(cfg.Auth.KeysEnvVar)
+	if err != nil {
+		return fmt.Errorf("loading keys by env: %w", err)
+	}
+
+	n2, err := ks.LoadByFileSystem(os.DirFS(cfg.Auth.KeysFolder))
+	if err != nil {
+		return fmt.Errorf("loading keys by fs: %w", err)
+	}
+
+	if n1+n2 == 0 {
+		return fmt.Errorf("no keys exist: %w", err)
+	}
+
+	oauthAuth, err := auth.New(auth.Config{
+		Log:       log,
+		DB:        db,
+		KeyLookup: ks,
+		Issuer:    cfg.Auth.Issuer,
+	})
+	if err != nil {
+		return fmt.Errorf("constructing OAuth auth: %w", err)
+	}
 
 	// -------------------------------------------------------------------------
 	// Start Tracing Support
@@ -215,6 +287,23 @@ func run(ctx context.Context, log *logger.Logger) error {
 		mux.WithCORS(cfg.Web.CORSAllowedOrigins),
 		mux.WithFileServer(static, "static"),
 	)
+
+	// Add OAuth routes to the webAPI (assuming webAPI is a *web.App)
+	oauthCfg := oauthapi.Config{
+		Auth:            oauthAuth,
+		Log:             log,
+		TokenKey:        cfg.OAuth.TokenKey,
+		StoreKey:        cfg.OAuth.StoreKey,
+		UIAdminRedirect: cfg.OAuth.UIAdminRedirect,
+		UILoginRedirect: cfg.OAuth.UILoginRedirect,
+	}
+
+	// Cast webAPI to *web.App to add routes
+	if app, ok := webAPI.(*web.App); ok {
+		oauthapi.Routes(app, oauthCfg)
+	} else {
+		return errors.New("failed to add OAuth routes: webAPI is not *web.App")
+	}
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,
