@@ -63,16 +63,6 @@ type api struct {
 	userBus         *userbus.Business
 }
 
-// Config contains all the mandatory systems required by handlers.
-type Config struct {
-	Log             *logger.Logger
-	Auth            *auth.Auth
-	DB              *sqlx.DB
-	TokenKey        string
-	TokenExpiration time.Duration
-	UserBus         *userbus.Business
-}
-
 type loggedInOutResponse struct {
 	Message string `json:"message"`
 }
@@ -294,15 +284,6 @@ func (a *api) logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-}
-
-// Routes adds the basic auth routes to the web application
-func Routes(app *web.App, cfg Config) {
-	api := NewAPI(cfg)
-
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/login", api.login)
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/refresh", api.refresh)
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/logout", api.logout)
 }
 
 // ============================================================================
