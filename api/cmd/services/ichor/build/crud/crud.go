@@ -175,10 +175,12 @@ func Routes() add {
 	return add{}
 }
 
-type add struct{}
+type add struct {
+	UserBus *userbus.Business
+}
 
 // Add implements the RouterAdder interface.
-func (add) Add(app *web.App, cfg mux.Config) {
+func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Construct the business domain packages we need here so we are using the
 	// sames instances for the different set of domain apis.

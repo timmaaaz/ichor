@@ -99,6 +99,7 @@ func (a *api) authCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.log.Error(r.Context(), "completing user auth: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 

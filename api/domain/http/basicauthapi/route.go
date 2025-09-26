@@ -11,6 +11,8 @@ import (
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
+// TODO: These should take {provider} path arguments like the oauthapi routes do.
+
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
 	Log             *logger.Logger
@@ -24,7 +26,7 @@ type Config struct {
 func Routes(app *web.App, cfg Config) {
 	api := NewAPI(cfg)
 
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/login", api.login)
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/refresh", api.refresh)
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/logout", api.logout)
+	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/basic/login", api.login)
+	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/basic/refresh", api.refresh)
+	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/basic/logout", api.logout)
 }

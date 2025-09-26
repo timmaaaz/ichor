@@ -19,11 +19,13 @@ import (
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/crud"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/reporting"
+	"github.com/timmaaaz/ichor/api/domain/http/basicauthapi"
 	"github.com/timmaaaz/ichor/api/domain/http/oauthapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/debug"
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/keystore"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -282,8 +284,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Tracer:     tracer,
 	}
 
+	routes, userBus := buildRoutes()
+
 	webAPI := mux.WebAPI(cfgMux,
-		buildRoutes(),
+		routes,
 		mux.WithCORS(cfg.Web.CORSAllowedOrigins),
 		mux.WithFileServer(static, "static"),
 	)
@@ -305,9 +309,19 @@ func run(ctx context.Context, log *logger.Logger) error {
 		oauthCfg.TokenExpiration = cfg.OAuth.DevTokenExpiration // 8h from config
 	}
 
+	basicAuthCfg := basicauthapi.Config{
+		Log:             log,
+		Auth:            oauthAuth,
+		DB:              db,
+		TokenKey:        cfg.OAuth.TokenKey,
+		TokenExpiration: cfg.OAuth.TokenExpiration,
+		UserBus:         userBus,
+	}
+
 	// Cast webAPI to *web.App to add routes
 	if app, ok := webAPI.(*web.App); ok {
 		oauthapi.Routes(app, oauthCfg)
+		basicauthapi.Routes(app, basicAuthCfg)
 	} else {
 		return errors.New("failed to add OAuth routes: webAPI is not *web.App")
 	}
@@ -352,7 +366,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	return nil
 }
 
-func buildRoutes() mux.RouteAdder {
+func buildRoutes() (mux.RouteAdder, *userbus.Business) {
 
 	// The idea here is that we can build different versions of the binary
 	// with different sets of exposed web APIs. By default we build a single
@@ -365,13 +379,18 @@ func buildRoutes() mux.RouteAdder {
 	// Tuning meaning indexing and memory requirements. The two databases can be
 	// kept in sync with replication.
 
-	switch routes {
+	switch routes { // this is the global string variable
 	case "crud":
-		return crud.Routes()
+		r := crud.Routes()
+		return r, r.UserBus
 
 	case "reporting":
-		return reporting.Routes()
-	}
+		r := reporting.Routes()
+		tmp := userbus.Business{}
+		return r, &tmp
 
-	return all.Routes()
+	default:
+		r := all.Routes()
+		return r, r.UserBus
+	}
 }

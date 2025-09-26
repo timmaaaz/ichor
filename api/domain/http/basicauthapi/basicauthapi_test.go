@@ -206,7 +206,7 @@ func login(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					return err
 				}
 
-				req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/login", bytes.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 
 				w := httptest.NewRecorder()
@@ -272,7 +272,7 @@ func loginInvalid(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					return err
 				}
 
-				req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/login", bytes.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 
 				w := httptest.NewRecorder()
@@ -298,7 +298,7 @@ func loginInvalid(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					return err
 				}
 
-				req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/login", bytes.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 
 				w := httptest.NewRecorder()
@@ -334,7 +334,7 @@ func loginInvalid(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					return err
 				}
 
-				req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/login", bytes.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 
 				w := httptest.NewRecorder()
@@ -391,7 +391,7 @@ func refresh(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					return err
 				}
 
-				req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", bytes.NewReader(body))
+				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/refresh", bytes.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 
 				w := httptest.NewRecorder()
@@ -451,7 +451,7 @@ func refresh(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					return err
 				}
 
-				req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", bytes.NewReader(body))
+				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/refresh", bytes.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 
 				w := httptest.NewRecorder()
@@ -504,7 +504,7 @@ func logout(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					return err
 				}
 
-				req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/logout", nil)
 				req.Header.Set("Authorization", "Bearer "+token)
 
 				w := httptest.NewRecorder()
@@ -543,7 +543,7 @@ func logout(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 			Name:    "logout_invalid_token",
 			ExpResp: http.StatusUnauthorized,
 			ExcFunc: func(ctx context.Context) any {
-				req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/logout", nil)
 				req.Header.Set("Authorization", "Bearer invalid-token")
 
 				w := httptest.NewRecorder()
