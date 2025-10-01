@@ -1,6 +1,6 @@
 // api/tablebuilder/models.go
 
-package data
+package dataapp
 
 import (
 	"encoding/json"
@@ -38,8 +38,18 @@ type TableConfig struct {
 	UpdatedDate string          `json:"updated_date"`
 }
 
+type TableConfigList struct {
+	Items []TableConfig `json:"items"`
+}
+
 // Encode implements the encoder interface.
 func (app TableConfig) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// Encode implements the encoder interface.
+func (app TableConfigList) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(app)
 	return data, "application/json", err
 }
@@ -63,6 +73,16 @@ func toAppTableConfigs(configs []tablebuilder.StoredConfig) []TableConfig {
 		app[i] = toAppTableConfig(cfg)
 	}
 	return app
+}
+
+func toAppTableConfigList(bus []tablebuilder.StoredConfig) TableConfigList {
+	items := make([]TableConfig, len(bus))
+	for i, item := range bus {
+		items[i] = toAppTableConfig(item)
+	}
+	return TableConfigList{
+		Items: items,
+	}
 }
 
 // =============================================================================
@@ -237,6 +257,10 @@ type TableMeta struct {
 	TotalPages    int               `json:"total_pages,omitempty"`
 	ExecutionTime int64             `json:"execution_time_ms"`
 	AliasMap      map[string]string `json:"alias_map,omitempty"`
+}
+
+type TableDataList struct {
+	Items []TableData `json:"items"`
 }
 
 // Encode implements the encoder interface.

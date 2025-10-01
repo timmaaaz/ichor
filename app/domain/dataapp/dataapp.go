@@ -1,5 +1,5 @@
 // Package data maintains the app layer api for the tablebuilder domain.
-package data
+package dataapp
 
 import (
 	"context"
@@ -152,13 +152,13 @@ func (a *App) QueryByName(ctx context.Context, name string) (TableConfig, error)
 }
 
 // QueryByUser returns all table configurations created by a user.
-func (a *App) QueryByUser(ctx context.Context, userID uuid.UUID) ([]TableConfig, error) {
+func (a *App) QueryByUser(ctx context.Context, userID uuid.UUID) (TableConfigList, error) {
 	configs, err := a.configStore.QueryByUser(ctx, userID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "querybyuser: %s", err)
+		return TableConfigList{}, errs.Newf(errs.Internal, "querybyuser: %s", err)
 	}
 
-	return toAppTableConfigs(configs), nil
+	return toAppTableConfigList(configs), nil
 }
 
 // ExecuteQuery executes a table query with the specified configuration.

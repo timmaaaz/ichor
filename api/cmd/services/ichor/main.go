@@ -284,7 +284,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Tracer:     tracer,
 	}
 
-	routes, userBus := buildRoutes()
+	routes, userBus := buildRoutes(cfgMux)
+
+	log.Info(ctx, "startup", "status", "binding V1 API routes", "userbus valid")
 
 	webAPI := mux.WebAPI(cfgMux,
 		routes,
@@ -366,7 +368,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	return nil
 }
 
-func buildRoutes() (mux.RouteAdder, *userbus.Business) {
+func buildRoutes(cfgMux mux.Config) (mux.RouteAdder, *userbus.Business) {
 
 	// The idea here is that we can build different versions of the binary
 	// with different sets of exposed web APIs. By default we build a single
@@ -379,18 +381,18 @@ func buildRoutes() (mux.RouteAdder, *userbus.Business) {
 	// Tuning meaning indexing and memory requirements. The two databases can be
 	// kept in sync with replication.
 
-	switch routes { // this is the global string variable
+	switch routes {
 	case "crud":
 		r := crud.Routes()
+		r.InitializeDependencies(cfgMux) // Initialize before returning
 		return r, r.UserBus
 
 	case "reporting":
-		r := reporting.Routes()
-		tmp := userbus.Business{}
-		return r, &tmp
+		return reporting.Routes(), nil
 
 	default:
 		r := all.Routes()
+		r.InitializeDependencies(cfgMux) // Initialize before returning
 		return r, r.UserBus
 	}
 }

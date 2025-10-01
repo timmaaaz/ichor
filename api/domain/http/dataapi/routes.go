@@ -1,0 +1,69 @@
+package dataapi
+
+import (
+	"net/http"
+
+	"github.com/timmaaaz/ichor/api/sdk/http/mid"
+	"github.com/timmaaaz/ichor/app/domain/dataapp"
+	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/app/sdk/authclient"
+	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
+	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/web"
+)
+
+// TODO: Need to work permissions in here to be based on the contents of the
+// configs, not the route table. These are amalgamations of different tables
+// and data across the system and should be handled differently. We also are
+// going to need to take into account different types of returns like tables,
+// graphs, reports, whatever and these should probably be categorized by
+// subdomains within data.
+
+type Config struct {
+	Log            *logger.Logger
+	ConfigStore    *tablebuilder.ConfigStore
+	TableStore     *tablebuilder.Store
+	AuthClient     *authclient.Client
+	PermissionsBus *permissionsbus.Business
+}
+
+const (
+	RouteTable = "data"
+)
+
+func Routes(app *web.App, cfg Config) {
+
+	const version = "v1"
+	authen := mid.Authenticate(cfg.AuthClient)
+	api := newAPI(dataapp.NewApp(cfg.ConfigStore, cfg.TableStore))
+
+	// configstore
+	app.HandlerFunc(http.MethodPost, version, "/data", api.create, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPut, version, "/data", api.update, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodDelete, version, "/data", api.delete, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodGet, version, "/data/{table_config_id}", api.queryByID, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodGet, version, "/data/{name}", api.queryByName, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodGet, version, "/data/{user_id}", api.queryByUser, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	// store
+	app.HandlerFunc(http.MethodPost, version, "/data/execute/{table_config_id}", api.executeQuery, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/data/execute/name/{name}", api.executeQueryByName, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/data/validate", api.validateConfig, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+}

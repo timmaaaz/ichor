@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/core/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/userroleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/dataapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/titleapi"
@@ -166,17 +167,32 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/userdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 // Routes constructs the add value which provides the implementation of
 // of RouteAdder for specifying what routes to bind to this instance.
-func Routes() add {
-	return add{}
+func Routes() *add {
+	return &add{}
 }
 
 type add struct {
 	UserBus *userbus.Business
+}
+
+// InitializeDependencies sets up and returns shared dependencies
+// This is called BEFORE Add() to set up shared instances
+func (a *add) InitializeDependencies(cfg mux.Config) {
+	delegate := delegate.New(cfg.Log)
+	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB))
+	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus,
+		usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
+
+	// Store it in the struct
+	a.UserBus = userBus
+
+	// Store other buses if needed later
 }
 
 // Add implements the RouterAdder interface.
@@ -186,10 +202,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// sames instances for the different set of domain apis.
 	delegate := delegate.New(cfg.Log)
 	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB))
-	userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
-	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, userBus, commentdb.NewStore(cfg.Log, cfg.DB))
+	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, a.UserBus, commentdb.NewStore(cfg.Log, cfg.DB))
 
-	homeBus := homebus.NewBusiness(cfg.Log, userBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
+	homeBus := homebus.NewBusiness(cfg.Log, a.UserBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
 	countryBus := countrybus.NewBusiness(cfg.Log, delegate, countrydb.NewStore(cfg.Log, cfg.DB))
 	regionBus := regionbus.NewBusiness(cfg.Log, delegate, regiondb.NewStore(cfg.Log, cfg.DB))
 	cityBus := citybus.NewBusiness(cfg.Log, delegate, citydb.NewStore(cfg.Log, cfg.DB))
@@ -252,6 +267,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	ordersBus := ordersbus.NewBusiness(cfg.Log, delegate, ordersdb.NewStore(cfg.Log, cfg.DB))
 	orderLineItemsBus := orderlineitemsbus.NewBusiness(cfg.Log, delegate, orderlineitemsdb.NewStore(cfg.Log, cfg.DB))
 
+	configStore := tablebuilder.NewConfigStore(cfg.Log, cfg.DB)
+	tableStore := tablebuilder.NewStore(cfg.Log, cfg.DB)
+
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
 		Log:   cfg.Log,
@@ -259,13 +277,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	homeapi.Routes(app, homeapi.Config{
-		UserBus:    userBus,
+		UserBus:    a.UserBus,
 		HomeBus:    homeBus,
 		AuthClient: cfg.AuthClient,
 	})
 
 	userapi.Routes(app, userapi.Config{
-		UserBus:    userBus,
+		UserBus:    a.UserBus,
 		AuthClient: cfg.AuthClient,
 	})
 
@@ -563,4 +581,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus:    permissionsBus,
 	})
 
+	// data
+	dataapi.Routes(app, dataapi.Config{
+		Log:            cfg.Log,
+		ConfigStore:    configStore,
+		TableStore:     tableStore,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
 }
