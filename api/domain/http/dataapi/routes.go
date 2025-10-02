@@ -48,13 +48,13 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodDelete, version, "/data", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/data/{table_config_id}", api.queryByID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/data/id/{table_config_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/data/{name}", api.queryByName, authen,
+	app.HandlerFunc(http.MethodGet, version, "/data/name/{name}", api.queryByName, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/data/{user_id}", api.queryByUser, authen,
+	app.HandlerFunc(http.MethodGet, version, "/data/user/{user_id}", api.queryByUser, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	// store

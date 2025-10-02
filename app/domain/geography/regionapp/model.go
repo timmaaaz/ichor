@@ -30,7 +30,7 @@ func (app Region) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppRegion(rgn regionbus.Region) Region {
+func ToAppRegion(rgn regionbus.Region) Region {
 	return Region{
 		ID:        rgn.ID.String(),
 		CountryID: rgn.CountryID.String(),
@@ -39,10 +39,10 @@ func toAppRegion(rgn regionbus.Region) Region {
 	}
 }
 
-func toAppRegions(rgns []regionbus.Region) []Region {
+func ToAppRegions(rgns []regionbus.Region) []Region {
 	app := make([]Region, len(rgns))
 	for i, rgn := range rgns {
-		app[i] = toAppRegion(rgn)
+		app[i] = ToAppRegion(rgn)
 	}
 	return app
 }

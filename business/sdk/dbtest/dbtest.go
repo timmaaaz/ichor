@@ -122,6 +122,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/docker"
@@ -210,6 +211,10 @@ type BusDomain struct {
 
 	// Workflow
 	Workflow *workflow.Business
+
+	// Data
+	ConfigStore *tablebuilder.ConfigStore
+	TableStore  *tablebuilder.Store
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -293,6 +298,10 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Workflow
 	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
+	// Data
+	configBus := tablebuilder.NewConfigStore(log, db)
+	tableBus := tablebuilder.NewStore(log, db)
+
 	return BusDomain{
 		Delegate:                  delegate,
 		Home:                      homeBus,
@@ -345,6 +354,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Order:                     ordersBus,
 		OrderLineItem:             orderLineItemsBus,
 		Workflow:                  workflowBus,
+		ConfigStore:               configBus,
+		TableStore:                tableBus,
 	}
 
 }

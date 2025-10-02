@@ -45,7 +45,7 @@ func (app LotTrackings) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func ToAppLotTrackings(bus lottrackingsbus.LotTrackings) LotTrackings {
+func ToAppLotTracking(bus lottrackingsbus.LotTrackings) LotTrackings {
 	return LotTrackings{
 		LotID:             bus.LotID.String(),
 		SupplierProductID: bus.SupplierProductID.String(),
@@ -60,10 +60,10 @@ func ToAppLotTrackings(bus lottrackingsbus.LotTrackings) LotTrackings {
 	}
 }
 
-func ToAppLotTrackingss(bus []lottrackingsbus.LotTrackings) []LotTrackings {
+func ToAppLotTrackings(bus []lottrackingsbus.LotTrackings) []LotTrackings {
 	app := make([]LotTrackings, len(bus))
 	for i, v := range bus {
-		app[i] = ToAppLotTrackings(v)
+		app[i] = ToAppLotTracking(v)
 	}
 	return app
 }
