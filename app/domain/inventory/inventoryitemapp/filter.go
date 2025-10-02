@@ -13,12 +13,12 @@ import (
 func parseFilter(qp QueryParams) (inventoryitembus.QueryFilter, error) {
 	var filter inventoryitembus.QueryFilter
 
-	if qp.ItemID != "" {
-		id, err := uuid.Parse(qp.ItemID)
+	if qp.ID != "" {
+		id, err := uuid.Parse(qp.ID)
 		if err != nil {
 			return inventoryitembus.QueryFilter{}, errs.NewFieldsError("item_id", err)
 		}
-		filter.ItemID = &id
+		filter.ID = &id
 	}
 
 	if qp.ProductID != "" {

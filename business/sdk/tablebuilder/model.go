@@ -42,7 +42,7 @@ type DataSource struct {
 	Joins        []Join         `json:"joins,omitempty"`
 	Filters      []Filter       `json:"filters,omitempty"`
 	Sort         []Sort         `json:"sort,omitempty"`
-	Limit        int            `json:"limit,omitempty"`
+	Rows         int            `json:"rows,omitempty"`
 }
 
 // SelectConfig defines what columns to select
@@ -223,7 +223,7 @@ type QueryParams struct {
 	Filters []Filter       `json:"filters,omitempty"`
 	Sort    []Sort         `json:"sort,omitempty"`
 	Page    int            `json:"page,omitempty"`
-	Limit   int            `json:"limit,omitempty"`
+	Rows    int            `json:"rows,omitempty"`
 	Dynamic map[string]any `json:"dynamic,omitempty"` // Dynamic filter values
 }
 

@@ -182,7 +182,7 @@ type TableQuery struct {
 	Filters []FilterParam  `json:"filters" validate:"dive"`
 	Sort    []SortParam    `json:"sort" validate:"dive"`
 	Page    int            `json:"page" validate:"min=0"`
-	Limit   int            `json:"limit" validate:"min=1,max=1000"`
+	Rows    int            `json:"rows" validate:"min=1,max=1000"`
 	Dynamic map[string]any `json:"dynamic"`
 }
 
@@ -236,7 +236,7 @@ func toBusTableQuery(app TableQuery) tablebuilder.QueryParams {
 		Filters: filters,
 		Sort:    sorts,
 		Page:    app.Page,
-		Limit:   app.Limit,
+		Rows:    app.Rows,
 		Dynamic: app.Dynamic,
 	}
 }

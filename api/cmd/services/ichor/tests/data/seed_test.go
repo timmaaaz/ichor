@@ -97,7 +97,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
 
-var simpleConfig = &tablebuilder.Config{
+var SimpleConfig = &tablebuilder.Config{
 	Title:           "Inventory Items",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -133,7 +133,7 @@ var simpleConfig = &tablebuilder.Config{
 					Direction: "desc",
 				},
 			},
-			Limit: 10,
+			Rows: 10,
 		},
 	},
 	VisualSettings: tablebuilder.VisualSettings{
@@ -158,7 +158,7 @@ var simpleConfig = &tablebuilder.Config{
 	},
 }
 
-var pageConfig = &tablebuilder.Config{
+var PageConfig = &tablebuilder.Config{
 	Title:           "Products List",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -195,7 +195,7 @@ var pageConfig = &tablebuilder.Config{
 	},
 }
 
-var complexConfig = &tablebuilder.Config{
+var ComplexConfig = &tablebuilder.Config{
 	Title:           "Current Inventory at Warehouse A",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -245,7 +245,7 @@ var complexConfig = &tablebuilder.Config{
 					Value:    0,
 				},
 			},
-			Limit: 50,
+			Rows: 50,
 		},
 	},
 	VisualSettings: tablebuilder.VisualSettings{
@@ -673,17 +673,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		}
 	}
 
-	storedSimple, err := db.BusDomain.ConfigStore.Create(ctx, "orders_dashboard", "Main orders dashboard configuration", simpleConfig, admins[0].ID)
+	storedSimple, err := db.BusDomain.ConfigStore.Create(ctx, "orders_dashboard", "Main orders dashboard configuration", SimpleConfig, admins[0].ID)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding simple config : %w", err)
 	}
 
-	storedPage, err := db.BusDomain.ConfigStore.Create(ctx, "products_page", "Products page configuration", pageConfig, admins[0].ID)
+	storedPage, err := db.BusDomain.ConfigStore.Create(ctx, "products_page", "Products page configuration", PageConfig, admins[0].ID)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding page config : %w", err)
 	}
 
-	storedComplex, err := db.BusDomain.ConfigStore.Create(ctx, "inventory_dashboard", "Main inventory dashboard configuration", complexConfig, admins[0].ID)
+	storedComplex, err := db.BusDomain.ConfigStore.Create(ctx, "inventory_dashboard", "Main inventory dashboard configuration", ComplexConfig, admins[0].ID)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding complex config : %w", err)
 	}

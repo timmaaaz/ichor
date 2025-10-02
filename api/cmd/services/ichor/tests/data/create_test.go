@@ -76,7 +76,7 @@ var newConfig = &tablebuilder.Config{
 					Value:    0,
 				},
 			},
-			Limit: 50,
+			Rows: 50,
 		},
 	},
 	VisualSettings: tablebuilder.VisualSettings{

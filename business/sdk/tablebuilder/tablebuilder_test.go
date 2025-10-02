@@ -52,8 +52,8 @@ func Test_TableBuilder(t *testing.T) {
 		t.Fatalf("failed to insert seed data: %v", err)
 	}
 
-	// simpleExample(context.Background(), store)
-	simpleExample2(context.Background(), store)
+	simpleExample(context.Background(), store)
+	// simpleExample2(context.Background(), store)
 	// complexExample(context.Background(), store)
 	// storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
 	// paginationExample(context.Background(), store)
@@ -300,7 +300,7 @@ func simpleExample2(ctx context.Context, store *tablebuilder.Store) {
 				// 		Value:    0,
 				// 	},
 				// },
-				Limit: 50,
+				Rows: 50,
 			},
 		},
 		VisualSettings: tablebuilder.VisualSettings{
@@ -315,8 +315,8 @@ func simpleExample2(ctx context.Context, store *tablebuilder.Store) {
 
 	// Execute query
 	params := tablebuilder.QueryParams{
-		Page:  1,
-		Limit: 10,
+		Page: 1,
+		Rows: 10,
 	}
 
 	result, err := store.FetchTableData(ctx, config, params)
@@ -369,7 +369,7 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 						Direction: "desc",
 					},
 				},
-				Limit: 10,
+				Rows: 10,
 			},
 		},
 		VisualSettings: tablebuilder.VisualSettings{
@@ -396,8 +396,8 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 
 	// Execute query
 	params := tablebuilder.QueryParams{
-		Page:  1,
-		Limit: 10,
+		Page: 1,
+		Rows: 10,
 	}
 
 	result, err := store.FetchTableData(ctx, config, params)
@@ -406,7 +406,10 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 		return
 	}
 
-	fmt.Printf("Simple query returned %d rows\n", len(result.Data))
+	jsonStr, _ := json.Marshal(result.Data)
+	fmt.Println(string(jsonStr))
+	fmt.Println()
+
 	printResults(result)
 
 	_ = 1
@@ -464,7 +467,7 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 						Value:    0,
 					},
 				},
-				Limit: 50,
+				Rows: 50,
 			},
 		},
 		VisualSettings: tablebuilder.VisualSettings{
@@ -605,8 +608,8 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 
 	// Use the loaded configuration
 	params := tablebuilder.QueryParams{
-		Page:  1,
-		Limit: 25,
+		Page: 1,
+		Rows: 25,
 	}
 
 	result, err := store.FetchTableData(ctx, loadedConfig, params)

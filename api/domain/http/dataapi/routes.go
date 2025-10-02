@@ -42,10 +42,10 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodPost, version, "/data", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodPut, version, "/data", api.update, authen,
+	app.HandlerFunc(http.MethodPut, version, "/data/{table_config_id}", api.update, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodDelete, version, "/data", api.delete, authen,
+	app.HandlerFunc(http.MethodDelete, version, "/data/{table_config_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodGet, version, "/data/id/{table_config_id}", api.queryByID, authen,

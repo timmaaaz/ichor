@@ -66,9 +66,9 @@ func (s *Store) FetchTableData(ctx context.Context, config *Config, params Query
 				} else {
 					result.Meta.Total = count
 					result.Meta.Page = params.Page
-					result.Meta.PageSize = params.Limit
-					if params.Limit > 0 {
-						result.Meta.TotalPages = (count + params.Limit - 1) / params.Limit
+					result.Meta.PageSize = params.Rows
+					if params.Rows > 0 {
+						result.Meta.TotalPages = (count + params.Rows - 1) / params.Rows
 					}
 				}
 			}
@@ -431,8 +431,8 @@ func splitPath(path string) []string {
 // QueryByPage queries table data with page support
 func (s *Store) QueryByPage(ctx context.Context, config *Config, pg page.Page) (*TableData, error) {
 	params := QueryParams{
-		Page:  pg.Number(),
-		Limit: pg.RowsPerPage(),
+		Page: pg.Number(),
+		Rows: pg.RowsPerPage(),
 	}
 
 	return s.FetchTableData(ctx, config, params)

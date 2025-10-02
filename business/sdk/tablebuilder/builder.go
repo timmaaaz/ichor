@@ -54,16 +54,16 @@ func (qb *QueryBuilder) BuildQuery(ds *DataSource, params QueryParams, isPrimary
 
 	// Apply pagination (only for primary data source)
 	if isPrimary && params.Page > 0 {
-		limit := params.Limit
-		if limit == 0 && ds.Limit > 0 {
-			limit = ds.Limit
+		limit := params.Rows
+		if limit == 0 && ds.Rows > 0 {
+			limit = ds.Rows
 		}
 		if limit > 0 {
 			offset := (params.Page - 1) * limit
 			query = query.Limit(uint(limit)).Offset(uint(offset))
 		}
-	} else if ds.Limit > 0 {
-		query = query.Limit(uint(ds.Limit))
+	} else if ds.Rows > 0 {
+		query = query.Limit(uint(ds.Rows))
 	}
 
 	// Generate SQL

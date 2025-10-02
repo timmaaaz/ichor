@@ -31,7 +31,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]InventoryItem, error)
 	QueryAvailableForAllocation(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID, warehouseID *uuid.UUID, strategy string, limit int) ([]InventoryItem, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	QueryByID(ctx context.Context, inventoryItemID uuid.UUID) (InventoryItem, error)
+	QueryByID(ctx context.Context, inventoryID uuid.UUID) (InventoryItem, error)
 }
 
 type Business struct {
@@ -69,7 +69,7 @@ func (b *Business) Create(ctx context.Context, nip NewInventoryItem) (InventoryI
 	now := time.Now()
 
 	inventoryItem := InventoryItem{
-		ItemID:                uuid.New(),
+		ID:                    uuid.New(),
 		ProductID:             nip.ProductID,
 		LocationID:            nip.LocationID,
 		Quantity:              nip.Quantity,
@@ -158,11 +158,11 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // QueryByID retrieves an inventoryItem by its ID.
-func (b *Business) QueryByID(ctx context.Context, inventoryItemID uuid.UUID) (InventoryItem, error) {
+func (b *Business) QueryByID(ctx context.Context, inventoryID uuid.UUID) (InventoryItem, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.querybyid")
 	defer span.End()
 
-	inventoryItem, err := b.storer.QueryByID(ctx, inventoryItemID)
+	inventoryItem, err := b.storer.QueryByID(ctx, inventoryID)
 	if err != nil {
 		return InventoryItem{}, fmt.Errorf("query by id: %w", err)
 	}

@@ -277,9 +277,9 @@ func (s *Store) Count(ctx context.Context, filter inventoryitembus.QueryFilter) 
 
 func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (inventoryitembus.InventoryItem, error) {
 	data := struct {
-		ItemID string `db:"id"`
+		ID string `db:"id"`
 	}{
-		ItemID: itemID.String(),
+		ID: itemID.String(),
 	}
 
 	const q = `

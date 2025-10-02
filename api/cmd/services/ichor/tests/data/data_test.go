@@ -6,6 +6,9 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
+// NOTE: Before writing validate tests, the stored config needs to have all its
+// validation tags filled out properly.
+
 func Test_Data(t *testing.T) {
 	t.Parallel()
 
@@ -20,5 +23,10 @@ func Test_Data(t *testing.T) {
 	// test.Run(t, queryByName200(sd), "querybyname-200")
 	// test.Run(t, queryByUser200(sd), "querybyuser-200")
 
-	test.Run(t, create200(sd), "create-200")
+	// test.Run(t, create200(sd), "create-200")
+
+	// test.Run(t, update200(sd), "update-200")
+
+	// test.Run(t, execute200(sd), "execute-200")
+	test.Run(t, executeByName200(sd), "executebyname-200")
 }
