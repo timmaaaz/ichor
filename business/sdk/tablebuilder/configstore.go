@@ -48,8 +48,8 @@ func (s *ConfigStore) Create(ctx context.Context, name, description string, conf
 		Config:      configJSON,
 		CreatedBy:   userID,
 		UpdatedBy:   userID,
-		CreatedDate: time.Now(),
-		UpdatedDate: time.Now(),
+		CreatedDate: time.Now().UTC(),
+		UpdatedDate: time.Now().UTC(),
 	}
 
 	// Insert into database

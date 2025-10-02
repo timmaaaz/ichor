@@ -33,6 +33,13 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
+/*
+TODOs
+- add a check that any entry in "ids" is a legitimate table name, easy to miss especially with views
+- figure out aliases on views with doubled up names i.e. multiple "street_id" or something
+	- We'll need this for links
+*/
+
 func Test_TableBuilder(t *testing.T) {
 	t.Parallel()
 
@@ -40,15 +47,16 @@ func Test_TableBuilder(t *testing.T) {
 	log := logger.New(io.Discard, logger.LevelInfo, "ADMIN", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
 
 	store := tablebuilder.NewStore(log, db.DB)
-	sd, err := insertSeedData(db.BusDomain)
+	_, err := insertSeedData(db.BusDomain)
 	if err != nil {
 		t.Fatalf("failed to insert seed data: %v", err)
 	}
 
-	simpleExample(context.Background(), store)
-	complexExample(context.Background(), store)
-	storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
-	paginationExample(context.Background(), store)
+	// simpleExample(context.Background(), store)
+	simpleExample2(context.Background(), store)
+	// complexExample(context.Background(), store)
+	// storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
+	// paginationExample(context.Background(), store)
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -223,6 +231,104 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		OrderLineItems:           ols,
 		Customers:                customers,
 	}, nil
+}
+
+func simpleExample2(ctx context.Context, store *tablebuilder.Store) {
+	config := &tablebuilder.Config{
+		Title:           "Current Orders and Associated data",
+		WidgetType:      "table",
+		Visualization:   "table",
+		PositionX:       0,
+		PositionY:       0,
+		Width:           6,
+		Height:          4,
+		RefreshInterval: 300,
+		RefreshMode:     "polling",
+		DataSource: []tablebuilder.DataSource{
+			{
+				Type:   "view",
+				Source: "orders_base",
+				Schema: "sales",
+				Select: tablebuilder.SelectConfig{
+					Columns: []tablebuilder.ColumnDefinition{
+						// order
+						{Name: "orders_id", TableColumn: "orders.id"},
+						{Name: "orders_number", Alias: "order_number", TableColumn: "orders.number"},
+						{Name: "orders_order_date", Alias: "order_date", TableColumn: "orders.created_date"},
+						{Name: "orders_due_date", Alias: "order_due_date", TableColumn: "orders.due_date"},
+						{Name: "orders_created_date", Alias: "order_created_date", TableColumn: "orders.created_date"},
+						{Name: "orders_updated_date", Alias: "order_updated_date", TableColumn: "orders.updated_date"},
+						{Name: "orders_fulfillment_status_id", Alias: "order_fulfillment_status_id", TableColumn: "orders.fulfillment_status_id"},
+						{Name: "orders_customer_id", Alias: "order_customer_id", TableColumn: "orders.customer_id"},
+						// customers
+						{Name: "customers_id", Alias: "customer_id", TableColumn: "customers.id"},
+						{Name: "customers_contact_infos_id", Alias: "customer_contact_info_id", TableColumn: "customers.contact_id"},
+						{Name: "customers_delivery_address_id", Alias: "customer_delivery_address_id", TableColumn: "customers.delivery_address_id"},
+						{Name: "customers_notes", Alias: "customer_notes", TableColumn: "customers.notes"},
+						{Name: "customers_created_date", Alias: "customer_created_date", TableColumn: "customers.created_date"},
+						{Name: "customers_updated_date", Alias: "customer_updated_date", TableColumn: "customers.updated_date"},
+						// order_fulfillment_statuses
+						{Name: "order_fulfillment_statuses_name", Alias: "order_fulfillment_statuses_name", TableColumn: "order_fulfillment_statuses.name"},
+						{Name: "order_fulfillment_statuses_description", Alias: "order_fulfillment_statuses_description", TableColumn: "order_fulfillment_statuses.description"},
+					},
+				},
+				// 	ForeignTables: []tablebuilder.ForeignTable{
+				// 		{
+				// 			Table:            "products",
+				// 			Schema:           "products",                   // Optional, defaults to public
+				// 			RelationshipFrom: "inventory_items.product_id", // CHANGED
+				// 			RelationshipTo:   "products.id",                // CHANGED
+				// 			JoinType:         "inner",                      // Optional, defaults to inner
+				// 			Columns: []tablebuilder.ColumnDefinition{
+				// 				{Name: "id", Alias: "product_id", TableColumn: "products.id"},
+				// 				{Name: "name", Alias: "product_name", TableColumn: "products.name"},
+				// 				{Name: "sku", TableColumn: "products.sku"},
+				// 			},
+				// 		},
+				// 	},
+				// 	ClientComputedColumns: []tablebuilder.ComputedColumn{
+				// 		{
+				// 			Name:       "stock_status",
+				// 			Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
+				// 		},
+				// 	},
+				// },
+				// Filters: []tablebuilder.Filter{
+				// 	{
+				// 		Column:   "quantity",
+				// 		Operator: "gt",
+				// 		Value:    0,
+				// 	},
+				// },
+				Limit: 50,
+			},
+		},
+		VisualSettings: tablebuilder.VisualSettings{
+			Columns:               map[string]tablebuilder.ColumnConfig{},
+			ConditionalFormatting: []tablebuilder.ConditionalFormat{},
+		},
+		Permissions: tablebuilder.Permissions{
+			Roles:   []string{"admin", "inventory_manager"},
+			Actions: []string{"view", "export", "adjust"},
+		},
+	}
+
+	// Execute query
+	params := tablebuilder.QueryParams{
+		Page:  1,
+		Limit: 10,
+	}
+
+	result, err := store.FetchTableData(ctx, config, params)
+	if err != nil {
+		log.Printf("Error fetching data: %v", err)
+		return
+	}
+
+	fmt.Printf("Simple query returned %d rows\n", len(result.Data))
+	printResults(result)
+
+	_ = 1
 }
 
 func simpleExample(ctx context.Context, store *tablebuilder.Store) {

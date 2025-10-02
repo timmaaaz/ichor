@@ -11,8 +11,14 @@ func Test_Data(t *testing.T) {
 
 	test := apitest.StartTest(t, "Test_Data")
 
-	_, err := insertSeedData(test.DB, test.Auth)
+	sd, err := insertSeedData(test.DB, test.Auth)
 	if err != nil {
 		t.Fatalf("Seeding error: %s", err)
 	}
+
+	// test.Run(t, queryByID200(sd), "querybyid-200")
+	// test.Run(t, queryByName200(sd), "querybyname-200")
+	// test.Run(t, queryByUser200(sd), "querybyuser-200")
+
+	test.Run(t, create200(sd), "create-200")
 }

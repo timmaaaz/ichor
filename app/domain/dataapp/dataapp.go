@@ -58,7 +58,7 @@ func (a *App) Create(ctx context.Context, app NewTableConfig) (TableConfig, erro
 		return TableConfig{}, errs.Newf(errs.Internal, "create: config[%s]: %s", app.Name, err)
 	}
 
-	return toAppTableConfig(*stored), nil
+	return ToAppTableConfig(*stored), nil
 }
 
 // Update updates an existing table configuration.
@@ -110,7 +110,7 @@ func (a *App) Update(ctx context.Context, id uuid.UUID, app UpdateTableConfig) (
 		return TableConfig{}, errs.Newf(errs.Internal, "update: configID[%s]: %s", id, err)
 	}
 
-	return toAppTableConfig(*stored), nil
+	return ToAppTableConfig(*stored), nil
 }
 
 // Delete removes a table configuration from the system.
@@ -135,7 +135,7 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (TableConfig, error) 
 		return TableConfig{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
-	return toAppTableConfig(*stored), nil
+	return ToAppTableConfig(*stored), nil
 }
 
 // QueryByName returns a table configuration by its name.
@@ -148,7 +148,7 @@ func (a *App) QueryByName(ctx context.Context, name string) (TableConfig, error)
 		return TableConfig{}, errs.Newf(errs.Internal, "querybyname: %s", err)
 	}
 
-	return toAppTableConfig(*stored), nil
+	return ToAppTableConfig(*stored), nil
 }
 
 // QueryByUser returns all table configurations created by a user.
@@ -158,7 +158,7 @@ func (a *App) QueryByUser(ctx context.Context, userID uuid.UUID) (TableConfigLis
 		return TableConfigList{}, errs.Newf(errs.Internal, "querybyuser: %s", err)
 	}
 
-	return toAppTableConfigList(configs), nil
+	return ToAppTableConfigList(configs), nil
 }
 
 // ExecuteQuery executes a table query with the specified configuration.

@@ -54,7 +54,7 @@ func (app TableConfigList) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppTableConfig(bus tablebuilder.StoredConfig) TableConfig {
+func ToAppTableConfig(bus tablebuilder.StoredConfig) TableConfig {
 	return TableConfig{
 		ID:          bus.ID.String(),
 		Name:        bus.Name,
@@ -67,18 +67,18 @@ func toAppTableConfig(bus tablebuilder.StoredConfig) TableConfig {
 	}
 }
 
-func toAppTableConfigs(configs []tablebuilder.StoredConfig) []TableConfig {
+func ToAppTableConfigs(configs []tablebuilder.StoredConfig) []TableConfig {
 	app := make([]TableConfig, len(configs))
 	for i, cfg := range configs {
-		app[i] = toAppTableConfig(cfg)
+		app[i] = ToAppTableConfig(cfg)
 	}
 	return app
 }
 
-func toAppTableConfigList(bus []tablebuilder.StoredConfig) TableConfigList {
+func ToAppTableConfigList(bus []tablebuilder.StoredConfig) TableConfigList {
 	items := make([]TableConfig, len(bus))
 	for i, item := range bus {
-		items[i] = toAppTableConfig(item)
+		items[i] = ToAppTableConfig(item)
 	}
 	return TableConfigList{
 		Items: items,

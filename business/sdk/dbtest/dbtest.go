@@ -598,19 +598,24 @@ func NormalizeJSONFields(got, exp interface{}) {
 		normalizeJSONInStruct(gotVal, expVal)
 	}
 }
-
-// normalizeJSONInStruct normalizes JSON fields within a single struct
 func normalizeJSONInStruct(gotVal, expVal reflect.Value) {
-	// Handle pointer types
-	if gotVal.Kind() == reflect.Ptr {
-		if gotVal.IsNil() || expVal.IsNil() {
+	// Handle pointer types - dereference to get to the actual struct
+	for gotVal.Kind() == reflect.Ptr {
+		if gotVal.IsNil() {
 			return
 		}
 		gotVal = gotVal.Elem()
+	}
+
+	for expVal.Kind() == reflect.Ptr {
+		if expVal.IsNil() {
+			return
+		}
 		expVal = expVal.Elem()
 	}
 
-	if gotVal.Kind() != reflect.Struct {
+	// Now both should be structs
+	if gotVal.Kind() != reflect.Struct || expVal.Kind() != reflect.Struct {
 		return
 	}
 
@@ -648,14 +653,93 @@ func normalizeJSONInStruct(gotVal, expVal reflect.Value) {
 				expFieldPtr.Set(reflect.ValueOf(&normalizedCopy))
 			}
 		} else if field.Type == reflect.TypeOf(json.RawMessage{}) {
-			// Handle non-pointer json.RawMessage
-			gotField := gotVal.Field(i).Interface().(json.RawMessage)
-			expField := expVal.Field(i).Interface().(json.RawMessage)
+			// Handle non-pointer json.RawMessage - check the actual value's type first
+			gotFieldVal := gotVal.Field(i)
+			expFieldVal := expVal.Field(i)
 
-			_, normalized := normalizeJSON(gotField, expField)
-			if expVal.Field(i).CanSet() {
-				expVal.Field(i).Set(reflect.ValueOf(normalized))
+			// Verify the actual interface value is json.RawMessage before asserting
+			if gotFieldVal.CanInterface() && expFieldVal.CanInterface() {
+				gotInterface := gotFieldVal.Interface()
+				expInterface := expFieldVal.Interface()
+
+				// Check if both are actually json.RawMessage
+				gotRaw, gotOk := gotInterface.(json.RawMessage)
+				expRaw, expOk := expInterface.(json.RawMessage)
+
+				if gotOk && expOk {
+					_, normalized := normalizeJSON(gotRaw, expRaw)
+					if expFieldVal.CanSet() {
+						expFieldVal.Set(reflect.ValueOf(normalized))
+					}
+				}
 			}
 		}
 	}
 }
+
+// func normalizeJSONInStruct(gotVal, expVal reflect.Value) {
+// 	// Handle pointer types - dereference to get to the actual struct
+// 	for gotVal.Kind() == reflect.Ptr {
+// 		if gotVal.IsNil() {
+// 			return
+// 		}
+// 		gotVal = gotVal.Elem()
+// 	}
+
+// 	for expVal.Kind() == reflect.Ptr {
+// 		if expVal.IsNil() {
+// 			return
+// 		}
+// 		expVal = expVal.Elem()
+// 	}
+
+// 	// Now both should be structs
+// 	if gotVal.Kind() != reflect.Struct || expVal.Kind() != reflect.Struct {
+// 		return
+// 	}
+
+// 	gotType := gotVal.Type()
+
+// 	for i := 0; i < gotVal.NumField(); i++ {
+// 		field := gotType.Field(i)
+
+// 		// Skip unexported fields
+// 		if !field.IsExported() {
+// 			continue
+// 		}
+
+// 		// Check if field is *json.RawMessage (pointer)
+// 		if field.Type == reflect.TypeOf((*json.RawMessage)(nil)) {
+// 			gotFieldPtr := gotVal.Field(i)
+// 			expFieldPtr := expVal.Field(i)
+
+// 			// Skip if either is nil
+// 			if gotFieldPtr.IsNil() || expFieldPtr.IsNil() {
+// 				continue
+// 			}
+
+// 			// Dereference the pointers to get the actual json.RawMessage values
+// 			gotField := gotFieldPtr.Elem().Interface().(json.RawMessage)
+// 			expField := expFieldPtr.Elem().Interface().(json.RawMessage)
+
+// 			// Compare and normalize
+// 			_, normalized := normalizeJSON(gotField, expField)
+
+// 			// Update the expected field by setting the value through the pointer
+// 			if expFieldPtr.CanSet() {
+// 				normalizedCopy := make(json.RawMessage, len(normalized))
+// 				copy(normalizedCopy, normalized)
+// 				expFieldPtr.Set(reflect.ValueOf(&normalizedCopy))
+// 			}
+// 		} else if field.Type == reflect.TypeOf(json.RawMessage{}) {
+// 			// Handle non-pointer json.RawMessage
+// 			gotField := gotVal.Field(i).Interface().(json.RawMessage)
+// 			expField := expVal.Field(i).Interface().(json.RawMessage)
+
+// 			_, normalized := normalizeJSON(gotField, expField)
+// 			if expVal.Field(i).CanSet() {
+// 				expVal.Field(i).Set(reflect.ValueOf(normalized))
+// 			}
+// 		}
+// 	}
+// }

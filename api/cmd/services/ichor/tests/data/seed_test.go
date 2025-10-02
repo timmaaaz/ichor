@@ -57,7 +57,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
@@ -683,6 +686,31 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	storedComplex, err := db.BusDomain.ConfigStore.Create(ctx, "inventory_dashboard", "Main inventory dashboard configuration", complexConfig, admins[0].ID)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding complex config : %w", err)
+	}
+
+	// =========================================================================
+	// Permissions stuff
+	// =========================================================================
+	roles, err := rolebus.TestSeedRoles(ctx, 2, busDomain.Role)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding roles : %w", err)
+	}
+
+	roleIDs := make(uuid.UUIDs, len(roles))
+	for i, r := range roles {
+		roleIDs[i] = r.ID
+	}
+
+	userIDs = append(userIDs, admins[0].ID)
+
+	_, err = userrolebus.TestSeedUserRoles(ctx, userIDs, roleIDs, busDomain.UserRole)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding user roles : %w", err)
+	}
+
+	_, err = tableaccessbus.TestSeedTableAccess(ctx, roleIDs, busDomain.TableAccess)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding table access : %w", err)
 	}
 
 	return apitest.SeedData{

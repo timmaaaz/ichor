@@ -422,7 +422,8 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'order_line_items', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'roles', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'user_roles', true, true, true, true),
-    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'table_access', true, true, true, true)
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'table_access', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'table_configs', true, true, true, true)
 ON CONFLICT DO NOTHING;
 
 -- First, ensure we have the required entity types
