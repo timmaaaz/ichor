@@ -19,14 +19,16 @@ func Test_Data(t *testing.T) {
 		t.Fatalf("Seeding error: %s", err)
 	}
 
-	// test.Run(t, queryByID200(sd), "querybyid-200")
-	// test.Run(t, queryByName200(sd), "querybyname-200")
-	// test.Run(t, queryByUser200(sd), "querybyuser-200")
+	test.Run(t, queryByID200(sd), "querybyid-200")
+	test.Run(t, queryByName200(sd), "querybyname-200")
+	test.Run(t, queryByUser200(sd), "querybyuser-200")
 
-	// test.Run(t, create200(sd), "create-200")
+	test.Run(t, create200(sd), "create-200")
 
-	// test.Run(t, update200(sd), "update-200")
-
-	// test.Run(t, execute200(sd), "execute-200")
+	test.Run(t, execute200(sd), "execute-200")
 	test.Run(t, executeByName200(sd), "executebyname-200")
+
+	test.Run(t, update200(sd), "update-200")
+
+	test.Run(t, delete200(sd), "delete-200")
 }
