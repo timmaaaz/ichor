@@ -49,8 +49,229 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
+
+var PageConfig = &tablebuilder.Config{
+	Title:           "Products List",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "products",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id"},
+					{Name: "name"},
+					{Name: "sku"},
+					{Name: "is_active"},
+				},
+			},
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view"},
+	},
+}
+
+var ComplexConfig = &tablebuilder.Config{
+	Title:           "Current Inventory at Warehouse A",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           6,
+	Height:          4,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "inventory_items",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id"},
+					{Name: "quantity", Alias: "current_quantity", TableColumn: "inventory_items.quantity"},
+					{Name: "reorder_point", TableColumn: "inventory_items.reorder_point"},
+					{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "products",
+						Schema:           "products",                   // Optional, defaults to public
+						RelationshipFrom: "inventory_items.product_id", // CHANGED
+						RelationshipTo:   "products.id",                // CHANGED
+						JoinType:         "inner",                      // Optional, defaults to inner
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "id", Alias: "product_id", TableColumn: "products.id"},
+							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
+							{Name: "sku", TableColumn: "products.sku"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "stock_status",
+						Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
+					},
+				},
+			},
+			Filters: []tablebuilder.Filter{
+				{
+					Column:   "quantity",
+					Operator: "gt",
+					Value:    0,
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"product_name": {
+				Name:       "product_name",
+				Header:     "Product",
+				Width:      250,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"current_quantity": {
+				Name:   "current_quantity",
+				Header: "Quantity",
+				Width:  100,
+				Align:  "right",
+				Format: &tablebuilder.FormatConfig{
+					Type:      "number",
+					Precision: 0,
+				},
+			},
+			"stock_status": {
+				Name:         "stock_status",
+				Header:       "Status",
+				Width:        100,
+				Align:        "center",
+				CellTemplate: "status",
+			},
+		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{
+			{
+				Column:     "stock_status",
+				Condition:  "eq",
+				Value:      "low",
+				Color:      "#ff4444",
+				Background: "#ffebee",
+				Icon:       "alert-circle",
+			},
+			{
+				Column:     "stock_status",
+				Condition:  "eq",
+				Value:      "normal",
+				Color:      "#00C851",
+				Background: "#e8f5e9",
+				Icon:       "check-circle",
+			},
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "inventory_manager"},
+		Actions: []string{"view", "export", "adjust"},
+	},
+}
+
+var ordersConfig = &tablebuilder.Config{
+	Title:           "Current Orders and Associated data",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           6,
+	Height:          4,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "view",
+			Source: "orders_base",
+			Schema: "sales",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					// order
+					{Name: "orders_id", TableColumn: "orders.id"},
+					{Name: "orders_number", Alias: "order_number", TableColumn: "orders.number"},
+					{Name: "orders_order_date", Alias: "order_date", TableColumn: "orders.created_date"},
+					{Name: "orders_due_date", Alias: "order_due_date", TableColumn: "orders.due_date"},
+					{Name: "orders_created_date", Alias: "order_created_date", TableColumn: "orders.created_date"},
+					{Name: "orders_updated_date", Alias: "order_updated_date", TableColumn: "orders.updated_date"},
+					{Name: "orders_fulfillment_status_id", Alias: "order_fulfillment_status_id", TableColumn: "orders.fulfillment_status_id"},
+					{Name: "orders_customer_id", Alias: "order_customer_id", TableColumn: "orders.customer_id"},
+					// customers
+					{Name: "customers_id", Alias: "customer_id", TableColumn: "customers.id"},
+					{Name: "customers_contact_infos_id", Alias: "customer_contact_info_id", TableColumn: "customers.contact_id"},
+					{Name: "customers_delivery_address_id", Alias: "customer_delivery_address_id", TableColumn: "customers.delivery_address_id"},
+					{Name: "customers_notes", Alias: "customer_notes", TableColumn: "customers.notes"},
+					{Name: "customers_created_date", Alias: "customer_created_date", TableColumn: "customers.created_date"},
+					{Name: "customers_updated_date", Alias: "customer_updated_date", TableColumn: "customers.updated_date"},
+					// order_fulfillment_statuses
+					{Name: "order_fulfillment_statuses_name", Alias: "order_fulfillment_statuses_name", TableColumn: "order_fulfillment_statuses.name"},
+					{Name: "order_fulfillment_statuses_description", Alias: "order_fulfillment_statuses_description", TableColumn: "order_fulfillment_statuses.description"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "products",
+						Schema:           "products",                   // Optional, defaults to public
+						RelationshipFrom: "inventory_items.product_id", // CHANGED
+						RelationshipTo:   "products.id",                // CHANGED
+						JoinType:         "inner",                      // Optional, defaults to inner
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "id", Alias: "product_id", TableColumn: "products.id"},
+							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
+							{Name: "sku", TableColumn: "products.sku"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "stock_status",
+						Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
+					},
+				},
+			},
+			Filters: []tablebuilder.Filter{
+				{
+					Column:   "quantity",
+					Operator: "gt",
+					Value:    0,
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns:               map[string]tablebuilder.ColumnConfig{},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "inventory_manager"},
+		Actions: []string{"view", "export", "adjust"},
+	},
+}
 
 func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	db, err := sqldb.Open(cfg)
@@ -418,6 +639,22 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	_, err = inventoryadjustmentbus.TestSeedInventoryAdjustments(ctx, 20, productIDs, inventoryLocationsIDs, reporterIDs[:2], reporterIDs[2:], busDomain.InventoryAdjustment)
 	if err != nil {
 		return fmt.Errorf("seeding inventory adjustments : %w", err)
+	}
+
+	configStore := tablebuilder.NewConfigStore(log, db)
+	_, err = configStore.Create(ctx, "orders_dashboard", "orders_base", ordersConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating stored config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "products_dashboard", "products", PageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating stored config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "inventory_dashboard", "inventory_items", ComplexConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating stored config: %w", err)
 	}
 
 	return nil

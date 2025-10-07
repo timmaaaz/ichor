@@ -192,19 +192,31 @@ func (s *Store) executeCount(ctx context.Context, query string, args map[string]
 	}, nil
 }
 
-// getCount gets the total count for pagination
 func (s *Store) getCount(ctx context.Context, ds *DataSource, params QueryParams) (int, error) {
 	query, args, err := s.builder.BuildCountQuery(ds, params)
 	if err != nil {
 		return 0, fmt.Errorf("build count query: %w", err)
 	}
 
-	var count int
-	if err := s.db.GetContext(ctx, &count, query, args); err != nil {
-		return 0, fmt.Errorf("get count: %w", err)
+	var result struct {
+		Count int `db:"count"`
 	}
 
-	return count, nil
+	rows, err := s.db.NamedQueryContext(ctx, query, args)
+	if err != nil {
+		return 0, fmt.Errorf("named query: %w", err)
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return 0, fmt.Errorf("no count result")
+	}
+
+	if err := rows.StructScan(&result); err != nil {
+		return 0, fmt.Errorf("scan count: %w", err)
+	}
+
+	return result.Count, nil
 }
 
 // mergeData merges secondary data source results with primary data

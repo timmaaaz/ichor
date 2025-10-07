@@ -394,6 +394,10 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 		},
 	}
 
+	configJSON, _ := json.MarshalIndent(config, "", "  ")
+	fmt.Println(string(configJSON))
+	fmt.Println()
+
 	// Execute query
 	params := tablebuilder.QueryParams{
 		Page: 1,
