@@ -192,8 +192,6 @@ type Permissions struct {
 // =============================================================================
 // Result Types
 // =============================================================================
-
-// TableData represents the result of a table query
 type TableData struct {
 	Data []TableRow `json:"data"`
 	Meta MetaData   `json:"meta"`
@@ -204,14 +202,52 @@ type TableRow map[string]any
 
 // MetaData contains metadata about the query result
 type MetaData struct {
-	Total         int               `json:"total"`
-	Config        *Config           `json:"config,omitempty"`
-	AliasMap      map[string]string `json:"alias_map,omitempty"`
-	Error         string            `json:"error,omitempty"`
-	ExecutionTime int64             `json:"execution_time,omitempty"` // milliseconds
-	Page          int               `json:"page,omitempty"`
-	PageSize      int               `json:"page_size,omitempty"`
-	TotalPages    int               `json:"total_pages,omitempty"`
+	Total         int   `json:"total"`
+	Page          int   `json:"page,omitempty"`
+	PageSize      int   `json:"page_size,omitempty"`
+	TotalPages    int   `json:"total_pages,omitempty"`
+	ExecutionTime int64 `json:"execution_time,omitempty"` // milliseconds
+
+	Columns       []ColumnMetadata   `json:"columns,omitempty"`
+	Relationships []RelationshipInfo `json:"relationships,omitempty"`
+
+	Error string `json:"error,omitempty"`
+}
+
+type ColumnMetadata struct {
+	// Core identification
+	Field        string `json:"field"`         // Key in data row (uses alias if present)
+	DisplayName  string `json:"display_name"`  // What user sees (header or alias or name)
+	DatabaseName string `json:"database_name"` // Original column name in DB
+
+	// Type and source
+	Type         string `json:"type"`
+	SourceTable  string `json:"source_table,omitempty"`
+	SourceColumn string `json:"source_column,omitempty"`
+	Hidden       bool   `json:"hidden,omitempty"`
+
+	// Flags
+	IsPrimaryKey bool   `json:"is_primary_key,omitempty"`
+	IsForeignKey bool   `json:"is_foreign_key,omitempty"`
+	RelatedTable string `json:"related_table,omitempty"`
+
+	// Visual settings (override DisplayName if present)
+	Header     string          `json:"header,omitempty"`
+	Width      int             `json:"width,omitempty"`
+	Align      string          `json:"align,omitempty"`
+	Sortable   bool            `json:"sortable,omitempty"`
+	Filterable bool            `json:"filterable,omitempty"`
+	Format     *FormatConfig   `json:"format,omitempty"`
+	Editable   *EditableConfig `json:"editable,omitempty"`
+	Link       *LinkConfig     `json:"link,omitempty"`
+}
+
+type RelationshipInfo struct {
+	FromTable  string `json:"from_table"`
+	FromColumn string `json:"from_column"`
+	ToTable    string `json:"to_table"`
+	ToColumn   string `json:"to_column"`
+	Type       string `json:"type"` // "one-to-one", "one-to-many", "many-to-one"
 }
 
 // =============================================================================

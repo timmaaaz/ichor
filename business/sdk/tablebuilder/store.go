@@ -3,6 +3,7 @@ package tablebuilder
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -32,17 +33,16 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 func (s *Store) FetchTableData(ctx context.Context, config *Config, params QueryParams) (*TableData, error) {
 	startTime := time.Now()
 
-	// Validate configuration
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("validate config: %w", err)
 	}
 
-	// Initialize result
 	result := &TableData{
 		Data: make([]TableRow, 0),
 		Meta: MetaData{
-			Config:   config,
-			AliasMap: make(map[string]string),
+			// NEW: Build metadata upfront
+			Columns:       s.buildColumnMetadata(config),
+			Relationships: s.buildRelationshipMetadata(config),
 		},
 	}
 
@@ -105,8 +105,6 @@ func (s *Store) processDataSource(ctx context.Context, ds *DataSource, params Qu
 		return nil, fmt.Errorf("build query: %w", err)
 	}
 
-	fmt.Println("query: ", query)
-
 	s.log.Infoc(ctx, 4, "executing query", "query", query, "args", args)
 
 	// Execute the query based on type
@@ -125,12 +123,8 @@ func (s *Store) processDataSource(ctx context.Context, ds *DataSource, params Qu
 		return nil, fmt.Errorf("execute query: %w", err)
 	}
 
-	// Update alias map
-	for _, col := range ds.Select.Columns {
-		if col.Alias != "" {
-			result.Meta.AliasMap[col.Name] = col.Alias
-		}
-	}
+	// REMOVED: No more alias map building
+	// The metadata already has all the information
 
 	return rows, nil
 }
@@ -290,65 +284,293 @@ func (s *Store) applyComputedColumns(data []TableRow, columns []ComputedColumn) 
 }
 
 // transformData transforms the data according to configuration
+// func (s *Store) transformData(data []TableRow, config *Config) []TableRow {
+// 	if len(config.DataSource) == 0 {
+// 		return data
+// 	}
+
+// 	transformed := make([]TableRow, 0, len(data))
+
+// 	for _, row := range data {
+// 		newRow := make(TableRow)
+
+// 		// Extract IDs
+// 		ids := make(map[string]any)
+
+// 		// Process each field
+// 		for key, value := range row {
+// 			// Check if this is an ID field
+// 			if isIDField(key) {
+// 				// Extract entity name and store in ids
+// 				entityName := extractEntityName(key)
+// 				ids[entityName] = value
+// 			} else {
+// 				// Regular field - check for table_column mapping
+// 				if col := findColumnByKey(config.DataSource[0].Select, key); col != nil {
+// 					if col.TableColumn != "" {
+// 						fieldData := map[string]any{
+// 							"value":       value,
+// 							"tableColumn": col.TableColumn,
+// 						}
+
+// 						// Include alias if it exists
+// 						if col.Alias != "" {
+// 							fieldData["alias"] = col.Alias
+// 						}
+
+// 						// Use alias as the key if it exists, otherwise use the original key
+// 						outputKey := key
+// 						if col.Alias != "" {
+// 							outputKey = col.Alias
+// 						}
+
+// 						newRow[outputKey] = fieldData
+// 					} else {
+// 						newRow[key] = value
+// 					}
+// 				} else {
+// 					newRow[key] = value
+// 				}
+// 			}
+// 		}
+
+// 		// Add ids
+// 		if len(ids) > 0 {
+// 			newRow["ids"] = ids
+// 		}
+
+// 		transformed = append(transformed, newRow)
+// 	}
+
+// 	return transformed
+// }
+
+// NEW: Build column metadata
+// In buildColumnMetadata, at the top:
+func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
+	ds := config.DataSource[0]
+	metadata := make([]ColumnMetadata, 0)
+
+	// Determine the primary table name
+	primaryTable := strings.TrimSuffix(ds.Source, "_base")
+
+	for _, col := range ds.Select.Columns {
+		meta := ColumnMetadata{
+			DatabaseName: col.Name,
+			Field:        getFieldName(col),
+			DisplayName:  getDisplayName(col),
+			Type:         inferColumnType(col.Name),
+		}
+
+		// Parse table_column for source info
+		if col.TableColumn != "" {
+			parts := strings.Split(col.TableColumn, ".")
+			if len(parts) == 2 {
+				meta.SourceTable = parts[0]
+				meta.SourceColumn = parts[1]
+
+				// Mark as primary key if it's the primary table's id
+				if parts[0] == primaryTable && parts[1] == "id" {
+					meta.IsPrimaryKey = true
+					meta.Hidden = true
+				}
+			}
+		}
+
+		// Check for foreign keys
+		if strings.HasSuffix(col.Name, "_id") && !meta.IsPrimaryKey {
+			meta.IsForeignKey = true
+			meta.Hidden = true
+		}
+
+		// Visual settings can override hidden
+		if _, ok := config.VisualSettings.Columns[meta.Field]; ok {
+			meta.Hidden = false
+		}
+
+		// Apply visual settings
+		if vs, ok := config.VisualSettings.Columns[meta.Field]; ok {
+			if vs.Header != "" {
+				meta.DisplayName = vs.Header
+			}
+			meta.Header = vs.Header
+			meta.Width = vs.Width
+			meta.Align = vs.Align
+			meta.Sortable = vs.Sortable
+			meta.Filterable = vs.Filterable
+			meta.Format = vs.Format
+			meta.Editable = vs.Editable
+			meta.Link = vs.Link
+		}
+
+		metadata = append(metadata, meta)
+	}
+
+	// Process foreign table columns
+	metadata = append(metadata, s.buildForeignColumnMetadata(ds.Select.ForeignTables, config)...)
+
+	// Process computed columns
+	for _, cc := range ds.Select.ClientComputedColumns {
+		meta := ColumnMetadata{
+			DatabaseName: cc.Name,
+			Field:        cc.Name,
+			DisplayName:  cc.Name,
+			Type:         "computed",
+		}
+
+		if vs, ok := config.VisualSettings.Columns[cc.Name]; ok {
+			if vs.Header != "" {
+				meta.DisplayName = vs.Header
+			}
+			meta.Header = vs.Header
+			meta.Width = vs.Width
+			meta.Align = vs.Align
+			meta.Format = vs.Format
+		}
+
+		metadata = append(metadata, meta)
+	}
+
+	return metadata
+}
+
+func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config *Config) []ColumnMetadata {
+	metadata := make([]ColumnMetadata, 0)
+
+	for _, ft := range foreignTables {
+		for _, col := range ft.Columns {
+			meta := ColumnMetadata{
+				DisplayName:  getDisplayName(col),
+				Field:        getFieldName(col),
+				Type:         inferColumnType(col.Name),
+				SourceTable:  ft.Table,
+				SourceColumn: col.Name,
+			}
+
+			if col.TableColumn != "" {
+				parts := strings.Split(col.TableColumn, ".")
+				if len(parts) >= 2 {
+					meta.SourceTable = parts[len(parts)-2]
+					meta.SourceColumn = parts[len(parts)-1]
+				}
+			}
+
+			if vs, ok := config.VisualSettings.Columns[meta.Field]; ok {
+				meta.Header = vs.Header
+				meta.Width = vs.Width
+				meta.Align = vs.Align
+				meta.Sortable = vs.Sortable
+				meta.Filterable = vs.Filterable
+				meta.Format = vs.Format
+				meta.Link = vs.Link
+			}
+
+			metadata = append(metadata, meta)
+		}
+
+		// Recursively process nested foreign tables
+		metadata = append(metadata, s.buildForeignColumnMetadata(ft.ForeignTables, config)...)
+	}
+
+	return metadata
+}
+
+// NEW: Build relationship metadata
+func (s *Store) buildRelationshipMetadata(config *Config) []RelationshipInfo {
+	if len(config.DataSource) == 0 {
+		return nil
+	}
+
+	relationships := make([]RelationshipInfo, 0)
+	ds := config.DataSource[0]
+
+	for _, ft := range ds.Select.ForeignTables {
+		relationships = append(relationships, s.extractRelationships(ds.Source, ft)...)
+	}
+
+	return relationships
+}
+
+func (s *Store) extractRelationships(baseTable string, ft ForeignTable) []RelationshipInfo {
+	relationships := make([]RelationshipInfo, 0)
+
+	// Parse the relationship
+	fromParts := strings.Split(ft.RelationshipFrom, ".")
+	toParts := strings.Split(ft.RelationshipTo, ".")
+
+	rel := RelationshipInfo{
+		Type: "many-to-one", // Default assumption
+	}
+
+	if len(fromParts) == 2 {
+		rel.FromTable = fromParts[0]
+		rel.FromColumn = fromParts[1]
+	} else {
+		rel.FromTable = baseTable
+		rel.FromColumn = fromParts[0]
+	}
+
+	if len(toParts) == 2 {
+		rel.ToTable = toParts[0]
+		rel.ToColumn = toParts[1]
+	} else {
+		rel.ToTable = ft.Table
+		rel.ToColumn = toParts[0]
+	}
+
+	relationships = append(relationships, rel)
+
+	// Recursively process nested relationships
+	for _, nested := range ft.ForeignTables {
+		relationships = append(relationships, s.extractRelationships(ft.Table, nested)...)
+	}
+
+	return relationships
+}
+
+// Helper: Returns the key in the data row
+func getFieldName(col ColumnDefinition) string {
+	if col.Alias != "" {
+		return col.Alias // "current_stock"
+	}
+	return col.Name // "quantity"
+}
+
+// Helper: Returns default display name
+func getDisplayName(col ColumnDefinition) string {
+	if col.Alias != "" {
+		return col.Alias // "current_stock"
+	}
+	return col.Name // "quantity"
+}
+
+func inferColumnType(name string) string {
+	lower := strings.ToLower(name)
+
+	if strings.HasSuffix(lower, "_id") || lower == "id" {
+		return "uuid"
+	}
+	if strings.Contains(lower, "date") || strings.Contains(lower, "time") {
+		return "datetime"
+	}
+	if strings.Contains(lower, "quantity") || strings.Contains(lower, "count") || strings.Contains(lower, "price") {
+		return "number"
+	}
+	if strings.Contains(lower, "is_") || strings.Contains(lower, "has_") {
+		return "boolean"
+	}
+
+	return "string"
+}
+
+// transformData transforms the data according to configuration
 func (s *Store) transformData(data []TableRow, config *Config) []TableRow {
 	if len(config.DataSource) == 0 {
 		return data
 	}
 
-	transformed := make([]TableRow, 0, len(data))
-
-	for _, row := range data {
-		newRow := make(TableRow)
-
-		// Extract IDs
-		ids := make(map[string]any)
-
-		// Process each field
-		for key, value := range row {
-			// Check if this is an ID field
-			if isIDField(key) {
-				// Extract entity name and store in ids
-				entityName := extractEntityName(key)
-				ids[entityName] = value
-			} else {
-				// Regular field - check for table_column mapping
-				if col := findColumnByKey(config.DataSource[0].Select, key); col != nil {
-					if col.TableColumn != "" {
-						fieldData := map[string]any{
-							"value":       value,
-							"tableColumn": col.TableColumn,
-						}
-
-						// Include alias if it exists
-						if col.Alias != "" {
-							fieldData["alias"] = col.Alias
-						}
-
-						// Use alias as the key if it exists, otherwise use the original key
-						outputKey := key
-						if col.Alias != "" {
-							outputKey = col.Alias
-						}
-
-						newRow[outputKey] = fieldData
-					} else {
-						newRow[key] = value
-					}
-				} else {
-					newRow[key] = value
-				}
-			}
-		}
-
-		// Add ids
-		if len(ids) > 0 {
-			newRow["ids"] = ids
-		}
-
-		transformed = append(transformed, newRow)
-	}
-
-	return transformed
+	// Just return clean data - let metadata handle the rest
+	return data
 }
 
 // Helper functions
