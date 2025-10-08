@@ -42,15 +42,10 @@ func execute200(sd apitest.SeedData) []apitest.Table {
 		parsedValue, _ := strconv.ParseFloat(item.Quantity, 64)
 
 		expData = append(expData, map[string]any{
-			"ids": map[string]any{
-				"id":       item.ID,
-				"location": item.LocationID,
-				"product":  item.ProductID,
-			},
-			"quantity": map[string]any{
-				"tableColumn": "inventory_items.quantity",
-				"value":       parsedValue,
-			},
+			"id":            item.ID,
+			"current_stock": parsedValue,
+			"location_id":   item.LocationID,
+			"product_id":    item.ProductID,
 		})
 	}
 
@@ -112,15 +107,10 @@ func executeByName200(sd apitest.SeedData) []apitest.Table {
 		parsedValue, _ := strconv.ParseFloat(item.Quantity, 64)
 
 		expData = append(expData, map[string]any{
-			"ids": map[string]any{
-				"id":       item.ID,
-				"location": item.LocationID,
-				"product":  item.ProductID,
-			},
-			"quantity": map[string]any{
-				"tableColumn": "inventory_items.quantity",
-				"value":       parsedValue,
-			},
+			"id":            item.ID,
+			"current_stock": parsedValue,
+			"location_id":   item.LocationID,
+			"product_id":    item.ProductID,
 		})
 	}
 

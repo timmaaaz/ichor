@@ -283,7 +283,6 @@ func toAppTableData(bus *tablebuilder.TableData) TableData {
 			PageSize:      bus.Meta.PageSize,
 			TotalPages:    bus.Meta.TotalPages,
 			ExecutionTime: bus.Meta.ExecutionTime,
-			AliasMap:      bus.Meta.AliasMap,
 		},
 	}
 }

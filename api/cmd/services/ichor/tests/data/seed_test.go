@@ -115,7 +115,7 @@ var SimpleConfig = &tablebuilder.Config{
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
 					{Name: "id", TableColumn: "inventory_items.id"},
-					{Name: "quantity", TableColumn: "inventory_items.quantity"},
+					{Name: "quantity", Alias: "current_stock", TableColumn: "inventory_items.quantity"},
 					{Name: "product_id", TableColumn: "inventory_items.product_id"},
 					{Name: "location_id", TableColumn: "inventory_items.location_id"},
 				},
@@ -138,10 +138,10 @@ var SimpleConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"quantity": {
-				Name:       "quantity",
-				Header:     "Quantity",
-				Width:      100,
+			"current_stock": {
+				Name:       "current_stock",
+				Header:     "Current Stock",
+				Width:      120,
 				Align:      "right",
 				Sortable:   true,
 				Filterable: true,
@@ -150,7 +150,26 @@ var SimpleConfig = &tablebuilder.Config{
 					Precision: 0,
 				},
 			},
+			"product_id": {
+				Name:   "product_id",
+				Header: "Product",
+				Width:  200,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/products/{product_id}",
+					Label: "View Product",
+				},
+			},
+			"location_id": {
+				Name:   "location_id",
+				Header: "Location",
+				Width:  200,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/inventory/locations/{location_id}",
+					Label: "View Location",
+				},
+			},
 		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{},
 	},
 	Permissions: tablebuilder.Permissions{
 		Roles:   []string{"admin", "inventory_manager"},
@@ -172,12 +191,13 @@ var PageConfig = &tablebuilder.Config{
 		{
 			Type:   "query",
 			Source: "products",
+			Schema: "products",
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "id"},
-					{Name: "name"},
-					{Name: "sku"},
-					{Name: "is_active"},
+					{Name: "id", TableColumn: "products.id"},
+					{Name: "name", TableColumn: "products.name"},
+					{Name: "sku", TableColumn: "products.sku"},
+					{Name: "is_active", TableColumn: "products.is_active"},
 				},
 			},
 		},
@@ -196,13 +216,13 @@ var PageConfig = &tablebuilder.Config{
 }
 
 var ComplexConfig = &tablebuilder.Config{
-	Title:           "Current Inventory at Warehouse A",
+	Title:           "Current Inventory with Products",
 	WidgetType:      "table",
 	Visualization:   "table",
 	PositionX:       0,
 	PositionY:       0,
-	Width:           6,
-	Height:          4,
+	Width:           12,
+	Height:          8,
 	RefreshInterval: 300,
 	RefreshMode:     "polling",
 	DataSource: []tablebuilder.DataSource{
@@ -212,18 +232,19 @@ var ComplexConfig = &tablebuilder.Config{
 			Schema: "inventory",
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "id"},
+					{Name: "id", TableColumn: "inventory_items.id"},
 					{Name: "quantity", Alias: "current_quantity", TableColumn: "inventory_items.quantity"},
 					{Name: "reorder_point", TableColumn: "inventory_items.reorder_point"},
 					{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
 				},
 				ForeignTables: []tablebuilder.ForeignTable{
+
 					{
 						Table:            "products",
-						Schema:           "products",                   // Optional, defaults to public
-						RelationshipFrom: "inventory_items.product_id", // CHANGED
-						RelationshipTo:   "products.id",                // CHANGED
-						JoinType:         "inner",                      // Optional, defaults to inner
+						Schema:           "products",
+						RelationshipFrom: "inventory_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "id", Alias: "product_id", TableColumn: "products.id"},
 							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
@@ -236,6 +257,10 @@ var ComplexConfig = &tablebuilder.Config{
 						Name:       "stock_status",
 						Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
 					},
+					{
+						Name:       "stock_percentage",
+						Expression: "(current_quantity / maximum_stock) * 100",
+					},
 				},
 			},
 			Filters: []tablebuilder.Filter{
@@ -243,6 +268,12 @@ var ComplexConfig = &tablebuilder.Config{
 					Column:   "quantity",
 					Operator: "gt",
 					Value:    0,
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "quantity",
+					Direction: "asc",
 				},
 			},
 			Rows: 50,
@@ -259,8 +290,8 @@ var ComplexConfig = &tablebuilder.Config{
 			},
 			"current_quantity": {
 				Name:   "current_quantity",
-				Header: "Quantity",
-				Width:  100,
+				Header: "Current Stock",
+				Width:  120,
 				Align:  "right",
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
@@ -273,6 +304,25 @@ var ComplexConfig = &tablebuilder.Config{
 				Width:        100,
 				Align:        "center",
 				CellTemplate: "status",
+			},
+			"stock_percentage": {
+				Name:   "stock_percentage",
+				Header: "Capacity",
+				Width:  100,
+				Align:  "right",
+				Format: &tablebuilder.FormatConfig{
+					Type:      "percent",
+					Precision: 1,
+				},
+			},
+			"product_id": {
+				Name:   "product_id",
+				Header: "Product",
+				Width:  200,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/products/products/{product_id}",
+					Label: "View Product",
+				},
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
