@@ -243,20 +243,80 @@ func toBusTableQuery(app TableQuery) tablebuilder.QueryParams {
 
 // =============================================================================
 
-// TableData represents the table data response.
+// TableData represents the table data response - MATCHES business layer exactly
 type TableData struct {
 	Data []map[string]any `json:"data"`
-	Meta TableMeta        `json:"meta"`
+	Meta MetaData         `json:"meta"`
 }
 
-// TableMeta contains metadata about the query execution.
-type TableMeta struct {
-	Total         int               `json:"total"`
-	Page          int               `json:"page,omitempty"`
-	PageSize      int               `json:"page_size,omitempty"`
-	TotalPages    int               `json:"total_pages,omitempty"`
-	ExecutionTime int64             `json:"execution_time_ms"`
-	AliasMap      map[string]string `json:"alias_map,omitempty"`
+// MetaData contains metadata about the query result - MATCHES business layer exactly
+type MetaData struct {
+	Total         int                `json:"total"`
+	Page          int                `json:"page,omitempty"`
+	PageSize      int                `json:"page_size,omitempty"`
+	TotalPages    int                `json:"total_pages,omitempty"`
+	ExecutionTime int64              `json:"execution_time,omitempty"` // milliseconds
+	Columns       []ColumnMetadata   `json:"columns,omitempty"`
+	Relationships []RelationshipInfo `json:"relationships,omitempty"`
+	Error         string             `json:"error,omitempty"`
+}
+
+// ColumnMetadata - MATCHES business layer exactly
+type ColumnMetadata struct {
+	// Core identification
+	Field        string `json:"field"`
+	DisplayName  string `json:"display_name"`
+	DatabaseName string `json:"database_name"`
+
+	// Type and source
+	Type         string `json:"type"`
+	SourceTable  string `json:"source_table,omitempty"`
+	SourceColumn string `json:"source_column,omitempty"`
+	Hidden       bool   `json:"hidden,omitempty"`
+
+	// Flags
+	IsPrimaryKey bool   `json:"is_primary_key,omitempty"`
+	IsForeignKey bool   `json:"is_foreign_key,omitempty"`
+	RelatedTable string `json:"related_table,omitempty"`
+
+	// Visual settings (override DisplayName if present)
+	Header     string          `json:"header,omitempty"`
+	Width      int             `json:"width,omitempty"`
+	Align      string          `json:"align,omitempty"`
+	Sortable   bool            `json:"sortable,omitempty"`
+	Filterable bool            `json:"filterable,omitempty"`
+	Format     *FormatConfig   `json:"format,omitempty"`
+	Editable   *EditableConfig `json:"editable,omitempty"`
+	Link       *LinkConfig     `json:"link,omitempty"`
+}
+
+// FormatConfig - MATCHES business layer exactly
+type FormatConfig struct {
+	Type      string `json:"type"`
+	Precision int    `json:"precision,omitempty"`
+	Currency  string `json:"currency,omitempty"`
+	Format    string `json:"format,omitempty"`
+}
+
+// EditableConfig - MATCHES business layer exactly
+type EditableConfig struct {
+	Type        string `json:"type"`
+	Placeholder string `json:"placeholder,omitempty"`
+}
+
+// LinkConfig - MATCHES business layer exactly
+type LinkConfig struct {
+	URL   string `json:"url"`
+	Label string `json:"label"`
+}
+
+// RelationshipInfo - MATCHES business layer exactly
+type RelationshipInfo struct {
+	FromTable  string `json:"from_table"`
+	FromColumn string `json:"from_column"`
+	ToTable    string `json:"to_table"`
+	ToColumn   string `json:"to_column"`
+	Type       string `json:"type"` // "one-to-one", "one-to-many", "many-to-one"
 }
 
 type TableDataList struct {
@@ -269,20 +329,112 @@ func (app TableData) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
+// toAppTableData - Now does a DIRECT pass-through with minimal conversion
 func toAppTableData(bus *tablebuilder.TableData) TableData {
+	// Convert data rows (simple map conversion)
 	data := make([]map[string]any, len(bus.Data))
 	for i, row := range bus.Data {
 		data[i] = map[string]any(row)
 	}
 
+	// Convert metadata with direct field mapping
 	return TableData{
 		Data: data,
-		Meta: TableMeta{
+		Meta: MetaData{
 			Total:         bus.Meta.Total,
 			Page:          bus.Meta.Page,
 			PageSize:      bus.Meta.PageSize,
 			TotalPages:    bus.Meta.TotalPages,
 			ExecutionTime: bus.Meta.ExecutionTime,
+			Columns:       toAppColumnMetadata(bus.Meta.Columns),
+			Relationships: toAppRelationships(bus.Meta.Relationships),
+			Error:         bus.Meta.Error,
 		},
 	}
+}
+
+// toAppColumnMetadata - Direct 1:1 field mapping
+func toAppColumnMetadata(busColumns []tablebuilder.ColumnMetadata) []ColumnMetadata {
+	if busColumns == nil {
+		return nil
+	}
+
+	appColumns := make([]ColumnMetadata, len(busColumns))
+	for i, col := range busColumns {
+		appColumns[i] = ColumnMetadata{
+			Field:        col.Field,
+			DisplayName:  col.DisplayName,
+			DatabaseName: col.DatabaseName,
+			Type:         col.Type,
+			SourceTable:  col.SourceTable,
+			SourceColumn: col.SourceColumn,
+			Hidden:       col.Hidden,
+			IsPrimaryKey: col.IsPrimaryKey,
+			IsForeignKey: col.IsForeignKey,
+			RelatedTable: col.RelatedTable,
+			Header:       col.Header,
+			Width:        col.Width,
+			Align:        col.Align,
+			Sortable:     col.Sortable,
+			Filterable:   col.Filterable,
+			Format:       toAppFormatConfig(col.Format),
+			Editable:     toAppEditableConfig(col.Editable),
+			Link:         toAppLinkConfig(col.Link),
+		}
+	}
+	return appColumns
+}
+
+// toAppFormatConfig - Direct 1:1 field mapping
+func toAppFormatConfig(bus *tablebuilder.FormatConfig) *FormatConfig {
+	if bus == nil {
+		return nil
+	}
+	return &FormatConfig{
+		Type:      bus.Type,
+		Precision: bus.Precision,
+		Currency:  bus.Currency,
+		Format:    bus.Format,
+	}
+}
+
+// toAppEditableConfig - Direct 1:1 field mapping
+func toAppEditableConfig(bus *tablebuilder.EditableConfig) *EditableConfig {
+	if bus == nil {
+		return nil
+	}
+	return &EditableConfig{
+		Type:        bus.Type,
+		Placeholder: bus.Placeholder,
+	}
+}
+
+// toAppLinkConfig - Direct 1:1 field mapping
+func toAppLinkConfig(bus *tablebuilder.LinkConfig) *LinkConfig {
+	if bus == nil {
+		return nil
+	}
+	return &LinkConfig{
+		URL:   bus.URL,
+		Label: bus.Label,
+	}
+}
+
+// toAppRelationships - Direct 1:1 field mapping
+func toAppRelationships(busRels []tablebuilder.RelationshipInfo) []RelationshipInfo {
+	if busRels == nil {
+		return nil
+	}
+
+	appRels := make([]RelationshipInfo, len(busRels))
+	for i, rel := range busRels {
+		appRels[i] = RelationshipInfo{
+			FromTable:  rel.FromTable,
+			FromColumn: rel.FromColumn,
+			ToTable:    rel.ToTable,
+			ToColumn:   rel.ToColumn,
+			Type:       rel.Type,
+		}
+	}
+	return appRels
 }
