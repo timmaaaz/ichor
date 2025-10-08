@@ -16,7 +16,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[1].ItemID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[1].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
@@ -35,7 +35,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &inventoryitemapp.InventoryItem{},
 			ExpResp: &inventoryitemapp.InventoryItem{
-				ItemID:                sd.InventoryItems[1].ItemID,
+				ID:                    sd.InventoryItems[1].ID,
 				ProductID:             sd.Products[1].ProductID,
 				LocationID:            sd.InventoryLocations[0].LocationID,
 				Quantity:              "10",
@@ -68,7 +68,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "malformed-location-uuid",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ItemID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -84,7 +84,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "malformed-product-uuid",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ItemID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
@@ -117,7 +117,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ItemID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ID),
 			Token:      "&nbsp",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -129,7 +129,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "badsig",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ItemID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ID),
 			Token:      sd.Users[0].Token + "A",
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -141,7 +141,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "roleadminonly",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ItemID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
@@ -177,7 +177,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "location-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ItemID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,
@@ -192,7 +192,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "product-id-dne-as-fk",
-			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ItemID),
+			URL:        fmt.Sprintf("/v1/inventory/inventory-items/%s", sd.InventoryItems[0].ID),
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPut,
 			StatusCode: http.StatusConflict,

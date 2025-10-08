@@ -60,7 +60,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Region], 
 		return query.Result[Region]{}, errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(toAppRegions(regions), total, page), nil
+	return query.NewResult(ToAppRegions(regions), total, page), nil
 }
 
 // QueryByID retrieves a single region based on the region ID.
@@ -70,5 +70,5 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (Region, error) {
 		return Region{}, errs.Newf(errs.Internal, "query: %s", err)
 	}
 
-	return toAppRegion(region), nil
+	return ToAppRegion(region), nil
 }

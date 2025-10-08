@@ -8,7 +8,7 @@ import (
 )
 
 type inventoryItem struct {
-	ItemID                uuid.UUID `db:"id"`
+	ID                    uuid.UUID `db:"id"`
 	ProductID             uuid.UUID `db:"product_id"`
 	LocationID            uuid.UUID `db:"location_id"`
 	Quantity              int       `db:"quantity"`
@@ -26,7 +26,7 @@ type inventoryItem struct {
 
 func toBusInventoryItem(db inventoryItem) inventoryitembus.InventoryItem {
 	return inventoryitembus.InventoryItem{
-		ItemID:                db.ItemID,
+		ID:                    db.ID,
 		ProductID:             db.ProductID,
 		LocationID:            db.LocationID,
 		Quantity:              db.Quantity,
@@ -54,7 +54,7 @@ func toBusInventoryItems(dbs []inventoryItem) []inventoryitembus.InventoryItem {
 
 func toDBInventoryItem(bus inventoryitembus.InventoryItem) inventoryItem {
 	return inventoryItem{
-		ItemID:                bus.ItemID,
+		ID:                    bus.ID,
 		ProductID:             bus.ProductID,
 		LocationID:            bus.LocationID,
 		Quantity:              bus.Quantity,

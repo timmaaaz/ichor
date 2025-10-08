@@ -158,7 +158,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	return apitest.SeedData{
 		Admins:       []apitest.User{tu2},
 		Users:        []apitest.User{tu1},
-		ContactInfos: contactinfosapp.ToAppContactInfosSlice(contacts),
+		ContactInfos: contactinfosapp.ToAppContactInfos(contacts),
 		Suppliers:    supplierapp.ToAppSuppliers(suppliers),
 	}, nil
 }

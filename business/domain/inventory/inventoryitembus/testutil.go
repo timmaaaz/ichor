@@ -47,7 +47,7 @@ func TestSeedInventoryItems(ctx context.Context, n int, locationIDs, productIDs 
 	}
 
 	sort.Slice(items, func(i, j int) bool {
-		return items[i].ItemID.String() < items[j].ItemID.String()
+		return items[i].ID.String() < items[j].ID.String()
 	})
 
 	return items, nil

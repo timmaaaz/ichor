@@ -13,7 +13,7 @@ func parseQueryParams(r *http.Request) (inventoryitemapp.QueryParams, error) {
 		Page:                  values.Get("page"),
 		Rows:                  values.Get("rows"),
 		OrderBy:               values.Get("orderBy"),
-		ItemID:                values.Get("item_id"),
+		ID:                    values.Get("item_id"),
 		ProductID:             values.Get("product_id"),
 		LocationID:            values.Get("location_id"),
 		Quantity:              values.Get("quantity"),

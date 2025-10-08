@@ -81,7 +81,7 @@ type AllocatedItem struct {
 	LocationID        uuid.UUID  `json:"location_id"`
 	RequestedQuantity int        `json:"requested_quantity"`
 	AllocatedQuantity int        `json:"allocated_quantity"`
-	InventoryItemID   uuid.UUID  `json:"inventory_item_id"`
+	InventoryID       uuid.UUID  `json:"inventory_item_id"`
 	AllocationMode    string     `json:"allocation_mode"`
 	ExpiresAt         *time.Time `json:"expires_at,omitempty"` // For reservations
 }
@@ -520,7 +520,7 @@ func (h *AllocateInventoryHandler) allocateItem(
 				LocationID:        invItem.LocationID,
 				RequestedQuantity: item.Quantity,
 				AllocatedQuantity: 0,
-				InventoryItemID:   invItem.ItemID,
+				InventoryID:       invItem.ID,
 				AllocationMode:    config.AllocationMode,
 			}
 

@@ -33,6 +33,13 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
+/*
+TODOs
+- add a check that any entry in "ids" is a legitimate table name, easy to miss especially with views
+- figure out aliases on views with doubled up names i.e. multiple "street_id" or something
+	- We'll need this for links
+*/
+
 func Test_TableBuilder(t *testing.T) {
 	t.Parallel()
 
@@ -40,15 +47,16 @@ func Test_TableBuilder(t *testing.T) {
 	log := logger.New(io.Discard, logger.LevelInfo, "ADMIN", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
 
 	store := tablebuilder.NewStore(log, db.DB)
-	sd, err := insertSeedData(db.BusDomain)
+	_, err := insertSeedData(db.BusDomain)
 	if err != nil {
 		t.Fatalf("failed to insert seed data: %v", err)
 	}
 
-	simpleExample(context.Background(), store)
+	// simpleExample(context.Background(), store)
+	// simpleExample2(context.Background(), store)
 	complexExample(context.Background(), store)
-	storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
-	paginationExample(context.Background(), store)
+	// storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
+	// paginationExample(context.Background(), store)
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -225,8 +233,105 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 	}, nil
 }
 
+func simpleExample2(ctx context.Context, store *tablebuilder.Store) {
+	config := &tablebuilder.Config{
+		Title:           "Current Orders and Associated data",
+		WidgetType:      "table",
+		Visualization:   "table",
+		PositionX:       0,
+		PositionY:       0,
+		Width:           6,
+		Height:          4,
+		RefreshInterval: 300,
+		RefreshMode:     "polling",
+		DataSource: []tablebuilder.DataSource{
+			{
+				Type:   "view",
+				Source: "orders_base",
+				Schema: "sales",
+				Select: tablebuilder.SelectConfig{
+					Columns: []tablebuilder.ColumnDefinition{
+						// orders table
+						{Name: "orders_id", TableColumn: "orders.id"},
+						{Name: "orders_number", Alias: "order_number", TableColumn: "orders.number"},
+						{Name: "orders_order_date", Alias: "order_date", TableColumn: "orders.order_date"},
+						{Name: "orders_due_date", Alias: "order_due_date", TableColumn: "orders.due_date"},
+						{Name: "orders_created_date", Alias: "order_created_date", TableColumn: "orders.created_date"},
+						{Name: "orders_updated_date", Alias: "order_updated_date", TableColumn: "orders.updated_date"},
+						{Name: "orders_fulfillment_status_id", Alias: "order_fulfillment_status_id", TableColumn: "orders.fulfillment_status_id"},
+						{Name: "orders_customer_id", Alias: "order_customer_id", TableColumn: "orders.customer_id"},
+
+						// customers table
+						{Name: "customers_id", Alias: "customer_id", TableColumn: "customers.id"},
+						{Name: "customers_contact_infos_id", Alias: "customer_contact_info_id", TableColumn: "customers.contact_id"},
+						{Name: "customers_delivery_address_id", Alias: "customer_delivery_address_id", TableColumn: "customers.delivery_address_id"},
+						{Name: "customers_notes", Alias: "customer_notes", TableColumn: "customers.notes"},
+						{Name: "customers_created_date", Alias: "customer_created_date", TableColumn: "customers.created_date"},
+						{Name: "customers_updated_date", Alias: "customer_updated_date", TableColumn: "customers.updated_date"},
+
+						// order_fulfillment_statuses table
+						{Name: "order_fulfillment_statuses_name", Alias: "fulfillment_status_name", TableColumn: "order_fulfillment_statuses.name"},
+						{Name: "order_fulfillment_statuses_description", Alias: "fulfillment_status_description", TableColumn: "order_fulfillment_statuses.description"},
+					},
+				},
+				Rows: 50,
+			},
+		},
+		VisualSettings: tablebuilder.VisualSettings{
+			Columns: map[string]tablebuilder.ColumnConfig{
+				"order_number": {
+					Name:       "order_number",
+					Header:     "Order #",
+					Width:      150,
+					Sortable:   true,
+					Filterable: true,
+				},
+				"order_date": {
+					Name:   "order_date",
+					Header: "Order Date",
+					Width:  120,
+					Format: &tablebuilder.FormatConfig{
+						Type:   "date",
+						Format: "2006-01-02",
+					},
+				},
+				"fulfillment_status_name": {
+					Name:   "fulfillment_status_name",
+					Header: "Status",
+					Width:  120,
+				},
+			},
+			ConditionalFormatting: []tablebuilder.ConditionalFormat{},
+		},
+		Permissions: tablebuilder.Permissions{
+			Roles:   []string{"admin", "sales"},
+			Actions: []string{"view", "export"},
+		},
+	}
+
+	params := tablebuilder.QueryParams{
+		Page: 1,
+		Rows: 10,
+	}
+
+	result, err := store.FetchTableData(ctx, config, params)
+	if err != nil {
+		log.Printf("Error fetching data: %v", err)
+		return
+	}
+
+	fmt.Printf("\n=== Simple Example 2: Orders View ===\n")
+
+	// fullJSON, _ := json.MarshalIndent(result, "", "  ")
+	// fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+
+	fmt.Printf("Returned %d rows\n\n", len(result.Data))
+
+	printResults(result)
+	printMetadata(result)
+}
+
 func simpleExample(ctx context.Context, store *tablebuilder.Store) {
-	// Simple configuration for querying inventory items
 	config := &tablebuilder.Config{
 		Title:           "Inventory Items",
 		WidgetType:      "table",
@@ -241,10 +346,11 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 			{
 				Type:   "query",
 				Source: "inventory_items",
+				Schema: "inventory",
 				Select: tablebuilder.SelectConfig{
 					Columns: []tablebuilder.ColumnDefinition{
 						{Name: "id", TableColumn: "inventory_items.id"},
-						{Name: "quantity", TableColumn: "inventory_items.quantity"},
+						{Name: "quantity", Alias: "current_stock", TableColumn: "inventory_items.quantity"},
 						{Name: "product_id", TableColumn: "inventory_items.product_id"},
 						{Name: "location_id", TableColumn: "inventory_items.location_id"},
 					},
@@ -262,15 +368,15 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 						Direction: "desc",
 					},
 				},
-				Limit: 10,
+				Rows: 10,
 			},
 		},
 		VisualSettings: tablebuilder.VisualSettings{
 			Columns: map[string]tablebuilder.ColumnConfig{
-				"quantity": {
-					Name:       "quantity",
-					Header:     "Quantity",
-					Width:      100,
+				"current_stock": {
+					Name:       "current_stock",
+					Header:     "Current Stock",
+					Width:      120,
 					Align:      "right",
 					Sortable:   true,
 					Filterable: true,
@@ -279,7 +385,26 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 						Precision: 0,
 					},
 				},
+				"product_id": {
+					Name:   "product_id",
+					Header: "Product",
+					Width:  200,
+					Link: &tablebuilder.LinkConfig{
+						URL:   "/products/{product_id}",
+						Label: "View Product",
+					},
+				},
+				"location_id": {
+					Name:   "location_id",
+					Header: "Location",
+					Width:  200,
+					Link: &tablebuilder.LinkConfig{
+						URL:   "/inventory/locations/{location_id}",
+						Label: "View Location",
+					},
+				},
 			},
+			ConditionalFormatting: []tablebuilder.ConditionalFormat{},
 		},
 		Permissions: tablebuilder.Permissions{
 			Roles:   []string{"admin", "inventory_manager"},
@@ -287,10 +412,9 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 		},
 	}
 
-	// Execute query
 	params := tablebuilder.QueryParams{
-		Page:  1,
-		Limit: 10,
+		Page: 1,
+		Rows: 10,
 	}
 
 	result, err := store.FetchTableData(ctx, config, params)
@@ -299,41 +423,48 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 		return
 	}
 
-	fmt.Printf("Simple query returned %d rows\n", len(result.Data))
-	printResults(result)
+	fmt.Printf("\n=== Simple Example: Inventory Items ===\n")
 
-	_ = 1
+	fullJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+
+	fmt.Printf("Returned %d rows\n\n", len(result.Data))
+
+	printResults(result)
+	printMetadata(result)
 }
 
 func complexExample(ctx context.Context, store *tablebuilder.Store) {
-	// Complex configuration matching the original TypeScript example
 	config := &tablebuilder.Config{
-		Title:           "Current Inventory at Warehouse A",
+		Title:           "Current Inventory with Products",
 		WidgetType:      "table",
 		Visualization:   "table",
 		PositionX:       0,
 		PositionY:       0,
-		Width:           6,
-		Height:          4,
+		Width:           12,
+		Height:          8,
 		RefreshInterval: 300,
 		RefreshMode:     "polling",
 		DataSource: []tablebuilder.DataSource{
 			{
 				Type:   "query",
 				Source: "inventory_items",
+				Schema: "inventory",
 				Select: tablebuilder.SelectConfig{
 					Columns: []tablebuilder.ColumnDefinition{
-						{Name: "id"},
+						{Name: "id", TableColumn: "inventory_items.id"},
 						{Name: "quantity", Alias: "current_quantity", TableColumn: "inventory_items.quantity"},
 						{Name: "reorder_point", TableColumn: "inventory_items.reorder_point"},
 						{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
 					},
 					ForeignTables: []tablebuilder.ForeignTable{
+
 						{
 							Table:            "products",
-							RelationshipFrom: "inventory_items.product_id", // CHANGED
-							RelationshipTo:   "products.id",                // CHANGED
-							JoinType:         "inner",                      // Optional, defaults to inner
+							Schema:           "products",
+							RelationshipFrom: "inventory_items.product_id",
+							RelationshipTo:   "products.id",
+							JoinType:         "inner",
 							Columns: []tablebuilder.ColumnDefinition{
 								{Name: "id", Alias: "product_id", TableColumn: "products.id"},
 								{Name: "name", Alias: "product_name", TableColumn: "products.name"},
@@ -346,6 +477,10 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 							Name:       "stock_status",
 							Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
 						},
+						{
+							Name:       "stock_percentage",
+							Expression: "(current_quantity / maximum_stock) * 100",
+						},
 					},
 				},
 				Filters: []tablebuilder.Filter{
@@ -355,7 +490,13 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 						Value:    0,
 					},
 				},
-				Limit: 50,
+				Sort: []tablebuilder.Sort{
+					{
+						Column:    "quantity",
+						Direction: "asc",
+					},
+				},
+				Rows: 50,
 			},
 		},
 		VisualSettings: tablebuilder.VisualSettings{
@@ -369,8 +510,8 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 				},
 				"current_quantity": {
 					Name:   "current_quantity",
-					Header: "Quantity",
-					Width:  100,
+					Header: "Current Stock",
+					Width:  120,
 					Align:  "right",
 					Format: &tablebuilder.FormatConfig{
 						Type:      "number",
@@ -383,6 +524,25 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 					Width:        100,
 					Align:        "center",
 					CellTemplate: "status",
+				},
+				"stock_percentage": {
+					Name:   "stock_percentage",
+					Header: "Capacity",
+					Width:  100,
+					Align:  "right",
+					Format: &tablebuilder.FormatConfig{
+						Type:      "percent",
+						Precision: 1,
+					},
+				},
+				"product_id": {
+					Name:   "product_id",
+					Header: "Product",
+					Width:  200,
+					Link: &tablebuilder.LinkConfig{
+						URL:   "/products/products/{product_id}",
+						Label: "View Product",
+					},
 				},
 			},
 			ConditionalFormatting: []tablebuilder.ConditionalFormat{
@@ -410,7 +570,10 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 		},
 	}
 
-	params := tablebuilder.QueryParams{}
+	params := tablebuilder.QueryParams{
+		Page: 1,
+		Rows: 10,
+	}
 
 	result, err := store.FetchTableData(ctx, config, params)
 	if err != nil {
@@ -418,12 +581,19 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 		return
 	}
 
-	fmt.Printf("Complex query returned %d rows\n", len(result.Data))
+	fmt.Printf("\n=== Complex Example: Inventory with Joins ===\n")
+
+	fullJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+
+	fmt.Printf("Returned %d rows\n\n", len(result.Data))
+
 	printResults(result)
+	printMetadata(result)
+	printRelationships(result)
 }
 
 func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configStore *tablebuilder.ConfigStore, sd unitest.SeedData) {
-	// Create a configuration to save
 	config := &tablebuilder.Config{
 		Title:           "Orders Dashboard",
 		WidgetType:      "table",
@@ -438,12 +608,13 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 			{
 				Type:   "view",
 				Source: "orders_base",
+				Schema: "sales",
 				Select: tablebuilder.SelectConfig{
 					Columns: []tablebuilder.ColumnDefinition{
-						{Name: "order_id", TableColumn: "orders.id"},
-						{Name: "order_number", TableColumn: "orders.order_number"},
-						{Name: "customer_name", TableColumn: "customers.name"},
-						{Name: "order_fulfillment_statuses_name", TableColumn: "order_fulfillment_statuses.name"},
+						{Name: "orders_id", Alias: "order_id", TableColumn: "orders.id"},
+						{Name: "orders_number", Alias: "order_number", TableColumn: "orders.number"},
+						{Name: "customers_name", Alias: "customer_name", TableColumn: "customers.name"},
+						{Name: "order_fulfillment_statuses_name", Alias: "status", TableColumn: "order_fulfillment_statuses.name"},
 					},
 				},
 				Filters: []tablebuilder.Filter{
@@ -463,6 +634,10 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 					Width:      150,
 					Sortable:   true,
 					Filterable: true,
+					Link: &tablebuilder.LinkConfig{
+						URL:   "/orders/{order_id}",
+						Label: "View Order",
+					},
 				},
 				"customer_name": {
 					Name:       "customer_name",
@@ -470,6 +645,11 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 					Width:      200,
 					Sortable:   true,
 					Filterable: true,
+				},
+				"status": {
+					Name:   "status",
+					Header: "Status",
+					Width:  120,
 				},
 			},
 		},
@@ -485,7 +665,8 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 		return
 	}
 
-	fmt.Printf("Saved configuration with ID: %s\n", stored.ID)
+	fmt.Printf("\n=== Stored Config Example ===\n")
+	fmt.Printf("Saved configuration with ID: %s\n\n", stored.ID)
 
 	// Load and use the configuration
 	loadedConfig, err := configStore.LoadConfig(ctx, stored.ID)
@@ -494,10 +675,9 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 		return
 	}
 
-	// Use the loaded configuration
 	params := tablebuilder.QueryParams{
-		Page:  1,
-		Limit: 25,
+		Page: 1,
+		Rows: 25,
 	}
 
 	result, err := store.FetchTableData(ctx, loadedConfig, params)
@@ -507,6 +687,7 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 	}
 
 	printResults(result)
+	printMetadata(result)
 }
 
 func paginationExample(ctx context.Context, store *tablebuilder.Store) {
@@ -524,12 +705,13 @@ func paginationExample(ctx context.Context, store *tablebuilder.Store) {
 			{
 				Type:   "query",
 				Source: "products",
+				Schema: "products",
 				Select: tablebuilder.SelectConfig{
 					Columns: []tablebuilder.ColumnDefinition{
-						{Name: "id"},
-						{Name: "name"},
-						{Name: "sku"},
-						{Name: "is_active"},
+						{Name: "id", TableColumn: "products.id"},
+						{Name: "name", TableColumn: "products.name"},
+						{Name: "sku", TableColumn: "products.sku"},
+						{Name: "is_active", TableColumn: "products.is_active"},
 					},
 				},
 			},
@@ -547,23 +729,20 @@ func paginationExample(ctx context.Context, store *tablebuilder.Store) {
 		},
 	}
 
-	// Use with page.Page
-	pg := page.MustParse("1", "10")
+	fmt.Printf("\n=== Pagination Example ===\n")
 
+	// Page 1
+	pg := page.MustParse("1", "10")
 	result, err := store.QueryByPage(ctx, config, pg)
 	if err != nil {
 		log.Printf("Error fetching paginated data: %v", err)
 		return
 	}
 
+	fmt.Printf("Page 1 of %d (Total records: %d)\n", result.Meta.TotalPages, result.Meta.Total)
 	printResults(result)
 
-	fmt.Printf("Page %d of %d (Total records: %d)\n",
-		result.Meta.Page,
-		result.Meta.TotalPages,
-		result.Meta.Total)
-
-	// Get next page
+	// Page 2
 	pg = page.MustParse("2", "10")
 	result, err = store.QueryByPage(ctx, config, pg)
 	if err != nil {
@@ -571,20 +750,70 @@ func paginationExample(ctx context.Context, store *tablebuilder.Store) {
 		return
 	}
 
+	fmt.Printf("\nPage 2 of %d (Total records: %d)\n", result.Meta.TotalPages, result.Meta.Total)
 	printResults(result)
 }
 
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
 func printResults(result *tablebuilder.TableData) {
-	// Pretty print first few results
+	fmt.Println("--- Data Rows ---")
 	for i, row := range result.Data {
 		if i >= 3 {
-			fmt.Println("...")
+			fmt.Printf("... and %d more rows\n", len(result.Data)-3)
 			break
 		}
 
 		jsonData, _ := json.MarshalIndent(row, "", "  ")
 		fmt.Printf("Row %d: %s\n", i+1, string(jsonData))
 	}
+	fmt.Printf("\nExecution time: %dms\n", result.Meta.ExecutionTime)
+}
 
-	fmt.Printf("Execution time: %dms\n", result.Meta.ExecutionTime)
+func printMetadata(result *tablebuilder.TableData) {
+	if len(result.Meta.Columns) == 0 {
+		return
+	}
+
+	fmt.Println("\n--- Column Metadata ---")
+	for _, col := range result.Meta.Columns {
+		fmt.Printf("Field: %-25s | Display: %-20s | DB: %-20s | Type: %-10s",
+			col.Field,
+			col.DisplayName,
+			col.DatabaseName,
+			col.Type,
+		)
+
+		if col.SourceTable != "" {
+			fmt.Printf(" | Source: %s.%s", col.SourceTable, col.SourceColumn)
+		}
+
+		if col.IsPrimaryKey {
+			fmt.Printf(" [PK]")
+		}
+		if col.IsForeignKey {
+			fmt.Printf(" [FK->%s]", col.RelatedTable)
+		}
+
+		fmt.Println()
+	}
+}
+
+func printRelationships(result *tablebuilder.TableData) {
+	if len(result.Meta.Relationships) == 0 {
+		return
+	}
+
+	fmt.Println("\n--- Relationships ---")
+	for _, rel := range result.Meta.Relationships {
+		fmt.Printf("%s.%s -> %s.%s (%s)\n",
+			rel.FromTable,
+			rel.FromColumn,
+			rel.ToTable,
+			rel.ToColumn,
+			rel.Type,
+		)
+	}
 }

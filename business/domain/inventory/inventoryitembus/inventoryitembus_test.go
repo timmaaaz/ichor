@@ -248,7 +248,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				expResp := exp.(inventoryitembus.InventoryItem)
-				expResp.ItemID = gotResp.ItemID
+				expResp.ID = gotResp.ID
 				expResp.CreatedDate = gotResp.CreatedDate
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
@@ -263,7 +263,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Update",
 			ExpResp: inventoryitembus.InventoryItem{
-				ItemID:                sd.InventoryItems[0].ItemID,
+				ID:                    sd.InventoryItems[0].ID,
 				LocationID:            sd.InventoryLocations[0].LocationID,
 				ProductID:             sd.Products[0].ProductID,
 				Quantity:              20,
@@ -303,7 +303,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				expResp := exp.(inventoryitembus.InventoryItem)
-				expResp.ItemID = gotResp.ItemID
+				expResp.ID = gotResp.ID
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)

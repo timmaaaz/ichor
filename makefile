@@ -227,6 +227,13 @@ dev-status-all:
 dev-status:
 	watch -n 2 kubectl get pods -o wide --all-namespaces
 
+dev-bounce:
+	make dev-down
+	make dev-up
+	make dev-update-apply
+	make migrate
+	make seed-frontend
+
 # ------------------------------------------------------------------------------
 
 dev-load:
@@ -563,6 +570,56 @@ admin-gui-start-build: admin-gui-build
 	pnpm -C ${ADMIN_FRONTEND_PREFIX} run preview
 
 admin-gui-run: write-token-to-env admin-gui-start-build
+
+# ==============================================================================
+# Auth stuff
+# Add to your Makefile
+
+.PHONY: test-oauth-dev
+test-oauth-dev:
+	@echo "Testing Development OAuth Flow..."
+	@rm -f .oauth-cookies.txt .oauth-response.txt
+	@echo "Step 1: Initiating OAuth flow..."
+	@curl -s -c .oauth-cookies.txt -I http://localhost:3000/api/auth/development > .oauth-response.txt
+	@STATE=$$(grep -i "^Location:" .oauth-response.txt | sed -n 's/.*state=\([^&]*\).*/\1/p' | tr -d '\r\n'); \
+	if [ -z "$$STATE" ]; then \
+		echo "Error: Could not extract state from response"; \
+		cat .oauth-response.txt; \
+		exit 1; \
+	fi; \
+	echo "State extracted: $$STATE"; \
+	echo "Step 2: Completing OAuth callback..."; \
+	RESPONSE=$$(curl -s -b .oauth-cookies.txt -I "http://localhost:3000/api/auth/development/callback?state=$$STATE&email=test@example.com&name=Test%20User&role=ADMIN"); \
+	echo "$$RESPONSE" | grep -i "^Location:" | sed 's/Location: /Final redirect: /'; \
+	TOKEN=$$(echo "$$RESPONSE" | grep -i "^Location:" | sed -n 's/.*token=\(.*\)/\1/p' | tr -d '\r\n'); \
+	if [ -n "$$TOKEN" ]; then \
+		echo "Token received: $${TOKEN:0:50}..."; \
+		echo "Step 3: Testing token with API..."; \
+		curl -s -H "Authorization: Bearer $$TOKEN" http://localhost:3000/v1/readiness | jq . || echo "API test response: $$?"; \
+	else \
+		echo "Error: No token received"; \
+		echo "$$RESPONSE"; \
+	fi
+	@rm -f .oauth-cookies.txt .oauth-response.txt
+
+# Alternative: Test with custom user data
+.PHONY: test-oauth-admin
+test-oauth-admin:
+	@echo "Testing OAuth with Admin User..."
+	@rm -f .oauth-cookies.txt
+	@STATE=$$(curl -s -c .oauth-cookies.txt -I http://localhost:3000/api/auth/development | \
+		grep -i "^Location:" | sed -n 's/.*state=\([^&]*\).*/\1/p' | tr -d '\r\n'); \
+	curl -s -b .oauth-cookies.txt -I \
+		"http://localhost:3000/api/auth/development/callback?state=$$STATE&email=admin@test.com&name=Admin&role=ADMIN" | \
+		grep -i "^Location:" | sed 's/Location: /Token URL: /'
+	@rm -f .oauth-cookies.txt
+
+# Test Google OAuth (if configured)
+.PHONY: test-oauth-google
+test-oauth-google:
+	@echo "Initiating Google OAuth flow..."
+	@echo "Opening browser to: http://localhost:3000/api/auth/google"
+	@open http://localhost:3000/api/auth/google || xdg-open http://localhost:3000/api/auth/google
 
 # ==============================================================================
 # Help command

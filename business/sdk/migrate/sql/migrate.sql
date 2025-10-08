@@ -994,21 +994,22 @@ ORDER BY tc.updated_date DESC;
 
 CREATE OR REPLACE VIEW sales.orders_base AS
 SELECT
-   o.id AS order_id,
-   o.number AS order_number,
-   o.created_date AS order_order_date,
-   o.due_date AS order_due_date,
-   o.created_date AS order_created_date,
-   o.updated_date AS order_updated_date,
-   o.order_fulfillment_status_id AS order_fulfillment_status_id,
-   o.customer_id AS order_customer_id,
+   o.id AS orders_id,
+   o.number AS orders_number,
+   o.created_date AS orders_order_date,
+   o.due_date AS orders_due_date,
+   o.created_date AS orders_created_date,
+   o.updated_date AS orders_updated_date,
+   o.order_fulfillment_status_id AS orders_fulfillment_status_id,
+   o.customer_id AS orders_customer_id,
 
-   c.name AS customer_name,
-   c.contact_id AS customer_contact_id,
-   c.delivery_address_id AS customer_delivery_address_id,
-   c.notes AS customer_notes,
-   c.created_date AS customer_created_date,
-   c.updated_date AS customer_updated_date,
+   c.id AS customers_id,
+   c.name AS customers_name,
+   c.contact_id AS customers_contact_infos_id,
+   c.delivery_address_id AS customers_delivery_address_id,
+   c.notes AS customers_notes,
+   c.created_date AS customers_created_date,
+   c.updated_date AS customers_updated_date,
 
    ofs.name AS order_fulfillment_statuses_name,
    ofs.description AS order_fulfillment_statuses_description

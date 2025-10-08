@@ -40,8 +40,8 @@ func (api *api) update(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	inventoryItemID := web.Param(r, "item_id")
-	parsed, err := uuid.Parse(inventoryItemID)
+	inventoryID := web.Param(r, "item_id")
+	parsed, err := uuid.Parse(inventoryID)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}
@@ -55,8 +55,8 @@ func (api *api) update(ctx context.Context, r *http.Request) web.Encoder {
 }
 
 func (api *api) delete(ctx context.Context, r *http.Request) web.Encoder {
-	inventoryItemID := web.Param(r, "item_id")
-	parsed, err := uuid.Parse(inventoryItemID)
+	inventoryID := web.Param(r, "item_id")
+	parsed, err := uuid.Parse(inventoryID)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}
@@ -83,8 +83,8 @@ func (api *api) query(ctx context.Context, r *http.Request) web.Encoder {
 }
 
 func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
-	inventoryItemID := web.Param(r, "item_id")
-	parsed, err := uuid.Parse(inventoryItemID)
+	inventoryID := web.Param(r, "item_id")
+	parsed, err := uuid.Parse(inventoryID)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}

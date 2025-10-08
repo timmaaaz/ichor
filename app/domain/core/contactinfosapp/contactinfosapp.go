@@ -49,7 +49,7 @@ func (a *App) Create(ctx context.Context, app NewContactInfos) (ContactInfos, er
 		return ContactInfos{}, errs.Newf(errs.Internal, "create:  contact info[%+v]: %s", ass, err)
 	}
 
-	return ToAppContactInfos(ass), err
+	return ToAppContactInfo(ass), err
 }
 
 // Update updates an existing  contact info.
@@ -72,7 +72,7 @@ func (a *App) Update(ctx context.Context, app UpdateContactInfos, id uuid.UUID) 
 		return ContactInfos{}, errs.Newf(errs.Internal, "update:  contact info[%+v]: %s", contactInfos, err)
 	}
 
-	return ToAppContactInfos(contactInfos), nil
+	return ToAppContactInfo(contactInfos), nil
 }
 
 // Delete removes an existing  contact info.
@@ -117,7 +117,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ContactIn
 		return query.Result[ContactInfos]{}, errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(ToAppContactInfosSlice(contactInfoss), total, page), nil
+	return query.NewResult(ToAppContactInfos(contactInfoss), total, page), nil
 }
 
 // QueryByID retrieves a single contact info by its id.
@@ -127,5 +127,5 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (ContactInfos, error)
 		return ContactInfos{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
-	return ToAppContactInfos(contactInfos), nil
+	return ToAppContactInfo(contactInfos), nil
 }

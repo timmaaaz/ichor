@@ -10,8 +10,8 @@ import (
 func applyFilter(filter inventoryitembus.QueryFilter, data map[string]interface{}, buf *bytes.Buffer) {
 	var wc []string
 
-	if filter.ItemID != nil {
-		data["id"] = *filter.ItemID
+	if filter.ID != nil {
+		data["id"] = *filter.ID
 		wc = append(wc, "id = :id")
 	}
 

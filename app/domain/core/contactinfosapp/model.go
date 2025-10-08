@@ -51,7 +51,7 @@ func (app ContactInfos) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func ToAppContactInfos(bus contactinfosbus.ContactInfos) ContactInfos {
+func ToAppContactInfo(bus contactinfosbus.ContactInfos) ContactInfos {
 	return ContactInfos{
 		ID:                   bus.ID.String(),
 		FirstName:            bus.FirstName,
@@ -69,10 +69,10 @@ func ToAppContactInfos(bus contactinfosbus.ContactInfos) ContactInfos {
 	}
 }
 
-func ToAppContactInfosSlice(bus []contactinfosbus.ContactInfos) []ContactInfos {
+func ToAppContactInfos(bus []contactinfosbus.ContactInfos) []ContactInfos {
 	app := make([]ContactInfos, len(bus))
 	for i, v := range bus {
-		app[i] = ToAppContactInfos(v)
+		app[i] = ToAppContactInfo(v)
 	}
 	return app
 }

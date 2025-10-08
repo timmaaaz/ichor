@@ -15,7 +15,7 @@ type QueryParams struct {
 	Rows    string
 	OrderBy string
 
-	ItemID                string
+	ID                    string
 	ProductID             string
 	LocationID            string
 	Quantity              string
@@ -32,7 +32,7 @@ type QueryParams struct {
 }
 
 type InventoryItem struct {
-	ItemID                string `json:"id"`
+	ID                    string `json:"id"`
 	ProductID             string `json:"product_id"`
 	LocationID            string `json:"location_id"`
 	Quantity              string `json:"quantity"`
@@ -55,7 +55,7 @@ func (app InventoryItem) Encode() ([]byte, string, error) {
 
 func ToAppInventoryItem(bus inventoryitembus.InventoryItem) InventoryItem {
 	return InventoryItem{
-		ItemID:                bus.ItemID.String(),
+		ID:                    bus.ID.String(),
 		ProductID:             bus.ProductID.String(),
 		LocationID:            bus.LocationID.String(),
 		Quantity:              fmt.Sprintf("%d", bus.Quantity),

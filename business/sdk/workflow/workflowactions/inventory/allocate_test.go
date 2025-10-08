@@ -383,7 +383,7 @@ func executeBasicAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocate
 			}
 
 			// Verify inventory was actually updated
-			updatedItem, err := busDomain.InventoryItem.QueryByID(ctx, sd.InventoryItems[0].ItemID)
+			updatedItem, err := busDomain.InventoryItem.QueryByID(ctx, sd.InventoryItems[0].ID)
 			if err != nil {
 				return fmt.Errorf("failed to query updated inventory: %w", err)
 			}
@@ -581,7 +581,7 @@ func testReservationMode(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocateSee
 			}
 
 			// Check that reserved quantity increased
-			updatedItem, err := busDomain.InventoryItem.QueryByID(ctx, sd.InventoryItems[0].ItemID)
+			updatedItem, err := busDomain.InventoryItem.QueryByID(ctx, sd.InventoryItems[0].ID)
 			if err != nil {
 				return err
 			}

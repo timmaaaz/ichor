@@ -34,6 +34,7 @@ type Config struct {
 type DataSource struct {
 	Type         string         `json:"type"`   // "query", "view", "viewcount", "rpc"
 	Source       string         `json:"source"` // Table/view/function name
+	Schema       string         `json:"schema,omitempty"`
 	Select       SelectConfig   `json:"select"`
 	Args         map[string]any `json:"args,omitempty"`
 	SelectBy     string         `json:"select_by,omitempty"`
@@ -41,7 +42,7 @@ type DataSource struct {
 	Joins        []Join         `json:"joins,omitempty"`
 	Filters      []Filter       `json:"filters,omitempty"`
 	Sort         []Sort         `json:"sort,omitempty"`
-	Limit        int            `json:"limit,omitempty"`
+	Rows         int            `json:"rows,omitempty"`
 }
 
 // SelectConfig defines what columns to select
@@ -60,8 +61,8 @@ type ColumnDefinition struct {
 
 // ForeignTable represents a related table configuration
 type ForeignTable struct {
-	Table string `json:"table"`
-	// Relationship          string             `json:"relationship"`
+	Table                 string             `json:"table"`
+	Schema                string             `json:"schema,omitempty"` // Optional, defaults to public
 	RelationshipFrom      string             `json:"relationship_from"`
 	RelationshipTo        string             `json:"relationship_to"`
 	JoinType              string             `json:"join_type,omitempty"` // inner, left, right, full
@@ -78,9 +79,10 @@ type ComputedColumn struct {
 
 // Join represents a table join
 type Join struct {
-	Table string `json:"table"`
-	Type  string `json:"type"` // inner, left, right, full
-	On    string `json:"on"`
+	Table  string `json:"table"`
+	Schema string `json:"schema,omitempty"` // Optional, defaults to public
+	Type   string `json:"type"`             // inner, left, right, full
+	On     string `json:"on"`
 }
 
 // Filter represents a query filter
@@ -190,8 +192,6 @@ type Permissions struct {
 // =============================================================================
 // Result Types
 // =============================================================================
-
-// TableData represents the result of a table query
 type TableData struct {
 	Data []TableRow `json:"data"`
 	Meta MetaData   `json:"meta"`
@@ -202,14 +202,52 @@ type TableRow map[string]any
 
 // MetaData contains metadata about the query result
 type MetaData struct {
-	Total         int               `json:"total"`
-	Config        *Config           `json:"config,omitempty"`
-	AliasMap      map[string]string `json:"alias_map,omitempty"`
-	Error         string            `json:"error,omitempty"`
-	ExecutionTime int64             `json:"execution_time,omitempty"` // milliseconds
-	Page          int               `json:"page,omitempty"`
-	PageSize      int               `json:"page_size,omitempty"`
-	TotalPages    int               `json:"total_pages,omitempty"`
+	Total         int   `json:"total"`
+	Page          int   `json:"page,omitempty"`
+	PageSize      int   `json:"page_size,omitempty"`
+	TotalPages    int   `json:"total_pages,omitempty"`
+	ExecutionTime int64 `json:"execution_time,omitempty"` // milliseconds
+
+	Columns       []ColumnMetadata   `json:"columns,omitempty"`
+	Relationships []RelationshipInfo `json:"relationships,omitempty"`
+
+	Error string `json:"error,omitempty"`
+}
+
+type ColumnMetadata struct {
+	// Core identification
+	Field        string `json:"field"`         // Key in data row (uses alias if present)
+	DisplayName  string `json:"display_name"`  // What user sees (header or alias or name)
+	DatabaseName string `json:"database_name"` // Original column name in DB
+
+	// Type and source
+	Type         string `json:"type"`
+	SourceTable  string `json:"source_table,omitempty"`
+	SourceColumn string `json:"source_column,omitempty"`
+	Hidden       bool   `json:"hidden,omitempty"`
+
+	// Flags
+	IsPrimaryKey bool   `json:"is_primary_key,omitempty"`
+	IsForeignKey bool   `json:"is_foreign_key,omitempty"`
+	RelatedTable string `json:"related_table,omitempty"`
+
+	// Visual settings (override DisplayName if present)
+	Header     string          `json:"header,omitempty"`
+	Width      int             `json:"width,omitempty"`
+	Align      string          `json:"align,omitempty"`
+	Sortable   bool            `json:"sortable,omitempty"`
+	Filterable bool            `json:"filterable,omitempty"`
+	Format     *FormatConfig   `json:"format,omitempty"`
+	Editable   *EditableConfig `json:"editable,omitempty"`
+	Link       *LinkConfig     `json:"link,omitempty"`
+}
+
+type RelationshipInfo struct {
+	FromTable  string `json:"from_table"`
+	FromColumn string `json:"from_column"`
+	ToTable    string `json:"to_table"`
+	ToColumn   string `json:"to_column"`
+	Type       string `json:"type"` // "one-to-one", "one-to-many", "many-to-one"
 }
 
 // =============================================================================
@@ -221,7 +259,7 @@ type QueryParams struct {
 	Filters []Filter       `json:"filters,omitempty"`
 	Sort    []Sort         `json:"sort,omitempty"`
 	Page    int            `json:"page,omitempty"`
-	Limit   int            `json:"limit,omitempty"`
+	Rows    int            `json:"rows,omitempty"`
 	Dynamic map[string]any `json:"dynamic,omitempty"` // Dynamic filter values
 }
 

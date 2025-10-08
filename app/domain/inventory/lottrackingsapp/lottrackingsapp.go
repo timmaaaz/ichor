@@ -49,7 +49,7 @@ func (a *App) Create(ctx context.Context, app NewLotTrackings) (LotTrackings, er
 		return LotTrackings{}, err
 	}
 
-	return ToAppLotTrackings(lt), nil
+	return ToAppLotTracking(lt), nil
 }
 
 func (a *App) Update(ctx context.Context, app UpdateLotTrackings, id uuid.UUID) (LotTrackings, error) {
@@ -77,7 +77,7 @@ func (a *App) Update(ctx context.Context, app UpdateLotTrackings, id uuid.UUID) 
 		return LotTrackings{}, err
 	}
 
-	return ToAppLotTrackings(lotTrackings), nil
+	return ToAppLotTracking(lotTrackings), nil
 }
 
 func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
@@ -123,7 +123,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[LotTracki
 		return query.Result[LotTrackings]{}, errs.Newf(errs.Internal, "count %v", err)
 	}
 
-	return query.NewResult(ToAppLotTrackingss(lts), total, page), nil
+	return query.NewResult(ToAppLotTrackings(lts), total, page), nil
 }
 
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (LotTrackings, error) {
@@ -135,5 +135,5 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (LotTrackings, error)
 		return LotTrackings{}, err
 	}
 
-	return ToAppLotTrackings(lt), nil
+	return ToAppLotTracking(lt), nil
 }

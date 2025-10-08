@@ -7,7 +7,7 @@ import (
 )
 
 type InventoryItem struct {
-	ItemID                uuid.UUID
+	ID                    uuid.UUID
 	ProductID             uuid.UUID
 	LocationID            uuid.UUID
 	Quantity              int

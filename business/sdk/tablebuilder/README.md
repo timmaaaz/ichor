@@ -85,6 +85,14 @@ JSON Config → Validation → Query Building → Execution → Transformation �
 - **`viewcount`** - Count queries for related data
 - **`rpc`** - Stored procedure/function calls
 
+### views and fks
+
+fields
+value: obv value
+tableColumn: should contain the reference for updating the value
+
+- for views we always have every table w/ a primary identifier <name>\_id so for orders its orders_id
+
 ## Basic Usage
 
 ### Simple Query Example

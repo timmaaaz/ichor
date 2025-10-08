@@ -23,8 +23,16 @@ func NewQueryBuilder() *QueryBuilder {
 
 // BuildQuery builds a SQL query from a data source configuration
 func (qb *QueryBuilder) BuildQuery(ds *DataSource, params QueryParams, isPrimary bool) (string, map[string]interface{}, error) {
+
+	var from string
+	if ds.Schema != "" {
+		from = strings.Join([]string{ds.Schema, ds.Source}, ".")
+	} else {
+		from = ds.Source
+	}
+
 	// Start with the base table/view
-	query := qb.dialect.From(ds.Source)
+	query := qb.dialect.From(from)
 
 	// Build select clause - PASS THE BASE TABLE NAME
 	selectCols := qb.buildSelectColumns(ds.Select, ds.Source) // <-- Added ds.Source parameter
@@ -46,16 +54,16 @@ func (qb *QueryBuilder) BuildQuery(ds *DataSource, params QueryParams, isPrimary
 
 	// Apply pagination (only for primary data source)
 	if isPrimary && params.Page > 0 {
-		limit := params.Limit
-		if limit == 0 && ds.Limit > 0 {
-			limit = ds.Limit
+		limit := params.Rows
+		if limit == 0 && ds.Rows > 0 {
+			limit = ds.Rows
 		}
 		if limit > 0 {
 			offset := (params.Page - 1) * limit
 			query = query.Limit(uint(limit)).Offset(uint(offset))
 		}
-	} else if ds.Limit > 0 {
-		query = query.Limit(uint(ds.Limit))
+	} else if ds.Rows > 0 {
+		query = query.Limit(uint(ds.Rows))
 	}
 
 	// Generate SQL
@@ -78,8 +86,14 @@ func (qb *QueryBuilder) BuildQuery(ds *DataSource, params QueryParams, isPrimary
 
 // BuildCountQuery builds a count query for pagination
 func (qb *QueryBuilder) BuildCountQuery(ds *DataSource, params QueryParams) (string, map[string]interface{}, error) {
-	// Start with the base table/view
-	query := qb.dialect.From(ds.Source)
+	var from string
+	if ds.Schema != "" {
+		from = strings.Join([]string{ds.Schema, ds.Source}, ".")
+	} else {
+		from = ds.Source
+	}
+
+	query := qb.dialect.From(from)
 
 	// Apply joins (if needed for filters)
 	query = qb.applyJoins(query, ds.Joins)
@@ -180,16 +194,23 @@ func (qb *QueryBuilder) applyForeignTableJoins(query *goqu.SelectDataset, foreig
 			joinCond = goqu.C(ft.RelationshipFrom).Eq(goqu.C(ft.RelationshipTo))
 		}
 
+		var joinTable exp.IdentifierExpression
+		if ft.Schema != "" {
+			joinTable = goqu.S(ft.Schema).Table(ft.Table)
+		} else {
+			joinTable = goqu.T(ft.Table)
+		}
+
 		// Apply the join based on type
 		switch strings.ToLower(ft.JoinType) {
 		case "left":
-			query = query.LeftJoin(goqu.T(ft.Table), goqu.On(joinCond))
+			query = query.LeftJoin(joinTable, goqu.On(joinCond))
 		case "right":
-			query = query.RightJoin(goqu.T(ft.Table), goqu.On(joinCond))
+			query = query.RightJoin(joinTable, goqu.On(joinCond))
 		case "full":
-			query = query.FullJoin(goqu.T(ft.Table), goqu.On(joinCond))
+			query = query.FullJoin(joinTable, goqu.On(joinCond))
 		default: // "inner" or empty
-			query = query.InnerJoin(goqu.T(ft.Table), goqu.On(joinCond))
+			query = query.InnerJoin(joinTable, goqu.On(joinCond))
 		}
 
 		// Recursively apply nested foreign table joins
@@ -204,7 +225,13 @@ func (qb *QueryBuilder) applyForeignTableJoins(query *goqu.SelectDataset, foreig
 // applyJoins applies join clauses to the query
 func (qb *QueryBuilder) applyJoins(query *goqu.SelectDataset, joins []Join) *goqu.SelectDataset {
 	for _, join := range joins {
-		joinTable := goqu.T(join.Table)
+
+		var joinTable exp.IdentifierExpression
+		if join.Schema != "" {
+			joinTable = goqu.S(join.Schema).Table(join.Table)
+		} else {
+			joinTable = goqu.T(join.Table)
+		}
 		joinExpr := qb.BuildJoinCondition(join.On)
 		joinCond := goqu.On(joinExpr) // Wrap with goqu.On()
 

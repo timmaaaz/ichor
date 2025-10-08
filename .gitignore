@@ -52,3 +52,8 @@ Thumbs.db
 # Code IDE
 .history
 .vscode
+
+# OAuth test files
+.oauth-cookies.txt
+.oauth-response.txt
+cookies.txt

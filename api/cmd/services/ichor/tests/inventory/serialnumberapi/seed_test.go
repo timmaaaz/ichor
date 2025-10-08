@@ -263,7 +263,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Users:              []apitest.User{tu1},
 		Products:           productapp.ToAppProducts(products),
 		InventoryLocations: inventorylocationapp.ToAppInventoryLocations(inventoryLocations),
-		LotTrackings:       lottrackingsapp.ToAppLotTrackingss(lotTrackings),
+		LotTrackings:       lottrackingsapp.ToAppLotTrackings(lotTrackings),
 		SerialNumbers:      serialnumberapp.ToAppSerialNumbers(serialNumbers),
 	}, nil
 }

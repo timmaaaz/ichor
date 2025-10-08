@@ -2,10 +2,10 @@ package inventoryitembus
 
 import "github.com/timmaaaz/ichor/business/sdk/order"
 
-var DefaultOrderBy = order.NewBy(OrderByItemID, order.ASC)
+var DefaultOrderBy = order.NewBy(OrderByID, order.ASC)
 
 const (
-	OrderByItemID                = "id"
+	OrderByID                    = "id"
 	OrderByProductID             = "product_id"
 	OrderByLocationID            = "location_id"
 	OrderByQuantity              = "quantity"
