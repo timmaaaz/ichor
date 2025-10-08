@@ -224,6 +224,7 @@ type ColumnMetadata struct {
 	Type         string `json:"type"`
 	SourceTable  string `json:"source_table,omitempty"`
 	SourceColumn string `json:"source_column,omitempty"`
+	SourceSchema string `json:"source_schema,omitempty"`
 	Hidden       bool   `json:"hidden,omitempty"`
 
 	// Flags

@@ -47,16 +47,16 @@ func Test_TableBuilder(t *testing.T) {
 	log := logger.New(io.Discard, logger.LevelInfo, "ADMIN", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
 
 	store := tablebuilder.NewStore(log, db.DB)
-	_, err := insertSeedData(db.BusDomain)
+	sd, err := insertSeedData(db.BusDomain)
 	if err != nil {
 		t.Fatalf("failed to insert seed data: %v", err)
 	}
 
-	// simpleExample(context.Background(), store)
-	// simpleExample2(context.Background(), store)
+	simpleExample(context.Background(), store)
+	simpleExample2(context.Background(), store)
 	complexExample(context.Background(), store)
-	// storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
-	// paginationExample(context.Background(), store)
+	storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
+	paginationExample(context.Background(), store)
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -322,13 +322,13 @@ func simpleExample2(ctx context.Context, store *tablebuilder.Store) {
 
 	fmt.Printf("\n=== Simple Example 2: Orders View ===\n")
 
-	// fullJSON, _ := json.MarshalIndent(result, "", "  ")
-	// fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+	fullJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
 
-	fmt.Printf("Returned %d rows\n\n", len(result.Data))
+	// fmt.Printf("Returned %d rows\n\n", len(result.Data))
 
-	printResults(result)
-	printMetadata(result)
+	// printResults(result)
+	// printMetadata(result)
 }
 
 func simpleExample(ctx context.Context, store *tablebuilder.Store) {
@@ -428,10 +428,10 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 	fullJSON, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
 
-	fmt.Printf("Returned %d rows\n\n", len(result.Data))
+	// fmt.Printf("Returned %d rows\n\n", len(result.Data))
 
-	printResults(result)
-	printMetadata(result)
+	// printResults(result)
+	// printMetadata(result)
 }
 
 func complexExample(ctx context.Context, store *tablebuilder.Store) {
@@ -586,11 +586,11 @@ func complexExample(ctx context.Context, store *tablebuilder.Store) {
 	fullJSON, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
 
-	fmt.Printf("Returned %d rows\n\n", len(result.Data))
+	// fmt.Printf("Returned %d rows\n\n", len(result.Data))
 
-	printResults(result)
-	printMetadata(result)
-	printRelationships(result)
+	// printResults(result)
+	// printMetadata(result)
+	// printRelationships(result)
 }
 
 func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configStore *tablebuilder.ConfigStore, sd unitest.SeedData) {
@@ -686,8 +686,11 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 		return
 	}
 
-	printResults(result)
-	printMetadata(result)
+	fullJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+
+	// printResults(result)
+	// printMetadata(result)
 }
 
 func paginationExample(ctx context.Context, store *tablebuilder.Store) {
@@ -739,8 +742,11 @@ func paginationExample(ctx context.Context, store *tablebuilder.Store) {
 		return
 	}
 
-	fmt.Printf("Page 1 of %d (Total records: %d)\n", result.Meta.TotalPages, result.Meta.Total)
-	printResults(result)
+	fullJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+
+	// fmt.Printf("Page 1 of %d (Total records: %d)\n", result.Meta.TotalPages, result.Meta.Total)
+	// printResults(result)
 
 	// Page 2
 	pg = page.MustParse("2", "10")
@@ -750,8 +756,11 @@ func paginationExample(ctx context.Context, store *tablebuilder.Store) {
 		return
 	}
 
-	fmt.Printf("\nPage 2 of %d (Total records: %d)\n", result.Meta.TotalPages, result.Meta.Total)
-	printResults(result)
+	// fmt.Printf("\nPage 2 of %d (Total records: %d)\n", result.Meta.TotalPages, result.Meta.Total)
+	// printResults(result)
+
+	fullJSON, _ = json.MarshalIndent(result, "", "  ")
+	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
 }
 
 // =============================================================================

@@ -283,68 +283,6 @@ func (s *Store) applyComputedColumns(data []TableRow, columns []ComputedColumn) 
 	return nil
 }
 
-// transformData transforms the data according to configuration
-// func (s *Store) transformData(data []TableRow, config *Config) []TableRow {
-// 	if len(config.DataSource) == 0 {
-// 		return data
-// 	}
-
-// 	transformed := make([]TableRow, 0, len(data))
-
-// 	for _, row := range data {
-// 		newRow := make(TableRow)
-
-// 		// Extract IDs
-// 		ids := make(map[string]any)
-
-// 		// Process each field
-// 		for key, value := range row {
-// 			// Check if this is an ID field
-// 			if isIDField(key) {
-// 				// Extract entity name and store in ids
-// 				entityName := extractEntityName(key)
-// 				ids[entityName] = value
-// 			} else {
-// 				// Regular field - check for table_column mapping
-// 				if col := findColumnByKey(config.DataSource[0].Select, key); col != nil {
-// 					if col.TableColumn != "" {
-// 						fieldData := map[string]any{
-// 							"value":       value,
-// 							"tableColumn": col.TableColumn,
-// 						}
-
-// 						// Include alias if it exists
-// 						if col.Alias != "" {
-// 							fieldData["alias"] = col.Alias
-// 						}
-
-// 						// Use alias as the key if it exists, otherwise use the original key
-// 						outputKey := key
-// 						if col.Alias != "" {
-// 							outputKey = col.Alias
-// 						}
-
-// 						newRow[outputKey] = fieldData
-// 					} else {
-// 						newRow[key] = value
-// 					}
-// 				} else {
-// 					newRow[key] = value
-// 				}
-// 			}
-// 		}
-
-// 		// Add ids
-// 		if len(ids) > 0 {
-// 			newRow["ids"] = ids
-// 		}
-
-// 		transformed = append(transformed, newRow)
-// 	}
-
-// 	return transformed
-// }
-
 // NEW: Build column metadata
 // In buildColumnMetadata, at the top:
 func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
@@ -360,6 +298,7 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			Field:        getFieldName(col),
 			DisplayName:  getDisplayName(col),
 			Type:         inferColumnType(col.Name),
+			SourceSchema: ds.Schema,
 		}
 
 		// Parse table_column for source info
@@ -445,6 +384,7 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 				Type:         inferColumnType(col.Name),
 				SourceTable:  ft.Table,
 				SourceColumn: col.Name,
+				SourceSchema: ft.Schema,
 			}
 
 			if col.TableColumn != "" {
