@@ -181,12 +181,12 @@ func toBusUpdateTableConfig(app UpdateTableConfig) (*tablebuilder.Config, error)
 type TableQuery struct {
 	Filters []FilterParam  `json:"filters" validate:"dive"`
 	Sort    []SortParam    `json:"sort" validate:"dive"`
-	Page    int            `json:"page" validate:"min=0"`
-	Rows    int            `json:"rows" validate:"min=1,max=1000"`
+	Page    *int           `json:"page" validate:"omitempty,min=1"`
+	Rows    *int           `json:"rows" validate:"omitempty,min=1,max=1000"`
 	Dynamic map[string]any `json:"dynamic"`
 }
 
-// FilterParam represents a filter parameter.
+// FilterParam represents a filter parameter.P
 type FilterParam struct {
 	Column   string `json:"column" validate:"required"`
 	Operator string `json:"operator" validate:"required,oneof=eq neq gt gte lt lte in like ilike is_null is_not_null"`
@@ -232,13 +232,20 @@ func toBusTableQuery(app TableQuery) tablebuilder.QueryParams {
 		}
 	}
 
-	return tablebuilder.QueryParams{
+	ret := tablebuilder.QueryParams{
 		Filters: filters,
 		Sort:    sorts,
-		Page:    app.Page,
-		Rows:    app.Rows,
 		Dynamic: app.Dynamic,
 	}
+
+	if app.Page != nil {
+		ret.Page = *app.Page
+	}
+	if app.Rows != nil {
+		ret.Rows = *app.Rows
+	}
+
+	return ret
 }
 
 // =============================================================================
@@ -326,6 +333,16 @@ type TableDataList struct {
 
 // Encode implements the encoder interface.
 func (app TableData) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+type Count struct {
+	Count int `json:"count"`
+}
+
+// Encode implements the encoder interface.
+func (app Count) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(app)
 	return data, "application/json", err
 }

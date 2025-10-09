@@ -64,6 +64,13 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodPost, version, "/data/execute/name/{name}", api.executeQueryByName, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
+	// Count endpoints
+	app.HandlerFunc(http.MethodPost, version, "/data/execute/count/{table_config_id}", api.executeQueryCountByID, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/data/execute/name/count/{name}", api.executeQueryCountByName, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
 	app.HandlerFunc(http.MethodPost, version, "/data/validate", api.validateConfig, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

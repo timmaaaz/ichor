@@ -26,7 +26,9 @@ func Test_Data(t *testing.T) {
 	test.Run(t, create200(sd), "create-200")
 
 	test.Run(t, execute200(sd), "execute-200")
+	test.Run(t, executeCountByID200(sd), "executecountbyid-200")
 	test.Run(t, executeByName200(sd), "executebyname-200")
+	test.Run(t, executeCountByName200(sd), "executecountbyname-200")
 
 	test.Run(t, update200(sd), "update-200")
 

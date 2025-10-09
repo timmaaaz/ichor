@@ -2,6 +2,8 @@ package dataapi
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -144,6 +146,49 @@ func (api *api) executeQueryByName(ctx context.Context, r *http.Request) web.Enc
 	}
 
 	return tableData
+}
+
+func (api *api) executeQueryCountByID(ctx context.Context, r *http.Request) web.Encoder {
+	id := web.Param(r, "table_config_id")
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	// Query filters/pagination stuff - allow empty body
+	var app dataapp.TableQuery
+	if err := web.Decode(r, &app); err != nil {
+		// Only return error if it's not an empty body or EOF
+		if r.ContentLength > 0 && !errors.Is(err, io.EOF) {
+			return errs.New(errs.InvalidArgument, err)
+		}
+	}
+
+	count, err := api.dataapp.ExecuteQueryCountByID(ctx, parsed, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return count
+}
+
+func (api *api) executeQueryCountByName(ctx context.Context, r *http.Request) web.Encoder {
+	name := web.Param(r, "name")
+
+	var app dataapp.TableQuery
+	if err := web.Decode(r, &app); err != nil {
+		// Only return error if it's not an empty body or EOF
+		if r.ContentLength > 0 && !errors.Is(err, io.EOF) {
+			return errs.New(errs.InvalidArgument, err)
+		}
+	}
+
+	count, err := api.dataapp.ExecuteQueryCountByName(ctx, name, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return count
 }
 
 func (api *api) validateConfig(ctx context.Context, r *http.Request) web.Encoder {

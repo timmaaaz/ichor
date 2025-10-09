@@ -207,6 +207,50 @@ func (a *App) ExecuteQueryByName(ctx context.Context, name string, app TableQuer
 	return toAppTableData(data), nil
 }
 
+func (a *App) ExecuteQueryCountByID(ctx context.Context, id uuid.UUID, app TableQuery) (Count, error) {
+	// Load the configuration
+	config, err := a.configStore.LoadConfig(ctx, id)
+	if err != nil {
+		if errors.Is(err, tablebuilder.ErrNotFound) {
+			return Count{}, errs.New(errs.NotFound, err)
+		}
+		return Count{}, errs.Newf(errs.Internal, "load config: %s", err)
+	}
+
+	// Convert to business query params
+	params := toBusTableQuery(app)
+
+	// Execute the query
+	count, err := a.tableStore.FetchTableDataCount(ctx, config, params)
+	if err != nil {
+		return Count{}, errs.Newf(errs.Internal, "execute query count: %s", err)
+	}
+
+	return Count{Count: count}, nil
+}
+
+func (a *App) ExecuteQueryCountByName(ctx context.Context, name string, app TableQuery) (Count, error) {
+	// Load the configuration by name
+	config, err := a.configStore.LoadConfigByName(ctx, name)
+	if err != nil {
+		if errors.Is(err, tablebuilder.ErrNotFound) {
+			return Count{}, errs.New(errs.NotFound, err)
+		}
+		return Count{}, errs.Newf(errs.Internal, "load config by name: %s", err)
+	}
+
+	// Convert to business query params
+	params := toBusTableQuery(app)
+
+	// Execute the query
+	count, err := a.tableStore.FetchTableDataCount(ctx, config, params)
+	if err != nil {
+		return Count{}, errs.Newf(errs.Internal, "execute query count: %s", err)
+	}
+
+	return Count{Count: count}, nil
+}
+
 // ValidateConfig validates a configuration without saving it.
 func (a *App) ValidateConfig(ctx context.Context, app NewTableConfig) error {
 	config, err := toBusNewTableConfig(app)
