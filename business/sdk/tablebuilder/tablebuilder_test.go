@@ -8,6 +8,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -46,8 +47,10 @@ func Test_TableBuilder(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_TableBuilder")
 	log := logger.New(io.Discard, logger.LevelInfo, "ADMIN", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
 
+	configStore := tablebuilder.NewConfigStore(log, db.DB)
 	store := tablebuilder.NewStore(log, db.DB)
-	sd, err := insertSeedData(db.BusDomain)
+
+	sd, err := insertSeedData(db.BusDomain, configStore)
 	if err != nil {
 		t.Fatalf("failed to insert seed data: %v", err)
 	}
@@ -55,11 +58,339 @@ func Test_TableBuilder(t *testing.T) {
 	simpleExample(context.Background(), store)
 	simpleExample2(context.Background(), store)
 	complexExample(context.Background(), store)
-	storedConfigExample(context.Background(), store, tablebuilder.NewConfigStore(log, db.DB), sd)
+	storedConfigExample(context.Background(), store, configStore, sd)
 	paginationExample(context.Background(), store)
 }
 
-func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
+var productsList = &tablebuilder.Config{
+	Title:           "Products List",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "products",
+			Schema: "products",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "products.id"},
+					{Name: "name", TableColumn: "products.name"},
+					{Name: "sku", TableColumn: "products.sku"},
+					{Name: "is_active", TableColumn: "products.is_active"},
+				},
+			},
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view"},
+	},
+}
+
+var currentOrders = &tablebuilder.Config{
+	Title:           "Current Orders and Associated data",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           6,
+	Height:          4,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "view",
+			Source: "orders_base",
+			Schema: "sales",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					// orders table
+					{Name: "orders_id", TableColumn: "orders.id"},
+					{Name: "orders_number", Alias: "order_number", TableColumn: "orders.number"},
+					{Name: "orders_order_date", Alias: "order_date", TableColumn: "orders.order_date"},
+					{Name: "orders_due_date", Alias: "order_due_date", TableColumn: "orders.due_date"},
+					{Name: "orders_created_date", Alias: "order_created_date", TableColumn: "orders.created_date"},
+					{Name: "orders_updated_date", Alias: "order_updated_date", TableColumn: "orders.updated_date"},
+					{Name: "orders_fulfillment_status_id", Alias: "order_fulfillment_status_id", TableColumn: "orders.fulfillment_status_id"},
+					{Name: "orders_customer_id", Alias: "order_customer_id", TableColumn: "orders.customer_id"},
+
+					// customers table
+					{Name: "customers_id", Alias: "customer_id", TableColumn: "customers.id"},
+					{Name: "customers_contact_infos_id", Alias: "customer_contact_info_id", TableColumn: "customers.contact_id"},
+					{Name: "customers_delivery_address_id", Alias: "customer_delivery_address_id", TableColumn: "customers.delivery_address_id"},
+					{Name: "customers_notes", Alias: "customer_notes", TableColumn: "customers.notes"},
+					{Name: "customers_created_date", Alias: "customer_created_date", TableColumn: "customers.created_date"},
+					{Name: "customers_updated_date", Alias: "customer_updated_date", TableColumn: "customers.updated_date"},
+
+					// order_fulfillment_statuses table
+					{Name: "order_fulfillment_statuses_name", Alias: "fulfillment_status_name", TableColumn: "order_fulfillment_statuses.name"},
+					{Name: "order_fulfillment_statuses_description", Alias: "fulfillment_status_description", TableColumn: "order_fulfillment_statuses.description"},
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"order_number": {
+				Name:       "order_number",
+				Header:     "Order #",
+				Width:      150,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"order_date": {
+				Name:   "order_date",
+				Header: "Order Date",
+				Width:  120,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "2006-01-02",
+				},
+			},
+			"fulfillment_status_name": {
+				Name:   "fulfillment_status_name",
+				Header: "Status",
+				Width:  120,
+			},
+		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "sales"},
+		Actions: []string{"view", "export"},
+	},
+}
+
+var inventoryItems = &tablebuilder.Config{
+	Title:           "Inventory Items",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          6,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "inventory_items",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "inventory_items.id"},
+					{Name: "quantity", Alias: "current_stock", TableColumn: "inventory_items.quantity"},
+					{Name: "product_id", TableColumn: "inventory_items.product_id"},
+					{Name: "location_id", TableColumn: "inventory_items.location_id"},
+				},
+			},
+			Filters: []tablebuilder.Filter{
+				{
+					Column:   "quantity",
+					Operator: "gt",
+					Value:    0,
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "quantity",
+					Direction: "desc",
+				},
+			},
+			Rows: 10,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"current_stock": {
+				Name:       "current_stock",
+				Header:     "Current Stock",
+				Width:      120,
+				Align:      "right",
+				Sortable:   true,
+				Filterable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "number",
+					Precision: 0,
+				},
+			},
+			"product_id": {
+				Name:   "product_id",
+				Header: "Product",
+				Width:  200,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/products/{product_id}",
+					Label: "View Product",
+				},
+			},
+			"location_id": {
+				Name:   "location_id",
+				Header: "Location",
+				Width:  200,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/inventory/locations/{location_id}",
+					Label: "View Location",
+				},
+			},
+		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "inventory_manager"},
+		Actions: []string{"view", "export"},
+	},
+}
+
+var currentInventoryProducts = &tablebuilder.Config{
+	Title:           "Current Inventory with Products",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "inventory_items",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "inventory_items.id"},
+					{Name: "quantity", Alias: "current_quantity", TableColumn: "inventory_items.quantity"},
+					{Name: "reorder_point", TableColumn: "inventory_items.reorder_point"},
+					{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "inventory_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "id", Alias: "product_id", TableColumn: "products.id"},
+							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
+							{Name: "sku", TableColumn: "products.sku"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "stock_status",
+						Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
+					},
+					{
+						Name:       "stock_percentage",
+						Expression: "(current_quantity / maximum_stock) * 100",
+					},
+				},
+			},
+			Filters: []tablebuilder.Filter{
+				{
+					Column:   "quantity",
+					Operator: "gt",
+					Value:    0,
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "quantity",
+					Direction: "asc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"product_name": {
+				Name:       "product_name",
+				Header:     "Product",
+				Width:      250,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"current_quantity": {
+				Name:   "current_quantity",
+				Header: "Current Stock",
+				Width:  120,
+				Align:  "right",
+				Format: &tablebuilder.FormatConfig{
+					Type:      "number",
+					Precision: 0,
+				},
+			},
+			"stock_status": {
+				Name:         "stock_status",
+				Header:       "Status",
+				Width:        100,
+				Align:        "center",
+				CellTemplate: "status",
+			},
+			"stock_percentage": {
+				Name:   "stock_percentage",
+				Header: "Capacity",
+				Width:  100,
+				Align:  "right",
+				Format: &tablebuilder.FormatConfig{
+					Type:      "percent",
+					Precision: 1,
+				},
+			},
+			"product_id": {
+				Name:   "product_id",
+				Header: "Product",
+				Width:  200,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/products/products/{product_id}",
+					Label: "View Product",
+				},
+			},
+		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{
+			{
+				Column:     "stock_status",
+				Condition:  "eq",
+				Value:      "low",
+				Color:      "#ff4444",
+				Background: "#ffebee",
+				Icon:       "alert-circle",
+			},
+			{
+				Column:     "stock_status",
+				Condition:  "eq",
+				Value:      "normal",
+				Color:      "#00C851",
+				Background: "#e8f5e9",
+				Icon:       "check-circle",
+			},
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "inventory_manager"},
+		Actions: []string{"view", "export", "adjust"},
+	},
+}
+
+func insertSeedData(busDomain dbtest.BusDomain, configStore *tablebuilder.ConfigStore) (unitest.SeedData, error) {
 	ctx := context.Background()
 
 	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
@@ -223,6 +554,25 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding inventory products : %w", err)
 	}
 
+	// SEED CONFIGS
+	cfg1, err := configStore.Create(ctx, "products_list", "Products List", productsList, admins[0].ID)
+	if err != nil {
+		log.Printf("Error saving config: %v", err)
+		return unitest.SeedData{}, err
+	}
+	cfg2, err := configStore.Create(ctx, "current_orders", "Current Orders", currentOrders, admins[0].ID)
+	if err != nil {
+		log.Printf("Error saving config: %v", err)
+		return unitest.SeedData{}, err
+	}
+	cfg3, err := configStore.Create(ctx, "inventory_items", "Inventory Items", inventoryItems, admins[0].ID)
+	if err != nil {
+		log.Printf("Error saving config: %v", err)
+		return unitest.SeedData{}, err
+	}
+
+	storedConfigs := []tablebuilder.StoredConfig{*cfg1, *cfg2, *cfg3}
+
 	return unitest.SeedData{
 		Admins:                   []unitest.User{{User: admins[0]}},
 		Orders:                   orders,
@@ -230,91 +580,17 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		OrderFulfillmentStatuses: ofls,
 		OrderLineItems:           ols,
 		Customers:                customers,
+		TableBuilderConfigs:      storedConfigs,
 	}, nil
 }
 
 func simpleExample2(ctx context.Context, store *tablebuilder.Store) {
-	config := &tablebuilder.Config{
-		Title:           "Current Orders and Associated data",
-		WidgetType:      "table",
-		Visualization:   "table",
-		PositionX:       0,
-		PositionY:       0,
-		Width:           6,
-		Height:          4,
-		RefreshInterval: 300,
-		RefreshMode:     "polling",
-		DataSource: []tablebuilder.DataSource{
-			{
-				Type:   "view",
-				Source: "orders_base",
-				Schema: "sales",
-				Select: tablebuilder.SelectConfig{
-					Columns: []tablebuilder.ColumnDefinition{
-						// orders table
-						{Name: "orders_id", TableColumn: "orders.id"},
-						{Name: "orders_number", Alias: "order_number", TableColumn: "orders.number"},
-						{Name: "orders_order_date", Alias: "order_date", TableColumn: "orders.order_date"},
-						{Name: "orders_due_date", Alias: "order_due_date", TableColumn: "orders.due_date"},
-						{Name: "orders_created_date", Alias: "order_created_date", TableColumn: "orders.created_date"},
-						{Name: "orders_updated_date", Alias: "order_updated_date", TableColumn: "orders.updated_date"},
-						{Name: "orders_fulfillment_status_id", Alias: "order_fulfillment_status_id", TableColumn: "orders.fulfillment_status_id"},
-						{Name: "orders_customer_id", Alias: "order_customer_id", TableColumn: "orders.customer_id"},
-
-						// customers table
-						{Name: "customers_id", Alias: "customer_id", TableColumn: "customers.id"},
-						{Name: "customers_contact_infos_id", Alias: "customer_contact_info_id", TableColumn: "customers.contact_id"},
-						{Name: "customers_delivery_address_id", Alias: "customer_delivery_address_id", TableColumn: "customers.delivery_address_id"},
-						{Name: "customers_notes", Alias: "customer_notes", TableColumn: "customers.notes"},
-						{Name: "customers_created_date", Alias: "customer_created_date", TableColumn: "customers.created_date"},
-						{Name: "customers_updated_date", Alias: "customer_updated_date", TableColumn: "customers.updated_date"},
-
-						// order_fulfillment_statuses table
-						{Name: "order_fulfillment_statuses_name", Alias: "fulfillment_status_name", TableColumn: "order_fulfillment_statuses.name"},
-						{Name: "order_fulfillment_statuses_description", Alias: "fulfillment_status_description", TableColumn: "order_fulfillment_statuses.description"},
-					},
-				},
-				Rows: 50,
-			},
-		},
-		VisualSettings: tablebuilder.VisualSettings{
-			Columns: map[string]tablebuilder.ColumnConfig{
-				"order_number": {
-					Name:       "order_number",
-					Header:     "Order #",
-					Width:      150,
-					Sortable:   true,
-					Filterable: true,
-				},
-				"order_date": {
-					Name:   "order_date",
-					Header: "Order Date",
-					Width:  120,
-					Format: &tablebuilder.FormatConfig{
-						Type:   "date",
-						Format: "2006-01-02",
-					},
-				},
-				"fulfillment_status_name": {
-					Name:   "fulfillment_status_name",
-					Header: "Status",
-					Width:  120,
-				},
-			},
-			ConditionalFormatting: []tablebuilder.ConditionalFormat{},
-		},
-		Permissions: tablebuilder.Permissions{
-			Roles:   []string{"admin", "sales"},
-			Actions: []string{"view", "export"},
-		},
-	}
-
 	params := tablebuilder.QueryParams{
 		Page: 1,
 		Rows: 10,
 	}
 
-	result, err := store.FetchTableData(ctx, config, params)
+	result, err := store.FetchTableData(ctx, currentOrders, params)
 	if err != nil {
 		log.Printf("Error fetching data: %v", err)
 		return
@@ -332,92 +608,12 @@ func simpleExample2(ctx context.Context, store *tablebuilder.Store) {
 }
 
 func simpleExample(ctx context.Context, store *tablebuilder.Store) {
-	config := &tablebuilder.Config{
-		Title:           "Inventory Items",
-		WidgetType:      "table",
-		Visualization:   "table",
-		PositionX:       0,
-		PositionY:       0,
-		Width:           12,
-		Height:          6,
-		RefreshInterval: 300,
-		RefreshMode:     "polling",
-		DataSource: []tablebuilder.DataSource{
-			{
-				Type:   "query",
-				Source: "inventory_items",
-				Schema: "inventory",
-				Select: tablebuilder.SelectConfig{
-					Columns: []tablebuilder.ColumnDefinition{
-						{Name: "id", TableColumn: "inventory_items.id"},
-						{Name: "quantity", Alias: "current_stock", TableColumn: "inventory_items.quantity"},
-						{Name: "product_id", TableColumn: "inventory_items.product_id"},
-						{Name: "location_id", TableColumn: "inventory_items.location_id"},
-					},
-				},
-				Filters: []tablebuilder.Filter{
-					{
-						Column:   "quantity",
-						Operator: "gt",
-						Value:    0,
-					},
-				},
-				Sort: []tablebuilder.Sort{
-					{
-						Column:    "quantity",
-						Direction: "desc",
-					},
-				},
-				Rows: 10,
-			},
-		},
-		VisualSettings: tablebuilder.VisualSettings{
-			Columns: map[string]tablebuilder.ColumnConfig{
-				"current_stock": {
-					Name:       "current_stock",
-					Header:     "Current Stock",
-					Width:      120,
-					Align:      "right",
-					Sortable:   true,
-					Filterable: true,
-					Format: &tablebuilder.FormatConfig{
-						Type:      "number",
-						Precision: 0,
-					},
-				},
-				"product_id": {
-					Name:   "product_id",
-					Header: "Product",
-					Width:  200,
-					Link: &tablebuilder.LinkConfig{
-						URL:   "/products/{product_id}",
-						Label: "View Product",
-					},
-				},
-				"location_id": {
-					Name:   "location_id",
-					Header: "Location",
-					Width:  200,
-					Link: &tablebuilder.LinkConfig{
-						URL:   "/inventory/locations/{location_id}",
-						Label: "View Location",
-					},
-				},
-			},
-			ConditionalFormatting: []tablebuilder.ConditionalFormat{},
-		},
-		Permissions: tablebuilder.Permissions{
-			Roles:   []string{"admin", "inventory_manager"},
-			Actions: []string{"view", "export"},
-		},
-	}
-
 	params := tablebuilder.QueryParams{
 		Page: 1,
 		Rows: 10,
 	}
 
-	result, err := store.FetchTableData(ctx, config, params)
+	result, err := store.FetchTableData(ctx, inventoryItems, params)
 	if err != nil {
 		log.Printf("Error fetching data: %v", err)
 		return
@@ -435,147 +631,13 @@ func simpleExample(ctx context.Context, store *tablebuilder.Store) {
 }
 
 func complexExample(ctx context.Context, store *tablebuilder.Store) {
-	config := &tablebuilder.Config{
-		Title:           "Current Inventory with Products",
-		WidgetType:      "table",
-		Visualization:   "table",
-		PositionX:       0,
-		PositionY:       0,
-		Width:           12,
-		Height:          8,
-		RefreshInterval: 300,
-		RefreshMode:     "polling",
-		DataSource: []tablebuilder.DataSource{
-			{
-				Type:   "query",
-				Source: "inventory_items",
-				Schema: "inventory",
-				Select: tablebuilder.SelectConfig{
-					Columns: []tablebuilder.ColumnDefinition{
-						{Name: "id", TableColumn: "inventory_items.id"},
-						{Name: "quantity", Alias: "current_quantity", TableColumn: "inventory_items.quantity"},
-						{Name: "reorder_point", TableColumn: "inventory_items.reorder_point"},
-						{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
-					},
-					ForeignTables: []tablebuilder.ForeignTable{
-
-						{
-							Table:            "products",
-							Schema:           "products",
-							RelationshipFrom: "inventory_items.product_id",
-							RelationshipTo:   "products.id",
-							JoinType:         "inner",
-							Columns: []tablebuilder.ColumnDefinition{
-								{Name: "id", Alias: "product_id", TableColumn: "products.id"},
-								{Name: "name", Alias: "product_name", TableColumn: "products.name"},
-								{Name: "sku", TableColumn: "products.sku"},
-							},
-						},
-					},
-					ClientComputedColumns: []tablebuilder.ComputedColumn{
-						{
-							Name:       "stock_status",
-							Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
-						},
-						{
-							Name:       "stock_percentage",
-							Expression: "(current_quantity / maximum_stock) * 100",
-						},
-					},
-				},
-				Filters: []tablebuilder.Filter{
-					{
-						Column:   "quantity",
-						Operator: "gt",
-						Value:    0,
-					},
-				},
-				Sort: []tablebuilder.Sort{
-					{
-						Column:    "quantity",
-						Direction: "asc",
-					},
-				},
-				Rows: 50,
-			},
-		},
-		VisualSettings: tablebuilder.VisualSettings{
-			Columns: map[string]tablebuilder.ColumnConfig{
-				"product_name": {
-					Name:       "product_name",
-					Header:     "Product",
-					Width:      250,
-					Sortable:   true,
-					Filterable: true,
-				},
-				"current_quantity": {
-					Name:   "current_quantity",
-					Header: "Current Stock",
-					Width:  120,
-					Align:  "right",
-					Format: &tablebuilder.FormatConfig{
-						Type:      "number",
-						Precision: 0,
-					},
-				},
-				"stock_status": {
-					Name:         "stock_status",
-					Header:       "Status",
-					Width:        100,
-					Align:        "center",
-					CellTemplate: "status",
-				},
-				"stock_percentage": {
-					Name:   "stock_percentage",
-					Header: "Capacity",
-					Width:  100,
-					Align:  "right",
-					Format: &tablebuilder.FormatConfig{
-						Type:      "percent",
-						Precision: 1,
-					},
-				},
-				"product_id": {
-					Name:   "product_id",
-					Header: "Product",
-					Width:  200,
-					Link: &tablebuilder.LinkConfig{
-						URL:   "/products/products/{product_id}",
-						Label: "View Product",
-					},
-				},
-			},
-			ConditionalFormatting: []tablebuilder.ConditionalFormat{
-				{
-					Column:     "stock_status",
-					Condition:  "eq",
-					Value:      "low",
-					Color:      "#ff4444",
-					Background: "#ffebee",
-					Icon:       "alert-circle",
-				},
-				{
-					Column:     "stock_status",
-					Condition:  "eq",
-					Value:      "normal",
-					Color:      "#00C851",
-					Background: "#e8f5e9",
-					Icon:       "check-circle",
-				},
-			},
-		},
-		Permissions: tablebuilder.Permissions{
-			Roles:   []string{"admin", "inventory_manager"},
-			Actions: []string{"view", "export", "adjust"},
-		},
-	}
 
 	params := tablebuilder.QueryParams{
 		Page: 1,
 		Rows: 10,
 	}
 
-	result, err := store.FetchTableData(ctx, config, params)
+	result, err := store.FetchTableData(ctx, currentInventoryProducts, params)
 	if err != nil {
 		log.Printf("Error fetching complex data: %v", err)
 		return
@@ -694,49 +756,12 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 }
 
 func paginationExample(ctx context.Context, store *tablebuilder.Store) {
-	config := &tablebuilder.Config{
-		Title:           "Products List",
-		WidgetType:      "table",
-		Visualization:   "table",
-		PositionX:       0,
-		PositionY:       0,
-		Width:           12,
-		Height:          8,
-		RefreshInterval: 300,
-		RefreshMode:     "polling",
-		DataSource: []tablebuilder.DataSource{
-			{
-				Type:   "query",
-				Source: "products",
-				Schema: "products",
-				Select: tablebuilder.SelectConfig{
-					Columns: []tablebuilder.ColumnDefinition{
-						{Name: "id", TableColumn: "products.id"},
-						{Name: "name", TableColumn: "products.name"},
-						{Name: "sku", TableColumn: "products.sku"},
-						{Name: "is_active", TableColumn: "products.is_active"},
-					},
-				},
-			},
-		},
-		VisualSettings: tablebuilder.VisualSettings{
-			Pagination: &tablebuilder.PaginationConfig{
-				Enabled:         true,
-				PageSizes:       []int{10, 25, 50, 100},
-				DefaultPageSize: 25,
-			},
-		},
-		Permissions: tablebuilder.Permissions{
-			Roles:   []string{"admin"},
-			Actions: []string{"view"},
-		},
-	}
 
 	fmt.Printf("\n=== Pagination Example ===\n")
 
 	// Page 1
 	pg := page.MustParse("1", "10")
-	result, err := store.QueryByPage(ctx, config, pg)
+	result, err := store.QueryByPage(ctx, productsList, pg)
 	if err != nil {
 		log.Printf("Error fetching paginated data: %v", err)
 		return
@@ -750,7 +775,7 @@ func paginationExample(ctx context.Context, store *tablebuilder.Store) {
 
 	// Page 2
 	pg = page.MustParse("2", "10")
-	result, err = store.QueryByPage(ctx, config, pg)
+	result, err = store.QueryByPage(ctx, productsList, pg)
 	if err != nil {
 		log.Printf("Error fetching page 2: %v", err)
 		return
@@ -761,6 +786,150 @@ func paginationExample(ctx context.Context, store *tablebuilder.Store) {
 
 	fullJSON, _ = json.MarshalIndent(result, "", "  ")
 	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+}
+
+func pageConfigsExample(ctx context.Context, store *tablebuilder.Store, configStore *tablebuilder.ConfigStore, sd unitest.SeedData) {
+	// Create a new page configuration
+	pageConfig := tablebuilder.PageConfig{
+		Name:      "Inventory Overview",
+		UserID:    sd.Admins[0].ID,
+		IsDefault: true,
+	}
+	savedPage, err := configStore.CreatePageConfig(ctx, pageConfig)
+	if err != nil {
+		log.Printf("Error saving page config: %v", err)
+		return
+	}
+
+	// Save some tabs
+	tab1 := tablebuilder.PageTabConfig{
+		PageID:    savedPage.ID,
+		Label:     "Products List",
+		ConfigID:  sd.TableBuilderConfigs[0].ID,
+		IsDefault: true,
+		TabOrder:  1,
+	}
+	tab2 := tablebuilder.PageTabConfig{
+		PageID:    savedPage.ID,
+		Label:     "Inventory Items",
+		ConfigID:  sd.TableBuilderConfigs[2].ID,
+		IsDefault: false,
+		TabOrder:  2,
+	}
+	tab3 := tablebuilder.PageTabConfig{
+		PageID:    savedPage.ID,
+		Label:     "Current Inventory",
+		ConfigID:  sd.TableBuilderConfigs[1].ID,
+		IsDefault: false,
+		TabOrder:  3,
+	}
+
+	ret1, err := configStore.CreatePageTabConfig(ctx, tab2)
+	if err != nil {
+		log.Printf("Error saving tab2 config: %v", err)
+		return
+	}
+	_, err = configStore.CreatePageTabConfig(ctx, tab3)
+	if err != nil {
+		log.Printf("Error saving tab3 config: %v", err)
+		return
+	}
+	_, err = configStore.CreatePageTabConfig(ctx, tab1)
+	if err != nil {
+		log.Printf("Error saving tab1 config: %v", err)
+		return
+	}
+
+	// QueryByID
+	queriedPage, err := configStore.QueryPageByID(ctx, savedPage.ID)
+	if err != nil {
+		log.Printf("Error querying page by ID: %v", err)
+		return
+	}
+	if cmp.Diff(queriedPage, savedPage) != "" {
+		log.Printf("Queried page does not match saved page")
+		return
+	}
+
+	// QueryByName
+	queriedPageByName, err := configStore.QueryPageByName(ctx, "Inventory Overview")
+	if err != nil {
+		log.Printf("Error querying page by name: %v", err)
+		return
+	}
+	if cmp.Diff(queriedPageByName, savedPage) != "" {
+		log.Printf("Queried page by name does not match saved page")
+		return
+	}
+
+	// QueryTabsByID
+	queriedTab, err := configStore.QueryPageTabConfigByID(ctx, ret1.ID)
+	if err != nil {
+		log.Printf("Error querying tabs by page ID: %v", err)
+		return
+	}
+	if !cmp.Equal(queriedTab, ret1) {
+		log.Printf("Queried tabs do not match saved tabs")
+		return
+	}
+
+	// QueryPageTabConfigsByPageID
+	queriedTabs, err := configStore.QueryPageTabConfigsByPageID(ctx, savedPage.ID)
+	if err != nil {
+		log.Printf("Error querying tabs by page ID: %v", err)
+		return
+	}
+	if len(queriedTabs) != 3 {
+		log.Printf("Expected 3 tabs, got %d", len(queriedTabs))
+		return
+	}
+
+	// Update Page
+	savedPage.Name = "Updated Inventory Overview"
+	updatedPage, err := configStore.UpdatePageConfig(ctx, *savedPage)
+	if err != nil {
+		log.Printf("Error updating page: %v", err)
+		return
+	}
+	if updatedPage.Name != "Updated Inventory Overview" {
+		log.Printf("Page name not updated")
+		return
+	}
+
+	// Update tab
+	tab1.Label = "Updated Products List"
+	updatedTab, err := configStore.UpdatePageTabConfig(ctx, tab1)
+	if err != nil {
+		log.Printf("Error updating tab: %v", err)
+		return
+	}
+	if updatedTab.Label != "Updated Products List" {
+		log.Printf("Tab label not updated")
+		return
+	}
+
+	// Delete tab
+	err = configStore.DeletePageTabConfig(ctx, tab2.ID)
+	if err != nil {
+		log.Printf("Error deleting tab: %v", err)
+		return
+	}
+	deletedTabs, err := configStore.QueryPageTabConfigsByPageID(ctx, savedPage.ID)
+	if err != nil {
+		log.Printf("Error querying tabs after deletion: %v", err)
+		return
+	}
+	if len(deletedTabs) != 2 {
+		log.Printf("Expected 2 tabs after deletion, got %d", len(deletedTabs))
+		return
+	}
+
+	// Delete page
+	err = configStore.DeletePageConfig(ctx, savedPage.ID)
+	if err != nil {
+		log.Printf("Error deleting page: %v", err)
+		return
+	}
 }
 
 // =============================================================================

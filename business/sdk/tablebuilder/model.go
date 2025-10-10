@@ -309,3 +309,33 @@ func (s *SelectConfig) GetColumnByName(name string) *ColumnDefinition {
 	}
 	return nil
 }
+
+type PageConfig struct {
+	ID        uuid.UUID `db:"id"`
+	Name      string    `db:"name"`
+	UserID    uuid.UUID `db:"user_id"`
+	IsDefault bool      `db:"is_default"`
+}
+
+type UpdatePageConfig struct {
+	Name      *string
+	UserID    *uuid.UUID
+	IsDefault *bool
+}
+type PageTabConfig struct {
+	ID        uuid.UUID `db:"id"`
+	PageID    uuid.UUID `db:"page_id"`
+	Label     string    `db:"label"`
+	ConfigID  uuid.UUID `db:"config_id"`
+	IsDefault bool      `db:"is_default"`
+	TabOrder  int       `db:"tab_order"`
+}
+
+// UpdatePageTabConfig represents fields that can be updated in a PageTabConfig
+type UpdatePageTabConfig struct {
+	Label     *string
+	PageID    *uuid.UUID
+	ConfigID  *uuid.UUID
+	IsDefault *bool
+	TabOrder  *int
+}

@@ -72,6 +72,46 @@ func (s *ConfigStore) Create(ctx context.Context, name, description string, conf
 	return &stored, nil
 }
 
+// CreatePageConfig saves a new page configuration.
+func (s *ConfigStore) CreatePageConfig(ctx context.Context, pc PageConfig) (*PageConfig, error) {
+	pc.ID = uuid.New()
+
+	const q = `
+		INSERT INTO config.page_configs (
+			id, page_id, user_id, is_default
+		) VALUES (
+			:id, :page_id, :user_id, :is_default
+		)`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, pc); err != nil {
+		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
+			return nil, fmt.Errorf("page config already exists: %w", err)
+		}
+		return nil, fmt.Errorf("insert page config: %w", err)
+	}
+
+	return &pc, nil
+}
+
+// CreatePageTabConfig saves a new page tab configuration.
+func (s *ConfigStore) CreatePageTabConfig(ctx context.Context, ptc PageTabConfig) (*PageTabConfig, error) {
+
+	ptc.ID = uuid.New()
+
+	const q = `
+		INSERT INTO config.page_tab_configs (
+			id, page_id, label, config_id, is_default, tab_order
+		) VALUES (
+			:id, :page_id, :label, :config_id, :is_default, :tab_order
+		)`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, ptc); err != nil {
+		return nil, fmt.Errorf("insert page tab config: %w", err)
+	}
+
+	return &ptc, nil
+}
+
 // Update updates an existing table configuration
 func (s *ConfigStore) Update(ctx context.Context, id uuid.UUID, name, description string, config *Config, userID uuid.UUID) (*StoredConfig, error) {
 	// Validate the configuration
@@ -115,6 +155,43 @@ func (s *ConfigStore) Update(ctx context.Context, id uuid.UUID, name, descriptio
 	return s.QueryByID(ctx, id)
 }
 
+// UpdatePageConfig updates an existing page configuration.
+func (s *ConfigStore) UpdatePageConfig(ctx context.Context, pc PageConfig) (*PageConfig, error) {
+	const q = `
+		UPDATE config.page_configs SET
+			page_id = :page_id,
+			user_id = :user_id,
+			is_default = :is_default
+		WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, pc); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("update page config: %w", err)
+	}
+
+	return &pc, nil
+}
+
+// UpdatePageTabConfig updates an existing page tab configuration.
+func (s *ConfigStore) UpdatePageTabConfig(ctx context.Context, ptc PageTabConfig) (*PageTabConfig, error) {
+	const q = `
+		UPDATE config.page_tab_configs SET
+			page_id = :page_id,
+			label = :label,
+			config_id = :config_id,
+			is_default = :is_default,
+			tab_order = :tab_order
+		WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, ptc); err != nil {
+		return nil, fmt.Errorf("update page tab config: %w", err)
+	}
+
+	return &ptc, nil
+}
+
 // Delete removes a table configuration
 func (s *ConfigStore) Delete(ctx context.Context, id uuid.UUID) error {
 	data := struct {
@@ -127,6 +204,40 @@ func (s *ConfigStore) Delete(ctx context.Context, id uuid.UUID) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
 		return fmt.Errorf("delete config: %w", err)
+	}
+
+	return nil
+}
+
+// DeletePageConfig removes a page configuration.
+func (s *ConfigStore) DeletePageConfig(ctx context.Context, id uuid.UUID) error {
+	data := struct {
+		ID uuid.UUID `db:"id"`
+	}{
+		ID: id,
+	}
+
+	const q = `DELETE FROM config.page_configs WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("delete page config: %w", err)
+	}
+
+	return nil
+}
+
+// DeletePageTabConfig removes a page tab configuration.
+func (s *ConfigStore) DeletePageTabConfig(ctx context.Context, id uuid.UUID) error {
+	data := struct {
+		ID uuid.UUID `db:"id"`
+	}{
+		ID: id,
+	}
+
+	const q = `DELETE FROM config.page_tab_configs WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("delete page tab config: %w", err)
 	}
 
 	return nil
@@ -213,6 +324,113 @@ func (s *ConfigStore) QueryByUser(ctx context.Context, userID uuid.UUID) ([]Stor
 	}
 
 	return configs, nil
+}
+
+// QueryPageByName retrieves a page configuration by name
+func (s *ConfigStore) QueryPageByName(ctx context.Context, name string) (*PageConfig, error) {
+	data := struct {
+		Name string `db:"name"`
+	}{
+		Name: name,
+	}
+
+	const q = `
+		SELECT
+			id, name, user_id, is_default
+		FROM
+			config.page_configs
+		WHERE
+			name = :name`
+
+	var pc PageConfig
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &pc); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("query page config: %w", err)
+	}
+
+	return &pc, nil
+}
+
+// QueryPageByID retrieves a page configuration by ID
+func (s *ConfigStore) QueryPageByID(ctx context.Context, id uuid.UUID) (*PageConfig, error) {
+	data := struct {
+		ID uuid.UUID `db:"id"`
+	}{
+		ID: id,
+	}
+
+	const q = `
+		SELECT
+			id, name, user_id, is_default
+		FROM
+			config.page_configs
+		WHERE
+			id = :id`
+
+	var pc PageConfig
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &pc); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("query page config: %w", err)
+	}
+
+	return &pc, nil
+}
+
+// QueryPageTabConfigByID retrieves a page tab configuration by ID
+func (s *ConfigStore) QueryPageTabConfigByID(ctx context.Context, id uuid.UUID) (*PageTabConfig, error) {
+	data := struct {
+		ID uuid.UUID `db:"id"`
+	}{
+		ID: id,
+	}
+
+	const q = `
+		SELECT
+			id, page_id, label, config_id, is_default, tab_order
+		FROM
+			config.page_tab_configs
+		WHERE
+			id = :id`
+
+	var ptc PageTabConfig
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ptc); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("query page tab config: %w", err)
+	}
+
+	return &ptc, nil
+}
+
+// QueryPageTabConfigsByPageID retrieves all page tab configurations for a given page ID
+func (s *ConfigStore) QueryPageTabConfigsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageTabConfig, error) {
+	data := struct {
+		PageID uuid.UUID `db:"page_id"`
+	}{
+		PageID: pageID,
+	}
+
+	const q = `
+		SELECT
+			id, page_id, label, config_id, is_default, tab_order
+		FROM
+			config.page_tab_configs
+		WHERE
+			page_id = :page_id
+		ORDER BY
+			tab_order ASC`
+
+	var ptcs []PageTabConfig
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &ptcs); err != nil {
+		return nil, fmt.Errorf("query page tab configs: %w", err)
+	}
+
+	return ptcs, nil
 }
 
 // LoadConfig loads a configuration and returns the parsed Config
