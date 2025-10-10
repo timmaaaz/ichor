@@ -79,6 +79,36 @@ var PageConfig = &tablebuilder.Config{
 		},
 	},
 	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"name": {
+				Name:       "name",
+				Header:     "Product Name",
+				Width:      200,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"sku": {
+				Name:       "sku",
+				Header:     "SKU",
+				Width:      150,
+				Sortable:   true,
+				Filterable: true,
+				Editable: &tablebuilder.EditableConfig{
+					Type:        "text",
+					Placeholder: "SKU-12345",
+				},
+			},
+			"is_active": {
+				Name:       "is_active",
+				Header:     "Is Active",
+				Width:      100,
+				Sortable:   true,
+				Filterable: true,
+				Editable: &tablebuilder.EditableConfig{
+					Type: "boolean",
+				},
+			},
+		},
 		Pagination: &tablebuilder.PaginationConfig{
 			Enabled:         true,
 			PageSizes:       []int{10, 25, 50, 100},
