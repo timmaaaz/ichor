@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
 
@@ -345,6 +346,194 @@ type Count struct {
 func (app Count) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(app)
 	return data, "application/json", err
+}
+
+// =============================================================================
+// Page and PageTab Configurations
+type FullPageConfig struct {
+	PageConfig PageConfig
+	PageTabs   []PageTabConfig
+}
+
+// Encode implements the encoder interface.
+func (app FullPageConfig) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// PageConfig - MATCHES business layer exactly
+type PageConfig struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	UserID    string `json:"user_id"`
+	IsDefault string `json:"is_default"`
+}
+
+// Encode implements the encoder interface.
+func (app PageConfig) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+type NewPageConfig struct {
+	Name      string `json:"name" validate:"required,min=3,max=100"`
+	UserID    string `json:"user_id" validate:"required,uuid"`
+	IsDefault string `json:"is_default"`
+}
+
+// Decode implements the decoder interface.
+func (app *NewPageConfig) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app NewPageConfig) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+// UpdatePageConfig defines the data needed to update a page configuration.
+type UpdatePageConfig struct {
+	Name      *string `json:"name" validate:"omitempty,min=3,max=100"`
+	UserID    *string `json:"user_id" validate:"omitempty,uuid"`
+	IsDefault *bool   `json:"is_default"`
+}
+
+// Decode implements the decoder interface.
+func (app *UpdatePageConfig) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app UpdatePageConfig) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+func toAppPageConfig(bus tablebuilder.PageConfig) PageConfig {
+	return PageConfig{
+		ID:        bus.ID.String(),
+		Name:      bus.Name,
+		UserID:    bus.UserID.String(),
+		IsDefault: fmt.Sprintf("%t", bus.IsDefault),
+	}
+}
+
+func toBusPageConfig(app NewPageConfig) (tablebuilder.PageConfig, error) {
+	dest := tablebuilder.PageConfig{}
+
+	err := convert.PopulateTypesFromStrings(app, &dest)
+	if err != nil {
+		return tablebuilder.PageConfig{}, fmt.Errorf("to bus page config: %w", err)
+	}
+
+	return dest, nil
+}
+
+func toBusUpdatePageConfig(app UpdatePageConfig) (tablebuilder.UpdatePageConfig, error) {
+	dest := tablebuilder.UpdatePageConfig{}
+
+	err := convert.PopulateTypesFromStrings(app, &dest)
+	return dest, err
+}
+
+// PageTabConfig - MATCHES business layer exactly
+
+type PageTabConfig struct {
+	ID        string `json:"id"`
+	Label     string `json:"label"`
+	PageID    string `json:"page_id"`
+	ConfigID  string `json:"config_id"`
+	IsDefault string `json:"is_default"`
+	TabOrder  string `json:"tab_order"`
+}
+
+func (app PageTabConfig) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+type NewPageTabConfig struct {
+	Label     string `json:"label" validate:"required,min=1,max=100"`
+	PageID    string `json:"page_id" validate:"required,uuid"`
+	ConfigID  string `json:"config_id" validate:"required,uuid"`
+	IsDefault bool   `json:"is_default"`
+	TabOrder  int    `json:"tab_order" validate:"min=1"`
+}
+
+// Decode implements the decoder interface.
+func (app *NewPageTabConfig) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app NewPageTabConfig) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+type UpdatePageTabConfig struct {
+	Label     *string `json:"label" validate:"omitempty,min=1,max=100"`
+	PageID    *string `json:"page_id" validate:"omitempty,uuid"`
+	ConfigID  *string `json:"config_id" validate:"omitempty,uuid"`
+	IsDefault *bool   `json:"is_default"`
+	TabOrder  *int    `json:"tab_order" validate:"omitempty,min=1"`
+}
+
+// Decode implements the decoder interface.
+func (app *UpdatePageTabConfig) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app UpdatePageTabConfig) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+func toAppPageTabConfig(bus tablebuilder.PageTabConfig) PageTabConfig {
+	return PageTabConfig{
+		ID:        bus.ID.String(),
+		Label:     bus.Label,
+		PageID:    bus.PageID.String(),
+		ConfigID:  bus.ConfigID.String(),
+		IsDefault: fmt.Sprintf("%t", bus.IsDefault),
+		TabOrder:  fmt.Sprintf("%d", bus.TabOrder),
+	}
+}
+
+func toAppPageTabConfigs(bus []tablebuilder.PageTabConfig) []PageTabConfig {
+	app := make([]PageTabConfig, len(bus))
+	for i, v := range bus {
+		app[i] = toAppPageTabConfig(v)
+	}
+	return app
+}
+
+func toBusPageTabConfig(app NewPageTabConfig) (tablebuilder.PageTabConfig, error) {
+	dest := tablebuilder.PageTabConfig{}
+
+	err := convert.PopulateTypesFromStrings(app, &dest)
+	if err != nil {
+		return tablebuilder.PageTabConfig{}, fmt.Errorf("to bus page tab config: %w", err)
+	}
+
+	return dest, nil
+}
+
+func toBusUpdatePageTabConfig(app UpdatePageTabConfig) (tablebuilder.UpdatePageTabConfig, error) {
+	dest := tablebuilder.UpdatePageTabConfig{}
+
+	err := convert.PopulateTypesFromStrings(app, &dest)
+	return dest, err
 }
 
 // toAppTableData - Now does a DIRECT pass-through with minimal conversion

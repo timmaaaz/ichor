@@ -311,10 +311,10 @@ func (s *SelectConfig) GetColumnByName(name string) *ColumnDefinition {
 }
 
 type PageConfig struct {
-	ID        uuid.UUID `db:"id"`
-	Name      string    `db:"name"`
-	UserID    uuid.UUID `db:"user_id"`
-	IsDefault bool      `db:"is_default"`
+	ID        uuid.UUID `db:"id" json:"id"`
+	Name      string    `db:"name" json:"name"`
+	UserID    uuid.UUID `db:"user_id" json:"user_id"`
+	IsDefault bool      `db:"is_default" json:"is_default"`
 }
 
 type UpdatePageConfig struct {
@@ -322,13 +322,14 @@ type UpdatePageConfig struct {
 	UserID    *uuid.UUID
 	IsDefault *bool
 }
+
 type PageTabConfig struct {
-	ID        uuid.UUID `db:"id"`
-	PageID    uuid.UUID `db:"page_id"`
-	Label     string    `db:"label"`
-	ConfigID  uuid.UUID `db:"config_id"`
-	IsDefault bool      `db:"is_default"`
-	TabOrder  int       `db:"tab_order"`
+	ID        uuid.UUID `db:"id" json:"id"`
+	PageID    uuid.UUID `db:"page_id" json:"page_id"`
+	Label     string    `db:"label" json:"label"`
+	ConfigID  uuid.UUID `db:"config_id" json:"config_id"`
+	IsDefault bool      `db:"is_default" json:"is_default"`
+	TabOrder  int       `db:"tab_order" json:"tab_order"`
 }
 
 // UpdatePageTabConfig represents fields that can be updated in a PageTabConfig
