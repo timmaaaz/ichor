@@ -312,6 +312,33 @@ func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageCon
 	}, nil
 }
 
+// QueryFullPageByNameAndUserID returns a full page configuration by its name and user ID, including tabs.
+func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, userID uuid.UUID) (FullPageConfig, error) {
+	unescaped, err := url.QueryUnescape(name)
+	if err != nil {
+		return FullPageConfig{}, errs.Newf(errs.InvalidArgument, "invalid page name: %s", err)
+	}
+
+	storedPage, err := a.configStore.QueryPageByNameAndUserID(ctx, unescaped, userID)
+	if err != nil {
+		if errors.Is(err, tablebuilder.ErrNotFound) {
+			return FullPageConfig{}, errs.New(errs.NotFound, err)
+		}
+		return FullPageConfig{}, errs.Newf(errs.Internal, "query page by name and user id: %s", err)
+	}
+	page := toAppPageConfig(*storedPage)
+
+	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, storedPage.ID)
+	if err != nil {
+		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
+	}
+
+	return FullPageConfig{
+		PageConfig: page,
+		PageTabs:   ToAppPageTabConfigs(storedTabs),
+	}, nil
+}
+
 // QueryFullPageByID returns a full page configuration by its ID, including tabs.
 func (a *App) QueryFullPageByID(ctx context.Context, id uuid.UUID) (FullPageConfig, error) {
 	storedPage, err := a.configStore.QueryPageByID(ctx, id)

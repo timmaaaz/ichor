@@ -354,6 +354,36 @@ func (s *ConfigStore) QueryPageByName(ctx context.Context, name string) (*PageCo
 	return &pc, nil
 }
 
+// QueryPageByNameAndUserID retrieves a page configuration by name and user ID
+func (s *ConfigStore) QueryPageByNameAndUserID(ctx context.Context, name string, userID uuid.UUID) (*PageConfig, error) {
+	data := struct {
+		Name   string    `db:"name"`
+		UserID uuid.UUID `db:"user_id"`
+	}{
+		Name:   name,
+		UserID: userID,
+	}
+
+	const q = `
+		SELECT
+			id, name, user_id, is_default
+		FROM
+			config.page_configs
+		WHERE
+			name = :name
+			AND user_id = :user_id`
+
+	var pc PageConfig
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &pc); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("query page config: %w", err)
+	}
+
+	return &pc, nil
+}
+
 // QueryPageByID retrieves a page configuration by ID
 func (s *ConfigStore) QueryPageByID(ctx context.Context, id uuid.UUID) (*PageConfig, error) {
 	data := struct {

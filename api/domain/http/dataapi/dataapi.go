@@ -266,6 +266,23 @@ func (api *api) queryFullPageByName(ctx context.Context, r *http.Request) web.En
 	return fullPageConfig
 }
 
+func (api *api) queryFullPageByNameAndUserID(ctx context.Context, r *http.Request) web.Encoder {
+	name := web.Param(r, "name")
+	userIDStr := web.Param(r, "user_id")
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	fullPageConfig, err := api.dataapp.QueryFullPageByNameAndUserID(ctx, name, userID)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return fullPageConfig
+}
+
 func (api *api) queryFullPageByID(ctx context.Context, r *http.Request) web.Encoder {
 	id := web.Param(r, "page_config_id")
 	parsed, err := uuid.Parse(id)

@@ -84,7 +84,10 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodDelete, version, "/data/page/{page_config_id}", api.deletePageConfig, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 
-	app.HandlerFunc(http.MethodGet, version, "/data/page/name/{name}", api.queryFullPageByName, authen,
+	// app.HandlerFunc(http.MethodGet, version, "/data/page/name/{name}", api.queryFullPageByName, authen,
+	// 	mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodGet, version, "/data/page/name/{name}/user/{user_id}", api.queryFullPageByNameAndUserID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodGet, version, "/data/page/id/{page_config_id}", api.queryFullPageByID, authen,

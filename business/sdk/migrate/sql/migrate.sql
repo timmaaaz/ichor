@@ -974,11 +974,12 @@ COMMENT ON COLUMN config.table_configs.updated_by IS 'User who last updated this
 -- Description: Create table for storing page configurations
 CREATE TABLE IF NOT EXISTS config.page_configs (
    id UUID PRIMARY KEY,
-   name TEXT NOT NULL UNIQUE,
+   name TEXT NOT NULL,
    user_id UUID NOT NULL,
    is_default BOOLEAN NOT NULL DEFAULT FALSE,
 
-   CONSTRAINT fk_page_configs_user FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE CASCADE
+   CONSTRAINT fk_page_configs_user FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE CASCADE,
+   CONSTRAINT unique_page_config_name_user UNIQUE (name, user_id)
 );
 
 -- Migration: Create page_tab_configs for storing tab configurations within pages

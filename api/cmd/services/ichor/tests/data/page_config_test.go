@@ -184,3 +184,47 @@ func pageConfigQueryByID200(sd apitest.SeedData) []apitest.Table {
 		},
 	}
 }
+
+func pageConfigQueryByNameAndUserID200(sd apitest.SeedData) []apitest.Table {
+	urlEncodedName := url.QueryEscape("Inventory Overview")
+
+	var expTabs = []dataapp.PageTabConfig{}
+
+	for _, p := range sd.PageTabConfigs {
+		if p.PageConfigID == sd.PageConfigs[1].ID {
+			expTabs = append(expTabs, dataapp.ToAppPageTabConfig(p))
+		}
+	}
+
+	return []apitest.Table{
+		{
+			Name:       "basic",
+			URL:        fmt.Sprintf("/v1/data/page/name/%s/user/%s", urlEncodedName, sd.Admins[0].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodGet,
+			StatusCode: http.StatusOK,
+			GotResp:    &dataapp.FullPageConfig{},
+			ExpResp: &dataapp.FullPageConfig{
+				PageConfig: dataapp.PageConfig{
+					ID:        sd.PageConfigs[1].ID.String(),
+					Name:      "Inventory Overview",
+					UserID:    sd.PageConfigs[1].UserID.String(),
+					IsDefault: "false",
+				},
+				PageTabs: expTabs,
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(*dataapp.FullPageConfig)
+				if !exists {
+					return "could not convert got to *dataapp.FullPageConfig"
+				}
+				expResp, exists := exp.(*dataapp.FullPageConfig)
+				if !exists {
+					return "could not convert exp to *dataapp.FullPageConfig"
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+}

@@ -24,6 +24,7 @@ func Test_Data(t *testing.T) {
 	test.Run(t, queryByUser200(sd), "querybyuser-200")
 	test.Run(t, pageConfigQueryByName200(sd), "pageconfigquerybyname-200")
 	test.Run(t, pageConfigQueryByID200(sd), "pageconfigquerybyid-200")
+	test.Run(t, pageConfigQueryByNameAndUserID200(sd), "pageconfigquerybynameanduserid-200")
 
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, pageConfigCreate200(sd), "pageconfigcreate-200")
