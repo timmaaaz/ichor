@@ -203,3 +203,131 @@ func (api *api) validateConfig(ctx context.Context, r *http.Request) web.Encoder
 
 	return nil
 }
+
+// =============================================================================
+// PageConfig handlers
+
+func (api *api) createPageConfig(ctx context.Context, r *http.Request) web.Encoder {
+	var app dataapp.NewPageConfig
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	pageConfig, err := api.dataapp.CreatePageConfig(ctx, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return pageConfig
+}
+
+func (api *api) updatePageConfig(ctx context.Context, r *http.Request) web.Encoder {
+	var app dataapp.UpdatePageConfig
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	id := web.Param(r, "page_config_id")
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	pageConfig, err := api.dataapp.UpdatePageConfig(ctx, parsed, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return pageConfig
+}
+
+func (api *api) deletePageConfig(ctx context.Context, r *http.Request) web.Encoder {
+	id := web.Param(r, "page_config_id")
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	if err := api.dataapp.DeletePageConfig(ctx, parsed); err != nil {
+		return errs.NewError(err)
+	}
+
+	return nil
+}
+
+func (api *api) queryFullPageByName(ctx context.Context, r *http.Request) web.Encoder {
+	name := web.Param(r, "name")
+
+	fullPageConfig, err := api.dataapp.QueryFullPageByName(ctx, name)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return fullPageConfig
+}
+
+func (api *api) queryFullPageByID(ctx context.Context, r *http.Request) web.Encoder {
+	id := web.Param(r, "page_config_id")
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	fullPageConfig, err := api.dataapp.QueryFullPageByID(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return fullPageConfig
+}
+
+// =============================================================================
+// PageTabConfig handlers
+
+func (api *api) createPageTabConfig(ctx context.Context, r *http.Request) web.Encoder {
+	var app dataapp.NewPageTabConfig
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	pageTabConfig, err := api.dataapp.CreatePageTabConfig(ctx, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return pageTabConfig
+}
+
+func (api *api) updatePageTabConfig(ctx context.Context, r *http.Request) web.Encoder {
+	var app dataapp.UpdatePageTabConfig
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	id := web.Param(r, "page_tab_config_id")
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	pageTabConfig, err := api.dataapp.UpdatePageTabConfig(ctx, parsed, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return pageTabConfig
+}
+
+func (api *api) deletePageTabConfig(ctx context.Context, r *http.Request) web.Encoder {
+	id := web.Param(r, "page_tab_config_id")
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	if err := api.dataapp.DeletePageTabConfig(ctx, parsed); err != nil {
+		return errs.NewError(err)
+	}
+
+	return nil
+}

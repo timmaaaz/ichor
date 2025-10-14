@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
@@ -96,7 +97,7 @@ func (a *App) CreatePageTabConfig(ctx context.Context, app NewPageTabConfig) (Pa
 		return PageTabConfig{}, fmt.Errorf("create: page tab config[%s]: %w", app.Label, err)
 	}
 
-	return toAppPageTabConfig(*stored), nil
+	return ToAppPageTabConfig(*stored), nil
 }
 
 // Update updates an existing table configuration.
@@ -167,7 +168,7 @@ func (a *App) UpdatePageConfig(ctx context.Context, id uuid.UUID, app UpdatePage
 		return PageConfig{}, errs.Newf(errs.Internal, "get config: %s", err)
 	}
 
-	err = convert.PopulateSameTypes(upc, &current)
+	err = convert.PopulateSameTypes(upc, current)
 	if err != nil {
 		return PageConfig{}, fmt.Errorf("populate struct: %w", err)
 	}
@@ -197,7 +198,8 @@ func (a *App) UpdatePageTabConfig(ctx context.Context, id uuid.UUID, app UpdateP
 		return PageTabConfig{}, errs.Newf(errs.Internal, "get config: %s", err)
 	}
 
-	err = convert.PopulateSameTypes(upc, &current)
+	// err = convert.PopulateSameTypes(upc, &current)
+	err = convert.PopulateSameTypes(upc, current)
 	if err != nil {
 		return PageTabConfig{}, fmt.Errorf("populate struct: %w", err)
 	}
@@ -208,7 +210,7 @@ func (a *App) UpdatePageTabConfig(ctx context.Context, id uuid.UUID, app UpdateP
 		return PageTabConfig{}, fmt.Errorf("update page tab config: %w", err)
 	}
 
-	return toAppPageTabConfig(*pageTabConfig), nil
+	return ToAppPageTabConfig(*pageTabConfig), nil
 }
 
 // Delete removes a table configuration from the system.
@@ -285,7 +287,12 @@ func (a *App) QueryByUser(ctx context.Context, userID uuid.UUID) (TableConfigLis
 
 // QueryFullPageByName returns a full page configuration by its name, including tabs.
 func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageConfig, error) {
-	storedPage, err := a.configStore.QueryPageByName(ctx, name)
+	unescaped, err := url.QueryUnescape(name)
+	if err != nil {
+		return FullPageConfig{}, errs.Newf(errs.InvalidArgument, "invalid page name: %s", err)
+	}
+
+	storedPage, err := a.configStore.QueryPageByName(ctx, unescaped)
 	if err != nil {
 		if errors.Is(err, tablebuilder.ErrNotFound) {
 			return FullPageConfig{}, errs.New(errs.NotFound, err)
@@ -301,7 +308,7 @@ func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageCon
 
 	return FullPageConfig{
 		PageConfig: page,
-		PageTabs:   toAppPageTabConfigs(storedTabs),
+		PageTabs:   ToAppPageTabConfigs(storedTabs),
 	}, nil
 }
 
@@ -323,7 +330,7 @@ func (a *App) QueryFullPageByID(ctx context.Context, id uuid.UUID) (FullPageConf
 
 	return FullPageConfig{
 		PageConfig: page,
-		PageTabs:   toAppPageTabConfigs(storedTabs),
+		PageTabs:   ToAppPageTabConfigs(storedTabs),
 	}, nil
 }
 
@@ -396,8 +403,13 @@ func (a *App) ExecuteQueryCountByID(ctx context.Context, id uuid.UUID, app Table
 }
 
 func (a *App) ExecuteQueryCountByName(ctx context.Context, name string, app TableQuery) (Count, error) {
+	unescaped, err := url.QueryUnescape(name)
+	if err != nil {
+		return Count{}, errs.Newf(errs.InvalidArgument, "invalid config name: %s", err)
+	}
+
 	// Load the configuration by name
-	config, err := a.configStore.LoadConfigByName(ctx, name)
+	config, err := a.configStore.LoadConfigByName(ctx, unescaped)
 	if err != nil {
 		if errors.Is(err, tablebuilder.ErrNotFound) {
 			return Count{}, errs.New(errs.NotFound, err)

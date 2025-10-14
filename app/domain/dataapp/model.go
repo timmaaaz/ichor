@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
@@ -398,7 +399,7 @@ func (app NewPageConfig) Validate() error {
 type UpdatePageConfig struct {
 	Name      *string `json:"name" validate:"omitempty,min=3,max=100"`
 	UserID    *string `json:"user_id" validate:"omitempty,uuid"`
-	IsDefault *bool   `json:"is_default"`
+	IsDefault *string `json:"is_default"`
 }
 
 // Decode implements the decoder interface.
@@ -441,15 +442,13 @@ func toBusUpdatePageConfig(app UpdatePageConfig) (tablebuilder.UpdatePageConfig,
 	return dest, err
 }
 
-// PageTabConfig - MATCHES business layer exactly
-
 type PageTabConfig struct {
-	ID        string `json:"id"`
-	Label     string `json:"label"`
-	PageID    string `json:"page_id"`
-	ConfigID  string `json:"config_id"`
-	IsDefault string `json:"is_default"`
-	TabOrder  string `json:"tab_order"`
+	ID           string `json:"id"`
+	Label        string `json:"label"`
+	PageConfigID string `json:"page_config_id"`
+	ConfigID     string `json:"config_id"`
+	IsDefault    string `json:"is_default"`
+	TabOrder     string `json:"tab_order"`
 }
 
 func (app PageTabConfig) Encode() ([]byte, string, error) {
@@ -458,11 +457,11 @@ func (app PageTabConfig) Encode() ([]byte, string, error) {
 }
 
 type NewPageTabConfig struct {
-	Label     string `json:"label" validate:"required,min=1,max=100"`
-	PageID    string `json:"page_id" validate:"required,uuid"`
-	ConfigID  string `json:"config_id" validate:"required,uuid"`
-	IsDefault bool   `json:"is_default"`
-	TabOrder  int    `json:"tab_order" validate:"min=1"`
+	Label        string `json:"label" validate:"required,min=1,max=100"`
+	PageConfigID string `json:"page_config_id" validate:"required,uuid"`
+	ConfigID     string `json:"config_id" validate:"required,uuid"`
+	IsDefault    string `json:"is_default"`
+	TabOrder     string `json:"tab_order" validate:"min=1"`
 }
 
 // Decode implements the decoder interface.
@@ -479,11 +478,11 @@ func (app NewPageTabConfig) Validate() error {
 }
 
 type UpdatePageTabConfig struct {
-	Label     *string `json:"label" validate:"omitempty,min=1,max=100"`
-	PageID    *string `json:"page_id" validate:"omitempty,uuid"`
-	ConfigID  *string `json:"config_id" validate:"omitempty,uuid"`
-	IsDefault *bool   `json:"is_default"`
-	TabOrder  *int    `json:"tab_order" validate:"omitempty,min=1"`
+	Label        *string `json:"label" validate:"omitempty,min=1,max=100"`
+	PageConfigID *string `json:"page_config_id" validate:"omitempty,uuid"`
+	ConfigID     *string `json:"config_id" validate:"omitempty,uuid"`
+	IsDefault    *string `json:"is_default"`
+	TabOrder     *string `json:"tab_order" validate:"omitempty,min=1"`
 }
 
 // Decode implements the decoder interface.
@@ -499,21 +498,21 @@ func (app UpdatePageTabConfig) Validate() error {
 	return nil
 }
 
-func toAppPageTabConfig(bus tablebuilder.PageTabConfig) PageTabConfig {
+func ToAppPageTabConfig(bus tablebuilder.PageTabConfig) PageTabConfig {
 	return PageTabConfig{
-		ID:        bus.ID.String(),
-		Label:     bus.Label,
-		PageID:    bus.PageID.String(),
-		ConfigID:  bus.ConfigID.String(),
-		IsDefault: fmt.Sprintf("%t", bus.IsDefault),
-		TabOrder:  fmt.Sprintf("%d", bus.TabOrder),
+		ID:           bus.ID.String(),
+		Label:        bus.Label,
+		PageConfigID: bus.PageConfigID.String(),
+		ConfigID:     bus.ConfigID.String(),
+		IsDefault:    fmt.Sprintf("%t", bus.IsDefault),
+		TabOrder:     fmt.Sprintf("%d", bus.TabOrder),
 	}
 }
 
-func toAppPageTabConfigs(bus []tablebuilder.PageTabConfig) []PageTabConfig {
+func ToAppPageTabConfigs(bus []tablebuilder.PageTabConfig) []PageTabConfig {
 	app := make([]PageTabConfig, len(bus))
 	for i, v := range bus {
-		app[i] = toAppPageTabConfig(v)
+		app[i] = ToAppPageTabConfig(v)
 	}
 	return app
 }
@@ -521,11 +520,23 @@ func toAppPageTabConfigs(bus []tablebuilder.PageTabConfig) []PageTabConfig {
 func toBusPageTabConfig(app NewPageTabConfig) (tablebuilder.PageTabConfig, error) {
 	dest := tablebuilder.PageTabConfig{}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	// Convert string IDs to UUIDs
+	pageConfigID, err := uuid.Parse(app.PageConfigID)
+	if err != nil {
+		return tablebuilder.PageTabConfig{}, fmt.Errorf("invalid page_config_id: %w", err)
+	}
+	dest.PageConfigID = pageConfigID
+
+	configID, err := uuid.Parse(app.ConfigID)
+	if err != nil {
+		return tablebuilder.PageTabConfig{}, fmt.Errorf("invalid config_id: %w", err)
+	}
+	dest.ConfigID = configID
+
+	err = convert.PopulateTypesFromStrings(app, &dest)
 	if err != nil {
 		return tablebuilder.PageTabConfig{}, fmt.Errorf("to bus page tab config: %w", err)
 	}
-
 	return dest, nil
 }
 

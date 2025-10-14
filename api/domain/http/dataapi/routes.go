@@ -73,4 +73,30 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodPost, version, "/data/validate", api.validateConfig, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	// PageConfig routes
+	app.HandlerFunc(http.MethodPost, version, "/data/page", api.createPageConfig, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPut, version, "/data/page/{page_config_id}", api.updatePageConfig, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodDelete, version, "/data/page/{page_config_id}", api.deletePageConfig, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodGet, version, "/data/page/name/{name}", api.queryFullPageByName, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodGet, version, "/data/page/id/{page_config_id}", api.queryFullPageByID, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	// PageTabConfig routes
+	app.HandlerFunc(http.MethodPost, version, "/data/page/tab", api.createPageTabConfig, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPut, version, "/data/page/tab/{page_tab_config_id}", api.updatePageTabConfig, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodDelete, version, "/data/page/tab/{page_tab_config_id}", api.deletePageTabConfig, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

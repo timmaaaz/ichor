@@ -78,9 +78,9 @@ func (s *ConfigStore) CreatePageConfig(ctx context.Context, pc PageConfig) (*Pag
 
 	const q = `
 		INSERT INTO config.page_configs (
-			id, page_id, user_id, is_default
+			id, name, user_id, is_default
 		) VALUES (
-			:id, :page_id, :user_id, :is_default
+			:id, :name, :user_id, :is_default
 		)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, pc); err != nil {
@@ -100,9 +100,9 @@ func (s *ConfigStore) CreatePageTabConfig(ctx context.Context, ptc PageTabConfig
 
 	const q = `
 		INSERT INTO config.page_tab_configs (
-			id, page_id, label, config_id, is_default, tab_order
+			id, page_config_id, label, config_id, is_default, tab_order
 		) VALUES (
-			:id, :page_id, :label, :config_id, :is_default, :tab_order
+			:id, :page_config_id, :label, :config_id, :is_default, :tab_order
 		)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, ptc); err != nil {
@@ -157,9 +157,10 @@ func (s *ConfigStore) Update(ctx context.Context, id uuid.UUID, name, descriptio
 
 // UpdatePageConfig updates an existing page configuration.
 func (s *ConfigStore) UpdatePageConfig(ctx context.Context, pc PageConfig) (*PageConfig, error) {
+
 	const q = `
 		UPDATE config.page_configs SET
-			page_id = :page_id,
+			name = :name,
 			user_id = :user_id,
 			is_default = :is_default
 		WHERE id = :id`
@@ -178,7 +179,7 @@ func (s *ConfigStore) UpdatePageConfig(ctx context.Context, pc PageConfig) (*Pag
 func (s *ConfigStore) UpdatePageTabConfig(ctx context.Context, ptc PageTabConfig) (*PageTabConfig, error) {
 	const q = `
 		UPDATE config.page_tab_configs SET
-			page_id = :page_id,
+			page_config_id = :page_config_id,
 			label = :label,
 			config_id = :config_id,
 			is_default = :is_default,
@@ -390,7 +391,7 @@ func (s *ConfigStore) QueryPageTabConfigByID(ctx context.Context, id uuid.UUID) 
 
 	const q = `
 		SELECT
-			id, page_id, label, config_id, is_default, tab_order
+			id, page_config_id, label, config_id, is_default, tab_order
 		FROM
 			config.page_tab_configs
 		WHERE
@@ -410,18 +411,18 @@ func (s *ConfigStore) QueryPageTabConfigByID(ctx context.Context, id uuid.UUID) 
 // QueryPageTabConfigsByPageID retrieves all page tab configurations for a given page ID
 func (s *ConfigStore) QueryPageTabConfigsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageTabConfig, error) {
 	data := struct {
-		PageID uuid.UUID `db:"page_id"`
+		PageConfigID uuid.UUID `db:"page_config_id"`
 	}{
-		PageID: pageID,
+		PageConfigID: pageID,
 	}
 
 	const q = `
 		SELECT
-			id, page_id, label, config_id, is_default, tab_order
+			id, page_config_id, label, config_id, is_default, tab_order
 		FROM
 			config.page_tab_configs
 		WHERE
-			page_id = :page_id
+			page_config_id = :page_config_id
 		ORDER BY
 			tab_order ASC`
 

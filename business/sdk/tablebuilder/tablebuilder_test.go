@@ -803,25 +803,25 @@ func pageConfigsExample(ctx context.Context, store *tablebuilder.Store, configSt
 
 	// Save some tabs
 	tab1 := tablebuilder.PageTabConfig{
-		PageID:    savedPage.ID,
-		Label:     "Products List",
-		ConfigID:  sd.TableBuilderConfigs[0].ID,
-		IsDefault: true,
-		TabOrder:  1,
+		PageConfigID: savedPage.ID,
+		Label:        "Products List",
+		ConfigID:     sd.TableBuilderConfigs[0].ID,
+		IsDefault:    true,
+		TabOrder:     1,
 	}
 	tab2 := tablebuilder.PageTabConfig{
-		PageID:    savedPage.ID,
-		Label:     "Inventory Items",
-		ConfigID:  sd.TableBuilderConfigs[2].ID,
-		IsDefault: false,
-		TabOrder:  2,
+		PageConfigID: savedPage.ID,
+		Label:        "Inventory Items",
+		ConfigID:     sd.TableBuilderConfigs[2].ID,
+		IsDefault:    false,
+		TabOrder:     2,
 	}
 	tab3 := tablebuilder.PageTabConfig{
-		PageID:    savedPage.ID,
-		Label:     "Current Inventory",
-		ConfigID:  sd.TableBuilderConfigs[1].ID,
-		IsDefault: false,
-		TabOrder:  3,
+		PageConfigID: savedPage.ID,
+		Label:        "Current Inventory",
+		ConfigID:     sd.TableBuilderConfigs[1].ID,
+		IsDefault:    false,
+		TabOrder:     3,
 	}
 
 	ret1, err := configStore.CreatePageTabConfig(ctx, tab2)

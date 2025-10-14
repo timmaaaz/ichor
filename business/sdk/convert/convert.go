@@ -97,75 +97,40 @@ func PopulateTypesFromStrings(src, dest interface{}) error {
 			value = value.Elem()
 		}
 
-		// we make sure the value is valid and not they empty string
-		if value.IsValid() && value.String() != "" {
+		// we make sure the value is valid and not empty
+		if value.IsValid() {
+			// Check if we should skip this field based on its zero value
+			shouldProcess := false
 
-			// get the destination field
-			dField := dVal.FieldByName(field.Name)
-
-			if dField.Kind() != reflect.Ptr {
-				err := populateStructFieldLiteral(&dField, value)
-				if err != nil {
-					return err
-				}
-			} else {
-				err := populateStructFieldPointer(&dField, value)
-				if err != nil {
-					return err
-				}
+			switch value.Kind() {
+			case reflect.String:
+				shouldProcess = value.String() != ""
+			case reflect.Bool:
+				// Always process booleans (both true and false are valid)
+				shouldProcess = true
+			default:
+				// For other types, check if it's not the zero value
+				shouldProcess = !value.IsZero()
 			}
 
-		}
-	}
-	return nil
-}
+			if shouldProcess {
+				// get the destination field
+				dField := dVal.FieldByName(field.Name)
 
-func populateStructFieldLiteral(dField *reflect.Value, value reflect.Value) error {
-	// make sure that the destination field can be populated
-	if dField.IsValid() && dField.CanSet() {
-		switch dField.Type().Kind() {
-		case reflect.String:
-			dField.SetString(value.String())
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			i, err := strconv.ParseInt(value.String(), 10, 64)
-			if err == nil {
-				dField.SetInt(i)
-			}
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			u, err := strconv.ParseUint(value.String(), 10, 64)
-			if err == nil {
-				dField.SetUint(u)
-			}
-		case reflect.Float32, reflect.Float64:
-			f, err := strconv.ParseFloat(value.String(), 64)
-			if err == nil {
-				dField.SetFloat(f)
-			}
-		case reflect.Bool:
-			b, err := strconv.ParseBool(value.String())
-			if err == nil {
-				dField.SetBool(b)
-			}
-		default:
-			// this area is for custom types (not defined in the reflect package)
-			// we can set custom options per type
-			if dField.Type() == reflect.TypeOf(uuid.UUID{}) {
-				uuidStr := value.String()
-				uuidVal, err := uuid.Parse(uuidStr)
-				if err != nil {
-					return fmt.Errorf("failed to parse UUID: %w", err)
+				if dField.Kind() != reflect.Ptr {
+					err := populateStructFieldLiteral(&dField, value)
+					if err != nil {
+						return err
+					}
+				} else {
+					err := populateStructFieldPointer(&dField, value)
+					if err != nil {
+						return err
+					}
 				}
-				dField.Set(reflect.ValueOf(uuidVal))
-			} else if dField.Type() == reflect.TypeOf(time.Time{}) {
-				t, err := time.Parse(timeutil.FORMAT, value.String())
-				if err != nil {
-					return fmt.Errorf("failed to parse time: %w", err)
-				}
-				dField.Set(reflect.ValueOf(t))
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -200,9 +165,14 @@ func populateStructFieldPointer(dField *reflect.Value, value reflect.Value) erro
 					elem.SetFloat(f)
 				}
 			case reflect.Bool:
-				b, err := strconv.ParseBool(value.String())
-				if err == nil {
-					elem.SetBool(b)
+				// Check if source value is already a bool
+				if value.Kind() == reflect.Bool {
+					elem.SetBool(value.Bool())
+				} else {
+					b, err := strconv.ParseBool(value.String())
+					if err == nil {
+						elem.SetBool(b)
+					}
 				}
 			default:
 				if elem.Type() == reflect.TypeOf(uuid.UUID{}) {
@@ -225,6 +195,60 @@ func populateStructFieldPointer(dField *reflect.Value, value reflect.Value) erro
 		}
 	} else {
 		return fmt.Errorf("field is not a valid, non-nil pointer")
+	}
+
+	return nil
+}
+
+func populateStructFieldLiteral(dField *reflect.Value, value reflect.Value) error {
+	// make sure that the destination field can be populated
+	if dField.IsValid() && dField.CanSet() {
+		switch dField.Type().Kind() {
+		case reflect.String:
+			dField.SetString(value.String())
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			i, err := strconv.ParseInt(value.String(), 10, 64)
+			if err == nil {
+				dField.SetInt(i)
+			}
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			u, err := strconv.ParseUint(value.String(), 10, 64)
+			if err == nil {
+				dField.SetUint(u)
+			}
+		case reflect.Float32, reflect.Float64:
+			f, err := strconv.ParseFloat(value.String(), 64)
+			if err == nil {
+				dField.SetFloat(f)
+			}
+		case reflect.Bool:
+			// Check if source value is already a bool
+			if value.Kind() == reflect.Bool {
+				dField.SetBool(value.Bool())
+			} else {
+				b, err := strconv.ParseBool(value.String())
+				if err == nil {
+					dField.SetBool(b)
+				}
+			}
+		default:
+			// this area is for custom types (not defined in the reflect package)
+			// we can set custom options per type
+			if dField.Type() == reflect.TypeOf(uuid.UUID{}) {
+				uuidStr := value.String()
+				uuidVal, err := uuid.Parse(uuidStr)
+				if err != nil {
+					return fmt.Errorf("failed to parse UUID: %w", err)
+				}
+				dField.Set(reflect.ValueOf(uuidVal))
+			} else if dField.Type() == reflect.TypeOf(time.Time{}) {
+				t, err := time.Parse(timeutil.FORMAT, value.String())
+				if err != nil {
+					return fmt.Errorf("failed to parse time: %w", err)
+				}
+				dField.Set(reflect.ValueOf(t))
+			}
+		}
 	}
 
 	return nil
