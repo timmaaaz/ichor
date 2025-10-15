@@ -76,6 +76,11 @@ func (s *ConfigStore) Create(ctx context.Context, name, description string, conf
 func (s *ConfigStore) CreatePageConfig(ctx context.Context, pc PageConfig) (*PageConfig, error) {
 	pc.ID = uuid.New()
 
+	// If is_default is true, ensure user_id is zero (will be NULL in database)
+	if pc.IsDefault {
+		pc.UserID = uuid.UUID{}
+	}
+
 	const q = `
 		INSERT INTO config.page_configs (
 			id, name, user_id, is_default
@@ -83,7 +88,7 @@ func (s *ConfigStore) CreatePageConfig(ctx context.Context, pc PageConfig) (*Pag
 			:id, :name, :user_id, :is_default
 		)`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, pc); err != nil {
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBPageConfig(pc)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return nil, fmt.Errorf("page config already exists: %w", err)
 		}
@@ -158,6 +163,11 @@ func (s *ConfigStore) Update(ctx context.Context, id uuid.UUID, name, descriptio
 // UpdatePageConfig updates an existing page configuration.
 func (s *ConfigStore) UpdatePageConfig(ctx context.Context, pc PageConfig) (*PageConfig, error) {
 
+	// If is_default is true, ensure user_id is zero (will be NULL in database)
+	if pc.IsDefault {
+		pc.UserID = uuid.UUID{}
+	}
+
 	const q = `
 		UPDATE config.page_configs SET
 			name = :name,
@@ -165,7 +175,7 @@ func (s *ConfigStore) UpdatePageConfig(ctx context.Context, pc PageConfig) (*Pag
 			is_default = :is_default
 		WHERE id = :id`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, pc); err != nil {
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBPageConfig(pc)); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return nil, ErrNotFound
 		}
@@ -327,12 +337,15 @@ func (s *ConfigStore) QueryByUser(ctx context.Context, userID uuid.UUID) ([]Stor
 	return configs, nil
 }
 
-// QueryPageByName retrieves a page configuration by name
+// QueryPageByName retrieves the default page configuration by name.
+// This returns the default page config that serves as a fallback for all users.
 func (s *ConfigStore) QueryPageByName(ctx context.Context, name string) (*PageConfig, error) {
 	data := struct {
-		Name string `db:"name"`
+		Name      string `db:"name"`
+		IsDefault bool   `db:"is_default"`
 	}{
-		Name: name,
+		Name:      name,
+		IsDefault: true,
 	}
 
 	const q = `
@@ -341,16 +354,18 @@ func (s *ConfigStore) QueryPageByName(ctx context.Context, name string) (*PageCo
 		FROM
 			config.page_configs
 		WHERE
-			name = :name`
+			name = :name
+			AND is_default = :is_default`
 
-	var pc PageConfig
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &pc); err != nil {
+	var dbPC dbPageConfig
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbPC); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("query page config: %w", err)
 	}
 
+	pc := toBusPageConfig(dbPC)
 	return &pc, nil
 }
 
@@ -373,14 +388,15 @@ func (s *ConfigStore) QueryPageByNameAndUserID(ctx context.Context, name string,
 			name = :name
 			AND user_id = :user_id`
 
-	var pc PageConfig
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &pc); err != nil {
+	var dbPC dbPageConfig
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbPC); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("query page config: %w", err)
 	}
 
+	pc := toBusPageConfig(dbPC)
 	return &pc, nil
 }
 
@@ -400,14 +416,15 @@ func (s *ConfigStore) QueryPageByID(ctx context.Context, id uuid.UUID) (*PageCon
 		WHERE
 			id = :id`
 
-	var pc PageConfig
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &pc); err != nil {
+	var dbPC dbPageConfig
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbPC); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("query page config: %w", err)
 	}
 
+	pc := toBusPageConfig(dbPC)
 	return &pc, nil
 }
 

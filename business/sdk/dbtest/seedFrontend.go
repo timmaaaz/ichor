@@ -714,6 +714,66 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	if err != nil {
 		return fmt.Errorf("creating stored config: %w", err)
 	}
+	// Create SYSTEM-WIDE default page (user_id = NULL or uuid.Nil)
+	// This is the template that all users fall back to if they don't have their own version
+	defaultPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "default_dashboard",
+		UserID:    uuid.Nil, // ✅ CORRECT - no user association, this is system-wide
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating default page config: %w", err)
+	}
+
+	// Get the stored config IDs we just created
+	ordersConfigStored, err := configStore.QueryByName(ctx, "orders_dashboard")
+	if err != nil {
+		return fmt.Errorf("querying orders config: %w", err)
+	}
+
+	productsConfigStored, err := configStore.QueryByName(ctx, "products_dashboard")
+	if err != nil {
+		return fmt.Errorf("querying products config: %w", err)
+	}
+
+	inventoryConfigStored, err := configStore.QueryByName(ctx, "inventory_dashboard")
+	if err != nil {
+		return fmt.Errorf("querying inventory config: %w", err)
+	}
+
+	// Create tabs for the SYSTEM default page
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Orders",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     ordersConfigStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating orders tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Products",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     productsConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating products tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Inventory",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     inventoryConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     3,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory tab: %w", err)
+	}
 
 	return nil
 }

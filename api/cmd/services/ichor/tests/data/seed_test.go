@@ -741,11 +741,13 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// =========================================================================
 	// Page Configs
 	// =========================================================================
+	// Default page config - UserID will be automatically set to zero UUID (NULL) by business logic
 	pc1 := tablebuilder.PageConfig{
 		Name:      "Dashboard Home",
-		UserID:    admins[0].ID,
+		UserID:    uuid.UUID{}, // Zero UUID for default configs (will be NULL in DB)
 		IsDefault: true,
 	}
+	// User-specific page configs must have a user_id
 	pc2 := tablebuilder.PageConfig{
 		Name:      "Inventory Overview",
 		UserID:    admins[0].ID,

@@ -4,10 +4,12 @@
 package tablebuilder
 
 import (
+	"database/sql"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb/nulltypes"
 )
 
 // =============================================================================
@@ -339,4 +341,45 @@ type UpdatePageTabConfig struct {
 	ConfigID     *uuid.UUID
 	IsDefault    *bool
 	TabOrder     *int
+}
+
+// =============================================================================
+// Database Models and Conversion Functions
+// =============================================================================
+
+// dbPageConfig is the database representation of PageConfig with nullable user_id
+type dbPageConfig struct {
+	ID        uuid.UUID      `db:"id"`
+	Name      string         `db:"name"`
+	UserID    sql.NullString `db:"user_id"`
+	IsDefault bool           `db:"is_default"`
+}
+
+// toDBPageConfig converts a PageConfig to its database representation
+func toDBPageConfig(pc PageConfig) dbPageConfig {
+	return dbPageConfig{
+		ID:        pc.ID,
+		Name:      pc.Name,
+		UserID:    nulltypes.ToNullableUUID(pc.UserID),
+		IsDefault: pc.IsDefault,
+	}
+}
+
+// toBusPageConfig converts a database PageConfig to its business representation
+func toBusPageConfig(db dbPageConfig) PageConfig {
+	return PageConfig{
+		ID:        db.ID,
+		Name:      db.Name,
+		UserID:    nulltypes.FromNullableUUID(db.UserID),
+		IsDefault: db.IsDefault,
+	}
+}
+
+// toBusPageConfigs converts multiple database PageConfigs to business representations
+func toBusPageConfigs(dbs []dbPageConfig) []PageConfig {
+	bus := make([]PageConfig, len(dbs))
+	for i, db := range dbs {
+		bus[i] = toBusPageConfig(db)
+	}
+	return bus
 }

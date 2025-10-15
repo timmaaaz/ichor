@@ -20,13 +20,13 @@ func pageConfigCreate200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: dataapp.NewPageConfig{
 				Name:      "Test Dashboard",
-				UserID:    sd.Admins[0].ID.String(),
+				UserID:    "", // Empty string for default configs (will be NULL in DB)
 				IsDefault: "true",
 			},
 			GotResp: &dataapp.PageConfig{},
 			ExpResp: &dataapp.PageConfig{
 				Name:      "Test Dashboard",
-				UserID:    sd.Admins[0].ID.String(),
+				UserID:    "", // Default configs have no user_id
 				IsDefault: "true",
 			},
 			CmpFunc: func(got, exp any) string {
@@ -67,7 +67,7 @@ func pageConfigUpdate200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &dataapp.PageConfig{
 				ID:        sd.PageConfigs[0].ID.String(),
 				Name:      name,
-				UserID:    sd.PageConfigs[0].UserID.String(),
+				UserID:    "", // When updated to default, user_id is cleared
 				IsDefault: "true",
 			},
 			CmpFunc: func(got, exp any) string {
@@ -109,6 +109,9 @@ func pageConfigQueryByName200(sd apitest.SeedData) []apitest.Table {
 		}
 	}
 
+	// This test verifies that QueryPageByName returns the default page configuration.
+	// Only one default page config is allowed per page name (enforced by database constraint).
+	// This serves as the fallback configuration for all users.
 	return []apitest.Table{
 		{
 			Name:       "basic",
@@ -121,7 +124,7 @@ func pageConfigQueryByName200(sd apitest.SeedData) []apitest.Table {
 				PageConfig: dataapp.PageConfig{
 					ID:        sd.PageConfigs[0].ID.String(),
 					Name:      "Dashboard Home",
-					UserID:    sd.PageConfigs[0].UserID.String(),
+					UserID:    "", // Default configs have no user_id
 					IsDefault: "true",
 				},
 				PageTabs: expTabs,
@@ -196,6 +199,9 @@ func pageConfigQueryByNameAndUserID200(sd apitest.SeedData) []apitest.Table {
 		}
 	}
 
+	// This test verifies that QueryPageByNameAndUserID returns a specific user's page configuration.
+	// This allows each user to have their own customized version of a page (e.g., Jake's version of the orders page).
+	// Multiple users can have configs with the same page name, but only one per user+name combination.
 	return []apitest.Table{
 		{
 			Name:       "basic",

@@ -285,7 +285,9 @@ func (a *App) QueryByUser(ctx context.Context, userID uuid.UUID) (TableConfigLis
 	return ToAppTableConfigList(configs), nil
 }
 
-// QueryFullPageByName returns a full page configuration by its name, including tabs.
+// QueryFullPageByName returns the default page configuration by its name, including tabs.
+// This retrieves the default page config which serves as a fallback for all users.
+// Only one default page config is allowed per page name (enforced by database constraint).
 func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageConfig, error) {
 	unescaped, err := url.QueryUnescape(name)
 	if err != nil {
@@ -312,7 +314,9 @@ func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageCon
 	}, nil
 }
 
-// QueryFullPageByNameAndUserID returns a full page configuration by its name and user ID, including tabs.
+// QueryFullPageByNameAndUserID returns a user-specific page configuration by name and user ID, including tabs.
+// This retrieves a specific user's customized version of a page (e.g., Jake's version of the orders page).
+// Multiple users can have configs with the same page name, but only one per user+name combination.
 func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, userID uuid.UUID) (FullPageConfig, error) {
 	unescaped, err := url.QueryUnescape(name)
 	if err != nil {

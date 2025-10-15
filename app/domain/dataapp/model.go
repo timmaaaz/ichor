@@ -378,7 +378,7 @@ func (app PageConfig) Encode() ([]byte, string, error) {
 
 type NewPageConfig struct {
 	Name      string `json:"name" validate:"required,min=3,max=100"`
-	UserID    string `json:"user_id" validate:"required,uuid"`
+	UserID    string `json:"user_id" validate:"omitempty,uuid"`
 	IsDefault string `json:"is_default"`
 }
 
@@ -416,10 +416,16 @@ func (app UpdatePageConfig) Validate() error {
 }
 
 func toAppPageConfig(bus tablebuilder.PageConfig) PageConfig {
+	var userIDStr string
+	// Zero UUID (nil in DB) should be represented as empty string
+	if bus.UserID != (uuid.UUID{}) {
+		userIDStr = bus.UserID.String()
+	}
+
 	return PageConfig{
 		ID:        bus.ID.String(),
 		Name:      bus.Name,
-		UserID:    bus.UserID.String(),
+		UserID:    userIDStr,
 		IsDefault: fmt.Sprintf("%t", bus.IsDefault),
 	}
 }
