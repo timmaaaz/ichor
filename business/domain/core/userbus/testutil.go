@@ -14,7 +14,7 @@ func TestNewUsers(n int, role Role, requestedBy, titleID, officeID *uuid.UUIDs) 
 	newUsrs := make([]NewUser, n)
 
 	if requestedBy == nil {
-		idx := rand.Intn(10000)
+		idx := rand.Intn(100000)
 		for i := 0; i < n; i++ {
 			idx++
 

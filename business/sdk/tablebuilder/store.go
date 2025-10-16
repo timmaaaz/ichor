@@ -29,6 +29,34 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 	}
 }
 
+func (s *Store) FetchTableDataCount(ctx context.Context, config *Config, params QueryParams) (int, error) {
+	if err := config.Validate(); err != nil {
+		return 0, fmt.Errorf("validate config: %w", err)
+	}
+
+	if len(config.DataSource) == 0 {
+		return 0, fmt.Errorf("no data sources defined")
+	}
+
+	// Only the primary data source is used for count
+	ds := &config.DataSource[0]
+
+	// Create a copy of params without pagination for counting
+	countParams := QueryParams{
+		Filters: params.Filters,
+		Sort:    params.Sort, // Sort doesn't affect count, but keep for consistency
+		Dynamic: params.Dynamic,
+		// Explicitly exclude Page and Rows
+	}
+
+	count, err := s.GetCount(ctx, ds, countParams)
+	if err != nil {
+		return 0, fmt.Errorf("get count: %w", err)
+	}
+
+	return count, nil
+}
+
 // FetchTableData executes the table configuration and returns the data
 func (s *Store) FetchTableData(ctx context.Context, config *Config, params QueryParams) (*TableData, error) {
 	startTime := time.Now()
@@ -59,7 +87,7 @@ func (s *Store) FetchTableData(ctx context.Context, config *Config, params Query
 
 			// Get total count for pagination
 			if params.Page > 0 {
-				count, err := s.getCount(ctx, &ds, params)
+				count, err := s.GetCount(ctx, &ds, params)
 				if err != nil {
 					s.log.Infoc(ctx, 3, "failed to get count", "error", err)
 					// Don't fail the whole query if count fails
@@ -123,9 +151,6 @@ func (s *Store) processDataSource(ctx context.Context, ds *DataSource, params Qu
 		return nil, fmt.Errorf("execute query: %w", err)
 	}
 
-	// REMOVED: No more alias map building
-	// The metadata already has all the information
-
 	return rows, nil
 }
 
@@ -186,7 +211,7 @@ func (s *Store) executeCount(ctx context.Context, query string, args map[string]
 	}, nil
 }
 
-func (s *Store) getCount(ctx context.Context, ds *DataSource, params QueryParams) (int, error) {
+func (s *Store) GetCount(ctx context.Context, ds *DataSource, params QueryParams) (int, error) {
 	query, args, err := s.builder.BuildCountQuery(ds, params)
 	if err != nil {
 		return 0, fmt.Errorf("build count query: %w", err)
@@ -283,68 +308,6 @@ func (s *Store) applyComputedColumns(data []TableRow, columns []ComputedColumn) 
 	return nil
 }
 
-// transformData transforms the data according to configuration
-// func (s *Store) transformData(data []TableRow, config *Config) []TableRow {
-// 	if len(config.DataSource) == 0 {
-// 		return data
-// 	}
-
-// 	transformed := make([]TableRow, 0, len(data))
-
-// 	for _, row := range data {
-// 		newRow := make(TableRow)
-
-// 		// Extract IDs
-// 		ids := make(map[string]any)
-
-// 		// Process each field
-// 		for key, value := range row {
-// 			// Check if this is an ID field
-// 			if isIDField(key) {
-// 				// Extract entity name and store in ids
-// 				entityName := extractEntityName(key)
-// 				ids[entityName] = value
-// 			} else {
-// 				// Regular field - check for table_column mapping
-// 				if col := findColumnByKey(config.DataSource[0].Select, key); col != nil {
-// 					if col.TableColumn != "" {
-// 						fieldData := map[string]any{
-// 							"value":       value,
-// 							"tableColumn": col.TableColumn,
-// 						}
-
-// 						// Include alias if it exists
-// 						if col.Alias != "" {
-// 							fieldData["alias"] = col.Alias
-// 						}
-
-// 						// Use alias as the key if it exists, otherwise use the original key
-// 						outputKey := key
-// 						if col.Alias != "" {
-// 							outputKey = col.Alias
-// 						}
-
-// 						newRow[outputKey] = fieldData
-// 					} else {
-// 						newRow[key] = value
-// 					}
-// 				} else {
-// 					newRow[key] = value
-// 				}
-// 			}
-// 		}
-
-// 		// Add ids
-// 		if len(ids) > 0 {
-// 			newRow["ids"] = ids
-// 		}
-
-// 		transformed = append(transformed, newRow)
-// 	}
-
-// 	return transformed
-// }
-
 // NEW: Build column metadata
 // In buildColumnMetadata, at the top:
 func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
@@ -360,6 +323,7 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			Field:        getFieldName(col),
 			DisplayName:  getDisplayName(col),
 			Type:         inferColumnType(col.Name),
+			SourceSchema: ds.Schema,
 		}
 
 		// Parse table_column for source info
@@ -445,6 +409,7 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 				Type:         inferColumnType(col.Name),
 				SourceTable:  ft.Table,
 				SourceColumn: col.Name,
+				SourceSchema: ft.Schema,
 			}
 
 			if col.TableColumn != "" {

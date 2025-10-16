@@ -968,6 +968,47 @@ COMMENT ON COLUMN config.table_configs.config IS 'JSON configuration matching th
 COMMENT ON COLUMN config.table_configs.created_by IS 'User who created this configuration';
 COMMENT ON COLUMN config.table_configs.updated_by IS 'User who last updated this configuration';
 
+
+-- Migration: Create page_configs for storing page configurations
+-- Version: 2.02
+-- Description: Create table for storing page configurations
+CREATE TABLE IF NOT EXISTS config.page_configs (
+   id UUID PRIMARY KEY,
+   name TEXT NOT NULL,
+   user_id UUID NULL,
+   is_default BOOLEAN NOT NULL DEFAULT FALSE,
+
+   CONSTRAINT fk_page_configs_user FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE CASCADE,
+   CONSTRAINT unique_page_config_name_user UNIQUE (name, user_id),
+   CONSTRAINT check_default_no_user CHECK (
+      (is_default = true AND user_id IS NULL) OR
+      (is_default = false AND user_id IS NOT NULL)
+   )
+);
+
+-- Create unique partial index to ensure only one default per page name
+CREATE UNIQUE INDEX IF NOT EXISTS unique_default_page_config
+   ON config.page_configs (name)
+   WHERE is_default = true;
+
+COMMENT ON INDEX config.unique_default_page_config IS 'Ensures only one default page configuration exists per page name';
+COMMENT ON CONSTRAINT check_default_no_user ON config.page_configs IS 'Ensures default configs have no user_id and non-default configs have a user_id';
+
+-- Migration: Create page_tab_configs for storing tab configurations within pages
+-- Version: 2.03
+-- Description: Create table for storing tab configurations within pages
+CREATE TABLE IF NOT EXISTS config.page_tab_configs (
+   id UUID PRIMARY KEY,
+   page_config_id UUID NOT NULL,
+   label TEXT NOT NULL,
+   config_id UUID NOT NULL,
+   is_default BOOLEAN NOT NULL DEFAULT FALSE,
+   tab_order INT NOT NULL,
+
+   CONSTRAINT fk_page_tab_configs_page FOREIGN KEY (page_config_id) REFERENCES config.page_configs(id) ON DELETE CASCADE,
+   CONSTRAINT fk_page_tab_configs_config FOREIGN KEY (config_id) REFERENCES config.table_configs(id) ON DELETE CASCADE
+);
+
 -- Optional: Create a view for commonly accessed configurations
 CREATE OR REPLACE VIEW config.active_table_configs AS
 SELECT 

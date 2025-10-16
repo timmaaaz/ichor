@@ -114,6 +114,8 @@ type SeedData struct {
 	SimpleTableConfig           *tablebuilder.StoredConfig
 	ComplexTableConfig          *tablebuilder.StoredConfig
 	PageTableConfig             *tablebuilder.StoredConfig
+	PageConfigs                 []tablebuilder.PageConfig
+	PageTabConfigs              []tablebuilder.PageTabConfig
 }
 
 type Table struct {

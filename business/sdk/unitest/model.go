@@ -52,6 +52,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
+	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
 
 // User represents an app user specified for the test.
@@ -112,6 +113,7 @@ type SeedData struct {
 	Customers                   []customersbus.Customers
 	Orders                      []ordersbus.Order
 	OrderLineItems              []orderlineitemsbus.OrderLineItem
+	TableBuilderConfigs         []tablebuilder.StoredConfig
 }
 
 type Table struct {

@@ -111,7 +111,6 @@ func (app NewProduct) Validate() error {
 
 func toBusNewProduct(app NewProduct) (productbus.NewProduct, error) {
 	dest := productbus.NewProduct{}
-
 	err := convert.PopulateTypesFromStrings(app, &dest)
 	return dest, err
 }

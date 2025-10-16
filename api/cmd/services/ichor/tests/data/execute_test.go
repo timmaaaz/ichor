@@ -20,8 +20,8 @@ import (
 func execute200(sd apitest.SeedData) []apitest.Table {
 
 	q := dataapp.TableQuery{
-		Page:    1,
-		Rows:    10,
+		Page:    dbtest.IntPointer(1),
+		Rows:    dbtest.IntPointer(10),
 		Sort:    []dataapp.SortParam{},
 		Filters: []dataapp.FilterParam{},
 		Dynamic: map[string]any{},
@@ -82,11 +82,45 @@ func execute200(sd apitest.SeedData) []apitest.Table {
 	}
 }
 
+func executeCountByID200(sd apitest.SeedData) []apitest.Table {
+
+	return []apitest.Table{
+		{
+			Name:       "basic",
+			URL:        fmt.Sprintf("/v1/data/execute/count/%s", sd.SimpleTableConfig.ID.String()),
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			Input: dataapp.TableQuery{
+				Sort:    []dataapp.SortParam{},
+				Filters: []dataapp.FilterParam{},
+				Dynamic: map[string]any{},
+			},
+			Method:  http.MethodPost,
+			GotResp: &dataapp.Count{},
+			ExpResp: &dataapp.Count{
+				Count: 30,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*dataapp.Count)
+				if !exists {
+					return "could not convert got to *dataapp.Count"
+				}
+				expResp, exists := exp.(*dataapp.Count)
+				if !exists {
+					return "could not convert exp to *dataapp.Count"
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+}
+
 func executeByName200(sd apitest.SeedData) []apitest.Table {
 
 	q := dataapp.TableQuery{
-		Page:    1,
-		Rows:    10,
+		Page:    dbtest.IntPointer(1),
+		Rows:    dbtest.IntPointer(10),
 		Sort:    []dataapp.SortParam{},
 		Filters: []dataapp.FilterParam{},
 		Dynamic: map[string]any{},
@@ -140,6 +174,35 @@ func executeByName200(sd apitest.SeedData) []apitest.Table {
 				expResp.Meta = gotResp.Meta
 
 				dbtest.NormalizeJSONFields(gotResp, &expResp)
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+}
+
+func executeCountByName200(sd apitest.SeedData) []apitest.Table {
+
+	return []apitest.Table{
+		{
+			Name:       "basic",
+			URL:        "/v1/data/execute/name/count/orders_dashboard",
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodPost,
+			GotResp:    &dataapp.Count{},
+			ExpResp: &dataapp.Count{
+				Count: 30,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*dataapp.Count)
+				if !exists {
+					return "could not convert got to *dataapp.Count"
+				}
+				expResp, exists := exp.(*dataapp.Count)
+				if !exists {
+					return "could not convert exp to *dataapp.Count"
+				}
 
 				return cmp.Diff(gotResp, expResp)
 			},

@@ -67,17 +67,48 @@ var PageConfig = &tablebuilder.Config{
 		{
 			Type:   "query",
 			Source: "products",
+			Schema: "products",
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "id"},
-					{Name: "name"},
-					{Name: "sku"},
-					{Name: "is_active"},
+					{Name: "id", TableColumn: "products.id"},
+					{Name: "name", TableColumn: "products.name"},
+					{Name: "sku", TableColumn: "products.sku"},
+					{Name: "is_active", TableColumn: "products.is_active"},
 				},
 			},
 		},
 	},
 	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"name": {
+				Name:       "name",
+				Header:     "Product Name",
+				Width:      200,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"sku": {
+				Name:       "sku",
+				Header:     "SKU",
+				Width:      150,
+				Sortable:   true,
+				Filterable: true,
+				Editable: &tablebuilder.EditableConfig{
+					Type:        "text",
+					Placeholder: "SKU-12345",
+				},
+			},
+			"is_active": {
+				Name:       "is_active",
+				Header:     "Is Active",
+				Width:      100,
+				Sortable:   true,
+				Filterable: true,
+				Editable: &tablebuilder.EditableConfig{
+					Type: "boolean",
+				},
+			},
+		},
 		Pagination: &tablebuilder.PaginationConfig{
 			Enabled:         true,
 			PageSizes:       []int{10, 25, 50, 100},
@@ -91,13 +122,13 @@ var PageConfig = &tablebuilder.Config{
 }
 
 var ComplexConfig = &tablebuilder.Config{
-	Title:           "Current Inventory at Warehouse A",
+	Title:           "Current Inventory with Products",
 	WidgetType:      "table",
 	Visualization:   "table",
 	PositionX:       0,
 	PositionY:       0,
-	Width:           6,
-	Height:          4,
+	Width:           12,
+	Height:          8,
 	RefreshInterval: 300,
 	RefreshMode:     "polling",
 	DataSource: []tablebuilder.DataSource{
@@ -107,18 +138,19 @@ var ComplexConfig = &tablebuilder.Config{
 			Schema: "inventory",
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "id"},
+					{Name: "id", TableColumn: "inventory_items.id"},
 					{Name: "quantity", Alias: "current_quantity", TableColumn: "inventory_items.quantity"},
 					{Name: "reorder_point", TableColumn: "inventory_items.reorder_point"},
 					{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
 				},
 				ForeignTables: []tablebuilder.ForeignTable{
+
 					{
 						Table:            "products",
-						Schema:           "products",                   // Optional, defaults to public
-						RelationshipFrom: "inventory_items.product_id", // CHANGED
-						RelationshipTo:   "products.id",                // CHANGED
-						JoinType:         "inner",                      // Optional, defaults to inner
+						Schema:           "products",
+						RelationshipFrom: "inventory_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "id", Alias: "product_id", TableColumn: "products.id"},
 							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
@@ -131,6 +163,10 @@ var ComplexConfig = &tablebuilder.Config{
 						Name:       "stock_status",
 						Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
 					},
+					{
+						Name:       "stock_percentage",
+						Expression: "(current_quantity / maximum_stock) * 100",
+					},
 				},
 			},
 			Filters: []tablebuilder.Filter{
@@ -138,6 +174,12 @@ var ComplexConfig = &tablebuilder.Config{
 					Column:   "quantity",
 					Operator: "gt",
 					Value:    0,
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "quantity",
+					Direction: "asc",
 				},
 			},
 			Rows: 50,
@@ -154,8 +196,8 @@ var ComplexConfig = &tablebuilder.Config{
 			},
 			"current_quantity": {
 				Name:   "current_quantity",
-				Header: "Quantity",
-				Width:  100,
+				Header: "Current Stock",
+				Width:  120,
 				Align:  "right",
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
@@ -168,6 +210,25 @@ var ComplexConfig = &tablebuilder.Config{
 				Width:        100,
 				Align:        "center",
 				CellTemplate: "status",
+			},
+			"stock_percentage": {
+				Name:   "stock_percentage",
+				Header: "Capacity",
+				Width:  100,
+				Align:  "right",
+				Format: &tablebuilder.FormatConfig{
+					Type:      "percent",
+					Precision: 1,
+				},
+			},
+			"product_id": {
+				Name:   "product_id",
+				Header: "Product",
+				Width:  200,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/products/products/{product_id}",
+					Label: "View Product",
+				},
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
@@ -212,64 +273,61 @@ var ordersConfig = &tablebuilder.Config{
 			Schema: "sales",
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
-					// order
+					// orders table
 					{Name: "orders_id", TableColumn: "orders.id"},
 					{Name: "orders_number", Alias: "order_number", TableColumn: "orders.number"},
-					{Name: "orders_order_date", Alias: "order_date", TableColumn: "orders.created_date"},
+					{Name: "orders_order_date", Alias: "order_date", TableColumn: "orders.order_date"},
 					{Name: "orders_due_date", Alias: "order_due_date", TableColumn: "orders.due_date"},
 					{Name: "orders_created_date", Alias: "order_created_date", TableColumn: "orders.created_date"},
 					{Name: "orders_updated_date", Alias: "order_updated_date", TableColumn: "orders.updated_date"},
 					{Name: "orders_fulfillment_status_id", Alias: "order_fulfillment_status_id", TableColumn: "orders.fulfillment_status_id"},
 					{Name: "orders_customer_id", Alias: "order_customer_id", TableColumn: "orders.customer_id"},
-					// customers
+
+					// customers table
 					{Name: "customers_id", Alias: "customer_id", TableColumn: "customers.id"},
 					{Name: "customers_contact_infos_id", Alias: "customer_contact_info_id", TableColumn: "customers.contact_id"},
 					{Name: "customers_delivery_address_id", Alias: "customer_delivery_address_id", TableColumn: "customers.delivery_address_id"},
 					{Name: "customers_notes", Alias: "customer_notes", TableColumn: "customers.notes"},
 					{Name: "customers_created_date", Alias: "customer_created_date", TableColumn: "customers.created_date"},
 					{Name: "customers_updated_date", Alias: "customer_updated_date", TableColumn: "customers.updated_date"},
-					// order_fulfillment_statuses
-					{Name: "order_fulfillment_statuses_name", Alias: "order_fulfillment_statuses_name", TableColumn: "order_fulfillment_statuses.name"},
-					{Name: "order_fulfillment_statuses_description", Alias: "order_fulfillment_statuses_description", TableColumn: "order_fulfillment_statuses.description"},
-				},
-				ForeignTables: []tablebuilder.ForeignTable{
-					{
-						Table:            "products",
-						Schema:           "products",                   // Optional, defaults to public
-						RelationshipFrom: "inventory_items.product_id", // CHANGED
-						RelationshipTo:   "products.id",                // CHANGED
-						JoinType:         "inner",                      // Optional, defaults to inner
-						Columns: []tablebuilder.ColumnDefinition{
-							{Name: "id", Alias: "product_id", TableColumn: "products.id"},
-							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
-							{Name: "sku", TableColumn: "products.sku"},
-						},
-					},
-				},
-				ClientComputedColumns: []tablebuilder.ComputedColumn{
-					{
-						Name:       "stock_status",
-						Expression: "current_quantity <= reorder_point ? 'low' : 'normal'",
-					},
-				},
-			},
-			Filters: []tablebuilder.Filter{
-				{
-					Column:   "quantity",
-					Operator: "gt",
-					Value:    0,
+
+					// order_fulfillment_statuses table
+					{Name: "order_fulfillment_statuses_name", Alias: "fulfillment_status_name", TableColumn: "order_fulfillment_statuses.name"},
+					{Name: "order_fulfillment_statuses_description", Alias: "fulfillment_status_description", TableColumn: "order_fulfillment_statuses.description"},
 				},
 			},
 			Rows: 50,
 		},
 	},
 	VisualSettings: tablebuilder.VisualSettings{
-		Columns:               map[string]tablebuilder.ColumnConfig{},
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"order_number": {
+				Name:       "order_number",
+				Header:     "Order #",
+				Width:      150,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"order_date": {
+				Name:   "order_date",
+				Header: "Order Date",
+				Width:  120,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "2006-01-02",
+				},
+			},
+			"fulfillment_status_name": {
+				Name:   "fulfillment_status_name",
+				Header: "Status",
+				Width:  120,
+			},
+		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{},
 	},
 	Permissions: tablebuilder.Permissions{
-		Roles:   []string{"admin", "inventory_manager"},
-		Actions: []string{"view", "export", "adjust"},
+		Roles:   []string{"admin", "sales"},
+		Actions: []string{"view", "export"},
 	},
 }
 
@@ -655,6 +713,66 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	_, err = configStore.Create(ctx, "inventory_dashboard", "inventory_items", ComplexConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating stored config: %w", err)
+	}
+	// Create SYSTEM-WIDE default page (user_id = NULL or uuid.Nil)
+	// This is the template that all users fall back to if they don't have their own version
+	defaultPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "default_dashboard",
+		UserID:    uuid.Nil, // ✅ CORRECT - no user association, this is system-wide
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating default page config: %w", err)
+	}
+
+	// Get the stored config IDs we just created
+	ordersConfigStored, err := configStore.QueryByName(ctx, "orders_dashboard")
+	if err != nil {
+		return fmt.Errorf("querying orders config: %w", err)
+	}
+
+	productsConfigStored, err := configStore.QueryByName(ctx, "products_dashboard")
+	if err != nil {
+		return fmt.Errorf("querying products config: %w", err)
+	}
+
+	inventoryConfigStored, err := configStore.QueryByName(ctx, "inventory_dashboard")
+	if err != nil {
+		return fmt.Errorf("querying inventory config: %w", err)
+	}
+
+	// Create tabs for the SYSTEM default page
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Orders",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     ordersConfigStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating orders tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Products",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     productsConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating products tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Inventory",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     inventoryConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     3,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory tab: %w", err)
 	}
 
 	return nil

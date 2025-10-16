@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
 
@@ -181,12 +183,12 @@ func toBusUpdateTableConfig(app UpdateTableConfig) (*tablebuilder.Config, error)
 type TableQuery struct {
 	Filters []FilterParam  `json:"filters" validate:"dive"`
 	Sort    []SortParam    `json:"sort" validate:"dive"`
-	Page    int            `json:"page" validate:"min=0"`
-	Rows    int            `json:"rows" validate:"min=1,max=1000"`
+	Page    *int           `json:"page" validate:"omitempty,min=1"`
+	Rows    *int           `json:"rows" validate:"omitempty,min=1,max=1000"`
 	Dynamic map[string]any `json:"dynamic"`
 }
 
-// FilterParam represents a filter parameter.
+// FilterParam represents a filter parameter.P
 type FilterParam struct {
 	Column   string `json:"column" validate:"required"`
 	Operator string `json:"operator" validate:"required,oneof=eq neq gt gte lt lte in like ilike is_null is_not_null"`
@@ -232,31 +234,99 @@ func toBusTableQuery(app TableQuery) tablebuilder.QueryParams {
 		}
 	}
 
-	return tablebuilder.QueryParams{
+	ret := tablebuilder.QueryParams{
 		Filters: filters,
 		Sort:    sorts,
-		Page:    app.Page,
-		Rows:    app.Rows,
 		Dynamic: app.Dynamic,
 	}
+
+	if app.Page != nil {
+		ret.Page = *app.Page
+	}
+	if app.Rows != nil {
+		ret.Rows = *app.Rows
+	}
+
+	return ret
 }
 
 // =============================================================================
 
-// TableData represents the table data response.
+// TableData represents the table data response - MATCHES business layer exactly
 type TableData struct {
 	Data []map[string]any `json:"data"`
-	Meta TableMeta        `json:"meta"`
+	Meta MetaData         `json:"meta"`
 }
 
-// TableMeta contains metadata about the query execution.
-type TableMeta struct {
-	Total         int               `json:"total"`
-	Page          int               `json:"page,omitempty"`
-	PageSize      int               `json:"page_size,omitempty"`
-	TotalPages    int               `json:"total_pages,omitempty"`
-	ExecutionTime int64             `json:"execution_time_ms"`
-	AliasMap      map[string]string `json:"alias_map,omitempty"`
+// MetaData contains metadata about the query result - MATCHES business layer exactly
+type MetaData struct {
+	Total         int                `json:"total"`
+	Page          int                `json:"page,omitempty"`
+	PageSize      int                `json:"page_size,omitempty"`
+	TotalPages    int                `json:"total_pages,omitempty"`
+	ExecutionTime int64              `json:"execution_time,omitempty"` // milliseconds
+	Columns       []ColumnMetadata   `json:"columns,omitempty"`
+	Relationships []RelationshipInfo `json:"relationships,omitempty"`
+	Error         string             `json:"error,omitempty"`
+}
+
+// ColumnMetadata - MATCHES business layer exactly
+type ColumnMetadata struct {
+	// Core identification
+	Field        string `json:"field"`
+	DisplayName  string `json:"display_name"`
+	DatabaseName string `json:"database_name"`
+
+	// Type and source
+	Type         string `json:"type"`
+	SourceTable  string `json:"source_table,omitempty"`
+	SourceColumn string `json:"source_column,omitempty"`
+	SourceSchema string `json:"source_schema,omitempty"`
+	Hidden       bool   `json:"hidden,omitempty"`
+
+	// Flags
+	IsPrimaryKey bool   `json:"is_primary_key,omitempty"`
+	IsForeignKey bool   `json:"is_foreign_key,omitempty"`
+	RelatedTable string `json:"related_table,omitempty"`
+
+	// Visual settings (override DisplayName if present)
+	Header     string          `json:"header,omitempty"`
+	Width      int             `json:"width,omitempty"`
+	Align      string          `json:"align,omitempty"`
+	Sortable   bool            `json:"sortable,omitempty"`
+	Filterable bool            `json:"filterable,omitempty"`
+	Format     *FormatConfig   `json:"format,omitempty"`
+	Editable   *EditableConfig `json:"editable,omitempty"`
+	Link       *LinkConfig     `json:"link,omitempty"`
+}
+
+// FormatConfig - MATCHES business layer exactly
+type FormatConfig struct {
+	Type      string `json:"type"`
+	Precision int    `json:"precision,omitempty"`
+	Currency  string `json:"currency,omitempty"`
+	Format    string `json:"format,omitempty"`
+}
+
+// EditableConfig - MATCHES business layer exactly
+type EditableConfig struct {
+	Type        string `json:"type"`
+	Placeholder string `json:"placeholder,omitempty"`
+}
+
+// LinkConfig - MATCHES business layer exactly
+type LinkConfig struct {
+	URL   string `json:"url"`
+	Label string `json:"label"`
+}
+
+// RelationshipInfo - MATCHES business layer exactly
+type RelationshipInfo struct {
+	FromTable  string `json:"from_table"`
+	FromColumn string `json:"from_column"`
+	ToTable    string `json:"to_table"`
+	ToColumn   string `json:"to_column"`
+	Type       string `json:"type"` // "one-to-one", "one-to-many", "many-to-one"
 }
 
 type TableDataList struct {
@@ -269,20 +339,327 @@ func (app TableData) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
+type Count struct {
+	Count int `json:"count"`
+}
+
+// Encode implements the encoder interface.
+func (app Count) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// =============================================================================
+// Page and PageTab Configurations
+type FullPageConfig struct {
+	PageConfig PageConfig
+	PageTabs   []PageTabConfig
+}
+
+// Encode implements the encoder interface.
+func (app FullPageConfig) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// PageConfig - MATCHES business layer exactly
+type PageConfig struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	UserID    string `json:"user_id"`
+	IsDefault string `json:"is_default"`
+}
+
+// Encode implements the encoder interface.
+func (app PageConfig) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+type NewPageConfig struct {
+	Name      string `json:"name" validate:"required,min=3,max=100"`
+	UserID    string `json:"user_id" validate:"omitempty,uuid"`
+	IsDefault string `json:"is_default"`
+}
+
+// Decode implements the decoder interface.
+func (app *NewPageConfig) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app NewPageConfig) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+// UpdatePageConfig defines the data needed to update a page configuration.
+type UpdatePageConfig struct {
+	Name      *string `json:"name" validate:"omitempty,min=3,max=100"`
+	UserID    *string `json:"user_id" validate:"omitempty,uuid"`
+	IsDefault *string `json:"is_default"`
+}
+
+// Decode implements the decoder interface.
+func (app *UpdatePageConfig) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app UpdatePageConfig) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+func toAppPageConfig(bus tablebuilder.PageConfig) PageConfig {
+	var userIDStr string
+	// Zero UUID (nil in DB) should be represented as empty string
+	if bus.UserID != (uuid.UUID{}) {
+		userIDStr = bus.UserID.String()
+	}
+
+	return PageConfig{
+		ID:        bus.ID.String(),
+		Name:      bus.Name,
+		UserID:    userIDStr,
+		IsDefault: fmt.Sprintf("%t", bus.IsDefault),
+	}
+}
+
+func toBusPageConfig(app NewPageConfig) (tablebuilder.PageConfig, error) {
+	dest := tablebuilder.PageConfig{}
+
+	err := convert.PopulateTypesFromStrings(app, &dest)
+	if err != nil {
+		return tablebuilder.PageConfig{}, fmt.Errorf("to bus page config: %w", err)
+	}
+
+	return dest, nil
+}
+
+func toBusUpdatePageConfig(app UpdatePageConfig) (tablebuilder.UpdatePageConfig, error) {
+	dest := tablebuilder.UpdatePageConfig{}
+
+	err := convert.PopulateTypesFromStrings(app, &dest)
+	return dest, err
+}
+
+type PageTabConfig struct {
+	ID           string `json:"id"`
+	Label        string `json:"label"`
+	PageConfigID string `json:"page_config_id"`
+	ConfigID     string `json:"config_id"`
+	IsDefault    string `json:"is_default"`
+	TabOrder     string `json:"tab_order"`
+}
+
+func (app PageTabConfig) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+type NewPageTabConfig struct {
+	Label        string `json:"label" validate:"required,min=1,max=100"`
+	PageConfigID string `json:"page_config_id" validate:"required,uuid"`
+	ConfigID     string `json:"config_id" validate:"required,uuid"`
+	IsDefault    string `json:"is_default"`
+	TabOrder     string `json:"tab_order" validate:"min=1"`
+}
+
+// Decode implements the decoder interface.
+func (app *NewPageTabConfig) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app NewPageTabConfig) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+type UpdatePageTabConfig struct {
+	Label        *string `json:"label" validate:"omitempty,min=1,max=100"`
+	PageConfigID *string `json:"page_config_id" validate:"omitempty,uuid"`
+	ConfigID     *string `json:"config_id" validate:"omitempty,uuid"`
+	IsDefault    *string `json:"is_default"`
+	TabOrder     *string `json:"tab_order" validate:"omitempty,min=1"`
+}
+
+// Decode implements the decoder interface.
+func (app *UpdatePageTabConfig) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app UpdatePageTabConfig) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+func ToAppPageTabConfig(bus tablebuilder.PageTabConfig) PageTabConfig {
+	return PageTabConfig{
+		ID:           bus.ID.String(),
+		Label:        bus.Label,
+		PageConfigID: bus.PageConfigID.String(),
+		ConfigID:     bus.ConfigID.String(),
+		IsDefault:    fmt.Sprintf("%t", bus.IsDefault),
+		TabOrder:     fmt.Sprintf("%d", bus.TabOrder),
+	}
+}
+
+func ToAppPageTabConfigs(bus []tablebuilder.PageTabConfig) []PageTabConfig {
+	app := make([]PageTabConfig, len(bus))
+	for i, v := range bus {
+		app[i] = ToAppPageTabConfig(v)
+	}
+	return app
+}
+
+func toBusPageTabConfig(app NewPageTabConfig) (tablebuilder.PageTabConfig, error) {
+	dest := tablebuilder.PageTabConfig{}
+
+	// Convert string IDs to UUIDs
+	pageConfigID, err := uuid.Parse(app.PageConfigID)
+	if err != nil {
+		return tablebuilder.PageTabConfig{}, fmt.Errorf("invalid page_config_id: %w", err)
+	}
+	dest.PageConfigID = pageConfigID
+
+	configID, err := uuid.Parse(app.ConfigID)
+	if err != nil {
+		return tablebuilder.PageTabConfig{}, fmt.Errorf("invalid config_id: %w", err)
+	}
+	dest.ConfigID = configID
+
+	err = convert.PopulateTypesFromStrings(app, &dest)
+	if err != nil {
+		return tablebuilder.PageTabConfig{}, fmt.Errorf("to bus page tab config: %w", err)
+	}
+	return dest, nil
+}
+
+func toBusUpdatePageTabConfig(app UpdatePageTabConfig) (tablebuilder.UpdatePageTabConfig, error) {
+	dest := tablebuilder.UpdatePageTabConfig{}
+
+	err := convert.PopulateTypesFromStrings(app, &dest)
+	return dest, err
+}
+
+// toAppTableData - Now does a DIRECT pass-through with minimal conversion
 func toAppTableData(bus *tablebuilder.TableData) TableData {
+	// Convert data rows (simple map conversion)
 	data := make([]map[string]any, len(bus.Data))
 	for i, row := range bus.Data {
 		data[i] = map[string]any(row)
 	}
 
+	// Convert metadata with direct field mapping
 	return TableData{
 		Data: data,
-		Meta: TableMeta{
+		Meta: MetaData{
 			Total:         bus.Meta.Total,
 			Page:          bus.Meta.Page,
 			PageSize:      bus.Meta.PageSize,
 			TotalPages:    bus.Meta.TotalPages,
 			ExecutionTime: bus.Meta.ExecutionTime,
+			Columns:       toAppColumnMetadata(bus.Meta.Columns),
+			Relationships: toAppRelationships(bus.Meta.Relationships),
+			Error:         bus.Meta.Error,
 		},
 	}
+}
+
+// toAppColumnMetadata - Direct 1:1 field mapping
+func toAppColumnMetadata(busColumns []tablebuilder.ColumnMetadata) []ColumnMetadata {
+	if busColumns == nil {
+		return nil
+	}
+
+	appColumns := make([]ColumnMetadata, len(busColumns))
+	for i, col := range busColumns {
+		appColumns[i] = ColumnMetadata{
+			Field:        col.Field,
+			DisplayName:  col.DisplayName,
+			DatabaseName: col.DatabaseName,
+			Type:         col.Type,
+			SourceTable:  col.SourceTable,
+			SourceColumn: col.SourceColumn,
+			SourceSchema: col.SourceSchema,
+			Hidden:       col.Hidden,
+			IsPrimaryKey: col.IsPrimaryKey,
+			IsForeignKey: col.IsForeignKey,
+			RelatedTable: col.RelatedTable,
+			Header:       col.Header,
+			Width:        col.Width,
+			Align:        col.Align,
+			Sortable:     col.Sortable,
+			Filterable:   col.Filterable,
+			Format:       toAppFormatConfig(col.Format),
+			Editable:     toAppEditableConfig(col.Editable),
+			Link:         toAppLinkConfig(col.Link),
+		}
+	}
+	return appColumns
+}
+
+// toAppFormatConfig - Direct 1:1 field mapping
+func toAppFormatConfig(bus *tablebuilder.FormatConfig) *FormatConfig {
+	if bus == nil {
+		return nil
+	}
+	return &FormatConfig{
+		Type:      bus.Type,
+		Precision: bus.Precision,
+		Currency:  bus.Currency,
+		Format:    bus.Format,
+	}
+}
+
+// toAppEditableConfig - Direct 1:1 field mapping
+func toAppEditableConfig(bus *tablebuilder.EditableConfig) *EditableConfig {
+	if bus == nil {
+		return nil
+	}
+	return &EditableConfig{
+		Type:        bus.Type,
+		Placeholder: bus.Placeholder,
+	}
+}
+
+// toAppLinkConfig - Direct 1:1 field mapping
+func toAppLinkConfig(bus *tablebuilder.LinkConfig) *LinkConfig {
+	if bus == nil {
+		return nil
+	}
+	return &LinkConfig{
+		URL:   bus.URL,
+		Label: bus.Label,
+	}
+}
+
+// toAppRelationships - Direct 1:1 field mapping
+func toAppRelationships(busRels []tablebuilder.RelationshipInfo) []RelationshipInfo {
+	if busRels == nil {
+		return nil
+	}
+
+	appRels := make([]RelationshipInfo, len(busRels))
+	for i, rel := range busRels {
+		appRels[i] = RelationshipInfo{
+			FromTable:  rel.FromTable,
+			FromColumn: rel.FromColumn,
+			ToTable:    rel.ToTable,
+			ToColumn:   rel.ToColumn,
+			Type:       rel.Type,
+		}
+	}
+	return appRels
 }

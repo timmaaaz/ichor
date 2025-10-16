@@ -4,10 +4,12 @@
 package tablebuilder
 
 import (
+	"database/sql"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb/nulltypes"
 )
 
 // =============================================================================
@@ -224,6 +226,7 @@ type ColumnMetadata struct {
 	Type         string `json:"type"`
 	SourceTable  string `json:"source_table,omitempty"`
 	SourceColumn string `json:"source_column,omitempty"`
+	SourceSchema string `json:"source_schema,omitempty"`
 	Hidden       bool   `json:"hidden,omitempty"`
 
 	// Flags
@@ -307,4 +310,76 @@ func (s *SelectConfig) GetColumnByName(name string) *ColumnDefinition {
 		}
 	}
 	return nil
+}
+
+type PageConfig struct {
+	ID        uuid.UUID `db:"id" json:"id"`
+	Name      string    `db:"name" json:"name"`
+	UserID    uuid.UUID `db:"user_id" json:"user_id"`
+	IsDefault bool      `db:"is_default" json:"is_default"`
+}
+
+type UpdatePageConfig struct {
+	Name      *string
+	UserID    *uuid.UUID
+	IsDefault *bool
+}
+
+type PageTabConfig struct {
+	ID           uuid.UUID `db:"id" json:"id"`
+	PageConfigID uuid.UUID `db:"page_config_id" json:"page_config_id"`
+	Label        string    `db:"label" json:"label"`
+	ConfigID     uuid.UUID `db:"config_id" json:"config_id"`
+	IsDefault    bool      `db:"is_default" json:"is_default"`
+	TabOrder     int       `db:"tab_order" json:"tab_order"`
+}
+
+// UpdatePageTabConfig represents fields that can be updated in a PageTabConfig
+type UpdatePageTabConfig struct {
+	Label        *string
+	PageConfigID *uuid.UUID
+	ConfigID     *uuid.UUID
+	IsDefault    *bool
+	TabOrder     *int
+}
+
+// =============================================================================
+// Database Models and Conversion Functions
+// =============================================================================
+
+// dbPageConfig is the database representation of PageConfig with nullable user_id
+type dbPageConfig struct {
+	ID        uuid.UUID      `db:"id"`
+	Name      string         `db:"name"`
+	UserID    sql.NullString `db:"user_id"`
+	IsDefault bool           `db:"is_default"`
+}
+
+// toDBPageConfig converts a PageConfig to its database representation
+func toDBPageConfig(pc PageConfig) dbPageConfig {
+	return dbPageConfig{
+		ID:        pc.ID,
+		Name:      pc.Name,
+		UserID:    nulltypes.ToNullableUUID(pc.UserID),
+		IsDefault: pc.IsDefault,
+	}
+}
+
+// toBusPageConfig converts a database PageConfig to its business representation
+func toBusPageConfig(db dbPageConfig) PageConfig {
+	return PageConfig{
+		ID:        db.ID,
+		Name:      db.Name,
+		UserID:    nulltypes.FromNullableUUID(db.UserID),
+		IsDefault: db.IsDefault,
+	}
+}
+
+// toBusPageConfigs converts multiple database PageConfigs to business representations
+func toBusPageConfigs(dbs []dbPageConfig) []PageConfig {
+	bus := make([]PageConfig, len(dbs))
+	for i, db := range dbs {
+		bus[i] = toBusPageConfig(db)
+	}
+	return bus
 }
