@@ -1009,6 +1009,54 @@ CREATE TABLE IF NOT EXISTS config.page_tab_configs (
    CONSTRAINT fk_page_tab_configs_config FOREIGN KEY (config_id) REFERENCES config.table_configs(id) ON DELETE CASCADE
 );
 
+-- Version: 2.04
+-- Description: Create forms table for form configurations
+CREATE TABLE IF NOT EXISTS config.forms (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   name VARCHAR(255) NOT NULL,
+   UNIQUE(name)
+);
+
+-- Create indexes for forms
+CREATE INDEX IF NOT EXISTS idx_forms_name ON config.forms(name);
+
+-- Comments
+COMMENT ON TABLE config.forms IS 'Stores form configuration definitions';
+COMMENT ON COLUMN config.forms.id IS 'Unique identifier for the form';
+COMMENT ON COLUMN config.forms.name IS 'Unique name for the form configuration';
+
+-- Version: 2.05
+-- Description: Create form_fields table for form field configurations
+CREATE TABLE IF NOT EXISTS config.form_fields (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   form_id UUID NOT NULL,
+   name VARCHAR(255) NOT NULL,
+   label VARCHAR(255) NOT NULL,
+   field_type VARCHAR(50) NOT NULL,
+   field_order INTEGER NOT NULL,
+   required BOOLEAN DEFAULT false,
+   config JSONB NOT NULL DEFAULT '{}',
+
+   CONSTRAINT fk_form_fields_form FOREIGN KEY (form_id) REFERENCES config.forms(id) ON DELETE CASCADE,
+   UNIQUE(form_id, name)
+);
+
+-- Create indexes for form_fields
+CREATE INDEX IF NOT EXISTS idx_form_fields_form_id ON config.form_fields(form_id);
+CREATE INDEX IF NOT EXISTS idx_form_fields_field_order ON config.form_fields(form_id, field_order);
+CREATE INDEX IF NOT EXISTS idx_form_fields_config ON config.form_fields USING GIN (config);
+
+-- Comments
+COMMENT ON TABLE config.form_fields IS 'Stores individual field configurations for forms';
+COMMENT ON COLUMN config.form_fields.id IS 'Unique identifier for the form field';
+COMMENT ON COLUMN config.form_fields.form_id IS 'Foreign key reference to the parent form';
+COMMENT ON COLUMN config.form_fields.name IS 'Field name (unique within a form)';
+COMMENT ON COLUMN config.form_fields.label IS 'Display label for the field';
+COMMENT ON COLUMN config.form_fields.field_type IS 'Type of field (text, select, checkbox, etc.)';
+COMMENT ON COLUMN config.form_fields.field_order IS 'Display order of the field within the form';
+COMMENT ON COLUMN config.form_fields.required IS 'Whether the field is required';
+COMMENT ON COLUMN config.form_fields.config IS 'JSONB configuration for field-specific settings';
+
 -- Optional: Create a view for commonly accessed configurations
 CREATE OR REPLACE VIEW config.active_table_configs AS
 SELECT 

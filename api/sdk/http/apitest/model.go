@@ -45,6 +45,8 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/orderlineitemsapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/business/domain/geography/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
@@ -116,6 +118,8 @@ type SeedData struct {
 	PageTableConfig             *tablebuilder.StoredConfig
 	PageConfigs                 []tablebuilder.PageConfig
 	PageTabConfigs              []tablebuilder.PageTabConfig
+	Forms                       []formapp.Form
+	FormFields                  []formfieldapp.FormField
 }
 
 type Table struct {

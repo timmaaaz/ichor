@@ -12,6 +12,8 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/formapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/formfieldapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/tableaccessapi"
@@ -65,6 +67,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/config/formbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formbus/stores/formdb"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus/stores/formfielddb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
@@ -269,6 +275,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	configStore := tablebuilder.NewConfigStore(cfg.Log, cfg.DB)
 	tableStore := tablebuilder.NewStore(cfg.Log, cfg.DB)
+
+	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB))
+	formFieldBus := formfieldbus.NewBusiness(cfg.Log, delegate, formfielddb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -621,6 +630,21 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Log:            cfg.Log,
 		ConfigStore:    configStore,
 		TableStore:     tableStore,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	// config
+	formapi.Routes(app, formapi.Config{
+		Log:            cfg.Log,
+		FormBus:        formBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	formfieldapi.Routes(app, formfieldapi.Config{
+		Log:            cfg.Log,
+		FormFieldBus:   formFieldBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})

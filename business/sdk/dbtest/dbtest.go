@@ -119,6 +119,11 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/titlebus"
 	"github.com/timmaaaz/ichor/business/domain/hr/titlebus/stores/titledb"
 
+	"github.com/timmaaaz/ichor/business/domain/config/formbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formbus/stores/formdb"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus/stores/formfielddb"
+
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -215,6 +220,10 @@ type BusDomain struct {
 	// Data
 	ConfigStore *tablebuilder.ConfigStore
 	TableStore  *tablebuilder.Store
+
+	// Config
+	Form      *formbus.Business
+	FormField *formfieldbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -302,6 +311,10 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	configBus := tablebuilder.NewConfigStore(log, db)
 	tableBus := tablebuilder.NewStore(log, db)
 
+	// Config
+	formBus := formbus.NewBusiness(log, delegate, formdb.NewStore(log, db))
+	formFieldBus := formfieldbus.NewBusiness(log, delegate, formfielddb.NewStore(log, db))
+
 	return BusDomain{
 		Delegate:                  delegate,
 		Home:                      homeBus,
@@ -356,6 +369,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Workflow:                  workflowBus,
 		ConfigStore:               configBus,
 		TableStore:                tableBus,
+		Form:                      formBus,
+		FormField:                 formFieldBus,
 	}
 
 }

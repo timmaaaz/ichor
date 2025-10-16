@@ -53,6 +53,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
+
+	"github.com/timmaaaz/ichor/business/domain/config/formbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 )
 
 // User represents an app user specified for the test.
@@ -114,6 +117,8 @@ type SeedData struct {
 	Orders                      []ordersbus.Order
 	OrderLineItems              []orderlineitemsbus.OrderLineItem
 	TableBuilderConfigs         []tablebuilder.StoredConfig
+	Forms                       []formbus.Form
+	FormFields                  []formfieldbus.FormField
 }
 
 type Table struct {
