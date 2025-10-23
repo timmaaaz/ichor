@@ -50,8 +50,14 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		formIDs[i] = form.ID
 	}
 
+	// Get entities
+	entities, err := busDomain.Workflow.QueryEntities(ctx)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("querying entities : %w", err)
+	}
+
 	// Seed form fields
-	formFields, err := formfieldbus.TestSeedFormFields(ctx, 20, formIDs, busDomain.FormField)
+	formFields, err := formfieldbus.TestSeedFormFields(ctx, 20, formIDs, busDomain.FormField, entities)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding form fields : %w", err)
 	}
@@ -156,6 +162,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "create",
 			ExpResp: formfieldbus.FormField{
 				FormID:     sd.Forms[0].ID,
+				EntityID:   sd.FormFields[0].EntityID,
 				Name:       "test_field",
 				Label:      "Test Field",
 				FieldType:  "text",
@@ -166,6 +173,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				formField, err := busDomain.FormField.Create(ctx, formfieldbus.NewFormField{
 					FormID:     sd.Forms[0].ID,
+					EntityID:   sd.FormFields[0].EntityID,
 					Name:       "test_field",
 					Label:      "Test Field",
 					FieldType:  "text",
@@ -209,6 +217,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "update",
 			ExpResp: formfieldbus.FormField{
 				ID:         sd.FormFields[0].ID,
+				EntityID:   sd.FormFields[0].EntityID,
 				FormID:     sd.FormFields[0].FormID,
 				Name:       sd.FormFields[0].Name,
 				Label:      "Updated Label",

@@ -22,6 +22,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &formfieldapp.NewFormField{
 				FormID:     sd.Forms[0].ID,
+				EntityID:   sd.Entities[0].ID.String(),
 				Name:       "test_field",
 				Label:      "Test Field",
 				FieldType:  "text",
@@ -32,6 +33,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &formfieldapp.FormField{},
 			ExpResp: &formfieldapp.FormField{
 				FormID:     sd.Forms[0].ID,
+				EntityID:   sd.Entities[0].ID.String(),
 				Name:       "test_field",
 				Label:      "Test Field",
 				FieldType:  "text",
@@ -65,6 +67,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &formfieldapp.NewFormField{
 				FormID:     sd.Forms[0].ID,
+				EntityID:   sd.Entities[0].ID.String(),
 				Label:      "Test Field",
 				FieldType:  "text",
 				FieldOrder: 1,

@@ -10,6 +10,8 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
@@ -45,12 +47,11 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/orderlineitemsapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
-	"github.com/timmaaaz/ichor/app/domain/config/formapp"
-	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/business/domain/geography/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 )
@@ -120,6 +121,7 @@ type SeedData struct {
 	PageTabConfigs              []tablebuilder.PageTabConfig
 	Forms                       []formapp.Form
 	FormFields                  []formfieldapp.FormField
+	Entities                    []workflow.Entity
 }
 
 type Table struct {

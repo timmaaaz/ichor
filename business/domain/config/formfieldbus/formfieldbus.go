@@ -74,6 +74,7 @@ func (b *Business) Create(ctx context.Context, nff NewFormField) (FormField, err
 	field := FormField{
 		ID:         uuid.New(),
 		FormID:     nff.FormID,
+		EntityID:   nff.EntityID,
 		Name:       nff.Name,
 		Label:      nff.Label,
 		FieldType:  nff.FieldType,
@@ -96,6 +97,10 @@ func (b *Business) Update(ctx context.Context, field FormField, uff UpdateFormFi
 
 	if uff.FormID != nil {
 		field.FormID = *uff.FormID
+	}
+
+	if uff.EntityID != nil {
+		field.EntityID = *uff.EntityID
 	}
 
 	if uff.Name != nil {

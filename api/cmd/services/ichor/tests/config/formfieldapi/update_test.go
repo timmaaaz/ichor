@@ -31,6 +31,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &formfieldapp.FormField{
 				ID:         sd.FormFields[0].ID,
 				FormID:     sd.FormFields[0].FormID,
+				EntityID:   sd.FormFields[0].EntityID,
 				Name:       sd.FormFields[0].Name,
 				Label:      "Updated Label",
 				FieldType:  sd.FormFields[0].FieldType,

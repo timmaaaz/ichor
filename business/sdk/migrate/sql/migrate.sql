@@ -285,7 +285,7 @@ CREATE TABLE hr.reports_to (
 CREATE TABLE assets.assets (
    id UUID NOT NULL,
    valid_asset_id UUID NOT NULL,
-   last_maintenance_time TIMESTAMP NOT NULL,
+   last_maintenance_time TIMESTAMP,
    serial_number TEXT NOT NULL,
    asset_condition_id UUID NOT NULL,
    PRIMARY KEY (id),
@@ -1030,19 +1030,22 @@ COMMENT ON COLUMN config.forms.name IS 'Unique name for the form configuration';
 CREATE TABLE IF NOT EXISTS config.form_fields (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    form_id UUID NOT NULL,
+   entity_id UUID NOT NULL,
    name VARCHAR(255) NOT NULL,
    label VARCHAR(255) NOT NULL,
    field_type VARCHAR(50) NOT NULL,
    field_order INTEGER NOT NULL,
    required BOOLEAN DEFAULT false,
-   config JSONB NOT NULL DEFAULT '{}',
+   config JSONB NOT NULL DEFAULT '{}'::jsonb,
 
    CONSTRAINT fk_form_fields_form FOREIGN KEY (form_id) REFERENCES config.forms(id) ON DELETE CASCADE,
+   CONSTRAINT fk_form_fields_entity FOREIGN KEY (entity_id) REFERENCES workflow.entities(id) ON DELETE CASCADE,
    UNIQUE(form_id, name)
 );
 
 -- Create indexes for form_fields
 CREATE INDEX IF NOT EXISTS idx_form_fields_form_id ON config.form_fields(form_id);
+CREATE INDEX IF NOT EXISTS idx_form_fields_entity_id ON config.form_fields(entity_id);
 CREATE INDEX IF NOT EXISTS idx_form_fields_field_order ON config.form_fields(form_id, field_order);
 CREATE INDEX IF NOT EXISTS idx_form_fields_config ON config.form_fields USING GIN (config);
 
@@ -1050,12 +1053,13 @@ CREATE INDEX IF NOT EXISTS idx_form_fields_config ON config.form_fields USING GI
 COMMENT ON TABLE config.form_fields IS 'Stores individual field configurations for forms';
 COMMENT ON COLUMN config.form_fields.id IS 'Unique identifier for the form field';
 COMMENT ON COLUMN config.form_fields.form_id IS 'Foreign key reference to the parent form';
-COMMENT ON COLUMN config.form_fields.name IS 'Field name (unique within a form)';
+COMMENT ON COLUMN config.form_fields.entity_id IS 'Foreign key reference to the entity (table) this field belongs to';
+COMMENT ON COLUMN config.form_fields.name IS 'Field name (column name in the entity table)';
 COMMENT ON COLUMN config.form_fields.label IS 'Display label for the field';
 COMMENT ON COLUMN config.form_fields.field_type IS 'Type of field (text, select, checkbox, etc.)';
 COMMENT ON COLUMN config.form_fields.field_order IS 'Display order of the field within the form';
 COMMENT ON COLUMN config.form_fields.required IS 'Whether the field is required';
-COMMENT ON COLUMN config.form_fields.config IS 'JSONB configuration for field-specific settings';
+COMMENT ON COLUMN config.form_fields.config IS 'JSONB configuration for field-specific settings (parent_entity_id, foreign_key_column, execution_order, etc.)';
 
 -- Optional: Create a view for commonly accessed configurations
 CREATE OR REPLACE VIEW config.active_table_configs AS

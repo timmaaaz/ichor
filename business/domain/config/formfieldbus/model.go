@@ -10,6 +10,7 @@ import (
 type FormField struct {
 	ID         uuid.UUID
 	FormID     uuid.UUID
+	EntityID   uuid.UUID
 	Name       string
 	Label      string
 	FieldType  string
@@ -21,6 +22,7 @@ type FormField struct {
 // NewFormField contains the information needed to create a new form field.
 type NewFormField struct {
 	FormID     uuid.UUID
+	EntityID   uuid.UUID
 	Name       string
 	Label      string
 	FieldType  string
@@ -32,6 +34,7 @@ type NewFormField struct {
 // UpdateFormField contains the information needed to update a form field.
 type UpdateFormField struct {
 	FormID     *uuid.UUID
+	EntityID   *uuid.UUID
 	Name       *string
 	Label      *string
 	FieldType  *string

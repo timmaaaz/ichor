@@ -69,7 +69,8 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
 		return fmt.Errorf("namedquerystruct: %w", err)
 	}
 
-	if !tmp.Exists {
+	// TODO: Move this function, it probably does not belong here, more like business logic
+	if !tmp.Exists && !IsSpecialTableName(ta.TableName) {
 		return fmt.Errorf("table[%s]: %w", ta.TableName, tableaccessbus.ErrNonexistentTableName)
 	}
 
@@ -245,4 +246,17 @@ func (s *Store) QueryAll(ctx context.Context) ([]tableaccessbus.TableAccess, err
 	}
 
 	return toBusTableAccesses(tas), nil
+}
+
+func IsSpecialTableName(tableName string) bool {
+	specialTableNames := map[string]struct{}{
+		"all_tables":             {},
+		"all_views":              {},
+		"all_sequences":          {},
+		"all_materialized_views": {},
+		"formdata":               {},
+	}
+
+	_, exists := specialTableNames[tableName]
+	return exists
 }

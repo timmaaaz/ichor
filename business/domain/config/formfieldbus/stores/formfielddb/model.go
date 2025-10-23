@@ -10,6 +10,7 @@ import (
 type formField struct {
 	ID         uuid.UUID       `db:"id"`
 	FormID     uuid.UUID       `db:"form_id"`
+	EntityID   uuid.UUID       `db:"entity_id"`
 	Name       string          `db:"name"`
 	Label      string          `db:"label"`
 	FieldType  string          `db:"field_type"`
@@ -19,15 +20,21 @@ type formField struct {
 }
 
 func toDBFormField(bus formfieldbus.FormField) formField {
+	config := bus.Config
+	if len(config) == 0 {
+		config = json.RawMessage([]byte("{}"))
+	}
+
 	return formField{
 		ID:         bus.ID,
 		FormID:     bus.FormID,
+		EntityID:   bus.EntityID,
 		Name:       bus.Name,
 		Label:      bus.Label,
 		FieldType:  bus.FieldType,
 		FieldOrder: bus.FieldOrder,
 		Required:   bus.Required,
-		Config:     bus.Config,
+		Config:     config,
 	}
 }
 
@@ -35,6 +42,7 @@ func toBusFormField(db formField) formfieldbus.FormField {
 	return formfieldbus.FormField{
 		ID:         db.ID,
 		FormID:     db.FormID,
+		EntityID:   db.EntityID,
 		Name:       db.Name,
 		Label:      db.Label,
 		FieldType:  db.FieldType,

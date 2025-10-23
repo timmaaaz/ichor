@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
@@ -61,6 +62,26 @@ func (a *App) Update(ctx context.Context, app UpdateUser) (User, error) {
 	}
 
 	usr, err := mid.GetUser(ctx)
+	if err != nil {
+		return User{}, errs.Newf(errs.Internal, "user missing in context: %s", err)
+	}
+
+	updUsr, err := a.userBus.Update(ctx, usr, uu)
+	if err != nil {
+		return User{}, errs.Newf(errs.Internal, "update: userID[%s] uu[%+v]: %s", usr.ID, uu, err)
+	}
+
+	return toAppUser(updUsr), nil
+}
+
+// Update updates an existing user.
+func (a *App) UpdateNoMid(ctx context.Context, app UpdateUser, id uuid.UUID) (User, error) {
+	uu, err := toBusUpdateUser(app)
+	if err != nil {
+		return User{}, errs.New(errs.InvalidArgument, err)
+	}
+
+	usr, err := a.userBus.QueryByID(ctx, id)
 	if err != nil {
 		return User{}, errs.Newf(errs.Internal, "user missing in context: %s", err)
 	}

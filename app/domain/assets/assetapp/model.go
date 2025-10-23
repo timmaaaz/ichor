@@ -56,7 +56,7 @@ func ToAppAssets(bus []assetbus.Asset) []Asset {
 type NewAsset struct {
 	ValidAssetID     string `json:"valid_asset_id" validate:"required"`
 	AssetConditionID string `json:"asset_condition_id" validate:"required"`
-	LastMaintenance  string `json:"last_maintenance" validate:"required"`
+	LastMaintenance  string `json:"last_maintenance"`
 	SerialNumber     string `json:"serial_number" validate:"required"`
 }
 

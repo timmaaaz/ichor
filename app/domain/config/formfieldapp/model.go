@@ -24,6 +24,7 @@ type QueryParams struct {
 type FormField struct {
 	ID         string          `json:"id"`
 	FormID     string          `json:"form_id"`
+	EntityID   string          `json:"entity_id"`
 	Name       string          `json:"name"`
 	Label      string          `json:"label"`
 	FieldType  string          `json:"field_type"`
@@ -51,6 +52,7 @@ func ToAppFormField(bus formfieldbus.FormField) FormField {
 	return FormField{
 		ID:         bus.ID.String(),
 		FormID:     bus.FormID.String(),
+		EntityID:   bus.EntityID.String(),
 		Name:       bus.Name,
 		Label:      bus.Label,
 		FieldType:  bus.FieldType,
@@ -77,6 +79,7 @@ func ToAppFormFields(app []FormField) FormFields {
 // NewFormField represents data needed to create a form field.
 type NewFormField struct {
 	FormID     string          `json:"form_id" validate:"required,uuid"`
+	EntityID   string          `json:"entity_id" validate:"required,uuid"`
 	Name       string          `json:"name" validate:"required,min=1,max=255"`
 	Label      string          `json:"label" validate:"required,min=1,max=255"`
 	FieldType  string          `json:"field_type" validate:"required,min=1,max=50"`
@@ -108,6 +111,10 @@ func toBusNewFormField(app NewFormField) (formfieldbus.NewFormField, error) {
 	if err != nil {
 		return formfieldbus.NewFormField{}, errs.NewFieldsError("formID", err)
 	}
+	entityID, err := uuid.Parse(app.EntityID)
+	if err != nil {
+		return formfieldbus.NewFormField{}, errs.NewFieldsError("entityID", err)
+	}
 
 	// Validate config JSON
 	var configTest map[string]interface{}
@@ -117,6 +124,7 @@ func toBusNewFormField(app NewFormField) (formfieldbus.NewFormField, error) {
 
 	return formfieldbus.NewFormField{
 		FormID:     formID,
+		EntityID:   entityID,
 		Name:       app.Name,
 		Label:      app.Label,
 		FieldType:  app.FieldType,
@@ -129,6 +137,7 @@ func toBusNewFormField(app NewFormField) (formfieldbus.NewFormField, error) {
 // UpdateFormField represents data needed to update a form field.
 type UpdateFormField struct {
 	FormID     *string          `json:"form_id" validate:"omitempty,uuid"`
+	EntityID   *string          `json:"entity_id" validate:"omitempty,uuid"`
 	Name       *string          `json:"name" validate:"omitempty,min=1,max=255"`
 	Label      *string          `json:"label" validate:"omitempty,min=1,max=255"`
 	FieldType  *string          `json:"field_type" validate:"omitempty,min=1,max=50"`
@@ -166,6 +175,14 @@ func toBusUpdateFormField(app UpdateFormField) (formfieldbus.UpdateFormField, er
 			return formfieldbus.UpdateFormField{}, errs.NewFieldsError("formID", err)
 		}
 		uff.FormID = &formID
+	}
+
+	if app.EntityID != nil {
+		entityID, err := uuid.Parse(*app.EntityID)
+		if err != nil {
+			return formfieldbus.UpdateFormField{}, errs.NewFieldsError("entityID", err)
+		}
+		uff.EntityID = &entityID
 	}
 
 	if app.Name != nil {

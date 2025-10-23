@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (formfieldbus.Storer, error
 func (s *Store) Create(ctx context.Context, field formfieldbus.FormField) error {
 	const q = `
 	INSERT INTO config.form_fields (
-		id, form_id, name, label, field_type, field_order, required, config
+		id, form_id, entity_id, name, label, field_type, field_order, required, config
 	) VALUES (
-		:id, :form_id, :name, :label, :field_type, :field_order, :required, :config
+		:id, :form_id, :entity_id, :name, :label, :field_type, :field_order, :required, :config
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBFormField(field)); err != nil {
@@ -74,6 +74,7 @@ func (s *Store) Update(ctx context.Context, field formfieldbus.FormField) error 
 		config.form_fields
 	SET
 		form_id = :form_id,
+		entity_id = :entity_id,
 		name = :name,
 		label = :label,
 		field_type = :field_type,
@@ -120,7 +121,7 @@ func (s *Store) Query(ctx context.Context, filter formfieldbus.QueryFilter, orde
 
 	const q = `
 	SELECT
-		id, form_id, name, label, field_type, field_order, required, config
+		id, form_id, entity_id, name, label, field_type, field_order, required, config
 	FROM
 		config.form_fields`
 
@@ -176,7 +177,7 @@ func (s *Store) QueryByID(ctx context.Context, fieldID uuid.UUID) (formfieldbus.
 
 	const q = `
 	SELECT
-		id, form_id, name, label, field_type, field_order, required, config
+		id, form_id, entity_id, name, label, field_type, field_order, required, config
 	FROM
 		config.form_fields
 	WHERE
@@ -203,7 +204,7 @@ func (s *Store) QueryByFormID(ctx context.Context, formID uuid.UUID) ([]formfiel
 
 	const q = `
 	SELECT
-		id, form_id, name, label, field_type, field_order, required, config
+		id, form_id, entity_id, name, label, field_type, field_order, required, config
 	FROM
 		config.form_fields
 	WHERE

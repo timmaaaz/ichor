@@ -8,10 +8,11 @@ import (
 	"sort"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 )
 
 // TestNewFormFields generates n NewFormField structs for testing.
-func TestNewFormFields(n int, formIDs []uuid.UUID) []NewFormField {
+func TestNewFormFields(n int, formIDs []uuid.UUID, entities []workflow.Entity) []NewFormField {
 	newFormFields := make([]NewFormField, n)
 
 	idx := rand.Intn(10000)
@@ -29,6 +30,7 @@ func TestNewFormFields(n int, formIDs []uuid.UUID) []NewFormField {
 
 		nff := NewFormField{
 			FormID:     formIDs[rand.Intn(len(formIDs))],
+			EntityID:   entities[rand.Intn(len(entities))].ID,
 			Name:       fmt.Sprintf("field_%d", idx),
 			Label:      fmt.Sprintf("Field %d", idx),
 			FieldType:  fieldTypes[rand.Intn(len(fieldTypes))],
@@ -44,8 +46,8 @@ func TestNewFormFields(n int, formIDs []uuid.UUID) []NewFormField {
 }
 
 // TestSeedFormFields seeds the database with n form fields and returns them sorted by name.
-func TestSeedFormFields(ctx context.Context, n int, formIDs []uuid.UUID, api *Business) ([]FormField, error) {
-	newFormFields := TestNewFormFields(n, formIDs)
+func TestSeedFormFields(ctx context.Context, n int, formIDs []uuid.UUID, api *Business, entities []workflow.Entity) ([]FormField, error) {
+	newFormFields := TestNewFormFields(n, formIDs, entities)
 
 	formFields := make([]FormField, len(newFormFields))
 

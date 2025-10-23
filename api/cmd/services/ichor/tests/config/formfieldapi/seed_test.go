@@ -55,8 +55,13 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		formIDs[i] = form.ID
 	}
 
+	entities, err := busDomain.Workflow.QueryEntities(ctx)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("querying entities : %w", err)
+	}
+
 	// Seed form fields
-	formFields, err := formfieldbus.TestSeedFormFields(ctx, 20, formIDs, busDomain.FormField)
+	formFields, err := formfieldbus.TestSeedFormFields(ctx, 20, formIDs, busDomain.FormField, entities)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding form fields : %w", err)
 	}
@@ -128,5 +133,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Users:      []apitest.User{tu1},
 		Forms:      formapp.ToAppForms(forms),
 		FormFields: formfieldapp.ToAppFormFieldSlice(formFields),
+		Entities:   entities,
 	}, nil
 }

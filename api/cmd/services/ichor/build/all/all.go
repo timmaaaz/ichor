@@ -2,6 +2,7 @@
 package all
 
 import (
+	"context"
 	"time"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/approvalstatusapi"
@@ -19,6 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/core/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/userroleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/dataapi"
+	"github.com/timmaaaz/ichor/api/domain/http/formdata/formdataapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/approvalapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/commentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/officeapi"
@@ -61,6 +63,9 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/core/userapi"
 
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/app/domain/assets/assetapp"
+	"github.com/timmaaaz/ichor/app/domain/core/userapp"
+	"github.com/timmaaaz/ichor/app/domain/formdata/formdataapp"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
@@ -648,5 +653,28 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
+
+	// formdata - dynamic multi-entity operations
+	// Build registry with entity registrations
+	formDataRegistry, err := buildFormDataRegistry(
+		userapp.NewApp(a.UserBus),
+		assetapp.NewApp(assetBus),
+	)
+	if err != nil {
+		cfg.Log.Error(context.Background(), "failed to build formdata registry", "error", err)
+		// Continue without formdata support rather than failing startup
+	} else {
+		// Initialize formdata app and routes
+		formDataApp := formdataapp.NewApp(formDataRegistry, cfg.DB, formBus, formFieldBus)
+
+		formdataapi.Routes(app, formdataapi.Config{
+			FormdataApp:    formDataApp,
+			AuthClient:     cfg.AuthClient,
+			PermissionsBus: permissionsBus,
+		})
+
+		cfg.Log.Info(context.Background(), "formdata routes initialized",
+			"entities", len(formDataRegistry.ListEntities()))
+	}
 
 }
