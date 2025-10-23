@@ -88,6 +88,7 @@ func buildFormDataRegistry(
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
 			return userApp.Create(ctx, model.(userapp.NewUser))
 		},
+		CreateModel: userapp.NewUser{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
 			var app userapp.UpdateUser
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -104,6 +105,7 @@ func buildFormDataRegistry(
 			// Consider using a different approach for user updates
 			return userApp.UpdateNoMid(ctx, model.(userapp.UpdateUser), id)
 		},
+		UpdateModel: userapp.UpdateUser{},
 	}); err != nil {
 		return nil, fmt.Errorf("register users: %w", err)
 	}
@@ -128,6 +130,7 @@ func buildFormDataRegistry(
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
 			return assetApp.Create(ctx, model.(assetapp.NewAsset))
 		},
+		CreateModel: assetapp.NewAsset{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
 			var app assetapp.UpdateAsset
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -141,6 +144,7 @@ func buildFormDataRegistry(
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
 			return assetApp.Update(ctx, model.(assetapp.UpdateAsset), id)
 		},
+		UpdateModel: assetapp.UpdateAsset{},
 	}); err != nil {
 		return nil, fmt.Errorf("register assets: %w", err)
 	}

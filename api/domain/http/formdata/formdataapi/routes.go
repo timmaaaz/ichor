@@ -23,6 +23,7 @@ type Config struct {
 // Endpoints:
 //
 //	POST /v1/formdata/:form_id/upsert - Multi-entity transactional upsert
+//	POST /v1/formdata/:form_id/validate - Validate form configuration
 //
 // All endpoints require authentication. Authorization rules can be
 // customized based on business requirements.
@@ -38,5 +39,10 @@ func Routes(app *web.App, cfg Config) {
 	// Handles dynamic multi-entity create/update operations
 	app.HandlerFunc(http.MethodPost, version, "/formdata/{form_id}/upsert", api.upsert, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, tableName, permissionsbus.Actions.Create, auth.RuleAny))
+
+	// POST /v1/formdata/:form_id/validate
+	// Validates that a form has all required fields for specified operations
+	app.HandlerFunc(http.MethodPost, version, "/formdata/{form_id}/validate", api.validate, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, tableName, permissionsbus.Actions.Read, auth.RuleAny))
 
 }

@@ -77,6 +77,11 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 		return FormDataResponse{}, errs.New(errs.InvalidArgument, err)
 	}
 
+	// Validate that form has all required fields for the requested operations
+	if err := a.validateFormRequiredFields(ctx, formID, req); err != nil {
+		return FormDataResponse{}, err
+	}
+
 	// 2. Build execution plan
 	plan, err := a.buildExecutionPlan(req.Operations)
 	if err != nil {

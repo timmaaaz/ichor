@@ -126,7 +126,7 @@ type NewUser struct {
 	Roles           []string `json:"roles" validate:"required"`
 	SystemRoles     []string `json:"system_roles" validate:"required"`
 	Password        string   `json:"password" validate:"required"`
-	PasswordConfirm string   `json:"password_confirm" validate:"eqfield=Password"`
+	PasswordConfirm string   `json:"password_confirm" validate:"required,eqfield=Password"`
 	Enabled         bool     `json:"enabled"`
 }
 

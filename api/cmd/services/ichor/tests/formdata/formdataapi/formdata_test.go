@@ -27,4 +27,12 @@ func Test_FormData(t *testing.T) {
 	test.Run(t, upsert400(sd), "upsert-400")
 	test.Run(t, upsert401(sd), "upsert-401")
 	test.Run(t, upsert404(sd), "upsert-404")
+
+	test.Run(t, validate200_ValidForm(sd), "validate-200-valid-form")
+	test.Run(t, validate200_MultiEntityForm(sd), "validate-200-multi-entity")
+	test.Run(t, validate200_UnregisteredEntity(sd), "validate-200-unregistered-entity")
+
+	test.Run(t, validate400(sd), "validate-400")
+	test.Run(t, validate401(sd), "validate-401")
+	test.Run(t, validate404(sd), "validate-404")
 }

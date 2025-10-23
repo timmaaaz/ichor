@@ -15,12 +15,14 @@ type EntityRegistration struct {
 	Name string
 
 	// CREATE operations
-	DecodeNew  func(json.RawMessage) (interface{}, error)
-	CreateFunc func(context.Context, interface{}) (interface{}, error)
+	DecodeNew   func(json.RawMessage) (interface{}, error)
+	CreateFunc  func(context.Context, interface{}) (interface{}, error)
+	CreateModel interface{} // Example instance for reflection (e.g., userapp.NewUser{})
 
 	// UPDATE operations
 	DecodeUpdate func(json.RawMessage) (interface{}, error)
 	UpdateFunc   func(context.Context, uuid.UUID, interface{}) (interface{}, error)
+	UpdateModel  interface{} // Example instance for reflection (e.g., userapp.UpdateUser{})
 }
 
 // Registry manages entity registrations with thread-safe lookup by name or UUID.

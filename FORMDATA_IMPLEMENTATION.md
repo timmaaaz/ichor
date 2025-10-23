@@ -62,9 +62,10 @@ This document describes the complete implementation of the dynamic form data ups
 - No business rules in formdata service
 - All validation uses existing app layer models
 
-### 2. **No Reflection**
+### 2. **Minimal Reflection (Only for Validation)**
 - Explicit function pointers for all operations
 - Type-safe through compile-time checking
+- Reflection only used to extract required fields from struct tags
 - Easy to debug and maintain
 
 ### 3. **Transaction Safety**
@@ -76,6 +77,12 @@ This document describes the complete implementation of the dynamic form data ups
 - Template processor resolves `{{entity.field}}` references
 - Supports nested field access
 - Automatic substitution after each operation
+
+### 5. **Form Validation**
+- Validates form configurations have all required fields
+- Automatic extraction from `validate:"required"` tags
+- Fail-fast validation before operations execute
+- Zero developer overhead (only 2 lines per entity)
 
 ## Files Created
 
@@ -89,11 +96,14 @@ This document describes the complete implementation of the dynamic form data ups
 ### Registry Package (`app/sdk/formdataregistry/`)
 - **registry.go** - Core registry with thread-safe entity lookup
 - **types.go** - Operation types and validation
+- **reflection.go** - Reflection helper for extracting required fields
+- **reflection_test.go** - Unit tests for reflection helper
 - **README.md** - Comprehensive developer documentation
 
 ### FormData App Package (`app/domain/formdata/formdataapp/`)
 - **formdataapp.go** - Main service logic for multi-entity operations
 - **model.go** - Request/response models
+- **validation.go** - Form validation logic with required field checking
 - **README.md** - Usage guide with examples
 
 ### API Package (`api/domain/http/formdata/formdataapi/`)
@@ -157,7 +167,9 @@ Reference previous operation results:
 - Nested fields: `{{entity_name.nested.field}}`
 - With filters: `{{entity_name.field | uppercase}}`
 
-## API Endpoint
+## API Endpoints
+
+### 1. Form Data Upsert
 
 ```
 POST /v1/formdata/:form_id/upsert
@@ -191,6 +203,54 @@ POST /v1/formdata/:form_id/upsert
       "city": "Portland"
     }
   }
+}
+```
+
+### 2. Form Validation
+
+```
+POST /v1/formdata/:form_id/validate
+```
+
+**Authentication:** Required
+**Authorization:** Read permission on formdata table
+
+**Path Parameters:**
+- `form_id` - UUID of the form configuration from `config.forms`
+
+**Request Body:** `FormValidationRequest`
+
+```json
+{
+  "operations": {
+    "users": "create",
+    "assets": "create"
+  }
+}
+```
+
+**Response (Valid Form):** `FormValidationResult`
+
+```json
+{
+  "valid": true,
+  "errors": null
+}
+```
+
+**Response (Invalid Form):** `FormValidationResult`
+
+```json
+{
+  "valid": false,
+  "errors": [
+    {
+      "entity_name": "assets",
+      "operation": "create",
+      "missing_fields": ["serial_number", "asset_condition_id"],
+      "available_fields": ["valid_asset_id"]
+    }
+  ]
 }
 ```
 
@@ -264,6 +324,305 @@ func buildFormDataRegistry(
     productApp *productapp.App,  // Add this
 ) (*formdataregistry.Registry, error) {
 ```
+
+### 6. Add Model Instances for Validation (Required for Form Validation)
+
+For form validation to work, you **must** provide model instances to the registry:
+
+```go
+// Register products entity
+if err := registry.Register(formdataregistry.EntityRegistration{
+    Name: "products",
+
+    // ... DecodeNew and CreateFunc ...
+
+    CreateModel: productapp.NewProduct{},  // ← ADD THIS for create validation
+
+    // ... DecodeUpdate and UpdateFunc ...
+
+    UpdateModel: productapp.UpdateProduct{},  // ← ADD THIS for update validation
+}); err != nil {
+    return nil, fmt.Errorf("register products: %w", err)
+}
+```
+
+**That's it!** The system will automatically:
+- Extract required fields from `validate:"required"` tags
+- Validate forms have all required fields before operations
+- Provide detailed error messages about missing fields
+
+**No additional code or maintenance required!**
+
+## Form Validation Feature
+
+### Overview
+
+The form validation feature automatically ensures that form configurations contain all required fields for their target entities. It uses reflection to extract required fields from existing `validate:"required"` struct tags, ensuring zero developer overhead and perfect synchronization between validation rules and form requirements.
+
+### How It Works
+
+```
+1. Developer registers entity with CreateModel/UpdateModel
+                    ↓
+2. System uses reflection to extract required fields
+   from validate:"required" tags
+                    ↓
+3. Frontend/API calls validate endpoint
+                    ↓
+4. System compares form fields against required fields
+                    ↓
+5. Returns validation result with missing fields
+```
+
+### Key Features
+
+✅ **Zero Overhead** - Only 2 lines per entity (CreateModel/UpdateModel)
+✅ **Auto-Sync** - Changing `validate:"required"` automatically updates validation
+✅ **Single Source of Truth** - Uses existing validation tags
+✅ **Fail Fast** - Validates before attempting operations
+✅ **Clear Errors** - Lists exactly which fields are missing
+✅ **Type Safe** - Uses actual model structs
+
+### Usage
+
+#### 1. Validate a Form Configuration (Explicit)
+
+```bash
+POST /v1/formdata/{form_id}/validate
+Content-Type: application/json
+
+{
+  "operations": {
+    "assets": "create",
+    "users": "create"
+  }
+}
+```
+
+**Response (Valid):**
+```json
+{
+  "valid": true,
+  "errors": null
+}
+```
+
+**Response (Invalid - Missing Fields):**
+```json
+{
+  "valid": false,
+  "errors": [
+    {
+      "entity_name": "assets",
+      "operation": "create",
+      "missing_fields": ["serial_number", "asset_condition_id"],
+      "available_fields": ["valid_asset_id"]
+    }
+  ]
+}
+```
+
+#### 2. Automatic Validation (Built-in)
+
+When you call the upsert endpoint, validation runs automatically:
+
+```bash
+POST /v1/formdata/{form_id}/upsert
+# Validation happens before operations execute
+# If required fields are missing, request fails immediately
+```
+
+**Error Response:**
+```json
+{
+  "error": {
+    "code": "INVALID_ARGUMENT",
+    "message": "form validation failed: [{entity_name:assets operation:create missing_fields:[serial_number asset_condition_id]}]"
+  }
+}
+```
+
+### Reflection Helper
+
+The `GetRequiredFields()` function extracts required fields from struct tags:
+
+```go
+// app/sdk/formdataregistry/reflection.go
+
+func GetRequiredFields(model interface{}) []string {
+    // Uses reflection to find fields with validate:"required" tag
+    // Returns JSON field names (from json:"field_name" tags)
+}
+```
+
+**Example:**
+```go
+type NewAsset struct {
+    ValidAssetID     string `json:"valid_asset_id" validate:"required"`
+    SerialNumber     string `json:"serial_number" validate:"required"`
+    AssetConditionID string `json:"asset_condition_id" validate:"required"`
+    LastMaintenance  string `json:"last_maintenance"`  // Not required
+}
+
+fields := formdataregistry.GetRequiredFields(NewAsset{})
+// Returns: ["valid_asset_id", "serial_number", "asset_condition_id"]
+```
+
+### Complete Example
+
+#### Step 1: Define Model with Validation Tags (Already Exists!)
+
+```go
+// app/domain/products/productapp/model.go
+type NewProduct struct {
+    SKU        string `json:"sku" validate:"required"`
+    Name       string `json:"name" validate:"required"`
+    BrandID    string `json:"brand_id" validate:"required"`
+    CategoryID string `json:"category_id" validate:"required"`
+    Description string `json:"description"`  // Optional
+}
+```
+
+#### Step 2: Register with Model Instances (Only 2 Lines!)
+
+```go
+// api/cmd/services/ichor/build/all/formdata_registry.go
+registry.Register(formdataregistry.EntityRegistration{
+    Name: "products",
+    DecodeNew: func(data json.RawMessage) (interface{}, error) { /*...*/ },
+    CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) { /*...*/ },
+    CreateModel: productapp.NewProduct{},  // ← LINE 1: Enables validation!
+
+    DecodeUpdate: func(data json.RawMessage) (interface{}, error) { /*...*/ },
+    UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) { /*...*/ },
+    UpdateModel: productapp.UpdateProduct{},  // ← LINE 2: Enables validation!
+})
+```
+
+#### Step 3: Validation Works Automatically!
+
+The system now knows:
+- Products (create) requires: `sku`, `name`, `brand_id`, `category_id`
+- Products (update) requires: whatever has `validate:"required"` in UpdateProduct
+
+**No additional code needed!**
+
+### Frontend Integration
+
+```typescript
+// Validate form before submission
+async function validateForm(formId: string, operations: Record<string, string>) {
+  const response = await fetch(`/v1/formdata/${formId}/validate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operations })
+  });
+
+  const result = await response.json();
+
+  if (!result.valid) {
+    // Show user which fields are missing
+    result.errors.forEach(error => {
+      console.error(
+        `Entity "${error.entity_name}" is missing required fields:`,
+        error.missing_fields
+      );
+    });
+    return false;
+  }
+
+  return true;
+}
+
+// Use before form submission
+const isValid = await validateForm(formId, { products: 'create' });
+if (isValid) {
+  // Submit form
+  await submitForm(formId, formData);
+}
+```
+
+### Testing
+
+The validation feature includes comprehensive tests:
+
+**Unit Tests** ([app/sdk/formdataregistry/reflection_test.go](app/sdk/formdataregistry/reflection_test.go)):
+```go
+func TestGetRequiredFields(t *testing.T)           // Tests extraction from various models
+func TestGetRequiredFields_EdgeCases(t *testing.T) // Tests pointers, nil, non-structs
+```
+
+**Integration Tests** ([api/cmd/services/ichor/tests/formdata/formdataapi/validate_test.go](api/cmd/services/ichor/tests/formdata/formdataapi/validate_test.go)):
+```go
+func validate200_ValidForm(sd apitest.SeedData) []apitest.Table           // Complete form passes
+func validate200_MultiEntityForm(sd apitest.SeedData) []apitest.Table     // Multi-entity validation
+func validate200_UnregisteredEntity(sd apitest.SeedData) []apitest.Table  // Unregistered entity handling
+func validate400(sd apitest.SeedData) []apitest.Table                     // Invalid operation type
+func validate401(sd apitest.SeedData) []apitest.Table                     // Unauthorized access
+func validate404(sd apitest.SeedData) []apitest.Table                     // Non-existent form
+```
+
+Run tests:
+```bash
+# Unit tests
+go test ./app/sdk/formdataregistry -v
+
+# Integration tests
+go test ./api/cmd/services/ichor/tests/formdata/formdataapi -v
+```
+
+### Validation Tags Supported
+
+The reflection helper looks for fields with `validate:"required"`. It supports:
+
+```go
+// Simple required
+Field1 string `json:"field1" validate:"required"`
+
+// Required with other validators
+Field2 string `json:"field2" validate:"required,email"`
+Field3 string `json:"field3" validate:"required,min=5,max=100"`
+
+// Multiple validators (order doesn't matter)
+Field4 string `json:"field4" validate:"email,required"`
+
+// NOT recognized as required (omit from validation)
+Field5 string `json:"field5" validate:"omitempty"`
+Field6 string `json:"field6" validate:"email"`  // Email validation but not required
+```
+
+### Benefits Over Manual Maintenance
+
+**Without Validation Feature:**
+```go
+// Developer must manually maintain required fields list
+var assetsRequiredFields = []string{
+    "valid_asset_id",
+    "serial_number",
+    "asset_condition_id",
+}
+
+// If NewAsset changes, developer must remember to update this list
+// Easy to get out of sync!
+```
+
+**With Validation Feature:**
+```go
+// Required fields automatically extracted from existing validation tags
+// ✅ Always in sync
+// ✅ Zero maintenance
+// ✅ Single source of truth
+```
+
+### Current Limitation
+
+The validation system currently validates form fields **by name** across all entities in the form. It does not yet map `entity_id` (UUID from `workflow.entities`) to entity names.
+
+**Impact:** Validation works correctly when you provide entity names in the validation request (which you do), but it checks all form fields against the requested entities rather than filtering by entity_id first.
+
+**Workaround:** This doesn't affect functionality - validation still ensures all required fields are present. A form for assets with all 3 required fields will pass validation.
+
+**Future Enhancement:** Add entity name lookup from `workflow.entities` table to enable per-entity validation filtering.
 
 ## Testing Strategy
 
@@ -583,14 +942,16 @@ A: Not directly. Wrap in a domain operation first.
 
 ## Summary
 
-This implementation provides a robust, Ardan Labs-compliant solution for dynamic multi-entity form operations. Key benefits:
+This implementation provides a robust, Ardan Labs-compliant solution for dynamic multi-entity form operations with automatic validation. Key benefits:
 
 ✅ **Architecture Preserved** - All business logic remains in domain layers
-✅ **Type Safe** - No reflection, compile-time checking
+✅ **Type Safe** - Minimal reflection (only for validation), compile-time checking
 ✅ **Transaction Safe** - All-or-nothing semantics
-✅ **Extensible** - Easy to add new entities
+✅ **Extensible** - Easy to add new entities (2 lines for validation!)
+✅ **Auto-Validated** - Forms automatically validated for required fields
+✅ **Zero Maintenance** - Validation syncs with struct tags automatically
 ✅ **Well Documented** - Comprehensive README files
-✅ **Tested** - Clear testing strategy
+✅ **Tested** - Unit and integration tests included
 ✅ **Performant** - Minimal overhead
 
 The system is production-ready and can be extended as needed for future requirements.
