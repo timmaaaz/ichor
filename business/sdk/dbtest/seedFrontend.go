@@ -439,6 +439,28 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	if err != nil {
 		return fmt.Errorf("creating stored config: %w", err)
 	}
+
+	// Create dedicated page configs for orders, suppliers, categories, and order line items
+	_, err = configStore.Create(ctx, "orders_page", "orders", ordersPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating orders page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "suppliers_page", "suppliers", suppliersPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating suppliers page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "categories_page", "product_categories", categoriesPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating categories page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "order_line_items_page", "order_line_items", orderLineItemsPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating order line items page config: %w", err)
+	}
+
 	// Create SYSTEM-WIDE default page (user_id = NULL or uuid.Nil)
 	// This is the template that all users fall back to if they don't have their own version
 	defaultPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
@@ -464,6 +486,22 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	inventoryConfigStored, err := configStore.QueryByName(ctx, "inventory_dashboard")
 	if err != nil {
 		return fmt.Errorf("querying inventory config: %w", err)
+	}
+
+	// Get the stored config IDs for suppliers and categories to add to default dashboard
+	suppliersConfigStored, err := configStore.QueryByName(ctx, "suppliers_page")
+	if err != nil {
+		return fmt.Errorf("querying suppliers config: %w", err)
+	}
+
+	categoriesConfigStored, err := configStore.QueryByName(ctx, "categories_page")
+	if err != nil {
+		return fmt.Errorf("querying categories config: %w", err)
+	}
+
+	orderLineItemsConfigStored, err := configStore.QueryByName(ctx, "order_line_items_page")
+	if err != nil {
+		return fmt.Errorf("querying order line items config: %w", err)
 	}
 
 	// Create tabs for the SYSTEM default page
@@ -498,6 +536,148 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	})
 	if err != nil {
 		return fmt.Errorf("creating inventory tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Suppliers",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     suppliersConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     4,
+	})
+	if err != nil {
+		return fmt.Errorf("creating suppliers tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Categories",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     categoriesConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     5,
+	})
+	if err != nil {
+		return fmt.Errorf("creating categories tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Order Line Items",
+		PageConfigID: defaultPage.ID,
+		ConfigID:     orderLineItemsConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     6,
+	})
+	if err != nil {
+		return fmt.Errorf("creating order line items tab: %w", err)
+	}
+
+	// =========================================================================
+	// Create dedicated page configs for Orders, Suppliers, and Categories
+	// =========================================================================
+
+	// Get the stored config IDs for the new pages
+	ordersPageStored, err := configStore.QueryByName(ctx, "orders_page")
+	if err != nil {
+		return fmt.Errorf("querying orders page config: %w", err)
+	}
+
+	suppliersPageStored, err := configStore.QueryByName(ctx, "suppliers_page")
+	if err != nil {
+		return fmt.Errorf("querying suppliers page config: %w", err)
+	}
+
+	categoriesPageStored, err := configStore.QueryByName(ctx, "categories_page")
+	if err != nil {
+		return fmt.Errorf("querying categories page config: %w", err)
+	}
+
+	orderLineItemsPageStored, err := configStore.QueryByName(ctx, "order_line_items_page")
+	if err != nil {
+		return fmt.Errorf("querying order line items page config: %w", err)
+	}
+
+	// Create Orders Page
+	ordersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "orders_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating orders page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Orders",
+		PageConfigID: ordersPage.ID,
+		ConfigID:     ordersPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating orders page tab: %w", err)
+	}
+
+	// Create Suppliers Page
+	suppliersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "suppliers_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating suppliers page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Suppliers",
+		PageConfigID: suppliersPage.ID,
+		ConfigID:     suppliersPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating suppliers page tab: %w", err)
+	}
+
+	// Create Categories Page
+	categoriesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "categories_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating categories page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Categories",
+		PageConfigID: categoriesPage.ID,
+		ConfigID:     categoriesPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating categories page tab: %w", err)
+	}
+
+	// Create Order Line Items Page
+	orderLineItemsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "order_line_items_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating order line items page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Order Line Items",
+		PageConfigID: orderLineItemsPage.ID,
+		ConfigID:     orderLineItemsPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating order line items page tab: %w", err)
 	}
 
 	// =========================================================================
