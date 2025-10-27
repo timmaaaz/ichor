@@ -2,6 +2,7 @@ package dbtest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -14,6 +15,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
@@ -495,6 +498,313 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	})
 	if err != nil {
 		return fmt.Errorf("creating inventory tab: %w", err)
+	}
+
+	// =========================================================================
+
+	// Form 1: Single entity - Users only
+	userForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "User Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating user form : %w", err)
+	}
+
+	userEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "users")
+	if err != nil {
+		return fmt.Errorf("querying user entity : %w", err)
+	}
+
+	userFormFields := []formfieldbus.FormField{
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "username",
+			FieldOrder: 1,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "first_name",
+			FieldOrder: 2,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "last_name",
+			FieldOrder: 3,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "email",
+			FieldOrder: 4,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "password",
+			FieldOrder: 5,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "password_confirm",
+			FieldOrder: 6,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "birthday",
+			FieldOrder: 7,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "roles",
+			FieldOrder: 8,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "system_roles",
+			FieldOrder: 9,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "enabled",
+			FieldOrder: 10,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     userForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "requested_by",
+			FieldOrder: 11,
+			Config:     json.RawMessage(`{}`),
+		},
+	}
+
+	for _, ff := range userFormFields {
+		_, err = busDomain.FormField.Create(ctx, formfieldbus.NewFormField{
+			FormID:     ff.FormID,
+			EntityID:   ff.EntityID,
+			Name:       ff.Name,
+			FieldOrder: ff.FieldOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("creating user form field : %w", err)
+		}
+	}
+
+	// Form 2: Single entity - Assets only
+	assetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Asset Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating asset form : %w", err)
+	}
+
+	assetEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "assets")
+	if err != nil {
+		return fmt.Errorf("querying asset entity : %w", err)
+	}
+
+	assetFormFields := []formfieldbus.FormField{
+		{
+			ID:         uuid.New(),
+			FormID:     assetForm.ID,
+			EntityID:   assetEntity.ID,
+			Name:       "valid_asset_id",
+			FieldOrder: 1,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     assetForm.ID,
+			EntityID:   assetEntity.ID,
+			Name:       "serial_number",
+			FieldOrder: 2,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     assetForm.ID,
+			EntityID:   assetEntity.ID,
+			Name:       "asset_condition_id",
+			FieldOrder: 3,
+			Config:     json.RawMessage(`{}`),
+		},
+	}
+
+	for _, ff := range assetFormFields {
+		_, err = busDomain.FormField.Create(ctx, formfieldbus.NewFormField{
+			FormID:     ff.FormID,
+			EntityID:   ff.EntityID,
+			Name:       ff.Name,
+			FieldOrder: ff.FieldOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("creating asset form field : %w", err)
+		}
+	}
+
+	// Form 3: Multi-entity - User then Asset (with foreign key)
+	multiForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "User and Asset Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating multi-entity form : %w", err)
+	}
+
+	multiFormFields := []formfieldbus.FormField{
+		// User fields (order 1-11)
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "username",
+			FieldOrder: 1,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "first_name",
+			FieldOrder: 2,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "last_name",
+			FieldOrder: 3,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "email",
+			FieldOrder: 4,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "password",
+			FieldOrder: 5,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "password_confirm",
+			FieldOrder: 6,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "birthday",
+			FieldOrder: 7,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "roles",
+			FieldOrder: 8,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "system_roles",
+			FieldOrder: 9,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "enabled",
+			FieldOrder: 10,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   userEntity.ID,
+			Name:       "requested_by",
+			FieldOrder: 11,
+			Config:     json.RawMessage(`{}`),
+		},
+		// Asset fields (order 12-14)
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   assetEntity.ID,
+			Name:       "asset_condition_id",
+			FieldOrder: 12,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   assetEntity.ID,
+			Name:       "valid_asset_id",
+			FieldOrder: 13,
+			Config:     json.RawMessage(`{}`),
+		},
+		{
+			ID:         uuid.New(),
+			FormID:     multiForm.ID,
+			EntityID:   assetEntity.ID,
+			Name:       "serial_number",
+			FieldOrder: 14,
+			Config:     json.RawMessage(`{}`),
+		},
+	}
+
+	for _, ff := range multiFormFields {
+		_, err = busDomain.FormField.Create(ctx, formfieldbus.NewFormField{
+			FormID:     ff.FormID,
+			EntityID:   ff.EntityID,
+			Name:       ff.Name,
+			FieldOrder: ff.FieldOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("creating multi-entity form field : %w", err)
+		}
 	}
 
 	return nil

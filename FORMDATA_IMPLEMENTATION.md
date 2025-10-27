@@ -509,36 +509,435 @@ The system now knows:
 
 ### Frontend Integration
 
+This section shows how to integrate the FormData API with your Vue 3 frontend using Pinia stores, following the established patterns in the codebase.
+
+#### API Configuration
+
 ```typescript
-// Validate form before submission
-async function validateForm(formId: string, operations: Record<string, string>) {
-  const response = await fetch(`/v1/formdata/${formId}/validate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ operations })
-  });
+// Environment configuration (same pattern as auth.ts and pageBuilder.ts)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+```
 
-  const result = await response.json();
+#### Authentication
 
-  if (!result.valid) {
-    // Show user which fields are missing
-    result.errors.forEach(error => {
+All FormData endpoints require authentication. Requests must include a Bearer token in the Authorization header:
+
+```typescript
+headers: {
+  'Authorization': `Bearer ${token}`,
+  'Content-Type': 'application/json'
+}
+```
+
+The token is obtained from the auth store ([auth.ts](../vue/ichor/src/stores/auth.ts)).
+
+#### TypeScript Types
+
+Define interfaces matching the backend request/response models:
+
+```typescript
+// Request/Response types for FormData API
+export interface OperationMeta {
+  operation: 'create' | 'update'
+  order: number
+}
+
+export interface FormDataRequest {
+  operations: Record<string, OperationMeta>
+  data: Record<string, any>
+}
+
+export interface FormDataResponse {
+  success: boolean
+  results: Record<string, any>
+}
+
+export interface FormValidationRequest {
+  operations: Record<string, string>
+}
+
+export interface FormValidationError {
+  entity_name: string
+  operation: string
+  missing_fields: string[]
+  available_fields: string[]
+}
+
+export interface FormValidationResult {
+  valid: boolean
+  errors: FormValidationError[] | null
+}
+```
+
+#### API Client Class
+
+Create an API client following the pattern from [pageBuilder.ts](../vue/ichor/src/stores/pageBuilder.ts:18-59):
+
+```typescript
+import { useAuthStore } from './auth'
+
+class FormDataAPI {
+  private baseUrl: string
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const authStore = useAuthStore()
+    const token = authStore.token
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> | undefined)
+    }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      ...options,
+      headers
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(errorText || `Request failed: ${response.status}`)
+    }
+
+    return response.json()
+  }
+
+  async upsertFormData(formId: string, request: FormDataRequest): Promise<FormDataResponse> {
+    return this.request<FormDataResponse>(`/v1/formdata/${formId}/upsert`, {
+      method: 'POST',
+      body: JSON.stringify(request)
+    })
+  }
+
+  async validateForm(formId: string, request: FormValidationRequest): Promise<FormValidationResult> {
+    return this.request<FormValidationResult>(`/v1/formdata/${formId}/validate`, {
+      method: 'POST',
+      body: JSON.stringify(request)
+    })
+  }
+}
+```
+
+#### Pinia Store
+
+Create a Pinia store following the established patterns:
+
+```typescript
+// src/stores/formData.ts
+
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+
+export const useFormDataStore = defineStore('formdata', () => {
+  const api = new FormDataAPI(API_BASE_URL)
+
+  // State
+  const loading = ref(false)
+  const error = ref<Error | null>(null)
+  const lastResponse = ref<FormDataResponse | null>(null)
+  const validationErrors = ref<FormValidationError[]>([])
+
+  // Computed
+  const isLoading = computed(() => loading.value)
+  const currentError = computed(() => error.value)
+  const hasValidationErrors = computed(() => validationErrors.value.length > 0)
+
+  // Error handling helper (pattern from pageBuilder.ts)
+  const handleError = (err: unknown, context: string) => {
+    const errorMessage = err instanceof Error ? err : new Error(`${context} failed`)
+    error.value = errorMessage
+    console.error(`[FormData] ${context}:`, err)
+    return errorMessage
+  }
+
+  // Validate form configuration
+  const validateForm = async (
+    formId: string,
+    operations: Record<string, string>
+  ): Promise<{ success: boolean; valid?: boolean; errors?: FormValidationError[]; error?: Error }> => {
+    loading.value = true
+    error.value = null
+    validationErrors.value = []
+
+    try {
+      const result = await api.validateForm(formId, { operations })
+
+      if (!result.valid && result.errors) {
+        validationErrors.value = result.errors
+      }
+
+      return { success: true, valid: result.valid, errors: result.errors || [] }
+    } catch (err) {
+      return { success: false, error: handleError(err, 'Validate form') }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Submit form data
+  const submitFormData = async (
+    formId: string,
+    operations: Record<string, OperationMeta>,
+    data: Record<string, any>
+  ): Promise<{ success: boolean; response?: FormDataResponse; error?: Error }> => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const request: FormDataRequest = { operations, data }
+      const result = await api.upsertFormData(formId, request)
+
+      lastResponse.value = result
+      return { success: true, response: result }
+    } catch (err) {
+      return { success: false, error: handleError(err, 'Submit form data') }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Validate and submit in one call
+  const validateAndSubmit = async (
+    formId: string,
+    operations: Record<string, OperationMeta>,
+    data: Record<string, any>
+  ): Promise<{ success: boolean; response?: FormDataResponse; error?: Error }> => {
+    // First validate
+    const operationsMap = Object.fromEntries(
+      Object.entries(operations).map(([key, meta]) => [key, meta.operation])
+    )
+
+    const validationResult = await validateForm(formId, operationsMap)
+
+    if (!validationResult.success) {
+      return { success: false, error: validationResult.error }
+    }
+
+    if (!validationResult.valid) {
+      return {
+        success: false,
+        error: new Error(
+          `Form validation failed: ${validationResult.errors?.map(e =>
+            `${e.entity_name} missing ${e.missing_fields.join(', ')}`
+          ).join('; ')}`
+        )
+      }
+    }
+
+    // Validation passed, submit the form
+    return submitFormData(formId, operations, data)
+  }
+
+  const clearErrors = () => {
+    error.value = null
+    validationErrors.value = []
+  }
+
+  const clearAll = () => {
+    clearErrors()
+    lastResponse.value = null
+  }
+
+  return {
+    // State
+    loading: computed(() => loading.value),
+    error: computed(() => error.value),
+    lastResponse: computed(() => lastResponse.value),
+    validationErrors: computed(() => validationErrors.value),
+
+    // Computed
+    isLoading,
+    currentError,
+    hasValidationErrors,
+
+    // Methods
+    validateForm,
+    submitFormData,
+    validateAndSubmit,
+    clearErrors,
+    clearAll
+  }
+})
+```
+
+#### Component Usage
+
+Use the store in your Vue components:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useFormDataStore } from '@/stores/formData'
+import type { OperationMeta } from '@/types/formData'
+
+const formDataStore = useFormDataStore()
+const formId = ref('your-form-uuid')
+
+// Example: Create user with address
+const handleSubmit = async () => {
+  const operations: Record<string, OperationMeta> = {
+    users: { operation: 'create', order: 1 },
+    addresses: { operation: 'create', order: 2 }
+  }
+
+  const data = {
+    users: {
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'john@example.com',
+      password: 'SecurePass123!'
+    },
+    addresses: {
+      user_id: '{{users.id}}',  // Template variable - will be resolved by backend
+      street: '123 Main St',
+      city: 'Portland',
+      state: 'OR',
+      postal_code: '97201'
+    }
+  }
+
+  // Validate and submit in one call
+  const result = await formDataStore.validateAndSubmit(formId.value, operations, data)
+
+  if (result.success) {
+    console.log('Form submitted successfully:', result.response)
+    // Access created entities
+    const userId = result.response?.results.users.id
+    const addressId = result.response?.results.addresses.id
+  } else {
+    console.error('Form submission failed:', result.error)
+  }
+}
+
+// Or validate first, then submit separately
+const handleValidateFirst = async () => {
+  const operations = {
+    users: 'create',
+    addresses: 'create'
+  }
+
+  const validationResult = await formDataStore.validateForm(formId.value, operations)
+
+  if (!validationResult.valid) {
+    // Show validation errors to user
+    validationResult.errors?.forEach(error => {
       console.error(
         `Entity "${error.entity_name}" is missing required fields:`,
         error.missing_fields
-      );
-    });
-    return false;
+      )
+    })
+    return
   }
 
-  return true;
+  // Validation passed, now submit
+  // ... call submitFormData()
 }
+</script>
 
-// Use before form submission
-const isValid = await validateForm(formId, { products: 'create' });
-if (isValid) {
-  // Submit form
-  await submitForm(formId, formData);
+<template>
+  <div>
+    <form @submit.prevent="handleSubmit">
+      <!-- Your form fields -->
+      <button type="submit" :disabled="formDataStore.isLoading">
+        {{ formDataStore.isLoading ? 'Submitting...' : 'Submit' }}
+      </button>
+    </form>
+
+    <!-- Show validation errors -->
+    <div v-if="formDataStore.hasValidationErrors">
+      <div v-for="error in formDataStore.validationErrors" :key="error.entity_name">
+        <p>{{ error.entity_name }} ({{ error.operation }}) missing fields:</p>
+        <ul>
+          <li v-for="field in error.missing_fields" :key="field">{{ field }}</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Show general errors -->
+    <div v-if="formDataStore.currentError">
+      {{ formDataStore.currentError.message }}
+    </div>
+  </div>
+</template>
+```
+
+#### Error Response Format
+
+The API returns standard error responses following Go backend conventions:
+
+**HTTP Status Codes:**
+- `200 OK` - Success
+- `400 Bad Request` - Validation failed, invalid request format
+- `401 Unauthorized` - Authentication required or token invalid
+- `404 Not Found` - Form configuration not found
+- `500 Internal Server Error` - Server error (transaction rollback, etc.)
+
+**Error Response Body:**
+```json
+{
+  "error": {
+    "code": "INVALID_ARGUMENT",
+    "message": "form validation failed: [{entity_name:assets operation:create missing_fields:[serial_number asset_condition_id]}]"
+  }
+}
+```
+
+Common error codes:
+- `INVALID_ARGUMENT` - Validation failure
+- `NOT_FOUND` - Resource not found
+- `UNAUTHENTICATED` - Missing or invalid auth
+- `INTERNAL` - Server error
+
+#### Complete Example: Multi-Entity Form
+
+```typescript
+// Example: Create a product with supplier relationship
+const createProductWithSupplier = async () => {
+  const formId = 'product-form-uuid'
+
+  const operations: Record<string, OperationMeta> = {
+    suppliers: { operation: 'create', order: 1 },
+    products: { operation: 'create', order: 2 },
+    supplier_products: { operation: 'create', order: 3 }
+  }
+
+  const data = {
+    suppliers: {
+      name: 'ACME Corp',
+      contact_email: 'contact@acme.com',
+      phone: '555-0100'
+    },
+    products: {
+      sku: 'WIDGET-001',
+      name: 'Super Widget',
+      brand_id: 'existing-brand-uuid',
+      category_id: 'existing-category-uuid'
+    },
+    supplier_products: {
+      supplier_id: '{{suppliers.id}}',
+      product_id: '{{products.id}}',
+      cost: 49.99,
+      lead_time_days: 14
+    }
+  }
+
+  const result = await formDataStore.validateAndSubmit(formId, operations, data)
+
+  if (result.success) {
+    // All entities created successfully in a single transaction
+    console.log('Supplier:', result.response?.results.suppliers)
+    console.log('Product:', result.response?.results.products)
+    console.log('Link:', result.response?.results.supplier_products)
+  }
 }
 ```
 

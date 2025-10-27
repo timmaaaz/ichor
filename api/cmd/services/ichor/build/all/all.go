@@ -63,9 +63,55 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/core/userapi"
 
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/app/domain/assets/approvalstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/assetapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assetconditionapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assettagapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assettypeapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/fulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/core/userapp"
+	userroleappimport "github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
 	"github.com/timmaaaz/ichor/app/domain/formdata/formdataapp"
+	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
+	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/approvalapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/commentapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/homeapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/officeapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/reportstoapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/titleapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inspectionapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryadjustmentapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryitemapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inventorylocationapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inventorytransactionapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/lottrackingsapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/serialnumberapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/supplierproductapp"
+	"github.com/timmaaaz/ichor/app/domain/products/brandapp"
+	"github.com/timmaaaz/ichor/app/domain/products/costhistoryapp"
+	"github.com/timmaaaz/ichor/app/domain/products/metricsapp"
+	"github.com/timmaaaz/ichor/app/domain/products/physicalattributeapp"
+	"github.com/timmaaaz/ichor/app/domain/products/productapp"
+	"github.com/timmaaaz/ichor/app/domain/products/productcategoryapp"
+	"github.com/timmaaaz/ichor/app/domain/products/productcostapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/customersapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/lineitemfulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/orderlineitemsapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
@@ -167,7 +213,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
-	streetdb "github.com/timmaaaz/ichor/business/domain/geography/streetbus/stores/streetdb"
+	"github.com/timmaaaz/ichor/business/domain/geography/streetbus/stores/streetdb"
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
@@ -659,6 +705,52 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	formDataRegistry, err := buildFormDataRegistry(
 		userapp.NewApp(a.UserBus),
 		assetapp.NewApp(assetBus),
+		roleapp.NewApp(roleBus),
+		tableaccessapp.NewApp(tableAccessBus),
+		userroleappimport.NewApp(userRoleBus),
+		contactinfosapp.NewApp(contactInfosBus),
+		assetconditionapp.NewApp(assetConditionBus),
+		assettypeapp.NewApp(assetTypeBus),
+		fulfillmentstatusapp.NewApp(fulfillmentStatusBus),
+		tagapp.NewApp(tagBus),
+		assettagapp.NewApp(assetTagBus),
+		validassetapp.NewApp(validAssetBus),
+		userassetapp.NewApp(userAssetBus),
+		approvalstatusapp.NewApp(approvalStatusBus),
+		cityapp.NewApp(cityBus),
+		streetapp.NewApp(streetBus),
+		commentapp.NewApp(userApprovalCommentBus),
+		approvalapp.NewApp(userApprovalStatusBus),
+		reportstoapp.NewApp(reportsToBus),
+		officeapp.NewApp(officeBus),
+		homeapp.NewApp(homeBus),
+		titleapp.NewApp(titleBus),
+		inspectionapp.NewApp(inspectionBus),
+		inventoryadjustmentapp.NewApp(inventoryAdjustmentBus),
+		inventorylocationapp.NewApp(inventoryLocationBus),
+		inventorytransactionapp.NewApp(inventoryTransactionBus),
+		serialnumberapp.NewApp(serialNumberBus),
+		transferorderapp.NewApp(transferOrderBus),
+		warehouseapp.NewApp(warehouseBus),
+		zoneapp.NewApp(zoneBus),
+		inventoryitemapp.NewApp(inventoryItemBus),
+		lottrackingsapp.NewApp(lotTrackingsBus),
+		supplierapp.NewApp(supplierBus),
+		supplierproductapp.NewApp(supplierProductBus),
+		brandapp.NewApp(brandBus),
+		costhistoryapp.NewApp(costHistoryBus),
+		metricsapp.NewApp(metricsBus),
+		physicalattributeapp.NewApp(physicalAttributeBus),
+		productcategoryapp.NewApp(productCategoryBus),
+		productcostapp.NewApp(productCostBus),
+		productapp.NewApp(productBus),
+		customersapp.NewApp(customersBus),
+		orderlineitemsapp.NewApp(orderLineItemsBus),
+		ordersapp.NewApp(ordersBus),
+		lineitemfulfillmentstatusapp.NewApp(lineItemFulfillmentStatusBus),
+		orderfulfillmentstatusapp.NewApp(orderFulfillmentStatusBus),
+		formapp.NewApp(formBus),
+		formfieldapp.NewApp(formFieldBus),
 	)
 	if err != nil {
 		cfg.Log.Error(context.Background(), "failed to build formdata registry", "error", err)
