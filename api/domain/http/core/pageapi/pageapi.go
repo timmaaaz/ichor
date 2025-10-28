@@ -97,3 +97,18 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 
 	return page
 }
+
+func (api *api) queryByUserID(ctx context.Context, r *http.Request) web.Encoder {
+	userID := web.Param(r, "user_id")
+	parsed, err := uuid.Parse(userID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	pages, err := api.pageapp.QueryByUserID(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return pageapp.Pages{Items: pages}
+}

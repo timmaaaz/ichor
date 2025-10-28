@@ -128,3 +128,13 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (Page, error) {
 
 	return ToAppPage(pag), nil
 }
+
+// QueryByUserID retrieves all pages accessible to a specific user based on their role assignments.
+func (a *App) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]Page, error) {
+	pages, err := a.pagebus.QueryByUserID(ctx, userID)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "querybyuserid: userID[%s]: %s", userID, err)
+	}
+
+	return ToAppPages(pages), nil
+}

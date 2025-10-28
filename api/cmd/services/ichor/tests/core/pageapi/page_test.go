@@ -19,6 +19,10 @@ func Test_Page(t *testing.T) {
 	test.Run(t, queryByID200(sd), "queryByID-200")
 	test.Run(t, query401(sd), "query-401")
 
+	test.Run(t, queryByUserID200(sd), "queryByUserID-200")
+	test.Run(t, queryByUserID401(sd), "queryByUserID-401")
+	test.Run(t, queryByUserID400(sd), "queryByUserID-400")
+
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, create400(sd), "create-400")
 	test.Run(t, create401(sd), "create-401")

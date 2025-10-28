@@ -34,6 +34,8 @@ func Routes(app *web.App, cfg Config) {
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAdminOnly))
 	app.HandlerFunc(http.MethodGet, version, "/core/pages/{page_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAdminOnly))
+	// QueryByUserID only requires authentication - any user can query their accessible pages
+	app.HandlerFunc(http.MethodGet, version, "/core/pages/user/{user_id}", api.queryByUserID, authen)
 	app.HandlerFunc(http.MethodPost, version, "/core/pages", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
 	app.HandlerFunc(http.MethodPut, version, "/core/pages/{page_id}", api.update, authen,

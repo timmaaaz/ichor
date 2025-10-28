@@ -32,6 +32,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Page, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, pageID uuid.UUID) (Page, error)
+	QueryByUserID(ctx context.Context, userID uuid.UUID) ([]Page, error)
 }
 
 // Business manages the set of APIs for page access.
@@ -159,4 +160,17 @@ func (b *Business) QueryByID(ctx context.Context, pageID uuid.UUID) (Page, error
 	}
 
 	return page, nil
+}
+
+// QueryByUserID retrieves all pages accessible to a specific user based on their roles.
+func (b *Business) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]Page, error) {
+	ctx, span := otel.AddSpan(ctx, "business.pagebus.querybyuserid")
+	defer span.End()
+
+	pages, err := b.storer.QueryByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("querying pages by user: userID[%s]: %w", userID, err)
+	}
+
+	return pages, nil
 }

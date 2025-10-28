@@ -187,3 +187,34 @@ func (s *Store) QueryByID(ctx context.Context, pageID uuid.UUID) (pagebus.Page, 
 
 	return toBusPage(dbPage), nil
 }
+
+// QueryByUserID retrieves all pages accessible to a user based on their role assignments.
+// This performs a join across user_roles and role_pages to find all pages the user can access.
+func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]pagebus.Page, error) {
+	data := struct {
+		UserID string `db:"user_id"`
+	}{
+		UserID: userID.String(),
+	}
+
+	const q = `
+	SELECT DISTINCT
+		p.id, p.path, p.name, p.module, p.icon, p.sort_order, p.is_active
+	FROM
+		core.pages p
+		INNER JOIN core.role_pages rp ON p.id = rp.page_id
+		INNER JOIN core.user_roles ur ON rp.role_id = ur.role_id
+	WHERE
+		ur.user_id = :user_id
+		AND rp.can_access = true
+		AND p.is_active = true
+	ORDER BY
+		p.sort_order ASC, p.name ASC`
+
+	var dbPages []dbPage
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbPages); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusPages(dbPages), nil
+}

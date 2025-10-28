@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
@@ -106,6 +107,33 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	pages, err := pagebus.TestSeedPages(ctx, 12, busDomain.Page)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding pages : %w", err)
+	}
+
+	// =========================================================================
+	// Seed Role-Page associations
+	// =========================================================================
+	// Create page IDs slice
+	pageIDs := make(uuid.UUIDs, len(pages))
+	for i, p := range pages {
+		pageIDs[i] = p.ID
+	}
+
+	// Associate tu1's roles with pages
+	// First 3 pages: can_access=false (should be filtered out by query)
+	// Next 3 pages: can_access=true (should be returned by query)
+	// Remaining 6 pages: no association (should not appear in query)
+	for i, pageID := range pageIDs[:6] {
+		canAccess := i >= 3 // False for indices 0-2, true for indices 3-5
+		for _, ur := range ur1 {
+			_, err := busDomain.RolePage.Create(ctx, rolepagebus.NewRolePage{
+				RoleID:    ur.RoleID,
+				PageID:    pageID,
+				CanAccess: canAccess,
+			})
+			if err != nil {
+				return apitest.SeedData{}, fmt.Errorf("seeding role page for tu1: %w", err)
+			}
+		}
 	}
 
 	appPages := pageapp.ToAppPages(pages)

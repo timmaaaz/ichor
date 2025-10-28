@@ -18,7 +18,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
@@ -461,6 +463,81 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating order line items page config: %w", err)
 	}
 
+	// Admin Module Configs
+	_, err = configStore.Create(ctx, "admin_users_page", "users", adminUsersPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating admin users page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "admin_roles_page", "roles", adminRolesPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating admin roles page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "admin_table_access_page", "table_access", adminTableAccessPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating admin table access page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "admin_audit_page", "automation_executions", adminAuditPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating admin audit page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "admin_config_page", "table_configs", adminConfigPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating admin config page config: %w", err)
+	}
+
+	// Assets Module Configs
+	_, err = configStore.Create(ctx, "assets_list_page", "assets", assetsListPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating assets list page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "assets_requests_page", "user_assets", assetsRequestsPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating assets requests page config: %w", err)
+	}
+
+	// HR Module Configs
+	_, err = configStore.Create(ctx, "hr_employees_page", "users", hrEmployeesPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating hr employees page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "hr_offices_page", "offices", hrOfficesPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating hr offices page config: %w", err)
+	}
+
+	// Inventory Module Configs
+	_, err = configStore.Create(ctx, "inventory_warehouses_page", "warehouses", inventoryWarehousesPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating inventory warehouses page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "inventory_items_page", "inventory_items", inventoryItemsPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating inventory items page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "inventory_adjustments_page", "inventory_adjustments", inventoryAdjustmentsPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating inventory adjustments page config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "inventory_transfers_page", "transfer_orders", inventoryTransfersPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating inventory transfers page config: %w", err)
+	}
+
+	// Sales Module Configs
+	_, err = configStore.Create(ctx, "sales_customers_page", "customers", salesCustomersPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating sales customers page config: %w", err)
+	}
+
 	// Create SYSTEM-WIDE default page (user_id = NULL or uuid.Nil)
 	// This is the template that all users fall back to if they don't have their own version
 	defaultPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
@@ -596,6 +673,81 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("querying order line items page config: %w", err)
 	}
 
+	// Query Admin Module Configs
+	adminUsersPageStored, err := configStore.QueryByName(ctx, "admin_users_page")
+	if err != nil {
+		return fmt.Errorf("querying admin users page config: %w", err)
+	}
+
+	adminRolesPageStored, err := configStore.QueryByName(ctx, "admin_roles_page")
+	if err != nil {
+		return fmt.Errorf("querying admin roles page config: %w", err)
+	}
+
+	adminTableAccessPageStored, err := configStore.QueryByName(ctx, "admin_table_access_page")
+	if err != nil {
+		return fmt.Errorf("querying admin table access page config: %w", err)
+	}
+
+	adminAuditPageStored, err := configStore.QueryByName(ctx, "admin_audit_page")
+	if err != nil {
+		return fmt.Errorf("querying admin audit page config: %w", err)
+	}
+
+	adminConfigPageStored, err := configStore.QueryByName(ctx, "admin_config_page")
+	if err != nil {
+		return fmt.Errorf("querying admin config page config: %w", err)
+	}
+
+	// Query Assets Module Configs
+	assetsListPageStored, err := configStore.QueryByName(ctx, "assets_list_page")
+	if err != nil {
+		return fmt.Errorf("querying assets list page config: %w", err)
+	}
+
+	assetsRequestsPageStored, err := configStore.QueryByName(ctx, "assets_requests_page")
+	if err != nil {
+		return fmt.Errorf("querying assets requests page config: %w", err)
+	}
+
+	// Query HR Module Configs
+	hrEmployeesPageStored, err := configStore.QueryByName(ctx, "hr_employees_page")
+	if err != nil {
+		return fmt.Errorf("querying hr employees page config: %w", err)
+	}
+
+	hrOfficesPageStored, err := configStore.QueryByName(ctx, "hr_offices_page")
+	if err != nil {
+		return fmt.Errorf("querying hr offices page config: %w", err)
+	}
+
+	// Query Inventory Module Configs
+	inventoryWarehousesPageStored, err := configStore.QueryByName(ctx, "inventory_warehouses_page")
+	if err != nil {
+		return fmt.Errorf("querying inventory warehouses page config: %w", err)
+	}
+
+	inventoryItemsPageStored, err := configStore.QueryByName(ctx, "inventory_items_page")
+	if err != nil {
+		return fmt.Errorf("querying inventory items page config: %w", err)
+	}
+
+	inventoryAdjustmentsPageStored, err := configStore.QueryByName(ctx, "inventory_adjustments_page")
+	if err != nil {
+		return fmt.Errorf("querying inventory adjustments page config: %w", err)
+	}
+
+	inventoryTransfersPageStored, err := configStore.QueryByName(ctx, "inventory_transfers_page")
+	if err != nil {
+		return fmt.Errorf("querying inventory transfers page config: %w", err)
+	}
+
+	// Query Sales Module Configs
+	salesCustomersPageStored, err := configStore.QueryByName(ctx, "sales_customers_page")
+	if err != nil {
+		return fmt.Errorf("querying sales customers page config: %w", err)
+	}
+
 	// Create Orders Page
 	ordersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
 		Name:      "orders_page",
@@ -678,6 +830,472 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	})
 	if err != nil {
 		return fmt.Errorf("creating order line items page tab: %w", err)
+	}
+
+	// =========================================================================
+	// Create Admin Module Pages
+	// =========================================================================
+
+	// Admin Users Page
+	adminUsersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "admin_users_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin users page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Users",
+		PageConfigID: adminUsersPage.ID,
+		ConfigID:     adminUsersPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin users page tab: %w", err)
+	}
+
+	// Admin Roles Page
+	adminRolesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "admin_roles_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin roles page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Roles",
+		PageConfigID: adminRolesPage.ID,
+		ConfigID:     adminRolesPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin roles page tab: %w", err)
+	}
+
+	// Admin Dashboard Page (multi-tab: users, roles, table access)
+	adminDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "admin_dashboard_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin dashboard page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Users",
+		PageConfigID: adminDashboardPage.ID,
+		ConfigID:     adminUsersPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin dashboard users tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Roles",
+		PageConfigID: adminDashboardPage.ID,
+		ConfigID:     adminRolesPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin dashboard roles tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Permissions",
+		PageConfigID: adminDashboardPage.ID,
+		ConfigID:     adminTableAccessPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     3,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin dashboard permissions tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Audit Logs",
+		PageConfigID: adminDashboardPage.ID,
+		ConfigID:     adminAuditPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     4,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin dashboard audit tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Configurations",
+		PageConfigID: adminDashboardPage.ID,
+		ConfigID:     adminConfigPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     5,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin dashboard config tab: %w", err)
+	}
+
+	// =========================================================================
+	// Create Assets Module Pages
+	// =========================================================================
+
+	// Assets List Page
+	assetsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "assets_list_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating assets page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Assets",
+		PageConfigID: assetsPage.ID,
+		ConfigID:     assetsListPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating assets page tab: %w", err)
+	}
+
+	// Asset Requests Page
+	assetsRequestsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "assets_requests_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating assets requests page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Requests",
+		PageConfigID: assetsRequestsPage.ID,
+		ConfigID:     assetsRequestsPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating assets requests page tab: %w", err)
+	}
+
+	// Assets Dashboard (multi-tab: assets, requests)
+	assetsDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "assets_dashboard_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating assets dashboard page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Assets",
+		PageConfigID: assetsDashboardPage.ID,
+		ConfigID:     assetsListPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating assets dashboard assets tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Requests",
+		PageConfigID: assetsDashboardPage.ID,
+		ConfigID:     assetsRequestsPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating assets dashboard requests tab: %w", err)
+	}
+
+	// =========================================================================
+	// Create HR Module Pages
+	// =========================================================================
+
+	// HR Employees Page
+	hrEmployeesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "hr_employees_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating hr employees page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Employees",
+		PageConfigID: hrEmployeesPage.ID,
+		ConfigID:     hrEmployeesPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating hr employees page tab: %w", err)
+	}
+
+	// HR Offices Page
+	hrOfficesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "hr_offices_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating hr offices page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Offices",
+		PageConfigID: hrOfficesPage.ID,
+		ConfigID:     hrOfficesPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating hr offices page tab: %w", err)
+	}
+
+	// HR Dashboard (multi-tab: employees, offices)
+	hrDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "hr_dashboard_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating hr dashboard page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Employees",
+		PageConfigID: hrDashboardPage.ID,
+		ConfigID:     hrEmployeesPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating hr dashboard employees tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Offices",
+		PageConfigID: hrDashboardPage.ID,
+		ConfigID:     hrOfficesPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating hr dashboard offices tab: %w", err)
+	}
+
+	// =========================================================================
+	// Create Inventory Module Pages
+	// =========================================================================
+
+	// Inventory Warehouses Page
+	inventoryWarehousesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "inventory_warehouses_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory warehouses page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Warehouses",
+		PageConfigID: inventoryWarehousesPage.ID,
+		ConfigID:     inventoryWarehousesPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory warehouses page tab: %w", err)
+	}
+
+	// Inventory Items Page
+	inventoryItemsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "inventory_items_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory items page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Items",
+		PageConfigID: inventoryItemsPage.ID,
+		ConfigID:     inventoryItemsPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory items page tab: %w", err)
+	}
+
+	// Inventory Adjustments Page
+	inventoryAdjustmentsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "inventory_adjustments_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory adjustments page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Adjustments",
+		PageConfigID: inventoryAdjustmentsPage.ID,
+		ConfigID:     inventoryAdjustmentsPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory adjustments page tab: %w", err)
+	}
+
+	// Inventory Transfers Page
+	inventoryTransfersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "inventory_transfers_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory transfers page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Transfers",
+		PageConfigID: inventoryTransfersPage.ID,
+		ConfigID:     inventoryTransfersPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory transfers page tab: %w", err)
+	}
+
+	// Inventory Dashboard (multi-tab: warehouses, items, adjustments, transfers)
+	inventoryDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "inventory_dashboard_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory dashboard page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Items",
+		PageConfigID: inventoryDashboardPage.ID,
+		ConfigID:     inventoryItemsPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory dashboard items tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Warehouses",
+		PageConfigID: inventoryDashboardPage.ID,
+		ConfigID:     inventoryWarehousesPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory dashboard warehouses tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Adjustments",
+		PageConfigID: inventoryDashboardPage.ID,
+		ConfigID:     inventoryAdjustmentsPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     3,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory dashboard adjustments tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Transfers",
+		PageConfigID: inventoryDashboardPage.ID,
+		ConfigID:     inventoryTransfersPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     4,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory dashboard transfers tab: %w", err)
+	}
+
+	// =========================================================================
+	// Create Sales Module Pages
+	// =========================================================================
+
+	// Sales Customers Page
+	salesCustomersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "sales_customers_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating sales customers page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Customers",
+		PageConfigID: salesCustomersPage.ID,
+		ConfigID:     salesCustomersPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating sales customers page tab: %w", err)
+	}
+
+	// Sales Dashboard (multi-tab: orders, customers)
+	salesDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "sales_dashboard_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating sales dashboard page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Orders",
+		PageConfigID: salesDashboardPage.ID,
+		ConfigID:     ordersPageStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating sales dashboard orders tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Customers",
+		PageConfigID: salesDashboardPage.ID,
+		ConfigID:     salesCustomersPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating sales dashboard customers tab: %w", err)
 	}
 
 	// =========================================================================
@@ -984,6 +1602,40 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		})
 		if err != nil {
 			return fmt.Errorf("creating multi-entity form field : %w", err)
+		}
+	}
+
+	// PAGES
+	var pageIDs uuid.UUIDs
+
+	for _, page := range allPages {
+		p, err := busDomain.Page.Create(ctx, page)
+		if err != nil {
+			return fmt.Errorf("creating page %s : %w", page.Name, err)
+		}
+		pageIDs = append(pageIDs, p.ID)
+	}
+
+	// all user roles
+	urs, err := busDomain.UserRole.Query(ctx, userrolebus.QueryFilter{}, userrolebus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		return fmt.Errorf("querying user roles : %w", err)
+	}
+
+	r, err := busDomain.Role.QueryByID(ctx, urs[0].RoleID)
+	if err != nil {
+		return fmt.Errorf("querying role : %w", err)
+	}
+
+	// Add all pages to role
+	for i := range allPages {
+		_, err = busDomain.RolePage.Create(ctx, rolepagebus.NewRolePage{
+			RoleID:    r.ID,
+			PageID:    pageIDs[i],
+			CanAccess: true,
+		})
+		if err != nil {
+			return fmt.Errorf("creating role-page association : %w", err)
 		}
 	}
 

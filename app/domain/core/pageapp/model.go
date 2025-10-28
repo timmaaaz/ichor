@@ -33,6 +33,15 @@ func (app Page) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
+type Pages struct {
+	Items []Page `json:"items"`
+}
+
+func (app Pages) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
 func ToAppPage(bus pagebus.Page) Page {
 	return Page{
 		ID:        bus.ID.String(),
