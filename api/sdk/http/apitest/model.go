@@ -13,7 +13,9 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
 	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
@@ -92,6 +94,8 @@ type SeedData struct {
 	ProductCategories           []productcategoryapp.ProductCategory
 	Warehouses                  []warehouseapp.Warehouse
 	Roles                       []roleapp.Role
+	Pages                       []pageapp.Page
+	RolePages                   []rolepageapp.RolePage
 	UserRoles                   []userroleapp.UserRole
 	TableAccesses               []tableaccessapp.TableAccess
 	Products                    []productapp.Product

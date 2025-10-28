@@ -26,6 +26,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/rolecache"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/roledb"
+	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
+	"github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus/stores/rolepagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus/stores/tableaccesscache"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus/stores/tableaccessdb"
@@ -183,6 +187,8 @@ type BusDomain struct {
 
 	// Permissions
 	Role        *rolebus.Business
+	Page        *pagebus.Business
+	RolePage    *rolepagebus.Business
 	UserRole    *userrolebus.Business
 	TableAccess *tableaccessbus.Business
 	Permissions *permissionsbus.Business
@@ -273,6 +279,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Permissions
 	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute))
+	pageBus := pagebus.NewBusiness(log, delegate, pagedb.NewStore(log, db))
+	rolePageBus := rolepagebus.NewBusiness(log, delegate, rolepagedb.NewStore(log, db))
 	userRoleBus := userrolebus.NewBusiness(log, delegate, userrolecache.NewStore(log, userroledb.NewStore(log, db), 60*time.Minute))
 	tableAccessBus := tableaccessbus.NewBusiness(log, delegate, tableaccesscache.NewStore(log, tableaccessdb.NewStore(log, db), 60*time.Minute))
 	permissionsBus := permissionsbus.NewBusiness(log, delegate, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
@@ -342,6 +350,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Brand:                     brandBus,
 		Warehouse:                 warehouseBus,
 		Role:                      roleBus,
+		Page:                      pageBus,
+		RolePage:                  rolePageBus,
 		UserRole:                  userRoleBus,
 		ProductCategory:           productCategoryBus,
 		TableAccess:               tableAccessBus,

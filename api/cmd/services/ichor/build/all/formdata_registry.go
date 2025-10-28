@@ -18,7 +18,9 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/core/userapp"
 	"github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
@@ -112,6 +114,8 @@ func buildFormDataRegistry(
 	userApp *userapp.App,
 	assetApp *assetapp.App,
 	roleApp *roleapp.App,
+	pageApp *pageapp.App,
+	rolePageApp *rolepageapp.App,
 	tableAccessApp *tableaccessapp.App,
 	userRoleApp *userroleapp.App,
 	contactInfosApp *contactinfosapp.App,
@@ -344,6 +348,76 @@ func buildFormDataRegistry(
 		UpdateModel: userroleapp.NewUserRole{},
 	}); err != nil {
 		return nil, fmt.Errorf("register user_roles: %w", err)
+	}
+
+	// Register pages entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "pages",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app pageapp.NewPage
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return pageApp.Create(ctx, model.(pageapp.NewPage))
+		},
+		CreateModel: pageapp.NewPage{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app pageapp.UpdatePage
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return pageApp.Update(ctx, model.(pageapp.UpdatePage), id)
+		},
+		UpdateModel: pageapp.UpdatePage{},
+	}); err != nil {
+		return nil, fmt.Errorf("register pages: %w", err)
+	}
+
+	// Register role_pages entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "role_pages",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app rolepageapp.NewRolePage
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return rolePageApp.Create(ctx, model.(rolepageapp.NewRolePage))
+		},
+		CreateModel: rolepageapp.NewRolePage{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app rolepageapp.UpdateRolePage
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return rolePageApp.Update(ctx, model.(rolepageapp.UpdateRolePage), id)
+		},
+		UpdateModel: rolepageapp.UpdateRolePage{},
+	}); err != nil {
+		return nil, fmt.Errorf("register role_pages: %w", err)
 	}
 
 	// Register contact_infos entity

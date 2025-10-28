@@ -16,7 +16,9 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/config/formapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/formfieldapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/pageapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/roleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/rolepageapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/userroleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/dataapi"
@@ -75,7 +77,9 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/core/userapp"
 	userroleappimport "github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
@@ -124,12 +128,16 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus/stores/formfielddb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
+	"github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/rolecache"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/roledb"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus/stores/rolepagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus/stores/tableaccesscache"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus/stores/tableaccessdb"
@@ -310,6 +318,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	serialNumberBus := serialnumberbus.NewBusiness(cfg.Log, delegate, serialnumberdb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
+	pageBus := pagebus.NewBusiness(cfg.Log, delegate, pagedb.NewStore(cfg.Log, cfg.DB))
+	rolePageBus := rolepagebus.NewBusiness(cfg.Log, delegate, rolepagedb.NewStore(cfg.Log, cfg.DB))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, delegate, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 
@@ -522,6 +532,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus: permissionsBus,
 	})
 
+	pageapi.Routes(app, pageapi.Config{
+		Log:            cfg.Log,
+		PageBus:        pageBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	rolepageapi.Routes(app, rolepageapi.Config{
+		Log:            cfg.Log,
+		RolePageBus:    rolePageBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
 	userroleapi.Routes(app, userroleapi.Config{
 		Log:            cfg.Log,
 		UserRoleBus:    userRoleBus,
@@ -706,6 +730,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		userapp.NewApp(a.UserBus),
 		assetapp.NewApp(assetBus),
 		roleapp.NewApp(roleBus),
+		pageapp.NewApp(pageBus),
+		rolepageapp.NewApp(rolePageBus),
 		tableaccessapp.NewApp(tableAccessBus),
 		userroleappimport.NewApp(userRoleBus),
 		contactinfosapp.NewApp(contactInfosBus),

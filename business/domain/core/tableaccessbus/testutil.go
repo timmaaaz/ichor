@@ -64,6 +64,8 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 		// Permissions
 		{RoleID: uuid.Nil, TableName: "roles", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "user_roles", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "pages", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "role_pages", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 	}
 
 	ret := make([]TableAccess, 0)

@@ -422,6 +422,28 @@ CREATE TABLE core.table_access (
 );
 
 -- Version: 1.28
+-- Description: Create table pages
+CREATE TABLE core.pages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    path TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    module TEXT NOT NULL,
+    icon TEXT,
+    sort_order INTEGER DEFAULT 1000,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Version: 1.29
+-- Description: Create table role_pages
+CREATE TABLE core.role_pages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role_id UUID REFERENCES core.roles(id) ON DELETE CASCADE,
+    page_id UUID REFERENCES core.pages(id) ON DELETE CASCADE,
+    can_access BOOLEAN DEFAULT TRUE,
+    UNIQUE(role_id, page_id)
+);
+
+-- Version: 1.30
 -- Description: add products
 CREATE TABLE products.products (
    id UUID NOT NULL,
@@ -444,7 +466,7 @@ CREATE TABLE products.products (
    FOREIGN KEY (category_id) REFERENCES products.product_categories(id)
 );
 
--- Version: 1.29
+-- Version: 1.31
 -- Description: add physical_attributes
 CREATE TABLE products.physical_attributes (
    id UUID NOT NULL,
@@ -466,7 +488,7 @@ CREATE TABLE products.physical_attributes (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.30
+-- Version: 1.32
 -- Description: add product_costs
 CREATE TABLE products.product_costs (
    id UUID NOT NULL,
@@ -488,7 +510,7 @@ CREATE TABLE products.product_costs (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.31
+-- Version: 1.33
 -- Description: add suppliers
 CREATE TABLE procurement.suppliers (
    id UUID NOT NULL,
@@ -504,7 +526,7 @@ CREATE TABLE procurement.suppliers (
    FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
 );
 
--- Version: 1.32
+-- Version: 1.34
 -- Description: add cost_history
 CREATE TABLE products.cost_history (
    id UUID NOT NULL,
@@ -520,7 +542,7 @@ CREATE TABLE products.cost_history (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.33
+-- Version: 1.35
 -- Description: add supplier_products
 CREATE TABLE procurement.supplier_products (
    id UUID NOT NULL,
@@ -539,7 +561,7 @@ CREATE TABLE procurement.supplier_products (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.34
+-- Version: 1.36
 -- Description: add quality_metrics
 CREATE TABLE products.quality_metrics (
    id UUID NOT NULL,
@@ -553,7 +575,7 @@ CREATE TABLE products.quality_metrics (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.35
+-- Version: 1.37
 -- Description: add lot tracking
 CREATE TABLE inventory.lot_trackings (
    id UUID NOT NULL,
@@ -570,7 +592,7 @@ CREATE TABLE inventory.lot_trackings (
    FOREIGN KEY (supplier_product_id) REFERENCES procurement.supplier_products(id)
 );
 
--- Version: 1.36
+-- Version: 1.38
 -- Description: add zones
 CREATE TABLE inventory.zones (
    id UUID NOT NULL,
@@ -583,7 +605,7 @@ CREATE TABLE inventory.zones (
    FOREIGN KEY (warehouse_id) REFERENCES inventory.warehouses(id)
 );
 
--- Version: 1.37
+-- Version: 1.39
 -- Description: add inventory_locations
 CREATE TABLE inventory.inventory_locations (
    id UUID NOT NULL,
@@ -604,7 +626,7 @@ CREATE TABLE inventory.inventory_locations (
    FOREIGN KEY (warehouse_id) REFERENCES inventory.warehouses(id)
 );
 
--- Version: 1.38
+-- Version: 1.40
 -- Description: add inventory_items
 CREATE TABLE inventory.inventory_items (
    id UUID NOT NULL,
@@ -626,7 +648,7 @@ CREATE TABLE inventory.inventory_items (
    FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id)
 );
 
--- Version: 1.39
+-- Version: 1.41
 -- Description: add serial_numbers
 CREATE TABLE inventory.serial_numbers (
    id UUID NOT NULL,
@@ -643,7 +665,7 @@ CREATE TABLE inventory.serial_numbers (
    FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
--- Version: 1.40
+-- Version: 1.42
 -- Description: add quality_inspections
 CREATE TABLE inventory.quality_inspections (
    id UUID NOT NULL,
@@ -662,7 +684,7 @@ CREATE TABLE inventory.quality_inspections (
    FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
--- Version: 1.41 
+-- Version: 1.43
 -- Description: add inventory_transactions
 CREATE TABLE inventory.inventory_transactions (
    id UUID NOT NULL,
@@ -681,7 +703,7 @@ CREATE TABLE inventory.inventory_transactions (
    FOREIGN KEY (user_id) REFERENCES core.users(id)
 );
 
--- Version: 1.42
+-- Version: 1.44
 -- Description: add inventory_adjustments
 CREATE TABLE inventory.inventory_adjustments (
    id UUID NOT NULL,
@@ -702,7 +724,7 @@ CREATE TABLE inventory.inventory_adjustments (
    FOREIGN KEY (approved_by) REFERENCES core.users(id)
 );
 
--- Version: 1.43
+-- Version: 1.45
 -- Description: transfer_orders
 CREATE TABLE inventory.transfer_orders (
    id UUID NOT NULL,
