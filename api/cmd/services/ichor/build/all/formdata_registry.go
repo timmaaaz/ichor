@@ -42,6 +42,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierproductapp"
@@ -146,6 +147,7 @@ func buildFormDataRegistry(
 	zoneApp *zoneapp.App,
 	inventoryItemApp *inventoryitemapp.App,
 	lotTrackingsApp *lottrackingsapp.App,
+	purchaseOrderLineItemStatusApp *purchaseorderlineitemstatusapp.App,
 	purchaseOrderStatusApp *purchaseorderstatusapp.App,
 	supplierApp *supplierapp.App,
 	supplierProductApp *supplierproductapp.App,
@@ -1386,6 +1388,41 @@ func buildFormDataRegistry(
 	// =========================================================================
 	// PROCUREMENT DOMAIN ENTITIES
 	// =========================================================================
+
+	// Register purchase_order_line_item_statuses entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "purchase_order_line_item_statuses",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app purchaseorderlineitemstatusapp.NewPurchaseOrderLineItemStatus
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return purchaseOrderLineItemStatusApp.Create(ctx, model.(purchaseorderlineitemstatusapp.NewPurchaseOrderLineItemStatus))
+		},
+		CreateModel: purchaseorderlineitemstatusapp.NewPurchaseOrderLineItemStatus{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app purchaseorderlineitemstatusapp.UpdatePurchaseOrderLineItemStatus
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return purchaseOrderLineItemStatusApp.Update(ctx, model.(purchaseorderlineitemstatusapp.UpdatePurchaseOrderLineItemStatus), id)
+		},
+		UpdateModel: purchaseorderlineitemstatusapp.UpdatePurchaseOrderLineItemStatus{},
+	}); err != nil {
+		return nil, fmt.Errorf("register purchase_order_line_item_statuses: %w", err)
+	}
 
 	// Register purchase_order_statuses entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
