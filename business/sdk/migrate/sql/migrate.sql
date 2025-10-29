@@ -373,6 +373,7 @@ CREATE TABLE products.product_categories (
 -- Description: Create table warehouses
 CREATE TABLE inventory.warehouses (
    id UUID NOT NULL,
+   code TEXT NOT NULL,
    name TEXT NOT NULL,
    street_id UUID NOT NULL,
    is_active BOOLEAN NOT NULL,

@@ -3498,5 +3498,905 @@ var salesCustomersPageConfig = &tablebuilder.Config{
 }
 
 // =============================================================================
+// PROCUREMENT CONFIGS
+// =============================================================================
+
+var purchaseOrderPageConfig = &tablebuilder.Config{
+	Title:           "Purchase Orders",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "purchase_orders",
+			Schema: "procurement",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "purchase_orders.id"},
+					{Name: "order_number", TableColumn: "purchase_orders.order_number"},
+					{Name: "supplier_id", TableColumn: "purchase_orders.supplier_id"},
+					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
+					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
+					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
+					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
+					{Name: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
+					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
+					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
+					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
+					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "currency", TableColumn: "purchase_orders.currency"},
+					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
+					{Name: "approved_by", TableColumn: "purchase_orders.approved_by"},
+					{Name: "approved_date", TableColumn: "purchase_orders.approved_date"},
+					{Name: "notes", TableColumn: "purchase_orders.notes"},
+					{Name: "created_date", TableColumn: "purchase_orders.created_date"},
+					{Name: "updated_date", TableColumn: "purchase_orders.updated_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "suppliers",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_orders.supplier_id",
+						RelationshipTo:   "suppliers.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "supplier_name", TableColumn: "suppliers.name"},
+							{Name: "payment_terms", Alias: "supplier_payment_terms", TableColumn: "suppliers.payment_terms"},
+							{Name: "lead_time_days", Alias: "supplier_lead_time_days", TableColumn: "suppliers.lead_time_days"},
+						},
+					},
+					{
+						Table:            "purchase_order_statuses",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_orders.purchase_order_status_id",
+						RelationshipTo:   "purchase_order_statuses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "status_name", TableColumn: "purchase_order_statuses.name"},
+							{Name: "description", Alias: "status_description", TableColumn: "purchase_order_statuses.description"},
+						},
+					},
+					{
+						Table:            "warehouses",
+						Schema:           "inventory",
+						RelationshipFrom: "purchase_orders.delivery_warehouse_id",
+						RelationshipTo:   "warehouses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
+							{Name: "warehouse_code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
+						},
+					},
+					{
+						Table:            "users",
+						Schema:           "core",
+						RelationshipFrom: "purchase_orders.requested_by",
+						RelationshipTo:   "users.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "requested_by_username", TableColumn: "users.username"},
+							{Name: "first_name", Alias: "requested_by_first_name", TableColumn: "users.first_name"},
+							{Name: "last_name", Alias: "requested_by_last_name", TableColumn: "users.last_name"},
+						},
+					},
+					{
+						Table:            "users",
+						Schema:           "core",
+						RelationshipFrom: "purchase_orders.approved_by",
+						RelationshipTo:   "users.id",
+						JoinType:         "left",
+						Alias:            "approver",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "approved_by_username", TableColumn: "approver.username"},
+							{Name: "first_name", Alias: "approved_by_first_name", TableColumn: "approver.first_name"},
+							{Name: "last_name", Alias: "approved_by_last_name", TableColumn: "approver.last_name"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "requested_by_full_name",
+						Expression: "requested_by_first_name + ' ' + requested_by_last_name",
+					},
+					{
+						Name:       "approved_by_full_name",
+						Expression: "approved_by_first_name ? (approved_by_first_name + ' ' + approved_by_last_name) : 'N/A'",
+					},
+					{
+						Name:       "formatted_total",
+						Expression: "currency + ' ' + total_amount.toFixed(2)",
+					},
+					{
+						Name:       "delivery_status",
+						Expression: "actual_delivery_date ? 'delivered' : (new Date(expected_delivery_date) < new Date() ? 'overdue' : 'pending')",
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "order_date",
+					Direction: "desc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"order_number": {
+				Name:       "order_number",
+				Header:     "PO Number",
+				Width:      150,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"supplier_name": {
+				Name:       "supplier_name",
+				Header:     "Supplier",
+				Width:      200,
+				Filterable: true,
+			},
+			"status_name": {
+				Name:       "status_name",
+				Header:     "Status",
+				Width:      120,
+				Filterable: true,
+			},
+			"warehouse_name": {
+				Name:       "warehouse_name",
+				Header:     "Delivery Warehouse",
+				Width:      180,
+				Filterable: true,
+			},
+			"order_date": {
+				Name:     "order_date",
+				Header:   "Order Date",
+				Width:    130,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02",
+				},
+			},
+			"expected_delivery_date": {
+				Name:     "expected_delivery_date",
+				Header:   "Expected Delivery",
+				Width:    150,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02",
+				},
+			},
+			"formatted_total": {
+				Name:   "formatted_total",
+				Header: "Total Amount",
+				Width:  130,
+			},
+			"delivery_status": {
+				Name:       "delivery_status",
+				Header:     "Delivery Status",
+				Width:      130,
+				Filterable: true,
+			},
+			"requested_by_full_name": {
+				Name:       "requested_by_full_name",
+				Header:     "Requested By",
+				Width:      150,
+				Filterable: true,
+			},
+			"id": {
+				Name:   "id",
+				Header: "Actions",
+				Width:  100,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/procurement/purchase-orders/{id}",
+					Label: "View",
+				},
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "procurement"},
+		Actions: []string{"view", "create", "edit", "export"},
+	},
+}
+
+var purchaseOrderLineItemPageConfig = &tablebuilder.Config{
+	Title:           "Purchase Order Line Items",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "purchase_order_line_items",
+			Schema: "procurement",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "purchase_order_line_items.id"},
+					{Name: "purchase_order_id", TableColumn: "purchase_order_line_items.purchase_order_id"},
+					{Name: "supplier_product_id", TableColumn: "purchase_order_line_items.supplier_product_id"},
+					{Name: "quantity_ordered", TableColumn: "purchase_order_line_items.quantity_ordered"},
+					{Name: "quantity_received", TableColumn: "purchase_order_line_items.quantity_received"},
+					{Name: "quantity_cancelled", TableColumn: "purchase_order_line_items.quantity_cancelled"},
+					{Name: "unit_cost", TableColumn: "purchase_order_line_items.unit_cost"},
+					{Name: "discount", TableColumn: "purchase_order_line_items.discount"},
+					{Name: "line_total", TableColumn: "purchase_order_line_items.line_total"},
+					{Name: "line_item_status_id", TableColumn: "purchase_order_line_items.line_item_status_id"},
+					{Name: "expected_delivery_date", TableColumn: "purchase_order_line_items.expected_delivery_date"},
+					{Name: "actual_delivery_date", TableColumn: "purchase_order_line_items.actual_delivery_date"},
+					{Name: "notes", TableColumn: "purchase_order_line_items.notes"},
+					{Name: "created_by", TableColumn: "purchase_order_line_items.created_by"},
+					{Name: "created_date", TableColumn: "purchase_order_line_items.created_date"},
+					{Name: "updated_by", TableColumn: "purchase_order_line_items.updated_by"},
+					{Name: "updated_date", TableColumn: "purchase_order_line_items.updated_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "purchase_orders",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_order_line_items.purchase_order_id",
+						RelationshipTo:   "purchase_orders.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "order_number", Alias: "po_number", TableColumn: "purchase_orders.order_number"},
+							{Name: "supplier_id", Alias: "po_supplier_id", TableColumn: "purchase_orders.supplier_id"},
+							{Name: "order_date", Alias: "po_order_date", TableColumn: "purchase_orders.order_date"},
+						},
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "suppliers",
+								Schema:           "procurement",
+								RelationshipFrom: "purchase_orders.supplier_id",
+								RelationshipTo:   "suppliers.id",
+								JoinType:         "left",
+								Columns: []tablebuilder.ColumnDefinition{
+									{Name: "name", Alias: "supplier_name", TableColumn: "suppliers.name"},
+								},
+							},
+						},
+					},
+					{
+						Table:            "supplier_products",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_order_line_items.supplier_product_id",
+						RelationshipTo:   "supplier_products.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "supplier_part_number", Alias: "supplier_part_number", TableColumn: "supplier_products.supplier_part_number"},
+							{Name: "product_id", Alias: "product_id", TableColumn: "supplier_products.product_id"},
+						},
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "products",
+								Schema:           "products",
+								RelationshipFrom: "supplier_products.product_id",
+								RelationshipTo:   "products.id",
+								JoinType:         "left",
+								Columns: []tablebuilder.ColumnDefinition{
+									{Name: "name", Alias: "product_name", TableColumn: "products.name"},
+									{Name: "sku", Alias: "product_sku", TableColumn: "products.sku"},
+								},
+							},
+						},
+					},
+					{
+						Table:            "purchase_order_line_item_statuses",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_order_line_items.line_item_status_id",
+						RelationshipTo:   "purchase_order_line_item_statuses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "line_item_status_name", TableColumn: "purchase_order_line_item_statuses.name"},
+						},
+					},
+					{
+						Table:            "users",
+						Schema:           "core",
+						RelationshipFrom: "purchase_order_line_items.created_by",
+						RelationshipTo:   "users.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "created_by_username", TableColumn: "users.username"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "quantity_pending",
+						Expression: "quantity_ordered - quantity_received - quantity_cancelled",
+					},
+					{
+						Name:       "fulfillment_percentage",
+						Expression: "quantity_ordered > 0 ? ((quantity_received / quantity_ordered) * 100).toFixed(1) : '0.0'",
+					},
+					{
+						Name:       "line_status",
+						Expression: "quantity_received >= quantity_ordered ? 'complete' : quantity_cancelled > 0 ? 'partial' : 'pending'",
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "created_date",
+					Direction: "desc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"po_number": {
+				Name:       "po_number",
+				Header:     "PO Number",
+				Width:      150,
+				Filterable: true,
+			},
+			"supplier_name": {
+				Name:       "supplier_name",
+				Header:     "Supplier",
+				Width:      180,
+				Filterable: true,
+			},
+			"product_name": {
+				Name:       "product_name",
+				Header:     "Product",
+				Width:      200,
+				Filterable: true,
+			},
+			"product_sku": {
+				Name:       "product_sku",
+				Header:     "SKU",
+				Width:      120,
+				Filterable: true,
+			},
+			"supplier_part_number": {
+				Name:       "supplier_part_number",
+				Header:     "Supplier Part #",
+				Width:      150,
+				Filterable: true,
+			},
+			"quantity_ordered": {
+				Name:       "quantity_ordered",
+				Header:     "Qty Ordered",
+				Width:      110,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"quantity_received": {
+				Name:       "quantity_received",
+				Header:     "Qty Received",
+				Width:      120,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"quantity_pending": {
+				Name:   "quantity_pending",
+				Header: "Qty Pending",
+				Width:  110,
+			},
+			"fulfillment_percentage": {
+				Name:   "fulfillment_percentage",
+				Header: "Fulfillment %",
+				Width:  120,
+			},
+			"unit_cost": {
+				Name:     "unit_cost",
+				Header:   "Unit Cost",
+				Width:    100,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "currency",
+					Format: "USD",
+				},
+			},
+			"line_total": {
+				Name:     "line_total",
+				Header:   "Line Total",
+				Width:    110,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "currency",
+					Format: "USD",
+				},
+			},
+			"line_item_status_name": {
+				Name:       "line_item_status_name",
+				Header:     "Status",
+				Width:      120,
+				Filterable: true,
+			},
+			"expected_delivery_date": {
+				Name:     "expected_delivery_date",
+				Header:   "Expected Delivery",
+				Width:    150,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02",
+				},
+			},
+			"created_by_username": {
+				Name:       "created_by_username",
+				Header:     "Created By",
+				Width:      130,
+				Filterable: true,
+			},
+			"id": {
+				Name:   "id",
+				Header: "Actions",
+				Width:  100,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/procurement/purchase-order-line-items/{id}",
+					Label: "View",
+				},
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "procurement"},
+		Actions: []string{"view", "edit", "export"},
+	},
+}
+
+// Open Approvals - Purchase orders awaiting approval
+var procurementOpenApprovalsPageConfig = &tablebuilder.Config{
+	Title:           "Open Approvals",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "purchase_orders",
+			Schema: "procurement",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "purchase_orders.id"},
+					{Name: "order_number", TableColumn: "purchase_orders.order_number"},
+					{Name: "supplier_id", TableColumn: "purchase_orders.supplier_id"},
+					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
+					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
+					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
+					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
+					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
+					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
+					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
+					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "currency", TableColumn: "purchase_orders.currency"},
+					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
+					{Name: "notes", TableColumn: "purchase_orders.notes"},
+					{Name: "created_date", TableColumn: "purchase_orders.created_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "suppliers",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_orders.supplier_id",
+						RelationshipTo:   "suppliers.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "supplier_name", TableColumn: "suppliers.name"},
+							{Name: "payment_terms", Alias: "supplier_payment_terms", TableColumn: "suppliers.payment_terms"},
+							{Name: "lead_time_days", Alias: "supplier_lead_time_days", TableColumn: "suppliers.lead_time_days"},
+						},
+					},
+					{
+						Table:            "purchase_order_statuses",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_orders.purchase_order_status_id",
+						RelationshipTo:   "purchase_order_statuses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "status_name", TableColumn: "purchase_order_statuses.name"},
+							{Name: "description", Alias: "status_description", TableColumn: "purchase_order_statuses.description"},
+						},
+					},
+					{
+						Table:            "warehouses",
+						Schema:           "inventory",
+						RelationshipFrom: "purchase_orders.delivery_warehouse_id",
+						RelationshipTo:   "warehouses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
+							{Name: "warehouse_code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
+						},
+					},
+					{
+						Table:            "users",
+						Schema:           "core",
+						RelationshipFrom: "purchase_orders.requested_by",
+						RelationshipTo:   "users.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "requested_by_username", TableColumn: "users.username"},
+							{Name: "first_name", Alias: "requested_by_first_name", TableColumn: "users.first_name"},
+							{Name: "last_name", Alias: "requested_by_last_name", TableColumn: "users.last_name"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "requested_by_full_name",
+						Expression: "requested_by_first_name + ' ' + requested_by_last_name",
+					},
+					{
+						Name:       "formatted_total",
+						Expression: "currency + ' ' + total_amount.toFixed(2)",
+					},
+					{
+						Name:       "days_pending",
+						Expression: "Math.floor((new Date() - new Date(order_date)) / (1000 * 60 * 60 * 24))",
+					},
+				},
+			},
+			Filters: []tablebuilder.Filter{
+				{
+					Column:   "approved_by",
+					Operator: "is_null",
+					Value:    nil,
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "order_date",
+					Direction: "desc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"order_number": {
+				Name:       "order_number",
+				Header:     "PO Number",
+				Width:      150,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"supplier_name": {
+				Name:       "supplier_name",
+				Header:     "Supplier",
+				Width:      200,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"status_name": {
+				Name:       "status_name",
+				Header:     "Status",
+				Width:      120,
+				Filterable: true,
+			},
+			"warehouse_name": {
+				Name:       "warehouse_name",
+				Header:     "Delivery Warehouse",
+				Width:      180,
+				Filterable: true,
+			},
+			"order_date": {
+				Name:     "order_date",
+				Header:   "Order Date",
+				Width:    130,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02",
+				},
+			},
+			"expected_delivery_date": {
+				Name:     "expected_delivery_date",
+				Header:   "Expected Delivery",
+				Width:    150,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02",
+				},
+			},
+			"formatted_total": {
+				Name:   "formatted_total",
+				Header: "Total Amount",
+				Width:  130,
+			},
+			"days_pending": {
+				Name:   "days_pending",
+				Header: "Days Pending",
+				Width:  120,
+			},
+			"requested_by_full_name": {
+				Name:       "requested_by_full_name",
+				Header:     "Requested By",
+				Width:      150,
+				Filterable: true,
+			},
+			"id": {
+				Name:   "id",
+				Header: "Actions",
+				Width:  100,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/procurement/purchase-orders/{id}/approve",
+					Label: "Review",
+				},
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "procurement", "manager"},
+		Actions: []string{"view", "approve", "reject"},
+	},
+}
+
+// Closed Approvals - Purchase orders that have been approved
+var procurementClosedApprovalsPageConfig = &tablebuilder.Config{
+	Title:           "Closed Approvals",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "purchase_orders",
+			Schema: "procurement",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "purchase_orders.id"},
+					{Name: "order_number", TableColumn: "purchase_orders.order_number"},
+					{Name: "supplier_id", TableColumn: "purchase_orders.supplier_id"},
+					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
+					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
+					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
+					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
+					{Name: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
+					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
+					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
+					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
+					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "currency", TableColumn: "purchase_orders.currency"},
+					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
+					{Name: "approved_by", TableColumn: "purchase_orders.approved_by"},
+					{Name: "approved_date", TableColumn: "purchase_orders.approved_date"},
+					{Name: "notes", TableColumn: "purchase_orders.notes"},
+					{Name: "created_date", TableColumn: "purchase_orders.created_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "suppliers",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_orders.supplier_id",
+						RelationshipTo:   "suppliers.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "supplier_name", TableColumn: "suppliers.name"},
+							{Name: "payment_terms", Alias: "supplier_payment_terms", TableColumn: "suppliers.payment_terms"},
+							{Name: "lead_time_days", Alias: "supplier_lead_time_days", TableColumn: "suppliers.lead_time_days"},
+						},
+					},
+					{
+						Table:            "purchase_order_statuses",
+						Schema:           "procurement",
+						RelationshipFrom: "purchase_orders.purchase_order_status_id",
+						RelationshipTo:   "purchase_order_statuses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "status_name", TableColumn: "purchase_order_statuses.name"},
+							{Name: "description", Alias: "status_description", TableColumn: "purchase_order_statuses.description"},
+						},
+					},
+					{
+						Table:            "warehouses",
+						Schema:           "inventory",
+						RelationshipFrom: "purchase_orders.delivery_warehouse_id",
+						RelationshipTo:   "warehouses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
+							{Name: "warehouse_code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
+						},
+					},
+					{
+						Table:            "users",
+						Schema:           "core",
+						RelationshipFrom: "purchase_orders.requested_by",
+						RelationshipTo:   "users.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "requested_by_username", TableColumn: "users.username"},
+							{Name: "first_name", Alias: "requested_by_first_name", TableColumn: "users.first_name"},
+							{Name: "last_name", Alias: "requested_by_last_name", TableColumn: "users.last_name"},
+						},
+					},
+					{
+						Table:            "users",
+						Schema:           "core",
+						RelationshipFrom: "purchase_orders.approved_by",
+						RelationshipTo:   "users.id",
+						JoinType:         "left",
+						Alias:            "approver",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "approved_by_username", TableColumn: "approver.username"},
+							{Name: "first_name", Alias: "approved_by_first_name", TableColumn: "approver.first_name"},
+							{Name: "last_name", Alias: "approved_by_last_name", TableColumn: "approver.last_name"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "requested_by_full_name",
+						Expression: "requested_by_first_name + ' ' + requested_by_last_name",
+					},
+					{
+						Name:       "approved_by_full_name",
+						Expression: "approved_by_first_name + ' ' + approved_by_last_name",
+					},
+					{
+						Name:       "formatted_total",
+						Expression: "currency + ' ' + total_amount.toFixed(2)",
+					},
+					{
+						Name:       "delivery_status",
+						Expression: "actual_delivery_date ? 'delivered' : (new Date(expected_delivery_date) < new Date() ? 'overdue' : 'pending')",
+					},
+				},
+			},
+			Filters: []tablebuilder.Filter{
+				{
+					Column:   "approved_by",
+					Operator: "is_not_null",
+					Value:    nil,
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "approved_date",
+					Direction: "desc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"order_number": {
+				Name:       "order_number",
+				Header:     "PO Number",
+				Width:      150,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"supplier_name": {
+				Name:       "supplier_name",
+				Header:     "Supplier",
+				Width:      200,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"status_name": {
+				Name:       "status_name",
+				Header:     "Status",
+				Width:      120,
+				Filterable: true,
+			},
+			"warehouse_name": {
+				Name:       "warehouse_name",
+				Header:     "Delivery Warehouse",
+				Width:      180,
+				Filterable: true,
+			},
+			"order_date": {
+				Name:     "order_date",
+				Header:   "Order Date",
+				Width:    130,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02",
+				},
+			},
+			"approved_date": {
+				Name:     "approved_date",
+				Header:   "Approved Date",
+				Width:    130,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02",
+				},
+			},
+			"expected_delivery_date": {
+				Name:     "expected_delivery_date",
+				Header:   "Expected Delivery",
+				Width:    150,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02",
+				},
+			},
+			"formatted_total": {
+				Name:   "formatted_total",
+				Header: "Total Amount",
+				Width:  130,
+			},
+			"delivery_status": {
+				Name:       "delivery_status",
+				Header:     "Delivery Status",
+				Width:      130,
+				Filterable: true,
+			},
+			"requested_by_full_name": {
+				Name:       "requested_by_full_name",
+				Header:     "Requested By",
+				Width:      150,
+				Filterable: true,
+			},
+			"approved_by_full_name": {
+				Name:       "approved_by_full_name",
+				Header:     "Approved By",
+				Width:      150,
+				Filterable: true,
+			},
+			"id": {
+				Name:   "id",
+				Header: "Actions",
+				Width:  100,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/procurement/purchase-orders/{id}",
+					Label: "View",
+				},
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "procurement", "manager"},
+		Actions: []string{"view", "export"},
+	},
+}
+
+// =============================================================================
 // FORM CONFIGS
 // =============================================================================

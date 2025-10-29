@@ -11,11 +11,19 @@ func TestNewWarehouses(n int, createdBy uuid.UUID, streetIDs uuid.UUIDs) []NewWa
 	newWarehouses := make([]NewWarehouse, n)
 
 	for i := 0; i < n; i++ {
-		newWarehouses[i] = NewWarehouse{
+		nw := NewWarehouse{
 			StreetID:  streetIDs[i%len(streetIDs)],
 			Name:      "Warehouse " + strconv.Itoa(i),
 			CreatedBy: createdBy,
 		}
+
+		// Even-indexed warehouses get manual codes to test preservation
+		// Odd-indexed warehouses get empty codes to test auto-generation
+		if i%2 == 0 {
+			nw.Code = "WH-TEST-" + strconv.Itoa(i/2+1)
+		}
+
+		newWarehouses[i] = nw
 	}
 	return newWarehouses
 }

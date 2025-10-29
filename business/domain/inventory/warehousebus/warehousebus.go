@@ -33,6 +33,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Warehouse, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, warehouseID uuid.UUID) (Warehouse, error)
+	QueryMaxCodeNumber(ctx context.Context) (int, error)
 }
 
 // Business manages the set of APIs for warehouse access.
@@ -73,8 +74,19 @@ func (b *Business) Create(ctx context.Context, nw NewWarehouse) (Warehouse, erro
 
 	now := time.Now()
 
+	// Generate code if not provided
+	code := nw.Code
+	if code == "" {
+		generatedCode, err := b.generateWarehouseCode(ctx)
+		if err != nil {
+			return Warehouse{}, fmt.Errorf("generate code: %w", err)
+		}
+		code = generatedCode
+	}
+
 	warehouse := Warehouse{
 		ID:          uuid.New(),
+		Code:        code,
 		StreetID:    nw.StreetID,
 		Name:        nw.Name,
 		IsActive:    true,
@@ -84,11 +96,42 @@ func (b *Business) Create(ctx context.Context, nw NewWarehouse) (Warehouse, erro
 		UpdatedDate: now,
 	}
 
-	if err := b.storer.Create(ctx, warehouse); err != nil {
-		return Warehouse{}, fmt.Errorf("create: %w", err)
+	// Retry logic for unique constraint violations (max 3 attempts)
+	const maxRetries = 3
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := b.storer.Create(ctx, warehouse)
+		if err == nil {
+			return warehouse, nil
+		}
+
+		// If not a unique constraint error, or we've exhausted retries, return error
+		if !errors.Is(err, ErrUniqueEntry) || attempt == maxRetries {
+			return Warehouse{}, fmt.Errorf("create: %w", err)
+		}
+
+		// Regenerate code only if it was auto-generated
+		if nw.Code == "" {
+			newCode, genErr := b.generateWarehouseCode(ctx)
+			if genErr != nil {
+				return Warehouse{}, fmt.Errorf("regenerate code on retry %d: %w", attempt, genErr)
+			}
+			warehouse.Code = newCode
+		}
 	}
 
 	return warehouse, nil
+}
+
+// generateWarehouseCode generates a new warehouse code in the format WH-XXXXX
+func (b *Business) generateWarehouseCode(ctx context.Context) (string, error) {
+	maxCode, err := b.storer.QueryMaxCodeNumber(ctx)
+	if err != nil {
+		return "", fmt.Errorf("query max code: %w", err)
+	}
+
+	// Increment and format with 5-digit padding
+	nextCode := maxCode + 1
+	return fmt.Sprintf("WH-%05d", nextCode), nil
 }
 
 // Update modifies a warehouse in the system.

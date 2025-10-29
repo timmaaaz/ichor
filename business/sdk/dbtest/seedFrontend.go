@@ -40,6 +40,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/products/metricsbus"
@@ -391,6 +395,42 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		supplierProductIDs[i] = sp.SupplierProductID
 	}
 
+	// Purchase Order Statuses
+	poStatuses, err := purchaseorderstatusbus.TestSeedPurchaseOrderStatuses(ctx, 5, busDomain.PurchaseOrderStatus)
+	if err != nil {
+		return fmt.Errorf("seeding purchase order statuses : %w", err)
+	}
+	poStatusIDs := make(uuid.UUIDs, len(poStatuses))
+	for i, ps := range poStatuses {
+		poStatusIDs[i] = ps.ID
+	}
+
+	// Purchase Order Line Item Statuses
+	poLineItemStatuses, err := purchaseorderlineitemstatusbus.TestSeedPurchaseOrderLineItemStatuses(ctx, 5, busDomain.PurchaseOrderLineItemStatus)
+	if err != nil {
+		return fmt.Errorf("seeding purchase order line item statuses : %w", err)
+	}
+	poLineItemStatusIDs := make(uuid.UUIDs, len(poLineItemStatuses))
+	for i, pols := range poLineItemStatuses {
+		poLineItemStatusIDs[i] = pols.ID
+	}
+
+	// Purchase Orders
+	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, 10, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, busDomain.PurchaseOrder)
+	if err != nil {
+		return fmt.Errorf("seeding purchase orders : %w", err)
+	}
+	purchaseOrderIDs := make(uuid.UUIDs, len(purchaseOrders))
+	for i, po := range purchaseOrders {
+		purchaseOrderIDs[i] = po.ID
+	}
+
+	// Purchase Order Line Items
+	_, err = purchaseorderlineitembus.TestSeedPurchaseOrderLineItems(ctx, 25, purchaseOrderIDs, supplierProductIDs, poLineItemStatusIDs, userIDs, busDomain.PurchaseOrderLineItem)
+	if err != nil {
+		return fmt.Errorf("seeding purchase order line items : %w", err)
+	}
+
 	lotTrackings, err := lottrackingsbus.TestSeedLotTrackings(ctx, 15, supplierProductIDs, busDomain.LotTrackings)
 	if err != nil {
 		return fmt.Errorf("seeding lot tracking : %w", err)
@@ -536,6 +576,27 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	_, err = configStore.Create(ctx, "sales_customers_page", "customers", salesCustomersPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating sales customers page config: %w", err)
+	}
+
+	// Procurement Module Configs
+	_, err = configStore.Create(ctx, "procurement_purchase_orders_config", "purchase_orders", purchaseOrderPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating procurement purchase orders config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "procurement_line_items_config", "purchase_order_line_items", purchaseOrderLineItemPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating procurement line items config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "procurement_approvals_open_config", "purchase_orders", procurementOpenApprovalsPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating procurement approvals open config: %w", err)
+	}
+
+	_, err = configStore.Create(ctx, "procurement_approvals_closed_config", "purchase_orders", procurementClosedApprovalsPageConfig, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating procurement approvals closed config: %w", err)
 	}
 
 	// Create SYSTEM-WIDE default page (user_id = NULL or uuid.Nil)
@@ -746,6 +807,27 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	salesCustomersPageStored, err := configStore.QueryByName(ctx, "sales_customers_page")
 	if err != nil {
 		return fmt.Errorf("querying sales customers page config: %w", err)
+	}
+
+	// Query Procurement Module Configs
+	procurementPurchaseOrdersConfigStored, err := configStore.QueryByName(ctx, "procurement_purchase_orders_config")
+	if err != nil {
+		return fmt.Errorf("querying procurement purchase orders config: %w", err)
+	}
+
+	procurementLineItemsConfigStored, err := configStore.QueryByName(ctx, "procurement_line_items_config")
+	if err != nil {
+		return fmt.Errorf("querying procurement line items config: %w", err)
+	}
+
+	procurementApprovalsOpenConfigStored, err := configStore.QueryByName(ctx, "procurement_approvals_open_config")
+	if err != nil {
+		return fmt.Errorf("querying procurement approvals open config: %w", err)
+	}
+
+	procurementApprovalsClosedConfigStored, err := configStore.QueryByName(ctx, "procurement_approvals_closed_config")
+	if err != nil {
+		return fmt.Errorf("querying procurement approvals closed config: %w", err)
 	}
 
 	// Create Orders Page
@@ -1296,6 +1378,138 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	})
 	if err != nil {
 		return fmt.Errorf("creating sales dashboard customers tab: %w", err)
+	}
+
+	// =========================================================================
+	// Create Procurement Module Pages
+	// =========================================================================
+
+	// Purchase Orders Page
+	procurementPurchaseOrdersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "procurement_purchase_orders",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement purchase orders page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Purchase Orders",
+		PageConfigID: procurementPurchaseOrdersPage.ID,
+		ConfigID:     procurementPurchaseOrdersConfigStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement purchase orders page tab: %w", err)
+	}
+
+	// Purchase Order Line Items Page
+	procurementLineItemsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "procurement_line_items",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement line items page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Line Items",
+		PageConfigID: procurementLineItemsPage.ID,
+		ConfigID:     procurementLineItemsConfigStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement line items page tab: %w", err)
+	}
+
+	// Procurement Approvals Page (multi-tab: open, closed)
+	procurementApprovalsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "procurement_approvals",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement approvals page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Open",
+		PageConfigID: procurementApprovalsPage.ID,
+		ConfigID:     procurementApprovalsOpenConfigStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement approvals open tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Closed",
+		PageConfigID: procurementApprovalsPage.ID,
+		ConfigID:     procurementApprovalsClosedConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement approvals closed tab: %w", err)
+	}
+
+	// Procurement Dashboard (multi-tab: purchase orders, line items, suppliers, approvals)
+	procurementDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+		Name:      "procurement_dashboard",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement dashboard page: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Purchase Orders",
+		PageConfigID: procurementDashboardPage.ID,
+		ConfigID:     procurementPurchaseOrdersConfigStored.ID,
+		IsDefault:    true,
+		TabOrder:     1,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement dashboard purchase orders tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Line Items",
+		PageConfigID: procurementDashboardPage.ID,
+		ConfigID:     procurementLineItemsConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     2,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement dashboard line items tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Suppliers",
+		PageConfigID: procurementDashboardPage.ID,
+		ConfigID:     suppliersPageStored.ID,
+		IsDefault:    false,
+		TabOrder:     3,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement dashboard suppliers tab: %w", err)
+	}
+
+	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+		Label:        "Approvals",
+		PageConfigID: procurementDashboardPage.ID,
+		ConfigID:     procurementApprovalsOpenConfigStored.ID,
+		IsDefault:    false,
+		TabOrder:     4,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement dashboard approvals tab: %w", err)
 	}
 
 	// =========================================================================

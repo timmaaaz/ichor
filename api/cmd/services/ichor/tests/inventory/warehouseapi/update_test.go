@@ -37,6 +37,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 
 				expResp := exp.(*warehouseapp.Warehouse)
 				expResp.ID = gotResp.ID
+				expResp.Code = gotResp.Code
 				expResp.CreatedDate = gotResp.CreatedDate
 				expResp.UpdatedDate = gotResp.UpdatedDate
 				expResp.CreatedBy = gotResp.CreatedBy
@@ -59,8 +60,8 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Input: &warehouseapp.UpdateWarehouse{
 				Name: "Updated Warehouse",
 			},
-			GotResp: &warehouseapp.Warehouse{},
-			ExpResp: &warehouseapp.Warehouse{},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"updated_by","error":"updated_by is a required field"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

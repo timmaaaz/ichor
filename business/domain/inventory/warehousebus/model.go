@@ -8,6 +8,7 @@ import (
 
 type Warehouse struct {
 	ID          uuid.UUID
+	Code        string
 	StreetID    uuid.UUID
 	Name        string
 	IsActive    bool
@@ -18,12 +19,14 @@ type Warehouse struct {
 }
 
 type NewWarehouse struct {
+	Code      string
 	StreetID  uuid.UUID
 	Name      string
 	CreatedBy uuid.UUID
 }
 
 type UpdateWarehouse struct {
+	Code      *string
 	StreetID  *uuid.UUID
 	Name      *string
 	IsActive  *bool

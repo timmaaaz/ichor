@@ -38,6 +38,81 @@ func create200(sd apitest.SeedData) []apitest.Table {
 
 				expResp := exp.(*warehouseapp.Warehouse)
 				expResp.ID = gotResp.ID
+				expResp.Code = gotResp.Code
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
+
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "auto-generated code",
+			URL:        "/v1/inventory/warehouses",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			Input: &warehouseapp.NewWarehouse{
+				Name:      "Auto Code Warehouse",
+				StreetID:  sd.Streets[0].ID,
+				CreatedBy: sd.Admins[0].ID.String(),
+			},
+			GotResp: &warehouseapp.Warehouse{},
+			ExpResp: &warehouseapp.Warehouse{
+				Name:      "Auto Code Warehouse",
+				StreetID:  sd.Streets[0].ID,
+				CreatedBy: sd.Admins[0].ID.String(),
+				UpdatedBy: sd.Admins[0].ID.String(),
+				IsActive:  true,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*warehouseapp.Warehouse)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*warehouseapp.Warehouse)
+				expResp.ID = gotResp.ID
+				expResp.Code = gotResp.Code
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
+
+				// Verify code was auto-generated in WH-XXXXX format
+				if len(gotResp.Code) != 8 || gotResp.Code[:3] != "WH-" {
+					return "code was not auto-generated in expected format WH-XXXXX"
+				}
+
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "manual code preserved",
+			URL:        "/v1/inventory/warehouses",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			Input: &warehouseapp.NewWarehouse{
+				Code:      "CUSTOM-WH-123",
+				Name:      "Manual Code Warehouse",
+				StreetID:  sd.Streets[0].ID,
+				CreatedBy: sd.Admins[0].ID.String(),
+			},
+			GotResp: &warehouseapp.Warehouse{},
+			ExpResp: &warehouseapp.Warehouse{
+				Code:      "CUSTOM-WH-123",
+				Name:      "Manual Code Warehouse",
+				StreetID:  sd.Streets[0].ID,
+				CreatedBy: sd.Admins[0].ID.String(),
+				UpdatedBy: sd.Admins[0].ID.String(),
+				IsActive:  true,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*warehouseapp.Warehouse)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*warehouseapp.Warehouse)
+				expResp.ID = gotResp.ID
 				expResp.CreatedDate = gotResp.CreatedDate
 				expResp.UpdatedDate = gotResp.UpdatedDate
 

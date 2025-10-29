@@ -15,6 +15,11 @@ func applyFilter(filter warehousebus.QueryFilter, data map[string]any, buf *byte
 		wc = append(wc, "id = :id")
 	}
 
+	if filter.Code != nil {
+		data["code"] = *filter.Code
+		wc = append(wc, "code ILIKE :code")
+	}
+
 	if filter.Name != nil {
 		data["name"] = *filter.Name
 		wc = append(wc, "name ILIKE :name")

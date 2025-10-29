@@ -6,6 +6,7 @@ var DefaultOrderBy = order.NewBy(OrderByID, order.ASC)
 
 const (
 	OrderByID          = "id"
+	OrderByCode        = "code"
 	OrderByStreetID    = "street_id"
 	OrderByName        = "name"
 	OrderByIsActive    = "is_active"

@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -50,14 +49,14 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (warehousebus.Storer, error
 func (s *Store) Create(ctx context.Context, bus warehousebus.Warehouse) error {
 	const q = `
 		INSERT INTO inventory.warehouses
-			(id, street_id, name, is_active, created_date, updated_date, created_by, updated_by)
+			(id, code, street_id, name, is_active, created_date, updated_date, created_by, updated_by)
 		VALUES
-			(:id, :street_id, :name, :is_active, :created_date, :updated_date, :created_by, :updated_by)
+			(:id, :code, :street_id, :name, :is_active, :created_date, :updated_date, :created_by, :updated_by)
 		`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBWarehouse(bus)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", userbus.ErrUniqueEmail)
+			return fmt.Errorf("namedexeccontext: %w", warehousebus.ErrUniqueEntry)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -71,6 +70,7 @@ func (s *Store) Update(ctx context.Context, bus warehousebus.Warehouse) error {
 		UPDATE
 			inventory.warehouses
 		SET
+			code = :code,
 			street_id = :street_id,
 			name = :name,
 			is_active = :is_active,
@@ -116,6 +116,7 @@ func (s *Store) Query(ctx context.Context, filter warehousebus.QueryFilter, orde
 	const q = `
 	SELECT
 		id,
+		code,
 		street_id,
 		name,
 		is_active,
@@ -179,6 +180,7 @@ func (s *Store) QueryByID(ctx context.Context, wID uuid.UUID) (warehousebus.Ware
 	const q = `
 	SELECT
 		id,
+		code,
 		street_id,
 		name,
 		is_active,
@@ -199,4 +201,29 @@ func (s *Store) QueryByID(ctx context.Context, wID uuid.UUID) (warehousebus.Ware
 		return warehousebus.Warehouse{}, fmt.Errorf("namedquerystruct: %w", err)
 	}
 	return toBusWarehouse(dbW), nil
+}
+
+// QueryMaxCodeNumber returns the maximum numeric portion of warehouse codes
+// matching the pattern WH-XXXXX. Returns 0 if no matching codes exist.
+func (s *Store) QueryMaxCodeNumber(ctx context.Context) (int, error) {
+	const q = `
+	SELECT
+		COALESCE(MAX(CAST(SUBSTRING(code FROM 4) AS INTEGER)), 0) AS max_code
+	FROM
+		inventory.warehouses
+	WHERE
+		code ~ '^WH-\d{5}$'`
+
+	var result struct {
+		MaxCode int `db:"max_code"`
+	}
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, map[string]any{}, &result); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return result.MaxCode, nil
 }
