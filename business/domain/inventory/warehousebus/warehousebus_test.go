@@ -148,6 +148,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				StreetID:  sd.Streets[0].ID,
 				Name:      "Test Warehouse",
 				IsActive:  true,
+				Code:      "WH-00003",
 				CreatedBy: sd.Admins[0].ID,
 				UpdatedBy: sd.Admins[0].ID,
 			},
@@ -191,6 +192,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: warehousebus.Warehouse{
 				ID:        sd.Warehouses[0].ID,
 				StreetID:  sd.Streets[0].ID,
+				Code:      sd.Warehouses[0].Code,
 				Name:      "Update Test Warehouse",
 				IsActive:  true,
 				CreatedBy: sd.Admins[0].ID,
@@ -200,6 +202,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				update := warehousebus.UpdateWarehouse{
 					StreetID:  &sd.Streets[0].ID,
 					Name:      dbtest.StringPointer("Update Test Warehouse"),
+					Code:      &sd.Warehouses[0].Code,
 					UpdatedBy: &sd.Admins[0].ID,
 				}
 				got, err := busDomain.Warehouse.Update(ctx, sd.Warehouses[0], update)
