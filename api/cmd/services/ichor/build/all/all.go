@@ -38,6 +38,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/transferorderapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/warehouseapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/zoneapi"
+	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderapi"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderlineitemstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/supplierapi"
@@ -104,6 +105,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
@@ -168,6 +170,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus/stores/warehousedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus/stores/zonedb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus/stores/purchaseorderdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus/stores/purchaseorderlineitemstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
@@ -320,6 +324,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	purchaseOrderStatusBus := purchaseorderstatusbus.NewBusiness(cfg.Log, delegate, purchaseorderstatusdb.NewStore(cfg.Log, cfg.DB))
 	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
 	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
+	purchaseOrderBus := purchaseorderbus.NewBusiness(cfg.Log, delegate, purchaseorderdb.NewStore(cfg.Log, cfg.DB))
 
 	metricsBus := metricsbus.NewBusiness(cfg.Log, delegate, metricsdb.NewStore(cfg.Log, cfg.DB))
 	inspectionBus := inspectionbus.NewBusiness(cfg.Log, delegate, inspectiondb.NewStore(cfg.Log, cfg.DB))
@@ -626,6 +631,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus:     permissionsBus,
 	})
 
+	purchaseorderapi.Routes(app, purchaseorderapi.Config{
+		PurchaseOrderBus: purchaseOrderBus,
+		AuthClient:       cfg.AuthClient,
+		Log:              cfg.Log,
+		PermissionsBus:   permissionsBus,
+	})
+
 	metricsapi.Routes(app, metricsapi.Config{
 		Log:            cfg.Log,
 		AuthClient:     cfg.AuthClient,
@@ -787,6 +799,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		lottrackingsapp.NewApp(lotTrackingsBus),
 		purchaseorderlineitemstatusapp.NewApp(purchaseOrderLineItemStatusBus),
 		purchaseorderstatusapp.NewApp(purchaseOrderStatusBus),
+		purchaseorderapp.NewApp(purchaseOrderBus),
 		supplierapp.NewApp(supplierBus),
 		supplierproductapp.NewApp(supplierProductBus),
 		brandapp.NewApp(brandBus),

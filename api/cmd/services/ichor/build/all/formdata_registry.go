@@ -42,6 +42,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
@@ -149,6 +150,7 @@ func buildFormDataRegistry(
 	lotTrackingsApp *lottrackingsapp.App,
 	purchaseOrderLineItemStatusApp *purchaseorderlineitemstatusapp.App,
 	purchaseOrderStatusApp *purchaseorderstatusapp.App,
+	purchaseOrderApp *purchaseorderapp.App,
 	supplierApp *supplierapp.App,
 	supplierProductApp *supplierproductapp.App,
 	brandApp *brandapp.App,
@@ -1527,6 +1529,41 @@ func buildFormDataRegistry(
 		UpdateModel: supplierproductapp.UpdateSupplierProduct{},
 	}); err != nil {
 		return nil, fmt.Errorf("register supplier_products: %w", err)
+	}
+
+	// Register purchase_orders entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "purchase_orders",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app purchaseorderapp.NewPurchaseOrder
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return purchaseOrderApp.Create(ctx, model.(purchaseorderapp.NewPurchaseOrder))
+		},
+		CreateModel: purchaseorderapp.NewPurchaseOrder{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app purchaseorderapp.UpdatePurchaseOrder
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return purchaseOrderApp.Update(ctx, model.(purchaseorderapp.UpdatePurchaseOrder), id)
+		},
+		UpdateModel: purchaseorderapp.UpdatePurchaseOrder{},
+	}); err != nil {
+		return nil, fmt.Errorf("register purchase_orders: %w", err)
 	}
 
 	// =========================================================================
