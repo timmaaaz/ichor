@@ -8,7 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/core/userroleapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
-	"github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
+	"github.com/timmaaaz/ichor/app/domain/core/userroleapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"

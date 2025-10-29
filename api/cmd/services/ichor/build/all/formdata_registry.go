@@ -23,7 +23,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
 	"github.com/timmaaaz/ichor/app/domain/core/userapp"
-	"github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
+	"github.com/timmaaaz/ichor/app/domain/core/userroleapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/approvalapp"
@@ -43,6 +43,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
@@ -151,6 +152,7 @@ func buildFormDataRegistry(
 	purchaseOrderLineItemStatusApp *purchaseorderlineitemstatusapp.App,
 	purchaseOrderStatusApp *purchaseorderstatusapp.App,
 	purchaseOrderApp *purchaseorderapp.App,
+	purchaseOrderLineItemApp *purchaseorderlineitemapp.App,
 	supplierApp *supplierapp.App,
 	supplierProductApp *supplierproductapp.App,
 	brandApp *brandapp.App,
@@ -1564,6 +1566,41 @@ func buildFormDataRegistry(
 		UpdateModel: purchaseorderapp.UpdatePurchaseOrder{},
 	}); err != nil {
 		return nil, fmt.Errorf("register purchase_orders: %w", err)
+	}
+
+	// Register purchase_order_line_items entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "purchase_order_line_items",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app purchaseorderlineitemapp.NewPurchaseOrderLineItem
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return purchaseOrderLineItemApp.Create(ctx, model.(purchaseorderlineitemapp.NewPurchaseOrderLineItem))
+		},
+		CreateModel: purchaseorderlineitemapp.NewPurchaseOrderLineItem{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app purchaseorderlineitemapp.UpdatePurchaseOrderLineItem
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return purchaseOrderLineItemApp.Update(ctx, model.(purchaseorderlineitemapp.UpdatePurchaseOrderLineItem), id)
+		},
+		UpdateModel: purchaseorderlineitemapp.UpdatePurchaseOrderLineItem{},
+	}); err != nil {
+		return nil, fmt.Errorf("register purchase_order_line_items: %w", err)
 	}
 
 	// =========================================================================

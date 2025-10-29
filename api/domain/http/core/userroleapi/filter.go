@@ -3,7 +3,7 @@ package userroleapi
 import (
 	"net/http"
 
-	"github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
+	"github.com/timmaaaz/ichor/app/domain/core/userroleapp"
 )
 
 func parseQueryParams(r *http.Request) (userroleapp.QueryParams, error) {

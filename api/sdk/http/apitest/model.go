@@ -17,7 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
-	"github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
+	"github.com/timmaaaz/ichor/app/domain/core/userroleapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/approvalapp"
@@ -36,6 +36,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
@@ -107,6 +108,7 @@ type SeedData struct {
 	PurchaseOrderLineItemStatuses []purchaseorderlineitemstatusapp.PurchaseOrderLineItemStatus
 	PurchaseOrderStatuses       []purchaseorderstatusapp.PurchaseOrderStatus
 	PurchaseOrders              []purchaseorderapp.PurchaseOrder
+	PurchaseOrderLineItems      []purchaseorderlineitemapp.PurchaseOrderLineItem
 	Suppliers                   []supplierapp.Supplier
 	CostHistory                 []costhistoryapp.CostHistory
 	SupplierProducts            []supplierproductapp.SupplierProduct
