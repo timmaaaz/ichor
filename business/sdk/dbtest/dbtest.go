@@ -64,6 +64,14 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus/stores/supplierdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus/stores/supplierproductdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus/stores/purchaseorderstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus/stores/purchaseorderlineitemstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus/stores/purchaseorderdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus/stores/purchaseorderlineitemdb"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus/stores/branddb"
 	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus"
@@ -201,6 +209,12 @@ type BusDomain struct {
 	SupplierProduct *supplierproductbus.Business
 	CostHistory     *costhistorybus.Business
 
+	// Purchase Orders
+	PurchaseOrderStatus           *purchaseorderstatusbus.Business
+	PurchaseOrderLineItemStatus   *purchaseorderlineitemstatusbus.Business
+	PurchaseOrder                 *purchaseorderbus.Business
+	PurchaseOrderLineItem         *purchaseorderlineitembus.Business
+
 	// Quality
 	Metrics    *metricsbus.Business
 	Inspection *inspectionbus.Business
@@ -293,6 +307,12 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	supplierBus := supplierbus.NewBusiness(log, delegate, supplierdb.NewStore(log, db))
 	supplierProductBus := supplierproductbus.NewBusiness(log, delegate, supplierproductdb.NewStore(log, db))
 
+	// Purchase Orders
+	purchaseOrderStatusBus := purchaseorderstatusbus.NewBusiness(log, delegate, purchaseorderstatusdb.NewStore(log, db))
+	purchaseOrderLineItemStatusBus := purchaseorderlineitemstatusbus.NewBusiness(log, delegate, purchaseorderlineitemstatusdb.NewStore(log, db))
+	purchaseOrderBus := purchaseorderbus.NewBusiness(log, delegate, purchaseorderdb.NewStore(log, db))
+	purchaseOrderLineItemBus := purchaseorderlineitembus.NewBusiness(log, delegate, purchaseorderlineitemdb.NewStore(log, db))
+
 	// Quality
 	metricsBus := metricsbus.NewBusiness(log, delegate, metricsdb.NewStore(log, db))
 	inspectionBus := inspectionbus.NewBusiness(log, delegate, inspectiondb.NewStore(log, db))
@@ -362,6 +382,10 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Supplier:                  supplierBus,
 		CostHistory:               costHistoryBus,
 		SupplierProduct:           supplierProductBus,
+		PurchaseOrderStatus:       purchaseOrderStatusBus,
+		PurchaseOrderLineItemStatus: purchaseOrderLineItemStatusBus,
+		PurchaseOrder:             purchaseOrderBus,
+		PurchaseOrderLineItem:     purchaseOrderLineItemBus,
 		Metrics:                   metricsBus,
 		LotTrackings:              lotTrackingsBus,
 		Zones:                     zoneBus,

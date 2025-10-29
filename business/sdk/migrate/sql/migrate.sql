@@ -1216,8 +1216,8 @@ LEFT JOIN core.users du ON ar.deactivated_by = du.id
 WHERE ar.is_active = true;
 
 
-CREATE OR REPLACE VIEW workflow.rule_actions_view AS 
-   SELECT 
+CREATE OR REPLACE VIEW workflow.rule_actions_view AS
+   SELECT
       ra.id,
       ra.automation_rules_id,
       ra.name,
@@ -1231,3 +1231,132 @@ CREATE OR REPLACE VIEW workflow.rule_actions_view AS
       at.default_config as template_default_config
    FROM workflow.rule_actions ra
    LEFT JOIN workflow.action_templates at ON ra.template_id = at.id;
+
+-- Version: 1.46
+-- Description: Create purchase order status table
+CREATE TABLE procurement.purchase_order_statuses (
+   id UUID PRIMARY KEY,
+   name VARCHAR(50) NOT NULL UNIQUE,
+   description TEXT,
+   sort_order INTEGER DEFAULT 1000
+);
+
+-- Version: 1.47
+-- Description: Create purchase order line item status table
+CREATE TABLE procurement.purchase_order_line_item_statuses (
+   id UUID PRIMARY KEY,
+   name VARCHAR(50) NOT NULL UNIQUE,
+   description TEXT,
+   sort_order INTEGER DEFAULT 1000
+);
+
+-- Version: 1.48
+-- Description: Create purchase orders table
+CREATE TABLE procurement.purchase_orders (
+   id UUID PRIMARY KEY,
+   order_number VARCHAR(100) NOT NULL UNIQUE,
+   supplier_id UUID NOT NULL,
+   purchase_order_status_id UUID NOT NULL,
+
+   -- Delivery information
+   delivery_warehouse_id UUID NOT NULL,
+   delivery_location_id UUID NULL,
+   delivery_street_id UUID NULL,
+
+   -- Dates
+   order_date TIMESTAMP NOT NULL,
+   expected_delivery_date TIMESTAMP NOT NULL,
+   actual_delivery_date TIMESTAMP NULL,
+
+   -- Financial
+   subtotal NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+   tax_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+   shipping_cost NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+   total_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+   currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+
+   -- Workflow
+   requested_by UUID NOT NULL,
+   approved_by UUID NULL,
+   approved_date TIMESTAMP NULL,
+
+   -- Notes and reference
+   notes TEXT NULL,
+   supplier_reference_number VARCHAR(100) NULL,
+
+   -- Standard audit fields
+   created_by UUID NOT NULL,
+   updated_by UUID NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+
+   FOREIGN KEY (supplier_id) REFERENCES procurement.suppliers(id) ON DELETE RESTRICT,
+   FOREIGN KEY (purchase_order_status_id) REFERENCES procurement.purchase_order_statuses(id) ON DELETE RESTRICT,
+   FOREIGN KEY (delivery_warehouse_id) REFERENCES inventory.warehouses(id) ON DELETE RESTRICT,
+   FOREIGN KEY (delivery_location_id) REFERENCES inventory.inventory_locations(id) ON DELETE SET NULL,
+   FOREIGN KEY (delivery_street_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
+   FOREIGN KEY (requested_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+   FOREIGN KEY (approved_by) REFERENCES core.users(id) ON DELETE SET NULL,
+   FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+   FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+
+   -- Constraint: Must have either warehouse OR street address for delivery
+   CONSTRAINT check_delivery_location CHECK (
+      (delivery_warehouse_id IS NOT NULL) OR (delivery_street_id IS NOT NULL)
+   )
+);
+
+-- Indexes for common queries
+CREATE INDEX idx_purchase_orders_supplier ON procurement.purchase_orders(supplier_id);
+CREATE INDEX idx_purchase_orders_status ON procurement.purchase_orders(purchase_order_status_id);
+CREATE INDEX idx_purchase_orders_order_date ON procurement.purchase_orders(order_date DESC);
+CREATE INDEX idx_purchase_orders_expected_delivery ON procurement.purchase_orders(expected_delivery_date);
+CREATE INDEX idx_purchase_orders_requested_by ON procurement.purchase_orders(requested_by);
+
+-- Version: 1.49
+-- Description: Create purchase order line items table
+CREATE TABLE procurement.purchase_order_line_items (
+   id UUID PRIMARY KEY,
+   purchase_order_id UUID NOT NULL,
+   supplier_product_id UUID NOT NULL,
+
+   -- Quantities
+   quantity_ordered INT NOT NULL,
+   quantity_received INT NOT NULL DEFAULT 0,
+   quantity_cancelled INT NOT NULL DEFAULT 0,
+
+   -- Pricing (captured at time of order)
+   unit_cost NUMERIC(10,2) NOT NULL,
+   discount NUMERIC(10,2) NULL DEFAULT 0.00,
+   line_total NUMERIC(10,2) NOT NULL,
+
+   -- Status and dates
+   line_item_status_id UUID NOT NULL,
+   expected_delivery_date TIMESTAMP NULL,
+   actual_delivery_date TIMESTAMP NULL,
+
+   -- Notes
+   notes TEXT NULL,
+
+   -- Standard audit fields
+   created_by UUID NOT NULL,
+   updated_by UUID NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+
+   FOREIGN KEY (purchase_order_id) REFERENCES procurement.purchase_orders(id) ON DELETE CASCADE,
+   FOREIGN KEY (supplier_product_id) REFERENCES procurement.supplier_products(id) ON DELETE RESTRICT,
+   FOREIGN KEY (line_item_status_id) REFERENCES procurement.purchase_order_line_item_statuses(id) ON DELETE RESTRICT,
+   FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+   FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+
+   -- Constraint: Received + Cancelled should not exceed Ordered
+   CONSTRAINT check_quantities CHECK (
+      quantity_received + quantity_cancelled <= quantity_ordered
+   )
+);
+
+-- Indexes
+CREATE INDEX idx_po_line_items_po ON procurement.purchase_order_line_items(purchase_order_id);
+CREATE INDEX idx_po_line_items_supplier_product ON procurement.purchase_order_line_items(supplier_product_id);
+CREATE INDEX idx_po_line_items_status ON procurement.purchase_order_line_items(line_item_status_id);

@@ -402,12 +402,18 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 	metadata := make([]ColumnMetadata, 0)
 
 	for _, ft := range foreignTables {
+		// Use alias if present, otherwise use table name
+		tableRef := ft.Table
+		if ft.Alias != "" {
+			tableRef = ft.Alias
+		}
+
 		for _, col := range ft.Columns {
 			meta := ColumnMetadata{
 				DisplayName:  getDisplayName(col),
 				Field:        getFieldName(col),
 				Type:         inferColumnType(col.Name),
-				SourceTable:  ft.Table,
+				SourceTable:  tableRef, // Use alias or table name
 				SourceColumn: col.Name,
 				SourceSchema: ft.Schema,
 			}

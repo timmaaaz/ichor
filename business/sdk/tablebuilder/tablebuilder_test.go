@@ -60,6 +60,7 @@ func Test_TableBuilder(t *testing.T) {
 	complexExample(context.Background(), store)
 	storedConfigExample(context.Background(), store, configStore, sd)
 	paginationExample(context.Background(), store)
+	inventoryAdjustmentsExample(context.Background(), store)
 }
 
 var productsList = &tablebuilder.Config{
@@ -387,6 +388,213 @@ var currentInventoryProducts = &tablebuilder.Config{
 	Permissions: tablebuilder.Permissions{
 		Roles:   []string{"admin", "inventory_manager"},
 		Actions: []string{"view", "export", "adjust"},
+	},
+}
+
+var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
+	Title:           "Stock Adjustments",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "inventory_adjustments",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "inventory_adjustments.id"},
+					{Name: "quantity_change", TableColumn: "inventory_adjustments.quantity_change"},
+					{Name: "reason_code", TableColumn: "inventory_adjustments.reason_code"},
+					{Name: "notes", TableColumn: "inventory_adjustments.notes"},
+					{Name: "adjustment_date", TableColumn: "inventory_adjustments.adjustment_date"},
+					{Name: "created_date", TableColumn: "inventory_adjustments.created_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "inventory_adjustments.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
+							{Name: "sku", Alias: "product_sku", TableColumn: "products.sku"},
+						},
+					},
+					{
+						Table:            "inventory_locations",
+						Schema:           "inventory",
+						RelationshipFrom: "inventory_adjustments.location_id",
+						RelationshipTo:   "inventory_locations.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "aisle", TableColumn: "inventory_locations.aisle"},
+							{Name: "rack", TableColumn: "inventory_locations.rack"},
+							{Name: "shelf", TableColumn: "inventory_locations.shelf"},
+							{Name: "bin", TableColumn: "inventory_locations.bin"},
+						},
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "warehouses",
+								Schema:           "inventory",
+								RelationshipFrom: "inventory_locations.warehouse_id",
+								RelationshipTo:   "warehouses.id",
+								JoinType:         "left",
+								Columns: []tablebuilder.ColumnDefinition{
+									{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
+								},
+							},
+						},
+					},
+					{
+						Table:            "users",
+						Alias:            "adjusted_by_user",
+						Schema:           "core",
+						RelationshipFrom: "inventory_adjustments.adjusted_by",
+						RelationshipTo:   "adjusted_by_user.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "adjusted_by_username", TableColumn: "adjusted_by_user.username"},
+						},
+					},
+					{
+						Table:            "users",
+						Alias:            "approved_by_user",
+						Schema:           "core",
+						RelationshipFrom: "inventory_adjustments.approved_by",
+						RelationshipTo:   "approved_by_user.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "approved_by_username", TableColumn: "approved_by_user.username"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "location_code",
+						Expression: "aisle + '-' + rack + '-' + shelf + '-' + bin",
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "adjustment_date",
+					Direction: "desc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"product_name": {
+				Name:       "product_name",
+				Header:     "Product",
+				Width:      200,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"product_sku": {
+				Name:       "product_sku",
+				Header:     "SKU",
+				Width:      120,
+				Filterable: true,
+			},
+			"warehouse_name": {
+				Name:       "warehouse_name",
+				Header:     "Warehouse",
+				Width:      150,
+				Sortable:   true,
+				Filterable: true,
+			},
+			"location_code": {
+				Name:       "location_code",
+				Header:     "Location",
+				Width:      150,
+				Filterable: true,
+			},
+			"quantity_change": {
+				Name:     "quantity_change",
+				Header:   "Qty Change",
+				Width:    100,
+				Align:    "right",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "number",
+					Precision: 0,
+				},
+			},
+			"reason_code": {
+				Name:       "reason_code",
+				Header:     "Reason",
+				Width:      120,
+				Filterable: true,
+			},
+			"adjusted_by_username": {
+				Name:       "adjusted_by_username",
+				Header:     "Adjusted By",
+				Width:      130,
+				Filterable: true,
+			},
+			"approved_by_username": {
+				Name:       "approved_by_username",
+				Header:     "Approved By",
+				Width:      130,
+				Filterable: true,
+			},
+			"adjustment_date": {
+				Name:     "adjustment_date",
+				Header:   "Date",
+				Width:    150,
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02 15:04",
+				},
+			},
+			"id": {
+				Name:   "id",
+				Header: "Actions",
+				Width:  100,
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/inventory/adjustments/{id}",
+					Label: "View",
+				},
+			},
+		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{
+			{
+				Column:     "quantity_change",
+				Condition:  "lt",
+				Value:      0,
+				Color:      "#c62828",
+				Background: "#ffebee",
+				Icon:       "trending-down",
+			},
+			{
+				Column:     "quantity_change",
+				Condition:  "gt",
+				Value:      0,
+				Color:      "#2e7d32",
+				Background: "#e8f5e9",
+				Icon:       "trending-up",
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "inventory_manager"},
+		Actions: []string{"view", "export"},
 	},
 }
 
@@ -786,6 +994,53 @@ func paginationExample(ctx context.Context, store *tablebuilder.Store) {
 
 	fullJSON, _ = json.MarshalIndent(result, "", "  ")
 	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+}
+
+func inventoryAdjustmentsExample(ctx context.Context, store *tablebuilder.Store) {
+	fmt.Printf("\n=== Inventory Adjustments Example ===\n")
+
+	params := tablebuilder.QueryParams{
+		Page: 1,
+		Rows: 25,
+	}
+
+	result, err := store.FetchTableData(ctx, inventoryAdjustmentsPageConfig, params)
+	if err != nil {
+		log.Printf("Error fetching inventory adjustments data: %v", err)
+		return
+	}
+
+	fullJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
+
+	// Verify that we have the expected columns
+	expectedColumns := []string{
+		"product_name",
+		"product_sku",
+		"warehouse_name",
+		"location_code",
+		"quantity_change",
+		"reason_code",
+		"adjusted_by_username",
+		"approved_by_username",
+		"adjustment_date",
+	}
+
+	fmt.Printf("Verifying expected columns are present...\n")
+	for _, expected := range expectedColumns {
+		found := false
+		for _, col := range result.Meta.Columns {
+			if col.Field == expected {
+				found = true
+				break
+			}
+		}
+		if found {
+			fmt.Printf("✓ Column '%s' found\n", expected)
+		} else {
+			fmt.Printf("✗ Column '%s' NOT found\n", expected)
+		}
+	}
 }
 
 func pageConfigsExample(ctx context.Context, store *tablebuilder.Store, configStore *tablebuilder.ConfigStore, sd unitest.SeedData) {
