@@ -288,6 +288,149 @@ func (a *App) Create(ctx context.Context, app NewEntity) (Entity, error) {
 }
 ```
 
+**Important: Encoder Interface for Response Types**
+
+All response types in the app layer must implement the `Encoder` interface:
+
+```go
+type Encoder interface {
+    Encode() ([]byte, string, error)
+}
+```
+
+**Single Entity Response:**
+```go
+type Entity struct {
+    ID   string `json:"id"`
+    Name string `json:"name"`
+}
+
+func (app Entity) Encode() ([]byte, string, error) {
+    data, err := json.Marshal(app)
+    return data, "application/json", err
+}
+```
+
+**Paginated Query Response:**
+For standard paginated queries, use `query.Result[T]` which already implements `Encode()`:
+```go
+func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Entity], error) {
+    // ... filter, order, page parsing ...
+    entities, err := a.business.Query(ctx, filter, orderBy, pg)
+    total, err := a.business.Count(ctx, filter)
+    return query.NewResult(ToAppEntities(entities), total, pg), nil
+}
+```
+
+**Slice Response (QueryAll, QueryByIDs, etc.):**
+For methods returning plain slices, create a wrapper type that implements `Encode()`:
+```go
+// Entities is a collection wrapper that implements the Encoder interface.
+type Entities []Entity
+
+func (app Entities) Encode() ([]byte, string, error) {
+    data, err := json.Marshal(app)
+    return data, "application/json", err
+}
+
+// Then use it in app methods:
+func (a *App) QueryAll(ctx context.Context) (Entities, error) {
+    entities, err := a.business.QueryAll(ctx)
+    if err != nil {
+        return nil, errs.Newf(errs.Internal, "queryall: %s", err)
+    }
+    return Entities(ToAppEntities(entities)), nil
+}
+```
+
+**API Layer Returns:**
+The API layer simply returns the encodable type - no need for `web.NewSliceResponse()`:
+```go
+func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
+    entities, err := api.entityApp.QueryAll(ctx)
+    if err != nil {
+        return errs.NewError(err)
+    }
+    return entities  // Already implements Encoder
+}
+```
+
+**Decoder Interface for Request Types**
+
+All request types in the app layer must implement the `Decoder` interface:
+
+```go
+type Decoder interface {
+    Decode(data []byte) error
+}
+```
+
+**Standard Request Models:**
+All `New*` and `Update*` types already implement `Decode()` and `Validate()`:
+```go
+type NewEntity struct {
+    Name string `json:"name" validate:"required"`
+}
+
+func (app *NewEntity) Decode(data []byte) error {
+    return json.Unmarshal(data, &app)
+}
+
+func (app NewEntity) Validate() error {
+    if err := errs.Check(app); err != nil {
+        return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+    }
+    return nil
+}
+```
+
+**Custom Request Models (e.g., Batch Operations):**
+For special endpoints like batch queries, create dedicated request types:
+```go
+// QueryByIDsRequest represents a batch query by IDs.
+type QueryByIDsRequest struct {
+    IDs []string `json:"ids" validate:"required,min=1"`
+}
+
+func (app *QueryByIDsRequest) Decode(data []byte) error {
+    return json.Unmarshal(data, &app)
+}
+
+func (app QueryByIDsRequest) Validate() error {
+    if err := errs.Check(app); err != nil {
+        return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+    }
+    return nil
+}
+```
+
+**API Layer Usage:**
+ALWAYS decode directly into app layer models - NEVER create local request structs in the API layer:
+```go
+// CORRECT - Decode into app layer model
+func (api *api) queryByIDs(ctx context.Context, r *http.Request) web.Encoder {
+    var app entityapp.QueryByIDsRequest
+    if err := web.Decode(r, &app); err != nil {
+        return errs.New(errs.InvalidArgument, err)
+    }
+
+    entities, err := api.entityApp.QueryByIDs(ctx, app.IDs)
+    if err != nil {
+        return errs.NewError(err)
+    }
+    return entities
+}
+
+// WRONG - Don't create local request structs
+func (api *api) queryByIDs(ctx context.Context, r *http.Request) web.Encoder {
+    type request struct {  // ❌ NEVER DO THIS
+        IDs []string `json:"ids"`
+    }
+    var req request  // ❌ WRONG
+    // ...
+}
+```
+
 #### API Layer (`*api` packages)
 
 ```go

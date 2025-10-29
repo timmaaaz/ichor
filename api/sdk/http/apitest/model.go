@@ -35,6 +35,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierproductapp"
 	"github.com/timmaaaz/ichor/app/domain/products/brandapp"
@@ -101,6 +102,7 @@ type SeedData struct {
 	Products                    []productapp.Product
 	PhysicalAttributes          []physicalattributeapp.PhysicalAttribute
 	ProductCosts                []productcostapp.ProductCost
+	PurchaseOrderStatuses       []purchaseorderstatusapp.PurchaseOrderStatus
 	Suppliers                   []supplierapp.Supplier
 	CostHistory                 []costhistoryapp.CostHistory
 	SupplierProducts            []supplierproductapp.SupplierProduct
