@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
@@ -133,6 +134,7 @@ type SeedData struct {
 	PageTabConfigs              []tablebuilder.PageTabConfig
 	Forms                       []formapp.Form
 	FormFields                  []formfieldapp.FormField
+	PageActions                 []pageactionapp.PageAction
 	Entities                    []workflow.Entity
 }
 

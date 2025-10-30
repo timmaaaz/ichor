@@ -135,6 +135,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formbus/stores/formdb"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus/stores/formfielddb"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus/stores/pageactiondb"
 
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
@@ -242,8 +244,9 @@ type BusDomain struct {
 	TableStore  *tablebuilder.Store
 
 	// Config
-	Form      *formbus.Business
-	FormField *formfieldbus.Business
+	Form       *formbus.Business
+	FormField  *formfieldbus.Business
+	PageAction *pageactionbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -342,6 +345,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Config
 	formBus := formbus.NewBusiness(log, delegate, formdb.NewStore(log, db))
 	formFieldBus := formfieldbus.NewBusiness(log, delegate, formfielddb.NewStore(log, db))
+	pageActionBus := pageactionbus.NewBusiness(log, delegate, pageactiondb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:                  delegate,
@@ -405,6 +409,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		TableStore:                tableBus,
 		Form:                      formBus,
 		FormField:                 formFieldBus,
+		PageAction:                pageActionBus,
 	}
 
 }

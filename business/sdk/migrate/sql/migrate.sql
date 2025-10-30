@@ -1108,6 +1108,58 @@ ORDER BY tc.updated_date DESC;
 -- GRANT INSERT, UPDATE, DELETE ON config.table_configs TO authenticated;
 -- GRANT SELECT ON config.active_table_configs TO authenticated;
 
+-- Version: 2.06
+-- Description: Create table page_actions (base table for all action types)
+CREATE TABLE config.page_actions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    page_config_id UUID NOT NULL,
+    action_type TEXT NOT NULL CHECK (action_type IN ('button', 'dropdown', 'separator')),
+    action_order INT NOT NULL DEFAULT 1,
+    is_active BOOLEAN DEFAULT TRUE,
+
+    CONSTRAINT fk_page_actions_page FOREIGN KEY (page_config_id)
+        REFERENCES config.page_configs(id) ON DELETE CASCADE
+);
+
+-- Version: 2.07
+-- Description: Create table page_action_buttons
+CREATE TABLE config.page_action_buttons (
+    action_id UUID PRIMARY KEY,
+    label TEXT NOT NULL,
+    icon TEXT,
+    target_path TEXT NOT NULL,
+    variant TEXT DEFAULT 'default' CHECK (variant IN ('default', 'secondary', 'outline', 'ghost', 'destructive')),
+    alignment TEXT DEFAULT 'right' CHECK (alignment IN ('left', 'right')),
+    confirmation_prompt TEXT,
+
+    CONSTRAINT fk_button_action FOREIGN KEY (action_id)
+        REFERENCES config.page_actions(id) ON DELETE CASCADE
+);
+
+-- Version: 2.08
+-- Description: Create table page_action_dropdowns
+CREATE TABLE config.page_action_dropdowns (
+    action_id UUID PRIMARY KEY,
+    label TEXT NOT NULL,
+    icon TEXT,
+
+    CONSTRAINT fk_dropdown_action FOREIGN KEY (action_id)
+        REFERENCES config.page_actions(id) ON DELETE CASCADE
+);
+
+-- Version: 2.09
+-- Description: Create table page_action_dropdown_items
+CREATE TABLE config.page_action_dropdown_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    dropdown_action_id UUID NOT NULL,
+    label TEXT NOT NULL,
+    target_path TEXT NOT NULL,
+    item_order INT NOT NULL,
+
+    CONSTRAINT fk_dropdown_items FOREIGN KEY (dropdown_action_id)
+        REFERENCES config.page_action_dropdowns(action_id) ON DELETE CASCADE
+);
+
 CREATE OR REPLACE VIEW sales.orders_base AS
 SELECT
    o.id AS orders_id,

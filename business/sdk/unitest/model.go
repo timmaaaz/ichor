@@ -3,6 +3,7 @@ package unitest
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
@@ -60,6 +61,7 @@ import (
 
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 )
 
 // User represents an app user specified for the test.
@@ -127,6 +129,8 @@ type SeedData struct {
 	TableBuilderConfigs           []tablebuilder.StoredConfig
 	Forms                         []formbus.Form
 	FormFields                    []formfieldbus.FormField
+	PageActions                   []pageactionbus.PageAction
+	PageConfigIDs                 []uuid.UUID
 }
 
 type Table struct {

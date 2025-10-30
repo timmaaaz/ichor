@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/formapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/formfieldapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/pageactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/pageapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/roleapi"
@@ -134,6 +135,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formbus/stores/formdb"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus/stores/formfielddb"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus/stores/pageactiondb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
 	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
@@ -359,6 +362,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB))
 	formFieldBus := formfieldbus.NewBusiness(cfg.Log, delegate, formfielddb.NewStore(cfg.Log, cfg.DB))
+	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -768,6 +772,14 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	formfieldapi.Routes(app, formfieldapi.Config{
 		Log:            cfg.Log,
 		FormFieldBus:   formFieldBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	pageactionapi.Routes(app, pageactionapi.Config{
+		Log:            cfg.Log,
+		PageActionBus:  pageActionBus,
+		DB:             cfg.DB,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
