@@ -3570,7 +3570,7 @@ var purchaseOrderPageConfig = &tablebuilder.Config{
 						JoinType:         "left",
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
-							{Name: "warehouse_code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
+							{Name: "code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
 						},
 					},
 					{
@@ -4028,7 +4028,7 @@ var procurementOpenApprovalsPageConfig = &tablebuilder.Config{
 						JoinType:         "left",
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
-							{Name: "warehouse_code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
+							{Name: "code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
 						},
 					},
 					{
@@ -4230,7 +4230,7 @@ var procurementClosedApprovalsPageConfig = &tablebuilder.Config{
 						JoinType:         "left",
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
-							{Name: "warehouse_code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
+							{Name: "code", Alias: "warehouse_code", TableColumn: "warehouses.code"},
 						},
 					},
 					{
