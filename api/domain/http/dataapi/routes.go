@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
+	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/domain/dataapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
@@ -24,6 +25,7 @@ type Config struct {
 	Log            *logger.Logger
 	ConfigStore    *tablebuilder.ConfigStore
 	TableStore     *tablebuilder.Store
+	PageActionApp  *pageactionapp.App
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
 }
@@ -36,7 +38,7 @@ func Routes(app *web.App, cfg Config) {
 
 	const version = "v1"
 	authen := mid.Authenticate(cfg.AuthClient)
-	api := newAPI(dataapp.NewApp(cfg.ConfigStore, cfg.TableStore))
+	api := newAPI(dataapp.NewApp(cfg.ConfigStore, cfg.TableStore, cfg.PageActionApp))
 
 	// configstore
 	app.HandlerFunc(http.MethodPost, version, "/data", api.create, authen,

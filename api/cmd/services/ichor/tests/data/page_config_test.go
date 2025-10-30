@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/domain/dataapp"
 )
 
@@ -128,6 +129,11 @@ func pageConfigQueryByName200(sd apitest.SeedData) []apitest.Table {
 					IsDefault: "true",
 				},
 				PageTabs: expTabs,
+				PageActions: dataapp.ActionsGroupedByType{
+					Buttons:    []pageactionapp.PageAction{},
+					Dropdowns:  []pageactionapp.PageAction{},
+					Separators: []pageactionapp.PageAction{},
+				},
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*dataapp.FullPageConfig)
@@ -171,6 +177,11 @@ func pageConfigQueryByID200(sd apitest.SeedData) []apitest.Table {
 					IsDefault: "false",
 				},
 				PageTabs: expTabs,
+				PageActions: dataapp.ActionsGroupedByType{
+					Buttons:    []pageactionapp.PageAction{},
+					Dropdowns:  []pageactionapp.PageAction{},
+					Separators: []pageactionapp.PageAction{},
+				},
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*dataapp.FullPageConfig)
@@ -218,6 +229,11 @@ func pageConfigQueryByNameAndUserID200(sd apitest.SeedData) []apitest.Table {
 					IsDefault: "false",
 				},
 				PageTabs: expTabs,
+				PageActions: dataapp.ActionsGroupedByType{
+					Buttons:    []pageactionapp.PageAction{},
+					Dropdowns:  []pageactionapp.PageAction{},
+					Separators: []pageactionapp.PageAction{},
+				},
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*dataapp.FullPageConfig)

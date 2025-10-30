@@ -81,6 +81,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
@@ -757,6 +758,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Log:            cfg.Log,
 		ConfigStore:    configStore,
 		TableStore:     tableStore,
+		PageActionApp:  pageactionapp.NewApp(pageActionBus),
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
