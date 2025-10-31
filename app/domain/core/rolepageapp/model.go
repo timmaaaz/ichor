@@ -9,22 +9,20 @@ import (
 )
 
 type QueryParams struct {
-	Page       string
-	Rows       string
-	OrderBy    string
-	ID         string
-	RoleID     string
-	PageID     string
-	CanAccess  string
-	ShowInMenu string
+	Page      string
+	Rows      string
+	OrderBy   string
+	ID        string
+	RoleID    string
+	PageID    string
+	CanAccess string
 }
 
 type RolePage struct {
-	ID         string `json:"id"`
-	RoleID     string `json:"roleId"`
-	PageID     string `json:"pageId"`
-	CanAccess  bool   `json:"canAccess"`
-	ShowInMenu bool   `json:"showInMenu"`
+	ID        string `json:"id"`
+	RoleID    string `json:"roleId"`
+	PageID    string `json:"pageId"`
+	CanAccess bool   `json:"canAccess"`
 }
 
 func (app RolePage) Encode() ([]byte, string, error) {
@@ -34,11 +32,10 @@ func (app RolePage) Encode() ([]byte, string, error) {
 
 func ToAppRolePage(bus rolepagebus.RolePage) RolePage {
 	return RolePage{
-		ID:         bus.ID.String(),
-		RoleID:     bus.RoleID.String(),
-		PageID:     bus.PageID.String(),
-		CanAccess:  bus.CanAccess,
-		ShowInMenu: bus.ShowInMenu,
+		ID:        bus.ID.String(),
+		RoleID:    bus.RoleID.String(),
+		PageID:    bus.PageID.String(),
+		CanAccess: bus.CanAccess,
 	}
 }
 
@@ -53,10 +50,9 @@ func ToAppRolePages(bus []rolepagebus.RolePage) []RolePage {
 // =============================================================================
 
 type NewRolePage struct {
-	RoleID     string `json:"roleId" validate:"required"`
-	PageID     string `json:"pageId" validate:"required"`
-	CanAccess  bool   `json:"canAccess"`
-	ShowInMenu bool   `json:"showInMenu"`
+	RoleID    string `json:"roleId" validate:"required"`
+	PageID    string `json:"pageId" validate:"required"`
+	CanAccess bool   `json:"canAccess"`
 }
 
 func (app *NewRolePage) Decode(data []byte) error {
@@ -79,8 +75,7 @@ func toBusNewRolePage(app NewRolePage) (rolepagebus.NewRolePage, error) {
 // =============================================================================
 
 type UpdateRolePage struct {
-	CanAccess  *bool `json:"canAccess"`
-	ShowInMenu *bool `json:"showInMenu"`
+	CanAccess *bool `json:"canAccess"`
 }
 
 // Decode implements the decoder interface.

@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (rolepagebus.Storer, error)
 func (s *Store) Create(ctx context.Context, rp rolepagebus.RolePage) error {
 	const q = `
 	INSERT INTO core.role_pages (
-		id, role_id, page_id, can_access, show_in_menu
+		id, role_id, page_id, can_access
 	) VALUES (
-		:id, :role_id, :page_id, :can_access, :show_in_menu
+		:id, :role_id, :page_id, :can_access
 	)
 	`
 
@@ -71,8 +71,7 @@ func (s *Store) Update(ctx context.Context, rp rolepagebus.RolePage) error {
 	UPDATE
 		core.role_pages
 	SET
-		can_access = :can_access,
-		show_in_menu = :show_in_menu
+		can_access = :can_access
 	WHERE
 		id = :id
 	`

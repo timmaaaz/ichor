@@ -8,24 +8,26 @@ import (
 )
 
 type QueryParams struct {
-	Page     string
-	Rows     string
-	OrderBy  string
-	ID       string
-	Path     string
-	Name     string
-	Module   string
-	IsActive string
+	Page       string
+	Rows       string
+	OrderBy    string
+	ID         string
+	Path       string
+	Name       string
+	Module     string
+	IsActive   string
+	ShowInMenu string
 }
 
 type Page struct {
-	ID        string `json:"id"`
-	Path      string `json:"path"`
-	Name      string `json:"name"`
-	Module    string `json:"module"`
-	Icon      string `json:"icon"`
-	SortOrder int    `json:"sortOrder"`
-	IsActive  bool   `json:"isActive"`
+	ID         string `json:"id"`
+	Path       string `json:"path"`
+	Name       string `json:"name"`
+	Module     string `json:"module"`
+	Icon       string `json:"icon"`
+	SortOrder  int    `json:"sortOrder"`
+	IsActive   bool   `json:"isActive"`
+	ShowInMenu bool   `json:"showInMenu"`
 }
 
 func (app Page) Encode() ([]byte, string, error) {
@@ -44,13 +46,14 @@ func (app Pages) Encode() ([]byte, string, error) {
 
 func ToAppPage(bus pagebus.Page) Page {
 	return Page{
-		ID:        bus.ID.String(),
-		Path:      bus.Path,
-		Name:      bus.Name,
-		Module:    bus.Module,
-		Icon:      bus.Icon,
-		SortOrder: bus.SortOrder,
-		IsActive:  bus.IsActive,
+		ID:         bus.ID.String(),
+		Path:       bus.Path,
+		Name:       bus.Name,
+		Module:     bus.Module,
+		Icon:       bus.Icon,
+		SortOrder:  bus.SortOrder,
+		IsActive:   bus.IsActive,
+		ShowInMenu: bus.ShowInMenu,
 	}
 }
 
@@ -65,12 +68,13 @@ func ToAppPages(bus []pagebus.Page) []Page {
 // =============================================================================
 
 type NewPage struct {
-	Path      string `json:"path" validate:"required"`
-	Name      string `json:"name" validate:"required"`
-	Module    string `json:"module" validate:"required"`
-	Icon      string `json:"icon"`
-	SortOrder int    `json:"sortOrder"`
-	IsActive  bool   `json:"isActive"`
+	Path       string `json:"path" validate:"required"`
+	Name       string `json:"name" validate:"required"`
+	Module     string `json:"module" validate:"required"`
+	Icon       string `json:"icon"`
+	SortOrder  int    `json:"sortOrder"`
+	IsActive   bool   `json:"isActive"`
+	ShowInMenu bool   `json:"showInMenu"`
 }
 
 func (app *NewPage) Decode(data []byte) error {
@@ -86,24 +90,26 @@ func (app NewPage) Validate() error {
 
 func toBusNewPage(app NewPage) (pagebus.NewPage, error) {
 	return pagebus.NewPage{
-		Path:      app.Path,
-		Name:      app.Name,
-		Module:    app.Module,
-		Icon:      app.Icon,
-		SortOrder: app.SortOrder,
-		IsActive:  app.IsActive,
+		Path:       app.Path,
+		Name:       app.Name,
+		Module:     app.Module,
+		Icon:       app.Icon,
+		SortOrder:  app.SortOrder,
+		IsActive:   app.IsActive,
+		ShowInMenu: app.ShowInMenu,
 	}, nil
 }
 
 // =============================================================================
 
 type UpdatePage struct {
-	Path      *string `json:"path"`
-	Name      *string `json:"name"`
-	Module    *string `json:"module"`
-	Icon      *string `json:"icon"`
-	SortOrder *int    `json:"sortOrder"`
-	IsActive  *bool   `json:"isActive"`
+	Path       *string `json:"path"`
+	Name       *string `json:"name"`
+	Module     *string `json:"module"`
+	Icon       *string `json:"icon"`
+	SortOrder  *int    `json:"sortOrder"`
+	IsActive   *bool   `json:"isActive"`
+	ShowInMenu *bool   `json:"showInMenu"`
 }
 
 // Decode implements the decoder interface.
@@ -122,11 +128,12 @@ func (app UpdatePage) Validate() error {
 
 func toBusUpdatePage(app UpdatePage) (pagebus.UpdatePage, error) {
 	return pagebus.UpdatePage{
-		Path:      app.Path,
-		Name:      app.Name,
-		Module:    app.Module,
-		Icon:      app.Icon,
-		SortOrder: app.SortOrder,
-		IsActive:  app.IsActive,
+		Path:       app.Path,
+		Name:       app.Name,
+		Module:     app.Module,
+		Icon:       app.Icon,
+		SortOrder:  app.SortOrder,
+		IsActive:   app.IsActive,
+		ShowInMenu: app.ShowInMenu,
 	}, nil
 }

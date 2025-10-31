@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (pagebus.Storer, error) {
 func (s *Store) Create(ctx context.Context, p pagebus.Page) error {
 	const q = `
 	INSERT INTO core.pages (
-		id, path, name, module, icon, sort_order, is_active
+		id, path, name, module, icon, sort_order, is_active, show_in_menu
 	) VALUES (
-		:id, :path, :name, :module, :icon, :sort_order, :is_active
+		:id, :path, :name, :module, :icon, :sort_order, :is_active, :show_in_menu
 	)
 	`
 
@@ -76,7 +76,8 @@ func (s *Store) Update(ctx context.Context, p pagebus.Page) error {
 		module = :module,
 		icon = :icon,
 		sort_order = :sort_order,
-		is_active = :is_active
+		is_active = :is_active,
+		show_in_menu = :show_in_menu
 	WHERE
 		id = :id
 	`
@@ -115,7 +116,7 @@ func (s *Store) Query(ctx context.Context, filter pagebus.QueryFilter, orderBy o
 
 	const q = `
 	SELECT
-		id, path, name, module, icon, sort_order, is_active
+		id, path, name, module, icon, sort_order, is_active, show_in_menu
 	FROM
 		core.pages`
 
@@ -171,7 +172,7 @@ func (s *Store) QueryByID(ctx context.Context, pageID uuid.UUID) (pagebus.Page, 
 
 	const q = `
 	SELECT
-		id, path, name, module, icon, sort_order, is_active
+		id, path, name, module, icon, sort_order, is_active, show_in_menu
 	FROM
 		core.pages
 	WHERE
@@ -199,7 +200,7 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]pagebus.
 
 	const q = `
 	SELECT DISTINCT
-		p.id, p.path, p.name, p.module, p.icon, p.sort_order, p.is_active
+		p.id, p.path, p.name, p.module, p.icon, p.sort_order, p.is_active, p.show_in_menu
 	FROM
 		core.pages p
 		INNER JOIN core.role_pages rp ON p.id = rp.page_id

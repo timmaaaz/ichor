@@ -431,7 +431,8 @@ CREATE TABLE core.pages (
     module TEXT NOT NULL,
     icon TEXT,
     sort_order INTEGER DEFAULT 1000,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    show_in_menu BOOLEAN DEFAULT TRUE
 );
 
 -- Version: 1.29
@@ -441,7 +442,6 @@ CREATE TABLE core.role_pages (
     role_id UUID REFERENCES core.roles(id) ON DELETE CASCADE,
     page_id UUID REFERENCES core.pages(id) ON DELETE CASCADE,
     can_access BOOLEAN DEFAULT TRUE,
-    show_in_menu BOOLEAN DEFAULT TRUE,
     UNIQUE(role_id, page_id)
 );
 

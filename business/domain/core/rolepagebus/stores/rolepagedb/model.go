@@ -6,30 +6,27 @@ import (
 )
 
 type rolePage struct {
-	ID         uuid.UUID `db:"id"`
-	RoleID     uuid.UUID `db:"role_id"`
-	PageID     uuid.UUID `db:"page_id"`
-	CanAccess  bool      `db:"can_access"`
-	ShowInMenu bool      `db:"show_in_menu"`
+	ID        uuid.UUID `db:"id"`
+	RoleID    uuid.UUID `db:"role_id"`
+	PageID    uuid.UUID `db:"page_id"`
+	CanAccess bool      `db:"can_access"`
 }
 
 func toDBRolePage(bus rolepagebus.RolePage) rolePage {
 	return rolePage{
-		ID:         bus.ID,
-		RoleID:     bus.RoleID,
-		PageID:     bus.PageID,
-		CanAccess:  bus.CanAccess,
-		ShowInMenu: bus.ShowInMenu,
+		ID:        bus.ID,
+		RoleID:    bus.RoleID,
+		PageID:    bus.PageID,
+		CanAccess: bus.CanAccess,
 	}
 }
 
 func toBusRolePage(db rolePage) rolepagebus.RolePage {
 	return rolepagebus.RolePage{
-		ID:         db.ID,
-		RoleID:     db.RoleID,
-		PageID:     db.PageID,
-		CanAccess:  db.CanAccess,
-		ShowInMenu: db.ShowInMenu,
+		ID:        db.ID,
+		RoleID:    db.RoleID,
+		PageID:    db.PageID,
+		CanAccess: db.CanAccess,
 	}
 }
 

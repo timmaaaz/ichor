@@ -7,10 +7,11 @@ var DefaultOrderBy = order.NewBy(OrderBySortOrder, order.ASC)
 
 // Set of fields that the results can be ordered by.
 const (
-	OrderByID        = "id"
-	OrderByPath      = "path"
-	OrderByName      = "name"
-	OrderByModule    = "module"
-	OrderBySortOrder = "sort_order"
-	OrderByIsActive  = "is_active"
+	OrderByID         = "id"
+	OrderByPath       = "path"
+	OrderByName       = "name"
+	OrderByModule     = "module"
+	OrderBySortOrder  = "sort_order"
+	OrderByIsActive   = "is_active"
+	OrderByShowInMenu = "show_in_menu"
 )
