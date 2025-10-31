@@ -39,5 +39,13 @@ func parseFilter(qp QueryParams) (pagebus.QueryFilter, error) {
 		filter.IsActive = &isActive
 	}
 
+	if qp.ShowInMenu != "" {
+		showInMenu, err := strconv.ParseBool(qp.ShowInMenu)
+		if err != nil {
+			return pagebus.QueryFilter{}, errs.NewFieldsError("show_in_menu", err)
+		}
+		filter.ShowInMenu = &showInMenu
+	}
+
 	return filter, nil
 }

@@ -73,13 +73,14 @@ func (b *Business) Create(ctx context.Context, np NewPage) (Page, error) {
 	defer span.End()
 
 	page := Page{
-		ID:        uuid.New(),
-		Path:      np.Path,
-		Name:      np.Name,
-		Module:    np.Module,
-		Icon:      np.Icon,
-		SortOrder: np.SortOrder,
-		IsActive:  np.IsActive,
+		ID:         uuid.New(),
+		Path:       np.Path,
+		Name:       np.Name,
+		Module:     np.Module,
+		Icon:       np.Icon,
+		SortOrder:  np.SortOrder,
+		IsActive:   np.IsActive,
+		ShowInMenu: np.ShowInMenu,
 	}
 
 	if err := b.storer.Create(ctx, page); err != nil {

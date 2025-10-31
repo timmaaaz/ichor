@@ -431,7 +431,8 @@ CREATE TABLE core.pages (
     module TEXT NOT NULL,
     icon TEXT,
     sort_order INTEGER DEFAULT 1000,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    show_in_menu BOOLEAN DEFAULT TRUE
 );
 
 -- Version: 1.29

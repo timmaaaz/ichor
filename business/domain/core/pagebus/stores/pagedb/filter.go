@@ -35,6 +35,11 @@ func applyFilter(filter pagebus.QueryFilter, data map[string]any, buf *bytes.Buf
 		wc = append(wc, "is_active = :is_active")
 	}
 
+	if filter.ShowInMenu != nil {
+		data["show_in_menu"] = *filter.ShowInMenu
+		wc = append(wc, "show_in_menu = :show_in_menu")
+	}
+
 	if len(wc) > 0 {
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wc, " AND "))

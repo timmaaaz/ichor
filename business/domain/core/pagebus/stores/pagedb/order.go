@@ -8,12 +8,13 @@ import (
 )
 
 var orderByFields = map[string]string{
-	pagebus.OrderByID:        "id",
-	pagebus.OrderByPath:      "path",
-	pagebus.OrderByName:      "name",
-	pagebus.OrderByModule:    "module",
-	pagebus.OrderBySortOrder: "sort_order",
-	pagebus.OrderByIsActive:  "is_active",
+	pagebus.OrderByID:         "id",
+	pagebus.OrderByPath:       "path",
+	pagebus.OrderByName:       "name",
+	pagebus.OrderByModule:     "module",
+	pagebus.OrderBySortOrder:  "sort_order",
+	pagebus.OrderByIsActive:   "is_active",
+	pagebus.OrderByShowInMenu: "show_in_menu",
 }
 
 func orderByClause(orderBy order.By) (string, error) {
