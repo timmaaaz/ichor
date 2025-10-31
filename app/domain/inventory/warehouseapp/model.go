@@ -14,6 +14,7 @@ type QueryParams struct {
 	Rows             string
 	OrderBy          string
 	ID               string
+	Code             string
 	StreetID         string
 	Name             string
 	IsActive         string
@@ -27,6 +28,7 @@ type QueryParams struct {
 
 type Warehouse struct {
 	ID          string `json:"id"`
+	Code        string `json:"code"`
 	StreetID    string `json:"street_id"`
 	Name        string `json:"name"`
 	IsActive    bool   `json:"is_active"`
@@ -44,6 +46,7 @@ func (app Warehouse) Encode() ([]byte, string, error) {
 func ToAppWarehouse(bus warehousebus.Warehouse) Warehouse {
 	return Warehouse{
 		ID:          bus.ID.String(),
+		Code:        bus.Code,
 		StreetID:    bus.StreetID.String(),
 		Name:        bus.Name,
 		IsActive:    bus.IsActive,
@@ -65,6 +68,7 @@ func ToAppWarehouses(bus []warehousebus.Warehouse) []Warehouse {
 // =========================================================================
 
 type NewWarehouse struct {
+	Code      string `json:"code" validate:"omitempty"`
 	StreetID  string `json:"street_id" validate:"required,uuid"`
 	Name      string `json:"name" validate:"required"`
 	CreatedBy string `json:"created_by" validate:"required,uuid"`
@@ -91,6 +95,7 @@ func toBusNewWarehouse(app NewWarehouse) (warehousebus.NewWarehouse, error) {
 // =========================================================================
 
 type UpdateWarehouse struct {
+	Code      string `json:"code" validate:"omitempty"`
 	StreetID  string `json:"street_id" validate:"omitempty,uuid"`
 	Name      string `json:"name" validate:"omitempty"`
 	IsActive  bool   `json:"is_active" validate:"omitempty"`

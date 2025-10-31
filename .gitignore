@@ -57,3 +57,9 @@ Thumbs.db
 .oauth-cookies.txt
 .oauth-response.txt
 cookies.txt
+
+# Go binaries (prevent Make target conflicts)
+/ichor
+/admin
+/auth
+/metrics

@@ -285,7 +285,7 @@ CREATE TABLE hr.reports_to (
 CREATE TABLE assets.assets (
    id UUID NOT NULL,
    valid_asset_id UUID NOT NULL,
-   last_maintenance_time TIMESTAMP NOT NULL,
+   last_maintenance_time TIMESTAMP,
    serial_number TEXT NOT NULL,
    asset_condition_id UUID NOT NULL,
    PRIMARY KEY (id),
@@ -373,6 +373,7 @@ CREATE TABLE products.product_categories (
 -- Description: Create table warehouses
 CREATE TABLE inventory.warehouses (
    id UUID NOT NULL,
+   code TEXT NOT NULL,
    name TEXT NOT NULL,
    street_id UUID NOT NULL,
    is_active BOOLEAN NOT NULL,
@@ -422,6 +423,28 @@ CREATE TABLE core.table_access (
 );
 
 -- Version: 1.28
+-- Description: Create table pages
+CREATE TABLE core.pages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    path TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    module TEXT NOT NULL,
+    icon TEXT,
+    sort_order INTEGER DEFAULT 1000,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Version: 1.29
+-- Description: Create table role_pages
+CREATE TABLE core.role_pages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role_id UUID REFERENCES core.roles(id) ON DELETE CASCADE,
+    page_id UUID REFERENCES core.pages(id) ON DELETE CASCADE,
+    can_access BOOLEAN DEFAULT TRUE,
+    UNIQUE(role_id, page_id)
+);
+
+-- Version: 1.30
 -- Description: add products
 CREATE TABLE products.products (
    id UUID NOT NULL,
@@ -444,7 +467,7 @@ CREATE TABLE products.products (
    FOREIGN KEY (category_id) REFERENCES products.product_categories(id)
 );
 
--- Version: 1.29
+-- Version: 1.31
 -- Description: add physical_attributes
 CREATE TABLE products.physical_attributes (
    id UUID NOT NULL,
@@ -466,7 +489,7 @@ CREATE TABLE products.physical_attributes (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.30
+-- Version: 1.32
 -- Description: add product_costs
 CREATE TABLE products.product_costs (
    id UUID NOT NULL,
@@ -488,7 +511,7 @@ CREATE TABLE products.product_costs (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.31
+-- Version: 1.33
 -- Description: add suppliers
 CREATE TABLE procurement.suppliers (
    id UUID NOT NULL,
@@ -504,7 +527,7 @@ CREATE TABLE procurement.suppliers (
    FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
 );
 
--- Version: 1.32
+-- Version: 1.34
 -- Description: add cost_history
 CREATE TABLE products.cost_history (
    id UUID NOT NULL,
@@ -520,7 +543,7 @@ CREATE TABLE products.cost_history (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.33
+-- Version: 1.35
 -- Description: add supplier_products
 CREATE TABLE procurement.supplier_products (
    id UUID NOT NULL,
@@ -539,7 +562,7 @@ CREATE TABLE procurement.supplier_products (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.34
+-- Version: 1.36
 -- Description: add quality_metrics
 CREATE TABLE products.quality_metrics (
    id UUID NOT NULL,
@@ -553,7 +576,7 @@ CREATE TABLE products.quality_metrics (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.35
+-- Version: 1.37
 -- Description: add lot tracking
 CREATE TABLE inventory.lot_trackings (
    id UUID NOT NULL,
@@ -570,7 +593,7 @@ CREATE TABLE inventory.lot_trackings (
    FOREIGN KEY (supplier_product_id) REFERENCES procurement.supplier_products(id)
 );
 
--- Version: 1.36
+-- Version: 1.38
 -- Description: add zones
 CREATE TABLE inventory.zones (
    id UUID NOT NULL,
@@ -583,7 +606,7 @@ CREATE TABLE inventory.zones (
    FOREIGN KEY (warehouse_id) REFERENCES inventory.warehouses(id)
 );
 
--- Version: 1.37
+-- Version: 1.39
 -- Description: add inventory_locations
 CREATE TABLE inventory.inventory_locations (
    id UUID NOT NULL,
@@ -604,7 +627,7 @@ CREATE TABLE inventory.inventory_locations (
    FOREIGN KEY (warehouse_id) REFERENCES inventory.warehouses(id)
 );
 
--- Version: 1.38
+-- Version: 1.40
 -- Description: add inventory_items
 CREATE TABLE inventory.inventory_items (
    id UUID NOT NULL,
@@ -626,7 +649,7 @@ CREATE TABLE inventory.inventory_items (
    FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id)
 );
 
--- Version: 1.39
+-- Version: 1.41
 -- Description: add serial_numbers
 CREATE TABLE inventory.serial_numbers (
    id UUID NOT NULL,
@@ -643,7 +666,7 @@ CREATE TABLE inventory.serial_numbers (
    FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
--- Version: 1.40
+-- Version: 1.42
 -- Description: add quality_inspections
 CREATE TABLE inventory.quality_inspections (
    id UUID NOT NULL,
@@ -662,7 +685,7 @@ CREATE TABLE inventory.quality_inspections (
    FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
--- Version: 1.41 
+-- Version: 1.43
 -- Description: add inventory_transactions
 CREATE TABLE inventory.inventory_transactions (
    id UUID NOT NULL,
@@ -681,7 +704,7 @@ CREATE TABLE inventory.inventory_transactions (
    FOREIGN KEY (user_id) REFERENCES core.users(id)
 );
 
--- Version: 1.42
+-- Version: 1.44
 -- Description: add inventory_adjustments
 CREATE TABLE inventory.inventory_adjustments (
    id UUID NOT NULL,
@@ -702,7 +725,7 @@ CREATE TABLE inventory.inventory_adjustments (
    FOREIGN KEY (approved_by) REFERENCES core.users(id)
 );
 
--- Version: 1.43
+-- Version: 1.45
 -- Description: transfer_orders
 CREATE TABLE inventory.transfer_orders (
    id UUID NOT NULL,
@@ -1009,6 +1032,58 @@ CREATE TABLE IF NOT EXISTS config.page_tab_configs (
    CONSTRAINT fk_page_tab_configs_config FOREIGN KEY (config_id) REFERENCES config.table_configs(id) ON DELETE CASCADE
 );
 
+-- Version: 2.04
+-- Description: Create forms table for form configurations
+CREATE TABLE IF NOT EXISTS config.forms (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   name VARCHAR(255) NOT NULL,
+   UNIQUE(name)
+);
+
+-- Create indexes for forms
+CREATE INDEX IF NOT EXISTS idx_forms_name ON config.forms(name);
+
+-- Comments
+COMMENT ON TABLE config.forms IS 'Stores form configuration definitions';
+COMMENT ON COLUMN config.forms.id IS 'Unique identifier for the form';
+COMMENT ON COLUMN config.forms.name IS 'Unique name for the form configuration';
+
+-- Version: 2.05
+-- Description: Create form_fields table for form field configurations
+CREATE TABLE IF NOT EXISTS config.form_fields (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   form_id UUID NOT NULL,
+   entity_id UUID NOT NULL,
+   name VARCHAR(255) NOT NULL,
+   label VARCHAR(255) NOT NULL,
+   field_type VARCHAR(50) NOT NULL,
+   field_order INTEGER NOT NULL,
+   required BOOLEAN DEFAULT false,
+   config JSONB NOT NULL DEFAULT '{}'::jsonb,
+
+   CONSTRAINT fk_form_fields_form FOREIGN KEY (form_id) REFERENCES config.forms(id) ON DELETE CASCADE,
+   CONSTRAINT fk_form_fields_entity FOREIGN KEY (entity_id) REFERENCES workflow.entities(id) ON DELETE CASCADE,
+   UNIQUE(form_id, name)
+);
+
+-- Create indexes for form_fields
+CREATE INDEX IF NOT EXISTS idx_form_fields_form_id ON config.form_fields(form_id);
+CREATE INDEX IF NOT EXISTS idx_form_fields_entity_id ON config.form_fields(entity_id);
+CREATE INDEX IF NOT EXISTS idx_form_fields_field_order ON config.form_fields(form_id, field_order);
+CREATE INDEX IF NOT EXISTS idx_form_fields_config ON config.form_fields USING GIN (config);
+
+-- Comments
+COMMENT ON TABLE config.form_fields IS 'Stores individual field configurations for forms';
+COMMENT ON COLUMN config.form_fields.id IS 'Unique identifier for the form field';
+COMMENT ON COLUMN config.form_fields.form_id IS 'Foreign key reference to the parent form';
+COMMENT ON COLUMN config.form_fields.entity_id IS 'Foreign key reference to the entity (table) this field belongs to';
+COMMENT ON COLUMN config.form_fields.name IS 'Field name (column name in the entity table)';
+COMMENT ON COLUMN config.form_fields.label IS 'Display label for the field';
+COMMENT ON COLUMN config.form_fields.field_type IS 'Type of field (text, select, checkbox, etc.)';
+COMMENT ON COLUMN config.form_fields.field_order IS 'Display order of the field within the form';
+COMMENT ON COLUMN config.form_fields.required IS 'Whether the field is required';
+COMMENT ON COLUMN config.form_fields.config IS 'JSONB configuration for field-specific settings (parent_entity_id, foreign_key_column, execution_order, etc.)';
+
 -- Optional: Create a view for commonly accessed configurations
 CREATE OR REPLACE VIEW config.active_table_configs AS
 SELECT 
@@ -1032,6 +1107,58 @@ ORDER BY tc.updated_date DESC;
 -- GRANT SELECT ON config.table_configs TO authenticated;
 -- GRANT INSERT, UPDATE, DELETE ON config.table_configs TO authenticated;
 -- GRANT SELECT ON config.active_table_configs TO authenticated;
+
+-- Version: 2.06
+-- Description: Create table page_actions (base table for all action types)
+CREATE TABLE config.page_actions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    page_config_id UUID NOT NULL,
+    action_type TEXT NOT NULL CHECK (action_type IN ('button', 'dropdown', 'separator')),
+    action_order INT NOT NULL DEFAULT 1,
+    is_active BOOLEAN DEFAULT TRUE,
+
+    CONSTRAINT fk_page_actions_page FOREIGN KEY (page_config_id)
+        REFERENCES config.page_configs(id) ON DELETE CASCADE
+);
+
+-- Version: 2.07
+-- Description: Create table page_action_buttons
+CREATE TABLE config.page_action_buttons (
+    action_id UUID PRIMARY KEY,
+    label TEXT NOT NULL,
+    icon TEXT,
+    target_path TEXT NOT NULL,
+    variant TEXT DEFAULT 'default' CHECK (variant IN ('default', 'secondary', 'outline', 'ghost', 'destructive')),
+    alignment TEXT DEFAULT 'right' CHECK (alignment IN ('left', 'right')),
+    confirmation_prompt TEXT,
+
+    CONSTRAINT fk_button_action FOREIGN KEY (action_id)
+        REFERENCES config.page_actions(id) ON DELETE CASCADE
+);
+
+-- Version: 2.08
+-- Description: Create table page_action_dropdowns
+CREATE TABLE config.page_action_dropdowns (
+    action_id UUID PRIMARY KEY,
+    label TEXT NOT NULL,
+    icon TEXT,
+
+    CONSTRAINT fk_dropdown_action FOREIGN KEY (action_id)
+        REFERENCES config.page_actions(id) ON DELETE CASCADE
+);
+
+-- Version: 2.09
+-- Description: Create table page_action_dropdown_items
+CREATE TABLE config.page_action_dropdown_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    dropdown_action_id UUID NOT NULL,
+    label TEXT NOT NULL,
+    target_path TEXT NOT NULL,
+    item_order INT NOT NULL,
+
+    CONSTRAINT fk_dropdown_items FOREIGN KEY (dropdown_action_id)
+        REFERENCES config.page_action_dropdowns(action_id) ON DELETE CASCADE
+);
 
 CREATE OR REPLACE VIEW sales.orders_base AS
 SELECT
@@ -1142,8 +1269,8 @@ LEFT JOIN core.users du ON ar.deactivated_by = du.id
 WHERE ar.is_active = true;
 
 
-CREATE OR REPLACE VIEW workflow.rule_actions_view AS 
-   SELECT 
+CREATE OR REPLACE VIEW workflow.rule_actions_view AS
+   SELECT
       ra.id,
       ra.automation_rules_id,
       ra.name,
@@ -1157,3 +1284,132 @@ CREATE OR REPLACE VIEW workflow.rule_actions_view AS
       at.default_config as template_default_config
    FROM workflow.rule_actions ra
    LEFT JOIN workflow.action_templates at ON ra.template_id = at.id;
+
+-- Version: 1.46
+-- Description: Create purchase order status table
+CREATE TABLE procurement.purchase_order_statuses (
+   id UUID PRIMARY KEY,
+   name VARCHAR(50) NOT NULL UNIQUE,
+   description TEXT,
+   sort_order INTEGER DEFAULT 1000
+);
+
+-- Version: 1.47
+-- Description: Create purchase order line item status table
+CREATE TABLE procurement.purchase_order_line_item_statuses (
+   id UUID PRIMARY KEY,
+   name VARCHAR(50) NOT NULL UNIQUE,
+   description TEXT,
+   sort_order INTEGER DEFAULT 1000
+);
+
+-- Version: 1.48
+-- Description: Create purchase orders table
+CREATE TABLE procurement.purchase_orders (
+   id UUID PRIMARY KEY,
+   order_number VARCHAR(100) NOT NULL UNIQUE,
+   supplier_id UUID NOT NULL,
+   purchase_order_status_id UUID NOT NULL,
+
+   -- Delivery information
+   delivery_warehouse_id UUID NOT NULL,
+   delivery_location_id UUID NULL,
+   delivery_street_id UUID NULL,
+
+   -- Dates
+   order_date TIMESTAMP NOT NULL,
+   expected_delivery_date TIMESTAMP NOT NULL,
+   actual_delivery_date TIMESTAMP NULL,
+
+   -- Financial
+   subtotal NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+   tax_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+   shipping_cost NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+   total_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+   currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+
+   -- Workflow
+   requested_by UUID NOT NULL,
+   approved_by UUID NULL,
+   approved_date TIMESTAMP NULL,
+
+   -- Notes and reference
+   notes TEXT NULL,
+   supplier_reference_number VARCHAR(100) NULL,
+
+   -- Standard audit fields
+   created_by UUID NOT NULL,
+   updated_by UUID NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+
+   FOREIGN KEY (supplier_id) REFERENCES procurement.suppliers(id) ON DELETE RESTRICT,
+   FOREIGN KEY (purchase_order_status_id) REFERENCES procurement.purchase_order_statuses(id) ON DELETE RESTRICT,
+   FOREIGN KEY (delivery_warehouse_id) REFERENCES inventory.warehouses(id) ON DELETE RESTRICT,
+   FOREIGN KEY (delivery_location_id) REFERENCES inventory.inventory_locations(id) ON DELETE SET NULL,
+   FOREIGN KEY (delivery_street_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
+   FOREIGN KEY (requested_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+   FOREIGN KEY (approved_by) REFERENCES core.users(id) ON DELETE SET NULL,
+   FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+   FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+
+   -- Constraint: Must have either warehouse OR street address for delivery
+   CONSTRAINT check_delivery_location CHECK (
+      (delivery_warehouse_id IS NOT NULL) OR (delivery_street_id IS NOT NULL)
+   )
+);
+
+-- Indexes for common queries
+CREATE INDEX idx_purchase_orders_supplier ON procurement.purchase_orders(supplier_id);
+CREATE INDEX idx_purchase_orders_status ON procurement.purchase_orders(purchase_order_status_id);
+CREATE INDEX idx_purchase_orders_order_date ON procurement.purchase_orders(order_date DESC);
+CREATE INDEX idx_purchase_orders_expected_delivery ON procurement.purchase_orders(expected_delivery_date);
+CREATE INDEX idx_purchase_orders_requested_by ON procurement.purchase_orders(requested_by);
+
+-- Version: 1.49
+-- Description: Create purchase order line items table
+CREATE TABLE procurement.purchase_order_line_items (
+   id UUID PRIMARY KEY,
+   purchase_order_id UUID NOT NULL,
+   supplier_product_id UUID NOT NULL,
+
+   -- Quantities
+   quantity_ordered INT NOT NULL,
+   quantity_received INT NOT NULL DEFAULT 0,
+   quantity_cancelled INT NOT NULL DEFAULT 0,
+
+   -- Pricing (captured at time of order)
+   unit_cost NUMERIC(10,2) NOT NULL,
+   discount NUMERIC(10,2) NULL DEFAULT 0.00,
+   line_total NUMERIC(10,2) NOT NULL,
+
+   -- Status and dates
+   line_item_status_id UUID NOT NULL,
+   expected_delivery_date TIMESTAMP NULL,
+   actual_delivery_date TIMESTAMP NULL,
+
+   -- Notes
+   notes TEXT NULL,
+
+   -- Standard audit fields
+   created_by UUID NOT NULL,
+   updated_by UUID NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+
+   FOREIGN KEY (purchase_order_id) REFERENCES procurement.purchase_orders(id) ON DELETE CASCADE,
+   FOREIGN KEY (supplier_product_id) REFERENCES procurement.supplier_products(id) ON DELETE RESTRICT,
+   FOREIGN KEY (line_item_status_id) REFERENCES procurement.purchase_order_line_item_statuses(id) ON DELETE RESTRICT,
+   FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+   FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE RESTRICT,
+
+   -- Constraint: Received + Cancelled should not exceed Ordered
+   CONSTRAINT check_quantities CHECK (
+      quantity_received + quantity_cancelled <= quantity_ordered
+   )
+);
+
+-- Indexes
+CREATE INDEX idx_po_line_items_po ON procurement.purchase_order_line_items(purchase_order_id);
+CREATE INDEX idx_po_line_items_supplier_product ON procurement.purchase_order_line_items(supplier_product_id);
+CREATE INDEX idx_po_line_items_status ON procurement.purchase_order_line_items(line_item_status_id);

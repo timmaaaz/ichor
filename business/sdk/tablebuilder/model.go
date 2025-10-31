@@ -64,6 +64,7 @@ type ColumnDefinition struct {
 // ForeignTable represents a related table configuration
 type ForeignTable struct {
 	Table                 string             `json:"table"`
+	Alias                 string             `json:"alias,omitempty"`  // Optional alias for the table (required for multiple joins to same table)
 	Schema                string             `json:"schema,omitempty"` // Optional, defaults to public
 	RelationshipFrom      string             `json:"relationship_from"`
 	RelationshipTo        string             `json:"relationship_to"`

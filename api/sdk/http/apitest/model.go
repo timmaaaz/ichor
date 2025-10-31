@@ -10,10 +10,15 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
-	"github.com/timmaaaz/ichor/app/domain/core/userroleapp.go"
+	"github.com/timmaaaz/ichor/app/domain/core/userroleapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/approvalapp"
@@ -31,6 +36,10 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierproductapp"
 	"github.com/timmaaaz/ichor/app/domain/products/brandapp"
@@ -49,6 +58,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 )
@@ -89,11 +99,17 @@ type SeedData struct {
 	ProductCategories           []productcategoryapp.ProductCategory
 	Warehouses                  []warehouseapp.Warehouse
 	Roles                       []roleapp.Role
+	Pages                       []pageapp.Page
+	RolePages                   []rolepageapp.RolePage
 	UserRoles                   []userroleapp.UserRole
 	TableAccesses               []tableaccessapp.TableAccess
 	Products                    []productapp.Product
 	PhysicalAttributes          []physicalattributeapp.PhysicalAttribute
 	ProductCosts                []productcostapp.ProductCost
+	PurchaseOrderLineItemStatuses []purchaseorderlineitemstatusapp.PurchaseOrderLineItemStatus
+	PurchaseOrderStatuses       []purchaseorderstatusapp.PurchaseOrderStatus
+	PurchaseOrders              []purchaseorderapp.PurchaseOrder
+	PurchaseOrderLineItems      []purchaseorderlineitemapp.PurchaseOrderLineItem
 	Suppliers                   []supplierapp.Supplier
 	CostHistory                 []costhistoryapp.CostHistory
 	SupplierProducts            []supplierproductapp.SupplierProduct
@@ -116,6 +132,10 @@ type SeedData struct {
 	PageTableConfig             *tablebuilder.StoredConfig
 	PageConfigs                 []tablebuilder.PageConfig
 	PageTabConfigs              []tablebuilder.PageTabConfig
+	Forms                       []formapp.Form
+	FormFields                  []formfieldapp.FormField
+	PageActions                 []pageactionapp.PageAction
+	Entities                    []workflow.Entity
 }
 
 type Table struct {

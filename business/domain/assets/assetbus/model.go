@@ -10,14 +10,14 @@ type Asset struct {
 	ID               uuid.UUID
 	ValidAssetID     uuid.UUID
 	AssetConditionID uuid.UUID
-	LastMaintenance  time.Time
+	LastMaintenance  time.Time // Zero value = NULL
 	SerialNumber     string
 }
 
 type NewAsset struct {
 	ValidAssetID     uuid.UUID
 	AssetConditionID uuid.UUID
-	LastMaintenance  time.Time
+	LastMaintenance  time.Time // Zero value = NULL
 	SerialNumber     string
 }
 

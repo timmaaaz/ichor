@@ -2,6 +2,7 @@
 package all
 
 import (
+	"context"
 	"time"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/approvalstatusapi"
@@ -12,11 +13,17 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/formapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/formfieldapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/pageactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/pageapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/roleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/rolepageapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/userroleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/dataapi"
+	"github.com/timmaaaz/ichor/api/domain/http/formdata/formdataapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/approvalapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/commentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/officeapi"
@@ -32,6 +39,10 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/transferorderapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/warehouseapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/zoneapi"
+	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderapi"
+	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderlineitemapi"
+	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderlineitemstatusapi"
+	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/supplierapi"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/supplierproductapi"
 	"github.com/timmaaaz/ichor/api/domain/http/products/brandapi"
@@ -59,20 +70,86 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/core/userapi"
 
 	"github.com/timmaaaz/ichor/api/sdk/http/mux"
+	"github.com/timmaaaz/ichor/app/domain/assets/approvalstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assetapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assetconditionapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assettagapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/assettypeapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/fulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
+	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
+	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
+	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
+	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
+	"github.com/timmaaaz/ichor/app/domain/core/userapp"
+	userroleappimport "github.com/timmaaaz/ichor/app/domain/core/userroleapp"
+	"github.com/timmaaaz/ichor/app/domain/formdata/formdataapp"
+	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
+	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/approvalapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/commentapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/homeapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/officeapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/reportstoapp"
+	"github.com/timmaaaz/ichor/app/domain/hr/titleapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inspectionapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryadjustmentapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryitemapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inventorylocationapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/inventorytransactionapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/lottrackingsapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/serialnumberapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
+	"github.com/timmaaaz/ichor/app/domain/procurement/supplierproductapp"
+	"github.com/timmaaaz/ichor/app/domain/products/brandapp"
+	"github.com/timmaaaz/ichor/app/domain/products/costhistoryapp"
+	"github.com/timmaaaz/ichor/app/domain/products/metricsapp"
+	"github.com/timmaaaz/ichor/app/domain/products/physicalattributeapp"
+	"github.com/timmaaaz/ichor/app/domain/products/productapp"
+	"github.com/timmaaaz/ichor/app/domain/products/productcategoryapp"
+	"github.com/timmaaaz/ichor/app/domain/products/productcostapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/customersapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/lineitemfulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/orderlineitemsapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/config/formbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formbus/stores/formdb"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus/stores/formfielddb"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus/stores/pageactiondb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
+	"github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/rolecache"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/roledb"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus/stores/rolepagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus/stores/tableaccesscache"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus/stores/tableaccessdb"
@@ -99,6 +176,14 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus/stores/warehousedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus/stores/zonedb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus/stores/purchaseorderdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus/stores/purchaseorderlineitemdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus/stores/purchaseorderlineitemstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus/stores/purchaseorderstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus/stores/supplierdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
@@ -156,7 +241,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
-	streetdb "github.com/timmaaaz/ichor/business/domain/geography/streetbus/stores/streetdb"
+	"github.com/timmaaaz/ichor/business/domain/geography/streetbus/stores/streetdb"
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
@@ -243,8 +328,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	inventoryLocationBus := inventorylocationbus.NewBusiness(cfg.Log, delegate, inventorylocationdb.NewStore(cfg.Log, cfg.DB))
 	inventoryItemBus := inventoryitembus.NewBusiness(cfg.Log, delegate, inventoryitemdb.NewStore(cfg.Log, cfg.DB))
 
+	purchaseOrderLineItemStatusBus := purchaseorderlineitemstatusbus.NewBusiness(cfg.Log, delegate, purchaseorderlineitemstatusdb.NewStore(cfg.Log, cfg.DB))
+	purchaseOrderStatusBus := purchaseorderstatusbus.NewBusiness(cfg.Log, delegate, purchaseorderstatusdb.NewStore(cfg.Log, cfg.DB))
 	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
 	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
+	purchaseOrderBus := purchaseorderbus.NewBusiness(cfg.Log, delegate, purchaseorderdb.NewStore(cfg.Log, cfg.DB))
+	purchaseOrderLineItemBus := purchaseorderlineitembus.NewBusiness(cfg.Log, delegate, purchaseorderlineitemdb.NewStore(cfg.Log, cfg.DB))
 
 	metricsBus := metricsbus.NewBusiness(cfg.Log, delegate, metricsdb.NewStore(cfg.Log, cfg.DB))
 	inspectionBus := inspectionbus.NewBusiness(cfg.Log, delegate, inspectiondb.NewStore(cfg.Log, cfg.DB))
@@ -253,6 +342,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	serialNumberBus := serialnumberbus.NewBusiness(cfg.Log, delegate, serialnumberdb.NewStore(cfg.Log, cfg.DB))
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
+	pageBus := pagebus.NewBusiness(cfg.Log, delegate, pagedb.NewStore(cfg.Log, cfg.DB))
+	rolePageBus := rolepagebus.NewBusiness(cfg.Log, delegate, rolepagedb.NewStore(cfg.Log, cfg.DB))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, delegate, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 
@@ -269,6 +360,10 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	configStore := tablebuilder.NewConfigStore(cfg.Log, cfg.DB)
 	tableStore := tablebuilder.NewStore(cfg.Log, cfg.DB)
+
+	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB))
+	formFieldBus := formfieldbus.NewBusiness(cfg.Log, delegate, formfielddb.NewStore(cfg.Log, cfg.DB))
+	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -462,6 +557,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus: permissionsBus,
 	})
 
+	pageapi.Routes(app, pageapi.Config{
+		Log:            cfg.Log,
+		PageBus:        pageBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	rolepageapi.Routes(app, rolepageapi.Config{
+		Log:            cfg.Log,
+		RolePageBus:    rolePageBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
 	userroleapi.Routes(app, userroleapi.Config{
 		Log:            cfg.Log,
 		UserRoleBus:    userRoleBus,
@@ -497,6 +606,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus: permissionsBus,
 	})
 
+	purchaseorderlineitemstatusapi.Routes(app, purchaseorderlineitemstatusapi.Config{
+		PurchaseOrderLineItemStatusBus: purchaseOrderLineItemStatusBus,
+		AuthClient:                     cfg.AuthClient,
+		Log:                            cfg.Log,
+		PermissionsBus:                 permissionsBus,
+	})
+
+	purchaseorderstatusapi.Routes(app, purchaseorderstatusapi.Config{
+		PurchaseOrderStatusBus: purchaseOrderStatusBus,
+		AuthClient:             cfg.AuthClient,
+		Log:                    cfg.Log,
+		PermissionsBus:         permissionsBus,
+	})
+
 	supplierapi.Routes(app, supplierapi.Config{
 		SupplierBus:    supplierBus,
 		AuthClient:     cfg.AuthClient,
@@ -516,6 +639,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:         cfg.AuthClient,
 		Log:                cfg.Log,
 		PermissionsBus:     permissionsBus,
+	})
+
+	purchaseorderapi.Routes(app, purchaseorderapi.Config{
+		PurchaseOrderBus: purchaseOrderBus,
+		AuthClient:       cfg.AuthClient,
+		Log:              cfg.Log,
+		PermissionsBus:   permissionsBus,
+	})
+
+	purchaseorderlineitemapi.Routes(app, purchaseorderlineitemapi.Config{
+		PurchaseOrderLineItemBus: purchaseOrderLineItemBus,
+		AuthClient:               cfg.AuthClient,
+		Log:                      cfg.Log,
+		PermissionsBus:           permissionsBus,
 	})
 
 	metricsapi.Routes(app, metricsapi.Config{
@@ -621,8 +758,107 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Log:            cfg.Log,
 		ConfigStore:    configStore,
 		TableStore:     tableStore,
+		PageActionApp:  pageactionapp.NewApp(pageActionBus),
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
+
+	// config
+	formapi.Routes(app, formapi.Config{
+		Log:            cfg.Log,
+		FormBus:        formBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	formfieldapi.Routes(app, formfieldapi.Config{
+		Log:            cfg.Log,
+		FormFieldBus:   formFieldBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	pageactionapi.Routes(app, pageactionapi.Config{
+		Log:            cfg.Log,
+		PageActionBus:  pageActionBus,
+		DB:             cfg.DB,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	// formdata - dynamic multi-entity operations
+	// Build registry with entity registrations
+	formDataRegistry, err := buildFormDataRegistry(
+		userapp.NewApp(a.UserBus),
+		assetapp.NewApp(assetBus),
+		roleapp.NewApp(roleBus),
+		pageapp.NewApp(pageBus),
+		rolepageapp.NewApp(rolePageBus),
+		tableaccessapp.NewApp(tableAccessBus),
+		userroleappimport.NewApp(userRoleBus),
+		contactinfosapp.NewApp(contactInfosBus),
+		assetconditionapp.NewApp(assetConditionBus),
+		assettypeapp.NewApp(assetTypeBus),
+		fulfillmentstatusapp.NewApp(fulfillmentStatusBus),
+		tagapp.NewApp(tagBus),
+		assettagapp.NewApp(assetTagBus),
+		validassetapp.NewApp(validAssetBus),
+		userassetapp.NewApp(userAssetBus),
+		approvalstatusapp.NewApp(approvalStatusBus),
+		cityapp.NewApp(cityBus),
+		streetapp.NewApp(streetBus),
+		commentapp.NewApp(userApprovalCommentBus),
+		approvalapp.NewApp(userApprovalStatusBus),
+		reportstoapp.NewApp(reportsToBus),
+		officeapp.NewApp(officeBus),
+		homeapp.NewApp(homeBus),
+		titleapp.NewApp(titleBus),
+		inspectionapp.NewApp(inspectionBus),
+		inventoryadjustmentapp.NewApp(inventoryAdjustmentBus),
+		inventorylocationapp.NewApp(inventoryLocationBus),
+		inventorytransactionapp.NewApp(inventoryTransactionBus),
+		serialnumberapp.NewApp(serialNumberBus),
+		transferorderapp.NewApp(transferOrderBus),
+		warehouseapp.NewApp(warehouseBus),
+		zoneapp.NewApp(zoneBus),
+		inventoryitemapp.NewApp(inventoryItemBus),
+		lottrackingsapp.NewApp(lotTrackingsBus),
+		purchaseorderlineitemstatusapp.NewApp(purchaseOrderLineItemStatusBus),
+		purchaseorderstatusapp.NewApp(purchaseOrderStatusBus),
+		purchaseorderapp.NewApp(purchaseOrderBus),
+		purchaseorderlineitemapp.NewApp(purchaseOrderLineItemBus),
+		supplierapp.NewApp(supplierBus),
+		supplierproductapp.NewApp(supplierProductBus),
+		brandapp.NewApp(brandBus),
+		costhistoryapp.NewApp(costHistoryBus),
+		metricsapp.NewApp(metricsBus),
+		physicalattributeapp.NewApp(physicalAttributeBus),
+		productcategoryapp.NewApp(productCategoryBus),
+		productcostapp.NewApp(productCostBus),
+		productapp.NewApp(productBus),
+		customersapp.NewApp(customersBus),
+		orderlineitemsapp.NewApp(orderLineItemsBus),
+		ordersapp.NewApp(ordersBus),
+		lineitemfulfillmentstatusapp.NewApp(lineItemFulfillmentStatusBus),
+		orderfulfillmentstatusapp.NewApp(orderFulfillmentStatusBus),
+		formapp.NewApp(formBus),
+		formfieldapp.NewApp(formFieldBus),
+	)
+	if err != nil {
+		cfg.Log.Error(context.Background(), "failed to build formdata registry", "error", err)
+		// Continue without formdata support rather than failing startup
+	} else {
+		// Initialize formdata app and routes
+		formDataApp := formdataapp.NewApp(formDataRegistry, cfg.DB, formBus, formFieldBus)
+
+		formdataapi.Routes(app, formdataapi.Config{
+			FormdataApp:    formDataApp,
+			AuthClient:     cfg.AuthClient,
+			PermissionsBus: permissionsBus,
+		})
+
+		cfg.Log.Info(context.Background(), "formdata routes initialized",
+			"entities", len(formDataRegistry.ListEntities()))
+	}
 
 }

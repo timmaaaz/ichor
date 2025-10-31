@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
@@ -351,9 +352,15 @@ func (app Count) Encode() ([]byte, string, error) {
 
 // =============================================================================
 // Page and PageTab Configurations
+
+// ActionsGroupedByType represents page actions grouped by type (buttons, dropdowns, separators).
+// This is a type alias to pageactionapp.ActionsGroupedByType for convenience.
+type ActionsGroupedByType = pageactionapp.ActionsGroupedByType
+
 type FullPageConfig struct {
-	PageConfig PageConfig
-	PageTabs   []PageTabConfig
+	PageConfig  PageConfig           `json:"pageConfig"`
+	PageTabs    []PageTabConfig      `json:"pageTabs"`
+	PageActions ActionsGroupedByType `json:"pageActions"`
 }
 
 // Encode implements the encoder interface.

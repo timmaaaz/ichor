@@ -8,6 +8,7 @@ import (
 
 type QueryFilter struct {
 	ID               *uuid.UUID
+	Code             *string
 	StreetID         *uuid.UUID
 	Name             *string
 	IsActive         *bool

@@ -171,6 +171,7 @@ dev-docker:
 # ==============================================================================
 # Building containers
 
+.PHONY: build ichor metrics auth
 build: ichor metrics auth
 
 ichor:

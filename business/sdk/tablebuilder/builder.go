@@ -147,8 +147,11 @@ func (qb *QueryBuilder) buildForeignColumns(foreignTables []ForeignTable, prefix
 	var cols []interface{}
 
 	for _, ft := range foreignTables {
+		// Use alias if present, otherwise use table name
+		tableRef := getTableOrAlias(ft)
+
 		for _, col := range ft.Columns {
-			colExpr := goqu.T(ft.Table).Col(col.Name)
+			colExpr := goqu.T(tableRef).Col(col.Name)
 
 			if col.Alias != "" {
 				cols = append(cols, colExpr.As(col.Alias))
@@ -159,7 +162,7 @@ func (qb *QueryBuilder) buildForeignColumns(foreignTables []ForeignTable, prefix
 
 		// Recursively add nested foreign table columns
 		if len(ft.ForeignTables) > 0 {
-			cols = append(cols, qb.buildForeignColumns(ft.ForeignTables, ft.Table)...)
+			cols = append(cols, qb.buildForeignColumns(ft.ForeignTables, tableRef)...)
 		}
 	}
 
@@ -169,6 +172,9 @@ func (qb *QueryBuilder) buildForeignColumns(foreignTables []ForeignTable, prefix
 // applyForeignTableJoins applies joins for foreign table relationships
 func (qb *QueryBuilder) applyForeignTableJoins(query *goqu.SelectDataset, foreignTables []ForeignTable) *goqu.SelectDataset {
 	for _, ft := range foreignTables {
+		// Use alias if present, otherwise use table name
+		tableRef := getTableOrAlias(ft)
+
 		// Parse the from and to relationships
 		fromParts := strings.Split(ft.RelationshipFrom, ".")
 		toParts := strings.Split(ft.RelationshipTo, ".")
@@ -176,29 +182,45 @@ func (qb *QueryBuilder) applyForeignTableJoins(query *goqu.SelectDataset, foreig
 		var joinCond goqu.Expression
 		if len(fromParts) == 2 && len(toParts) == 2 {
 			// Standard table.column format
+			// Use tableRef (alias or table) for the right side of the condition
 			joinCond = goqu.T(fromParts[0]).Col(fromParts[1]).Eq(
 				goqu.T(toParts[0]).Col(toParts[1]),
 			)
 		} else if len(fromParts) == 1 && len(toParts) == 2 {
 			// From is just column name (assume base table)
+			// Use tableRef for the right side
 			joinCond = goqu.C(fromParts[0]).Eq(
 				goqu.T(toParts[0]).Col(toParts[1]),
 			)
 		} else if len(fromParts) == 2 && len(toParts) == 1 {
-			// To is just column name (assume foreign table)
+			// To is just column name (assume foreign table, use alias if present)
 			joinCond = goqu.T(fromParts[0]).Col(fromParts[1]).Eq(
-				goqu.C(toParts[0]),
+				goqu.T(tableRef).Col(toParts[0]),
 			)
 		} else {
 			// Fallback to simple column names
 			joinCond = goqu.C(ft.RelationshipFrom).Eq(goqu.C(ft.RelationshipTo))
 		}
 
-		var joinTable exp.IdentifierExpression
+		// Build the join table expression with alias support
+		// Use exp.Expression to handle both IdentifierExpression and AliasedExpression
+		var joinTable exp.Expression
 		if ft.Schema != "" {
-			joinTable = goqu.S(ft.Schema).Table(ft.Table)
+			if ft.Alias != "" {
+				// Schema with alias: schema.table AS alias
+				joinTable = goqu.S(ft.Schema).Table(ft.Table).As(ft.Alias)
+			} else {
+				// Schema without alias: schema.table
+				joinTable = goqu.S(ft.Schema).Table(ft.Table)
+			}
 		} else {
-			joinTable = goqu.T(ft.Table)
+			if ft.Alias != "" {
+				// No schema with alias: table AS alias
+				joinTable = goqu.T(ft.Table).As(ft.Alias)
+			} else {
+				// No schema, no alias: table
+				joinTable = goqu.T(ft.Table)
+			}
 		}
 
 		// Apply the join based on type
@@ -382,4 +404,12 @@ func (qb *QueryBuilder) BuildJoinCondition(condition string) goqu.Expression {
 
 	// Default to treating it as a literal expression
 	return goqu.L(condition)
+}
+
+// getTableOrAlias returns the alias if present, otherwise the table name
+func getTableOrAlias(ft ForeignTable) string {
+	if ft.Alias != "" {
+		return ft.Alias
+	}
+	return ft.Table
 }

@@ -9,6 +9,7 @@ import (
 
 type warehouse struct {
 	ID          uuid.UUID `db:"id"`
+	Code        string    `db:"code"`
 	StreetID    uuid.UUID `db:"street_id"`
 	Name        string    `db:"name"`
 	IsActive    bool      `db:"is_active"`
@@ -21,6 +22,7 @@ type warehouse struct {
 func toDBWarehouse(bus warehousebus.Warehouse) warehouse {
 	return warehouse{
 		ID:          bus.ID,
+		Code:        bus.Code,
 		StreetID:    bus.StreetID,
 		Name:        bus.Name,
 		IsActive:    bus.IsActive,
@@ -34,6 +36,7 @@ func toDBWarehouse(bus warehousebus.Warehouse) warehouse {
 func toBusWarehouse(db warehouse) warehousebus.Warehouse {
 	return warehousebus.Warehouse{
 		ID:          db.ID,
+		Code:        db.Code,
 		StreetID:    db.StreetID,
 		Name:        db.Name,
 		IsActive:    db.IsActive,

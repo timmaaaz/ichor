@@ -20,6 +20,10 @@ func parseFilter(qp QueryParams) (warehousebus.QueryFilter, error) {
 		filter.ID = &id
 	}
 
+	if qp.Code != "" {
+		filter.Code = &qp.Code
+	}
+
 	if qp.StreetID != "" {
 		id, err := uuid.Parse(qp.StreetID)
 		if err != nil {

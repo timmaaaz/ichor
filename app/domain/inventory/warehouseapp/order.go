@@ -9,6 +9,7 @@ var defaultOrderBy = order.NewBy("id", order.ASC)
 
 var orderByFields = map[string]string{
 	"id":           warehousebus.OrderByID,
+	"code":         warehousebus.OrderByCode,
 	"street_id":    warehousebus.OrderByStreetID,
 	"name":         warehousebus.OrderByName,
 	"is_active":    warehousebus.OrderByIsActive,

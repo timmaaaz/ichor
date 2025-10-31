@@ -100,23 +100,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
-		{
-			Name:       "missing last maintenance time",
-			URL:        "/v1/assets/assets",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &assetapp.NewAsset{
-				ValidAssetID:     sd.Assets[0].ValidAssetID,
-				AssetConditionID: sd.Assets[0].AssetConditionID,
-				SerialNumber:     sd.Assets[0].SerialNumber,
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"last_maintenance\",\"error\":\"last_maintenance is a required field\"}]"),
-			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
 	}
 
 	return table

@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
@@ -19,25 +20,28 @@ import (
 
 // App manages the set of app layer api functions for the tablebuilder domain.
 type App struct {
-	configStore *tablebuilder.ConfigStore
-	tableStore  *tablebuilder.Store
-	auth        *auth.Auth
+	configStore   *tablebuilder.ConfigStore
+	tableStore    *tablebuilder.Store
+	auth          *auth.Auth
+	pageactionapp *pageactionapp.App
 }
 
 // NewApp constructs a tablebuilder app API for use.
-func NewApp(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store) *App {
+func NewApp(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, pageactionapp *pageactionapp.App) *App {
 	return &App{
-		configStore: configStore,
-		tableStore:  tableStore,
+		configStore:   configStore,
+		tableStore:    tableStore,
+		pageactionapp: pageactionapp,
 	}
 }
 
 // NewAppWithAuth constructs a tablebuilder app API for use with auth support.
-func NewAppWithAuth(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, ath *auth.Auth) *App {
+func NewAppWithAuth(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, ath *auth.Auth, pageactionapp *pageactionapp.App) *App {
 	return &App{
-		auth:        ath,
-		configStore: configStore,
-		tableStore:  tableStore,
+		auth:          ath,
+		configStore:   configStore,
+		tableStore:    tableStore,
+		pageactionapp: pageactionapp,
 	}
 }
 
@@ -308,9 +312,16 @@ func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageCon
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
+	// Fetch page actions
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	if err != nil {
+		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
+	}
+
 	return FullPageConfig{
-		PageConfig: page,
-		PageTabs:   ToAppPageTabConfigs(storedTabs),
+		PageConfig:  page,
+		PageTabs:    ToAppPageTabConfigs(storedTabs),
+		PageActions: actions,
 	}, nil
 }
 
@@ -337,9 +348,16 @@ func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, use
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
+	// Fetch page actions
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	if err != nil {
+		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
+	}
+
 	return FullPageConfig{
-		PageConfig: page,
-		PageTabs:   ToAppPageTabConfigs(storedTabs),
+		PageConfig:  page,
+		PageTabs:    ToAppPageTabConfigs(storedTabs),
+		PageActions: actions,
 	}, nil
 }
 
@@ -359,9 +377,16 @@ func (a *App) QueryFullPageByID(ctx context.Context, id uuid.UUID) (FullPageConf
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
+	// Fetch page actions
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	if err != nil {
+		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
+	}
+
 	return FullPageConfig{
-		PageConfig: page,
-		PageTabs:   ToAppPageTabConfigs(storedTabs),
+		PageConfig:  page,
+		PageTabs:    ToAppPageTabConfigs(storedTabs),
+		PageActions: actions,
 	}, nil
 }
 
