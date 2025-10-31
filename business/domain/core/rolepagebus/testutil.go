@@ -15,9 +15,10 @@ func TestSeedRolePages(ctx context.Context, n int, api *Business, roleID uuid.UU
 	for i := 0; i < n; i++ {
 		canAccess := i%2 == 0 // Alternate between true and false
 		rolePage, err := api.Create(ctx, NewRolePage{
-			RoleID:    roleID,
-			PageID:    pageID,
-			CanAccess: canAccess,
+			RoleID:     roleID,
+			PageID:     pageID,
+			CanAccess:  canAccess,
+			ShowInMenu: true,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("seeding role page: %w", err)
@@ -37,9 +38,10 @@ func TestGenerateNewRolePages(n int, roleIDs []uuid.UUID, pageIDs []uuid.UUID) [
 		pageIdx := rand.Intn(len(pageIDs))
 
 		newRolePages[i] = NewRolePage{
-			RoleID:    roleIDs[roleIdx],
-			PageID:    pageIDs[pageIdx],
-			CanAccess: i%2 == 0, // Alternate between true and false
+			RoleID:     roleIDs[roleIdx],
+			PageID:     pageIDs[pageIdx],
+			CanAccess:  i%2 == 0, // Alternate between true and false
+			ShowInMenu: true,
 		}
 	}
 
@@ -57,9 +59,10 @@ func TestGenerateSeedRolePages(ctx context.Context, api *Business, roleIDs []uui
 			canAccess := i%2 == 0
 
 			rolePage, err := api.Create(ctx, NewRolePage{
-				RoleID:    roleID,
-				PageID:    pageID,
-				CanAccess: canAccess,
+				RoleID:     roleID,
+				PageID:     pageID,
+				CanAccess:  canAccess,
+				ShowInMenu: true,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("seeding role page: %w", err)

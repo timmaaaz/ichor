@@ -30,6 +30,11 @@ func applyFilter(filter rolepagebus.QueryFilter, data map[string]any, buf *bytes
 		wc = append(wc, "can_access = :can_access")
 	}
 
+	if filter.ShowInMenu != nil {
+		data["show_in_menu"] = *filter.ShowInMenu
+		wc = append(wc, "show_in_menu = :show_in_menu")
+	}
+
 	if len(wc) > 0 {
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wc, " AND "))

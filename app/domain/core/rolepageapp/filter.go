@@ -43,5 +43,13 @@ func parseFilter(qp QueryParams) (rolepagebus.QueryFilter, error) {
 		filter.CanAccess = &canAccess
 	}
 
+	if qp.ShowInMenu != "" {
+		showInMenu, err := strconv.ParseBool(qp.ShowInMenu)
+		if err != nil {
+			return rolepagebus.QueryFilter{}, errs.NewFieldsError("show_in_menu", err)
+		}
+		filter.ShowInMenu = &showInMenu
+	}
+
 	return filter, nil
 }

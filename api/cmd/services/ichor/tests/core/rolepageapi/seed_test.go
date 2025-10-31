@@ -119,10 +119,11 @@ func toAppPages(bus []pagebus.Page) []pageapp.Page {
 
 func toAppRolePage(bus rolepagebus.RolePage) rolepageapp.RolePage {
 	return rolepageapp.RolePage{
-		ID:        bus.ID.String(),
-		RoleID:    bus.RoleID.String(),
-		PageID:    bus.PageID.String(),
-		CanAccess: bus.CanAccess,
+		ID:         bus.ID.String(),
+		RoleID:     bus.RoleID.String(),
+		PageID:     bus.PageID.String(),
+		CanAccess:  bus.CanAccess,
+		ShowInMenu: bus.ShowInMenu,
 	}
 }
 

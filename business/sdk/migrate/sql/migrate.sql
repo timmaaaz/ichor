@@ -441,6 +441,7 @@ CREATE TABLE core.role_pages (
     role_id UUID REFERENCES core.roles(id) ON DELETE CASCADE,
     page_id UUID REFERENCES core.pages(id) ON DELETE CASCADE,
     can_access BOOLEAN DEFAULT TRUE,
+    show_in_menu BOOLEAN DEFAULT TRUE,
     UNIQUE(role_id, page_id)
 );
 
