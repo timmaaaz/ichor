@@ -8,8 +8,10 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/config/formapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
+	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -46,6 +48,21 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding forms : %w", err)
 	}
+
+	// Seed form fields for the first form
+	entities, err := busDomain.Workflow.QueryEntities(ctx)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("querying entities : %w", err)
+	}
+
+	// Create form fields for the first form only
+	formIDs := []uuid.UUID{forms[0].ID}
+	busFormFields, err := formfieldbus.TestSeedFormFields(ctx, 5, formIDs, busDomain.FormField, entities)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding form fields : %w", err)
+	}
+
+	formFields := formfieldapp.ToAppFormFieldSlice(busFormFields)
 
 	// =========================================================================
 	// Permissions stuff
@@ -110,8 +127,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
-		Admins: []apitest.User{tu2},
-		Users:  []apitest.User{tu1},
-		Forms:  formapp.ToAppForms(forms),
+		Admins:     []apitest.User{tu2},
+		Users:      []apitest.User{tu1},
+		Forms:      formapp.ToAppForms(forms),
+		FormFields: formFields,
 	}, nil
 }

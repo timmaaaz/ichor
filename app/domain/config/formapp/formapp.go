@@ -5,24 +5,35 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 // App manages the set of app layer api functions for the form domain.
 type App struct {
-	formbus *formbus.Business
-	auth    *auth.Auth
+	formbus      *formbus.Business
+	formfieldbus *formfieldbus.Business
+	auth         *auth.Auth
 }
 
 // NewApp constructs a form app API for use.
 func NewApp(formbus *formbus.Business) *App {
 	return &App{
 		formbus: formbus,
+	}
+}
+
+// NewAppWithFormFields constructs a form app API with form field business support.
+func NewAppWithFormFields(formbus *formbus.Business, formfieldbus *formfieldbus.Business) *App {
+	return &App{
+		formbus:      formbus,
+		formfieldbus: formfieldbus,
 	}
 }
 
@@ -124,4 +135,28 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (Form, error) {
 	}
 
 	return ToAppForm(form), nil
+}
+
+// QueryFullByID retrieves a single form by its id along with all its fields.
+func (a *App) QueryFullByID(ctx context.Context, id uuid.UUID) (FormFull, error) {
+	if a.formfieldbus == nil {
+		return FormFull{}, errs.Newf(errs.Internal, "formfieldbus not configured")
+	}
+
+	form, err := a.formbus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, formbus.ErrNotFound) {
+			return FormFull{}, errs.New(errs.NotFound, formbus.ErrNotFound)
+		}
+		return FormFull{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+	}
+
+	busFields, err := a.formfieldbus.QueryByFormID(ctx, id)
+	if err != nil {
+		return FormFull{}, errs.Newf(errs.Internal, "querybyformid: %s", err)
+	}
+
+	fields := formfieldapp.ToAppFormFieldSlice(busFields)
+
+	return ToAppFormFull(form, fields), nil
 }

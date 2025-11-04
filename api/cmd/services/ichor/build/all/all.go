@@ -767,6 +767,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	formapi.Routes(app, formapi.Config{
 		Log:            cfg.Log,
 		FormBus:        formBus,
+		FormFieldBus:   formFieldBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})

@@ -1064,7 +1064,7 @@ CREATE TABLE IF NOT EXISTS config.form_fields (
 
    CONSTRAINT fk_form_fields_form FOREIGN KEY (form_id) REFERENCES config.forms(id) ON DELETE CASCADE,
    CONSTRAINT fk_form_fields_entity FOREIGN KEY (entity_id) REFERENCES workflow.entities(id) ON DELETE CASCADE,
-   UNIQUE(form_id, name)
+   UNIQUE(form_id, entity_id, name)
 );
 
 -- Create indexes for form_fields

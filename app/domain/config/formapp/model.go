@@ -3,6 +3,7 @@ package formapp
 import (
 	"encoding/json"
 
+	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 )
@@ -85,5 +86,26 @@ func (app UpdateForm) Validate() error {
 func toBusUpdateForm(app UpdateForm) formbus.UpdateForm {
 	return formbus.UpdateForm{
 		Name: app.Name,
+	}
+}
+
+// FormFull represents a form with all its associated fields.
+type FormFull struct {
+	ID     string                     `json:"id"`
+	Name   string                     `json:"name"`
+	Fields []formfieldapp.FormField   `json:"fields"`
+}
+
+func (app FormFull) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ToAppFormFull converts a business form and its fields to an app FormFull.
+func ToAppFormFull(form formbus.Form, fields []formfieldapp.FormField) FormFull {
+	return FormFull{
+		ID:     form.ID.String(),
+		Name:   form.Name,
+		Fields: fields,
 	}
 }

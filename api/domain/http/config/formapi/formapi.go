@@ -98,3 +98,19 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 
 	return form
 }
+
+func (api *api) queryFullByID(ctx context.Context, r *http.Request) web.Encoder {
+	formID := web.Param(r, "form_id")
+
+	parsed, err := uuid.Parse(formID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	formFull, err := api.formapp.QueryFullByID(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return formFull
+}

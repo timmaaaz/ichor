@@ -56,6 +56,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
@@ -467,38 +468,38 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	configStore := tablebuilder.NewConfigStore(log, db)
-	_, err = configStore.Create(ctx, "orders_dashboard", "orders_base", ordersConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "orders_dashboard", "orders_base", seedmodels.OrdersConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating stored config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "products_dashboard", "products", PageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "products_dashboard", "products", seedmodels.PageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating stored config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "inventory_dashboard", "inventory_items", ComplexConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_dashboard", "inventory_items", seedmodels.ComplexConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating stored config: %w", err)
 	}
 
 	// Create dedicated page configs for orders, suppliers, categories, and order line items
-	_, err = configStore.Create(ctx, "orders_page", "orders", ordersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "orders_page", "orders", seedmodels.OrdersPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating orders page config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "suppliers_page", "suppliers", suppliersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "suppliers_page", "suppliers", seedmodels.SuppliersPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating suppliers page config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "categories_page", "product_categories", categoriesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "categories_page", "product_categories", seedmodels.CategoriesPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating categories page config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "order_line_items_page", "order_line_items", orderLineItemsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "order_line_items_page", "order_line_items", seedmodels.OrderLineItemsPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating order line items page config: %w", err)
 	}
@@ -530,71 +531,71 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Assets Module Configs
-	_, err = configStore.Create(ctx, "assets_list_page", "assets", assetsListPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "assets_list_page", "assets", seedmodels.AssetsListPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating assets list page config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "assets_requests_page", "user_assets", assetsRequestsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "assets_requests_page", "user_assets", seedmodels.AssetsRequestsPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating assets requests page config: %w", err)
 	}
 
 	// HR Module Configs
-	_, err = configStore.Create(ctx, "hr_employees_page", "users", hrEmployeesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "hr_employees_page", "users", seedmodels.HrEmployeesPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating hr employees page config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "hr_offices_page", "offices", hrOfficesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "hr_offices_page", "offices", seedmodels.HrOfficesPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating hr offices page config: %w", err)
 	}
 
 	// Inventory Module Configs
-	_, err = configStore.Create(ctx, "inventory_warehouses_page", "warehouses", inventoryWarehousesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_warehouses_page", "warehouses", seedmodels.InventoryWarehousesPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating inventory warehouses page config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "inventory_items_page", "inventory_items", inventoryItemsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_items_page", "inventory_items", seedmodels.InventoryItemsPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating inventory items page config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "inventory_adjustments_page", "inventory_adjustments", inventoryAdjustmentsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_adjustments_page", "inventory_adjustments", seedmodels.InventoryAdjustmentsPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating inventory adjustments page config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "inventory_transfers_page", "transfer_orders", inventoryTransfersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_transfers_page", "transfer_orders", seedmodels.InventoryTransfersPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating inventory transfers page config: %w", err)
 	}
 
 	// Sales Module Configs
-	_, err = configStore.Create(ctx, "sales_customers_page", "customers", salesCustomersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "sales_customers_page", "customers", seedmodels.SalesCustomersPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating sales customers page config: %w", err)
 	}
 
 	// Procurement Module Configs
-	_, err = configStore.Create(ctx, "procurement_purchase_orders_config", "purchase_orders", purchaseOrderPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "procurement_purchase_orders_config", "purchase_orders", seedmodels.PurchaseOrderPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating procurement purchase orders config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "procurement_line_items_config", "purchase_order_line_items", purchaseOrderLineItemPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "procurement_line_items_config", "purchase_order_line_items", seedmodels.PurchaseOrderLineItemPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating procurement line items config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "procurement_approvals_open_config", "purchase_orders", procurementOpenApprovalsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "procurement_approvals_open_config", "purchase_orders", seedmodels.ProcurementOpenApprovalsPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating procurement approvals open config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "procurement_approvals_closed_config", "purchase_orders", procurementClosedApprovalsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "procurement_approvals_closed_config", "purchase_orders", seedmodels.ProcurementClosedApprovalsPageConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating procurement approvals closed config: %w", err)
 	}
@@ -1816,6 +1817,329 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		})
 		if err != nil {
 			return fmt.Errorf("creating multi-entity form field : %w", err)
+		}
+	}
+
+	// =============================================================================
+	// COMPOSITE FORMS
+	// =============================================================================
+
+	// Composite Form 1: Full Customer (Customer + Contact Info + Delivery Address)
+	fullCustomerForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Full Customer Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating full customer form : %w", err)
+	}
+
+	customerEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "customers")
+	if err != nil {
+		return fmt.Errorf("querying customer entity : %w", err)
+	}
+
+	contactInfoEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "contact_infos")
+	if err != nil {
+		return fmt.Errorf("querying contact_infos entity : %w", err)
+	}
+
+	streetEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "streets")
+	if err != nil {
+		return fmt.Errorf("querying streets entity : %w", err)
+	}
+
+	fullCustomerFields := seedmodels.GetFullCustomerFormFields(
+		fullCustomerForm.ID,
+		customerEntity.ID,
+		contactInfoEntity.ID,
+		streetEntity.ID,
+	)
+
+	for _, ff := range fullCustomerFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating full customer form field : %w", err)
+		}
+	}
+
+	// Composite Form 2: Full Supplier (Supplier + Contact Info)
+	fullSupplierForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Full Supplier Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating full supplier form : %w", err)
+	}
+
+	supplierEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "suppliers")
+	if err != nil {
+		return fmt.Errorf("querying supplier entity : %w", err)
+	}
+
+	fullSupplierFields := seedmodels.GetFullSupplierFormFields(
+		fullSupplierForm.ID,
+		supplierEntity.ID,
+		contactInfoEntity.ID,
+	)
+
+	for _, ff := range fullSupplierFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating full supplier form field : %w", err)
+		}
+	}
+
+	// Composite Form 3: Full Sales Order (Order + Line Items)
+	fullSalesOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Full Sales Order Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating full sales order form : %w", err)
+	}
+
+	orderEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "orders")
+	if err != nil {
+		return fmt.Errorf("querying orders entity : %w", err)
+	}
+
+	orderLineItemEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "order_line_items")
+	if err != nil {
+		return fmt.Errorf("querying order_line_items entity : %w", err)
+	}
+
+	fullSalesOrderFields := seedmodels.GetFullSalesOrderFormFields(
+		fullSalesOrderForm.ID,
+		orderEntity.ID,
+		orderLineItemEntity.ID,
+	)
+
+	for _, ff := range fullSalesOrderFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating full sales order form field : %w", err)
+		}
+	}
+
+	// Composite Form 4: Full Purchase Order (PO + Line Items)
+	fullPurchaseOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Full Purchase Order Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating full purchase order form : %w", err)
+	}
+
+	purchaseOrderEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "purchase_orders")
+	if err != nil {
+		return fmt.Errorf("querying purchase_orders entity : %w", err)
+	}
+
+	poLineItemEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "purchase_order_line_items")
+	if err != nil {
+		return fmt.Errorf("querying purchase_order_line_items entity : %w", err)
+	}
+
+	fullPurchaseOrderFields := seedmodels.GetFullPurchaseOrderFormFields(
+		fullPurchaseOrderForm.ID,
+		purchaseOrderEntity.ID,
+		poLineItemEntity.ID,
+	)
+
+	for _, ff := range fullPurchaseOrderFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating full purchase order form field : %w", err)
+		}
+	}
+
+	// =============================================================================
+	// SIMPLE FORMS (Dropdown-based for foreign keys)
+	// =============================================================================
+
+	// Simple Form 1: Role
+	roleForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Role Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating role form : %w", err)
+	}
+
+	roleEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "roles")
+	if err != nil {
+		return fmt.Errorf("querying roles entity : %w", err)
+	}
+
+	roleFields := seedmodels.GetRoleFormFields(roleForm.ID, roleEntity.ID)
+	for _, ff := range roleFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating role form field : %w", err)
+		}
+	}
+
+	// Simple Form 2: Customer (dropdown version)
+	simpleCustomerForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Customer Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating simple customer form : %w", err)
+	}
+
+	simpleCustomerFields := seedmodels.GetCustomerFormFields(simpleCustomerForm.ID, customerEntity.ID)
+	for _, ff := range simpleCustomerFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating simple customer form field : %w", err)
+		}
+	}
+
+	// Simple Form 3: Sales Order (dropdown version)
+	simpleSalesOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Sales Order Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating simple sales order form : %w", err)
+	}
+
+	simpleSalesOrderFields := seedmodels.GetSalesOrderFormFields(simpleSalesOrderForm.ID, orderEntity.ID)
+	for _, ff := range simpleSalesOrderFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating simple sales order form field : %w", err)
+		}
+	}
+
+	// Simple Form 4: Supplier (dropdown version)
+	simpleSupplierForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Supplier Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating simple supplier form : %w", err)
+	}
+
+	simpleSupplierFields := seedmodels.GetSupplierFormFields(simpleSupplierForm.ID, supplierEntity.ID)
+	for _, ff := range simpleSupplierFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating simple supplier form field : %w", err)
+		}
+	}
+
+	// Simple Form 5: Purchase Order (dropdown version)
+	simplePurchaseOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Purchase Order Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating simple purchase order form : %w", err)
+	}
+
+	simplePurchaseOrderFields := seedmodels.GetPurchaseOrderFormFields(simplePurchaseOrderForm.ID, purchaseOrderEntity.ID)
+	for _, ff := range simplePurchaseOrderFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating simple purchase order form field : %w", err)
+		}
+	}
+
+	// Simple Form 6: Warehouse
+	warehouseForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Warehouse Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating warehouse form : %w", err)
+	}
+
+	warehouseEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "warehouses")
+	if err != nil {
+		return fmt.Errorf("querying warehouses entity : %w", err)
+	}
+
+	warehouseFields := seedmodels.GetWarehouseFormFields(warehouseForm.ID, warehouseEntity.ID)
+	for _, ff := range warehouseFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating warehouse form field : %w", err)
+		}
+	}
+
+	// Simple Form 7: Inventory Adjustment
+	inventoryAdjustmentForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Inventory Adjustment Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory adjustment form : %w", err)
+	}
+
+	inventoryAdjustmentEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "inventory_adjustments")
+	if err != nil {
+		return fmt.Errorf("querying inventory_adjustments entity : %w", err)
+	}
+
+	inventoryAdjustmentFields := seedmodels.GetInventoryAdjustmentFormFields(inventoryAdjustmentForm.ID, inventoryAdjustmentEntity.ID)
+	for _, ff := range inventoryAdjustmentFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating inventory adjustment form field : %w", err)
+		}
+	}
+
+	// Simple Form 8: Transfer Order
+	transferOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Transfer Order Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating transfer order form : %w", err)
+	}
+
+	transferOrderEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "transfer_orders")
+	if err != nil {
+		return fmt.Errorf("querying transfer_orders entity : %w", err)
+	}
+
+	transferOrderFields := seedmodels.GetTransferOrderFormFields(transferOrderForm.ID, transferOrderEntity.ID)
+	for _, ff := range transferOrderFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating transfer order form field : %w", err)
+		}
+	}
+
+	// Simple Form 9: Inventory Item
+	inventoryItemForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Inventory Item Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory item form : %w", err)
+	}
+
+	inventoryItemEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "inventory_items")
+	if err != nil {
+		return fmt.Errorf("querying inventory_items entity : %w", err)
+	}
+
+	inventoryItemFields := seedmodels.GetInventoryItemFormFields(inventoryItemForm.ID, inventoryItemEntity.ID)
+	for _, ff := range inventoryItemFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating inventory item form field : %w", err)
+		}
+	}
+
+	// Simple Form 10: Office
+	officeForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Office Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating office form : %w", err)
+	}
+
+	officeEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "offices")
+	if err != nil {
+		return fmt.Errorf("querying offices entity : %w", err)
+	}
+
+	officeFields := seedmodels.GetOfficeFormFields(officeForm.ID, officeEntity.ID)
+	for _, ff := range officeFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating office form field : %w", err)
 		}
 	}
 
