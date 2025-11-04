@@ -114,3 +114,18 @@ func (api *api) queryFullByID(ctx context.Context, r *http.Request) web.Encoder 
 
 	return formFull
 }
+
+func (api *api) queryFullByName(ctx context.Context, r *http.Request) web.Encoder {
+	formName := web.Param(r, "form_name")
+
+	if formName == "" {
+		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "form name is required"))
+	}
+
+	formFull, err := api.formapp.QueryFullByName(ctx, formName)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return formFull
+}

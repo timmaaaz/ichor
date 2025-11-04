@@ -28,6 +28,10 @@ func Test_Form(t *testing.T) {
 	test.Run(t, queryFull401(sd), "query-full-401")
 	test.Run(t, queryFull404(sd), "query-full-404")
 
+	test.Run(t, queryFullByName200(sd), "query-full-by-name-200")
+	test.Run(t, queryFullByName401(sd), "query-full-by-name-401")
+	test.Run(t, queryFullByName404(sd), "query-full-by-name-404")
+
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, create400(sd), "create-400")
 	test.Run(t, create401(sd), "create-401")

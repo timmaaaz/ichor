@@ -151,7 +151,31 @@ func (a *App) QueryFullByID(ctx context.Context, id uuid.UUID) (FormFull, error)
 		return FormFull{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
-	busFields, err := a.formfieldbus.QueryByFormID(ctx, id)
+	busFields, err := a.formfieldbus.QueryByFormID(ctx, form.ID)
+	if err != nil {
+		return FormFull{}, errs.Newf(errs.Internal, "querybyformid: %s", err)
+	}
+
+	fields := formfieldapp.ToAppFormFieldSlice(busFields)
+
+	return ToAppFormFull(form, fields), nil
+}
+
+// QueryFullByName retrieves a single form by its name along with all its fields.
+func (a *App) QueryFullByName(ctx context.Context, name string) (FormFull, error) {
+	if a.formfieldbus == nil {
+		return FormFull{}, errs.Newf(errs.Internal, "formfieldbus not configured")
+	}
+
+	form, err := a.formbus.QueryByName(ctx, name)
+	if err != nil {
+		if errors.Is(err, formbus.ErrNotFound) {
+			return FormFull{}, errs.New(errs.NotFound, formbus.ErrNotFound)
+		}
+		return FormFull{}, errs.Newf(errs.Internal, "querybyname: %s", err)
+	}
+
+	busFields, err := a.formfieldbus.QueryByFormID(ctx, form.ID)
 	if err != nil {
 		return FormFull{}, errs.Newf(errs.Internal, "querybyformid: %s", err)
 	}
