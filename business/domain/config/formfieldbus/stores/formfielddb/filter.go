@@ -20,6 +20,16 @@ func applyFilter(filter formfieldbus.QueryFilter, data map[string]any, buf *byte
 		wc = append(wc, "form_id = :form_id")
 	}
 
+	if filter.EntitySchema != nil {
+		data["entity_schema"] = *filter.EntitySchema
+		wc = append(wc, "entity_schema = :entity_schema")
+	}
+
+	if filter.EntityTable != nil {
+		data["entity_table"] = *filter.EntityTable
+		wc = append(wc, "entity_table = :entity_table")
+	}
+
 	if filter.Name != nil {
 		data["name"] = *filter.Name
 		wc = append(wc, "name = :name")

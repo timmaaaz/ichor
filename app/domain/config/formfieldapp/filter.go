@@ -27,6 +27,14 @@ func parseFilter(qp QueryParams) (formfieldbus.QueryFilter, error) {
 		filter.FormID = &formID
 	}
 
+	if qp.EntitySchema != "" {
+		filter.EntitySchema = &qp.EntitySchema
+	}
+
+	if qp.EntityTable != "" {
+		filter.EntityTable = &qp.EntityTable
+	}
+
 	if qp.Name != "" {
 		filter.Name = &qp.Name
 	}

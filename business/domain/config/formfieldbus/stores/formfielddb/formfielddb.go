@@ -47,11 +47,37 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (formfieldbus.Storer, error
 
 // Create inserts a new form field into the database.
 func (s *Store) Create(ctx context.Context, field formfieldbus.FormField) error {
+	// Validate that the schema.table combination exists
+	const checkTable = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM information_schema.tables
+		WHERE table_schema = :schema
+		AND table_name = :table
+	)`
+
+	exists := struct {
+		Exists bool `db:"exists"`
+	}{}
+
+	checkData := map[string]any{
+		"schema": field.EntitySchema,
+		"table":  field.EntityTable,
+	}
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, checkTable, checkData, &exists); err != nil {
+		return fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	if !exists.Exists {
+		return fmt.Errorf("schema[%s] table[%s]: %w", field.EntitySchema, field.EntityTable, formfieldbus.ErrNonexistentTableName)
+	}
+
 	const q = `
 	INSERT INTO config.form_fields (
-		id, form_id, entity_id, name, label, field_type, field_order, required, config
+		id, form_id, entity_id, entity_schema, entity_table, name, label, field_type, field_order, required, config
 	) VALUES (
-		:id, :form_id, :entity_id, :name, :label, :field_type, :field_order, :required, :config
+		:id, :form_id, :entity_id, :entity_schema, :entity_table, :name, :label, :field_type, :field_order, :required, :config
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBFormField(field)); err != nil {
@@ -69,12 +95,40 @@ func (s *Store) Create(ctx context.Context, field formfieldbus.FormField) error 
 
 // Update replaces a form field document in the database.
 func (s *Store) Update(ctx context.Context, field formfieldbus.FormField) error {
+	// Validate that the schema.table combination exists
+	const checkTable = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM information_schema.tables
+		WHERE table_schema = :schema
+		AND table_name = :table
+	)`
+
+	exists := struct {
+		Exists bool `db:"exists"`
+	}{}
+
+	checkData := map[string]any{
+		"schema": field.EntitySchema,
+		"table":  field.EntityTable,
+	}
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, checkTable, checkData, &exists); err != nil {
+		return fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	if !exists.Exists {
+		return fmt.Errorf("schema[%s] table[%s]: %w", field.EntitySchema, field.EntityTable, formfieldbus.ErrNonexistentTableName)
+	}
+
 	const q = `
 	UPDATE
 		config.form_fields
 	SET
 		form_id = :form_id,
 		entity_id = :entity_id,
+		entity_schema = :entity_schema,
+		entity_table = :entity_table,
 		name = :name,
 		label = :label,
 		field_type = :field_type,
@@ -121,7 +175,7 @@ func (s *Store) Query(ctx context.Context, filter formfieldbus.QueryFilter, orde
 
 	const q = `
 	SELECT
-		id, form_id, entity_id, name, label, field_type, field_order, required, config
+		id, form_id, entity_id, entity_schema, entity_table, name, label, field_type, field_order, required, config
 	FROM
 		config.form_fields`
 
@@ -177,7 +231,7 @@ func (s *Store) QueryByID(ctx context.Context, fieldID uuid.UUID) (formfieldbus.
 
 	const q = `
 	SELECT
-		id, form_id, entity_id, name, label, field_type, field_order, required, config
+		id, form_id, entity_id, entity_schema, entity_table, name, label, field_type, field_order, required, config
 	FROM
 		config.form_fields
 	WHERE
@@ -204,7 +258,7 @@ func (s *Store) QueryByFormID(ctx context.Context, formID uuid.UUID) ([]formfiel
 
 	const q = `
 	SELECT
-		id, form_id, entity_id, name, label, field_type, field_order, required, config
+		id, form_id, entity_id, entity_schema, entity_table, name, label, field_type, field_order, required, config
 	FROM
 		config.form_fields
 	WHERE

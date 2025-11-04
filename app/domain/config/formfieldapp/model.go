@@ -10,27 +10,31 @@ import (
 
 // QueryParams represents the query parameters for form fields.
 type QueryParams struct {
-	Page      string
-	Rows      string
-	OrderBy   string
-	ID        string
-	FormID    string
-	Name      string
-	FieldType string
-	Required  string
+	Page         string
+	Rows         string
+	OrderBy      string
+	ID           string
+	FormID       string
+	EntitySchema string
+	EntityTable  string
+	Name         string
+	FieldType    string
+	Required     string
 }
 
 // FormField represents a form field for the app layer.
 type FormField struct {
-	ID         string          `json:"id"`
-	FormID     string          `json:"form_id"`
-	EntityID   string          `json:"entity_id"`
-	Name       string          `json:"name"`
-	Label      string          `json:"label"`
-	FieldType  string          `json:"field_type"`
-	FieldOrder int             `json:"field_order"`
-	Required   bool            `json:"required"`
-	Config     json.RawMessage `json:"config"`
+	ID           string          `json:"id"`
+	FormID       string          `json:"form_id"`
+	EntityID     string          `json:"entity_id"`
+	EntitySchema string          `json:"entity_schema"`
+	EntityTable  string          `json:"entity_table"`
+	Name         string          `json:"name"`
+	Label        string          `json:"label"`
+	FieldType    string          `json:"field_type"`
+	FieldOrder   int             `json:"field_order"`
+	Required     bool            `json:"required"`
+	Config       json.RawMessage `json:"config"`
 }
 
 type FormFields struct {
@@ -50,15 +54,17 @@ func (app FormField) Encode() ([]byte, string, error) {
 // ToAppFormField converts a business form field to an app form field.
 func ToAppFormField(bus formfieldbus.FormField) FormField {
 	return FormField{
-		ID:         bus.ID.String(),
-		FormID:     bus.FormID.String(),
-		EntityID:   bus.EntityID.String(),
-		Name:       bus.Name,
-		Label:      bus.Label,
-		FieldType:  bus.FieldType,
-		FieldOrder: bus.FieldOrder,
-		Required:   bus.Required,
-		Config:     bus.Config,
+		ID:           bus.ID.String(),
+		FormID:       bus.FormID.String(),
+		EntityID:     bus.EntityID.String(),
+		EntitySchema: bus.EntitySchema,
+		EntityTable:  bus.EntityTable,
+		Name:         bus.Name,
+		Label:        bus.Label,
+		FieldType:    bus.FieldType,
+		FieldOrder:   bus.FieldOrder,
+		Required:     bus.Required,
+		Config:       bus.Config,
 	}
 }
 
@@ -78,14 +84,16 @@ func ToAppFormFields(app []FormField) FormFields {
 
 // NewFormField represents data needed to create a form field.
 type NewFormField struct {
-	FormID     string          `json:"form_id" validate:"required,uuid"`
-	EntityID   string          `json:"entity_id" validate:"required,uuid"`
-	Name       string          `json:"name" validate:"required,min=1,max=255"`
-	Label      string          `json:"label" validate:"required,min=1,max=255"`
-	FieldType  string          `json:"field_type" validate:"required,min=1,max=50"`
-	FieldOrder int             `json:"field_order" validate:"required,min=0"`
-	Required   bool            `json:"required"`
-	Config     json.RawMessage `json:"config" validate:"required"`
+	FormID       string          `json:"form_id" validate:"required,uuid"`
+	EntityID     string          `json:"entity_id" validate:"required,uuid"`
+	EntitySchema string          `json:"entity_schema" validate:"required,min=1"`
+	EntityTable  string          `json:"entity_table" validate:"required,min=1"`
+	Name         string          `json:"name" validate:"required,min=1,max=255"`
+	Label        string          `json:"label" validate:"required,min=1,max=255"`
+	FieldType    string          `json:"field_type" validate:"required,min=1,max=50"`
+	FieldOrder   int             `json:"field_order" validate:"required,min=0"`
+	Required     bool            `json:"required"`
+	Config       json.RawMessage `json:"config" validate:"required"`
 }
 
 func (app *NewFormField) Decode(data []byte) error {
@@ -123,27 +131,31 @@ func toBusNewFormField(app NewFormField) (formfieldbus.NewFormField, error) {
 	}
 
 	return formfieldbus.NewFormField{
-		FormID:     formID,
-		EntityID:   entityID,
-		Name:       app.Name,
-		Label:      app.Label,
-		FieldType:  app.FieldType,
-		FieldOrder: app.FieldOrder,
-		Required:   app.Required,
-		Config:     app.Config,
+		FormID:       formID,
+		EntityID:     entityID,
+		EntitySchema: app.EntitySchema,
+		EntityTable:  app.EntityTable,
+		Name:         app.Name,
+		Label:        app.Label,
+		FieldType:    app.FieldType,
+		FieldOrder:   app.FieldOrder,
+		Required:     app.Required,
+		Config:       app.Config,
 	}, nil
 }
 
 // UpdateFormField represents data needed to update a form field.
 type UpdateFormField struct {
-	FormID     *string          `json:"form_id" validate:"omitempty,uuid"`
-	EntityID   *string          `json:"entity_id" validate:"omitempty,uuid"`
-	Name       *string          `json:"name" validate:"omitempty,min=1,max=255"`
-	Label      *string          `json:"label" validate:"omitempty,min=1,max=255"`
-	FieldType  *string          `json:"field_type" validate:"omitempty,min=1,max=50"`
-	FieldOrder *int             `json:"field_order" validate:"omitempty,min=0"`
-	Required   *bool            `json:"required"`
-	Config     *json.RawMessage `json:"config" validate:"omitempty"`
+	FormID       *string          `json:"form_id" validate:"omitempty,uuid"`
+	EntityID     *string          `json:"entity_id" validate:"omitempty,uuid"`
+	EntitySchema *string          `json:"entity_schema" validate:"omitempty,min=1"`
+	EntityTable  *string          `json:"entity_table" validate:"omitempty,min=1"`
+	Name         *string          `json:"name" validate:"omitempty,min=1,max=255"`
+	Label        *string          `json:"label" validate:"omitempty,min=1,max=255"`
+	FieldType    *string          `json:"field_type" validate:"omitempty,min=1,max=50"`
+	FieldOrder   *int             `json:"field_order" validate:"omitempty,min=0"`
+	Required     *bool            `json:"required"`
+	Config       *json.RawMessage `json:"config" validate:"omitempty"`
 }
 
 func (app *UpdateFormField) Decode(data []byte) error {
@@ -183,6 +195,14 @@ func toBusUpdateFormField(app UpdateFormField) (formfieldbus.UpdateFormField, er
 			return formfieldbus.UpdateFormField{}, errs.NewFieldsError("entityID", err)
 		}
 		uff.EntityID = &entityID
+	}
+
+	if app.EntitySchema != nil {
+		uff.EntitySchema = app.EntitySchema
+	}
+
+	if app.EntityTable != nil {
+		uff.EntityTable = app.EntityTable
 	}
 
 	if app.Name != nil {

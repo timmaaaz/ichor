@@ -1161,6 +1161,26 @@ CREATE TABLE config.page_action_dropdown_items (
         REFERENCES config.page_action_dropdowns(action_id) ON DELETE CASCADE
 );
 
+-- Version: 2.10
+-- Description: Add entity_schema and entity_table columns to form_fields
+ALTER TABLE config.form_fields
+    ADD COLUMN entity_schema TEXT NOT NULL DEFAULT 'core',
+    ADD COLUMN entity_table TEXT NOT NULL DEFAULT 'users';
+
+-- Remove defaults after adding columns (defaults were only for existing rows)
+ALTER TABLE config.form_fields
+    ALTER COLUMN entity_schema DROP DEFAULT,
+    ALTER COLUMN entity_table DROP DEFAULT;
+
+-- Create indexes for filtering and ordering
+CREATE INDEX IF NOT EXISTS idx_form_fields_entity_schema ON config.form_fields(entity_schema);
+CREATE INDEX IF NOT EXISTS idx_form_fields_entity_table ON config.form_fields(entity_table);
+CREATE INDEX IF NOT EXISTS idx_form_fields_schema_table ON config.form_fields(entity_schema, entity_table);
+
+-- Add column comments
+COMMENT ON COLUMN config.form_fields.entity_schema IS 'Database schema name for the entity this field belongs to';
+COMMENT ON COLUMN config.form_fields.entity_table IS 'Database table name for the entity this field belongs to';
+
 CREATE OR REPLACE VIEW sales.orders_base AS
 SELECT
    o.id AS orders_id,

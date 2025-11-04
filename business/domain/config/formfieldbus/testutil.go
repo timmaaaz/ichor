@@ -13,6 +13,10 @@ import (
 
 // TestNewFormFields generates n NewFormField structs for testing.
 func TestNewFormFields(n int, formIDs []uuid.UUID, entities []workflow.Entity) []NewFormField {
+	if len(entities) == 0 {
+		panic("no entities found for testing")
+	}
+
 	newFormFields := make([]NewFormField, n)
 
 	idx := rand.Intn(10000)
@@ -28,15 +32,19 @@ func TestNewFormFields(n int, formIDs []uuid.UUID, entities []workflow.Entity) [
 		}
 		configJSON, _ := json.Marshal(config)
 
+		// Always use first entity with hardcoded known schema/table for testing
+		// This ensures tests work regardless of entity seed data
 		nff := NewFormField{
-			FormID:     formIDs[rand.Intn(len(formIDs))],
-			EntityID:   entities[rand.Intn(len(entities))].ID,
-			Name:       fmt.Sprintf("field_%d", idx),
-			Label:      fmt.Sprintf("Field %d", idx),
-			FieldType:  fieldTypes[rand.Intn(len(fieldTypes))],
-			FieldOrder: i,
-			Required:   rand.Intn(2) == 0, // Random true/false
-			Config:     json.RawMessage(configJSON),
+			FormID:       formIDs[rand.Intn(len(formIDs))],
+			EntityID:     entities[0].ID,
+			EntitySchema: entities[0].SchemaName, // Known schema that always exists
+			EntityTable:  entities[0].Name,       // Known table that always exists
+			Name:         fmt.Sprintf("field_%d", idx),
+			Label:        fmt.Sprintf("Field %d", idx),
+			FieldType:    fieldTypes[rand.Intn(len(fieldTypes))],
+			FieldOrder:   i,
+			Required:     rand.Intn(2) == 0, // Random true/false
+			Config:       json.RawMessage(configJSON),
 		}
 
 		newFormFields[i] = nff

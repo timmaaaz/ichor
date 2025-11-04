@@ -8,11 +8,13 @@ import (
 )
 
 var orderByFields = map[string]string{
-	formfieldbus.OrderByID:         "id",
-	formfieldbus.OrderByFormID:     "form_id",
-	formfieldbus.OrderByName:       "name",
-	formfieldbus.OrderByFieldOrder: "field_order",
-	formfieldbus.OrderByFieldType:  "field_type",
+	formfieldbus.OrderByID:           "id",
+	formfieldbus.OrderByFormID:       "form_id",
+	formfieldbus.OrderByEntitySchema: "entity_schema",
+	formfieldbus.OrderByEntityTable:  "entity_table",
+	formfieldbus.OrderByName:         "name",
+	formfieldbus.OrderByFieldOrder:   "field_order",
+	formfieldbus.OrderByFieldType:    "field_type",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

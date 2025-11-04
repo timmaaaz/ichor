@@ -21,25 +21,29 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &formfieldapp.NewFormField{
-				FormID:     sd.Forms[0].ID,
-				EntityID:   sd.Entities[0].ID.String(),
-				Name:       "test_field",
-				Label:      "Test Field",
-				FieldType:  "text",
-				FieldOrder: 100,
-				Required:   true,
-				Config:     json.RawMessage(`{"placeholder":"Enter text"}`),
+				FormID:       sd.Forms[0].ID,
+				EntityID:     sd.Entities[0].ID.String(),
+				EntitySchema: "core",          // Hardcode known schema
+				EntityTable:  "users",         // Hardcode known table
+				Name:         "test_field",
+				Label:        "Test Field",
+				FieldType:    "text",
+				FieldOrder:   100,
+				Required:     true,
+				Config:       json.RawMessage(`{"placeholder":"Enter text"}`),
 			},
 			GotResp: &formfieldapp.FormField{},
 			ExpResp: &formfieldapp.FormField{
-				FormID:     sd.Forms[0].ID,
-				EntityID:   sd.Entities[0].ID.String(),
-				Name:       "test_field",
-				Label:      "Test Field",
-				FieldType:  "text",
-				FieldOrder: 100,
-				Required:   true,
-				Config:     json.RawMessage(`{"placeholder":"Enter text"}`),
+				FormID:       sd.Forms[0].ID,
+				EntityID:     sd.Entities[0].ID.String(),
+				EntitySchema: "core",          // Hardcode known schema
+				EntityTable:  "users",         // Hardcode known table
+				Name:         "test_field",
+				Label:        "Test Field",
+				FieldType:    "text",
+				FieldOrder:   100,
+				Required:     true,
+				Config:       json.RawMessage(`{"placeholder":"Enter text"}`),
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*formfieldapp.FormField)
@@ -66,12 +70,14 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &formfieldapp.NewFormField{
-				FormID:     sd.Forms[0].ID,
-				EntityID:   sd.Entities[0].ID.String(),
-				Label:      "Test Field",
-				FieldType:  "text",
-				FieldOrder: 1,
-				Config:     json.RawMessage(`{}`),
+				FormID:       sd.Forms[0].ID,
+				EntityID:     sd.Entities[0].ID.String(),
+				EntitySchema: "core",          // Hardcode known schema
+				EntityTable:  "users",         // Hardcode known table
+				Label:        "Test Field",
+				FieldType:    "text",
+				FieldOrder:   1,
+				Config:       json.RawMessage(`{}`),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"name\",\"error\":\"name is a required field\"}]"),
