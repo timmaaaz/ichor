@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (formbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, form formbus.Form) error {
 	const q = `
 	INSERT INTO config.forms (
-		id, name
+		id, name, is_reference_data, allow_inline_create
 	) VALUES (
-		:id, :name
+		:id, :name, :is_reference_data, :allow_inline_create
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBForm(form)); err != nil {
@@ -70,7 +70,9 @@ func (s *Store) Update(ctx context.Context, form formbus.Form) error {
 	UPDATE
 		config.forms
 	SET
-		name = :name
+		name = :name,
+		is_reference_data = :is_reference_data,
+		allow_inline_create = :allow_inline_create
 	WHERE
 		id = :id`
 
@@ -108,7 +110,7 @@ func (s *Store) Query(ctx context.Context, filter formbus.QueryFilter, orderBy o
 
 	const q = `
 	SELECT
-		id, name
+		id, name, is_reference_data, allow_inline_create
 	FROM
 		config.forms`
 
@@ -164,7 +166,7 @@ func (s *Store) QueryByID(ctx context.Context, formID uuid.UUID) (formbus.Form, 
 
 	const q = `
 	SELECT
-		id, name
+		id, name, is_reference_data, allow_inline_create
 	FROM
 		config.forms
 	WHERE
@@ -191,14 +193,14 @@ func (s *Store) QueryByName(ctx context.Context, name string) (formbus.Form, err
 
 	const q = `
 	SELECT
-		id, name
+		id, name, is_reference_data, allow_inline_create
 	FROM
 		config.forms
 	WHERE
 		name = :name`
 
 	var dbForm form
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbForm); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbForm); err != nil{
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return formbus.Form{}, formbus.ErrNotFound
 		}

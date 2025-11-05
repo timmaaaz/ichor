@@ -1434,3 +1434,17 @@ CREATE TABLE procurement.purchase_order_line_items (
 CREATE INDEX idx_po_line_items_po ON procurement.purchase_order_line_items(purchase_order_id);
 CREATE INDEX idx_po_line_items_supplier_product ON procurement.purchase_order_line_items(supplier_product_id);
 CREATE INDEX idx_po_line_items_status ON procurement.purchase_order_line_items(line_item_status_id);
+
+-- Version: 2.11
+-- Description: Add inline creation metadata to forms
+ALTER TABLE config.forms
+    ADD COLUMN is_reference_data BOOLEAN DEFAULT false,
+    ADD COLUMN allow_inline_create BOOLEAN DEFAULT true;
+
+CREATE INDEX idx_forms_reference_data ON config.forms(is_reference_data);
+CREATE INDEX idx_forms_inline_create ON config.forms(allow_inline_create);
+
+COMMENT ON COLUMN config.forms.is_reference_data IS
+    'If true, this form represents stable reference data managed by admins only (no inline creation allowed)';
+COMMENT ON COLUMN config.forms.allow_inline_create IS
+    'If true, this form can be embedded for inline entity creation within other forms';

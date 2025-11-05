@@ -19,8 +19,10 @@ type QueryParams struct {
 
 // Form represents a form for the app layer.
 type Form struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	IsReferenceData   bool   `json:"isReferenceData"`
+	AllowInlineCreate bool   `json:"allowInlineCreate"`
 }
 
 func (app Form) Encode() ([]byte, string, error) {
@@ -31,8 +33,10 @@ func (app Form) Encode() ([]byte, string, error) {
 // ToAppForm converts a business form to an app form.
 func ToAppForm(bus formbus.Form) Form {
 	return Form{
-		ID:   bus.ID.String(),
-		Name: bus.Name,
+		ID:                bus.ID.String(),
+		Name:              bus.Name,
+		IsReferenceData:   bus.IsReferenceData,
+		AllowInlineCreate: bus.AllowInlineCreate,
 	}
 }
 
@@ -47,7 +51,9 @@ func ToAppForms(bus []formbus.Form) []Form {
 
 // NewForm represents data needed to create a form.
 type NewForm struct {
-	Name string `json:"name" validate:"required,min=1,max=255"`
+	Name              string `json:"name" validate:"required,min=1,max=255"`
+	IsReferenceData   bool   `json:"isReferenceData"`
+	AllowInlineCreate bool   `json:"allowInlineCreate"`
 }
 
 func (app *NewForm) Decode(data []byte) error {
@@ -63,13 +69,17 @@ func (app NewForm) Validate() error {
 
 func toBusNewForm(app NewForm) formbus.NewForm {
 	return formbus.NewForm{
-		Name: app.Name,
+		Name:              app.Name,
+		IsReferenceData:   app.IsReferenceData,
+		AllowInlineCreate: app.AllowInlineCreate,
 	}
 }
 
 // UpdateForm represents data needed to update a form.
 type UpdateForm struct {
-	Name *string `json:"name" validate:"omitempty,min=1,max=255"`
+	Name              *string `json:"name" validate:"omitempty,min=1,max=255"`
+	IsReferenceData   *bool   `json:"isReferenceData"`
+	AllowInlineCreate *bool   `json:"allowInlineCreate"`
 }
 
 func (app *UpdateForm) Decode(data []byte) error {
@@ -85,15 +95,19 @@ func (app UpdateForm) Validate() error {
 
 func toBusUpdateForm(app UpdateForm) formbus.UpdateForm {
 	return formbus.UpdateForm{
-		Name: app.Name,
+		Name:              app.Name,
+		IsReferenceData:   app.IsReferenceData,
+		AllowInlineCreate: app.AllowInlineCreate,
 	}
 }
 
 // FormFull represents a form with all its associated fields.
 type FormFull struct {
-	ID     string                     `json:"id"`
-	Name   string                     `json:"name"`
-	Fields []formfieldapp.FormField   `json:"fields"`
+	ID                string                   `json:"id"`
+	Name              string                   `json:"name"`
+	IsReferenceData   bool                     `json:"isReferenceData"`
+	AllowInlineCreate bool                     `json:"allowInlineCreate"`
+	Fields            []formfieldapp.FormField `json:"fields"`
 }
 
 func (app FormFull) Encode() ([]byte, string, error) {
@@ -104,8 +118,10 @@ func (app FormFull) Encode() ([]byte, string, error) {
 // ToAppFormFull converts a business form and its fields to an app FormFull.
 func ToAppFormFull(form formbus.Form, fields []formfieldapp.FormField) FormFull {
 	return FormFull{
-		ID:     form.ID.String(),
-		Name:   form.Name,
-		Fields: fields,
+		ID:                form.ID.String(),
+		Name:              form.Name,
+		IsReferenceData:   form.IsReferenceData,
+		AllowInlineCreate: form.AllowInlineCreate,
+		Fields:            fields,
 	}
 }

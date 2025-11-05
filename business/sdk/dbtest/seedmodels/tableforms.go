@@ -1,0 +1,895 @@
+package seedmodels
+
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
+)
+
+// =============================================================================
+// REFERENCE DATA FORM FIELD GENERATORS
+// =============================================================================
+// These functions generate form field configurations for reference/lookup tables
+// that are admin-managed and stable (is_reference_data=true, allow_inline_create=false)
+
+// GetCountryFormFields returns form fields for creating countries (geography.countries)
+// Reference data - ISO country list, admin-managed only
+func GetCountryFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "geography",
+			EntityTable:  "countries",
+			Name:         "number",
+			Label:        "Country Number",
+			FieldType:    "number",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "geography",
+			EntityTable:  "countries",
+			Name:         "name",
+			Label:        "Country Name",
+			FieldType:    "text",
+			FieldOrder:   2,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "geography",
+			EntityTable:  "countries",
+			Name:         "alpha_2",
+			Label:        "Alpha-2 Code",
+			FieldType:    "text",
+			FieldOrder:   3,
+			Required:     true,
+			Config:       json.RawMessage(`{"maxLength": 2}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "geography",
+			EntityTable:  "countries",
+			Name:         "alpha_3",
+			Label:        "Alpha-3 Code",
+			FieldType:    "text",
+			FieldOrder:   4,
+			Required:     true,
+			Config:       json.RawMessage(`{"maxLength": 3}`),
+		},
+	}
+}
+
+// GetRegionFormFields returns form fields for creating regions (geography.regions)
+// Reference data - State/province data, admin-managed only
+func GetRegionFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "geography",
+			EntityTable:  "regions",
+			Name:         "country_id",
+			Label:        "Country",
+			FieldType:    "select",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "geography",
+			EntityTable:  "regions",
+			Name:         "name",
+			Label:        "Region Name",
+			FieldType:    "text",
+			FieldOrder:   2,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "geography",
+			EntityTable:  "regions",
+			Name:         "code",
+			Label:        "Region Code",
+			FieldType:    "text",
+			FieldOrder:   3,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetUserApprovalStatusFormFields returns form fields for user approval statuses (hr.user_approval_status)
+// Reference data - Workflow status values, admin-managed only
+func GetUserApprovalStatusFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "hr",
+			EntityTable:  "user_approval_status",
+			Name:         "name",
+			Label:        "Status Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "hr",
+			EntityTable:  "user_approval_status",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetAssetApprovalStatusFormFields returns form fields for asset approval statuses (assets.approval_status)
+// Reference data - Asset approval workflow statuses, admin-managed only
+func GetAssetApprovalStatusFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "assets",
+			EntityTable:  "approval_status",
+			Name:         "name",
+			Label:        "Status Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "assets",
+			EntityTable:  "approval_status",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetAssetFulfillmentStatusFormFields returns form fields for asset fulfillment statuses (assets.fulfillment_status)
+// Reference data - Asset fulfillment workflow statuses, admin-managed only
+func GetAssetFulfillmentStatusFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "assets",
+			EntityTable:  "fulfillment_status",
+			Name:         "name",
+			Label:        "Status Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "assets",
+			EntityTable:  "fulfillment_status",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetOrderFulfillmentStatusFormFields returns form fields for order fulfillment statuses (sales.order_fulfillment_statuses)
+// Reference data - Sales order workflow statuses, admin-managed only
+func GetOrderFulfillmentStatusFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "sales",
+			EntityTable:  "order_fulfillment_statuses",
+			Name:         "name",
+			Label:        "Status Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "sales",
+			EntityTable:  "order_fulfillment_statuses",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetLineItemFulfillmentStatusFormFields returns form fields for line item fulfillment statuses (sales.line_item_fulfillment_statuses)
+// Reference data - Sales line item workflow statuses, admin-managed only
+func GetLineItemFulfillmentStatusFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "sales",
+			EntityTable:  "line_item_fulfillment_statuses",
+			Name:         "name",
+			Label:        "Status Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "sales",
+			EntityTable:  "line_item_fulfillment_statuses",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetPurchaseOrderStatusFormFields returns form fields for purchase order statuses (procurement.purchase_order_statuses)
+// Reference data - Purchase order workflow statuses, admin-managed only
+func GetPurchaseOrderStatusFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "procurement",
+			EntityTable:  "purchase_order_statuses",
+			Name:         "name",
+			Label:        "Status Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "procurement",
+			EntityTable:  "purchase_order_statuses",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetPOLineItemStatusFormFields returns form fields for PO line item statuses (procurement.purchase_order_line_item_statuses)
+// Reference data - Purchase order line item workflow statuses, admin-managed only
+func GetPOLineItemStatusFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "procurement",
+			EntityTable:  "purchase_order_line_item_statuses",
+			Name:         "name",
+			Label:        "Status Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "procurement",
+			EntityTable:  "purchase_order_line_item_statuses",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetAssetTypeFormFields returns form fields for asset types (assets.asset_types)
+// Reference data - Asset classification, admin-managed only
+func GetAssetTypeFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "assets",
+			EntityTable:  "asset_types",
+			Name:         "name",
+			Label:        "Asset Type Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "assets",
+			EntityTable:  "asset_types",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetAssetConditionFormFields returns form fields for asset conditions (assets.asset_conditions)
+// Reference data - Asset condition classification, admin-managed only
+func GetAssetConditionFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "assets",
+			EntityTable:  "asset_conditions",
+			Name:         "name",
+			Label:        "Condition Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "assets",
+			EntityTable:  "asset_conditions",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetProductCategoryFormFields returns form fields for product categories (products.product_categories)
+// Reference data - Product taxonomy, admin-managed only
+func GetProductCategoryFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "products",
+			EntityTable:  "product_categories",
+			Name:         "name",
+			Label:        "Category Name",
+			FieldType:    "text",
+			FieldOrder:   1,
+			Required:     true,
+			Config:       json.RawMessage(`{}`),
+		},
+		{
+			FormID:       formID,
+			EntityID:     entityID,
+			EntitySchema: "products",
+			EntityTable:  "product_categories",
+			Name:         "description",
+			Label:        "Description",
+			FieldType:    "textarea",
+			FieldOrder:   2,
+			Required:     false,
+			Config:       json.RawMessage(`{}`),
+		},
+	}
+}
+
+// =============================================================================
+// TRANSACTIONAL DATA FORM FIELD GENERATORS
+// =============================================================================
+// These functions generate form field configurations for user-created transactional tables
+// (is_reference_data=false, allow_inline_create=true)
+
+// GetCityFormFields returns form fields for cities (geography.cities)
+func GetCityFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "cities",
+			Name: "region_id", Label: "Region", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "cities",
+			Name: "name", Label: "City Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetStreetFormFields returns form fields for streets (geography.streets)
+func GetStreetFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "line_1", Label: "Street Address", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "line_2", Label: "Address Line 2", FieldType: "text", FieldOrder: 2, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "postal_code", Label: "Postal Code", FieldType: "text", FieldOrder: 3, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "city_id", Label: "City", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "cities", "display_field": "name"}`)},
+	}
+}
+
+// GetContactInfoFormFields returns form fields for contact infos (core.contact_infos)
+func GetContactInfoFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "first_name", Label: "Contact First Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "last_name", Label: "Contact Last Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "primary_phone_number", Label: "Primary Phone", FieldType: "tel", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "secondary_phone_number", Label: "Secondary Phone", FieldType: "tel", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "email_address", Label: "Email", FieldType: "email", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "street_id", Label: "Street Address", FieldType: "select", FieldOrder: 6, Required: true, Config: json.RawMessage(`{"entity": "streets", "display_field": "line_1"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "available_hours_start", Label: "Available From", FieldType: "time", FieldOrder: 7, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "available_hours_end", Label: "Available Until", FieldType: "time", FieldOrder: 8, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "timezone", Label: "Timezone", FieldType: "text", FieldOrder: 9, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "preferred_contact_type", Label: "Preferred Contact Method", FieldType: "select", FieldOrder: 10, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "notes", Label: "Notes", FieldType: "textarea", FieldOrder: 11, Required: false, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetTitleFormFields returns form fields for titles (hr.titles)
+func GetTitleFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "titles",
+			Name: "name", Label: "Title Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "titles",
+			Name: "description", Label: "Description", FieldType: "textarea", FieldOrder: 2, Required: false, Config: json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetOfficeFormFields returns form fields for offices (hr.offices)
+func GetOfficeFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "offices", Name: "name", Label: "Office Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "offices", Name: "street_id", Label: "Address", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "streets", "display_field": "line_1"}`)},
+	}
+}
+
+// GetHomeFormFields returns form fields for homes (hr.homes)
+func GetHomeFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
+			Name: "type", Label: "Home Type", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
+			Name: "user_id", Label: "User", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
+			Name: "address_1", Label: "Address Line 1", FieldType: "text", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
+			Name: "address_2", Label: "Address Line 2", FieldType: "text", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
+			Name: "city", Label: "City", FieldType: "text", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
+			Name: "state", Label: "State", FieldType: "text", FieldOrder: 6, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
+			Name: "zip_code", Label: "Zip Code", FieldType: "text", FieldOrder: 7, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
+			Name: "country", Label: "Country", FieldType: "text", FieldOrder: 8, Required: true, Config: json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetTagFormFields returns form fields for tags (assets.tags)
+func GetTagFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "tags",
+			Name: "name", Label: "Tag Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "tags",
+			Name: "description", Label: "Description", FieldType: "textarea", FieldOrder: 2, Required: false, Config: json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetUserApprovalCommentFormFields returns form fields for user approval comments (hr.user_approval_comments)
+func GetUserApprovalCommentFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "user_approval_comments",
+			Name: "comment", Label: "Comment", FieldType: "textarea", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "user_approval_comments",
+			Name: "commenter_id", Label: "Commenter", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "user_approval_comments",
+			Name: "user_id", Label: "User", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetBrandFormFields returns form fields for brands (products.brands)
+func GetBrandFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "brands",
+			Name: "name", Label: "Brand Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "brands",
+			Name: "contact_infos_id", Label: "Contact Info", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetProductFormFields returns form fields for products (products.products)
+func GetProductFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "sku", Label: "SKU", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "name", Label: "Product Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "brand_id", Label: "Brand", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "category_id", Label: "Category", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "description", Label: "Description", FieldType: "textarea", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "model_number", Label: "Model Number", FieldType: "text", FieldOrder: 6, Required: false, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "upc_code", Label: "UPC Code", FieldType: "text", FieldOrder: 7, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "status", Label: "Status", FieldType: "text", FieldOrder: 8, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "is_active", Label: "Is Active", FieldType: "boolean", FieldOrder: 9, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "is_perishable", Label: "Is Perishable", FieldType: "boolean", FieldOrder: 10, Required: true, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "handling_instructions", Label: "Handling Instructions", FieldType: "textarea", FieldOrder: 11, Required: false, Config: json.RawMessage(`{}`),
+		},
+		{
+			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
+			Name: "units_per_case", Label: "Units Per Case", FieldType: "number", FieldOrder: 12, Required: true, Config: json.RawMessage(`{}`),
+		},
+	}
+}
+
+// GetPhysicalAttributeFormFields returns form fields for physical attributes (products.physical_attributes)
+func GetPhysicalAttributeFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "length", Label: "Length", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "width", Label: "Width", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "height", Label: "Height", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "weight", Label: "Weight", FieldType: "number", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "weight_unit", Label: "Weight Unit", FieldType: "text", FieldOrder: 6, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "color", Label: "Color", FieldType: "text", FieldOrder: 7, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "size", Label: "Size", FieldType: "text", FieldOrder: 8, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "material", Label: "Material", FieldType: "text", FieldOrder: 9, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "storage_requirements", Label: "Storage Requirements", FieldType: "textarea", FieldOrder: 10, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "hazmat_class", Label: "Hazmat Class", FieldType: "text", FieldOrder: 11, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "shelf_life_days", Label: "Shelf Life (Days)", FieldType: "number", FieldOrder: 12, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetProductCostFormFields returns form fields for product costs (products.product_costs)
+func GetProductCostFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "product_costs", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "product_costs", Name: "purchase_cost", Label: "Purchase Cost", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetCostHistoryFormFields returns form fields for cost history (products.cost_history)
+func GetCostHistoryFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "cost_history", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetQualityMetricFormFields returns form fields for quality metrics (products.quality_metrics)
+func GetQualityMetricFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "quality_metrics", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetWarehouseFormFields returns form fields for warehouses (inventory.warehouses)
+func GetWarehouseFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "code", Label: "Warehouse Code", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "name", Label: "Warehouse Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "street_id", Label: "Address", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "streets", "display_field": "line_1"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "is_active", Label: "Active", FieldType: "boolean", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetZoneFormFields returns form fields for zones (inventory.zones)
+func GetZoneFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "zones", Name: "warehouse_id", Label: "Warehouse", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "zones", Name: "name", Label: "Zone Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetInventoryLocationFormFields returns form fields for inventory locations (inventory.inventory_locations)
+func GetInventoryLocationFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "zone_id", Label: "Zone", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetInventoryItemFormFields returns form fields for inventory items (inventory.inventory_items)
+func GetInventoryItemFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "location_id", Label: "Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory_locations", "display_field": "aisle"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"min": 0}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "reserved_quantity", Label: "Reserved Quantity", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"min": 0}`)},
+	}
+}
+
+// GetSerialNumberFormFields returns form fields for serial numbers (inventory.serial_numbers)
+func GetSerialNumberFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "serial_numbers", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetLotTrackingFormFields returns form fields for lot trackings (inventory.lot_trackings)
+func GetLotTrackingFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "lot_trackings", Name: "supplier_product_id", Label: "Supplier Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetQualityInspectionFormFields returns form fields for quality inspections (inventory.quality_inspections)
+func GetQualityInspectionFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "quality_inspections", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetInventoryTransactionFormFields returns form fields for inventory transactions (inventory.inventory_transactions)
+func GetInventoryTransactionFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_transactions", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetInventoryAdjustmentFormFields returns form fields for inventory adjustments (inventory.inventory_adjustments)
+func GetInventoryAdjustmentFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "location_id", Label: "Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory_locations", "display_field": "aisle"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "quantity_change", Label: "Quantity Change", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "reason_code", Label: "Reason Code", FieldType: "text", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "notes", Label: "Notes", FieldType: "textarea", FieldOrder: 5, Required: false, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetTransferOrderFormFields returns form fields for transfer orders (inventory.transfer_orders)
+func GetTransferOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "from_location_id", Label: "From Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory_locations", "display_field": "aisle"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "to_location_id", Label: "To Location", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "inventory_locations", "display_field": "aisle"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"min": 1}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "status", Label: "Status", FieldType: "text", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetValidAssetFormFields returns form fields for valid assets (assets.valid_assets)
+func GetValidAssetFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "type_id", Label: "Asset Type", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "name", Label: "Asset Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "est_price", Label: "Estimated Price", FieldType: "number", FieldOrder: 3, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "price", Label: "Price", FieldType: "number", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "serial_number", Label: "Serial Number", FieldType: "text", FieldOrder: 5, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "model_number", Label: "Model Number", FieldType: "text", FieldOrder: 6, Required: false, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "is_enabled", Label: "Is Enabled", FieldType: "boolean", FieldOrder: 7, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetAssetFormFields returns form fields for assets (assets.assets)
+func GetAssetFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "valid_asset_id", Label: "Asset Type", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "valid_assets", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "serial_number", Label: "Serial Number", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "asset_condition_id", Label: "Condition", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "asset_conditions", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "last_maintenance_time", Label: "Last Maintenance", FieldType: "date", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetUserAssetFormFields returns form fields for user assets (assets.user_assets)
+func GetUserAssetFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "user_assets", Name: "user_id", Label: "User", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "user_assets", Name: "asset_id", Label: "Asset", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "user_assets", Name: "approval_status_id", Label: "Approval Status", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "user_assets", Name: "fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "user_assets", Name: "last_maintenance", Label: "Last Maintenance", FieldType: "date", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "user_assets", Name: "date_received", Label: "Date Received", FieldType: "date", FieldOrder: 6, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "user_assets", Name: "approved_by", Label: "Approved By", FieldType: "select", FieldOrder: 7, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetAutomationRuleFormFields returns form fields for automation rules (workflow.automation_rules)
+func GetAutomationRuleFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "automation_rules", Name: "name", Label: "Rule Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "automation_rules", Name: "description", Label: "Description", FieldType: "textarea", FieldOrder: 2, Required: false, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetRuleActionFormFields returns form fields for rule actions (workflow.rule_actions)
+func GetRuleActionFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "rule_actions", Name: "automation_rules_id", Label: "Automation Rule", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "rule_actions", Name: "name", Label: "Action Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetEntityFormFields returns form fields for entities (workflow.entities)
+func GetEntityFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "entities", Name: "name", Label: "Entity Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "entities", Name: "entity_type_id", Label: "Entity Type", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetCustomerFormFields returns form fields for customers (sales.customers)
+func GetCustomerFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "name", Label: "Customer Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "contact_id", Label: "Contact Information", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "contact_infos", "display_field": "email_address"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "delivery_address_id", Label: "Delivery Address", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "streets", "display_field": "line_1"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "notes", Label: "Notes", FieldType: "textarea", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetSalesOrderFormFields returns form fields for sales orders (sales.orders)
+func GetSalesOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "number", Label: "Order Number", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "customer_id", Label: "Customer", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "customers", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "due_date", Label: "Due Date", FieldType: "date", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "order_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "order_fulfillment_statuses", "display_field": "name"}`)},
+	}
+}
+
+// GetSalesOrderLineItemFormFields returns form fields for order line items (sales.order_line_items)
+func GetSalesOrderLineItemFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"min": 1}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "unit_price", Label: "Unit Price", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "line_item_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "line_item_fulfillment_statuses", "display_field": "name"}`)},
+	}
+}
+
+// GetSupplierFormFields returns form fields for suppliers (procurement.suppliers)
+func GetSupplierFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "name", Label: "Supplier Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "contact_infos_id", Label: "Contact Information", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "contact_infos", "display_field": "email_address"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "payment_terms", Label: "Payment Terms", FieldType: "textarea", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "lead_time_days", Label: "Lead Time (Days)", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetPurchaseOrderFormFields returns form fields for purchase orders (procurement.purchase_orders)
+func GetPurchaseOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "order_number", Label: "Order Number", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "supplier_id", Label: "Supplier", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "suppliers", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "purchase_order_status_id", Label: "Status", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "purchase_order_statuses", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "delivery_warehouse_id", Label: "Delivery Warehouse", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "warehouses", "display_field": "name"}`)},
+	}
+}
+
+// GetPurchaseOrderLineItemFormFields returns form fields for PO line items (procurement.purchase_order_line_items)
+func GetPurchaseOrderLineItemFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "supplier_product_id", Label: "Supplier Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "supplier_products", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "quantity_ordered", Label: "Quantity Ordered", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"min": 1}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "unit_cost", Label: "Unit Cost", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "line_item_status_id", Label: "Line Item Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "purchase_order_line_item_statuses", "display_field": "name"}`)},
+	}
+}
+
+// GetRoleFormFields returns form fields for roles (core.roles)
+func GetRoleFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "roles", Name: "name", Label: "Role Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "roles", Name: "description", Label: "Description", FieldType: "textarea", FieldOrder: 2, Required: false, Config: json.RawMessage(`{}`)},
+	}
+}
+
+// GetUserFormFields returns form fields for users (core.users)
+func GetUserFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "username", Label: "Username", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "first_name", Label: "First Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "last_name", Label: "Last Name", FieldType: "text", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "email", Label: "Email", FieldType: "email", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "title_id", Label: "Title", FieldType: "select", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"entity": "titles", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "office_id", Label: "Office", FieldType: "select", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"entity": "offices", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "user_approval_status_id", Label: "Approval Status", FieldType: "select", FieldOrder: 7, Required: true, Config: json.RawMessage(`{"entity": "user_approval_status", "display_field": "name"}`)},
+	}
+}

@@ -402,6 +402,10 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'products', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'physical_attributes', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'product_costs', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'purchase_order_line_item_statuses', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'purchase_order_statuses', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'purchase_orders', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'purchase_order_line_items', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'suppliers', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'cost_history', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'supplier_products', true, true, true, true),
@@ -423,9 +427,18 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'roles', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'user_roles', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'table_access', true, true, true, true),
-    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'table_configs', true, true, true, true)
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'table_configs', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'forms', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'form_fields', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'formdata', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'page_actions', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'page_action_buttons', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'page_action_dropdowns', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'page_action_dropdown_items', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'pages', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'role_pages', true, true, true, true)
+    
 ON CONFLICT DO NOTHING;
-
 -- First, ensure we have the required entity types
 INSERT INTO workflow.entity_types (id, name, description, is_active) 
 VALUES 

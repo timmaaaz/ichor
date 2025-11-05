@@ -3,6 +3,7 @@ package formapi
 import (
 	"context"
 	"net/http"
+	"net/url"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
@@ -122,7 +123,13 @@ func (api *api) queryFullByName(ctx context.Context, r *http.Request) web.Encode
 		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "form name is required"))
 	}
 
-	formFull, err := api.formapp.QueryFullByName(ctx, formName)
+	// Decode URL-encoded form name (e.g., "My%20Form" -> "My Form")
+	decodedName, err := url.QueryUnescape(formName)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "invalid form name encoding: %s", err))
+	}
+
+	formFull, err := api.formapp.QueryFullByName(ctx, decodedName)
 	if err != nil {
 		return errs.NewError(err)
 	}
