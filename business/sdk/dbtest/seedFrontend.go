@@ -1514,6 +1514,32 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// =========================================================================
+	// Seed Page Action Buttons
+	// =========================================================================
+
+	pageConfigIDs := map[string]uuid.UUID{
+		"admin_users_page":               adminUsersPage.ID,
+		"admin_roles_page":               adminRolesPage.ID,
+		"assets_list_page":               assetsPage.ID,
+		"hr_employees_page":              hrEmployeesPage.ID,
+		"hr_offices_page":                hrOfficesPage.ID,
+		"inventory_items_page":           inventoryItemsPage.ID,
+		"inventory_warehouses_page":      inventoryWarehousesPage.ID,
+		"inventory_transfers_page":       inventoryTransfersPage.ID,
+		"inventory_adjustments_page":     inventoryAdjustmentsPage.ID,
+		"suppliers_page":                 suppliersPage.ID,
+		"procurement_purchase_orders":    procurementPurchaseOrdersPage.ID,
+		"sales_customers_page":           salesCustomersPage.ID,
+		"orders_page":                    ordersPage.ID,
+	}
+
+	if err := seedPageActionButtons(ctx, busDomain, pageConfigIDs); err != nil {
+		return fmt.Errorf("seeding page action buttons: %w", err)
+	}
+
+	// =========================================================================
+	// Create Forms
+	// =========================================================================
 
 	// Form 1: Single entity - Users only (using generator)
 	userForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
@@ -2909,6 +2935,30 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		})
 		if err != nil {
 			return fmt.Errorf("creating role-page association : %w", err)
+		}
+	}
+
+	return nil
+}
+
+// seedPageActionButtons creates "New" button actions for list pages
+func seedPageActionButtons(ctx context.Context, busDomain BusDomain, pageConfigIDs map[string]uuid.UUID) error {
+	// Get button definitions
+	buttonDefs := seedmodels.GetNewButtonActionDefinitions()
+
+	// Create button actions for each page config
+	for configName, pageConfigID := range pageConfigIDs {
+		buttonDef, exists := buttonDefs[configName]
+		if !exists {
+			// Skip if no button definition exists for this page config
+			continue
+		}
+
+		buttonAction := seedmodels.CreateNewButtonAction(pageConfigID, buttonDef)
+
+		_, err := busDomain.PageAction.CreateButton(ctx, buttonAction)
+		if err != nil {
+			return fmt.Errorf("creating button action for %s: %w", configName, err)
 		}
 	}
 
