@@ -3,6 +3,7 @@
 ## Objective
 
 Create a seeding script that generates `config.forms` and `config.form_fields` entries for all user-facing tables in the database. These forms will enable:
+
 1. CRUD operations via dynamic forms
 2. Inline entity creation within other forms (where appropriate)
 3. Automatic field rendering based on database schema
@@ -29,6 +30,10 @@ COMMENT ON COLUMN config.forms.allow_inline_create IS
     'If true, this form can be embedded for inline entity creation within other forms';
 ```
 
+;
+
+These columns need to be added at each level of this domain including seeding and tests.
+
 ## Form Generation Logic
 
 ### Step 1: Identify Tables to Generate Forms For
@@ -36,6 +41,7 @@ COMMENT ON COLUMN config.forms.allow_inline_create IS
 Query `information_schema.tables` for all tables EXCEPT:
 
 **Exclude System/Internal Tables:**
+
 - All tables in `config` schema (these define the form system itself)
 - `workflow.automation_executions` (system logs)
 - `workflow.notification_deliveries` (system logs)
@@ -43,8 +49,12 @@ Query `information_schema.tables` for all tables EXCEPT:
 - `core.table_access` (admin-only, manage via separate UI)
 - `core.role_pages` (admin-only, manage via separate UI)
 - `core.pages` (admin-only, manage via separate UI)
+- `workflow.trigger_types`
+- `workflow.entity_types`
+- `workflow.action_templates`
 
 **Exclude Junction Tables** (for now, handle separately):
+
 - `assets.asset_tags` (many-to-many)
 - `core.user_roles` (many-to-many)
 - `hr.reports_to` (many-to-many, self-referential)
@@ -59,13 +69,16 @@ Query `information_schema.tables` for all tables EXCEPT:
 Use this classification to set `is_reference_data` and `allow_inline_create`:
 
 #### **Reference/Lookup Data** (Stable, Admin-Managed)
+
 Set: `is_reference_data = true`, `allow_inline_create = false`
 
 **Geography (External Data Sources):**
+
 - `geography.countries` - ISO country list
 - `geography.regions` - State/province data
 
 **Workflow Statuses:**
+
 - `hr.user_approval_status`
 - `assets.approval_status`
 - `assets.fulfillment_status`
@@ -75,19 +88,17 @@ Set: `is_reference_data = true`, `allow_inline_create = false`
 - `procurement.purchase_order_line_item_statuses`
 
 **Controlled Vocabularies:**
+
 - `assets.asset_types`
 - `assets.asset_conditions`
 - `products.product_categories` - Business taxonomy
 
-**System Configuration:**
-- `workflow.trigger_types`
-- `workflow.entity_types`
-- `workflow.action_templates`
-
 #### **User-Created Transactional Data** (Allow Inline Creation)
+
 Set: `is_reference_data = false`, `allow_inline_create = true`
 
 **Core/HR:**
+
 - `core.contact_infos` - Created with customers, suppliers, brands
 - `hr.titles` - Can be added on-the-fly
 - `hr.offices` - Depends on street, can be created inline
@@ -95,15 +106,18 @@ Set: `is_reference_data = false`, `allow_inline_create = true`
 - `core.users` - Employee onboarding (but mark special, see notes below)
 
 **Geography (User-Created):**
+
 - `geography.cities` - Can create new cities as needed
 - `geography.streets` - Frequently created with addresses
 
 **Sales:**
+
 - `sales.customers` - Primary entity
 - `sales.orders` - Transactional
 - `sales.order_line_items` - Nested within orders
 
 **Products:**
+
 - `products.brands` - Can create new brands
 - `products.products` - Product catalog
 - `products.physical_attributes` - Associated with products
@@ -112,12 +126,14 @@ Set: `is_reference_data = false`, `allow_inline_create = true`
 - `products.cost_history` - Financial tracking
 
 **Procurement:**
+
 - `procurement.suppliers` - Supplier management
 - `procurement.supplier_products` - Supplier catalog
 - `procurement.purchase_orders` - Transactional
 - `procurement.purchase_order_line_items` - Nested within POs
 
 **Inventory:**
+
 - `inventory.warehouses` - Warehouse setup
 - `inventory.zones` - Warehouse organization
 - `inventory.inventory_locations` - Bin locations
@@ -130,6 +146,7 @@ Set: `is_reference_data = false`, `allow_inline_create = true`
 - `inventory.quality_inspections` - QA records
 
 **Assets:**
+
 - `assets.valid_assets` - Asset catalog
 - `assets.assets` - Asset instances
 - `assets.user_assets` - Asset assignments
@@ -137,6 +154,7 @@ Set: `is_reference_data = false`, `allow_inline_create = true`
 - `hr.user_approval_comments` - Comments/notes
 
 **Workflow:**
+
 - `workflow.automation_rules` - User-defined rules
 - `workflow.rule_actions` - Rule configuration
 - `workflow.entities` - Entity registry
@@ -145,28 +163,47 @@ Set: `is_reference_data = false`, `allow_inline_create = true`
 
 ### Step 3: Generate Form Records
 
-For each table, create ONE form entry:
+For each table, create ONE formbus.NewForm entry in business/sdk/dbtest/seedmodels/tableforms.go
+as well as one array of formfieldbus.NewFormField that contains one entry for
+each field in the corresponding table. Fields should be as follows
 
-```sql
-INSERT INTO config.forms (id, name, is_reference_data, allow_inline_create)
-VALUES (
-    gen_random_uuid(),
-    '{table_name}',  -- Just the table name, without schema
-    {is_reference_data},  -- Based on categorization above
-    {allow_inline_create}  -- Based on categorization above
-);
-```
+formbus.NewForm
 
-**Example:**
-```sql
--- Reference data
-INSERT INTO config.forms (id, name, is_reference_data, allow_inline_create)
-VALUES (gen_random_uuid(), 'countries', true, false);
+- Name: same name as the entity/table to which it corresponds
 
--- User-created data
-INSERT INTO config.forms (id, name, is_reference_data, allow_inline_create)
-VALUES (gen_random_uuid(), 'customers', false, true);
-```
+FormID
+
+- FormID: uuid returned from the previous form
+- EntityID: entity id for the workflow.entities item for that table
+- EntitySchema: name of table schema
+- EntityTable: name of the table
+- Name: name of the field
+- Label: name of the user interface label
+- FieldType: type of field from the following
+  - text - Standard text input
+  - email - Email input
+  - tel / phone - Telephone input
+  - password - Password input
+  - url - URL input
+  - number - Number input
+  - textarea - Multi-line text area
+  - date - Date picker
+  - time - Time input (currently using text input with HH:MM placeholder)
+  - boolean - Checkbox
+  - select - Dropdown (either dynamic from database table or static with options array)
+  - multiselect - Multi-select (not yet fully supported, falls back to text input)
+- FieldOrder: treat it like an iota starting at 1 in a given form
+- Required: match up with Nullable / Not Nullable in the database
+- Config: just set to json.RawMessage(`{}`) for the time being
+
+These should have functions like you see in business/sdk/dbtest/seedmodels/forms.go
+
+I know there may be duplicates in forms.go, my goal is to have everything that
+is specifically a table form in the tableforms.go file.
+
+Below is a fieldmap that is an example of how the data should be structured for
+selecting a FieldType, above though are the ACTUAL field types from the
+frontend. The exceptions for \_id and others are valid.
 
 ---
 
@@ -174,9 +211,13 @@ VALUES (gen_random_uuid(), 'customers', false, true);
 
 For each table, query `information_schema.columns` and create form fields:
 
+Follow the exclusion rules below for fields that should ALWAYS not be on the
+form, these fields are generated by the backend.
+
 #### **Field Exclusion Rules**
 
 **ALWAYS Exclude:**
+
 - `id` - Auto-generated UUID primary key
 - `created_date`, `updated_date` - Auto-populated by system
 - `created_by`, `updated_by` - Auto-populated from auth context
@@ -184,6 +225,7 @@ For each table, query `information_schema.columns` and create form fields:
 - `roles`, `system_roles` - Complex array fields (handle via separate role assignment UI)
 
 **Conditionally Exclude:**
+
 - `deactivated_by` - Only show in "deactivate" action, not create/edit forms
 - `enabled` (on users table) - Admin-only field, show in separate UI
 - Self-referential FKs like `requested_by`, `approved_by` - Often auto-populated by workflow
@@ -222,6 +264,7 @@ typeMap := map[string]string{
 ```
 
 **Special Cases:**
+
 - Columns ending in `_id` (UUIDs) → Likely foreign keys, set to `"dropdown-from-table"` or `"combobox-from-table"`
 - Columns named `email`, `email_address` → `"email"`
 - Columns named `phone`, `*_phone_*` → `"tel"`
@@ -250,8 +293,13 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
 ```
 
 For FK fields:
+
 - Set `field_type = 'combobox-from-table'`
 - Add to `config` JSON:
+- note that all foreign keys should be <table_name>\_id, but there may be
+  exceptions such as in cases where a table may be referenced by foreign key
+  more than once
+
 ```json
 {
   "table_option": {
@@ -269,6 +317,7 @@ For FK fields:
 
 **Label Column Detection** (for dropdowns):
 Priority order to guess display label for FK dropdown:
+
 1. Column named `name` → Use this
 2. Column named `number` → Use this (for order numbers, etc.)
 3. Column named `title` → Use this
@@ -278,12 +327,14 @@ Priority order to guess display label for FK dropdown:
 #### **Detect Required Fields**
 
 Query `information_schema.columns.is_nullable`:
+
 - `is_nullable = 'NO'` AND column is not auto-generated → `required = true`
 - `is_nullable = 'YES'` → `required = false`
 
 #### **Field Order**
 
 Order fields logically:
+
 1. Natural/business key fields first (name, number, title)
 2. Primary business fields next
 3. Foreign keys in middle
@@ -293,34 +344,7 @@ You can use `field_order = ROW_NUMBER()` based on ordinal position from `informa
 
 #### **Generate form_fields Records**
 
-```sql
-INSERT INTO config.form_fields (
-    id,
-    form_id,
-    entity_id,  -- Query workflow.entities for the entity UUID
-    entity_schema,
-    entity_table,
-    name,       -- Column name from information_schema
-    label,      -- Human-readable: Convert snake_case to Title Case
-    field_type,
-    field_order,
-    required,
-    config      -- JSONB containing table_option, inline_form_name, etc.
-)
-VALUES (
-    gen_random_uuid(),
-    '{form_id}',
-    '{entity_id}',  -- Lookup from workflow.entities
-    '{schema}',
-    '{table}',
-    '{column_name}',
-    '{prettified_label}',  -- e.g., "primary_phone_number" → "Primary Phone Number"
-    '{field_type}',
-    {order_number},
-    {is_required},
-    '{config_json}'::jsonb
-);
-```
+FormFields should be in the model functions defined above
 
 ---
 
@@ -328,7 +352,11 @@ VALUES (
 
 #### **ENUM Types**
 
+NOTE: These are only examples, I do not want direct database operations seeding
+this stuff if at all avoidable.
+
 Detect PostgreSQL ENUMs (like `contact_type`):
+
 ```sql
 SELECT
     t.typname,
@@ -339,15 +367,17 @@ WHERE t.typname = 'contact_type';
 ```
 
 For ENUM columns:
+
 - Set `field_type = 'dropdown'` (not combobox-from-table)
 - Add to config JSON:
+
 ```json
 {
   "options": [
-    {"value": "phone", "label": "Phone"},
-    {"value": "email", "label": "Email"},
-    {"value": "mail", "label": "Mail"},
-    {"value": "fax", "label": "Fax"}
+    { "value": "phone", "label": "Phone" },
+    { "value": "email", "label": "Email" },
+    { "value": "mail", "label": "Mail" },
+    { "value": "fax", "label": "Fax" }
   ]
 }
 ```
@@ -355,16 +385,21 @@ For ENUM columns:
 #### **Self-Referential Foreign Keys**
 
 Tables like `core.users` with `requested_by` and `approved_by` pointing to `core.users(id)`:
+
 - Allow `inline_form_name = null` (don't allow recursive inline creation of users within user form)
 - Set `allow_inline_create = false` in field config
 
 #### **Multi-Column Labels**
 
+I DON'T KNOW THAT WE HAVE THE INFRASTRUCTURE CREATED TO SUPPORT THE FOLLOWING YET
+
 For tables like `core.contact_infos` or `core.users`, dropdown labels should combine multiple columns:
+
 - `contact_infos` → `first_name || ' ' || last_name || ' (' || email_address || ')'`
 - `users` → `first_name || ' ' || last_name || ' (' || username || ')'`
 
 Store in `table_option.labelExpression` (backend will need to support this):
+
 ```json
 {
   "table_option": {
@@ -381,12 +416,14 @@ Store in `table_option.labelExpression` (backend will need to support this):
 #### **Array Fields**
 
 Tables like `core.users` have `roles TEXT[]` and `system_roles TEXT[]`:
+
 - Skip these in form generation (handle via separate role assignment UI)
 - Or set `field_type = 'multi-select'` if you want to support them later
 
 #### **Audit Fields in Existing Records**
 
 For tables that already have data, ensure the seeding script:
+
 - Uses a system user UUID for `created_by` / `updated_by` on config records
 - Sets appropriate timestamps
 
@@ -395,67 +432,21 @@ For tables that already have data, ensure the seeding script:
 ## Expected Output
 
 The script should generate:
+
 - **~55 form records** in `config.forms`
 - **~400-500 field records** in `config.form_fields` (average 7-9 fields per form)
-
-### Verification Queries
-
-After running the seed script:
-
-```sql
--- Check form counts by type
-SELECT
-    is_reference_data,
-    allow_inline_create,
-    COUNT(*) as form_count
-FROM config.forms
-GROUP BY is_reference_data, allow_inline_create;
-
--- Expected output:
--- is_reference_data | allow_inline_create | form_count
--- true              | false              | ~15 (reference data)
--- false             | true               | ~40 (user-created data)
-
--- Check forms without fields (should be zero)
-SELECT f.name
-FROM config.forms f
-LEFT JOIN config.form_fields ff ON f.id = ff.form_id
-WHERE ff.id IS NULL;
-
--- Check foreign key fields have inline_form_name
-SELECT
-    f.name as form_name,
-    ff.name as field_name,
-    ff.config->>'inline_form_name' as references_form
-FROM config.form_fields ff
-JOIN config.forms f ON ff.form_id = f.id
-WHERE ff.field_type IN ('combobox-from-table', 'dropdown-from-table')
-    AND ff.config->>'inline_form_name' IS NULL;
--- Should be empty or only self-referential FKs
-```
 
 ---
 
 ## Implementation Approach
 
-**Option A: SQL Script**
-Write a PL/pgSQL stored procedure that loops through tables and generates INSERT statements.
-
-**Option B: Go Seed Command**
-Create `cmd/seed-forms/main.go` that:
-1. Queries `information_schema`
-2. Builds form/field structs in memory
-3. Bulk inserts to database
-4. Logs progress and errors
-
-**Option C: Database Migration**
-Add as a versioned migration (e.g., Version 2.12) so it runs automatically on deployment.
-
----
+All of this should be implemented in the dbtest/_ packages where the actual data
+is defined in seedmodels/_ and the structures are initialized in seedFrontend.go
 
 ## Notes for Complex Tables
 
 ### `core.users`
+
 - Exclude: `password_hash`, `roles`, `system_roles`, `enabled`
 - Self-referential FKs (`requested_by`, `approved_by`) should NOT allow inline creation
 - Consider creating TWO forms:
@@ -463,14 +454,17 @@ Add as a versioned migration (e.g., Version 2.12) so it runs automatically on de
   - `users_quick` (minimal fields for quick add)
 
 ### `sales.customers`
+
 - Has 3 FK dependencies: `contact_id`, `delivery_address_id`, both should allow inline creation
 - Your example form config shows this is already correctly configured
 
 ### `inventory.*` tables
+
 - Complex interdependencies (warehouse → zone → location)
 - All should allow inline creation for warehouse setup workflow
 
 ### `workflow.automation_rules`
+
 - Has JSONB fields (`trigger_conditions`, `action_config`)
 - Field type should be `textarea` or create custom `json-editor` type
 
@@ -481,11 +475,13 @@ Add as a versioned migration (e.g., Version 2.12) so it runs automatically on de
 After seeding:
 
 1. **Manually review** forms for tables with complex business logic:
+
    - `core.users`
    - `sales.orders` + `sales.order_line_items` (parent-child)
    - `procurement.purchase_orders` + line items
 
 2. **Create custom forms** for special workflows:
+
    - User registration (subset of users table)
    - Quick customer add (subset of customers table)
 
@@ -503,5 +499,3 @@ If you encounter edge cases or need clarification on specific tables, refer back
 2. **Transactional data** = User-created, allow inline forms
 3. **System data** = No user forms at all
 4. **Audit fields** = Always exclude from forms
-
-Good luck! This should give you a solid foundation for dynamic form generation across your entire ERP system.

@@ -1515,7 +1515,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 
 	// =========================================================================
 
-	// Form 1: Single entity - Users only
+	// Form 1: Single entity - Users only (using generator)
 	userForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
 		Name: "User Creation Form",
 	})
@@ -1528,134 +1528,15 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("querying user entity : %w", err)
 	}
 
-	userFormFields := []formfieldbus.FormField{
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "username",
-			FieldOrder:   1,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "first_name",
-			FieldOrder:   2,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "last_name",
-			FieldOrder:   3,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "email",
-			FieldOrder:   4,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "password",
-			FieldOrder:   5,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "password_confirm",
-			FieldOrder:   6,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "birthday",
-			FieldOrder:   7,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "roles",
-			FieldOrder:   8,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "system_roles",
-			FieldOrder:   9,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "enabled",
-			FieldOrder:   10,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       userForm.ID,
-			EntityID:     userEntity.ID,
-			EntitySchema: "core",
-			EntityTable:  "users",
-			Name:         "requested_by",
-			FieldOrder:   11,
-			Config:       json.RawMessage(`{}`),
-		},
-	}
-
+	userFormFields := seedmodels.GetUserFormFields(userForm.ID, userEntity.ID)
 	for _, ff := range userFormFields {
-		_, err = busDomain.FormField.Create(ctx, formfieldbus.NewFormField{
-			FormID:       ff.FormID,
-			EntityID:     ff.EntityID,
-			EntitySchema: ff.EntitySchema,
-			EntityTable:  ff.EntityTable,
-			Name:         ff.Name,
-			FieldOrder:   ff.FieldOrder,
-		})
+		_, err = busDomain.FormField.Create(ctx, ff)
 		if err != nil {
 			return fmt.Errorf("creating user form field : %w", err)
 		}
 	}
 
-	// Form 2: Single entity - Assets only
+	// Form 2: Single entity - Assets only (using generator)
 	assetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
 		Name: "Asset Creation Form",
 	})
@@ -1668,48 +1549,9 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("querying asset entity : %w", err)
 	}
 
-	assetFormFields := []formfieldbus.FormField{
-		{
-			ID:           uuid.New(),
-			FormID:       assetForm.ID,
-			EntityID:     assetEntity.ID,
-			EntitySchema: "assets",
-			EntityTable:  "assets",
-			Name:         "valid_asset_id",
-			FieldOrder:   1,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       assetForm.ID,
-			EntityID:     assetEntity.ID,
-			EntitySchema: "assets",
-			EntityTable:  "assets",
-			Name:         "serial_number",
-			FieldOrder:   2,
-			Config:       json.RawMessage(`{}`),
-		},
-		{
-			ID:           uuid.New(),
-			FormID:       assetForm.ID,
-			EntityID:     assetEntity.ID,
-			EntitySchema: "assets",
-			EntityTable:  "assets",
-			Name:         "asset_condition_id",
-			FieldOrder:   3,
-			Config:       json.RawMessage(`{}`),
-		},
-	}
-
+	assetFormFields := seedmodels.GetAssetFormFields(assetForm.ID, assetEntity.ID)
 	for _, ff := range assetFormFields {
-		_, err = busDomain.FormField.Create(ctx, formfieldbus.NewFormField{
-			FormID:       ff.FormID,
-			EntityID:     ff.EntityID,
-			EntitySchema: ff.EntitySchema,
-			EntityTable:  ff.EntityTable,
-			Name:         ff.Name,
-			FieldOrder:   ff.FieldOrder,
-		})
+		_, err = busDomain.FormField.Create(ctx, ff)
 		if err != nil {
 			return fmt.Errorf("creating asset form field : %w", err)
 		}
@@ -2202,6 +2044,837 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		_, err = busDomain.FormField.Create(ctx, ff)
 		if err != nil {
 			return fmt.Errorf("creating office form field : %w", err)
+		}
+	}
+
+	// =============================================================================
+	// REFERENCE DATA FORMS (Admin-managed, no inline creation)
+	// =============================================================================
+
+	// Reference Form 1: Country
+	countryForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Country Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating country form : %w", err)
+	}
+
+	countryEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "countries")
+	if err != nil {
+		return fmt.Errorf("querying countries entity : %w", err)
+	}
+
+	countryFields := seedmodels.GetCountryFormFields(countryForm.ID, countryEntity.ID)
+	for _, ff := range countryFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating country form field : %w", err)
+		}
+	}
+
+	// Reference Form 2: Region
+	regionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Region Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating region form : %w", err)
+	}
+
+	regionEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "regions")
+	if err != nil {
+		return fmt.Errorf("querying regions entity : %w", err)
+	}
+
+	regionFields := seedmodels.GetRegionFormFields(regionForm.ID, regionEntity.ID)
+	for _, ff := range regionFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating region form field : %w", err)
+		}
+	}
+
+	// Reference Form 3: User Approval Status
+	userApprovalStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "User Approval Status Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating user approval status form : %w", err)
+	}
+
+	userApprovalStatusEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "user_approval_status")
+	if err != nil {
+		return fmt.Errorf("querying user_approval_status entity : %w", err)
+	}
+
+	userApprovalStatusFields := seedmodels.GetUserApprovalStatusFormFields(userApprovalStatusForm.ID, userApprovalStatusEntity.ID)
+	for _, ff := range userApprovalStatusFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating user approval status form field : %w", err)
+		}
+	}
+
+	// Reference Form 4: Asset Approval Status
+	assetApprovalStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Asset Approval Status Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating asset approval status form : %w", err)
+	}
+
+	assetApprovalStatusEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "approval_status")
+	if err != nil {
+		return fmt.Errorf("querying approval_status entity : %w", err)
+	}
+
+	assetApprovalStatusFields := seedmodels.GetAssetApprovalStatusFormFields(assetApprovalStatusForm.ID, assetApprovalStatusEntity.ID)
+	for _, ff := range assetApprovalStatusFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating asset approval status form field : %w", err)
+		}
+	}
+
+	// Reference Form 5: Asset Fulfillment Status
+	assetFulfillmentStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Asset Fulfillment Status Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating asset fulfillment status form : %w", err)
+	}
+
+	assetFulfillmentStatusEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "fulfillment_status")
+	if err != nil {
+		return fmt.Errorf("querying fulfillment_status entity : %w", err)
+	}
+
+	assetFulfillmentStatusFields := seedmodels.GetAssetFulfillmentStatusFormFields(assetFulfillmentStatusForm.ID, assetFulfillmentStatusEntity.ID)
+	for _, ff := range assetFulfillmentStatusFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating asset fulfillment status form field : %w", err)
+		}
+	}
+
+	// Reference Form 6: Order Fulfillment Status
+	orderFulfillmentStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Order Fulfillment Status Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating order fulfillment status form : %w", err)
+	}
+
+	orderFulfillmentStatusEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "order_fulfillment_statuses")
+	if err != nil {
+		return fmt.Errorf("querying order_fulfillment_statuses entity : %w", err)
+	}
+
+	orderFulfillmentStatusFields := seedmodels.GetOrderFulfillmentStatusFormFields(orderFulfillmentStatusForm.ID, orderFulfillmentStatusEntity.ID)
+	for _, ff := range orderFulfillmentStatusFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating order fulfillment status form field : %w", err)
+		}
+	}
+
+	// Reference Form 7: Line Item Fulfillment Status
+	lineItemFulfillmentStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Line Item Fulfillment Status Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating line item fulfillment status form : %w", err)
+	}
+
+	lineItemFulfillmentStatusEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "line_item_fulfillment_statuses")
+	if err != nil {
+		return fmt.Errorf("querying line_item_fulfillment_statuses entity : %w", err)
+	}
+
+	lineItemFulfillmentStatusFields := seedmodels.GetLineItemFulfillmentStatusFormFields(lineItemFulfillmentStatusForm.ID, lineItemFulfillmentStatusEntity.ID)
+	for _, ff := range lineItemFulfillmentStatusFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating line item fulfillment status form field : %w", err)
+		}
+	}
+
+	// Reference Form 8: Purchase Order Status
+	purchaseOrderStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Purchase Order Status Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating purchase order status form : %w", err)
+	}
+
+	purchaseOrderStatusEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "purchase_order_statuses")
+	if err != nil {
+		return fmt.Errorf("querying purchase_order_statuses entity : %w", err)
+	}
+
+	purchaseOrderStatusFields := seedmodels.GetPurchaseOrderStatusFormFields(purchaseOrderStatusForm.ID, purchaseOrderStatusEntity.ID)
+	for _, ff := range purchaseOrderStatusFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating purchase order status form field : %w", err)
+		}
+	}
+
+	// Reference Form 9: PO Line Item Status
+	poLineItemStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Purchase Order Line Item Status Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating po line item status form : %w", err)
+	}
+
+	poLineItemStatusEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "purchase_order_line_item_statuses")
+	if err != nil {
+		return fmt.Errorf("querying purchase_order_line_item_statuses entity : %w", err)
+	}
+
+	poLineItemStatusFields := seedmodels.GetPOLineItemStatusFormFields(poLineItemStatusForm.ID, poLineItemStatusEntity.ID)
+	for _, ff := range poLineItemStatusFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating po line item status form field : %w", err)
+		}
+	}
+
+	// Reference Form 10: Asset Type
+	assetTypeForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Asset Type Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating asset type form : %w", err)
+	}
+
+	assetTypeEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "asset_types")
+	if err != nil {
+		return fmt.Errorf("querying asset_types entity : %w", err)
+	}
+
+	assetTypeFields := seedmodels.GetAssetTypeFormFields(assetTypeForm.ID, assetTypeEntity.ID)
+	for _, ff := range assetTypeFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating asset type form field : %w", err)
+		}
+	}
+
+	// Reference Form 11: Asset Condition
+	assetConditionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Asset Condition Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating asset condition form : %w", err)
+	}
+
+	assetConditionEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "asset_conditions")
+	if err != nil {
+		return fmt.Errorf("querying asset_conditions entity : %w", err)
+	}
+
+	assetConditionFields := seedmodels.GetAssetConditionFormFields(assetConditionForm.ID, assetConditionEntity.ID)
+	for _, ff := range assetConditionFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating asset condition form field : %w", err)
+		}
+	}
+
+	// Reference Form 12: Product Category
+	productCategoryForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Product Category Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating product category form : %w", err)
+	}
+
+	productCategoryEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "product_categories")
+	if err != nil {
+		return fmt.Errorf("querying product_categories entity : %w", err)
+	}
+
+	productCategoryFields := seedmodels.GetProductCategoryFormFields(productCategoryForm.ID, productCategoryEntity.ID)
+	for _, ff := range productCategoryFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating product category form field : %w", err)
+		}
+	}
+
+	// =============================================================================
+	// HIGH-PRIORITY TRANSACTIONAL FORMS (Referenced in inline_create)
+	// =============================================================================
+
+	// High Priority Form 1: City
+	cityForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "City Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating city form : %w", err)
+	}
+
+	cityEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "cities")
+	if err != nil {
+		return fmt.Errorf("querying cities entity : %w", err)
+	}
+
+	cityFields := seedmodels.GetCityFormFields(cityForm.ID, cityEntity.ID)
+	for _, ff := range cityFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating city form field : %w", err)
+		}
+	}
+
+	// High Priority Form 2: Street (entity already declared)
+	streetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Street Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating street form : %w", err)
+	}
+
+	streetFormFields := seedmodels.GetStreetFormFields(streetForm.ID, streetEntity.ID)
+	for _, ff := range streetFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating street form field : %w", err)
+		}
+	}
+
+	// High Priority Form 3: Contact Info (entity already declared)
+	contactInfoForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Contact Info Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating contact info form : %w", err)
+	}
+
+	contactInfoFormFields := seedmodels.GetContactInfoFormFields(contactInfoForm.ID, contactInfoEntity.ID)
+	for _, ff := range contactInfoFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating contact info form field : %w", err)
+		}
+	}
+
+	// High Priority Form 4: Title
+	titleForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Title Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating title form : %w", err)
+	}
+
+	titleEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "titles")
+	if err != nil {
+		return fmt.Errorf("querying titles entity : %w", err)
+	}
+
+	titleFormFields := seedmodels.GetTitleFormFields(titleForm.ID, titleEntity.ID)
+	for _, ff := range titleFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating title form field : %w", err)
+		}
+	}
+
+	// High Priority Form 5: Product
+	productForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Product Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating product form : %w", err)
+	}
+
+	productEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "products")
+	if err != nil {
+		return fmt.Errorf("querying products entity : %w", err)
+	}
+
+	productFormFields := seedmodels.GetProductFormFields(productForm.ID, productEntity.ID)
+	for _, ff := range productFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating product form field : %w", err)
+		}
+	}
+
+	// High Priority Form 6: Inventory Location
+	inventoryLocationForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Inventory Location Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory location form : %w", err)
+	}
+
+	inventoryLocationEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "inventory_locations")
+	if err != nil {
+		return fmt.Errorf("querying inventory_locations entity : %w", err)
+	}
+
+	inventoryLocationFormFields := seedmodels.GetInventoryLocationFormFields(inventoryLocationForm.ID, inventoryLocationEntity.ID)
+	for _, ff := range inventoryLocationFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating inventory location form field : %w", err)
+		}
+	}
+
+	// High Priority Form 7: Valid Asset
+	validAssetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Valid Asset Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating valid asset form : %w", err)
+	}
+
+	validAssetEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "valid_assets")
+	if err != nil {
+		return fmt.Errorf("querying valid_assets entity : %w", err)
+	}
+
+	validAssetFormFields := seedmodels.GetValidAssetFormFields(validAssetForm.ID, validAssetEntity.ID)
+	for _, ff := range validAssetFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating valid asset form field : %w", err)
+		}
+	}
+
+	// High Priority Form 8: Supplier Product
+	supplierProductForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Supplier Product Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating supplier product form : %w", err)
+	}
+
+	supplierProductEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "supplier_products")
+	if err != nil {
+		return fmt.Errorf("querying supplier_products entity : %w", err)
+	}
+
+	supplierProductFormFields := seedmodels.GetSupplierProductFormFields(supplierProductForm.ID, supplierProductEntity.ID)
+	for _, ff := range supplierProductFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating supplier product form field : %w", err)
+		}
+	}
+
+	// High Priority Form 9: Sales Order Line Item (entity already declared)
+	salesOrderLineItemForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Sales Order Line Item Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating sales order line item form : %w", err)
+	}
+
+	salesOrderLineItemFormFields := seedmodels.GetSalesOrderLineItemFormFields(salesOrderLineItemForm.ID, orderLineItemEntity.ID)
+	for _, ff := range salesOrderLineItemFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating sales order line item form field : %w", err)
+		}
+	}
+
+	// High Priority Form 10: Purchase Order Line Item (entity already declared)
+	purchaseOrderLineItemForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Purchase Order Line Item Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating purchase order line item form : %w", err)
+	}
+
+	purchaseOrderLineItemFormFields := seedmodels.GetPurchaseOrderLineItemFormFields(purchaseOrderLineItemForm.ID, poLineItemEntity.ID)
+	for _, ff := range purchaseOrderLineItemFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating purchase order line item form field : %w", err)
+		}
+	}
+
+	// =============================================================================
+	// MEDIUM-PRIORITY TRANSACTIONAL FORMS (Domain completeness)
+	// =============================================================================
+
+	// Medium Priority Form 1: Home
+	homeForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Home Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating home form : %w", err)
+	}
+
+	homeEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "homes")
+	if err != nil {
+		return fmt.Errorf("querying homes entity : %w", err)
+	}
+
+	homeFormFields := seedmodels.GetHomeFormFields(homeForm.ID, homeEntity.ID)
+	for _, ff := range homeFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating home form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 2: Tag
+	tagForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Tag Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating tag form : %w", err)
+	}
+
+	tagEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "tags")
+	if err != nil {
+		return fmt.Errorf("querying tags entity : %w", err)
+	}
+
+	tagFormFields := seedmodels.GetTagFormFields(tagForm.ID, tagEntity.ID)
+	for _, ff := range tagFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating tag form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 3: User Approval Comment
+	userApprovalCommentForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "User Approval Comment Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating user approval comment form : %w", err)
+	}
+
+	userApprovalCommentEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "user_approval_comments")
+	if err != nil {
+		return fmt.Errorf("querying user_approval_comments entity : %w", err)
+	}
+
+	userApprovalCommentFormFields := seedmodels.GetUserApprovalCommentFormFields(userApprovalCommentForm.ID, userApprovalCommentEntity.ID)
+	for _, ff := range userApprovalCommentFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating user approval comment form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 4: Brand
+	brandForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Brand Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating brand form : %w", err)
+	}
+
+	brandEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "brands")
+	if err != nil {
+		return fmt.Errorf("querying brands entity : %w", err)
+	}
+
+	brandFormFields := seedmodels.GetBrandFormFields(brandForm.ID, brandEntity.ID)
+	for _, ff := range brandFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating brand form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 5: Zone
+	zoneForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Zone Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating zone form : %w", err)
+	}
+
+	zoneEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "zones")
+	if err != nil {
+		return fmt.Errorf("querying zones entity : %w", err)
+	}
+
+	zoneFormFields := seedmodels.GetZoneFormFields(zoneForm.ID, zoneEntity.ID)
+	for _, ff := range zoneFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating zone form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 6: User Asset
+	userAssetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "User Asset Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating user asset form : %w", err)
+	}
+
+	userAssetEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "user_assets")
+	if err != nil {
+		return fmt.Errorf("querying user_assets entity : %w", err)
+	}
+
+	userAssetFormFields := seedmodels.GetUserAssetFormFields(userAssetForm.ID, userAssetEntity.ID)
+	for _, ff := range userAssetFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating user asset form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 7: Automation Rule
+	automationRuleForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Automation Rule Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating automation rule form : %w", err)
+	}
+
+	automationRuleEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "automation_rules")
+	if err != nil {
+		return fmt.Errorf("querying automation_rules entity : %w", err)
+	}
+
+	automationRuleFormFields := seedmodels.GetAutomationRuleFormFields(automationRuleForm.ID, automationRuleEntity.ID)
+	for _, ff := range automationRuleFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating automation rule form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 8: Rule Action
+	ruleActionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Rule Action Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating rule action form : %w", err)
+	}
+
+	ruleActionEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "rule_actions")
+	if err != nil {
+		return fmt.Errorf("querying rule_actions entity : %w", err)
+	}
+
+	ruleActionFormFields := seedmodels.GetRuleActionFormFields(ruleActionForm.ID, ruleActionEntity.ID)
+	for _, ff := range ruleActionFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating rule action form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 9: Entity
+	entityForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Entity Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating entity form : %w", err)
+	}
+
+	entityEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "entities")
+	if err != nil {
+		return fmt.Errorf("querying entities entity : %w", err)
+	}
+
+	entityFormFields := seedmodels.GetEntityFormFields(entityForm.ID, entityEntity.ID)
+	for _, ff := range entityFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating entity form field : %w", err)
+		}
+	}
+
+	// Medium Priority Form 10: User (using proper generator instead of inline)
+	userFormProp, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "User Creation Form (Proper)",
+	})
+	if err != nil {
+		return fmt.Errorf("creating user form (proper) : %w", err)
+	}
+
+	userFormProperFields := seedmodels.GetUserFormFields(userFormProp.ID, userEntity.ID)
+	for _, ff := range userFormProperFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating user form field : %w", err)
+		}
+	}
+
+	// =============================================================================
+	// LOWER-PRIORITY TRANSACTIONAL FORMS (Utility/tracking)
+	// =============================================================================
+
+	// Lower Priority Form 1: Physical Attribute
+	physicalAttributeForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Physical Attribute Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating physical attribute form : %w", err)
+	}
+
+	physicalAttributeEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "physical_attributes")
+	if err != nil {
+		return fmt.Errorf("querying physical_attributes entity : %w", err)
+	}
+
+	physicalAttributeFormFields := seedmodels.GetPhysicalAttributeFormFields(physicalAttributeForm.ID, physicalAttributeEntity.ID)
+	for _, ff := range physicalAttributeFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating physical attribute form field : %w", err)
+		}
+	}
+
+	// Lower Priority Form 2: Product Cost
+	productCostForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Product Cost Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating product cost form : %w", err)
+	}
+
+	productCostEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "product_costs")
+	if err != nil {
+		return fmt.Errorf("querying product_costs entity : %w", err)
+	}
+
+	productCostFormFields := seedmodels.GetProductCostFormFields(productCostForm.ID, productCostEntity.ID)
+	for _, ff := range productCostFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating product cost form field : %w", err)
+		}
+	}
+
+	// Lower Priority Form 3: Cost History
+	costHistoryForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Cost History Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating cost history form : %w", err)
+	}
+
+	costHistoryEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "cost_history")
+	if err != nil {
+		return fmt.Errorf("querying cost_history entity : %w", err)
+	}
+
+	costHistoryFormFields := seedmodels.GetCostHistoryFormFields(costHistoryForm.ID, costHistoryEntity.ID)
+	for _, ff := range costHistoryFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating cost history form field : %w", err)
+		}
+	}
+
+	// Lower Priority Form 4: Quality Metric
+	qualityMetricForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Quality Metric Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating quality metric form : %w", err)
+	}
+
+	qualityMetricEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "quality_metrics")
+	if err != nil {
+		return fmt.Errorf("querying quality_metrics entity : %w", err)
+	}
+
+	qualityMetricFormFields := seedmodels.GetQualityMetricFormFields(qualityMetricForm.ID, qualityMetricEntity.ID)
+	for _, ff := range qualityMetricFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating quality metric form field : %w", err)
+		}
+	}
+
+	// Lower Priority Form 5: Serial Number
+	serialNumberForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Serial Number Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating serial number form : %w", err)
+	}
+
+	serialNumberEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "serial_numbers")
+	if err != nil {
+		return fmt.Errorf("querying serial_numbers entity : %w", err)
+	}
+
+	serialNumberFormFields := seedmodels.GetSerialNumberFormFields(serialNumberForm.ID, serialNumberEntity.ID)
+	for _, ff := range serialNumberFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating serial number form field : %w", err)
+		}
+	}
+
+	// Lower Priority Form 6: Lot Tracking
+	lotTrackingForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Lot Tracking Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating lot tracking form : %w", err)
+	}
+
+	lotTrackingEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "lot_trackings")
+	if err != nil {
+		return fmt.Errorf("querying lot_trackings entity : %w", err)
+	}
+
+	lotTrackingFormFields := seedmodels.GetLotTrackingFormFields(lotTrackingForm.ID, lotTrackingEntity.ID)
+	for _, ff := range lotTrackingFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating lot tracking form field : %w", err)
+		}
+	}
+
+	// Lower Priority Form 7: Quality Inspection
+	qualityInspectionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Quality Inspection Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating quality inspection form : %w", err)
+	}
+
+	qualityInspectionEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "quality_inspections")
+	if err != nil {
+		return fmt.Errorf("querying quality_inspections entity : %w", err)
+	}
+
+	qualityInspectionFormFields := seedmodels.GetQualityInspectionFormFields(qualityInspectionForm.ID, qualityInspectionEntity.ID)
+	for _, ff := range qualityInspectionFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating quality inspection form field : %w", err)
+		}
+	}
+
+	// Lower Priority Form 8: Inventory Transaction
+	inventoryTransactionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Inventory Transaction Creation Form",
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory transaction form : %w", err)
+	}
+
+	inventoryTransactionEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "inventory_transactions")
+	if err != nil {
+		return fmt.Errorf("querying inventory_transactions entity : %w", err)
+	}
+
+	inventoryTransactionFormFields := seedmodels.GetInventoryTransactionFormFields(inventoryTransactionForm.ID, inventoryTransactionEntity.ID)
+	for _, ff := range inventoryTransactionFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return fmt.Errorf("creating inventory transaction form field : %w", err)
 		}
 	}
 

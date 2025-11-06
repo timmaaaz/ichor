@@ -447,7 +447,7 @@ func GetStreetFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.Ne
 		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "line_1", Label: "Street Address", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "line_2", Label: "Address Line 2", FieldType: "text", FieldOrder: 2, Required: false, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "postal_code", Label: "Postal Code", FieldType: "text", FieldOrder: 3, Required: false, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "city_id", Label: "City", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "cities", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "streets", Name: "city_id", Label: "City", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "geography.cities", "display_field": "name", "inline_create": {"enabled": true, "form_name": "City Creation Form", "button_text": "Create City"}}`)},
 	}
 }
 
@@ -459,7 +459,7 @@ func GetContactInfoFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldb
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "primary_phone_number", Label: "Primary Phone", FieldType: "tel", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "secondary_phone_number", Label: "Secondary Phone", FieldType: "tel", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "email_address", Label: "Email", FieldType: "email", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "street_id", Label: "Street Address", FieldType: "select", FieldOrder: 6, Required: true, Config: json.RawMessage(`{"entity": "streets", "display_field": "line_1"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "street_id", Label: "Street Address", FieldType: "select", FieldOrder: 6, Required: true, Config: json.RawMessage(`{"entity": "geography.streets", "display_field": "line_1", "inline_create": {"enabled": true, "form_name": "Street Creation Form", "button_text": "Create Street"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "available_hours_start", Label: "Available From", FieldType: "time", FieldOrder: 7, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "available_hours_end", Label: "Available Until", FieldType: "time", FieldOrder: 8, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "contact_infos", Name: "timezone", Label: "Timezone", FieldType: "text", FieldOrder: 9, Required: true, Config: json.RawMessage(`{}`)},
@@ -486,7 +486,7 @@ func GetTitleFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.New
 func GetOfficeFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "offices", Name: "name", Label: "Office Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "offices", Name: "street_id", Label: "Address", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "streets", "display_field": "line_1"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "offices", Name: "street_id", Label: "Address", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "geography.streets", "display_field": "line_1", "inline_create": {"enabled": true, "form_name": "Street Creation Form", "button_text": "Create Street"}}`)},
 	}
 }
 
@@ -673,7 +673,7 @@ func GetWarehouseFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "code", Label: "Warehouse Code", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "name", Label: "Warehouse Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "street_id", Label: "Address", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "streets", "display_field": "line_1"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "street_id", Label: "Address", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "geography.streets", "display_field": "line_1", "inline_create": {"enabled": true, "form_name": "Street Creation Form", "button_text": "Create Street"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "is_active", Label: "Active", FieldType: "boolean", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
 	}
 }
@@ -696,8 +696,8 @@ func GetInventoryLocationFormFields(formID uuid.UUID, entityID uuid.UUID) []form
 // GetInventoryItemFormFields returns form fields for inventory items (inventory.inventory_items)
 func GetInventoryItemFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products", "display_field": "name"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "location_id", Label: "Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory_locations", "display_field": "aisle"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products.products", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Product Creation Form", "button_text": "Create Product"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "location_id", Label: "Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory.inventory_locations", "display_field": "aisle", "inline_create": {"enabled": true, "form_name": "Inventory Location Creation Form", "button_text": "Create Inventory Location"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"min": 0}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "reserved_quantity", Label: "Reserved Quantity", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"min": 0}`)},
 	}
@@ -734,8 +734,8 @@ func GetInventoryTransactionFormFields(formID uuid.UUID, entityID uuid.UUID) []f
 // GetInventoryAdjustmentFormFields returns form fields for inventory adjustments (inventory.inventory_adjustments)
 func GetInventoryAdjustmentFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products", "display_field": "name"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "location_id", Label: "Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory_locations", "display_field": "aisle"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products.products", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Product Creation Form", "button_text": "Create Product"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "location_id", Label: "Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory.inventory_locations", "display_field": "aisle", "inline_create": {"enabled": true, "form_name": "Inventory Location Creation Form", "button_text": "Create Inventory Location"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "quantity_change", Label: "Quantity Change", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "reason_code", Label: "Reason Code", FieldType: "text", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "notes", Label: "Notes", FieldType: "textarea", FieldOrder: 5, Required: false, Config: json.RawMessage(`{}`)},
@@ -745,9 +745,9 @@ func GetInventoryAdjustmentFormFields(formID uuid.UUID, entityID uuid.UUID) []fo
 // GetTransferOrderFormFields returns form fields for transfer orders (inventory.transfer_orders)
 func GetTransferOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products", "display_field": "name"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "from_location_id", Label: "From Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory_locations", "display_field": "aisle"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "to_location_id", Label: "To Location", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "inventory_locations", "display_field": "aisle"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products.products", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Product Creation Form", "button_text": "Create Product"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "from_location_id", Label: "From Location", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory.inventory_locations", "display_field": "aisle", "inline_create": {"enabled": true, "form_name": "Inventory Location Creation Form", "button_text": "Create Inventory Location"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "to_location_id", Label: "To Location", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "inventory.inventory_locations", "display_field": "aisle", "inline_create": {"enabled": true, "form_name": "Inventory Location Creation Form", "button_text": "Create Inventory Location"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"min": 1}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "status", Label: "Status", FieldType: "text", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
 	}
@@ -769,9 +769,9 @@ func GetValidAssetFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbu
 // GetAssetFormFields returns form fields for assets (assets.assets)
 func GetAssetFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
-		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "valid_asset_id", Label: "Asset Type", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "valid_assets", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "valid_asset_id", Label: "Asset Type", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "assets.valid_assets", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Valid Asset Creation Form", "button_text": "Create Valid Asset"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "serial_number", Label: "Serial Number", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "asset_condition_id", Label: "Condition", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "asset_conditions", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "asset_condition_id", Label: "Condition", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "assets.asset_conditions", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Asset Condition Creation Form", "button_text": "Create Asset Condition"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "assets", Name: "last_maintenance_time", Label: "Last Maintenance", FieldType: "date", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`)},
 	}
 }
@@ -817,8 +817,8 @@ func GetEntityFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.Ne
 func GetCustomerFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "name", Label: "Customer Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "contact_id", Label: "Contact Information", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "contact_infos", "display_field": "email_address"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "delivery_address_id", Label: "Delivery Address", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "streets", "display_field": "line_1"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "contact_id", Label: "Contact Information", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "core.contact_infos", "display_field": "email_address", "inline_create": {"enabled": true, "form_name": "Contact Info Creation Form", "button_text": "Create Contact Info"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "delivery_address_id", Label: "Delivery Address", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "geography.streets", "display_field": "line_1", "inline_create": {"enabled": true, "form_name": "Street Creation Form", "button_text": "Create Street"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "notes", Label: "Notes", FieldType: "textarea", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`)},
 	}
 }
@@ -827,19 +827,19 @@ func GetCustomerFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.
 func GetSalesOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "number", Label: "Order Number", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "customer_id", Label: "Customer", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "customers", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "customer_id", Label: "Customer", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "sales.customers", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Customer Creation Form", "button_text": "Create Customer"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "due_date", Label: "Due Date", FieldType: "date", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "order_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "order_fulfillment_statuses", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "order_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "sales.order_fulfillment_statuses", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Order Fulfillment Status Creation Form", "button_text": "Create Order Fulfillment Status"}}`)},
 	}
 }
 
 // GetSalesOrderLineItemFormFields returns form fields for order line items (sales.order_line_items)
 func GetSalesOrderLineItemFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "products.products", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Product Creation Form", "button_text": "Create Product"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"min": 1}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "unit_price", Label: "Unit Price", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "line_item_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "line_item_fulfillment_statuses", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "line_item_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "sales.line_item_fulfillment_statuses", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Line Item Fulfillment Status Creation Form", "button_text": "Create Line Item Fulfillment Status"}}`)},
 	}
 }
 
@@ -847,7 +847,7 @@ func GetSalesOrderLineItemFormFields(formID uuid.UUID, entityID uuid.UUID) []for
 func GetSupplierFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "name", Label: "Supplier Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "contact_infos_id", Label: "Contact Information", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "contact_infos", "display_field": "email_address"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "contact_infos_id", Label: "Contact Information", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "core.contact_infos", "display_field": "email_address", "inline_create": {"enabled": true, "form_name": "Contact Info Creation Form", "button_text": "Create Contact Info"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "payment_terms", Label: "Payment Terms", FieldType: "textarea", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "lead_time_days", Label: "Lead Time (Days)", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
 	}
@@ -857,19 +857,19 @@ func GetSupplierFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.
 func GetPurchaseOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "order_number", Label: "Order Number", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "supplier_id", Label: "Supplier", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "suppliers", "display_field": "name"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "purchase_order_status_id", Label: "Status", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "purchase_order_statuses", "display_field": "name"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "delivery_warehouse_id", Label: "Delivery Warehouse", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "warehouses", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "supplier_id", Label: "Supplier", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "procurement.suppliers", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Supplier Creation Form", "button_text": "Create Supplier"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "purchase_order_status_id", Label: "Status", FieldType: "select", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "procurement.purchase_order_statuses", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Purchase Order Status Creation Form", "button_text": "Create Purchase Order Status"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "delivery_warehouse_id", Label: "Delivery Warehouse", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "inventory.warehouses", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Warehouse Creation Form", "button_text": "Create Warehouse"}}`)},
 	}
 }
 
 // GetPurchaseOrderLineItemFormFields returns form fields for PO line items (procurement.purchase_order_line_items)
 func GetPurchaseOrderLineItemFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
-		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "supplier_product_id", Label: "Supplier Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "supplier_products", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "supplier_product_id", Label: "Supplier Product", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "procurement.supplier_products", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Supplier Product Creation Form", "button_text": "Create Supplier Product"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "quantity_ordered", Label: "Quantity Ordered", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"min": 1}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "unit_cost", Label: "Unit Cost", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "line_item_status_id", Label: "Line Item Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "purchase_order_line_item_statuses", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "line_item_status_id", Label: "Line Item Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "procurement.purchase_order_line_item_statuses", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Purchase Order Line Item Status Creation Form", "button_text": "Create Purchase Order Line Item Status"}}`)},
 	}
 }
 
@@ -888,8 +888,22 @@ func GetUserFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewF
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "first_name", Label: "First Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "last_name", Label: "Last Name", FieldType: "text", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "email", Label: "Email", FieldType: "email", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "title_id", Label: "Title", FieldType: "select", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"entity": "titles", "display_field": "name"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "office_id", Label: "Office", FieldType: "select", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"entity": "offices", "display_field": "name"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "user_approval_status_id", Label: "Approval Status", FieldType: "select", FieldOrder: 7, Required: true, Config: json.RawMessage(`{"entity": "user_approval_status", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "title_id", Label: "Title", FieldType: "select", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"entity": "hr.titles", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Title Creation Form", "button_text": "Create Title"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "office_id", Label: "Office", FieldType: "select", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"entity": "hr.offices", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Office Creation Form", "button_text": "Create Office"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "user_approval_status_id", Label: "Approval Status", FieldType: "select", FieldOrder: 7, Required: true, Config: json.RawMessage(`{"entity": "hr.user_approval_status", "display_field": "name", "inline_create": {"enabled": true, "form_name": "User Approval Status Creation Form", "button_text": "Create User Approval Status"}}`)},
+	}
+}
+
+// GetSupplierProductFormFields returns form fields for supplier products (procurement.supplier_products)
+func GetSupplierProductFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
+	return []formfieldbus.NewFormField{
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "supplier_id", Label: "Supplier", FieldType: "select", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "procurement.suppliers", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Supplier Creation Form", "button_text": "Create Supplier"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "product_id", Label: "Product", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "products.products", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Product Creation Form", "button_text": "Create Product"}}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "supplier_part_number", Label: "Supplier Part Number", FieldType: "text", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "min_order_quantity", Label: "Minimum Order Quantity", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"min": 1}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "max_order_quantity", Label: "Maximum Order Quantity", FieldType: "number", FieldOrder: 5, Required: true, Config: json.RawMessage(`{"min": 1}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "lead_time_days", Label: "Lead Time (Days)", FieldType: "number", FieldOrder: 6, Required: true, Config: json.RawMessage(`{"min": 0}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "unit_cost", Label: "Unit Cost", FieldType: "number", FieldOrder: 7, Required: true, Config: json.RawMessage(`{"min": 0, "step": 0.01}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "is_primary_supplier", Label: "Is Primary Supplier", FieldType: "boolean", FieldOrder: 8, Required: true, Config: json.RawMessage(`{}`)},
 	}
 }

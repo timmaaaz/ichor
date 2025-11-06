@@ -1038,16 +1038,24 @@ CREATE TABLE IF NOT EXISTS config.page_tab_configs (
 CREATE TABLE IF NOT EXISTS config.forms (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(255) NOT NULL,
+   is_reference_data BOOLEAN DEFAULT false,
+   allow_inline_create BOOLEAN DEFAULT true,
    UNIQUE(name)
 );
 
 -- Create indexes for forms
 CREATE INDEX IF NOT EXISTS idx_forms_name ON config.forms(name);
+CREATE INDEX idx_forms_reference_data ON config.forms(is_reference_data);
+CREATE INDEX idx_forms_inline_create ON config.forms(allow_inline_create);
 
 -- Comments
 COMMENT ON TABLE config.forms IS 'Stores form configuration definitions';
 COMMENT ON COLUMN config.forms.id IS 'Unique identifier for the form';
 COMMENT ON COLUMN config.forms.name IS 'Unique name for the form configuration';
+COMMENT ON COLUMN config.forms.is_reference_data IS
+    'If true, this form represents stable reference data managed by admins only (no inline creation allowed)';
+COMMENT ON COLUMN config.forms.allow_inline_create IS
+    'If true, this form can be embedded for inline entity creation within other forms';
 
 -- Version: 1.64
 -- Description: Create form_fields table for form field configurations
@@ -1435,16 +1443,3 @@ CREATE INDEX idx_po_line_items_po ON procurement.purchase_order_line_items(purch
 CREATE INDEX idx_po_line_items_supplier_product ON procurement.purchase_order_line_items(supplier_product_id);
 CREATE INDEX idx_po_line_items_status ON procurement.purchase_order_line_items(line_item_status_id);
 
--- Version: 1.70
--- Description: Add inline creation metadata to forms
-ALTER TABLE config.forms
-    ADD COLUMN is_reference_data BOOLEAN DEFAULT false,
-    ADD COLUMN allow_inline_create BOOLEAN DEFAULT true;
-
-CREATE INDEX idx_forms_reference_data ON config.forms(is_reference_data);
-CREATE INDEX idx_forms_inline_create ON config.forms(allow_inline_create);
-
-COMMENT ON COLUMN config.forms.is_reference_data IS
-    'If true, this form represents stable reference data managed by admins only (no inline creation allowed)';
-COMMENT ON COLUMN config.forms.allow_inline_create IS
-    'If true, this form can be embedded for inline entity creation within other forms';
