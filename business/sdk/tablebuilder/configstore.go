@@ -520,3 +520,162 @@ func (s *ConfigStore) ValidateStoredConfig(ctx context.Context, id uuid.UUID) er
 
 	return config.Validate()
 }
+
+// =============================================================================
+// Page Content Operations
+// =============================================================================
+
+// CreatePageContent creates a new page content block
+func (s *ConfigStore) CreatePageContent(ctx context.Context, content PageContent) (*PageContent, error) {
+	content.ID = uuid.New()
+
+	const q = `
+		INSERT INTO config.page_content (
+			id, page_config_id, content_type, label,
+			table_config_id, form_id, order_index,
+			parent_id, layout, is_visible, is_default
+		) VALUES (
+			:id, :page_config_id, :content_type, :label,
+			:table_config_id, :form_id, :order_index,
+			:parent_id, :layout, :is_visible, :is_default
+		)`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, content); err != nil {
+		return nil, fmt.Errorf("insert page content: %w", err)
+	}
+
+	return &content, nil
+}
+
+// UpdatePageContent updates an existing page content block
+func (s *ConfigStore) UpdatePageContent(ctx context.Context, content PageContent) (*PageContent, error) {
+	const q = `
+		UPDATE config.page_content SET
+			page_config_id = :page_config_id,
+			content_type = :content_type,
+			label = :label,
+			table_config_id = :table_config_id,
+			form_id = :form_id,
+			order_index = :order_index,
+			parent_id = :parent_id,
+			layout = :layout,
+			is_visible = :is_visible,
+			is_default = :is_default
+		WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, content); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("update page content: %w", err)
+	}
+
+	return &content, nil
+}
+
+// DeletePageContent removes a page content block
+func (s *ConfigStore) DeletePageContent(ctx context.Context, id uuid.UUID) error {
+	data := struct {
+		ID uuid.UUID `db:"id"`
+	}{
+		ID: id,
+	}
+
+	const q = `DELETE FROM config.page_content WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("delete page content: %w", err)
+	}
+
+	return nil
+}
+
+// QueryPageContentByID retrieves a single content block by ID
+func (s *ConfigStore) QueryPageContentByID(ctx context.Context, id uuid.UUID) (*PageContent, error) {
+	data := struct {
+		ID uuid.UUID `db:"id"`
+	}{
+		ID: id,
+	}
+
+	const q = `
+		SELECT
+			id, page_config_id, content_type, label,
+			table_config_id, form_id, order_index,
+			parent_id, layout, is_visible, is_default
+		FROM
+			config.page_content
+		WHERE
+			id = :id`
+
+	var content PageContent
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &content); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("query page content: %w", err)
+	}
+
+	return &content, nil
+}
+
+// QueryPageContentByConfigID retrieves all content blocks for a page config
+func (s *ConfigStore) QueryPageContentByConfigID(ctx context.Context, pageConfigID uuid.UUID) ([]PageContent, error) {
+	data := struct {
+		PageConfigID uuid.UUID `db:"page_config_id"`
+	}{
+		PageConfigID: pageConfigID,
+	}
+
+	const q = `
+		SELECT
+			id, page_config_id, content_type, label,
+			table_config_id, form_id, order_index,
+			parent_id, layout, is_visible, is_default
+		FROM
+			config.page_content
+		WHERE
+			page_config_id = :page_config_id
+		ORDER BY
+			order_index ASC`
+
+	var contents []PageContent
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &contents); err != nil {
+		return nil, fmt.Errorf("query page contents: %w", err)
+	}
+
+	return contents, nil
+}
+
+// QueryPageContentWithChildren retrieves content blocks and nests children under parents
+// This is especially useful for tabs, where tab items are children of a tabs container
+func (s *ConfigStore) QueryPageContentWithChildren(ctx context.Context, pageConfigID uuid.UUID) ([]PageContent, error) {
+	// Query all content for this page config
+	allContent, err := s.QueryPageContentByConfigID(ctx, pageConfigID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build map for quick lookup
+	contentMap := make(map[uuid.UUID]*PageContent)
+	for i := range allContent {
+		contentMap[allContent[i].ID] = &allContent[i]
+		allContent[i].Children = []PageContent{} // Initialize children slice
+	}
+
+	// Nest children under parents
+	topLevel := []PageContent{}
+	for i := range allContent {
+		if allContent[i].ParentID == uuid.Nil {
+			// Top-level content (no parent)
+			topLevel = append(topLevel, allContent[i])
+		} else {
+			// Child content - add to parent's children slice
+			if parent, ok := contentMap[allContent[i].ParentID]; ok {
+				parent.Children = append(parent.Children, allContent[i])
+			}
+		}
+	}
+
+	return topLevel, nil
+}

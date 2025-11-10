@@ -8,14 +8,15 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/config/pageactionapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
-	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {
@@ -109,22 +110,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	// =========================================================================
-	// Seed Page Configs using tablebuilder
+	// Seed Page Configs using new domain packages
 	// =========================================================================
 
-	configStore := tablebuilder.NewConfigStore(db.Log, db.DB)
-	pageConfigIDs := make([]uuid.UUID, 3)
+	configs, err := pageconfigbus.TestSeedPageConfigs(ctx, 3, busDomain.PageConfig)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding page configs : %w", err)
+	}
 
-	for i := 0; i < 3; i++ {
-		pageConfig, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
-			Name:      fmt.Sprintf("Test Page Config %d", i),
-			UserID:    uuid.Nil,
-			IsDefault: true,
-		})
-		if err != nil {
-			return apitest.SeedData{}, fmt.Errorf("creating page config : %w", err)
-		}
-		pageConfigIDs[i] = pageConfig.ID
+	pageConfigIDs := make([]uuid.UUID, len(configs))
+	for i, cfg := range configs {
+		pageConfigIDs[i] = cfg.ID
 	}
 
 	// =========================================================================
@@ -138,16 +134,12 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	appActions := pageactionapp.ToAppPageActions(actions)
 
-	// Store first page config ID for tests that need it
+	// Store seed data for tests
 	sd := apitest.SeedData{
 		Users:       []apitest.User{tu1},
 		Admins:      []apitest.User{tu2},
 		PageActions: appActions,
-	}
-
-	// Store page config IDs in PageConfigs field for test access
-	for _, id := range pageConfigIDs {
-		sd.PageConfigs = append(sd.PageConfigs, tablebuilder.PageConfig{ID: id})
+		PageConfigs: pageconfigapp.ToAppPageConfigs(configs),
 	}
 
 	return sd, nil

@@ -137,6 +137,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus/stores/formfielddb"
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus/stores/pageactiondb"
+	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus/stores/pageconfigdb"
+	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus/stores/pagecontentdb"
 
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
@@ -244,9 +248,11 @@ type BusDomain struct {
 	TableStore  *tablebuilder.Store
 
 	// Config
-	Form       *formbus.Business
-	FormField  *formfieldbus.Business
-	PageAction *pageactionbus.Business
+	Form        *formbus.Business
+	FormField   *formfieldbus.Business
+	PageAction  *pageactionbus.Business
+	PageConfig  *pageconfigbus.Business
+	PageContent *pagecontentbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -346,6 +352,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	formBus := formbus.NewBusiness(log, delegate, formdb.NewStore(log, db))
 	formFieldBus := formfieldbus.NewBusiness(log, delegate, formfielddb.NewStore(log, db))
 	pageActionBus := pageactionbus.NewBusiness(log, delegate, pageactiondb.NewStore(log, db))
+	pageConfigBus := pageconfigbus.NewBusiness(log, delegate, pageconfigdb.NewStore(log, db))
+	pageContentBus := pagecontentbus.NewBusiness(log, delegate, pagecontentdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:                  delegate,
@@ -410,6 +418,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Form:                      formBus,
 		FormField:                 formFieldBus,
 		PageAction:                pageActionBus,
+		PageConfig:                pageConfigBus,
+		PageContent:               pageContentBus,
 	}
 
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
@@ -357,6 +358,15 @@ func (app Count) Encode() ([]byte, string, error) {
 // This is a type alias to pageactionapp.ActionsGroupedByType for convenience.
 type ActionsGroupedByType = pageactionapp.ActionsGroupedByType
 
+// PageConfig is a type alias to pageconfigapp.PageConfig for convenience.
+type PageConfig = pageconfigapp.PageConfig
+
+// NewPageConfig is a type alias to pageconfigapp.NewPageConfig for convenience.
+type NewPageConfig = pageconfigapp.NewPageConfig
+
+// UpdatePageConfig is a type alias to pageconfigapp.UpdatePageConfig for convenience.
+type UpdatePageConfig = pageconfigapp.UpdatePageConfig
+
 type FullPageConfig struct {
 	PageConfig  PageConfig           `json:"pageConfig"`
 	PageTabs    []PageTabConfig      `json:"pageTabs"`
@@ -367,92 +377,6 @@ type FullPageConfig struct {
 func (app FullPageConfig) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(app)
 	return data, "application/json", err
-}
-
-// PageConfig - MATCHES business layer exactly
-type PageConfig struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	UserID    string `json:"user_id"`
-	IsDefault string `json:"is_default"`
-}
-
-// Encode implements the encoder interface.
-func (app PageConfig) Encode() ([]byte, string, error) {
-	data, err := json.Marshal(app)
-	return data, "application/json", err
-}
-
-type NewPageConfig struct {
-	Name      string `json:"name" validate:"required,min=3,max=100"`
-	UserID    string `json:"user_id" validate:"omitempty,uuid"`
-	IsDefault string `json:"is_default"`
-}
-
-// Decode implements the decoder interface.
-func (app *NewPageConfig) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-// Validate checks the data in the model is considered clean.
-func (app NewPageConfig) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-// UpdatePageConfig defines the data needed to update a page configuration.
-type UpdatePageConfig struct {
-	Name      *string `json:"name" validate:"omitempty,min=3,max=100"`
-	UserID    *string `json:"user_id" validate:"omitempty,uuid"`
-	IsDefault *string `json:"is_default"`
-}
-
-// Decode implements the decoder interface.
-func (app *UpdatePageConfig) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-// Validate checks the data in the model is considered clean.
-func (app UpdatePageConfig) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-func toAppPageConfig(bus tablebuilder.PageConfig) PageConfig {
-	var userIDStr string
-	// Zero UUID (nil in DB) should be represented as empty string
-	if bus.UserID != (uuid.UUID{}) {
-		userIDStr = bus.UserID.String()
-	}
-
-	return PageConfig{
-		ID:        bus.ID.String(),
-		Name:      bus.Name,
-		UserID:    userIDStr,
-		IsDefault: fmt.Sprintf("%t", bus.IsDefault),
-	}
-}
-
-func toBusPageConfig(app NewPageConfig) (tablebuilder.PageConfig, error) {
-	dest := tablebuilder.PageConfig{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return tablebuilder.PageConfig{}, fmt.Errorf("to bus page config: %w", err)
-	}
-
-	return dest, nil
-}
-
-func toBusUpdatePageConfig(app UpdatePageConfig) (tablebuilder.UpdatePageConfig, error) {
-	dest := tablebuilder.UpdatePageConfig{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
 }
 
 type PageTabConfig struct {

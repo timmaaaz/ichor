@@ -1189,6 +1189,70 @@ CREATE INDEX IF NOT EXISTS idx_form_fields_schema_table ON config.form_fields(en
 COMMENT ON COLUMN config.form_fields.entity_schema IS 'Database schema name for the entity this field belongs to';
 COMMENT ON COLUMN config.form_fields.entity_table IS 'Database table name for the entity this field belongs to';
 
+-- Version: 1.70
+-- Description: Create flexible page content blocks system for user-customizable layouts
+CREATE TABLE IF NOT EXISTS config.page_content (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   page_config_id UUID NOT NULL,
+
+   -- Content identification
+   content_type TEXT NOT NULL CHECK (content_type IN ('table', 'form', 'tabs', 'text', 'chart', 'container')),
+   label TEXT,
+
+   -- Content references (only one should be set based on content_type)
+   table_config_id UUID NULL,
+   form_id UUID NULL,
+
+   -- Simple ordering for stacked layouts
+   order_index INT DEFAULT 0,
+
+   -- Container/nesting (for tabs, accordions, sections, etc.)
+   parent_id UUID NULL,
+
+   -- ALL layout configuration in JSON (Tailwind-compatible)
+   -- Stores: responsive column spans, grid config, gap, custom classes, etc.
+   -- Example: {"colSpan":{"default":12,"md":6},"gap":"gap-4"}
+   layout JSONB DEFAULT '{}'::jsonb,
+
+   -- Display flags
+   is_visible BOOLEAN DEFAULT TRUE,
+   is_default BOOLEAN DEFAULT FALSE,  -- For tabs: which tab is active by default
+
+   -- Foreign keys
+   CONSTRAINT fk_page_content_page_config
+      FOREIGN KEY (page_config_id) REFERENCES config.page_configs(id) ON DELETE CASCADE,
+   CONSTRAINT fk_page_content_table
+      FOREIGN KEY (table_config_id) REFERENCES config.table_configs(id) ON DELETE CASCADE,
+   CONSTRAINT fk_page_content_form
+      FOREIGN KEY (form_id) REFERENCES config.forms(id) ON DELETE CASCADE,
+   CONSTRAINT fk_page_content_parent
+      FOREIGN KEY (parent_id) REFERENCES config.page_content(id) ON DELETE CASCADE,
+
+   -- Business rule: content must reference appropriate entity
+   CONSTRAINT check_content_reference CHECK (
+      (content_type = 'table' AND table_config_id IS NOT NULL) OR
+      (content_type = 'form' AND form_id IS NOT NULL) OR
+      (content_type IN ('tabs', 'container', 'text', 'chart'))
+   )
+);
+
+-- Indexes for performance
+CREATE INDEX idx_page_content_config ON config.page_content(page_config_id);
+CREATE INDEX idx_page_content_table ON config.page_content(table_config_id);
+CREATE INDEX idx_page_content_form ON config.page_content(form_id);
+CREATE INDEX idx_page_content_parent ON config.page_content(parent_id);
+CREATE INDEX idx_page_content_order ON config.page_content(page_config_id, order_index);
+CREATE INDEX idx_page_content_layout ON config.page_content USING GIN (layout);
+
+-- Comments
+COMMENT ON TABLE config.page_content IS 'User-customizable content blocks (tables, forms, charts, etc.) with flexible JSON layout';
+COMMENT ON COLUMN config.page_content.page_config_id IS 'References page_configs for user-specific or default layouts';
+COMMENT ON COLUMN config.page_content.content_type IS 'Type of content: table, form, tabs, container, text, chart';
+COMMENT ON COLUMN config.page_content.parent_id IS 'Parent content block ID for nested content (e.g., tabs within a tabs container)';
+COMMENT ON COLUMN config.page_content.layout IS 'JSONB configuration for responsive grid layout (Tailwind-compatible), spacing, and styling';
+COMMENT ON COLUMN config.page_content.order_index IS 'Display order for simple stacked layouts (0-based)';
+COMMENT ON COLUMN config.page_content.is_default IS 'For tabs: indicates which tab is active by default';
+
 CREATE OR REPLACE VIEW sales.orders_base AS
 SELECT
    o.id AS orders_id,

@@ -62,6 +62,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 )
 
 // User represents an app user specified for the test.
@@ -130,6 +132,8 @@ type SeedData struct {
 	Forms                         []formbus.Form
 	FormFields                    []formfieldbus.FormField
 	PageActions                   []pageactionbus.PageAction
+	PageConfigs                   []pageconfigbus.PageConfig
+	PageContents                  []pagecontentbus.PageContent
 	PageConfigIDs                 []uuid.UUID
 }
 

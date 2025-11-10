@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
@@ -24,24 +25,27 @@ type App struct {
 	tableStore    *tablebuilder.Store
 	auth          *auth.Auth
 	pageactionapp *pageactionapp.App
+	pageconfigapp *pageconfigapp.App
 }
 
 // NewApp constructs a tablebuilder app API for use.
-func NewApp(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, pageactionapp *pageactionapp.App) *App {
+func NewApp(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, pageactionapp *pageactionapp.App, pageconfigapp *pageconfigapp.App) *App {
 	return &App{
 		configStore:   configStore,
 		tableStore:    tableStore,
 		pageactionapp: pageactionapp,
+		pageconfigapp: pageconfigapp,
 	}
 }
 
 // NewAppWithAuth constructs a tablebuilder app API for use with auth support.
-func NewAppWithAuth(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, ath *auth.Auth, pageactionapp *pageactionapp.App) *App {
+func NewAppWithAuth(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, ath *auth.Auth, pageactionapp *pageactionapp.App, pageconfigapp *pageconfigapp.App) *App {
 	return &App{
 		auth:          ath,
 		configStore:   configStore,
 		tableStore:    tableStore,
 		pageactionapp: pageactionapp,
+		pageconfigapp: pageconfigapp,
 	}
 }
 
@@ -70,20 +74,7 @@ func (a *App) Create(ctx context.Context, app NewTableConfig) (TableConfig, erro
 
 // CreatePageConfig adds a new page configuration to the system.
 func (a *App) CreatePageConfig(ctx context.Context, app NewPageConfig) (PageConfig, error) {
-	config, err := toBusPageConfig(app)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("to bus page config: %w", err)
-	}
-
-	stored, err := a.configStore.CreatePageConfig(ctx, config)
-	if err != nil {
-		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return PageConfig{}, errs.New(errs.Aborted, errors.New("page configuration name already exists"))
-		}
-		return PageConfig{}, fmt.Errorf("create: config[%s]: %w", app.Name, err)
-	}
-
-	return toAppPageConfig(*stored), nil
+	return a.pageconfigapp.Create(ctx, app)
 }
 
 // CreatePageTabConfig adds a new page tab configuration to the system.
@@ -158,32 +149,7 @@ func (a *App) Update(ctx context.Context, id uuid.UUID, app UpdateTableConfig) (
 
 // UpdatePageConfig updates an existing page configuration.
 func (a *App) UpdatePageConfig(ctx context.Context, id uuid.UUID, app UpdatePageConfig) (PageConfig, error) {
-	upc, err := toBusUpdatePageConfig(app)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("updatepageconfig: %w", err)
-	}
-
-	// Get current config to preserve unchanged fields
-	current, err := a.configStore.QueryPageByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return PageConfig{}, errs.New(errs.NotFound, err)
-		}
-		return PageConfig{}, errs.Newf(errs.Internal, "get config: %s", err)
-	}
-
-	err = convert.PopulateSameTypes(upc, current)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("populate struct: %w", err)
-	}
-
-	// Apply updates
-	pageConfig, err := a.configStore.UpdatePageConfig(ctx, *current)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("update page config: %w", err)
-	}
-
-	return toAppPageConfig(*pageConfig), nil
+	return a.pageconfigapp.Update(ctx, app, id)
 }
 
 // UpdatePageTabConfig updates an existing page tab configuration.
@@ -231,14 +197,7 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 
 // DeletePageConfig removes a page configuration from the system.
 func (a *App) DeletePageConfig(ctx context.Context, id uuid.UUID) error {
-	if err := a.configStore.DeletePageConfig(ctx, id); err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return errs.New(errs.NotFound, err)
-		}
-		return errs.Newf(errs.Internal, "delete page config: %s", err)
-	}
-
-	return nil
+	return a.pageconfigapp.Delete(ctx, id)
 }
 
 // DeletePageTabConfig removes a page tab configuration from the system.
@@ -298,22 +257,24 @@ func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageCon
 		return FullPageConfig{}, errs.Newf(errs.InvalidArgument, "invalid page name: %s", err)
 	}
 
-	storedPage, err := a.configStore.QueryPageByName(ctx, unescaped)
+	page, err := a.pageconfigapp.QueryByName(ctx, unescaped)
 	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return FullPageConfig{}, errs.New(errs.NotFound, err)
-		}
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page by name: %s", err)
+		return FullPageConfig{}, err
 	}
-	page := toAppPageConfig(*storedPage)
 
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, storedPage.ID)
+	// Parse the ID from string to UUID for querying tabs
+	pageID, err := uuid.Parse(page.ID)
+	if err != nil {
+		return FullPageConfig{}, errs.Newf(errs.Internal, "parse page config id: %s", err)
+	}
+
+	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, pageID)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
 	// Fetch page actions
-	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, pageID)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
 	}
@@ -334,22 +295,24 @@ func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, use
 		return FullPageConfig{}, errs.Newf(errs.InvalidArgument, "invalid page name: %s", err)
 	}
 
-	storedPage, err := a.configStore.QueryPageByNameAndUserID(ctx, unescaped, userID)
+	page, err := a.pageconfigapp.QueryByNameAndUserID(ctx, unescaped, userID)
 	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return FullPageConfig{}, errs.New(errs.NotFound, err)
-		}
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page by name and user id: %s", err)
+		return FullPageConfig{}, err
 	}
-	page := toAppPageConfig(*storedPage)
 
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, storedPage.ID)
+	// Parse the ID from string to UUID for querying tabs
+	pageID, err := uuid.Parse(page.ID)
+	if err != nil {
+		return FullPageConfig{}, errs.Newf(errs.Internal, "parse page config id: %s", err)
+	}
+
+	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, pageID)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
 	// Fetch page actions
-	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, pageID)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
 	}
@@ -363,22 +326,18 @@ func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, use
 
 // QueryFullPageByID returns a full page configuration by its ID, including tabs.
 func (a *App) QueryFullPageByID(ctx context.Context, id uuid.UUID) (FullPageConfig, error) {
-	storedPage, err := a.configStore.QueryPageByID(ctx, id)
+	page, err := a.pageconfigapp.QueryByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return FullPageConfig{}, errs.New(errs.NotFound, err)
-		}
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page by id: %s", err)
+		return FullPageConfig{}, err
 	}
-	page := toAppPageConfig(*storedPage)
 
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, storedPage.ID)
+	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, id)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
 	// Fetch page actions
-	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, id)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
 	}

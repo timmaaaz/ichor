@@ -17,6 +17,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -602,7 +604,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 
 	// Create SYSTEM-WIDE default page (user_id = NULL or uuid.Nil)
 	// This is the template that all users fall back to if they don't have their own version
-	defaultPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	defaultPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "default_dashboard",
 		UserID:    uuid.Nil, // ✅ CORRECT - no user association, this is system-wide
 		IsDefault: true,
@@ -644,7 +646,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Create tabs for the SYSTEM default page
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Orders",
 		PageConfigID: defaultPage.ID,
 		ConfigID:     ordersConfigStored.ID,
@@ -655,7 +657,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating orders tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Products",
 		PageConfigID: defaultPage.ID,
 		ConfigID:     productsConfigStored.ID,
@@ -666,7 +668,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating products tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Inventory",
 		PageConfigID: defaultPage.ID,
 		ConfigID:     inventoryConfigStored.ID,
@@ -677,7 +679,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Suppliers",
 		PageConfigID: defaultPage.ID,
 		ConfigID:     suppliersConfigStored.ID,
@@ -688,7 +690,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating suppliers tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Categories",
 		PageConfigID: defaultPage.ID,
 		ConfigID:     categoriesConfigStored.ID,
@@ -699,7 +701,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating categories tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Order Line Items",
 		PageConfigID: defaultPage.ID,
 		ConfigID:     orderLineItemsConfigStored.ID,
@@ -832,7 +834,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Create Orders Page
-	ordersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	ordersPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "orders_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -841,7 +843,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating orders page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Orders",
 		PageConfigID: ordersPage.ID,
 		ConfigID:     ordersPageStored.ID,
@@ -853,7 +855,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Create Suppliers Page
-	suppliersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	suppliersPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "suppliers_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -862,7 +864,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating suppliers page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Suppliers",
 		PageConfigID: suppliersPage.ID,
 		ConfigID:     suppliersPageStored.ID,
@@ -874,7 +876,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Create Categories Page
-	categoriesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	categoriesPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "categories_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -883,7 +885,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating categories page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Categories",
 		PageConfigID: categoriesPage.ID,
 		ConfigID:     categoriesPageStored.ID,
@@ -895,7 +897,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Create Order Line Items Page
-	orderLineItemsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	orderLineItemsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "order_line_items_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -904,7 +906,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating order line items page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Order Line Items",
 		PageConfigID: orderLineItemsPage.ID,
 		ConfigID:     orderLineItemsPageStored.ID,
@@ -920,7 +922,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	// =========================================================================
 
 	// Admin Users Page
-	adminUsersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	adminUsersPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "admin_users_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -929,7 +931,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin users page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Users",
 		PageConfigID: adminUsersPage.ID,
 		ConfigID:     adminUsersPageStored.ID,
@@ -941,7 +943,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Admin Roles Page
-	adminRolesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	adminRolesPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "admin_roles_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -950,7 +952,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin roles page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Roles",
 		PageConfigID: adminRolesPage.ID,
 		ConfigID:     adminRolesPageStored.ID,
@@ -962,7 +964,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Admin Dashboard Page (multi-tab: users, roles, table access)
-	adminDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	adminDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "admin_dashboard_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -971,7 +973,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin dashboard page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Users",
 		PageConfigID: adminDashboardPage.ID,
 		ConfigID:     adminUsersPageStored.ID,
@@ -982,7 +984,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin dashboard users tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Roles",
 		PageConfigID: adminDashboardPage.ID,
 		ConfigID:     adminRolesPageStored.ID,
@@ -993,7 +995,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin dashboard roles tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Permissions",
 		PageConfigID: adminDashboardPage.ID,
 		ConfigID:     adminTableAccessPageStored.ID,
@@ -1004,7 +1006,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin dashboard permissions tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Audit Logs",
 		PageConfigID: adminDashboardPage.ID,
 		ConfigID:     adminAuditPageStored.ID,
@@ -1015,7 +1017,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin dashboard audit tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Configurations",
 		PageConfigID: adminDashboardPage.ID,
 		ConfigID:     adminConfigPageStored.ID,
@@ -1031,7 +1033,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	// =========================================================================
 
 	// Assets List Page
-	assetsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	assetsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "assets_list_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1040,7 +1042,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating assets page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Assets",
 		PageConfigID: assetsPage.ID,
 		ConfigID:     assetsListPageStored.ID,
@@ -1052,7 +1054,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Asset Requests Page
-	assetsRequestsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	assetsRequestsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "assets_requests_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1061,7 +1063,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating assets requests page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Requests",
 		PageConfigID: assetsRequestsPage.ID,
 		ConfigID:     assetsRequestsPageStored.ID,
@@ -1073,7 +1075,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Assets Dashboard (multi-tab: assets, requests)
-	assetsDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	assetsDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "assets_dashboard_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1082,7 +1084,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating assets dashboard page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Assets",
 		PageConfigID: assetsDashboardPage.ID,
 		ConfigID:     assetsListPageStored.ID,
@@ -1093,7 +1095,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating assets dashboard assets tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Requests",
 		PageConfigID: assetsDashboardPage.ID,
 		ConfigID:     assetsRequestsPageStored.ID,
@@ -1109,7 +1111,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	// =========================================================================
 
 	// HR Employees Page
-	hrEmployeesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	hrEmployeesPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "hr_employees_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1118,7 +1120,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating hr employees page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Employees",
 		PageConfigID: hrEmployeesPage.ID,
 		ConfigID:     hrEmployeesPageStored.ID,
@@ -1130,7 +1132,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// HR Offices Page
-	hrOfficesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	hrOfficesPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "hr_offices_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1139,7 +1141,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating hr offices page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Offices",
 		PageConfigID: hrOfficesPage.ID,
 		ConfigID:     hrOfficesPageStored.ID,
@@ -1151,7 +1153,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// HR Dashboard (multi-tab: employees, offices)
-	hrDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	hrDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "hr_dashboard_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1160,7 +1162,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating hr dashboard page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Employees",
 		PageConfigID: hrDashboardPage.ID,
 		ConfigID:     hrEmployeesPageStored.ID,
@@ -1171,7 +1173,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating hr dashboard employees tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Offices",
 		PageConfigID: hrDashboardPage.ID,
 		ConfigID:     hrOfficesPageStored.ID,
@@ -1187,7 +1189,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	// =========================================================================
 
 	// Inventory Warehouses Page
-	inventoryWarehousesPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	inventoryWarehousesPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "inventory_warehouses_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1196,7 +1198,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory warehouses page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Warehouses",
 		PageConfigID: inventoryWarehousesPage.ID,
 		ConfigID:     inventoryWarehousesPageStored.ID,
@@ -1208,7 +1210,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Inventory Items Page
-	inventoryItemsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	inventoryItemsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "inventory_items_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1217,7 +1219,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory items page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Items",
 		PageConfigID: inventoryItemsPage.ID,
 		ConfigID:     inventoryItemsPageStored.ID,
@@ -1229,7 +1231,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Inventory Adjustments Page
-	inventoryAdjustmentsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	inventoryAdjustmentsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "inventory_adjustments_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1238,7 +1240,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory adjustments page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Adjustments",
 		PageConfigID: inventoryAdjustmentsPage.ID,
 		ConfigID:     inventoryAdjustmentsPageStored.ID,
@@ -1250,7 +1252,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Inventory Transfers Page
-	inventoryTransfersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	inventoryTransfersPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "inventory_transfers_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1259,7 +1261,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory transfers page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Transfers",
 		PageConfigID: inventoryTransfersPage.ID,
 		ConfigID:     inventoryTransfersPageStored.ID,
@@ -1271,7 +1273,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Inventory Dashboard (multi-tab: warehouses, items, adjustments, transfers)
-	inventoryDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	inventoryDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "inventory_dashboard_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1280,7 +1282,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory dashboard page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Items",
 		PageConfigID: inventoryDashboardPage.ID,
 		ConfigID:     inventoryItemsPageStored.ID,
@@ -1291,7 +1293,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory dashboard items tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Warehouses",
 		PageConfigID: inventoryDashboardPage.ID,
 		ConfigID:     inventoryWarehousesPageStored.ID,
@@ -1302,7 +1304,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory dashboard warehouses tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Adjustments",
 		PageConfigID: inventoryDashboardPage.ID,
 		ConfigID:     inventoryAdjustmentsPageStored.ID,
@@ -1313,7 +1315,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory dashboard adjustments tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Transfers",
 		PageConfigID: inventoryDashboardPage.ID,
 		ConfigID:     inventoryTransfersPageStored.ID,
@@ -1329,7 +1331,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	// =========================================================================
 
 	// Sales Customers Page
-	salesCustomersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	salesCustomersPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "sales_customers_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1338,7 +1340,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating sales customers page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Customers",
 		PageConfigID: salesCustomersPage.ID,
 		ConfigID:     salesCustomersPageStored.ID,
@@ -1350,7 +1352,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Sales Dashboard (multi-tab: orders, customers)
-	salesDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	salesDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "sales_dashboard_page",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1359,7 +1361,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating sales dashboard page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Orders",
 		PageConfigID: salesDashboardPage.ID,
 		ConfigID:     ordersPageStored.ID,
@@ -1370,7 +1372,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating sales dashboard orders tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Customers",
 		PageConfigID: salesDashboardPage.ID,
 		ConfigID:     salesCustomersPageStored.ID,
@@ -1386,7 +1388,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	// =========================================================================
 
 	// Purchase Orders Page
-	procurementPurchaseOrdersPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	procurementPurchaseOrdersPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "procurement_purchase_orders",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1395,7 +1397,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement purchase orders page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Purchase Orders",
 		PageConfigID: procurementPurchaseOrdersPage.ID,
 		ConfigID:     procurementPurchaseOrdersConfigStored.ID,
@@ -1407,7 +1409,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Purchase Order Line Items Page
-	procurementLineItemsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	procurementLineItemsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "procurement_line_items",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1416,7 +1418,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement line items page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Line Items",
 		PageConfigID: procurementLineItemsPage.ID,
 		ConfigID:     procurementLineItemsConfigStored.ID,
@@ -1428,7 +1430,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Procurement Approvals Page (multi-tab: open, closed)
-	procurementApprovalsPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	procurementApprovalsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "procurement_approvals",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1437,7 +1439,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement approvals page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Open",
 		PageConfigID: procurementApprovalsPage.ID,
 		ConfigID:     procurementApprovalsOpenConfigStored.ID,
@@ -1448,7 +1450,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement approvals open tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Closed",
 		PageConfigID: procurementApprovalsPage.ID,
 		ConfigID:     procurementApprovalsClosedConfigStored.ID,
@@ -1460,7 +1462,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Procurement Dashboard (multi-tab: purchase orders, line items, suppliers, approvals)
-	procurementDashboardPage, err := configStore.CreatePageConfig(ctx, tablebuilder.PageConfig{
+	procurementDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "procurement_dashboard",
 		UserID:    uuid.Nil,
 		IsDefault: true,
@@ -1469,7 +1471,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement dashboard page: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Purchase Orders",
 		PageConfigID: procurementDashboardPage.ID,
 		ConfigID:     procurementPurchaseOrdersConfigStored.ID,
@@ -1480,7 +1482,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement dashboard purchase orders tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Line Items",
 		PageConfigID: procurementDashboardPage.ID,
 		ConfigID:     procurementLineItemsConfigStored.ID,
@@ -1491,7 +1493,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement dashboard line items tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Suppliers",
 		PageConfigID: procurementDashboardPage.ID,
 		ConfigID:     suppliersPageStored.ID,
@@ -1502,7 +1504,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement dashboard suppliers tab: %w", err)
 	}
 
-	_, err = configStore.CreatePageTabConfig(ctx, tablebuilder.PageTabConfig{
+	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
 		Label:        "Approvals",
 		PageConfigID: procurementDashboardPage.ID,
 		ConfigID:     procurementApprovalsOpenConfigStored.ID,
@@ -2937,6 +2939,116 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			return fmt.Errorf("creating role-page association : %w", err)
 		}
 	}
+
+	// =========================================================================
+	// NEW PAGE CONTENT SYSTEM EXAMPLE - Flexible content blocks
+	// =========================================================================
+	// This example demonstrates the new flexible page content system with:
+	// 1. A form at the top of the page
+	// 2. A tabs container below the form
+	// 3. Multiple tabs with different table configs
+	//
+	// This shows how content can be mixed (forms + tables) and nested (tabs)
+
+	// Create a new page config for "User Management Example"
+	userManagementPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
+		Name:      "user_management_example",
+		UserID:    uuid.Nil, // System default
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating user management example page : %w", err)
+	}
+
+	// Content Block 1: Form at top (New User Form)
+	// Full width on all screen sizes
+	formBlock, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID: userManagementPage.ID,
+		ContentType:  pagecontentbus.ContentTypeForm,
+		Label:        "Create New User",
+		FormID:       userForm.ID, // Reference the user form we created earlier
+		OrderIndex:   1,
+		Layout:       json.RawMessage(`{"colSpan":{"default":12}}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating form content block : %w", err)
+	}
+
+	// Content Block 2: Tabs Container
+	// This is a container that will hold the tab items
+	tabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID: userManagementPage.ID,
+		ContentType:  pagecontentbus.ContentTypeTabs,
+		Label:        "User Lists",
+		OrderIndex:   2,
+		Layout:       json.RawMessage(`{"colSpan":{"default":12},"containerType":"tabs"}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating tabs container : %w", err)
+	}
+
+	// Tab 1: Active Users (using admin users table config)
+	// This is a CHILD of the tabs container
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  userManagementPage.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Active Users",
+		TableConfigID: adminUsersPageStored.ID, // Reference existing table config
+		OrderIndex:    1,
+		ParentID:      tabsContainer.ID, // This makes it a child of the tabs container
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true, // This tab is active by default
+	})
+	if err != nil {
+		return fmt.Errorf("creating active users tab : %w", err)
+	}
+
+	// Tab 2: Roles (using roles table config)
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  userManagementPage.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Roles",
+		TableConfigID: adminRolesPageStored.ID, // Reference existing table config
+		OrderIndex:    2,
+		ParentID:      tabsContainer.ID, // Child of tabs container
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating roles tab : %w", err)
+	}
+
+	// Tab 3: Permissions (using table access config if available)
+	adminTableAccessPageStored, err = configStore.QueryByName(ctx, "admin_table_access_page")
+	if err == nil {
+		// Only create this tab if the table config exists
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  userManagementPage.ID,
+			ContentType:   pagecontentbus.ContentTypeTable,
+			Label:         "Permissions",
+			TableConfigID: adminTableAccessPageStored.ID,
+			OrderIndex:    3,
+			ParentID:      tabsContainer.ID, // Child of tabs container
+			Layout:        json.RawMessage(`{}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating permissions tab : %w", err)
+		}
+	}
+
+	// Log success
+	log.Info(ctx, "✅ Created User Management Example page with flexible content blocks",
+		"page_config_id", userManagementPage.ID,
+		"form_block_id", formBlock.ID,
+		"tabs_container_id", tabsContainer.ID)
 
 	return nil
 }
