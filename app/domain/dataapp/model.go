@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
 
@@ -369,7 +367,6 @@ type UpdatePageConfig = pageconfigapp.UpdatePageConfig
 
 type FullPageConfig struct {
 	PageConfig  PageConfig           `json:"pageConfig"`
-	PageTabs    []PageTabConfig      `json:"pageTabs"`
 	PageActions ActionsGroupedByType `json:"pageActions"`
 }
 
@@ -377,111 +374,6 @@ type FullPageConfig struct {
 func (app FullPageConfig) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(app)
 	return data, "application/json", err
-}
-
-type PageTabConfig struct {
-	ID           string `json:"id"`
-	Label        string `json:"label"`
-	PageConfigID string `json:"page_config_id"`
-	ConfigID     string `json:"config_id"`
-	IsDefault    string `json:"is_default"`
-	TabOrder     string `json:"tab_order"`
-}
-
-func (app PageTabConfig) Encode() ([]byte, string, error) {
-	data, err := json.Marshal(app)
-	return data, "application/json", err
-}
-
-type NewPageTabConfig struct {
-	Label        string `json:"label" validate:"required,min=1,max=100"`
-	PageConfigID string `json:"page_config_id" validate:"required,uuid"`
-	ConfigID     string `json:"config_id" validate:"required,uuid"`
-	IsDefault    string `json:"is_default"`
-	TabOrder     string `json:"tab_order" validate:"min=1"`
-}
-
-// Decode implements the decoder interface.
-func (app *NewPageTabConfig) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-// Validate checks the data in the model is considered clean.
-func (app NewPageTabConfig) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-type UpdatePageTabConfig struct {
-	Label        *string `json:"label" validate:"omitempty,min=1,max=100"`
-	PageConfigID *string `json:"page_config_id" validate:"omitempty,uuid"`
-	ConfigID     *string `json:"config_id" validate:"omitempty,uuid"`
-	IsDefault    *string `json:"is_default"`
-	TabOrder     *string `json:"tab_order" validate:"omitempty,min=1"`
-}
-
-// Decode implements the decoder interface.
-func (app *UpdatePageTabConfig) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-// Validate checks the data in the model is considered clean.
-func (app UpdatePageTabConfig) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-func ToAppPageTabConfig(bus tablebuilder.PageTabConfig) PageTabConfig {
-	return PageTabConfig{
-		ID:           bus.ID.String(),
-		Label:        bus.Label,
-		PageConfigID: bus.PageConfigID.String(),
-		ConfigID:     bus.ConfigID.String(),
-		IsDefault:    fmt.Sprintf("%t", bus.IsDefault),
-		TabOrder:     fmt.Sprintf("%d", bus.TabOrder),
-	}
-}
-
-func ToAppPageTabConfigs(bus []tablebuilder.PageTabConfig) []PageTabConfig {
-	app := make([]PageTabConfig, len(bus))
-	for i, v := range bus {
-		app[i] = ToAppPageTabConfig(v)
-	}
-	return app
-}
-
-func toBusPageTabConfig(app NewPageTabConfig) (tablebuilder.PageTabConfig, error) {
-	dest := tablebuilder.PageTabConfig{}
-
-	// Convert string IDs to UUIDs
-	pageConfigID, err := uuid.Parse(app.PageConfigID)
-	if err != nil {
-		return tablebuilder.PageTabConfig{}, fmt.Errorf("invalid page_config_id: %w", err)
-	}
-	dest.PageConfigID = pageConfigID
-
-	configID, err := uuid.Parse(app.ConfigID)
-	if err != nil {
-		return tablebuilder.PageTabConfig{}, fmt.Errorf("invalid config_id: %w", err)
-	}
-	dest.ConfigID = configID
-
-	err = convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return tablebuilder.PageTabConfig{}, fmt.Errorf("to bus page tab config: %w", err)
-	}
-	return dest, nil
-}
-
-func toBusUpdatePageTabConfig(app UpdatePageTabConfig) (tablebuilder.UpdatePageTabConfig, error) {
-	dest := tablebuilder.UpdatePageTabConfig{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
 }
 
 // toAppTableData - Now does a DIRECT pass-through with minimal conversion

@@ -602,116 +602,6 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement approvals closed config: %w", err)
 	}
 
-	// Create SYSTEM-WIDE default page (user_id = NULL or uuid.Nil)
-	// This is the template that all users fall back to if they don't have their own version
-	defaultPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
-		Name:      "default_dashboard",
-		UserID:    uuid.Nil, // ✅ CORRECT - no user association, this is system-wide
-		IsDefault: true,
-	})
-	if err != nil {
-		return fmt.Errorf("creating default page config: %w", err)
-	}
-
-	// Get the stored config IDs we just created
-	ordersConfigStored, err := configStore.QueryByName(ctx, "orders_dashboard")
-	if err != nil {
-		return fmt.Errorf("querying orders config: %w", err)
-	}
-
-	productsConfigStored, err := configStore.QueryByName(ctx, "products_dashboard")
-	if err != nil {
-		return fmt.Errorf("querying products config: %w", err)
-	}
-
-	inventoryConfigStored, err := configStore.QueryByName(ctx, "inventory_dashboard")
-	if err != nil {
-		return fmt.Errorf("querying inventory config: %w", err)
-	}
-
-	// Get the stored config IDs for suppliers and categories to add to default dashboard
-	suppliersConfigStored, err := configStore.QueryByName(ctx, "suppliers_page")
-	if err != nil {
-		return fmt.Errorf("querying suppliers config: %w", err)
-	}
-
-	categoriesConfigStored, err := configStore.QueryByName(ctx, "categories_page")
-	if err != nil {
-		return fmt.Errorf("querying categories config: %w", err)
-	}
-
-	orderLineItemsConfigStored, err := configStore.QueryByName(ctx, "order_line_items_page")
-	if err != nil {
-		return fmt.Errorf("querying order line items config: %w", err)
-	}
-
-	// Create tabs for the SYSTEM default page
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Orders",
-		PageConfigID: defaultPage.ID,
-		ConfigID:     ordersConfigStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
-	})
-	if err != nil {
-		return fmt.Errorf("creating orders tab: %w", err)
-	}
-
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Products",
-		PageConfigID: defaultPage.ID,
-		ConfigID:     productsConfigStored.ID,
-		IsDefault:    false,
-		TabOrder:     2,
-	})
-	if err != nil {
-		return fmt.Errorf("creating products tab: %w", err)
-	}
-
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Inventory",
-		PageConfigID: defaultPage.ID,
-		ConfigID:     inventoryConfigStored.ID,
-		IsDefault:    false,
-		TabOrder:     3,
-	})
-	if err != nil {
-		return fmt.Errorf("creating inventory tab: %w", err)
-	}
-
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Suppliers",
-		PageConfigID: defaultPage.ID,
-		ConfigID:     suppliersConfigStored.ID,
-		IsDefault:    false,
-		TabOrder:     4,
-	})
-	if err != nil {
-		return fmt.Errorf("creating suppliers tab: %w", err)
-	}
-
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Categories",
-		PageConfigID: defaultPage.ID,
-		ConfigID:     categoriesConfigStored.ID,
-		IsDefault:    false,
-		TabOrder:     5,
-	})
-	if err != nil {
-		return fmt.Errorf("creating categories tab: %w", err)
-	}
-
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Order Line Items",
-		PageConfigID: defaultPage.ID,
-		ConfigID:     orderLineItemsConfigStored.ID,
-		IsDefault:    false,
-		TabOrder:     6,
-	})
-	if err != nil {
-		return fmt.Errorf("creating order line items tab: %w", err)
-	}
-
 	// =========================================================================
 	// Create dedicated page configs for Orders, Suppliers, and Categories
 	// =========================================================================
@@ -843,15 +733,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating orders page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Orders",
-		PageConfigID: ordersPage.ID,
-		ConfigID:     ordersPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  ordersPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: ordersPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating orders page tab: %w", err)
+		return fmt.Errorf("creating orders page content: %w", err)
 	}
 
 	// Create Suppliers Page
@@ -864,15 +758,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating suppliers page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Suppliers",
-		PageConfigID: suppliersPage.ID,
-		ConfigID:     suppliersPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  suppliersPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: suppliersPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating suppliers page tab: %w", err)
+		return fmt.Errorf("creating suppliers page content: %w", err)
 	}
 
 	// Create Categories Page
@@ -885,15 +783,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating categories page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Categories",
-		PageConfigID: categoriesPage.ID,
-		ConfigID:     categoriesPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  categoriesPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: categoriesPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating categories page tab: %w", err)
+		return fmt.Errorf("creating categories page content: %w", err)
 	}
 
 	// Create Order Line Items Page
@@ -906,15 +808,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating order line items page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Order Line Items",
-		PageConfigID: orderLineItemsPage.ID,
-		ConfigID:     orderLineItemsPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  orderLineItemsPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: orderLineItemsPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating order line items page tab: %w", err)
+		return fmt.Errorf("creating order line items page content: %w", err)
 	}
 
 	// =========================================================================
@@ -931,15 +837,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin users page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Users",
-		PageConfigID: adminUsersPage.ID,
-		ConfigID:     adminUsersPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  adminUsersPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: adminUsersPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating admin users page tab: %w", err)
+		return fmt.Errorf("creating admin users page content: %w", err)
 	}
 
 	// Admin Roles Page
@@ -952,15 +862,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin roles page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Roles",
-		PageConfigID: adminRolesPage.ID,
-		ConfigID:     adminRolesPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  adminRolesPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: adminRolesPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating admin roles page tab: %w", err)
+		return fmt.Errorf("creating admin roles page content: %w", err)
 	}
 
 	// Admin Dashboard Page (multi-tab: users, roles, table access)
@@ -973,56 +887,94 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating admin dashboard page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Users",
+	// Create tabs container (parent)
+	adminDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: adminDashboardPage.ID,
-		ConfigID:     adminUsersPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+		ContentType:  pagecontentbus.ContentTypeTabs,
+		OrderIndex:   1,
+		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating admin dashboard tabs container: %w", err)
+	}
+
+	// Tab 1: Users
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  adminDashboardPage.ID,
+		ParentID:      adminDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Users",
+		TableConfigID: adminUsersPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
 		return fmt.Errorf("creating admin dashboard users tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Roles",
-		PageConfigID: adminDashboardPage.ID,
-		ConfigID:     adminRolesPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     2,
+	// Tab 2: Roles
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  adminDashboardPage.ID,
+		ParentID:      adminDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Roles",
+		TableConfigID: adminRolesPageStored.ID,
+		OrderIndex:    2,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating admin dashboard roles tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Permissions",
-		PageConfigID: adminDashboardPage.ID,
-		ConfigID:     adminTableAccessPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     3,
+	// Tab 3: Permissions
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  adminDashboardPage.ID,
+		ParentID:      adminDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Permissions",
+		TableConfigID: adminTableAccessPageStored.ID,
+		OrderIndex:    3,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating admin dashboard permissions tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Audit Logs",
-		PageConfigID: adminDashboardPage.ID,
-		ConfigID:     adminAuditPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     4,
+	// Tab 4: Audit Logs
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  adminDashboardPage.ID,
+		ParentID:      adminDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Audit Logs",
+		TableConfigID: adminAuditPageStored.ID,
+		OrderIndex:    4,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating admin dashboard audit tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Configurations",
-		PageConfigID: adminDashboardPage.ID,
-		ConfigID:     adminConfigPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     5,
+	// Tab 5: Configurations
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  adminDashboardPage.ID,
+		ParentID:      adminDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Configurations",
+		TableConfigID: adminConfigPageStored.ID,
+		OrderIndex:    5,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating admin dashboard config tab: %w", err)
@@ -1042,15 +994,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating assets page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Assets",
-		PageConfigID: assetsPage.ID,
-		ConfigID:     assetsListPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  assetsPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: assetsListPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating assets page tab: %w", err)
+		return fmt.Errorf("creating assets page content: %w", err)
 	}
 
 	// Asset Requests Page
@@ -1063,15 +1019,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating assets requests page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Requests",
-		PageConfigID: assetsRequestsPage.ID,
-		ConfigID:     assetsRequestsPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  assetsRequestsPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: assetsRequestsPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating assets requests page tab: %w", err)
+		return fmt.Errorf("creating assets requests page content: %w", err)
 	}
 
 	// Assets Dashboard (multi-tab: assets, requests)
@@ -1084,23 +1044,46 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating assets dashboard page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Assets",
+	// Create tabs container (parent)
+	assetsDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: assetsDashboardPage.ID,
-		ConfigID:     assetsListPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+		ContentType:  pagecontentbus.ContentTypeTabs,
+		OrderIndex:   1,
+		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating assets dashboard tabs container: %w", err)
+	}
+
+	// Tab 1: Assets
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  assetsDashboardPage.ID,
+		ParentID:      assetsDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Assets",
+		TableConfigID: assetsListPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
 		return fmt.Errorf("creating assets dashboard assets tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Requests",
-		PageConfigID: assetsDashboardPage.ID,
-		ConfigID:     assetsRequestsPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     2,
+	// Tab 2: Requests
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  assetsDashboardPage.ID,
+		ParentID:      assetsDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Requests",
+		TableConfigID: assetsRequestsPageStored.ID,
+		OrderIndex:    2,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating assets dashboard requests tab: %w", err)
@@ -1120,15 +1103,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating hr employees page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Employees",
-		PageConfigID: hrEmployeesPage.ID,
-		ConfigID:     hrEmployeesPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  hrEmployeesPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: hrEmployeesPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating hr employees page tab: %w", err)
+		return fmt.Errorf("creating hr employees page content: %w", err)
 	}
 
 	// HR Offices Page
@@ -1141,15 +1128,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating hr offices page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Offices",
-		PageConfigID: hrOfficesPage.ID,
-		ConfigID:     hrOfficesPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  hrOfficesPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: hrOfficesPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating hr offices page tab: %w", err)
+		return fmt.Errorf("creating hr offices page content: %w", err)
 	}
 
 	// HR Dashboard (multi-tab: employees, offices)
@@ -1162,23 +1153,46 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating hr dashboard page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Employees",
+	// Create tabs container (parent)
+	hrDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: hrDashboardPage.ID,
-		ConfigID:     hrEmployeesPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+		ContentType:  pagecontentbus.ContentTypeTabs,
+		OrderIndex:   1,
+		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating hr dashboard tabs container: %w", err)
+	}
+
+	// Tab 1: Employees
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  hrDashboardPage.ID,
+		ParentID:      hrDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Employees",
+		TableConfigID: hrEmployeesPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
 		return fmt.Errorf("creating hr dashboard employees tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Offices",
-		PageConfigID: hrDashboardPage.ID,
-		ConfigID:     hrOfficesPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     2,
+	// Tab 2: Offices
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  hrDashboardPage.ID,
+		ParentID:      hrDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Offices",
+		TableConfigID: hrOfficesPageStored.ID,
+		OrderIndex:    2,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating hr dashboard offices tab: %w", err)
@@ -1198,15 +1212,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory warehouses page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Warehouses",
-		PageConfigID: inventoryWarehousesPage.ID,
-		ConfigID:     inventoryWarehousesPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryWarehousesPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: inventoryWarehousesPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating inventory warehouses page tab: %w", err)
+		return fmt.Errorf("creating inventory warehouses page content: %w", err)
 	}
 
 	// Inventory Items Page
@@ -1219,15 +1237,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory items page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Items",
-		PageConfigID: inventoryItemsPage.ID,
-		ConfigID:     inventoryItemsPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryItemsPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: inventoryItemsPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating inventory items page tab: %w", err)
+		return fmt.Errorf("creating inventory items page content: %w", err)
 	}
 
 	// Inventory Adjustments Page
@@ -1240,15 +1262,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory adjustments page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Adjustments",
-		PageConfigID: inventoryAdjustmentsPage.ID,
-		ConfigID:     inventoryAdjustmentsPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryAdjustmentsPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: inventoryAdjustmentsPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating inventory adjustments page tab: %w", err)
+		return fmt.Errorf("creating inventory adjustments page content: %w", err)
 	}
 
 	// Inventory Transfers Page
@@ -1261,15 +1287,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory transfers page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Transfers",
-		PageConfigID: inventoryTransfersPage.ID,
-		ConfigID:     inventoryTransfersPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryTransfersPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: inventoryTransfersPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating inventory transfers page tab: %w", err)
+		return fmt.Errorf("creating inventory transfers page content: %w", err)
 	}
 
 	// Inventory Dashboard (multi-tab: warehouses, items, adjustments, transfers)
@@ -1282,45 +1312,78 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory dashboard page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Items",
+	// Create tabs container (parent)
+	inventoryDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: inventoryDashboardPage.ID,
-		ConfigID:     inventoryItemsPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+		ContentType:  pagecontentbus.ContentTypeTabs,
+		OrderIndex:   1,
+		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory dashboard tabs container: %w", err)
+	}
+
+	// Tab 1: Items
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryDashboardPage.ID,
+		ParentID:      inventoryDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Items",
+		TableConfigID: inventoryItemsPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
 		return fmt.Errorf("creating inventory dashboard items tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Warehouses",
-		PageConfigID: inventoryDashboardPage.ID,
-		ConfigID:     inventoryWarehousesPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     2,
+	// Tab 2: Warehouses
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryDashboardPage.ID,
+		ParentID:      inventoryDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Warehouses",
+		TableConfigID: inventoryWarehousesPageStored.ID,
+		OrderIndex:    2,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating inventory dashboard warehouses tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Adjustments",
-		PageConfigID: inventoryDashboardPage.ID,
-		ConfigID:     inventoryAdjustmentsPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     3,
+	// Tab 3: Adjustments
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryDashboardPage.ID,
+		ParentID:      inventoryDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Adjustments",
+		TableConfigID: inventoryAdjustmentsPageStored.ID,
+		OrderIndex:    3,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating inventory dashboard adjustments tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Transfers",
-		PageConfigID: inventoryDashboardPage.ID,
-		ConfigID:     inventoryTransfersPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     4,
+	// Tab 4: Transfers
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryDashboardPage.ID,
+		ParentID:      inventoryDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Transfers",
+		TableConfigID: inventoryTransfersPageStored.ID,
+		OrderIndex:    4,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating inventory dashboard transfers tab: %w", err)
@@ -1340,15 +1403,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating sales customers page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Customers",
-		PageConfigID: salesCustomersPage.ID,
-		ConfigID:     salesCustomersPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  salesCustomersPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: salesCustomersPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating sales customers page tab: %w", err)
+		return fmt.Errorf("creating sales customers page content: %w", err)
 	}
 
 	// Sales Dashboard (multi-tab: orders, customers)
@@ -1361,23 +1428,46 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating sales dashboard page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Orders",
+	// Create tabs container (parent)
+	salesDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: salesDashboardPage.ID,
-		ConfigID:     ordersPageStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+		ContentType:  pagecontentbus.ContentTypeTabs,
+		OrderIndex:   1,
+		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating sales dashboard tabs container: %w", err)
+	}
+
+	// Tab 1: Orders
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  salesDashboardPage.ID,
+		ParentID:      salesDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Orders",
+		TableConfigID: ordersPageStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
 		return fmt.Errorf("creating sales dashboard orders tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Customers",
-		PageConfigID: salesDashboardPage.ID,
-		ConfigID:     salesCustomersPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     2,
+	// Tab 2: Customers
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  salesDashboardPage.ID,
+		ParentID:      salesDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Customers",
+		TableConfigID: salesCustomersPageStored.ID,
+		OrderIndex:    2,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating sales dashboard customers tab: %w", err)
@@ -1397,15 +1487,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement purchase orders page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Purchase Orders",
-		PageConfigID: procurementPurchaseOrdersPage.ID,
-		ConfigID:     procurementPurchaseOrdersConfigStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  procurementPurchaseOrdersPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: procurementPurchaseOrdersConfigStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating procurement purchase orders page tab: %w", err)
+		return fmt.Errorf("creating procurement purchase orders page content: %w", err)
 	}
 
 	// Purchase Order Line Items Page
@@ -1418,15 +1512,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement line items page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Line Items",
-		PageConfigID: procurementLineItemsPage.ID,
-		ConfigID:     procurementLineItemsConfigStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  procurementLineItemsPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: procurementLineItemsConfigStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
-		return fmt.Errorf("creating procurement line items page tab: %w", err)
+		return fmt.Errorf("creating procurement line items page content: %w", err)
 	}
 
 	// Procurement Approvals Page (multi-tab: open, closed)
@@ -1439,23 +1537,46 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement approvals page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Open",
+	// Create tabs container (parent)
+	procurementApprovalsTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: procurementApprovalsPage.ID,
-		ConfigID:     procurementApprovalsOpenConfigStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+		ContentType:  pagecontentbus.ContentTypeTabs,
+		OrderIndex:   1,
+		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement approvals tabs container: %w", err)
+	}
+
+	// Tab 1: Open
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  procurementApprovalsPage.ID,
+		ParentID:      procurementApprovalsTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Open",
+		TableConfigID: procurementApprovalsOpenConfigStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
 		return fmt.Errorf("creating procurement approvals open tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Closed",
-		PageConfigID: procurementApprovalsPage.ID,
-		ConfigID:     procurementApprovalsClosedConfigStored.ID,
-		IsDefault:    false,
-		TabOrder:     2,
+	// Tab 2: Closed
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  procurementApprovalsPage.ID,
+		ParentID:      procurementApprovalsTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Closed",
+		TableConfigID: procurementApprovalsClosedConfigStored.ID,
+		OrderIndex:    2,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating procurement approvals closed tab: %w", err)
@@ -1471,45 +1592,78 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement dashboard page: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Purchase Orders",
+	// Create tabs container (parent)
+	procurementDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: procurementDashboardPage.ID,
-		ConfigID:     procurementPurchaseOrdersConfigStored.ID,
-		IsDefault:    true,
-		TabOrder:     1,
+		ContentType:  pagecontentbus.ContentTypeTabs,
+		OrderIndex:   1,
+		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
+		IsVisible:    true,
+		IsDefault:    false,
+	})
+	if err != nil {
+		return fmt.Errorf("creating procurement dashboard tabs container: %w", err)
+	}
+
+	// Tab 1: Purchase Orders
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  procurementDashboardPage.ID,
+		ParentID:      procurementDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Purchase Orders",
+		TableConfigID: procurementPurchaseOrdersConfigStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
 	})
 	if err != nil {
 		return fmt.Errorf("creating procurement dashboard purchase orders tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Line Items",
-		PageConfigID: procurementDashboardPage.ID,
-		ConfigID:     procurementLineItemsConfigStored.ID,
-		IsDefault:    false,
-		TabOrder:     2,
+	// Tab 2: Line Items
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  procurementDashboardPage.ID,
+		ParentID:      procurementDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Line Items",
+		TableConfigID: procurementLineItemsConfigStored.ID,
+		OrderIndex:    2,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating procurement dashboard line items tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Suppliers",
-		PageConfigID: procurementDashboardPage.ID,
-		ConfigID:     suppliersPageStored.ID,
-		IsDefault:    false,
-		TabOrder:     3,
+	// Tab 3: Suppliers
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  procurementDashboardPage.ID,
+		ParentID:      procurementDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Suppliers",
+		TableConfigID: suppliersPageStored.ID,
+		OrderIndex:    3,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating procurement dashboard suppliers tab: %w", err)
 	}
 
-	_, err = busDomain.PageConfig.CreatePageTabConfig(ctx, pageconfigbus.NewPageTabConfig{
-		Label:        "Approvals",
-		PageConfigID: procurementDashboardPage.ID,
-		ConfigID:     procurementApprovalsOpenConfigStored.ID,
-		IsDefault:    false,
-		TabOrder:     4,
+	// Tab 4: Approvals
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  procurementDashboardPage.ID,
+		ParentID:      procurementDashboardTabsContainer.ID,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "Approvals",
+		TableConfigID: procurementApprovalsOpenConfigStored.ID,
+		OrderIndex:    4,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("creating procurement dashboard approvals tab: %w", err)
@@ -1520,19 +1674,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	// =========================================================================
 
 	pageConfigIDs := map[string]uuid.UUID{
-		"admin_users_page":               adminUsersPage.ID,
-		"admin_roles_page":               adminRolesPage.ID,
-		"assets_list_page":               assetsPage.ID,
-		"hr_employees_page":              hrEmployeesPage.ID,
-		"hr_offices_page":                hrOfficesPage.ID,
-		"inventory_items_page":           inventoryItemsPage.ID,
-		"inventory_warehouses_page":      inventoryWarehousesPage.ID,
-		"inventory_transfers_page":       inventoryTransfersPage.ID,
-		"inventory_adjustments_page":     inventoryAdjustmentsPage.ID,
-		"suppliers_page":                 suppliersPage.ID,
-		"procurement_purchase_orders":    procurementPurchaseOrdersPage.ID,
-		"sales_customers_page":           salesCustomersPage.ID,
-		"orders_page":                    ordersPage.ID,
+		"admin_users_page":            adminUsersPage.ID,
+		"admin_roles_page":            adminRolesPage.ID,
+		"assets_list_page":            assetsPage.ID,
+		"hr_employees_page":           hrEmployeesPage.ID,
+		"hr_offices_page":             hrOfficesPage.ID,
+		"inventory_items_page":        inventoryItemsPage.ID,
+		"inventory_warehouses_page":   inventoryWarehousesPage.ID,
+		"inventory_transfers_page":    inventoryTransfersPage.ID,
+		"inventory_adjustments_page":  inventoryAdjustmentsPage.ID,
+		"suppliers_page":              suppliersPage.ID,
+		"procurement_purchase_orders": procurementPurchaseOrdersPage.ID,
+		"sales_customers_page":        salesCustomersPage.ID,
+		"orders_page":                 ordersPage.ID,
 	}
 
 	if err := seedPageActionButtons(ctx, busDomain, pageConfigIDs); err != nil {

@@ -96,14 +96,4 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodGet, version, "/data/page/id/{page_config_id}", api.queryFullPageByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-
-	// PageTabConfig routes
-	app.HandlerFunc(http.MethodPost, version, "/data/page/tab", api.createPageTabConfig, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-
-	app.HandlerFunc(http.MethodPut, version, "/data/page/tab/{page_tab_config_id}", api.updatePageTabConfig, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-
-	app.HandlerFunc(http.MethodDelete, version, "/data/page/tab/{page_tab_config_id}", api.deletePageTabConfig, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

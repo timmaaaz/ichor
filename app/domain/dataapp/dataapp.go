@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/url"
 
 	"github.com/google/uuid"
@@ -14,7 +13,6 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
@@ -77,24 +75,6 @@ func (a *App) CreatePageConfig(ctx context.Context, app NewPageConfig) (PageConf
 	return a.pageconfigapp.Create(ctx, app)
 }
 
-// CreatePageTabConfig adds a new page tab configuration to the system.
-func (a *App) CreatePageTabConfig(ctx context.Context, app NewPageTabConfig) (PageTabConfig, error) {
-	config, err := toBusPageTabConfig(app)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("to bus page tab config: %w", err)
-	}
-
-	stored, err := a.configStore.CreatePageTabConfig(ctx, config)
-	if err != nil {
-		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return PageTabConfig{}, errs.New(errs.Aborted, errors.New("page tab configuration already exists"))
-		}
-		return PageTabConfig{}, fmt.Errorf("create: page tab config[%s]: %w", app.Label, err)
-	}
-
-	return ToAppPageTabConfig(*stored), nil
-}
-
 // Update updates an existing table configuration.
 func (a *App) Update(ctx context.Context, id uuid.UUID, app UpdateTableConfig) (TableConfig, error) {
 	// Get current config to preserve unchanged fields
@@ -152,37 +132,6 @@ func (a *App) UpdatePageConfig(ctx context.Context, id uuid.UUID, app UpdatePage
 	return a.pageconfigapp.Update(ctx, app, id)
 }
 
-// UpdatePageTabConfig updates an existing page tab configuration.
-func (a *App) UpdatePageTabConfig(ctx context.Context, id uuid.UUID, app UpdatePageTabConfig) (PageTabConfig, error) {
-	upc, err := toBusUpdatePageTabConfig(app)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("updatepagetabconfig: %w", err)
-	}
-
-	// Get current config to preserve unchanged fields
-	current, err := a.configStore.QueryPageTabConfigByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return PageTabConfig{}, errs.New(errs.NotFound, err)
-		}
-		return PageTabConfig{}, errs.Newf(errs.Internal, "get config: %s", err)
-	}
-
-	// err = convert.PopulateSameTypes(upc, &current)
-	err = convert.PopulateSameTypes(upc, current)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("populate struct: %w", err)
-	}
-
-	// Apply updates
-	pageTabConfig, err := a.configStore.UpdatePageTabConfig(ctx, *current)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("update page tab config: %w", err)
-	}
-
-	return ToAppPageTabConfig(*pageTabConfig), nil
-}
-
 // Delete removes a table configuration from the system.
 func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 	if err := a.configStore.Delete(ctx, id); err != nil {
@@ -198,18 +147,6 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 // DeletePageConfig removes a page configuration from the system.
 func (a *App) DeletePageConfig(ctx context.Context, id uuid.UUID) error {
 	return a.pageconfigapp.Delete(ctx, id)
-}
-
-// DeletePageTabConfig removes a page tab configuration from the system.
-func (a *App) DeletePageTabConfig(ctx context.Context, id uuid.UUID) error {
-	if err := a.configStore.DeletePageTabConfig(ctx, id); err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return errs.New(errs.NotFound, err)
-		}
-		return errs.Newf(errs.Internal, "delete page tab config: %s", err)
-	}
-
-	return nil
 }
 
 // QueryByID returns a table configuration by its ID.
@@ -248,7 +185,7 @@ func (a *App) QueryByUser(ctx context.Context, userID uuid.UUID) (TableConfigLis
 	return ToAppTableConfigList(configs), nil
 }
 
-// QueryFullPageByName returns the default page configuration by its name, including tabs.
+// QueryFullPageByName returns the default page configuration by its name.
 // This retrieves the default page config which serves as a fallback for all users.
 // Only one default page config is allowed per page name (enforced by database constraint).
 func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageConfig, error) {
@@ -262,15 +199,10 @@ func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageCon
 		return FullPageConfig{}, err
 	}
 
-	// Parse the ID from string to UUID for querying tabs
+	// Parse the ID from string to UUID for querying actions
 	pageID, err := uuid.Parse(page.ID)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "parse page config id: %s", err)
-	}
-
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, pageID)
-	if err != nil {
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
 	// Fetch page actions
@@ -281,12 +213,11 @@ func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageCon
 
 	return FullPageConfig{
 		PageConfig:  page,
-		PageTabs:    ToAppPageTabConfigs(storedTabs),
 		PageActions: actions,
 	}, nil
 }
 
-// QueryFullPageByNameAndUserID returns a user-specific page configuration by name and user ID, including tabs.
+// QueryFullPageByNameAndUserID returns a user-specific page configuration by name and user ID.
 // This retrieves a specific user's customized version of a page (e.g., Jake's version of the orders page).
 // Multiple users can have configs with the same page name, but only one per user+name combination.
 func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, userID uuid.UUID) (FullPageConfig, error) {
@@ -300,15 +231,10 @@ func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, use
 		return FullPageConfig{}, err
 	}
 
-	// Parse the ID from string to UUID for querying tabs
+	// Parse the ID from string to UUID for querying actions
 	pageID, err := uuid.Parse(page.ID)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "parse page config id: %s", err)
-	}
-
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, pageID)
-	if err != nil {
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
 	// Fetch page actions
@@ -319,21 +245,15 @@ func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, use
 
 	return FullPageConfig{
 		PageConfig:  page,
-		PageTabs:    ToAppPageTabConfigs(storedTabs),
 		PageActions: actions,
 	}, nil
 }
 
-// QueryFullPageByID returns a full page configuration by its ID, including tabs.
+// QueryFullPageByID returns a full page configuration by its ID.
 func (a *App) QueryFullPageByID(ctx context.Context, id uuid.UUID) (FullPageConfig, error) {
 	page, err := a.pageconfigapp.QueryByID(ctx, id)
 	if err != nil {
 		return FullPageConfig{}, err
-	}
-
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, id)
-	if err != nil {
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
 	}
 
 	// Fetch page actions
@@ -344,7 +264,6 @@ func (a *App) QueryFullPageByID(ctx context.Context, id uuid.UUID) (FullPageConf
 
 	return FullPageConfig{
 		PageConfig:  page,
-		PageTabs:    ToAppPageTabConfigs(storedTabs),
 		PageActions: actions,
 	}, nil
 }

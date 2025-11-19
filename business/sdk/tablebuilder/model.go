@@ -328,24 +328,6 @@ type UpdatePageConfig struct {
 	IsDefault *bool
 }
 
-type PageTabConfig struct {
-	ID           uuid.UUID `db:"id" json:"id"`
-	PageConfigID uuid.UUID `db:"page_config_id" json:"page_config_id"`
-	Label        string    `db:"label" json:"label"`
-	ConfigID     uuid.UUID `db:"config_id" json:"config_id"`
-	IsDefault    bool      `db:"is_default" json:"is_default"`
-	TabOrder     int       `db:"tab_order" json:"tab_order"`
-}
-
-// UpdatePageTabConfig represents fields that can be updated in a PageTabConfig
-type UpdatePageTabConfig struct {
-	Label        *string
-	PageConfigID *uuid.UUID
-	ConfigID     *uuid.UUID
-	IsDefault    *bool
-	TabOrder     *int
-}
-
 // =============================================================================
 // Database Models and Conversion Functions
 // =============================================================================

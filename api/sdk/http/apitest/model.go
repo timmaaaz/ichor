@@ -134,7 +134,6 @@ type SeedData struct {
 	PageTableConfig             *tablebuilder.StoredConfig
 	PageConfigs                 []pageconfigapp.PageConfig
 	PageContents                []pagecontentapp.PageContent
-	PageTabConfigs              []tablebuilder.PageTabConfig
 	Forms                       []formapp.Form
 	FormFields                  []formfieldapp.FormField
 	PageActions                 []pageactionapp.PageAction

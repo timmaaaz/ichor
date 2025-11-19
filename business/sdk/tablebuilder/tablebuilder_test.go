@@ -1056,45 +1056,6 @@ func pageConfigsExample(ctx context.Context, store *tablebuilder.Store, configSt
 		return
 	}
 
-	// Save some tabs
-	tab1 := tablebuilder.PageTabConfig{
-		PageConfigID: savedPage.ID,
-		Label:        "Products List",
-		ConfigID:     sd.TableBuilderConfigs[0].ID,
-		IsDefault:    true,
-		TabOrder:     1,
-	}
-	tab2 := tablebuilder.PageTabConfig{
-		PageConfigID: savedPage.ID,
-		Label:        "Inventory Items",
-		ConfigID:     sd.TableBuilderConfigs[2].ID,
-		IsDefault:    false,
-		TabOrder:     2,
-	}
-	tab3 := tablebuilder.PageTabConfig{
-		PageConfigID: savedPage.ID,
-		Label:        "Current Inventory",
-		ConfigID:     sd.TableBuilderConfigs[1].ID,
-		IsDefault:    false,
-		TabOrder:     3,
-	}
-
-	ret1, err := configStore.CreatePageTabConfig(ctx, tab2)
-	if err != nil {
-		log.Printf("Error saving tab2 config: %v", err)
-		return
-	}
-	_, err = configStore.CreatePageTabConfig(ctx, tab3)
-	if err != nil {
-		log.Printf("Error saving tab3 config: %v", err)
-		return
-	}
-	_, err = configStore.CreatePageTabConfig(ctx, tab1)
-	if err != nil {
-		log.Printf("Error saving tab1 config: %v", err)
-		return
-	}
-
 	// QueryByID
 	queriedPage, err := configStore.QueryPageByID(ctx, savedPage.ID)
 	if err != nil {
@@ -1117,28 +1078,6 @@ func pageConfigsExample(ctx context.Context, store *tablebuilder.Store, configSt
 		return
 	}
 
-	// QueryTabsByID
-	queriedTab, err := configStore.QueryPageTabConfigByID(ctx, ret1.ID)
-	if err != nil {
-		log.Printf("Error querying tabs by page ID: %v", err)
-		return
-	}
-	if !cmp.Equal(queriedTab, ret1) {
-		log.Printf("Queried tabs do not match saved tabs")
-		return
-	}
-
-	// QueryPageTabConfigsByPageID
-	queriedTabs, err := configStore.QueryPageTabConfigsByPageID(ctx, savedPage.ID)
-	if err != nil {
-		log.Printf("Error querying tabs by page ID: %v", err)
-		return
-	}
-	if len(queriedTabs) != 3 {
-		log.Printf("Expected 3 tabs, got %d", len(queriedTabs))
-		return
-	}
-
 	// Update Page
 	savedPage.Name = "Updated Inventory Overview"
 	updatedPage, err := configStore.UpdatePageConfig(ctx, *savedPage)
@@ -1148,34 +1087,6 @@ func pageConfigsExample(ctx context.Context, store *tablebuilder.Store, configSt
 	}
 	if updatedPage.Name != "Updated Inventory Overview" {
 		log.Printf("Page name not updated")
-		return
-	}
-
-	// Update tab
-	tab1.Label = "Updated Products List"
-	updatedTab, err := configStore.UpdatePageTabConfig(ctx, tab1)
-	if err != nil {
-		log.Printf("Error updating tab: %v", err)
-		return
-	}
-	if updatedTab.Label != "Updated Products List" {
-		log.Printf("Tab label not updated")
-		return
-	}
-
-	// Delete tab
-	err = configStore.DeletePageTabConfig(ctx, tab2.ID)
-	if err != nil {
-		log.Printf("Error deleting tab: %v", err)
-		return
-	}
-	deletedTabs, err := configStore.QueryPageTabConfigsByPageID(ctx, savedPage.ID)
-	if err != nil {
-		log.Printf("Error querying tabs after deletion: %v", err)
-		return
-	}
-	if len(deletedTabs) != 2 {
-		log.Printf("Expected 2 tabs after deletion, got %d", len(deletedTabs))
 		return
 	}
 

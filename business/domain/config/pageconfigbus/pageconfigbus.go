@@ -31,13 +31,6 @@ type Storer interface {
 	QueryByID(ctx context.Context, configID uuid.UUID) (PageConfig, error)
 	QueryByName(ctx context.Context, name string) (PageConfig, error)
 	QueryByNameAndUserID(ctx context.Context, name string, userID uuid.UUID) (PageConfig, error)
-
-	// Page tab config methods (legacy support)
-	CreatePageTabConfig(ctx context.Context, config PageTabConfig) error
-	UpdatePageTabConfig(ctx context.Context, config PageTabConfig) error
-	DeletePageTabConfig(ctx context.Context, configID uuid.UUID) error
-	QueryPageTabConfigByID(ctx context.Context, configID uuid.UUID) (PageTabConfig, error)
-	QueryPageTabConfigsByPageID(ctx context.Context, pageConfigID uuid.UUID) ([]PageTabConfig, error)
 }
 
 // Business manages the set of APIs for page config access.
@@ -208,102 +201,4 @@ func (b *Business) QueryByNameAndUserID(ctx context.Context, name string, userID
 	}
 
 	return config, nil
-}
-
-// =============================================================================
-// Page Tab Config Methods (Legacy Support)
-// =============================================================================
-
-// CreatePageTabConfig adds a new page tab configuration (legacy).
-func (b *Business) CreatePageTabConfig(ctx context.Context, nc NewPageTabConfig) (PageTabConfig, error) {
-	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.CreatePageTabConfig")
-	defer span.End()
-
-	config := PageTabConfig{
-		ID:           uuid.New(),
-		PageConfigID: nc.PageConfigID,
-		Label:        nc.Label,
-		ConfigID:     nc.ConfigID,
-		IsDefault:    nc.IsDefault,
-		TabOrder:     nc.TabOrder,
-	}
-
-	if err := b.storer.CreatePageTabConfig(ctx, config); err != nil {
-		return PageTabConfig{}, fmt.Errorf("create: %w", err)
-	}
-
-	return config, nil
-}
-
-// UpdatePageTabConfig modifies an existing page tab configuration (legacy).
-func (b *Business) UpdatePageTabConfig(ctx context.Context, uc UpdatePageTabConfig, configID uuid.UUID) (PageTabConfig, error) {
-	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.UpdatePageTabConfig")
-	defer span.End()
-
-	// Fetch existing config
-	config, err := b.storer.QueryPageTabConfigByID(ctx, configID)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("query: %w", err)
-	}
-
-	// Apply updates
-	if uc.Label != nil {
-		config.Label = *uc.Label
-	}
-	if uc.PageConfigID != nil {
-		config.PageConfigID = *uc.PageConfigID
-	}
-	if uc.ConfigID != nil {
-		config.ConfigID = *uc.ConfigID
-	}
-	if uc.IsDefault != nil {
-		config.IsDefault = *uc.IsDefault
-	}
-	if uc.TabOrder != nil {
-		config.TabOrder = *uc.TabOrder
-	}
-
-	if err := b.storer.UpdatePageTabConfig(ctx, config); err != nil {
-		return PageTabConfig{}, fmt.Errorf("update: %w", err)
-	}
-
-	return config, nil
-}
-
-// DeletePageTabConfig removes a page tab configuration (legacy).
-func (b *Business) DeletePageTabConfig(ctx context.Context, configID uuid.UUID) error {
-	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.DeletePageTabConfig")
-	defer span.End()
-
-	if err := b.storer.DeletePageTabConfig(ctx, configID); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
-
-	return nil
-}
-
-// QueryPageTabConfigByID finds a page tab configuration by ID (legacy).
-func (b *Business) QueryPageTabConfigByID(ctx context.Context, configID uuid.UUID) (PageTabConfig, error) {
-	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.QueryPageTabConfigByID")
-	defer span.End()
-
-	config, err := b.storer.QueryPageTabConfigByID(ctx, configID)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("query: %w", err)
-	}
-
-	return config, nil
-}
-
-// QueryPageTabConfigsByPageID retrieves all tab configs for a page (legacy).
-func (b *Business) QueryPageTabConfigsByPageID(ctx context.Context, pageConfigID uuid.UUID) ([]PageTabConfig, error) {
-	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.QueryPageTabConfigsByPageID")
-	defer span.End()
-
-	configs, err := b.storer.QueryPageTabConfigsByPageID(ctx, pageConfigID)
-	if err != nil {
-		return nil, fmt.Errorf("query: %w", err)
-	}
-
-	return configs, nil
 }

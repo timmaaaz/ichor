@@ -244,17 +244,25 @@ func (s *Store) QueryWithChildren(ctx context.Context, pageConfigID uuid.UUID) (
 		allContent[i].Children = []pagecontentbus.PageContent{} // Initialize children slice
 	}
 
-	// Nest children under parents
-	topLevel := []pagecontentbus.PageContent{}
+	// Nest children under parents and collect top-level IDs
+	topLevelIDs := []uuid.UUID{}
 	for i := range allContent {
 		if allContent[i].ParentID == uuid.Nil {
-			// Top-level content (no parent)
-			topLevel = append(topLevel, allContent[i])
+			// Top-level content (no parent) - save ID for later
+			topLevelIDs = append(topLevelIDs, allContent[i].ID)
 		} else {
 			// Child content - add to parent's children slice
 			if parent, ok := contentMap[allContent[i].ParentID]; ok {
 				parent.Children = append(parent.Children, allContent[i])
 			}
+		}
+	}
+
+	// Build top-level result from map (after children have been populated)
+	topLevel := make([]pagecontentbus.PageContent, 0, len(topLevelIDs))
+	for _, id := range topLevelIDs {
+		if content, ok := contentMap[id]; ok {
+			topLevel = append(topLevel, *content)
 		}
 	}
 

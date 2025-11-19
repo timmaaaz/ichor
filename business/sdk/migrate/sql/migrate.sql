@@ -1507,3 +1507,7 @@ CREATE INDEX idx_po_line_items_po ON procurement.purchase_order_line_items(purch
 CREATE INDEX idx_po_line_items_supplier_product ON procurement.purchase_order_line_items(supplier_product_id);
 CREATE INDEX idx_po_line_items_status ON procurement.purchase_order_line_items(line_item_status_id);
 
+-- Version: 1.71
+-- Description: Drop legacy page_tab_configs table (replaced by page_content system)
+DROP TABLE IF EXISTS config.page_tab_configs;
+
