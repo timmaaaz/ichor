@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
@@ -386,4 +388,163 @@ func (a *App) ValidateConfig(ctx context.Context, app NewTableConfig) error {
 	}
 
 	return nil
+}
+
+// =============================================================================
+// Export/Import Methods
+
+// ExportByIDs exports table configs by IDs as a JSON package.
+func (a *App) ExportByIDs(ctx context.Context, configIDs []string) (ExportPackage, error) {
+	var configs []TableConfig
+
+	for _, idStr := range configIDs {
+		id, err := parseUUID(idStr, "config ID")
+		if err != nil {
+			return ExportPackage{}, errs.New(errs.InvalidArgument, err)
+		}
+
+		config, err := a.configStore.QueryByID(ctx, id)
+		if err != nil {
+			if errors.Is(err, tablebuilder.ErrNotFound) {
+				return ExportPackage{}, errs.Newf(errs.NotFound, "config %s not found", idStr)
+			}
+			return ExportPackage{}, errs.Newf(errs.Internal, "query config %s: %s", idStr, err)
+		}
+
+		configs = append(configs, ToAppTableConfig(*config))
+	}
+
+	return ExportPackage{
+		Version:    "1.0",
+		Type:       "table-configs",
+		ExportedAt: time.Now().Format(time.RFC3339),
+		Count:      len(configs),
+		Data:       configs,
+	}, nil
+}
+
+// ImportTableConfigs imports table configs from a JSON package.
+func (a *App) ImportTableConfigs(ctx context.Context, pkg ImportPackage) (ImportResult, error) {
+	// Validate package
+	if err := pkg.Validate(); err != nil {
+		return ImportResult{}, err
+	}
+
+	result := ImportResult{}
+
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "user missing in context: %s", err)
+	}
+
+	for _, config := range pkg.Data {
+		// Check if config exists by name
+		existing, err := a.configStore.QueryByName(ctx, config.Name)
+		existsAlready := err == nil
+
+		switch pkg.Mode {
+		case "skip":
+			if existsAlready {
+				result.SkippedCount++
+				continue
+			}
+			// Create new
+			if err := a.createTableConfigFromImport(ctx, config, userID); err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("create config %s: %s", config.Name, err))
+				continue
+			}
+			result.ImportedCount++
+
+		case "replace":
+			if existsAlready {
+				// Delete existing
+				if err := a.configStore.Delete(ctx, existing.ID); err != nil {
+					result.Errors = append(result.Errors, fmt.Sprintf("delete existing config %s: %s", config.Name, err))
+					continue
+				}
+				result.UpdatedCount++
+			}
+			// Create new
+			if err := a.createTableConfigFromImport(ctx, config, userID); err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("create config %s: %s", config.Name, err))
+				continue
+			}
+			if !existsAlready {
+				result.ImportedCount++
+			}
+
+		case "merge":
+			if existsAlready {
+				// Update existing
+				if err := a.updateTableConfigFromImport(ctx, existing.ID, config, userID); err != nil {
+					result.Errors = append(result.Errors, fmt.Sprintf("update config %s: %s", config.Name, err))
+					continue
+				}
+				result.UpdatedCount++
+			} else {
+				// Create new
+				if err := a.createTableConfigFromImport(ctx, config, userID); err != nil {
+					result.Errors = append(result.Errors, fmt.Sprintf("create config %s: %s", config.Name, err))
+					continue
+				}
+				result.ImportedCount++
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (a *App) createTableConfigFromImport(ctx context.Context, config TableConfig, userID uuid.UUID) error {
+	// Parse and validate the config
+	var busConfig tablebuilder.Config
+	if err := json.Unmarshal(config.Config, &busConfig); err != nil {
+		return fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	if err := busConfig.Validate(); err != nil {
+		return fmt.Errorf("validate config: %w", err)
+	}
+
+	// Create the config
+	_, err := a.configStore.Create(ctx, config.Name, config.Description, &busConfig, userID)
+	if err != nil {
+		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
+			return errors.New("configuration name already exists")
+		}
+		return fmt.Errorf("create config: %w", err)
+	}
+
+	return nil
+}
+
+func (a *App) updateTableConfigFromImport(ctx context.Context, id uuid.UUID, config TableConfig, userID uuid.UUID) error {
+	// Parse and validate the config
+	var busConfig tablebuilder.Config
+	if err := json.Unmarshal(config.Config, &busConfig); err != nil {
+		return fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	if err := busConfig.Validate(); err != nil {
+		return fmt.Errorf("validate config: %w", err)
+	}
+
+	// Update the config
+	_, err := a.configStore.Update(ctx, id, config.Name, config.Description, &busConfig, userID)
+	if err != nil {
+		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
+			return errors.New("configuration name already exists")
+		}
+		return fmt.Errorf("update config: %w", err)
+	}
+
+	return nil
+}
+
+func parseUUID(s string, fieldName string) (uuid.UUID, error) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("invalid %s: %w", fieldName, err)
+	}
+	return id, nil
 }

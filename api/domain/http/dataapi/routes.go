@@ -81,6 +81,13 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodPost, version, "/data/validate", api.validateConfig, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
+	// Export/Import routes
+	app.HandlerFunc(http.MethodPost, version, "/data/export", api.exportTableConfigs, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/data/import", api.importTableConfigs, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
+
 	// PageConfig routes
 	app.HandlerFunc(http.MethodPost, version, "/data/page", api.createPageConfig, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))

@@ -2,6 +2,8 @@ package formapi
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -144,4 +146,45 @@ func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return forms
+}
+
+func (api *api) exportForms(ctx context.Context, r *http.Request) web.Encoder {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+	defer r.Body.Close()
+
+	if err := json.Unmarshal(body, &req); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	if len(req.IDs) == 0 {
+		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "ids cannot be empty"))
+	}
+
+	pkg, err := api.formapp.ExportByIDs(ctx, req.IDs)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return pkg
+}
+
+func (api *api) importForms(ctx context.Context, r *http.Request) web.Encoder {
+	var pkg formapp.ImportPackage
+	if err := web.Decode(r, &pkg); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	result, err := api.formapp.ImportForms(ctx, pkg)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return result
 }

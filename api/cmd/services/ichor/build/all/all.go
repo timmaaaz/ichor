@@ -372,11 +372,11 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	configStore := tablebuilder.NewConfigStore(cfg.Log, cfg.DB)
 	tableStore := tablebuilder.NewStore(cfg.Log, cfg.DB)
 
-	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB))
 	formFieldBus := formfieldbus.NewBusiness(cfg.Log, delegate, formfielddb.NewStore(cfg.Log, cfg.DB))
-	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
-	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB))
+	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB), formFieldBus)
 	pageContentBus := pagecontentbus.NewBusiness(cfg.Log, delegate, pagecontentdb.NewStore(cfg.Log, cfg.DB))
+	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
+	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB), pageContentBus, pageActionBus)
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,

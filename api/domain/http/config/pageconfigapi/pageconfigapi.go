@@ -2,6 +2,8 @@ package pageconfigapi
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -104,4 +106,48 @@ func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return configs
+}
+
+// =============================================================================
+// Export/Import handlers
+
+func (api *api) exportPageConfigs(ctx context.Context, r *http.Request) web.Encoder {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+	defer r.Body.Close()
+
+	if err := json.Unmarshal(body, &req); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	if len(req.IDs) == 0 {
+		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "ids cannot be empty"))
+	}
+
+	pkg, err := api.pageConfigApp.ExportByIDs(ctx, req.IDs)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return pkg
+}
+
+func (api *api) importPageConfigs(ctx context.Context, r *http.Request) web.Encoder {
+	var pkg pageconfigapp.ImportPackage
+	if err := web.Decode(r, &pkg); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	result, err := api.pageConfigApp.ImportPageConfigs(ctx, pkg)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return result
 }

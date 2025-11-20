@@ -3,9 +3,11 @@ package formapp
 import (
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 )
 
 // QueryParams represents the query parameters for forms.
@@ -132,4 +134,118 @@ func ToAppFormFull(form formbus.Form, fields []formfieldapp.FormField) FormFull 
 		AllowInlineCreate: form.AllowInlineCreate,
 		Fields:            fields,
 	}
+}
+
+// ExportPackage represents a JSON export package for forms.
+type ExportPackage struct {
+	Version    string        `json:"version"`
+	Type       string        `json:"type"`
+	ExportedAt string        `json:"exportedAt"`
+	Count      int           `json:"count"`
+	Data       []FormPackage `json:"data"`
+}
+
+func (app ExportPackage) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// FormPackage represents a single form with its fields for export/import.
+type FormPackage struct {
+	Form   Form                     `json:"form"`
+	Fields []formfieldapp.FormField `json:"fields"`
+}
+
+// ImportPackage represents a JSON import package for forms.
+type ImportPackage struct {
+	Mode string        `json:"mode"` // "merge", "skip", "replace"
+	Data []FormPackage `json:"data"`
+}
+
+func (app *ImportPackage) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+func (app ImportPackage) Validate() error {
+	if app.Mode != "merge" && app.Mode != "skip" && app.Mode != "replace" {
+		return errs.Newf(errs.InvalidArgument, "mode must be 'merge', 'skip', or 'replace'")
+	}
+
+	if len(app.Data) == 0 {
+		return errs.Newf(errs.InvalidArgument, "data cannot be empty")
+	}
+
+	// Validate each form package
+	for i, pkg := range app.Data {
+		if pkg.Form.Name == "" {
+			return errs.Newf(errs.InvalidArgument, "form %d: name is required", i)
+		}
+	}
+
+	return nil
+}
+
+// ImportResult represents the result of an import operation.
+type ImportResult struct {
+	ImportedCount int      `json:"importedCount"`
+	SkippedCount  int      `json:"skippedCount"`
+	UpdatedCount  int      `json:"updatedCount"`
+	Errors        []string `json:"errors,omitempty"`
+}
+
+func (app ImportResult) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ToBusFormWithFields converts an app FormPackage to a business FormWithFields.
+func ToBusFormWithFields(app FormPackage) (formbus.FormWithFields, error) {
+	formID, err := uuid.Parse(app.Form.ID)
+	if err != nil {
+		// Generate new ID if parsing fails (import scenario)
+		formID = uuid.New()
+	}
+
+	form := formbus.Form{
+		ID:                formID,
+		Name:              app.Form.Name,
+		IsReferenceData:   app.Form.IsReferenceData,
+		AllowInlineCreate: app.Form.AllowInlineCreate,
+	}
+
+	fields := make([]formfieldbus.FormField, len(app.Fields))
+	for i, appField := range app.Fields {
+		fieldID, err := uuid.Parse(appField.ID)
+		if err != nil {
+			// Generate new ID if parsing fails (import scenario)
+			fieldID = uuid.New()
+		}
+		fFormID, err := uuid.Parse(appField.FormID)
+		if err != nil {
+			fFormID = formID // Use the form's ID if parsing fails
+		}
+		entityID, err := uuid.Parse(appField.EntityID)
+		if err != nil {
+			return formbus.FormWithFields{}, errs.Newf(errs.InvalidArgument, "field %d: invalid entity_id: %s", i, err)
+		}
+
+		fields[i] = formfieldbus.FormField{
+			ID:           fieldID,
+			FormID:       fFormID,
+			EntityID:     entityID,
+			EntitySchema: appField.EntitySchema,
+			EntityTable:  appField.EntityTable,
+			Name:         appField.Name,
+			Label:        appField.Label,
+			FieldType:    appField.FieldType,
+			FieldOrder:   appField.FieldOrder,
+			Required:     appField.Required,
+			Config:       appField.Config,
+		}
+	}
+
+	return formbus.FormWithFields{
+		Form:   form,
+		Fields: fields,
+	}, nil
 }

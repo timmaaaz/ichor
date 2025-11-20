@@ -3,6 +3,7 @@ package pageconfigapp
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
@@ -112,4 +113,74 @@ func (a *App) QueryAll(ctx context.Context) (PageConfigs, error) {
 	}
 
 	return PageConfigs(ToAppPageConfigs(configs)), nil
+}
+
+// =============================================================================
+// Export/Import Methods
+
+// ExportByIDs exports page configs by IDs as a JSON package.
+func (a *App) ExportByIDs(ctx context.Context, configIDs []string) (ExportPackage, error) {
+	// Convert string IDs to UUIDs
+	uuids := make([]uuid.UUID, len(configIDs))
+	for i, id := range configIDs {
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return ExportPackage{}, errs.Newf(errs.InvalidArgument, "invalid config ID %s: %s", id, err)
+		}
+		uuids[i] = uid
+	}
+
+	// Export from business layer
+	results, err := a.pageConfigBus.ExportByIDs(ctx, uuids)
+	if err != nil {
+		return ExportPackage{}, errs.Newf(errs.Internal, "export: %s", err)
+	}
+
+	// Convert to app models
+	var packages []PageConfigPackage
+	for _, result := range results {
+		packages = append(packages, toAppPageConfigWithRelations(result))
+	}
+
+	return ExportPackage{
+		Version:    "1.0",
+		Type:       "page-configs",
+		ExportedAt: time.Now().Format(time.RFC3339),
+		Count:      len(packages),
+		Data:       packages,
+	}, nil
+}
+
+// ImportPageConfigs imports page configs from a JSON package.
+func (a *App) ImportPageConfigs(ctx context.Context, pkg ImportPackage) (ImportResult, error) {
+	// Validate package
+	if err := pkg.Validate(); err != nil {
+		return ImportResult{}, err
+	}
+
+	// Convert app models to business models
+	var busPackages []pageconfigbus.PageConfigWithRelations
+	for i, configPkg := range pkg.Data {
+		busPkg, err := ToBusPageConfigWithRelations(configPkg)
+		if err != nil {
+			return ImportResult{
+				Errors: []string{err.Error()},
+			}, errs.Newf(errs.InvalidArgument, "convert page config %d: %s", i, err)
+		}
+		busPackages = append(busPackages, busPkg)
+	}
+
+	// Import via business layer
+	stats, err := a.pageConfigBus.ImportPageConfigs(ctx, busPackages, pkg.Mode)
+	if err != nil {
+		return ImportResult{
+			Errors: []string{err.Error()},
+		}, errs.Newf(errs.Internal, "import: %s", err)
+	}
+
+	return ImportResult{
+		ImportedCount: stats.ImportedCount,
+		SkippedCount:  stats.SkippedCount,
+		UpdatedCount:  stats.UpdatedCount,
+	}, nil
 }

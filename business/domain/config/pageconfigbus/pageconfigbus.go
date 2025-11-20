@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -36,17 +38,21 @@ type Storer interface {
 
 // Business manages the set of APIs for page config access.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
-	del    *delegate.Delegate
+	log            *logger.Logger
+	storer         Storer
+	del            *delegate.Delegate
+	pageContentBus *pagecontentbus.Business
+	pageActionBus  *pageactionbus.Business
 }
 
 // NewBusiness constructs a page config business API for use.
-func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer, pageContentBus *pagecontentbus.Business, pageActionBus *pageactionbus.Business) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
-		del:    del,
+		log:            log,
+		storer:         storer,
+		del:            del,
+		pageContentBus: pageContentBus,
+		pageActionBus:  pageActionBus,
 	}
 }
 
@@ -58,10 +64,22 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
+	pageContentBus, err := b.pageContentBus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	pageActionBus, err := b.pageActionBus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
 	bus := Business{
-		log:    b.log,
-		storer: storer,
-		del:    b.del,
+		log:            b.log,
+		storer:         storer,
+		del:            b.del,
+		pageContentBus: pageContentBus,
+		pageActionBus:  pageActionBus,
 	}
 
 	return &bus, nil
@@ -215,4 +233,398 @@ func (b *Business) QueryAll(ctx context.Context) ([]PageConfig, error) {
 	}
 
 	return configs, nil
+}
+
+// =============================================================================
+// Export/Import Methods
+
+// ExportByIDs exports page configs with their content and actions by IDs.
+func (b *Business) ExportByIDs(ctx context.Context, configIDs []uuid.UUID) ([]PageConfigWithRelations, error) {
+	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.exportbyids")
+	defer span.End()
+
+	var results []PageConfigWithRelations
+
+	for _, configID := range configIDs {
+		config, err := b.storer.QueryByID(ctx, configID)
+		if err != nil {
+			return nil, fmt.Errorf("query page config %s: %w", configID, err)
+		}
+
+		contents, err := b.pageContentBus.QueryByPageConfigID(ctx, configID)
+		if err != nil {
+			return nil, fmt.Errorf("query contents for page config %s: %w", configID, err)
+		}
+
+		actions, err := b.pageActionBus.QueryByPageConfigID(ctx, configID)
+		if err != nil {
+			return nil, fmt.Errorf("query actions for page config %s: %w", configID, err)
+		}
+
+		// Convert to export format
+		exportContents := toExportPageContents(contents)
+		exportActions := toExportPageActions(actions)
+
+		results = append(results, PageConfigWithRelations{
+			PageConfig: config,
+			Contents:   exportContents,
+			Actions:    exportActions,
+		})
+	}
+
+	return results, nil
+}
+
+// ImportPageConfigs imports page configs with conflict resolution and nested content handling.
+func (b *Business) ImportPageConfigs(ctx context.Context, packages []PageConfigWithRelations, mode string) (ImportStats, error) {
+	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.importpageconfigs")
+	defer span.End()
+
+	stats := ImportStats{}
+
+	for _, pkg := range packages {
+		// Check if config exists by name (considering both default and user-specific configs)
+		existing, err := b.storer.QueryByName(ctx, pkg.PageConfig.Name)
+		existsAlready := err == nil
+
+		switch mode {
+		case "skip":
+			if existsAlready {
+				stats.SkippedCount++
+				continue
+			}
+			if err := b.createPageConfigWithRelations(ctx, pkg); err != nil {
+				return stats, err
+			}
+			stats.ImportedCount++
+
+		case "replace":
+			if existsAlready {
+				if err := b.Delete(ctx, existing.ID); err != nil {
+					return stats, fmt.Errorf("delete existing: %w", err)
+				}
+				stats.UpdatedCount++
+			}
+			if err := b.createPageConfigWithRelations(ctx, pkg); err != nil {
+				return stats, err
+			}
+			if !existsAlready {
+				stats.ImportedCount++
+			}
+
+		case "merge":
+			if existsAlready {
+				if err := b.updatePageConfigWithRelations(ctx, existing.ID, pkg); err != nil {
+					return stats, fmt.Errorf("update page config: %w", err)
+				}
+				stats.UpdatedCount++
+			} else {
+				if err := b.createPageConfigWithRelations(ctx, pkg); err != nil {
+					return stats, err
+				}
+				stats.ImportedCount++
+			}
+		}
+	}
+
+	return stats, nil
+}
+
+func (b *Business) createPageConfigWithRelations(ctx context.Context, pkg PageConfigWithRelations) error {
+	// Create page config
+	newConfig := NewPageConfig{
+		Name:      pkg.PageConfig.Name,
+		UserID:    pkg.PageConfig.UserID,
+		IsDefault: pkg.PageConfig.IsDefault,
+	}
+
+	config, err := b.Create(ctx, newConfig)
+	if err != nil {
+		return fmt.Errorf("create page config: %w", err)
+	}
+
+	// Create contents with ID remapping for parent/child relationships
+	if err := b.createContentsWithRemapping(ctx, config.ID, pkg.Contents); err != nil {
+		return err
+	}
+
+	// Create actions
+	if err := b.createActions(ctx, config.ID, pkg.Actions); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Business) createContentsWithRemapping(ctx context.Context, pageConfigID uuid.UUID, contents []PageContentExport) error {
+	// Map old IDs to new IDs for parent/child relationships
+	idMap := make(map[uuid.UUID]uuid.UUID)
+
+	// First pass: Create all parent contents (where ParentID is zero/nil)
+	for _, content := range contents {
+		if content.ParentID == uuid.Nil {
+			newContent := pagecontentbus.NewPageContent{
+				PageConfigID:  pageConfigID,
+				ContentType:   content.ContentType,
+				Label:         content.Label,
+				TableConfigID: content.TableConfigID,
+				FormID:        content.FormID,
+				OrderIndex:    content.OrderIndex,
+				ParentID:      uuid.UUID{}, // Zero value for no parent
+				Layout:        content.Layout,
+				IsVisible:     content.IsVisible,
+				IsDefault:     content.IsDefault,
+			}
+			created, err := b.pageContentBus.Create(ctx, newContent)
+			if err != nil {
+				return fmt.Errorf("create parent content: %w", err)
+			}
+			idMap[content.ID] = created.ID
+		}
+	}
+
+	// Second pass: Create child contents with remapped ParentID
+	for _, content := range contents {
+		if content.ParentID != uuid.Nil {
+			// Remap parent ID
+			newParentID, ok := idMap[content.ParentID]
+			if !ok {
+				return fmt.Errorf("parent content %s not found in id map", content.ParentID)
+			}
+
+			newContent := pagecontentbus.NewPageContent{
+				PageConfigID:  pageConfigID,
+				ContentType:   content.ContentType,
+				Label:         content.Label,
+				TableConfigID: content.TableConfigID,
+				FormID:        content.FormID,
+				OrderIndex:    content.OrderIndex,
+				ParentID:      newParentID,
+				Layout:        content.Layout,
+				IsVisible:     content.IsVisible,
+				IsDefault:     content.IsDefault,
+			}
+			created, err := b.pageContentBus.Create(ctx, newContent)
+			if err != nil {
+				return fmt.Errorf("create child content: %w", err)
+			}
+			idMap[content.ID] = created.ID
+		}
+	}
+
+	return nil
+}
+
+func (b *Business) createActions(ctx context.Context, pageConfigID uuid.UUID, actions PageActionsExport) error {
+	// Create button actions
+	for _, action := range actions.Buttons {
+		if action.Button == nil {
+			continue
+		}
+		newAction := pageactionbus.NewButtonAction{
+			PageConfigID:       pageConfigID,
+			ActionOrder:        action.ActionOrder,
+			IsActive:           action.IsActive,
+			Label:              action.Button.Label,
+			Icon:               action.Button.Icon,
+			TargetPath:         action.Button.TargetPath,
+			Variant:            action.Button.Variant,
+			Alignment:          action.Button.Alignment,
+			ConfirmationPrompt: action.Button.ConfirmationPrompt,
+		}
+		if _, err := b.pageActionBus.CreateButton(ctx, newAction); err != nil {
+			return fmt.Errorf("create button action: %w", err)
+		}
+	}
+
+	// Create dropdown actions
+	for _, action := range actions.Dropdowns {
+		if action.Dropdown == nil {
+			continue
+		}
+		// Convert dropdown items
+		items := make([]pageactionbus.NewDropdownItem, len(action.Dropdown.Items))
+		for i, item := range action.Dropdown.Items {
+			items[i] = pageactionbus.NewDropdownItem{
+				Label:      item.Label,
+				TargetPath: item.TargetPath,
+				ItemOrder:  item.ItemOrder,
+			}
+		}
+
+		newAction := pageactionbus.NewDropdownAction{
+			PageConfigID: pageConfigID,
+			ActionOrder:  action.ActionOrder,
+			IsActive:     action.IsActive,
+			Label:        action.Dropdown.Label,
+			Icon:         action.Dropdown.Icon,
+			Items:        items,
+		}
+		if _, err := b.pageActionBus.CreateDropdown(ctx, newAction); err != nil {
+			return fmt.Errorf("create dropdown action: %w", err)
+		}
+	}
+
+	// Create separator actions
+	for _, action := range actions.Separators {
+		newAction := pageactionbus.NewSeparatorAction{
+			PageConfigID: pageConfigID,
+			ActionOrder:  action.ActionOrder,
+			IsActive:     action.IsActive,
+		}
+		if _, err := b.pageActionBus.CreateSeparator(ctx, newAction); err != nil {
+			return fmt.Errorf("create separator action: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (b *Business) updatePageConfigWithRelations(ctx context.Context, configID uuid.UUID, pkg PageConfigWithRelations) error {
+	// Update page config
+	updateConfig := UpdatePageConfig{
+		Name:      &pkg.PageConfig.Name,
+		UserID:    &pkg.PageConfig.UserID,
+		IsDefault: &pkg.PageConfig.IsDefault,
+	}
+
+	if _, err := b.Update(ctx, updateConfig, configID); err != nil {
+		return fmt.Errorf("update config: %w", err)
+	}
+
+	// Delete existing contents
+	existingContents, err := b.pageContentBus.QueryByPageConfigID(ctx, configID)
+	if err != nil {
+		return fmt.Errorf("query existing contents: %w", err)
+	}
+
+	for _, content := range existingContents {
+		if err := b.pageContentBus.Delete(ctx, content.ID); err != nil {
+			return fmt.Errorf("delete content %s: %w", content.ID, err)
+		}
+	}
+
+	// Delete existing actions
+	existingActions, err := b.pageActionBus.QueryByPageConfigID(ctx, configID)
+	if err != nil {
+		return fmt.Errorf("query existing actions: %w", err)
+	}
+
+	for _, action := range existingActions.Buttons {
+		if err := b.pageActionBus.Delete(ctx, action); err != nil {
+			return fmt.Errorf("delete button action %s: %w", action.ID, err)
+		}
+	}
+	for _, action := range existingActions.Dropdowns {
+		if err := b.pageActionBus.Delete(ctx, action); err != nil {
+			return fmt.Errorf("delete dropdown action %s: %w", action.ID, err)
+		}
+	}
+	for _, action := range existingActions.Separators {
+		if err := b.pageActionBus.Delete(ctx, action); err != nil {
+			return fmt.Errorf("delete separator action %s: %w", action.ID, err)
+		}
+	}
+
+	// Recreate contents and actions
+	if err := b.createContentsWithRemapping(ctx, configID, pkg.Contents); err != nil {
+		return err
+	}
+
+	if err := b.createActions(ctx, configID, pkg.Actions); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Conversion helpers
+func toExportPageContents(contents []pagecontentbus.PageContent) []PageContentExport {
+	exports := make([]PageContentExport, len(contents))
+	for i, c := range contents {
+		exports[i] = PageContentExport{
+			ID:            c.ID,
+			PageConfigID:  c.PageConfigID,
+			ContentType:   c.ContentType,
+			Label:         c.Label,
+			TableConfigID: c.TableConfigID,
+			FormID:        c.FormID,
+			OrderIndex:    c.OrderIndex,
+			ParentID:      c.ParentID,
+			Layout:        c.Layout,
+			IsVisible:     c.IsVisible,
+			IsDefault:     c.IsDefault,
+		}
+	}
+	return exports
+}
+
+func toExportPageActions(actions pageactionbus.ActionsGroupedByType) PageActionsExport {
+	export := PageActionsExport{
+		Buttons:    make([]PageActionExport, len(actions.Buttons)),
+		Dropdowns:  make([]PageActionExport, len(actions.Dropdowns)),
+		Separators: make([]PageActionExport, len(actions.Separators)),
+	}
+
+	for i, action := range actions.Buttons {
+		var buttonExport *ButtonActionExport
+		if action.Button != nil {
+			buttonExport = &ButtonActionExport{
+				Label:              action.Button.Label,
+				Icon:               action.Button.Icon,
+				TargetPath:         action.Button.TargetPath,
+				Variant:            action.Button.Variant,
+				Alignment:          action.Button.Alignment,
+				ConfirmationPrompt: action.Button.ConfirmationPrompt,
+			}
+		}
+		export.Buttons[i] = PageActionExport{
+			ID:           action.ID,
+			PageConfigID: action.PageConfigID,
+			ActionType:   string(action.ActionType),
+			ActionOrder:  action.ActionOrder,
+			IsActive:     action.IsActive,
+			Button:       buttonExport,
+		}
+	}
+
+	for i, action := range actions.Dropdowns {
+		var dropdownExport *DropdownActionExport
+		if action.Dropdown != nil {
+			items := make([]DropdownItemExport, len(action.Dropdown.Items))
+			for j, item := range action.Dropdown.Items {
+				items[j] = DropdownItemExport{
+					ID:         item.ID,
+					Label:      item.Label,
+					TargetPath: item.TargetPath,
+					ItemOrder:  item.ItemOrder,
+				}
+			}
+			dropdownExport = &DropdownActionExport{
+				Label: action.Dropdown.Label,
+				Icon:  action.Dropdown.Icon,
+				Items: items,
+			}
+		}
+		export.Dropdowns[i] = PageActionExport{
+			ID:           action.ID,
+			PageConfigID: action.PageConfigID,
+			ActionType:   string(action.ActionType),
+			ActionOrder:  action.ActionOrder,
+			IsActive:     action.IsActive,
+			Dropdown:     dropdownExport,
+		}
+	}
+
+	for i, action := range actions.Separators {
+		export.Separators[i] = PageActionExport{
+			ID:           action.ID,
+			PageConfigID: action.PageConfigID,
+			ActionType:   string(action.ActionType),
+			ActionOrder:  action.ActionOrder,
+			IsActive:     action.IsActive,
+		}
+	}
+
+	return export
 }

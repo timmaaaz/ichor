@@ -51,4 +51,11 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodDelete, version, "/config/page-configs/id/{config_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Delete, auth.RuleAdminOnly))
+
+	// Export/Import routes (admin-only)
+	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/export", api.exportPageConfigs, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/import", api.importPageConfigs, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Create, auth.RuleAny))
 }

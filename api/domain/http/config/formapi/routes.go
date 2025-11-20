@@ -57,4 +57,10 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodDelete, version, "/config/forms/{form_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/config/forms/export", api.exportForms, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/config/forms/import", api.importForms, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 }

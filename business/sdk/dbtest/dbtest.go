@@ -356,11 +356,11 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	tableBus := tablebuilder.NewStore(log, db)
 
 	// Config
-	formBus := formbus.NewBusiness(log, delegate, formdb.NewStore(log, db))
 	formFieldBus := formfieldbus.NewBusiness(log, delegate, formfielddb.NewStore(log, db))
-	pageActionBus := pageactionbus.NewBusiness(log, delegate, pageactiondb.NewStore(log, db))
-	pageConfigBus := pageconfigbus.NewBusiness(log, delegate, pageconfigdb.NewStore(log, db))
+	formBus := formbus.NewBusiness(log, delegate, formdb.NewStore(log, db), formFieldBus)
 	pageContentBus := pagecontentbus.NewBusiness(log, delegate, pagecontentdb.NewStore(log, db))
+	pageActionBus := pageactionbus.NewBusiness(log, delegate, pageactiondb.NewStore(log, db))
+	pageConfigBus := pageconfigbus.NewBusiness(log, delegate, pageconfigdb.NewStore(log, db), pageContentBus, pageActionBus)
 
 	return BusDomain{
 		Delegate:                  delegate,

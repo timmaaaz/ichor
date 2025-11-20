@@ -178,6 +178,72 @@ func toBusUpdateTableConfig(app UpdateTableConfig) (*tablebuilder.Config, error)
 }
 
 // =============================================================================
+// Export/Import Models
+
+// ExportPackage represents a JSON export package for table configs.
+type ExportPackage struct {
+	Version    string        `json:"version"`
+	Type       string        `json:"type"`
+	ExportedAt string        `json:"exportedAt"`
+	Count      int           `json:"count"`
+	Data       []TableConfig `json:"data"`
+}
+
+// Encode implements the encoder interface.
+func (app ExportPackage) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ImportPackage represents a JSON import package for table configs.
+type ImportPackage struct {
+	Mode string        `json:"mode"` // "merge", "skip", "replace"
+	Data []TableConfig `json:"data"`
+}
+
+// Decode implements the decoder interface.
+func (app *ImportPackage) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app ImportPackage) Validate() error {
+	if app.Mode != "merge" && app.Mode != "skip" && app.Mode != "replace" {
+		return errs.Newf(errs.InvalidArgument, "mode must be 'merge', 'skip', or 'replace'")
+	}
+
+	if len(app.Data) == 0 {
+		return errs.Newf(errs.InvalidArgument, "data cannot be empty")
+	}
+
+	// Validate each config
+	for i, config := range app.Data {
+		if config.Name == "" {
+			return errs.Newf(errs.InvalidArgument, "config %d: name is required", i)
+		}
+		if len(config.Config) == 0 {
+			return errs.Newf(errs.InvalidArgument, "config %d: config is required", i)
+		}
+	}
+
+	return nil
+}
+
+// ImportResult represents the result of an import operation.
+type ImportResult struct {
+	ImportedCount int      `json:"importedCount"`
+	SkippedCount  int      `json:"skippedCount"`
+	UpdatedCount  int      `json:"updatedCount"`
+	Errors        []string `json:"errors,omitempty"`
+}
+
+// Encode implements the encoder interface.
+func (app ImportResult) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// =============================================================================
 
 // TableQuery defines parameters for querying table data.
 type TableQuery struct {

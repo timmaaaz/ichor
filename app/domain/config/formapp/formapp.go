@@ -3,6 +3,7 @@ package formapp
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
@@ -193,4 +194,86 @@ func (a *App) QueryAll(ctx context.Context) (Forms, error) {
 	}
 
 	return Forms(ToAppForms(forms)), nil
+}
+
+// ExportByIDs exports forms by IDs as a JSON package.
+func (a *App) ExportByIDs(ctx context.Context, formIDs []string) (ExportPackage, error) {
+	// Convert string IDs to UUIDs
+	uuids := make([]uuid.UUID, len(formIDs))
+	for i, id := range formIDs {
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return ExportPackage{}, errs.Newf(errs.InvalidArgument, "invalid form ID %s: %s", id, err)
+		}
+		uuids[i] = uid
+	}
+
+	// Export from business layer
+	results, err := a.formbus.ExportByIDs(ctx, uuids)
+	if err != nil {
+		return ExportPackage{}, errs.Newf(errs.Internal, "export: %s", err)
+	}
+
+	// Convert to app models
+	var packages []FormPackage
+	for _, result := range results {
+		packages = append(packages, FormPackage{
+			Form:   ToAppForm(result.Form),
+			Fields: formfieldapp.ToAppFormFieldSlice(result.Fields),
+		})
+	}
+
+	return ExportPackage{
+		Version:    "1.0",
+		Type:       "forms",
+		ExportedAt: timeNow().Format(timeRFC3339),
+		Count:      len(packages),
+		Data:       packages,
+	}, nil
+}
+
+// ImportForms imports forms from a JSON package.
+func (a *App) ImportForms(ctx context.Context, pkg ImportPackage) (ImportResult, error) {
+	// Validate package
+	if err := pkg.Validate(); err != nil {
+		return ImportResult{}, err
+	}
+
+	// Convert app models to business models
+	var busPackages []formbus.FormWithFields
+	for i, formPkg := range pkg.Data {
+		busPkg, err := ToBusFormWithFields(formPkg)
+		if err != nil {
+			return ImportResult{
+				Errors: []string{err.Error()},
+			}, errs.Newf(errs.InvalidArgument, "convert form %d: %s", i, err)
+		}
+		busPackages = append(busPackages, busPkg)
+	}
+
+	// Import via business layer
+	stats, err := a.formbus.ImportForms(ctx, busPackages, pkg.Mode)
+	if err != nil {
+		return ImportResult{
+			Errors: []string{err.Error()},
+		}, errs.Newf(errs.Internal, "import: %s", err)
+	}
+
+	return ImportResult{
+		ImportedCount: stats.ImportedCount,
+		SkippedCount:  stats.SkippedCount,
+		UpdatedCount:  stats.UpdatedCount,
+	}, nil
+}
+
+// Variables for testing
+var (
+	timeNow      = func() interface{ Format(string) string } { return timeNowImpl{} }
+	timeRFC3339  = "2006-01-02T15:04:05Z07:00"
+)
+
+type timeNowImpl struct{}
+
+func (t timeNowImpl) Format(layout string) string {
+	return time.Now().Format(layout)
 }
