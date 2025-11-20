@@ -20,6 +20,7 @@ import (
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionsdb"
@@ -207,6 +208,9 @@ type BusDomain struct {
 	TableAccess *tableaccessbus.Business
 	Permissions *permissionsbus.Business
 
+	// Introspection
+	Introspection *introspectionbus.Business
+
 	// Finance
 	ProductCost *productcostbus.Business
 
@@ -308,6 +312,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	tableAccessBus := tableaccessbus.NewBusiness(log, delegate, tableaccesscache.NewStore(log, tableaccessdb.NewStore(log, db), 60*time.Minute))
 	permissionsBus := permissionsbus.NewBusiness(log, delegate, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
+	// Introspection
+	introspectionBus := introspectionbus.NewBusiness(log, db)
+
 	// Finance
 	productCostBus := productcostbus.NewBusiness(log, delegate, productcostdb.NewStore(log, db))
 	costHistoryBus := costhistorybus.NewBusiness(log, delegate, costhistorydb.NewStore(log, db))
@@ -388,6 +395,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ProductCategory:           productCategoryBus,
 		TableAccess:               tableAccessBus,
 		Permissions:               permissionsBus,
+		Introspection:             introspectionBus,
 		Product:                   productBus,
 		PhysicalAttribute:         physicalAttributeBus,
 		ProductCost:               productCostBus,

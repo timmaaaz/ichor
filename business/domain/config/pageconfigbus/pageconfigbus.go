@@ -31,6 +31,7 @@ type Storer interface {
 	QueryByID(ctx context.Context, configID uuid.UUID) (PageConfig, error)
 	QueryByName(ctx context.Context, name string) (PageConfig, error)
 	QueryByNameAndUserID(ctx context.Context, name string, userID uuid.UUID) (PageConfig, error)
+	QueryAll(ctx context.Context) ([]PageConfig, error)
 }
 
 // Business manages the set of APIs for page config access.
@@ -201,4 +202,17 @@ func (b *Business) QueryByNameAndUserID(ctx context.Context, name string, userID
 	}
 
 	return config, nil
+}
+
+// QueryAll retrieves all page configurations from the system.
+func (b *Business) QueryAll(ctx context.Context) ([]PageConfig, error) {
+	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.queryall")
+	defer span.End()
+
+	configs, err := b.storer.QueryAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("queryall: %w", err)
+	}
+
+	return configs, nil
 }

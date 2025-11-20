@@ -69,8 +69,9 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
 		return fmt.Errorf("namedquerystruct: %w", err)
 	}
 
-	// TODO: Move this function, it probably does not belong here, more like business logic
-	if !tmp.Exists && !IsSpecialTableName(ta.TableName) {
+	// Check if table exists in database, is a special table, or is a virtual table
+	// Virtual tables exist for permission purposes but don't have physical database tables
+	if !tmp.Exists && !IsSpecialTableName(ta.TableName) && !tableaccessbus.VirtualTables[ta.TableName] {
 		return fmt.Errorf("table[%s]: %w", ta.TableName, tableaccessbus.ErrNonexistentTableName)
 	}
 

@@ -49,6 +49,14 @@ func ToAppForms(bus []formbus.Form) []Form {
 	return app
 }
 
+// Forms is a collection wrapper that implements the Encoder interface.
+type Forms []Form
+
+func (app Forms) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
 // NewForm represents data needed to create a form.
 type NewForm struct {
 	Name              string `json:"name" validate:"required,min=1,max=255"`

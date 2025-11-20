@@ -76,6 +76,9 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 		{RoleID: uuid.Nil, TableName: "user_roles", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "pages", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "role_pages", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+
+		// Virtual Tables (introspection, etc.)
+		{RoleID: uuid.Nil, TableName: "introspection", CanCreate: false, CanRead: true, CanUpdate: false, CanDelete: false},
 	}
 
 	ret := make([]TableAccess, 0)

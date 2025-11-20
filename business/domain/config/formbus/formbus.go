@@ -32,6 +32,7 @@ type Storer interface {
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, formID uuid.UUID) (Form, error)
 	QueryByName(ctx context.Context, name string) (Form, error)
+	QueryAll(ctx context.Context) ([]Form, error)
 }
 
 // Business manages the set of APIs for form access.
@@ -155,4 +156,17 @@ func (b *Business) QueryByName(ctx context.Context, name string) (Form, error) {
 	}
 
 	return form, nil
+}
+
+// QueryAll retrieves all forms from the system.
+func (b *Business) QueryAll(ctx context.Context) ([]Form, error) {
+	ctx, span := otel.AddSpan(ctx, "business.formbus.queryall")
+	defer span.End()
+
+	forms, err := b.storer.QueryAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("queryall: %w", err)
+	}
+
+	return forms, nil
 }

@@ -248,3 +248,23 @@ func (s *Store) QueryByNameAndUserID(ctx context.Context, name string, userID uu
 
 	return toBusPageConfig(dbConfig), nil
 }
+
+// QueryAll retrieves all page configurations from the database.
+func (s *Store) QueryAll(ctx context.Context) ([]pageconfigbus.PageConfig, error) {
+	data := struct{}{}
+
+	const q = `
+	SELECT
+		id, name, user_id, is_default
+	FROM
+		config.page_configs
+	ORDER BY
+		name`
+
+	var dbConfigs []dbPageConfig
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbConfigs); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusPageConfigs(dbConfigs), nil
+}

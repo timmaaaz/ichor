@@ -184,3 +184,13 @@ func (a *App) QueryFullByName(ctx context.Context, name string) (FormFull, error
 
 	return ToAppFormFull(form, fields), nil
 }
+
+// QueryAll retrieves all forms from the system.
+func (a *App) QueryAll(ctx context.Context) (Forms, error) {
+	forms, err := a.formbus.QueryAll(ctx)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "queryall: %s", err)
+	}
+
+	return Forms(ToAppForms(forms)), nil
+}

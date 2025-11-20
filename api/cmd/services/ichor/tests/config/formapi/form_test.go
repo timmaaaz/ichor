@@ -22,6 +22,8 @@ func Test_Form(t *testing.T) {
 
 	test.Run(t, queryByID200(sd), "query-by-id-200")
 	test.Run(t, query200(sd), "query-200")
+	test.Run(t, queryAll200(sd), "queryall-200")
+	test.Run(t, queryAll401(sd), "queryall-401")
 
 	test.Run(t, queryFull200(sd), "query-full-200")
 	test.Run(t, queryFull400(sd), "query-full-400")

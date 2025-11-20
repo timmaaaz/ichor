@@ -283,6 +283,27 @@ func (s *ConfigStore) QueryByUser(ctx context.Context, userID uuid.UUID) ([]Stor
 	return configs, nil
 }
 
+// QueryAll retrieves all table configurations from the database.
+func (s *ConfigStore) QueryAll(ctx context.Context) ([]StoredConfig, error) {
+	data := struct{}{}
+
+	const q = `
+		SELECT
+			id, name, description, config,
+			created_by, updated_by, created_date, updated_date
+		FROM
+			config.table_configs
+		ORDER BY
+			name`
+
+	var configs []StoredConfig
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &configs); err != nil {
+		return nil, fmt.Errorf("query all configs: %w", err)
+	}
+
+	return configs, nil
+}
+
 // QueryPageByName retrieves the default page configuration by name.
 // This returns the default page config that serves as a fallback for all users.
 func (s *ConfigStore) QueryPageByName(ctx context.Context, name string) (*PageConfig, error) {

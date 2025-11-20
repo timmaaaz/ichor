@@ -66,6 +66,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/geography/regionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/streetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/homeapi"
+	"github.com/timmaaaz/ichor/api/domain/http/introspectionapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/rawapi"
 
@@ -147,6 +148,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus/stores/pagecontentdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
@@ -356,6 +358,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	permissionsBus := permissionsbus.NewBusiness(cfg.Log, delegate, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
+	introspectionBus := introspectionbus.NewBusiness(cfg.Log, cfg.DB)
+
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB))
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB))
 	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB))
@@ -389,6 +393,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	rawapi.Routes(app)
+
+	introspectionapi.Routes(app, introspectionapi.Config{
+		Log:              cfg.Log,
+		IntrospectionBus: introspectionBus,
+		AuthClient:       cfg.AuthClient,
+		PermissionsBus:   permissionsBus,
+	})
 
 	userapi.Routes(app, userapi.Config{
 		Log:            cfg.Log,

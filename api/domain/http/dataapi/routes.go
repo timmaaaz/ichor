@@ -61,6 +61,9 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/data/user/{user_id}", api.queryByUser, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
+	app.HandlerFunc(http.MethodGet, version, "/data/configs/all", api.queryAll, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
 	// store
 	app.HandlerFunc(http.MethodPost, version, "/data/execute/{table_config_id}", api.executeQuery, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))

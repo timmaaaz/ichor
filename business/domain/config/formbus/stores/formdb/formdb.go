@@ -209,3 +209,23 @@ func (s *Store) QueryByName(ctx context.Context, name string) (formbus.Form, err
 
 	return toBusForm(dbForm), nil
 }
+
+// QueryAll retrieves all forms from the database.
+func (s *Store) QueryAll(ctx context.Context) ([]formbus.Form, error) {
+	data := struct{}{}
+
+	const q = `
+	SELECT
+		id, name, is_reference_data, allow_inline_create
+	FROM
+		config.forms
+	ORDER BY
+		name`
+
+	var dbForms []form
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbForms); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusForms(dbForms), nil
+}

@@ -185,6 +185,16 @@ func (a *App) QueryByUser(ctx context.Context, userID uuid.UUID) (TableConfigLis
 	return ToAppTableConfigList(configs), nil
 }
 
+// QueryAll returns all table configurations from the system.
+func (a *App) QueryAll(ctx context.Context) (TableConfigList, error) {
+	configs, err := a.configStore.QueryAll(ctx)
+	if err != nil {
+		return TableConfigList{}, errs.Newf(errs.Internal, "queryall: %s", err)
+	}
+
+	return ToAppTableConfigList(configs), nil
+}
+
 // QueryFullPageByName returns the default page configuration by its name.
 // This retrieves the default page config which serves as a fallback for all users.
 // Only one default page config is allowed per page name (enforced by database constraint).

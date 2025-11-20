@@ -22,6 +22,8 @@ func Test_PageConfig(t *testing.T) {
 
 	test.Run(t, queryByID200(sd), "query-by-id-200")
 	test.Run(t, queryByName200(sd), "query-by-name-200")
+	test.Run(t, queryAll200(sd), "queryall-200")
+	test.Run(t, queryAll401(sd), "queryall-401")
 
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, create400(sd), "create-400")

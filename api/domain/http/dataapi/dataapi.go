@@ -111,6 +111,15 @@ func (api *api) queryByUser(ctx context.Context, r *http.Request) web.Encoder {
 	return tableConfigs
 }
 
+func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
+	tableConfigs, err := api.dataapp.QueryAll(ctx)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return tableConfigs
+}
+
 func (api *api) executeQuery(ctx context.Context, r *http.Request) web.Encoder {
 	id := web.Param(r, "table_config_id")
 	parsed, err := uuid.Parse(id)

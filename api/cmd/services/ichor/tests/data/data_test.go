@@ -22,6 +22,8 @@ func Test_Data(t *testing.T) {
 	test.Run(t, queryByID200(sd), "querybyid-200")
 	test.Run(t, queryByName200(sd), "querybyname-200")
 	test.Run(t, queryByUser200(sd), "querybyuser-200")
+	test.Run(t, queryAll200(sd), "queryall-200")
+	test.Run(t, queryAll401(sd), "queryall-401")
 
 	test.Run(t, create200(sd), "create-200")
 

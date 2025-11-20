@@ -95,3 +95,13 @@ func (api *api) queryByName(ctx context.Context, r *http.Request) web.Encoder {
 
 	return config
 }
+
+// queryAll retrieves all page configurations from the system.
+func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
+	configs, err := api.pageConfigApp.QueryAll(ctx)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return configs
+}

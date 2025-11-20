@@ -136,3 +136,12 @@ func (api *api) queryFullByName(ctx context.Context, r *http.Request) web.Encode
 
 	return formFull
 }
+
+func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
+	forms, err := api.formapp.QueryAll(ctx)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return forms
+}

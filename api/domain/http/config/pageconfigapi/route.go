@@ -39,6 +39,9 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/config/page-configs/name/{name}", api.queryByName, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Read, auth.RuleAny))
 
+	app.HandlerFunc(http.MethodGet, version, "/config/page-configs/all", api.queryAll, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Read, auth.RuleAny))
+
 	// Admin-only routes (create, update, delete)
 	app.HandlerFunc(http.MethodPost, version, "/config/page-configs", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Create, auth.RuleAdminOnly))

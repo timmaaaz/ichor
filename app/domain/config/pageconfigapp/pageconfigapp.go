@@ -103,3 +103,13 @@ func (a *App) QueryByNameAndUserID(ctx context.Context, name string, userID uuid
 
 	return ToAppPageConfig(config), nil
 }
+
+// QueryAll retrieves all page configurations from the system.
+func (a *App) QueryAll(ctx context.Context) (PageConfigs, error) {
+	configs, err := a.pageConfigBus.QueryAll(ctx)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "queryall: %s", err)
+	}
+
+	return PageConfigs(ToAppPageConfigs(configs)), nil
+}
