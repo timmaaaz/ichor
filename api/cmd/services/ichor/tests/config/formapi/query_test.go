@@ -1,6 +1,8 @@
 package formapi_test
 
 import (
+	"net/http"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
@@ -13,8 +15,8 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			Name:       "basic",
 			URL:        "/v1/config/forms?page=1&rows=10",
 			Token:      sd.Users[0].Token,
-			StatusCode: 200,
-			Method:     "GET",
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
 			GotResp:    &query.Result[formapp.Form]{},
 			ExpResp: &query.Result[formapp.Form]{
 				Page:        1,
@@ -36,8 +38,8 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 			Name:       "basic",
 			URL:        "/v1/config/forms/" + sd.Forms[0].ID,
 			Token:      sd.Users[0].Token,
-			StatusCode: 200,
-			Method:     "GET",
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
 			GotResp:    &formapp.Form{},
 			ExpResp:    &sd.Forms[0],
 			CmpFunc: func(got, exp any) string {

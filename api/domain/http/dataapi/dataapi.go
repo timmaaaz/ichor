@@ -2,6 +2,7 @@ package dataapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -104,6 +105,15 @@ func (api *api) queryByUser(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	tableConfigs, err := api.dataapp.QueryByUser(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return tableConfigs
+}
+
+func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
+	tableConfigs, err := api.dataapp.QueryAll(ctx)
 	if err != nil {
 		return errs.NewError(err)
 	}
@@ -299,52 +309,45 @@ func (api *api) queryFullPageByID(ctx context.Context, r *http.Request) web.Enco
 }
 
 // =============================================================================
-// PageTabConfig handlers
+// Export/Import handlers
 
-func (api *api) createPageTabConfig(ctx context.Context, r *http.Request) web.Encoder {
-	var app dataapp.NewPageTabConfig
-	if err := web.Decode(r, &app); err != nil {
+func (api *api) exportTableConfigs(ctx context.Context, r *http.Request) web.Encoder {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+	defer r.Body.Close()
+
+	if err := json.Unmarshal(body, &req); err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	pageTabConfig, err := api.dataapp.CreatePageTabConfig(ctx, app)
+	if len(req.IDs) == 0 {
+		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "ids cannot be empty"))
+	}
+
+	pkg, err := api.dataapp.ExportByIDs(ctx, req.IDs)
 	if err != nil {
 		return errs.NewError(err)
 	}
 
-	return pageTabConfig
+	return pkg
 }
 
-func (api *api) updatePageTabConfig(ctx context.Context, r *http.Request) web.Encoder {
-	var app dataapp.UpdatePageTabConfig
-	if err := web.Decode(r, &app); err != nil {
+func (api *api) importTableConfigs(ctx context.Context, r *http.Request) web.Encoder {
+	var pkg dataapp.ImportPackage
+	if err := web.Decode(r, &pkg); err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	id := web.Param(r, "page_tab_config_id")
-	parsed, err := uuid.Parse(id)
-	if err != nil {
-		return errs.New(errs.InvalidArgument, err)
-	}
-
-	pageTabConfig, err := api.dataapp.UpdatePageTabConfig(ctx, parsed, app)
+	result, err := api.dataapp.ImportTableConfigs(ctx, pkg)
 	if err != nil {
 		return errs.NewError(err)
 	}
 
-	return pageTabConfig
-}
-
-func (api *api) deletePageTabConfig(ctx context.Context, r *http.Request) web.Encoder {
-	id := web.Param(r, "page_tab_config_id")
-	parsed, err := uuid.Parse(id)
-	if err != nil {
-		return errs.New(errs.InvalidArgument, err)
-	}
-
-	if err := api.dataapp.DeletePageTabConfig(ctx, parsed); err != nil {
-		return errs.NewError(err)
-	}
-
-	return nil
+	return result
 }

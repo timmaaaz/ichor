@@ -20,7 +20,7 @@ type Config struct {
 	PermissionsBus       *permissionsbus.Business
 }
 
-const TableName = "physical_attributes"
+const RouteTable = "products.physical_attributes"
 
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
@@ -29,18 +29,18 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(physicalattributeapp.NewApp(cfg.PhysicalAttributeBus))
 	app.HandlerFunc(http.MethodGet, version, "/products/physical-attributes", api.query, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodGet, version, "/products/physical-attributes/{attribute_id}", api.queryByID, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodPost, version, "/products/physical-attributes", api.create, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Create, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodPut, version, "/products/physical-attributes/{attribute_id}", api.update, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Update, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodDelete, version, "/products/physical-attributes/{attribute_id}", api.delete, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Delete, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 
 }

@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
 
@@ -176,6 +175,72 @@ func toBusUpdateTableConfig(app UpdateTableConfig) (*tablebuilder.Config, error)
 	}
 
 	return &config, nil
+}
+
+// =============================================================================
+// Export/Import Models
+
+// ExportPackage represents a JSON export package for table configs.
+type ExportPackage struct {
+	Version    string        `json:"version"`
+	Type       string        `json:"type"`
+	ExportedAt string        `json:"exportedAt"`
+	Count      int           `json:"count"`
+	Data       []TableConfig `json:"data"`
+}
+
+// Encode implements the encoder interface.
+func (app ExportPackage) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ImportPackage represents a JSON import package for table configs.
+type ImportPackage struct {
+	Mode string        `json:"mode"` // "merge", "skip", "replace"
+	Data []TableConfig `json:"data"`
+}
+
+// Decode implements the decoder interface.
+func (app *ImportPackage) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app ImportPackage) Validate() error {
+	if app.Mode != "merge" && app.Mode != "skip" && app.Mode != "replace" {
+		return errs.Newf(errs.InvalidArgument, "mode must be 'merge', 'skip', or 'replace'")
+	}
+
+	if len(app.Data) == 0 {
+		return errs.Newf(errs.InvalidArgument, "data cannot be empty")
+	}
+
+	// Validate each config
+	for i, config := range app.Data {
+		if config.Name == "" {
+			return errs.Newf(errs.InvalidArgument, "config %d: name is required", i)
+		}
+		if len(config.Config) == 0 {
+			return errs.Newf(errs.InvalidArgument, "config %d: config is required", i)
+		}
+	}
+
+	return nil
+}
+
+// ImportResult represents the result of an import operation.
+type ImportResult struct {
+	ImportedCount int      `json:"importedCount"`
+	SkippedCount  int      `json:"skippedCount"`
+	UpdatedCount  int      `json:"updatedCount"`
+	Errors        []string `json:"errors,omitempty"`
+}
+
+// Encode implements the encoder interface.
+func (app ImportResult) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
 }
 
 // =============================================================================
@@ -357,9 +422,17 @@ func (app Count) Encode() ([]byte, string, error) {
 // This is a type alias to pageactionapp.ActionsGroupedByType for convenience.
 type ActionsGroupedByType = pageactionapp.ActionsGroupedByType
 
+// PageConfig is a type alias to pageconfigapp.PageConfig for convenience.
+type PageConfig = pageconfigapp.PageConfig
+
+// NewPageConfig is a type alias to pageconfigapp.NewPageConfig for convenience.
+type NewPageConfig = pageconfigapp.NewPageConfig
+
+// UpdatePageConfig is a type alias to pageconfigapp.UpdatePageConfig for convenience.
+type UpdatePageConfig = pageconfigapp.UpdatePageConfig
+
 type FullPageConfig struct {
 	PageConfig  PageConfig           `json:"pageConfig"`
-	PageTabs    []PageTabConfig      `json:"pageTabs"`
 	PageActions ActionsGroupedByType `json:"pageActions"`
 }
 
@@ -367,197 +440,6 @@ type FullPageConfig struct {
 func (app FullPageConfig) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(app)
 	return data, "application/json", err
-}
-
-// PageConfig - MATCHES business layer exactly
-type PageConfig struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	UserID    string `json:"user_id"`
-	IsDefault string `json:"is_default"`
-}
-
-// Encode implements the encoder interface.
-func (app PageConfig) Encode() ([]byte, string, error) {
-	data, err := json.Marshal(app)
-	return data, "application/json", err
-}
-
-type NewPageConfig struct {
-	Name      string `json:"name" validate:"required,min=3,max=100"`
-	UserID    string `json:"user_id" validate:"omitempty,uuid"`
-	IsDefault string `json:"is_default"`
-}
-
-// Decode implements the decoder interface.
-func (app *NewPageConfig) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-// Validate checks the data in the model is considered clean.
-func (app NewPageConfig) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-// UpdatePageConfig defines the data needed to update a page configuration.
-type UpdatePageConfig struct {
-	Name      *string `json:"name" validate:"omitempty,min=3,max=100"`
-	UserID    *string `json:"user_id" validate:"omitempty,uuid"`
-	IsDefault *string `json:"is_default"`
-}
-
-// Decode implements the decoder interface.
-func (app *UpdatePageConfig) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-// Validate checks the data in the model is considered clean.
-func (app UpdatePageConfig) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-func toAppPageConfig(bus tablebuilder.PageConfig) PageConfig {
-	var userIDStr string
-	// Zero UUID (nil in DB) should be represented as empty string
-	if bus.UserID != (uuid.UUID{}) {
-		userIDStr = bus.UserID.String()
-	}
-
-	return PageConfig{
-		ID:        bus.ID.String(),
-		Name:      bus.Name,
-		UserID:    userIDStr,
-		IsDefault: fmt.Sprintf("%t", bus.IsDefault),
-	}
-}
-
-func toBusPageConfig(app NewPageConfig) (tablebuilder.PageConfig, error) {
-	dest := tablebuilder.PageConfig{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return tablebuilder.PageConfig{}, fmt.Errorf("to bus page config: %w", err)
-	}
-
-	return dest, nil
-}
-
-func toBusUpdatePageConfig(app UpdatePageConfig) (tablebuilder.UpdatePageConfig, error) {
-	dest := tablebuilder.UpdatePageConfig{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
-}
-
-type PageTabConfig struct {
-	ID           string `json:"id"`
-	Label        string `json:"label"`
-	PageConfigID string `json:"page_config_id"`
-	ConfigID     string `json:"config_id"`
-	IsDefault    string `json:"is_default"`
-	TabOrder     string `json:"tab_order"`
-}
-
-func (app PageTabConfig) Encode() ([]byte, string, error) {
-	data, err := json.Marshal(app)
-	return data, "application/json", err
-}
-
-type NewPageTabConfig struct {
-	Label        string `json:"label" validate:"required,min=1,max=100"`
-	PageConfigID string `json:"page_config_id" validate:"required,uuid"`
-	ConfigID     string `json:"config_id" validate:"required,uuid"`
-	IsDefault    string `json:"is_default"`
-	TabOrder     string `json:"tab_order" validate:"min=1"`
-}
-
-// Decode implements the decoder interface.
-func (app *NewPageTabConfig) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-// Validate checks the data in the model is considered clean.
-func (app NewPageTabConfig) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-type UpdatePageTabConfig struct {
-	Label        *string `json:"label" validate:"omitempty,min=1,max=100"`
-	PageConfigID *string `json:"page_config_id" validate:"omitempty,uuid"`
-	ConfigID     *string `json:"config_id" validate:"omitempty,uuid"`
-	IsDefault    *string `json:"is_default"`
-	TabOrder     *string `json:"tab_order" validate:"omitempty,min=1"`
-}
-
-// Decode implements the decoder interface.
-func (app *UpdatePageTabConfig) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-// Validate checks the data in the model is considered clean.
-func (app UpdatePageTabConfig) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-func ToAppPageTabConfig(bus tablebuilder.PageTabConfig) PageTabConfig {
-	return PageTabConfig{
-		ID:           bus.ID.String(),
-		Label:        bus.Label,
-		PageConfigID: bus.PageConfigID.String(),
-		ConfigID:     bus.ConfigID.String(),
-		IsDefault:    fmt.Sprintf("%t", bus.IsDefault),
-		TabOrder:     fmt.Sprintf("%d", bus.TabOrder),
-	}
-}
-
-func ToAppPageTabConfigs(bus []tablebuilder.PageTabConfig) []PageTabConfig {
-	app := make([]PageTabConfig, len(bus))
-	for i, v := range bus {
-		app[i] = ToAppPageTabConfig(v)
-	}
-	return app
-}
-
-func toBusPageTabConfig(app NewPageTabConfig) (tablebuilder.PageTabConfig, error) {
-	dest := tablebuilder.PageTabConfig{}
-
-	// Convert string IDs to UUIDs
-	pageConfigID, err := uuid.Parse(app.PageConfigID)
-	if err != nil {
-		return tablebuilder.PageTabConfig{}, fmt.Errorf("invalid page_config_id: %w", err)
-	}
-	dest.PageConfigID = pageConfigID
-
-	configID, err := uuid.Parse(app.ConfigID)
-	if err != nil {
-		return tablebuilder.PageTabConfig{}, fmt.Errorf("invalid config_id: %w", err)
-	}
-	dest.ConfigID = configID
-
-	err = convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return tablebuilder.PageTabConfig{}, fmt.Errorf("to bus page tab config: %w", err)
-	}
-	return dest, nil
-}
-
-func toBusUpdatePageTabConfig(app UpdatePageTabConfig) (tablebuilder.UpdatePageTabConfig, error) {
-	dest := tablebuilder.UpdatePageTabConfig{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
 }
 
 // toAppTableData - Now does a DIRECT pass-through with minimal conversion

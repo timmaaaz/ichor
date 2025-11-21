@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "titles"
+	RouteTable = "hr.titles"
 )
 
 // Routes adds routes to the group

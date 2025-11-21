@@ -20,7 +20,7 @@ type Config struct {
 	PermissionsBus *permissionsbus.Business
 }
 
-const TableName = "products"
+const RouteTable = "products.products"
 
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
@@ -29,17 +29,17 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newAPI(productapp.NewApp(cfg.ProductBus))
 	app.HandlerFunc(http.MethodGet, version, "/products/products", api.query, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodGet, version, "/products/products/{product_id}", api.queryByID, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodPost, version, "/products/products", api.create, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Create, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodPut, version, "/products/products/{product_id}", api.update, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Update, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodDelete, version, "/products/products/{product_id}", api.delete, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, TableName, permissionsbus.Actions.Delete, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "countries"
+	RouteTable = "geography.countries"
 )
 
 // Routes adds specific routes for this group.

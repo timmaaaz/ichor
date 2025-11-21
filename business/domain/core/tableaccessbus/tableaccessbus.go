@@ -23,6 +23,13 @@ var (
 	ErrNonexistentTableName  = errors.New("table does not exist")
 )
 
+// VirtualTables defines tables that exist for permission purposes but don't
+// have actual database tables. These tables bypass database existence validation
+// while still maintaining full RBAC permission checks.
+var VirtualTables = map[string]bool{
+	"introspection": true, // Database metadata introspection endpoints
+}
+
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
 type Storer interface {

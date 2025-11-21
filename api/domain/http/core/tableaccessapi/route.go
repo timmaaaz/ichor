@@ -21,7 +21,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "table_access"
+	RouteTable = "core.table_access"
 )
 
 func Routes(app *web.App, cfg Config) {

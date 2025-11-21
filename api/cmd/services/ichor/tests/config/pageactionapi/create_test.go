@@ -22,7 +22,7 @@ func createButton200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &pageactionapp.NewButtonAction{
-				PageConfigID:       sd.PageConfigs[0].ID.String(),
+				PageConfigID:       sd.PageConfigs[0].ID,
 				ActionOrder:        100,
 				IsActive:           true,
 				Label:              "Test Button",
@@ -34,7 +34,7 @@ func createButton200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &pageactionapp.PageAction{},
 			ExpResp: &pageactionapp.PageAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 				ActionType:   "button",
 				ActionOrder:  100,
 				IsActive:     true,
@@ -84,7 +84,7 @@ func createButton401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			Input: &pageactionapp.NewButtonAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 				Label:        "Test Button",
 				TargetPath:   "/test/path",
 				Variant:      "default",
@@ -112,7 +112,7 @@ func createDropdown200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &pageactionapp.NewDropdownAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 				ActionOrder:  200,
 				IsActive:     true,
 				Label:        "Test Dropdown",
@@ -124,7 +124,7 @@ func createDropdown200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &pageactionapp.PageAction{},
 			ExpResp: &pageactionapp.PageAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 				ActionType:   "dropdown",
 				ActionOrder:  200,
 				IsActive:     true,
@@ -160,7 +160,7 @@ func createDropdown400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &pageactionapp.NewDropdownAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 				Label:        "Test Dropdown",
 				Items:        []pageactionapp.NewDropdownItem{}, // Empty items
 			},
@@ -182,7 +182,7 @@ func createDropdown401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			Input: &pageactionapp.NewDropdownAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 				Label:        "Test Dropdown",
 				Items: []pageactionapp.NewDropdownItem{
 					{Label: "Item 1", TargetPath: "/path1", ItemOrder: 1},
@@ -210,13 +210,13 @@ func createSeparator200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &pageactionapp.NewSeparatorAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 				ActionOrder:  300,
 				IsActive:     true,
 			},
 			GotResp: &pageactionapp.PageAction{},
 			ExpResp: &pageactionapp.PageAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 				ActionType:   "separator",
 				ActionOrder:  300,
 				IsActive:     true,
@@ -258,7 +258,7 @@ func createSeparator401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			Input: &pageactionapp.NewSeparatorAction{
-				PageConfigID: sd.PageConfigs[0].ID.String(),
+				PageConfigID: sd.PageConfigs[0].ID,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]: rego evaluation failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
@@ -277,7 +277,7 @@ func batchCreate200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "mixed_actions",
-			URL:        "/v1/config/page-configs/" + sd.PageConfigs[1].ID.String() + "/actions/batch",
+			URL:        "/v1/config/page-configs/actions/batch/" + sd.PageConfigs[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
@@ -286,7 +286,7 @@ func batchCreate200(sd apitest.SeedData) []apitest.Table {
 					{
 						ActionType: "button",
 						Button: &pageactionapp.NewButtonAction{
-							PageConfigID: sd.PageConfigs[1].ID.String(),
+							PageConfigID: sd.PageConfigs[1].ID,
 							ActionOrder:  1,
 							IsActive:     true,
 							Label:        "Batch Button",
@@ -298,7 +298,7 @@ func batchCreate200(sd apitest.SeedData) []apitest.Table {
 					{
 						ActionType: "dropdown",
 						Dropdown: &pageactionapp.NewDropdownAction{
-							PageConfigID: sd.PageConfigs[1].ID.String(),
+							PageConfigID: sd.PageConfigs[1].ID,
 							ActionOrder:  2,
 							IsActive:     true,
 							Label:        "Batch Dropdown",
@@ -310,7 +310,7 @@ func batchCreate200(sd apitest.SeedData) []apitest.Table {
 					{
 						ActionType: "separator",
 						Separator: &pageactionapp.NewSeparatorAction{
-							PageConfigID: sd.PageConfigs[1].ID.String(),
+							PageConfigID: sd.PageConfigs[1].ID,
 							ActionOrder:  3,
 							IsActive:     true,
 						},
@@ -334,7 +334,7 @@ func batchCreate400(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "invalid_action",
-			URL:        "/v1/config/page-configs/" + sd.PageConfigs[1].ID.String() + "/actions/batch",
+			URL:        "/v1/config/page-configs/actions/batch/" + sd.PageConfigs[1].ID,
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
@@ -364,7 +364,7 @@ func batchCreate401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "unauthorized",
-			URL:        "/v1/config/page-configs/" + sd.PageConfigs[1].ID.String() + "/actions/batch",
+			URL:        "/v1/config/page-configs/actions/batch/" + sd.PageConfigs[1].ID,
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
@@ -373,7 +373,7 @@ func batchCreate401(sd apitest.SeedData) []apitest.Table {
 					{
 						ActionType: "button",
 						Button: &pageactionapp.NewButtonAction{
-							PageConfigID: sd.PageConfigs[1].ID.String(),
+							PageConfigID: sd.PageConfigs[1].ID,
 							Label:        "Test",
 							TargetPath:   "/test",
 							Variant:      "default",

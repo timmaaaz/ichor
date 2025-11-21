@@ -8,15 +8,17 @@ import (
 )
 
 type formField struct {
-	ID         uuid.UUID       `db:"id"`
-	FormID     uuid.UUID       `db:"form_id"`
-	EntityID   uuid.UUID       `db:"entity_id"`
-	Name       string          `db:"name"`
-	Label      string          `db:"label"`
-	FieldType  string          `db:"field_type"`
-	FieldOrder int             `db:"field_order"`
-	Required   bool            `db:"required"`
-	Config     json.RawMessage `db:"config"`
+	ID           uuid.UUID       `db:"id"`
+	FormID       uuid.UUID       `db:"form_id"`
+	EntityID     uuid.UUID       `db:"entity_id"`
+	EntitySchema string          `db:"entity_schema"`
+	EntityTable  string          `db:"entity_table"`
+	Name         string          `db:"name"`
+	Label        string          `db:"label"`
+	FieldType    string          `db:"field_type"`
+	FieldOrder   int             `db:"field_order"`
+	Required     bool            `db:"required"`
+	Config       json.RawMessage `db:"config"`
 }
 
 func toDBFormField(bus formfieldbus.FormField) formField {
@@ -26,29 +28,33 @@ func toDBFormField(bus formfieldbus.FormField) formField {
 	}
 
 	return formField{
-		ID:         bus.ID,
-		FormID:     bus.FormID,
-		EntityID:   bus.EntityID,
-		Name:       bus.Name,
-		Label:      bus.Label,
-		FieldType:  bus.FieldType,
-		FieldOrder: bus.FieldOrder,
-		Required:   bus.Required,
-		Config:     config,
+		ID:           bus.ID,
+		FormID:       bus.FormID,
+		EntityID:     bus.EntityID,
+		EntitySchema: bus.EntitySchema,
+		EntityTable:  bus.EntityTable,
+		Name:         bus.Name,
+		Label:        bus.Label,
+		FieldType:    bus.FieldType,
+		FieldOrder:   bus.FieldOrder,
+		Required:     bus.Required,
+		Config:       config,
 	}
 }
 
 func toBusFormField(db formField) formfieldbus.FormField {
 	return formfieldbus.FormField{
-		ID:         db.ID,
-		FormID:     db.FormID,
-		EntityID:   db.EntityID,
-		Name:       db.Name,
-		Label:      db.Label,
-		FieldType:  db.FieldType,
-		FieldOrder: db.FieldOrder,
-		Required:   db.Required,
-		Config:     db.Config,
+		ID:           db.ID,
+		FormID:       db.FormID,
+		EntityID:     db.EntityID,
+		EntitySchema: db.EntitySchema,
+		EntityTable:  db.EntityTable,
+		Name:         db.Name,
+		Label:        db.Label,
+		FieldType:    db.FieldType,
+		FieldOrder:   db.FieldOrder,
+		Required:     db.Required,
+		Config:       db.Config,
 	}
 }
 

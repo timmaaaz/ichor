@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -48,30 +49,45 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (tableaccessbus.Storer, err
 // Create adds a new table access to the system
 func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error {
 
-	// TODO: Write a test specifically for this
-	// First check if the table exists in the database
-	const checkTable = `
-    SELECT EXISTS (
-        SELECT 1 
-        FROM information_schema.tables 
-        WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
-        AND table_name = :table_name
-    )`
+	// Check if table exists in database, is a special table, or is a virtual table
+	// Virtual tables exist for permission purposes but don't have physical database tables
+	if IsSpecialTableName(ta.TableName) || tableaccessbus.VirtualTables[ta.TableName] {
+		// Special and virtual tables don't need schema validation
+		// They are allowed without schema prefixes
+	} else {
+		// Parse schema.table format
+		parts := strings.Split(ta.TableName, ".")
+		if len(parts) != 2 {
+			return fmt.Errorf("table name must be in format 'schema.table', got: %s", ta.TableName)
+		}
 
-	tmp := struct {
-		Exists bool
-	}{}
-	data := map[string]any{
-		"table_name": ta.TableName,
-	}
+		schemaName := parts[0]
+		tableName := parts[1]
 
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, checkTable, data, &tmp); err != nil {
-		return fmt.Errorf("namedquerystruct: %w", err)
-	}
+		// Validate that the schema.table exists in the database
+		const checkTable = `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.tables
+			WHERE table_schema = :schema_name
+			AND table_name = :table_name
+		)`
 
-	// TODO: Move this function, it probably does not belong here, more like business logic
-	if !tmp.Exists && !IsSpecialTableName(ta.TableName) {
-		return fmt.Errorf("table[%s]: %w", ta.TableName, tableaccessbus.ErrNonexistentTableName)
+		tmp := struct {
+			Exists bool
+		}{}
+		data := map[string]any{
+			"schema_name": schemaName,
+			"table_name":  tableName,
+		}
+
+		if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, checkTable, data, &tmp); err != nil {
+			return fmt.Errorf("namedquerystruct: %w", err)
+		}
+
+		if !tmp.Exists {
+			return fmt.Errorf("table[%s]: %w", ta.TableName, tableaccessbus.ErrNonexistentTableName)
+		}
 	}
 
 	// Now we can insert

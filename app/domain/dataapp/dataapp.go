@@ -7,13 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 )
@@ -24,24 +25,27 @@ type App struct {
 	tableStore    *tablebuilder.Store
 	auth          *auth.Auth
 	pageactionapp *pageactionapp.App
+	pageconfigapp *pageconfigapp.App
 }
 
 // NewApp constructs a tablebuilder app API for use.
-func NewApp(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, pageactionapp *pageactionapp.App) *App {
+func NewApp(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, pageactionapp *pageactionapp.App, pageconfigapp *pageconfigapp.App) *App {
 	return &App{
 		configStore:   configStore,
 		tableStore:    tableStore,
 		pageactionapp: pageactionapp,
+		pageconfigapp: pageconfigapp,
 	}
 }
 
 // NewAppWithAuth constructs a tablebuilder app API for use with auth support.
-func NewAppWithAuth(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, ath *auth.Auth, pageactionapp *pageactionapp.App) *App {
+func NewAppWithAuth(configStore *tablebuilder.ConfigStore, tableStore *tablebuilder.Store, ath *auth.Auth, pageactionapp *pageactionapp.App, pageconfigapp *pageconfigapp.App) *App {
 	return &App{
 		auth:          ath,
 		configStore:   configStore,
 		tableStore:    tableStore,
 		pageactionapp: pageactionapp,
+		pageconfigapp: pageconfigapp,
 	}
 }
 
@@ -70,38 +74,7 @@ func (a *App) Create(ctx context.Context, app NewTableConfig) (TableConfig, erro
 
 // CreatePageConfig adds a new page configuration to the system.
 func (a *App) CreatePageConfig(ctx context.Context, app NewPageConfig) (PageConfig, error) {
-	config, err := toBusPageConfig(app)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("to bus page config: %w", err)
-	}
-
-	stored, err := a.configStore.CreatePageConfig(ctx, config)
-	if err != nil {
-		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return PageConfig{}, errs.New(errs.Aborted, errors.New("page configuration name already exists"))
-		}
-		return PageConfig{}, fmt.Errorf("create: config[%s]: %w", app.Name, err)
-	}
-
-	return toAppPageConfig(*stored), nil
-}
-
-// CreatePageTabConfig adds a new page tab configuration to the system.
-func (a *App) CreatePageTabConfig(ctx context.Context, app NewPageTabConfig) (PageTabConfig, error) {
-	config, err := toBusPageTabConfig(app)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("to bus page tab config: %w", err)
-	}
-
-	stored, err := a.configStore.CreatePageTabConfig(ctx, config)
-	if err != nil {
-		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return PageTabConfig{}, errs.New(errs.Aborted, errors.New("page tab configuration already exists"))
-		}
-		return PageTabConfig{}, fmt.Errorf("create: page tab config[%s]: %w", app.Label, err)
-	}
-
-	return ToAppPageTabConfig(*stored), nil
+	return a.pageconfigapp.Create(ctx, app)
 }
 
 // Update updates an existing table configuration.
@@ -158,63 +131,7 @@ func (a *App) Update(ctx context.Context, id uuid.UUID, app UpdateTableConfig) (
 
 // UpdatePageConfig updates an existing page configuration.
 func (a *App) UpdatePageConfig(ctx context.Context, id uuid.UUID, app UpdatePageConfig) (PageConfig, error) {
-	upc, err := toBusUpdatePageConfig(app)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("updatepageconfig: %w", err)
-	}
-
-	// Get current config to preserve unchanged fields
-	current, err := a.configStore.QueryPageByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return PageConfig{}, errs.New(errs.NotFound, err)
-		}
-		return PageConfig{}, errs.Newf(errs.Internal, "get config: %s", err)
-	}
-
-	err = convert.PopulateSameTypes(upc, current)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("populate struct: %w", err)
-	}
-
-	// Apply updates
-	pageConfig, err := a.configStore.UpdatePageConfig(ctx, *current)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("update page config: %w", err)
-	}
-
-	return toAppPageConfig(*pageConfig), nil
-}
-
-// UpdatePageTabConfig updates an existing page tab configuration.
-func (a *App) UpdatePageTabConfig(ctx context.Context, id uuid.UUID, app UpdatePageTabConfig) (PageTabConfig, error) {
-	upc, err := toBusUpdatePageTabConfig(app)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("updatepagetabconfig: %w", err)
-	}
-
-	// Get current config to preserve unchanged fields
-	current, err := a.configStore.QueryPageTabConfigByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return PageTabConfig{}, errs.New(errs.NotFound, err)
-		}
-		return PageTabConfig{}, errs.Newf(errs.Internal, "get config: %s", err)
-	}
-
-	// err = convert.PopulateSameTypes(upc, &current)
-	err = convert.PopulateSameTypes(upc, current)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("populate struct: %w", err)
-	}
-
-	// Apply updates
-	pageTabConfig, err := a.configStore.UpdatePageTabConfig(ctx, *current)
-	if err != nil {
-		return PageTabConfig{}, fmt.Errorf("update page tab config: %w", err)
-	}
-
-	return ToAppPageTabConfig(*pageTabConfig), nil
+	return a.pageconfigapp.Update(ctx, app, id)
 }
 
 // Delete removes a table configuration from the system.
@@ -231,26 +148,7 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 
 // DeletePageConfig removes a page configuration from the system.
 func (a *App) DeletePageConfig(ctx context.Context, id uuid.UUID) error {
-	if err := a.configStore.DeletePageConfig(ctx, id); err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return errs.New(errs.NotFound, err)
-		}
-		return errs.Newf(errs.Internal, "delete page config: %s", err)
-	}
-
-	return nil
-}
-
-// DeletePageTabConfig removes a page tab configuration from the system.
-func (a *App) DeletePageTabConfig(ctx context.Context, id uuid.UUID) error {
-	if err := a.configStore.DeletePageTabConfig(ctx, id); err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return errs.New(errs.NotFound, err)
-		}
-		return errs.Newf(errs.Internal, "delete page tab config: %s", err)
-	}
-
-	return nil
+	return a.pageconfigapp.Delete(ctx, id)
 }
 
 // QueryByID returns a table configuration by its ID.
@@ -289,7 +187,17 @@ func (a *App) QueryByUser(ctx context.Context, userID uuid.UUID) (TableConfigLis
 	return ToAppTableConfigList(configs), nil
 }
 
-// QueryFullPageByName returns the default page configuration by its name, including tabs.
+// QueryAll returns all table configurations from the system.
+func (a *App) QueryAll(ctx context.Context) (TableConfigList, error) {
+	configs, err := a.configStore.QueryAll(ctx)
+	if err != nil {
+		return TableConfigList{}, errs.Newf(errs.Internal, "queryall: %s", err)
+	}
+
+	return ToAppTableConfigList(configs), nil
+}
+
+// QueryFullPageByName returns the default page configuration by its name.
 // This retrieves the default page config which serves as a fallback for all users.
 // Only one default page config is allowed per page name (enforced by database constraint).
 func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageConfig, error) {
@@ -298,34 +206,30 @@ func (a *App) QueryFullPageByName(ctx context.Context, name string) (FullPageCon
 		return FullPageConfig{}, errs.Newf(errs.InvalidArgument, "invalid page name: %s", err)
 	}
 
-	storedPage, err := a.configStore.QueryPageByName(ctx, unescaped)
+	page, err := a.pageconfigapp.QueryByName(ctx, unescaped)
 	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return FullPageConfig{}, errs.New(errs.NotFound, err)
-		}
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page by name: %s", err)
+		return FullPageConfig{}, err
 	}
-	page := toAppPageConfig(*storedPage)
 
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, storedPage.ID)
+	// Parse the ID from string to UUID for querying actions
+	pageID, err := uuid.Parse(page.ID)
 	if err != nil {
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
+		return FullPageConfig{}, errs.Newf(errs.Internal, "parse page config id: %s", err)
 	}
 
 	// Fetch page actions
-	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, pageID)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
 	}
 
 	return FullPageConfig{
 		PageConfig:  page,
-		PageTabs:    ToAppPageTabConfigs(storedTabs),
 		PageActions: actions,
 	}, nil
 }
 
-// QueryFullPageByNameAndUserID returns a user-specific page configuration by name and user ID, including tabs.
+// QueryFullPageByNameAndUserID returns a user-specific page configuration by name and user ID.
 // This retrieves a specific user's customized version of a page (e.g., Jake's version of the orders page).
 // Multiple users can have configs with the same page name, but only one per user+name combination.
 func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, userID uuid.UUID) (FullPageConfig, error) {
@@ -334,58 +238,44 @@ func (a *App) QueryFullPageByNameAndUserID(ctx context.Context, name string, use
 		return FullPageConfig{}, errs.Newf(errs.InvalidArgument, "invalid page name: %s", err)
 	}
 
-	storedPage, err := a.configStore.QueryPageByNameAndUserID(ctx, unescaped, userID)
+	page, err := a.pageconfigapp.QueryByNameAndUserID(ctx, unescaped, userID)
 	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return FullPageConfig{}, errs.New(errs.NotFound, err)
-		}
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page by name and user id: %s", err)
+		return FullPageConfig{}, err
 	}
-	page := toAppPageConfig(*storedPage)
 
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, storedPage.ID)
+	// Parse the ID from string to UUID for querying actions
+	pageID, err := uuid.Parse(page.ID)
 	if err != nil {
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
+		return FullPageConfig{}, errs.Newf(errs.Internal, "parse page config id: %s", err)
 	}
 
 	// Fetch page actions
-	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, pageID)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
 	}
 
 	return FullPageConfig{
 		PageConfig:  page,
-		PageTabs:    ToAppPageTabConfigs(storedTabs),
 		PageActions: actions,
 	}, nil
 }
 
-// QueryFullPageByID returns a full page configuration by its ID, including tabs.
+// QueryFullPageByID returns a full page configuration by its ID.
 func (a *App) QueryFullPageByID(ctx context.Context, id uuid.UUID) (FullPageConfig, error) {
-	storedPage, err := a.configStore.QueryPageByID(ctx, id)
+	page, err := a.pageconfigapp.QueryByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, tablebuilder.ErrNotFound) {
-			return FullPageConfig{}, errs.New(errs.NotFound, err)
-		}
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page by id: %s", err)
-	}
-	page := toAppPageConfig(*storedPage)
-
-	storedTabs, err := a.configStore.QueryPageTabConfigsByPageID(ctx, storedPage.ID)
-	if err != nil {
-		return FullPageConfig{}, errs.Newf(errs.Internal, "query page tabs by page id: %s", err)
+		return FullPageConfig{}, err
 	}
 
 	// Fetch page actions
-	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, storedPage.ID)
+	actions, err := a.pageactionapp.QueryByPageConfigID(ctx, id)
 	if err != nil {
 		return FullPageConfig{}, errs.Newf(errs.Internal, "query page actions: %s", err)
 	}
 
 	return FullPageConfig{
 		PageConfig:  page,
-		PageTabs:    ToAppPageTabConfigs(storedTabs),
 		PageActions: actions,
 	}, nil
 }
@@ -498,4 +388,163 @@ func (a *App) ValidateConfig(ctx context.Context, app NewTableConfig) error {
 	}
 
 	return nil
+}
+
+// =============================================================================
+// Export/Import Methods
+
+// ExportByIDs exports table configs by IDs as a JSON package.
+func (a *App) ExportByIDs(ctx context.Context, configIDs []string) (ExportPackage, error) {
+	var configs []TableConfig
+
+	for _, idStr := range configIDs {
+		id, err := parseUUID(idStr, "config ID")
+		if err != nil {
+			return ExportPackage{}, errs.New(errs.InvalidArgument, err)
+		}
+
+		config, err := a.configStore.QueryByID(ctx, id)
+		if err != nil {
+			if errors.Is(err, tablebuilder.ErrNotFound) {
+				return ExportPackage{}, errs.Newf(errs.NotFound, "config %s not found", idStr)
+			}
+			return ExportPackage{}, errs.Newf(errs.Internal, "query config %s: %s", idStr, err)
+		}
+
+		configs = append(configs, ToAppTableConfig(*config))
+	}
+
+	return ExportPackage{
+		Version:    "1.0",
+		Type:       "table-configs",
+		ExportedAt: time.Now().Format(time.RFC3339),
+		Count:      len(configs),
+		Data:       configs,
+	}, nil
+}
+
+// ImportTableConfigs imports table configs from a JSON package.
+func (a *App) ImportTableConfigs(ctx context.Context, pkg ImportPackage) (ImportResult, error) {
+	// Validate package
+	if err := pkg.Validate(); err != nil {
+		return ImportResult{}, err
+	}
+
+	result := ImportResult{}
+
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "user missing in context: %s", err)
+	}
+
+	for _, config := range pkg.Data {
+		// Check if config exists by name
+		existing, err := a.configStore.QueryByName(ctx, config.Name)
+		existsAlready := err == nil
+
+		switch pkg.Mode {
+		case "skip":
+			if existsAlready {
+				result.SkippedCount++
+				continue
+			}
+			// Create new
+			if err := a.createTableConfigFromImport(ctx, config, userID); err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("create config %s: %s", config.Name, err))
+				continue
+			}
+			result.ImportedCount++
+
+		case "replace":
+			if existsAlready {
+				// Delete existing
+				if err := a.configStore.Delete(ctx, existing.ID); err != nil {
+					result.Errors = append(result.Errors, fmt.Sprintf("delete existing config %s: %s", config.Name, err))
+					continue
+				}
+				result.UpdatedCount++
+			}
+			// Create new
+			if err := a.createTableConfigFromImport(ctx, config, userID); err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("create config %s: %s", config.Name, err))
+				continue
+			}
+			if !existsAlready {
+				result.ImportedCount++
+			}
+
+		case "merge":
+			if existsAlready {
+				// Update existing
+				if err := a.updateTableConfigFromImport(ctx, existing.ID, config, userID); err != nil {
+					result.Errors = append(result.Errors, fmt.Sprintf("update config %s: %s", config.Name, err))
+					continue
+				}
+				result.UpdatedCount++
+			} else {
+				// Create new
+				if err := a.createTableConfigFromImport(ctx, config, userID); err != nil {
+					result.Errors = append(result.Errors, fmt.Sprintf("create config %s: %s", config.Name, err))
+					continue
+				}
+				result.ImportedCount++
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (a *App) createTableConfigFromImport(ctx context.Context, config TableConfig, userID uuid.UUID) error {
+	// Parse and validate the config
+	var busConfig tablebuilder.Config
+	if err := json.Unmarshal(config.Config, &busConfig); err != nil {
+		return fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	if err := busConfig.Validate(); err != nil {
+		return fmt.Errorf("validate config: %w", err)
+	}
+
+	// Create the config
+	_, err := a.configStore.Create(ctx, config.Name, config.Description, &busConfig, userID)
+	if err != nil {
+		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
+			return errors.New("configuration name already exists")
+		}
+		return fmt.Errorf("create config: %w", err)
+	}
+
+	return nil
+}
+
+func (a *App) updateTableConfigFromImport(ctx context.Context, id uuid.UUID, config TableConfig, userID uuid.UUID) error {
+	// Parse and validate the config
+	var busConfig tablebuilder.Config
+	if err := json.Unmarshal(config.Config, &busConfig); err != nil {
+		return fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	if err := busConfig.Validate(); err != nil {
+		return fmt.Errorf("validate config: %w", err)
+	}
+
+	// Update the config
+	_, err := a.configStore.Update(ctx, id, config.Name, config.Description, &busConfig, userID)
+	if err != nil {
+		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
+			return errors.New("configuration name already exists")
+		}
+		return fmt.Errorf("update config: %w", err)
+	}
+
+	return nil
+}
+
+func parseUUID(s string, fieldName string) (uuid.UUID, error) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("invalid %s: %w", fieldName, err)
+	}
+	return id, nil
 }

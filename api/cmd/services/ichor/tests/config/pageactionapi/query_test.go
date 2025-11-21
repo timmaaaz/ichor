@@ -79,7 +79,7 @@ func queryByPageConfigID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        "/v1/config/page-configs/" + sd.PageConfigs[0].ID.String() + "/actions",
+			URL:        "/v1/config/page-configs/actions/" + sd.PageConfigs[0].ID,
 			Token:      sd.Admins[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,

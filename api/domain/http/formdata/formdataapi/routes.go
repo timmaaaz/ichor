@@ -29,7 +29,7 @@ type Config struct {
 // customized based on business requirements.
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
-	const tableName = "formdata"
+	const tableName = "config.formdata"
 
 	authen := mid.Authenticate(cfg.AuthClient)
 

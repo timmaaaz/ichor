@@ -17,9 +17,10 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound            = errors.New("form field not found")
-	ErrUniqueEntry         = errors.New("form field entry is not unique")
-	ErrForeignKeyViolation = errors.New("foreign key violation")
+	ErrNotFound             = errors.New("form field not found")
+	ErrUniqueEntry          = errors.New("form field entry is not unique")
+	ErrForeignKeyViolation  = errors.New("foreign key violation")
+	ErrNonexistentTableName = errors.New("table does not exist in the specified schema")
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -72,15 +73,17 @@ func (b *Business) Create(ctx context.Context, nff NewFormField) (FormField, err
 	defer span.End()
 
 	field := FormField{
-		ID:         uuid.New(),
-		FormID:     nff.FormID,
-		EntityID:   nff.EntityID,
-		Name:       nff.Name,
-		Label:      nff.Label,
-		FieldType:  nff.FieldType,
-		FieldOrder: nff.FieldOrder,
-		Required:   nff.Required,
-		Config:     nff.Config,
+		ID:           uuid.New(),
+		FormID:       nff.FormID,
+		EntityID:     nff.EntityID,
+		EntitySchema: nff.EntitySchema,
+		EntityTable:  nff.EntityTable,
+		Name:         nff.Name,
+		Label:        nff.Label,
+		FieldType:    nff.FieldType,
+		FieldOrder:   nff.FieldOrder,
+		Required:     nff.Required,
+		Config:       nff.Config,
 	}
 
 	if err := b.storer.Create(ctx, field); err != nil {

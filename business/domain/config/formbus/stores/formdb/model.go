@@ -6,21 +6,27 @@ import (
 )
 
 type form struct {
-	ID   uuid.UUID `db:"id"`
-	Name string    `db:"name"`
+	ID                uuid.UUID `db:"id"`
+	Name              string    `db:"name"`
+	IsReferenceData   bool      `db:"is_reference_data"`
+	AllowInlineCreate bool      `db:"allow_inline_create"`
 }
 
 func toDBForm(bus formbus.Form) form {
 	return form{
-		ID:   bus.ID,
-		Name: bus.Name,
+		ID:                bus.ID,
+		Name:              bus.Name,
+		IsReferenceData:   bus.IsReferenceData,
+		AllowInlineCreate: bus.AllowInlineCreate,
 	}
 }
 
 func toBusForm(db form) formbus.Form {
 	return formbus.Form{
-		ID:   db.ID,
-		Name: db.Name,
+		ID:                db.ID,
+		Name:              db.Name,
+		IsReferenceData:   db.IsReferenceData,
+		AllowInlineCreate: db.AllowInlineCreate,
 	}
 }
 

@@ -7,9 +7,11 @@ var DefaultOrderBy = order.NewBy(OrderByFieldOrder, order.ASC)
 
 // Set of fields that the results can be ordered by.
 const (
-	OrderByID         = "id"
-	OrderByFormID     = "form_id"
-	OrderByName       = "name"
-	OrderByFieldOrder = "field_order"
-	OrderByFieldType  = "field_type"
+	OrderByID           = "id"
+	OrderByFormID       = "form_id"
+	OrderByEntitySchema = "entity_schema"
+	OrderByEntityTable  = "entity_table"
+	OrderByName         = "name"
+	OrderByFieldOrder   = "field_order"
+	OrderByFieldType    = "field_type"
 )

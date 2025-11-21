@@ -16,6 +16,8 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/config/formapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/formfieldapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/pageactionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/pageconfigapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/pagecontentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/pageapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/roleapi"
@@ -64,6 +66,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/geography/regionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/streetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/homeapi"
+	"github.com/timmaaaz/ichor/api/domain/http/introspectionapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/rawapi"
 
@@ -82,6 +85,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
@@ -138,8 +142,13 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus/stores/formfielddb"
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus/stores/pageactiondb"
+	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus/stores/pageconfigdb"
+	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus/stores/pagecontentdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
@@ -349,6 +358,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	permissionsBus := permissionsbus.NewBusiness(cfg.Log, delegate, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
+	introspectionBus := introspectionbus.NewBusiness(cfg.Log, cfg.DB)
+
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB))
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB))
 	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB))
@@ -361,9 +372,11 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	configStore := tablebuilder.NewConfigStore(cfg.Log, cfg.DB)
 	tableStore := tablebuilder.NewStore(cfg.Log, cfg.DB)
 
-	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB))
 	formFieldBus := formfieldbus.NewBusiness(cfg.Log, delegate, formfielddb.NewStore(cfg.Log, cfg.DB))
+	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB), formFieldBus)
+	pageContentBus := pagecontentbus.NewBusiness(cfg.Log, delegate, pagecontentdb.NewStore(cfg.Log, cfg.DB))
 	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
+	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB), pageContentBus, pageActionBus)
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -380,6 +393,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	rawapi.Routes(app)
+
+	introspectionapi.Routes(app, introspectionapi.Config{
+		Log:              cfg.Log,
+		IntrospectionBus: introspectionBus,
+		AuthClient:       cfg.AuthClient,
+		PermissionsBus:   permissionsBus,
+	})
 
 	userapi.Routes(app, userapi.Config{
 		Log:            cfg.Log,
@@ -759,6 +779,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		ConfigStore:    configStore,
 		TableStore:     tableStore,
 		PageActionApp:  pageactionapp.NewApp(pageActionBus),
+		PageConfigApp:  pageconfigapp.NewApp(pageConfigBus),
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
@@ -767,6 +788,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	formapi.Routes(app, formapi.Config{
 		Log:            cfg.Log,
 		FormBus:        formBus,
+		FormFieldBus:   formFieldBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
@@ -782,6 +804,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Log:            cfg.Log,
 		PageActionBus:  pageActionBus,
 		DB:             cfg.DB,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	pageconfigapi.Routes(app, pageconfigapi.Config{
+		Log:            cfg.Log,
+		PageConfigBus:  pageConfigBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	pagecontentapi.Routes(app, pagecontentapi.Config{
+		Log:            cfg.Log,
+		PageContentBus: pageContentBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})

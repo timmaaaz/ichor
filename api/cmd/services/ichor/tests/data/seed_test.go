@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
@@ -56,6 +57,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
@@ -741,103 +743,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// =========================================================================
 	// Page Configs
 	// =========================================================================
-	// Default page config - UserID will be automatically set to zero UUID (NULL) by business logic
-	pc1 := tablebuilder.PageConfig{
-		Name:      "Dashboard Home",
-		UserID:    uuid.UUID{}, // Zero UUID for default configs (will be NULL in DB)
-		IsDefault: true,
-	}
-	// User-specific page configs must have a user_id
-	pc2 := tablebuilder.PageConfig{
-		Name:      "Inventory Overview",
-		UserID:    admins[0].ID,
-		IsDefault: false,
-	}
-	pc3 := tablebuilder.PageConfig{
-		Name:      "Products Management",
-		UserID:    admins[0].ID,
-		IsDefault: false,
-	}
-
-	pageConfig1, err := busDomain.ConfigStore.CreatePageConfig(ctx, pc1)
+	pageConfigs, err := pageconfigbus.TestSeedPageConfigs(ctx, 3, busDomain.PageConfig)
 	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page config 1 : %w", err)
-	}
-
-	pageConfig2, err := busDomain.ConfigStore.CreatePageConfig(ctx, pc2)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page config 2 : %w", err)
-	}
-
-	pageConfig3, err := busDomain.ConfigStore.CreatePageConfig(ctx, pc3)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page config 3 : %w", err)
-	}
-
-	pageConfigs := []tablebuilder.PageConfig{*pageConfig1, *pageConfig2, *pageConfig3}
-
-	// =========================================================================
-	// Page Tab Configs
-	// =========================================================================
-	pt1 := tablebuilder.PageTabConfig{
-		Label:        "Inventory Items",
-		PageConfigID: pageConfig1.ID,
-		ConfigID:     storedSimple.ID,
-		IsDefault:    true,
-		TabOrder:     1,
-	}
-	pt2 := tablebuilder.PageTabConfig{
-		Label:        "Inventory Items",
-		PageConfigID: pageConfig1.ID,
-		ConfigID:     storedSimple.ID,
-		IsDefault:    true,
-		TabOrder:     1,
-	}
-	pt3 := tablebuilder.PageTabConfig{
-		Label:        "Inventory Items",
-		PageConfigID: pageConfig1.ID,
-		ConfigID:     storedSimple.ID,
-		IsDefault:    true,
-		TabOrder:     1,
-	}
-
-	pageTabConfig1, err := busDomain.ConfigStore.CreatePageTabConfig(ctx, pt1)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page tab config 1 : %w", err)
-	}
-
-	pageTabConfig2, err := busDomain.ConfigStore.CreatePageTabConfig(ctx, pt2)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page tab config 2 : %w", err)
-	}
-
-	pageTabConfig3, err := busDomain.ConfigStore.CreatePageTabConfig(ctx, pt3)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page tab config 3 : %w", err)
-	}
-
-	pt1.PageConfigID = pageConfig2.ID
-
-	pageTabConfig4, err := busDomain.ConfigStore.CreatePageTabConfig(ctx, pt1)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page tab config 4 : %w", err)
-	}
-
-	pt2.PageConfigID = pageConfig3.ID
-
-	pageTabConfig5, err := busDomain.ConfigStore.CreatePageTabConfig(ctx, pt2)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page tab config 5 : %w", err)
-	}
-
-	pageTabConfig6, err := busDomain.ConfigStore.CreatePageTabConfig(ctx, pt3)
-	if err != nil {
-		return apitest.SeedData{}, fmt.Errorf("seeding page tab config 6 : %w", err)
-	}
-
-	pageTabConfigs := []tablebuilder.PageTabConfig{
-		*pageTabConfig1, *pageTabConfig2, *pageTabConfig3,
-		*pageTabConfig4, *pageTabConfig5, *pageTabConfig6,
+		return apitest.SeedData{}, fmt.Errorf("seeding page configs : %w", err)
 	}
 
 	// =========================================================================
@@ -912,7 +820,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		SimpleTableConfig:           storedSimple,
 		PageTableConfig:             storedPage,
 		ComplexTableConfig:          storedComplex,
-		PageConfigs:                 pageConfigs,
-		PageTabConfigs:              pageTabConfigs,
+		PageConfigs:                 pageconfigapp.ToAppPageConfigs(pageConfigs),
 	}, nil
 }

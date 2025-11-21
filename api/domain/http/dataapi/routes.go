@@ -5,6 +5,7 @@ import (
 
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/domain/dataapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
@@ -26,19 +27,20 @@ type Config struct {
 	ConfigStore    *tablebuilder.ConfigStore
 	TableStore     *tablebuilder.Store
 	PageActionApp  *pageactionapp.App
+	PageConfigApp  *pageconfigapp.App
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
 }
 
 const (
-	RouteTable = "table_configs"
+	RouteTable = "config.table_configs"
 )
 
 func Routes(app *web.App, cfg Config) {
 
 	const version = "v1"
 	authen := mid.Authenticate(cfg.AuthClient)
-	api := newAPI(dataapp.NewApp(cfg.ConfigStore, cfg.TableStore, cfg.PageActionApp))
+	api := newAPI(dataapp.NewApp(cfg.ConfigStore, cfg.TableStore, cfg.PageActionApp, cfg.PageConfigApp))
 
 	// configstore
 	app.HandlerFunc(http.MethodPost, version, "/data", api.create, authen,
@@ -59,6 +61,9 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/data/user/{user_id}", api.queryByUser, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
+	app.HandlerFunc(http.MethodGet, version, "/data/configs/all", api.queryAll, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
 	// store
 	app.HandlerFunc(http.MethodPost, version, "/data/execute/{table_config_id}", api.executeQuery, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
@@ -75,6 +80,13 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodPost, version, "/data/validate", api.validateConfig, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	// Export/Import routes
+	app.HandlerFunc(http.MethodPost, version, "/data/export", api.exportTableConfigs, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/data/import", api.importTableConfigs, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 
 	// PageConfig routes
 	app.HandlerFunc(http.MethodPost, version, "/data/page", api.createPageConfig, authen,
@@ -94,14 +106,4 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodGet, version, "/data/page/id/{page_config_id}", api.queryFullPageByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-
-	// PageTabConfig routes
-	app.HandlerFunc(http.MethodPost, version, "/data/page/tab", api.createPageTabConfig, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
-
-	app.HandlerFunc(http.MethodPut, version, "/data/page/tab/{page_tab_config_id}", api.updatePageTabConfig, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
-
-	app.HandlerFunc(http.MethodDelete, version, "/data/page/tab/{page_tab_config_id}", api.deletePageTabConfig, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 }

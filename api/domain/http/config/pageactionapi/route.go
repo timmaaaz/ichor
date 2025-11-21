@@ -24,9 +24,9 @@ type Config struct {
 }
 
 const (
-	RouteTablePageActions        = "page_actions"
-	RouteTablePageActionButtons  = "page_action_buttons"
-	RouteTablePageActionDropdowns = "page_action_dropdowns"
+	RouteTablePageActions        = "config.page_actions"
+	RouteTablePageActionButtons  = "config.page_action_buttons"
+	RouteTablePageActionDropdowns = "config.page_action_dropdowns"
 )
 
 // Routes binds all the page action routes.
@@ -41,7 +41,7 @@ func Routes(app *web.App, cfg Config) {
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTablePageActions, permissionsbus.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodGet, version, "/config/page-actions/{action_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTablePageActions, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodGet, version, "/config/page-configs/{page_config_id}/actions", api.queryByPageConfigID, authen,
+	app.HandlerFunc(http.MethodGet, version, "/config/page-configs/actions/{page_config_id}", api.queryByPageConfigID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTablePageActions, permissionsbus.Actions.Read, auth.RuleAny))
 
 	// Button routes
@@ -67,6 +67,6 @@ func Routes(app *web.App, cfg Config) {
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTablePageActions, permissionsbus.Actions.Delete, auth.RuleAdminOnly))
 
 	// Batch operations
-	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/{page_config_id}/actions/batch", api.batchCreate, authen,
+	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/actions/batch/{page_config_id}", api.batchCreate, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTablePageActions, permissionsbus.Actions.Create, auth.RuleAdminOnly))
 }

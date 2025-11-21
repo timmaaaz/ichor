@@ -2,7 +2,10 @@ package formapi
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
@@ -97,4 +100,91 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return form
+}
+
+func (api *api) queryFullByID(ctx context.Context, r *http.Request) web.Encoder {
+	formID := web.Param(r, "form_id")
+
+	parsed, err := uuid.Parse(formID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	formFull, err := api.formapp.QueryFullByID(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return formFull
+}
+
+func (api *api) queryFullByName(ctx context.Context, r *http.Request) web.Encoder {
+	formName := web.Param(r, "form_name")
+
+	if formName == "" {
+		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "form name is required"))
+	}
+
+	// Decode URL-encoded form name (e.g., "My%20Form" -> "My Form")
+	decodedName, err := url.QueryUnescape(formName)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "invalid form name encoding: %s", err))
+	}
+
+	formFull, err := api.formapp.QueryFullByName(ctx, decodedName)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return formFull
+}
+
+func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
+	forms, err := api.formapp.QueryAll(ctx)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return forms
+}
+
+func (api *api) exportForms(ctx context.Context, r *http.Request) web.Encoder {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+	defer r.Body.Close()
+
+	if err := json.Unmarshal(body, &req); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	if len(req.IDs) == 0 {
+		return errs.New(errs.InvalidArgument, errs.Newf(errs.InvalidArgument, "ids cannot be empty"))
+	}
+
+	pkg, err := api.formapp.ExportByIDs(ctx, req.IDs)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return pkg
+}
+
+func (api *api) importForms(ctx context.Context, r *http.Request) web.Encoder {
+	var pkg formapp.ImportPackage
+	if err := web.Decode(r, &pkg); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	result, err := api.formapp.ImportForms(ctx, pkg)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return result
 }

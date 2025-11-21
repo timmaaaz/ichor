@@ -13,6 +13,8 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
+	"github.com/timmaaaz/ichor/app/domain/config/pagecontentapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
@@ -130,8 +132,8 @@ type SeedData struct {
 	SimpleTableConfig           *tablebuilder.StoredConfig
 	ComplexTableConfig          *tablebuilder.StoredConfig
 	PageTableConfig             *tablebuilder.StoredConfig
-	PageConfigs                 []tablebuilder.PageConfig
-	PageTabConfigs              []tablebuilder.PageTabConfig
+	PageConfigs                 []pageconfigapp.PageConfig
+	PageContents                []pagecontentapp.PageContent
 	Forms                       []formapp.Form
 	FormFields                  []formfieldapp.FormField
 	PageActions                 []pageactionapp.PageAction

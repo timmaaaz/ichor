@@ -43,7 +43,7 @@ func (app PageAction) Encode() ([]byte, string, error) {
 type ButtonAction struct {
 	Label              string `json:"label"`
 	Icon               string `json:"icon,omitempty"`
-	TargetPath         string `json:"targetPath"`
+	TargetPath         string `json:"actionUrl"`
 	Variant            string `json:"variant"`
 	Alignment          string `json:"alignment"`
 	ConfirmationPrompt string `json:"confirmationPrompt,omitempty"`
@@ -154,7 +154,7 @@ type NewButtonAction struct {
 	IsActive           bool   `json:"isActive"`
 	Label              string `json:"label" validate:"required"`
 	Icon               string `json:"icon"`
-	TargetPath         string `json:"targetPath" validate:"required"`
+	TargetPath         string `json:"actionUrl" validate:"required"`
 	Variant            string `json:"variant" validate:"required,oneof=default secondary outline ghost destructive"`
 	Alignment          string `json:"alignment" validate:"required,oneof=left right"`
 	ConfirmationPrompt string `json:"confirmationPrompt"`
@@ -285,7 +285,7 @@ type UpdateButtonAction struct {
 	IsActive           *bool   `json:"isActive"`
 	Label              *string `json:"label"`
 	Icon               *string `json:"icon"`
-	TargetPath         *string `json:"targetPath"`
+	TargetPath         *string `json:"actionUrl"`
 	Variant            *string `json:"variant" validate:"omitempty,oneof=default secondary outline ghost destructive"`
 	Alignment          *string `json:"alignment" validate:"omitempty,oneof=left right"`
 	ConfirmationPrompt *string `json:"confirmationPrompt"`

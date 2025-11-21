@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "fulfillment_status"
+	RouteTable = "assets.fulfillment_status"
 )
 
 // Routes adds routes to the group

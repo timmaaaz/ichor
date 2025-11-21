@@ -40,8 +40,8 @@ func Parse(page string, rowsPerPage string) (Page, error) {
 		return Page{}, fmt.Errorf("rows value too small, must be larger than 0")
 	}
 
-	if rows > 100 {
-		return Page{}, fmt.Errorf("rows value too large, must be less than 100")
+	if rows > 1000 {
+		return Page{}, fmt.Errorf("rows value too large, must be less than 1000")
 	}
 
 	p := Page{
