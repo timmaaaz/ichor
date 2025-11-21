@@ -636,6 +636,15 @@ var allPages = []pagebus.NewPage{
 		IsActive:   true,
 		ShowInMenu: false,
 	},
+	{
+		Path:       "/admin/config/:id",
+		Name:       "Edit Config",
+		Module:     "admin",
+		Icon:       "material-symbols:edit",
+		SortOrder:  69,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
 }
 
 // =============================================================================

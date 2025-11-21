@@ -18,5 +18,5 @@ func orderByClause(orderBy order.By) (string, error) {
 	if !exists {
 		return "", fmt.Errorf("field %q does not exist", orderBy.Field)
 	}
-	return "ORDER BY " + by + " " + orderBy.Direction, nil
+	return " ORDER BY " + by + " " + orderBy.Direction, nil
 }
