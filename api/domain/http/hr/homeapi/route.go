@@ -24,7 +24,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "homes"
+	RouteTable = "hr.homes"
 )
 
 // Routes adds specific routes for this group.

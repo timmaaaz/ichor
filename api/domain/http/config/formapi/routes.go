@@ -24,7 +24,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "forms"
+	RouteTable = "config.forms"
 )
 
 // Routes adds the form routes to the web app.

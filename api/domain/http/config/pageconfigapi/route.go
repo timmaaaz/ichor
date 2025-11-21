@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "page_configs"
+	RouteTable = "config.page_configs"
 )
 
 // Routes adds specific routes for this group.
@@ -34,28 +34,28 @@ func Routes(app *web.App, cfg Config) {
 
 	// Public routes (read-only, authenticated users)
 	app.HandlerFunc(http.MethodGet, version, "/config/page-configs/id/{config_id}", api.queryByID, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodGet, version, "/config/page-configs/name/{name}", api.queryByName, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodGet, version, "/config/page-configs/all", api.queryAll, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	// Admin-only routes (create, update, delete)
 	app.HandlerFunc(http.MethodPost, version, "/config/page-configs", api.create, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Create, auth.RuleAdminOnly))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
 
 	app.HandlerFunc(http.MethodPut, version, "/config/page-configs/id/{config_id}", api.update, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Update, auth.RuleAdminOnly))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAdminOnly))
 
 	app.HandlerFunc(http.MethodDelete, version, "/config/page-configs/id/{config_id}", api.delete, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Delete, auth.RuleAdminOnly))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAdminOnly))
 
 	// Export/Import routes (admin-only)
 	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/export", api.exportPageConfigs, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Read, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/import", api.importPageConfigs, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, "page_configs", permissionsbus.Actions.Create, auth.RuleAny))
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
 }

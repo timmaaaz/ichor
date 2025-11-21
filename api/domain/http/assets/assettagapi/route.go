@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "asset_tags"
+	RouteTable = "assets.asset_tags"
 )
 
 // Routes adds specific routes for this group.

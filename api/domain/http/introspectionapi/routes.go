@@ -22,7 +22,7 @@ type Config struct {
 }
 
 // RouteTable is the table name used for permissions.
-const RouteTable = "introspection"
+const RouteTable = "introspection.introspection"
 
 // Routes adds specific routes for this group.
 func Routes(app *web.App, cfg Config) {

@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "assets"
+	RouteTable = "assets.assets"
 )
 
 func Routes(app *web.App, cfg Config) {

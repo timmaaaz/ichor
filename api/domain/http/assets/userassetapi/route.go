@@ -22,7 +22,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "user_assets"
+	RouteTable = "assets.user_assets"
 )
 
 // Routes adds specific routes for this group.

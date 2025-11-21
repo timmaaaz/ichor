@@ -1511,3 +1511,89 @@ CREATE INDEX idx_po_line_items_status ON procurement.purchase_order_line_items(l
 -- Description: Drop legacy page_tab_configs table (replaced by page_content system)
 DROP TABLE IF EXISTS config.page_tab_configs;
 
+-- Version: 1.72
+-- Description: Increase table_name column size to accommodate schema prefixes
+ALTER TABLE core.table_access ALTER COLUMN table_name TYPE VARCHAR(100);
+
+-- Version: 1.73
+-- Description: Add schema prefixes to existing table names
+-- Assets schema
+UPDATE core.table_access SET table_name = 'assets.asset_types' WHERE table_name = 'asset_types';
+UPDATE core.table_access SET table_name = 'assets.asset_conditions' WHERE table_name = 'asset_conditions';
+UPDATE core.table_access SET table_name = 'assets.tags' WHERE table_name = 'tags';
+UPDATE core.table_access SET table_name = 'assets.asset_tags' WHERE table_name = 'asset_tags';
+UPDATE core.table_access SET table_name = 'assets.assets' WHERE table_name = 'assets';
+UPDATE core.table_access SET table_name = 'assets.user_assets' WHERE table_name = 'user_assets';
+
+-- Geography schema
+UPDATE core.table_access SET table_name = 'geography.countries' WHERE table_name = 'countries';
+UPDATE core.table_access SET table_name = 'geography.regions' WHERE table_name = 'regions';
+UPDATE core.table_access SET table_name = 'geography.cities' WHERE table_name = 'cities';
+UPDATE core.table_access SET table_name = 'geography.streets' WHERE table_name = 'streets';
+
+-- HR schema
+UPDATE core.table_access SET table_name = 'hr.user_approval_status' WHERE table_name = 'user_approval_status';
+UPDATE core.table_access SET table_name = 'hr.titles' WHERE table_name = 'titles';
+UPDATE core.table_access SET table_name = 'hr.offices' WHERE table_name = 'offices';
+UPDATE core.table_access SET table_name = 'hr.homes' WHERE table_name = 'homes';
+UPDATE core.table_access SET table_name = 'hr.approval_status' WHERE table_name = 'approval_status';
+UPDATE core.table_access SET table_name = 'hr.reports_to' WHERE table_name = 'reports_to';
+UPDATE core.table_access SET table_name = 'hr.user_approval_comments' WHERE table_name = 'user_approval_comments';
+
+-- Core schema
+UPDATE core.table_access SET table_name = 'core.users' WHERE table_name = 'users';
+UPDATE core.table_access SET table_name = 'core.contact_infos' WHERE table_name = 'contact_infos';
+UPDATE core.table_access SET table_name = 'core.roles' WHERE table_name = 'roles';
+UPDATE core.table_access SET table_name = 'core.user_roles' WHERE table_name = 'user_roles';
+UPDATE core.table_access SET table_name = 'core.pages' WHERE table_name = 'pages';
+UPDATE core.table_access SET table_name = 'core.role_pages' WHERE table_name = 'role_pages';
+UPDATE core.table_access SET table_name = 'core.table_access' WHERE table_name = 'table_access';
+
+-- Sales schema
+UPDATE core.table_access SET table_name = 'sales.fulfillment_status' WHERE table_name = 'fulfillment_status';
+UPDATE core.table_access SET table_name = 'sales.customers' WHERE table_name = 'customers';
+UPDATE core.table_access SET table_name = 'sales.orders' WHERE table_name = 'orders';
+UPDATE core.table_access SET table_name = 'sales.order_line_items' WHERE table_name = 'order_line_items';
+UPDATE core.table_access SET table_name = 'sales.order_fulfillment_statuses' WHERE table_name = 'order_fulfillment_statuses';
+UPDATE core.table_access SET table_name = 'sales.line_item_fulfillment_statuses' WHERE table_name = 'line_item_fulfillment_statuses';
+
+-- Products schema
+UPDATE core.table_access SET table_name = 'products.brands' WHERE table_name = 'brands';
+UPDATE core.table_access SET table_name = 'products.product_categories' WHERE table_name = 'product_categories';
+UPDATE core.table_access SET table_name = 'products.products' WHERE table_name = 'products';
+UPDATE core.table_access SET table_name = 'products.physical_attributes' WHERE table_name = 'physical_attributes';
+UPDATE core.table_access SET table_name = 'products.product_costs' WHERE table_name = 'product_costs';
+UPDATE core.table_access SET table_name = 'products.cost_history' WHERE table_name = 'cost_history';
+UPDATE core.table_access SET table_name = 'products.quality_metrics' WHERE table_name = 'quality_metrics';
+
+-- Inventory schema
+UPDATE core.table_access SET table_name = 'inventory.warehouses' WHERE table_name = 'warehouses';
+UPDATE core.table_access SET table_name = 'inventory.zones' WHERE table_name = 'zones';
+UPDATE core.table_access SET table_name = 'inventory.inventory_locations' WHERE table_name = 'inventory_locations';
+UPDATE core.table_access SET table_name = 'inventory.inventory_items' WHERE table_name = 'inventory_items';
+UPDATE core.table_access SET table_name = 'inventory.lot_trackings' WHERE table_name = 'lot_trackings';
+UPDATE core.table_access SET table_name = 'inventory.quality_inspections' WHERE table_name = 'quality_inspections';
+UPDATE core.table_access SET table_name = 'inventory.serial_numbers' WHERE table_name = 'serial_numbers';
+UPDATE core.table_access SET table_name = 'inventory.inventory_transactions' WHERE table_name = 'inventory_transactions';
+UPDATE core.table_access SET table_name = 'inventory.inventory_adjustments' WHERE table_name = 'inventory_adjustments';
+UPDATE core.table_access SET table_name = 'inventory.transfer_orders' WHERE table_name = 'transfer_orders';
+
+-- Procurement schema
+UPDATE core.table_access SET table_name = 'procurement.suppliers' WHERE table_name = 'suppliers';
+UPDATE core.table_access SET table_name = 'procurement.supplier_products' WHERE table_name = 'supplier_products';
+UPDATE core.table_access SET table_name = 'procurement.purchase_order_statuses' WHERE table_name = 'purchase_order_statuses';
+UPDATE core.table_access SET table_name = 'procurement.purchase_order_line_item_statuses' WHERE table_name = 'purchase_order_line_item_statuses';
+UPDATE core.table_access SET table_name = 'procurement.purchase_orders' WHERE table_name = 'purchase_orders';
+UPDATE core.table_access SET table_name = 'procurement.purchase_order_line_items' WHERE table_name = 'purchase_order_line_items';
+
+-- Config schema
+UPDATE core.table_access SET table_name = 'config.table_configs' WHERE table_name = 'table_configs';
+UPDATE core.table_access SET table_name = 'config.forms' WHERE table_name = 'forms';
+UPDATE core.table_access SET table_name = 'config.form_fields' WHERE table_name = 'form_fields';
+UPDATE core.table_access SET table_name = 'config.page_configs' WHERE table_name = 'page_configs';
+UPDATE core.table_access SET table_name = 'config.page_content' WHERE table_name = 'page_content';
+UPDATE core.table_access SET table_name = 'config.page_actions' WHERE table_name = 'page_actions';
+UPDATE core.table_access SET table_name = 'config.page_action_buttons' WHERE table_name = 'page_action_buttons';
+UPDATE core.table_access SET table_name = 'config.page_action_dropdowns' WHERE table_name = 'page_action_dropdowns';
+UPDATE core.table_access SET table_name = 'config.page_action_dropdown_items' WHERE table_name = 'page_action_dropdown_items';
+

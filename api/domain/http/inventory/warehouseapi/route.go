@@ -21,7 +21,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "warehouses"
+	RouteTable = "inventory.warehouses"
 )
 
 // Routes adds the warehouse routes to the provided router.

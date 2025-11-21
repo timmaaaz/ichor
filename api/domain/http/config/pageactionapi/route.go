@@ -24,9 +24,9 @@ type Config struct {
 }
 
 const (
-	RouteTablePageActions        = "page_actions"
-	RouteTablePageActionButtons  = "page_action_buttons"
-	RouteTablePageActionDropdowns = "page_action_dropdowns"
+	RouteTablePageActions        = "config.page_actions"
+	RouteTablePageActionButtons  = "config.page_action_buttons"
+	RouteTablePageActionDropdowns = "config.page_action_dropdowns"
 )
 
 // Routes binds all the page action routes.

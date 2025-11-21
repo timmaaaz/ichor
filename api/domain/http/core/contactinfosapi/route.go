@@ -21,7 +21,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "contact_infos"
+	RouteTable = "core.contact_infos"
 )
 
 func Routes(app *web.App, cfg Config) {

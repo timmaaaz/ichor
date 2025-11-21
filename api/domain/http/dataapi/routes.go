@@ -33,7 +33,7 @@ type Config struct {
 }
 
 const (
-	RouteTable = "table_configs"
+	RouteTable = "config.table_configs"
 )
 
 func Routes(app *web.App, cfg Config) {
