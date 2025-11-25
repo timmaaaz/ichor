@@ -7,7 +7,7 @@ import (
 // =============================================================================
 // TABLE CONFIGS
 // =============================================================================
-var PageConfig = &tablebuilder.Config{
+var TableConfig = &tablebuilder.Config{
 	Title:           "Products List",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -286,7 +286,7 @@ var OrdersConfig = &tablebuilder.Config{
 }
 
 // Dedicated Orders Page Config
-var OrdersPageConfig = &tablebuilder.Config{
+var OrdersTableConfig = &tablebuilder.Config{
 	Title:           "Orders Management",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -443,7 +443,7 @@ var OrdersPageConfig = &tablebuilder.Config{
 }
 
 // Suppliers Page Config
-var SuppliersPageConfig = &tablebuilder.Config{
+var SuppliersTableConfig = &tablebuilder.Config{
 	Title:           "Suppliers Management",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -648,7 +648,7 @@ var SuppliersPageConfig = &tablebuilder.Config{
 }
 
 // Order Line Items Page Config
-var OrderLineItemsPageConfig = &tablebuilder.Config{
+var OrderLineItemsTableConfig = &tablebuilder.Config{
 	Title:           "Order Line Items",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -947,7 +947,7 @@ var OrderLineItemsPageConfig = &tablebuilder.Config{
 }
 
 // Product Categories Page Config
-var CategoriesPageConfig = &tablebuilder.Config{
+var CategoriesTableConfig = &tablebuilder.Config{
 	Title:           "Product Categories",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -1050,7 +1050,7 @@ var CategoriesPageConfig = &tablebuilder.Config{
 // =============================================================================
 
 // Assets List Page Config
-var AssetsListPageConfig = &tablebuilder.Config{
+var AssetsListTableConfig = &tablebuilder.Config{
 	Title:           "Asset List",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -1199,7 +1199,7 @@ var AssetsListPageConfig = &tablebuilder.Config{
 }
 
 // Asset Requests Page Config
-var AssetsRequestsPageConfig = &tablebuilder.Config{
+var AssetsRequestsTableConfig = &tablebuilder.Config{
 	Title:           "Asset Requests",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -1419,7 +1419,7 @@ var AssetsRequestsPageConfig = &tablebuilder.Config{
 // =============================================================================
 
 // Employees Page Config
-var HrEmployeesPageConfig = &tablebuilder.Config{
+var HrEmployeesTableConfig = &tablebuilder.Config{
 	Title:           "Employee Directory",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -1598,7 +1598,7 @@ var HrEmployeesPageConfig = &tablebuilder.Config{
 }
 
 // Offices Page Config
-var HrOfficesPageConfig = &tablebuilder.Config{
+var HrOfficesTableConfig = &tablebuilder.Config{
 	Title:           "Office Management",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -1747,7 +1747,7 @@ var HrOfficesPageConfig = &tablebuilder.Config{
 // =============================================================================
 
 // Warehouses Page Config
-var InventoryWarehousesPageConfig = &tablebuilder.Config{
+var InventoryWarehousesTableConfig = &tablebuilder.Config{
 	Title:           "Warehouse Management",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -1911,10 +1911,10 @@ var InventoryWarehousesPageConfig = &tablebuilder.Config{
 }
 
 // Inventory Items Page Config (reusing ComplexConfig variable)
-var InventoryItemsPageConfig = ComplexConfig
+var InventoryItemsTableConfig = ComplexConfig
 
 // Inventory Adjustments Page Config
-var InventoryAdjustmentsPageConfig = &tablebuilder.Config{
+var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 	Title:           "Stock Adjustments",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -2122,7 +2122,7 @@ var InventoryAdjustmentsPageConfig = &tablebuilder.Config{
 }
 
 // Inventory Transfers Page Config
-var InventoryTransfersPageConfig = &tablebuilder.Config{
+var InventoryTransfersTableConfig = &tablebuilder.Config{
 	Title:           "Transfer Orders",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -2371,7 +2371,7 @@ var InventoryTransfersPageConfig = &tablebuilder.Config{
 // =============================================================================
 
 // Customers Page Config
-var SalesCustomersPageConfig = &tablebuilder.Config{
+var SalesCustomersTableConfig = &tablebuilder.Config{
 	Title:           "Customer Management",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -2548,7 +2548,7 @@ var SalesCustomersPageConfig = &tablebuilder.Config{
 // PROCUREMENT CONFIGS
 // =============================================================================
 
-var PurchaseOrderPageConfig = &tablebuilder.Config{
+var PurchaseOrderTableConfig = &tablebuilder.Config{
 	Title:           "Purchase Orders",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -2760,7 +2760,7 @@ var PurchaseOrderPageConfig = &tablebuilder.Config{
 	},
 }
 
-var PurchaseOrderLineItemPageConfig = &tablebuilder.Config{
+var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 	Title:           "Purchase Order Line Items",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -3010,7 +3010,7 @@ var PurchaseOrderLineItemPageConfig = &tablebuilder.Config{
 }
 
 // Open Approvals - Purchase orders awaiting approval
-var ProcurementOpenApprovalsPageConfig = &tablebuilder.Config{
+var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 	Title:           "Open Approvals",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -3209,7 +3209,7 @@ var ProcurementOpenApprovalsPageConfig = &tablebuilder.Config{
 }
 
 // Closed Approvals - Purchase orders that have been approved
-var ProcurementClosedApprovalsPageConfig = &tablebuilder.Config{
+var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 	Title:           "Closed Approvals",
 	WidgetType:      "table",
 	Visualization:   "table",

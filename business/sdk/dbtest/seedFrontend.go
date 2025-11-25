@@ -475,7 +475,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating stored config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "products_dashboard", "products", seedmodels.PageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "products_dashboard", "products", seedmodels.TableConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating stored config: %w", err)
 	}
@@ -486,118 +486,118 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Create dedicated page configs for orders, suppliers, categories, and order line items
-	_, err = configStore.Create(ctx, "orders_page", "orders", seedmodels.OrdersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "orders_table", "orders", seedmodels.OrdersTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating orders page config: %w", err)
+		return fmt.Errorf("creating orders table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "suppliers_page", "suppliers", seedmodels.SuppliersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "suppliers_table", "suppliers", seedmodels.SuppliersTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating suppliers page config: %w", err)
+		return fmt.Errorf("creating suppliers table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "categories_page", "product_categories", seedmodels.CategoriesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "categories_table", "product_categories", seedmodels.CategoriesTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating categories page config: %w", err)
+		return fmt.Errorf("creating categories table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "order_line_items_page", "order_line_items", seedmodels.OrderLineItemsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "order_line_items_table", "order_line_items", seedmodels.OrderLineItemsTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating order line items page config: %w", err)
+		return fmt.Errorf("creating order line items table config: %w", err)
 	}
 
 	// Admin Module Configs
-	_, err = configStore.Create(ctx, "admin_users_page", "users", adminUsersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "admin_users_table", "users", adminUsersTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating admin users page config: %w", err)
+		return fmt.Errorf("creating admin users table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "admin_roles_page", "roles", adminRolesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "admin_roles_table", "roles", adminRolesTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating admin roles page config: %w", err)
+		return fmt.Errorf("creating admin roles table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "admin_table_access_page", "table_access", adminTableAccessPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "admin_table_access_table", "table_access", adminTableAccessTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating admin table access page config: %w", err)
+		return fmt.Errorf("creating admin table access table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "admin_audit_page", "automation_executions", adminAuditPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "admin_audit_table", "automation_executions", adminAuditTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating admin audit page config: %w", err)
+		return fmt.Errorf("creating admin audit table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "admin_config_page", "table_configs", adminConfigPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "admin_config_table", "table_configs", adminConfigTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating admin config page config: %w", err)
+		return fmt.Errorf("creating admin config table config: %w", err)
 	}
 
 	// Assets Module Configs
-	_, err = configStore.Create(ctx, "assets_list_page", "assets", seedmodels.AssetsListPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "assets_list_table", "assets", seedmodels.AssetsListTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating assets list page config: %w", err)
+		return fmt.Errorf("creating assets list table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "assets_requests_page", "user_assets", seedmodels.AssetsRequestsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "assets_requests_table", "user_assets", seedmodels.AssetsRequestsTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating assets requests page config: %w", err)
+		return fmt.Errorf("creating assets requests table config: %w", err)
 	}
 
 	// HR Module Configs
-	_, err = configStore.Create(ctx, "hr_employees_page", "users", seedmodels.HrEmployeesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "hr_employees_table", "users", seedmodels.HrEmployeesTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating hr employees page config: %w", err)
+		return fmt.Errorf("creating hr employees table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "hr_offices_page", "offices", seedmodels.HrOfficesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "hr_offices_table", "offices", seedmodels.HrOfficesTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating hr offices page config: %w", err)
+		return fmt.Errorf("creating hr offices table config: %w", err)
 	}
 
 	// Inventory Module Configs
-	_, err = configStore.Create(ctx, "inventory_warehouses_page", "warehouses", seedmodels.InventoryWarehousesPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_warehouses_table", "warehouses", seedmodels.InventoryWarehousesTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating inventory warehouses page config: %w", err)
+		return fmt.Errorf("creating inventory warehouses table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "inventory_items_page", "inventory_items", seedmodels.InventoryItemsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_items_table", "inventory_items", seedmodels.InventoryItemsTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating inventory items page config: %w", err)
+		return fmt.Errorf("creating inventory items table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "inventory_adjustments_page", "inventory_adjustments", seedmodels.InventoryAdjustmentsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_adjustments_table", "inventory_adjustments", seedmodels.InventoryAdjustmentsTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating inventory adjustments page config: %w", err)
+		return fmt.Errorf("creating inventory adjustments table config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "inventory_transfers_page", "transfer_orders", seedmodels.InventoryTransfersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "inventory_transfers_table", "transfer_orders", seedmodels.InventoryTransfersTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating inventory transfers page config: %w", err)
+		return fmt.Errorf("creating inventory transfers table config: %w", err)
 	}
 
 	// Sales Module Configs
-	_, err = configStore.Create(ctx, "sales_customers_page", "customers", seedmodels.SalesCustomersPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "sales_customers_table", "customers", seedmodels.SalesCustomersTableConfig, admins[0].ID)
 	if err != nil {
-		return fmt.Errorf("creating sales customers page config: %w", err)
+		return fmt.Errorf("creating sales customers table config: %w", err)
 	}
 
 	// Procurement Module Configs
-	_, err = configStore.Create(ctx, "procurement_purchase_orders_config", "purchase_orders", seedmodels.PurchaseOrderPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "procurement_purchase_orders_config", "purchase_orders", seedmodels.PurchaseOrderTableConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating procurement purchase orders config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "procurement_line_items_config", "purchase_order_line_items", seedmodels.PurchaseOrderLineItemPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "procurement_line_items_config", "purchase_order_line_items", seedmodels.PurchaseOrderLineItemTableConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating procurement line items config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "procurement_approvals_open_config", "purchase_orders", seedmodels.ProcurementOpenApprovalsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "procurement_approvals_open_config", "purchase_orders", seedmodels.ProcurementOpenApprovalsTableConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating procurement approvals open config: %w", err)
 	}
 
-	_, err = configStore.Create(ctx, "procurement_approvals_closed_config", "purchase_orders", seedmodels.ProcurementClosedApprovalsPageConfig, admins[0].ID)
+	_, err = configStore.Create(ctx, "procurement_approvals_closed_config", "purchase_orders", seedmodels.ProcurementClosedApprovalsTableConfig, admins[0].ID)
 	if err != nil {
 		return fmt.Errorf("creating procurement approvals closed config: %w", err)
 	}
@@ -607,99 +607,99 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	// =========================================================================
 
 	// Get the stored config IDs for the new pages
-	ordersPageStored, err := configStore.QueryByName(ctx, "orders_page")
+	ordersTableStored, err := configStore.QueryByName(ctx, "orders_table")
 	if err != nil {
-		return fmt.Errorf("querying orders page config: %w", err)
+		return fmt.Errorf("querying orders table config: %w", err)
 	}
 
-	suppliersPageStored, err := configStore.QueryByName(ctx, "suppliers_page")
+	suppliersTableStored, err := configStore.QueryByName(ctx, "suppliers_table")
 	if err != nil {
-		return fmt.Errorf("querying suppliers page config: %w", err)
+		return fmt.Errorf("querying suppliers table config: %w", err)
 	}
 
-	categoriesPageStored, err := configStore.QueryByName(ctx, "categories_page")
+	categoriesTableStored, err := configStore.QueryByName(ctx, "categories_table")
 	if err != nil {
-		return fmt.Errorf("querying categories page config: %w", err)
+		return fmt.Errorf("querying categories table config: %w", err)
 	}
 
-	orderLineItemsPageStored, err := configStore.QueryByName(ctx, "order_line_items_page")
+	orderLineItemsTableStored, err := configStore.QueryByName(ctx, "order_line_items_table")
 	if err != nil {
-		return fmt.Errorf("querying order line items page config: %w", err)
+		return fmt.Errorf("querying order line items table config: %w", err)
 	}
 
 	// Query Admin Module Configs
-	adminUsersPageStored, err := configStore.QueryByName(ctx, "admin_users_page")
+	adminUsersTableStored, err := configStore.QueryByName(ctx, "admin_users_table")
 	if err != nil {
-		return fmt.Errorf("querying admin users page config: %w", err)
+		return fmt.Errorf("querying admin users table config: %w", err)
 	}
 
-	adminRolesPageStored, err := configStore.QueryByName(ctx, "admin_roles_page")
+	adminRolesTableStored, err := configStore.QueryByName(ctx, "admin_roles_table")
 	if err != nil {
-		return fmt.Errorf("querying admin roles page config: %w", err)
+		return fmt.Errorf("querying admin roles table config: %w", err)
 	}
 
-	adminTableAccessPageStored, err := configStore.QueryByName(ctx, "admin_table_access_page")
+	adminTableAccessTableStored, err := configStore.QueryByName(ctx, "admin_table_access_table")
 	if err != nil {
-		return fmt.Errorf("querying admin table access page config: %w", err)
+		return fmt.Errorf("querying admin table access table config: %w", err)
 	}
 
-	adminAuditPageStored, err := configStore.QueryByName(ctx, "admin_audit_page")
+	adminAuditTableStored, err := configStore.QueryByName(ctx, "admin_audit_table")
 	if err != nil {
-		return fmt.Errorf("querying admin audit page config: %w", err)
+		return fmt.Errorf("querying admin audit table config: %w", err)
 	}
 
-	adminConfigPageStored, err := configStore.QueryByName(ctx, "admin_config_page")
+	adminConfigTableStored, err := configStore.QueryByName(ctx, "admin_config_table")
 	if err != nil {
-		return fmt.Errorf("querying admin config page config: %w", err)
+		return fmt.Errorf("querying admin config table config: %w", err)
 	}
 
 	// Query Assets Module Configs
-	assetsListPageStored, err := configStore.QueryByName(ctx, "assets_list_page")
+	assetsListTableStored, err := configStore.QueryByName(ctx, "assets_list_table")
 	if err != nil {
-		return fmt.Errorf("querying assets list page config: %w", err)
+		return fmt.Errorf("querying assets list table config: %w", err)
 	}
 
-	assetsRequestsPageStored, err := configStore.QueryByName(ctx, "assets_requests_page")
+	assetsRequestsTableStored, err := configStore.QueryByName(ctx, "assets_requests_table")
 	if err != nil {
-		return fmt.Errorf("querying assets requests page config: %w", err)
+		return fmt.Errorf("querying assets requests table config: %w", err)
 	}
 
 	// Query HR Module Configs
-	hrEmployeesPageStored, err := configStore.QueryByName(ctx, "hr_employees_page")
+	hrEmployeesTableStored, err := configStore.QueryByName(ctx, "hr_employees_table")
 	if err != nil {
-		return fmt.Errorf("querying hr employees page config: %w", err)
+		return fmt.Errorf("querying hr employees table config: %w", err)
 	}
 
-	hrOfficesPageStored, err := configStore.QueryByName(ctx, "hr_offices_page")
+	hrOfficesTableStored, err := configStore.QueryByName(ctx, "hr_offices_table")
 	if err != nil {
-		return fmt.Errorf("querying hr offices page config: %w", err)
+		return fmt.Errorf("querying hr offices table config: %w", err)
 	}
 
 	// Query Inventory Module Configs
-	inventoryWarehousesPageStored, err := configStore.QueryByName(ctx, "inventory_warehouses_page")
+	inventoryWarehousesTableStored, err := configStore.QueryByName(ctx, "inventory_warehouses_table")
 	if err != nil {
-		return fmt.Errorf("querying inventory warehouses page config: %w", err)
+		return fmt.Errorf("querying inventory warehouses table config: %w", err)
 	}
 
-	inventoryItemsPageStored, err := configStore.QueryByName(ctx, "inventory_items_page")
+	inventoryItemsTableStored, err := configStore.QueryByName(ctx, "inventory_items_table")
 	if err != nil {
-		return fmt.Errorf("querying inventory items page config: %w", err)
+		return fmt.Errorf("querying inventory items table config: %w", err)
 	}
 
-	inventoryAdjustmentsPageStored, err := configStore.QueryByName(ctx, "inventory_adjustments_page")
+	inventoryAdjustmentsTableStored, err := configStore.QueryByName(ctx, "inventory_adjustments_table")
 	if err != nil {
-		return fmt.Errorf("querying inventory adjustments page config: %w", err)
+		return fmt.Errorf("querying inventory adjustments table config: %w", err)
 	}
 
-	inventoryTransfersPageStored, err := configStore.QueryByName(ctx, "inventory_transfers_page")
+	inventoryTransfersTableStored, err := configStore.QueryByName(ctx, "inventory_transfers_table")
 	if err != nil {
-		return fmt.Errorf("querying inventory transfers page config: %w", err)
+		return fmt.Errorf("querying inventory transfers table config: %w", err)
 	}
 
 	// Query Sales Module Configs
-	salesCustomersPageStored, err := configStore.QueryByName(ctx, "sales_customers_page")
+	salesCustomersTableStored, err := configStore.QueryByName(ctx, "sales_customers_table")
 	if err != nil {
-		return fmt.Errorf("querying sales customers page config: %w", err)
+		return fmt.Errorf("querying sales customers table config: %w", err)
 	}
 
 	// Query Procurement Module Configs
@@ -738,7 +738,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: ordersPageStored.ID,
+		TableConfigID: ordersTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -763,7 +763,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: suppliersPageStored.ID,
+		TableConfigID: suppliersTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -788,7 +788,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: categoriesPageStored.ID,
+		TableConfigID: categoriesTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -813,7 +813,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: orderLineItemsPageStored.ID,
+		TableConfigID: orderLineItemsTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -842,7 +842,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: adminUsersPageStored.ID,
+		TableConfigID: adminUsersTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -867,7 +867,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: adminRolesPageStored.ID,
+		TableConfigID: adminRolesTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -906,7 +906,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      adminDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Users",
-		TableConfigID: adminUsersPageStored.ID,
+		TableConfigID: adminUsersTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -922,7 +922,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      adminDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Roles",
-		TableConfigID: adminRolesPageStored.ID,
+		TableConfigID: adminRolesTableStored.ID,
 		OrderIndex:    2,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -938,7 +938,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      adminDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Permissions",
-		TableConfigID: adminTableAccessPageStored.ID,
+		TableConfigID: adminTableAccessTableStored.ID,
 		OrderIndex:    3,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -954,7 +954,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      adminDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Audit Logs",
-		TableConfigID: adminAuditPageStored.ID,
+		TableConfigID: adminAuditTableStored.ID,
 		OrderIndex:    4,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -970,7 +970,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      adminDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Configurations",
-		TableConfigID: adminConfigPageStored.ID,
+		TableConfigID: adminConfigTableStored.ID,
 		OrderIndex:    5,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -999,7 +999,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: assetsListPageStored.ID,
+		TableConfigID: assetsListTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1024,7 +1024,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: assetsRequestsPageStored.ID,
+		TableConfigID: assetsRequestsTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1063,7 +1063,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      assetsDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Assets",
-		TableConfigID: assetsListPageStored.ID,
+		TableConfigID: assetsListTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1079,7 +1079,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      assetsDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Requests",
-		TableConfigID: assetsRequestsPageStored.ID,
+		TableConfigID: assetsRequestsTableStored.ID,
 		OrderIndex:    2,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1108,7 +1108,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: hrEmployeesPageStored.ID,
+		TableConfigID: hrEmployeesTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1133,7 +1133,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: hrOfficesPageStored.ID,
+		TableConfigID: hrOfficesTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1172,7 +1172,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      hrDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Employees",
-		TableConfigID: hrEmployeesPageStored.ID,
+		TableConfigID: hrEmployeesTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1188,7 +1188,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      hrDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Offices",
-		TableConfigID: hrOfficesPageStored.ID,
+		TableConfigID: hrOfficesTableStored.ID,
 		OrderIndex:    2,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1217,7 +1217,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: inventoryWarehousesPageStored.ID,
+		TableConfigID: inventoryWarehousesTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1242,7 +1242,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: inventoryItemsPageStored.ID,
+		TableConfigID: inventoryItemsTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1267,7 +1267,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: inventoryAdjustmentsPageStored.ID,
+		TableConfigID: inventoryAdjustmentsTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1292,7 +1292,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: inventoryTransfersPageStored.ID,
+		TableConfigID: inventoryTransfersTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1331,7 +1331,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      inventoryDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Items",
-		TableConfigID: inventoryItemsPageStored.ID,
+		TableConfigID: inventoryItemsTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1347,7 +1347,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      inventoryDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Warehouses",
-		TableConfigID: inventoryWarehousesPageStored.ID,
+		TableConfigID: inventoryWarehousesTableStored.ID,
 		OrderIndex:    2,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1363,7 +1363,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      inventoryDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Adjustments",
-		TableConfigID: inventoryAdjustmentsPageStored.ID,
+		TableConfigID: inventoryAdjustmentsTableStored.ID,
 		OrderIndex:    3,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1379,7 +1379,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      inventoryDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Transfers",
-		TableConfigID: inventoryTransfersPageStored.ID,
+		TableConfigID: inventoryTransfersTableStored.ID,
 		OrderIndex:    4,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1408,7 +1408,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
-		TableConfigID: salesCustomersPageStored.ID,
+		TableConfigID: salesCustomersTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1447,7 +1447,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      salesDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Orders",
-		TableConfigID: ordersPageStored.ID,
+		TableConfigID: ordersTableStored.ID,
 		OrderIndex:    1,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1463,7 +1463,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      salesDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Customers",
-		TableConfigID: salesCustomersPageStored.ID,
+		TableConfigID: salesCustomersTableStored.ID,
 		OrderIndex:    2,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -1643,7 +1643,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ParentID:      procurementDashboardTabsContainer.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Suppliers",
-		TableConfigID: suppliersPageStored.ID,
+		TableConfigID: suppliersTableStored.ID,
 		OrderIndex:    3,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
@@ -3151,7 +3151,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		PageConfigID:  userManagementPage.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Active Users",
-		TableConfigID: adminUsersPageStored.ID, // Reference existing table config
+		TableConfigID: adminUsersTableStored.ID, // Reference existing table config
 		OrderIndex:    1,
 		ParentID:      tabsContainer.ID, // This makes it a child of the tabs container
 		Layout:        json.RawMessage(`{}`),
@@ -3167,7 +3167,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		PageConfigID:  userManagementPage.ID,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "Roles",
-		TableConfigID: adminRolesPageStored.ID, // Reference existing table config
+		TableConfigID: adminRolesTableStored.ID, // Reference existing table config
 		OrderIndex:    2,
 		ParentID:      tabsContainer.ID, // Child of tabs container
 		Layout:        json.RawMessage(`{}`),
@@ -3179,14 +3179,14 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Tab 3: Permissions (using table access config if available)
-	adminTableAccessPageStored, err = configStore.QueryByName(ctx, "admin_table_access_page")
+	adminTableAccessTableStored, err = configStore.QueryByName(ctx, "admin_table_access_page")
 	if err == nil {
 		// Only create this tab if the table config exists
 		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 			PageConfigID:  userManagementPage.ID,
 			ContentType:   pagecontentbus.ContentTypeTable,
 			Label:         "Permissions",
-			TableConfigID: adminTableAccessPageStored.ID,
+			TableConfigID: adminTableAccessTableStored.ID,
 			OrderIndex:    3,
 			ParentID:      tabsContainer.ID, // Child of tabs container
 			Layout:        json.RawMessage(`{}`),

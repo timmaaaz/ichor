@@ -645,6 +645,24 @@ var allPages = []pagebus.NewPage{
 		IsActive:   true,
 		ShowInMenu: false,
 	},
+	{
+		Path:       "/admin/config/simple-tables/:id",
+		Name:       "Simple Table",
+		Module:     "admin",
+		Icon:       "material-symbols:edit",
+		SortOrder:  70,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
+	{
+		Path:       "/admin/config/simple-tables/",
+		Name:       "Simple Tables",
+		Module:     "admin",
+		Icon:       "material-symbols:edit",
+		SortOrder:  71,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
 }
 
 // =============================================================================
@@ -652,7 +670,7 @@ var allPages = []pagebus.NewPage{
 // =============================================================================
 
 // Users Management Page Config
-var adminUsersPageConfig = &tablebuilder.Config{
+var adminUsersTableConfig = &tablebuilder.Config{
 	Title:           "User Management",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -846,7 +864,7 @@ var adminUsersPageConfig = &tablebuilder.Config{
 }
 
 // Roles Management Page Config
-var adminRolesPageConfig = &tablebuilder.Config{
+var adminRolesTableConfig = &tablebuilder.Config{
 	Title:           "Role Management",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -915,7 +933,7 @@ var adminRolesPageConfig = &tablebuilder.Config{
 }
 
 // Table Access (Permissions) Config
-var adminTableAccessPageConfig = &tablebuilder.Config{
+var adminTableAccessTableConfig = &tablebuilder.Config{
 	Title:           "Table Permissions",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -1061,7 +1079,7 @@ var adminTableAccessPageConfig = &tablebuilder.Config{
 }
 
 // Audit Logs Page Config
-var adminAuditPageConfig = &tablebuilder.Config{
+var adminAuditTableConfig = &tablebuilder.Config{
 	Title:           "Audit Logs",
 	WidgetType:      "table",
 	Visualization:   "table",
@@ -1206,7 +1224,7 @@ var adminAuditPageConfig = &tablebuilder.Config{
 }
 
 // Table Configs Management Page Config
-var adminConfigPageConfig = &tablebuilder.Config{
+var adminConfigTableConfig = &tablebuilder.Config{
 	Title:           "Table Configurations",
 	WidgetType:      "table",
 	Visualization:   "table",
