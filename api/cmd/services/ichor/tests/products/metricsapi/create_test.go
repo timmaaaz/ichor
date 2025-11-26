@@ -263,7 +263,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: quality_metrics"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: products.quality_metrics"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

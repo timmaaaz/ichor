@@ -177,7 +177,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	// Update only tu1's role permissions
 	for _, ta := range tas {
 		// Only update for the asset table
-		if ta.TableName == physicalattributeapi.TableName {
+		if ta.TableName == physicalattributeapi.RouteTable {
 			update := tableaccessbus.UpdateTableAccess{
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),

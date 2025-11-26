@@ -73,7 +73,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 				SortOrder:   100,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: purchase_order_statuses"),
+			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: procurement.purchase_order_statuses"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
