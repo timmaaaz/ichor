@@ -1573,4 +1573,416 @@ func Test_ChartTransformer(t *testing.T) {
 			t.Error("expected error for table type")
 		}
 	})
+
+	t.Run("transform gauge chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"revenue": float64(750000)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Revenue Progress",
+			WidgetType:    "chart",
+			Visualization: "gauge",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeGauge {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeGauge)
+		}
+		if result.KPI == nil {
+			t.Fatal("KPI data is nil")
+		}
+		if result.KPI.Value != 750000 {
+			t.Errorf("KPI value mismatch: got %f, want %f", result.KPI.Value, 750000.0)
+		}
+		// Gauge should have target/min/max
+		if result.KPI.Max == 0 {
+			t.Error("gauge max should be set")
+		}
+	})
+
+	t.Run("transform stacked bar chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"region": "North", "q1": float64(100), "q2": float64(120)},
+				{"region": "South", "q1": float64(80), "q2": float64(90)},
+				{"region": "East", "q1": float64(150), "q2": float64(160)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Sales by Region",
+			WidgetType:    "chart",
+			Visualization: "stacked-bar",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeStackedBar {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeStackedBar)
+		}
+		if len(result.Categories) != 3 {
+			t.Errorf("categories length mismatch: got %d, want 3", len(result.Categories))
+		}
+		// Verify stack property is set
+		for _, series := range result.Series {
+			if series.Stack == "" {
+				t.Error("stacked chart series should have stack property set")
+			}
+		}
+	})
+
+	t.Run("transform stacked area chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"month": "Jan", "revenue": float64(1000)},
+				{"month": "Feb", "revenue": float64(1200)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Cumulative Revenue",
+			WidgetType:    "chart",
+			Visualization: "stacked-area",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeStackedArea {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeStackedArea)
+		}
+	})
+
+	t.Run("transform combo chart with series config", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"month": "Jan", "revenue": float64(50000), "orders": float64(100)},
+				{"month": "Feb", "revenue": float64(60000), "orders": float64(120)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Revenue vs Orders",
+			WidgetType:    "chart",
+			Visualization: "combo",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeCombo {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeCombo)
+		}
+		// Combo should have series with types
+		foundBar := false
+		foundLine := false
+		for _, series := range result.Series {
+			if series.Type == "bar" {
+				foundBar = true
+			}
+			if series.Type == "line" {
+				foundLine = true
+			}
+		}
+		if !foundBar || !foundLine {
+			t.Error("combo chart should have both bar and line series types")
+		}
+	})
+
+	t.Run("transform waterfall chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"name": "Revenue", "value": float64(500000)},
+				{"name": "COGS", "value": float64(-200000)},
+				{"name": "OpEx", "value": float64(-100000)},
+				{"name": "Net Profit", "value": float64(200000)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Profit Breakdown",
+			WidgetType:    "chart",
+			Visualization: "waterfall",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeWaterfall {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeWaterfall)
+		}
+		if len(result.Categories) != 4 {
+			t.Errorf("categories length mismatch: got %d, want 4", len(result.Categories))
+		}
+	})
+
+	t.Run("transform funnel chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"stage": "Leads", "count": float64(1000)},
+				{"stage": "Qualified", "count": float64(600)},
+				{"stage": "Proposals", "count": float64(300)},
+				{"stage": "Won", "count": float64(100)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Sales Pipeline",
+			WidgetType:    "chart",
+			Visualization: "funnel",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeFunnel {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeFunnel)
+		}
+		if len(result.Series) != 4 {
+			t.Errorf("series length mismatch: got %d, want 4", len(result.Series))
+		}
+	})
+
+	t.Run("transform heatmap chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"day": "Mon", "hour": "9", "count": float64(10)},
+				{"day": "Mon", "hour": "10", "count": float64(15)},
+				{"day": "Tue", "hour": "9", "count": float64(12)},
+				{"day": "Tue", "hour": "10", "count": float64(8)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Activity Heatmap",
+			WidgetType:    "chart",
+			Visualization: "heatmap",
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"_chart": {
+						CellTemplate: `{"chartType":"heatmap","xCategoryColumn":"hour","yCategoryColumn":"day","valueColumns":["count"]}`,
+					},
+				},
+			},
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeHeatmap {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeHeatmap)
+		}
+		if result.Heatmap == nil {
+			t.Fatal("heatmap data is nil")
+		}
+		if len(result.Heatmap.XCategories) != 2 {
+			t.Errorf("xCategories length mismatch: got %d, want 2", len(result.Heatmap.XCategories))
+		}
+		if len(result.Heatmap.YCategories) != 2 {
+			t.Errorf("yCategories length mismatch: got %d, want 2", len(result.Heatmap.YCategories))
+		}
+	})
+
+	t.Run("transform treemap chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"category": "Electronics", "revenue": float64(50000)},
+				{"category": "Clothing", "revenue": float64(30000)},
+				{"category": "Food", "revenue": float64(20000)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Revenue Breakdown",
+			WidgetType:    "chart",
+			Visualization: "treemap",
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"_chart": {
+						CellTemplate: `{"chartType":"treemap","categoryColumn":"category","valueColumns":["revenue"]}`,
+					},
+				},
+			},
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeTreemap {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeTreemap)
+		}
+		if result.Treemap == nil {
+			t.Fatal("treemap data is nil")
+		}
+		if len(result.Treemap.Children) != 3 {
+			t.Errorf("treemap children length mismatch: got %d, want 3", len(result.Treemap.Children))
+		}
+	})
+
+	t.Run("transform gantt chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"task": "Planning", "start": "2025-01-01", "end": "2025-01-15", "progress": float64(100)},
+				{"task": "Development", "start": "2025-01-10", "end": "2025-02-15", "progress": float64(50)},
+				{"task": "Testing", "start": "2025-02-01", "end": "2025-02-28", "progress": float64(0)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Project Timeline",
+			WidgetType:    "chart",
+			Visualization: "gantt",
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"_chart": {
+						CellTemplate: `{"chartType":"gantt","nameColumn":"task","startColumn":"start","endColumn":"end","progressColumn":"progress"}`,
+					},
+				},
+			},
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeGantt {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeGantt)
+		}
+		if len(result.Gantt) != 3 {
+			t.Errorf("gantt data length mismatch: got %d, want 3", len(result.Gantt))
+		}
+		// Verify first task
+		if result.Gantt[0].Name != "Planning" {
+			t.Errorf("gantt task name mismatch: got %s, want Planning", result.Gantt[0].Name)
+		}
+		if result.Gantt[0].Progress != 100 {
+			t.Errorf("gantt progress mismatch: got %d, want 100", result.Gantt[0].Progress)
+		}
+	})
+
+	t.Run("transform with metadata", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"value": float64(100)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Test KPI",
+			Visualization: "kpi",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		// Should have metadata
+		if result.Meta.RowsProcessed != 1 {
+			t.Errorf("rowsProcessed mismatch: got %d, want 1", result.Meta.RowsProcessed)
+		}
+		if result.Meta.ExecutionTime < 0 {
+			t.Error("executionTime should be non-negative")
+		}
+	})
+
+	t.Run("KPI with trend calculation", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		// Two rows - current and previous for trend calculation
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"revenue": float64(120000)}, // Current
+				{"revenue": float64(100000)}, // Previous
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Revenue with Trend",
+			Visualization: "kpi",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.KPI.Value != 120000 {
+			t.Errorf("KPI value mismatch: got %f, want %f", result.KPI.Value, 120000.0)
+		}
+		if result.KPI.PreviousValue != 100000 {
+			t.Errorf("KPI previous value mismatch: got %f, want %f", result.KPI.PreviousValue, 100000.0)
+		}
+		if result.KPI.Trend != "up" {
+			t.Errorf("KPI trend mismatch: got %s, want up", result.KPI.Trend)
+		}
+		// 20% increase
+		expectedChange := 20.0
+		if result.KPI.Change < expectedChange-0.1 || result.KPI.Change > expectedChange+0.1 {
+			t.Errorf("KPI change mismatch: got %f, want ~%f", result.KPI.Change, expectedChange)
+		}
+	})
+
+	t.Run("rejects unsupported chart type", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"value": float64(100)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Unknown Chart",
+			Visualization: "unknown-type",
+		}
+
+		_, err := transformer.Transform(data, config)
+		if err == nil {
+			t.Error("expected error for unsupported chart type")
+		}
+	})
 }
