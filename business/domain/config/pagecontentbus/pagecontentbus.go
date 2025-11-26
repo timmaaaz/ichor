@@ -80,7 +80,7 @@ func (b *Business) Create(ctx context.Context, nc NewPageContent) (PageContent, 
 	}
 
 	// Validate content references match content type
-	if err := validateContentReferences(nc.ContentType, nc.TableConfigID, nc.FormID); err != nil {
+	if err := validateContentReferences(nc.ContentType, nc.TableConfigID, nc.FormID, nc.ChartConfigID); err != nil {
 		return PageContent{}, err
 	}
 
@@ -91,6 +91,7 @@ func (b *Business) Create(ctx context.Context, nc NewPageContent) (PageContent, 
 		Label:         nc.Label,
 		TableConfigID: nc.TableConfigID,
 		FormID:        nc.FormID,
+		ChartConfigID: nc.ChartConfigID,
 		OrderIndex:    nc.OrderIndex,
 		ParentID:      nc.ParentID,
 		Layout:        nc.Layout,
@@ -241,7 +242,7 @@ func validateContentType(contentType string) error {
 }
 
 // validateContentReferences ensures content type matches required references
-func validateContentReferences(contentType string, tableConfigID, formID uuid.UUID) error {
+func validateContentReferences(contentType string, tableConfigID, formID, chartConfigID uuid.UUID) error {
 	switch contentType {
 	case ContentTypeTable:
 		if tableConfigID == uuid.Nil {
@@ -250,6 +251,10 @@ func validateContentReferences(contentType string, tableConfigID, formID uuid.UU
 	case ContentTypeForm:
 		if formID == uuid.Nil {
 			return fmt.Errorf("%w: form content type requires formID", ErrMissingContentRef)
+		}
+	case ContentTypeChart:
+		if chartConfigID == uuid.Nil {
+			return fmt.Errorf("%w: chart content type requires chartConfigID", ErrMissingContentRef)
 		}
 	}
 

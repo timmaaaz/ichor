@@ -42,6 +42,7 @@ type PageContent struct {
 	Label         string
 	TableConfigID uuid.UUID
 	FormID        uuid.UUID
+	ChartConfigID uuid.UUID
 	OrderIndex    int
 	ParentID      uuid.UUID
 	Layout        json.RawMessage
@@ -57,6 +58,7 @@ type NewPageContent struct {
 	Label         string
 	TableConfigID uuid.UUID
 	FormID        uuid.UUID
+	ChartConfigID uuid.UUID
 	OrderIndex    int
 	ParentID      uuid.UUID
 	Layout        json.RawMessage

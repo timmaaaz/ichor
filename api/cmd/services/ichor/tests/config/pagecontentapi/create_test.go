@@ -48,6 +48,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				expResp.ID = gotResp.ID
 				expResp.TableConfigID = gotResp.TableConfigID
 				expResp.FormID = gotResp.FormID
+				expResp.ChartConfigID = gotResp.ChartConfigID
 				expResp.ParentID = gotResp.ParentID
 				expResp.Layout = gotResp.Layout
 				expResp.IsDefault = gotResp.IsDefault

@@ -733,6 +733,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("querying procurement approvals closed config: %w", err)
 	}
 
+	// Query Chart Configs for distribution across pages
+	// These use _ for error since charts are optional - pages work without them
+	kpiRevenueStored, _ := configStore.QueryByName(ctx, "seed_kpi_total_revenue")
+	kpiOrdersStored, _ := configStore.QueryByName(ctx, "seed_kpi_order_count")
+	gaugeRevenueStored, _ := configStore.QueryByName(ctx, "seed_gauge_revenue_target")
+	lineMonthlySalesStored, _ := configStore.QueryByName(ctx, "seed_line_monthly_sales")
+	barTopProductsStored, _ := configStore.QueryByName(ctx, "seed_bar_top_products")
+	pieRevenueCategoryStored, _ := configStore.QueryByName(ctx, "seed_pie_revenue_category")
+	funnelPipelineStored, _ := configStore.QueryByName(ctx, "seed_funnel_pipeline")
+	heatmapSalesTimeStored, _ := configStore.QueryByName(ctx, "seed_heatmap_sales_time")
+	treemapRevenueStored, _ := configStore.QueryByName(ctx, "seed_treemap_revenue")
+	ganttProjectStored, _ := configStore.QueryByName(ctx, "seed_gantt_project")
+
 	// Create Orders Page
 	ordersPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "orders_page",
@@ -743,13 +756,50 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating orders page: %w", err)
 	}
 
+	ordersPageOrderIndex := 1
+
+	// Add charts to Orders Page
+	if lineMonthlySalesStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  ordersPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Monthly Sales Trend",
+			ChartConfigID: lineMonthlySalesStored.ID,
+			OrderIndex:    ordersPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":8}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating orders page line chart: %w", err)
+		}
+		ordersPageOrderIndex++
+	}
+
+	if funnelPipelineStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  ordersPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Sales Pipeline",
+			ChartConfigID: funnelPipelineStored.ID,
+			OrderIndex:    ordersPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating orders page funnel chart: %w", err)
+		}
+		ordersPageOrderIndex++
+	}
+
 	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID:  ordersPage.ID,
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
 		TableConfigID: ordersTableStored.ID,
-		OrderIndex:    1,
+		OrderIndex:    ordersPageOrderIndex,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
 		IsDefault:     true,
@@ -793,13 +843,67 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating categories page: %w", err)
 	}
 
+	categoriesPageOrderIndex := 1
+
+	// Add charts to Categories Page
+	if pieRevenueCategoryStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  categoriesPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Revenue by Category",
+			ChartConfigID: pieRevenueCategoryStored.ID,
+			OrderIndex:    categoriesPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating categories page pie chart: %w", err)
+		}
+		categoriesPageOrderIndex++
+	}
+
+	if barTopProductsStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  categoriesPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Top Products",
+			ChartConfigID: barTopProductsStored.ID,
+			OrderIndex:    categoriesPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating categories page bar chart: %w", err)
+		}
+		categoriesPageOrderIndex++
+	}
+
+	if treemapRevenueStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  categoriesPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Revenue Breakdown",
+			ChartConfigID: treemapRevenueStored.ID,
+			OrderIndex:    categoriesPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating categories page treemap chart: %w", err)
+		}
+		categoriesPageOrderIndex++
+	}
+
 	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID:  categoriesPage.ID,
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
 		TableConfigID: categoriesTableStored.ID,
-		OrderIndex:    1,
+		OrderIndex:    categoriesPageOrderIndex,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
 		IsDefault:     true,
@@ -1322,11 +1426,31 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory dashboard page: %w", err)
 	}
 
+	inventoryDashboardOrderIndex := 1
+
+	// Add Heatmap chart to Inventory Dashboard (above tabs)
+	if heatmapSalesTimeStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  inventoryDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Orders by Day and Hour",
+			ChartConfigID: heatmapSalesTimeStored.ID,
+			OrderIndex:    inventoryDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating inventory dashboard heatmap chart: %w", err)
+		}
+		inventoryDashboardOrderIndex++
+	}
+
 	// Create tabs container (parent)
 	inventoryDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: inventoryDashboardPage.ID,
 		ContentType:  pagecontentbus.ContentTypeTabs,
-		OrderIndex:   1,
+		OrderIndex:   inventoryDashboardOrderIndex,
 		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
 		IsVisible:    true,
 		IsDefault:    false,
@@ -1438,11 +1562,65 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating sales dashboard page: %w", err)
 	}
 
+	salesDashboardOrderIndex := 1
+
+	// Add KPI charts row to Sales Dashboard (above tabs)
+	if kpiRevenueStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  salesDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Total Revenue",
+			ChartConfigID: kpiRevenueStored.ID,
+			OrderIndex:    salesDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating sales dashboard KPI revenue chart: %w", err)
+		}
+		salesDashboardOrderIndex++
+	}
+
+	if kpiOrdersStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  salesDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Total Orders",
+			ChartConfigID: kpiOrdersStored.ID,
+			OrderIndex:    salesDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating sales dashboard KPI orders chart: %w", err)
+		}
+		salesDashboardOrderIndex++
+	}
+
+	if gaugeRevenueStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  salesDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Revenue Progress",
+			ChartConfigID: gaugeRevenueStored.ID,
+			OrderIndex:    salesDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating sales dashboard gauge chart: %w", err)
+		}
+		salesDashboardOrderIndex++
+	}
+
 	// Create tabs container (parent)
 	salesDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: salesDashboardPage.ID,
 		ContentType:  pagecontentbus.ContentTypeTabs,
-		OrderIndex:   1,
+		OrderIndex:   salesDashboardOrderIndex,
 		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
 		IsVisible:    true,
 		IsDefault:    false,
@@ -1602,11 +1780,31 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement dashboard page: %w", err)
 	}
 
+	procurementDashboardOrderIndex := 1
+
+	// Add Gantt chart to Procurement Dashboard (above tabs)
+	if ganttProjectStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  procurementDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Purchase Order Timeline",
+			ChartConfigID: ganttProjectStored.ID,
+			OrderIndex:    procurementDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating procurement dashboard gantt chart: %w", err)
+		}
+		procurementDashboardOrderIndex++
+	}
+
 	// Create tabs container (parent)
 	procurementDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: procurementDashboardPage.ID,
 		ContentType:  pagecontentbus.ContentTypeTabs,
-		OrderIndex:   1,
+		OrderIndex:   procurementDashboardOrderIndex,
 		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
 		IsVisible:    true,
 		IsDefault:    false,
@@ -3216,21 +3414,17 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 
 	// =========================================================================
 	// Create Sample Charts Dashboard
-	// Demonstrates all chart types in a responsive grid layout
+	// Demonstrates remaining chart types not distributed to other pages
 	// =========================================================================
 
-	// Query chart configs for the sample dashboard
-	kpiRevenueStored, _ := configStore.QueryByName(ctx, "seed_kpi_total_revenue")
-	kpiOrdersStored, _ := configStore.QueryByName(ctx, "seed_kpi_order_count")
-	gaugeRevenueStored, _ := configStore.QueryByName(ctx, "seed_gauge_revenue_target")
-	lineMonthlySalesStored, _ := configStore.QueryByName(ctx, "seed_line_monthly_sales")
-	barTopProductsStored, _ := configStore.QueryByName(ctx, "seed_bar_top_products")
-	pieRevenueCategoryStored, _ := configStore.QueryByName(ctx, "seed_pie_revenue_category")
+	// Query remaining chart configs for sample dashboard (those not queried earlier)
+	stackedBarRegionStored, _ := configStore.QueryByName(ctx, "seed_stacked_bar_region")
+	stackedAreaCumulativeStored, _ := configStore.QueryByName(ctx, "seed_stacked_area_cumulative")
 	comboRevenueOrdersStored, _ := configStore.QueryByName(ctx, "seed_combo_revenue_orders")
-	funnelPipelineStored, _ := configStore.QueryByName(ctx, "seed_funnel_pipeline")
+	waterfallProfitStored, _ := configStore.QueryByName(ctx, "seed_waterfall_profit")
 
 	// Only create dashboard if at least some chart configs exist
-	if kpiRevenueStored != nil {
+	if stackedBarRegionStored != nil {
 		sampleChartsDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 			Name:      "sample_charts_dashboard",
 			UserID:    uuid.Nil,
@@ -3242,141 +3436,70 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 
 		orderIndex := 1
 
-		// Row 1: KPI Cards (3 across)
-		if kpiRevenueStored != nil {
-			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
-				PageConfigID:  sampleChartsDashboardPage.ID,
-				ContentType:   pagecontentbus.ContentTypeChart,
-				Label:         "Total Revenue",
-				TableConfigID: kpiRevenueStored.ID, // Chart configs use TableConfigID
-				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
-				IsVisible:     true,
-				IsDefault:     true,
-			})
-			if err != nil {
-				return fmt.Errorf("creating KPI revenue content: %w", err)
-			}
-			orderIndex++
+		// Row 1: Stacked charts (2 across)
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  sampleChartsDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Sales by Region",
+			ChartConfigID: stackedBarRegionStored.ID,
+			OrderIndex:    orderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":6}}`),
+			IsVisible:     true,
+			IsDefault:     true,
+		})
+		if err != nil {
+			return fmt.Errorf("creating stacked bar chart content: %w", err)
 		}
+		orderIndex++
 
-		if kpiOrdersStored != nil {
+		if stackedAreaCumulativeStored != nil {
 			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 				PageConfigID:  sampleChartsDashboardPage.ID,
 				ContentType:   pagecontentbus.ContentTypeChart,
-				Label:         "Total Orders",
-				TableConfigID: kpiOrdersStored.ID,
+				Label:         "Cumulative Revenue",
+				ChartConfigID: stackedAreaCumulativeStored.ID,
 				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
+				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":6}}`),
 				IsVisible:     true,
 				IsDefault:     false,
 			})
 			if err != nil {
-				return fmt.Errorf("creating KPI orders content: %w", err)
+				return fmt.Errorf("creating stacked area chart content: %w", err)
 			}
 			orderIndex++
 		}
 
-		if gaugeRevenueStored != nil {
-			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
-				PageConfigID:  sampleChartsDashboardPage.ID,
-				ContentType:   pagecontentbus.ContentTypeChart,
-				Label:         "Revenue Progress",
-				TableConfigID: gaugeRevenueStored.ID,
-				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
-				IsVisible:     true,
-				IsDefault:     false,
-			})
-			if err != nil {
-				return fmt.Errorf("creating gauge content: %w", err)
-			}
-			orderIndex++
-		}
-
-		// Row 2: Line chart (wide) + Bar chart
-		if lineMonthlySalesStored != nil {
-			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
-				PageConfigID:  sampleChartsDashboardPage.ID,
-				ContentType:   pagecontentbus.ContentTypeChart,
-				Label:         "Monthly Sales Trend",
-				TableConfigID: lineMonthlySalesStored.ID,
-				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":8}}`),
-				IsVisible:     true,
-				IsDefault:     false,
-			})
-			if err != nil {
-				return fmt.Errorf("creating line chart content: %w", err)
-			}
-			orderIndex++
-		}
-
-		if barTopProductsStored != nil {
-			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
-				PageConfigID:  sampleChartsDashboardPage.ID,
-				ContentType:   pagecontentbus.ContentTypeChart,
-				Label:         "Top Products",
-				TableConfigID: barTopProductsStored.ID,
-				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
-				IsVisible:     true,
-				IsDefault:     false,
-			})
-			if err != nil {
-				return fmt.Errorf("creating bar chart content: %w", err)
-			}
-			orderIndex++
-		}
-
-		// Row 3: Pie + Funnel + Combo
-		if pieRevenueCategoryStored != nil {
-			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
-				PageConfigID:  sampleChartsDashboardPage.ID,
-				ContentType:   pagecontentbus.ContentTypeChart,
-				Label:         "Revenue by Category",
-				TableConfigID: pieRevenueCategoryStored.ID,
-				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
-				IsVisible:     true,
-				IsDefault:     false,
-			})
-			if err != nil {
-				return fmt.Errorf("creating pie chart content: %w", err)
-			}
-			orderIndex++
-		}
-
-		if funnelPipelineStored != nil {
-			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
-				PageConfigID:  sampleChartsDashboardPage.ID,
-				ContentType:   pagecontentbus.ContentTypeChart,
-				Label:         "Sales Pipeline",
-				TableConfigID: funnelPipelineStored.ID,
-				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
-				IsVisible:     true,
-				IsDefault:     false,
-			})
-			if err != nil {
-				return fmt.Errorf("creating funnel chart content: %w", err)
-			}
-			orderIndex++
-		}
-
+		// Row 2: Combo + Waterfall (2 across)
 		if comboRevenueOrdersStored != nil {
 			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 				PageConfigID:  sampleChartsDashboardPage.ID,
 				ContentType:   pagecontentbus.ContentTypeChart,
 				Label:         "Revenue vs Orders",
-				TableConfigID: comboRevenueOrdersStored.ID,
+				ChartConfigID: comboRevenueOrdersStored.ID,
 				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":6}}`),
 				IsVisible:     true,
 				IsDefault:     false,
 			})
 			if err != nil {
 				return fmt.Errorf("creating combo chart content: %w", err)
+			}
+			orderIndex++
+		}
+
+		if waterfallProfitStored != nil {
+			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+				PageConfigID:  sampleChartsDashboardPage.ID,
+				ContentType:   pagecontentbus.ContentTypeChart,
+				Label:         "Profit Breakdown",
+				ChartConfigID: waterfallProfitStored.ID,
+				OrderIndex:    orderIndex,
+				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":6}}`),
+				IsVisible:     true,
+				IsDefault:     false,
+			})
+			if err != nil {
+				return fmt.Errorf("creating waterfall chart content: %w", err)
 			}
 		}
 

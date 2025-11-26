@@ -47,11 +47,36 @@ var SeedKPITotalRevenue = &tablebuilder.Config{
 	DataSource: []tablebuilder.DataSource{
 		{
 			Type:   "query",
-			Source: "orders",
+			Source: "order_line_items",
 			Schema: "sales",
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "total_revenue",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
+				},
+			},
 			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "total_revenue", Alias: "total_revenue", TableColumn: "SUM(orders.total_amount)"},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "order_line_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -82,9 +107,11 @@ var SeedKPIOrderCount = &tablebuilder.Config{
 			Type:   "query",
 			Source: "orders",
 			Schema: "sales",
-			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "order_count", Alias: "order_count", TableColumn: "COUNT(orders.id)"},
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "order_count",
+					Function: "count",
+					Column:   "orders.id",
 				},
 			},
 		},
@@ -117,11 +144,36 @@ var SeedGaugeRevenueTarget = &tablebuilder.Config{
 	DataSource: []tablebuilder.DataSource{
 		{
 			Type:   "query",
-			Source: "orders",
+			Source: "order_line_items",
 			Schema: "sales",
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "revenue",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
+				},
+			},
 			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "revenue", Alias: "revenue", TableColumn: "SUM(orders.total_amount)"},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "order_line_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -157,12 +209,48 @@ var SeedLineMonthlySales = &tablebuilder.Config{
 	DataSource: []tablebuilder.DataSource{
 		{
 			Type:   "query",
-			Source: "orders",
+			Source: "order_line_items",
 			Schema: "sales",
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "sales",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
+				},
+			},
+			GroupBy: &tablebuilder.GroupByConfig{
+				Column:   "orders.created_date",
+				Interval: "month",
+				Alias:    "month",
+			},
 			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "month", Alias: "month", TableColumn: "DATE_TRUNC('month', orders.created_date)"},
-					{Name: "sales", Alias: "sales", TableColumn: "SUM(orders.total_amount)"},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "orders",
+						Schema:           "sales",
+						RelationshipFrom: "order_line_items.order_id",
+						RelationshipTo:   "orders.id",
+						JoinType:         "inner",
+					},
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "order_line_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
+						},
+					},
 				},
 			},
 			Sort: []tablebuilder.Sort{
@@ -206,10 +294,21 @@ var SeedBarTopProducts = &tablebuilder.Config{
 			Type:   "query",
 			Source: "order_line_items",
 			Schema: "sales",
-			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "revenue", Alias: "revenue", TableColumn: "SUM(order_line_items.line_total)"},
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "revenue",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
 				},
+			},
+			GroupBy: &tablebuilder.GroupByConfig{
+				Column: "products.name",
+				Alias:  "product_name",
+			},
+			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
 					{
 						Table:            "products",
@@ -217,8 +316,14 @@ var SeedBarTopProducts = &tablebuilder.Config{
 						RelationshipFrom: "order_line_items.product_id",
 						RelationshipTo:   "products.id",
 						JoinType:         "inner",
-						Columns: []tablebuilder.ColumnDefinition{
-							{Name: "product_name", Alias: "product_name", TableColumn: "products.name"},
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
 						},
 					},
 				},
@@ -263,21 +368,72 @@ var SeedStackedBarRegionCategory = &tablebuilder.Config{
 	DataSource: []tablebuilder.DataSource{
 		{
 			Type:   "query",
-			Source: "orders",
+			Source: "order_line_items",
 			Schema: "sales",
-			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "sales", Alias: "sales", TableColumn: "SUM(orders.total_amount)"},
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "sales",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
 				},
+			},
+			GroupBy: &tablebuilder.GroupByConfig{
+				Column: "cities.name",
+				Alias:  "region",
+			},
+			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
 					{
-						Table:            "customers",
+						Table:            "orders",
 						Schema:           "sales",
-						RelationshipFrom: "orders.customer_id",
-						RelationshipTo:   "customers.id",
-						JoinType:         "left",
-						Columns: []tablebuilder.ColumnDefinition{
-							{Name: "region", Alias: "region", TableColumn: "customers.city"},
+						RelationshipFrom: "order_line_items.order_id",
+						RelationshipTo:   "orders.id",
+						JoinType:         "inner",
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "customers",
+								Schema:           "sales",
+								RelationshipFrom: "orders.customer_id",
+								RelationshipTo:   "customers.id",
+								JoinType:         "left",
+								ForeignTables: []tablebuilder.ForeignTable{
+									{
+										Table:            "streets",
+										Schema:           "geography",
+										RelationshipFrom: "customers.delivery_address_id",
+										RelationshipTo:   "streets.id",
+										JoinType:         "left",
+										ForeignTables: []tablebuilder.ForeignTable{
+											{
+												Table:            "cities",
+												Schema:           "geography",
+												RelationshipFrom: "streets.city_id",
+												RelationshipTo:   "cities.id",
+												JoinType:         "left",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "order_line_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
 						},
 					},
 				},
@@ -309,12 +465,48 @@ var SeedStackedAreaCumulative = &tablebuilder.Config{
 	DataSource: []tablebuilder.DataSource{
 		{
 			Type:   "query",
-			Source: "orders",
+			Source: "order_line_items",
 			Schema: "sales",
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "revenue",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
+				},
+			},
+			GroupBy: &tablebuilder.GroupByConfig{
+				Column:   "orders.created_date",
+				Interval: "month",
+				Alias:    "month",
+			},
 			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "month", Alias: "month", TableColumn: "DATE_TRUNC('month', orders.created_date)"},
-					{Name: "revenue", Alias: "revenue", TableColumn: "SUM(orders.total_amount)"},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "orders",
+						Schema:           "sales",
+						RelationshipFrom: "order_line_items.order_id",
+						RelationshipTo:   "orders.id",
+						JoinType:         "inner",
+					},
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "order_line_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
+						},
+					},
 				},
 			},
 			Sort: []tablebuilder.Sort{
@@ -358,10 +550,21 @@ var SeedPieRevenueCategory = &tablebuilder.Config{
 			Type:   "query",
 			Source: "order_line_items",
 			Schema: "sales",
-			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "revenue", Alias: "revenue", TableColumn: "SUM(order_line_items.line_total)"},
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "revenue",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
 				},
+			},
+			GroupBy: &tablebuilder.GroupByConfig{
+				Column: "product_categories.name",
+				Alias:  "category",
+			},
+			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
 					{
 						Table:            "products",
@@ -369,7 +572,6 @@ var SeedPieRevenueCategory = &tablebuilder.Config{
 						RelationshipFrom: "order_line_items.product_id",
 						RelationshipTo:   "products.id",
 						JoinType:         "inner",
-						Columns:          []tablebuilder.ColumnDefinition{},
 						ForeignTables: []tablebuilder.ForeignTable{
 							{
 								Table:            "product_categories",
@@ -377,9 +579,13 @@ var SeedPieRevenueCategory = &tablebuilder.Config{
 								RelationshipFrom: "products.category_id",
 								RelationshipTo:   "product_categories.id",
 								JoinType:         "inner",
-								Columns: []tablebuilder.ColumnDefinition{
-									{Name: "category", Alias: "category", TableColumn: "product_categories.name"},
-								},
+							},
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
 							},
 						},
 					},
@@ -412,13 +618,53 @@ var SeedComboRevenueOrders = &tablebuilder.Config{
 	DataSource: []tablebuilder.DataSource{
 		{
 			Type:   "query",
-			Source: "orders",
+			Source: "order_line_items",
 			Schema: "sales",
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "revenue",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
+				},
+				{
+					Name:     "order_count",
+					Function: "count_distinct",
+					Column:   "orders.id",
+				},
+			},
+			GroupBy: &tablebuilder.GroupByConfig{
+				Column:   "orders.created_date",
+				Interval: "month",
+				Alias:    "month",
+			},
 			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "month", Alias: "month", TableColumn: "DATE_TRUNC('month', orders.created_date)"},
-					{Name: "revenue", Alias: "revenue", TableColumn: "SUM(orders.total_amount)"},
-					{Name: "order_count", Alias: "order_count", TableColumn: "COUNT(orders.id)"},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "orders",
+						Schema:           "sales",
+						RelationshipFrom: "order_line_items.order_id",
+						RelationshipTo:   "orders.id",
+						JoinType:         "inner",
+					},
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "order_line_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
+						},
+					},
 				},
 			},
 			Sort: []tablebuilder.Sort{
@@ -461,6 +707,7 @@ var SeedComboRevenueOrders = &tablebuilder.Config{
 // =============================================================================
 
 // SeedWaterfallProfit - Waterfall chart showing profit breakdown (uses static data)
+// Note: Waterfall uses a simplified static category - in production would use multiple queries
 var SeedWaterfallProfit = &tablebuilder.Config{
 	Title:         "Profit Breakdown",
 	WidgetType:    "chart",
@@ -468,14 +715,36 @@ var SeedWaterfallProfit = &tablebuilder.Config{
 	DataSource: []tablebuilder.DataSource{
 		{
 			Type:   "query",
-			Source: "orders",
+			Source: "order_line_items",
 			Schema: "sales",
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "amount",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
+				},
+			},
 			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					// For demo purposes, we'll use a simplified query
-					// In production, this would calculate actual profit components
-					{Name: "category", Alias: "category", TableColumn: "'Revenue'"},
-					{Name: "amount", Alias: "amount", TableColumn: "SUM(orders.total_amount)"},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "products",
+						Schema:           "products",
+						RelationshipFrom: "order_line_items.product_id",
+						RelationshipTo:   "products.id",
+						JoinType:         "inner",
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -507,10 +776,18 @@ var SeedFunnelPipeline = &tablebuilder.Config{
 			Type:   "query",
 			Source: "orders",
 			Schema: "sales",
-			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "count", Alias: "count", TableColumn: "COUNT(orders.id)"},
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "count",
+					Function: "count",
+					Column:   "orders.id",
 				},
+			},
+			GroupBy: &tablebuilder.GroupByConfig{
+				Column: "order_fulfillment_statuses.name",
+				Alias:  "status",
+			},
+			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
 					{
 						Table:            "order_fulfillment_statuses",
@@ -518,9 +795,6 @@ var SeedFunnelPipeline = &tablebuilder.Config{
 						RelationshipFrom: "orders.fulfillment_status_id",
 						RelationshipTo:   "order_fulfillment_statuses.id",
 						JoinType:         "left",
-						Columns: []tablebuilder.ColumnDefinition{
-							{Name: "status", Alias: "status", TableColumn: "order_fulfillment_statuses.name"},
-						},
 					},
 				},
 			},
@@ -544,6 +818,9 @@ var SeedFunnelPipeline = &tablebuilder.Config{
 // =============================================================================
 
 // SeedHeatmapSalesTime - Heatmap showing order count by day of week and hour
+// NOTE: Heatmaps require multi-dimensional grouping (day AND hour) which is beyond
+// the single GroupBy config. This chart uses traditional Columns with EXTRACT functions
+// and requires custom query handling. Future enhancement could add multi-group support.
 var SeedHeatmapSalesTime = &tablebuilder.Config{
 	Title:         "Orders by Day and Hour",
 	WidgetType:    "chart",
@@ -590,10 +867,21 @@ var SeedTreemapRevenue = &tablebuilder.Config{
 			Type:   "query",
 			Source: "order_line_items",
 			Schema: "sales",
-			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "revenue", Alias: "revenue", TableColumn: "SUM(order_line_items.line_total)"},
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "revenue",
+					Function: "sum",
+					Expression: &tablebuilder.ExpressionConfig{
+						Operator: "multiply",
+						Columns:  []string{"order_line_items.quantity", "product_costs.selling_price"},
+					},
 				},
+			},
+			GroupBy: &tablebuilder.GroupByConfig{
+				Column: "products.name",
+				Alias:  "product",
+			},
+			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
 					{
 						Table:            "products",
@@ -601,8 +889,14 @@ var SeedTreemapRevenue = &tablebuilder.Config{
 						RelationshipFrom: "order_line_items.product_id",
 						RelationshipTo:   "products.id",
 						JoinType:         "inner",
-						Columns: []tablebuilder.ColumnDefinition{
-							{Name: "product", Alias: "product", TableColumn: "products.name"},
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "product_costs",
+								Schema:           "products",
+								RelationshipFrom: "products.id",
+								RelationshipTo:   "product_costs.product_id",
+								JoinType:         "inner",
+							},
 						},
 					},
 				},
@@ -628,6 +922,8 @@ var SeedTreemapRevenue = &tablebuilder.Config{
 // =============================================================================
 
 // SeedGanttProject - Gantt chart showing project timeline (demo with purchase orders)
+// NOTE: Gantt charts don't use aggregation - they display row-level data directly.
+// Uses standard Columns with proper column names from the base table.
 var SeedGanttProject = &tablebuilder.Config{
 	Title:         "Purchase Order Timeline",
 	WidgetType:    "chart",
@@ -639,15 +935,15 @@ var SeedGanttProject = &tablebuilder.Config{
 			Schema: "procurement",
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "id", Alias: "id", TableColumn: "purchase_orders.id"},
-					{Name: "order_number", Alias: "name", TableColumn: "purchase_orders.order_number"},
-					{Name: "created_date", Alias: "start_date", TableColumn: "purchase_orders.created_date"},
-					{Name: "expected_date", Alias: "end_date", TableColumn: "purchase_orders.expected_delivery_date"},
+					{Name: "id", Alias: "id"},
+					{Name: "order_number", Alias: "name"},
+					{Name: "order_date", Alias: "start_date"},
+					{Name: "expected_delivery_date", Alias: "end_date"},
 				},
 			},
 			Rows: 20,
 			Sort: []tablebuilder.Sort{
-				{Column: "created_date", Direction: "asc"},
+				{Column: "order_date", Direction: "asc"},
 			},
 		},
 	},

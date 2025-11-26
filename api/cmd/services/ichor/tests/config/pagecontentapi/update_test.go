@@ -46,6 +46,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				expResp := exp.(*pagecontentapp.PageContent)
 				expResp.TableConfigID = gotResp.TableConfigID
 				expResp.FormID = gotResp.FormID
+				expResp.ChartConfigID = gotResp.ChartConfigID
 				expResp.ParentID = gotResp.ParentID
 				expResp.Layout = gotResp.Layout
 				expResp.IsDefault = gotResp.IsDefault

@@ -1597,3 +1597,28 @@ UPDATE core.table_access SET table_name = 'config.page_action_buttons' WHERE tab
 UPDATE core.table_access SET table_name = 'config.page_action_dropdowns' WHERE table_name = 'page_action_dropdowns';
 UPDATE core.table_access SET table_name = 'config.page_action_dropdown_items' WHERE table_name = 'page_action_dropdown_items';
 
+-- Version: 1.74
+-- Description: Add chart_config_id column to page_content table for chart content type
+ALTER TABLE config.page_content
+ADD COLUMN chart_config_id UUID NULL;
+
+ALTER TABLE config.page_content
+ADD CONSTRAINT fk_page_content_chart
+   FOREIGN KEY (chart_config_id) REFERENCES config.table_configs(id) ON DELETE CASCADE;
+
+CREATE INDEX idx_page_content_chart ON config.page_content(chart_config_id);
+
+-- Update CHECK constraint to require chart_config_id for chart content type
+ALTER TABLE config.page_content
+DROP CONSTRAINT check_content_reference;
+
+ALTER TABLE config.page_content
+ADD CONSTRAINT check_content_reference CHECK (
+   (content_type = 'table' AND table_config_id IS NOT NULL) OR
+   (content_type = 'form' AND form_id IS NOT NULL) OR
+   (content_type = 'chart' AND chart_config_id IS NOT NULL) OR
+   (content_type IN ('tabs', 'container', 'text'))
+);
+
+COMMENT ON COLUMN config.page_content.chart_config_id IS 'References table_configs for chart widget configurations';
+

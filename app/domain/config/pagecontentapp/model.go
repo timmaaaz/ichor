@@ -29,6 +29,7 @@ type PageContent struct {
 	Label         string          `json:"label,omitempty"`
 	TableConfigID string          `json:"tableConfigId,omitempty"`
 	FormID        string          `json:"formId,omitempty"`
+	ChartConfigID string          `json:"chartConfigId,omitempty"`
 	OrderIndex    int             `json:"orderIndex"`
 	ParentID      string          `json:"parentId,omitempty"`
 	Layout        json.RawMessage `json:"layout"`
@@ -59,6 +60,7 @@ type NewPageContent struct {
 	Label         string          `json:"label"`
 	TableConfigID string          `json:"tableConfigId" validate:"omitempty,uuid"`
 	FormID        string          `json:"formId" validate:"omitempty,uuid"`
+	ChartConfigID string          `json:"chartConfigId" validate:"omitempty,uuid"`
 	OrderIndex    int             `json:"orderIndex"`
 	ParentID      string          `json:"parentId" validate:"omitempty,uuid"`
 	Layout        json.RawMessage `json:"layout"`
@@ -83,6 +85,9 @@ func (app NewPageContent) Validate() error {
 	}
 	if app.ContentType == "form" && app.FormID == "" {
 		return errs.Newf(errs.InvalidArgument, "form content type requires formId")
+	}
+	if app.ContentType == "chart" && app.ChartConfigID == "" {
+		return errs.Newf(errs.InvalidArgument, "chart content type requires chartConfigId")
 	}
 
 	return nil
@@ -133,6 +138,10 @@ func ToAppPageContent(bus pagecontentbus.PageContent) PageContent {
 
 	if bus.FormID != uuid.Nil {
 		app.FormID = bus.FormID.String()
+	}
+
+	if bus.ChartConfigID != uuid.Nil {
+		app.ChartConfigID = bus.ChartConfigID.String()
 	}
 
 	if bus.ParentID != uuid.Nil {
@@ -190,6 +199,14 @@ func toBusNewPageContent(app NewPageContent) (pagecontentbus.NewPageContent, err
 			return pagecontentbus.NewPageContent{}, fmt.Errorf("parse form id: %w", err)
 		}
 		bus.FormID = formID
+	}
+
+	if app.ChartConfigID != "" {
+		chartConfigID, err := uuid.Parse(app.ChartConfigID)
+		if err != nil {
+			return pagecontentbus.NewPageContent{}, fmt.Errorf("parse chart config id: %w", err)
+		}
+		bus.ChartConfigID = chartConfigID
 	}
 
 	if app.ParentID != "" {

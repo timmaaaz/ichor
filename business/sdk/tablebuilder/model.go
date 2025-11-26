@@ -47,6 +47,66 @@ type DataSource struct {
 	Filters      []Filter       `json:"filters,omitempty"`
 	Sort         []Sort         `json:"sort,omitempty"`
 	Rows         int            `json:"rows,omitempty"`
+
+	// Chart aggregation (safe, structured)
+	Metrics []MetricConfig `json:"metrics,omitempty"`
+	GroupBy *GroupByConfig `json:"group_by,omitempty"`
+}
+
+// =============================================================================
+// Chart Metric Configuration Types
+// =============================================================================
+
+// MetricConfig defines an aggregated value for charts
+type MetricConfig struct {
+	Name       string            `json:"name"`                 // Output alias: "total_revenue"
+	Function   string            `json:"function"`             // sum, count, avg, min, max, count_distinct
+	Column     string            `json:"column,omitempty"`     // Simple column: "quantity"
+	Expression *ExpressionConfig `json:"expression,omitempty"` // For multi-column math
+}
+
+// ExpressionConfig for multi-column arithmetic
+type ExpressionConfig struct {
+	Operator string   `json:"operator"` // multiply, add, subtract, divide
+	Columns  []string `json:"columns"`  // ["order_line_items.quantity", "product_costs.selling_price"]
+}
+
+// GroupByConfig for time-series and categorical grouping
+type GroupByConfig struct {
+	Column   string `json:"column"`             // "orders.created_date" or "categories.name"
+	Interval string `json:"interval,omitempty"` // day, week, month, quarter, year (dates only)
+	Alias    string `json:"alias,omitempty"`    // Output name: "month"
+}
+
+// =============================================================================
+// Metric Validation Whitelists
+// =============================================================================
+
+// AllowedAggregateFunctions contains the allowed aggregate functions (whitelist)
+var AllowedAggregateFunctions = map[string]string{
+	"sum":            "SUM",
+	"count":          "COUNT",
+	"count_distinct": "COUNT_DISTINCT", // Special handling in builder
+	"avg":            "AVG",
+	"min":            "MIN",
+	"max":            "MAX",
+}
+
+// AllowedOperators contains the allowed expression operators
+var AllowedOperators = map[string]string{
+	"multiply": "*",
+	"add":      "+",
+	"subtract": "-",
+	"divide":   "/",
+}
+
+// AllowedIntervals contains the allowed time intervals for GROUP BY
+var AllowedIntervals = map[string]string{
+	"day":     "day",
+	"week":    "week",
+	"month":   "month",
+	"quarter": "quarter",
+	"year":    "year",
 }
 
 // SelectConfig defines what columns to select
