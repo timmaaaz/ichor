@@ -347,7 +347,7 @@ func upsert400(sd apitest.SeedData) []apitest.Table {
 				},
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "entity nonexistent not registered: entity nonexistent not registered"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "form validation failed: [{EntityName:nonexistent Operation:create MissingFields:[entity 'nonexistent' not registered in system] AvailableFields:[]}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

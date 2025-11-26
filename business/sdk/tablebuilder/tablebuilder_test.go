@@ -1161,3 +1161,416 @@ func printRelationships(result *tablebuilder.TableData) {
 		)
 	}
 }
+
+// =============================================================================
+// Chart Type Tests
+// =============================================================================
+
+func Test_ChartTypes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("chart type constants", func(t *testing.T) {
+		// Verify all chart type constants are defined
+		chartTypes := []string{
+			tablebuilder.ChartTypeLine,
+			tablebuilder.ChartTypeBar,
+			tablebuilder.ChartTypeStackedBar,
+			tablebuilder.ChartTypeStackedArea,
+			tablebuilder.ChartTypeCombo,
+			tablebuilder.ChartTypeKPI,
+			tablebuilder.ChartTypeGauge,
+			tablebuilder.ChartTypePie,
+			tablebuilder.ChartTypeWaterfall,
+			tablebuilder.ChartTypeFunnel,
+			tablebuilder.ChartTypeHeatmap,
+			tablebuilder.ChartTypeTreemap,
+			tablebuilder.ChartTypeGantt,
+		}
+
+		expected := []string{
+			"line", "bar", "stacked-bar", "stacked-area", "combo",
+			"kpi", "gauge", "pie", "waterfall", "funnel",
+			"heatmap", "treemap", "gantt",
+		}
+
+		for i, ct := range chartTypes {
+			if ct != expected[i] {
+				t.Errorf("chart type mismatch: got %s, want %s", ct, expected[i])
+			}
+		}
+	})
+
+	t.Run("chart response serialization", func(t *testing.T) {
+		// Create a sample KPI chart response
+		kpiResponse := tablebuilder.ChartResponse{
+			Type:  tablebuilder.ChartTypeKPI,
+			Title: "Total Revenue",
+			KPI: &tablebuilder.KPIData{
+				Value:         125000.50,
+				PreviousValue: 100000.00,
+				Change:        25.0,
+				Trend:         "up",
+				Label:         "Revenue",
+				Format:        "currency",
+			},
+			Meta: tablebuilder.ChartMeta{
+				ExecutionTime: 45,
+				RowsProcessed: 1,
+			},
+		}
+
+		jsonBytes, err := json.Marshal(kpiResponse)
+		if err != nil {
+			t.Fatalf("failed to marshal KPI response: %v", err)
+		}
+
+		var unmarshaled tablebuilder.ChartResponse
+		if err := json.Unmarshal(jsonBytes, &unmarshaled); err != nil {
+			t.Fatalf("failed to unmarshal KPI response: %v", err)
+		}
+
+		if unmarshaled.Type != tablebuilder.ChartTypeKPI {
+			t.Errorf("type mismatch: got %s, want %s", unmarshaled.Type, tablebuilder.ChartTypeKPI)
+		}
+		if unmarshaled.KPI == nil {
+			t.Fatal("KPI data is nil after unmarshaling")
+		}
+		if unmarshaled.KPI.Value != 125000.50 {
+			t.Errorf("KPI value mismatch: got %f, want %f", unmarshaled.KPI.Value, 125000.50)
+		}
+	})
+
+	t.Run("categorical chart response", func(t *testing.T) {
+		// Create a sample line chart response
+		lineResponse := tablebuilder.ChartResponse{
+			Type:       tablebuilder.ChartTypeLine,
+			Title:      "Monthly Revenue",
+			Categories: []string{"Jan", "Feb", "Mar", "Apr"},
+			Series: []tablebuilder.SeriesData{
+				{
+					Name: "Revenue",
+					Data: []float64{10000, 12000, 15000, 18000},
+				},
+				{
+					Name: "Costs",
+					Data: []float64{8000, 9000, 10000, 11000},
+				},
+			},
+			Meta: tablebuilder.ChartMeta{
+				ExecutionTime: 120,
+				RowsProcessed: 4,
+			},
+		}
+
+		jsonBytes, err := json.Marshal(lineResponse)
+		if err != nil {
+			t.Fatalf("failed to marshal line response: %v", err)
+		}
+
+		var unmarshaled tablebuilder.ChartResponse
+		if err := json.Unmarshal(jsonBytes, &unmarshaled); err != nil {
+			t.Fatalf("failed to unmarshal line response: %v", err)
+		}
+
+		if len(unmarshaled.Categories) != 4 {
+			t.Errorf("categories length mismatch: got %d, want 4", len(unmarshaled.Categories))
+		}
+		if len(unmarshaled.Series) != 2 {
+			t.Errorf("series length mismatch: got %d, want 2", len(unmarshaled.Series))
+		}
+	})
+
+	t.Run("combo chart with dual axis", func(t *testing.T) {
+		comboResponse := tablebuilder.ChartResponse{
+			Type:       tablebuilder.ChartTypeCombo,
+			Title:      "Revenue vs Growth Rate",
+			Categories: []string{"Q1", "Q2", "Q3", "Q4"},
+			Series: []tablebuilder.SeriesData{
+				{
+					Name:       "Revenue",
+					Type:       "bar",
+					YAxisIndex: 0,
+					Data:       []float64{100000, 120000, 150000, 180000},
+				},
+				{
+					Name:       "Growth Rate",
+					Type:       "line",
+					YAxisIndex: 1,
+					Data:       []float64{0, 20, 25, 20},
+				},
+			},
+			Meta: tablebuilder.ChartMeta{
+				ExecutionTime: 80,
+				RowsProcessed: 4,
+			},
+		}
+
+		jsonBytes, err := json.Marshal(comboResponse)
+		if err != nil {
+			t.Fatalf("failed to marshal combo response: %v", err)
+		}
+
+		var unmarshaled tablebuilder.ChartResponse
+		if err := json.Unmarshal(jsonBytes, &unmarshaled); err != nil {
+			t.Fatalf("failed to unmarshal combo response: %v", err)
+		}
+
+		if unmarshaled.Series[0].Type != "bar" {
+			t.Errorf("first series type mismatch: got %s, want bar", unmarshaled.Series[0].Type)
+		}
+		if unmarshaled.Series[1].YAxisIndex != 1 {
+			t.Errorf("second series yAxisIndex mismatch: got %d, want 1", unmarshaled.Series[1].YAxisIndex)
+		}
+	})
+
+	t.Run("chart visual settings", func(t *testing.T) {
+		settings := tablebuilder.ChartVisualSettings{
+			ChartType:      tablebuilder.ChartTypeLine,
+			CategoryColumn: "month",
+			ValueColumns:   []string{"revenue", "costs"},
+			XAxis: &tablebuilder.AxisConfig{
+				Title: "Month",
+				Type:  "category",
+			},
+			YAxis: &tablebuilder.AxisConfig{
+				Title:  "Amount",
+				Type:   "value",
+				Format: "currency",
+			},
+			Legend: &tablebuilder.LegendConfig{
+				Show:     true,
+				Position: "top",
+			},
+			Colors: []string{"#3498db", "#e74c3c"},
+		}
+
+		jsonBytes, err := json.Marshal(settings)
+		if err != nil {
+			t.Fatalf("failed to marshal chart settings: %v", err)
+		}
+
+		var unmarshaled tablebuilder.ChartVisualSettings
+		if err := json.Unmarshal(jsonBytes, &unmarshaled); err != nil {
+			t.Fatalf("failed to unmarshal chart settings: %v", err)
+		}
+
+		if unmarshaled.ChartType != tablebuilder.ChartTypeLine {
+			t.Errorf("chart type mismatch: got %s, want %s", unmarshaled.ChartType, tablebuilder.ChartTypeLine)
+		}
+		if len(unmarshaled.ValueColumns) != 2 {
+			t.Errorf("value columns length mismatch: got %d, want 2", len(unmarshaled.ValueColumns))
+		}
+	})
+
+	t.Run("KPI config thresholds", func(t *testing.T) {
+		kpiConfig := tablebuilder.KPIConfig{
+			Label:             "Active Users",
+			Format:            "number",
+			CompareColumn:     "previous_users",
+			TargetValue:       1000,
+			ThresholdWarning:  800,
+			ThresholdCritical: 500,
+		}
+
+		jsonBytes, err := json.Marshal(kpiConfig)
+		if err != nil {
+			t.Fatalf("failed to marshal KPI config: %v", err)
+		}
+
+		var unmarshaled tablebuilder.KPIConfig
+		if err := json.Unmarshal(jsonBytes, &unmarshaled); err != nil {
+			t.Fatalf("failed to unmarshal KPI config: %v", err)
+		}
+
+		if unmarshaled.ThresholdWarning != 800 {
+			t.Errorf("threshold warning mismatch: got %f, want 800", unmarshaled.ThresholdWarning)
+		}
+	})
+}
+
+func Test_ChartTransformer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("transform KPI from table data", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"total_revenue": float64(125000.50)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Total Revenue",
+			WidgetType:    "kpi",
+			Visualization: "kpi",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeKPI {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeKPI)
+		}
+		if result.KPI == nil {
+			t.Fatal("KPI data is nil")
+		}
+		if result.KPI.Value != 125000.50 {
+			t.Errorf("KPI value mismatch: got %f, want %f", result.KPI.Value, 125000.50)
+		}
+	})
+
+	t.Run("transform line chart from table data", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"month": "Jan", "revenue": float64(10000), "costs": float64(8000)},
+				{"month": "Feb", "revenue": float64(12000), "costs": float64(9000)},
+				{"month": "Mar", "revenue": float64(15000), "costs": float64(10000)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Monthly Revenue",
+			WidgetType:    "chart",
+			Visualization: "line",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeLine {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeLine)
+		}
+		if len(result.Categories) != 3 {
+			t.Errorf("categories length mismatch: got %d, want 3", len(result.Categories))
+		}
+		// Should have 2 series (revenue and costs)
+		if len(result.Series) < 1 {
+			t.Errorf("series length mismatch: got %d, want at least 1", len(result.Series))
+		}
+	})
+
+	t.Run("transform bar chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"product": "Widget A", "sales": float64(150)},
+				{"product": "Widget B", "sales": float64(200)},
+				{"product": "Widget C", "sales": float64(100)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Product Sales",
+			WidgetType:    "chart",
+			Visualization: "bar",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypeBar {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeBar)
+		}
+	})
+
+	t.Run("transform pie chart", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"category": "Electronics", "value": float64(45)},
+				{"category": "Clothing", "value": float64(30)},
+				{"category": "Food", "value": float64(25)},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Sales by Category",
+			WidgetType:    "chart",
+			Visualization: "pie",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.Type != tablebuilder.ChartTypePie {
+			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypePie)
+		}
+		if len(result.Series) != 3 {
+			t.Errorf("series length mismatch: got %d, want 3", len(result.Series))
+		}
+	})
+
+	t.Run("transformer handles empty data", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Empty KPI",
+			WidgetType:    "kpi",
+			Visualization: "kpi",
+		}
+
+		result, err := transformer.Transform(data, config)
+		if err != nil {
+			t.Fatalf("transform failed: %v", err)
+		}
+
+		if result.KPI == nil {
+			t.Fatal("KPI data should not be nil for empty data")
+		}
+		if result.KPI.Value != 0 {
+			t.Errorf("empty KPI should have value 0, got %f", result.KPI.Value)
+		}
+	})
+
+	t.Run("transformer rejects nil data", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		config := &tablebuilder.Config{
+			Title:         "Test",
+			Visualization: "kpi",
+		}
+
+		_, err := transformer.Transform(nil, config)
+		if err == nil {
+			t.Error("expected error for nil data")
+		}
+	})
+
+	t.Run("transformer rejects table type", func(t *testing.T) {
+		transformer := tablebuilder.NewChartTransformer()
+
+		data := &tablebuilder.TableData{
+			Data: []tablebuilder.TableRow{
+				{"col": "value"},
+			},
+		}
+
+		config := &tablebuilder.Config{
+			Title:         "Table",
+			WidgetType:    "table",
+			Visualization: "table",
+		}
+
+		_, err := transformer.Transform(data, config)
+		if err == nil {
+			t.Error("expected error for table type")
+		}
+	})
+}

@@ -40,6 +40,21 @@ func (r *FormValidationRequest) Decode(data []byte) error {
 	return json.Unmarshal(data, r)
 }
 
+// Validate checks that the request is valid.
+func (r FormValidationRequest) Validate() error {
+	if len(r.Operations) == 0 {
+		return errs.Newf(errs.InvalidArgument, "validate: operations is required")
+	}
+
+	for entityName, operation := range r.Operations {
+		if !operation.IsValid() {
+			return errs.Newf(errs.InvalidArgument, "entity %s has invalid operation: %s", entityName, operation)
+		}
+	}
+
+	return nil
+}
+
 // ValidateForm validates that a form has all required fields for the specified operations.
 //
 // This method checks that for each entity and operation type in the request,
@@ -61,6 +76,12 @@ func (a *App) ValidateForm(
 	formID uuid.UUID,
 	req FormValidationRequest,
 ) (FormValidationResult, error) {
+	// Check form exists
+	_, err := a.formBus.QueryByID(ctx, formID)
+	if err != nil {
+		return FormValidationResult{}, errs.New(errs.NotFound, err)
+	}
+
 	// Load form fields
 	fields, err := a.formFieldBus.QueryByFormID(ctx, formID)
 	if err != nil {

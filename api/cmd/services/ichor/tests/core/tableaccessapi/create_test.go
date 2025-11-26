@@ -19,7 +19,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &tableaccessapp.NewTableAccess{
 				RoleID:    sd.Roles[len(sd.Roles)-1].ID,
-				TableName: "allocation_results",
+				TableName: "create_test_table",
 				CanCreate: true,
 				CanRead:   true,
 				CanUpdate: true,
@@ -28,7 +28,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &tableaccessapp.TableAccess{},
 			ExpResp: &tableaccessapp.TableAccess{
 				RoleID:    sd.Roles[len(sd.Roles)-1].ID,
-				TableName: "allocation_results",
+				TableName: "create_test_table",
 				CanCreate: true,
 				CanRead:   true,
 				CanUpdate: true,

@@ -17,6 +17,9 @@ func queryAll200(sd apitest.SeedData) []apitest.Table {
 		*sd.SimpleTableConfig,
 		*sd.PageTableConfig,
 		*sd.ComplexTableConfig,
+		*sd.KPIChartConfig,
+		*sd.BarChartConfig,
+		*sd.PieChartConfig,
 	})
 
 	table := []apitest.Table{

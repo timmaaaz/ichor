@@ -552,3 +552,207 @@ func toAppRelationships(busRels []tablebuilder.RelationshipInfo) []RelationshipI
 	}
 	return appRels
 }
+
+// =============================================================================
+// Chart Response Types
+// =============================================================================
+
+// ChartResponse represents the unified response for all chart types
+type ChartResponse struct {
+	Type       string       `json:"type"`
+	Title      string       `json:"title,omitempty"`
+	Subtitle   string       `json:"subtitle,omitempty"`
+	Categories []string     `json:"categories,omitempty"`
+	Series     []SeriesData `json:"series,omitempty"`
+	KPI        *KPIData     `json:"kpi,omitempty"`
+	Heatmap    *HeatmapData `json:"heatmap,omitempty"`
+	Gantt      []GanttData  `json:"gantt,omitempty"`
+	Treemap    *TreemapData `json:"treemap,omitempty"`
+	Meta       ChartMeta    `json:"meta"`
+}
+
+// Encode implements the encoder interface.
+func (app ChartResponse) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// SeriesData represents a data series for categorical charts
+type SeriesData struct {
+	Name       string    `json:"name"`
+	Type       string    `json:"type,omitempty"`
+	YAxisIndex int       `json:"yAxisIndex,omitempty"`
+	Data       []float64 `json:"data"`
+	Stack      string    `json:"stack,omitempty"`
+}
+
+// KPIData represents KPI-specific data
+type KPIData struct {
+	Value         float64 `json:"value"`
+	PreviousValue float64 `json:"previousValue,omitempty"`
+	Change        float64 `json:"change,omitempty"`
+	Trend         string  `json:"trend,omitempty"`
+	Label         string  `json:"label"`
+	Format        string  `json:"format,omitempty"`
+	Target        float64 `json:"target,omitempty"`
+	Min           float64 `json:"min,omitempty"`
+	Max           float64 `json:"max,omitempty"`
+}
+
+// ChartMeta contains metadata about the chart query
+type ChartMeta struct {
+	ExecutionTime int64  `json:"executionTimeMs"`
+	RowsProcessed int    `json:"rowsProcessed"`
+	Error         string `json:"error,omitempty"`
+}
+
+// HeatmapData for heatmap charts
+type HeatmapData struct {
+	XCategories []string    `json:"xCategories"`
+	YCategories []string    `json:"yCategories"`
+	Data        [][]float64 `json:"data"`
+	Min         float64     `json:"min"`
+	Max         float64     `json:"max"`
+}
+
+// GanttData for Gantt charts
+type GanttData struct {
+	Name      string `json:"name"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	Progress  int    `json:"progress,omitempty"`
+	Category  string `json:"category,omitempty"`
+}
+
+// TreemapData for treemap charts
+type TreemapData struct {
+	Name     string        `json:"name"`
+	Value    float64       `json:"value,omitempty"`
+	Children []TreemapData `json:"children,omitempty"`
+}
+
+// toAppChartResponse converts business layer ChartResponse to app layer
+func toAppChartResponse(bus *tablebuilder.ChartResponse) ChartResponse {
+	resp := ChartResponse{
+		Type:       bus.Type,
+		Title:      bus.Title,
+		Subtitle:   bus.Subtitle,
+		Categories: bus.Categories,
+		Meta: ChartMeta{
+			ExecutionTime: bus.Meta.ExecutionTime,
+			RowsProcessed: bus.Meta.RowsProcessed,
+			Error:         bus.Meta.Error,
+		},
+	}
+
+	// Convert series
+	if len(bus.Series) > 0 {
+		resp.Series = make([]SeriesData, len(bus.Series))
+		for i, s := range bus.Series {
+			resp.Series[i] = SeriesData{
+				Name:       s.Name,
+				Type:       s.Type,
+				YAxisIndex: s.YAxisIndex,
+				Data:       s.Data,
+				Stack:      s.Stack,
+			}
+		}
+	}
+
+	// Convert KPI
+	if bus.KPI != nil {
+		resp.KPI = &KPIData{
+			Value:         bus.KPI.Value,
+			PreviousValue: bus.KPI.PreviousValue,
+			Change:        bus.KPI.Change,
+			Trend:         bus.KPI.Trend,
+			Label:         bus.KPI.Label,
+			Format:        bus.KPI.Format,
+			Target:        bus.KPI.Target,
+			Min:           bus.KPI.Min,
+			Max:           bus.KPI.Max,
+		}
+	}
+
+	// Convert Heatmap
+	if bus.Heatmap != nil {
+		resp.Heatmap = &HeatmapData{
+			XCategories: bus.Heatmap.XCategories,
+			YCategories: bus.Heatmap.YCategories,
+			Data:        bus.Heatmap.Data,
+			Min:         bus.Heatmap.Min,
+			Max:         bus.Heatmap.Max,
+		}
+	}
+
+	// Convert Gantt
+	if len(bus.Gantt) > 0 {
+		resp.Gantt = make([]GanttData, len(bus.Gantt))
+		for i, g := range bus.Gantt {
+			resp.Gantt[i] = GanttData{
+				Name:      g.Name,
+				StartDate: g.StartDate,
+				EndDate:   g.EndDate,
+				Progress:  g.Progress,
+				Category:  g.Category,
+			}
+		}
+	}
+
+	// Convert Treemap
+	if bus.Treemap != nil {
+		resp.Treemap = toAppTreemapData(bus.Treemap)
+	}
+
+	return resp
+}
+
+// =============================================================================
+// Chart Preview Request
+// =============================================================================
+
+// PreviewChartDataRequest represents a request to preview chart data with a config.
+type PreviewChartDataRequest struct {
+	Config json.RawMessage `json:"config" validate:"required"`
+	Query  TableQuery      `json:"query"`
+}
+
+// Decode implements the decoder interface.
+func (app *PreviewChartDataRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app PreviewChartDataRequest) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	if len(app.Config) == 0 {
+		return errs.Newf(errs.InvalidArgument, "config is required")
+	}
+	return nil
+}
+
+// toAppTreemapData recursively converts treemap data
+func toAppTreemapData(bus *tablebuilder.TreemapData) *TreemapData {
+	if bus == nil {
+		return nil
+	}
+
+	result := &TreemapData{
+		Name:  bus.Name,
+		Value: bus.Value,
+	}
+
+	if len(bus.Children) > 0 {
+		result.Children = make([]TreemapData, len(bus.Children))
+		for i, child := range bus.Children {
+			childPtr := toAppTreemapData(&child)
+			if childPtr != nil {
+				result.Children[i] = *childPtr
+			}
+		}
+	}
+
+	return result
+}

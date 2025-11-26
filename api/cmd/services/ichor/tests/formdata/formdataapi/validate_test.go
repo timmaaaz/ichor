@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/formdata/formdataapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/formdataregistry"
 )
 
@@ -143,8 +144,11 @@ func validate400(sd apitest.SeedData) []apitest.Table {
 					"users": "invalid_operation",
 				},
 			},
-			GotResp: &formdataapp.FormValidationResult{},
-			ExpResp: &formdataapp.FormValidationResult{},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "entity users has invalid operation: invalid_operation"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
 		},
 	}
 }
@@ -163,8 +167,11 @@ func validate401(sd apitest.SeedData) []apitest.Table {
 					"users": formdataregistry.OperationCreate,
 				},
 			},
-			GotResp: &formdataapp.FormValidationResult{},
-			ExpResp: &formdataapp.FormValidationResult{},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.Unauthenticated, "error parsing token: token contains an invalid number of segments"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
 		},
 	}
 }
@@ -183,8 +190,20 @@ func validate404(sd apitest.SeedData) []apitest.Table {
 					"users": formdataregistry.OperationCreate,
 				},
 			},
-			GotResp: &formdataapp.FormValidationResult{},
-			ExpResp: &formdataapp.FormValidationResult{},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.NotFound, ""),
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(*errs.Error)
+				if !ok {
+					return "expected error response"
+				}
+
+				if gotErr.Code != errs.NotFound {
+					return fmt.Sprintf("expected NotFound code, got %v", gotErr.Code)
+				}
+
+				return ""
+			},
 		},
 	}
 }
