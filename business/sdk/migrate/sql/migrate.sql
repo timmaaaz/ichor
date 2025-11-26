@@ -1536,7 +1536,7 @@ UPDATE core.table_access SET table_name = 'hr.user_approval_status' WHERE table_
 UPDATE core.table_access SET table_name = 'hr.titles' WHERE table_name = 'titles';
 UPDATE core.table_access SET table_name = 'hr.offices' WHERE table_name = 'offices';
 UPDATE core.table_access SET table_name = 'hr.homes' WHERE table_name = 'homes';
-UPDATE core.table_access SET table_name = 'hr.approval_status' WHERE table_name = 'approval_status';
+UPDATE core.table_access SET table_name = 'assets.approval_status' WHERE table_name = 'approval_status';
 UPDATE core.table_access SET table_name = 'hr.reports_to' WHERE table_name = 'reports_to';
 UPDATE core.table_access SET table_name = 'hr.user_approval_comments' WHERE table_name = 'user_approval_comments';
 
@@ -1550,7 +1550,7 @@ UPDATE core.table_access SET table_name = 'core.role_pages' WHERE table_name = '
 UPDATE core.table_access SET table_name = 'core.table_access' WHERE table_name = 'table_access';
 
 -- Sales schema
-UPDATE core.table_access SET table_name = 'sales.fulfillment_status' WHERE table_name = 'fulfillment_status';
+UPDATE core.table_access SET table_name = 'assets.fulfillment_status' WHERE table_name = 'fulfillment_status';
 UPDATE core.table_access SET table_name = 'sales.customers' WHERE table_name = 'customers';
 UPDATE core.table_access SET table_name = 'sales.orders' WHERE table_name = 'orders';
 UPDATE core.table_access SET table_name = 'sales.order_line_items' WHERE table_name = 'order_line_items';

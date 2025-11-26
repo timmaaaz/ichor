@@ -30,7 +30,7 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 		{RoleID: uuid.Nil, TableName: "hr.titles", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "hr.offices", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "hr.homes", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
-		{RoleID: uuid.Nil, TableName: "hr.approval_status", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "assets.approval_status", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "hr.reports_to", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "hr.user_approval_comments", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 
@@ -44,7 +44,7 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 		{RoleID: uuid.Nil, TableName: "core.table_access", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 
 		// Sales schema
-		{RoleID: uuid.Nil, TableName: "sales.fulfillment_status", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "assets.fulfillment_status", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "sales.customers", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "sales.orders", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "sales.order_line_items", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
