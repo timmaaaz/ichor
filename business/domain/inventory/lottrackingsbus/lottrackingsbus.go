@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -99,15 +98,31 @@ func (b *Business) Update(ctx context.Context, lt LotTrackings, ul UpdateLotTrac
 	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(ul, &lt)
-	if err != nil {
-		return LotTrackings{}, fmt.Errorf("populate lot tracking from update lot tracking: %w", err)
+	if ul.SupplierProductID != nil {
+		lt.SupplierProductID = *ul.SupplierProductID
+	}
+	if ul.LotNumber != nil {
+		lt.LotNumber = *ul.LotNumber
+	}
+	if ul.ManufactureDate != nil {
+		lt.ManufactureDate = *ul.ManufactureDate
+	}
+	if ul.ExpirationDate != nil {
+		lt.ExpirationDate = *ul.ExpirationDate
+	}
+	if ul.RecievedDate != nil {
+		lt.RecievedDate = *ul.RecievedDate
+	}
+	if ul.Quantity != nil {
+		lt.Quantity = *ul.Quantity
+	}
+	if ul.QualityStatus != nil {
+		lt.QualityStatus = *ul.QualityStatus
 	}
 
 	lt.UpdatedDate = time.Now()
 
-	err = b.storer.Update(ctx, lt)
-	if err != nil {
+	if err := b.storer.Update(ctx, lt); err != nil {
 		return LotTrackings{}, fmt.Errorf("update: %w", err)
 	}
 

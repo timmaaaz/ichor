@@ -2,10 +2,11 @@ package assetapp
 
 import (
 	"encoding/json"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -73,10 +74,31 @@ func (app NewAsset) Validate() error {
 }
 
 func toBusNewAsset(app NewAsset) (assetbus.NewAsset, error) {
-	dest := assetbus.NewAsset{}
+	validAssetID, err := uuid.Parse(app.ValidAssetID)
+	if err != nil {
+		return assetbus.NewAsset{}, errs.Newf(errs.InvalidArgument, "parse validAssetID: %s", err)
+	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	assetConditionID, err := uuid.Parse(app.AssetConditionID)
+	if err != nil {
+		return assetbus.NewAsset{}, errs.Newf(errs.InvalidArgument, "parse assetConditionID: %s", err)
+	}
+
+	var lastMaintenance time.Time
+	if app.LastMaintenance != "" {
+		lastMaintenance, err = time.Parse(timeutil.FORMAT, app.LastMaintenance)
+		if err != nil {
+			return assetbus.NewAsset{}, errs.Newf(errs.InvalidArgument, "parse lastMaintenance: %s", err)
+		}
+	}
+
+	bus := assetbus.NewAsset{
+		ValidAssetID:     validAssetID,
+		AssetConditionID: assetConditionID,
+		LastMaintenance:  lastMaintenance,
+		SerialNumber:     app.SerialNumber,
+	}
+	return bus, nil
 }
 
 type UpdateAsset struct {
@@ -101,9 +123,38 @@ func (app UpdateAsset) Validate() error {
 }
 
 func toBusUpdateAsset(app UpdateAsset) (assetbus.UpdateAsset, error) {
-	dest := assetbus.UpdateAsset{}
+	var validAssetID *uuid.UUID
+	if app.ValidAssetID != nil {
+		id, err := uuid.Parse(*app.ValidAssetID)
+		if err != nil {
+			return assetbus.UpdateAsset{}, errs.Newf(errs.InvalidArgument, "parse validAssetID: %s", err)
+		}
+		validAssetID = &id
+	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	var assetConditionID *uuid.UUID
+	if app.AssetConditionID != nil {
+		id, err := uuid.Parse(*app.AssetConditionID)
+		if err != nil {
+			return assetbus.UpdateAsset{}, errs.Newf(errs.InvalidArgument, "parse assetConditionID: %s", err)
+		}
+		assetConditionID = &id
+	}
 
-	return dest, err
+	var lastMaintenance *time.Time
+	if app.LastMaintenance != nil {
+		t, err := time.Parse(timeutil.FORMAT, *app.LastMaintenance)
+		if err != nil {
+			return assetbus.UpdateAsset{}, errs.Newf(errs.InvalidArgument, "parse lastMaintenance: %s", err)
+		}
+		lastMaintenance = &t
+	}
+
+	bus := assetbus.UpdateAsset{
+		ValidAssetID:     validAssetID,
+		AssetConditionID: assetConditionID,
+		LastMaintenance:  lastMaintenance,
+		SerialNumber:     app.SerialNumber,
+	}
+	return bus, nil
 }

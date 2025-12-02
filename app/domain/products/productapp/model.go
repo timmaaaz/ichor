@@ -3,10 +3,11 @@ package productapp
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -110,9 +111,46 @@ func (app NewProduct) Validate() error {
 }
 
 func toBusNewProduct(app NewProduct) (productbus.NewProduct, error) {
-	dest := productbus.NewProduct{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	brandID, err := uuid.Parse(app.BrandID)
+	if err != nil {
+		return productbus.NewProduct{}, errs.Newf(errs.InvalidArgument, "parse brandID: %s", err)
+	}
+
+	productCategoryID, err := uuid.Parse(app.ProductCategoryID)
+	if err != nil {
+		return productbus.NewProduct{}, errs.Newf(errs.InvalidArgument, "parse productCategoryID: %s", err)
+	}
+
+	isActive, err := strconv.ParseBool(app.IsActive)
+	if err != nil {
+		return productbus.NewProduct{}, errs.Newf(errs.InvalidArgument, "parse isActive: %s", err)
+	}
+
+	isPerishable, err := strconv.ParseBool(app.IsPerishable)
+	if err != nil {
+		return productbus.NewProduct{}, errs.Newf(errs.InvalidArgument, "parse isPerishable: %s", err)
+	}
+
+	unitsPerCase, err := strconv.Atoi(app.UnitsPerCase)
+	if err != nil {
+		return productbus.NewProduct{}, errs.Newf(errs.InvalidArgument, "parse unitsPerCase: %s", err)
+	}
+
+	bus := productbus.NewProduct{
+		SKU:                  app.SKU,
+		BrandID:              brandID,
+		ProductCategoryID:    productCategoryID,
+		Name:                 app.Name,
+		Description:          app.Description,
+		ModelNumber:          app.ModelNumber,
+		UpcCode:              app.UpcCode,
+		Status:               app.Status,
+		IsActive:             isActive,
+		IsPerishable:         isPerishable,
+		HandlingInstructions: app.HandlingInstructions,
+		UnitsPerCase:         unitsPerCase,
+	}
+	return bus, nil
 }
 
 type UpdateProduct struct {
@@ -145,9 +183,64 @@ func (app UpdateProduct) Validate() error {
 }
 
 func toBusUpdateProduct(app UpdateProduct) (productbus.UpdateProduct, error) {
-	dest := productbus.UpdateProduct{}
+	var brandID *uuid.UUID
+	if app.BrandID != nil {
+		id, err := uuid.Parse(*app.BrandID)
+		if err != nil {
+			return productbus.UpdateProduct{}, errs.Newf(errs.InvalidArgument, "parse brandID: %s", err)
+		}
+		brandID = &id
+	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	var productCategoryID *uuid.UUID
+	if app.ProductCategoryID != nil {
+		id, err := uuid.Parse(*app.ProductCategoryID)
+		if err != nil {
+			return productbus.UpdateProduct{}, errs.Newf(errs.InvalidArgument, "parse productCategoryID: %s", err)
+		}
+		productCategoryID = &id
+	}
 
-	return dest, err
+	var isActive *bool
+	if app.IsActive != nil {
+		b, err := strconv.ParseBool(*app.IsActive)
+		if err != nil {
+			return productbus.UpdateProduct{}, errs.Newf(errs.InvalidArgument, "parse isActive: %s", err)
+		}
+		isActive = &b
+	}
+
+	var isPerishable *bool
+	if app.IsPerishable != nil {
+		b, err := strconv.ParseBool(*app.IsPerishable)
+		if err != nil {
+			return productbus.UpdateProduct{}, errs.Newf(errs.InvalidArgument, "parse isPerishable: %s", err)
+		}
+		isPerishable = &b
+	}
+
+	var unitsPerCase *int
+	if app.UnitsPerCase != nil {
+		i, err := strconv.Atoi(*app.UnitsPerCase)
+		if err != nil {
+			return productbus.UpdateProduct{}, errs.Newf(errs.InvalidArgument, "parse unitsPerCase: %s", err)
+		}
+		unitsPerCase = &i
+	}
+
+	bus := productbus.UpdateProduct{
+		SKU:                  app.SKU,
+		BrandID:              brandID,
+		ProductCategoryID:    productCategoryID,
+		Name:                 app.Name,
+		Description:          app.Description,
+		ModelNumber:          app.ModelNumber,
+		UpcCode:              app.UpcCode,
+		Status:               app.Status,
+		IsActive:             isActive,
+		IsPerishable:         isPerishable,
+		HandlingInstructions: app.HandlingInstructions,
+		UnitsPerCase:         unitsPerCase,
+	}
+	return bus, nil
 }

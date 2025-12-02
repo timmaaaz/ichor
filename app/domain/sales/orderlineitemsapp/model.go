@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -90,13 +90,45 @@ func (app NewOrderLineItem) Validate() error {
 }
 
 func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLineItem, error) {
-	var dest orderlineitemsbus.NewOrderLineItem
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	orderID, err := uuid.Parse(app.OrderID)
 	if err != nil {
-		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "toBusNewOrderLineItem: %s", err)
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse orderID: %s", err)
 	}
 
-	return dest, nil
+	productID, err := uuid.Parse(app.ProductID)
+	if err != nil {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+	}
+
+	quantity, err := strconv.Atoi(app.Quantity)
+	if err != nil {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+	}
+
+	discount, err := strconv.ParseFloat(app.Discount, 64)
+	if err != nil {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
+	}
+
+	lineItemFulfillmentStatusesID, err := uuid.Parse(app.LineItemFulfillmentStatusesID)
+	if err != nil {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse lineItemFulfillmentStatusesID: %s", err)
+	}
+
+	createdBy, err := uuid.Parse(app.CreatedBy)
+	if err != nil {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse createdBy: %s", err)
+	}
+
+	bus := orderlineitemsbus.NewOrderLineItem{
+		OrderID:                       orderID,
+		ProductID:                     productID,
+		Quantity:                      quantity,
+		Discount:                      discount,
+		LineItemFulfillmentStatusesID: lineItemFulfillmentStatusesID,
+		CreatedBy:                     createdBy,
+	}
+	return bus, nil
 }
 
 type UpdateOrderLineItem struct {
@@ -120,11 +152,67 @@ func (app UpdateOrderLineItem) Validate() error {
 }
 
 func toBusUpdateOrderLineItem(app UpdateOrderLineItem) (orderlineitemsbus.UpdateOrderLineItem, error) {
-	var dest orderlineitemsbus.UpdateOrderLineItem
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "toBusUpdateOrderLineItem: %s", err)
+	var orderID *uuid.UUID
+	if app.OrderID != nil {
+		id, err := uuid.Parse(*app.OrderID)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse orderID: %s", err)
+		}
+		orderID = &id
 	}
 
-	return dest, nil
+	var productID *uuid.UUID
+	if app.ProductID != nil {
+		id, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+		}
+		productID = &id
+	}
+
+	var quantity *int
+	if app.Quantity != nil {
+		q, err := strconv.Atoi(*app.Quantity)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+		}
+		quantity = &q
+	}
+
+	var discount *float64
+	if app.Discount != nil {
+		d, err := strconv.ParseFloat(*app.Discount, 64)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
+		}
+		discount = &d
+	}
+
+	var lineItemFulfillmentStatusesID *uuid.UUID
+	if app.LineItemFulfillmentStatusesID != nil {
+		id, err := uuid.Parse(*app.LineItemFulfillmentStatusesID)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse lineItemFulfillmentStatusesID: %s", err)
+		}
+		lineItemFulfillmentStatusesID = &id
+	}
+
+	var updatedBy *uuid.UUID
+	if app.UpdatedBy != nil {
+		id, err := uuid.Parse(*app.UpdatedBy)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse updatedBy: %s", err)
+		}
+		updatedBy = &id
+	}
+
+	bus := orderlineitemsbus.UpdateOrderLineItem{
+		OrderID:                       orderID,
+		ProductID:                     productID,
+		Quantity:                      quantity,
+		Discount:                      discount,
+		LineItemFulfillmentStatusesID: lineItemFulfillmentStatusesID,
+		UpdatedBy:                     updatedBy,
+	}
+	return bus, nil
 }

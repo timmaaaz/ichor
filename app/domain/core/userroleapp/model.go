@@ -3,9 +3,9 @@ package userroleapp
 import (
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -63,7 +63,19 @@ func (app NewUserRole) Validate() error {
 }
 
 func toBusNewUserRole(app NewUserRole) (userrolebus.NewUserRole, error) {
-	dest := userrolebus.NewUserRole{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	userID, err := uuid.Parse(app.UserID)
+	if err != nil {
+		return userrolebus.NewUserRole{}, errs.Newf(errs.InvalidArgument, "parse userID: %s", err)
+	}
+
+	roleID, err := uuid.Parse(app.RoleID)
+	if err != nil {
+		return userrolebus.NewUserRole{}, errs.Newf(errs.InvalidArgument, "parse roleID: %s", err)
+	}
+
+	bus := userrolebus.NewUserRole{
+		UserID: userID,
+		RoleID: roleID,
+	}
+	return bus, nil
 }

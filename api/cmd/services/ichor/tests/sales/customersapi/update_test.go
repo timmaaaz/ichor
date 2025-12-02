@@ -41,6 +41,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				expResp := exp.(*customersapp.Customers)
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
 			},

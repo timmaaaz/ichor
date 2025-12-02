@@ -348,7 +348,12 @@ func (ct *ChartTransformer) transformPie(data *TableData, settings *ChartVisualS
 // transformFunnel transforms data for funnel charts
 func (ct *ChartTransformer) transformFunnel(data *TableData, settings *ChartVisualSettings) (*ChartResponse, error) {
 	// Funnel is similar to pie - name/value pairs
-	return ct.transformPie(data, settings)
+	result, err := ct.transformPie(data, settings)
+	if err != nil {
+		return nil, fmt.Errorf("transformFunnel: %w", err)
+	}
+	result.Type = ChartTypeFunnel
+	return result, nil
 }
 
 // transformWaterfall transforms data for waterfall charts

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -98,13 +97,29 @@ func (b *Business) Update(ctx context.Context, sp SupplierProduct, usp UpdateSup
 	ctx, span := otel.AddSpan(ctx, "business.supplierproductbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(usp, &sp)
-	if err != nil {
-		return SupplierProduct{}, fmt.Errorf("populate supplierProduct from update supplierProduct: %w", err)
+	if usp.SupplierID != nil {
+		sp.SupplierID = *usp.SupplierID
 	}
-
+	if usp.ProductID != nil {
+		sp.ProductID = *usp.ProductID
+	}
+	if usp.SupplierPartNumber != nil {
+		sp.SupplierPartNumber = *usp.SupplierPartNumber
+	}
+	if usp.MinOrderQuantity != nil {
+		sp.MinOrderQuantity = *usp.MinOrderQuantity
+	}
+	if usp.MaxOrderQuantity != nil {
+		sp.MaxOrderQuantity = *usp.MaxOrderQuantity
+	}
+	if usp.LeadTimeDays != nil {
+		sp.LeadTimeDays = *usp.LeadTimeDays
+	}
 	if usp.UnitCost != nil {
 		sp.UnitCost = *usp.UnitCost
+	}
+	if usp.IsPrimarySupplier != nil {
+		sp.IsPrimarySupplier = *usp.IsPrimarySupplier
 	}
 
 	sp.UpdatedDate = time.Now()

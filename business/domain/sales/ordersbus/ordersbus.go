@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -96,10 +95,23 @@ func (b *Business) Update(ctx context.Context, status Order, uStatus UpdateOrder
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uStatus, &status)
-	if err != nil {
-		return Order{}, fmt.Errorf("update: %w", err)
+	if uStatus.Number != nil {
+		status.Number = *uStatus.Number
 	}
+	if uStatus.CustomerID != nil {
+		status.CustomerID = *uStatus.CustomerID
+	}
+	if uStatus.DueDate != nil {
+		status.DueDate = *uStatus.DueDate
+	}
+	if uStatus.FulfillmentStatusID != nil {
+		status.FulfillmentStatusID = *uStatus.FulfillmentStatusID
+	}
+	if uStatus.UpdatedBy != nil {
+		status.UpdatedBy = *uStatus.UpdatedBy
+	}
+
+	status.UpdatedDate = time.Now().UTC()
 
 	if err := b.storer.Update(ctx, status); err != nil {
 		return Order{}, fmt.Errorf("update: %w", err)

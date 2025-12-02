@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -98,15 +97,26 @@ func (b *Business) Update(ctx context.Context, supplier Supplier, us UpdateSuppl
 	ctx, span := otel.AddSpan(ctx, "business.supplierbus.update")
 	defer span.End()
 
-	supplier.UpdatedDate = time.Now()
-
-	if err := convert.PopulateSameTypes(us, &supplier); err != nil {
-		return Supplier{}, fmt.Errorf("populate supplier struct: %w", err)
+	if us.ContactInfosID != nil {
+		supplier.ContactInfosID = *us.ContactInfosID
 	}
-
+	if us.Name != nil {
+		supplier.Name = *us.Name
+	}
+	if us.PaymentTerms != nil {
+		supplier.PaymentTerms = *us.PaymentTerms
+	}
+	if us.LeadTimeDays != nil {
+		supplier.LeadTimeDays = *us.LeadTimeDays
+	}
 	if us.Rating != nil {
 		supplier.Rating = *us.Rating
 	}
+	if us.IsActive != nil {
+		supplier.IsActive = *us.IsActive
+	}
+
+	supplier.UpdatedDate = time.Now()
 
 	if err := b.storer.Update(ctx, supplier); err != nil {
 		return Supplier{}, fmt.Errorf("update: %w", err)

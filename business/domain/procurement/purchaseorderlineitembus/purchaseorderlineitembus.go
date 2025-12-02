@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -107,9 +106,41 @@ func (b *Business) Update(ctx context.Context, poli PurchaseOrderLineItem, upoli
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderlineitembus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(upoli, &poli)
-	if err != nil {
-		return PurchaseOrderLineItem{}, fmt.Errorf("populate same types: %w", err)
+	if upoli.SupplierProductID != nil {
+		poli.SupplierProductID = *upoli.SupplierProductID
+	}
+	if upoli.QuantityOrdered != nil {
+		poli.QuantityOrdered = *upoli.QuantityOrdered
+	}
+	if upoli.QuantityReceived != nil {
+		poli.QuantityReceived = *upoli.QuantityReceived
+	}
+	if upoli.QuantityCancelled != nil {
+		poli.QuantityCancelled = *upoli.QuantityCancelled
+	}
+	if upoli.UnitCost != nil {
+		poli.UnitCost = *upoli.UnitCost
+	}
+	if upoli.Discount != nil {
+		poli.Discount = *upoli.Discount
+	}
+	if upoli.LineTotal != nil {
+		poli.LineTotal = *upoli.LineTotal
+	}
+	if upoli.LineItemStatusID != nil {
+		poli.LineItemStatusID = *upoli.LineItemStatusID
+	}
+	if upoli.ExpectedDeliveryDate != nil {
+		poli.ExpectedDeliveryDate = *upoli.ExpectedDeliveryDate
+	}
+	if upoli.ActualDeliveryDate != nil {
+		poli.ActualDeliveryDate = *upoli.ActualDeliveryDate
+	}
+	if upoli.Notes != nil {
+		poli.Notes = *upoli.Notes
+	}
+	if upoli.UpdatedBy != nil {
+		poli.UpdatedBy = *upoli.UpdatedBy
 	}
 
 	poli.UpdatedDate = time.Now().UTC()

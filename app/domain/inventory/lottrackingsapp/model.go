@@ -3,10 +3,12 @@ package lottrackingsapp
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -90,13 +92,41 @@ func (app NewLotTrackings) Validate() error {
 }
 
 func toBusNewLotTrackings(app NewLotTrackings) (lottrackingsbus.NewLotTrackings, error) {
-	dest := lottrackingsbus.NewLotTrackings{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	supplierProductID, err := uuid.Parse(app.SupplierProductID)
 	if err != nil {
-		return lottrackingsbus.NewLotTrackings{}, fmt.Errorf("toBusNewLotTrackings: %w", err)
+		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse supplierProductID: %s", err)
 	}
 
-	return dest, nil
+	manufactureDate, err := time.Parse(timeutil.FORMAT, app.ManufactureDate)
+	if err != nil {
+		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse manufactureDate: %s", err)
+	}
+
+	expirationDate, err := time.Parse(timeutil.FORMAT, app.ExpirationDate)
+	if err != nil {
+		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse expirationDate: %s", err)
+	}
+
+	receivedDate, err := time.Parse(timeutil.FORMAT, app.RecievedDate)
+	if err != nil {
+		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse receivedDate: %s", err)
+	}
+
+	quantity, err := strconv.Atoi(app.Quantity)
+	if err != nil {
+		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+	}
+
+	bus := lottrackingsbus.NewLotTrackings{
+		SupplierProductID: supplierProductID,
+		LotNumber:         app.LotNumber,
+		ManufactureDate:   manufactureDate,
+		ExpirationDate:    expirationDate,
+		RecievedDate:      receivedDate,
+		Quantity:          quantity,
+		QualityStatus:     app.QualityStatus,
+	}
+	return bus, nil
 }
 
 type UpdateLotTrackings struct {
@@ -121,11 +151,50 @@ func (app UpdateLotTrackings) Validate() error {
 }
 
 func toBusUpdateLotTrackings(app UpdateLotTrackings) (lottrackingsbus.UpdateLotTrackings, error) {
-	dest := lottrackingsbus.UpdateLotTrackings{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return lottrackingsbus.UpdateLotTrackings{}, fmt.Errorf("toBusUpdateLotTrackings: %w", err)
+	bus := lottrackingsbus.UpdateLotTrackings{
+		LotNumber:     app.LotNumber,
+		QualityStatus: app.QualityStatus,
 	}
 
-	return dest, nil
+	if app.SupplierProductID != nil {
+		supplierProductID, err := uuid.Parse(*app.SupplierProductID)
+		if err != nil {
+			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse supplierProductID: %s", err)
+		}
+		bus.SupplierProductID = &supplierProductID
+	}
+
+	if app.ManufactureDate != nil {
+		manufactureDate, err := time.Parse(timeutil.FORMAT, *app.ManufactureDate)
+		if err != nil {
+			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse manufactureDate: %s", err)
+		}
+		bus.ManufactureDate = &manufactureDate
+	}
+
+	if app.ExpirationDate != nil {
+		expirationDate, err := time.Parse(timeutil.FORMAT, *app.ExpirationDate)
+		if err != nil {
+			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse expirationDate: %s", err)
+		}
+		bus.ExpirationDate = &expirationDate
+	}
+
+	if app.RecievedDate != nil {
+		receivedDate, err := time.Parse(timeutil.FORMAT, *app.RecievedDate)
+		if err != nil {
+			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse receivedDate: %s", err)
+		}
+		bus.RecievedDate = &receivedDate
+	}
+
+	if app.Quantity != nil {
+		quantity, err := strconv.Atoi(*app.Quantity)
+		if err != nil {
+			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+		}
+		bus.Quantity = &quantity
+	}
+
+	return bus, nil
 }

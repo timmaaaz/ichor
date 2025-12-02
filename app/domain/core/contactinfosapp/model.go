@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil/timeonly"
 )
 
@@ -105,8 +105,6 @@ func (app NewContactInfos) Validate() error {
 }
 
 func toBusNewContactInfos(app NewContactInfos) (contactinfosbus.NewContactInfos, error) {
-	dest := contactinfosbus.NewContactInfos{}
-
 	if !timeonly.ValidateTimeOnlyFmt(app.AvailableHoursEnd) {
 		return contactinfosbus.NewContactInfos{}, fmt.Errorf("invalid time format for ending hours: %q", app.AvailableHoursEnd)
 	}
@@ -115,8 +113,32 @@ func toBusNewContactInfos(app NewContactInfos) (contactinfosbus.NewContactInfos,
 		return contactinfosbus.NewContactInfos{}, fmt.Errorf("invalid time format for starting hours: %q", app.AvailableHoursStart)
 	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	streetID, err := uuid.Parse(app.StreetID)
+	if err != nil {
+		return contactinfosbus.NewContactInfos{}, errs.Newf(errs.InvalidArgument, "parse street_id: %s", err)
+	}
+
+	deliveryAddressID, err := uuid.Parse(app.DeliveryAddressID)
+	if err != nil {
+		return contactinfosbus.NewContactInfos{}, errs.Newf(errs.InvalidArgument, "parse delivery_address_id: %s", err)
+	}
+
+	bus := contactinfosbus.NewContactInfos{
+		FirstName:            app.FirstName,
+		LastName:             app.LastName,
+		EmailAddress:         app.EmailAddress,
+		PrimaryPhone:         app.PrimaryPhone,
+		SecondaryPhone:       app.SecondaryPhone,
+		StreetID:             streetID,
+		DeliveryAddressID:    deliveryAddressID,
+		AvailableHoursStart:  app.AvailableHoursStart,
+		AvailableHoursEnd:    app.AvailableHoursEnd,
+		Timezone:             app.Timezone,
+		PreferredContactType: app.PreferredContactType,
+		Notes:                app.Notes,
+	}
+
+	return bus, nil
 }
 
 type UpdateContactInfos struct {
@@ -149,8 +171,6 @@ func (app UpdateContactInfos) Validate() error {
 }
 
 func toBusUpdateContactInfos(app UpdateContactInfos) (contactinfosbus.UpdateContactInfos, error) {
-	dest := contactinfosbus.UpdateContactInfos{}
-
 	if app.AvailableHoursEnd != nil && !timeonly.ValidateTimeOnlyFmt(*app.AvailableHoursEnd) {
 		return contactinfosbus.UpdateContactInfos{}, fmt.Errorf("invalid time format for ending hours: %q", *app.AvailableHoursEnd)
 	}
@@ -159,7 +179,34 @@ func toBusUpdateContactInfos(app UpdateContactInfos) (contactinfosbus.UpdateCont
 		return contactinfosbus.UpdateContactInfos{}, fmt.Errorf("invalid time format for starting hours: %q", *app.AvailableHoursStart)
 	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	bus := contactinfosbus.UpdateContactInfos{}
 
-	return dest, err
+	if app.StreetID != nil {
+		id, err := uuid.Parse(*app.StreetID)
+		if err != nil {
+			return contactinfosbus.UpdateContactInfos{}, errs.Newf(errs.InvalidArgument, "parse street_id: %s", err)
+		}
+		bus.StreetID = &id
+	}
+
+	if app.DeliveryAddressID != nil {
+		id, err := uuid.Parse(*app.DeliveryAddressID)
+		if err != nil {
+			return contactinfosbus.UpdateContactInfos{}, errs.Newf(errs.InvalidArgument, "parse delivery_address_id: %s", err)
+		}
+		bus.DeliveryAddressID = &id
+	}
+
+	bus.FirstName = app.FirstName
+	bus.LastName = app.LastName
+	bus.EmailAddress = app.EmailAddress
+	bus.PrimaryPhone = app.PrimaryPhone
+	bus.SecondaryPhone = app.SecondaryPhone
+	bus.AvailableHoursStart = app.AvailableHoursStart
+	bus.AvailableHoursEnd = app.AvailableHoursEnd
+	bus.Timezone = app.Timezone
+	bus.PreferredContactType = app.PreferredContactType
+	bus.Notes = app.Notes
+
+	return bus, nil
 }

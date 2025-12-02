@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -101,15 +100,34 @@ func (b *Business) Update(ctx context.Context, ia InventoryAdjustment, u UpdateI
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(u, &ia)
-	if err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("update: %w", err)
+	if u.ProductID != nil {
+		ia.ProductID = *u.ProductID
+	}
+	if u.LocationID != nil {
+		ia.LocationID = *u.LocationID
+	}
+	if u.AdjustedBy != nil {
+		ia.AdjustedBy = *u.AdjustedBy
+	}
+	if u.ApprovedBy != nil {
+		ia.ApprovedBy = *u.ApprovedBy
+	}
+	if u.QuantityChange != nil {
+		ia.QuantityChange = *u.QuantityChange
+	}
+	if u.ReasonCode != nil {
+		ia.ReasonCode = *u.ReasonCode
+	}
+	if u.Notes != nil {
+		ia.Notes = *u.Notes
+	}
+	if u.AdjustmentDate != nil {
+		ia.AdjustmentDate = *u.AdjustmentDate
 	}
 
 	ia.UpdatedDate = time.Now()
 
-	err = b.storer.Update(ctx, ia)
-	if err != nil {
+	if err := b.storer.Update(ctx, ia); err != nil {
 		return InventoryAdjustment{}, fmt.Errorf("update: %w", err)
 	}
 

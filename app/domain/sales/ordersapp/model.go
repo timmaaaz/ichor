@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 const dateFormat = "2006-01-02"
@@ -89,13 +89,34 @@ func (app NewOrder) Validate() error {
 }
 
 func toBusNewOrder(app NewOrder) (ordersbus.NewOrder, error) {
-	var dest ordersbus.NewOrder
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	customerID, err := uuid.Parse(app.CustomerID)
 	if err != nil {
-		return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "toBusNewOrder: %s", err)
+		return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse customerID: %s", err)
 	}
 
-	return dest, nil
+	dueDate, err := time.Parse(dateFormat, app.DueDate)
+	if err != nil {
+		return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse dueDate: %s", err)
+	}
+
+	fulfillmentStatusID, err := uuid.Parse(app.FulfillmentStatusID)
+	if err != nil {
+		return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse fulfillmentStatusID: %s", err)
+	}
+
+	createdBy, err := uuid.Parse(app.CreatedBy)
+	if err != nil {
+		return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse createdBy: %s", err)
+	}
+
+	bus := ordersbus.NewOrder{
+		Number:              app.Number,
+		CustomerID:          customerID,
+		DueDate:             dueDate,
+		FulfillmentStatusID: fulfillmentStatusID,
+		CreatedBy:           createdBy,
+	}
+	return bus, nil
 }
 
 type UpdateOrder struct {
@@ -118,11 +139,48 @@ func (app UpdateOrder) Validate() error {
 }
 
 func toBusUpdateOrder(app UpdateOrder) (ordersbus.UpdateOrder, error) {
-	var dest ordersbus.UpdateOrder
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return ordersbus.UpdateOrder{}, errs.Newf(errs.InvalidArgument, "toBusUpdateOrder: %s", err)
+	var customerID *uuid.UUID
+	if app.CustomerID != nil {
+		id, err := uuid.Parse(*app.CustomerID)
+		if err != nil {
+			return ordersbus.UpdateOrder{}, errs.Newf(errs.InvalidArgument, "parse customerID: %s", err)
+		}
+		customerID = &id
 	}
 
-	return dest, nil
+	var dueDate *time.Time
+	if app.DueDate != nil {
+		t, err := time.Parse(dateFormat, *app.DueDate)
+		if err != nil {
+			return ordersbus.UpdateOrder{}, errs.Newf(errs.InvalidArgument, "parse dueDate: %s", err)
+		}
+		dueDate = &t
+	}
+
+	var fulfillmentStatusID *uuid.UUID
+	if app.FulfillmentStatusID != nil {
+		id, err := uuid.Parse(*app.FulfillmentStatusID)
+		if err != nil {
+			return ordersbus.UpdateOrder{}, errs.Newf(errs.InvalidArgument, "parse fulfillmentStatusID: %s", err)
+		}
+		fulfillmentStatusID = &id
+	}
+
+	var updatedBy *uuid.UUID
+	if app.UpdatedBy != nil {
+		id, err := uuid.Parse(*app.UpdatedBy)
+		if err != nil {
+			return ordersbus.UpdateOrder{}, errs.Newf(errs.InvalidArgument, "parse updatedBy: %s", err)
+		}
+		updatedBy = &id
+	}
+
+	bus := ordersbus.UpdateOrder{
+		Number:              app.Number,
+		CustomerID:          customerID,
+		DueDate:             dueDate,
+		FulfillmentStatusID: fulfillmentStatusID,
+		UpdatedBy:           updatedBy,
+	}
+	return bus, nil
 }

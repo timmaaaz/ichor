@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -95,9 +94,26 @@ func (b *Business) Update(ctx context.Context, page Page, up UpdatePage) (Page, 
 	ctx, span := otel.AddSpan(ctx, "business.pagebus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(up, &page)
-	if err != nil {
-		return Page{}, fmt.Errorf("populate same types: %w", err)
+	if up.Path != nil {
+		page.Path = *up.Path
+	}
+	if up.Name != nil {
+		page.Name = *up.Name
+	}
+	if up.Module != nil {
+		page.Module = *up.Module
+	}
+	if up.Icon != nil {
+		page.Icon = *up.Icon
+	}
+	if up.SortOrder != nil {
+		page.SortOrder = *up.SortOrder
+	}
+	if up.IsActive != nil {
+		page.IsActive = *up.IsActive
+	}
+	if up.ShowInMenu != nil {
+		page.ShowInMenu = *up.ShowInMenu
 	}
 
 	if err := b.storer.Update(ctx, page); err != nil {

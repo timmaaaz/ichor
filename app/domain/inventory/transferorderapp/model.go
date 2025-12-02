@@ -3,10 +3,12 @@ package transferorderapp
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -94,13 +96,52 @@ func (app NewTransferOrder) Validate() error {
 }
 
 func toBusNewTransferOrder(app NewTransferOrder) (transferorderbus.NewTransferOrder, error) {
-	dest := transferorderbus.NewTransferOrder{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	productID, err := uuid.Parse(app.ProductID)
 	if err != nil {
-		return transferorderbus.NewTransferOrder{}, fmt.Errorf("toBusNewTransferOrder: %w", err)
+		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
 	}
-	return dest, err
+
+	fromLocationID, err := uuid.Parse(app.FromLocationID)
+	if err != nil {
+		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse fromLocationID: %s", err)
+	}
+
+	toLocationID, err := uuid.Parse(app.ToLocationID)
+	if err != nil {
+		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse toLocationID: %s", err)
+	}
+
+	requestedByID, err := uuid.Parse(app.RequestedByID)
+	if err != nil {
+		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse requestedByID: %s", err)
+	}
+
+	approvedByID, err := uuid.Parse(app.ApprovedByID)
+	if err != nil {
+		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse approvedByID: %s", err)
+	}
+
+	quantity, err := strconv.Atoi(app.Quantity)
+	if err != nil {
+		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+	}
+
+	transferDate, err := time.Parse(timeutil.FORMAT, app.TransferDate)
+	if err != nil {
+		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse transferDate: %s", err)
+	}
+
+	bus := transferorderbus.NewTransferOrder{
+		ProductID:      productID,
+		FromLocationID: fromLocationID,
+		ToLocationID:   toLocationID,
+		RequestedByID:  requestedByID,
+		ApprovedByID:   approvedByID,
+		Quantity:       quantity,
+		Status:         app.Status,
+		TransferDate:   transferDate,
+	}
+	return bus, nil
 }
 
 type UpdateTransferOrder struct {
@@ -126,11 +167,65 @@ func (app UpdateTransferOrder) Validate() error {
 }
 
 func toBusUpdateTransferOrder(app UpdateTransferOrder) (transferorderbus.UpdateTransferOrder, error) {
-	dest := transferorderbus.UpdateTransferOrder{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return transferorderbus.UpdateTransferOrder{}, fmt.Errorf("toBusUpdateTransferOrder: %w", err)
+	bus := transferorderbus.UpdateTransferOrder{
+		Status: app.Status,
 	}
-	return dest, err
+
+	if app.ProductID != nil {
+		productID, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return transferorderbus.UpdateTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+		}
+		bus.ProductID = &productID
+	}
+
+	if app.FromLocationID != nil {
+		fromLocationID, err := uuid.Parse(*app.FromLocationID)
+		if err != nil {
+			return transferorderbus.UpdateTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse fromLocationID: %s", err)
+		}
+		bus.FromLocationID = &fromLocationID
+	}
+
+	if app.ToLocationID != nil {
+		toLocationID, err := uuid.Parse(*app.ToLocationID)
+		if err != nil {
+			return transferorderbus.UpdateTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse toLocationID: %s", err)
+		}
+		bus.ToLocationID = &toLocationID
+	}
+
+	if app.RequestedByID != nil {
+		requestedByID, err := uuid.Parse(*app.RequestedByID)
+		if err != nil {
+			return transferorderbus.UpdateTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse requestedByID: %s", err)
+		}
+		bus.RequestedByID = &requestedByID
+	}
+
+	if app.ApprovedByID != nil {
+		approvedByID, err := uuid.Parse(*app.ApprovedByID)
+		if err != nil {
+			return transferorderbus.UpdateTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse approvedByID: %s", err)
+		}
+		bus.ApprovedByID = &approvedByID
+	}
+
+	if app.Quantity != nil {
+		quantity, err := strconv.Atoi(*app.Quantity)
+		if err != nil {
+			return transferorderbus.UpdateTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+		}
+		bus.Quantity = &quantity
+	}
+
+	if app.TransferDate != nil {
+		transferDate, err := time.Parse(timeutil.FORMAT, *app.TransferDate)
+		if err != nil {
+			return transferorderbus.UpdateTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse transferDate: %s", err)
+		}
+		bus.TransferDate = &transferDate
+	}
+
+	return bus, nil
 }

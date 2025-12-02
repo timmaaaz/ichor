@@ -5,7 +5,6 @@ import (
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -62,13 +61,12 @@ func (app NewOrderFulfillmentStatus) Validate() error {
 }
 
 func toBusNewOrderFulfillmentStatus(app NewOrderFulfillmentStatus) (orderfulfillmentstatusbus.NewOrderFulfillmentStatus, error) {
-	var dest orderfulfillmentstatusbus.NewOrderFulfillmentStatus
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return orderfulfillmentstatusbus.NewOrderFulfillmentStatus{}, errs.Newf(errs.InvalidArgument, "toBusNewOrderFulfillmentStatus: %s", err)
+	bus := orderfulfillmentstatusbus.NewOrderFulfillmentStatus{
+		Name:        app.Name,
+		Description: app.Description,
 	}
 
-	return dest, nil
+	return bus, nil
 }
 
 type UpdateOrderFulfillmentStatus struct {
@@ -88,11 +86,10 @@ func (app UpdateOrderFulfillmentStatus) Validate() error {
 }
 
 func toBusUpdateOrderFulfillmentStatus(app UpdateOrderFulfillmentStatus) (orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus, error) {
-	var dest orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus{}, errs.Newf(errs.InvalidArgument, "toBusUpdateOrderFulfillmentStatus: %s", err)
+	bus := orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus{
+		Name:        app.Name,
+		Description: app.Description,
 	}
 
-	return dest, nil
+	return bus, nil
 }

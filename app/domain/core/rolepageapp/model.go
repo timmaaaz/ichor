@@ -3,9 +3,9 @@ package rolepageapp
 import (
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -67,9 +67,22 @@ func (app NewRolePage) Validate() error {
 }
 
 func toBusNewRolePage(app NewRolePage) (rolepagebus.NewRolePage, error) {
-	dest := rolepagebus.NewRolePage{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	roleID, err := uuid.Parse(app.RoleID)
+	if err != nil {
+		return rolepagebus.NewRolePage{}, errs.Newf(errs.InvalidArgument, "parse roleID: %s", err)
+	}
+
+	pageID, err := uuid.Parse(app.PageID)
+	if err != nil {
+		return rolepagebus.NewRolePage{}, errs.Newf(errs.InvalidArgument, "parse pageID: %s", err)
+	}
+
+	bus := rolepagebus.NewRolePage{
+		RoleID:    roleID,
+		PageID:    pageID,
+		CanAccess: app.CanAccess,
+	}
+	return bus, nil
 }
 
 // =============================================================================
@@ -93,8 +106,8 @@ func (app UpdateRolePage) Validate() error {
 }
 
 func toBusUpdateRolePage(app UpdateRolePage) (rolepagebus.UpdateRolePage, error) {
-	dest := rolepagebus.UpdateRolePage{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-
-	return dest, err
+	bus := rolepagebus.UpdateRolePage{
+		CanAccess: app.CanAccess,
+	}
+	return bus, nil
 }

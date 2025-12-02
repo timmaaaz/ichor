@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -96,15 +95,25 @@ func (b *Business) Update(ctx context.Context, sn SerialNumber, usn UpdateSerial
 	ctx, span := otel.AddSpan(ctx, "business.serialnumberbus.update")
 	defer span.End()
 
-	sn.UpdatedDate = time.Now()
-
-	err := convert.PopulateSameTypes(usn, &sn)
-	if err != nil {
-		return sn, fmt.Errorf("populate serial number struct: %w", err)
+	if usn.LotID != nil {
+		sn.LotID = *usn.LotID
+	}
+	if usn.ProductID != nil {
+		sn.ProductID = *usn.ProductID
+	}
+	if usn.LocationID != nil {
+		sn.LocationID = *usn.LocationID
+	}
+	if usn.SerialNumber != nil {
+		sn.SerialNumber = *usn.SerialNumber
+	}
+	if usn.Status != nil {
+		sn.Status = *usn.Status
 	}
 
-	err = b.storer.Update(ctx, sn)
-	if err != nil {
+	sn.UpdatedDate = time.Now()
+
+	if err := b.storer.Update(ctx, sn); err != nil {
 		return sn, fmt.Errorf("update: %w", err)
 	}
 

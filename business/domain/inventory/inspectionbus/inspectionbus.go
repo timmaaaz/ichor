@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -99,16 +98,31 @@ func (b *Business) Update(ctx context.Context, i Inspection, ui UpdateInspection
 	ctx, span := otel.AddSpan(ctx, "business.inspectionbus.update")
 	defer span.End()
 
-	now := time.Now()
-	i.UpdatedDate = now
-
-	err := convert.PopulateSameTypes(ui, &i)
-	if err != nil {
-		return Inspection{}, fmt.Errorf("convert: %w", err)
+	if ui.ProductID != nil {
+		i.ProductID = *ui.ProductID
+	}
+	if ui.InspectorID != nil {
+		i.InspectorID = *ui.InspectorID
+	}
+	if ui.LotID != nil {
+		i.LotID = *ui.LotID
+	}
+	if ui.Status != nil {
+		i.Status = *ui.Status
+	}
+	if ui.Notes != nil {
+		i.Notes = *ui.Notes
+	}
+	if ui.InspectionDate != nil {
+		i.InspectionDate = *ui.InspectionDate
+	}
+	if ui.NextInspectionDate != nil {
+		i.NextInspectionDate = *ui.NextInspectionDate
 	}
 
-	err = b.storer.Update(ctx, i)
-	if err != nil {
+	i.UpdatedDate = time.Now()
+
+	if err := b.storer.Update(ctx, i); err != nil {
 		return Inspection{}, fmt.Errorf("update: %w", err)
 	}
 

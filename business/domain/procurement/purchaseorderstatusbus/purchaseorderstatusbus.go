@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -92,9 +91,14 @@ func (b *Business) Update(ctx context.Context, pos PurchaseOrderStatus, upos Upd
 	ctx, span := otel.AddSpan(ctx, "business.purchase_order_statusbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(upos, &pos)
-	if err != nil {
-		return PurchaseOrderStatus{}, fmt.Errorf("populate same types: %w", err)
+	if upos.Name != nil {
+		pos.Name = *upos.Name
+	}
+	if upos.Description != nil {
+		pos.Description = *upos.Description
+	}
+	if upos.SortOrder != nil {
+		pos.SortOrder = *upos.SortOrder
 	}
 
 	if err := b.storer.Update(ctx, pos); err != nil {

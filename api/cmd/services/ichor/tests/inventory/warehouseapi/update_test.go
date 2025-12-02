@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 )
 
 func update200(sd apitest.SeedData) []apitest.Table {
@@ -19,8 +20,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     "PUT",
 			StatusCode: 200,
 			Input: &warehouseapp.UpdateWarehouse{
-				Name:      "Updated Warehouse",
-				IsActive:  false,
+				Name:      dbtest.StringPointer("Updated Warehouse"),
+				IsActive:  dbtest.BoolPointer(false),
 				UpdatedBy: sd.Admins[0].ID.String(),
 			},
 			GotResp: &warehouseapp.Warehouse{},
@@ -58,7 +59,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusBadRequest,
 			Input: &warehouseapp.UpdateWarehouse{
-				Name: "Updated Warehouse",
+				Name: dbtest.StringPointer("Updated Warehouse"),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"updated_by","error":"updated_by is a required field"}]`),

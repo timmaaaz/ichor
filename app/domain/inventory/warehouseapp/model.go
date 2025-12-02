@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -87,19 +87,33 @@ func (app NewWarehouse) Validate() error {
 }
 
 func toBusNewWarehouse(app NewWarehouse) (warehousebus.NewWarehouse, error) {
-	dest := warehousebus.NewWarehouse{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	streetID, err := uuid.Parse(app.StreetID)
+	if err != nil {
+		return warehousebus.NewWarehouse{}, errs.Newf(errs.InvalidArgument, "parse streetID: %s", err)
+	}
+
+	createdBy, err := uuid.Parse(app.CreatedBy)
+	if err != nil {
+		return warehousebus.NewWarehouse{}, errs.Newf(errs.InvalidArgument, "parse createdBy: %s", err)
+	}
+
+	bus := warehousebus.NewWarehouse{
+		Code:      app.Code,
+		StreetID:  streetID,
+		Name:      app.Name,
+		CreatedBy: createdBy,
+	}
+	return bus, nil
 }
 
 // =========================================================================
 
 type UpdateWarehouse struct {
-	Code      string `json:"code" validate:"omitempty"`
-	StreetID  string `json:"street_id" validate:"omitempty,uuid"`
-	Name      string `json:"name" validate:"omitempty"`
-	IsActive  bool   `json:"is_active" validate:"omitempty"`
-	UpdatedBy string `json:"updated_by" validate:"required,uuid"`
+	Code      *string `json:"code"`
+	StreetID  *string `json:"street_id" validate:"omitempty,uuid"`
+	Name      *string `json:"name"`
+	IsActive  *bool   `json:"is_active"`
+	UpdatedBy string  `json:"updated_by" validate:"required,uuid"`
 }
 
 func (app *UpdateWarehouse) Decode(data []byte) error {
@@ -115,7 +129,25 @@ func (app UpdateWarehouse) Validate() error {
 }
 
 func toBusUpdateWarehouse(app UpdateWarehouse) (warehousebus.UpdateWarehouse, error) {
-	dest := warehousebus.UpdateWarehouse{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	bus := warehousebus.UpdateWarehouse{
+		Code:     app.Code,
+		Name:     app.Name,
+		IsActive: app.IsActive,
+	}
+
+	if app.StreetID != nil {
+		streetID, err := uuid.Parse(*app.StreetID)
+		if err != nil {
+			return warehousebus.UpdateWarehouse{}, errs.Newf(errs.InvalidArgument, "parse streetID: %s", err)
+		}
+		bus.StreetID = &streetID
+	}
+
+	updatedBy, err := uuid.Parse(app.UpdatedBy)
+	if err != nil {
+		return warehousebus.UpdateWarehouse{}, errs.Newf(errs.InvalidArgument, "parse updatedBy: %s", err)
+	}
+	bus.UpdatedBy = &updatedBy
+
+	return bus, nil
 }

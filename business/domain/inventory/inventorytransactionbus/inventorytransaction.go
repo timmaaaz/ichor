@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -100,15 +99,31 @@ func (b *Business) Update(ctx context.Context, it InventoryTransaction, u Update
 	ctx, span := otel.AddSpan(ctx, "business.inventorytransactionbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(u, &it)
-	if err != nil {
-		return InventoryTransaction{}, fmt.Errorf("update: %w", err)
+	if u.ProductID != nil {
+		it.ProductID = *u.ProductID
+	}
+	if u.LocationID != nil {
+		it.LocationID = *u.LocationID
+	}
+	if u.UserID != nil {
+		it.UserID = *u.UserID
+	}
+	if u.Quantity != nil {
+		it.Quantity = *u.Quantity
+	}
+	if u.TransactionType != nil {
+		it.TransactionType = *u.TransactionType
+	}
+	if u.ReferenceNumber != nil {
+		it.ReferenceNumber = *u.ReferenceNumber
+	}
+	if u.TransactionDate != nil {
+		it.TransactionDate = *u.TransactionDate
 	}
 
 	it.UpdatedDate = time.Now()
 
-	err = b.storer.Update(ctx, it)
-	if err != nil {
+	if err := b.storer.Update(ctx, it); err != nil {
 		return InventoryTransaction{}, fmt.Errorf("update: %w", err)
 	}
 

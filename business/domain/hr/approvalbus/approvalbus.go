@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -91,9 +90,11 @@ func (b *Business) Update(ctx context.Context, as UserApprovalStatus, uas Update
 	ctx, span := otel.AddSpan(ctx, "business.userapprovalstatusbus.Update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uas, &as)
-	if err != nil {
-		return UserApprovalStatus{}, fmt.Errorf("populate struct: %w", err)
+	if uas.Name != nil {
+		as.Name = *uas.Name
+	}
+	if uas.IconID != nil {
+		as.IconID = *uas.IconID
 	}
 
 	if err := b.storer.Update(ctx, as); err != nil {

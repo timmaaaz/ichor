@@ -3,9 +3,9 @@ package brandapp
 import (
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -71,10 +71,16 @@ func (app NewBrand) Validate() error {
 }
 
 func toBusNewBrand(app NewBrand) (brandbus.NewBrand, error) {
-	dest := brandbus.NewBrand{}
+	contactInfosID, err := uuid.Parse(app.ContactInfosID)
+	if err != nil {
+		return brandbus.NewBrand{}, errs.Newf(errs.InvalidArgument, "parse contactInfosID: %s", err)
+	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	bus := brandbus.NewBrand{
+		Name:           app.Name,
+		ContactInfosID: contactInfosID,
+	}
+	return bus, nil
 }
 
 type UpdateBrand struct {
@@ -97,9 +103,18 @@ func (app UpdateBrand) Validate() error {
 }
 
 func toBusUpdateBrand(app UpdateBrand) (brandbus.UpdateBrand, error) {
-	dest := brandbus.UpdateBrand{}
+	var contactInfosID *uuid.UUID
+	if app.ContactInfosID != nil {
+		id, err := uuid.Parse(*app.ContactInfosID)
+		if err != nil {
+			return brandbus.UpdateBrand{}, errs.Newf(errs.InvalidArgument, "parse contactInfosID: %s", err)
+		}
+		contactInfosID = &id
+	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
-
-	return dest, err
+	bus := brandbus.UpdateBrand{
+		Name:           app.Name,
+		ContactInfosID: contactInfosID,
+	}
+	return bus, nil
 }

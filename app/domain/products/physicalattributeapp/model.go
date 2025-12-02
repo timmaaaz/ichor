@@ -3,10 +3,11 @@ package physicalattributeapp
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/products/physicalattributebus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -110,31 +111,52 @@ func (app NewPhysicalAttribute) Validate() error {
 }
 
 func toBusNewPhysicalAttribute(app NewPhysicalAttribute) (physicalattributebus.NewPhysicalAttribute, error) {
-	dest := physicalattributebus.NewPhysicalAttribute{}
-	var err error
-
-	dest.Weight, err = physicalattributebus.ParseDimension(app.Weight)
+	productID, err := uuid.Parse(app.ProductID)
 	if err != nil {
-		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Weight", err)
+		return physicalattributebus.NewPhysicalAttribute{}, errs.Newf(errs.InvalidArgument, "parse product_id: %s", err)
 	}
 
-	dest.Length, err = physicalattributebus.ParseDimension(app.Length)
+	length, err := physicalattributebus.ParseDimension(app.Length)
 	if err != nil {
 		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Length", err)
 	}
 
-	dest.Width, err = physicalattributebus.ParseDimension(app.Width)
+	width, err := physicalattributebus.ParseDimension(app.Width)
 	if err != nil {
 		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Width", err)
 	}
 
-	dest.Height, err = physicalattributebus.ParseDimension(app.Height)
+	height, err := physicalattributebus.ParseDimension(app.Height)
 	if err != nil {
 		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Height", err)
 	}
 
-	err = convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	weight, err := physicalattributebus.ParseDimension(app.Weight)
+	if err != nil {
+		return physicalattributebus.NewPhysicalAttribute{}, errs.NewFieldsError("Weight", err)
+	}
+
+	shelfLifeDays, err := strconv.Atoi(app.ShelfLifeDays)
+	if err != nil {
+		return physicalattributebus.NewPhysicalAttribute{}, errs.Newf(errs.InvalidArgument, "parse shelf_life_days: %s", err)
+	}
+
+	bus := physicalattributebus.NewPhysicalAttribute{
+		ProductID:           productID,
+		Length:              length,
+		Width:               width,
+		Height:              height,
+		Weight:              weight,
+		WeightUnit:          app.WeightUnit,
+		Color:               app.Color,
+		Size:                app.Size,
+		Material:            app.Material,
+		StorageRequirements: app.StorageRequirements,
+		HazmatClass:         app.HazmatClass,
+		ShelfLifeDays:       shelfLifeDays,
+	}
+
+	return bus, nil
 }
 
 type UpdatePhysicalAttribute struct {
@@ -167,14 +189,14 @@ func (app UpdatePhysicalAttribute) Validate() error {
 }
 
 func toBusUpdatePhysicalAttribute(app UpdatePhysicalAttribute) (physicalattributebus.UpdatePhysicalAttribute, error) {
-	dest := physicalattributebus.UpdatePhysicalAttribute{}
+	bus := physicalattributebus.UpdatePhysicalAttribute{}
 
-	if app.Weight != nil {
-		w, err := physicalattributebus.ParseDimension(*app.Weight)
+	if app.ProductID != nil {
+		id, err := uuid.Parse(*app.ProductID)
 		if err != nil {
-			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Weight", err)
+			return physicalattributebus.UpdatePhysicalAttribute{}, errs.Newf(errs.InvalidArgument, "parse product_id: %s", err)
 		}
-		dest.Weight = &w
+		bus.ProductID = &id
 	}
 
 	if app.Length != nil {
@@ -182,8 +204,7 @@ func toBusUpdatePhysicalAttribute(app UpdatePhysicalAttribute) (physicalattribut
 		if err != nil {
 			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Length", err)
 		}
-
-		dest.Length = &l
+		bus.Length = &l
 	}
 
 	if app.Width != nil {
@@ -191,7 +212,7 @@ func toBusUpdatePhysicalAttribute(app UpdatePhysicalAttribute) (physicalattribut
 		if err != nil {
 			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Width", err)
 		}
-		dest.Width = &w
+		bus.Width = &w
 	}
 
 	if app.Height != nil {
@@ -199,10 +220,31 @@ func toBusUpdatePhysicalAttribute(app UpdatePhysicalAttribute) (physicalattribut
 		if err != nil {
 			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Height", err)
 		}
-		dest.Height = &h
+		bus.Height = &h
 	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	if app.Weight != nil {
+		w, err := physicalattributebus.ParseDimension(*app.Weight)
+		if err != nil {
+			return physicalattributebus.UpdatePhysicalAttribute{}, errs.NewFieldsError("Weight", err)
+		}
+		bus.Weight = &w
+	}
 
-	return dest, err
+	if app.ShelfLifeDays != nil {
+		days, err := strconv.Atoi(*app.ShelfLifeDays)
+		if err != nil {
+			return physicalattributebus.UpdatePhysicalAttribute{}, errs.Newf(errs.InvalidArgument, "parse shelf_life_days: %s", err)
+		}
+		bus.ShelfLifeDays = &days
+	}
+
+	bus.WeightUnit = app.WeightUnit
+	bus.Color = app.Color
+	bus.Size = app.Size
+	bus.Material = app.Material
+	bus.StorageRequirements = app.StorageRequirements
+	bus.HazmatClass = app.HazmatClass
+
+	return bus, nil
 }

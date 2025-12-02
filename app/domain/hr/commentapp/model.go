@@ -3,9 +3,9 @@ package commentapp
 import (
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -70,10 +70,22 @@ func (app NewUserApprovalComment) Validate() error {
 }
 
 func toBusNewUserApprovalComment(app NewUserApprovalComment) (commentbus.NewUserApprovalComment, error) {
-	dest := commentbus.NewUserApprovalComment{}
+	userID, err := uuid.Parse(app.UserID)
+	if err != nil {
+		return commentbus.NewUserApprovalComment{}, errs.Newf(errs.InvalidArgument, "parse userID: %s", err)
+	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	commenterID, err := uuid.Parse(app.CommenterID)
+	if err != nil {
+		return commentbus.NewUserApprovalComment{}, errs.Newf(errs.InvalidArgument, "parse commenterID: %s", err)
+	}
+
+	bus := commentbus.NewUserApprovalComment{
+		Comment:     app.Comment,
+		UserID:      userID,
+		CommenterID: commenterID,
+	}
+	return bus, nil
 }
 
 type UpdateUserApprovalComment struct {

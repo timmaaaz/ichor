@@ -2,11 +2,10 @@ package serialnumberapp
 
 import (
 	"encoding/json"
-	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -76,16 +75,35 @@ func (app *NewSerialNumber) Decode(data []byte) error {
 
 func (app NewSerialNumber) Validate() error {
 	if err := errs.Check(app); err != nil {
-		return fmt.Errorf("validate: %w", err)
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
 	}
 	return nil
 }
 
 func toBusNewSerialNumber(app NewSerialNumber) (serialnumberbus.NewSerialNumber, error) {
-	dest := serialnumberbus.NewSerialNumber{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	lotID, err := uuid.Parse(app.LotID)
+	if err != nil {
+		return serialnumberbus.NewSerialNumber{}, errs.Newf(errs.InvalidArgument, "parse lotID: %s", err)
+	}
 
-	return dest, err
+	productID, err := uuid.Parse(app.ProductID)
+	if err != nil {
+		return serialnumberbus.NewSerialNumber{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+	}
+
+	locationID, err := uuid.Parse(app.LocationID)
+	if err != nil {
+		return serialnumberbus.NewSerialNumber{}, errs.Newf(errs.InvalidArgument, "parse locationID: %s", err)
+	}
+
+	bus := serialnumberbus.NewSerialNumber{
+		LotID:        lotID,
+		ProductID:    productID,
+		LocationID:   locationID,
+		SerialNumber: app.SerialNumber,
+		Status:       app.Status,
+	}
+	return bus, nil
 }
 
 type UpdateSerialNumber struct {
@@ -102,17 +120,40 @@ func (app *UpdateSerialNumber) Decode(data []byte) error {
 
 func (app UpdateSerialNumber) Validate() error {
 	if err := errs.Check(app); err != nil {
-		return fmt.Errorf("validate: %w", err)
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
 	}
 	return nil
 }
 
 func toBusUpdateSerialNumber(app UpdateSerialNumber) (serialnumberbus.UpdateSerialNumber, error) {
-	dest := serialnumberbus.UpdateSerialNumber{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return serialnumberbus.UpdateSerialNumber{}, fmt.Errorf("error populating serial number: %s", err)
+	bus := serialnumberbus.UpdateSerialNumber{
+		SerialNumber: app.SerialNumber,
+		Status:       app.Status,
 	}
-	return dest, nil
+
+	if app.LotID != nil {
+		lotID, err := uuid.Parse(*app.LotID)
+		if err != nil {
+			return serialnumberbus.UpdateSerialNumber{}, errs.Newf(errs.InvalidArgument, "parse lotID: %s", err)
+		}
+		bus.LotID = &lotID
+	}
+
+	if app.ProductID != nil {
+		productID, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return serialnumberbus.UpdateSerialNumber{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+		}
+		bus.ProductID = &productID
+	}
+
+	if app.LocationID != nil {
+		locationID, err := uuid.Parse(*app.LocationID)
+		if err != nil {
+			return serialnumberbus.UpdateSerialNumber{}, errs.Newf(errs.InvalidArgument, "parse locationID: %s", err)
+		}
+		bus.LocationID = &locationID
+	}
+
+	return bus, nil
 }

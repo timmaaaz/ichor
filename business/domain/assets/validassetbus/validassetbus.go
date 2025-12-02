@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -103,8 +102,35 @@ func (b *Business) Update(ctx context.Context, ass ValidAsset, ua UpdateValidAss
 
 	now := time.Now()
 
-	if err := convert.PopulateSameTypes(ua, &ass); err != nil {
-		return ValidAsset{}, fmt.Errorf("populate asset struct: %w", err)
+	if ua.TypeID != nil {
+		ass.TypeID = *ua.TypeID
+	}
+	if ua.Name != nil {
+		ass.Name = *ua.Name
+	}
+	if ua.EstPrice != nil {
+		ass.EstPrice = *ua.EstPrice
+	}
+	if ua.Price != nil {
+		ass.Price = *ua.Price
+	}
+	if ua.MaintenanceInterval != nil {
+		ass.MaintenanceInterval = *ua.MaintenanceInterval
+	}
+	if ua.LifeExpectancy != nil {
+		ass.LifeExpectancy = *ua.LifeExpectancy
+	}
+	if ua.SerialNumber != nil {
+		ass.SerialNumber = *ua.SerialNumber
+	}
+	if ua.ModelNumber != nil {
+		ass.ModelNumber = *ua.ModelNumber
+	}
+	if ua.IsEnabled != nil {
+		ass.IsEnabled = *ua.IsEnabled
+	}
+	if ua.UpdatedBy != nil {
+		ass.UpdatedBy = *ua.UpdatedBy
 	}
 
 	ass.UpdatedDate = now

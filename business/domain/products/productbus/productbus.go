@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -105,11 +104,44 @@ func (b *Business) Update(ctx context.Context, product Product, ub UpdateProduct
 	ctx, span := otel.AddSpan(ctx, "business.productbus.update")
 	defer span.End()
 
-	product.UpdatedDate = time.Now()
-
-	if err := convert.PopulateSameTypes(ub, &product); err != nil {
-		return Product{}, fmt.Errorf("populate product struct: %w", err)
+	if ub.SKU != nil {
+		product.SKU = *ub.SKU
 	}
+	if ub.BrandID != nil {
+		product.BrandID = *ub.BrandID
+	}
+	if ub.ProductCategoryID != nil {
+		product.ProductCategoryID = *ub.ProductCategoryID
+	}
+	if ub.Name != nil {
+		product.Name = *ub.Name
+	}
+	if ub.Description != nil {
+		product.Description = *ub.Description
+	}
+	if ub.ModelNumber != nil {
+		product.ModelNumber = *ub.ModelNumber
+	}
+	if ub.UpcCode != nil {
+		product.UpcCode = *ub.UpcCode
+	}
+	if ub.Status != nil {
+		product.Status = *ub.Status
+	}
+	if ub.IsActive != nil {
+		product.IsActive = *ub.IsActive
+	}
+	if ub.IsPerishable != nil {
+		product.IsPerishable = *ub.IsPerishable
+	}
+	if ub.HandlingInstructions != nil {
+		product.HandlingInstructions = *ub.HandlingInstructions
+	}
+	if ub.UnitsPerCase != nil {
+		product.UnitsPerCase = *ub.UnitsPerCase
+	}
+
+	product.UpdatedDate = time.Now()
 
 	if err := b.storer.Update(ctx, product); err != nil {
 		return Product{}, fmt.Errorf("update: %w", err)

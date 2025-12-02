@@ -2,12 +2,12 @@ package costhistoryapp
 
 import (
 	"encoding/json"
-	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus"
 	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus/types"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -90,18 +90,36 @@ func (app NewCostHistory) Validate() error {
 }
 
 func toBusNewCostHistory(app NewCostHistory) (costhistorybus.NewCostHistory, error) {
-	dest := costhistorybus.NewCostHistory{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	productID, err := uuid.Parse(app.ProductID)
 	if err != nil {
-		return costhistorybus.NewCostHistory{}, fmt.Errorf("error populating cost history: %s", err)
+		return costhistorybus.NewCostHistory{}, errs.Newf(errs.InvalidArgument, "parse product_id: %s", err)
 	}
 
-	dest.Amount, err = types.ParseMoney(app.Amount)
+	amount, err := types.ParseMoney(app.Amount)
 	if err != nil {
-		return dest, err
+		return costhistorybus.NewCostHistory{}, errs.Newf(errs.InvalidArgument, "parse amount: %s", err)
 	}
 
-	return dest, err
+	effectiveDate, err := time.Parse(timeutil.FORMAT, app.EffectiveDate)
+	if err != nil {
+		return costhistorybus.NewCostHistory{}, errs.Newf(errs.InvalidArgument, "parse effective_date: %s", err)
+	}
+
+	endDate, err := time.Parse(timeutil.FORMAT, app.EndDate)
+	if err != nil {
+		return costhistorybus.NewCostHistory{}, errs.Newf(errs.InvalidArgument, "parse end_date: %s", err)
+	}
+
+	bus := costhistorybus.NewCostHistory{
+		ProductID:     productID,
+		CostType:      app.CostType,
+		Amount:        amount,
+		Currency:      app.Currency,
+		EffectiveDate: effectiveDate,
+		EndDate:       endDate,
+	}
+
+	return bus, nil
 }
 
 // =========================================================================
@@ -128,19 +146,42 @@ func (app UpdateCostHistory) Validate() error {
 }
 
 func toBusUpdateCostHistory(app UpdateCostHistory) (costhistorybus.UpdateCostHistory, error) {
-	dest := costhistorybus.UpdateCostHistory{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return costhistorybus.UpdateCostHistory{}, fmt.Errorf("error populating cost history: %s", err)
+	bus := costhistorybus.UpdateCostHistory{}
+
+	if app.ProductID != nil {
+		id, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return costhistorybus.UpdateCostHistory{}, errs.Newf(errs.InvalidArgument, "parse product_id: %s", err)
+		}
+		bus.ProductID = &id
 	}
 
 	if app.Amount != nil {
-		m, err := types.ParseMoney(*app.Amount)
+		amount, err := types.ParseMoney(*app.Amount)
 		if err != nil {
-			return dest, err
+			return costhistorybus.UpdateCostHistory{}, errs.Newf(errs.InvalidArgument, "parse amount: %s", err)
 		}
-		dest.Amount = &m
+		bus.Amount = &amount
 	}
 
-	return dest, err
+	if app.EffectiveDate != nil {
+		date, err := time.Parse(timeutil.FORMAT, *app.EffectiveDate)
+		if err != nil {
+			return costhistorybus.UpdateCostHistory{}, errs.Newf(errs.InvalidArgument, "parse effective_date: %s", err)
+		}
+		bus.EffectiveDate = &date
+	}
+
+	if app.EndDate != nil {
+		date, err := time.Parse(timeutil.FORMAT, *app.EndDate)
+		if err != nil {
+			return costhistorybus.UpdateCostHistory{}, errs.Newf(errs.InvalidArgument, "parse end_date: %s", err)
+		}
+		bus.EndDate = &date
+	}
+
+	bus.CostType = app.CostType
+	bus.Currency = app.Currency
+
+	return bus, nil
 }

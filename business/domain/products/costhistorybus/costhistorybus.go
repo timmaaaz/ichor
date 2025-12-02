@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -98,13 +97,23 @@ func (b *Business) Update(ctx context.Context, ch CostHistory, uch UpdateCostHis
 	ctx, span := otel.AddSpan(ctx, "business.costhistorybus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uch, &ch)
-	if err != nil {
-		return CostHistory{}, fmt.Errorf("populate cost history struct: %w", err)
+	if uch.ProductID != nil {
+		ch.ProductID = *uch.ProductID
 	}
-
+	if uch.CostType != nil {
+		ch.CostType = *uch.CostType
+	}
 	if uch.Amount != nil {
 		ch.Amount = *uch.Amount
+	}
+	if uch.Currency != nil {
+		ch.Currency = *uch.Currency
+	}
+	if uch.EffectiveDate != nil {
+		ch.EffectiveDate = *uch.EffectiveDate
+	}
+	if uch.EndDate != nil {
+		ch.EndDate = *uch.EndDate
 	}
 
 	ch.UpdatedDate = time.Now()

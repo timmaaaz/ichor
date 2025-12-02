@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -91,9 +90,11 @@ func (b *Business) Update(ctx context.Context, role Role, ur UpdateRole) (Role, 
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(ur, &role)
-	if err != nil {
-		return Role{}, fmt.Errorf("populate same types: %w", err)
+	if ur.Name != nil {
+		role.Name = *ur.Name
+	}
+	if ur.Description != nil {
+		role.Description = *ur.Description
 	}
 
 	if err := b.storer.Update(ctx, role); err != nil {

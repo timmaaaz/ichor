@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -111,9 +110,62 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(upo, &po)
-	if err != nil {
-		return PurchaseOrder{}, fmt.Errorf("populate same types: %w", err)
+	if upo.OrderNumber != nil {
+		po.OrderNumber = *upo.OrderNumber
+	}
+	if upo.SupplierID != nil {
+		po.SupplierID = *upo.SupplierID
+	}
+	if upo.PurchaseOrderStatusID != nil {
+		po.PurchaseOrderStatusID = *upo.PurchaseOrderStatusID
+	}
+	if upo.DeliveryWarehouseID != nil {
+		po.DeliveryWarehouseID = *upo.DeliveryWarehouseID
+	}
+	if upo.DeliveryLocationID != nil {
+		po.DeliveryLocationID = *upo.DeliveryLocationID
+	}
+	if upo.DeliveryStreetID != nil {
+		po.DeliveryStreetID = *upo.DeliveryStreetID
+	}
+	if upo.OrderDate != nil {
+		po.OrderDate = *upo.OrderDate
+	}
+	if upo.ExpectedDeliveryDate != nil {
+		po.ExpectedDeliveryDate = *upo.ExpectedDeliveryDate
+	}
+	if upo.ActualDeliveryDate != nil {
+		po.ActualDeliveryDate = *upo.ActualDeliveryDate
+	}
+	if upo.Subtotal != nil {
+		po.Subtotal = *upo.Subtotal
+	}
+	if upo.TaxAmount != nil {
+		po.TaxAmount = *upo.TaxAmount
+	}
+	if upo.ShippingCost != nil {
+		po.ShippingCost = *upo.ShippingCost
+	}
+	if upo.TotalAmount != nil {
+		po.TotalAmount = *upo.TotalAmount
+	}
+	if upo.Currency != nil {
+		po.Currency = *upo.Currency
+	}
+	if upo.ApprovedBy != nil {
+		po.ApprovedBy = *upo.ApprovedBy
+	}
+	if upo.ApprovedDate != nil {
+		po.ApprovedDate = *upo.ApprovedDate
+	}
+	if upo.Notes != nil {
+		po.Notes = *upo.Notes
+	}
+	if upo.SupplierReferenceNumber != nil {
+		po.SupplierReferenceNumber = *upo.SupplierReferenceNumber
+	}
+	if upo.UpdatedBy != nil {
+		po.UpdatedBy = *upo.UpdatedBy
 	}
 
 	po.UpdatedDate = time.Now().UTC()

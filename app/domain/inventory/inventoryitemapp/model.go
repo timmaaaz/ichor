@@ -3,10 +3,11 @@ package inventoryitemapp
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -107,13 +108,75 @@ func (app NewInventoryItem) Validate() error {
 }
 
 func toBusNewInventoryItem(app NewInventoryItem) (inventoryitembus.NewInventoryItem, error) {
-	dest := inventoryitembus.NewInventoryItem{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	productID, err := uuid.Parse(app.ProductID)
 	if err != nil {
-		return inventoryitembus.NewInventoryItem{}, fmt.Errorf("toBusNewInventoryItem: %w", err)
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
 	}
 
-	return dest, nil
+	locationID, err := uuid.Parse(app.LocationID)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse locationID: %s", err)
+	}
+
+	quantity, err := strconv.Atoi(app.Quantity)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+	}
+
+	reservedQuantity, err := strconv.Atoi(app.ReservedQuantity)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse reservedQuantity: %s", err)
+	}
+
+	allocatedQuantity, err := strconv.Atoi(app.AllocatedQuantity)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse allocatedQuantity: %s", err)
+	}
+
+	minimumStock, err := strconv.Atoi(app.MinimumStock)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse minimumStock: %s", err)
+	}
+
+	maximumStock, err := strconv.Atoi(app.MaximumStock)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse maximumStock: %s", err)
+	}
+
+	reorderPoint, err := strconv.Atoi(app.ReorderPoint)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse reorderPoint: %s", err)
+	}
+
+	economicOrderQuantity, err := strconv.Atoi(app.EconomicOrderQuantity)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse economicOrderQuantity: %s", err)
+	}
+
+	safetyStock, err := strconv.Atoi(app.SafetyStock)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse safetyStock: %s", err)
+	}
+
+	avgDailyUsage, err := strconv.Atoi(app.AvgDailyUsage)
+	if err != nil {
+		return inventoryitembus.NewInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse avgDailyUsage: %s", err)
+	}
+
+	bus := inventoryitembus.NewInventoryItem{
+		ProductID:             productID,
+		LocationID:            locationID,
+		Quantity:              quantity,
+		ReservedQuantity:      reservedQuantity,
+		AllocatedQuantity:     allocatedQuantity,
+		MinimumStock:          minimumStock,
+		MaximumStock:          maximumStock,
+		ReorderPoint:          reorderPoint,
+		EconomicOrderQuantity: economicOrderQuantity,
+		SafetyStock:           safetyStock,
+		AvgDailyUsage:         avgDailyUsage,
+	}
+	return bus, nil
 }
 
 type UpdateInventoryItem struct {
@@ -143,11 +206,95 @@ func (app UpdateInventoryItem) Validate() error {
 }
 
 func toBusUpdateInventoryItem(app UpdateInventoryItem) (inventoryitembus.UpdateInventoryItem, error) {
-	dest := inventoryitembus.UpdateInventoryItem{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return inventoryitembus.UpdateInventoryItem{}, fmt.Errorf("toBusUpdateInventoryItem: %w", err)
+	bus := inventoryitembus.UpdateInventoryItem{}
+
+	if app.ProductID != nil {
+		productID, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+		}
+		bus.ProductID = &productID
 	}
 
-	return dest, nil
+	if app.LocationID != nil {
+		locationID, err := uuid.Parse(*app.LocationID)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse locationID: %s", err)
+		}
+		bus.LocationID = &locationID
+	}
+
+	if app.Quantity != nil {
+		quantity, err := strconv.Atoi(*app.Quantity)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+		}
+		bus.Quantity = &quantity
+	}
+
+	if app.ReservedQuantity != nil {
+		reservedQuantity, err := strconv.Atoi(*app.ReservedQuantity)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse reservedQuantity: %s", err)
+		}
+		bus.ReservedQuantity = &reservedQuantity
+	}
+
+	if app.AllocatedQuantity != nil {
+		allocatedQuantity, err := strconv.Atoi(*app.AllocatedQuantity)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse allocatedQuantity: %s", err)
+		}
+		bus.AllocatedQuantity = &allocatedQuantity
+	}
+
+	if app.MinimumStock != nil {
+		minimumStock, err := strconv.Atoi(*app.MinimumStock)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse minimumStock: %s", err)
+		}
+		bus.MinimumStock = &minimumStock
+	}
+
+	if app.MaximumStock != nil {
+		maximumStock, err := strconv.Atoi(*app.MaximumStock)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse maximumStock: %s", err)
+		}
+		bus.MaximumStock = &maximumStock
+	}
+
+	if app.ReorderPoint != nil {
+		reorderPoint, err := strconv.Atoi(*app.ReorderPoint)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse reorderPoint: %s", err)
+		}
+		bus.ReorderPoint = &reorderPoint
+	}
+
+	if app.EconomicOrderQuantity != nil {
+		economicOrderQuantity, err := strconv.Atoi(*app.EconomicOrderQuantity)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse economicOrderQuantity: %s", err)
+		}
+		bus.EconomicOrderQuantity = &economicOrderQuantity
+	}
+
+	if app.SafetyStock != nil {
+		safetyStock, err := strconv.Atoi(*app.SafetyStock)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse safetyStock: %s", err)
+		}
+		bus.SafetyStock = &safetyStock
+	}
+
+	if app.AvgDailyUsage != nil {
+		avgDailyUsage, err := strconv.Atoi(*app.AvgDailyUsage)
+		if err != nil {
+			return inventoryitembus.UpdateInventoryItem{}, errs.Newf(errs.InvalidArgument, "parse avgDailyUsage: %s", err)
+		}
+		bus.AvgDailyUsage = &avgDailyUsage
+	}
+
+	return bus, nil
 }
