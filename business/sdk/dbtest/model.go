@@ -663,6 +663,15 @@ var allPages = []pagebus.NewPage{
 		IsActive:   true,
 		ShowInMenu: false,
 	},
+	{
+		Path:       "/admin/config/simple-charts/:id",
+		Name:       "Simple Charts",
+		Module:     "admin",
+		Icon:       "material-symbols:edit",
+		SortOrder:  72,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
 }
 
 // =============================================================================

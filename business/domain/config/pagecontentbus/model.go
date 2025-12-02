@@ -22,12 +22,18 @@ const (
 	ContentTypeChart     = "chart"
 )
 
-// Container type constants
+// Container type constants (layout modes)
 const (
+	// Layout types for containers
+	ContainerTypeGrid12 = "grid-12" // 12-column grid with explicit colSpan
+	ContainerTypeFlex   = "flex"    // Flexbox with wrapping
+	ContainerTypeStack  = "stack"   // Vertical stack
+
+	// Legacy/semantic types (keep for backwards compatibility)
 	ContainerTypeTab       = "tab"
 	ContainerTypeAccordion = "accordion"
 	ContainerTypeSection   = "section"
-	ContainerTypeGrid      = "grid"
+	ContainerTypeGrid      = "grid" // Legacy - maps to grid-12 on frontend
 )
 
 // =============================================================================

@@ -766,7 +766,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Monthly Sales Trend",
 			ChartConfigID: lineMonthlySalesStored.ID,
 			OrderIndex:    ordersPageOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":8}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":8,"sm":8,"md":8,"lg":8,"xl":8}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -783,7 +783,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Sales Pipeline",
 			ChartConfigID: funnelPipelineStored.ID,
 			OrderIndex:    ordersPageOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":4,"sm":4,"md":4,"lg":4,"xl":4}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -853,7 +853,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Revenue by Category",
 			ChartConfigID: pieRevenueCategoryStored.ID,
 			OrderIndex:    categoriesPageOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":4}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -870,7 +870,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Top Products",
 			ChartConfigID: barTopProductsStored.ID,
 			OrderIndex:    categoriesPageOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":4}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -887,7 +887,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Revenue Breakdown",
 			ChartConfigID: treemapRevenueStored.ID,
 			OrderIndex:    categoriesPageOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":4}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":4}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -1436,7 +1436,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Orders by Day and Hour",
 			ChartConfigID: heatmapSalesTimeStored.ID,
 			OrderIndex:    inventoryDashboardOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -1572,7 +1572,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Total Revenue",
 			ChartConfigID: kpiRevenueStored.ID,
 			OrderIndex:    salesDashboardOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"sm":6,"md":4}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -1589,7 +1589,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Total Orders",
 			ChartConfigID: kpiOrdersStored.ID,
 			OrderIndex:    salesDashboardOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"sm":6,"md":4}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -1606,7 +1606,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Revenue Progress",
 			ChartConfigID: gaugeRevenueStored.ID,
 			OrderIndex:    salesDashboardOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"sm":6,"md":4}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"sm":6,"md":4}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -1790,7 +1790,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Purchase Order Timeline",
 			ChartConfigID: ganttProjectStored.ID,
 			OrderIndex:    procurementDashboardOrderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12}}`),
 			IsVisible:     true,
 			IsDefault:     false,
 		})
@@ -3330,7 +3330,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		Label:        "Create New User",
 		FormID:       userForm.ID, // Reference the user form we created earlier
 		OrderIndex:   1,
-		Layout:       json.RawMessage(`{"colSpan":{"default":12}}`),
+		Layout:       json.RawMessage(`{"colSpan":{"xs":12}}`),
 		IsVisible:    true,
 		IsDefault:    false,
 	})
@@ -3345,7 +3345,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ContentType:  pagecontentbus.ContentTypeTabs,
 		Label:        "User Lists",
 		OrderIndex:   2,
-		Layout:       json.RawMessage(`{"colSpan":{"default":12},"containerType":"tabs"}`),
+		Layout:       json.RawMessage(`{"colSpan":{"xs":12},"containerType":"tabs"}`),
 		IsVisible:    true,
 		IsDefault:    false,
 	})
@@ -3443,7 +3443,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			Label:         "Sales by Region",
 			ChartConfigID: stackedBarRegionStored.ID,
 			OrderIndex:    orderIndex,
-			Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":6}}`),
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":6}}`),
 			IsVisible:     true,
 			IsDefault:     true,
 		})
@@ -3459,7 +3459,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				Label:         "Cumulative Revenue",
 				ChartConfigID: stackedAreaCumulativeStored.ID,
 				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":6}}`),
+				Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":6}}`),
 				IsVisible:     true,
 				IsDefault:     false,
 			})
@@ -3477,7 +3477,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				Label:         "Revenue vs Orders",
 				ChartConfigID: comboRevenueOrdersStored.ID,
 				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":6}}`),
+				Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":6}}`),
 				IsVisible:     true,
 				IsDefault:     false,
 			})
@@ -3494,7 +3494,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				Label:         "Profit Breakdown",
 				ChartConfigID: waterfallProfitStored.ID,
 				OrderIndex:    orderIndex,
-				Layout:        json.RawMessage(`{"colSpan":{"default":12,"md":6}}`),
+				Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":6}}`),
 				IsVisible:     true,
 				IsDefault:     false,
 			})

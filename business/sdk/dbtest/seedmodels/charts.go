@@ -792,7 +792,7 @@ var SeedFunnelPipeline = &tablebuilder.Config{
 					{
 						Table:            "order_fulfillment_statuses",
 						Schema:           "sales",
-						RelationshipFrom: "orders.fulfillment_status_id",
+						RelationshipFrom: "orders.order_fulfillment_status_id",
 						RelationshipTo:   "order_fulfillment_statuses.id",
 						JoinType:         "left",
 					},
