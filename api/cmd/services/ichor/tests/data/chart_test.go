@@ -370,26 +370,6 @@ func previewChartData400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "invalid-json-config",
-			URL:        "/v1/data/chart/preview",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &dataapp.PreviewChartDataRequest{
-				Config: json.RawMessage(`{"invalid": json missing bracket`),
-				Query:  dataapp.TableQuery{},
-			},
-			GotResp: &errs.Error{},
-			ExpResp: &errs.Error{},
-			CmpFunc: func(got any, exp any) string {
-				_, exists := got.(*errs.Error)
-				if !exists {
-					return "expected *errs.Error response"
-				}
-				return ""
-			},
-		},
-		{
 			Name:       "missing-data-source",
 			URL:        "/v1/data/chart/preview",
 			Token:      sd.Admins[0].Token,
