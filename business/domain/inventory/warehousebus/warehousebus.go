@@ -72,6 +72,9 @@ func (b *Business) Create(ctx context.Context, nw NewWarehouse) (Warehouse, erro
 	defer span.End()
 
 	now := time.Now()
+	if nw.CreatedDate != nil {
+		now = *nw.CreatedDate // Use provided date for seeding
+	}
 
 	// Generate code if not provided
 	code := nw.Code

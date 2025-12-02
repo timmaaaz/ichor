@@ -18,6 +18,7 @@ type NewUserApprovalComment struct {
 	Comment     string
 	CommenterID uuid.UUID
 	UserID      uuid.UUID
+	CreatedDate *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateUserApprovalComment struct {

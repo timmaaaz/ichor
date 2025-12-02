@@ -73,6 +73,9 @@ func (b *Business) Create(ctx context.Context, npo NewPurchaseOrder) (PurchaseOr
 	defer span.End()
 
 	now := time.Now().UTC()
+	if npo.CreatedDate != nil {
+		now = *npo.CreatedDate // Use provided date for seeding
+	}
 
 	po := PurchaseOrder{
 		ID:                       uuid.New(),

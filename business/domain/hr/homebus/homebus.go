@@ -92,6 +92,9 @@ func (b *Business) Create(ctx context.Context, nh NewHome) (Home, error) {
 	}
 
 	now := time.Now()
+	if nh.CreatedDate != nil {
+		now = *nh.CreatedDate
+	}
 
 	hme := Home{
 		ID:   uuid.New(),

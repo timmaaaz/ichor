@@ -70,11 +70,12 @@ func ToAppOrders(bus []ordersbus.Order) []Order {
 }
 
 type NewOrder struct {
-	Number              string `json:"number" validate:"required"`
-	CustomerID          string `json:"customer_id" validate:"required,uuid4"`
-	DueDate             string `json:"due_date" validate:"required"`
-	FulfillmentStatusID string `json:"fulfillment_status_id" validate:"required,uuid4"`
-	CreatedBy           string `json:"created_by" validate:"required,uuid4"`
+	Number              string  `json:"number" validate:"required"`
+	CustomerID          string  `json:"customer_id" validate:"required,uuid4"`
+	DueDate             string  `json:"due_date" validate:"required"`
+	FulfillmentStatusID string  `json:"fulfillment_status_id" validate:"required,uuid4"`
+	CreatedBy           string  `json:"created_by" validate:"required,uuid4"`
+	CreatedDate         *string `json:"created_date"` // Optional: for seeding/import
 }
 
 func (app *NewOrder) Decode(data []byte) error {
@@ -115,7 +116,18 @@ func toBusNewOrder(app NewOrder) (ordersbus.NewOrder, error) {
 		DueDate:             dueDate,
 		FulfillmentStatusID: fulfillmentStatusID,
 		CreatedBy:           createdBy,
+		// CreatedDate: nil by default - API always uses server time
 	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
+	}
+
 	return bus, nil
 }
 

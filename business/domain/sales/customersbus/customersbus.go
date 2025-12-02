@@ -71,6 +71,9 @@ func (b *Business) Create(ctx context.Context, nci NewCustomers) (Customers, err
 	defer span.End()
 
 	now := time.Now().UTC()
+	if nci.CreatedDate != nil {
+		now = *nci.CreatedDate // Use provided date for seeding
+	}
 
 	customers := Customers{
 		ID:                uuid.New(),

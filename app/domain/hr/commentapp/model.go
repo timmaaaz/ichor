@@ -2,6 +2,7 @@ package commentapp
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
@@ -52,9 +53,10 @@ func ToAppUserApprovalComments(bus []commentbus.UserApprovalComment) []UserAppro
 // =============================================================================
 
 type NewUserApprovalComment struct {
-	Comment     string `json:"comment" validate:"required"`
-	UserID      string `json:"user_id" validate:"required"`
-	CommenterID string `json:"commenter_id" validate:"required"`
+	Comment     string  `json:"comment" validate:"required"`
+	UserID      string  `json:"user_id" validate:"required"`
+	CommenterID string  `json:"commenter_id" validate:"required"`
+	CreatedDate *string `json:"created_date"` // Optional: for seeding/import
 }
 
 func (app *NewUserApprovalComment) Decode(data []byte) error {
@@ -84,7 +86,18 @@ func toBusNewUserApprovalComment(app NewUserApprovalComment) (commentbus.NewUser
 		Comment:     app.Comment,
 		UserID:      userID,
 		CommenterID: commenterID,
+		// CreatedDate: nil by default - API always uses server time
 	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return commentbus.NewUserApprovalComment{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
+	}
+
 	return bus, nil
 }
 

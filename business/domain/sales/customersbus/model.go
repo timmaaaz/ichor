@@ -24,6 +24,7 @@ type NewCustomers struct {
 	DeliveryAddressID uuid.UUID
 	Notes             string
 	CreatedBy         uuid.UUID
+	CreatedDate       *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateCustomers struct {

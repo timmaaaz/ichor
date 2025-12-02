@@ -37,6 +37,7 @@ type NewProduct struct {
 	IsPerishable         bool
 	HandlingInstructions string
 	UnitsPerCase         int
+	CreatedDate          *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateProduct struct {

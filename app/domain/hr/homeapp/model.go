@@ -92,8 +92,9 @@ type NewAddress struct {
 
 // NewHome defines the data needed to add a new home.
 type NewHome struct {
-	Type    string     `json:"type" validate:"required"`
-	Address NewAddress `json:"address"`
+	Type        string     `json:"type" validate:"required"`
+	Address     NewAddress `json:"address"`
+	CreatedDate *string    `json:"created_date"` // Optional: for seeding/import
 }
 
 // Decode implements the decoder interface.
@@ -132,6 +133,16 @@ func toBusNewHome(ctx context.Context, app NewHome) (homebus.NewHome, error) {
 			State:    app.Address.State,
 			Country:  app.Address.Country,
 		},
+		// CreatedDate: nil by default - API always uses server time
+	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return homebus.NewHome{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
 	}
 
 	return bus, nil

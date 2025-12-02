@@ -3,6 +3,7 @@ package orderlineitemsapp
 import (
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
@@ -70,12 +71,13 @@ func ToAppOrderLineItems(bus []orderlineitemsbus.OrderLineItem) []OrderLineItem 
 }
 
 type NewOrderLineItem struct {
-	OrderID                       string `json:"order_id" validate:"required,uuid4"`
-	ProductID                     string `json:"product_id" validate:"required,uuid4"`
-	Quantity                      string `json:"quantity" validate:"required,numeric"`
-	Discount                      string `json:"discount" validate:"omitempty,numeric"`
-	LineItemFulfillmentStatusesID string `json:"line_item_fulfillment_statuses_id" validate:"required,uuid4"`
-	CreatedBy                     string `json:"created_by" validate:"required,uuid4"`
+	OrderID                       string  `json:"order_id" validate:"required,uuid4"`
+	ProductID                     string  `json:"product_id" validate:"required,uuid4"`
+	Quantity                      string  `json:"quantity" validate:"required,numeric"`
+	Discount                      string  `json:"discount" validate:"omitempty,numeric"`
+	LineItemFulfillmentStatusesID string  `json:"line_item_fulfillment_statuses_id" validate:"required,uuid4"`
+	CreatedBy                     string  `json:"created_by" validate:"required,uuid4"`
+	CreatedDate                   *string `json:"created_date"` // Optional: for seeding/import
 }
 
 func (app *NewOrderLineItem) Decode(data []byte) error {
@@ -127,7 +129,18 @@ func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLine
 		Discount:                      discount,
 		LineItemFulfillmentStatusesID: lineItemFulfillmentStatusesID,
 		CreatedBy:                     createdBy,
+		// CreatedDate: nil by default - API always uses server time
 	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
+	}
+
 	return bus, nil
 }
 

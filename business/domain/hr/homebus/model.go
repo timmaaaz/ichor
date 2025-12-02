@@ -28,9 +28,10 @@ type Home struct {
 
 // NewHome is what we require from clients when adding a Home.
 type NewHome struct {
-	UserID  uuid.UUID
-	Type    Type
-	Address Address
+	UserID      uuid.UUID
+	Type        Type
+	Address     Address
+	CreatedDate *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 // UpdateAddress is what fields can be updated in the store.

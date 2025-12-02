@@ -71,7 +71,10 @@ func (b *Business) Create(ctx context.Context, nch NewCostHistory) (CostHistory,
 	ctx, span := otel.AddSpan(ctx, "business.costhistorybus.create")
 	defer span.End()
 
-	now := time.Now()
+	now := time.Now().UTC()
+	if nch.CreatedDate != nil {
+		now = *nch.CreatedDate
+	}
 
 	ch := CostHistory{
 		CostHistoryID: uuid.New(),

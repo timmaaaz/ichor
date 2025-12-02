@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
@@ -110,7 +111,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding reportsto : %w", err)
 	}
 
-	_, err = commentbus.TestSeedUserApprovalComment(ctx, 10, reporterIDs[:5], reporterIDs[5:], busDomain.UserApprovalComment)
+	_, err = commentbus.TestSeedUserApprovalCommentHistorical(ctx, 10, 90, reporterIDs[:5], reporterIDs[5:], busDomain.UserApprovalComment)
 	if err != nil {
 		return fmt.Errorf("seeding approval comments : %w", err)
 	}
@@ -131,7 +132,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		assetTypeIDs = append(assetTypeIDs, at.ID)
 	}
 
-	validAssets, err := validassetbus.TestSeedValidAssets(ctx, 10, assetTypeIDs, admins[0].ID, busDomain.ValidAsset)
+	validAssets, err := validassetbus.TestSeedValidAssetsHistorical(ctx, 10, 2, assetTypeIDs, admins[0].ID, busDomain.ValidAsset)
 	if err != nil {
 		return fmt.Errorf("seeding assets : %w", err)
 	}
@@ -239,7 +240,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		contactInfoIDs = append(contactInfoIDs, ci.ID)
 	}
 
-	customers, err := customersbus.TestSeedCustomers(ctx, count, strIDs, contactInfoIDs, uuid.UUIDs{admins[0].ID}, busDomain.Customers)
+	customers, err := customersbus.TestSeedCustomersHistorical(ctx, count, 180, strIDs, contactInfoIDs, uuid.UUIDs{admins[0].ID}, busDomain.Customers)
 	if err != nil {
 		return fmt.Errorf("seeding customers : %w", err)
 	}
@@ -257,7 +258,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
-	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	orders, err := ordersbus.TestSeedOrdersHistorical(ctx, count, 90, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
 	if err != nil {
 		return fmt.Errorf("seeding Orders: %w", err)
 	}
@@ -292,7 +293,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		productCategoryIDs[i] = pc.ProductCategoryID
 	}
 
-	products, err := productbus.TestSeedProducts(ctx, 20, brandIDs, productCategoryIDs, busDomain.Product)
+	products, err := productbus.TestSeedProductsHistorical(ctx, 20, 180, brandIDs, productCategoryIDs, busDomain.Product)
 	if err != nil {
 		return fmt.Errorf("seeding product : %w", err)
 	}
@@ -316,7 +317,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding metrics : %w", err)
 	}
 
-	_, err = costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, busDomain.CostHistory)
+	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, busDomain.CostHistory)
 	if err != nil {
 		return fmt.Errorf("seeding cost history : %w", err)
 	}
@@ -330,7 +331,13 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		olStatusIDs = append(olStatusIDs, ols.ID)
 	}
 
-	_, err = orderlineitemsbus.TestSeedOrderLineItems(ctx, count, orderIDs, productIDs, olStatusIDs, userIDs, busDomain.OrderLineItem)
+	// Create map of order IDs to their created dates for historical line items
+	orderDates := make(map[uuid.UUID]time.Time)
+	for _, order := range orders {
+		orderDates[order.ID] = order.CreatedDate
+	}
+
+	_, err = orderlineitemsbus.TestSeedOrderLineItemsHistorical(ctx, count, orderDates, orderIDs, productIDs, olStatusIDs, userIDs, busDomain.OrderLineItem)
 	if err != nil {
 		return fmt.Errorf("seeding Order Line Items: %w", err)
 	}
@@ -338,7 +345,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	warehouseCount := 5
 
 	// WAREHOUSES
-	warehouses, err := warehousebus.TestSeedWarehouses(ctx, warehouseCount, admins[0].ID, strIDs, busDomain.Warehouse)
+	warehouses, err := warehousebus.TestSeedWarehousesHistorical(ctx, warehouseCount, 365, admins[0].ID, strIDs, busDomain.Warehouse)
 	if err != nil {
 		return fmt.Errorf("seeding warehouses : %w", err)
 	}
@@ -419,7 +426,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Purchase Orders
-	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, 10, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, busDomain.PurchaseOrder)
+	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrdersHistorical(ctx, 10, 120, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, busDomain.PurchaseOrder)
 	if err != nil {
 		return fmt.Errorf("seeding purchase orders : %w", err)
 	}

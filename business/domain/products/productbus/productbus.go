@@ -71,7 +71,10 @@ func (b *Business) Create(ctx context.Context, np NewProduct) (Product, error) {
 	ctx, span := otel.AddSpan(ctx, "business.productbus.create")
 	defer span.End()
 
-	now := time.Now()
+	now := time.Now().UTC()
+	if np.CreatedDate != nil {
+		now = *np.CreatedDate
+	}
 
 	product := Product{
 		ProductID:            uuid.New(),

@@ -19,10 +19,11 @@ type Warehouse struct {
 }
 
 type NewWarehouse struct {
-	Code      string
-	StreetID  uuid.UUID
-	Name      string
-	CreatedBy uuid.UUID
+	Code        string
+	StreetID    uuid.UUID
+	Name        string
+	CreatedBy   uuid.UUID
+	CreatedDate *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateWarehouse struct {

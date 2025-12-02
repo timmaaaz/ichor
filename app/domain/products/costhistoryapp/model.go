@@ -69,12 +69,13 @@ func ToAppCostHistories(bus []costhistorybus.CostHistory) []CostHistory {
 // =========================================================================
 
 type NewCostHistory struct {
-	ProductID     string `json:"product_id" validate:"required,min=36,max=36"`
-	CostType      string `json:"cost_type" validate:"required"`
-	Amount        string `json:"amount" validate:"required"`
-	Currency      string `json:"currency" validate:"required"`
-	EffectiveDate string `json:"effective_date" validate:"required"`
-	EndDate       string `json:"end_date" validate:"required"`
+	ProductID     string  `json:"product_id" validate:"required,min=36,max=36"`
+	CostType      string  `json:"cost_type" validate:"required"`
+	Amount        string  `json:"amount" validate:"required"`
+	Currency      string  `json:"currency" validate:"required"`
+	EffectiveDate string  `json:"effective_date" validate:"required"`
+	EndDate       string  `json:"end_date" validate:"required"`
+	CreatedDate   *string `json:"created_date"` // Optional: for seeding/import
 }
 
 func (app *NewCostHistory) Decode(data []byte) error {
@@ -117,6 +118,16 @@ func toBusNewCostHistory(app NewCostHistory) (costhistorybus.NewCostHistory, err
 		Currency:      app.Currency,
 		EffectiveDate: effectiveDate,
 		EndDate:       endDate,
+		// CreatedDate: nil by default - API always uses server time
+	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return costhistorybus.NewCostHistory{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
 	}
 
 	return bus, nil

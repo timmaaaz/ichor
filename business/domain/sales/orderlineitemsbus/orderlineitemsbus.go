@@ -72,6 +72,9 @@ func (b *Business) Create(ctx context.Context, newStatus NewOrderLineItem) (Orde
 	defer span.End()
 
 	now := time.Now().UTC()
+	if newStatus.CreatedDate != nil {
+		now = *newStatus.CreatedDate // Use provided date for seeding
+	}
 
 	status := OrderLineItem{
 		ID:                            uuid.New(),

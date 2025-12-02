@@ -71,6 +71,9 @@ func (b *Business) Create(ctx context.Context, na NewValidAsset) (ValidAsset, er
 	defer span.End()
 
 	now := time.Now()
+	if na.CreatedDate != nil {
+		now = *na.CreatedDate
+	}
 
 	asset := ValidAsset{
 		ID:                  uuid.New(),

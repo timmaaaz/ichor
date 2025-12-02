@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
@@ -84,18 +85,19 @@ func ToAppProducts(bus []productbus.Product) []Product {
 }
 
 type NewProduct struct {
-	SKU                  string `json:"sku" validate:"required"`
-	BrandID              string `json:"brand_id" validate:"required,min=36,max=36"`
-	ProductCategoryID    string `json:"product_category_id" validate:"required,min=36,max=36"`
-	Name                 string `json:"name" validate:"required"`
-	Description          string `json:"description" validate:"required"`
-	ModelNumber          string `json:"model_number" validate:"required"`
-	UpcCode              string `json:"upc_code" validate:"required"`
-	Status               string `json:"status" validate:"required"`
-	IsActive             string `json:"is_active" validate:"required"`
-	IsPerishable         string `json:"is_perishable" validate:"required"`
-	HandlingInstructions string `json:"handling_instructions"`
-	UnitsPerCase         string `json:"units_per_case" validate:"required"`
+	SKU                  string  `json:"sku" validate:"required"`
+	BrandID              string  `json:"brand_id" validate:"required,min=36,max=36"`
+	ProductCategoryID    string  `json:"product_category_id" validate:"required,min=36,max=36"`
+	Name                 string  `json:"name" validate:"required"`
+	Description          string  `json:"description" validate:"required"`
+	ModelNumber          string  `json:"model_number" validate:"required"`
+	UpcCode              string  `json:"upc_code" validate:"required"`
+	Status               string  `json:"status" validate:"required"`
+	IsActive             string  `json:"is_active" validate:"required"`
+	IsPerishable         string  `json:"is_perishable" validate:"required"`
+	HandlingInstructions string  `json:"handling_instructions"`
+	UnitsPerCase         string  `json:"units_per_case" validate:"required"`
+	CreatedDate          *string `json:"created_date"` // Optional: for seeding/import
 }
 
 func (app *NewProduct) Decode(data []byte) error {
@@ -149,7 +151,18 @@ func toBusNewProduct(app NewProduct) (productbus.NewProduct, error) {
 		IsPerishable:         isPerishable,
 		HandlingInstructions: app.HandlingInstructions,
 		UnitsPerCase:         unitsPerCase,
+		// CreatedDate: nil by default - API always uses server time
 	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return productbus.NewProduct{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
+	}
+
 	return bus, nil
 }
 

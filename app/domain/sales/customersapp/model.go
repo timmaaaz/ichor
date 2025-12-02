@@ -68,11 +68,12 @@ func ToAppCustomers(bus []customersbus.Customers) []Customers {
 
 // TODO: Go over required fields here
 type NewCustomers struct {
-	Name              string `json:"name" validate:"required"`
-	ContactID         string `json:"contact_id" validate:"required,uuid4"`
-	DeliveryAddressID string `json:"delivery_address_id" validate:"required,uuid4"`
-	Notes             string `json:"notes" validate:"omitempty,max=500"`
-	CreatedBy         string `json:"created_by" validate:"required,uuid4"`
+	Name              string  `json:"name" validate:"required"`
+	ContactID         string  `json:"contact_id" validate:"required,uuid4"`
+	DeliveryAddressID string  `json:"delivery_address_id" validate:"required,uuid4"`
+	Notes             string  `json:"notes" validate:"omitempty,max=500"`
+	CreatedBy         string  `json:"created_by" validate:"required,uuid4"`
+	CreatedDate       *string `json:"created_date"` // Optional: for seeding/import
 }
 
 func (app *NewCustomers) Decode(data []byte) error {
@@ -109,7 +110,18 @@ func toBusNewCustomers(app NewCustomers) (customersbus.NewCustomers, error) {
 		DeliveryAddressID: deliveryAddressID,
 		Notes:             app.Notes,
 		CreatedBy:         createdBy,
+		// CreatedDate: nil by default - API always uses server time
 	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return customersbus.NewCustomers{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
+	}
+
 	return bus, nil
 }
 
