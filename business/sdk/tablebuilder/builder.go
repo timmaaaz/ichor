@@ -431,9 +431,11 @@ func (qb *QueryBuilder) buildMetricQuery(ds *DataSource, params QueryParams, isP
 		}
 	}
 
-	// Validate group by if present
-	if err := ValidateGroupByConfig(ds.GroupBy); err != nil {
-		return "", nil, fmt.Errorf("invalid group by: %w", err)
+	// Validate all group by configs if present
+	for i, groupBy := range ds.GroupBy {
+		if err := ValidateGroupByConfig(&groupBy); err != nil {
+			return "", nil, fmt.Errorf("invalid group by %d: %w", i, err)
+		}
 	}
 
 	// Build FROM clause
@@ -449,9 +451,9 @@ func (qb *QueryBuilder) buildMetricQuery(ds *DataSource, params QueryParams, isP
 	// 2. Build SELECT with aggregates
 	var selectCols []interface{}
 
-	// Add group by column to select if present
-	if ds.GroupBy != nil {
-		groupBySelectExpr, err := qb.buildGroupBySelectExpression(ds.GroupBy)
+	// Add all group by columns to select if present
+	for _, groupBy := range ds.GroupBy {
+		groupBySelectExpr, err := qb.buildGroupBySelectExpression(&groupBy)
 		if err != nil {
 			return "", nil, fmt.Errorf("build group by select: %w", err)
 		}
@@ -479,12 +481,12 @@ func (qb *QueryBuilder) buildMetricQuery(ds *DataSource, params QueryParams, isP
 	query = qb.applyFilters(query, ds.Filters, params)
 
 	// 6. Build GROUP BY if present
-	if ds.GroupBy != nil {
-		groupByExpr, err := qb.buildGroupByClause(ds.GroupBy)
+	if len(ds.GroupBy) > 0 {
+		groupByExprs, err := qb.buildGroupByClauses(ds.GroupBy)
 		if err != nil {
-			return "", nil, fmt.Errorf("build group by clause: %w", err)
+			return "", nil, fmt.Errorf("build group by clauses: %w", err)
 		}
-		query = query.GroupBy(groupByExpr)
+		query = query.GroupBy(groupByExprs...)
 	}
 
 	// 7. Apply sorting (only for primary data source)
@@ -574,6 +576,15 @@ func (qb *QueryBuilder) buildArithmeticExpression(expr *ExpressionConfig) (strin
 
 // buildGroupBySelectExpression builds the SELECT expression for group by column
 func (qb *QueryBuilder) buildGroupBySelectExpression(groupBy *GroupByConfig) (interface{}, error) {
+	// For SQL expressions, alias is required
+	if groupBy.Expression {
+		if groupBy.Alias == "" {
+			return nil, fmt.Errorf("alias required for GROUP BY expression: %s", groupBy.Column)
+		}
+		// Use raw SQL expression
+		return goqu.L(groupBy.Column).As(goqu.C(groupBy.Alias)), nil
+	}
+
 	alias := groupBy.Alias
 	if alias == "" {
 		// Use column name as alias if not specified
@@ -598,6 +609,11 @@ func (qb *QueryBuilder) buildGroupBySelectExpression(groupBy *GroupByConfig) (in
 
 // buildGroupByClause builds the GROUP BY clause expression
 func (qb *QueryBuilder) buildGroupByClause(groupBy *GroupByConfig) (interface{}, error) {
+	// For SQL expressions, use the expression directly in GROUP BY
+	if groupBy.Expression {
+		return goqu.L(groupBy.Column), nil
+	}
+
 	if groupBy.Interval != "" {
 		// Time-based grouping: GROUP BY DATE_TRUNC('month', column)
 		interval, ok := AllowedIntervals[groupBy.Interval]
@@ -609,4 +625,19 @@ func (qb *QueryBuilder) buildGroupByClause(groupBy *GroupByConfig) (interface{},
 
 	// Categorical grouping: GROUP BY column
 	return goqu.L(groupBy.Column), nil
+}
+
+// buildGroupByClauses builds multiple GROUP BY clause expressions
+func (qb *QueryBuilder) buildGroupByClauses(groupBys []GroupByConfig) ([]interface{}, error) {
+	var exprs []interface{}
+
+	for _, groupBy := range groupBys {
+		expr, err := qb.buildGroupByClause(&groupBy)
+		if err != nil {
+			return nil, err
+		}
+		exprs = append(exprs, expr)
+	}
+
+	return exprs, nil
 }

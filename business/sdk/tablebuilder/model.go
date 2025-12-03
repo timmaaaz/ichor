@@ -49,8 +49,8 @@ type DataSource struct {
 	Rows         int            `json:"rows,omitempty"`
 
 	// Chart aggregation (safe, structured)
-	Metrics []MetricConfig `json:"metrics,omitempty"`
-	GroupBy *GroupByConfig `json:"group_by,omitempty"`
+	Metrics []MetricConfig  `json:"metrics,omitempty"`
+	GroupBy []GroupByConfig `json:"group_by,omitempty"`
 }
 
 // =============================================================================
@@ -73,9 +73,10 @@ type ExpressionConfig struct {
 
 // GroupByConfig for time-series and categorical grouping
 type GroupByConfig struct {
-	Column   string `json:"column"`             // "orders.created_date" or "categories.name"
-	Interval string `json:"interval,omitempty"` // day, week, month, quarter, year (dates only)
-	Alias    string `json:"alias,omitempty"`    // Output name: "month"
+	Column     string `json:"column"`               // "orders.created_date" or "categories.name" or SQL expression
+	Interval   string `json:"interval,omitempty"`   // day, week, month, quarter, year (dates only)
+	Alias      string `json:"alias,omitempty"`      // Output name: "month"
+	Expression bool   `json:"expression,omitempty"` // If true, Column is treated as raw SQL
 }
 
 // =============================================================================

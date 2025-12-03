@@ -127,9 +127,12 @@ CREATE TABLE geography.streets (
 -- Version: 1.17
 -- Description: Create table user_approval_status
 CREATE TABLE hr.user_approval_status (
-   id UUID NOT NULL, 
-   icon_id UUID NULL, 
+   id UUID NOT NULL,
+   icon_id UUID NULL,
    name TEXT NOT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id)
 );
 
@@ -232,20 +235,26 @@ CREATE TABLE hr.homes (
 );
 
 -- Version: 1.23
--- Description: Add approval status 
+-- Description: Add approval status
 CREATE TABLE assets.approval_status (
-   id UUID NOT NULL, 
-   icon_id UUID NOT NULL, 
+   id UUID NOT NULL,
+   icon_id UUID NOT NULL,
    name TEXT NOT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id)
 );
 
 -- Version: 1.24
 -- Description: Add fulfillment status
 CREATE TABLE assets.fulfillment_status (
-   id UUID NOT NULL, 
-   icon_id UUID NOT NULL, 
+   id UUID NOT NULL,
+   icon_id UUID NOT NULL,
    name TEXT NOT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id)
 );
 
@@ -756,6 +765,9 @@ CREATE TABLE sales.order_fulfillment_statuses (
    id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
    description TEXT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id),
    UNIQUE (name)
 );
@@ -764,6 +776,9 @@ CREATE TABLE sales.line_item_fulfillment_statuses (
    id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
    description TEXT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id),
    UNIQUE (name)
 );
@@ -1621,4 +1636,20 @@ ADD CONSTRAINT check_content_reference CHECK (
 );
 
 COMMENT ON COLUMN config.page_content.chart_config_id IS 'References table_configs for chart widget configurations';
+
+-- Version: 1.75
+-- Description: Convert GroupBy from object to array in table_configs for multi-dimensional grouping support
+UPDATE config.table_configs
+SET config = jsonb_set(
+    config,
+    '{data_source,0,group_by}',
+    CASE
+        WHEN config->'data_source'->0->'group_by' IS NOT NULL
+         AND jsonb_typeof(config->'data_source'->0->'group_by') = 'object'
+        THEN jsonb_build_array(config->'data_source'->0->'group_by')
+        ELSE config->'data_source'->0->'group_by'
+    END
+)
+WHERE config->'data_source'->0->'group_by' IS NOT NULL
+  AND jsonb_typeof(config->'data_source'->0->'group_by') = 'object';
 

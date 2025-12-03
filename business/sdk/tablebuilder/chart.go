@@ -327,21 +327,23 @@ func (ct *ChartTransformer) transformPie(data *TableData, settings *ChartVisualS
 		}
 	}
 
-	series := make([]SeriesData, 0, len(data.Data))
+	categories := make([]string, 0, len(data.Data))
+	values := make([]float64, 0, len(data.Data))
 
 	for _, row := range data.Data {
 		name := ct.extractString(row, categoryCol)
 		value := ct.extractFloat(row, valueCol)
 
-		series = append(series, SeriesData{
-			Name: name,
-			Data: []float64{value},
-		})
+		categories = append(categories, name)
+		values = append(values, value)
 	}
 
 	return &ChartResponse{
-		Type:   ChartTypePie,
-		Series: series,
+		Type:       ChartTypePie,
+		Categories: categories,
+		Series: []SeriesData{
+			{Name: valueCol, Data: values},
+		},
 	}, nil
 }
 

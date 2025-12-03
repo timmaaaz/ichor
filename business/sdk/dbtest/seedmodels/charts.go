@@ -221,10 +221,12 @@ var SeedLineMonthlySales = &tablebuilder.Config{
 					},
 				},
 			},
-			GroupBy: &tablebuilder.GroupByConfig{
-				Column:   "orders.created_date",
-				Interval: "month",
-				Alias:    "month",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column:   "orders.created_date",
+					Interval: "month",
+					Alias:    "month",
+				},
 			},
 			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
@@ -304,9 +306,11 @@ var SeedBarTopProducts = &tablebuilder.Config{
 					},
 				},
 			},
-			GroupBy: &tablebuilder.GroupByConfig{
-				Column: "products.name",
-				Alias:  "product_name",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column: "products.name",
+					Alias:  "product_name",
+				},
 			},
 			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
@@ -380,9 +384,11 @@ var SeedStackedBarRegionCategory = &tablebuilder.Config{
 					},
 				},
 			},
-			GroupBy: &tablebuilder.GroupByConfig{
-				Column: "cities.name",
-				Alias:  "region",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column: "cities.name",
+					Alias:  "region",
+				},
 			},
 			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
@@ -477,10 +483,12 @@ var SeedStackedAreaCumulative = &tablebuilder.Config{
 					},
 				},
 			},
-			GroupBy: &tablebuilder.GroupByConfig{
-				Column:   "orders.created_date",
-				Interval: "month",
-				Alias:    "month",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column:   "orders.created_date",
+					Interval: "month",
+					Alias:    "month",
+				},
 			},
 			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
@@ -560,9 +568,11 @@ var SeedPieRevenueCategory = &tablebuilder.Config{
 					},
 				},
 			},
-			GroupBy: &tablebuilder.GroupByConfig{
-				Column: "product_categories.name",
-				Alias:  "category",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column: "product_categories.name",
+					Alias:  "category",
+				},
 			},
 			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
@@ -635,10 +645,12 @@ var SeedComboRevenueOrders = &tablebuilder.Config{
 					Column:   "orders.id",
 				},
 			},
-			GroupBy: &tablebuilder.GroupByConfig{
-				Column:   "orders.created_date",
-				Interval: "month",
-				Alias:    "month",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column:   "orders.created_date",
+					Interval: "month",
+					Alias:    "month",
+				},
 			},
 			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
@@ -783,9 +795,11 @@ var SeedFunnelPipeline = &tablebuilder.Config{
 					Column:   "orders.id",
 				},
 			},
-			GroupBy: &tablebuilder.GroupByConfig{
-				Column: "order_fulfillment_statuses.name",
-				Alias:  "status",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column: "order_fulfillment_statuses.name",
+					Alias:  "status",
+				},
 			},
 			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
@@ -818,9 +832,7 @@ var SeedFunnelPipeline = &tablebuilder.Config{
 // =============================================================================
 
 // SeedHeatmapSalesTime - Heatmap showing order count by day of week and hour
-// NOTE: Heatmaps require multi-dimensional grouping (day AND hour) which is beyond
-// the single GroupBy config. This chart uses traditional Columns with EXTRACT functions
-// and requires custom query handling. Future enhancement could add multi-group support.
+// Demonstrates multi-dimensional grouping with SQL expressions using the GroupBy slice and Expression flag.
 var SeedHeatmapSalesTime = &tablebuilder.Config{
 	Title:         "Orders by Day and Hour",
 	WidgetType:    "chart",
@@ -830,11 +842,23 @@ var SeedHeatmapSalesTime = &tablebuilder.Config{
 			Type:   "query",
 			Source: "orders",
 			Schema: "sales",
-			Select: tablebuilder.SelectConfig{
-				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "day_of_week", Alias: "day", TableColumn: "EXTRACT(DOW FROM orders.created_date)"},
-					{Name: "hour", Alias: "hour", TableColumn: "EXTRACT(HOUR FROM orders.created_date)"},
-					{Name: "order_count", Alias: "count", TableColumn: "COUNT(orders.id)"},
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column:     "EXTRACT(DOW FROM orders.created_date)",
+					Alias:      "day",
+					Expression: true,
+				},
+				{
+					Column:     "EXTRACT(HOUR FROM orders.created_date)",
+					Alias:      "hour",
+					Expression: true,
+				},
+			},
+			Metrics: []tablebuilder.MetricConfig{
+				{
+					Name:     "count",
+					Function: "count",
+					Column:   "orders.id",
 				},
 			},
 		},
@@ -877,9 +901,11 @@ var SeedTreemapRevenue = &tablebuilder.Config{
 					},
 				},
 			},
-			GroupBy: &tablebuilder.GroupByConfig{
-				Column: "products.name",
-				Alias:  "product",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{
+					Column: "products.name",
+					Alias:  "product",
+				},
 			},
 			Select: tablebuilder.SelectConfig{
 				ForeignTables: []tablebuilder.ForeignTable{
