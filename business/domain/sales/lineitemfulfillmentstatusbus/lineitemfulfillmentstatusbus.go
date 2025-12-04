@@ -71,9 +71,12 @@ func (b *Business) Create(ctx context.Context, newStatus NewLineItemFulfillmentS
 	defer span.End()
 
 	status := LineItemFulfillmentStatus{
-		ID:          uuid.New(),
-		Name:        newStatus.Name,
-		Description: newStatus.Description,
+		ID:             uuid.New(),
+		Name:           newStatus.Name,
+		Description:    newStatus.Description,
+		PrimaryColor:   newStatus.PrimaryColor,
+		SecondaryColor: newStatus.SecondaryColor,
+		Icon:           newStatus.Icon,
 	}
 
 	if err := b.storer.Create(ctx, status); err != nil {
@@ -91,6 +94,15 @@ func (b *Business) Update(ctx context.Context, status LineItemFulfillmentStatus,
 	}
 	if uStatus.Description != nil {
 		status.Description = *uStatus.Description
+	}
+	if uStatus.PrimaryColor != nil {
+		status.PrimaryColor = *uStatus.PrimaryColor
+	}
+	if uStatus.SecondaryColor != nil {
+		status.SecondaryColor = *uStatus.SecondaryColor
+	}
+	if uStatus.Icon != nil {
+		status.Icon = *uStatus.Icon
 	}
 
 	if err := b.storer.Update(ctx, status); err != nil {

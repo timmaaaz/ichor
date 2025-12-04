@@ -73,9 +73,12 @@ func (b *Business) Create(ctx context.Context, nfs NewFulfillmentStatus) (Fulfil
 	defer span.End()
 
 	fs := FulfillmentStatus{
-		ID:     uuid.New(),
-		Name:   nfs.Name,
-		IconID: nfs.IconID,
+		ID:             uuid.New(),
+		Name:           nfs.Name,
+		IconID:         nfs.IconID,
+		PrimaryColor:   nfs.PrimaryColor,
+		SecondaryColor: nfs.SecondaryColor,
+		Icon:           nfs.Icon,
 	}
 
 	if err := b.storer.Create(ctx, fs); err != nil {
@@ -96,6 +99,18 @@ func (b *Business) Update(ctx context.Context, fs FulfillmentStatus, ufs UpdateF
 
 	if ufs.Name != nil {
 		fs.Name = *ufs.Name
+	}
+
+	if ufs.PrimaryColor != nil {
+		fs.PrimaryColor = *ufs.PrimaryColor
+	}
+
+	if ufs.SecondaryColor != nil {
+		fs.SecondaryColor = *ufs.SecondaryColor
+	}
+
+	if ufs.Icon != nil {
+		fs.Icon = *ufs.Icon
 	}
 
 	if err := b.storer.Update(ctx, fs); err != nil {

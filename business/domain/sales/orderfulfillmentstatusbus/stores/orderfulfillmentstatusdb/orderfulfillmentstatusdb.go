@@ -43,9 +43,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (orderfulfillmentstatusbus.
 func (s *Store) Create(ctx context.Context, status orderfulfillmentstatusbus.OrderFulfillmentStatus) error {
 	const q = `
 	INSERT INTO sales.order_fulfillment_statuses (
-	  id, name, description
+	  id, name, description, primary_color, secondary_color, icon
     ) VALUES (
-        :id, :name, :description
+        :id, :name, :description, :primary_color, :secondary_color, :icon
     )
 	`
 
@@ -69,7 +69,10 @@ func (s *Store) Update(ctx context.Context, status orderfulfillmentstatusbus.Ord
         sales.order_fulfillment_statuses
     SET
         name = :name,
-        description = :description
+        description = :description,
+        primary_color = :primary_color,
+        secondary_color = :secondary_color,
+        icon = :icon
     WHERE
         id = :id
     `
@@ -108,7 +111,7 @@ func (s *Store) Query(ctx context.Context, filter orderfulfillmentstatusbus.Quer
 
 	const q = `
 	SELECT
-		id, name, description
+		id, name, description, primary_color, secondary_color, icon
     FROM
 	    sales.order_fulfillment_statuses
 		`
@@ -161,7 +164,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (orderfulfill
 
 	const q = `
     SELECT
-        id, name, description
+        id, name, description, primary_color, secondary_color, icon
     FROM
         sales.order_fulfillment_statuses
     WHERE

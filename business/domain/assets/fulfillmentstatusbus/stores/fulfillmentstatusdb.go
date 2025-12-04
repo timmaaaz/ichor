@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (fulfillmentstatusbus.Store
 func (s *Store) Create(ctx context.Context, fs fulfillmentstatusbus.FulfillmentStatus) error {
 	const q = `
     INSERT INTO assets.fulfillment_status (
-        id, icon_id, name
+        id, icon_id, name, primary_color, secondary_color, icon
     ) VALUES (
-        :id, :icon_id, :name
+        :id, :icon_id, :name, :primary_color, :secondary_color, :icon
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBFulfillmentStatus(fs)); err != nil {
@@ -68,10 +68,13 @@ func (s *Store) Create(ctx context.Context, fs fulfillmentstatusbus.FulfillmentS
 func (s *Store) Update(ctx context.Context, fs fulfillmentstatusbus.FulfillmentStatus) error {
 	const q = `
 	UPDATE assets.fulfillment_status
-	SET 
+	SET
 	    icon_id = :icon_id,
-        name = :name
-	WHERE 
+        name = :name,
+        primary_color = :primary_color,
+        secondary_color = :secondary_color,
+        icon = :icon
+	WHERE
 		id = :id
 	`
 
@@ -109,8 +112,8 @@ func (s *Store) Query(ctx context.Context, filter fulfillmentstatusbus.QueryFilt
 	}
 
 	const q = `
-	SELECT 
-		id, icon_id, name
+	SELECT
+		id, icon_id, name, primary_color, secondary_color, icon
 	FROM
 		assets.fulfillment_status
 	`
@@ -168,7 +171,7 @@ func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (fulfill
 
 	const q = `
     SELECT
-        id, icon_id, name
+        id, icon_id, name, primary_color, secondary_color, icon
     FROM
         assets.fulfillment_status
     WHERE

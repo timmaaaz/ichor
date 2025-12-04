@@ -18,9 +18,12 @@ type QueryParams struct {
 }
 
 type OrderFulfillmentStatus struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Description    string `json:"description"`
+	PrimaryColor   string `json:"primary_color"`
+	SecondaryColor string `json:"secondary_color"`
+	Icon           string `json:"icon"`
 }
 
 func (app OrderFulfillmentStatus) Encode() ([]byte, string, error) {
@@ -30,9 +33,12 @@ func (app OrderFulfillmentStatus) Encode() ([]byte, string, error) {
 
 func ToAppOrderFulfillmentStatus(bus orderfulfillmentstatusbus.OrderFulfillmentStatus) OrderFulfillmentStatus {
 	return OrderFulfillmentStatus{
-		ID:          bus.ID.String(),
-		Name:        bus.Name,
-		Description: bus.Description,
+		ID:             bus.ID.String(),
+		Name:           bus.Name,
+		Description:    bus.Description,
+		PrimaryColor:   bus.PrimaryColor,
+		SecondaryColor: bus.SecondaryColor,
+		Icon:           bus.Icon,
 	}
 }
 
@@ -45,8 +51,11 @@ func ToAppOrderFulfillmentStatuses(bus []orderfulfillmentstatusbus.OrderFulfillm
 }
 
 type NewOrderFulfillmentStatus struct {
-	Name        string `json:"name" validate:"required,min=3"`
-	Description string `json:"description" validate:"omitempty"`
+	Name           string `json:"name" validate:"required,min=3"`
+	Description    string `json:"description" validate:"omitempty"`
+	PrimaryColor   string `json:"primary_color" validate:"omitempty,max=50"`
+	SecondaryColor string `json:"secondary_color" validate:"omitempty,max=50"`
+	Icon           string `json:"icon" validate:"omitempty,max=100"`
 }
 
 func (app *NewOrderFulfillmentStatus) Decode(data []byte) error {
@@ -62,16 +71,22 @@ func (app NewOrderFulfillmentStatus) Validate() error {
 
 func toBusNewOrderFulfillmentStatus(app NewOrderFulfillmentStatus) (orderfulfillmentstatusbus.NewOrderFulfillmentStatus, error) {
 	bus := orderfulfillmentstatusbus.NewOrderFulfillmentStatus{
-		Name:        app.Name,
-		Description: app.Description,
+		Name:           app.Name,
+		Description:    app.Description,
+		PrimaryColor:   app.PrimaryColor,
+		SecondaryColor: app.SecondaryColor,
+		Icon:           app.Icon,
 	}
 
 	return bus, nil
 }
 
 type UpdateOrderFulfillmentStatus struct {
-	Name        *string `json:"name" validate:"omitempty,min=3"`
-	Description *string `json:"description" validate:"omitempty"`
+	Name           *string `json:"name" validate:"omitempty,min=3"`
+	Description    *string `json:"description" validate:"omitempty"`
+	PrimaryColor   *string `json:"primary_color" validate:"omitempty,max=50"`
+	SecondaryColor *string `json:"secondary_color" validate:"omitempty,max=50"`
+	Icon           *string `json:"icon" validate:"omitempty,max=100"`
 }
 
 func (app *UpdateOrderFulfillmentStatus) Decode(data []byte) error {
@@ -87,8 +102,11 @@ func (app UpdateOrderFulfillmentStatus) Validate() error {
 
 func toBusUpdateOrderFulfillmentStatus(app UpdateOrderFulfillmentStatus) (orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus, error) {
 	bus := orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus{
-		Name:        app.Name,
-		Description: app.Description,
+		Name:           app.Name,
+		Description:    app.Description,
+		PrimaryColor:   app.PrimaryColor,
+		SecondaryColor: app.SecondaryColor,
+		Icon:           app.Icon,
 	}
 
 	return bus, nil
