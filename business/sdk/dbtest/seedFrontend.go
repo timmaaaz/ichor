@@ -160,18 +160,36 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		assetIDs = append(assetIDs, a.ID)
 	}
 
-	approvalStatuses, err := approvalstatusbus.TestSeedApprovalStatus(ctx, 12, busDomain.ApprovalStatus)
-	if err != nil {
-		return fmt.Errorf("seeding approval statuses : %w", err)
+	// Create approval statuses matching seed.sql
+	approvalStatusNames := []string{"SUCCESS", "ERROR", "WAITING", "REJECTED", "IN_PROGRESS"}
+	approvalStatuses := make([]approvalstatusbus.ApprovalStatus, 0, len(approvalStatusNames))
+	for _, name := range approvalStatusNames {
+		as, err := busDomain.ApprovalStatus.Create(ctx, approvalstatusbus.NewApprovalStatus{
+			IconID: uuid.New(),
+			Name:   name,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding approval status %s: %w", name, err)
+		}
+		approvalStatuses = append(approvalStatuses, as)
 	}
 	approvalStatusIDs := make([]uuid.UUID, len(approvalStatuses))
 	for i, as := range approvalStatuses {
 		approvalStatusIDs[i] = as.ID
 	}
 
-	fulfillmentStatuses, err := fulfillmentstatusbus.TestSeedFulfillmentStatus(ctx, 8, busDomain.FulfillmentStatus)
-	if err != nil {
-		return fmt.Errorf("seeding fulfillment statuses : %w", err)
+	// Create fulfillment statuses matching seed.sql
+	fulfillmentStatusNames := []string{"SUCCESS", "ERROR", "WAITING", "REJECTED", "IN_PROGRESS"}
+	fulfillmentStatuses := make([]fulfillmentstatusbus.FulfillmentStatus, 0, len(fulfillmentStatusNames))
+	for _, name := range fulfillmentStatusNames {
+		fs, err := busDomain.FulfillmentStatus.Create(ctx, fulfillmentstatusbus.NewFulfillmentStatus{
+			IconID: uuid.New(),
+			Name:   name,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding fulfillment status %s: %w", name, err)
+		}
+		fulfillmentStatuses = append(fulfillmentStatuses, fs)
 	}
 	fulfillmentStatusIDs := make([]uuid.UUID, len(fulfillmentStatuses))
 	for i, fs := range fulfillmentStatuses {
@@ -249,9 +267,27 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		customerIDs = append(customerIDs, c.ID)
 	}
 
-	ofls, err := orderfulfillmentstatusbus.TestSeedOrderFulfillmentStatuses(ctx, busDomain.OrderFulfillmentStatus)
-	if err != nil {
-		return fmt.Errorf("seeding order fulfillment statuses: %w", err)
+	// Create order fulfillment statuses matching seed.sql
+	orderFulfillmentStatusData := []struct {
+		name        string
+		description string
+	}{
+		{"PENDING", "Order is pending"},
+		{"PROCESSING", "Order is being processed"},
+		{"SHIPPED", "Order has been shipped"},
+		{"DELIVERED", "Order has been delivered"},
+		{"CANCELLED", "Order has been cancelled"},
+	}
+	ofls := make([]orderfulfillmentstatusbus.OrderFulfillmentStatus, 0, len(orderFulfillmentStatusData))
+	for _, data := range orderFulfillmentStatusData {
+		ofl, err := busDomain.OrderFulfillmentStatus.Create(ctx, orderfulfillmentstatusbus.NewOrderFulfillmentStatus{
+			Name:        data.name,
+			Description: data.description,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding order fulfillment status %s: %w", data.name, err)
+		}
+		ofls = append(ofls, ofl)
 	}
 	oflIDs := make([]uuid.UUID, 0, len(ofls))
 	for _, ofl := range ofls {
@@ -322,9 +358,28 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding cost history : %w", err)
 	}
 
-	olStatuses, err := lineitemfulfillmentstatusbus.TestSeedLineItemFulfillmentStatuses(ctx, busDomain.LineItemFulfillmentStatus)
-	if err != nil {
-		return fmt.Errorf("seeding line item fulfillment statuses: %w", err)
+	// Create line item fulfillment statuses matching seed.sql
+	lineItemFulfillmentStatusData := []struct {
+		name        string
+		description string
+	}{
+		{"ALLOCATED", "Line item has been allocated"},
+		{"CANCELLED", "Line item has been cancelled"},
+		{"PACKED", "Line item has been packed"},
+		{"PENDING", "Line item is pending"},
+		{"PICKED", "Line item has been picked"},
+		{"SHIPPED", "Line item has been shipped"},
+	}
+	olStatuses := make([]lineitemfulfillmentstatusbus.LineItemFulfillmentStatus, 0, len(lineItemFulfillmentStatusData))
+	for _, data := range lineItemFulfillmentStatusData {
+		ols, err := busDomain.LineItemFulfillmentStatus.Create(ctx, lineitemfulfillmentstatusbus.NewLineItemFulfillmentStatus{
+			Name:        data.name,
+			Description: data.description,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding line item fulfillment status %s: %w", data.name, err)
+		}
+		olStatuses = append(olStatuses, ols)
 	}
 	olStatusIDs := make([]uuid.UUID, 0, len(olStatuses))
 	for _, ols := range olStatuses {
@@ -405,20 +460,62 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		supplierProductIDs[i] = sp.SupplierProductID
 	}
 
-	// Purchase Order Statuses
-	poStatuses, err := purchaseorderstatusbus.TestSeedPurchaseOrderStatuses(ctx, 5, busDomain.PurchaseOrderStatus)
-	if err != nil {
-		return fmt.Errorf("seeding purchase order statuses : %w", err)
+	// Purchase Order Statuses - Create meaningful statuses
+	purchaseOrderStatusData := []struct {
+		name        string
+		description string
+		sortOrder   int
+	}{
+		{"DRAFT", "Purchase order is being prepared", 100},
+		{"PENDING_APPROVAL", "Awaiting approval", 200},
+		{"APPROVED", "Purchase order has been approved", 300},
+		{"SENT", "Purchase order sent to supplier", 400},
+		{"PARTIALLY_RECEIVED", "Some items have been received", 500},
+		{"RECEIVED", "All items have been received", 600},
+		{"CANCELLED", "Purchase order has been cancelled", 700},
+		{"CLOSED", "Purchase order is closed", 800},
+	}
+	poStatuses := make([]purchaseorderstatusbus.PurchaseOrderStatus, 0, len(purchaseOrderStatusData))
+	for _, data := range purchaseOrderStatusData {
+		ps, err := busDomain.PurchaseOrderStatus.Create(ctx, purchaseorderstatusbus.NewPurchaseOrderStatus{
+			Name:        data.name,
+			Description: data.description,
+			SortOrder:   data.sortOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding purchase order status %s: %w", data.name, err)
+		}
+		poStatuses = append(poStatuses, ps)
 	}
 	poStatusIDs := make(uuid.UUIDs, len(poStatuses))
 	for i, ps := range poStatuses {
 		poStatusIDs[i] = ps.ID
 	}
 
-	// Purchase Order Line Item Statuses
-	poLineItemStatuses, err := purchaseorderlineitemstatusbus.TestSeedPurchaseOrderLineItemStatuses(ctx, 5, busDomain.PurchaseOrderLineItemStatus)
-	if err != nil {
-		return fmt.Errorf("seeding purchase order line item statuses : %w", err)
+	// Purchase Order Line Item Statuses - Create meaningful statuses
+	purchaseOrderLineItemStatusData := []struct {
+		name        string
+		description string
+		sortOrder   int
+	}{
+		{"PENDING", "Line item is pending", 100},
+		{"ORDERED", "Line item has been ordered", 200},
+		{"PARTIALLY_RECEIVED", "Some quantity has been received", 300},
+		{"RECEIVED", "All quantity has been received", 400},
+		{"BACKORDERED", "Line item is on backorder", 500},
+		{"CANCELLED", "Line item has been cancelled", 600},
+	}
+	poLineItemStatuses := make([]purchaseorderlineitemstatusbus.PurchaseOrderLineItemStatus, 0, len(purchaseOrderLineItemStatusData))
+	for _, data := range purchaseOrderLineItemStatusData {
+		pols, err := busDomain.PurchaseOrderLineItemStatus.Create(ctx, purchaseorderlineitemstatusbus.NewPurchaseOrderLineItemStatus{
+			Name:        data.name,
+			Description: data.description,
+			SortOrder:   data.sortOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding purchase order line item status %s: %w", data.name, err)
+		}
+		poLineItemStatuses = append(poLineItemStatuses, pols)
 	}
 	poLineItemStatusIDs := make(uuid.UUIDs, len(poLineItemStatuses))
 	for i, pols := range poLineItemStatuses {
