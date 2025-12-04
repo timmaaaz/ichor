@@ -803,6 +803,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Width:      120,
 				Sortable:   true,
 				Filterable: true,
+				Type:       "status",
 			},
 			"enabled": {
 				Name:   "enabled",
