@@ -95,3 +95,28 @@ type ImportStats struct {
 	SkippedCount  int
 	UpdatedCount  int
 }
+
+// Error code constants for validation
+const (
+	ErrCodeInvalidJSON       = "INVALID_JSON"
+	ErrCodeRequiredField     = "REQUIRED_FIELD"
+	ErrCodeInvalidReference  = "INVALID_REFERENCE"
+	ErrCodeInvalidType       = "INVALID_CONTENT_TYPE"
+	ErrCodeCircularReference = "CIRCULAR_PARENT_REF"
+	ErrCodeMaxDepthExceeded  = "MAX_NESTING_DEPTH"
+	ErrCodeMaxSizeExceeded   = "MAX_SIZE_EXCEEDED"
+)
+
+// ValidationResult represents the outcome of validating a page config import (business layer)
+// NOTE: Does NOT implement web.Encoder - that's the app layer's job
+type ValidationResult struct {
+	Valid  bool
+	Errors []ValidationError
+}
+
+// ValidationError represents a single validation error with JSON path (business layer)
+type ValidationError struct {
+	Field   string // JSON path: "contents[0].config.tableConfigId"
+	Message string // User-friendly error message
+	Code    string // Error code for i18n
+}

@@ -184,3 +184,58 @@ func (a *App) ImportPageConfigs(ctx context.Context, pkg ImportPackage) (ImportR
 		UpdatedCount:  stats.UpdatedCount,
 	}, nil
 }
+
+// =============================================================================
+// JSON Blob Import/Export/Validation Methods
+
+// ValidateBlob validates a page config JSON blob.
+// Returns app layer ValidationResult (with Encode()) for HTTP response.
+func (a *App) ValidateBlob(ctx context.Context, blob []byte) (ValidationResult, error) {
+	// Call business layer (returns business types)
+	busResult, err := a.pageConfigBus.ValidateImportBlob(ctx, blob)
+	if err != nil {
+		return ValidationResult{}, errs.Newf(errs.Internal, "validate: %s", err)
+	}
+
+	// Convert business → app types
+	return toAppValidationResult(busResult), nil
+}
+
+// ImportBlob imports a page config from JSON blob.
+// Returns app layer ImportStats (with Encode()) for HTTP response.
+func (a *App) ImportBlob(ctx context.Context, blob []byte, mode string) (ImportStats, error) {
+	// Validate first
+	busResult, err := a.pageConfigBus.ValidateImportBlob(ctx, blob)
+	if err != nil {
+		return ImportStats{}, errs.Newf(errs.Internal, "validate: %s", err)
+	}
+
+	if !busResult.Valid {
+		// Return validation errors in error response
+		return ImportStats{}, errs.New(errs.InvalidArgument, errors.New("validation failed"))
+	}
+
+	// Import into database (returns business types)
+	busStats, err := a.pageConfigBus.ImportBlob(ctx, blob, mode)
+	if err != nil {
+		return ImportStats{}, errs.Newf(errs.Internal, "import: %s", err)
+	}
+
+	// Convert business → app types
+	return toAppImportStats(busStats), nil
+}
+
+// ExportBlob exports a page config as JSON blob.
+func (a *App) ExportBlob(ctx context.Context, configID uuid.UUID) (pageconfigbus.PageConfigWithRelations, error) {
+	// Use existing ExportByIDs method
+	results, err := a.pageConfigBus.ExportByIDs(ctx, []uuid.UUID{configID})
+	if err != nil {
+		return pageconfigbus.PageConfigWithRelations{}, errs.Newf(errs.Internal, "export: %s", err)
+	}
+
+	if len(results) == 0 {
+		return pageconfigbus.PageConfigWithRelations{}, errs.New(errs.NotFound, errors.New("page config not found"))
+	}
+
+	return results[0], nil
+}

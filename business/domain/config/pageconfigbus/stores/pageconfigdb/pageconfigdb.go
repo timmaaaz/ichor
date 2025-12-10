@@ -268,3 +268,81 @@ func (s *Store) QueryAll(ctx context.Context) ([]pageconfigbus.PageConfig, error
 
 	return toBusPageConfigs(dbConfigs), nil
 }
+
+// ValidateTableConfigIDs validates multiple table config IDs in a single query.
+// Returns a map where the key is the ID and the value indicates if it exists.
+func (s *Store) ValidateTableConfigIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if len(ids) == 0 {
+		return make(map[uuid.UUID]bool), nil
+	}
+
+	data := struct {
+		IDs []uuid.UUID `db:"ids"`
+	}{
+		IDs: ids,
+	}
+
+	const q = `
+	SELECT
+		id
+	FROM
+		config.table_configs
+	WHERE
+		id = ANY(:ids)
+		AND deleted_at IS NULL`
+
+	type result struct {
+		ID uuid.UUID `db:"id"`
+	}
+
+	var validIDs []result
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &validIDs); err != nil {
+		return nil, fmt.Errorf("query table configs: %w", err)
+	}
+
+	resultMap := make(map[uuid.UUID]bool, len(ids))
+	for _, v := range validIDs {
+		resultMap[v.ID] = true
+	}
+
+	return resultMap, nil
+}
+
+// ValidateFormIDs validates multiple form IDs in a single query.
+// Returns a map where the key is the ID and the value indicates if it exists.
+func (s *Store) ValidateFormIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if len(ids) == 0 {
+		return make(map[uuid.UUID]bool), nil
+	}
+
+	data := struct {
+		IDs []uuid.UUID `db:"ids"`
+	}{
+		IDs: ids,
+	}
+
+	const q = `
+	SELECT
+		id
+	FROM
+		config.forms
+	WHERE
+		id = ANY(:ids)
+		AND deleted_at IS NULL`
+
+	type result struct {
+		ID uuid.UUID `db:"id"`
+	}
+
+	var validIDs []result
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &validIDs); err != nil {
+		return nil, fmt.Errorf("query forms: %w", err)
+	}
+
+	resultMap := make(map[uuid.UUID]bool, len(ids))
+	for _, v := range validIDs {
+		resultMap[v.ID] = true
+	}
+
+	return resultMap, nil
+}

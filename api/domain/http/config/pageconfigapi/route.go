@@ -58,4 +58,16 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/import", api.importPageConfigs, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
+
+	// JSON Blob routes
+	// Validate endpoint has no auth requirement (read-only, no data changes)
+	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/validate", api.validateBlob)
+
+	// Import blob endpoint requires auth and create permission
+	app.HandlerFunc(http.MethodPost, version, "/config/page-configs/import-blob", api.importBlob, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAny))
+
+	// Export blob endpoint requires auth and read permission
+	app.HandlerFunc(http.MethodGet, version, "/config/page-configs/id/{config_id}/export", api.exportBlob, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

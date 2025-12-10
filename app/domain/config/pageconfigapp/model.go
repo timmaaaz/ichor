@@ -482,3 +482,61 @@ func toBusPageActionsList(app []PageActionApp) []pageconfigbus.PageActionExport 
 	}
 	return bus
 }
+
+// ValidationResult represents validation results for HTTP responses.
+// Implements web.Encoder for API layer.
+type ValidationResult struct {
+	Valid  bool              `json:"valid"`
+	Errors []ValidationError `json:"errors,omitempty"`
+}
+
+// ValidationError represents a validation error in HTTP responses.
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+	Code    string `json:"code"`
+}
+
+// Encode implements web.Encoder for ValidationResult.
+func (v ValidationResult) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(v)
+	return data, "application/json", err
+}
+
+// ImportStats represents import results for HTTP responses.
+type ImportStats struct {
+	ImportedCount int `json:"imported_count"`
+	UpdatedCount  int `json:"updated_count"`
+	SkippedCount  int `json:"skipped_count"`
+}
+
+// Encode implements web.Encoder for ImportStats.
+func (s ImportStats) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(s)
+	return data, "application/json", err
+}
+
+// toAppValidationResult converts business types to app types.
+func toAppValidationResult(bus pageconfigbus.ValidationResult) ValidationResult {
+	errors := make([]ValidationError, len(bus.Errors))
+	for i, e := range bus.Errors {
+		errors[i] = ValidationError{
+			Field:   e.Field,
+			Message: e.Message,
+			Code:    e.Code,
+		}
+	}
+	return ValidationResult{
+		Valid:  bus.Valid,
+		Errors: errors,
+	}
+}
+
+// toAppImportStats converts business types to app types.
+func toAppImportStats(bus pageconfigbus.ImportStats) ImportStats {
+	return ImportStats{
+		ImportedCount: bus.ImportedCount,
+		UpdatedCount:  bus.UpdatedCount,
+		SkippedCount:  bus.SkippedCount,
+	}
+}
