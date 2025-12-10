@@ -105,6 +105,9 @@ const (
 	ErrCodeCircularReference = "CIRCULAR_PARENT_REF"
 	ErrCodeMaxDepthExceeded  = "MAX_NESTING_DEPTH"
 	ErrCodeMaxSizeExceeded   = "MAX_SIZE_EXCEEDED"
+	ErrCodeRangeError        = "RANGE_ERROR"        // For values outside valid range (e.g., colSpan 1-12)
+	ErrCodeInvalidFormat     = "INVALID_FORMAT"     // For incorrect format (e.g., invalid UUID)
+	ErrCodeTimeout           = "VALIDATION_TIMEOUT" // For validation timeout
 )
 
 // ValidationResult represents the outcome of validating a page config import (business layer)

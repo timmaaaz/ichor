@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
@@ -48,16 +49,28 @@ type Business struct {
 	del            *delegate.Delegate
 	pageContentBus *pagecontentbus.Business
 	pageActionBus  *pageactionbus.Business
+	validator      *validator.Validate
 }
 
 // NewBusiness constructs a page config business API for use.
 func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer, pageContentBus *pagecontentbus.Business, pageActionBus *pageactionbus.Business) *Business {
+	// Initialize validator
+	v := validator.New()
+
+	// Register custom validation tags
+	v.RegisterValidation("validContentType", func(fl validator.FieldLevel) bool {
+		value := fl.Field().String()
+		validTypes := []string{"table", "form", "chart", "tabs", "container", "text"}
+		return contains(validTypes, value)
+	})
+
 	return &Business{
 		log:            log,
 		storer:         storer,
 		del:            del,
 		pageContentBus: pageContentBus,
 		pageActionBus:  pageActionBus,
+		validator:      v,
 	}
 }
 
@@ -85,6 +98,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		del:            b.del,
 		pageContentBus: pageContentBus,
 		pageActionBus:  pageActionBus,
+		validator:      b.validator,
 	}
 
 	return &bus, nil
