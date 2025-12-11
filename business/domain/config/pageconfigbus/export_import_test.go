@@ -424,9 +424,10 @@ func importWithNestedContent(busDomain dbtest.BusDomain, sd unitest.SeedData) []
 					Label:         "Parent Container",
 					TableConfigID: uuid.Nil,
 					FormID:        uuid.Nil,
+					ChartConfigID: uuid.Nil,
 					OrderIndex:    0,
 					ParentID:      uuid.Nil,
-					Layout:        []byte(`{"colSpan": {"default": 12}}`),
+					Layout:        json.RawMessage(`{"colSpan": {"default": 12}}`),
 					IsVisible:     true,
 					IsDefault:     false,
 				}
@@ -439,9 +440,10 @@ func importWithNestedContent(busDomain dbtest.BusDomain, sd unitest.SeedData) []
 					Label:         "Child Text",
 					TableConfigID: uuid.Nil,
 					FormID:        uuid.Nil,
+					ChartConfigID: uuid.Nil,
 					OrderIndex:    0,
 					ParentID:      parentContent.ID,
-					Layout:        []byte(`{"colSpan": {"default": 12}}`),
+					Layout:        json.RawMessage(`{"colSpan": {"default": 12}}`),
 					IsVisible:     true,
 					IsDefault:     false,
 				}

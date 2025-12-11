@@ -1,6 +1,10 @@
 package pageconfigbus
 
-import "github.com/google/uuid"
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 // PageConfig represents a page configuration that can be user-specific or default
 type PageConfig struct {
@@ -33,18 +37,18 @@ type PageConfigWithRelations struct {
 
 // PageContentExport represents page content for export (simplified structure).
 type PageContentExport struct {
-	ID            uuid.UUID `json:"id"`
-	PageConfigID  uuid.UUID `json:"pageConfigId"`
-	ContentType   string    `json:"contentType"`
-	Label         string    `json:"label"`
-	TableConfigID uuid.UUID `json:"tableConfigId"`
-	FormID        uuid.UUID `json:"formId"`
-	ChartConfigID uuid.UUID `json:"chartConfigId"`
-	OrderIndex    int       `json:"orderIndex"`
-	ParentID      uuid.UUID `json:"parentId"`
-	Layout        []byte    `json:"layout"`
-	IsVisible     bool      `json:"isVisible"`
-	IsDefault     bool      `json:"isDefault"`
+	ID            uuid.UUID       `json:"id"`
+	PageConfigID  uuid.UUID       `json:"pageConfigId"`
+	ContentType   string          `json:"contentType"`
+	Label         string          `json:"label"`
+	TableConfigID uuid.UUID       `json:"tableConfigId"`
+	FormID        uuid.UUID       `json:"formId"`
+	ChartConfigID uuid.UUID       `json:"chartConfigId"`
+	OrderIndex    int             `json:"orderIndex"`
+	ParentID      uuid.UUID       `json:"parentId"`
+	Layout        json.RawMessage `json:"layout"`
+	IsVisible     bool            `json:"isVisible"`
+	IsDefault     bool            `json:"isDefault"`
 }
 
 // PageActionsExport represents page actions for export (grouped by type).

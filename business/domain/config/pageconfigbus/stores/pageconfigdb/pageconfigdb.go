@@ -288,8 +288,7 @@ func (s *Store) ValidateTableConfigIDs(ctx context.Context, ids []uuid.UUID) (ma
 	FROM
 		config.table_configs
 	WHERE
-		id = ANY(:ids)
-		AND deleted_at IS NULL`
+		id = ANY(:ids)`
 
 	type result struct {
 		ID uuid.UUID `db:"id"`
@@ -327,8 +326,7 @@ func (s *Store) ValidateFormIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.
 	FROM
 		config.forms
 	WHERE
-		id = ANY(:ids)
-		AND deleted_at IS NULL`
+		id = ANY(:ids)`
 
 	type result struct {
 		ID uuid.UUID `db:"id"`
