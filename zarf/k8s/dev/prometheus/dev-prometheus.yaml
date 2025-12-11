@@ -21,7 +21,7 @@ data:
         scrape_interval: 5s
         scrape_timeout: 2s
         static_configs:
-          - targets: [ "ichor-service.ichor-system.svc:4020" ]
+          - targets: [ "ichor-service.ichor-system.svc:5020" ]
 ---
 apiVersion: apps/v1
 kind: Deployment

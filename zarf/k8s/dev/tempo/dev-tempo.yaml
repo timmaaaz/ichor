@@ -106,8 +106,8 @@ spec:
               hostPort: 4317
             - containerPort: 4318
               hostPort: 4318
-            - containerPort: 9411
-              hostPort: 9411
+            - containerPort: 9412
+              hostPort: 9412
           args:
             - -config.file=/tempo-conf/tempo.yaml
           volumeMounts:
@@ -141,5 +141,5 @@ spec:
       name: "4317"
     - port: 4318
       name: "4318"
-    - port: 9411
-      name: "9411"
+    - port: 9412
+      name: "9412"
