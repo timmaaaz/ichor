@@ -85,7 +85,10 @@ func ValidateGroupByConfig(groupBy *GroupByConfig) error {
 		}
 	}
 
-	if !isValidColumnReference(groupBy.Column) {
+	// When Expression is true, Column contains raw SQL (e.g., "EXTRACT(DOW FROM created_date)")
+	// and won't match the identifier pattern. The query builder handles raw SQL safely using
+	// goqu.L(). This is safe because chart configurations are admin-controlled backend data.
+	if !groupBy.Expression && !isValidColumnReference(groupBy.Column) {
 		return fmt.Errorf("invalid column reference: %s", groupBy.Column)
 	}
 
