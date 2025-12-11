@@ -10,14 +10,14 @@ nodes:
       - containerPort: 8090
         hostPort: 8090
       # Metrics
-      - containerPort: 5000
-        hostPort: 5000
+      - containerPort: 10000
+        hostPort: 10000
       # Metrics debug
-      - containerPort: 5010
-        hostPort: 5010
+      - containerPort: 10010
+        hostPort: 10010
       # Metrics Prometheus
-      - containerPort: 5020
-        hostPort: 5020
+      - containerPort: 10020
+        hostPort: 10020
       # Auth
       - containerPort: 6000
         hostPort: 6000
