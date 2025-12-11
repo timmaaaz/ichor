@@ -4,11 +4,11 @@ nodes:
   - role: control-plane
     extraPortMappings:
       # Ichor-Api
-      - containerPort: 3000
-        hostPort: 3000
+      - containerPort: 8080
+        hostPort: 8080
       # Ichor-Api debug
-      - containerPort: 3010
-        hostPort: 3010
+      - containerPort: 8090
+        hostPort: 8090
       # Metrics
       - containerPort: 4000
         hostPort: 4000

@@ -375,10 +375,10 @@ dev-database-recreate:
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
 liveness:
-	curl -il http://localhost:3000/v1/liveness
+	curl -il http://localhost:8080/v1/liveness
 
 readiness:
-	curl -il http://localhost:3000/v1/readiness
+	curl -il http://localhost:8080/v1/readiness
 
 token-gen:
 	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go gentoken 5cf37266-3473-4006-984f-9325122678b7 54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
@@ -387,7 +387,7 @@ token-gen:
 # Metrics and Tracing
 
 metrics-view-sc:
-	expvarmon -ports="localhost:3010" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
+	expvarmon -ports="localhost:8090" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
 
 metrics-view:
 	expvarmon -ports="localhost:4020" -endpoint="/metrics" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
@@ -396,7 +396,7 @@ grafana:
 	open http://localhost:3100/
 
 statsviz:
-	open http://localhost:3010/debug/statsviz
+	open http://localhost:8090/debug/statsviz
 
 # ==============================================================================
 # Running tests within the local computer
@@ -433,21 +433,21 @@ token:
 
 users:
 	curl -il \
-	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
 
 users-timeout:
 	curl -il \
 	--max-time 1 \
-	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
 
 load:
 	hey -m GET -c 100 -n 1000 \
-	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
 
 otel-test:
 	curl -il \
 	-H "Traceparent: 00-918dd5ecf264712262b68cf2ef8b5239-896d90f23f69f006-01" \
-	--user "admin@example.com:gophers" http://localhost:3000/v1/core/users/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+	--user "admin@example.com:gophers" http://localhost:8080/v1/core/users/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
 
 # ==============================================================================
 # Modules support
@@ -485,29 +485,29 @@ run-help:
 	go run api/cmd/services/ichor/main.go --help | go run api/cmd/tooling/logfmt/main.go
 
 curl:
-	curl -il http://localhost:3000/v1/hack
+	curl -il http://localhost:8080/v1/hack
 
 curl-auth:
-	curl -il -H "Authorization: Bearer ${TOKEN}" http://localhost:3000/v1/hackauth
+	curl -il -H "Authorization: Bearer ${TOKEN}" http://localhost:8080/v1/hackauth
 
 load-hack:
-	hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/hack"
+	hey -m GET -c 100 -n 100000 "http://localhost:8080/v1/hack"
 
 admin:
 	go run api/cmd/tooling/admin/main.go
 
 ready:
-	curl -il http://localhost:3000/v1/readiness
+	curl -il http://localhost:8080/v1/readiness
 
 live:
-	curl -il http://localhost:3000/v1/liveness
+	curl -il http://localhost:8080/v1/liveness
 
 curl-create:
 	curl -il -X POST \
 	-H "Authorization: Bearer ${TOKEN}" \
 	-H 'Content-Type: application/json' \
 	-d '{"name":"bill","email":"b@gmail.com","roles":["ADMIN"],"department":"IT","password":"123","passwordConfirm":"123"}' \
-	http://localhost:3000/v1/users
+	http://localhost:8080/v1/users
 
 # ==============================================================================
 # Talk commands
@@ -532,7 +532,7 @@ talk-apply:
 talk-build: all dev-load talk-apply
 
 talk-load:
-	hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
+	hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
 
 talk-logs:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6
@@ -555,7 +555,7 @@ talk-metrics:
 ADMIN_FRONTEND_PREFIX := ./api/cmd/frontends/admin
 
 write-token-to-env:
-	echo "VITE_SERVICE_API=http://localhost:3000/v1" > ${ADMIN_FRONTEND_PREFIX}/.env
+	echo "VITE_SERVICE_API=http://localhost:8080/v1" > ${ADMIN_FRONTEND_PREFIX}/.env
 	make token | grep -o '"ey.*"' | awk '{print "VITE_SERVICE_TOKEN="$$1}' >> ${ADMIN_FRONTEND_PREFIX}/.env
 
 admin-gui-install:
@@ -581,7 +581,7 @@ test-oauth-dev:
 	@echo "Testing Development OAuth Flow..."
 	@rm -f .oauth-cookies.txt .oauth-response.txt
 	@echo "Step 1: Initiating OAuth flow..."
-	@curl -s -c .oauth-cookies.txt -I http://localhost:3000/api/auth/development > .oauth-response.txt
+	@curl -s -c .oauth-cookies.txt -I http://localhost:8080/api/auth/development > .oauth-response.txt
 	@STATE=$$(grep -i "^Location:" .oauth-response.txt | sed -n 's/.*state=\([^&]*\).*/\1/p' | tr -d '\r\n'); \
 	if [ -z "$$STATE" ]; then \
 		echo "Error: Could not extract state from response"; \
@@ -590,13 +590,13 @@ test-oauth-dev:
 	fi; \
 	echo "State extracted: $$STATE"; \
 	echo "Step 2: Completing OAuth callback..."; \
-	RESPONSE=$$(curl -s -b .oauth-cookies.txt -I "http://localhost:3000/api/auth/development/callback?state=$$STATE&email=test@example.com&name=Test%20User&role=ADMIN"); \
+	RESPONSE=$$(curl -s -b .oauth-cookies.txt -I "http://localhost:8080/api/auth/development/callback?state=$$STATE&email=test@example.com&name=Test%20User&role=ADMIN"); \
 	echo "$$RESPONSE" | grep -i "^Location:" | sed 's/Location: /Final redirect: /'; \
 	TOKEN=$$(echo "$$RESPONSE" | grep -i "^Location:" | sed -n 's/.*token=\(.*\)/\1/p' | tr -d '\r\n'); \
 	if [ -n "$$TOKEN" ]; then \
 		echo "Token received: $${TOKEN:0:50}..."; \
 		echo "Step 3: Testing token with API..."; \
-		curl -s -H "Authorization: Bearer $$TOKEN" http://localhost:3000/v1/readiness | jq . || echo "API test response: $$?"; \
+		curl -s -H "Authorization: Bearer $$TOKEN" http://localhost:8080/v1/readiness | jq . || echo "API test response: $$?"; \
 	else \
 		echo "Error: No token received"; \
 		echo "$$RESPONSE"; \
@@ -608,10 +608,10 @@ test-oauth-dev:
 test-oauth-admin:
 	@echo "Testing OAuth with Admin User..."
 	@rm -f .oauth-cookies.txt
-	@STATE=$$(curl -s -c .oauth-cookies.txt -I http://localhost:3000/api/auth/development | \
+	@STATE=$$(curl -s -c .oauth-cookies.txt -I http://localhost:8080/api/auth/development | \
 		grep -i "^Location:" | sed -n 's/.*state=\([^&]*\).*/\1/p' | tr -d '\r\n'); \
 	curl -s -b .oauth-cookies.txt -I \
-		"http://localhost:3000/api/auth/development/callback?state=$$STATE&email=admin@test.com&name=Admin&role=ADMIN" | \
+		"http://localhost:8080/api/auth/development/callback?state=$$STATE&email=admin@test.com&name=Admin&role=ADMIN" | \
 		grep -i "^Location:" | sed 's/Location: /Token URL: /'
 	@rm -f .oauth-cookies.txt
 
@@ -619,8 +619,8 @@ test-oauth-admin:
 .PHONY: test-oauth-google
 test-oauth-google:
 	@echo "Initiating Google OAuth flow..."
-	@echo "Opening browser to: http://localhost:3000/api/auth/google"
-	@open http://localhost:3000/api/auth/google || xdg-open http://localhost:3000/api/auth/google
+	@echo "Opening browser to: http://localhost:8080/api/auth/google"
+	@open http://localhost:8080/api/auth/google || xdg-open http://localhost:8080/api/auth/google
 
 # ==============================================================================
 # Help command

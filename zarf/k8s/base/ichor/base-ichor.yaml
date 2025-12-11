@@ -74,14 +74,14 @@ spec:
 
           ports:
             - name: ichor
-              containerPort: 3000
+              containerPort: 8080
             - name: ichor-debug
-              containerPort: 3010
+              containerPort: 8090
 
           readinessProbe: # readiness probes mark the service available to accept traffic.
             httpGet:
               path: /v1/readiness
-              port: 3000
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
@@ -91,7 +91,7 @@ spec:
           livenessProbe: # liveness probes mark the service alive or dead (to be restarted).
             httpGet:
               path: /v1/liveness
-              port: 3000
+              port: 8080
             initialDelaySeconds: 2
             periodSeconds: 5
             timeoutSeconds: 5

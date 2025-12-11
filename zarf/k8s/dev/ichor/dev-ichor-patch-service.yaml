@@ -9,10 +9,10 @@ spec:
 
   ports:
     - name: ichor
-      port: 3000
+      port: 8080
       targetPort: ichor
     - name: ichor-debug
-      port: 3010
+      port: 8090
       targetPort: ichor-debug
     - name: metrics
       port: 4000
