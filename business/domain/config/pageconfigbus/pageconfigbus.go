@@ -374,6 +374,7 @@ func (b *Business) createContentsWithRemapping(ctx context.Context, pageConfigID
 				Label:         content.Label,
 				TableConfigID: content.TableConfigID,
 				FormID:        content.FormID,
+				ChartConfigID: content.ChartConfigID,
 				OrderIndex:    content.OrderIndex,
 				ParentID:      uuid.UUID{}, // Zero value for no parent
 				Layout:        content.Layout,
@@ -403,6 +404,7 @@ func (b *Business) createContentsWithRemapping(ctx context.Context, pageConfigID
 				Label:         content.Label,
 				TableConfigID: content.TableConfigID,
 				FormID:        content.FormID,
+				ChartConfigID: content.ChartConfigID,
 				OrderIndex:    content.OrderIndex,
 				ParentID:      newParentID,
 				Layout:        content.Layout,
@@ -554,6 +556,7 @@ func toExportPageContents(contents []pagecontentbus.PageContent) []PageContentEx
 			Label:         c.Label,
 			TableConfigID: c.TableConfigID,
 			FormID:        c.FormID,
+			ChartConfigID: c.ChartConfigID,
 			OrderIndex:    c.OrderIndex,
 			ParentID:      c.ParentID,
 			Layout:        c.Layout,

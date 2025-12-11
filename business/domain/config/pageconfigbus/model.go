@@ -39,6 +39,7 @@ type PageContentExport struct {
 	Label         string
 	TableConfigID uuid.UUID
 	FormID        uuid.UUID
+	ChartConfigID uuid.UUID
 	OrderIndex    int
 	ParentID      uuid.UUID
 	Layout        []byte

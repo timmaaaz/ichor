@@ -91,10 +91,10 @@ func validateSingleContent(ctx context.Context, content PageContentExport, index
 		}
 
 	case "chart":
-		if content.TableConfigID == uuid.Nil {
+		if content.ChartConfigID == uuid.Nil {
 			errors = append(errors, ValidationError{
-				Field:   fmt.Sprintf("%s.tableConfigId", itemPath),
-				Message: "Chart content requires a valid tableConfigId for data source",
+				Field:   fmt.Sprintf("%s.chartConfigId", itemPath),
+				Message: "Chart content requires a valid chartConfigId for data source",
 				Code:    ErrCodeRequiredField,
 			})
 		}
