@@ -116,13 +116,21 @@ func TestValidateSingleContent(t *testing.T) {
 			wantCodes:  []string{ErrCodeRequiredField},
 		},
 		{
-			name: "chart without tableConfigId",
+			name: "chart without chartConfigId",
 			content: PageContentExport{
 				ContentType:   "chart",
-				TableConfigID: uuid.Nil,
+				ChartConfigID: uuid.Nil,
 			},
 			wantErrors: 1,
 			wantCodes:  []string{ErrCodeRequiredField},
+		},
+		{
+			name: "valid chart content",
+			content: PageContentExport{
+				ContentType:   "chart",
+				ChartConfigID: uuid.New(),
+			},
+			wantErrors: 0,
 		},
 		{
 			name: "tabs without label",

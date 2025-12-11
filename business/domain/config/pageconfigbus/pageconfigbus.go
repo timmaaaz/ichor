@@ -705,12 +705,14 @@ func (b *Business) validatePageConfigStruct(ctx context.Context, pkg PageConfigW
 type validationRefs struct {
 	tableConfigIDs map[uuid.UUID]bool
 	formIDs        map[uuid.UUID]bool
+	chartConfigIDs map[uuid.UUID]bool
 }
 
 func (b *Business) collectReferences(contents []PageContentExport) validationRefs {
 	refs := validationRefs{
 		tableConfigIDs: make(map[uuid.UUID]bool),
 		formIDs:        make(map[uuid.UUID]bool),
+		chartConfigIDs: make(map[uuid.UUID]bool),
 	}
 
 	var collect func([]PageContentExport)
@@ -721,6 +723,9 @@ func (b *Business) collectReferences(contents []PageContentExport) validationRef
 			}
 			if item.FormID != uuid.Nil {
 				refs.formIDs[item.FormID] = true
+			}
+			if item.ChartConfigID != uuid.Nil {
+				refs.chartConfigIDs[item.ChartConfigID] = true
 			}
 		}
 	}
@@ -741,10 +746,11 @@ func (b *Business) validateReferences(ctx context.Context, refs validationRefs) 
 
 		validIDs, err := b.storer.ValidateTableConfigIDs(ctx, ids)
 		if err != nil {
+			b.log.Error(ctx, "table config validation query failed", "error", err, "id_count", len(ids))
 			errors = append(errors, ValidationError{
-				Field:   "contents",
-				Message: "failed to validate table config references",
-				Code:    ErrCodeInvalidReference,
+				Field:   "contents.tableConfigIds",
+				Message: fmt.Sprintf("database error validating %d table config reference(s): %v", len(ids), err),
+				Code:    ErrCodeDatabaseError,
 			})
 		} else {
 			for _, id := range ids {
@@ -768,10 +774,11 @@ func (b *Business) validateReferences(ctx context.Context, refs validationRefs) 
 
 		validIDs, err := b.storer.ValidateFormIDs(ctx, ids)
 		if err != nil {
+			b.log.Error(ctx, "form validation query failed", "error", err, "id_count", len(ids))
 			errors = append(errors, ValidationError{
-				Field:   "contents",
-				Message: "failed to validate form references",
-				Code:    ErrCodeInvalidReference,
+				Field:   "contents.formIds",
+				Message: fmt.Sprintf("database error validating %d form reference(s): %v", len(ids), err),
+				Code:    ErrCodeDatabaseError,
 			})
 		} else {
 			for _, id := range ids {
@@ -779,6 +786,34 @@ func (b *Business) validateReferences(ctx context.Context, refs validationRefs) 
 					errors = append(errors, ValidationError{
 						Field:   fmt.Sprintf("formId:%s", id),
 						Message: "form does not exist",
+						Code:    ErrCodeInvalidReference,
+					})
+				}
+			}
+		}
+	}
+
+	// Batch validate chart config IDs (charts are stored as table configs with widget_type="chart")
+	if len(refs.chartConfigIDs) > 0 {
+		ids := make([]uuid.UUID, 0, len(refs.chartConfigIDs))
+		for id := range refs.chartConfigIDs {
+			ids = append(ids, id)
+		}
+
+		validIDs, err := b.storer.ValidateTableConfigIDs(ctx, ids)
+		if err != nil {
+			b.log.Error(ctx, "chart config validation query failed", "error", err, "id_count", len(ids))
+			errors = append(errors, ValidationError{
+				Field:   "contents.chartConfigIds",
+				Message: fmt.Sprintf("database error validating %d chart config reference(s): %v", len(ids), err),
+				Code:    ErrCodeDatabaseError,
+			})
+		} else {
+			for _, id := range ids {
+				if !validIDs[id] {
+					errors = append(errors, ValidationError{
+						Field:   fmt.Sprintf("chartConfigId:%s", id),
+						Message: "chart config does not exist",
 						Code:    ErrCodeInvalidReference,
 					})
 				}
@@ -833,11 +868,11 @@ func (b *Business) validateContent(ctx context.Context, content PageContentExpor
 		}
 
 	case "chart":
-		// Charts use tableConfigId for data source
-		if content.TableConfigID == uuid.Nil {
+		// Charts use chartConfigId to reference their chart configuration
+		if content.ChartConfigID == uuid.Nil {
 			errors = append(errors, ValidationError{
-				Field:   path + ".tableConfigId",
-				Message: "table config ID is required for content type 'chart'",
+				Field:   path + ".chartConfigId",
+				Message: "chart config ID is required for content type 'chart'",
 				Code:    ErrCodeRequiredField,
 			})
 		}

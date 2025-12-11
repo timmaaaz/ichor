@@ -2,7 +2,6 @@ package pageconfigapi_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -142,13 +141,13 @@ type ValidationRequest struct {
 }
 
 type PageContent struct {
-	ContentType   string         `json:"contentType"`
-	Label         string         `json:"label,omitempty"`
-	SortOrder     int            `json:"sortOrder"`
-	TableConfigID *uuid.UUID     `json:"tableConfigId,omitempty"`
-	FormID        *uuid.UUID     `json:"formId,omitempty"`
-	Layout        *LayoutConfig  `json:"layout,omitempty"`
-	Children      []PageContent  `json:"children,omitempty"`
+	ContentType   string        `json:"contentType"`
+	Label         string        `json:"label,omitempty"`
+	SortOrder     int           `json:"sortOrder"`
+	TableConfigID *uuid.UUID    `json:"tableConfigId,omitempty"`
+	FormID        *uuid.UUID    `json:"formId,omitempty"`
+	Layout        *LayoutConfig `json:"layout,omitempty"`
+	Children      []PageContent `json:"children,omitempty"`
 }
 
 type LayoutConfig struct {
