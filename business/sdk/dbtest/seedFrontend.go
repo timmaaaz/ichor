@@ -294,7 +294,8 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
-	orders, err := ordersbus.TestSeedOrdersHistorical(ctx, count, 90, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	// Use weighted random distribution for frontend demo (better heatmap visualization)
+	orders, err := ordersbus.TestSeedOrdersFrontendWeighted(ctx, 200, 90, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
 	if err != nil {
 		return fmt.Errorf("seeding Orders: %w", err)
 	}
