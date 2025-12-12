@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -68,11 +68,12 @@ func ToAppCustomers(bus []customersbus.Customers) []Customers {
 
 // TODO: Go over required fields here
 type NewCustomers struct {
-	Name              string `json:"name" validate:"required"`
-	ContactID         string `json:"contact_id" validate:"required,uuid4"`
-	DeliveryAddressID string `json:"delivery_address_id" validate:"required,uuid4"`
-	Notes             string `json:"notes" validate:"omitempty,max=500"`
-	CreatedBy         string `json:"created_by" validate:"required,uuid4"`
+	Name              string  `json:"name" validate:"required"`
+	ContactID         string  `json:"contact_id" validate:"required,uuid4"`
+	DeliveryAddressID string  `json:"delivery_address_id" validate:"required,uuid4"`
+	Notes             string  `json:"notes" validate:"omitempty,max=500"`
+	CreatedBy         string  `json:"created_by" validate:"required,uuid4"`
+	CreatedDate       *string `json:"created_date"` // Optional: for seeding/import
 }
 
 func (app *NewCustomers) Decode(data []byte) error {
@@ -88,9 +89,40 @@ func (app NewCustomers) Validate() error {
 }
 
 func toBusNewCustomers(app NewCustomers) (customersbus.NewCustomers, error) {
-	dest := customersbus.NewCustomers{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	contactID, err := uuid.Parse(app.ContactID)
+	if err != nil {
+		return customersbus.NewCustomers{}, errs.Newf(errs.InvalidArgument, "parse contactID: %s", err)
+	}
+
+	deliveryAddressID, err := uuid.Parse(app.DeliveryAddressID)
+	if err != nil {
+		return customersbus.NewCustomers{}, errs.Newf(errs.InvalidArgument, "parse deliveryAddressID: %s", err)
+	}
+
+	createdBy, err := uuid.Parse(app.CreatedBy)
+	if err != nil {
+		return customersbus.NewCustomers{}, errs.Newf(errs.InvalidArgument, "parse createdBy: %s", err)
+	}
+
+	bus := customersbus.NewCustomers{
+		Name:              app.Name,
+		ContactID:         contactID,
+		DeliveryAddressID: deliveryAddressID,
+		Notes:             app.Notes,
+		CreatedBy:         createdBy,
+		// CreatedDate: nil by default - API always uses server time
+	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return customersbus.NewCustomers{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
+	}
+
+	return bus, nil
 }
 
 type UpdateCustomers struct {
@@ -116,9 +148,39 @@ func (app UpdateCustomers) Validate() error {
 }
 
 func toBusUpdateCustomers(app UpdateCustomers) (customersbus.UpdateCustomers, error) {
-	dest := customersbus.UpdateCustomers{}
+	var contactID *uuid.UUID
+	if app.ContactID != nil {
+		id, err := uuid.Parse(*app.ContactID)
+		if err != nil {
+			return customersbus.UpdateCustomers{}, errs.Newf(errs.InvalidArgument, "parse contactID: %s", err)
+		}
+		contactID = &id
+	}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	var deliveryAddressID *uuid.UUID
+	if app.DeliveryAddressID != nil {
+		id, err := uuid.Parse(*app.DeliveryAddressID)
+		if err != nil {
+			return customersbus.UpdateCustomers{}, errs.Newf(errs.InvalidArgument, "parse deliveryAddressID: %s", err)
+		}
+		deliveryAddressID = &id
+	}
 
-	return dest, err
+	var updatedBy *uuid.UUID
+	if app.UpdatedBy != nil {
+		id, err := uuid.Parse(*app.UpdatedBy)
+		if err != nil {
+			return customersbus.UpdateCustomers{}, errs.Newf(errs.InvalidArgument, "parse updatedBy: %s", err)
+		}
+		updatedBy = &id
+	}
+
+	bus := customersbus.UpdateCustomers{
+		Name:              app.Name,
+		ContactID:         contactID,
+		DeliveryAddressID: deliveryAddressID,
+		Notes:             app.Notes,
+		UpdatedBy:         updatedBy,
+	}
+	return bus, nil
 }

@@ -63,3 +63,6 @@ cookies.txt
 /admin
 /auth
 /metrics
+
+# Claude Code plans
+.claude/plans

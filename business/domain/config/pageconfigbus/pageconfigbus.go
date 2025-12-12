@@ -2,6 +2,7 @@ package pageconfigbus
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -34,6 +35,10 @@ type Storer interface {
 	QueryByName(ctx context.Context, name string) (PageConfig, error)
 	QueryByNameAndUserID(ctx context.Context, name string, userID uuid.UUID) (PageConfig, error)
 	QueryAll(ctx context.Context) ([]PageConfig, error)
+
+	// Batch validation methods to avoid N+1 queries
+	ValidateTableConfigIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error)
+	ValidateFormIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error)
 }
 
 // Business manages the set of APIs for page config access.
@@ -369,6 +374,7 @@ func (b *Business) createContentsWithRemapping(ctx context.Context, pageConfigID
 				Label:         content.Label,
 				TableConfigID: content.TableConfigID,
 				FormID:        content.FormID,
+				ChartConfigID: content.ChartConfigID,
 				OrderIndex:    content.OrderIndex,
 				ParentID:      uuid.UUID{}, // Zero value for no parent
 				Layout:        content.Layout,
@@ -398,6 +404,7 @@ func (b *Business) createContentsWithRemapping(ctx context.Context, pageConfigID
 				Label:         content.Label,
 				TableConfigID: content.TableConfigID,
 				FormID:        content.FormID,
+				ChartConfigID: content.ChartConfigID,
 				OrderIndex:    content.OrderIndex,
 				ParentID:      newParentID,
 				Layout:        content.Layout,
@@ -549,6 +556,7 @@ func toExportPageContents(contents []pagecontentbus.PageContent) []PageContentEx
 			Label:         c.Label,
 			TableConfigID: c.TableConfigID,
 			FormID:        c.FormID,
+			ChartConfigID: c.ChartConfigID,
 			OrderIndex:    c.OrderIndex,
 			ParentID:      c.ParentID,
 			Layout:        c.Layout,
@@ -627,4 +635,294 @@ func toExportPageActions(actions pageactionbus.ActionsGroupedByType) PageActions
 	}
 
 	return export
+}
+
+// ValidateImportBlob validates a page config JSON blob before import.
+func (b *Business) ValidateImportBlob(ctx context.Context, blob []byte) (ValidationResult, error) {
+	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.validateimportblob")
+	defer span.End()
+
+	b.log.Info(ctx, "validating page config import blob", "size", len(blob))
+
+	var pkg PageConfigWithRelations
+	if err := json.Unmarshal(blob, &pkg); err != nil {
+		b.log.Error(ctx, "failed to unmarshal blob", "error", err)
+		return ValidationResult{
+			Valid: false,
+			Errors: []ValidationError{{
+				Field:   "root",
+				Message: fmt.Sprintf("invalid JSON: %v", err),
+				Code:    ErrCodeInvalidJSON,
+			}},
+		}, nil
+	}
+
+	// Validate structure
+	errors := b.validatePageConfigStruct(ctx, pkg)
+
+	result := ValidationResult{
+		Valid:  len(errors) == 0,
+		Errors: errors,
+	}
+
+	if !result.Valid {
+		b.log.Warn(ctx, "validation failed", "error_count", len(errors))
+	} else {
+		b.log.Info(ctx, "validation successful")
+	}
+
+	return result, nil
+}
+
+func (b *Business) validatePageConfigStruct(ctx context.Context, pkg PageConfigWithRelations) []ValidationError {
+	var errors []ValidationError
+
+	// Required fields
+	if pkg.PageConfig.Name == "" {
+		errors = append(errors, ValidationError{
+			Field:   "name",
+			Message: "page config name is required",
+			Code:    ErrCodeRequiredField,
+		})
+	}
+
+	// Collect all foreign key references for batch validation
+	refs := b.collectReferences(pkg.Contents)
+
+	// Validate references in batch (avoid N+1)
+	refErrors := b.validateReferences(ctx, refs)
+	errors = append(errors, refErrors...)
+
+	// Validate content structure recursively
+	for i, content := range pkg.Contents {
+		contentErrors := b.validateContent(ctx, content, fmt.Sprintf("contents[%d]", i), 0)
+		errors = append(errors, contentErrors...)
+	}
+
+	return errors
+}
+
+type validationRefs struct {
+	tableConfigIDs map[uuid.UUID]bool
+	formIDs        map[uuid.UUID]bool
+	chartConfigIDs map[uuid.UUID]bool
+}
+
+func (b *Business) collectReferences(contents []PageContentExport) validationRefs {
+	refs := validationRefs{
+		tableConfigIDs: make(map[uuid.UUID]bool),
+		formIDs:        make(map[uuid.UUID]bool),
+		chartConfigIDs: make(map[uuid.UUID]bool),
+	}
+
+	var collect func([]PageContentExport)
+	collect = func(items []PageContentExport) {
+		for _, item := range items {
+			if item.TableConfigID != uuid.Nil {
+				refs.tableConfigIDs[item.TableConfigID] = true
+			}
+			if item.FormID != uuid.Nil {
+				refs.formIDs[item.FormID] = true
+			}
+			if item.ChartConfigID != uuid.Nil {
+				refs.chartConfigIDs[item.ChartConfigID] = true
+			}
+		}
+	}
+
+	collect(contents)
+	return refs
+}
+
+func (b *Business) validateReferences(ctx context.Context, refs validationRefs) []ValidationError {
+	var errors []ValidationError
+
+	// Batch validate table config IDs
+	if len(refs.tableConfigIDs) > 0 {
+		ids := make([]uuid.UUID, 0, len(refs.tableConfigIDs))
+		for id := range refs.tableConfigIDs {
+			ids = append(ids, id)
+		}
+
+		validIDs, err := b.storer.ValidateTableConfigIDs(ctx, ids)
+		if err != nil {
+			b.log.Error(ctx, "table config validation query failed", "error", err, "id_count", len(ids))
+			errors = append(errors, ValidationError{
+				Field:   "contents.tableConfigIds",
+				Message: fmt.Sprintf("database error validating %d table config reference(s): %v", len(ids), err),
+				Code:    ErrCodeDatabaseError,
+			})
+		} else {
+			for _, id := range ids {
+				if !validIDs[id] {
+					errors = append(errors, ValidationError{
+						Field:   fmt.Sprintf("tableConfigId:%s", id),
+						Message: "table config does not exist",
+						Code:    ErrCodeInvalidReference,
+					})
+				}
+			}
+		}
+	}
+
+	// Batch validate form IDs
+	if len(refs.formIDs) > 0 {
+		ids := make([]uuid.UUID, 0, len(refs.formIDs))
+		for id := range refs.formIDs {
+			ids = append(ids, id)
+		}
+
+		validIDs, err := b.storer.ValidateFormIDs(ctx, ids)
+		if err != nil {
+			b.log.Error(ctx, "form validation query failed", "error", err, "id_count", len(ids))
+			errors = append(errors, ValidationError{
+				Field:   "contents.formIds",
+				Message: fmt.Sprintf("database error validating %d form reference(s): %v", len(ids), err),
+				Code:    ErrCodeDatabaseError,
+			})
+		} else {
+			for _, id := range ids {
+				if !validIDs[id] {
+					errors = append(errors, ValidationError{
+						Field:   fmt.Sprintf("formId:%s", id),
+						Message: "form does not exist",
+						Code:    ErrCodeInvalidReference,
+					})
+				}
+			}
+		}
+	}
+
+	// Batch validate chart config IDs (charts are stored as table configs with widget_type="chart")
+	if len(refs.chartConfigIDs) > 0 {
+		ids := make([]uuid.UUID, 0, len(refs.chartConfigIDs))
+		for id := range refs.chartConfigIDs {
+			ids = append(ids, id)
+		}
+
+		validIDs, err := b.storer.ValidateTableConfigIDs(ctx, ids)
+		if err != nil {
+			b.log.Error(ctx, "chart config validation query failed", "error", err, "id_count", len(ids))
+			errors = append(errors, ValidationError{
+				Field:   "contents.chartConfigIds",
+				Message: fmt.Sprintf("database error validating %d chart config reference(s): %v", len(ids), err),
+				Code:    ErrCodeDatabaseError,
+			})
+		} else {
+			for _, id := range ids {
+				if !validIDs[id] {
+					errors = append(errors, ValidationError{
+						Field:   fmt.Sprintf("chartConfigId:%s", id),
+						Message: "chart config does not exist",
+						Code:    ErrCodeInvalidReference,
+					})
+				}
+			}
+		}
+	}
+
+	return errors
+}
+
+func (b *Business) validateContent(ctx context.Context, content PageContentExport, path string, depth int) []ValidationError {
+	var errors []ValidationError
+
+	// Check max nesting depth
+	if depth > 10 {
+		errors = append(errors, ValidationError{
+			Field:   path,
+			Message: "maximum nesting depth exceeded (10 levels)",
+			Code:    ErrCodeMaxDepthExceeded,
+		})
+		return errors
+	}
+
+	// Content type validation
+	if content.ContentType == "" {
+		errors = append(errors, ValidationError{
+			Field:   path + ".contentType",
+			Message: "content type is required",
+			Code:    ErrCodeRequiredField,
+		})
+		return errors
+	}
+
+	// Type-specific validation for all 6 content types
+	switch content.ContentType {
+	case "table":
+		if content.TableConfigID == uuid.Nil {
+			errors = append(errors, ValidationError{
+				Field:   path + ".tableConfigId",
+				Message: "table config ID is required for content type 'table'",
+				Code:    ErrCodeRequiredField,
+			})
+		}
+
+	case "form":
+		if content.FormID == uuid.Nil {
+			errors = append(errors, ValidationError{
+				Field:   path + ".formId",
+				Message: "form ID is required for content type 'form'",
+				Code:    ErrCodeRequiredField,
+			})
+		}
+
+	case "chart":
+		// Charts use chartConfigId to reference their chart configuration
+		if content.ChartConfigID == uuid.Nil {
+			errors = append(errors, ValidationError{
+				Field:   path + ".chartConfigId",
+				Message: "chart config ID is required for content type 'chart'",
+				Code:    ErrCodeRequiredField,
+			})
+		}
+
+	case "tabs", "container":
+		// Tabs and containers should have children, but we won't enforce it strictly
+		// as they might be added later
+
+	case "text":
+		// Text content has no special requirements
+
+	default:
+		errors = append(errors, ValidationError{
+			Field:   path + ".contentType",
+			Message: fmt.Sprintf("unknown content type: %s (valid types: table, form, chart, tabs, container, text)", content.ContentType),
+			Code:    ErrCodeInvalidType,
+		})
+	}
+
+	return errors
+}
+
+// ImportBlob imports a page config from JSON blob using existing ImportPageConfigs.
+func (b *Business) ImportBlob(ctx context.Context, blob []byte, mode string) (ImportStats, error) {
+	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.importblob")
+	defer span.End()
+
+	b.log.Info(ctx, "importing page config blob", "mode", mode, "size", len(blob))
+
+	var pkg PageConfigWithRelations
+	if err := json.Unmarshal(blob, &pkg); err != nil {
+		b.log.Error(ctx, "failed to unmarshal blob", "error", err)
+		return ImportStats{}, fmt.Errorf("unmarshal: %w", err)
+	}
+
+	// Use existing ImportPageConfigs method which handles:
+	// - Transactions
+	// - ID remapping for nested content
+	// - Conflict resolution (skip/replace/merge)
+	// - Multi-table inserts (page_configs → page_content → page_actions)
+	stats, err := b.ImportPageConfigs(ctx, []PageConfigWithRelations{pkg}, mode)
+	if err != nil {
+		b.log.Error(ctx, "import failed", "error", err)
+		return ImportStats{}, err
+	}
+
+	b.log.Info(ctx, "import successful",
+		"imported", stats.ImportedCount,
+		"updated", stats.UpdatedCount,
+		"skipped", stats.SkippedCount)
+
+	return stats, nil
 }

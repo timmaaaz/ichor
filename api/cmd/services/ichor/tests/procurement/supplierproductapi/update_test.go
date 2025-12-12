@@ -144,7 +144,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: supplier_products"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: procurement.supplier_products"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

@@ -56,7 +56,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: asset_conditions"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: assets.asset_conditions"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

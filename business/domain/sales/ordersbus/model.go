@@ -24,6 +24,7 @@ type NewOrder struct {
 	DueDate             time.Time
 	FulfillmentStatusID uuid.UUID
 	CreatedBy           uuid.UUID
+	CreatedDate         *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateOrder struct {

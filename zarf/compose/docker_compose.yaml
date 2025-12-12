@@ -81,8 +81,8 @@ services:
     container_name: ichor
     restart: unless-stopped
     ports:
-      - "3000:3000"
-      - "3010:3010"
+      - "8080:8080"
+      - "8090:8090"
     environment:
       - GOMAXPROCS
       - GOGC=off
@@ -97,7 +97,7 @@ services:
       - KUBERNETES_POD_IP
       - KUBERNETES_NODE_NAME
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/v1/liveness || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/v1/liveness || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 2
@@ -120,7 +120,7 @@ services:
     cpus: 1
     environment:
       - GOMAXPROCS=1
-      - METRICS_COLLECT_FROM=http://ichor:3010/debug/vars
+      - METRICS_COLLECT_FROM=http://ichor:8090/debug/vars
     networks:
       ichor-system-network:
         ipv4_address: 10.5.0.20

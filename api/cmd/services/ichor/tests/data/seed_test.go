@@ -352,6 +352,126 @@ var ComplexConfig = &tablebuilder.Config{
 	},
 }
 
+// =============================================================================
+// Chart Configurations for Testing
+// =============================================================================
+
+// KPIChartConfig tests KPI/gauge chart transformation
+// Uses inventory_items to display a single numeric KPI value
+var KPIChartConfig = &tablebuilder.Config{
+	Title:           "Total Inventory KPI",
+	WidgetType:      "chart",
+	Visualization:   "kpi",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           4,
+	Height:          2,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "inventory_items",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "quantity", TableColumn: "inventory_items.quantity"},
+				},
+			},
+			Rows: 1,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"_chart": {
+				CellTemplate: `{"chartType":"kpi","valueColumns":["quantity"],"kpi":{"label":"Total Inventory","format":"number"}}`,
+			},
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view"},
+	},
+}
+
+// BarChartConfig tests categorical bar chart transformation
+// Uses inventory_items grouped by location to show distribution
+var BarChartConfig = &tablebuilder.Config{
+	Title:           "Inventory by Location",
+	WidgetType:      "chart",
+	Visualization:   "bar",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           8,
+	Height:          4,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "inventory_items",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "location_id", TableColumn: "inventory_items.location_id"},
+					{Name: "quantity", TableColumn: "inventory_items.quantity"},
+				},
+			},
+			Rows: 10,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"_chart": {
+				CellTemplate: `{"chartType":"bar","categoryColumn":"location_id","valueColumns":["quantity"]}`,
+			},
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view"},
+	},
+}
+
+// PieChartConfig tests pie chart transformation
+// Shows inventory distribution as pie slices
+var PieChartConfig = &tablebuilder.Config{
+	Title:           "Inventory Distribution",
+	WidgetType:      "chart",
+	Visualization:   "pie",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           6,
+	Height:          4,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "inventory_items",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "location_id", TableColumn: "inventory_items.location_id"},
+					{Name: "quantity", TableColumn: "inventory_items.quantity"},
+				},
+			},
+			Rows: 5,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"_chart": {
+				CellTemplate: `{"chartType":"pie","categoryColumn":"location_id","valueColumns":["quantity"]}`,
+			},
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view"},
+	},
+}
+
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {
 	ctx := context.Background()
 	busDomain := db.BusDomain
@@ -741,6 +861,24 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	// =========================================================================
+	// Chart Configs
+	// =========================================================================
+	storedKPIChart, err := db.BusDomain.ConfigStore.Create(ctx, "kpi_inventory_chart", "KPI chart for inventory totals", KPIChartConfig, admins[0].ID)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding kpi chart config : %w", err)
+	}
+
+	storedBarChart, err := db.BusDomain.ConfigStore.Create(ctx, "bar_inventory_chart", "Bar chart for inventory by location", BarChartConfig, admins[0].ID)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding bar chart config : %w", err)
+	}
+
+	storedPieChart, err := db.BusDomain.ConfigStore.Create(ctx, "pie_inventory_chart", "Pie chart for inventory distribution", PieChartConfig, admins[0].ID)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding pie chart config : %w", err)
+	}
+
+	// =========================================================================
 	// Page Configs
 	// =========================================================================
 	pageConfigs, err := pageconfigbus.TestSeedPageConfigs(ctx, 3, busDomain.PageConfig)
@@ -820,6 +958,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		SimpleTableConfig:           storedSimple,
 		PageTableConfig:             storedPage,
 		ComplexTableConfig:          storedComplex,
+		KPIChartConfig:              storedKPIChart,
+		BarChartConfig:              storedBarChart,
+		PieChartConfig:              storedPieChart,
 		PageConfigs:                 pageconfigapp.ToAppPageConfigs(pageConfigs),
 	}, nil
 }

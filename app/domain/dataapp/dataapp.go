@@ -548,3 +548,105 @@ func parseUUID(s string, fieldName string) (uuid.UUID, error) {
 	}
 	return id, nil
 }
+
+// =============================================================================
+// Chart Methods
+// =============================================================================
+
+// ExecuteChartQuery executes a chart query with the specified configuration.
+func (a *App) ExecuteChartQuery(ctx context.Context, id uuid.UUID, app TableQuery) (ChartResponse, error) {
+	// Load the configuration
+	config, err := a.configStore.LoadConfig(ctx, id)
+	if err != nil {
+		if errors.Is(err, tablebuilder.ErrNotFound) {
+			return ChartResponse{}, errs.New(errs.NotFound, err)
+		}
+		return ChartResponse{}, errs.Newf(errs.Internal, "load config: %s", err)
+	}
+
+	// Convert to business query params
+	params := toBusTableQuery(app)
+
+	// Execute the table query first
+	tableData, err := a.tableStore.FetchTableData(ctx, config, params)
+	if err != nil {
+		return ChartResponse{}, errs.Newf(errs.Internal, "execute query: %s", err)
+	}
+
+	// Transform table data to chart data
+	transformer := tablebuilder.NewChartTransformer()
+	chartData, err := transformer.Transform(tableData, config)
+	if err != nil {
+		return ChartResponse{}, errs.Newf(errs.Internal, "transform to chart: %s", err)
+	}
+
+	return toAppChartResponse(chartData), nil
+}
+
+// ExecuteChartQueryByName executes a chart query using a configuration name.
+func (a *App) ExecuteChartQueryByName(ctx context.Context, name string, app TableQuery) (ChartResponse, error) {
+	unescaped, err := url.QueryUnescape(name)
+	if err != nil {
+		return ChartResponse{}, errs.Newf(errs.InvalidArgument, "invalid config name: %s", err)
+	}
+
+	// Load the configuration by name
+	config, err := a.configStore.LoadConfigByName(ctx, unescaped)
+	if err != nil {
+		if errors.Is(err, tablebuilder.ErrNotFound) {
+			return ChartResponse{}, errs.New(errs.NotFound, err)
+		}
+		return ChartResponse{}, errs.Newf(errs.Internal, "load config by name: %s", err)
+	}
+
+	// Convert to business query params
+	params := toBusTableQuery(app)
+
+	// Execute the table query first
+	tableData, err := a.tableStore.FetchTableData(ctx, config, params)
+	if err != nil {
+		return ChartResponse{}, errs.Newf(errs.Internal, "execute query: %s", err)
+	}
+
+	// Transform table data to chart data
+	transformer := tablebuilder.NewChartTransformer()
+	chartData, err := transformer.Transform(tableData, config)
+	if err != nil {
+		return ChartResponse{}, errs.Newf(errs.Internal, "transform to chart: %s", err)
+	}
+
+	return toAppChartResponse(chartData), nil
+}
+
+// PreviewChartData previews chart data without saving the config.
+// This is useful for the chart builder UI to show live previews.
+func (a *App) PreviewChartData(ctx context.Context, configJSON json.RawMessage, app TableQuery) (ChartResponse, error) {
+	// Parse the config
+	var config tablebuilder.Config
+	if err := json.Unmarshal(configJSON, &config); err != nil {
+		return ChartResponse{}, errs.Newf(errs.InvalidArgument, "invalid config JSON: %s", err)
+	}
+
+	// Validate the config
+	if err := config.Validate(); err != nil {
+		return ChartResponse{}, errs.Newf(errs.InvalidArgument, "config validation: %s", err)
+	}
+
+	// Convert to business query params
+	params := toBusTableQuery(app)
+
+	// Execute the table query
+	tableData, err := a.tableStore.FetchTableData(ctx, &config, params)
+	if err != nil {
+		return ChartResponse{}, errs.Newf(errs.Internal, "execute query: %s", err)
+	}
+
+	// Transform table data to chart data
+	transformer := tablebuilder.NewChartTransformer()
+	chartData, err := transformer.Transform(tableData, &config)
+	if err != nil {
+		return ChartResponse{}, errs.Newf(errs.Internal, "transform to chart: %s", err)
+	}
+
+	return toAppChartResponse(chartData), nil
+}

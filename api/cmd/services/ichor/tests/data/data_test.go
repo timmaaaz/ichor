@@ -35,4 +35,15 @@ func Test_Data(t *testing.T) {
 	test.Run(t, update200(sd), "update-200")
 
 	test.Run(t, delete200(sd), "delete-200")
+
+	// Chart tests
+	test.Run(t, executeChartByID200(sd), "executechartbyid-200")
+	test.Run(t, executeChartByID400(sd), "executechartbyid-400")
+	test.Run(t, executeChartByID401(sd), "executechartbyid-401")
+	test.Run(t, executeChartByID404(sd), "executechartbyid-404")
+	test.Run(t, executeChartByName200(sd), "executechartbyname-200")
+	test.Run(t, executeChartByName404(sd), "executechartbyname-404")
+	test.Run(t, previewChartData200(sd), "previewchartdata-200")
+	test.Run(t, previewChartData400(sd), "previewchartdata-400")
+	test.Run(t, previewChartData401(sd), "previewchartdata-401")
 }

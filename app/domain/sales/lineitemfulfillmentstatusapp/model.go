@@ -5,7 +5,6 @@ import (
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -19,9 +18,12 @@ type QueryParams struct {
 }
 
 type LineItemFulfillmentStatus struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Description    string `json:"description"`
+	PrimaryColor   string `json:"primary_color"`
+	SecondaryColor string `json:"secondary_color"`
+	Icon           string `json:"icon"`
 }
 
 func (app LineItemFulfillmentStatus) Encode() ([]byte, string, error) {
@@ -31,9 +33,12 @@ func (app LineItemFulfillmentStatus) Encode() ([]byte, string, error) {
 
 func ToAppLineItemFulfillmentStatus(bus lineitemfulfillmentstatusbus.LineItemFulfillmentStatus) LineItemFulfillmentStatus {
 	return LineItemFulfillmentStatus{
-		ID:          bus.ID.String(),
-		Name:        bus.Name,
-		Description: bus.Description,
+		ID:             bus.ID.String(),
+		Name:           bus.Name,
+		Description:    bus.Description,
+		PrimaryColor:   bus.PrimaryColor,
+		SecondaryColor: bus.SecondaryColor,
+		Icon:           bus.Icon,
 	}
 }
 
@@ -46,8 +51,11 @@ func ToAppLineItemFulfillmentStatuses(bus []lineitemfulfillmentstatusbus.LineIte
 }
 
 type NewLineItemFulfillmentStatus struct {
-	Name        string `json:"name" validate:"required,min=3"`
-	Description string `json:"description" validate:"omitempty"`
+	Name           string `json:"name" validate:"required,min=3"`
+	Description    string `json:"description" validate:"omitempty"`
+	PrimaryColor   string `json:"primary_color" validate:"omitempty,max=50"`
+	SecondaryColor string `json:"secondary_color" validate:"omitempty,max=50"`
+	Icon           string `json:"icon" validate:"omitempty,max=100"`
 }
 
 func (app *NewLineItemFulfillmentStatus) Decode(data []byte) error {
@@ -62,18 +70,23 @@ func (app NewLineItemFulfillmentStatus) Validate() error {
 }
 
 func toBusNewLineItemFulfillmentStatus(app NewLineItemFulfillmentStatus) (lineitemfulfillmentstatusbus.NewLineItemFulfillmentStatus, error) {
-	var dest lineitemfulfillmentstatusbus.NewLineItemFulfillmentStatus
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return lineitemfulfillmentstatusbus.NewLineItemFulfillmentStatus{}, errs.Newf(errs.InvalidArgument, "toBusNewLineItemFulfillmentStatus: %s", err)
+	bus := lineitemfulfillmentstatusbus.NewLineItemFulfillmentStatus{
+		Name:           app.Name,
+		Description:    app.Description,
+		PrimaryColor:   app.PrimaryColor,
+		SecondaryColor: app.SecondaryColor,
+		Icon:           app.Icon,
 	}
 
-	return dest, nil
+	return bus, nil
 }
 
 type UpdateLineItemFulfillmentStatus struct {
-	Name        *string `json:"name" validate:"omitempty,min=3"`
-	Description *string `json:"description" validate:"omitempty"`
+	Name           *string `json:"name" validate:"omitempty,min=3"`
+	Description    *string `json:"description" validate:"omitempty"`
+	PrimaryColor   *string `json:"primary_color" validate:"omitempty,max=50"`
+	SecondaryColor *string `json:"secondary_color" validate:"omitempty,max=50"`
+	Icon           *string `json:"icon" validate:"omitempty,max=100"`
 }
 
 func (app *UpdateLineItemFulfillmentStatus) Decode(data []byte) error {
@@ -88,11 +101,13 @@ func (app UpdateLineItemFulfillmentStatus) Validate() error {
 }
 
 func toBusUpdateLineItemFulfillmentStatus(app UpdateLineItemFulfillmentStatus) (lineitemfulfillmentstatusbus.UpdateLineItemFulfillmentStatus, error) {
-	var dest lineitemfulfillmentstatusbus.UpdateLineItemFulfillmentStatus
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return lineitemfulfillmentstatusbus.UpdateLineItemFulfillmentStatus{}, errs.Newf(errs.InvalidArgument, "toBusUpdateLineItemFulfillmentStatus: %s", err)
+	bus := lineitemfulfillmentstatusbus.UpdateLineItemFulfillmentStatus{
+		Name:           app.Name,
+		Description:    app.Description,
+		PrimaryColor:   app.PrimaryColor,
+		SecondaryColor: app.SecondaryColor,
+		Icon:           app.Icon,
 	}
 
-	return dest, nil
+	return bus, nil
 }

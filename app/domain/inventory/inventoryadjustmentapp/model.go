@@ -2,12 +2,12 @@ package inventoryadjustmentapp
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -95,14 +95,47 @@ func (app NewInventoryAdjustment) Validate() error {
 }
 
 func toBusNewInventoryAdjustment(app NewInventoryAdjustment) (inventoryadjustmentbus.NewInventoryAdjustment, error) {
-	dest := inventoryadjustmentbus.NewInventoryAdjustment{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	productID, err := uuid.Parse(app.ProductID)
 	if err != nil {
-		return inventoryadjustmentbus.NewInventoryAdjustment{}, fmt.Errorf("toBusNewInventoryTransaction: %w", err)
+		return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
 	}
 
-	return dest, nil
+	locationID, err := uuid.Parse(app.LocationID)
+	if err != nil {
+		return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse locationID: %s", err)
+	}
+
+	adjustedBy, err := uuid.Parse(app.AdjustedBy)
+	if err != nil {
+		return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse adjustedBy: %s", err)
+	}
+
+	approvedBy, err := uuid.Parse(app.ApprovedBy)
+	if err != nil {
+		return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse approvedBy: %s", err)
+	}
+
+	quantityChange, err := strconv.Atoi(app.QuantityChange)
+	if err != nil {
+		return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse quantityChange: %s", err)
+	}
+
+	adjustmentDate, err := time.Parse(timeutil.FORMAT, app.AdjustmentDate)
+	if err != nil {
+		return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse adjustmentDate: %s", err)
+	}
+
+	bus := inventoryadjustmentbus.NewInventoryAdjustment{
+		ProductID:      productID,
+		LocationID:     locationID,
+		AdjustedBy:     adjustedBy,
+		ApprovedBy:     approvedBy,
+		QuantityChange: quantityChange,
+		ReasonCode:     app.ReasonCode,
+		Notes:          app.Notes,
+		AdjustmentDate: adjustmentDate,
+	}
+	return bus, nil
 }
 
 type UpdateInventoryAdjustment struct {
@@ -128,12 +161,58 @@ func (app UpdateInventoryAdjustment) Validate() error {
 }
 
 func toBusUpdateInventoryAdjustment(app UpdateInventoryAdjustment) (inventoryadjustmentbus.UpdateInventoryAdjustment, error) {
-	dest := inventoryadjustmentbus.UpdateInventoryAdjustment{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return inventoryadjustmentbus.UpdateInventoryAdjustment{}, fmt.Errorf("toBusUpdateInventoryAdjustment: %w", err)
+	bus := inventoryadjustmentbus.UpdateInventoryAdjustment{
+		ReasonCode: app.ReasonCode,
+		Notes:      app.Notes,
 	}
 
-	return dest, nil
+	if app.ProductID != nil {
+		productID, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return inventoryadjustmentbus.UpdateInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+		}
+		bus.ProductID = &productID
+	}
+
+	if app.LocationID != nil {
+		locationID, err := uuid.Parse(*app.LocationID)
+		if err != nil {
+			return inventoryadjustmentbus.UpdateInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse locationID: %s", err)
+		}
+		bus.LocationID = &locationID
+	}
+
+	if app.AdjustedBy != nil {
+		adjustedBy, err := uuid.Parse(*app.AdjustedBy)
+		if err != nil {
+			return inventoryadjustmentbus.UpdateInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse adjustedBy: %s", err)
+		}
+		bus.AdjustedBy = &adjustedBy
+	}
+
+	if app.ApprovedBy != nil {
+		approvedBy, err := uuid.Parse(*app.ApprovedBy)
+		if err != nil {
+			return inventoryadjustmentbus.UpdateInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse approvedBy: %s", err)
+		}
+		bus.ApprovedBy = &approvedBy
+	}
+
+	if app.QuantityChange != nil {
+		quantityChange, err := strconv.Atoi(*app.QuantityChange)
+		if err != nil {
+			return inventoryadjustmentbus.UpdateInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse quantityChange: %s", err)
+		}
+		bus.QuantityChange = &quantityChange
+	}
+
+	if app.AdjustmentDate != nil {
+		adjustmentDate, err := time.Parse(timeutil.FORMAT, *app.AdjustmentDate)
+		if err != nil {
+			return inventoryadjustmentbus.UpdateInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse adjustmentDate: %s", err)
+		}
+		bus.AdjustmentDate = &adjustmentDate
+	}
+
+	return bus, nil
 }

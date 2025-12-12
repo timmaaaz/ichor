@@ -256,6 +256,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp.ContentType = gotResp.ContentType
 				expResp.TableConfigID = gotResp.TableConfigID
 				expResp.FormID = gotResp.FormID
+				expResp.ChartConfigID = gotResp.ChartConfigID
 				expResp.ParentID = gotResp.ParentID
 				expResp.Layout = gotResp.Layout
 				expResp.IsVisible = gotResp.IsVisible

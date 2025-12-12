@@ -71,20 +71,8 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	// Query returns base actions only (no Button/Dropdown data)
-	// Create expected responses with only base fields
-	expected := make([]pageactionbus.PageAction, 5)
-	for i := 0; i < 5; i++ {
-		expected[i] = pageactionbus.PageAction{
-			ID:           sd.PageActions[i].ID,
-			PageConfigID: sd.PageActions[i].PageConfigID,
-			ActionType:   sd.PageActions[i].ActionType,
-			ActionOrder:  sd.PageActions[i].ActionOrder,
-			IsActive:     sd.PageActions[i].IsActive,
-			Button:       nil, // Query does not populate detail fields
-			Dropdown:     nil, // Query does not populate detail fields
-		}
-	}
+	// Query returns full action data including Button/Dropdown
+	expected := sd.PageActions[:5]
 
 	table := []unitest.Table{
 		{
@@ -176,9 +164,9 @@ func queryByID(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table 
 
 func queryByPageConfigID(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	// Find actions for the first page config
-	expectedButtons := []pageactionbus.PageAction(nil)
-	expectedDropdowns := []pageactionbus.PageAction(nil)
-	expectedSeparators := []pageactionbus.PageAction(nil)
+	expectedButtons := []pageactionbus.PageAction{}
+	expectedDropdowns := []pageactionbus.PageAction{}
+	expectedSeparators := []pageactionbus.PageAction{}
 
 	for _, action := range sd.PageActions {
 		if action.PageConfigID == sd.PageConfigIDs[0] {

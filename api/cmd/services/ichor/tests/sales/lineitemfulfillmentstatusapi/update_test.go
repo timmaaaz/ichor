@@ -39,6 +39,36 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(expResp, gotResp)
 			},
 		},
+		{
+			Name:       "update colors and icon",
+			URL:        fmt.Sprintf("/v1/sales/line-item-fulfillment-statuses/%s", sd.LineItemFulfillmentStatuses[1].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusOK,
+			Input: &lineitemfulfillmentstatusapp.UpdateLineItemFulfillmentStatus{
+				PrimaryColor:   dbtest.StringPointer("#AABBCC"),
+				SecondaryColor: dbtest.StringPointer("#DDEEFF"),
+				Icon:           dbtest.StringPointer("star"),
+			},
+			GotResp: &lineitemfulfillmentstatusapp.LineItemFulfillmentStatus{},
+			ExpResp: &lineitemfulfillmentstatusapp.LineItemFulfillmentStatus{
+				ID:             sd.LineItemFulfillmentStatuses[1].ID,
+				Name:           sd.LineItemFulfillmentStatuses[1].Name,
+				Description:    sd.LineItemFulfillmentStatuses[1].Description,
+				PrimaryColor:   "#AABBCC",
+				SecondaryColor: "#DDEEFF",
+				Icon:           "star",
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*lineitemfulfillmentstatusapp.LineItemFulfillmentStatus)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*lineitemfulfillmentstatusapp.LineItemFulfillmentStatus)
+				return cmp.Diff(expResp, gotResp)
+			},
+		},
 	}
 	return table
 }
@@ -102,7 +132,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: line_item_fulfillment_statuses"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: sales.line_item_fulfillment_statuses"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

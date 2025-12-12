@@ -76,12 +76,17 @@ func (b *Business) Create(ctx context.Context, nuac NewUserApprovalComment) (Use
 	ctx, span := otel.AddSpan(ctx, "business.user.status.comment.Create")
 	defer span.End()
 
+	now := time.Now().UTC().Truncate(time.Second)
+	if nuac.CreatedDate != nil {
+		now = nuac.CreatedDate.Truncate(time.Second)
+	}
+
 	uac := UserApprovalComment{
 		ID:          uuid.New(),
 		Comment:     nuac.Comment,
 		CommenterID: nuac.CommenterID,
 		UserID:      nuac.UserID,
-		CreatedDate: time.Now().Truncate(time.Second),
+		CreatedDate: now,
 	}
 
 	if err := b.storer.Create(ctx, uac); err != nil {

@@ -10,7 +10,6 @@ import (
 
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/types"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -176,62 +175,60 @@ func (app UpdateInventoryLocation) Validate() error {
 }
 
 func toBusUpdateInventoryLocation(app UpdateInventoryLocation) (inventorylocationbus.UpdateInventoryLocation, error) {
-	dest := inventorylocationbus.UpdateInventoryLocation{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return inventorylocationbus.UpdateInventoryLocation{}, err
+	bus := inventorylocationbus.UpdateInventoryLocation{
+		Aisle: app.Aisle,
+		Rack:  app.Rack,
+		Shelf: app.Shelf,
+		Bin:   app.Bin,
 	}
 
 	if app.WarehouseID != nil {
 		warehouseID, err := uuid.Parse(*app.WarehouseID)
 		if err != nil {
-			return inventorylocationbus.UpdateInventoryLocation{}, err
+			return inventorylocationbus.UpdateInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse warehouseID: %s", err)
 		}
-		dest.WarehouseID = &warehouseID
+		bus.WarehouseID = &warehouseID
 	}
 
 	if app.ZoneID != nil {
 		zoneID, err := uuid.Parse(*app.ZoneID)
 		if err != nil {
-			return inventorylocationbus.UpdateInventoryLocation{}, err
+			return inventorylocationbus.UpdateInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse zoneID: %s", err)
 		}
-		dest.ZoneID = &zoneID
+		bus.ZoneID = &zoneID
 	}
 
 	if app.MaxCapacity != nil {
 		maxCapacity, err := strconv.Atoi(*app.MaxCapacity)
 		if err != nil {
-			return inventorylocationbus.UpdateInventoryLocation{}, err
+			return inventorylocationbus.UpdateInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse maxCapacity: %s", err)
 		}
-		dest.MaxCapacity = &maxCapacity
+		bus.MaxCapacity = &maxCapacity
 	}
 
 	if app.CurrentUtilization != nil {
 		cu, err := types.ParseRoundedFloat(*app.CurrentUtilization)
 		if err != nil {
-			return inventorylocationbus.UpdateInventoryLocation{}, err
+			return inventorylocationbus.UpdateInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse currentUtilization: %s", err)
 		}
-		dest.CurrentUtilization = &cu
+		bus.CurrentUtilization = &cu
 	}
 
 	if app.IsPickLocation != nil {
 		isPL, err := strconv.ParseBool(*app.IsPickLocation)
 		if err != nil {
-			return inventorylocationbus.UpdateInventoryLocation{}, err
+			return inventorylocationbus.UpdateInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse isPickLocation: %s", err)
 		}
-		dest.IsPickLocation = &isPL
+		bus.IsPickLocation = &isPL
 	}
 
 	if app.IsReserveLocation != nil {
-
 		isRL, err := strconv.ParseBool(*app.IsReserveLocation)
 		if err != nil {
-			return inventorylocationbus.UpdateInventoryLocation{}, err
+			return inventorylocationbus.UpdateInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse isReserveLocation: %s", err)
 		}
-		dest.IsReserveLocation = &isRL
+		bus.IsReserveLocation = &isRL
 	}
 
-	return dest, nil
-
+	return bus, nil
 }

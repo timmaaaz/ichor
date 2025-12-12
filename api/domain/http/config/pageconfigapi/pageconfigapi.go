@@ -151,3 +151,97 @@ func (api *api) importPageConfigs(ctx context.Context, r *http.Request) web.Enco
 
 	return result
 }
+
+// =============================================================================
+// JSON Blob Import/Export/Validation handlers
+
+const maxImportBlobSize = 10 * 1024 * 1024 // 10MB
+
+// validateBlob handles POST /v1/config/page-configs/validate
+func (api *api) validateBlob(ctx context.Context, r *http.Request) web.Encoder {
+	// Check content length before reading body
+	if r.ContentLength > maxImportBlobSize {
+		return errs.Newf(errs.InvalidArgument,
+			"request body exceeds maximum size of %d bytes", maxImportBlobSize)
+	}
+
+	// Read raw JSON body
+	blob, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+	defer r.Body.Close()
+
+	// App layer returns app.ValidationResult (with Encode())
+	result, err := api.pageConfigApp.ValidateBlob(ctx, blob)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return result // App layer ValidationResult implements web.Encoder
+}
+
+// importBlob handles POST /v1/config/page-configs/import?mode={skip|replace|merge}
+func (api *api) importBlob(ctx context.Context, r *http.Request) web.Encoder {
+	// Check content length before reading body
+	if r.ContentLength > maxImportBlobSize {
+		return errs.Newf(errs.InvalidArgument,
+			"request body exceeds maximum size of %d bytes", maxImportBlobSize)
+	}
+
+	// Read raw JSON body
+	blob, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+	defer r.Body.Close()
+
+	// Get mode from query param, default to "replace"
+	mode := r.URL.Query().Get("mode")
+	if mode == "" {
+		mode = "replace"
+	}
+
+	// Validate mode parameter
+	if mode != "skip" && mode != "replace" && mode != "merge" {
+		return errs.Newf(errs.InvalidArgument,
+			"invalid mode: %s (must be: skip, replace, or merge)", mode)
+	}
+
+	// App layer returns app.ImportStats (with Encode())
+	stats, err := api.pageConfigApp.ImportBlob(ctx, blob, mode)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return stats // App layer ImportStats implements web.Encoder
+}
+
+// exportBlob handles GET /v1/config/page-configs/{config_id}/export
+func (api *api) exportBlob(ctx context.Context, r *http.Request) web.Encoder {
+	configID, err := uuid.Parse(web.Param(r, "config_id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	// Export blob returns business type, need to marshal to JSON
+	pkg, err := api.pageConfigApp.ExportBlob(ctx, configID)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	// Marshal and return as raw JSON
+	data, err := json.Marshal(pkg)
+	if err != nil {
+		return errs.New(errs.Internal, err)
+	}
+
+	return rawJSON(data)
+}
+
+// rawJSON is a simple wrapper to return raw JSON bytes
+type rawJSON []byte
+
+func (r rawJSON) Encode() ([]byte, string, error) {
+	return r, "application/json", nil
+}

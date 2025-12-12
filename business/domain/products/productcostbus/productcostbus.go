@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -104,33 +103,41 @@ func (b *Business) Update(ctx context.Context, pc ProductCost, upc UpdateProduct
 	ctx, span := otel.AddSpan(ctx, "business.productcostbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(upc, &pc)
-	if err != nil {
-		return ProductCost{}, fmt.Errorf("populate product cost from update product cost: %w", err)
+	if upc.ProductID != nil {
+		pc.ProductID = *upc.ProductID
 	}
-
-	if upc.SellingPrice != nil {
-		pc.SellingPrice = *upc.SellingPrice
-	}
-
 	if upc.PurchaseCost != nil {
 		pc.PurchaseCost = *upc.PurchaseCost
 	}
-
+	if upc.SellingPrice != nil {
+		pc.SellingPrice = *upc.SellingPrice
+	}
+	if upc.Currency != nil {
+		pc.Currency = *upc.Currency
+	}
 	if upc.MSRP != nil {
 		pc.MSRP = *upc.MSRP
 	}
-
+	if upc.MarkupPercentage != nil {
+		pc.MarkupPercentage = *upc.MarkupPercentage
+	}
+	if upc.LandedCost != nil {
+		pc.LandedCost = *upc.LandedCost
+	}
 	if upc.CarryingCost != nil {
 		pc.CarryingCost = *upc.CarryingCost
 	}
-
+	if upc.ABCClassification != nil {
+		pc.ABCClassification = *upc.ABCClassification
+	}
+	if upc.DepreciationValue != nil {
+		pc.DepreciationValue = *upc.DepreciationValue
+	}
 	if upc.InsuranceValue != nil {
 		pc.InsuranceValue = *upc.InsuranceValue
 	}
-
-	if upc.LandedCost != nil {
-		pc.LandedCost = *upc.LandedCost
+	if upc.EffectiveDate != nil {
+		pc.EffectiveDate = *upc.EffectiveDate
 	}
 
 	pc.UpdatedDate = time.Now()

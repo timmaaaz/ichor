@@ -151,7 +151,6 @@ func (b *Business) QueryRelationships(ctx context.Context, schema, table string)
 	JOIN
 		information_schema.constraint_column_usage ccu
 		ON tc.constraint_name = ccu.constraint_name
-		AND tc.table_schema = ccu.table_schema
 	WHERE
 		tc.constraint_type = 'FOREIGN KEY'
 		AND tc.table_schema = :schema

@@ -40,6 +40,39 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "update colors and icon",
+			URL:        "/v1/assets/fulfillment-status/" + sd.FulfillmentStatuses[0].ID,
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusOK,
+			Input: &fulfillmentstatusapp.UpdateFulfillmentStatus{
+				Name:           dbtest.StringPointer("ColorUpdatedStatus"),
+				IconID:         dbtest.StringPointer(newUUID),
+				PrimaryColor:   dbtest.StringPointer("#AABBCC"),
+				SecondaryColor: dbtest.StringPointer("#DDEEFF"),
+				Icon:           dbtest.StringPointer("star"),
+			},
+			GotResp: &fulfillmentstatusapp.FulfillmentStatus{},
+			ExpResp: &fulfillmentstatusapp.FulfillmentStatus{
+				Name:           "ColorUpdatedStatus",
+				IconID:         newUUID,
+				PrimaryColor:   "#AABBCC",
+				SecondaryColor: "#DDEEFF",
+				Icon:           "star",
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(*fulfillmentstatusapp.FulfillmentStatus)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*fulfillmentstatusapp.FulfillmentStatus)
+				expResp.ID = gotResp.ID
+
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 
 	return table

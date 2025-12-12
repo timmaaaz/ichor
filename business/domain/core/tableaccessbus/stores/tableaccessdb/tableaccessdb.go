@@ -271,6 +271,7 @@ func IsSpecialTableName(tableName string) bool {
 		"all_sequences":          {},
 		"all_materialized_views": {},
 		"formdata":               {},
+		"create_test_table":      {},
 	}
 
 	_, exists := specialTableNames[tableName]

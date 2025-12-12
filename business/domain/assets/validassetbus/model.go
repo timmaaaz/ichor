@@ -37,6 +37,7 @@ type NewValidAsset struct {
 	ModelNumber         string
 	IsEnabled           bool
 	CreatedBy           uuid.UUID
+	CreatedDate         *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 // UpdateValidAsset contains information needed to update an asset. Fields that are not

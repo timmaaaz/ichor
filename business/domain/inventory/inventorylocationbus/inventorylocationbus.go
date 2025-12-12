@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -105,19 +104,40 @@ func (b *Business) Update(ctx context.Context, invLocation InventoryLocation, u 
 
 	now := time.Now()
 
-	err := convert.PopulateSameTypes(u, &invLocation)
-	if err != nil {
-		return InventoryLocation{}, fmt.Errorf("update: %w", err)
+	if u.WarehouseID != nil {
+		invLocation.WarehouseID = *u.WarehouseID
 	}
-
+	if u.ZoneID != nil {
+		invLocation.ZoneID = *u.ZoneID
+	}
+	if u.Aisle != nil {
+		invLocation.Aisle = *u.Aisle
+	}
+	if u.Rack != nil {
+		invLocation.Rack = *u.Rack
+	}
+	if u.Shelf != nil {
+		invLocation.Shelf = *u.Shelf
+	}
+	if u.Bin != nil {
+		invLocation.Bin = *u.Bin
+	}
+	if u.IsPickLocation != nil {
+		invLocation.IsPickLocation = *u.IsPickLocation
+	}
+	if u.IsReserveLocation != nil {
+		invLocation.IsReserveLocation = *u.IsReserveLocation
+	}
+	if u.MaxCapacity != nil {
+		invLocation.MaxCapacity = *u.MaxCapacity
+	}
 	if u.CurrentUtilization != nil {
 		invLocation.CurrentUtilization = *u.CurrentUtilization
 	}
 
 	invLocation.UpdatedDate = now
 
-	err = b.storer.Update(ctx, invLocation)
-	if err != nil {
+	if err := b.storer.Update(ctx, invLocation); err != nil {
 		return InventoryLocation{}, fmt.Errorf("update: %w", err)
 	}
 

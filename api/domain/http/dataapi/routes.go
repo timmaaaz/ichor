@@ -106,4 +106,14 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodGet, version, "/data/page/id/{page_config_id}", api.queryFullPageByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	// Chart routes
+	app.HandlerFunc(http.MethodPost, version, "/data/chart/{table_config_id}", api.executeChartQuery, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/data/chart/name/{name}", api.executeChartQueryByName, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/data/chart/preview", api.previewChartData, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

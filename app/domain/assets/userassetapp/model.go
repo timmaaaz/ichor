@@ -2,10 +2,11 @@ package userassetapp
 
 import (
 	"encoding/json"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -48,8 +49,8 @@ func ToAppUserAsset(bus userassetbus.UserAsset) UserAsset {
 		ApprovedBy:          bus.ApprovedBy.String(),
 		ApprovalStatusID:    bus.ApprovalStatusID.String(),
 		FulfillmentStatusID: bus.FulfillmentStatusID.String(),
-		DateReceived:        bus.DateReceived.String(),
-		LastMaintenance:     bus.LastMaintenance.String(),
+		DateReceived:        bus.DateReceived.Format(time.RFC3339),
+		LastMaintenance:     bus.LastMaintenance.Format(time.RFC3339),
 	}
 }
 
@@ -89,11 +90,51 @@ func (app NewUserAsset) Validate() error {
 }
 
 func toBusNewUserAsset(app NewUserAsset) (userassetbus.NewUserAsset, error) {
+	userID, err := uuid.Parse(app.UserID)
+	if err != nil {
+		return userassetbus.NewUserAsset{}, errs.Newf(errs.InvalidArgument, "parse userID: %s", err)
+	}
 
-	dst := &userassetbus.NewUserAsset{}
+	assetID, err := uuid.Parse(app.AssetID)
+	if err != nil {
+		return userassetbus.NewUserAsset{}, errs.Newf(errs.InvalidArgument, "parse assetID: %s", err)
+	}
 
-	err := convert.PopulateTypesFromStrings(app, dst)
-	return *dst, err
+	approvedBy, err := uuid.Parse(app.ApprovedBy)
+	if err != nil {
+		return userassetbus.NewUserAsset{}, errs.Newf(errs.InvalidArgument, "parse approvedBy: %s", err)
+	}
+
+	approvalStatusID, err := uuid.Parse(app.ApprovalStatusID)
+	if err != nil {
+		return userassetbus.NewUserAsset{}, errs.Newf(errs.InvalidArgument, "parse approvalStatusID: %s", err)
+	}
+
+	fulfillmentStatusID, err := uuid.Parse(app.FulfillmentStatusID)
+	if err != nil {
+		return userassetbus.NewUserAsset{}, errs.Newf(errs.InvalidArgument, "parse fulfillmentStatusID: %s", err)
+	}
+
+	dateReceived, err := time.Parse(time.RFC3339, app.DateReceived)
+	if err != nil {
+		return userassetbus.NewUserAsset{}, errs.Newf(errs.InvalidArgument, "parse dateReceived: %s", err)
+	}
+
+	lastMaintenance, err := time.Parse(time.RFC3339, app.LastMaintenance)
+	if err != nil {
+		return userassetbus.NewUserAsset{}, errs.Newf(errs.InvalidArgument, "parse lastMaintenance: %s", err)
+	}
+
+	bus := userassetbus.NewUserAsset{
+		UserID:              userID,
+		AssetID:             assetID,
+		ApprovedBy:          approvedBy,
+		ApprovalStatusID:    approvalStatusID,
+		FulfillmentStatusID: fulfillmentStatusID,
+		DateReceived:        dateReceived,
+		LastMaintenance:     lastMaintenance,
+	}
+	return bus, nil
 }
 
 // =========================================================================
@@ -124,9 +165,77 @@ func (app UpdateUserAsset) Validate() error {
 }
 
 func toBusUpdateUserAsset(app UpdateUserAsset) (userassetbus.UpdateUserAsset, error) {
-	uua := userassetbus.UpdateUserAsset{}
+	var userID *uuid.UUID
+	if app.UserID != nil {
+		id, err := uuid.Parse(*app.UserID)
+		if err != nil {
+			return userassetbus.UpdateUserAsset{}, errs.Newf(errs.InvalidArgument, "parse userID: %s", err)
+		}
+		userID = &id
+	}
 
-	err := convert.PopulateTypesFromStrings(app, &uua)
+	var assetID *uuid.UUID
+	if app.AssetID != nil {
+		id, err := uuid.Parse(*app.AssetID)
+		if err != nil {
+			return userassetbus.UpdateUserAsset{}, errs.Newf(errs.InvalidArgument, "parse assetID: %s", err)
+		}
+		assetID = &id
+	}
 
-	return uua, err
+	var approvedBy *uuid.UUID
+	if app.ApprovedBy != nil {
+		id, err := uuid.Parse(*app.ApprovedBy)
+		if err != nil {
+			return userassetbus.UpdateUserAsset{}, errs.Newf(errs.InvalidArgument, "parse approvedBy: %s", err)
+		}
+		approvedBy = &id
+	}
+
+	var approvalStatusID *uuid.UUID
+	if app.ApprovalStatusID != nil {
+		id, err := uuid.Parse(*app.ApprovalStatusID)
+		if err != nil {
+			return userassetbus.UpdateUserAsset{}, errs.Newf(errs.InvalidArgument, "parse approvalStatusID: %s", err)
+		}
+		approvalStatusID = &id
+	}
+
+	var fulfillmentStatusID *uuid.UUID
+	if app.FulfillmentStatusID != nil {
+		id, err := uuid.Parse(*app.FulfillmentStatusID)
+		if err != nil {
+			return userassetbus.UpdateUserAsset{}, errs.Newf(errs.InvalidArgument, "parse fulfillmentStatusID: %s", err)
+		}
+		fulfillmentStatusID = &id
+	}
+
+	var dateReceived *time.Time
+	if app.DateReceived != nil {
+		t, err := time.Parse(time.RFC3339, *app.DateReceived)
+		if err != nil {
+			return userassetbus.UpdateUserAsset{}, errs.Newf(errs.InvalidArgument, "parse dateReceived: %s", err)
+		}
+		dateReceived = &t
+	}
+
+	var lastMaintenance *time.Time
+	if app.LastMaintenance != nil {
+		t, err := time.Parse(time.RFC3339, *app.LastMaintenance)
+		if err != nil {
+			return userassetbus.UpdateUserAsset{}, errs.Newf(errs.InvalidArgument, "parse lastMaintenance: %s", err)
+		}
+		lastMaintenance = &t
+	}
+
+	bus := userassetbus.UpdateUserAsset{
+		UserID:              userID,
+		AssetID:             assetID,
+		ApprovedBy:          approvedBy,
+		ApprovalStatusID:    approvalStatusID,
+		FulfillmentStatusID: fulfillmentStatusID,
+		DateReceived:        dateReceived,
+		LastMaintenance:     lastMaintenance,
+	}
+	return bus, nil
 }

@@ -50,11 +50,11 @@ func (s *Store) Create(ctx context.Context, content pagecontentbus.PageContent) 
 	const q = `
 		INSERT INTO config.page_content (
 			id, page_config_id, content_type, label,
-			table_config_id, form_id, order_index,
+			table_config_id, form_id, chart_config_id, order_index,
 			parent_id, layout, is_visible, is_default
 		) VALUES (
 			:id, :page_config_id, :content_type, :label,
-			:table_config_id, :form_id, :order_index,
+			:table_config_id, :form_id, :chart_config_id, :order_index,
 			:parent_id, :layout, :is_visible, :is_default
 		)`
 
@@ -74,6 +74,7 @@ func (s *Store) Update(ctx context.Context, content pagecontentbus.PageContent) 
 			label = :label,
 			table_config_id = :table_config_id,
 			form_id = :form_id,
+			chart_config_id = :chart_config_id,
 			order_index = :order_index,
 			parent_id = :parent_id,
 			layout = :layout,
@@ -123,7 +124,7 @@ func (s *Store) Query(ctx context.Context, filter pagecontentbus.QueryFilter, or
 	const q = `
 	SELECT
 		id, page_config_id, content_type, label,
-		table_config_id, form_id, order_index,
+		table_config_id, form_id, chart_config_id, order_index,
 		parent_id, layout, is_visible, is_default
 	FROM
 		config.page_content`
@@ -182,7 +183,7 @@ func (s *Store) QueryByID(ctx context.Context, contentID uuid.UUID) (pagecontent
 	const q = `
 		SELECT
 			id, page_config_id, content_type, label,
-			table_config_id, form_id, order_index,
+			table_config_id, form_id, chart_config_id, order_index,
 			parent_id, layout, is_visible, is_default
 		FROM
 			config.page_content
@@ -211,7 +212,7 @@ func (s *Store) QueryByPageConfigID(ctx context.Context, pageConfigID uuid.UUID)
 	const q = `
 		SELECT
 			id, page_config_id, content_type, label,
-			table_config_id, form_id, order_index,
+			table_config_id, form_id, chart_config_id, order_index,
 			parent_id, layout, is_visible, is_default
 		FROM
 			config.page_content

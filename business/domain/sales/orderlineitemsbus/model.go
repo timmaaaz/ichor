@@ -26,6 +26,7 @@ type NewOrderLineItem struct {
 	Discount                      float64
 	LineItemFulfillmentStatusesID uuid.UUID
 	CreatedBy                     uuid.UUID
+	CreatedDate                   *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateOrderLineItem struct {

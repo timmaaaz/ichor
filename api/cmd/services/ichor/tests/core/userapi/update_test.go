@@ -208,7 +208,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 				Roles: []string{"ADMIN"},
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: users"),
+			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: core.users"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

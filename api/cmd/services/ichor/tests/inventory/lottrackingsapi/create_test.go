@@ -227,7 +227,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				QualityStatus:     "poor",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTrackings: failed to parse time: parsing time "`+md.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+md.Format(time.RFC1123)+`" as "2006"`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `parse manufactureDate: parsing time "`+md.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+md.Format(time.RFC1123)+`" as "2006"`),
 			CmpFunc: func(got, exp any) string {
 
 				gotResp, exists := got.(*errs.Error)
@@ -259,7 +259,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				QualityStatus:     "poor",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTrackings: failed to parse time: parsing time "`+ed.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+ed.Format(time.RFC1123)+`" as "2006"`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `parse expirationDate: parsing time "`+ed.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+ed.Format(time.RFC1123)+`" as "2006"`),
 			CmpFunc: func(got, exp any) string {
 
 				gotResp, exists := got.(*errs.Error)
@@ -291,7 +291,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				QualityStatus:     "poor",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `toBusNewLotTrackings: failed to parse time: parsing time "`+rd.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+rd.Format(time.RFC1123)+`" as "2006"`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `parse receivedDate: parsing time "`+rd.Format(time.RFC1123)+`" as "`+timeutil.FORMAT+`": cannot parse "`+rd.Format(time.RFC1123)+`" as "2006"`),
 			CmpFunc: func(got, exp any) string {
 
 				gotResp, exists := got.(*errs.Error)
@@ -406,7 +406,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: lot_trackings"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: inventory.lot_trackings"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

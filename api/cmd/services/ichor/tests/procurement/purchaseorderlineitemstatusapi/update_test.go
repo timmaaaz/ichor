@@ -68,7 +68,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 				Name: dbtest.StringPointer("Updated"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: purchase_order_line_item_statuses"),
+			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: procurement.purchase_order_line_item_statuses"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

@@ -365,6 +365,11 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			meta.Format = vs.Format
 			meta.Editable = vs.Editable
 			meta.Link = vs.Link
+
+			// Override type if explicitly configured
+			if vs.Type != "" {
+				meta.Type = vs.Type
+			}
 		}
 
 		metadata = append(metadata, meta)
@@ -434,6 +439,11 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 				meta.Filterable = vs.Filterable
 				meta.Format = vs.Format
 				meta.Link = vs.Link
+
+				// Override type if explicitly configured
+				if vs.Type != "" {
+					meta.Type = vs.Type
+				}
 			}
 
 			metadata = append(metadata, meta)

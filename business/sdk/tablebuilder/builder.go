@@ -23,6 +23,10 @@ func NewQueryBuilder() *QueryBuilder {
 
 // BuildQuery builds a SQL query from a data source configuration
 func (qb *QueryBuilder) BuildQuery(ds *DataSource, params QueryParams, isPrimary bool) (string, map[string]interface{}, error) {
+	// Check if this is a metric/chart query
+	if len(ds.Metrics) > 0 {
+		return qb.buildMetricQuery(ds, params, isPrimary)
+	}
 
 	var from string
 	if ds.Schema != "" {
@@ -412,4 +416,228 @@ func getTableOrAlias(ft ForeignTable) string {
 		return ft.Alias
 	}
 	return ft.Table
+}
+
+// =============================================================================
+// Metric Query Builder (for charts with aggregations)
+// =============================================================================
+
+// buildMetricQuery builds aggregation queries for charts
+func (qb *QueryBuilder) buildMetricQuery(ds *DataSource, params QueryParams, isPrimary bool) (string, map[string]interface{}, error) {
+	// 1. Validate all metrics
+	for _, metric := range ds.Metrics {
+		if err := ValidateMetricConfig(metric); err != nil {
+			return "", nil, fmt.Errorf("invalid metric %q: %w", metric.Name, err)
+		}
+	}
+
+	// Validate all group by configs if present
+	for i, groupBy := range ds.GroupBy {
+		if err := ValidateGroupByConfig(&groupBy); err != nil {
+			return "", nil, fmt.Errorf("invalid group by %d: %w", i, err)
+		}
+	}
+
+	// Build FROM clause
+	var from string
+	if ds.Schema != "" {
+		from = strings.Join([]string{ds.Schema, ds.Source}, ".")
+	} else {
+		from = ds.Source
+	}
+
+	query := qb.dialect.From(from)
+
+	// 2. Build SELECT with aggregates
+	var selectCols []interface{}
+
+	// Add all group by columns to select if present
+	for _, groupBy := range ds.GroupBy {
+		groupBySelectExpr, err := qb.buildGroupBySelectExpression(&groupBy)
+		if err != nil {
+			return "", nil, fmt.Errorf("build group by select: %w", err)
+		}
+		selectCols = append(selectCols, groupBySelectExpr)
+	}
+
+	// Add metric expressions
+	for _, metric := range ds.Metrics {
+		metricExpr, err := qb.buildMetricExpression(metric)
+		if err != nil {
+			return "", nil, fmt.Errorf("build metric %q: %w", metric.Name, err)
+		}
+		selectCols = append(selectCols, metricExpr)
+	}
+
+	query = query.Select(selectCols...)
+
+	// 3. Apply joins from foreign tables (needed for expressions referencing other tables)
+	query = qb.applyForeignTableJoins(query, ds.Select.ForeignTables)
+
+	// 4. Apply explicit joins
+	query = qb.applyJoins(query, ds.Joins)
+
+	// 5. Apply filters
+	query = qb.applyFilters(query, ds.Filters, params)
+
+	// 6. Build GROUP BY if present
+	if len(ds.GroupBy) > 0 {
+		groupByExprs, err := qb.buildGroupByClauses(ds.GroupBy)
+		if err != nil {
+			return "", nil, fmt.Errorf("build group by clauses: %w", err)
+		}
+		query = query.GroupBy(groupByExprs...)
+	}
+
+	// 7. Apply sorting (only for primary data source)
+	if isPrimary {
+		query = qb.applySorting(query, ds.Sort, params)
+	}
+
+	// 8. Apply row limit if set
+	if ds.Rows > 0 {
+		query = query.Limit(uint(ds.Rows))
+	}
+
+	// Generate SQL
+	sql, args, err := query.ToSQL()
+	if err != nil {
+		return "", nil, fmt.Errorf("generate sql: %w", err)
+	}
+
+	// Convert args to map for named query
+	argsMap := make(map[string]interface{})
+	for i, arg := range args {
+		argsMap[fmt.Sprintf("arg%d", i+1)] = arg
+	}
+
+	// Replace ? with named parameters
+	sql = qb.replaceQuestionMarks(sql, len(args))
+
+	return sql, argsMap, nil
+}
+
+// buildMetricExpression safely builds a metric SQL expression
+func (qb *QueryBuilder) buildMetricExpression(metric MetricConfig) (interface{}, error) {
+	var innerExpr string
+
+	if metric.Column != "" {
+		// Simple column reference
+		innerExpr = metric.Column
+	} else if metric.Expression != nil {
+		// Build arithmetic expression from columns
+		expr, err := qb.buildArithmeticExpression(metric.Expression)
+		if err != nil {
+			return nil, err
+		}
+		innerExpr = expr
+	} else {
+		return nil, fmt.Errorf("metric must have column or expression")
+	}
+
+	// Wrap with aggregate function
+	sqlFunc, ok := AllowedAggregateFunctions[metric.Function]
+	if !ok {
+		return nil, fmt.Errorf("invalid aggregate function: %s", metric.Function)
+	}
+
+	var sqlExpr string
+	switch metric.Function {
+	case "count_distinct":
+		// COUNT(DISTINCT column)
+		sqlExpr = fmt.Sprintf("COUNT(DISTINCT %s)", innerExpr)
+	default:
+		// SUM(expr), AVG(expr), etc.
+		sqlExpr = fmt.Sprintf("%s(%s)", sqlFunc, innerExpr)
+	}
+
+	// Add alias using goqu.L which returns LiteralExpression that has .As()
+	return goqu.L(sqlExpr).As(goqu.C(metric.Name)), nil
+}
+
+// buildArithmeticExpression builds a safe arithmetic expression from columns
+func (qb *QueryBuilder) buildArithmeticExpression(expr *ExpressionConfig) (string, error) {
+	operator, ok := AllowedOperators[expr.Operator]
+	if !ok {
+		return "", fmt.Errorf("invalid operator: %s", expr.Operator)
+	}
+
+	// Build expression like "col1 * col2" or "col1 + col2 + col3"
+	var parts []string
+	for _, col := range expr.Columns {
+		if !isValidColumnReference(col) {
+			return "", fmt.Errorf("invalid column reference: %s", col)
+		}
+		parts = append(parts, col)
+	}
+
+	return strings.Join(parts, " "+operator+" "), nil
+}
+
+// buildGroupBySelectExpression builds the SELECT expression for group by column
+func (qb *QueryBuilder) buildGroupBySelectExpression(groupBy *GroupByConfig) (interface{}, error) {
+	// For SQL expressions, alias is required
+	if groupBy.Expression {
+		if groupBy.Alias == "" {
+			return nil, fmt.Errorf("alias required for GROUP BY expression: %s", groupBy.Column)
+		}
+		// Use raw SQL expression
+		return goqu.L(groupBy.Column).As(goqu.C(groupBy.Alias)), nil
+	}
+
+	alias := groupBy.Alias
+	if alias == "" {
+		// Use column name as alias if not specified
+		parts := strings.Split(groupBy.Column, ".")
+		alias = parts[len(parts)-1]
+	}
+
+	if groupBy.Interval != "" {
+		// Time-based grouping: DATE_TRUNC('month', column) AS alias
+		interval, ok := AllowedIntervals[groupBy.Interval]
+		if !ok {
+			return nil, fmt.Errorf("invalid interval: %s", groupBy.Interval)
+		}
+		expr := goqu.L(fmt.Sprintf("DATE_TRUNC('%s', %s)", interval, groupBy.Column))
+		return expr.As(goqu.C(alias)), nil
+	}
+
+	// Categorical grouping: column AS alias
+	expr := goqu.L(groupBy.Column)
+	return expr.As(goqu.C(alias)), nil
+}
+
+// buildGroupByClause builds the GROUP BY clause expression
+func (qb *QueryBuilder) buildGroupByClause(groupBy *GroupByConfig) (interface{}, error) {
+	// For SQL expressions, use the expression directly in GROUP BY
+	if groupBy.Expression {
+		return goqu.L(groupBy.Column), nil
+	}
+
+	if groupBy.Interval != "" {
+		// Time-based grouping: GROUP BY DATE_TRUNC('month', column)
+		interval, ok := AllowedIntervals[groupBy.Interval]
+		if !ok {
+			return nil, fmt.Errorf("invalid interval: %s", groupBy.Interval)
+		}
+		return goqu.L(fmt.Sprintf("DATE_TRUNC('%s', %s)", interval, groupBy.Column)), nil
+	}
+
+	// Categorical grouping: GROUP BY column
+	return goqu.L(groupBy.Column), nil
+}
+
+// buildGroupByClauses builds multiple GROUP BY clause expressions
+func (qb *QueryBuilder) buildGroupByClauses(groupBys []GroupByConfig) ([]interface{}, error) {
+	var exprs []interface{}
+
+	for _, groupBy := range groupBys {
+		expr, err := qb.buildGroupByClause(&groupBy)
+		if err != nil {
+			return nil, err
+		}
+		exprs = append(exprs, expr)
+	}
+
+	return exprs, nil
 }

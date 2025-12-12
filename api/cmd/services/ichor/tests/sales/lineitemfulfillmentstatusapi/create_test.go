@@ -38,6 +38,39 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name:       "with colors and icon",
+			URL:        "/v1/sales/line-item-fulfillment-statuses",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			Input: &lineitemfulfillmentstatusapp.NewLineItemFulfillmentStatus{
+				Name:           "COLORED STATUS",
+				Description:    "STATUS WITH COLORS",
+				PrimaryColor:   "#FF5733",
+				SecondaryColor: "#33FF57",
+				Icon:           "check-circle",
+			},
+			GotResp: &lineitemfulfillmentstatusapp.LineItemFulfillmentStatus{},
+			ExpResp: &lineitemfulfillmentstatusapp.LineItemFulfillmentStatus{
+				Name:           "COLORED STATUS",
+				Description:    "STATUS WITH COLORS",
+				PrimaryColor:   "#FF5733",
+				SecondaryColor: "#33FF57",
+				Icon:           "check-circle",
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*lineitemfulfillmentstatusapp.LineItemFulfillmentStatus)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*lineitemfulfillmentstatusapp.LineItemFulfillmentStatus)
+				expResp.ID = gotResp.ID
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
 	}
 
 	return table
@@ -113,7 +146,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: line_item_fulfillment_statuses"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: sales.line_item_fulfillment_statuses"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -67,4 +68,61 @@ func ParseAddress(address1 string, address2 string, zipCode string, city string,
 		State:    state,
 		Country:  country,
 	}
+}
+
+// TestGenerateNewHomesHistorical creates homes distributed across a time range for seeding.
+// yearsBack specifies how many years of history to generate (1-5 years recommended for homes).
+// Homes are evenly distributed across the time range as they are stable infrastructure data.
+func TestGenerateNewHomesHistorical(n int, yearsBack int, userID uuid.UUID) []NewHome {
+	newHmes := make([]NewHome, n)
+	now := time.Now()
+
+	idx := rand.Intn(10000)
+	for i := 0; i < n; i++ {
+		idx++
+
+		typ := Types.Single
+		if v := (idx + i) % 2; v == 0 {
+			typ = Types.Condo
+		}
+
+		// Distribute evenly across the time range
+		daysAgo := (i * yearsBack * 365) / n
+		createdDate := now.AddDate(0, 0, -daysAgo)
+
+		nh := NewHome{
+			Type: typ,
+			Address: Address{
+				Address1: fmt.Sprintf("Address%d", idx),
+				Address2: fmt.Sprintf("Address%d", idx),
+				ZipCode:  fmt.Sprintf("%05d", idx),
+				City:     fmt.Sprintf("City%d", idx),
+				State:    fmt.Sprintf("State%d", idx),
+				Country:  fmt.Sprintf("Country%d", idx),
+			},
+			UserID:      userID,
+			CreatedDate: &createdDate,
+		}
+
+		newHmes[i] = nh
+	}
+
+	return newHmes
+}
+
+// TestGenerateSeedHomesHistorical seeds homes with historical date distribution.
+func TestGenerateSeedHomesHistorical(ctx context.Context, n int, yearsBack int, api *Business, userID uuid.UUID) ([]Home, error) {
+	newHmes := TestGenerateNewHomesHistorical(n, yearsBack, userID)
+
+	hmes := make([]Home, len(newHmes))
+	for i, nh := range newHmes {
+		hme, err := api.Create(ctx, nh)
+		if err != nil {
+			return nil, fmt.Errorf("seeding home: idx: %d : %w", i, err)
+		}
+
+		hmes[i] = hme
+	}
+
+	return hmes, nil
 }

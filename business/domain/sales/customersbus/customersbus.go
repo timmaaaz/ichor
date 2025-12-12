@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -72,6 +71,9 @@ func (b *Business) Create(ctx context.Context, nci NewCustomers) (Customers, err
 	defer span.End()
 
 	now := time.Now().UTC()
+	if nci.CreatedDate != nil {
+		now = *nci.CreatedDate // Use provided date for seeding
+	}
 
 	customers := Customers{
 		ID:                uuid.New(),
@@ -97,9 +99,23 @@ func (b *Business) Update(ctx context.Context, ci Customers, uci UpdateCustomers
 	ctx, span := otel.AddSpan(ctx, "business.customersbus.update")
 	defer span.End()
 
-	if err := convert.PopulateSameTypes(uci, &ci); err != nil {
-		return Customers{}, fmt.Errorf("populate customers from update customers: %w", err)
+	if uci.Name != nil {
+		ci.Name = *uci.Name
 	}
+	if uci.ContactID != nil {
+		ci.ContactID = *uci.ContactID
+	}
+	if uci.DeliveryAddressID != nil {
+		ci.DeliveryAddressID = *uci.DeliveryAddressID
+	}
+	if uci.Notes != nil {
+		ci.Notes = *uci.Notes
+	}
+	if uci.UpdatedBy != nil {
+		ci.UpdatedBy = *uci.UpdatedBy
+	}
+
+	ci.UpdatedDate = time.Now().UTC()
 
 	if err := b.storer.Update(ctx, ci); err != nil {
 		return Customers{}, fmt.Errorf("update: %w", err)

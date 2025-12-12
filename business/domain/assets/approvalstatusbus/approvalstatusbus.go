@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -74,9 +73,12 @@ func (b *Business) Create(ctx context.Context, nas NewApprovalStatus) (ApprovalS
 	defer span.End()
 
 	as := ApprovalStatus{
-		ID:     uuid.New(),
-		Name:   nas.Name,
-		IconID: nas.IconID,
+		ID:             uuid.New(),
+		Name:           nas.Name,
+		IconID:         nas.IconID,
+		PrimaryColor:   nas.PrimaryColor,
+		SecondaryColor: nas.SecondaryColor,
+		Icon:           nas.Icon,
 	}
 
 	if err := b.storer.Create(ctx, as); err != nil {
@@ -91,9 +93,20 @@ func (b *Business) Update(ctx context.Context, as ApprovalStatus, uas UpdateAppr
 	ctx, span := otel.AddSpan(ctx, "business.approvalstatusbus.Update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uas, &as)
-	if err != nil {
-		return ApprovalStatus{}, fmt.Errorf("populate struct: %w", err)
+	if uas.Name != nil {
+		as.Name = *uas.Name
+	}
+	if uas.IconID != nil {
+		as.IconID = *uas.IconID
+	}
+	if uas.PrimaryColor != nil {
+		as.PrimaryColor = *uas.PrimaryColor
+	}
+	if uas.SecondaryColor != nil {
+		as.SecondaryColor = *uas.SecondaryColor
+	}
+	if uas.Icon != nil {
+		as.Icon = *uas.Icon
 	}
 
 	if err := b.storer.Update(ctx, as); err != nil {

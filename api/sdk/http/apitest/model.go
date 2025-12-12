@@ -132,6 +132,9 @@ type SeedData struct {
 	SimpleTableConfig           *tablebuilder.StoredConfig
 	ComplexTableConfig          *tablebuilder.StoredConfig
 	PageTableConfig             *tablebuilder.StoredConfig
+	KPIChartConfig              *tablebuilder.StoredConfig
+	BarChartConfig              *tablebuilder.StoredConfig
+	PieChartConfig              *tablebuilder.StoredConfig
 	PageConfigs                 []pageconfigapp.PageConfig
 	PageContents                []pagecontentapp.PageContent
 	Forms                       []formapp.Form

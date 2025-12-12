@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -98,8 +97,41 @@ func (b *Business) Update(ctx context.Context, ci ContactInfos, uci UpdateContac
 	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.update")
 	defer span.End()
 
-	if err := convert.PopulateSameTypes(uci, &ci); err != nil {
-		return ContactInfos{}, fmt.Errorf("populate contactInfos from update contactInfos: %w", err)
+	if uci.FirstName != nil {
+		ci.FirstName = *uci.FirstName
+	}
+	if uci.LastName != nil {
+		ci.LastName = *uci.LastName
+	}
+	if uci.EmailAddress != nil {
+		ci.EmailAddress = *uci.EmailAddress
+	}
+	if uci.PrimaryPhone != nil {
+		ci.PrimaryPhone = *uci.PrimaryPhone
+	}
+	if uci.SecondaryPhone != nil {
+		ci.SecondaryPhone = *uci.SecondaryPhone
+	}
+	if uci.StreetID != nil {
+		ci.StreetID = *uci.StreetID
+	}
+	if uci.DeliveryAddressID != nil {
+		ci.DeliveryAddressID = *uci.DeliveryAddressID
+	}
+	if uci.AvailableHoursStart != nil {
+		ci.AvailableHoursStart = *uci.AvailableHoursStart
+	}
+	if uci.AvailableHoursEnd != nil {
+		ci.AvailableHoursEnd = *uci.AvailableHoursEnd
+	}
+	if uci.Timezone != nil {
+		ci.Timezone = *uci.Timezone
+	}
+	if uci.PreferredContactType != nil {
+		ci.PreferredContactType = *uci.PreferredContactType
+	}
+	if uci.Notes != nil {
+		ci.Notes = *uci.Notes
 	}
 
 	if err := b.storer.Update(ctx, ci); err != nil {

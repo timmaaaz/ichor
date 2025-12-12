@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -97,6 +96,9 @@ func (b *Business) Update(ctx context.Context, metric Metric, um UpdateMetric) (
 	ctx, span := otel.AddSpan(ctx, "business.metricsbus.update")
 	defer span.End()
 
+	if um.ProductID != nil {
+		metric.ProductID = *um.ProductID
+	}
 	if um.ReturnRate != nil {
 		metric.ReturnRate = *um.ReturnRate
 	}
@@ -107,14 +109,9 @@ func (b *Business) Update(ctx context.Context, metric Metric, um UpdateMetric) (
 		metric.MeasurementPeriod = *um.MeasurementPeriod
 	}
 
-	if err := convert.PopulateSameTypes(um, &metric); err != nil {
-		return Metric{}, fmt.Errorf("populate same types: %w", err)
-	}
-
 	metric.UpdatedDate = time.Now()
 
-	err := b.storer.Update(ctx, metric)
-	if err != nil {
+	if err := b.storer.Update(ctx, metric); err != nil {
 		return Metric{}, fmt.Errorf("update: %w", err)
 	}
 

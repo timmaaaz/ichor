@@ -351,3 +351,66 @@ func (api *api) importTableConfigs(ctx context.Context, r *http.Request) web.Enc
 
 	return result
 }
+
+// =============================================================================
+// Chart handlers
+
+func (api *api) executeChartQuery(ctx context.Context, r *http.Request) web.Encoder {
+	id := web.Param(r, "table_config_id")
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	var app dataapp.TableQuery
+	if err := web.Decode(r, &app); err != nil {
+		// Allow empty body for simple chart queries
+		if r.ContentLength > 0 && !errors.Is(err, io.EOF) {
+			return errs.New(errs.InvalidArgument, err)
+		}
+	}
+
+	chartData, err := api.dataapp.ExecuteChartQuery(ctx, parsed, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return chartData
+}
+
+func (api *api) executeChartQueryByName(ctx context.Context, r *http.Request) web.Encoder {
+	name := web.Param(r, "name")
+
+	var app dataapp.TableQuery
+	if err := web.Decode(r, &app); err != nil {
+		// Allow empty body for simple chart queries
+		if r.ContentLength > 0 && !errors.Is(err, io.EOF) {
+			return errs.New(errs.InvalidArgument, err)
+		}
+	}
+
+	chartData, err := api.dataapp.ExecuteChartQueryByName(ctx, name, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return chartData
+}
+
+func (api *api) previewChartData(ctx context.Context, r *http.Request) web.Encoder {
+	var app dataapp.PreviewChartDataRequest
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	if err := app.Validate(); err != nil {
+		return errs.NewError(err)
+	}
+
+	chartData, err := api.dataapp.PreviewChartData(ctx, app.Config, app.Query)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return chartData
+}

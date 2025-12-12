@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -90,9 +89,8 @@ func (b *Business) Update(ctx context.Context, rolePage RolePage, urp UpdateRole
 	ctx, span := otel.AddSpan(ctx, "business.rolepagebus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(urp, &rolePage)
-	if err != nil {
-		return RolePage{}, fmt.Errorf("populate same types: %w", err)
+	if urp.CanAccess != nil {
+		rolePage.CanAccess = *urp.CanAccess
 	}
 
 	if err := b.storer.Update(ctx, rolePage); err != nil {

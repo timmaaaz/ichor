@@ -418,7 +418,7 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'hr.user_approval_comments', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'hr.user_approval_status', true, true, true, true),
     -- introspection schema
-    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'introspection.introspection', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'introspection', true, true, true, true),
     -- inventory schema
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_adjustments', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_items', true, true, true, true),

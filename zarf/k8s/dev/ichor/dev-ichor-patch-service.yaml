@@ -9,17 +9,17 @@ spec:
 
   ports:
     - name: ichor
-      port: 3000
+      port: 8080
       targetPort: ichor
     - name: ichor-debug
-      port: 3010
+      port: 8090
       targetPort: ichor-debug
     - name: metrics
-      port: 4000
+      port: 10000
       targetPort: metrics
     - name: metrics-debug
-      port: 4010
+      port: 10010
       targetPort: metrics-debug
     - name: prometheus
-      port: 4020
+      port: 10020
       targetPort: metrics-prom

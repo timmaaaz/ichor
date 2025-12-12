@@ -86,6 +86,9 @@ func queryByUser200(sd apitest.SeedData) []apitest.Table {
 	tmp = append(tmp, *sd.SimpleTableConfig)
 	tmp = append(tmp, *sd.ComplexTableConfig)
 	tmp = append(tmp, *sd.PageTableConfig)
+	tmp = append(tmp, *sd.KPIChartConfig)
+	tmp = append(tmp, *sd.BarChartConfig)
+	tmp = append(tmp, *sd.PieChartConfig)
 
 	exp.Items = dataapp.ToAppTableConfigs(tmp)
 

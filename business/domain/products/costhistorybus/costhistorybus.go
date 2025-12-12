@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -72,7 +71,10 @@ func (b *Business) Create(ctx context.Context, nch NewCostHistory) (CostHistory,
 	ctx, span := otel.AddSpan(ctx, "business.costhistorybus.create")
 	defer span.End()
 
-	now := time.Now()
+	now := time.Now().UTC()
+	if nch.CreatedDate != nil {
+		now = *nch.CreatedDate
+	}
 
 	ch := CostHistory{
 		CostHistoryID: uuid.New(),
@@ -98,13 +100,23 @@ func (b *Business) Update(ctx context.Context, ch CostHistory, uch UpdateCostHis
 	ctx, span := otel.AddSpan(ctx, "business.costhistorybus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uch, &ch)
-	if err != nil {
-		return CostHistory{}, fmt.Errorf("populate cost history struct: %w", err)
+	if uch.ProductID != nil {
+		ch.ProductID = *uch.ProductID
 	}
-
+	if uch.CostType != nil {
+		ch.CostType = *uch.CostType
+	}
 	if uch.Amount != nil {
 		ch.Amount = *uch.Amount
+	}
+	if uch.Currency != nil {
+		ch.Currency = *uch.Currency
+	}
+	if uch.EffectiveDate != nil {
+		ch.EffectiveDate = *uch.EffectiveDate
+	}
+	if uch.EndDate != nil {
+		ch.EndDate = *uch.EndDate
 	}
 
 	ch.UpdatedDate = time.Now()

@@ -5,7 +5,6 @@ import (
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -19,9 +18,12 @@ type QueryParams struct {
 }
 
 type OrderFulfillmentStatus struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Description    string `json:"description"`
+	PrimaryColor   string `json:"primary_color"`
+	SecondaryColor string `json:"secondary_color"`
+	Icon           string `json:"icon"`
 }
 
 func (app OrderFulfillmentStatus) Encode() ([]byte, string, error) {
@@ -31,9 +33,12 @@ func (app OrderFulfillmentStatus) Encode() ([]byte, string, error) {
 
 func ToAppOrderFulfillmentStatus(bus orderfulfillmentstatusbus.OrderFulfillmentStatus) OrderFulfillmentStatus {
 	return OrderFulfillmentStatus{
-		ID:          bus.ID.String(),
-		Name:        bus.Name,
-		Description: bus.Description,
+		ID:             bus.ID.String(),
+		Name:           bus.Name,
+		Description:    bus.Description,
+		PrimaryColor:   bus.PrimaryColor,
+		SecondaryColor: bus.SecondaryColor,
+		Icon:           bus.Icon,
 	}
 }
 
@@ -46,8 +51,11 @@ func ToAppOrderFulfillmentStatuses(bus []orderfulfillmentstatusbus.OrderFulfillm
 }
 
 type NewOrderFulfillmentStatus struct {
-	Name        string `json:"name" validate:"required,min=3"`
-	Description string `json:"description" validate:"omitempty"`
+	Name           string `json:"name" validate:"required,min=3"`
+	Description    string `json:"description" validate:"omitempty"`
+	PrimaryColor   string `json:"primary_color" validate:"omitempty,max=50"`
+	SecondaryColor string `json:"secondary_color" validate:"omitempty,max=50"`
+	Icon           string `json:"icon" validate:"omitempty,max=100"`
 }
 
 func (app *NewOrderFulfillmentStatus) Decode(data []byte) error {
@@ -62,18 +70,23 @@ func (app NewOrderFulfillmentStatus) Validate() error {
 }
 
 func toBusNewOrderFulfillmentStatus(app NewOrderFulfillmentStatus) (orderfulfillmentstatusbus.NewOrderFulfillmentStatus, error) {
-	var dest orderfulfillmentstatusbus.NewOrderFulfillmentStatus
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return orderfulfillmentstatusbus.NewOrderFulfillmentStatus{}, errs.Newf(errs.InvalidArgument, "toBusNewOrderFulfillmentStatus: %s", err)
+	bus := orderfulfillmentstatusbus.NewOrderFulfillmentStatus{
+		Name:           app.Name,
+		Description:    app.Description,
+		PrimaryColor:   app.PrimaryColor,
+		SecondaryColor: app.SecondaryColor,
+		Icon:           app.Icon,
 	}
 
-	return dest, nil
+	return bus, nil
 }
 
 type UpdateOrderFulfillmentStatus struct {
-	Name        *string `json:"name" validate:"omitempty,min=3"`
-	Description *string `json:"description" validate:"omitempty"`
+	Name           *string `json:"name" validate:"omitempty,min=3"`
+	Description    *string `json:"description" validate:"omitempty"`
+	PrimaryColor   *string `json:"primary_color" validate:"omitempty,max=50"`
+	SecondaryColor *string `json:"secondary_color" validate:"omitempty,max=50"`
+	Icon           *string `json:"icon" validate:"omitempty,max=100"`
 }
 
 func (app *UpdateOrderFulfillmentStatus) Decode(data []byte) error {
@@ -88,11 +101,13 @@ func (app UpdateOrderFulfillmentStatus) Validate() error {
 }
 
 func toBusUpdateOrderFulfillmentStatus(app UpdateOrderFulfillmentStatus) (orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus, error) {
-	var dest orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus{}, errs.Newf(errs.InvalidArgument, "toBusUpdateOrderFulfillmentStatus: %s", err)
+	bus := orderfulfillmentstatusbus.UpdateOrderFulfillmentStatus{
+		Name:           app.Name,
+		Description:    app.Description,
+		PrimaryColor:   app.PrimaryColor,
+		SecondaryColor: app.SecondaryColor,
+		Icon:           app.Icon,
 	}
 
-	return dest, nil
+	return bus, nil
 }

@@ -126,7 +126,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "Create",
 			ExpResp: tableaccessbus.TableAccess{
 				RoleID:    sd.TableAccesses[0].RoleID,
-				TableName: "asset_types",
+				TableName: "create_test_table",
 				CanCreate: true,
 				CanRead:   true,
 				CanUpdate: true,
@@ -135,7 +135,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				nta := tableaccessbus.NewTableAccess{
 					RoleID:    sd.TableAccesses[0].RoleID,
-					TableName: "asset_types",
+					TableName: "create_test_table",
 					CanCreate: true,
 					CanRead:   true,
 					CanUpdate: true,

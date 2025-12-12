@@ -275,6 +275,7 @@ var OrdersConfig = &tablebuilder.Config{
 				Name:   "fulfillment_status_name",
 				Header: "Status",
 				Width:  120,
+				Type:   "status",
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{},
@@ -388,6 +389,7 @@ var OrdersTableConfig = &tablebuilder.Config{
 				Width:        150,
 				Sortable:     true,
 				Filterable:   true,
+				Type:         "status",
 				CellTemplate: "status",
 			},
 			"days_until_due": {
@@ -855,6 +857,7 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Width:        130,
 				Sortable:     true,
 				Filterable:   true,
+				Type:         "status",
 				CellTemplate: "status",
 			},
 			"order_date": {
@@ -1332,6 +1335,7 @@ var AssetsRequestsTableConfig = &tablebuilder.Config{
 				Width:        150,
 				Sortable:     true,
 				Filterable:   true,
+				Type:         "status",
 				CellTemplate: "status",
 			},
 			"fulfillment_status_name": {
@@ -1340,6 +1344,7 @@ var AssetsRequestsTableConfig = &tablebuilder.Config{
 				Width:        150,
 				Sortable:     true,
 				Filterable:   true,
+				Type:         "status",
 				CellTemplate: "status",
 			},
 			"approved_by_username": {
@@ -2694,6 +2699,7 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Header:     "Status",
 				Width:      120,
 				Filterable: true,
+				Type:       "status",
 			},
 			"warehouse_name": {
 				Name:       "warehouse_name",
@@ -2970,6 +2976,7 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Header:     "Status",
 				Width:      120,
 				Filterable: true,
+				Type:       "status",
 			},
 			"expected_delivery_date": {
 				Name:     "expected_delivery_date",
@@ -3143,6 +3150,7 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 				Header:     "Status",
 				Width:      120,
 				Filterable: true,
+				Type:       "status",
 			},
 			"warehouse_name": {
 				Name:       "warehouse_name",
@@ -3362,6 +3370,7 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Header:     "Status",
 				Width:      120,
 				Filterable: true,
+				Type:       "status",
 			},
 			"warehouse_name": {
 				Name:       "warehouse_name",

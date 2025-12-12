@@ -3,11 +3,12 @@ package purchaseorderlineitemapp
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -125,13 +126,65 @@ func (app NewPurchaseOrderLineItem) Validate() error {
 
 // toBusNewPurchaseOrderLineItem converts an app NewPurchaseOrderLineItem to a business NewPurchaseOrderLineItem.
 func toBusNewPurchaseOrderLineItem(app NewPurchaseOrderLineItem) (purchaseorderlineitembus.NewPurchaseOrderLineItem, error) {
-	dest := purchaseorderlineitembus.NewPurchaseOrderLineItem{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	purchaseOrderID, err := uuid.Parse(app.PurchaseOrderID)
 	if err != nil {
-		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, fmt.Errorf("toBusNewPurchaseOrderLineItem: %w", err)
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse purchaseOrderId: %s", err)
 	}
 
-	return dest, nil
+	supplierProductID, err := uuid.Parse(app.SupplierProductID)
+	if err != nil {
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse supplierProductId: %s", err)
+	}
+
+	quantityOrdered, err := strconv.Atoi(app.QuantityOrdered)
+	if err != nil {
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse quantityOrdered: %s", err)
+	}
+
+	unitCost, err := strconv.ParseFloat(app.UnitCost, 64)
+	if err != nil {
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse unitCost: %s", err)
+	}
+
+	discount, err := strconv.ParseFloat(app.Discount, 64)
+	if err != nil {
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
+	}
+
+	lineTotal, err := strconv.ParseFloat(app.LineTotal, 64)
+	if err != nil {
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse lineTotal: %s", err)
+	}
+
+	lineItemStatusID, err := uuid.Parse(app.LineItemStatusID)
+	if err != nil {
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse lineItemStatusId: %s", err)
+	}
+
+	expectedDeliveryDate, err := time.Parse(timeutil.FORMAT, app.ExpectedDeliveryDate)
+	if err != nil {
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse expectedDeliveryDate: %s", err)
+	}
+
+	createdBy, err := uuid.Parse(app.CreatedBy)
+	if err != nil {
+		return purchaseorderlineitembus.NewPurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse createdBy: %s", err)
+	}
+
+	bus := purchaseorderlineitembus.NewPurchaseOrderLineItem{
+		PurchaseOrderID:      purchaseOrderID,
+		SupplierProductID:    supplierProductID,
+		QuantityOrdered:      quantityOrdered,
+		UnitCost:             unitCost,
+		Discount:             discount,
+		LineTotal:            lineTotal,
+		LineItemStatusID:     lineItemStatusID,
+		ExpectedDeliveryDate: expectedDeliveryDate,
+		Notes:                app.Notes,
+		CreatedBy:            createdBy,
+	}
+
+	return bus, nil
 }
 
 // UpdatePurchaseOrderLineItem contains information needed to update a purchase order line item.
@@ -165,13 +218,99 @@ func (app UpdatePurchaseOrderLineItem) Validate() error {
 
 // toBusUpdatePurchaseOrderLineItem converts an app UpdatePurchaseOrderLineItem to a business UpdatePurchaseOrderLineItem.
 func toBusUpdatePurchaseOrderLineItem(app UpdatePurchaseOrderLineItem) (purchaseorderlineitembus.UpdatePurchaseOrderLineItem, error) {
-	dest := purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, fmt.Errorf("toBusUpdatePurchaseOrderLineItem: %w", err)
+	bus := purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}
+
+	if app.SupplierProductID != nil {
+		id, err := uuid.Parse(*app.SupplierProductID)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse supplierProductId: %s", err)
+		}
+		bus.SupplierProductID = &id
 	}
 
-	return dest, nil
+	if app.QuantityOrdered != nil {
+		qty, err := strconv.Atoi(*app.QuantityOrdered)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse quantityOrdered: %s", err)
+		}
+		bus.QuantityOrdered = &qty
+	}
+
+	if app.QuantityReceived != nil {
+		qty, err := strconv.Atoi(*app.QuantityReceived)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse quantityReceived: %s", err)
+		}
+		bus.QuantityReceived = &qty
+	}
+
+	if app.QuantityCancelled != nil {
+		qty, err := strconv.Atoi(*app.QuantityCancelled)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse quantityCancelled: %s", err)
+		}
+		bus.QuantityCancelled = &qty
+	}
+
+	if app.UnitCost != nil {
+		cost, err := strconv.ParseFloat(*app.UnitCost, 64)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse unitCost: %s", err)
+		}
+		bus.UnitCost = &cost
+	}
+
+	if app.Discount != nil {
+		discount, err := strconv.ParseFloat(*app.Discount, 64)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
+		}
+		bus.Discount = &discount
+	}
+
+	if app.LineTotal != nil {
+		total, err := strconv.ParseFloat(*app.LineTotal, 64)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse lineTotal: %s", err)
+		}
+		bus.LineTotal = &total
+	}
+
+	if app.LineItemStatusID != nil {
+		id, err := uuid.Parse(*app.LineItemStatusID)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse lineItemStatusId: %s", err)
+		}
+		bus.LineItemStatusID = &id
+	}
+
+	if app.ExpectedDeliveryDate != nil {
+		date, err := time.Parse(timeutil.FORMAT, *app.ExpectedDeliveryDate)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse expectedDeliveryDate: %s", err)
+		}
+		bus.ExpectedDeliveryDate = &date
+	}
+
+	if app.ActualDeliveryDate != nil {
+		date, err := time.Parse(timeutil.FORMAT, *app.ActualDeliveryDate)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse actualDeliveryDate: %s", err)
+		}
+		bus.ActualDeliveryDate = &date
+	}
+
+	if app.UpdatedBy != nil {
+		id, err := uuid.Parse(*app.UpdatedBy)
+		if err != nil {
+			return purchaseorderlineitembus.UpdatePurchaseOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse updatedBy: %s", err)
+		}
+		bus.UpdatedBy = &id
+	}
+
+	bus.Notes = app.Notes
+
+	return bus, nil
 }
 
 // PurchaseOrderLineItems is a collection wrapper that implements the Encoder interface.

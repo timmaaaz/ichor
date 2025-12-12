@@ -119,23 +119,24 @@ func ToAppPurchaseOrders(bus []purchaseorderbus.PurchaseOrder) []PurchaseOrder {
 
 // NewPurchaseOrder contains information needed to create a new purchase order.
 type NewPurchaseOrder struct {
-	OrderNumber             string `json:"orderNumber" validate:"required"`
-	SupplierID              string `json:"supplierId" validate:"required,uuid"`
-	PurchaseOrderStatusID   string `json:"purchaseOrderStatusId" validate:"required,uuid"`
-	DeliveryWarehouseID     string `json:"deliveryWarehouseId" validate:"required,uuid"`
-	DeliveryLocationID      string `json:"deliveryLocationId" validate:"required,uuid"`
-	DeliveryStreetID        string `json:"deliveryStreetId" validate:"required,uuid"`
-	OrderDate               string `json:"orderDate" validate:"required"`
-	ExpectedDeliveryDate    string `json:"expectedDeliveryDate" validate:"required"`
-	Subtotal                string `json:"subtotal" validate:"required"`
-	TaxAmount               string `json:"taxAmount" validate:"required"`
-	ShippingCost            string `json:"shippingCost" validate:"required"`
-	TotalAmount             string `json:"totalAmount" validate:"required"`
-	Currency                string `json:"currency" validate:"required"`
-	RequestedBy             string `json:"requestedBy" validate:"required,uuid"`
-	Notes                   string `json:"notes"`
-	SupplierReferenceNumber string `json:"supplierReferenceNumber"`
-	CreatedBy               string `json:"createdBy" validate:"required,uuid"`
+	OrderNumber             string  `json:"orderNumber" validate:"required"`
+	SupplierID              string  `json:"supplierId" validate:"required,uuid"`
+	PurchaseOrderStatusID   string  `json:"purchaseOrderStatusId" validate:"required,uuid"`
+	DeliveryWarehouseID     string  `json:"deliveryWarehouseId" validate:"required,uuid"`
+	DeliveryLocationID      string  `json:"deliveryLocationId" validate:"required,uuid"`
+	DeliveryStreetID        string  `json:"deliveryStreetId" validate:"required,uuid"`
+	OrderDate               string  `json:"orderDate" validate:"required"`
+	ExpectedDeliveryDate    string  `json:"expectedDeliveryDate" validate:"required"`
+	Subtotal                string  `json:"subtotal" validate:"required"`
+	TaxAmount               string  `json:"taxAmount" validate:"required"`
+	ShippingCost            string  `json:"shippingCost" validate:"required"`
+	TotalAmount             string  `json:"totalAmount" validate:"required"`
+	Currency                string  `json:"currency" validate:"required"`
+	RequestedBy             string  `json:"requestedBy" validate:"required,uuid"`
+	Notes                   string  `json:"notes"`
+	SupplierReferenceNumber string  `json:"supplierReferenceNumber"`
+	CreatedBy               string  `json:"createdBy" validate:"required,uuid"`
+	CreatedDate             *string `json:"createdDate"` // Optional: for seeding/import
 }
 
 // Decode implements the Decoder interface.
@@ -218,7 +219,7 @@ func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOr
 		return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("createdBy", err)
 	}
 
-	return purchaseorderbus.NewPurchaseOrder{
+	bus := purchaseorderbus.NewPurchaseOrder{
 		OrderNumber:             app.OrderNumber,
 		SupplierID:              supplierID,
 		PurchaseOrderStatusID:   purchaseOrderStatusID,
@@ -236,7 +237,19 @@ func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOr
 		Notes:                   app.Notes,
 		SupplierReferenceNumber: app.SupplierReferenceNumber,
 		CreatedBy:               createdBy,
-	}, nil
+		// CreatedDate: nil by default - API always uses server time
+	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("createdDate", err)
+		}
+		bus.CreatedDate = &createdDate
+	}
+
+	return bus, nil
 }
 
 // UpdatePurchaseOrder contains information needed to update a purchase order.

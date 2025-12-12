@@ -81,7 +81,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input:      &userapp.NewUser{},
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"username\",\"error\":\"username is a required field\"},{\"field\":\"first_name\",\"error\":\"first_name is a required field\"},{\"field\":\"last_name\",\"error\":\"last_name is a required field\"},{\"field\":\"email\",\"error\":\"email is a required field\"},{\"field\":\"birthday\",\"error\":\"birthday is a required field\"},{\"field\":\"roles\",\"error\":\"roles is a required field\"},{\"field\":\"system_roles\",\"error\":\"system_roles is a required field\"},{\"field\":\"password\",\"error\":\"password is a required field\"}]"),
+			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"username\",\"error\":\"username is a required field\"},{\"field\":\"first_name\",\"error\":\"first_name is a required field\"},{\"field\":\"last_name\",\"error\":\"last_name is a required field\"},{\"field\":\"email\",\"error\":\"email is a required field\"},{\"field\":\"birthday\",\"error\":\"birthday is a required field\"},{\"field\":\"roles\",\"error\":\"roles is a required field\"},{\"field\":\"system_roles\",\"error\":\"system_roles is a required field\"},{\"field\":\"password\",\"error\":\"password is a required field\"},{\"field\":\"password_confirm\",\"error\":\"password_confirm is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -184,7 +184,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: users"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: core.users"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

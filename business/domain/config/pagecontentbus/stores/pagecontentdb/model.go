@@ -17,6 +17,7 @@ type dbPageContent struct {
 	Label         string          `db:"label"`
 	TableConfigID sql.NullString  `db:"table_config_id"`
 	FormID        sql.NullString  `db:"form_id"`
+	ChartConfigID sql.NullString  `db:"chart_config_id"`
 	OrderIndex    int             `db:"order_index"`
 	ParentID      sql.NullString  `db:"parent_id"`
 	Layout        json.RawMessage `db:"layout"`
@@ -33,6 +34,7 @@ func toDBPageContent(bus pagecontentbus.PageContent) dbPageContent {
 		Label:         bus.Label,
 		TableConfigID: nulltypes.ToNullableUUID(bus.TableConfigID),
 		FormID:        nulltypes.ToNullableUUID(bus.FormID),
+		ChartConfigID: nulltypes.ToNullableUUID(bus.ChartConfigID),
 		OrderIndex:    bus.OrderIndex,
 		ParentID:      nulltypes.ToNullableUUID(bus.ParentID),
 		Layout:        bus.Layout,
@@ -50,6 +52,7 @@ func toBusPageContent(db dbPageContent) pagecontentbus.PageContent {
 		Label:         db.Label,
 		TableConfigID: nulltypes.FromNullableUUID(db.TableConfigID),
 		FormID:        nulltypes.FromNullableUUID(db.FormID),
+		ChartConfigID: nulltypes.FromNullableUUID(db.ChartConfigID),
 		OrderIndex:    db.OrderIndex,
 		ParentID:      nulltypes.FromNullableUUID(db.ParentID),
 		Layout:        db.Layout,

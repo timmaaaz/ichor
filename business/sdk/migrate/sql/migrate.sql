@@ -127,9 +127,12 @@ CREATE TABLE geography.streets (
 -- Version: 1.17
 -- Description: Create table user_approval_status
 CREATE TABLE hr.user_approval_status (
-   id UUID NOT NULL, 
-   icon_id UUID NULL, 
+   id UUID NOT NULL,
+   icon_id UUID NULL,
    name TEXT NOT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id)
 );
 
@@ -232,20 +235,26 @@ CREATE TABLE hr.homes (
 );
 
 -- Version: 1.23
--- Description: Add approval status 
+-- Description: Add approval status
 CREATE TABLE assets.approval_status (
-   id UUID NOT NULL, 
-   icon_id UUID NOT NULL, 
+   id UUID NOT NULL,
+   icon_id UUID NOT NULL,
    name TEXT NOT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id)
 );
 
 -- Version: 1.24
 -- Description: Add fulfillment status
 CREATE TABLE assets.fulfillment_status (
-   id UUID NOT NULL, 
-   icon_id UUID NOT NULL, 
+   id UUID NOT NULL,
+   icon_id UUID NOT NULL,
    name TEXT NOT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id)
 );
 
@@ -756,6 +765,9 @@ CREATE TABLE sales.order_fulfillment_statuses (
    id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
    description TEXT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id),
    UNIQUE (name)
 );
@@ -764,6 +776,9 @@ CREATE TABLE sales.line_item_fulfillment_statuses (
    id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
    description TEXT NULL,
+   primary_color VARCHAR(50) NULL,
+   secondary_color VARCHAR(50) NULL,
+   icon VARCHAR(100) NULL,
    PRIMARY KEY (id),
    UNIQUE (name)
 );
@@ -1536,7 +1551,7 @@ UPDATE core.table_access SET table_name = 'hr.user_approval_status' WHERE table_
 UPDATE core.table_access SET table_name = 'hr.titles' WHERE table_name = 'titles';
 UPDATE core.table_access SET table_name = 'hr.offices' WHERE table_name = 'offices';
 UPDATE core.table_access SET table_name = 'hr.homes' WHERE table_name = 'homes';
-UPDATE core.table_access SET table_name = 'hr.approval_status' WHERE table_name = 'approval_status';
+UPDATE core.table_access SET table_name = 'assets.approval_status' WHERE table_name = 'approval_status';
 UPDATE core.table_access SET table_name = 'hr.reports_to' WHERE table_name = 'reports_to';
 UPDATE core.table_access SET table_name = 'hr.user_approval_comments' WHERE table_name = 'user_approval_comments';
 
@@ -1550,7 +1565,7 @@ UPDATE core.table_access SET table_name = 'core.role_pages' WHERE table_name = '
 UPDATE core.table_access SET table_name = 'core.table_access' WHERE table_name = 'table_access';
 
 -- Sales schema
-UPDATE core.table_access SET table_name = 'sales.fulfillment_status' WHERE table_name = 'fulfillment_status';
+UPDATE core.table_access SET table_name = 'assets.fulfillment_status' WHERE table_name = 'fulfillment_status';
 UPDATE core.table_access SET table_name = 'sales.customers' WHERE table_name = 'customers';
 UPDATE core.table_access SET table_name = 'sales.orders' WHERE table_name = 'orders';
 UPDATE core.table_access SET table_name = 'sales.order_line_items' WHERE table_name = 'order_line_items';
@@ -1596,4 +1611,45 @@ UPDATE core.table_access SET table_name = 'config.page_actions' WHERE table_name
 UPDATE core.table_access SET table_name = 'config.page_action_buttons' WHERE table_name = 'page_action_buttons';
 UPDATE core.table_access SET table_name = 'config.page_action_dropdowns' WHERE table_name = 'page_action_dropdowns';
 UPDATE core.table_access SET table_name = 'config.page_action_dropdown_items' WHERE table_name = 'page_action_dropdown_items';
+
+-- Version: 1.74
+-- Description: Add chart_config_id column to page_content table for chart content type
+ALTER TABLE config.page_content
+ADD COLUMN chart_config_id UUID NULL;
+
+ALTER TABLE config.page_content
+ADD CONSTRAINT fk_page_content_chart
+   FOREIGN KEY (chart_config_id) REFERENCES config.table_configs(id) ON DELETE CASCADE;
+
+CREATE INDEX idx_page_content_chart ON config.page_content(chart_config_id);
+
+-- Update CHECK constraint to require chart_config_id for chart content type
+ALTER TABLE config.page_content
+DROP CONSTRAINT check_content_reference;
+
+ALTER TABLE config.page_content
+ADD CONSTRAINT check_content_reference CHECK (
+   (content_type = 'table' AND table_config_id IS NOT NULL) OR
+   (content_type = 'form' AND form_id IS NOT NULL) OR
+   (content_type = 'chart' AND chart_config_id IS NOT NULL) OR
+   (content_type IN ('tabs', 'container', 'text'))
+);
+
+COMMENT ON COLUMN config.page_content.chart_config_id IS 'References table_configs for chart widget configurations';
+
+-- Version: 1.75
+-- Description: Convert GroupBy from object to array in table_configs for multi-dimensional grouping support
+UPDATE config.table_configs
+SET config = jsonb_set(
+    config,
+    '{data_source,0,group_by}',
+    CASE
+        WHEN config->'data_source'->0->'group_by' IS NOT NULL
+         AND jsonb_typeof(config->'data_source'->0->'group_by') = 'object'
+        THEN jsonb_build_array(config->'data_source'->0->'group_by')
+        ELSE config->'data_source'->0->'group_by'
+    END
+)
+WHERE config->'data_source'->0->'group_by' IS NOT NULL
+  AND jsonb_typeof(config->'data_source'->0->'group_by') = 'object';
 

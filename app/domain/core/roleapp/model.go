@@ -5,7 +5,6 @@ import (
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 )
 
 type QueryParams struct {
@@ -63,9 +62,11 @@ func (app NewRole) Validate() error {
 }
 
 func toBusNewRole(app NewRole) (rolebus.NewRole, error) {
-	dest := rolebus.NewRole{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	return dest, err
+	bus := rolebus.NewRole{
+		Name:        app.Name,
+		Description: app.Description,
+	}
+	return bus, nil
 }
 
 // =============================================================================
@@ -90,8 +91,9 @@ func (app UpdateRole) Validate() error {
 }
 
 func toBusUpdateRole(app UpdateRole) (rolebus.UpdateRole, error) {
-	dest := rolebus.UpdateRole{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-
-	return dest, err
+	bus := rolebus.UpdateRole{
+		Name:        app.Name,
+		Description: app.Description,
+	}
+	return bus, nil
 }

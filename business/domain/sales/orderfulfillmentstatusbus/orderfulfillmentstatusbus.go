@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -72,9 +71,12 @@ func (b *Business) Create(ctx context.Context, newStatus NewOrderFulfillmentStat
 	defer span.End()
 
 	status := OrderFulfillmentStatus{
-		ID:          uuid.New(),
-		Name:        newStatus.Name,
-		Description: newStatus.Description,
+		ID:             uuid.New(),
+		Name:           newStatus.Name,
+		Description:    newStatus.Description,
+		PrimaryColor:   newStatus.PrimaryColor,
+		SecondaryColor: newStatus.SecondaryColor,
+		Icon:           newStatus.Icon,
 	}
 
 	if err := b.storer.Create(ctx, status); err != nil {
@@ -87,9 +89,20 @@ func (b *Business) Update(ctx context.Context, status OrderFulfillmentStatus, uS
 	ctx, span := otel.AddSpan(ctx, "business.orderfulfillmentstatusbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uStatus, &status)
-	if err != nil {
-		return OrderFulfillmentStatus{}, fmt.Errorf("update: %w", err)
+	if uStatus.Name != nil {
+		status.Name = *uStatus.Name
+	}
+	if uStatus.Description != nil {
+		status.Description = *uStatus.Description
+	}
+	if uStatus.PrimaryColor != nil {
+		status.PrimaryColor = *uStatus.PrimaryColor
+	}
+	if uStatus.SecondaryColor != nil {
+		status.SecondaryColor = *uStatus.SecondaryColor
+	}
+	if uStatus.Icon != nil {
+		status.Icon = *uStatus.Icon
 	}
 
 	if err := b.storer.Update(ctx, status); err != nil {

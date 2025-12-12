@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -101,9 +100,29 @@ func (b *Business) Update(ctx context.Context, to TransferOrder, ut UpdateTransf
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(ut, &to)
-	if err != nil {
-		return TransferOrder{}, fmt.Errorf("update: %w", err)
+	if ut.ProductID != nil {
+		to.ProductID = *ut.ProductID
+	}
+	if ut.FromLocationID != nil {
+		to.FromLocationID = *ut.FromLocationID
+	}
+	if ut.ToLocationID != nil {
+		to.ToLocationID = *ut.ToLocationID
+	}
+	if ut.RequestedByID != nil {
+		to.RequestedByID = *ut.RequestedByID
+	}
+	if ut.ApprovedByID != nil {
+		to.ApprovedByID = *ut.ApprovedByID
+	}
+	if ut.Quantity != nil {
+		to.Quantity = *ut.Quantity
+	}
+	if ut.Status != nil {
+		to.Status = *ut.Status
+	}
+	if ut.TransferDate != nil {
+		to.TransferDate = *ut.TransferDate
 	}
 
 	to.UpdatedDate = time.Now()

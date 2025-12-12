@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -73,6 +72,9 @@ func (b *Business) Create(ctx context.Context, newStatus NewOrderLineItem) (Orde
 	defer span.End()
 
 	now := time.Now().UTC()
+	if newStatus.CreatedDate != nil {
+		now = *newStatus.CreatedDate // Use provided date for seeding
+	}
 
 	status := OrderLineItem{
 		ID:                            uuid.New(),
@@ -97,10 +99,26 @@ func (b *Business) Update(ctx context.Context, status OrderLineItem, uStatus Upd
 	ctx, span := otel.AddSpan(ctx, "business.orderlineitemsbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uStatus, &status)
-	if err != nil {
-		return OrderLineItem{}, fmt.Errorf("update: %w", err)
+	if uStatus.OrderID != nil {
+		status.OrderID = *uStatus.OrderID
 	}
+	if uStatus.ProductID != nil {
+		status.ProductID = *uStatus.ProductID
+	}
+	if uStatus.Quantity != nil {
+		status.Quantity = *uStatus.Quantity
+	}
+	if uStatus.Discount != nil {
+		status.Discount = *uStatus.Discount
+	}
+	if uStatus.LineItemFulfillmentStatusesID != nil {
+		status.LineItemFulfillmentStatusesID = *uStatus.LineItemFulfillmentStatusesID
+	}
+	if uStatus.UpdatedBy != nil {
+		status.UpdatedBy = *uStatus.UpdatedBy
+	}
+
+	status.UpdatedDate = time.Now().UTC()
 
 	if err := b.storer.Update(ctx, status); err != nil {
 		return OrderLineItem{}, fmt.Errorf("update: %w", err)

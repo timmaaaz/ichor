@@ -103,8 +103,8 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					return "gotResp.RoleNames[0] != Role0"
 				}
 
-				if len(gotResp.TableAccess) != 51 {
-					return fmt.Sprintf("len(gotResp.TableAccess) != 51. Len = %d", len(gotResp.TableAccess))
+				if len(gotResp.TableAccess) != 65 {
+					return fmt.Sprintf("len(gotResp.TableAccess) != 65. Len = %d", len(gotResp.TableAccess))
 				}
 
 				return ""
@@ -184,7 +184,7 @@ func cacheTableAccess(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest
 	}
 
 	tas := userPerms.TableAccess
-	ta := tas["user_assets"]
+	ta := tas["assets.user_assets"]
 
 	tmp := ta
 	tmp.CanCreate = !tmp.CanCreate
@@ -192,7 +192,7 @@ func cacheTableAccess(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest
 	tmp.CanUpdate = !tmp.CanUpdate
 	tmp.CanDelete = !tmp.CanDelete
 	exp := userPerms
-	exp.TableAccess["user_assets"] = tmp
+	exp.TableAccess["assets.user_assets"] = tmp
 
 	return []unitest.Table{
 		{

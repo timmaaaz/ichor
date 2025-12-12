@@ -39,6 +39,38 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "with colors and icon",
+			URL:        "/v1/hr/user-approval-status",
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			Input: &approvalapp.NewUserApprovalStatus{
+				Name:           "ColoredStatus",
+				PrimaryColor:   "#FF5733",
+				SecondaryColor: "#33FF57",
+				Icon:           "check-circle",
+			},
+			GotResp: &approvalapp.UserApprovalStatus{},
+			ExpResp: &approvalapp.UserApprovalStatus{
+				Name:           "ColoredStatus",
+				IconID:         "00000000-0000-0000-0000-000000000000",
+				PrimaryColor:   "#FF5733",
+				SecondaryColor: "#33FF57",
+				Icon:           "check-circle",
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(*approvalapp.UserApprovalStatus)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*approvalapp.UserApprovalStatus)
+				expResp.ID = gotResp.ID
+
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 
 	return table

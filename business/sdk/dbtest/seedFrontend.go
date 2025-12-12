@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
@@ -110,7 +111,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding reportsto : %w", err)
 	}
 
-	_, err = commentbus.TestSeedUserApprovalComment(ctx, 10, reporterIDs[:5], reporterIDs[5:], busDomain.UserApprovalComment)
+	_, err = commentbus.TestSeedUserApprovalCommentHistorical(ctx, 10, 90, reporterIDs[:5], reporterIDs[5:], busDomain.UserApprovalComment)
 	if err != nil {
 		return fmt.Errorf("seeding approval comments : %w", err)
 	}
@@ -131,7 +132,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		assetTypeIDs = append(assetTypeIDs, at.ID)
 	}
 
-	validAssets, err := validassetbus.TestSeedValidAssets(ctx, 10, assetTypeIDs, admins[0].ID, busDomain.ValidAsset)
+	validAssets, err := validassetbus.TestSeedValidAssetsHistorical(ctx, 10, 2, assetTypeIDs, admins[0].ID, busDomain.ValidAsset)
 	if err != nil {
 		return fmt.Errorf("seeding assets : %w", err)
 	}
@@ -159,18 +160,36 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		assetIDs = append(assetIDs, a.ID)
 	}
 
-	approvalStatuses, err := approvalstatusbus.TestSeedApprovalStatus(ctx, 12, busDomain.ApprovalStatus)
-	if err != nil {
-		return fmt.Errorf("seeding approval statuses : %w", err)
+	// Create approval statuses matching seed.sql
+	approvalStatusNames := []string{"SUCCESS", "ERROR", "WAITING", "REJECTED", "IN_PROGRESS"}
+	approvalStatuses := make([]approvalstatusbus.ApprovalStatus, 0, len(approvalStatusNames))
+	for _, name := range approvalStatusNames {
+		as, err := busDomain.ApprovalStatus.Create(ctx, approvalstatusbus.NewApprovalStatus{
+			IconID: uuid.New(),
+			Name:   name,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding approval status %s: %w", name, err)
+		}
+		approvalStatuses = append(approvalStatuses, as)
 	}
 	approvalStatusIDs := make([]uuid.UUID, len(approvalStatuses))
 	for i, as := range approvalStatuses {
 		approvalStatusIDs[i] = as.ID
 	}
 
-	fulfillmentStatuses, err := fulfillmentstatusbus.TestSeedFulfillmentStatus(ctx, 8, busDomain.FulfillmentStatus)
-	if err != nil {
-		return fmt.Errorf("seeding fulfillment statuses : %w", err)
+	// Create fulfillment statuses matching seed.sql
+	fulfillmentStatusNames := []string{"SUCCESS", "ERROR", "WAITING", "REJECTED", "IN_PROGRESS"}
+	fulfillmentStatuses := make([]fulfillmentstatusbus.FulfillmentStatus, 0, len(fulfillmentStatusNames))
+	for _, name := range fulfillmentStatusNames {
+		fs, err := busDomain.FulfillmentStatus.Create(ctx, fulfillmentstatusbus.NewFulfillmentStatus{
+			IconID: uuid.New(),
+			Name:   name,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding fulfillment status %s: %w", name, err)
+		}
+		fulfillmentStatuses = append(fulfillmentStatuses, fs)
 	}
 	fulfillmentStatusIDs := make([]uuid.UUID, len(fulfillmentStatuses))
 	for i, fs := range fulfillmentStatuses {
@@ -239,7 +258,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		contactInfoIDs = append(contactInfoIDs, ci.ID)
 	}
 
-	customers, err := customersbus.TestSeedCustomers(ctx, count, strIDs, contactInfoIDs, uuid.UUIDs{admins[0].ID}, busDomain.Customers)
+	customers, err := customersbus.TestSeedCustomersHistorical(ctx, count, 180, strIDs, contactInfoIDs, uuid.UUIDs{admins[0].ID}, busDomain.Customers)
 	if err != nil {
 		return fmt.Errorf("seeding customers : %w", err)
 	}
@@ -248,16 +267,35 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		customerIDs = append(customerIDs, c.ID)
 	}
 
-	ofls, err := orderfulfillmentstatusbus.TestSeedOrderFulfillmentStatuses(ctx, busDomain.OrderFulfillmentStatus)
-	if err != nil {
-		return fmt.Errorf("seeding order fulfillment statuses: %w", err)
+	// Create order fulfillment statuses matching seed.sql
+	orderFulfillmentStatusData := []struct {
+		name        string
+		description string
+	}{
+		{"PENDING", "Order is pending"},
+		{"PROCESSING", "Order is being processed"},
+		{"SHIPPED", "Order has been shipped"},
+		{"DELIVERED", "Order has been delivered"},
+		{"CANCELLED", "Order has been cancelled"},
+	}
+	ofls := make([]orderfulfillmentstatusbus.OrderFulfillmentStatus, 0, len(orderFulfillmentStatusData))
+	for _, data := range orderFulfillmentStatusData {
+		ofl, err := busDomain.OrderFulfillmentStatus.Create(ctx, orderfulfillmentstatusbus.NewOrderFulfillmentStatus{
+			Name:        data.name,
+			Description: data.description,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding order fulfillment status %s: %w", data.name, err)
+		}
+		ofls = append(ofls, ofl)
 	}
 	oflIDs := make([]uuid.UUID, 0, len(ofls))
 	for _, ofl := range ofls {
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
-	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	// Use weighted random distribution for frontend demo (better heatmap visualization)
+	orders, err := ordersbus.TestSeedOrdersFrontendWeighted(ctx, 200, 90, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
 	if err != nil {
 		return fmt.Errorf("seeding Orders: %w", err)
 	}
@@ -292,7 +330,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		productCategoryIDs[i] = pc.ProductCategoryID
 	}
 
-	products, err := productbus.TestSeedProducts(ctx, 20, brandIDs, productCategoryIDs, busDomain.Product)
+	products, err := productbus.TestSeedProductsHistorical(ctx, 20, 180, brandIDs, productCategoryIDs, busDomain.Product)
 	if err != nil {
 		return fmt.Errorf("seeding product : %w", err)
 	}
@@ -316,21 +354,46 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding metrics : %w", err)
 	}
 
-	_, err = costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, busDomain.CostHistory)
+	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, busDomain.CostHistory)
 	if err != nil {
 		return fmt.Errorf("seeding cost history : %w", err)
 	}
 
-	olStatuses, err := lineitemfulfillmentstatusbus.TestSeedLineItemFulfillmentStatuses(ctx, busDomain.LineItemFulfillmentStatus)
-	if err != nil {
-		return fmt.Errorf("seeding line item fulfillment statuses: %w", err)
+	// Create line item fulfillment statuses matching seed.sql
+	lineItemFulfillmentStatusData := []struct {
+		name        string
+		description string
+	}{
+		{"ALLOCATED", "Line item has been allocated"},
+		{"CANCELLED", "Line item has been cancelled"},
+		{"PACKED", "Line item has been packed"},
+		{"PENDING", "Line item is pending"},
+		{"PICKED", "Line item has been picked"},
+		{"SHIPPED", "Line item has been shipped"},
+	}
+	olStatuses := make([]lineitemfulfillmentstatusbus.LineItemFulfillmentStatus, 0, len(lineItemFulfillmentStatusData))
+	for _, data := range lineItemFulfillmentStatusData {
+		ols, err := busDomain.LineItemFulfillmentStatus.Create(ctx, lineitemfulfillmentstatusbus.NewLineItemFulfillmentStatus{
+			Name:        data.name,
+			Description: data.description,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding line item fulfillment status %s: %w", data.name, err)
+		}
+		olStatuses = append(olStatuses, ols)
 	}
 	olStatusIDs := make([]uuid.UUID, 0, len(olStatuses))
 	for _, ols := range olStatuses {
 		olStatusIDs = append(olStatusIDs, ols.ID)
 	}
 
-	_, err = orderlineitemsbus.TestSeedOrderLineItems(ctx, count, orderIDs, productIDs, olStatusIDs, userIDs, busDomain.OrderLineItem)
+	// Create map of order IDs to their created dates for historical line items
+	orderDates := make(map[uuid.UUID]time.Time)
+	for _, order := range orders {
+		orderDates[order.ID] = order.CreatedDate
+	}
+
+	_, err = orderlineitemsbus.TestSeedOrderLineItemsHistorical(ctx, count, orderDates, orderIDs, productIDs, olStatusIDs, userIDs, busDomain.OrderLineItem)
 	if err != nil {
 		return fmt.Errorf("seeding Order Line Items: %w", err)
 	}
@@ -338,7 +401,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	warehouseCount := 5
 
 	// WAREHOUSES
-	warehouses, err := warehousebus.TestSeedWarehouses(ctx, warehouseCount, admins[0].ID, strIDs, busDomain.Warehouse)
+	warehouses, err := warehousebus.TestSeedWarehousesHistorical(ctx, warehouseCount, 365, admins[0].ID, strIDs, busDomain.Warehouse)
 	if err != nil {
 		return fmt.Errorf("seeding warehouses : %w", err)
 	}
@@ -398,20 +461,62 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		supplierProductIDs[i] = sp.SupplierProductID
 	}
 
-	// Purchase Order Statuses
-	poStatuses, err := purchaseorderstatusbus.TestSeedPurchaseOrderStatuses(ctx, 5, busDomain.PurchaseOrderStatus)
-	if err != nil {
-		return fmt.Errorf("seeding purchase order statuses : %w", err)
+	// Purchase Order Statuses - Create meaningful statuses
+	purchaseOrderStatusData := []struct {
+		name        string
+		description string
+		sortOrder   int
+	}{
+		{"DRAFT", "Purchase order is being prepared", 100},
+		{"PENDING_APPROVAL", "Awaiting approval", 200},
+		{"APPROVED", "Purchase order has been approved", 300},
+		{"SENT", "Purchase order sent to supplier", 400},
+		{"PARTIALLY_RECEIVED", "Some items have been received", 500},
+		{"RECEIVED", "All items have been received", 600},
+		{"CANCELLED", "Purchase order has been cancelled", 700},
+		{"CLOSED", "Purchase order is closed", 800},
+	}
+	poStatuses := make([]purchaseorderstatusbus.PurchaseOrderStatus, 0, len(purchaseOrderStatusData))
+	for _, data := range purchaseOrderStatusData {
+		ps, err := busDomain.PurchaseOrderStatus.Create(ctx, purchaseorderstatusbus.NewPurchaseOrderStatus{
+			Name:        data.name,
+			Description: data.description,
+			SortOrder:   data.sortOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding purchase order status %s: %w", data.name, err)
+		}
+		poStatuses = append(poStatuses, ps)
 	}
 	poStatusIDs := make(uuid.UUIDs, len(poStatuses))
 	for i, ps := range poStatuses {
 		poStatusIDs[i] = ps.ID
 	}
 
-	// Purchase Order Line Item Statuses
-	poLineItemStatuses, err := purchaseorderlineitemstatusbus.TestSeedPurchaseOrderLineItemStatuses(ctx, 5, busDomain.PurchaseOrderLineItemStatus)
-	if err != nil {
-		return fmt.Errorf("seeding purchase order line item statuses : %w", err)
+	// Purchase Order Line Item Statuses - Create meaningful statuses
+	purchaseOrderLineItemStatusData := []struct {
+		name        string
+		description string
+		sortOrder   int
+	}{
+		{"PENDING", "Line item is pending", 100},
+		{"ORDERED", "Line item has been ordered", 200},
+		{"PARTIALLY_RECEIVED", "Some quantity has been received", 300},
+		{"RECEIVED", "All quantity has been received", 400},
+		{"BACKORDERED", "Line item is on backorder", 500},
+		{"CANCELLED", "Line item has been cancelled", 600},
+	}
+	poLineItemStatuses := make([]purchaseorderlineitemstatusbus.PurchaseOrderLineItemStatus, 0, len(purchaseOrderLineItemStatusData))
+	for _, data := range purchaseOrderLineItemStatusData {
+		pols, err := busDomain.PurchaseOrderLineItemStatus.Create(ctx, purchaseorderlineitemstatusbus.NewPurchaseOrderLineItemStatus{
+			Name:        data.name,
+			Description: data.description,
+			SortOrder:   data.sortOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("seeding purchase order line item status %s: %w", data.name, err)
+		}
+		poLineItemStatuses = append(poLineItemStatuses, pols)
 	}
 	poLineItemStatusIDs := make(uuid.UUIDs, len(poLineItemStatuses))
 	for i, pols := range poLineItemStatuses {
@@ -419,7 +524,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Purchase Orders
-	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, 10, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, busDomain.PurchaseOrder)
+	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrdersHistorical(ctx, 10, 120, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, busDomain.PurchaseOrder)
 	if err != nil {
 		return fmt.Errorf("seeding purchase orders : %w", err)
 	}
@@ -603,6 +708,16 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// =========================================================================
+	// Chart Configurations - 14 seed charts covering all chart types
+	// =========================================================================
+	for _, chartConfig := range seedmodels.ChartConfigs {
+		_, err = configStore.Create(ctx, chartConfig.Name, chartConfig.Description, chartConfig.Config, admins[0].ID)
+		if err != nil {
+			return fmt.Errorf("creating chart config %s: %w", chartConfig.Name, err)
+		}
+	}
+
+	// =========================================================================
 	// Create dedicated page configs for Orders, Suppliers, and Categories
 	// =========================================================================
 
@@ -723,6 +838,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("querying procurement approvals closed config: %w", err)
 	}
 
+	// Query Chart Configs for distribution across pages
+	// These use _ for error since charts are optional - pages work without them
+	kpiRevenueStored, _ := configStore.QueryByName(ctx, "seed_kpi_total_revenue")
+	kpiOrdersStored, _ := configStore.QueryByName(ctx, "seed_kpi_order_count")
+	gaugeRevenueStored, _ := configStore.QueryByName(ctx, "seed_gauge_revenue_target")
+	lineMonthlySalesStored, _ := configStore.QueryByName(ctx, "seed_line_monthly_sales")
+	barTopProductsStored, _ := configStore.QueryByName(ctx, "seed_bar_top_products")
+	pieRevenueCategoryStored, _ := configStore.QueryByName(ctx, "seed_pie_revenue_category")
+	funnelPipelineStored, _ := configStore.QueryByName(ctx, "seed_funnel_pipeline")
+	heatmapSalesTimeStored, _ := configStore.QueryByName(ctx, "seed_heatmap_sales_time")
+	treemapRevenueStored, _ := configStore.QueryByName(ctx, "seed_treemap_revenue")
+	ganttProjectStored, _ := configStore.QueryByName(ctx, "seed_gantt_project")
+
 	// Create Orders Page
 	ordersPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
 		Name:      "orders_page",
@@ -733,13 +861,50 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating orders page: %w", err)
 	}
 
+	ordersPageOrderIndex := 1
+
+	// Add charts to Orders Page
+	if lineMonthlySalesStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  ordersPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Monthly Sales Trend",
+			ChartConfigID: lineMonthlySalesStored.ID,
+			OrderIndex:    ordersPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":8,"sm":8,"md":8,"lg":8,"xl":8}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating orders page line chart: %w", err)
+		}
+		ordersPageOrderIndex++
+	}
+
+	if funnelPipelineStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  ordersPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Sales Pipeline",
+			ChartConfigID: funnelPipelineStored.ID,
+			OrderIndex:    ordersPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":4,"sm":4,"md":4,"lg":4,"xl":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating orders page funnel chart: %w", err)
+		}
+		ordersPageOrderIndex++
+	}
+
 	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID:  ordersPage.ID,
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
 		TableConfigID: ordersTableStored.ID,
-		OrderIndex:    1,
+		OrderIndex:    ordersPageOrderIndex,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
 		IsDefault:     true,
@@ -783,13 +948,67 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating categories page: %w", err)
 	}
 
+	categoriesPageOrderIndex := 1
+
+	// Add charts to Categories Page
+	if pieRevenueCategoryStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  categoriesPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Revenue by Category",
+			ChartConfigID: pieRevenueCategoryStored.ID,
+			OrderIndex:    categoriesPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating categories page pie chart: %w", err)
+		}
+		categoriesPageOrderIndex++
+	}
+
+	if barTopProductsStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  categoriesPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Top Products",
+			ChartConfigID: barTopProductsStored.ID,
+			OrderIndex:    categoriesPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating categories page bar chart: %w", err)
+		}
+		categoriesPageOrderIndex++
+	}
+
+	if treemapRevenueStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  categoriesPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Revenue Breakdown",
+			ChartConfigID: treemapRevenueStored.ID,
+			OrderIndex:    categoriesPageOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating categories page treemap chart: %w", err)
+		}
+		categoriesPageOrderIndex++
+	}
+
 	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID:  categoriesPage.ID,
 		ParentID:      uuid.Nil,
 		ContentType:   pagecontentbus.ContentTypeTable,
 		Label:         "",
 		TableConfigID: categoriesTableStored.ID,
-		OrderIndex:    1,
+		OrderIndex:    categoriesPageOrderIndex,
 		Layout:        json.RawMessage(`{}`),
 		IsVisible:     true,
 		IsDefault:     true,
@@ -1312,11 +1531,31 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating inventory dashboard page: %w", err)
 	}
 
+	inventoryDashboardOrderIndex := 1
+
+	// Add Heatmap chart to Inventory Dashboard (above tabs)
+	if heatmapSalesTimeStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  inventoryDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Orders by Day and Hour",
+			ChartConfigID: heatmapSalesTimeStored.ID,
+			OrderIndex:    inventoryDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating inventory dashboard heatmap chart: %w", err)
+		}
+		inventoryDashboardOrderIndex++
+	}
+
 	// Create tabs container (parent)
 	inventoryDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: inventoryDashboardPage.ID,
 		ContentType:  pagecontentbus.ContentTypeTabs,
-		OrderIndex:   1,
+		OrderIndex:   inventoryDashboardOrderIndex,
 		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
 		IsVisible:    true,
 		IsDefault:    false,
@@ -1428,11 +1667,65 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating sales dashboard page: %w", err)
 	}
 
+	salesDashboardOrderIndex := 1
+
+	// Add KPI charts row to Sales Dashboard (above tabs)
+	if kpiRevenueStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  salesDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Total Revenue",
+			ChartConfigID: kpiRevenueStored.ID,
+			OrderIndex:    salesDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"sm":6,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating sales dashboard KPI revenue chart: %w", err)
+		}
+		salesDashboardOrderIndex++
+	}
+
+	if kpiOrdersStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  salesDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Total Orders",
+			ChartConfigID: kpiOrdersStored.ID,
+			OrderIndex:    salesDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"sm":6,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating sales dashboard KPI orders chart: %w", err)
+		}
+		salesDashboardOrderIndex++
+	}
+
+	if gaugeRevenueStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  salesDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Revenue Progress",
+			ChartConfigID: gaugeRevenueStored.ID,
+			OrderIndex:    salesDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"sm":6,"md":4}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating sales dashboard gauge chart: %w", err)
+		}
+		salesDashboardOrderIndex++
+	}
+
 	// Create tabs container (parent)
 	salesDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: salesDashboardPage.ID,
 		ContentType:  pagecontentbus.ContentTypeTabs,
-		OrderIndex:   1,
+		OrderIndex:   salesDashboardOrderIndex,
 		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
 		IsVisible:    true,
 		IsDefault:    false,
@@ -1592,11 +1885,31 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating procurement dashboard page: %w", err)
 	}
 
+	procurementDashboardOrderIndex := 1
+
+	// Add Gantt chart to Procurement Dashboard (above tabs)
+	if ganttProjectStored != nil {
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  procurementDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Purchase Order Timeline",
+			ChartConfigID: ganttProjectStored.ID,
+			OrderIndex:    procurementDashboardOrderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12}}`),
+			IsVisible:     true,
+			IsDefault:     false,
+		})
+		if err != nil {
+			return fmt.Errorf("creating procurement dashboard gantt chart: %w", err)
+		}
+		procurementDashboardOrderIndex++
+	}
+
 	// Create tabs container (parent)
 	procurementDashboardTabsContainer, err := busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
 		PageConfigID: procurementDashboardPage.ID,
 		ContentType:  pagecontentbus.ContentTypeTabs,
-		OrderIndex:   1,
+		OrderIndex:   procurementDashboardOrderIndex,
 		Layout:       json.RawMessage(`{"containerType":"tabs"}`),
 		IsVisible:    true,
 		IsDefault:    false,
@@ -3122,7 +3435,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		Label:        "Create New User",
 		FormID:       userForm.ID, // Reference the user form we created earlier
 		OrderIndex:   1,
-		Layout:       json.RawMessage(`{"colSpan":{"default":12}}`),
+		Layout:       json.RawMessage(`{"colSpan":{"xs":12}}`),
 		IsVisible:    true,
 		IsDefault:    false,
 	})
@@ -3137,7 +3450,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		ContentType:  pagecontentbus.ContentTypeTabs,
 		Label:        "User Lists",
 		OrderIndex:   2,
-		Layout:       json.RawMessage(`{"colSpan":{"default":12},"containerType":"tabs"}`),
+		Layout:       json.RawMessage(`{"colSpan":{"xs":12},"containerType":"tabs"}`),
 		IsVisible:    true,
 		IsDefault:    false,
 	})
@@ -3203,6 +3516,101 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		"page_config_id", userManagementPage.ID,
 		"form_block_id", formBlock.ID,
 		"tabs_container_id", tabsContainer.ID)
+
+	// =========================================================================
+	// Create Sample Charts Dashboard
+	// Demonstrates remaining chart types not distributed to other pages
+	// =========================================================================
+
+	// Query remaining chart configs for sample dashboard (those not queried earlier)
+	stackedBarRegionStored, _ := configStore.QueryByName(ctx, "seed_stacked_bar_region")
+	stackedAreaCumulativeStored, _ := configStore.QueryByName(ctx, "seed_stacked_area_cumulative")
+	comboRevenueOrdersStored, _ := configStore.QueryByName(ctx, "seed_combo_revenue_orders")
+	waterfallProfitStored, _ := configStore.QueryByName(ctx, "seed_waterfall_profit")
+
+	// Only create dashboard if at least some chart configs exist
+	if stackedBarRegionStored != nil {
+		sampleChartsDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
+			Name:      "sample_charts_dashboard",
+			UserID:    uuid.Nil,
+			IsDefault: true,
+		})
+		if err != nil {
+			return fmt.Errorf("creating sample charts dashboard page: %w", err)
+		}
+
+		orderIndex := 1
+
+		// Row 1: Stacked charts (2 across)
+		_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+			PageConfigID:  sampleChartsDashboardPage.ID,
+			ContentType:   pagecontentbus.ContentTypeChart,
+			Label:         "Sales by Region",
+			ChartConfigID: stackedBarRegionStored.ID,
+			OrderIndex:    orderIndex,
+			Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":6}}`),
+			IsVisible:     true,
+			IsDefault:     true,
+		})
+		if err != nil {
+			return fmt.Errorf("creating stacked bar chart content: %w", err)
+		}
+		orderIndex++
+
+		if stackedAreaCumulativeStored != nil {
+			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+				PageConfigID:  sampleChartsDashboardPage.ID,
+				ContentType:   pagecontentbus.ContentTypeChart,
+				Label:         "Cumulative Revenue",
+				ChartConfigID: stackedAreaCumulativeStored.ID,
+				OrderIndex:    orderIndex,
+				Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":6}}`),
+				IsVisible:     true,
+				IsDefault:     false,
+			})
+			if err != nil {
+				return fmt.Errorf("creating stacked area chart content: %w", err)
+			}
+			orderIndex++
+		}
+
+		// Row 2: Combo + Waterfall (2 across)
+		if comboRevenueOrdersStored != nil {
+			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+				PageConfigID:  sampleChartsDashboardPage.ID,
+				ContentType:   pagecontentbus.ContentTypeChart,
+				Label:         "Revenue vs Orders",
+				ChartConfigID: comboRevenueOrdersStored.ID,
+				OrderIndex:    orderIndex,
+				Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":6}}`),
+				IsVisible:     true,
+				IsDefault:     false,
+			})
+			if err != nil {
+				return fmt.Errorf("creating combo chart content: %w", err)
+			}
+			orderIndex++
+		}
+
+		if waterfallProfitStored != nil {
+			_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+				PageConfigID:  sampleChartsDashboardPage.ID,
+				ContentType:   pagecontentbus.ContentTypeChart,
+				Label:         "Profit Breakdown",
+				ChartConfigID: waterfallProfitStored.ID,
+				OrderIndex:    orderIndex,
+				Layout:        json.RawMessage(`{"colSpan":{"xs":12,"md":6}}`),
+				IsVisible:     true,
+				IsDefault:     false,
+			})
+			if err != nil {
+				return fmt.Errorf("creating waterfall chart content: %w", err)
+			}
+		}
+
+		log.Info(ctx, "✅ Created Sample Charts Dashboard page",
+			"page_config_id", sampleChartsDashboardPage.ID)
+	}
 
 	return nil
 }

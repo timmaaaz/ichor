@@ -28,13 +28,14 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &pageapp.Page{},
 			ExpResp: &pageapp.Page{
-				ID:        sd.Pages[0].ID,
-				Name:      "Updated Page Name",
-				Path:      "/updated/path",
-				Module:    "updated-module",
-				Icon:      "updated-icon",
-				SortOrder: 5000,
-				IsActive:  false,
+				ID:         sd.Pages[0].ID,
+				Name:       "Updated Page Name",
+				Path:       "/updated/path",
+				Module:     "updated-module",
+				Icon:       "updated-icon",
+				SortOrder:  5000,
+				IsActive:   false,
+				ShowInMenu: sd.Pages[0].ShowInMenu,
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)

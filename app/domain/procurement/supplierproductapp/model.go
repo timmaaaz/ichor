@@ -2,13 +2,12 @@ package supplierproductapp
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus/types"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -98,19 +97,53 @@ func (app NewSupplierProduct) Validate() error {
 }
 
 func toBusNewSupplierProduct(app NewSupplierProduct) (supplierproductbus.NewSupplierProduct, error) {
-	dest := supplierproductbus.NewSupplierProduct{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	supplierID, err := uuid.Parse(app.SupplierID)
 	if err != nil {
-		return supplierproductbus.NewSupplierProduct{}, fmt.Errorf("error populating supplier product: %s", err)
+		return supplierproductbus.NewSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse supplier_id: %s", err)
 	}
 
-	dest.UnitCost, err = types.ParseMoney(app.UnitCost)
+	productID, err := uuid.Parse(app.ProductID)
 	if err != nil {
-		return dest, err
+		return supplierproductbus.NewSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse product_id: %s", err)
 	}
 
-	return dest, err
+	minOrderQuantity, err := strconv.Atoi(app.MinOrderQuantity)
+	if err != nil {
+		return supplierproductbus.NewSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse min_order_quantity: %s", err)
+	}
+
+	maxOrderQuantity, err := strconv.Atoi(app.MaxOrderQuantity)
+	if err != nil {
+		return supplierproductbus.NewSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse max_order_quantity: %s", err)
+	}
+
+	leadTimeDays, err := strconv.Atoi(app.LeadTimeDays)
+	if err != nil {
+		return supplierproductbus.NewSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse lead_time_days: %s", err)
+	}
+
+	unitCost, err := types.ParseMoney(app.UnitCost)
+	if err != nil {
+		return supplierproductbus.NewSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse unit_cost: %s", err)
+	}
+
+	isPrimarySupplier, err := strconv.ParseBool(app.IsPrimarySupplier)
+	if err != nil {
+		return supplierproductbus.NewSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse is_primary_supplier: %s", err)
+	}
+
+	bus := supplierproductbus.NewSupplierProduct{
+		SupplierID:         supplierID,
+		ProductID:          productID,
+		SupplierPartNumber: app.SupplierPartNumber,
+		MinOrderQuantity:   minOrderQuantity,
+		MaxOrderQuantity:   maxOrderQuantity,
+		LeadTimeDays:       leadTimeDays,
+		UnitCost:           unitCost,
+		IsPrimarySupplier:  isPrimarySupplier,
+	}
+
+	return bus, nil
 }
 
 // =========================================================================
@@ -138,21 +171,65 @@ func (app UpdateSupplierProduct) Validate() error {
 }
 
 func toBusUpdateSupplierProduct(app UpdateSupplierProduct) (supplierproductbus.UpdateSupplierProduct, error) {
-	dest := supplierproductbus.UpdateSupplierProduct{}
+	bus := supplierproductbus.UpdateSupplierProduct{}
 
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return supplierproductbus.UpdateSupplierProduct{}, fmt.Errorf("error populating supplier product: %s", err)
+	if app.SupplierID != nil {
+		id, err := uuid.Parse(*app.SupplierID)
+		if err != nil {
+			return supplierproductbus.UpdateSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse supplier_id: %s", err)
+		}
+		bus.SupplierID = &id
+	}
+
+	if app.ProductID != nil {
+		id, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return supplierproductbus.UpdateSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse product_id: %s", err)
+		}
+		bus.ProductID = &id
+	}
+
+	if app.MinOrderQuantity != nil {
+		qty, err := strconv.Atoi(*app.MinOrderQuantity)
+		if err != nil {
+			return supplierproductbus.UpdateSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse min_order_quantity: %s", err)
+		}
+		bus.MinOrderQuantity = &qty
+	}
+
+	if app.MaxOrderQuantity != nil {
+		qty, err := strconv.Atoi(*app.MaxOrderQuantity)
+		if err != nil {
+			return supplierproductbus.UpdateSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse max_order_quantity: %s", err)
+		}
+		bus.MaxOrderQuantity = &qty
+	}
+
+	if app.LeadTimeDays != nil {
+		days, err := strconv.Atoi(*app.LeadTimeDays)
+		if err != nil {
+			return supplierproductbus.UpdateSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse lead_time_days: %s", err)
+		}
+		bus.LeadTimeDays = &days
 	}
 
 	if app.UnitCost != nil {
-		m, err := types.ParseMoney(*app.UnitCost)
+		cost, err := types.ParseMoney(*app.UnitCost)
 		if err != nil {
-			return dest, err
+			return supplierproductbus.UpdateSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse unit_cost: %s", err)
 		}
-
-		dest.UnitCost = &m
+		bus.UnitCost = &cost
 	}
 
-	return dest, err
+	if app.IsPrimarySupplier != nil {
+		isPrimary, err := strconv.ParseBool(*app.IsPrimarySupplier)
+		if err != nil {
+			return supplierproductbus.UpdateSupplierProduct{}, errs.Newf(errs.InvalidArgument, "parse is_primary_supplier: %s", err)
+		}
+		bus.IsPrimarySupplier = &isPrimary
+	}
+
+	bus.SupplierPartNumber = app.SupplierPartNumber
+
+	return bus, nil
 }

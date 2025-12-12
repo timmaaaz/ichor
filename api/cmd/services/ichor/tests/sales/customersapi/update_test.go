@@ -41,6 +41,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				expResp := exp.(*customersapp.Customers)
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
 			},
@@ -154,7 +155,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: customers"),
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: sales.customers"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

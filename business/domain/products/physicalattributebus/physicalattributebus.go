@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -104,9 +103,41 @@ func (b *Business) Update(ctx context.Context, pc PhysicalAttribute, upc UpdateP
 	ctx, span := otel.AddSpan(ctx, "business.physicalattribute.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(upc, &pc)
-	if err != nil {
-		return PhysicalAttribute{}, fmt.Errorf("populate physical attribute from update physical attribute: %w", err)
+	if upc.ProductID != nil {
+		pc.ProductID = *upc.ProductID
+	}
+	if upc.Length != nil {
+		pc.Length = *upc.Length
+	}
+	if upc.Width != nil {
+		pc.Width = *upc.Width
+	}
+	if upc.Height != nil {
+		pc.Height = *upc.Height
+	}
+	if upc.Weight != nil {
+		pc.Weight = *upc.Weight
+	}
+	if upc.WeightUnit != nil {
+		pc.WeightUnit = *upc.WeightUnit
+	}
+	if upc.Color != nil {
+		pc.Color = *upc.Color
+	}
+	if upc.Size != nil {
+		pc.Size = *upc.Size
+	}
+	if upc.Material != nil {
+		pc.Material = *upc.Material
+	}
+	if upc.StorageRequirements != nil {
+		pc.StorageRequirements = *upc.StorageRequirements
+	}
+	if upc.HazmatClass != nil {
+		pc.HazmatClass = *upc.HazmatClass
+	}
+	if upc.ShelfLifeDays != nil {
+		pc.ShelfLifeDays = *upc.ShelfLifeDays
 	}
 
 	pc.UpdatedDate = time.Now()

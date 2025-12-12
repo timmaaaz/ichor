@@ -47,6 +47,67 @@ type DataSource struct {
 	Filters      []Filter       `json:"filters,omitempty"`
 	Sort         []Sort         `json:"sort,omitempty"`
 	Rows         int            `json:"rows,omitempty"`
+
+	// Chart aggregation (safe, structured)
+	Metrics []MetricConfig  `json:"metrics,omitempty"`
+	GroupBy []GroupByConfig `json:"group_by,omitempty"`
+}
+
+// =============================================================================
+// Chart Metric Configuration Types
+// =============================================================================
+
+// MetricConfig defines an aggregated value for charts
+type MetricConfig struct {
+	Name       string            `json:"name"`                 // Output alias: "total_revenue"
+	Function   string            `json:"function"`             // sum, count, avg, min, max, count_distinct
+	Column     string            `json:"column,omitempty"`     // Simple column: "quantity"
+	Expression *ExpressionConfig `json:"expression,omitempty"` // For multi-column math
+}
+
+// ExpressionConfig for multi-column arithmetic
+type ExpressionConfig struct {
+	Operator string   `json:"operator"` // multiply, add, subtract, divide
+	Columns  []string `json:"columns"`  // ["order_line_items.quantity", "product_costs.selling_price"]
+}
+
+// GroupByConfig for time-series and categorical grouping
+type GroupByConfig struct {
+	Column     string `json:"column"`               // "orders.created_date" or "categories.name" or SQL expression
+	Interval   string `json:"interval,omitempty"`   // day, week, month, quarter, year (dates only)
+	Alias      string `json:"alias,omitempty"`      // Output name: "month"
+	Expression bool   `json:"expression,omitempty"` // If true, Column is treated as raw SQL
+}
+
+// =============================================================================
+// Metric Validation Whitelists
+// =============================================================================
+
+// AllowedAggregateFunctions contains the allowed aggregate functions (whitelist)
+var AllowedAggregateFunctions = map[string]string{
+	"sum":            "SUM",
+	"count":          "COUNT",
+	"count_distinct": "COUNT_DISTINCT", // Special handling in builder
+	"avg":            "AVG",
+	"min":            "MIN",
+	"max":            "MAX",
+}
+
+// AllowedOperators contains the allowed expression operators
+var AllowedOperators = map[string]string{
+	"multiply": "*",
+	"add":      "+",
+	"subtract": "-",
+	"divide":   "/",
+}
+
+// AllowedIntervals contains the allowed time intervals for GROUP BY
+var AllowedIntervals = map[string]string{
+	"day":     "day",
+	"week":    "week",
+	"month":   "month",
+	"quarter": "quarter",
+	"year":    "year",
 }
 
 // SelectConfig defines what columns to select
@@ -533,4 +594,176 @@ func (rv *ResponsiveValue) ToGridColsClasses() []string {
 	}
 
 	return classes
+}
+
+// =============================================================================
+// Chart Response Types
+// =============================================================================
+
+// Chart type constants
+const (
+	ChartTypeLine       = "line"
+	ChartTypeBar        = "bar"
+	ChartTypeStackedBar = "stacked-bar"
+	ChartTypeStackedArea = "stacked-area"
+	ChartTypeCombo      = "combo"
+	ChartTypeKPI        = "kpi"
+	ChartTypeGauge      = "gauge"
+	ChartTypePie        = "pie"
+	ChartTypeWaterfall  = "waterfall"
+	ChartTypeFunnel     = "funnel"
+	ChartTypeHeatmap    = "heatmap"
+	ChartTypeTreemap    = "treemap"
+	ChartTypeGantt      = "gantt"
+)
+
+// ChartResponse is the unified response for all chart types
+type ChartResponse struct {
+	Type       string       `json:"type"`
+	Title      string       `json:"title,omitempty"`
+	Subtitle   string       `json:"subtitle,omitempty"`
+	Categories []string     `json:"categories,omitempty"`
+	Series     []SeriesData `json:"series,omitempty"`
+	KPI        *KPIData     `json:"kpi,omitempty"`
+	Heatmap    *HeatmapData `json:"heatmap,omitempty"`
+	Gantt      []GanttData  `json:"gantt,omitempty"`
+	Treemap    *TreemapData `json:"treemap,omitempty"`
+	Meta       ChartMeta    `json:"meta"`
+}
+
+// SeriesData represents a data series for categorical charts
+type SeriesData struct {
+	Name       string    `json:"name"`
+	Type       string    `json:"type,omitempty"`       // For combo charts: "bar", "line"
+	YAxisIndex int       `json:"yAxisIndex,omitempty"` // For dual-axis charts
+	Data       []float64 `json:"data"`
+	Stack      string    `json:"stack,omitempty"` // For stacked charts
+}
+
+// KPIData represents KPI-specific data
+type KPIData struct {
+	Value         float64 `json:"value"`
+	PreviousValue float64 `json:"previousValue,omitempty"`
+	Change        float64 `json:"change,omitempty"` // Percentage change
+	Trend         string  `json:"trend,omitempty"`  // "up", "down", "flat"
+	Label         string  `json:"label"`
+	Format        string  `json:"format,omitempty"` // "currency", "percent", "number", "compact"
+	Target        float64 `json:"target,omitempty"` // For gauge charts
+	Min           float64 `json:"min,omitempty"`    // For gauge charts
+	Max           float64 `json:"max,omitempty"`    // For gauge charts
+}
+
+// ChartMeta contains metadata about the chart query
+type ChartMeta struct {
+	ExecutionTime int64  `json:"executionTimeMs"`
+	RowsProcessed int    `json:"rowsProcessed"`
+	Error         string `json:"error,omitempty"`
+}
+
+// HeatmapData for heatmap charts
+type HeatmapData struct {
+	XCategories []string      `json:"xCategories"`
+	YCategories []string      `json:"yCategories"`
+	Data        [][]float64   `json:"data"` // [y][x] = value
+	Min         float64       `json:"min"`
+	Max         float64       `json:"max"`
+}
+
+// GanttData for Gantt charts
+type GanttData struct {
+	Name      string `json:"name"`
+	StartDate string `json:"startDate"` // ISO format
+	EndDate   string `json:"endDate"`
+	Progress  int    `json:"progress,omitempty"` // 0-100
+	Category  string `json:"category,omitempty"`
+}
+
+// TreemapData for treemap charts
+type TreemapData struct {
+	Name     string        `json:"name"`
+	Value    float64       `json:"value,omitempty"`
+	Children []TreemapData `json:"children,omitempty"`
+}
+
+// =============================================================================
+// Chart Visual Settings
+// =============================================================================
+
+// ChartVisualSettings extends VisualSettings for chart-specific configuration
+type ChartVisualSettings struct {
+	ChartType string `json:"chartType"`
+
+	// Data mapping
+	CategoryColumn string   `json:"categoryColumn,omitempty"`
+	ValueColumns   []string `json:"valueColumns,omitempty"`
+
+	// Aggregation
+	AggregateFunction string `json:"aggregateFunction,omitempty"` // sum, avg, count, min, max
+	GroupBy           string `json:"groupBy,omitempty"`
+
+	// Axes
+	XAxis  *AxisConfig `json:"xAxis,omitempty"`
+	YAxis  *AxisConfig `json:"yAxis,omitempty"`
+	Y2Axis *AxisConfig `json:"y2Axis,omitempty"` // For dual-axis
+
+	// Appearance
+	Colors  []string       `json:"colors,omitempty"`
+	Legend  *LegendConfig  `json:"legend,omitempty"`
+	Tooltip *TooltipConfig `json:"tooltip,omitempty"`
+
+	// KPI-specific
+	KPI *KPIConfig `json:"kpi,omitempty"`
+
+	// Heatmap-specific
+	XCategoryColumn string `json:"xCategoryColumn,omitempty"`
+	YCategoryColumn string `json:"yCategoryColumn,omitempty"`
+
+	// Gantt-specific
+	NameColumn     string `json:"nameColumn,omitempty"`
+	StartColumn    string `json:"startColumn,omitempty"`
+	EndColumn      string `json:"endColumn,omitempty"`
+	ProgressColumn string `json:"progressColumn,omitempty"`
+
+	// Series configuration for combo charts
+	SeriesConfig []SeriesConfig `json:"seriesConfig,omitempty"`
+}
+
+// SeriesConfig defines how each value column should be rendered
+type SeriesConfig struct {
+	Column     string `json:"column"`
+	Type       string `json:"type,omitempty"`       // "bar", "line", "area"
+	YAxisIndex int    `json:"yAxisIndex,omitempty"` // 0 or 1 for dual-axis
+	Stack      string `json:"stack,omitempty"`      // Stack group name
+	Label      string `json:"label,omitempty"`      // Display name
+}
+
+// AxisConfig for chart axes
+type AxisConfig struct {
+	Title  string   `json:"title,omitempty"`
+	Type   string   `json:"type,omitempty"`   // "value", "category", "time"
+	Min    *float64 `json:"min,omitempty"`
+	Max    *float64 `json:"max,omitempty"`
+	Format string   `json:"format,omitempty"` // "currency", "percent", "number"
+}
+
+// LegendConfig for chart legend
+type LegendConfig struct {
+	Show     bool   `json:"show"`
+	Position string `json:"position,omitempty"` // "top", "bottom", "left", "right"
+}
+
+// TooltipConfig for chart tooltips
+type TooltipConfig struct {
+	Show   bool   `json:"show"`
+	Format string `json:"format,omitempty"`
+}
+
+// KPIConfig for KPI cards
+type KPIConfig struct {
+	Label             string  `json:"label"`
+	Format            string  `json:"format,omitempty"`            // "currency", "percent", "number", "compact"
+	CompareColumn     string  `json:"compareColumn,omitempty"`     // For trend calculation
+	TargetValue       float64 `json:"targetValue,omitempty"`       // For gauge
+	ThresholdWarning  float64 `json:"thresholdWarning,omitempty"`
+	ThresholdCritical float64 `json:"thresholdCritical,omitempty"`
 }

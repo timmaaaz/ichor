@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -137,9 +136,53 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uu, &usr)
-	if err != nil {
-		return User{}, fmt.Errorf("populate user from update user: %w", err)
+	if uu.ApprovedBy != nil {
+		usr.ApprovedBy = *uu.ApprovedBy
+	}
+	if uu.UserApprovalStatus != nil {
+		usr.UserApprovalStatus = *uu.UserApprovalStatus
+	}
+	if uu.TitleID != nil {
+		usr.TitleID = *uu.TitleID
+	}
+	if uu.OfficeID != nil {
+		usr.OfficeID = *uu.OfficeID
+	}
+	if uu.WorkPhoneID != nil {
+		usr.WorkPhoneID = *uu.WorkPhoneID
+	}
+	if uu.CellPhoneID != nil {
+		usr.CellPhoneID = *uu.CellPhoneID
+	}
+	if uu.Username != nil {
+		usr.Username = *uu.Username
+	}
+	if uu.FirstName != nil {
+		usr.FirstName = *uu.FirstName
+	}
+	if uu.LastName != nil {
+		usr.LastName = *uu.LastName
+	}
+	if uu.Email != nil {
+		usr.Email = *uu.Email
+	}
+	if uu.Birthday != nil {
+		usr.Birthday = *uu.Birthday
+	}
+	if uu.Roles != nil {
+		usr.Roles = uu.Roles
+	}
+	if uu.SystemRoles != nil {
+		usr.SystemRoles = uu.SystemRoles
+	}
+	if uu.Enabled != nil {
+		usr.Enabled = *uu.Enabled
+	}
+	if uu.DateHired != nil {
+		usr.DateHired = *uu.DateHired
+	}
+	if uu.DateApproved != nil {
+		usr.DateApproved = *uu.DateApproved
 	}
 
 	if uu.Password != nil {

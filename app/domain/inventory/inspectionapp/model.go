@@ -2,11 +2,11 @@ package inspectionapp
 
 import (
 	"encoding/json"
-	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -90,14 +90,41 @@ func (app NewInspection) Validate() error {
 }
 
 func toBusNewInspection(app NewInspection) (inspectionbus.NewInspection, error) {
-	dest := inspectionbus.NewInspection{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	productID, err := uuid.Parse(app.ProductID)
 	if err != nil {
-		return inspectionbus.NewInspection{}, fmt.Errorf("toBusNewInspection: %w", err)
+		return inspectionbus.NewInspection{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
 	}
 
-	return dest, nil
+	inspectorID, err := uuid.Parse(app.InspectorID)
+	if err != nil {
+		return inspectionbus.NewInspection{}, errs.Newf(errs.InvalidArgument, "parse inspectorID: %s", err)
+	}
+
+	lotID, err := uuid.Parse(app.LotID)
+	if err != nil {
+		return inspectionbus.NewInspection{}, errs.Newf(errs.InvalidArgument, "parse lotID: %s", err)
+	}
+
+	inspectionDate, err := time.Parse(timeutil.FORMAT, app.InspectionDate)
+	if err != nil {
+		return inspectionbus.NewInspection{}, errs.Newf(errs.InvalidArgument, "parse inspectionDate: %s", err)
+	}
+
+	nextInspectionDate, err := time.Parse(timeutil.FORMAT, app.NextInspectionDate)
+	if err != nil {
+		return inspectionbus.NewInspection{}, errs.Newf(errs.InvalidArgument, "parse nextInspectionDate: %s", err)
+	}
+
+	bus := inspectionbus.NewInspection{
+		ProductID:          productID,
+		InspectorID:        inspectorID,
+		LotID:              lotID,
+		Status:             app.Status,
+		Notes:              app.Notes,
+		InspectionDate:     inspectionDate,
+		NextInspectionDate: nextInspectionDate,
+	}
+	return bus, nil
 }
 
 type UpdateInspection struct {
@@ -122,12 +149,59 @@ func (app UpdateInspection) Validate() error {
 }
 
 func toBusUpdateInspection(app UpdateInspection) (inspectionbus.UpdateInspection, error) {
-	dest := inspectionbus.UpdateInspection{}
-
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return inspectionbus.UpdateInspection{}, fmt.Errorf("toBusUpdateInspection: %w", err)
+	var productID *uuid.UUID
+	if app.ProductID != nil {
+		id, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return inspectionbus.UpdateInspection{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+		}
+		productID = &id
 	}
 
-	return dest, nil
+	var inspectorID *uuid.UUID
+	if app.InspectorID != nil {
+		id, err := uuid.Parse(*app.InspectorID)
+		if err != nil {
+			return inspectionbus.UpdateInspection{}, errs.Newf(errs.InvalidArgument, "parse inspectorID: %s", err)
+		}
+		inspectorID = &id
+	}
+
+	var lotID *uuid.UUID
+	if app.LotID != nil {
+		id, err := uuid.Parse(*app.LotID)
+		if err != nil {
+			return inspectionbus.UpdateInspection{}, errs.Newf(errs.InvalidArgument, "parse lotID: %s", err)
+		}
+		lotID = &id
+	}
+
+	var inspectionDate *time.Time
+	if app.InspectionDate != nil {
+		t, err := time.Parse(timeutil.FORMAT, *app.InspectionDate)
+		if err != nil {
+			return inspectionbus.UpdateInspection{}, errs.Newf(errs.InvalidArgument, "parse inspectionDate: %s", err)
+		}
+		inspectionDate = &t
+	}
+
+	var nextInspectionDate *time.Time
+	if app.NextInspectionDate != nil {
+		t, err := time.Parse(timeutil.FORMAT, *app.NextInspectionDate)
+		if err != nil {
+			return inspectionbus.UpdateInspection{}, errs.Newf(errs.InvalidArgument, "parse nextInspectionDate: %s", err)
+		}
+		nextInspectionDate = &t
+	}
+
+	bus := inspectionbus.UpdateInspection{
+		ProductID:          productID,
+		InspectorID:        inspectorID,
+		LotID:              lotID,
+		Status:             app.Status,
+		Notes:              app.Notes,
+		InspectionDate:     inspectionDate,
+		NextInspectionDate: nextInspectionDate,
+	}
+	return bus, nil
 }

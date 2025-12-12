@@ -26,6 +26,7 @@ type NewCostHistory struct {
 	Currency      string
 	EffectiveDate time.Time
 	EndDate       time.Time
+	CreatedDate   *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateCostHistory struct {

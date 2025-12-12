@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -97,9 +96,38 @@ func (b *Business) Update(ctx context.Context, ip InventoryItem, up UpdateInvent
 	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(up, &ip)
-	if err != nil {
-		return InventoryItem{}, fmt.Errorf("convert: populate same types: %w", err)
+	if up.ProductID != nil {
+		ip.ProductID = *up.ProductID
+	}
+	if up.LocationID != nil {
+		ip.LocationID = *up.LocationID
+	}
+	if up.Quantity != nil {
+		ip.Quantity = *up.Quantity
+	}
+	if up.ReservedQuantity != nil {
+		ip.ReservedQuantity = *up.ReservedQuantity
+	}
+	if up.AllocatedQuantity != nil {
+		ip.AllocatedQuantity = *up.AllocatedQuantity
+	}
+	if up.MinimumStock != nil {
+		ip.MinimumStock = *up.MinimumStock
+	}
+	if up.MaximumStock != nil {
+		ip.MaximumStock = *up.MaximumStock
+	}
+	if up.ReorderPoint != nil {
+		ip.ReorderPoint = *up.ReorderPoint
+	}
+	if up.EconomicOrderQuantity != nil {
+		ip.EconomicOrderQuantity = *up.EconomicOrderQuantity
+	}
+	if up.SafetyStock != nil {
+		ip.SafetyStock = *up.SafetyStock
+	}
+	if up.AvgDailyUsage != nil {
+		ip.AvgDailyUsage = *up.AvgDailyUsage
 	}
 
 	ip.UpdatedDate = time.Now()

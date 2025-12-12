@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -103,9 +102,23 @@ func (b *Business) Update(ctx context.Context, ta TableAccess, uta UpdateTableAc
 	ctx, span := otel.AddSpan(ctx, "business.tableaccess.update")
 	defer span.End()
 
-	err := convert.PopulateSameTypes(uta, &ta)
-	if err != nil {
-		return TableAccess{}, fmt.Errorf("populate same types: %w", err)
+	if uta.RoleID != nil {
+		ta.RoleID = *uta.RoleID
+	}
+	if uta.TableName != nil {
+		ta.TableName = *uta.TableName
+	}
+	if uta.CanCreate != nil {
+		ta.CanCreate = *uta.CanCreate
+	}
+	if uta.CanRead != nil {
+		ta.CanRead = *uta.CanRead
+	}
+	if uta.CanUpdate != nil {
+		ta.CanUpdate = *uta.CanUpdate
+	}
+	if uta.CanDelete != nil {
+		ta.CanDelete = *uta.CanDelete
 	}
 
 	if err := b.storer.Update(ctx, ta); err != nil {

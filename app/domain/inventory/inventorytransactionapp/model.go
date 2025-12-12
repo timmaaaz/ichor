@@ -3,10 +3,12 @@ package inventorytransactionapp
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
-	"github.com/timmaaaz/ichor/business/sdk/convert"
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
@@ -90,13 +92,41 @@ func (app NewInventoryTransaction) Validate() error {
 }
 
 func toBusNewInventoryTransaction(app NewInventoryTransaction) (inventorytransactionbus.NewInventoryTransaction, error) {
-	dest := inventorytransactionbus.NewInventoryTransaction{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
+	productID, err := uuid.Parse(app.ProductID)
 	if err != nil {
-		return inventorytransactionbus.NewInventoryTransaction{}, fmt.Errorf("toBusNewInventoryTransaction: %w", err)
+		return inventorytransactionbus.NewInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
 	}
 
-	return dest, nil
+	locationID, err := uuid.Parse(app.LocationID)
+	if err != nil {
+		return inventorytransactionbus.NewInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse locationID: %s", err)
+	}
+
+	userID, err := uuid.Parse(app.UserID)
+	if err != nil {
+		return inventorytransactionbus.NewInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse userID: %s", err)
+	}
+
+	quantity, err := strconv.Atoi(app.Quantity)
+	if err != nil {
+		return inventorytransactionbus.NewInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+	}
+
+	transactionDate, err := time.Parse(timeutil.FORMAT, app.TransactionDate)
+	if err != nil {
+		return inventorytransactionbus.NewInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse transactionDate: %s", err)
+	}
+
+	bus := inventorytransactionbus.NewInventoryTransaction{
+		ProductID:       productID,
+		LocationID:      locationID,
+		UserID:          userID,
+		Quantity:        quantity,
+		TransactionType: app.TransactionType,
+		ReferenceNumber: app.ReferenceNumber,
+		TransactionDate: transactionDate,
+	}
+	return bus, nil
 }
 
 type UpdateInventoryTransaction struct {
@@ -121,11 +151,50 @@ func (app UpdateInventoryTransaction) Validate() error {
 }
 
 func toBusUpdateInventoryTransaction(app UpdateInventoryTransaction) (inventorytransactionbus.UpdateInventoryTransaction, error) {
-	dest := inventorytransactionbus.UpdateInventoryTransaction{}
-	err := convert.PopulateTypesFromStrings(app, &dest)
-	if err != nil {
-		return inventorytransactionbus.UpdateInventoryTransaction{}, fmt.Errorf("toBusUpdateInventoryTransaction: %w", err)
+	bus := inventorytransactionbus.UpdateInventoryTransaction{
+		TransactionType: app.TransactionType,
+		ReferenceNumber: app.ReferenceNumber,
 	}
 
-	return dest, nil
+	if app.ProductID != nil {
+		productID, err := uuid.Parse(*app.ProductID)
+		if err != nil {
+			return inventorytransactionbus.UpdateInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse productID: %s", err)
+		}
+		bus.ProductID = &productID
+	}
+
+	if app.LocationID != nil {
+		locationID, err := uuid.Parse(*app.LocationID)
+		if err != nil {
+			return inventorytransactionbus.UpdateInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse locationID: %s", err)
+		}
+		bus.LocationID = &locationID
+	}
+
+	if app.UserID != nil {
+		userID, err := uuid.Parse(*app.UserID)
+		if err != nil {
+			return inventorytransactionbus.UpdateInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse userID: %s", err)
+		}
+		bus.UserID = &userID
+	}
+
+	if app.Quantity != nil {
+		quantity, err := strconv.Atoi(*app.Quantity)
+		if err != nil {
+			return inventorytransactionbus.UpdateInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
+		}
+		bus.Quantity = &quantity
+	}
+
+	if app.TransactionDate != nil {
+		transactionDate, err := time.Parse(timeutil.FORMAT, *app.TransactionDate)
+		if err != nil {
+			return inventorytransactionbus.UpdateInventoryTransaction{}, errs.Newf(errs.InvalidArgument, "parse transactionDate: %s", err)
+		}
+		bus.TransactionDate = &transactionDate
+	}
+
+	return bus, nil
 }

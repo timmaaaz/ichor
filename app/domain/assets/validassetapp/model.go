@@ -87,15 +87,16 @@ func ToAppValidAssets(bus []validassetbus.ValidAsset) []ValidAsset {
 // =============================================================================
 
 type NewValidAsset struct {
-	TypeID              string `json:"type_id" validate:"required"`
-	Name                string `json:"name" validate:"required"`
-	EstPrice            string `json:"est_price"`
-	Price               string `json:"price"`
-	MaintenanceInterval string `json:"maintenance_interval"`
-	LifeExpectancy      string `json:"life_expectancy"`
-	ModelNumber         string `json:"model_number"`
-	IsEnabled           bool   `json:"is_enabled"`
-	CreatedBy           string `json:"created_by"`
+	TypeID              string  `json:"type_id" validate:"required"`
+	Name                string  `json:"name" validate:"required"`
+	EstPrice            string  `json:"est_price"`
+	Price               string  `json:"price"`
+	MaintenanceInterval string  `json:"maintenance_interval"`
+	LifeExpectancy      string  `json:"life_expectancy"`
+	ModelNumber         string  `json:"model_number"`
+	IsEnabled           bool    `json:"is_enabled"`
+	CreatedBy           string  `json:"created_by"`
+	CreatedDate         *string `json:"created_date"` // Optional: for seeding/import
 }
 
 // Decode implements the decoder interface.
@@ -161,7 +162,7 @@ func toBusNewValidAsset(app NewValidAsset) (validassetbus.NewValidAsset, error) 
 		return validassetbus.NewValidAsset{}, fmt.Errorf("tobusnewvalidasset: %w", err)
 	}
 
-	return validassetbus.NewValidAsset{
+	bus := validassetbus.NewValidAsset{
 		TypeID:              typeID,
 		Name:                app.Name,
 		EstPrice:            estPrice,
@@ -171,7 +172,19 @@ func toBusNewValidAsset(app NewValidAsset) (validassetbus.NewValidAsset, error) 
 		ModelNumber:         app.ModelNumber,
 		IsEnabled:           app.IsEnabled,
 		CreatedBy:           createdBy,
-	}, nil
+		// CreatedDate: nil by default - API always uses server time
+	}
+
+	// Handle optional CreatedDate (for imports/admin tools only)
+	if app.CreatedDate != nil && *app.CreatedDate != "" {
+		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
+		if err != nil {
+			return validassetbus.NewValidAsset{}, errs.Newf(errs.InvalidArgument, "parse createdDate: %s", err)
+		}
+		bus.CreatedDate = &createdDate
+	}
+
+	return bus, nil
 }
 
 // =============================================================================

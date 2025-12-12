@@ -18,9 +18,12 @@ type QueryParams struct {
 }
 
 type ApprovalStatus struct {
-	ID     string `json:"id"`
-	IconID string `json:"icon_id"`
-	Name   string `json:"name"`
+	ID             string `json:"id"`
+	IconID         string `json:"icon_id"`
+	Name           string `json:"name"`
+	PrimaryColor   string `json:"primary_color"`
+	SecondaryColor string `json:"secondary_color"`
+	Icon           string `json:"icon"`
 }
 
 func (app ApprovalStatus) Encode() ([]byte, string, error) {
@@ -30,9 +33,12 @@ func (app ApprovalStatus) Encode() ([]byte, string, error) {
 
 func ToAppApprovalStatus(bus approvalstatusbus.ApprovalStatus) ApprovalStatus {
 	return ApprovalStatus{
-		ID:     bus.ID.String(),
-		IconID: bus.IconID.String(),
-		Name:   bus.Name,
+		ID:             bus.ID.String(),
+		IconID:         bus.IconID.String(),
+		Name:           bus.Name,
+		PrimaryColor:   bus.PrimaryColor,
+		SecondaryColor: bus.SecondaryColor,
+		Icon:           bus.Icon,
 	}
 }
 
@@ -47,8 +53,11 @@ func ToAppApprovalStatuses(bus []approvalstatusbus.ApprovalStatus) []ApprovalSta
 // =============================================================================
 
 type NewApprovalStatus struct {
-	IconID string `json:"icon_id" validate:"required"`
-	Name   string `json:"name" validate:"required,min=3,max=100"`
+	IconID         string `json:"icon_id" validate:"required"`
+	Name           string `json:"name" validate:"required,min=3,max=100"`
+	PrimaryColor   string `json:"primary_color" validate:"omitempty,max=50"`
+	SecondaryColor string `json:"secondary_color" validate:"omitempty,max=50"`
+	Icon           string `json:"icon" validate:"omitempty,max=100"`
 }
 
 func (app *NewApprovalStatus) Decode(data []byte) error {
@@ -72,14 +81,20 @@ func toBusNewApprovalStatus(app NewApprovalStatus) (approvalstatusbus.NewApprova
 	}
 
 	return approvalstatusbus.NewApprovalStatus{
-		IconID: iconID,
-		Name:   app.Name, // TODO: Look at defining custom type
+		IconID:         iconID,
+		Name:           app.Name, // TODO: Look at defining custom type
+		PrimaryColor:   app.PrimaryColor,
+		SecondaryColor: app.SecondaryColor,
+		Icon:           app.Icon,
 	}, nil
 }
 
 type UpdateApprovalStatus struct {
-	IconID *string `json:"icon_id" validate:"required"`
-	Name   *string `json:"name" validate:"required,min=3,max=100"`
+	IconID         *string `json:"icon_id" validate:"required"`
+	Name           *string `json:"name" validate:"required,min=3,max=100"`
+	PrimaryColor   *string `json:"primary_color" validate:"omitempty,max=50"`
+	SecondaryColor *string `json:"secondary_color" validate:"omitempty,max=50"`
+	Icon           *string `json:"icon" validate:"omitempty,max=100"`
 }
 
 func (app *UpdateApprovalStatus) Decode(data []byte) error {
@@ -111,7 +126,10 @@ func toBusUpdateApprovalStatus(app UpdateApprovalStatus) (approvalstatusbus.Upda
 	}
 
 	return approvalstatusbus.UpdateApprovalStatus{
-		IconID: iconID,
-		Name:   name,
+		IconID:         iconID,
+		Name:           name,
+		PrimaryColor:   app.PrimaryColor,
+		SecondaryColor: app.SecondaryColor,
+		Icon:           app.Icon,
 	}, nil
 }

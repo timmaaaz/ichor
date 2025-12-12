@@ -53,6 +53,7 @@ type NewPurchaseOrder struct {
 	Notes                    string
 	SupplierReferenceNumber  string
 	CreatedBy                uuid.UUID
+	CreatedDate              *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 // UpdatePurchaseOrder contains information needed to update a purchase order.

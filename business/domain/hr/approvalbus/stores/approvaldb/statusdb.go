@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (approvalbus.Storer, error)
 func (s *Store) Create(ctx context.Context, as approvalbus.UserApprovalStatus) error {
 	const q = `
     INSERT INTO hr.user_approval_status (
-        id, icon_id, name
+        id, icon_id, name, primary_color, secondary_color, icon
     ) VALUES (
-        :id, :icon_id, :name
+        :id, :icon_id, :name, :primary_color, :secondary_color, :icon
     )
     `
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUserApprovalStatus(as)); err != nil {
@@ -68,10 +68,13 @@ func (s *Store) Create(ctx context.Context, as approvalbus.UserApprovalStatus) e
 func (s *Store) Update(ctx context.Context, as approvalbus.UserApprovalStatus) error {
 	const q = `
 	UPDATE hr.user_approval_status
-	SET 
+	SET
 	    icon_id = :icon_id,
-        name = :name
-	WHERE 
+        name = :name,
+        primary_color = :primary_color,
+        secondary_color = :secondary_color,
+        icon = :icon
+	WHERE
 		id = :id
 	`
 
@@ -109,8 +112,8 @@ func (s *Store) Query(ctx context.Context, filter approvalbus.QueryFilter, order
 	}
 
 	const q = `
-	SELECT 
-		id, icon_id, name
+	SELECT
+		id, icon_id, name, primary_color, secondary_color, icon
 	FROM
 		hr.user_approval_status
 	`
@@ -168,7 +171,7 @@ func (s *Store) QueryByID(ctx context.Context, aprvlStatusID uuid.UUID) (approva
 
 	const q = `
     SELECT
-        id, icon_id, name
+        id, icon_id, name, primary_color, secondary_color, icon
     FROM
         hr.user_approval_status
     WHERE
