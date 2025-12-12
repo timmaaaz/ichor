@@ -348,13 +348,42 @@ func (ct *ChartTransformer) transformPie(data *TableData, settings *ChartVisualS
 
 // transformFunnel transforms data for funnel charts
 func (ct *ChartTransformer) transformFunnel(data *TableData, settings *ChartVisualSettings) (*ChartResponse, error) {
-	// Funnel is similar to pie - name/value pairs
-	result, err := ct.transformPie(data, settings)
-	if err != nil {
-		return nil, fmt.Errorf("transformFunnel: %w", err)
+	// Extract category and value columns
+	categoryCol := settings.CategoryColumn
+	var valueCol string
+	if len(settings.ValueColumns) > 0 {
+		valueCol = settings.ValueColumns[0]
 	}
-	result.Type = ChartTypeFunnel
-	return result, nil
+
+	if categoryCol == "" || valueCol == "" {
+		return nil, fmt.Errorf("transformFunnel: categoryColumn and valueColumns[0] required")
+	}
+
+	// Build categories and data arrays
+	categories := make([]string, 0, len(data.Data))
+	values := make([]float64, 0, len(data.Data))
+
+	for _, row := range data.Data {
+		name := ct.extractString(row, categoryCol)
+		value := ct.extractFloat(row, valueCol)
+
+		categories = append(categories, name)
+		values = append(values, value)
+	}
+
+	// Create single series with all values
+	series := []SeriesData{
+		{
+			Name: ct.getSeriesLabel(valueCol, settings),
+			Data: values,
+		},
+	}
+
+	return &ChartResponse{
+		Type:       ChartTypeFunnel,
+		Categories: categories,
+		Series:     series,
+	}, nil
 }
 
 // transformWaterfall transforms data for waterfall charts

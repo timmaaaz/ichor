@@ -1758,6 +1758,13 @@ func Test_ChartTransformer(t *testing.T) {
 			Title:         "Sales Pipeline",
 			WidgetType:    "chart",
 			Visualization: "funnel",
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"_chart": {
+						CellTemplate: `{"chartType":"funnel","categoryColumn":"stage","valueColumns":["count"]}`,
+					},
+				},
+			},
 		}
 
 		result, err := transformer.Transform(data, config)
@@ -1768,8 +1775,14 @@ func Test_ChartTransformer(t *testing.T) {
 		if result.Type != tablebuilder.ChartTypeFunnel {
 			t.Errorf("type mismatch: got %s, want %s", result.Type, tablebuilder.ChartTypeFunnel)
 		}
-		if len(result.Series) != 4 {
-			t.Errorf("series length mismatch: got %d, want 4", len(result.Series))
+		if len(result.Series) != 1 {
+			t.Errorf("series length mismatch: got %d, want 1", len(result.Series))
+		}
+		if len(result.Categories) != 4 {
+			t.Errorf("categories length mismatch: got %d, want 4", len(result.Categories))
+		}
+		if len(result.Series[0].Data) != 4 {
+			t.Errorf("series data length mismatch: got %d, want 4", len(result.Series[0].Data))
 		}
 	})
 
