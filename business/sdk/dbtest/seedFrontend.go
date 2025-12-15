@@ -1983,6 +1983,22 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// =========================================================================
+	// Main Dashboard (Testing Ground for UI Elements)
+	// =========================================================================
+
+	mainDashboardPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
+		Name:      "main_dashboard_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating main dashboard page: %w", err)
+	}
+
+	log.Info(ctx, "✅ Created Main Dashboard page (testing ground)",
+		"page_config_id", mainDashboardPage.ID)
+
+	// =========================================================================
 	// Seed Page Action Buttons
 	// =========================================================================
 
@@ -2000,9 +2016,11 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		"procurement_purchase_orders": procurementPurchaseOrdersPage.ID,
 		"sales_customers_page":        salesCustomersPage.ID,
 		"orders_page":                 ordersPage.ID,
+		"sales_dashboard_page":        salesDashboardPage.ID,
+		"main_dashboard_page":         mainDashboardPage.ID,
 	}
 
-	if err := seedPageActionButtons(ctx, busDomain, pageConfigIDs); err != nil {
+	if err := seedPageActionButtons(ctx, log, busDomain, pageConfigIDs); err != nil {
 		return fmt.Errorf("seeding page action buttons: %w", err)
 	}
 
@@ -3615,26 +3633,51 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	return nil
 }
 
-// seedPageActionButtons creates "New" button actions for list pages
-func seedPageActionButtons(ctx context.Context, busDomain BusDomain, pageConfigIDs map[string]uuid.UUID) error {
-	// Get button definitions
+// seedPageActionButtons creates button actions for pages.
+// Supports multiple buttons per page with full customization.
+func seedPageActionButtons(ctx context.Context, log *logger.Logger, busDomain BusDomain, pageConfigIDs map[string]uuid.UUID) error {
+	// Get button definitions (now returns arrays)
 	buttonDefs := seedmodels.GetNewButtonActionDefinitions()
+
+	totalButtonsCreated := 0
 
 	// Create button actions for each page config
 	for configName, pageConfigID := range pageConfigIDs {
-		buttonDef, exists := buttonDefs[configName]
-		if !exists {
-			// Skip if no button definition exists for this page config
+		buttonDefArray, exists := buttonDefs[configName]
+		if !exists || len(buttonDefArray) == 0 {
+			// Skip if no button definitions exist for this page config
 			continue
 		}
 
-		buttonAction := seedmodels.CreateNewButtonAction(pageConfigID, buttonDef)
+		// Create each button for this page
+		for i, buttonDef := range buttonDefArray {
+			// Validate required fields
+			if buttonDef.Label == "" {
+				return fmt.Errorf("button %d for page config %s: label is required", i, configName)
+			}
+			if buttonDef.TargetPath == "" {
+				return fmt.Errorf("button %d for page config %s: target path is required", i, configName)
+			}
+			if buttonDef.ActionOrder <= 0 {
+				return fmt.Errorf("button %d for page config %s: action order must be positive (got %d)", i, configName, buttonDef.ActionOrder)
+			}
 
-		_, err := busDomain.PageAction.CreateButton(ctx, buttonAction)
-		if err != nil {
-			return fmt.Errorf("creating button action for %s: %w", configName, err)
+			// Create button action
+			buttonAction := seedmodels.CreateNewButtonAction(pageConfigID, buttonDef)
+
+			_, err := busDomain.PageAction.CreateButton(ctx, buttonAction)
+			if err != nil {
+				return fmt.Errorf("creating button action %d (%s) for %s: %w",
+					i, buttonDef.Label, configName, err)
+			}
+
+			totalButtonsCreated++
 		}
 	}
+
+	log.Info(ctx, "✅ Created page action buttons",
+		"total_buttons", totalButtonsCreated,
+		"pages_with_buttons", len(buttonDefs))
 
 	return nil
 }
