@@ -829,7 +829,8 @@ func GetSalesOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbu
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "number", Label: "Order Number", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "customer_id", Label: "Customer", FieldType: "select", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "sales.customers", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Customer Creation Form", "button_text": "Create Customer"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "due_date", Label: "Due Date", FieldType: "date", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "order_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "sales.order_fulfillment_statuses", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "fulfillment_status_id", Label: "Fulfillment Status", FieldType: "select", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "sales.order_fulfillment_statuses", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "created_by", Label: "Created By", FieldType: "text", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
 	}
 }
 

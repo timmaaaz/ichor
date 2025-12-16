@@ -244,20 +244,79 @@ func GetFullSalesOrderFormFields(
 	fields = append(fields, orderFields...)
 
 	// Section 2: Line Items (created second, references order_id from step 1)
-	// Note: In a real form, you'd have a repeatable section for multiple line items
-	// This shows the structure for one line item
-	lineItemFields := GetSalesOrderLineItemFormFields(formID, lineItemEntityID)
-	for i := range lineItemFields {
-		lineItemFields[i].FieldOrder = order
-		lineItemFields[i].Config = mergeConfigJSON(lineItemFields[i].Config, map[string]interface{}{
-			"execution_order": 2,
-			"parent_entity":   "orders",
-			"parent_field":    "order_id",
-			"repeatable":      true,
-		})
-		order++
+	// Using lineitems field type for card-based repeatable line items UI
+	minQuantity := 1
+	maxQuantity := 10000
+
+	lineItemsConfig := formfieldbus.LineItemsFieldConfig{
+		ExecutionOrder: 2,
+		Entity:         "sales.order_line_items",
+		ParentField:    "order_id",
+		Fields: []formfieldbus.LineItemField{
+			{
+				Name:     "product_id",
+				Label:    "Product",
+				Type:     "dropdown",
+				Required: true,
+				DropdownConfig: &formfieldbus.DropdownConfig{
+					TableConfigName: "products_lookup",
+					LabelColumn:     "name",
+					ValueColumn:     "id",
+				},
+			},
+			{
+				Name:     "quantity",
+				Label:    "Quantity",
+				Type:     "number",
+				Required: true,
+				Validation: &formfieldbus.ValidationConfig{
+					Min: &minQuantity,
+					Max: &maxQuantity,
+				},
+			},
+			{
+				Name:     "discount",
+				Label:    "Discount",
+				Type:     "text",
+				Required: false,
+			},
+			{
+				Name:     "line_item_fulfillment_statuses_id",
+				Label:    "Fulfillment Status",
+				Type:     "dropdown",
+				Required: true,
+			},
+			{
+				Name:     "created_by",
+				Label:    "Created By",
+				Type:     "text",
+				Required: true,
+			},
+		},
+		ItemLabel:         "Order Items",
+		SingularItemLabel: "Item",
+		MinItems:          1,
+		MaxItems:          100,
 	}
-	fields = append(fields, lineItemFields...)
+
+	configJSON, err := lineItemsConfig.ToJSON()
+	if err != nil {
+		// Fallback to empty config if marshal fails
+		configJSON = json.RawMessage("{}")
+	}
+
+	fields = append(fields, formfieldbus.NewFormField{
+		FormID:       formID,
+		EntityID:     lineItemEntityID,
+		EntitySchema: "sales",
+		EntityTable:  "order_line_items",
+		Name:         "line_items",
+		Label:        "Order Items",
+		FieldType:    "lineitems",
+		FieldOrder:   order,
+		Required:     true,
+		Config:       configJSON,
+	})
 
 	return fields
 }

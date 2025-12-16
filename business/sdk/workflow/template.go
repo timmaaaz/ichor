@@ -77,9 +77,6 @@ func NewTemplateProcessor(opts TemplateProcessingOptions) *TemplateProcessor {
 
 // ProcessTemplate processes template variables in a string
 func (tp *TemplateProcessor) ProcessTemplate(template string, context TemplateContext) TemplateProcessingResult {
-	fmt.Printf("DEBUG: Processing template: '%s'\n", template)
-	fmt.Printf("DEBUG: Context: %+v\n", context)
-
 	result := TemplateProcessingResult{
 		VariablesUsed: make([]TemplateVariable, 0),
 		Warnings:      make([]string, 0),
@@ -89,13 +86,9 @@ func (tp *TemplateProcessor) ProcessTemplate(template string, context TemplateCo
 	processed := template
 	matches := tp.variableRegex.FindAllStringSubmatch(template, -1)
 
-	fmt.Printf("DEBUG: Found %d variable matches: %+v\n", len(matches), matches)
-
 	for _, match := range matches {
 		fullMatch := match[0]                             // "{{variable_name}}"
 		variablePath := strings.TrimLeft(match[1], " \t") // "variable_name"
-
-		fmt.Printf("DEBUG: Processing variable: '%s' from match: '%s'\n", variablePath, fullMatch)
 
 		// Validate syntax
 		if err := tp.validateVariable(variablePath); err != nil {
@@ -212,7 +205,6 @@ type ResolutionResult struct {
 
 // resolve resolves a variable path with optional filters
 func (tp *TemplateProcessor) resolve(variablePath string, context TemplateContext) ResolutionResult {
-	fmt.Printf("DEBUG: Resolving variable path: '%s'\n", variablePath)
 	// Parse variable path and filters: "user.name | uppercase"
 	path, filters := tp.parseVariablePath(variablePath)
 
@@ -280,7 +272,8 @@ func (tp *TemplateProcessor) resolveNestedPathWithExistence(path string, context
 				return nil, false
 			}
 
-			field := rv.FieldByName(segment)
+			// Try to find field by JSON tag first, then by field name
+			field := tp.findStructField(rv, segment)
 			if !field.IsValid() {
 				return nil, false
 			}
@@ -294,10 +287,6 @@ func (tp *TemplateProcessor) resolveNestedPathWithExistence(path string, context
 func (tp *TemplateProcessor) parseVariablePath(variablePath string) (string, []filterSpec) {
 	parts := strings.Split(variablePath, "|")
 	path := strings.TrimSpace(parts[0])
-
-	fmt.Printf("DEBUG: Parsing variable path: '%s'\n", variablePath)
-	fmt.Printf("DEBUG: Base path: '%s'\n", path)
-	fmt.Printf("DEBUG: Filters parts: %v\n", parts[1:])
 
 	filters := make([]filterSpec, 0, len(parts)-1)
 	for i := 1; i < len(parts); i++ {
@@ -340,8 +329,6 @@ func (tp *TemplateProcessor) parseVariablePath(variablePath string) (string, []f
 			// After TrimLeft: "join:, "
 			// After colon: ", "
 			// This is correct! We want ", " as the argument
-
-			fmt.Printf("DEBUG: Filter '%s', argStr: '%s'\n", filter.name, argStr)
 
 			// Split remaining arguments by colon
 			argParts := strings.Split(argStr, ":")
@@ -394,7 +381,8 @@ func (tp *TemplateProcessor) resolveNestedPath(path string, context TemplateCont
 				return nil
 			}
 
-			field := rv.FieldByName(segment)
+			// Try to find field by JSON tag first, then by field name
+			field := tp.findStructField(rv, segment)
 			if !field.IsValid() {
 				return nil
 			}
@@ -403,6 +391,35 @@ func (tp *TemplateProcessor) resolveNestedPath(path string, context TemplateCont
 	}
 
 	return current
+}
+
+// findStructField finds a struct field by JSON tag first, then by field name
+func (tp *TemplateProcessor) findStructField(rv reflect.Value, name string) reflect.Value {
+	rt := rv.Type()
+
+	// First pass: try to find by JSON tag
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+
+		// Check JSON tag
+		jsonTag := field.Tag.Get("json")
+		if jsonTag != "" {
+			// Parse JSON tag (format: "name,omitempty")
+			tagName := strings.Split(jsonTag, ",")[0]
+			if tagName == name {
+				return rv.Field(i)
+			}
+		}
+	}
+
+	// Second pass: try to find by field name (case-sensitive)
+	field := rv.FieldByName(name)
+	if field.IsValid() {
+		return field
+	}
+
+	// Return invalid value
+	return reflect.Value{}
 }
 
 // applyFilters applies a series of filters to a value

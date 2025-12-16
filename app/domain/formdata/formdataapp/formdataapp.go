@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -47,11 +48,41 @@ func NewApp(
 // This method orchestrates the execution of multiple entity operations in a
 // single transaction, resolving foreign key references via template variables.
 //
+// **Array Support**: Entity data can be either a single object or an array of objects.
+// When an array is detected, each item is processed individually with template resolution.
+//
+// Single Object Example:
+//
+//	{
+//	  "operations": {
+//	    "users": {"operation": "create", "order": 1}
+//	  },
+//	  "data": {
+//	    "users": {"first_name": "John", "last_name": "Doe"}
+//	  }
+//	}
+//
+// Array Example:
+//
+//	{
+//	  "operations": {
+//	    "orders": {"operation": "create", "order": 1},
+//	    "line_items": {"operation": "create", "order": 2}
+//	  },
+//	  "data": {
+//	    "orders": {"customer_id": "c1", "order_date": "2025-01-15"},
+//	    "line_items": [
+//	      {"order_id": "{{orders.id}}", "product_id": "p1", "quantity": 5},
+//	      {"order_id": "{{orders.id}}", "product_id": "p2", "quantity": 10}
+//	    ]
+//	  }
+//	}
+//
 // Process:
 // 1. Load form configuration and validate
 // 2. Build ordered execution plan from operations metadata
 // 3. Begin database transaction
-// 4. Execute each operation in order (with template variable resolution)
+// 4. Execute each operation in order (with template variable resolution and array support)
 // 5. Commit transaction or rollback on error
 //
 // Foreign Key Resolution:
@@ -109,6 +140,13 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 
 		result, err := a.executeOperation(ctx, step, entityData, templateContext)
 		if err != nil {
+			// Check if error is already typed (e.g., InvalidArgument from validation)
+			// Unwrap the error chain to find the original *errs.Error
+			var appErr *errs.Error
+			if errors.As(err, &appErr) {
+				return FormDataResponse{}, errs.Newf(appErr.Code, "execute %s: %s", step.EntityName, err.Error())
+			}
+			// Otherwise, treat as internal error
 			return FormDataResponse{}, errs.Newf(errs.Internal, "execute %s: %s", step.EntityName, err)
 		}
 
@@ -173,7 +211,30 @@ func (a *App) buildExecutionPlan(operations map[string]OperationMeta) ([]Executi
 }
 
 // executeOperation executes a single entity operation with template resolution.
+// Supports both single object and array operations.
 func (a *App) executeOperation(
+	ctx context.Context,
+	step ExecutionStep,
+	data json.RawMessage,
+	templateContext workflow.TemplateContext,
+) (any, error) {
+	// Detect if data is an array or single object
+	var rawData interface{}
+	if err := json.Unmarshal(data, &rawData); err != nil {
+		return nil, fmt.Errorf("unmarshal data for type detection: %w", err)
+	}
+
+	// Check if data is an array (slice)
+	if arr, isArray := rawData.([]interface{}); isArray {
+		return a.executeArrayOperation(ctx, step, arr, templateContext)
+	}
+
+	// Single object operation
+	return a.executeSingleOperation(ctx, step, data, templateContext)
+}
+
+// executeSingleOperation processes a single entity object (not an array).
+func (a *App) executeSingleOperation(
 	ctx context.Context,
 	step ExecutionStep,
 	data json.RawMessage,
@@ -202,6 +263,42 @@ func (a *App) executeOperation(
 	default:
 		return nil, fmt.Errorf("unknown operation: %s", step.Operation)
 	}
+}
+
+// executeArrayOperation processes an array of entity objects.
+// Each item is processed individually with template resolution.
+// All items must succeed or the transaction will rollback.
+func (a *App) executeArrayOperation(
+	ctx context.Context,
+	step ExecutionStep,
+	items []interface{},
+	templateContext workflow.TemplateContext,
+) ([]any, error) {
+	// Validate array is not empty
+	// Line items arrays should contain at least one item
+	if len(items) == 0 {
+		return nil, errs.Newf(errs.InvalidArgument, "array for %s cannot be empty", step.EntityName)
+	}
+
+	results := make([]any, 0, len(items))
+
+	for idx, item := range items {
+		// Marshal item to JSON for processing
+		itemJSON, err := json.Marshal(item)
+		if err != nil {
+			return nil, fmt.Errorf("marshal array item %d: %w", idx, err)
+		}
+
+		// Process single item with template resolution
+		result, err := a.executeSingleOperation(ctx, step, itemJSON, templateContext)
+		if err != nil {
+			return nil, fmt.Errorf("process array item %d: %w", idx, err)
+		}
+
+		results = append(results, result)
+	}
+
+	return results, nil
 }
 
 // executeCreate handles create operations.

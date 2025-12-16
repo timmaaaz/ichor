@@ -444,8 +444,236 @@ func upsert404(sd apitest.SeedData) []apitest.Table {
 }
 
 // =============================================================================
+// Phase 4 Array Operation Tests
+// =============================================================================
+
+const (
+	salesOrderForm = 3 // Form index in seedData.Forms array
+)
+
+// upsertOrderWithSingleLineItem200 tests creating an order with a single line item.
+func upsertOrderWithSingleLineItem200(sd apitest.SeedData) []apitest.Table {
+	payload := buildOrderWithLineItemsPayload(sd, 1)
+
+	return []apitest.Table{
+		{
+			Name:       "create-order-single-line-item",
+			URL:        fmt.Sprintf("/v1/formdata/%s/upsert", sd.Forms[salesOrderForm].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			Input:      payload,
+			GotResp:    &formdataapp.FormDataResponse{},
+			ExpResp:    &formdataapp.FormDataResponse{},
+			CmpFunc: func(got, exp any) string {
+				gotResp, ok := got.(*formdataapp.FormDataResponse)
+				if !ok {
+					return "error occurred"
+				}
+
+				if !gotResp.Success {
+					return "expected success to be true"
+				}
+
+				// Verify both order and line items were created
+				if _, exists := gotResp.Results["orders"]; !exists {
+					return "expected orders result to exist"
+				}
+
+				if _, exists := gotResp.Results["order_line_items"]; !exists {
+					return "expected order_line_items result to exist"
+				}
+
+				return ""
+			},
+		},
+	}
+}
+
+// upsertOrderWithMultipleLineItems200 tests creating an order with multiple line items.
+func upsertOrderWithMultipleLineItems200(sd apitest.SeedData) []apitest.Table {
+	payload := buildOrderWithLineItemsPayload(sd, 3)
+
+	return []apitest.Table{
+		{
+			Name:       "create-order-multiple-line-items",
+			URL:        fmt.Sprintf("/v1/formdata/%s/upsert", sd.Forms[salesOrderForm].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			Input:      payload,
+			GotResp:    &formdataapp.FormDataResponse{},
+			ExpResp:    &formdataapp.FormDataResponse{},
+			CmpFunc: func(got, exp any) string {
+				gotResp, ok := got.(*formdataapp.FormDataResponse)
+				if !ok {
+					return "error occurred"
+				}
+
+				if !gotResp.Success {
+					return "expected success to be true"
+				}
+
+				// Verify both order and line items were created
+				if _, exists := gotResp.Results["orders"]; !exists {
+					return "expected orders result to exist"
+				}
+
+				if _, exists := gotResp.Results["order_line_items"]; !exists {
+					return "expected order_line_items result to exist"
+				}
+
+				// Verify line items is an array with 3 items
+				lineItems, ok := gotResp.Results["order_line_items"].([]interface{})
+				if !ok {
+					return "expected sales.order_line_items to be an array"
+				}
+
+				if len(lineItems) != 3 {
+					return fmt.Sprintf("expected 3 line items, got %d", len(lineItems))
+				}
+
+				return ""
+			},
+		},
+	}
+}
+
+// upsertOrderWithArrayValidationError400 tests array validation error handling.
+func upsertOrderWithArrayValidationError400(sd apitest.SeedData) []apitest.Table {
+	payload := buildOrderWithInvalidLineItem(sd)
+
+	return []apitest.Table{
+		{
+			Name:       "create-order-invalid-line-item",
+			URL:        fmt.Sprintf("/v1/formdata/%s/upsert", sd.Forms[salesOrderForm].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input:      payload,
+			GotResp:    &errs.Error{},
+			ExpResp:    &errs.Error{},
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(*errs.Error)
+				if !ok {
+					return "expected error response"
+				}
+
+				if gotErr.Code != errs.InvalidArgument {
+					return fmt.Sprintf("expected InvalidArgument code, got %v", gotErr.Code)
+				}
+
+				// Error message should mention the item index
+				if !contains(gotErr.Message, "product_id") {
+					return fmt.Sprintf("expected error message to mention missing field, got: %s", gotErr.Message)
+				}
+
+				return ""
+			},
+		},
+	}
+}
+
+// upsertOrderEmptyLineItems400 tests empty line items array validation.
+func upsertOrderEmptyLineItems400(sd apitest.SeedData) []apitest.Table {
+	payload := buildOrderWithEmptyLineItems(sd)
+
+	return []apitest.Table{
+		{
+			Name:       "create-order-empty-line-items",
+			URL:        fmt.Sprintf("/v1/formdata/%s/upsert", sd.Forms[salesOrderForm].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input:      payload,
+			GotResp:    &errs.Error{},
+			ExpResp:    &errs.Error{},
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(*errs.Error)
+				if !ok {
+					return "expected error response"
+				}
+
+				if gotErr.Code != errs.InvalidArgument {
+					return fmt.Sprintf("expected InvalidArgument code, got %v", gotErr.Code)
+				}
+
+				return ""
+			},
+		},
+	}
+}
+
+// upsertBackwardCompatibility200 verifies single-object operations still work.
+func upsertBackwardCompatibility200(sd apitest.SeedData) []apitest.Table {
+	return []apitest.Table{
+		{
+			Name:       "backward-compat-single-user",
+			URL:        fmt.Sprintf("/v1/formdata/%s/upsert", sd.Forms[userForm].ID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			Input: &formdataapp.FormDataRequest{
+				Operations: map[string]formdataapp.OperationMeta{
+					"users": {
+						Operation: "create",
+						Order:     1,
+					},
+				},
+				Data: map[string]json.RawMessage{
+					"users": mustMarshal(map[string]any{
+						"username":         "backwardcompat",
+						"first_name":       "Backward",
+						"last_name":        "Compat",
+						"email":            "backwardcompat@example.com",
+						"password":         "SecurePass123!",
+						"password_confirm": "SecurePass123!",
+						"birthday":         "1990-01-01",
+						"roles":            []string{"USER"},
+						"system_roles":     []string{"USER"},
+						"enabled":          true,
+						"requested_by":     sd.Admins[0].ID,
+					}),
+				},
+			},
+			GotResp: &formdataapp.FormDataResponse{},
+			ExpResp: &formdataapp.FormDataResponse{},
+			CmpFunc: func(got, exp any) string {
+				gotResp, ok := got.(*formdataapp.FormDataResponse)
+				if !ok {
+					return "error occurred"
+				}
+
+				if !gotResp.Success {
+					return "expected success to be true"
+				}
+
+				if _, exists := gotResp.Results["users"]; !exists {
+					return "expected users result to exist"
+				}
+
+				return ""
+			},
+		},
+	}
+}
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsMiddle(s, substr)))
+}
+
+func containsMiddle(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
 
 func mustMarshal(v any) json.RawMessage {
 	data, err := json.Marshal(v)

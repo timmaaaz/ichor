@@ -17,6 +17,10 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/products/brandapp"
 	"github.com/timmaaaz/ichor/app/domain/products/productapp"
 	"github.com/timmaaaz/ichor/app/domain/products/productcategoryapp"
+	"github.com/timmaaaz/ichor/app/domain/products/productcostapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/customersapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/lineitemfulfillmentstatusapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
@@ -39,7 +43,12 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
+	"github.com/timmaaaz/ichor/business/domain/products/productcostbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
@@ -619,24 +628,89 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		}
 	}
 
+	// =========================================================================
+	// Sales Orders Form (for Phase 4 testing)
+	// =========================================================================
+
+	// Create product costs for price lookup
+	productCosts, err := productcostbus.TestSeedProductCosts(ctx, len(products), productIDs, busDomain.ProductCost)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding product costs : %w", err)
+	}
+
+	// Create customers
+	customerIDs := []uuid.UUID{tu1.ID}
+	customers, err := customersbus.TestSeedCustomers(ctx, 2, strIDs, contactIDs, customerIDs, busDomain.Customers)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding customers : %w", err)
+	}
+
+	// Create order fulfillment statuses
+	orderStatuses, err := orderfulfillmentstatusbus.TestSeedOrderFulfillmentStatuses(ctx, busDomain.OrderFulfillmentStatus)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding order fulfillment statuses : %w", err)
+	}
+
+	// Create line item fulfillment statuses
+	lineItemStatuses, err := lineitemfulfillmentstatusbus.TestSeedLineItemFulfillmentStatuses(ctx, busDomain.LineItemFulfillmentStatus)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding line item fulfillment statuses : %w", err)
+	}
+
+	// Create sales order form with line items
+	salesOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
+		Name: "Sales Order Creation Form",
+	})
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("creating sales order form : %w", err)
+	}
+
+	orderEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "orders")
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("querying order entity : %w", err)
+	}
+
+	lineItemEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "order_line_items")
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("querying line item entity : %w", err)
+	}
+
+	salesOrderFormFields := seedmodels.GetFullSalesOrderFormFields(
+		salesOrderForm.ID,
+		orderEntity.ID,
+		lineItemEntity.ID,
+	)
+
+	for _, ff := range salesOrderFormFields {
+		_, err = busDomain.FormField.Create(ctx, ff)
+		if err != nil {
+			return apitest.SeedData{}, fmt.Errorf("creating sales order form field : %w", err)
+		}
+	}
+
 	forms := []formapp.Form{
 		formapp.ToAppForm(userForm),
 		formapp.ToAppForm(assetForm),
 		formapp.ToAppForm(multiForm),
+		formapp.ToAppForm(salesOrderForm),
 	}
 
 	return apitest.SeedData{
-		Admins:             []apitest.User{tu2},
-		Users:              []apitest.User{tu1},
-		ProductCategories:  productcategoryapp.ToAppProductCategories(pc),
-		ContactInfos:       contactinfosapp.ToAppContactInfos(contacts),
-		Brands:             brandapp.ToAppBrands(brands),
-		Products:           productapp.ToAppProducts(products),
-		InventoryLocations: inventorylocationapp.ToAppInventoryLocations(inventoryLocations),
-		InventoryItems:     inventoryitemapp.ToAppInventoryItems(inventoryItems),
-		Forms:              forms,
-		AssetTypes:         assettypeapp.ToAppAssetTypes(ats),
-		AssetConditions:    assetconditionapp.ToAppAssetConditions(assetConditions),
-		ValidAssets:        validassetapp.ToAppValidAssets(as),
+		Admins:                     []apitest.User{tu2},
+		Users:                      []apitest.User{tu1},
+		ProductCategories:          productcategoryapp.ToAppProductCategories(pc),
+		ContactInfos:               contactinfosapp.ToAppContactInfos(contacts),
+		Brands:                     brandapp.ToAppBrands(brands),
+		Products:                   productapp.ToAppProducts(products),
+		ProductCosts:               productcostapp.ToAppProductCosts(productCosts),
+		InventoryLocations:         inventorylocationapp.ToAppInventoryLocations(inventoryLocations),
+		InventoryItems:             inventoryitemapp.ToAppInventoryItems(inventoryItems),
+		Forms:                      forms,
+		AssetTypes:                 assettypeapp.ToAppAssetTypes(ats),
+		AssetConditions:            assetconditionapp.ToAppAssetConditions(assetConditions),
+		ValidAssets:                validassetapp.ToAppValidAssets(as),
+		Customers:                  customersapp.ToAppCustomers(customers),
+		OrderFulfillmentStatuses:   orderfulfillmentstatusapp.ToAppOrderFulfillmentStatuses(orderStatuses),
+		LineItemFulfillmentStatuses: lineitemfulfillmentstatusapp.ToAppLineItemFulfillmentStatuses(lineItemStatuses),
 	}, nil
 }

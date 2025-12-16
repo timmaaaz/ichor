@@ -89,13 +89,39 @@ func (a *App) ValidateForm(
 	}
 
 	// Build a map of entity names to their field names
-	// We need to match the entity_id in fields to the entity names in the request
-	// For now, we'll build a map of all field names and check against all entities
-	// This is a limitation - ideally we'd query workflow.entities to map IDs to names
+	// For lineitems field type, we need to extract nested field names from the config
+	// Entity names match the table name (e.g., "orders", "order_line_items")
+	entityFieldsMap := make(map[string][]string)
 
-	allFieldNames := make([]string, len(fields))
-	for i, field := range fields {
-		allFieldNames[i] = field.Name
+	for _, field := range fields {
+		// Use table name as entity key (matches registry entity names)
+		entityKey := field.EntityTable
+
+		// Handle lineitems field type specially
+		if field.FieldType == "lineitems" {
+			// Parse the LineItemsFieldConfig from the Config JSON
+			var lineItemsConfig struct {
+				ParentField string `json:"parent_field"`
+				Fields      []struct {
+					Name string `json:"name"`
+				} `json:"fields"`
+			}
+			if err := json.Unmarshal(field.Config, &lineItemsConfig); err == nil {
+				// Add the parent field (FK that references parent entity)
+				// This field is auto-populated via template variables, but still needs to be in available fields
+				if lineItemsConfig.ParentField != "" {
+					entityFieldsMap[entityKey] = append(entityFieldsMap[entityKey], lineItemsConfig.ParentField)
+				}
+
+				// Add all nested field names to this entity's available fields
+				for _, nestedField := range lineItemsConfig.Fields {
+					entityFieldsMap[entityKey] = append(entityFieldsMap[entityKey], nestedField.Name)
+				}
+			}
+		} else {
+			// Regular field - add to entity's field list
+			entityFieldsMap[entityKey] = append(entityFieldsMap[entityKey], field.Name)
+		}
 	}
 
 	// Validate each entity operation
@@ -132,15 +158,28 @@ func (a *App) ValidateForm(
 		// Extract required fields from model using reflection
 		requiredFields := formdataregistry.GetRequiredFields(model)
 
+		// Get available fields for this specific entity
+		entityFields, exists := entityFieldsMap[entityName]
+		if !exists {
+			// Entity has no form fields configured
+			validationErrors = append(validationErrors, FormValidationError{
+				EntityName:      entityName,
+				Operation:       operation.String(),
+				MissingFields:   requiredFields,
+				AvailableFields: []string{},
+			})
+			continue
+		}
+
 		// Check which required fields are missing
-		missingFields := findMissingFields(requiredFields, allFieldNames)
+		missingFields := findMissingFields(requiredFields, entityFields)
 
 		if len(missingFields) > 0 {
 			validationErrors = append(validationErrors, FormValidationError{
 				EntityName:      entityName,
 				Operation:       operation.String(),
 				MissingFields:   missingFields,
-				AvailableFields: allFieldNames,
+				AvailableFields: entityFields,
 			})
 		}
 	}

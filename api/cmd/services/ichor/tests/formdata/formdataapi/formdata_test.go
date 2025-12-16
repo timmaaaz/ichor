@@ -35,4 +35,14 @@ func Test_FormData(t *testing.T) {
 	test.Run(t, validate400(sd), "validate-400")
 	test.Run(t, validate401(sd), "validate-401")
 	test.Run(t, validate404(sd), "validate-404")
+
+	// -------------------------------------------------------------------------
+	// Phase 4: Array Operation Tests
+	// -------------------------------------------------------------------------
+
+	test.Run(t, upsertOrderWithSingleLineItem200(sd), "upsert-order-single-line-item-200")
+	test.Run(t, upsertOrderWithMultipleLineItems200(sd), "upsert-order-multiple-line-items-200")
+	test.Run(t, upsertOrderWithArrayValidationError400(sd), "upsert-order-array-validation-400")
+	test.Run(t, upsertOrderEmptyLineItems400(sd), "upsert-order-empty-line-items-400")
+	test.Run(t, upsertBackwardCompatibility200(sd), "upsert-backward-compat-200")
 }
