@@ -259,9 +259,9 @@ func GetFullSalesOrderFormFields(
 				Type:     "dropdown",
 				Required: true,
 				DropdownConfig: &formfieldbus.DropdownConfig{
-					TableConfigName: "products_lookup",
-					LabelColumn:     "name",
-					ValueColumn:     "id",
+					Entity:      "products.products",
+					LabelColumn: "name",
+					ValueColumn: "id",
 				},
 			},
 			{
@@ -285,6 +285,11 @@ func GetFullSalesOrderFormFields(
 				Label:    "Fulfillment Status",
 				Type:     "dropdown",
 				Required: true,
+				DropdownConfig: &formfieldbus.DropdownConfig{
+					Entity:      "sales.line_item_fulfillment_statuses",
+					LabelColumn: "name",
+					ValueColumn: "id",
+				},
 			},
 			{
 				Name:     "created_by",

@@ -57,10 +57,10 @@ type UpdateFormField struct {
 
 // DropdownConfig defines configuration for dropdown fields.
 type DropdownConfig struct {
-	TableConfigName string   `json:"table_config_name"`
-	LabelColumn     string   `json:"label_column"`
-	ValueColumn     string   `json:"value_column"`
-	DisplayColumns  []string `json:"additional_display_columns,omitempty"`
+	Entity         string   `json:"entity"`                               // Format: "schema.table" (e.g., "products.products")
+	LabelColumn    string   `json:"label_column"`
+	ValueColumn    string   `json:"value_column"`
+	DisplayColumns []string `json:"additional_display_columns,omitempty"`
 }
 
 // ValidationConfig defines validation rules for fields.
