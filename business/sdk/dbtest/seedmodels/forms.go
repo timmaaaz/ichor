@@ -300,7 +300,7 @@ func GetFullSalesOrderFormFields(
 		},
 		ItemLabel:         "Order Items",
 		SingularItemLabel: "Item",
-		MinItems:          1,
+		MinItems:          0,
 		MaxItems:          100,
 	}
 
