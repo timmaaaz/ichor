@@ -140,10 +140,17 @@ var SimpleConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"id": {
+				Name:   "id",
+				Header: "ID",
+				Width:  100,
+				Type:   "uuid",
+			},
 			"current_stock": {
 				Name:       "current_stock",
 				Header:     "Current Stock",
 				Width:      120,
+				Type:       "number",
 				Align:      "right",
 				Sortable:   true,
 				Filterable: true,
@@ -156,6 +163,7 @@ var SimpleConfig = &tablebuilder.Config{
 				Name:   "product_id",
 				Header: "Product",
 				Width:  200,
+				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
 					URL:   "/products/{product_id}",
 					Label: "View Product",
@@ -165,6 +173,7 @@ var SimpleConfig = &tablebuilder.Config{
 				Name:   "location_id",
 				Header: "Location",
 				Width:  200,
+				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
 					URL:   "/inventory/locations/{location_id}",
 					Label: "View Location",
@@ -205,6 +214,32 @@ var PageConfig = &tablebuilder.Config{
 		},
 	},
 	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"id": {
+				Name:   "id",
+				Header: "ID",
+				Width:  100,
+				Type:   "uuid",
+			},
+			"name": {
+				Name:   "name",
+				Header: "Name",
+				Width:  200,
+				Type:   "string",
+			},
+			"sku": {
+				Name:   "sku",
+				Header: "SKU",
+				Width:  120,
+				Type:   "string",
+			},
+			"is_active": {
+				Name:   "is_active",
+				Header: "Active",
+				Width:  80,
+				Type:   "boolean",
+			},
+		},
 		Pagination: &tablebuilder.PaginationConfig{
 			Enabled:         true,
 			PageSizes:       []int{10, 25, 50, 100},
@@ -283,10 +318,17 @@ var ComplexConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"id": {
+				Name:   "id",
+				Header: "ID",
+				Width:  100,
+				Type:   "uuid",
+			},
 			"product_name": {
 				Name:       "product_name",
 				Header:     "Product",
 				Width:      250,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -294,6 +336,7 @@ var ComplexConfig = &tablebuilder.Config{
 				Name:   "current_quantity",
 				Header: "Current Stock",
 				Width:  120,
+				Type:   "number",
 				Align:  "right",
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
@@ -304,6 +347,7 @@ var ComplexConfig = &tablebuilder.Config{
 				Name:         "stock_status",
 				Header:       "Status",
 				Width:        100,
+				Type:         "computed",
 				Align:        "center",
 				CellTemplate: "status",
 			},
@@ -311,6 +355,7 @@ var ComplexConfig = &tablebuilder.Config{
 				Name:   "stock_percentage",
 				Header: "Capacity",
 				Width:  100,
+				Type:   "computed",
 				Align:  "right",
 				Format: &tablebuilder.FormatConfig{
 					Type:      "percent",
@@ -321,10 +366,29 @@ var ComplexConfig = &tablebuilder.Config{
 				Name:   "product_id",
 				Header: "Product",
 				Width:  200,
+				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
 					URL:   "/products/products/{product_id}",
 					Label: "View Product",
 				},
+			},
+			"reorder_point": {
+				Name:   "reorder_point",
+				Header: "Reorder Point",
+				Width:  100,
+				Type:   "number",
+			},
+			"maximum_stock": {
+				Name:   "maximum_stock",
+				Header: "Maximum Stock",
+				Width:  100,
+				Type:   "number",
+			},
+			"sku": {
+				Name:   "sku",
+				Header: "SKU",
+				Width:  120,
+				Type:   "string",
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
@@ -383,6 +447,12 @@ var KPIChartConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"quantity": {
+				Name:   "quantity",
+				Header: "Quantity",
+				Width:  100,
+				Type:   "number",
+			},
 			"_chart": {
 				CellTemplate: `{"chartType":"kpi","valueColumns":["quantity"],"kpi":{"label":"Total Inventory","format":"number"}}`,
 			},
@@ -422,6 +492,18 @@ var BarChartConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"location_id": {
+				Name:   "location_id",
+				Header: "Location",
+				Width:  100,
+				Type:   "uuid",
+			},
+			"quantity": {
+				Name:   "quantity",
+				Header: "Quantity",
+				Width:  100,
+				Type:   "number",
+			},
 			"_chart": {
 				CellTemplate: `{"chartType":"bar","categoryColumn":"location_id","valueColumns":["quantity"]}`,
 			},
@@ -461,6 +543,18 @@ var PieChartConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"location_id": {
+				Name:   "location_id",
+				Header: "Location",
+				Width:  100,
+				Type:   "uuid",
+			},
+			"quantity": {
+				Name:   "quantity",
+				Header: "Quantity",
+				Width:  100,
+				Type:   "number",
+			},
 			"_chart": {
 				CellTemplate: `{"chartType":"pie","categoryColumn":"location_id","valueColumns":["quantity"]}`,
 			},

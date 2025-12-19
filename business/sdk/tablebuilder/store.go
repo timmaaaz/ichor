@@ -7,26 +7,47 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // Store manages table query operations
 type Store struct {
-	log     *logger.Logger
-	db      *sqlx.DB
-	builder *QueryBuilder
-	eval    *Evaluator
+	log           *logger.Logger
+	db            *sqlx.DB
+	builder       *QueryBuilder
+	eval          *Evaluator
+	introspection *introspectionbus.Business // optional, for schema introspection
+}
+
+// StoreOption configures optional Store dependencies.
+type StoreOption func(*Store)
+
+// WithIntrospection adds schema introspection support to the Store.
+// When configured, the Store will query actual PostgreSQL column types
+// instead of relying solely on column name inference.
+func WithIntrospection(introspection *introspectionbus.Business) StoreOption {
+	return func(s *Store) {
+		s.introspection = introspection
+	}
 }
 
 // NewStore creates a new table builder store
-func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
-	return &Store{
+func NewStore(log *logger.Logger, db *sqlx.DB, options ...StoreOption) *Store {
+	s := &Store{
 		log:     log,
 		db:      db,
 		builder: NewQueryBuilder(),
 		eval:    NewEvaluator(),
+		// introspection is nil by default - will fall back to explicit types or inference
 	}
+
+	for _, opt := range options {
+		opt(s)
+	}
+
+	return s
 }
 
 func (s *Store) FetchTableDataCount(ctx context.Context, config *Config, params QueryParams) (int, error) {
@@ -322,7 +343,7 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			DatabaseName: col.Name,
 			Field:        getFieldName(col),
 			DisplayName:  getDisplayName(col),
-			Type:         inferColumnType(col.Name),
+			Type:         defaultColumnType,
 			SourceSchema: ds.Schema,
 		}
 
@@ -417,7 +438,7 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 			meta := ColumnMetadata{
 				DisplayName:  getDisplayName(col),
 				Field:        getFieldName(col),
-				Type:         inferColumnType(col.Name),
+				Type:         defaultColumnType,
 				SourceTable:  tableRef, // Use alias or table name
 				SourceColumn: col.Name,
 				SourceSchema: ft.Schema,
@@ -525,24 +546,10 @@ func getDisplayName(col ColumnDefinition) string {
 	return col.Name // "quantity"
 }
 
-func inferColumnType(name string) string {
-	lower := strings.ToLower(name)
-
-	if strings.HasSuffix(lower, "_id") || lower == "id" {
-		return "uuid"
-	}
-	if strings.Contains(lower, "date") || strings.Contains(lower, "time") {
-		return "datetime"
-	}
-	if strings.Contains(lower, "quantity") || strings.Contains(lower, "count") || strings.Contains(lower, "price") {
-		return "number"
-	}
-	if strings.Contains(lower, "is_") || strings.Contains(lower, "has_") {
-		return "boolean"
-	}
-
-	return "string"
-}
+// defaultColumnType is the type used when no explicit type is configured
+// in VisualSettings.Columns[].Type. All column types should be explicitly
+// configured in the table config's visual settings for accurate metadata.
+const defaultColumnType = "string"
 
 // transformData transforms the data according to configuration
 func (s *Store) transformData(data []TableRow, config *Config) []TableRow {

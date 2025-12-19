@@ -767,6 +767,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Name:       "full_name",
 				Header:     "Name",
 				Width:      200,
+				Type:       "computed",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -774,6 +775,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Name:       "username",
 				Header:     "Username",
 				Width:      150,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -781,12 +783,14 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Name:       "email",
 				Header:     "Email",
 				Width:      250,
+				Type:       "string",
 				Filterable: true,
 			},
 			"title_name": {
 				Name:       "title_name",
 				Header:     "Title",
 				Width:      150,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -794,6 +798,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Name:       "office_name",
 				Header:     "Office",
 				Width:      150,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -810,6 +815,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Header: "Active",
 				Width:  80,
 				Align:  "center",
+				Type:   "boolean",
 				Format: &tablebuilder.FormatConfig{
 					Type: "boolean",
 				},
@@ -818,6 +824,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Name:     "date_hired",
 				Header:   "Date Hired",
 				Width:    120,
+				Type:     "datetime",
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "date",
@@ -829,6 +836,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Header: "Days Employed",
 				Width:  120,
 				Align:  "right",
+				Type:   "computed",
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
 					Precision: 0,
@@ -838,10 +846,29 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Name:   "id",
 				Header: "Actions",
 				Width:  100,
+				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
 					URL:   "/admin/users/{id}",
 					Label: "View",
 				},
+			},
+			"first_name": {
+				Name:   "first_name",
+				Header: "First Name",
+				Width:  150,
+				Type:   "string",
+			},
+			"last_name": {
+				Name:   "last_name",
+				Header: "Last Name",
+				Width:  150,
+				Type:   "string",
+			},
+			"created_date": {
+				Name:   "created_date",
+				Header: "Created Date",
+				Width:  150,
+				Type:   "datetime",
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
@@ -911,6 +938,7 @@ var adminRolesTableConfig = &tablebuilder.Config{
 				Name:       "name",
 				Header:     "Role Name",
 				Width:      200,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -918,12 +946,14 @@ var adminRolesTableConfig = &tablebuilder.Config{
 				Name:       "description",
 				Header:     "Description",
 				Width:      400,
+				Type:       "string",
 				Filterable: true,
 			},
 			"id": {
 				Name:   "id",
 				Header: "Actions",
 				Width:  100,
+				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
 					URL:   "/admin/roles/{id}",
 					Label: "View",
@@ -991,10 +1021,17 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"id": {
+				Name:   "id",
+				Header: "ID",
+				Width:  100,
+				Type:   "uuid",
+			},
 			"role_name": {
 				Name:       "role_name",
 				Header:     "Role",
 				Width:      150,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -1002,6 +1039,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Name:       "table_name",
 				Header:     "Table",
 				Width:      200,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -1009,6 +1047,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Name:   "can_create",
 				Header: "Create",
 				Width:  80,
+				Type:   "boolean",
 				Align:  "center",
 				Format: &tablebuilder.FormatConfig{
 					Type: "boolean",
@@ -1018,6 +1057,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Name:   "can_read",
 				Header: "Read",
 				Width:  80,
+				Type:   "boolean",
 				Align:  "center",
 				Format: &tablebuilder.FormatConfig{
 					Type: "boolean",
@@ -1027,6 +1067,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Name:   "can_update",
 				Header: "Update",
 				Width:  80,
+				Type:   "boolean",
 				Align:  "center",
 				Format: &tablebuilder.FormatConfig{
 					Type: "boolean",
@@ -1036,6 +1077,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Name:   "can_delete",
 				Header: "Delete",
 				Width:  80,
+				Type:   "boolean",
 				Align:  "center",
 				Format: &tablebuilder.FormatConfig{
 					Type: "boolean",
@@ -1141,6 +1183,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Name:     "executed_at",
 				Header:   "Execution Time",
 				Width:    180,
+				Type:     "datetime",
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
@@ -1151,6 +1194,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Name:       "rule_name",
 				Header:     "Rule",
 				Width:      200,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -1158,6 +1202,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Name:       "entity_type",
 				Header:     "Entity Type",
 				Width:      150,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -1165,6 +1210,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Name:         "status",
 				Header:       "Status",
 				Width:        120,
+				Type:         "status",
 				Sortable:     true,
 				Filterable:   true,
 				CellTemplate: "status",
@@ -1173,6 +1219,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Name:     "execution_time_ms",
 				Header:   "Duration (ms)",
 				Width:    120,
+				Type:     "number",
 				Align:    "right",
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
@@ -1184,11 +1231,13 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Name:   "error_message",
 				Header: "Error",
 				Width:  300,
+				Type:   "string",
 			},
 			"id": {
 				Name:   "id",
 				Header: "Details",
 				Width:  100,
+				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
 					URL:   "/admin/audit/{id}",
 					Label: "View",
@@ -1293,10 +1342,21 @@ var adminConfigTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"id": {
+				Name:   "id",
+				Header: "Actions",
+				Width:  100,
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/admin/config/{id}",
+					Label: "View",
+				},
+			},
 			"name": {
 				Name:       "name",
 				Header:     "Config Name",
 				Width:      250,
+				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
@@ -1304,37 +1364,43 @@ var adminConfigTableConfig = &tablebuilder.Config{
 				Name:       "description",
 				Header:     "Description",
 				Width:      400,
+				Type:       "string",
 				Filterable: true,
 			},
-			"created_by_username": {
-				Name:       "created_by_username",
-				Header:     "Created By",
-				Width:      150,
-				Filterable: true,
-			},
-			"updated_by_username": {
-				Name:       "updated_by_username",
-				Header:     "Updated By",
-				Width:      150,
-				Filterable: true,
-			},
-			"updated_date": {
-				Name:     "updated_date",
-				Header:   "Last Updated",
+			"created_date": {
+				Name:     "created_date",
+				Header:   "Created Date",
 				Width:    180,
+				Type:     "datetime",
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
 					Format: "2006-01-02 15:04",
 				},
 			},
-			"id": {
-				Name:   "id",
-				Header: "Actions",
-				Width:  100,
-				Link: &tablebuilder.LinkConfig{
-					URL:   "/admin/config/{id}",
-					Label: "View",
+			"created_by_username": {
+				Name:       "created_by_username",
+				Header:     "Created By",
+				Width:      150,
+				Type:       "string",
+				Filterable: true,
+			},
+			"updated_by_username": {
+				Name:       "updated_by_username",
+				Header:     "Updated By",
+				Width:      150,
+				Type:       "string",
+				Filterable: true,
+			},
+			"updated_date": {
+				Name:     "updated_date",
+				Header:   "Last Updated",
+				Width:    180,
+				Type:     "datetime",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "2006-01-02 15:04",
 				},
 			},
 		},

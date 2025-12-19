@@ -89,6 +89,12 @@ var productsList = &tablebuilder.Config{
 		},
 	},
 	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"id":        {Type: "uuid"},
+			"name":      {Type: "string"},
+			"sku":       {Type: "string"},
+			"is_active": {Type: "boolean"},
+		},
 		Pagination: &tablebuilder.PaginationConfig{
 			Enabled:         true,
 			PageSizes:       []int{10, 25, 50, 100},
@@ -146,27 +152,25 @@ var currentOrders = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"order_number": {
-				Name:       "order_number",
-				Header:     "Order #",
-				Width:      150,
-				Sortable:   true,
-				Filterable: true,
-			},
-			"order_date": {
-				Name:   "order_date",
-				Header: "Order Date",
-				Width:  120,
-				Format: &tablebuilder.FormatConfig{
-					Type:   "date",
-					Format: "2006-01-02",
-				},
-			},
-			"fulfillment_status_name": {
-				Name:   "fulfillment_status_name",
-				Header: "Status",
-				Width:  120,
-			},
+			// orders table columns
+			"orders_id":                  {Type: "uuid"},
+			"order_number":               {Type: "string", Name: "order_number", Header: "Order #", Width: 150, Sortable: true, Filterable: true},
+			"order_date":                 {Type: "datetime", Name: "order_date", Header: "Order Date", Width: 120, Format: &tablebuilder.FormatConfig{Type: "date", Format: "2006-01-02"}},
+			"order_due_date":             {Type: "datetime"},
+			"order_created_date":         {Type: "datetime"},
+			"order_updated_date":         {Type: "datetime"},
+			"order_fulfillment_status_id": {Type: "uuid"},
+			"order_customer_id":          {Type: "uuid"},
+			// customers table columns
+			"customer_id":               {Type: "uuid"},
+			"customer_contact_info_id":  {Type: "uuid"},
+			"customer_delivery_address_id": {Type: "uuid"},
+			"customer_notes":            {Type: "string"},
+			"customer_created_date":     {Type: "datetime"},
+			"customer_updated_date":     {Type: "datetime"},
+			// order_fulfillment_statuses columns
+			"fulfillment_status_name":        {Type: "string", Name: "fulfillment_status_name", Header: "Status", Width: 120},
+			"fulfillment_status_description": {Type: "string"},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{},
 	},
@@ -217,7 +221,9 @@ var inventoryItems = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"id": {Type: "uuid"},
 			"current_stock": {
+				Type:       "number",
 				Name:       "current_stock",
 				Header:     "Current Stock",
 				Width:      120,
@@ -230,6 +236,7 @@ var inventoryItems = &tablebuilder.Config{
 				},
 			},
 			"product_id": {
+				Type:   "uuid",
 				Name:   "product_id",
 				Header: "Product",
 				Width:  200,
@@ -239,6 +246,7 @@ var inventoryItems = &tablebuilder.Config{
 				},
 			},
 			"location_id": {
+				Type:   "uuid",
 				Name:   "location_id",
 				Header: "Location",
 				Width:  200,
@@ -322,7 +330,12 @@ var currentInventoryProducts = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			// inventory_items columns
+			"id":            {Type: "uuid"},
+			"reorder_point": {Type: "number"},
+			"maximum_stock": {Type: "number"},
 			"product_name": {
+				Type:       "string",
 				Name:       "product_name",
 				Header:     "Product",
 				Width:      250,
@@ -330,6 +343,7 @@ var currentInventoryProducts = &tablebuilder.Config{
 				Filterable: true,
 			},
 			"current_quantity": {
+				Type:   "number",
 				Name:   "current_quantity",
 				Header: "Current Stock",
 				Width:  120,
@@ -340,6 +354,7 @@ var currentInventoryProducts = &tablebuilder.Config{
 				},
 			},
 			"stock_status": {
+				Type:         "computed",
 				Name:         "stock_status",
 				Header:       "Status",
 				Width:        100,
@@ -347,6 +362,7 @@ var currentInventoryProducts = &tablebuilder.Config{
 				CellTemplate: "status",
 			},
 			"stock_percentage": {
+				Type:   "computed",
 				Name:   "stock_percentage",
 				Header: "Capacity",
 				Width:  100,
@@ -357,6 +373,7 @@ var currentInventoryProducts = &tablebuilder.Config{
 				},
 			},
 			"product_id": {
+				Type:   "uuid",
 				Name:   "product_id",
 				Header: "Product",
 				Width:  200,
@@ -365,6 +382,7 @@ var currentInventoryProducts = &tablebuilder.Config{
 					Label: "View Product",
 				},
 			},
+			"sku": {Type: "string"},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
 			{
@@ -493,7 +511,16 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			// inventory_adjustments columns
+			"notes":        {Type: "string"},
+			"created_date": {Type: "datetime"},
+			// foreign table columns
+			"aisle": {Type: "string"},
+			"rack":  {Type: "string"},
+			"shelf": {Type: "string"},
+			"bin":   {Type: "string"},
 			"product_name": {
+				Type:       "string",
 				Name:       "product_name",
 				Header:     "Product",
 				Width:      200,
@@ -501,12 +528,14 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 				Filterable: true,
 			},
 			"product_sku": {
+				Type:       "string",
 				Name:       "product_sku",
 				Header:     "SKU",
 				Width:      120,
 				Filterable: true,
 			},
 			"warehouse_name": {
+				Type:       "string",
 				Name:       "warehouse_name",
 				Header:     "Warehouse",
 				Width:      150,
@@ -514,12 +543,14 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 				Filterable: true,
 			},
 			"location_code": {
+				Type:       "computed",
 				Name:       "location_code",
 				Header:     "Location",
 				Width:      150,
 				Filterable: true,
 			},
 			"quantity_change": {
+				Type:     "number",
 				Name:     "quantity_change",
 				Header:   "Qty Change",
 				Width:    100,
@@ -531,24 +562,28 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 				},
 			},
 			"reason_code": {
+				Type:       "string",
 				Name:       "reason_code",
 				Header:     "Reason",
 				Width:      120,
 				Filterable: true,
 			},
 			"adjusted_by_username": {
+				Type:       "string",
 				Name:       "adjusted_by_username",
 				Header:     "Adjusted By",
 				Width:      130,
 				Filterable: true,
 			},
 			"approved_by_username": {
+				Type:       "string",
 				Name:       "approved_by_username",
 				Header:     "Approved By",
 				Width:      130,
 				Filterable: true,
 			},
 			"adjustment_date": {
+				Type:     "datetime",
 				Name:     "adjustment_date",
 				Header:   "Date",
 				Width:    150,
@@ -559,6 +594,7 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 				},
 			},
 			"id": {
+				Type:   "uuid",
 				Name:   "id",
 				Header: "Actions",
 				Width:  100,
@@ -1998,4 +2034,104 @@ func Test_ChartTransformer(t *testing.T) {
 			t.Error("expected error for unsupported chart type")
 		}
 	})
+}
+
+// Test_ColumnTypeFromVisualSettings verifies that column types are correctly
+// read from VisualSettings.Columns[].Type and override the default "string" type.
+func Test_ColumnTypeFromVisualSettings(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_ColumnTypeFromVisualSettings")
+	log := logger.New(io.Discard, logger.LevelInfo, "ADMIN", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
+
+	store := tablebuilder.NewStore(log, db.DB)
+
+	// Seed minimal data for the test - we need at least one product
+	busDomain := db.BusDomain
+	ctx := context.Background()
+
+	// Seed required data for the test
+	users, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, busDomain.User)
+	if err != nil {
+		t.Fatalf("seeding users: %v", err)
+	}
+
+	_ = users
+
+	// Test configuration with explicit types in VisualSettings
+	configWithTypes := &tablebuilder.Config{
+		Title:         "Column Types Test",
+		WidgetType:    "table",
+		Visualization: "table",
+		DataSource: []tablebuilder.DataSource{
+			{
+				Type:   "query",
+				Source: "users",
+				Schema: "core",
+				Select: tablebuilder.SelectConfig{
+					Columns: []tablebuilder.ColumnDefinition{
+						{Name: "id", TableColumn: "users.id"},
+						{Name: "username", TableColumn: "users.username"},
+						{Name: "enabled", TableColumn: "users.enabled"},
+						{Name: "created_date", TableColumn: "users.created_date"},
+					},
+				},
+			},
+		},
+		VisualSettings: tablebuilder.VisualSettings{
+			Columns: map[string]tablebuilder.ColumnConfig{
+				"id": {
+					Name: "id",
+					Type: "uuid",
+				},
+				"username": {
+					Name: "username",
+					Type: "string",
+				},
+				"enabled": {
+					Name: "enabled",
+					Type: "boolean",
+				},
+				"created_date": {
+					Name: "created_date",
+					Type: "datetime",
+				},
+			},
+		},
+	}
+
+	params := tablebuilder.QueryParams{
+		Page: 1,
+		Rows: 10,
+	}
+
+	result, err := store.FetchTableData(ctx, configWithTypes, params)
+	if err != nil {
+		t.Fatalf("failed to fetch table data: %v", err)
+	}
+
+	// Create a map for easy lookup
+	columnTypes := make(map[string]string)
+	for _, col := range result.Meta.Columns {
+		columnTypes[col.Field] = col.Type
+	}
+
+	// Test cases: field name -> expected type
+	expectedTypes := map[string]string{
+		"id":           "uuid",     // Explicit type from VisualSettings
+		"username":     "string",   // No Type field, should default to "string"
+		"enabled":      "boolean",  // Explicit type from VisualSettings
+		"created_date": "datetime", // Explicit type from VisualSettings
+	}
+
+	for field, expectedType := range expectedTypes {
+		actualType, found := columnTypes[field]
+		if !found {
+			t.Errorf("column %q not found in metadata", field)
+			continue
+		}
+		if actualType != expectedType {
+			t.Errorf("column %q type mismatch: got %q, want %q", field, actualType, expectedType)
+		}
+	}
 }

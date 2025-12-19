@@ -10,9 +10,10 @@ var (
 	ErrInvalidDataSource = errors.New("invalid data source configuration")
 
 	// Column errors
-	ErrColumnNotFound  = errors.New("column not found")
-	ErrInvalidColumn   = errors.New("invalid column configuration")
-	ErrDuplicateColumn = errors.New("duplicate column name")
+	ErrColumnNotFound    = errors.New("column not found")
+	ErrInvalidColumn     = errors.New("invalid column configuration")
+	ErrDuplicateColumn   = errors.New("duplicate column name")
+	ErrMissingColumnType = errors.New("column missing type in visual settings")
 
 	// Query errors
 	ErrInvalidQuery  = errors.New("invalid query")

@@ -363,6 +363,90 @@ func (c *Config) Validate() error {
 			return ErrInvalidDataSource
 		}
 	}
+
+	// Validate that all columns have explicit types in VisualSettings
+	if err := c.validateColumnTypes(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateColumnTypes ensures all columns have valid types defined in VisualSettings.
+// This is required for type-aware filtering, charting, and other type-dependent features.
+// Chart widgets are skipped because they use ChartVisualSettings via the "_chart" key instead.
+func (c *Config) validateColumnTypes() error {
+	if len(c.DataSource) == 0 {
+		return nil
+	}
+
+	// Skip validation for chart widgets - they use ChartVisualSettings via "_chart" key
+	// and don't require column-level Type fields
+	if c.WidgetType == "chart" {
+		return nil
+	}
+
+	ds := c.DataSource[0]
+
+	// Check regular columns
+	for _, col := range ds.Select.Columns {
+		fieldName := col.Name
+		if col.Alias != "" {
+			fieldName = col.Alias
+		}
+
+		vs, ok := c.VisualSettings.Columns[fieldName]
+		if !ok || vs.Type == "" {
+			return fmt.Errorf("%w: %s", ErrMissingColumnType, fieldName)
+		}
+		if !IsValidColumnType(vs.Type) {
+			return fmt.Errorf("%w: %s has invalid type %q", ErrInvalidColumn, fieldName, vs.Type)
+		}
+	}
+
+	// Check foreign table columns recursively
+	if err := c.validateForeignTableColumnTypes(ds.Select.ForeignTables); err != nil {
+		return err
+	}
+
+	// Check computed columns (they should have type "computed" or a specific type)
+	for _, cc := range ds.Select.ClientComputedColumns {
+		vs, ok := c.VisualSettings.Columns[cc.Name]
+		if !ok || vs.Type == "" {
+			return fmt.Errorf("%w: %s (computed)", ErrMissingColumnType, cc.Name)
+		}
+		if !IsValidColumnType(vs.Type) {
+			return fmt.Errorf("%w: %s has invalid type %q", ErrInvalidColumn, cc.Name, vs.Type)
+		}
+	}
+
+	return nil
+}
+
+// validateForeignTableColumnTypes recursively validates column types for foreign tables.
+func (c *Config) validateForeignTableColumnTypes(foreignTables []ForeignTable) error {
+	for _, ft := range foreignTables {
+		for _, col := range ft.Columns {
+			fieldName := col.Name
+			if col.Alias != "" {
+				fieldName = col.Alias
+			}
+
+			vs, ok := c.VisualSettings.Columns[fieldName]
+			if !ok || vs.Type == "" {
+				return fmt.Errorf("%w: %s (from %s.%s)", ErrMissingColumnType, fieldName, ft.Schema, ft.Table)
+			}
+			if !IsValidColumnType(vs.Type) {
+				return fmt.Errorf("%w: %s has invalid type %q", ErrInvalidColumn, fieldName, vs.Type)
+			}
+		}
+
+		// Recursively check nested foreign tables
+		if err := c.validateForeignTableColumnTypes(ft.ForeignTables); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
