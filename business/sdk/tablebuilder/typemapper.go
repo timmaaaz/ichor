@@ -12,6 +12,7 @@ var ValidColumnTypes = map[string]bool{
 	"uuid":     true, // UUID type
 	"status":   true, // Enum/status fields (renders as dropdown)
 	"computed": true, // Client-computed columns
+	"lookup":   true, // Lookup dropdown fields (FK references with searchable dropdown)
 }
 
 // IsValidColumnType returns true if the given type is a valid column type.

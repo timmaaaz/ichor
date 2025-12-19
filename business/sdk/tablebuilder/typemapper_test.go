@@ -6,7 +6,7 @@ import (
 )
 
 func Test_IsValidColumnType(t *testing.T) {
-	validTypes := []string{"string", "number", "datetime", "boolean", "uuid", "status", "computed"}
+	validTypes := []string{"string", "number", "datetime", "boolean", "uuid", "status", "computed", "lookup"}
 	invalidTypes := []string{"", "invalid", "text", "integer", "int", "date", "VARCHAR"}
 
 	for _, typ := range validTypes {

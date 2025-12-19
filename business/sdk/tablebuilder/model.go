@@ -189,13 +189,14 @@ type ColumnConfig struct {
 	Header       string          `json:"header"`
 	Width        int             `json:"width,omitempty"`
 	Align        string          `json:"align,omitempty"` // left, center, right
-	Type         string          `json:"type,omitempty"`  // linktotal, etc.
+	Type         string          `json:"type,omitempty"`  // linktotal, status, lookup, etc.
 	Sortable     bool            `json:"sortable,omitempty"`
 	Filterable   bool            `json:"filterable,omitempty"`
 	CellTemplate string          `json:"cell_template,omitempty"`
 	Format       *FormatConfig   `json:"format,omitempty"`
 	Editable     *EditableConfig `json:"editable,omitempty"`
 	Link         *LinkConfig     `json:"link,omitempty"`
+	Lookup       *LookupConfig   `json:"lookup,omitempty"` // Lookup dropdown config for filters
 }
 
 // FormatConfig defines how to format a value
@@ -216,6 +217,16 @@ type EditableConfig struct {
 type LinkConfig struct {
 	URL   string `json:"url"`
 	Label string `json:"label"`
+}
+
+// LookupConfig defines configuration for lookup dropdown filters.
+// Used when Type="lookup" to specify how to populate the filter dropdown.
+// Mirrors formfieldbus.DropdownConfig for consistency across the application.
+type LookupConfig struct {
+	Entity         string   `json:"entity"`                    // Format: "schema.table" (e.g., "core.users")
+	LabelColumn    string   `json:"label_column"`              // Column to display as option label
+	ValueColumn    string   `json:"value_column"`              // Column to use as option value (usually 'id')
+	DisplayColumns []string `json:"display_columns,omitempty"` // Additional columns to show in dropdown
 }
 
 // ConditionalFormat represents conditional formatting rules
