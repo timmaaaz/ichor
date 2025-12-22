@@ -190,7 +190,7 @@ FormID
   - date - Date picker
   - time - Time input (currently using text input with HH:MM placeholder)
   - boolean - Checkbox
-  - select - Dropdown (either dynamic from database table or static with options array)
+  - smart-combobox - Searchable dropdown with server-side search (for FK fields and dynamic dropdowns)
   - multiselect - Multi-select (not yet fully supported, falls back to text input)
 - FieldOrder: treat it like an iota starting at 1 in a given form
 - Required: match up with Nullable / Not Nullable in the database
@@ -265,7 +265,7 @@ typeMap := map[string]string{
 
 **Special Cases:**
 
-- Columns ending in `_id` (UUIDs) → Likely foreign keys, set to `"dropdown-from-table"` or `"combobox-from-table"`
+- Columns ending in `_id` (UUIDs) → Likely foreign keys, set to `"smart-combobox"`
 - Columns named `email`, `email_address` → `"email"`
 - Columns named `phone`, `*_phone_*` → `"tel"`
 - Columns named `url`, `website` → `"url"`
@@ -294,7 +294,7 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
 
 For FK fields:
 
-- Set `field_type = 'combobox-from-table'`
+- Set `field_type = 'smart-combobox'`
 - Add to `config` JSON:
 - note that all foreign keys should be <table_name>\_id, but there may be
   exceptions such as in cases where a table may be referenced by foreign key
@@ -368,7 +368,7 @@ WHERE t.typname = 'contact_type';
 
 For ENUM columns:
 
-- Set `field_type = 'dropdown'` (not combobox-from-table)
+- Set `field_type = 'dropdown'` (static options, not smart-combobox which is for FK lookups)
 - Add to config JSON:
 
 ```json
