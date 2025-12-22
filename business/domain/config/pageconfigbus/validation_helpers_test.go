@@ -28,7 +28,7 @@ func TestSanitizeValue(t *testing.T) {
 		{
 			name:  "long string truncated",
 			value: "this is a very long string that exceeds the maximum length allowed for error messages and should be truncated",
-			want:  "this is a very long string that exceeds the maximum length allowed for error messages and should be ...",
+			want:  "this is a very long string that exceeds the maximum length allowed for error messages and should ...",
 		},
 		{
 			name:  "potential secret redacted",

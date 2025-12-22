@@ -210,7 +210,7 @@ func validateLayout(layout LayoutConfig, basePath string) []ValidationError {
 // calculateNestingDepth recursively calculates the maximum nesting depth of content tree
 func calculateNestingDepth(contents []PageContentExport, currentDepth int) int {
 	if len(contents) == 0 {
-		return currentDepth
+		return 0
 	}
 
 	maxDepth := currentDepth

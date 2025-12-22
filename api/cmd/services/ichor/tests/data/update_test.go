@@ -14,12 +14,40 @@ import (
 
 func update200(sd apitest.SeedData) []apitest.Table {
 
-	updatedSimple := SimpleConfig
+	// Create a deep copy of SimpleConfig to avoid modifying the shared config
+	updatedSimple := *SimpleConfig
+
+	// Deep copy the VisualSettings.Columns map
+	updatedSimple.VisualSettings.Columns = make(map[string]tablebuilder.ColumnConfig)
+	for k, v := range SimpleConfig.VisualSettings.Columns {
+		updatedSimple.VisualSettings.Columns[k] = v
+	}
+
+	// Deep copy the DataSource slice and its nested Columns slice
+	updatedSimple.DataSource = make([]tablebuilder.DataSource, len(SimpleConfig.DataSource))
+	copy(updatedSimple.DataSource, SimpleConfig.DataSource)
+	updatedSimple.DataSource[0].Select.Columns = make([]tablebuilder.ColumnDefinition, len(SimpleConfig.DataSource[0].Select.Columns))
+	copy(updatedSimple.DataSource[0].Select.Columns, SimpleConfig.DataSource[0].Select.Columns)
+
+	// Add new columns to DataSource
 	updatedSimple.DataSource[0].Select.Columns = append(updatedSimple.DataSource[0].Select.Columns,
-		// New columns
 		tablebuilder.ColumnDefinition{Name: "minimum_stock", TableColumn: "inventory_items.minimum_stock"},
 		tablebuilder.ColumnDefinition{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
 	)
+
+	// Add corresponding VisualSettings entries (required by validation)
+	updatedSimple.VisualSettings.Columns["minimum_stock"] = tablebuilder.ColumnConfig{
+		Name:   "minimum_stock",
+		Header: "Minimum Stock",
+		Width:  120,
+		Type:   "number",
+	}
+	updatedSimple.VisualSettings.Columns["maximum_stock"] = tablebuilder.ColumnConfig{
+		Name:   "maximum_stock",
+		Header: "Maximum Stock",
+		Width:  120,
+		Type:   "number",
+	}
 
 	jsonConfig, err := json.Marshal(updatedSimple)
 	if err != nil {
