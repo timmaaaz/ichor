@@ -154,7 +154,8 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 		// Filter fields for this entity
 		entityFields := a.filterFieldsByEntity(fields, step.EntityName)
 
-		result, err := a.executeOperation(ctx, step, entityData, templateContext, entityFields)
+		// Pass all fields so we can extract line item configs for array operations
+		result, err := a.executeOperation(ctx, step, entityData, templateContext, entityFields, fields)
 		if err != nil {
 			// Check if error is already typed (e.g., InvalidArgument from validation)
 			// Unwrap the error chain to find the original *errs.Error
@@ -228,12 +229,15 @@ func (a *App) buildExecutionPlan(operations map[string]OperationMeta) ([]Executi
 
 // executeOperation executes a single entity operation with template resolution.
 // Supports both single object and array operations.
+// entityFields: fields filtered for this specific entity (used for single object default merging)
+// allFields: all form fields (used to extract line item configs for array operations)
 func (a *App) executeOperation(
 	ctx context.Context,
 	step ExecutionStep,
 	data json.RawMessage,
 	templateContext workflow.TemplateContext,
 	entityFields []formfieldbus.FormField,
+	allFields []formfieldbus.FormField,
 ) (any, error) {
 	// Detect if data is an array or single object
 	var rawData interface{}
@@ -243,7 +247,7 @@ func (a *App) executeOperation(
 
 	// Check if data is an array (slice)
 	if arr, isArray := rawData.([]interface{}); isArray {
-		return a.executeArrayOperation(ctx, step, arr, templateContext, entityFields)
+		return a.executeArrayOperation(ctx, step, arr, templateContext, entityFields, allFields)
 	}
 
 	// Single object operation
@@ -293,18 +297,24 @@ func (a *App) executeSingleOperation(
 // executeArrayOperation processes an array of entity objects.
 // Each item is processed individually with template resolution.
 // All items must succeed or the transaction will rollback.
+// allFields is used to extract LineItemField configs for default value injection.
 func (a *App) executeArrayOperation(
 	ctx context.Context,
 	step ExecutionStep,
 	items []interface{},
 	templateContext workflow.TemplateContext,
 	entityFields []formfieldbus.FormField,
+	allFields []formfieldbus.FormField,
 ) ([]any, error) {
 	// Validate array is not empty
 	// Line items arrays should contain at least one item
 	if len(items) == 0 {
 		return nil, errs.Newf(errs.InvalidArgument, "array for %s cannot be empty", step.EntityName)
 	}
+
+	// Extract line item field configs from the parent lineitems field
+	// These define defaults like Hidden and DefaultValue* for line item fields
+	lineItemFields := a.extractLineItemFields(allFields, step.EntityName)
 
 	results := make([]any, 0, len(items))
 
@@ -313,6 +323,15 @@ func (a *App) executeArrayOperation(
 		itemJSON, err := json.Marshal(item)
 		if err != nil {
 			return nil, fmt.Errorf("marshal array item %d: %w", idx, err)
+		}
+
+		// Apply line item field defaults before processing
+		// This injects values like {{$me}} and {{$now}} for hidden audit fields
+		if len(lineItemFields) > 0 {
+			itemJSON, err = a.mergeLineItemFieldDefaults(itemJSON, lineItemFields, step.Operation)
+			if err != nil {
+				return nil, fmt.Errorf("merge line item defaults for item %d: %w", idx, err)
+			}
 		}
 
 		// Process single item with template resolution
@@ -446,4 +465,60 @@ func (a *App) filterFieldsByEntity(fields []formfieldbus.FormField, entityName s
 		}
 	}
 	return filtered
+}
+
+// extractLineItemFields finds LineItemField configs for a given entity from the lineitems field.
+// It searches through all form fields looking for a "lineitems" field type that targets
+// the specified entity name.
+func (a *App) extractLineItemFields(fields []formfieldbus.FormField, entityName string) []formfieldbus.LineItemField {
+	for _, field := range fields {
+		if field.FieldType == "lineitems" {
+			var config formfieldbus.LineItemsFieldConfig
+			if err := json.Unmarshal(field.Config, &config); err == nil {
+				if config.Entity == entityName {
+					return config.Fields
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// mergeLineItemFieldDefaults injects default values for line item fields.
+// This is similar to mergeFieldDefaults but operates on LineItemField configs
+// instead of FormField configs.
+func (a *App) mergeLineItemFieldDefaults(
+	data json.RawMessage,
+	lineItemFields []formfieldbus.LineItemField,
+	operation formdataregistry.EntityOperation,
+) (json.RawMessage, error) {
+	if len(lineItemFields) == 0 {
+		return data, nil
+	}
+
+	var dataMap map[string]interface{}
+	if err := json.Unmarshal(data, &dataMap); err != nil {
+		return data, err
+	}
+
+	for _, field := range lineItemFields {
+		// Determine which default to use based on operation
+		defaultVal := field.DefaultValue
+		if operation == formdataregistry.OperationCreate && field.DefaultValueCreate != "" {
+			defaultVal = field.DefaultValueCreate
+		} else if operation == formdataregistry.OperationUpdate && field.DefaultValueUpdate != "" {
+			defaultVal = field.DefaultValueUpdate
+		}
+
+		if defaultVal == "" {
+			continue
+		}
+
+		// Only inject if field is not already provided in the data
+		if _, exists := dataMap[field.Name]; !exists {
+			dataMap[field.Name] = defaultVal
+		}
+	}
+
+	return json.Marshal(dataMap)
 }

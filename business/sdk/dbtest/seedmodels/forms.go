@@ -291,11 +291,14 @@ func GetFullSalesOrderFormFields(
 					ValueColumn: "id",
 				},
 			},
+			// Audit fields - hidden with magic variable defaults
 			{
-				Name:     "created_by",
-				Label:    "Created By",
-				Type:     "text",
-				Required: true,
+				Name:               "created_by",
+				Label:              "Created By",
+				Type:               "text",
+				Required:           false,
+				Hidden:             true,
+				DefaultValueCreate: "{{$me}}",
 			},
 		},
 		ItemLabel:         "Order Items",

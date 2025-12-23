@@ -87,6 +87,11 @@ type LineItemField struct {
 	Required       bool              `json:"required"`
 	DropdownConfig *DropdownConfig   `json:"dropdown_config,omitempty"`
 	Validation     *ValidationConfig `json:"validation,omitempty"`
+	// Default value configuration - same fields as FieldDefaultConfig for consistency
+	Hidden             bool   `json:"hidden,omitempty"`               // If true, field is not rendered in UI
+	DefaultValue       string `json:"default_value,omitempty"`        // Applied to both create and update
+	DefaultValueCreate string `json:"default_value_create,omitempty"` // Only for create operations
+	DefaultValueUpdate string `json:"default_value_update,omitempty"` // Only for update operations
 }
 
 // LineItemsFieldConfig defines the configuration for a lineitems field type.

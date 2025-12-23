@@ -16,6 +16,7 @@ import (
 
 // buildOrderWithLineItemsPayload creates a FormDataRequest for testing orders with line items.
 // lineItemCount: number of line items to include (1-100)
+// Note: created_by is NOT included - it should be injected via DefaultValueCreate: "{{$me}}"
 func buildOrderWithLineItemsPayload(sd apitest.SeedData, lineItemCount int) map[string]any {
 	orderID := uuid.New()
 
@@ -28,7 +29,7 @@ func buildOrderWithLineItemsPayload(sd apitest.SeedData, lineItemCount int) map[
 			"quantity":                           fmt.Sprintf("%d", (i+1)*5),
 			"discount":                           "0",
 			"line_item_fulfillment_statuses_id": sd.LineItemFulfillmentStatuses[0].ID,
-			"created_by":                         sd.Admins[0].ID,
+			// created_by NOT included - should be injected via DefaultValueCreate: "{{$me}}"
 		}
 	}
 
@@ -69,7 +70,7 @@ func buildOrderWithInvalidLineItem(sd apitest.SeedData) map[string]any {
 			"quantity":                           "5",
 			"discount":                           "0",
 			"line_item_fulfillment_statuses_id": sd.LineItemFulfillmentStatuses[0].ID,
-			"created_by":                         sd.Admins[0].ID,
+			// created_by NOT included - should be injected via DefaultValueCreate
 		},
 		{
 			"id":       uuid.New().String(),
@@ -78,7 +79,7 @@ func buildOrderWithInvalidLineItem(sd apitest.SeedData) map[string]any {
 			"quantity":                           "10",
 			"discount":                           "0",
 			"line_item_fulfillment_statuses_id": sd.LineItemFulfillmentStatuses[0].ID,
-			"created_by":                         sd.Admins[0].ID,
+			// created_by NOT included - should be injected via DefaultValueCreate
 		},
 	}
 
@@ -124,14 +125,56 @@ func buildOrderWithEmptyLineItems(sd apitest.SeedData) map[string]any {
 		},
 		"data": map[string]any{
 			"sales.orders": map[string]any{
-				"id":                   orderID.String(),
-				"number":               fmt.Sprintf("TEST-ORDER-EMPTY-%d", time.Now().Unix()),
-				"customer_id":          sd.Customers[0].ID,
-				"due_date":             time.Now().AddDate(0, 0, 30).Format("2006-01-02"),
+				"id":                    orderID.String(),
+				"number":                fmt.Sprintf("TEST-ORDER-EMPTY-%d", time.Now().Unix()),
+				"customer_id":           sd.Customers[0].ID,
+				"due_date":              time.Now().AddDate(0, 0, 30).Format("2006-01-02"),
 				"fulfillment_status_id": sd.OrderFulfillmentStatuses[0].ID,
-				"created_by":           sd.Admins[0].ID,
+				"created_by":            sd.Admins[0].ID,
 			},
 			"sales.order_line_items": []map[string]any{},
+		},
+	}
+}
+
+// buildOrderWithLineItemsPayloadExplicitAudit creates a FormDataRequest with explicit created_by.
+// This tests that explicitly provided values are NOT overwritten by defaults.
+func buildOrderWithLineItemsPayloadExplicitAudit(sd apitest.SeedData) map[string]any {
+	orderID := uuid.New()
+
+	lineItems := []map[string]any{
+		{
+			"id":                                 uuid.New().String(),
+			"order_id":                           "{{sales.orders.id}}",
+			"product_id":                         sd.Products[0].ProductID,
+			"quantity":                           "5",
+			"discount":                           "0",
+			"line_item_fulfillment_statuses_id": sd.LineItemFulfillmentStatuses[0].ID,
+			"created_by":                         sd.Admins[0].ID, // Explicitly provided - should NOT be overwritten
+		},
+	}
+
+	return map[string]any{
+		"operations": map[string]any{
+			"sales.orders": map[string]any{
+				"operation": "create",
+				"order":     1,
+			},
+			"sales.order_line_items": map[string]any{
+				"operation": "create",
+				"order":     2,
+			},
+		},
+		"data": map[string]any{
+			"sales.orders": map[string]any{
+				"id":                    orderID.String(),
+				"number":                fmt.Sprintf("TEST-ORDER-EXPLICIT-%d", time.Now().Unix()),
+				"customer_id":           sd.Customers[0].ID,
+				"due_date":              time.Now().AddDate(0, 0, 30).Format("2006-01-02"),
+				"fulfillment_status_id": sd.OrderFulfillmentStatuses[0].ID,
+				"created_by":            sd.Admins[0].ID,
+			},
+			"sales.order_line_items": lineItems,
 		},
 	}
 }
