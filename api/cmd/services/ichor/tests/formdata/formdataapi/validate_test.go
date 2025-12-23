@@ -26,7 +26,7 @@ func validate200_ValidForm(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &formdataapp.FormValidationRequest{
 				Operations: map[string]formdataregistry.EntityOperation{
-					"assets": formdataregistry.OperationCreate,
+					"assets.assets": formdataregistry.OperationCreate,
 				},
 			},
 			GotResp: &formdataapp.FormValidationResult{},
@@ -59,8 +59,8 @@ func validate200_MultiEntityForm(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &formdataapp.FormValidationRequest{
 				Operations: map[string]formdataregistry.EntityOperation{
-					"users":  formdataregistry.OperationCreate,
-					"assets": formdataregistry.OperationCreate,
+					"core.users":    formdataregistry.OperationCreate,
+					"assets.assets": formdataregistry.OperationCreate,
 				},
 			},
 			GotResp: &formdataapp.FormValidationResult{},
@@ -141,11 +141,11 @@ func validate400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: map[string]interface{}{
 				"operations": map[string]string{
-					"users": "invalid_operation",
+					"core.users": "invalid_operation",
 				},
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "entity users has invalid operation: invalid_operation"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "entity core.users has invalid operation: invalid_operation"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -164,7 +164,7 @@ func validate401(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusUnauthorized,
 			Input: &formdataapp.FormValidationRequest{
 				Operations: map[string]formdataregistry.EntityOperation{
-					"users": formdataregistry.OperationCreate,
+					"core.users": formdataregistry.OperationCreate,
 				},
 			},
 			GotResp: &errs.Error{},
@@ -187,7 +187,7 @@ func validate404(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusNotFound,
 			Input: &formdataapp.FormValidationRequest{
 				Operations: map[string]formdataregistry.EntityOperation{
-					"users": formdataregistry.OperationCreate,
+					"core.users": formdataregistry.OperationCreate,
 				},
 			},
 			GotResp: &errs.Error{},

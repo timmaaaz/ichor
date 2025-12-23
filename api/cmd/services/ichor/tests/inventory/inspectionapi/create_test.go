@@ -148,26 +148,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "missing-notes",
-			URL:        "/v1/inventory/quality-inspections",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &inspectionapp.NewInspection{
-				ProductID:          sd.Products[0].ProductID,
-				InspectorID:        sd.Users[0].ID.String(),
-				LotID:              sd.LotTrackings[0].LotID,
-				Status:             "pending",
-				InspectionDate:     now.Format(timeutil.FORMAT),
-				NextInspectionDate: later.Format(timeutil.FORMAT),
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"notes\",\"error\":\"notes is a required field\"}]"),
-			CmpFunc: func(got, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
 			Name:       "missing-inspection-date",
 			URL:        "/v1/inventory/quality-inspections",
 			Token:      sd.Admins[0].Token,

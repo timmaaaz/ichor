@@ -31,7 +31,6 @@ func TestGetRequiredFields(t *testing.T) {
 				"first_name",
 				"last_name",
 				"email",
-				"birthday",
 				"roles",
 				"system_roles",
 				"password",

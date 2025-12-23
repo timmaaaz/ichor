@@ -46,7 +46,7 @@ func ToAppTitles(bus []titlebus.Title) []Title {
 // =============================================================================
 
 type NewTitle struct {
-	Description string `json:"description" validate:"required"`
+	Description string `json:"description" validate:"omitempty"`
 	Name        string `json:"name" validate:"required,min=3,max=100"`
 }
 
@@ -71,8 +71,8 @@ func toBusNewTitle(app NewTitle) (titlebus.NewTitle, error) {
 // =============================================================================
 
 type UpdateTitle struct {
-	Description *string `json:"description" validate:"required"`
-	Name        *string `json:"name" validate:"required,min=3,max=100"`
+	Description *string `json:"description" validate:"omitempty"`
+	Name        *string `json:"name" validate:"omitempty,min=3,max=100"`
 }
 
 func (app *UpdateTitle) Decode(data []byte) error {

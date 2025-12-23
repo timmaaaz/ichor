@@ -90,8 +90,8 @@ func toBusNewApprovalStatus(app NewApprovalStatus) (approvalstatusbus.NewApprova
 }
 
 type UpdateApprovalStatus struct {
-	IconID         *string `json:"icon_id" validate:"required"`
-	Name           *string `json:"name" validate:"required,min=3,max=100"`
+	IconID         *string `json:"icon_id" validate:"omitempty"`
+	Name           *string `json:"name" validate:"omitempty,min=3,max=100"`
 	PrimaryColor   *string `json:"primary_color" validate:"omitempty,max=50"`
 	SecondaryColor *string `json:"secondary_color" validate:"omitempty,max=50"`
 	Icon           *string `json:"icon" validate:"omitempty,max=100"`

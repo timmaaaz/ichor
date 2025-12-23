@@ -48,7 +48,7 @@ func ToAppTags(bus []tagbus.Tag) []Tag {
 
 type NewTag struct {
 	Name        string `json:"name" validate:"required,min=3,max=31"`
-	Description string `json:"description" validate:"required,min=3,max=127"`
+	Description string `json:"description" validate:"omitempty,min=3,max=127"`
 }
 
 // Decode implements the decoder interface.

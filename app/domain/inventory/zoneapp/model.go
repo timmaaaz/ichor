@@ -58,7 +58,7 @@ func ToAppZones(zones []zonebus.Zone) []Zone {
 type NewZone struct {
 	WarehouseID string `json:"warehouse_id" validate:"required,min=36,max=36"`
 	Name        string `json:"name" validate:"required"`
-	Description string `json:"description" validate:"required"`
+	Description string `json:"description" validate:"omitempty"`
 }
 
 func (app *NewZone) Decode(data []byte) error {

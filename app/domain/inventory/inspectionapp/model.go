@@ -73,7 +73,7 @@ type NewInspection struct {
 	InspectorID        string `json:"inspector_id" validate:"required,min=36,max=36"`
 	LotID              string `json:"lot_id" validate:"required,min=36,max=36"`
 	Status             string `json:"status" validate:"required"`
-	Notes              string `json:"notes" validate:"required"`
+	Notes              string `json:"notes" validate:"omitempty"`
 	InspectionDate     string `json:"inspection_date" validate:"required"`
 	NextInspectionDate string `json:"next_inspection_date" validate:"required"`
 }

@@ -58,8 +58,8 @@ func ToAppStreets(bus []streetbus.Street) []Street {
 type NewStreet struct {
 	CityID     string `json:"city_id" validate:"required"`
 	Line1      string `json:"line_1" validate:"required,min=3,max=100"`
-	Line2      string `json:"line_2" validate:"required,min=3,max=100"`
-	PostalCode string `json:"postal_code" validate:"required,min=3,max=20"`
+	Line2      string `json:"line_2" validate:"omitempty,min=3,max=100"`
+	PostalCode string `json:"postal_code" validate:"omitempty,min=3,max=20"`
 }
 
 // Decode implements the decoder interface.

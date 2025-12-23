@@ -47,7 +47,7 @@ func ToAppRoles(bus []rolebus.Role) []Role {
 
 type NewRole struct {
 	Name        string `json:"name" validate:"required,min=3,max=50"`
-	Description string `json:"description" validate:"required"`
+	Description string `json:"description" validate:"omitempty"`
 }
 
 func (app *NewRole) Decode(data []byte) error {

@@ -245,31 +245,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "missing-model-number",
-			URL:        "/v1/products/products",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &productapp.NewProduct{
-				Name:                 "Test Product",
-				SKU:                  "sku123",
-				BrandID:              sd.Brands[0].ID,
-				ProductCategoryID:    sd.ProductCategories[0].ID,
-				Description:          "test description",
-				UpcCode:              "test upc code",
-				Status:               "test status",
-				IsActive:             "true",
-				IsPerishable:         "false",
-				HandlingInstructions: "test handling instructions",
-				UnitsPerCase:         "20",
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"model_number\",\"error\":\"model_number is a required field\"}]"),
-			CmpFunc: func(got, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
 			Name:       "missing-upc-code",
 			URL:        "/v1/products/products",
 			Token:      sd.Admins[0].Token,

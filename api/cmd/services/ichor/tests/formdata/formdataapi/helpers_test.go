@@ -23,7 +23,7 @@ func buildOrderWithLineItemsPayload(sd apitest.SeedData, lineItemCount int) map[
 	for i := 0; i < lineItemCount; i++ {
 		lineItems[i] = map[string]any{
 			"id":                                 uuid.New().String(),
-			"order_id":                           "{{orders.id}}", // Template variable
+			"order_id":                           "{{sales.orders.id}}", // Template variable
 			"product_id":                         sd.Products[i%len(sd.Products)].ProductID,
 			"quantity":                           fmt.Sprintf("%d", (i+1)*5),
 			"discount":                           "0",
@@ -34,17 +34,17 @@ func buildOrderWithLineItemsPayload(sd apitest.SeedData, lineItemCount int) map[
 
 	return map[string]any{
 		"operations": map[string]any{
-			"orders": map[string]any{
+			"sales.orders": map[string]any{
 				"operation": "create",
 				"order":     1,
 			},
-			"order_line_items": map[string]any{
+			"sales.order_line_items": map[string]any{
 				"operation": "create",
 				"order":     2,
 			},
 		},
 		"data": map[string]any{
-			"orders": map[string]any{
+			"sales.orders": map[string]any{
 				"id":                   orderID.String(),
 				"number":               fmt.Sprintf("TEST-ORDER-%d", time.Now().Unix()),
 				"customer_id":          sd.Customers[0].ID,
@@ -52,7 +52,7 @@ func buildOrderWithLineItemsPayload(sd apitest.SeedData, lineItemCount int) map[
 				"fulfillment_status_id": sd.OrderFulfillmentStatuses[0].ID,
 				"created_by":           sd.Admins[0].ID,
 			},
-			"order_line_items": lineItems,
+			"sales.order_line_items": lineItems,
 		},
 	}
 }
@@ -64,7 +64,7 @@ func buildOrderWithInvalidLineItem(sd apitest.SeedData) map[string]any {
 	lineItems := []map[string]any{
 		{
 			"id":                                 uuid.New().String(),
-			"order_id":                           "{{orders.id}}",
+			"order_id":                           "{{sales.orders.id}}",
 			"product_id":                         sd.Products[0].ProductID,
 			"quantity":                           "5",
 			"discount":                           "0",
@@ -73,7 +73,7 @@ func buildOrderWithInvalidLineItem(sd apitest.SeedData) map[string]any {
 		},
 		{
 			"id":       uuid.New().String(),
-			"order_id": "{{orders.id}}",
+			"order_id": "{{sales.orders.id}}",
 			// Missing required "product_id" field
 			"quantity":                           "10",
 			"discount":                           "0",
@@ -84,17 +84,17 @@ func buildOrderWithInvalidLineItem(sd apitest.SeedData) map[string]any {
 
 	return map[string]any{
 		"operations": map[string]any{
-			"orders": map[string]any{
+			"sales.orders": map[string]any{
 				"operation": "create",
 				"order":     1,
 			},
-			"order_line_items": map[string]any{
+			"sales.order_line_items": map[string]any{
 				"operation": "create",
 				"order":     2,
 			},
 		},
 		"data": map[string]any{
-			"orders": map[string]any{
+			"sales.orders": map[string]any{
 				"id":                   orderID.String(),
 				"number":               fmt.Sprintf("TEST-ORDER-INVALID-%d", time.Now().Unix()),
 				"customer_id":          sd.Customers[0].ID,
@@ -102,7 +102,7 @@ func buildOrderWithInvalidLineItem(sd apitest.SeedData) map[string]any {
 				"fulfillment_status_id": sd.OrderFulfillmentStatuses[0].ID,
 				"created_by":           sd.Admins[0].ID,
 			},
-			"order_line_items": lineItems,
+			"sales.order_line_items": lineItems,
 		},
 	}
 }
@@ -113,17 +113,17 @@ func buildOrderWithEmptyLineItems(sd apitest.SeedData) map[string]any {
 
 	return map[string]any{
 		"operations": map[string]any{
-			"orders": map[string]any{
+			"sales.orders": map[string]any{
 				"operation": "create",
 				"order":     1,
 			},
-			"order_line_items": map[string]any{
+			"sales.order_line_items": map[string]any{
 				"operation": "create",
 				"order":     2,
 			},
 		},
 		"data": map[string]any{
-			"orders": map[string]any{
+			"sales.orders": map[string]any{
 				"id":                   orderID.String(),
 				"number":               fmt.Sprintf("TEST-ORDER-EMPTY-%d", time.Now().Unix()),
 				"customer_id":          sd.Customers[0].ID,
@@ -131,7 +131,7 @@ func buildOrderWithEmptyLineItems(sd apitest.SeedData) map[string]any {
 				"fulfillment_status_id": sd.OrderFulfillmentStatuses[0].ID,
 				"created_by":           sd.Admins[0].ID,
 			},
-			"order_line_items": []map[string]any{},
+			"sales.order_line_items": []map[string]any{},
 		},
 	}
 }

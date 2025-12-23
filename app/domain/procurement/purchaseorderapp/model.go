@@ -123,8 +123,8 @@ type NewPurchaseOrder struct {
 	SupplierID              string  `json:"supplierId" validate:"required,uuid"`
 	PurchaseOrderStatusID   string  `json:"purchaseOrderStatusId" validate:"required,uuid"`
 	DeliveryWarehouseID     string  `json:"deliveryWarehouseId" validate:"required,uuid"`
-	DeliveryLocationID      string  `json:"deliveryLocationId" validate:"required,uuid"`
-	DeliveryStreetID        string  `json:"deliveryStreetId" validate:"required,uuid"`
+	DeliveryLocationID      string  `json:"deliveryLocationId" validate:"omitempty,uuid"`
+	DeliveryStreetID        string  `json:"deliveryStreetId" validate:"omitempty,uuid"`
 	OrderDate               string  `json:"orderDate" validate:"required"`
 	ExpectedDeliveryDate    string  `json:"expectedDeliveryDate" validate:"required"`
 	Subtotal                string  `json:"subtotal" validate:"required"`
@@ -169,14 +169,20 @@ func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOr
 		return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("deliveryWarehouseId", err)
 	}
 
-	deliveryLocationID, err := uuid.Parse(app.DeliveryLocationID)
-	if err != nil {
-		return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("deliveryLocationId", err)
+	var deliveryLocationID uuid.UUID
+	if app.DeliveryLocationID != "" {
+		deliveryLocationID, err = uuid.Parse(app.DeliveryLocationID)
+		if err != nil {
+			return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("deliveryLocationId", err)
+		}
 	}
 
-	deliveryStreetID, err := uuid.Parse(app.DeliveryStreetID)
-	if err != nil {
-		return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("deliveryStreetId", err)
+	var deliveryStreetID uuid.UUID
+	if app.DeliveryStreetID != "" {
+		deliveryStreetID, err = uuid.Parse(app.DeliveryStreetID)
+		if err != nil {
+			return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("deliveryStreetId", err)
+		}
 	}
 
 	orderDate, err := time.Parse(timeutil.FORMAT, app.OrderDate)

@@ -90,7 +90,7 @@ type NewProduct struct {
 	ProductCategoryID    string  `json:"product_category_id" validate:"required,min=36,max=36"`
 	Name                 string  `json:"name" validate:"required"`
 	Description          string  `json:"description" validate:"required"`
-	ModelNumber          string  `json:"model_number" validate:"required"`
+	ModelNumber          string  `json:"model_number" validate:"omitempty"`
 	UpcCode              string  `json:"upc_code" validate:"required"`
 	Status               string  `json:"status" validate:"required"`
 	IsActive             string  `json:"is_active" validate:"required"`

@@ -122,7 +122,7 @@ type NewUser struct {
 	FirstName       string   `json:"first_name" validate:"required"`
 	LastName        string   `json:"last_name" validate:"required"`
 	Email           string   `json:"email" validate:"required,email"`
-	Birthday        string   `json:"birthday" validate:"required"`
+	Birthday        string   `json:"birthday" validate:"omitempty"`
 	Roles           []string `json:"roles" validate:"required"`
 	SystemRoles     []string `json:"system_roles" validate:"required"`
 	Password        string   `json:"password" validate:"required"`

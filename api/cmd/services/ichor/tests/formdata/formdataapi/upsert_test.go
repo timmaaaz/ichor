@@ -33,13 +33,13 @@ func upsertSingleEntityCreate200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &formdataapp.FormDataRequest{
 				Operations: map[string]formdataapp.OperationMeta{
-					"users": {
+					"core.users": {
 						Operation: "create",
 						Order:     1,
 					},
 				},
 				Data: map[string]json.RawMessage{
-					"users": mustMarshal(map[string]any{
+					"core.users": mustMarshal(map[string]any{
 						"username":         "testuser123",
 						"first_name":       "Test",
 						"last_name":        "User",
@@ -58,7 +58,7 @@ func upsertSingleEntityCreate200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &formdataapp.FormDataResponse{
 				Success: true,
 				Results: map[string]interface{}{
-					"users": map[string]interface{}{},
+					"core.users": map[string]interface{}{},
 				},
 			},
 			CmpFunc: func(got, exp any) string {
@@ -71,12 +71,12 @@ func upsertSingleEntityCreate200(sd apitest.SeedData) []apitest.Table {
 					return "expected success to be true"
 				}
 
-				if _, exists := gotResp.Results["users"]; !exists {
+				if _, exists := gotResp.Results["core.users"]; !exists {
 					return "expected users result to exist"
 				}
 
 				// Check that a user was created (has an ID)
-				userResult, ok := gotResp.Results["users"].(map[string]interface{})
+				userResult, ok := gotResp.Results["core.users"].(map[string]interface{})
 				if !ok {
 					return "expected users result to be a map"
 				}
@@ -101,13 +101,13 @@ func upsertSingleEntityUpdate200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &formdataapp.FormDataRequest{
 				Operations: map[string]formdataapp.OperationMeta{
-					"users": {
+					"core.users": {
 						Operation: "update",
 						Order:     1,
 					},
 				},
 				Data: map[string]json.RawMessage{
-					"users": mustMarshal(map[string]any{
+					"core.users": mustMarshal(map[string]any{
 						"id":         sd.Users[0].ID,
 						"first_name": dbtest.StringPointer("UpdatedFirstName"),
 						"last_name":  dbtest.StringPointer("UpdatedLastName"),
@@ -118,7 +118,7 @@ func upsertSingleEntityUpdate200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &formdataapp.FormDataResponse{
 				Success: true,
 				Results: map[string]interface{}{
-					"users": map[string]interface{}{},
+					"core.users": map[string]interface{}{},
 				},
 			},
 			CmpFunc: func(got, exp any) string {
@@ -131,7 +131,7 @@ func upsertSingleEntityUpdate200(sd apitest.SeedData) []apitest.Table {
 					return "expected success to be true"
 				}
 
-				if _, exists := gotResp.Results["users"]; !exists {
+				if _, exists := gotResp.Results["core.users"]; !exists {
 					return "expected users result to exist"
 				}
 
@@ -151,17 +151,17 @@ func upsertMultiEntityWithForeignKey200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &formdataapp.FormDataRequest{
 				Operations: map[string]formdataapp.OperationMeta{
-					"users": {
+					"core.users": {
 						Operation: "create",
 						Order:     1,
 					},
-					"assets": {
+					"assets.assets": {
 						Operation: "create",
 						Order:     2,
 					},
 				},
 				Data: map[string]json.RawMessage{
-					"users": mustMarshal(map[string]any{
+					"core.users": mustMarshal(map[string]any{
 						"username":         "newuser456",
 						"first_name":       "New",
 						"last_name":        "User",
@@ -174,7 +174,7 @@ func upsertMultiEntityWithForeignKey200(sd apitest.SeedData) []apitest.Table {
 						"enabled":          true,
 						"requested_by":     sd.Admins[0].ID,
 					}),
-					"assets": mustMarshal(map[string]any{
+					"assets.assets": mustMarshal(map[string]any{
 						"asset_condition_id": sd.AssetConditions[0].ID,
 						"valid_asset_id":     sd.ValidAssets[0].ID,
 						"serial_number":      "SN123456789",
@@ -185,8 +185,8 @@ func upsertMultiEntityWithForeignKey200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &formdataapp.FormDataResponse{
 				Success: true,
 				Results: map[string]interface{}{
-					"users":  map[string]interface{}{},
-					"assets": map[string]interface{}{},
+					"core.users":    map[string]interface{}{},
+					"assets.assets": map[string]interface{}{},
 				},
 			},
 			CmpFunc: func(got, exp any) string {
@@ -199,21 +199,21 @@ func upsertMultiEntityWithForeignKey200(sd apitest.SeedData) []apitest.Table {
 					return "expected success to be true"
 				}
 
-				if _, exists := gotResp.Results["users"]; !exists {
+				if _, exists := gotResp.Results["core.users"]; !exists {
 					return "expected users result to exist"
 				}
 
-				if _, exists := gotResp.Results["assets"]; !exists {
+				if _, exists := gotResp.Results["assets.assets"]; !exists {
 					return "expected assets result to exist"
 				}
 
 				// Verify both entities were created with IDs
-				assetResult, ok := gotResp.Results["assets"].(map[string]interface{})
+				assetResult, ok := gotResp.Results["assets.assets"].(map[string]interface{})
 				if !ok {
 					return "expected assets result to be a map"
 				}
 
-				userResult, ok := gotResp.Results["users"].(map[string]interface{})
+				userResult, ok := gotResp.Results["core.users"].(map[string]interface{})
 				if !ok {
 					return "expected users result to be a map"
 				}
@@ -246,7 +246,7 @@ func upsert400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &formdataapp.FormDataRequest{
 				Data: map[string]json.RawMessage{
-					"users": mustMarshal(map[string]any{
+					"core.users": mustMarshal(map[string]any{
 						"username": "test",
 					}),
 				},
@@ -265,7 +265,7 @@ func upsert400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &formdataapp.FormDataRequest{
 				Operations: map[string]formdataapp.OperationMeta{
-					"users": {
+					"core.users": {
 						Operation: "create",
 						Order:     1,
 					},
@@ -285,19 +285,19 @@ func upsert400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &formdataapp.FormDataRequest{
 				Operations: map[string]formdataapp.OperationMeta{
-					"users": {
+					"core.users": {
 						Operation: "create",
 						Order:     1,
 					},
 				},
 				Data: map[string]json.RawMessage{
-					"assets": mustMarshal(map[string]any{
+					"assets.assets": mustMarshal(map[string]any{
 						"name": "test",
 					}),
 				},
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "entity users in operations but missing from data"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "entity core.users in operations but missing from data"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -310,19 +310,19 @@ func upsert400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &formdataapp.FormDataRequest{
 				Operations: map[string]formdataapp.OperationMeta{
-					"users": {
+					"core.users": {
 						Operation: "delete",
 						Order:     1,
 					},
 				},
 				Data: map[string]json.RawMessage{
-					"users": mustMarshal(map[string]any{
+					"core.users": mustMarshal(map[string]any{
 						"id": uuid.NewString(),
 					}),
 				},
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "entity users has invalid operation: delete"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "entity core.users has invalid operation: delete"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -414,13 +414,13 @@ func upsert404(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusNotFound,
 			Input: &formdataapp.FormDataRequest{
 				Operations: map[string]formdataapp.OperationMeta{
-					"users": {
+					"core.users": {
 						Operation: "create",
 						Order:     1,
 					},
 				},
 				Data: map[string]json.RawMessage{
-					"users": mustMarshal(map[string]any{
+					"core.users": mustMarshal(map[string]any{
 						"username": "test",
 					}),
 				},
@@ -476,11 +476,11 @@ func upsertOrderWithSingleLineItem200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				// Verify both order and line items were created
-				if _, exists := gotResp.Results["orders"]; !exists {
+				if _, exists := gotResp.Results["sales.orders"]; !exists {
 					return "expected orders result to exist"
 				}
 
-				if _, exists := gotResp.Results["order_line_items"]; !exists {
+				if _, exists := gotResp.Results["sales.order_line_items"]; !exists {
 					return "expected order_line_items result to exist"
 				}
 
@@ -515,16 +515,16 @@ func upsertOrderWithMultipleLineItems200(sd apitest.SeedData) []apitest.Table {
 				}
 
 				// Verify both order and line items were created
-				if _, exists := gotResp.Results["orders"]; !exists {
+				if _, exists := gotResp.Results["sales.orders"]; !exists {
 					return "expected orders result to exist"
 				}
 
-				if _, exists := gotResp.Results["order_line_items"]; !exists {
+				if _, exists := gotResp.Results["sales.order_line_items"]; !exists {
 					return "expected order_line_items result to exist"
 				}
 
 				// Verify line items is an array with 3 items
-				lineItems, ok := gotResp.Results["order_line_items"].([]interface{})
+				lineItems, ok := gotResp.Results["sales.order_line_items"].([]interface{})
 				if !ok {
 					return "expected sales.order_line_items to be an array"
 				}
@@ -615,13 +615,13 @@ func upsertBackwardCompatibility200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &formdataapp.FormDataRequest{
 				Operations: map[string]formdataapp.OperationMeta{
-					"users": {
+					"core.users": {
 						Operation: "create",
 						Order:     1,
 					},
 				},
 				Data: map[string]json.RawMessage{
-					"users": mustMarshal(map[string]any{
+					"core.users": mustMarshal(map[string]any{
 						"username":         "backwardcompat",
 						"first_name":       "Backward",
 						"last_name":        "Compat",
@@ -648,7 +648,7 @@ func upsertBackwardCompatibility200(sd apitest.SeedData) []apitest.Table {
 					return "expected success to be true"
 				}
 
-				if _, exists := gotResp.Results["users"]; !exists {
+				if _, exists := gotResp.Results["core.users"]; !exists {
 					return "expected users result to exist"
 				}
 

@@ -64,25 +64,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(exp, gotResp)
 			},
 		},
-		{
-			Name:       "missing description",
-			URL:        "/v1/assets/tags",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &tagapp.NewTag{
-				Name: "name",
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"description\",\"error\":\"description is a required field\"}]"),
-			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(*errs.Error)
-				if !exists {
-					return "error occurred"
-				}
-				return cmp.Diff(exp, gotResp)
-			},
-		},
 	}
 	return table
 }

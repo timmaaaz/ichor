@@ -84,23 +84,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "missing-description",
-			URL:        "/v1/inventory/zones",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &zoneapp.NewZone{
-				WarehouseID: sd.Warehouses[0].ID,
-				Name:        "New Zone",
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"description\",\"error\":\"description is a required field\"}]"),
-			CmpFunc: func(got, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-
-		{
 			Name:       "malformed-warehouse-id",
 			URL:        "/v1/inventory/zones",
 			Token:      sd.Admins[0].Token,
