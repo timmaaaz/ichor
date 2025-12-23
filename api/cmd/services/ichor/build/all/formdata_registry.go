@@ -178,7 +178,7 @@ func buildFormDataRegistry(
 
 	// Register users entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "users",
+		Name: "core.users",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app userapp.NewUser
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -211,7 +211,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: userapp.UpdateUser{},
 	}); err != nil {
-		return nil, fmt.Errorf("register users: %w", err)
+		return nil, fmt.Errorf("register core.users: %w", err)
 	}
 
 	// =========================================================================
@@ -220,7 +220,7 @@ func buildFormDataRegistry(
 
 	// Register assets entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "assets",
+		Name: "assets.assets",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app assetapp.NewAsset
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -250,12 +250,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: assetapp.UpdateAsset{},
 	}); err != nil {
-		return nil, fmt.Errorf("register assets: %w", err)
+		return nil, fmt.Errorf("register assets.assets: %w", err)
 	}
 
 	// Register roles entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "roles",
+		Name: "core.roles",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app roleapp.NewRole
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -285,12 +285,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: roleapp.UpdateRole{},
 	}); err != nil {
-		return nil, fmt.Errorf("register roles: %w", err)
+		return nil, fmt.Errorf("register core.roles: %w", err)
 	}
 
 	// Register table_access entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "table_access",
+		Name: "core.table_access",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app tableaccessapp.NewTableAccess
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -320,12 +320,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: tableaccessapp.UpdateTableAccess{},
 	}); err != nil {
-		return nil, fmt.Errorf("register table_access: %w", err)
+		return nil, fmt.Errorf("register core.table_access: %w", err)
 	}
 
 	// Register user_roles entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "user_roles",
+		Name: "core.user_roles",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app userroleapp.NewUserRole
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -355,12 +355,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: userroleapp.NewUserRole{},
 	}); err != nil {
-		return nil, fmt.Errorf("register user_roles: %w", err)
+		return nil, fmt.Errorf("register core.user_roles: %w", err)
 	}
 
 	// Register pages entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "pages",
+		Name: "core.pages",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app pageapp.NewPage
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -390,12 +390,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: pageapp.UpdatePage{},
 	}); err != nil {
-		return nil, fmt.Errorf("register pages: %w", err)
+		return nil, fmt.Errorf("register core.pages: %w", err)
 	}
 
 	// Register role_pages entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "role_pages",
+		Name: "core.role_pages",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app rolepageapp.NewRolePage
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -425,12 +425,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: rolepageapp.UpdateRolePage{},
 	}); err != nil {
-		return nil, fmt.Errorf("register role_pages: %w", err)
+		return nil, fmt.Errorf("register core.role_pages: %w", err)
 	}
 
 	// Register contact_infos entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "contact_infos",
+		Name: "core.contact_infos",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app contactinfosapp.NewContactInfos
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -460,7 +460,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: contactinfosapp.UpdateContactInfos{},
 	}); err != nil {
-		return nil, fmt.Errorf("register contact_infos: %w", err)
+		return nil, fmt.Errorf("register core.contact_infos: %w", err)
 	}
 
 	// =========================================================================
@@ -469,7 +469,7 @@ func buildFormDataRegistry(
 
 	// Register asset_conditions entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "asset_conditions",
+		Name: "assets.asset_conditions",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app assetconditionapp.NewAssetCondition
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -499,12 +499,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: assetconditionapp.UpdateAssetCondition{},
 	}); err != nil {
-		return nil, fmt.Errorf("register asset_conditions: %w", err)
+		return nil, fmt.Errorf("register assets.asset_conditions: %w", err)
 	}
 
 	// Register asset_types entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "asset_types",
+		Name: "assets.asset_types",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app assettypeapp.NewAssetType
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -534,12 +534,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: assettypeapp.UpdateAssetType{},
 	}); err != nil {
-		return nil, fmt.Errorf("register asset_types: %w", err)
+		return nil, fmt.Errorf("register assets.asset_types: %w", err)
 	}
 
 	// Register fulfillment_status entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "fulfillment_status",
+		Name: "assets.fulfillment_status",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app fulfillmentstatusapp.NewFulfillmentStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -569,12 +569,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: fulfillmentstatusapp.UpdateFulfillmentStatus{},
 	}); err != nil {
-		return nil, fmt.Errorf("register fulfillment_status: %w", err)
+		return nil, fmt.Errorf("register assets.fulfillment_status: %w", err)
 	}
 
 	// Register tags entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "tags",
+		Name: "assets.tags",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app tagapp.NewTag
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -604,12 +604,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: tagapp.UpdateTag{},
 	}); err != nil {
-		return nil, fmt.Errorf("register tags: %w", err)
+		return nil, fmt.Errorf("register assets.tags: %w", err)
 	}
 
 	// Register asset_tags entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "asset_tags",
+		Name: "assets.asset_tags",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app assettagapp.NewAssetTag
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -639,12 +639,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: assettagapp.UpdateAssetTag{},
 	}); err != nil {
-		return nil, fmt.Errorf("register asset_tags: %w", err)
+		return nil, fmt.Errorf("register assets.asset_tags: %w", err)
 	}
 
 	// Register valid_assets entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "valid_assets",
+		Name: "assets.valid_assets",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app validassetapp.NewValidAsset
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -674,12 +674,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: validassetapp.UpdateValidAsset{},
 	}); err != nil {
-		return nil, fmt.Errorf("register valid_assets: %w", err)
+		return nil, fmt.Errorf("register assets.valid_assets: %w", err)
 	}
 
 	// Register user_assets entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "user_assets",
+		Name: "assets.user_assets",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app userassetapp.NewUserAsset
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -709,12 +709,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: userassetapp.UpdateUserAsset{},
 	}); err != nil {
-		return nil, fmt.Errorf("register user_assets: %w", err)
+		return nil, fmt.Errorf("register assets.user_assets: %w", err)
 	}
 
 	// Register approval_status entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "approval_status",
+		Name: "assets.approval_status",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app approvalstatusapp.NewApprovalStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -744,7 +744,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: approvalstatusapp.UpdateApprovalStatus{},
 	}); err != nil {
-		return nil, fmt.Errorf("register approval_status: %w", err)
+		return nil, fmt.Errorf("register assets.approval_status: %w", err)
 	}
 
 	// =========================================================================
@@ -753,7 +753,7 @@ func buildFormDataRegistry(
 
 	// Register cities entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "cities",
+		Name: "geography.cities",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app cityapp.NewCity
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -783,12 +783,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: cityapp.UpdateCity{},
 	}); err != nil {
-		return nil, fmt.Errorf("register cities: %w", err)
+		return nil, fmt.Errorf("register geography.cities: %w", err)
 	}
 
 	// Register streets entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "streets",
+		Name: "geography.streets",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app streetapp.NewStreet
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -818,7 +818,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: streetapp.UpdateStreet{},
 	}); err != nil {
-		return nil, fmt.Errorf("register streets: %w", err)
+		return nil, fmt.Errorf("register geography.streets: %w", err)
 	}
 
 	// =========================================================================
@@ -827,7 +827,7 @@ func buildFormDataRegistry(
 
 	// Register user_approval_comments entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "user_approval_comments",
+		Name: "hr.user_approval_comments",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app commentapp.NewUserApprovalComment
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -857,12 +857,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: commentapp.UpdateUserApprovalComment{},
 	}); err != nil {
-		return nil, fmt.Errorf("register user_approval_comments: %w", err)
+		return nil, fmt.Errorf("register hr.user_approval_comments: %w", err)
 	}
 
 	// Register user_approval_status entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "user_approval_status",
+		Name: "hr.user_approval_status",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app approvalapp.NewUserApprovalStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -892,12 +892,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: approvalapp.UpdateUserApprovalStatus{},
 	}); err != nil {
-		return nil, fmt.Errorf("register user_approval_status: %w", err)
+		return nil, fmt.Errorf("register hr.user_approval_status: %w", err)
 	}
 
 	// Register reports_to entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "reports_to",
+		Name: "hr.reports_to",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app reportstoapp.NewReportsTo
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -927,12 +927,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: reportstoapp.UpdateReportsTo{},
 	}); err != nil {
-		return nil, fmt.Errorf("register reports_to: %w", err)
+		return nil, fmt.Errorf("register hr.reports_to: %w", err)
 	}
 
 	// Register offices entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "offices",
+		Name: "hr.offices",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app officeapp.NewOffice
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -962,12 +962,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: officeapp.UpdateOffice{},
 	}); err != nil {
-		return nil, fmt.Errorf("register offices: %w", err)
+		return nil, fmt.Errorf("register hr.offices: %w", err)
 	}
 
 	// Register homes entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "homes",
+		Name: "hr.homes",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app homeapp.NewHome
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -997,12 +997,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: homeapp.UpdateHome{},
 	}); err != nil {
-		return nil, fmt.Errorf("register homes: %w", err)
+		return nil, fmt.Errorf("register hr.homes: %w", err)
 	}
 
 	// Register titles entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "titles",
+		Name: "hr.titles",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app titleapp.NewTitle
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1032,7 +1032,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: titleapp.UpdateTitle{},
 	}); err != nil {
-		return nil, fmt.Errorf("register titles: %w", err)
+		return nil, fmt.Errorf("register hr.titles: %w", err)
 	}
 
 	// =========================================================================
@@ -1041,7 +1041,7 @@ func buildFormDataRegistry(
 
 	// Register inspections entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "inspections",
+		Name: "inventory.inspections",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app inspectionapp.NewInspection
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1071,12 +1071,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: inspectionapp.UpdateInspection{},
 	}); err != nil {
-		return nil, fmt.Errorf("register inspections: %w", err)
+		return nil, fmt.Errorf("register inventory.inspections: %w", err)
 	}
 
 	// Register inventory_adjustments entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "inventory_adjustments",
+		Name: "inventory.inventory_adjustments",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app inventoryadjustmentapp.NewInventoryAdjustment
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1106,12 +1106,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: inventoryadjustmentapp.UpdateInventoryAdjustment{},
 	}); err != nil {
-		return nil, fmt.Errorf("register inventory_adjustments: %w", err)
+		return nil, fmt.Errorf("register inventory.inventory_adjustments: %w", err)
 	}
 
 	// Register inventory_locations entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "inventory_locations",
+		Name: "inventory.inventory_locations",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app inventorylocationapp.NewInventoryLocation
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1141,12 +1141,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: inventorylocationapp.UpdateInventoryLocation{},
 	}); err != nil {
-		return nil, fmt.Errorf("register inventory_locations: %w", err)
+		return nil, fmt.Errorf("register inventory.inventory_locations: %w", err)
 	}
 
 	// Register inventory_transactions entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "inventory_transactions",
+		Name: "inventory.inventory_transactions",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app inventorytransactionapp.NewInventoryTransaction
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1176,12 +1176,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: inventorytransactionapp.UpdateInventoryTransaction{},
 	}); err != nil {
-		return nil, fmt.Errorf("register inventory_transactions: %w", err)
+		return nil, fmt.Errorf("register inventory.inventory_transactions: %w", err)
 	}
 
 	// Register serial_numbers entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "serial_numbers",
+		Name: "inventory.serial_numbers",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app serialnumberapp.NewSerialNumber
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1211,12 +1211,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: serialnumberapp.UpdateSerialNumber{},
 	}); err != nil {
-		return nil, fmt.Errorf("register serial_numbers: %w", err)
+		return nil, fmt.Errorf("register inventory.serial_numbers: %w", err)
 	}
 
 	// Register transfer_orders entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "transfer_orders",
+		Name: "inventory.transfer_orders",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app transferorderapp.NewTransferOrder
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1246,12 +1246,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: transferorderapp.UpdateTransferOrder{},
 	}); err != nil {
-		return nil, fmt.Errorf("register transfer_orders: %w", err)
+		return nil, fmt.Errorf("register inventory.transfer_orders: %w", err)
 	}
 
 	// Register warehouses entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "warehouses",
+		Name: "inventory.warehouses",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app warehouseapp.NewWarehouse
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1281,12 +1281,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: warehouseapp.UpdateWarehouse{},
 	}); err != nil {
-		return nil, fmt.Errorf("register warehouses: %w", err)
+		return nil, fmt.Errorf("register inventory.warehouses: %w", err)
 	}
 
 	// Register zones entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "zones",
+		Name: "inventory.zones",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app zoneapp.NewZone
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1316,12 +1316,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: zoneapp.UpdateZone{},
 	}); err != nil {
-		return nil, fmt.Errorf("register zones: %w", err)
+		return nil, fmt.Errorf("register inventory.zones: %w", err)
 	}
 
 	// Register inventory_items entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "inventory_items",
+		Name: "inventory.inventory_items",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app inventoryitemapp.NewInventoryItem
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1351,12 +1351,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: inventoryitemapp.UpdateInventoryItem{},
 	}); err != nil {
-		return nil, fmt.Errorf("register inventory_items: %w", err)
+		return nil, fmt.Errorf("register inventory.inventory_items: %w", err)
 	}
 
 	// Register lot_trackings entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "lot_trackings",
+		Name: "inventory.lot_trackings",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app lottrackingsapp.NewLotTrackings
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1386,7 +1386,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: lottrackingsapp.UpdateLotTrackings{},
 	}); err != nil {
-		return nil, fmt.Errorf("register lot_trackings: %w", err)
+		return nil, fmt.Errorf("register inventory.lot_trackings: %w", err)
 	}
 
 	// =========================================================================
@@ -1395,7 +1395,7 @@ func buildFormDataRegistry(
 
 	// Register purchase_order_line_item_statuses entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "purchase_order_line_item_statuses",
+		Name: "procurement.purchase_order_line_item_statuses",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app purchaseorderlineitemstatusapp.NewPurchaseOrderLineItemStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1425,12 +1425,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: purchaseorderlineitemstatusapp.UpdatePurchaseOrderLineItemStatus{},
 	}); err != nil {
-		return nil, fmt.Errorf("register purchase_order_line_item_statuses: %w", err)
+		return nil, fmt.Errorf("register procurement.purchase_order_line_item_statuses: %w", err)
 	}
 
 	// Register purchase_order_statuses entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "purchase_order_statuses",
+		Name: "procurement.purchase_order_statuses",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app purchaseorderstatusapp.NewPurchaseOrderStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1460,12 +1460,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: purchaseorderstatusapp.UpdatePurchaseOrderStatus{},
 	}); err != nil {
-		return nil, fmt.Errorf("register purchase_order_statuses: %w", err)
+		return nil, fmt.Errorf("register procurement.purchase_order_statuses: %w", err)
 	}
 
 	// Register suppliers entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "suppliers",
+		Name: "procurement.suppliers",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app supplierapp.NewSupplier
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1495,12 +1495,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: supplierapp.UpdateSupplier{},
 	}); err != nil {
-		return nil, fmt.Errorf("register suppliers: %w", err)
+		return nil, fmt.Errorf("register procurement.suppliers: %w", err)
 	}
 
 	// Register supplier_products entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "supplier_products",
+		Name: "procurement.supplier_products",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app supplierproductapp.NewSupplierProduct
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1530,12 +1530,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: supplierproductapp.UpdateSupplierProduct{},
 	}); err != nil {
-		return nil, fmt.Errorf("register supplier_products: %w", err)
+		return nil, fmt.Errorf("register procurement.supplier_products: %w", err)
 	}
 
 	// Register purchase_orders entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "purchase_orders",
+		Name: "procurement.purchase_orders",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app purchaseorderapp.NewPurchaseOrder
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1565,12 +1565,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: purchaseorderapp.UpdatePurchaseOrder{},
 	}); err != nil {
-		return nil, fmt.Errorf("register purchase_orders: %w", err)
+		return nil, fmt.Errorf("register procurement.purchase_orders: %w", err)
 	}
 
 	// Register purchase_order_line_items entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "purchase_order_line_items",
+		Name: "procurement.purchase_order_line_items",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app purchaseorderlineitemapp.NewPurchaseOrderLineItem
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1600,7 +1600,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: purchaseorderlineitemapp.UpdatePurchaseOrderLineItem{},
 	}); err != nil {
-		return nil, fmt.Errorf("register purchase_order_line_items: %w", err)
+		return nil, fmt.Errorf("register procurement.purchase_order_line_items: %w", err)
 	}
 
 	// =========================================================================
@@ -1609,7 +1609,7 @@ func buildFormDataRegistry(
 
 	// Register brands entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "brands",
+		Name: "products.brands",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app brandapp.NewBrand
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1639,12 +1639,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: brandapp.UpdateBrand{},
 	}); err != nil {
-		return nil, fmt.Errorf("register brands: %w", err)
+		return nil, fmt.Errorf("register products.brands: %w", err)
 	}
 
 	// Register cost_history entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "cost_history",
+		Name: "products.cost_history",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app costhistoryapp.NewCostHistory
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1674,12 +1674,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: costhistoryapp.UpdateCostHistory{},
 	}); err != nil {
-		return nil, fmt.Errorf("register cost_history: %w", err)
+		return nil, fmt.Errorf("register products.cost_history: %w", err)
 	}
 
 	// Register metrics entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "metrics",
+		Name: "products.metrics",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app metricsapp.NewMetric
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1709,12 +1709,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: metricsapp.UpdateMetric{},
 	}); err != nil {
-		return nil, fmt.Errorf("register metrics: %w", err)
+		return nil, fmt.Errorf("register products.metrics: %w", err)
 	}
 
 	// Register physical_attributes entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "physical_attributes",
+		Name: "products.physical_attributes",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app physicalattributeapp.NewPhysicalAttribute
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1744,12 +1744,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: physicalattributeapp.UpdatePhysicalAttribute{},
 	}); err != nil {
-		return nil, fmt.Errorf("register physical_attributes: %w", err)
+		return nil, fmt.Errorf("register products.physical_attributes: %w", err)
 	}
 
 	// Register product_categories entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "product_categories",
+		Name: "products.product_categories",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app productcategoryapp.NewProductCategory
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1779,12 +1779,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: productcategoryapp.UpdateProductCategory{},
 	}); err != nil {
-		return nil, fmt.Errorf("register product_categories: %w", err)
+		return nil, fmt.Errorf("register products.product_categories: %w", err)
 	}
 
 	// Register product_costs entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "product_costs",
+		Name: "products.product_costs",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app productcostapp.NewProductCost
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1814,12 +1814,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: productcostapp.UpdateProductCost{},
 	}); err != nil {
-		return nil, fmt.Errorf("register product_costs: %w", err)
+		return nil, fmt.Errorf("register products.product_costs: %w", err)
 	}
 
 	// Register products entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "products",
+		Name: "products.products",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app productapp.NewProduct
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1849,7 +1849,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: productapp.UpdateProduct{},
 	}); err != nil {
-		return nil, fmt.Errorf("register products: %w", err)
+		return nil, fmt.Errorf("register products.products: %w", err)
 	}
 
 	// =========================================================================
@@ -1858,7 +1858,7 @@ func buildFormDataRegistry(
 
 	// Register customers entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "customers",
+		Name: "sales.customers",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app customersapp.NewCustomers
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1888,12 +1888,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: customersapp.UpdateCustomers{},
 	}); err != nil {
-		return nil, fmt.Errorf("register customers: %w", err)
+		return nil, fmt.Errorf("register sales.customers: %w", err)
 	}
 
 	// Register order_line_items entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "order_line_items",
+		Name: "sales.order_line_items",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app orderlineitemsapp.NewOrderLineItem
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1923,12 +1923,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: orderlineitemsapp.UpdateOrderLineItem{},
 	}); err != nil {
-		return nil, fmt.Errorf("register order_line_items: %w", err)
+		return nil, fmt.Errorf("register sales.order_line_items: %w", err)
 	}
 
 	// Register orders entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "orders",
+		Name: "sales.orders",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app ordersapp.NewOrder
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1958,12 +1958,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: ordersapp.UpdateOrder{},
 	}); err != nil {
-		return nil, fmt.Errorf("register orders: %w", err)
+		return nil, fmt.Errorf("register sales.orders: %w", err)
 	}
 
 	// Register line_item_fulfillment_status entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "line_item_fulfillment_status",
+		Name: "sales.line_item_fulfillment_status",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app lineitemfulfillmentstatusapp.NewLineItemFulfillmentStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -1993,12 +1993,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: lineitemfulfillmentstatusapp.UpdateLineItemFulfillmentStatus{},
 	}); err != nil {
-		return nil, fmt.Errorf("register line_item_fulfillment_status: %w", err)
+		return nil, fmt.Errorf("register sales.line_item_fulfillment_status: %w", err)
 	}
 
 	// Register order_fulfillment_status entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "order_fulfillment_status",
+		Name: "sales.order_fulfillment_status",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app orderfulfillmentstatusapp.NewOrderFulfillmentStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -2028,7 +2028,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: orderfulfillmentstatusapp.UpdateOrderFulfillmentStatus{},
 	}); err != nil {
-		return nil, fmt.Errorf("register order_fulfillment_status: %w", err)
+		return nil, fmt.Errorf("register sales.order_fulfillment_status: %w", err)
 	}
 
 	// =========================================================================
@@ -2037,7 +2037,7 @@ func buildFormDataRegistry(
 
 	// Register forms entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "forms",
+		Name: "config.forms",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app formapp.NewForm
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -2067,12 +2067,12 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: formapp.UpdateForm{},
 	}); err != nil {
-		return nil, fmt.Errorf("register forms: %w", err)
+		return nil, fmt.Errorf("register config.forms: %w", err)
 	}
 
 	// Register form_fields entity
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "form_fields",
+		Name: "config.form_fields",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app formfieldapp.NewFormField
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -2102,7 +2102,7 @@ func buildFormDataRegistry(
 		},
 		UpdateModel: formfieldapp.UpdateFormField{},
 	}); err != nil {
-		return nil, fmt.Errorf("register form_fields: %w", err)
+		return nil, fmt.Errorf("register config.form_fields: %w", err)
 	}
 
 	return registry, nil

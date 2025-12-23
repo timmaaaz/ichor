@@ -90,12 +90,12 @@ func (a *App) ValidateForm(
 
 	// Build a map of entity names to their field names
 	// For lineitems field type, we need to extract nested field names from the config
-	// Entity names match the table name (e.g., "orders", "order_line_items")
+	// Entity names use schema.table format (e.g., "sales.orders", "sales.order_line_items")
 	entityFieldsMap := make(map[string][]string)
 
 	for _, field := range fields {
-		// Use table name as entity key (matches registry entity names)
-		entityKey := field.EntityTable
+		// Use schema.table format as entity key (matches registry entity names like "sales.customers")
+		entityKey := field.EntitySchema + "." + field.EntityTable
 
 		// Handle lineitems field type specially
 		if field.FieldType == "lineitems" {
@@ -226,7 +226,18 @@ func (a *App) validateFormRequiredFields(
 	return nil
 }
 
+// auditFields are system-provided fields that should not be required in form configurations.
+// These fields are automatically injected by the frontend composable or backend during submission.
+var auditFields = map[string]bool{
+	"created_by":   true,
+	"created_date": true,
+	"updated_by":   true,
+	"updated_date": true,
+}
+
 // findMissingFields returns the fields that are required but not present.
+// Audit fields (created_by, created_date, updated_by, updated_date) are excluded
+// from the check as they are system-provided and not expected in form configurations.
 func findMissingFields(requiredFields []string, availableFields []string) []string {
 	// Create a map of available fields for O(1) lookup
 	available := make(map[string]bool)
@@ -234,9 +245,13 @@ func findMissingFields(requiredFields []string, availableFields []string) []stri
 		available[field] = true
 	}
 
-	// Find missing required fields
+	// Find missing required fields (excluding audit fields)
 	var missing []string
 	for _, required := range requiredFields {
+		// Skip audit fields - they are system-provided
+		if auditFields[required] {
+			continue
+		}
 		if !available[required] {
 			missing = append(missing, required)
 		}
