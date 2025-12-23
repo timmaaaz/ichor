@@ -418,6 +418,8 @@ func GetProductCategoryFormFields(formID uuid.UUID, entityID uuid.UUID) []formfi
 			Required:     false,
 			Config:       json.RawMessage(`{}`),
 		},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "product_categories", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 3, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -525,6 +527,8 @@ func GetHomeFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewF
 			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes",
 			Name: "country", Label: "Country", FieldType: "text", FieldOrder: 8, Required: true, Config: json.RawMessage(`{}`),
 		},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "homes", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 9, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -557,6 +561,8 @@ func GetUserApprovalCommentFormFields(formID uuid.UUID, entityID uuid.UUID) []fo
 			FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "user_approval_comments",
 			Name: "user_id", Label: "User", FieldType: "smart-combobox", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`),
 		},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "hr", EntityTable: "user_approval_comments", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 4, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -571,6 +577,8 @@ func GetBrandFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.New
 			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "brands",
 			Name: "contact_infos_id", Label: "Contact Info", FieldType: "smart-combobox", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`),
 		},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "brands", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 3, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -625,6 +633,8 @@ func GetProductFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.N
 			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
 			Name: "units_per_case", Label: "Units Per Case", FieldType: "number", FieldOrder: 12, Required: true, Config: json.RawMessage(`{}`),
 		},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 13, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -643,6 +653,8 @@ func GetPhysicalAttributeFormFields(formID uuid.UUID, entityID uuid.UUID) []form
 		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "storage_requirements", Label: "Storage Requirements", FieldType: "textarea", FieldOrder: 10, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "hazmat_class", Label: "Hazmat Class", FieldType: "text", FieldOrder: 11, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "shelf_life_days", Label: "Shelf Life (Days)", FieldType: "number", FieldOrder: 12, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "physical_attributes", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 13, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -651,6 +663,8 @@ func GetProductCostFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldb
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "product_costs", Name: "product_id", Label: "Product", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "product_costs", Name: "purchase_cost", Label: "Purchase Cost", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "product_costs", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 3, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -658,6 +672,8 @@ func GetProductCostFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldb
 func GetCostHistoryFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "cost_history", Name: "product_id", Label: "Product", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "cost_history", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 2, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -665,6 +681,8 @@ func GetCostHistoryFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldb
 func GetQualityMetricFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "quality_metrics", Name: "product_id", Label: "Product", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "quality_metrics", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 2, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -675,6 +693,11 @@ func GetWarehouseFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "name", Label: "Warehouse Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "street_id", Label: "Address", FieldType: "smart-combobox", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "geography.streets", "display_field": "line_1", "inline_create": {"enabled": true, "form_name": "Street Creation Form", "button_text": "Create Street"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "is_active", Label: "Active", FieldType: "boolean", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit fields - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "updated_by", Label: "Updated By", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"default_value": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "warehouses", Name: "updated_date", Label: "Updated Date", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -683,6 +706,8 @@ func GetZoneFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewF
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "zones", Name: "warehouse_id", Label: "Warehouse", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "zones", Name: "name", Label: "Zone Name", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "zones", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 3, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -690,6 +715,8 @@ func GetZoneFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewF
 func GetInventoryLocationFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "zone_id", Label: "Zone", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 2, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -700,6 +727,8 @@ func GetInventoryItemFormFields(formID uuid.UUID, entityID uuid.UUID) []formfiel
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "location_id", Label: "Location", FieldType: "smart-combobox", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "inventory.inventory_locations", "display_field": "aisle", "inline_create": {"enabled": true, "form_name": "Inventory Location Creation Form", "button_text": "Create Inventory Location"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"min": 0}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "reserved_quantity", Label: "Reserved Quantity", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"min": 0}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_items", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -707,6 +736,8 @@ func GetInventoryItemFormFields(formID uuid.UUID, entityID uuid.UUID) []formfiel
 func GetSerialNumberFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "serial_numbers", Name: "product_id", Label: "Product", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "serial_numbers", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 2, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -714,6 +745,8 @@ func GetSerialNumberFormFields(formID uuid.UUID, entityID uuid.UUID) []formfield
 func GetLotTrackingFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "lot_trackings", Name: "supplier_product_id", Label: "Supplier Product", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "lot_trackings", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 2, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -721,6 +754,8 @@ func GetLotTrackingFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldb
 func GetQualityInspectionFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "quality_inspections", Name: "product_id", Label: "Product", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "quality_inspections", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 2, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -728,6 +763,8 @@ func GetQualityInspectionFormFields(formID uuid.UUID, entityID uuid.UUID) []form
 func GetInventoryTransactionFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_transactions", Name: "product_id", Label: "Product", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_transactions", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 2, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -739,6 +776,8 @@ func GetInventoryAdjustmentFormFields(formID uuid.UUID, entityID uuid.UUID) []fo
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "quantity_change", Label: "Quantity Change", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "reason_code", Label: "Reason Code", FieldType: "text", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "notes", Label: "Notes", FieldType: "textarea", FieldOrder: 5, Required: false, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_adjustments", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -750,6 +789,8 @@ func GetTransferOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfiel
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "to_location_id", Label: "To Location", FieldType: "smart-combobox", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "inventory.inventory_locations", "display_field": "aisle", "inline_create": {"enabled": true, "form_name": "Inventory Location Creation Form", "button_text": "Create Inventory Location"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"min": 1}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "status", Label: "Status", FieldType: "text", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "transfer_orders", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -763,6 +804,11 @@ func GetValidAssetFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbu
 		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "serial_number", Label: "Serial Number", FieldType: "text", FieldOrder: 5, Required: false, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "model_number", Label: "Model Number", FieldType: "text", FieldOrder: 6, Required: false, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "is_enabled", Label: "Is Enabled", FieldType: "boolean", FieldOrder: 7, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit fields - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 9, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "updated_by", Label: "Updated By", FieldType: "hidden", FieldOrder: 10, Required: false, Config: json.RawMessage(`{"default_value": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "assets", EntityTable: "valid_assets", Name: "updated_date", Label: "Updated Date", FieldType: "hidden", FieldOrder: 11, Required: false, Config: json.RawMessage(`{"default_value": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -794,6 +840,11 @@ func GetAutomationRuleFormFields(formID uuid.UUID, entityID uuid.UUID) []formfie
 	return []formfieldbus.NewFormField{
 		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "automation_rules", Name: "name", Label: "Rule Name", FieldType: "text", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "automation_rules", Name: "description", Label: "Description", FieldType: "textarea", FieldOrder: 2, Required: false, Config: json.RawMessage(`{}`)},
+		// Audit fields - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "automation_rules", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 3, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "automation_rules", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 4, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "automation_rules", Name: "updated_by", Label: "Updated By", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "workflow", EntityTable: "automation_rules", Name: "updated_date", Label: "Updated Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -820,6 +871,11 @@ func GetCustomerFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "contact_id", Label: "Contact Information", FieldType: "smart-combobox", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "core.contact_infos", "display_field": "email_address", "inline_create": {"enabled": true, "form_name": "Contact Info Creation Form", "button_text": "Create Contact Info"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "delivery_address_id", Label: "Delivery Address", FieldType: "smart-combobox", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "geography.streets", "display_field": "line_1", "inline_create": {"enabled": true, "form_name": "Street Creation Form", "button_text": "Create Street"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "notes", Label: "Notes", FieldType: "textarea", FieldOrder: 4, Required: false, Config: json.RawMessage(`{}`)},
+		// Audit fields - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "updated_by", Label: "Updated By", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"default_value": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "customers", Name: "updated_date", Label: "Updated Date", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -830,7 +886,11 @@ func GetSalesOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbu
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "customer_id", Label: "Customer", FieldType: "smart-combobox", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "sales.customers", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Customer Creation Form", "button_text": "Create Customer"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "due_date", Label: "Due Date", FieldType: "date", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "fulfillment_status_id", Label: "Fulfillment Status", FieldType: "smart-combobox", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "sales.order_fulfillment_statuses", "display_field": "name"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "created_by", Label: "Created By", FieldType: "text", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit fields - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "updated_by", Label: "Updated By", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"default_value": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "updated_date", Label: "Updated Date", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -841,6 +901,11 @@ func GetSalesOrderLineItemFormFields(formID uuid.UUID, entityID uuid.UUID) []for
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "quantity", Label: "Quantity", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"min": 1}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "unit_price", Label: "Unit Price", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "line_item_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "smart-combobox", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "sales.line_item_fulfillment_statuses", "display_field": "name"}`)},
+		// Audit fields - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "updated_by", Label: "Updated By", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"default_value": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "updated_date", Label: "Updated Date", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -851,6 +916,8 @@ func GetSupplierFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "contact_infos_id", Label: "Contact Information", FieldType: "smart-combobox", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "core.contact_infos", "display_field": "email_address", "inline_create": {"enabled": true, "form_name": "Contact Info Creation Form", "button_text": "Create Contact Info"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "payment_terms", Label: "Payment Terms", FieldType: "textarea", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "lead_time_days", Label: "Lead Time (Days)", FieldType: "number", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "suppliers", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -861,6 +928,11 @@ func GetPurchaseOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfiel
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "supplier_id", Label: "Supplier", FieldType: "smart-combobox", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"entity": "procurement.suppliers", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Supplier Creation Form", "button_text": "Create Supplier"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "purchase_order_status_id", Label: "Status", FieldType: "smart-combobox", FieldOrder: 3, Required: true, Config: json.RawMessage(`{"entity": "procurement.purchase_order_statuses", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Purchase Order Status Creation Form", "button_text": "Create Purchase Order Status"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "delivery_warehouse_id", Label: "Delivery Warehouse", FieldType: "smart-combobox", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "inventory.warehouses", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Warehouse Creation Form", "button_text": "Create Warehouse"}}`)},
+		// Audit fields - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "updated_by", Label: "Updated By", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"default_value": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_orders", Name: "updated_date", Label: "Updated Date", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -871,6 +943,11 @@ func GetPurchaseOrderLineItemFormFields(formID uuid.UUID, entityID uuid.UUID) []
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "quantity_ordered", Label: "Quantity Ordered", FieldType: "number", FieldOrder: 2, Required: true, Config: json.RawMessage(`{"min": 1}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "unit_cost", Label: "Unit Cost", FieldType: "number", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "line_item_status_id", Label: "Line Item Status", FieldType: "smart-combobox", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "procurement.purchase_order_line_item_statuses", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Purchase Order Line Item Status Creation Form", "button_text": "Create Purchase Order Line Item Status"}}`)},
+		// Audit fields - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "updated_by", Label: "Updated By", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"default_value": "{{$me}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "purchase_order_line_items", Name: "updated_date", Label: "Updated Date", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -892,6 +969,8 @@ func GetUserFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewF
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "title_id", Label: "Title", FieldType: "smart-combobox", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"entity": "hr.titles", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Title Creation Form", "button_text": "Create Title"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "office_id", Label: "Office", FieldType: "smart-combobox", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"entity": "hr.offices", "display_field": "name", "inline_create": {"enabled": true, "form_name": "Office Creation Form", "button_text": "Create Office"}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "user_approval_status_id", Label: "Approval Status", FieldType: "smart-combobox", FieldOrder: 7, Required: true, Config: json.RawMessage(`{"entity": "hr.user_approval_status", "display_field": "name", "inline_create": {"enabled": true, "form_name": "User Approval Status Creation Form", "button_text": "Create User Approval Status"}}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "core", EntityTable: "users", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 
@@ -906,5 +985,7 @@ func GetSupplierProductFormFields(formID uuid.UUID, entityID uuid.UUID) []formfi
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "lead_time_days", Label: "Lead Time (Days)", FieldType: "number", FieldOrder: 6, Required: true, Config: json.RawMessage(`{"min": 0}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "unit_cost", Label: "Unit Cost", FieldType: "number", FieldOrder: 7, Required: true, Config: json.RawMessage(`{"min": 0, "step": 0.01}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "is_primary_supplier", Label: "Is Primary Supplier", FieldType: "boolean", FieldOrder: 8, Required: true, Config: json.RawMessage(`{}`)},
+		// Audit field - auto-populated by backend
+		{FormID: formID, EntityID: entityID, EntitySchema: "procurement", EntityTable: "supplier_products", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 9, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
