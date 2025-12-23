@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/formdataregistry"
+	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -103,6 +105,17 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 		return FormDataResponse{}, errs.Newf(errs.Internal, "load form fields: %s", err)
 	}
 
+	// Set up template processor with builtins for $me and $now
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		// If no user ID in context, use nil UUID (anonymous)
+		userID = uuid.Nil
+	}
+	a.templateProc.SetBuiltins(workflow.BuiltinContext{
+		UserID:    userID.String(),
+		Timestamp: time.Now().UTC(),
+	})
+
 	// Validate that all entities in request match form configuration
 	if err := a.validateFormAlignment(req, fields); err != nil {
 		return FormDataResponse{}, errs.New(errs.InvalidArgument, err)
@@ -138,7 +151,10 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 			return FormDataResponse{}, errs.Newf(errs.InvalidArgument, "missing data for entity %s", step.EntityName)
 		}
 
-		result, err := a.executeOperation(ctx, step, entityData, templateContext)
+		// Filter fields for this entity
+		entityFields := a.filterFieldsByEntity(fields, step.EntityName)
+
+		result, err := a.executeOperation(ctx, step, entityData, templateContext, entityFields)
 		if err != nil {
 			// Check if error is already typed (e.g., InvalidArgument from validation)
 			// Unwrap the error chain to find the original *errs.Error
@@ -217,6 +233,7 @@ func (a *App) executeOperation(
 	step ExecutionStep,
 	data json.RawMessage,
 	templateContext workflow.TemplateContext,
+	entityFields []formfieldbus.FormField,
 ) (any, error) {
 	// Detect if data is an array or single object
 	var rawData interface{}
@@ -226,11 +243,11 @@ func (a *App) executeOperation(
 
 	// Check if data is an array (slice)
 	if arr, isArray := rawData.([]interface{}); isArray {
-		return a.executeArrayOperation(ctx, step, arr, templateContext)
+		return a.executeArrayOperation(ctx, step, arr, templateContext, entityFields)
 	}
 
 	// Single object operation
-	return a.executeSingleOperation(ctx, step, data, templateContext)
+	return a.executeSingleOperation(ctx, step, data, templateContext, entityFields)
 }
 
 // executeSingleOperation processes a single entity object (not an array).
@@ -239,9 +256,17 @@ func (a *App) executeSingleOperation(
 	step ExecutionStep,
 	data json.RawMessage,
 	templateContext workflow.TemplateContext,
+	entityFields []formfieldbus.FormField,
 ) (any, error) {
-	// Process templates in the data
-	processed := a.templateProc.ProcessTemplateObject(data, templateContext)
+	// Merge field defaults before template processing
+	// This injects values like {{$me}} and {{$now}} for audit fields
+	mergedData, _, err := a.mergeFieldDefaults(data, entityFields, step.Operation)
+	if err != nil {
+		return nil, fmt.Errorf("merge field defaults: %w", err)
+	}
+
+	// Process templates in the data (including the injected {{$me}} and {{$now}})
+	processed := a.templateProc.ProcessTemplateObject(mergedData, templateContext)
 	if len(processed.Errors) > 0 {
 		return nil, fmt.Errorf("template processing errors: %v", processed.Errors)
 	}
@@ -273,6 +298,7 @@ func (a *App) executeArrayOperation(
 	step ExecutionStep,
 	items []interface{},
 	templateContext workflow.TemplateContext,
+	entityFields []formfieldbus.FormField,
 ) ([]any, error) {
 	// Validate array is not empty
 	// Line items arrays should contain at least one item
@@ -290,7 +316,7 @@ func (a *App) executeArrayOperation(
 		}
 
 		// Process single item with template resolution
-		result, err := a.executeSingleOperation(ctx, step, itemJSON, templateContext)
+		result, err := a.executeSingleOperation(ctx, step, itemJSON, templateContext, entityFields)
 		if err != nil {
 			return nil, fmt.Errorf("process array item %d: %w", idx, err)
 		}
@@ -353,4 +379,71 @@ func (a *App) executeUpdate(
 	}
 
 	return result, nil
+}
+
+// InjectionResult tracks which fields were auto-populated with default values.
+type InjectionResult struct {
+	EntityName     string            `json:"entity_name"`
+	InjectedFields map[string]string `json:"injected_fields"` // field -> default value used
+}
+
+// mergeFieldDefaults merges default values from field configurations into the data.
+// This injects values for fields that have default_value, default_value_create, or
+// default_value_update configured, but only if the field is not already provided.
+func (a *App) mergeFieldDefaults(
+	data json.RawMessage,
+	fieldConfigs []formfieldbus.FormField,
+	operation formdataregistry.EntityOperation,
+) (json.RawMessage, InjectionResult, error) {
+	var dataMap map[string]interface{}
+	if err := json.Unmarshal(data, &dataMap); err != nil {
+		return data, InjectionResult{}, err
+	}
+
+	injected := InjectionResult{
+		InjectedFields: make(map[string]string),
+	}
+
+	for _, field := range fieldConfigs {
+		// Parse field config for default values
+		var cfg formfieldbus.FieldDefaultConfig
+		if err := json.Unmarshal(field.Config, &cfg); err != nil {
+			// If config can't be parsed, skip this field
+			continue
+		}
+
+		// Determine which default to use based on operation
+		defaultVal := cfg.DefaultValue
+		if operation == formdataregistry.OperationCreate && cfg.DefaultValueCreate != "" {
+			defaultVal = cfg.DefaultValueCreate
+		} else if operation == formdataregistry.OperationUpdate && cfg.DefaultValueUpdate != "" {
+			defaultVal = cfg.DefaultValueUpdate
+		}
+
+		if defaultVal == "" {
+			continue
+		}
+
+		// Only inject if field is not already provided in the data
+		if _, exists := dataMap[field.Name]; !exists {
+			dataMap[field.Name] = defaultVal
+			injected.InjectedFields[field.Name] = defaultVal
+		}
+	}
+
+	result, err := json.Marshal(dataMap)
+	return result, injected, err
+}
+
+// filterFieldsByEntity filters form fields by entity name (schema.table format).
+func (a *App) filterFieldsByEntity(fields []formfieldbus.FormField, entityName string) []formfieldbus.FormField {
+	var filtered []formfieldbus.FormField
+	for _, field := range fields {
+		// Build entity name from schema and table
+		fieldEntityName := fmt.Sprintf("%s.%s", field.EntitySchema, field.EntityTable)
+		if fieldEntityName == entityName {
+			filtered = append(filtered, field)
+		}
+	}
+	return filtered
 }

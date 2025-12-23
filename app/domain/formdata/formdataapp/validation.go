@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/formdataregistry"
+	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 )
 
 // FormValidationError represents a validation error for a specific entity in a form.
@@ -93,9 +95,17 @@ func (a *App) ValidateForm(
 	// Entity names use schema.table format (e.g., "sales.orders", "sales.order_line_items")
 	entityFieldsMap := make(map[string][]string)
 
+	// Also track auto-populated fields (those with {{$me}}, {{$now}} defaults)
+	autoPopulatedFields := make(map[string]bool)
+
 	for _, field := range fields {
 		// Use schema.table format as entity key (matches registry entity names like "sales.customers")
 		entityKey := field.EntitySchema + "." + field.EntityTable
+
+		// Check if this field has auto-populated defaults
+		if isAutoPopulatedField(field) {
+			autoPopulatedFields[field.Name] = true
+		}
 
 		// Handle lineitems field type specially
 		if field.FieldType == "lineitems" {
@@ -172,7 +182,7 @@ func (a *App) ValidateForm(
 		}
 
 		// Check which required fields are missing
-		missingFields := findMissingFields(requiredFields, entityFields)
+		missingFields := findMissingFields(requiredFields, entityFields, autoPopulatedFields)
 
 		if len(missingFields) > 0 {
 			validationErrors = append(validationErrors, FormValidationError{
@@ -226,30 +236,41 @@ func (a *App) validateFormRequiredFields(
 	return nil
 }
 
-// auditFields are system-provided fields that should not be required in form configurations.
-// These fields are automatically injected by the frontend composable or backend during submission.
-var auditFields = map[string]bool{
-	"created_by":   true,
-	"created_date": true,
-	"updated_by":   true,
-	"updated_date": true,
+// isAutoPopulatedField checks if a field has a magic default configured ({{$me}}, {{$now}}).
+// Fields with these defaults are auto-populated by the backend and should not be required
+// in form configurations.
+func isAutoPopulatedField(field formfieldbus.FormField) bool {
+	var cfg formfieldbus.FieldDefaultConfig
+	if err := json.Unmarshal(field.Config, &cfg); err != nil {
+		return false
+	}
+
+	hasBuiltin := func(s string) bool {
+		return strings.Contains(s, "{{$me}}") ||
+			strings.Contains(s, "{{$now}}") ||
+			strings.Contains(s, "{{$")
+	}
+
+	return hasBuiltin(cfg.DefaultValue) ||
+		hasBuiltin(cfg.DefaultValueCreate) ||
+		hasBuiltin(cfg.DefaultValueUpdate)
 }
 
 // findMissingFields returns the fields that are required but not present.
-// Audit fields (created_by, created_date, updated_by, updated_date) are excluded
+// Auto-populated fields (those with {{$me}}, {{$now}} defaults) are excluded
 // from the check as they are system-provided and not expected in form configurations.
-func findMissingFields(requiredFields []string, availableFields []string) []string {
+func findMissingFields(requiredFields []string, availableFields []string, autoPopulatedFields map[string]bool) []string {
 	// Create a map of available fields for O(1) lookup
 	available := make(map[string]bool)
 	for _, field := range availableFields {
 		available[field] = true
 	}
 
-	// Find missing required fields (excluding audit fields)
+	// Find missing required fields (excluding auto-populated fields)
 	var missing []string
 	for _, required := range requiredFields {
-		// Skip audit fields - they are system-provided
-		if auditFields[required] {
+		// Skip auto-populated fields - they are system-provided via {{$me}}, {{$now}}
+		if autoPopulatedFields[required] {
 			continue
 		}
 		if !available[required] {

@@ -55,6 +55,16 @@ type UpdateFormField struct {
 // These types define the structure of the Config JSON for different field types.
 // They provide type safety when building form field configurations.
 
+// FieldDefaultConfig defines auto-population behavior for a field.
+// This is used for audit fields like created_by, updated_by, created_date, updated_date
+// which can be automatically populated using magic variables like {{$me}} and {{$now}}.
+type FieldDefaultConfig struct {
+	DefaultValue       string `json:"default_value,omitempty"`        // e.g., "{{$me}}" - applied to both create and update
+	DefaultValueCreate string `json:"default_value_create,omitempty"` // e.g., "{{$me}}" - only for create operations
+	DefaultValueUpdate string `json:"default_value_update,omitempty"` // e.g., "{{$me}}" - only for update operations
+	Hidden             bool   `json:"hidden,omitempty"`               // If true, field is not rendered in UI
+}
+
 // DropdownConfig defines configuration for dropdown fields.
 type DropdownConfig struct {
 	Entity         string   `json:"entity"`                               // Format: "schema.table" (e.g., "products.products")

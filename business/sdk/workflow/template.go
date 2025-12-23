@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+// BuiltinContext holds system-provided values for magic variables like $me and $now
+type BuiltinContext struct {
+	UserID    string    // For $me - the current user's ID
+	Timestamp time.Time // For $now - the current timestamp
+}
+
 // TemplateProcessor handles variable substitution in templates
 type TemplateProcessor struct {
 	strictMode    bool                  // If true, fail on missing variables
@@ -18,6 +24,7 @@ type TemplateProcessor struct {
 	allowNested   bool                  // Allow nested object access like user.profile.name
 	customFilters map[string]FilterFunc // Custom filter functions
 	variableRegex *regexp.Regexp
+	builtins      *BuiltinContext // System-provided magic variable values
 }
 
 // FilterFunc defines a function that can transform values in templates
@@ -72,7 +79,13 @@ func NewTemplateProcessor(opts TemplateProcessingOptions) *TemplateProcessor {
 		allowNested:   opts.AllowNested,
 		customFilters: opts.CustomFilters,
 		variableRegex: regexp.MustCompile(`\{\{([^}]+)\}\}`),
+		builtins:      nil,
 	}
+}
+
+// SetBuiltins configures built-in variable values for $me and $now
+func (tp *TemplateProcessor) SetBuiltins(ctx BuiltinContext) {
+	tp.builtins = &ctx
 }
 
 // ProcessTemplate processes template variables in a string
@@ -208,6 +221,11 @@ func (tp *TemplateProcessor) resolve(variablePath string, context TemplateContex
 	// Parse variable path and filters: "user.name | uppercase"
 	path, filters := tp.parseVariablePath(variablePath)
 
+	// Check for built-in magic variables (start with $)
+	if strings.HasPrefix(path, "$") {
+		return tp.resolveBuiltin(path, filters)
+	}
+
 	// Resolve the base value and check if key exists
 	value, keyExists := tp.resolveNestedPathWithExistence(path, context)
 	source := "context"
@@ -237,14 +255,79 @@ func (tp *TemplateProcessor) resolve(variablePath string, context TemplateContex
 	}
 }
 
-// resolveNestedPathWithExistence resolves a nested path and returns if the key exists
+// resolveBuiltin handles built-in magic variables like $me and $now
+func (tp *TemplateProcessor) resolveBuiltin(name string, filters []filterSpec) ResolutionResult {
+	if tp.builtins == nil {
+		return ResolutionResult{Found: false}
+	}
+
+	var value interface{}
+	switch name {
+	case "$me":
+		value = tp.builtins.UserID
+	case "$now":
+		value = tp.builtins.Timestamp.Format(time.RFC3339)
+	default:
+		// Unknown built-in variable
+		return ResolutionResult{Found: false}
+	}
+
+	source := "builtin"
+
+	// Apply filters if any
+	if len(filters) > 0 {
+		var err error
+		value, err = tp.applyFilters(value, filters)
+		if err != nil {
+			// If filter application fails, return not found
+			return ResolutionResult{Found: false}
+		}
+		source = "computed"
+	}
+
+	return ResolutionResult{
+		Found:  true,
+		Value:  value,
+		Path:   name,
+		Source: source,
+	}
+}
+
+// resolveNestedPathWithExistence resolves a nested path and returns if the key exists.
+// It first attempts to find progressively longer key prefixes (to support keys with dots),
+// then falls back to nested path resolution if no direct key match is found.
 func (tp *TemplateProcessor) resolveNestedPathWithExistence(path string, context TemplateContext) (interface{}, bool) {
 	if !tp.allowNested {
 		val, exists := context[path]
 		return val, exists
 	}
 
+	// Try to find the longest matching key prefix that contains dots
+	// This supports keys like "sales.orders" while still allowing nested access like ".id"
 	segments := strings.Split(path, ".")
+
+	// Try progressively longer prefixes to find a matching key
+	// For "sales.orders.id", try: "sales.orders.id", "sales.orders", "sales"
+	for prefixLen := len(segments); prefixLen > 0; prefixLen-- {
+		prefix := strings.Join(segments[:prefixLen], ".")
+
+		// Check if this prefix exists as a direct key in the context
+		if val, exists := context[prefix]; exists {
+			// If we've matched the entire path, return the value directly
+			if prefixLen == len(segments) {
+				return val, true
+			}
+
+			// Otherwise, resolve the remaining path segments
+			remaining := segments[prefixLen:]
+			result, found := tp.resolveRemainingPath(val, remaining)
+			if found {
+				return result, true
+			}
+		}
+	}
+
+	// Fall back to pure nested resolution (original behavior)
 	var current interface{} = context
 	keyExists := true
 
@@ -282,6 +365,45 @@ func (tp *TemplateProcessor) resolveNestedPathWithExistence(path string, context
 	}
 
 	return current, keyExists
+}
+
+// resolveRemainingPath resolves the remaining path segments after a prefix match.
+func (tp *TemplateProcessor) resolveRemainingPath(value interface{}, segments []string) (interface{}, bool) {
+	current := value
+
+	for _, segment := range segments {
+		switch v := current.(type) {
+		case map[string]interface{}:
+			val, ok := v[segment]
+			if !ok {
+				return nil, false
+			}
+			current = val
+		case TemplateContext:
+			val, ok := v[segment]
+			if !ok {
+				return nil, false
+			}
+			current = val
+		default:
+			// Try reflection for struct fields
+			rv := reflect.ValueOf(current)
+			if rv.Kind() == reflect.Ptr {
+				rv = rv.Elem()
+			}
+			if rv.Kind() != reflect.Struct {
+				return nil, false
+			}
+
+			field := tp.findStructField(rv, segment)
+			if !field.IsValid() {
+				return nil, false
+			}
+			current = field.Interface()
+		}
+	}
+
+	return current, true
 }
 
 func (tp *TemplateProcessor) parseVariablePath(variablePath string) (string, []filterSpec) {
@@ -455,8 +577,8 @@ func (tp *TemplateProcessor) validateVariable(variablePath string) error {
 		return fmt.Errorf("empty variable name")
 	}
 
-	// Check for invalid characters
-	invalidChars := regexp.MustCompile(`[^a-zA-Z0-9._|:,\s]`)
+	// Check for invalid characters (now allows $ for built-in variables)
+	invalidChars := regexp.MustCompile(`[^a-zA-Z0-9._|:,\s$]`)
 	if invalidChars.MatchString(variablePath) {
 		return fmt.Errorf("invalid characters in variable")
 	}
@@ -465,8 +587,8 @@ func (tp *TemplateProcessor) validateVariable(variablePath string) error {
 	parts := strings.Split(variablePath, "|")
 	variable := strings.TrimSpace(parts[0])
 
-	// Validate variable name
-	validVar := regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9._]*$`)
+	// Validate variable name (allow $ prefix for built-in variables like $me, $now)
+	validVar := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]*|[a-zA-Z][a-zA-Z0-9._]*)$`)
 	if !validVar.MatchString(variable) {
 		return fmt.Errorf("invalid variable name: %s", variable)
 	}
