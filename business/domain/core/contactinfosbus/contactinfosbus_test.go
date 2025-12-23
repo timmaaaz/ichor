@@ -75,7 +75,17 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		strIDs = append(strIDs, s.ID)
 	}
 
-	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, contactInfosCount, strIDs, busDomain.ContactInfos)
+	// Query timezones from seed data
+	tzs, err := busDomain.Timezone.QueryAll(ctx)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("querying timezones : %w", err)
+	}
+	tzIDs := make([]uuid.UUID, 0, len(tzs))
+	for _, tz := range tzs {
+		tzIDs = append(tzIDs, tz.ID)
+	}
+
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, contactInfosCount, strIDs, tzIDs, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
@@ -84,6 +94,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		Admins:       []unitest.User{{User: admins[0]}},
 		ContactInfos: contactInfos,
 		Streets:      strs,
+		Timezones:    tzs,
 	}, nil
 }
 
@@ -134,7 +145,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				DeliveryAddressID:    sd.Streets[1].ID,
 				AvailableHoursStart:  "8:00:00",
 				AvailableHoursEnd:    "5:00:00",
-				Timezone:             "EST",
+				TimezoneID:           sd.Timezones[0].ID,
 				PreferredContactType: "phone",
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -148,7 +159,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					DeliveryAddressID:    sd.Streets[1].ID,
 					AvailableHoursStart:  "8:00:00",
 					AvailableHoursEnd:    "5:00:00",
-					Timezone:             "EST",
+					TimezoneID:           sd.Timezones[0].ID,
 					PreferredContactType: "phone",
 				}
 
@@ -190,7 +201,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				DeliveryAddressID:    sd.Streets[2].ID,
 				AvailableHoursStart:  "9:00:00",
 				AvailableHoursEnd:    "6:00:00",
-				Timezone:             "PST",
+				TimezoneID:           sd.Timezones[1].ID,
 				PreferredContactType: "email",
 				Notes:                sd.ContactInfos[0].Notes,
 			},
@@ -205,7 +216,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					DeliveryAddressID:    &sd.Streets[2].ID,
 					AvailableHoursStart:  dbtest.StringPointer("9:00:00"),
 					AvailableHoursEnd:    dbtest.StringPointer("6:00:00"),
-					Timezone:             dbtest.StringPointer("PST"),
+					TimezoneID:           &sd.Timezones[1].ID,
 					PreferredContactType: dbtest.StringPointer("email"),
 				}
 

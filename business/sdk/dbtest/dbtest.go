@@ -117,6 +117,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
 	streetdb "github.com/timmaaaz/ichor/business/domain/geography/streetbus/stores/streetdb"
+	"github.com/timmaaaz/ichor/business/domain/geography/timezonebus"
+	"github.com/timmaaaz/ichor/business/domain/geography/timezonebus/stores/timezonedb"
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/hr/officebus"
@@ -159,12 +161,13 @@ type BusDomain struct {
 	Delegate *delegate.Delegate
 
 	// Locations
-	Home    *homebus.Business
-	Country *countrybus.Business
-	Region  *regionbus.Business
-	City    *citybus.Business
-	Street  *streetbus.Business
-	Office  *officebus.Business
+	Home     *homebus.Business
+	Country  *countrybus.Business
+	Region   *regionbus.Business
+	City     *citybus.Business
+	Street   *streetbus.Business
+	Timezone *timezonebus.Business
+	Office   *officebus.Business
 
 	// Users
 	User                *userbus.Business
@@ -274,6 +277,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	regionBus := regionbus.NewBusiness(log, delegate, regiondb.NewStore(log, db))
 	cityBus := citybus.NewBusiness(log, delegate, citydb.NewStore(log, db))
 	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
+	timezoneBus := timezonebus.NewBusiness(log, delegate, timezonedb.NewStore(log, db))
 	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))
 	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
 
@@ -374,6 +378,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Region:                    regionBus,
 		City:                      cityBus,
 		Street:                    streetBus,
+		Timezone:                  timezoneBus,
 		ApprovalStatus:            approvalstatusBus,
 		FulfillmentStatus:         fulfillmentstatusBus,
 		AssetCondition:            assetConditionBus,

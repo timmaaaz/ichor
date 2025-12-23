@@ -124,6 +124,16 @@ CREATE TABLE geography.streets (
    FOREIGN KEY (city_id) REFERENCES geography.cities(id) ON DELETE SET NULL-- Check this cascade relationship
 );
 
+-- Version: 1.165
+-- Description: Create timezones table
+CREATE TABLE geography.timezones (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   name TEXT UNIQUE NOT NULL,
+   display_name TEXT NOT NULL,
+   utc_offset TEXT NOT NULL,
+   is_active BOOLEAN DEFAULT TRUE
+);
+
 -- Version: 1.17
 -- Description: Create table user_approval_status
 CREATE TABLE hr.user_approval_status (
@@ -349,7 +359,7 @@ CREATE TABLE core.contact_infos (
    delivery_address_id UUID NULL,
    available_hours_start VARCHAR(50) NOT NULL,
    available_hours_end VARCHAR(50) NOT NULL,
-   timezone VARCHAR(50) NOT NULL,
+   timezone_id UUID NOT NULL REFERENCES geography.timezones(id),
    preferred_contact_type contact_type NOT NULL,
    notes TEXT NULL,
    PRIMARY KEY (id)

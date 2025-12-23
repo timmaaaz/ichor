@@ -15,7 +15,7 @@ type QueryFilter struct {
 	DeliveryAddressID    *uuid.UUID
 	AvailableHoursStart  *string
 	AvailableHoursEnd    *string
-	Timezone             *string
+	TimezoneID           *uuid.UUID
 	PreferredContactType *string
 	Notes                *string
 }

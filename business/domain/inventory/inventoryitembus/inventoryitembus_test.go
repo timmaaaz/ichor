@@ -85,7 +85,17 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		strIDs = append(strIDs, s.ID)
 	}
 
-	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, strIDs, busDomain.ContactInfos)
+	// Query timezones from seed data
+	tzs, err := busDomain.Timezone.QueryAll(ctx)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("querying timezones : %w", err)
+	}
+	tzIDs := make([]uuid.UUID, 0, len(tzs))
+	for _, tz := range tzs {
+		tzIDs = append(tzIDs, tz.ID)
+	}
+
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 5, strIDs, tzIDs, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}

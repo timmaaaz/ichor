@@ -9,6 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
+	"github.com/timmaaaz/ichor/app/domain/geography/timezoneapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
@@ -18,6 +19,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/timezonebus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
@@ -74,7 +76,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		strIDs = append(strIDs, s.ID)
 	}
 
-	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, count, strIDs, busDomain.ContactInfos)
+	// Query timezones from seed data
+	tzs, err := busDomain.Timezone.Query(ctx, timezonebus.QueryFilter{}, timezonebus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("querying timezones : %w", err)
+	}
+	tzIDs := make([]uuid.UUID, 0, len(tzs))
+	for _, tz := range tzs {
+		tzIDs = append(tzIDs, tz.ID)
+	}
+
+	contacts, err := contactinfosbus.TestSeedContactInfos(ctx, count, strIDs, tzIDs, busDomain.ContactInfos)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}
@@ -145,6 +157,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Users:        []apitest.User{tu1},
 		Admins:       []apitest.User{tu2},
 		Streets:      streetapp.ToAppStreets(strs),
+		Timezones:    timezoneapp.ToAppTimezones(tzs),
 		ContactInfos: contactinfosapp.ToAppContactInfos(contacts),
 	}, nil
 }

@@ -65,6 +65,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/geography/countryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/regionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/streetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/geography/timezoneapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/homeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/introspectionapi"
 
@@ -96,6 +97,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/formdata/formdataapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
+	"github.com/timmaaaz/ichor/app/domain/geography/timezoneapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/commentapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/homeapp"
@@ -251,6 +253,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus/stores/regiondb"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus/stores/streetdb"
+	"github.com/timmaaaz/ichor/business/domain/geography/timezonebus"
+	"github.com/timmaaaz/ichor/business/domain/geography/timezonebus/stores/timezonedb"
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
@@ -308,6 +312,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	regionBus := regionbus.NewBusiness(cfg.Log, delegate, regiondb.NewStore(cfg.Log, cfg.DB))
 	cityBus := citybus.NewBusiness(cfg.Log, delegate, citydb.NewStore(cfg.Log, cfg.DB))
 	streetBus := streetbus.NewBusiness(cfg.Log, delegate, streetdb.NewStore(cfg.Log, cfg.DB))
+	timezoneBus := timezonebus.NewBusiness(cfg.Log, delegate, timezonedb.NewStore(cfg.Log, cfg.DB))
 	approvalStatusBus := approvalstatusbus.NewBusiness(cfg.Log, delegate, approvalstatusdb.NewStore(cfg.Log, cfg.DB))
 	fulfillmentStatusBus := fulfillmentstatusbus.NewBusiness(cfg.Log, delegate, fulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
 	assetConditionBus := assetconditionbus.NewBusiness(cfg.Log, delegate, assetconditiondb.NewStore(cfg.Log, cfg.DB))
@@ -431,6 +436,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	streetapi.Routes(app, streetapi.Config{
 		StreetBus:      streetBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
+
+	timezoneapi.Routes(app, timezoneapi.Config{
+		TimezoneBus:    timezoneBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
 		PermissionsBus: permissionsBus,
@@ -843,6 +855,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		approvalstatusapp.NewApp(approvalStatusBus),
 		cityapp.NewApp(cityBus),
 		streetapp.NewApp(streetBus),
+		timezoneapp.NewApp(timezoneBus),
 		commentapp.NewApp(userApprovalCommentBus),
 		approvalapp.NewApp(userApprovalStatusBus),
 		reportstoapp.NewApp(reportsToBus),

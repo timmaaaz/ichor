@@ -153,21 +153,21 @@ var currentOrders = &tablebuilder.Config{
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
 			// orders table columns
-			"orders_id":                  {Type: "uuid"},
-			"order_number":               {Type: "string", Name: "order_number", Header: "Order #", Width: 150, Sortable: true, Filterable: true},
-			"order_date":                 {Type: "datetime", Name: "order_date", Header: "Order Date", Width: 120, Format: &tablebuilder.FormatConfig{Type: "date", Format: "2006-01-02"}},
-			"order_due_date":             {Type: "datetime"},
-			"order_created_date":         {Type: "datetime"},
-			"order_updated_date":         {Type: "datetime"},
+			"orders_id":                   {Type: "uuid"},
+			"order_number":                {Type: "string", Name: "order_number", Header: "Order #", Width: 150, Sortable: true, Filterable: true},
+			"order_date":                  {Type: "datetime", Name: "order_date", Header: "Order Date", Width: 120, Format: &tablebuilder.FormatConfig{Type: "date", Format: "2006-01-02"}},
+			"order_due_date":              {Type: "datetime"},
+			"order_created_date":          {Type: "datetime"},
+			"order_updated_date":          {Type: "datetime"},
 			"order_fulfillment_status_id": {Type: "uuid"},
-			"order_customer_id":          {Type: "uuid"},
+			"order_customer_id":           {Type: "uuid"},
 			// customers table columns
-			"customer_id":               {Type: "uuid"},
-			"customer_contact_info_id":  {Type: "uuid"},
+			"customer_id":                  {Type: "uuid"},
+			"customer_contact_info_id":     {Type: "uuid"},
 			"customer_delivery_address_id": {Type: "uuid"},
-			"customer_notes":            {Type: "string"},
-			"customer_created_date":     {Type: "datetime"},
-			"customer_updated_date":     {Type: "datetime"},
+			"customer_notes":               {Type: "string"},
+			"customer_created_date":        {Type: "datetime"},
+			"customer_updated_date":        {Type: "datetime"},
 			// order_fulfillment_statuses columns
 			"fulfillment_status_name":        {Type: "string", Name: "fulfillment_status_name", Header: "Status", Width: 120},
 			"fulfillment_status_description": {Type: "string"},
@@ -690,7 +690,17 @@ func insertSeedData(busDomain dbtest.BusDomain, configStore *tablebuilder.Config
 		strIDs = append(strIDs, s.ID)
 	}
 
-	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, count, strIDs, busDomain.ContactInfos)
+	// Query timezones from seed data
+	tzs, err := busDomain.Timezone.QueryAll(ctx)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("querying timezones : %w", err)
+	}
+	tzIDs := make([]uuid.UUID, 0, len(tzs))
+	for _, tz := range tzs {
+		tzIDs = append(tzIDs, tz.ID)
+	}
+
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, count, strIDs, tzIDs, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}

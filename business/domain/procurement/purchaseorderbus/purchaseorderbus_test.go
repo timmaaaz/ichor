@@ -80,7 +80,17 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		streetIDs = append(streetIDs, s.ID)
 	}
 
-	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, count, streetIDs, busDomain.ContactInfos)
+	// Query timezones from seed data
+	tzs, err := busDomain.Timezone.QueryAll(ctx)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("querying timezones : %w", err)
+	}
+	tzIDs := make([]uuid.UUID, 0, len(tzs))
+	for _, tz := range tzs {
+		tzIDs = append(tzIDs, tz.ID)
+	}
+
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, count, streetIDs, tzIDs, busDomain.ContactInfos)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding contact info: %w", err)
 	}

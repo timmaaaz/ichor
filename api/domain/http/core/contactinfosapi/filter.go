@@ -23,7 +23,7 @@ func parseQueryParams(r *http.Request) (contactinfosapp.QueryParams, error) {
 		ID:                   values.Get("id"),
 		AvailableHoursStart:  values.Get("available_hours_start"),
 		AvailableHoursEnd:    values.Get("available_hours_end"),
-		Timezone:             values.Get("timezone"),
+		TimezoneID:           values.Get("timezone_id"),
 		PreferredContactType: values.Get("preferred_contact_type"),
 		Notes:                values.Get("notes"),
 	}

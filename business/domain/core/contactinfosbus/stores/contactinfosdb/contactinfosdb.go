@@ -51,10 +51,10 @@ func (s *Store) Create(ctx context.Context, ass contactinfosbus.ContactInfos) er
 	const q = `
     INSERT INTO core.contact_infos (
         id, first_name, last_name, email_address, primary_phone_number, secondary_phone_number, street_id, delivery_address_id,
-		available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
+		available_hours_start, available_hours_end, timezone_id, preferred_contact_type, notes
     ) VALUES (
 		:id, :first_name, :last_name, :email_address, :primary_phone_number, :secondary_phone_number, :street_id, :delivery_address_id,
-		:available_hours_start, :available_hours_end, :timezone, :preferred_contact_type, :notes
+		:available_hours_start, :available_hours_end, :timezone_id, :preferred_contact_type, :notes
 	)
     `
 
@@ -83,7 +83,7 @@ func (s *Store) Update(ctx context.Context, ass contactinfosbus.ContactInfos) er
 		secondary_phone_number = :secondary_phone_number,
         available_hours_start = :available_hours_start,
         available_hours_end = :available_hours_end,
-        timezone = :timezone,
+        timezone_id = :timezone_id,
         preferred_contact_type = :preferred_contact_type,
 		notes = :notes
 	WHERE
@@ -124,7 +124,7 @@ func (s *Store) Query(ctx context.Context, filter contactinfosbus.QueryFilter, o
 	const q = `
     SELECT
 		id, first_name, last_name, email_address, primary_phone_number, street_id, delivery_address_id,
-		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
+		secondary_phone_number, available_hours_start, available_hours_end, timezone_id, preferred_contact_type, notes
     FROM
         core.contact_infos`
 
@@ -181,7 +181,7 @@ func (s *Store) QueryByID(ctx context.Context, userContactInfosID uuid.UUID) (co
 	const q = `
     SELECT
         id, first_name, last_name, email_address, primary_phone_number, street_id, delivery_address_id,
-		secondary_phone_number, available_hours_start, available_hours_end, timezone, preferred_contact_type, notes
+		secondary_phone_number, available_hours_start, available_hours_end, timezone_id, preferred_contact_type, notes
     FROM
         core.contact_infos
     WHERE

@@ -72,8 +72,12 @@ func parseFilter(qp QueryParams) (contactinfosbus.QueryFilter, error) {
 		filter.AvailableHoursEnd = &qp.AvailableHoursEnd
 	}
 
-	if qp.Timezone != "" {
-		filter.Timezone = &qp.Timezone
+	if qp.TimezoneID != "" {
+		id, err := uuid.Parse(qp.TimezoneID)
+		if err != nil {
+			return contactinfosbus.QueryFilter{}, errs.NewFieldsError("timezone_id", err)
+		}
+		filter.TimezoneID = &id
 	}
 
 	if qp.PreferredContactType != "" {

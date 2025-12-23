@@ -142,8 +142,18 @@ func insertAllocateSeedData(busDomain dbtest.BusDomain) (allocateSeedData, error
 		streetIDs = append(streetIDs, s.ID)
 	}
 
+	// Query timezones from seed data
+	tzs, err := busDomain.Timezone.QueryAll(ctx)
+	if err != nil {
+		return allocateSeedData{}, fmt.Errorf("querying timezones : %w", err)
+	}
+	tzIDs := make([]uuid.UUID, 0, len(tzs))
+	for _, tz := range tzs {
+		tzIDs = append(tzIDs, tz.ID)
+	}
+
 	// Seed contact infos for brands
-	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 3, streetIDs, busDomain.ContactInfos)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 3, streetIDs, tzIDs, busDomain.ContactInfos)
 	if err != nil {
 		return allocateSeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}

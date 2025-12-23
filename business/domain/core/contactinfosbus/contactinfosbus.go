@@ -80,7 +80,7 @@ func (b *Business) Create(ctx context.Context, nci NewContactInfos) (ContactInfo
 		DeliveryAddressID:    nci.DeliveryAddressID,
 		AvailableHoursStart:  nci.AvailableHoursStart,
 		AvailableHoursEnd:    nci.AvailableHoursEnd,
-		Timezone:             nci.Timezone,
+		TimezoneID:           nci.TimezoneID,
 		PreferredContactType: nci.PreferredContactType,
 		Notes:                nci.Notes,
 	}
@@ -124,8 +124,8 @@ func (b *Business) Update(ctx context.Context, ci ContactInfos, uci UpdateContac
 	if uci.AvailableHoursEnd != nil {
 		ci.AvailableHoursEnd = *uci.AvailableHoursEnd
 	}
-	if uci.Timezone != nil {
-		ci.Timezone = *uci.Timezone
+	if uci.TimezoneID != nil {
+		ci.TimezoneID = *uci.TimezoneID
 	}
 	if uci.PreferredContactType != nil {
 		ci.PreferredContactType = *uci.PreferredContactType

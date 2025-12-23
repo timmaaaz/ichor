@@ -24,7 +24,7 @@ type QueryParams struct {
 	DeliveryAddressID    string
 	AvailableHoursStart  string
 	AvailableHoursEnd    string
-	Timezone             string
+	TimezoneID           string
 	PreferredContactType string
 	Notes                string
 }
@@ -40,7 +40,7 @@ type ContactInfos struct {
 	DeliveryAddressID    string `json:"delivery_address_id"`
 	AvailableHoursStart  string `json:"available_hours_start"`
 	AvailableHoursEnd    string `json:"available_hours_end"`
-	Timezone             string `json:"timezone"`
+	TimezoneID           string `json:"timezone_id"`
 	PreferredContactType string `json:"preferred_contact_type"`
 	Notes                string `json:"notes"`
 }
@@ -63,7 +63,7 @@ func ToAppContactInfo(bus contactinfosbus.ContactInfos) ContactInfos {
 		DeliveryAddressID:    bus.DeliveryAddressID.String(),
 		AvailableHoursStart:  bus.AvailableHoursStart,
 		AvailableHoursEnd:    bus.AvailableHoursEnd,
-		Timezone:             bus.Timezone,
+		TimezoneID:           bus.TimezoneID.String(),
 		PreferredContactType: bus.PreferredContactType,
 		Notes:                bus.Notes,
 	}
@@ -87,7 +87,7 @@ type NewContactInfos struct {
 	DeliveryAddressID    string `json:"delivery_address_id" validate:"omitempty"`
 	AvailableHoursStart  string `json:"available_hours_start" validate:"required"`
 	AvailableHoursEnd    string `json:"available_hours_end" validate:"required"`
-	Timezone             string `json:"timezone" validate:"required"`
+	TimezoneID           string `json:"timezone_id" validate:"required"`
 	PreferredContactType string `json:"preferred_contact_type" validate:"required"`
 	Notes                string `json:"notes"`
 }
@@ -123,6 +123,11 @@ func toBusNewContactInfos(app NewContactInfos) (contactinfosbus.NewContactInfos,
 		return contactinfosbus.NewContactInfos{}, errs.Newf(errs.InvalidArgument, "parse delivery_address_id: %s", err)
 	}
 
+	timezoneID, err := uuid.Parse(app.TimezoneID)
+	if err != nil {
+		return contactinfosbus.NewContactInfos{}, errs.Newf(errs.InvalidArgument, "parse timezone_id: %s", err)
+	}
+
 	bus := contactinfosbus.NewContactInfos{
 		FirstName:            app.FirstName,
 		LastName:             app.LastName,
@@ -133,7 +138,7 @@ func toBusNewContactInfos(app NewContactInfos) (contactinfosbus.NewContactInfos,
 		DeliveryAddressID:    deliveryAddressID,
 		AvailableHoursStart:  app.AvailableHoursStart,
 		AvailableHoursEnd:    app.AvailableHoursEnd,
-		Timezone:             app.Timezone,
+		TimezoneID:           timezoneID,
 		PreferredContactType: app.PreferredContactType,
 		Notes:                app.Notes,
 	}
@@ -151,7 +156,7 @@ type UpdateContactInfos struct {
 	DeliveryAddressID    *string `json:"delivery_address_id"`
 	AvailableHoursStart  *string `json:"available_hours_start"`
 	AvailableHoursEnd    *string `json:"available_hours_end"`
-	Timezone             *string `json:"timezone"`
+	TimezoneID           *string `json:"timezone_id"`
 	PreferredContactType *string `json:"preferred_contact_type"`
 	Notes                *string `json:"notes"`
 }
@@ -197,6 +202,14 @@ func toBusUpdateContactInfos(app UpdateContactInfos) (contactinfosbus.UpdateCont
 		bus.DeliveryAddressID = &id
 	}
 
+	if app.TimezoneID != nil {
+		id, err := uuid.Parse(*app.TimezoneID)
+		if err != nil {
+			return contactinfosbus.UpdateContactInfos{}, errs.Newf(errs.InvalidArgument, "parse timezone_id: %s", err)
+		}
+		bus.TimezoneID = &id
+	}
+
 	bus.FirstName = app.FirstName
 	bus.LastName = app.LastName
 	bus.EmailAddress = app.EmailAddress
@@ -204,7 +217,6 @@ func toBusUpdateContactInfos(app UpdateContactInfos) (contactinfosbus.UpdateCont
 	bus.SecondaryPhone = app.SecondaryPhone
 	bus.AvailableHoursStart = app.AvailableHoursStart
 	bus.AvailableHoursEnd = app.AvailableHoursEnd
-	bus.Timezone = app.Timezone
 	bus.PreferredContactType = app.PreferredContactType
 	bus.Notes = app.Notes
 

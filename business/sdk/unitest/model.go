@@ -23,6 +23,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/timezonebus"
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
@@ -82,6 +83,7 @@ type SeedData struct {
 	Regions                       []regionbus.Region
 	Cities                        []citybus.City
 	Streets                       []streetbus.Street
+	Timezones                     []timezonebus.Timezone
 	ApprovalStatus                []approvalstatusbus.ApprovalStatus
 	UserApprovalStatus            []approvalbus.UserApprovalStatus
 	UserApprovalComment           []commentbus.UserApprovalComment

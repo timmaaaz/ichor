@@ -24,6 +24,7 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 		{RoleID: uuid.Nil, TableName: "geography.regions", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "geography.cities", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "geography.streets", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "geography.timezones", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 
 		// HR schema
 		{RoleID: uuid.Nil, TableName: "hr.user_approval_status", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},

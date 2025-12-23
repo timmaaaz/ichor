@@ -249,6 +249,44 @@ INSERT INTO geography.countries (id, number, name, alpha_2, alpha_3) VALUES
     (uuid_generate_v4(),246,'India','IN','IND'),
     (uuid_generate_v4(),247,'Kosovo','XK','XXK')
 ;
+
+-- Timezone Reference Data (Common IANA Timezones)
+INSERT INTO geography.timezones (id, name, display_name, utc_offset, is_active) VALUES
+    (uuid_generate_v4(), 'America/New_York', 'Eastern Time (US & Canada)', '-05:00', TRUE),
+    (uuid_generate_v4(), 'America/Chicago', 'Central Time (US & Canada)', '-06:00', TRUE),
+    (uuid_generate_v4(), 'America/Denver', 'Mountain Time (US & Canada)', '-07:00', TRUE),
+    (uuid_generate_v4(), 'America/Los_Angeles', 'Pacific Time (US & Canada)', '-08:00', TRUE),
+    (uuid_generate_v4(), 'America/Anchorage', 'Alaska', '-09:00', TRUE),
+    (uuid_generate_v4(), 'Pacific/Honolulu', 'Hawaii', '-10:00', TRUE),
+    (uuid_generate_v4(), 'America/Phoenix', 'Arizona', '-07:00', TRUE),
+    (uuid_generate_v4(), 'America/Detroit', 'Eastern Time - Michigan', '-05:00', TRUE),
+    (uuid_generate_v4(), 'America/Indiana/Indianapolis', 'Eastern Time - Indiana', '-05:00', TRUE),
+    (uuid_generate_v4(), 'Europe/London', 'London, Edinburgh', '+00:00', TRUE),
+    (uuid_generate_v4(), 'Europe/Paris', 'Paris, Brussels, Amsterdam', '+01:00', TRUE),
+    (uuid_generate_v4(), 'Europe/Berlin', 'Berlin, Frankfurt', '+01:00', TRUE),
+    (uuid_generate_v4(), 'Europe/Rome', 'Rome, Milan', '+01:00', TRUE),
+    (uuid_generate_v4(), 'Europe/Madrid', 'Madrid, Barcelona', '+01:00', TRUE),
+    (uuid_generate_v4(), 'Europe/Moscow', 'Moscow, St. Petersburg', '+03:00', TRUE),
+    (uuid_generate_v4(), 'Europe/Istanbul', 'Istanbul', '+03:00', TRUE),
+    (uuid_generate_v4(), 'Asia/Dubai', 'Dubai, Abu Dhabi', '+04:00', TRUE),
+    (uuid_generate_v4(), 'Asia/Kolkata', 'Mumbai, New Delhi, Kolkata', '+05:30', TRUE),
+    (uuid_generate_v4(), 'Asia/Bangkok', 'Bangkok, Hanoi, Jakarta', '+07:00', TRUE),
+    (uuid_generate_v4(), 'Asia/Singapore', 'Singapore, Kuala Lumpur', '+08:00', TRUE),
+    (uuid_generate_v4(), 'Asia/Shanghai', 'Beijing, Shanghai, Hong Kong', '+08:00', TRUE),
+    (uuid_generate_v4(), 'Asia/Tokyo', 'Tokyo, Osaka', '+09:00', TRUE),
+    (uuid_generate_v4(), 'Asia/Seoul', 'Seoul', '+09:00', TRUE),
+    (uuid_generate_v4(), 'Australia/Sydney', 'Sydney, Melbourne', '+10:00', TRUE),
+    (uuid_generate_v4(), 'Australia/Brisbane', 'Brisbane', '+10:00', TRUE),
+    (uuid_generate_v4(), 'Australia/Perth', 'Perth', '+08:00', TRUE),
+    (uuid_generate_v4(), 'Pacific/Auckland', 'Auckland, Wellington', '+12:00', TRUE),
+    (uuid_generate_v4(), 'Pacific/Fiji', 'Fiji', '+12:00', TRUE),
+    (uuid_generate_v4(), 'America/Sao_Paulo', 'Sao Paulo, Rio de Janeiro', '-03:00', TRUE),
+    (uuid_generate_v4(), 'America/Mexico_City', 'Mexico City', '-06:00', TRUE),
+    (uuid_generate_v4(), 'America/Toronto', 'Toronto, Ottawa', '-05:00', TRUE),
+    (uuid_generate_v4(), 'America/Vancouver', 'Vancouver', '-08:00', TRUE),
+    (uuid_generate_v4(), 'UTC', 'Coordinated Universal Time', '+00:00', TRUE)
+;
+
 -- Version: 1.02
 -- Description: Insert data into regions table
 INSERT INTO geography.regions (id, country_id, name, code) VALUES

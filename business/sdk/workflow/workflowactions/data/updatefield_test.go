@@ -112,8 +112,18 @@ func insertUpdateFieldSeedData(t *testing.T, busDomain dbtest.BusDomain) (update
 		streetIDs = append(streetIDs, s.ID)
 	}
 
+	// Query timezones from seed data
+	tzs, err := busDomain.Timezone.QueryAll(ctx)
+	if err != nil {
+		return updateFieldSeedData{}, fmt.Errorf("querying timezones : %w", err)
+	}
+	tzIDs := make([]uuid.UUID, 0, len(tzs))
+	for _, tz := range tzs {
+		tzIDs = append(tzIDs, tz.ID)
+	}
+
 	// Seed contact infos
-	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 1, streetIDs, busDomain.ContactInfos)
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 1, streetIDs, tzIDs, busDomain.ContactInfos)
 	if err != nil {
 		return updateFieldSeedData{}, fmt.Errorf("seeding contact info : %w", err)
 	}

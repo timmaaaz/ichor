@@ -62,9 +62,9 @@ func applyFilter(filter contactinfosbus.QueryFilter, data map[string]interface{}
 		wc = append(wc, "notes = :notes")
 	}
 
-	if filter.Timezone != nil {
-		data["timezone"] = *filter.Timezone
-		wc = append(wc, "timezone = :timezone")
+	if filter.TimezoneID != nil {
+		data["timezone_id"] = *filter.TimezoneID
+		wc = append(wc, "timezone_id = :timezone_id")
 	}
 
 	if len(wc) > 0 {

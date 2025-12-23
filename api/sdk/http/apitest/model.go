@@ -23,6 +23,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/core/userroleapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
+	"github.com/timmaaaz/ichor/app/domain/geography/timezoneapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/commentapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/officeapp"
@@ -81,6 +82,7 @@ type SeedData struct {
 	Regions                     []regionbus.Region
 	Cities                      []cityapp.City
 	Streets                     []streetapp.Street
+	Timezones                   []timezoneapp.Timezone
 	ValidAssets                 []validassetapp.ValidAsset
 	AssetTypes                  []assettypeapp.AssetType
 	AssetConditions             []assetconditionapp.AssetCondition

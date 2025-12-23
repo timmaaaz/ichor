@@ -26,6 +26,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/core/userroleapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/cityapp"
 	"github.com/timmaaaz/ichor/app/domain/geography/streetapp"
+	"github.com/timmaaaz/ichor/app/domain/geography/timezoneapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/approvalapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/commentapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/homeapp"
@@ -133,6 +134,7 @@ func buildFormDataRegistry(
 	approvalStatusApp *approvalstatusapp.App,
 	cityApp *cityapp.App,
 	streetApp *streetapp.App,
+	timezoneApp *timezoneapp.App,
 	commentApp *commentapp.App,
 	approvalApp *approvalapp.App,
 	reportsToApp *reportstoapp.App,
@@ -819,6 +821,41 @@ func buildFormDataRegistry(
 		UpdateModel: streetapp.UpdateStreet{},
 	}); err != nil {
 		return nil, fmt.Errorf("register geography.streets: %w", err)
+	}
+
+	// Register timezones entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "geography.timezones",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app timezoneapp.NewTimezone
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return timezoneApp.Create(ctx, model.(timezoneapp.NewTimezone))
+		},
+		CreateModel: timezoneapp.NewTimezone{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app timezoneapp.UpdateTimezone
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return timezoneApp.Update(ctx, model.(timezoneapp.UpdateTimezone), id)
+		},
+		UpdateModel: timezoneapp.UpdateTimezone{},
+	}); err != nil {
+		return nil, fmt.Errorf("register geography.timezones: %w", err)
 	}
 
 	// =========================================================================

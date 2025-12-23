@@ -16,7 +16,7 @@ type contactInfos struct {
 	DeliveryAddressID    uuid.UUID `db:"delivery_address_id"`
 	AvailableHoursStart  string    `db:"available_hours_start"`
 	AvailableHoursEnd    string    `db:"available_hours_end"`
-	Timezone             string    `db:"timezone"`
+	TimezoneID           uuid.UUID `db:"timezone_id"`
 	PreferredContactType string    `db:"preferred_contact_type"`
 	Notes                string    `db:"notes"`
 }
@@ -33,7 +33,7 @@ func toDBContactInfos(bus contactinfosbus.ContactInfos) contactInfos {
 		SecondaryPhone:       bus.SecondaryPhone,
 		AvailableHoursStart:  bus.AvailableHoursStart,
 		AvailableHoursEnd:    bus.AvailableHoursEnd,
-		Timezone:             bus.Timezone,
+		TimezoneID:           bus.TimezoneID,
 		PreferredContactType: bus.PreferredContactType,
 		Notes:                bus.Notes,
 	}
@@ -51,7 +51,7 @@ func toBusContactInfos(db contactInfos) contactinfosbus.ContactInfos {
 		SecondaryPhone:       db.SecondaryPhone,
 		AvailableHoursStart:  db.AvailableHoursStart,
 		AvailableHoursEnd:    db.AvailableHoursEnd,
-		Timezone:             db.Timezone,
+		TimezoneID:           db.TimezoneID,
 		PreferredContactType: db.PreferredContactType,
 		Notes:                db.Notes,
 	}

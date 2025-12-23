@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestNewContactInfos(n int, streetIDs uuid.UUIDs) []NewContactInfos {
+func TestNewContactInfos(n int, streetIDs, timezoneIDs uuid.UUIDs) []NewContactInfos {
 	newContactInfos := make([]NewContactInfos, n)
 
 	idx := rand.Intn(10000)
@@ -26,7 +26,7 @@ func TestNewContactInfos(n int, streetIDs uuid.UUIDs) []NewContactInfos {
 			DeliveryAddressID:    streetIDs[(i+1)%len(streetIDs)],
 			AvailableHoursStart:  "8:00:00",
 			AvailableHoursEnd:    "5:00:00",
-			Timezone:             "EST",
+			TimezoneID:           timezoneIDs[i%len(timezoneIDs)],
 			PreferredContactType: "phone",
 			Notes:                fmt.Sprintf("Notes%d", idx),
 		}
@@ -36,8 +36,8 @@ func TestNewContactInfos(n int, streetIDs uuid.UUIDs) []NewContactInfos {
 	return newContactInfos
 }
 
-func TestSeedContactInfos(ctx context.Context, n int, streetIDs uuid.UUIDs, api *Business) ([]ContactInfos, error) {
-	newContactInfoss := TestNewContactInfos(n, streetIDs)
+func TestSeedContactInfos(ctx context.Context, n int, streetIDs, timezoneIDs uuid.UUIDs, api *Business) ([]ContactInfos, error) {
+	newContactInfoss := TestNewContactInfos(n, streetIDs, timezoneIDs)
 
 	contactInfoss := make([]ContactInfos, len(newContactInfoss))
 
