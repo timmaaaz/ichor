@@ -13,14 +13,14 @@ project:
     phases_completed: 0
     phases_in_progress: 0
     phases_pending: 3
-    files_created: 0
+    files_created: 1
     files_modified: 0
 
 planning_status:
-  phase_1_doc_created: false
+  phase_1_doc_created: true
   phase_2_doc_created: false
   phase_3_doc_created: false
-  next_phase_to_document: 1
+  next_phase_to_document: 2
 
 phases:
   - phase: 1
@@ -28,56 +28,128 @@ phases:
     description: "Enable form fields to specify default values by name for FK fields, resolved to UUIDs during form processing"
     status: "pending"  # pending | in_progress | completed | blocked
     category: "backend"  # backend | frontend | database | fullstack | testing | documentation
+    last_review: "2025-12-29"
+    review_status: "approved"
 
     tasks:
-      - task: "Add FK default resolution to formdataapp"
+      - task: "1. Add Logger to formdataapp"
         status: "pending"
         notes:
-          - "Query entity table by name when default_value is not a UUID"
+          - "Logger required for FK resolution warnings"
+          - "Add as FIRST field/parameter per Ardan Labs convention"
         files:
           - path: "app/domain/formdata/formdataapp/formdataapp.go"
             status: "pending"
 
-      - task: "Wire database access for FK lookups"
+      - task: "2. Add resolveFKByName Method"
         status: "pending"
         notes:
-          - "formdataapp needs ability to query arbitrary entity tables"
+          - "Registry whitelist validation for security"
+          - "UUID pass-through for fast path"
+          - "Parameterized queries for user values"
         files:
           - path: "app/domain/formdata/formdataapp/formdataapp.go"
             status: "pending"
 
-      - task: "Update form seed data with default status values"
+      - task: "3. Update mergeFieldDefaults for FK Resolution"
         status: "pending"
         notes:
-          - "Set DefaultValueCreate: 'Pending' on status FK fields"
+          - "Add ctx context.Context as first parameter"
+          - "Call resolveFKByName for fields with entity config"
+        files:
+          - path: "app/domain/formdata/formdataapp/formdataapp.go"
+            status: "pending"
+
+      - task: "4. Update mergeLineItemFieldDefaults"
+        status: "pending"
+        notes:
+          - "Add ctx parameter and FK resolution"
+          - "Use DropdownConfig.Entity for FK lookup"
+        files:
+          - path: "app/domain/formdata/formdataapp/formdataapp.go"
+            status: "pending"
+
+      - task: "5. Update all.go Call Site"
+        status: "pending"
+        notes:
+          - "Pass cfg.Log as first argument to NewApp"
+        files:
+          - path: "api/cmd/services/ichor/build/all/all.go"
+            status: "pending"
+
+      - task: "6. Add Max Array Size Validation"
+        status: "pending"
+        notes:
+          - "Prevent DoS via unbounded array submissions"
+          - "maxArrayItems = 1000"
+        files:
+          - path: "app/domain/formdata/formdataapp/formdataapp.go"
+            status: "pending"
+
+      - task: "7. Update Form Seed Data"
+        status: "pending"
+        notes:
+          - "Add default_value_create: 'Pending' to status FK fields"
+          - "Orders and line items get default status"
         files:
           - path: "business/sdk/dbtest/seedmodels/forms.go"
             status: "pending"
           - path: "business/sdk/dbtest/seedmodels/tableforms.go"
             status: "pending"
 
-      - task: "Test FK default resolution"
+      - task: "8. Add Unit Tests"
         status: "pending"
         notes:
-          - "Orders/line items should get Pending status without user input"
-        files: []
+          - "Test resolveFKByName with valid name"
+          - "Test UUID pass-through"
+          - "Test unknown entity rejection"
+          - "Test value not found"
+        files:
+          - path: "app/domain/formdata/formdataapp/fkresolution_test.go"
+            status: "pending"
+
+      - task: "9. Add Integration Tests"
+        status: "pending"
+        notes:
+          - "Order without status gets Pending"
+          - "Explicit status preserved"
+          - "Line items get default status"
+        files:
+          - path: "api/cmd/services/ichor/tests/formdata/formdataapi/upsert_test.go"
+            status: "pending"
+          - path: "api/cmd/services/ichor/tests/formdata/formdataapi/seed_test.go"
+            status: "pending"
 
     validation:
       - check: "Go compilation passes"
         status: "pending"
-      - check: "Form config with default_value: 'Pending' resolves to correct UUID"
+      - check: "make test passes"
         status: "pending"
-      - check: "Orders created via formdata have correct fulfillment_status_id"
+      - check: "Orders without status get Pending UUID"
         status: "pending"
-      - check: "Line items have correct line_item_fulfillment_statuses_id"
+      - check: "Line items without status get Pending UUID"
         status: "pending"
-      - check: "Invalid status names produce clear validation errors"
+      - check: "Invalid names log warning but don't fail request"
+        status: "pending"
+      - check: "User-provided values preserved (not overwritten)"
+        status: "pending"
+      - check: "UUID values pass through without database lookup"
+        status: "pending"
+      - check: "Unregistered entities rejected before query"
+        status: "pending"
+      - check: "Array size limited to maxArrayItems (1000)"
         status: "pending"
 
     deliverables:
-      - "FK default resolution in formdataapp.go"
-      - "Updated form seeds with default status values"
-      - "Integration test for default status assignment"
+      - "formdataapp.App.log field added"
+      - "formdataapp.resolveFKByName method"
+      - "Updated mergeFieldDefaults with ctx and FK resolution"
+      - "Updated mergeLineItemFieldDefaults with ctx and FK resolution"
+      - "Updated all.go call site"
+      - "maxArrayItems constant and validation"
+      - "Form seed data with default_value_create: Pending"
+      - "Unit tests for FK resolution"
+      - "Integration tests for default status injection"
 
     blockers: []
 
@@ -185,15 +257,18 @@ phases:
     blockers: []
 
 context:
-  current_focus: "Planning phase documentation"
-  next_task: "Create Phase 1 documentation using /default-statuses-build-phase"
+  current_focus: "Phase 1 plan reviewed and approved"
+  next_task: "Begin Phase 1 implementation"
   recent_changes:
     - "Initial plan structure created"
-    - "Commands generated"
+    - "Phase 1 detailed plan created"
+    - "Phase 1 plan reviewed and approved"
+    - "Removed caching from Phase 1 (simplification)"
   decisions:
     - "Decision: Use form config FK resolution (not template variables) for default status values"
     - "Decision: Names resolved to UUIDs at formdata processing time"
     - "Decision: Implementing phases sequentially to maintain stability"
+    - "Decision: No caching for FK resolution (simplicity over optimization)"
 
 dependencies:
   internal: []  # Phase 2 depends on Phase 1, Phase 3 depends on Phase 2
@@ -201,7 +276,7 @@ dependencies:
 
 milestones:
   - name: "Planning Complete"
-    status: "pending"
+    status: "in_progress"
     date: null
   - name: "Phase 1 Complete - FK Default Resolution"
     status: "pending"
