@@ -1,0 +1,217 @@
+# Default Status Management - Progress Tracking
+# This file tracks the implementation progress of default status management
+
+project:
+  name: "Default Status Management"
+  description: "Implement default status management using form configuration + workflow engine"
+  started: "2025-12-29"
+  status: "planning"  # planning | in_progress | completed | blocked
+  current_phase: 1
+
+  summary:
+    phases_total: 3
+    phases_completed: 0
+    phases_in_progress: 0
+    phases_pending: 3
+    files_created: 0
+    files_modified: 0
+
+planning_status:
+  phase_1_doc_created: false
+  phase_2_doc_created: false
+  phase_3_doc_created: false
+  next_phase_to_document: 1
+
+phases:
+  - phase: 1
+    name: "Form Configuration FK Default Resolution"
+    description: "Enable form fields to specify default values by name for FK fields, resolved to UUIDs during form processing"
+    status: "pending"  # pending | in_progress | completed | blocked
+    category: "backend"  # backend | frontend | database | fullstack | testing | documentation
+
+    tasks:
+      - task: "Add FK default resolution to formdataapp"
+        status: "pending"
+        notes:
+          - "Query entity table by name when default_value is not a UUID"
+        files:
+          - path: "app/domain/formdata/formdataapp/formdataapp.go"
+            status: "pending"
+
+      - task: "Wire database access for FK lookups"
+        status: "pending"
+        notes:
+          - "formdataapp needs ability to query arbitrary entity tables"
+        files:
+          - path: "app/domain/formdata/formdataapp/formdataapp.go"
+            status: "pending"
+
+      - task: "Update form seed data with default status values"
+        status: "pending"
+        notes:
+          - "Set DefaultValueCreate: 'Pending' on status FK fields"
+        files:
+          - path: "business/sdk/dbtest/seedmodels/forms.go"
+            status: "pending"
+          - path: "business/sdk/dbtest/seedmodels/tableforms.go"
+            status: "pending"
+
+      - task: "Test FK default resolution"
+        status: "pending"
+        notes:
+          - "Orders/line items should get Pending status without user input"
+        files: []
+
+    validation:
+      - check: "Go compilation passes"
+        status: "pending"
+      - check: "Form config with default_value: 'Pending' resolves to correct UUID"
+        status: "pending"
+      - check: "Orders created via formdata have correct fulfillment_status_id"
+        status: "pending"
+      - check: "Line items have correct line_item_fulfillment_statuses_id"
+        status: "pending"
+      - check: "Invalid status names produce clear validation errors"
+        status: "pending"
+
+    deliverables:
+      - "FK default resolution in formdataapp.go"
+      - "Updated form seeds with default status values"
+      - "Integration test for default status assignment"
+
+    blockers: []
+
+  - phase: 2
+    name: "Workflow Integration for Status Transitions"
+    description: "Wire automation rules to trigger allocation on order creation and update statuses based on results"
+    status: "pending"
+    category: "backend"
+
+    tasks:
+      - task: "Fire workflow event after allocation completes"
+        status: "pending"
+        notes:
+          - "Add to allocate.go after ProcessAllocation()"
+        files:
+          - path: "business/sdk/workflow/workflowactions/inventory/allocate.go"
+            status: "pending"
+
+      - task: "Seed automation rules for order workflow"
+        status: "pending"
+        notes:
+          - "Rule 1: Order Created -> Allocate Inventory"
+          - "Rule 2: Allocation Success -> Update Status to ALLOCATED"
+          - "Rule 3: Allocation Failure -> Create Alert"
+        files:
+          - path: "business/sdk/dbtest/seedFrontend.go"
+            status: "pending"
+
+      - task: "Verify batch update works for multiple line items"
+        status: "pending"
+        notes:
+          - "updatefield.go should handle multiple line items per order"
+        files:
+          - path: "business/sdk/workflow/workflowactions/data/updatefield.go"
+            status: "pending"
+
+    validation:
+      - check: "Go compilation passes"
+        status: "pending"
+      - check: "Order creation triggers allocation workflow"
+        status: "pending"
+      - check: "Allocation success updates line items to ALLOCATED"
+        status: "pending"
+      - check: "Allocation failure keeps PENDING and creates alert"
+        status: "pending"
+
+    deliverables:
+      - "Workflow event firing in allocate.go"
+      - "Automation rules in seedFrontend.go"
+      - "Integration test for workflow transitions"
+
+    blockers: []
+
+  - phase: 3
+    name: "Alert System Enhancement"
+    description: "Extend alert action to support role-based recipients and proper delivery"
+    status: "pending"
+    category: "fullstack"
+
+    tasks:
+      - task: "Design alert routing model"
+        status: "pending"
+        notes:
+          - "Decide: user vs role recipients"
+          - "Decide: in-app only or also email"
+        files: []
+
+      - task: "Create alert database tables"
+        status: "pending"
+        notes:
+          - "workflow.alerts"
+          - "workflow.alert_recipients"
+          - "workflow.alert_acknowledgments"
+        files:
+          - path: "business/sdk/migrate/sql/migrate.sql"
+            status: "pending"
+
+      - task: "Implement alert delivery"
+        status: "pending"
+        notes:
+          - "In-app delivery mechanism"
+        files:
+          - path: "business/sdk/workflow/workflowactions/communication/alert.go"
+            status: "pending"
+
+      - task: "Add UI for viewing/acknowledging alerts"
+        status: "pending"
+        notes:
+          - "Frontend component for alert display"
+        files: []
+
+    validation:
+      - check: "Go compilation passes"
+        status: "pending"
+      - check: "Alerts created with role-based recipients"
+        status: "pending"
+      - check: "Users can view and acknowledge alerts"
+        status: "pending"
+
+    deliverables:
+      - "Alert database tables migration"
+      - "Enhanced alert action handler"
+      - "Alert UI components"
+
+    blockers: []
+
+context:
+  current_focus: "Planning phase documentation"
+  next_task: "Create Phase 1 documentation using /default-statuses-build-phase"
+  recent_changes:
+    - "Initial plan structure created"
+    - "Commands generated"
+  decisions:
+    - "Decision: Use form config FK resolution (not template variables) for default status values"
+    - "Decision: Names resolved to UUIDs at formdata processing time"
+    - "Decision: Implementing phases sequentially to maintain stability"
+
+dependencies:
+  internal: []  # Phase 2 depends on Phase 1, Phase 3 depends on Phase 2
+  external: []  # No external plan dependencies
+
+milestones:
+  - name: "Planning Complete"
+    status: "pending"
+    date: null
+  - name: "Phase 1 Complete - FK Default Resolution"
+    status: "pending"
+    date: null
+  - name: "Phase 2 Complete - Workflow Integration"
+    status: "pending"
+    date: null
+  - name: "Phase 3 Complete - Alert System"
+    status: "pending"
+    date: null
+  - name: "Project Complete"
+    status: "pending"
+    date: null

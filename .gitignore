@@ -64,5 +64,6 @@ cookies.txt
 /auth
 /metrics
 
-# Claude Code plans
-.claude/plans
+# Claude Code - ignore completed/archived plans contents but keep the directory
+.claude/plans/completed-plans/*
+!.claude/plans/completed-plans/.gitkeep
