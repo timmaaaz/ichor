@@ -116,6 +116,11 @@ func (b *Business) Create(ctx context.Context, nh NewHome) (Home, error) {
 		return Home{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(hme)); err != nil {
+		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return hme, nil
 }
 
@@ -160,6 +165,11 @@ func (b *Business) Update(ctx context.Context, hme Home, uh UpdateHome) (Home, e
 		return Home{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(hme)); err != nil {
+		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return hme, nil
 }
 
@@ -170,6 +180,11 @@ func (b *Business) Delete(ctx context.Context, hme Home) error {
 
 	if err := b.storer.Delete(ctx, hme); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(hme)); err != nil {
+		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

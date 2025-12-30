@@ -97,6 +97,11 @@ func (b *Business) Create(ctx context.Context, nuac NewUserApprovalComment) (Use
 		return UserApprovalComment{}, fmt.Errorf("userbus set under review: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(uac)); err != nil {
+		b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return uac, nil
 }
 
@@ -113,6 +118,11 @@ func (b *Business) Update(ctx context.Context, uac UserApprovalComment, uuac Upd
 		return UserApprovalComment{}, fmt.Errorf("store update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(uac)); err != nil {
+		b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return uac, nil
 }
 
@@ -123,6 +133,11 @@ func (b *Business) Delete(ctx context.Context, uac UserApprovalComment) error {
 
 	if err := b.storer.Delete(ctx, uac); err != nil {
 		return fmt.Errorf("store delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(uac)); err != nil {
+		b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

@@ -84,6 +84,11 @@ func (b *Business) Create(ctx context.Context, nrt NewReportsTo) (ReportsTo, err
 		return ReportsTo{}, err
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(rt)); err != nil {
+		b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return rt, nil
 }
 
@@ -107,6 +112,11 @@ func (b *Business) Update(ctx context.Context, rt ReportsTo, urt UpdateReportsTo
 		return ReportsTo{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(rt)); err != nil {
+		b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return rt, nil
 }
 
@@ -117,6 +127,11 @@ func (b *Business) Delete(ctx context.Context, at ReportsTo) error {
 
 	if err := b.storer.Delete(ctx, at); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(at)); err != nil {
+		b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

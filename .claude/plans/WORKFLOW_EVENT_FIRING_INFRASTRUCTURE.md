@@ -1510,12 +1510,12 @@ Track progress of adding delegate event firing to all domains. For each domain:
 
 | Package | Entity Name | Status | event.go | bus calls | all.go |
 |---------|-------------|--------|----------|-----------|--------|
-| homebus | homes | ⏳ | ⬜ | ⬜ | ⬜ |
-| officebus | offices | ⏳ | ⬜ | ⬜ | ⬜ |
-| titlebus | titles | ⏳ | ⬜ | ⬜ | ⬜ |
-| reportstobus | reports_to | ⏳ | ⬜ | ⬜ | ⬜ |
-| approvalbus | user_approval_statuses | ⏳ | ⬜ | ⬜ | ⬜ |
-| commentbus | user_approval_comments | ⏳ | ⬜ | ⬜ | ⬜ |
+| homebus | homes | ✅ | ✅ | ✅ | ✅ |
+| officebus | offices | ✅ | ✅ | ✅ | ✅ |
+| titlebus | titles | ✅ | ✅ | ✅ | ✅ |
+| reportstobus | reports_to | ✅ | ✅ | ✅ | ✅ |
+| approvalbus | user_approval_statuses | ✅ | ✅ | ✅ | ✅ |
+| commentbus | user_approval_comments | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -1594,13 +1594,13 @@ Track progress of adding delegate event firing to all domains. For each domain:
 | Sales | 5 | 5 | 0 |
 | Assets | 9 | 9 | 0 |
 | Core | 8 | 0 | 8 |
-| HR | 6 | 0 | 6 |
+| HR | 6 | 6 | 0 |
 | Geography | 5 | 0 | 5 |
 | Products | 7 | 0 | 7 |
 | Procurement | 6 | 0 | 6 |
 | Inventory | 10 | 0 | 10 |
 | Config | 5 | 0 | 5 |
-| **Total** | **61** | **14** | **47** |
+| **Total** | **61** | **20** | **41** |
 
 ---
 

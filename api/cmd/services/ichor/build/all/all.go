@@ -441,6 +441,14 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					delegateHandler.RegisterDomain(delegate, rolepagebus.DomainName, rolepagebus.EntityName)
 					delegateHandler.RegisterDomain(delegate, contactinfosbus.DomainName, contactinfosbus.EntityName)
 
+					// Register HR domain -> workflow events
+					delegateHandler.RegisterDomain(delegate, approvalbus.DomainName, approvalbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, commentbus.DomainName, commentbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, homebus.DomainName, homebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, officebus.DomainName, officebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, reportstobus.DomainName, reportstobus.EntityName)
+					delegateHandler.RegisterDomain(delegate, titlebus.DomainName, titlebus.EntityName)
+
 					// Additional domains can be registered here as they implement event.go files
 				}
 			}

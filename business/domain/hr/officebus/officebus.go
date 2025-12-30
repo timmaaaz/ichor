@@ -84,6 +84,11 @@ func (b *Business) Create(ctx context.Context, no NewOffice) (Office, error) {
 		return Office{}, err
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(o)); err != nil {
+		b.log.Error(ctx, "officebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return o, nil
 }
 
@@ -107,6 +112,11 @@ func (b *Business) Update(ctx context.Context, o Office, uo UpdateOffice) (Offic
 		return Office{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(o)); err != nil {
+		b.log.Error(ctx, "officebus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return o, nil
 }
 
@@ -117,6 +127,11 @@ func (b *Business) Delete(ctx context.Context, at Office) error {
 
 	if err := b.storer.Delete(ctx, at); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(at)); err != nil {
+		b.log.Error(ctx, "officebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

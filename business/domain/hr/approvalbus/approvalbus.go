@@ -85,6 +85,11 @@ func (b *Business) Create(ctx context.Context, nas NewUserApprovalStatus) (UserA
 		return UserApprovalStatus{}, fmt.Errorf("store create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(as)); err != nil {
+		b.log.Error(ctx, "approvalbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return as, nil
 }
 
@@ -113,6 +118,11 @@ func (b *Business) Update(ctx context.Context, as UserApprovalStatus, uas Update
 		return UserApprovalStatus{}, fmt.Errorf("store update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(as)); err != nil {
+		b.log.Error(ctx, "approvalbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return as, nil
 }
 
@@ -123,6 +133,11 @@ func (b *Business) Delete(ctx context.Context, as UserApprovalStatus) error {
 
 	if err := b.storer.Delete(ctx, as); err != nil {
 		return fmt.Errorf("store delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(as)); err != nil {
+		b.log.Error(ctx, "approvalbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil
