@@ -91,6 +91,11 @@ func (b *Business) Create(ctx context.Context, nit NewInventoryTransaction) (Inv
 		return InventoryTransaction{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(it)); err != nil {
+		b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return it, nil
 }
 
@@ -127,6 +132,11 @@ func (b *Business) Update(ctx context.Context, it InventoryTransaction, u Update
 		return InventoryTransaction{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(it)); err != nil {
+		b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return it, nil
 }
 
@@ -138,6 +148,11 @@ func (b *Business) Delete(ctx context.Context, it InventoryTransaction) error {
 	err := b.storer.Delete(ctx, it)
 	if err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(it)); err != nil {
+		b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

@@ -92,6 +92,11 @@ func (b *Business) Create(ctx context.Context, nto NewTransferOrder) (TransferOr
 		return TransferOrder{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(transferOrder)); err != nil {
+		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return transferOrder, nil
 }
 
@@ -131,6 +136,11 @@ func (b *Business) Update(ctx context.Context, to TransferOrder, ut UpdateTransf
 		return TransferOrder{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(to)); err != nil {
+		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return to, nil
 }
 
@@ -141,6 +151,11 @@ func (b *Business) Delete(ctx context.Context, to TransferOrder) error {
 
 	if err := b.storer.Delete(ctx, to); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(to)); err != nil {
+		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

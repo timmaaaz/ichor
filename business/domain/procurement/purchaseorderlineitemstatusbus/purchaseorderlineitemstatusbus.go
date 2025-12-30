@@ -83,6 +83,11 @@ func (b *Business) Create(ctx context.Context, npolis NewPurchaseOrderLineItemSt
 		return PurchaseOrderLineItemStatus{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(polis)); err != nil {
+		b.log.Error(ctx, "purchaseorderlineitemstatusbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return polis, nil
 }
 
@@ -105,6 +110,11 @@ func (b *Business) Update(ctx context.Context, polis PurchaseOrderLineItemStatus
 		return PurchaseOrderLineItemStatus{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionUpdatedData(polis)); err != nil {
+		b.log.Error(ctx, "purchaseorderlineitemstatusbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return polis, nil
 }
 
@@ -115,6 +125,11 @@ func (b *Business) Delete(ctx context.Context, polis PurchaseOrderLineItemStatus
 
 	if err := b.storer.Delete(ctx, polis); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(polis)); err != nil {
+		b.log.Error(ctx, "purchaseorderlineitemstatusbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

@@ -98,6 +98,11 @@ func (b *Business) Create(ctx context.Context, npoli NewPurchaseOrderLineItem) (
 		return PurchaseOrderLineItem{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(poli)); err != nil {
+		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return poli, nil
 }
 
@@ -149,6 +154,11 @@ func (b *Business) Update(ctx context.Context, poli PurchaseOrderLineItem, upoli
 		return PurchaseOrderLineItem{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionUpdatedData(poli)); err != nil {
+		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return poli, nil
 }
 
@@ -159,6 +169,11 @@ func (b *Business) Delete(ctx context.Context, poli PurchaseOrderLineItem) error
 
 	if err := b.storer.Delete(ctx, poli); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(poli)); err != nil {
+		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil
@@ -235,6 +250,11 @@ func (b *Business) ReceiveQuantity(ctx context.Context, poli PurchaseOrderLineIt
 
 	if err := b.storer.Update(ctx, poli); err != nil {
 		return PurchaseOrderLineItem{}, fmt.Errorf("receivequantity: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionUpdatedData(poli)); err != nil {
+		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return poli, nil

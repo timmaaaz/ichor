@@ -464,6 +464,26 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					delegateHandler.RegisterDomain(delegate, physicalattributebus.DomainName, physicalattributebus.EntityName)
 					delegateHandler.RegisterDomain(delegate, metricsbus.DomainName, metricsbus.EntityName)
 
+					// Register Procurement domain -> workflow events
+					delegateHandler.RegisterDomain(delegate, supplierbus.DomainName, supplierbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, supplierproductbus.DomainName, supplierproductbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, purchaseorderbus.DomainName, purchaseorderbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, purchaseorderlineitembus.DomainName, purchaseorderlineitembus.EntityName)
+					delegateHandler.RegisterDomain(delegate, purchaseorderstatusbus.DomainName, purchaseorderstatusbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, purchaseorderlineitemstatusbus.DomainName, purchaseorderlineitemstatusbus.EntityName)
+
+					// Register Inventory domain -> workflow events
+					delegateHandler.RegisterDomain(delegate, warehousebus.DomainName, warehousebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, zonebus.DomainName, zonebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, inventorylocationbus.DomainName, inventorylocationbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, inventoryitembus.DomainName, inventoryitembus.EntityName)
+					delegateHandler.RegisterDomain(delegate, inventorytransactionbus.DomainName, inventorytransactionbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, inventoryadjustmentbus.DomainName, inventoryadjustmentbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, transferorderbus.DomainName, transferorderbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, inspectionbus.DomainName, inspectionbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, lottrackingsbus.DomainName, lottrackingsbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, serialnumberbus.DomainName, serialnumberbus.EntityName)
+
 					// Additional domains can be registered here as they implement event.go files
 				}
 			}

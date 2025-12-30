@@ -90,6 +90,11 @@ func (b *Business) Create(ctx context.Context, ni NewInspection) (Inspection, er
 		return Inspection{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(inspection)); err != nil {
+		b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return inspection, nil
 }
 
@@ -126,6 +131,11 @@ func (b *Business) Update(ctx context.Context, i Inspection, ui UpdateInspection
 		return Inspection{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(i)); err != nil {
+		b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return i, nil
 }
 
@@ -137,6 +147,11 @@ func (b *Business) Delete(ctx context.Context, i Inspection) error {
 	err := b.storer.Delete(ctx, i)
 	if err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(i)); err != nil {
+		b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

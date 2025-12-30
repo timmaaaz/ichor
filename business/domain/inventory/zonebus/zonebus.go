@@ -84,6 +84,11 @@ func (b *Business) Create(ctx context.Context, nz NewZone) (Zone, error) {
 		return Zone{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(zone)); err != nil {
+		b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return zone, nil
 }
 
@@ -110,6 +115,11 @@ func (b *Business) Update(ctx context.Context, zone Zone, u UpdateZone) (Zone, e
 		return Zone{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(zone)); err != nil {
+		b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return zone, nil
 }
 
@@ -119,6 +129,11 @@ func (b *Business) Delete(ctx context.Context, zone Zone) error {
 
 	if err := b.storer.Delete(ctx, zone); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(zone)); err != nil {
+		b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

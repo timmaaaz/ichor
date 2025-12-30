@@ -89,6 +89,11 @@ func (b *Business) Create(ctx context.Context, newSupplier NewSupplier) (Supplie
 		return Supplier{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(supplier)); err != nil {
+		b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return supplier, nil
 }
 
@@ -122,8 +127,12 @@ func (b *Business) Update(ctx context.Context, supplier Supplier, us UpdateSuppl
 		return Supplier{}, fmt.Errorf("update: %w", err)
 	}
 
-	return supplier, nil
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(supplier)); err != nil {
+		b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
 
+	return supplier, nil
 }
 
 // Delete removes the specified brand.
@@ -133,6 +142,11 @@ func (b *Business) Delete(ctx context.Context, supplier Supplier) error {
 
 	if err := b.storer.Delete(ctx, supplier); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(supplier)); err != nil {
+		b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

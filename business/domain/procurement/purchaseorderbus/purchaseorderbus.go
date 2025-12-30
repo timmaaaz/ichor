@@ -105,6 +105,11 @@ func (b *Business) Create(ctx context.Context, npo NewPurchaseOrder) (PurchaseOr
 		return PurchaseOrder{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(po)); err != nil {
+		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return po, nil
 }
 
@@ -177,6 +182,11 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 		return PurchaseOrder{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionUpdatedData(po)); err != nil {
+		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return po, nil
 }
 
@@ -187,6 +197,11 @@ func (b *Business) Delete(ctx context.Context, po PurchaseOrder) error {
 
 	if err := b.storer.Delete(ctx, po); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(po)); err != nil {
+		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil
@@ -252,6 +267,11 @@ func (b *Business) Approve(ctx context.Context, po PurchaseOrder, approvedBy uui
 
 	if err := b.storer.Update(ctx, po); err != nil {
 		return PurchaseOrder{}, fmt.Errorf("approve: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionUpdatedData(po)); err != nil {
+		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return po, nil

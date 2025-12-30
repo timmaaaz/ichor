@@ -103,6 +103,11 @@ func (b *Business) Create(ctx context.Context, nw NewWarehouse) (Warehouse, erro
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		err := b.storer.Create(ctx, warehouse)
 		if err == nil {
+			// Fire delegate event for workflow automation
+			if err := b.delegate.Call(ctx, ActionCreatedData(warehouse)); err != nil {
+				b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionCreated, "err", err)
+			}
+
 			return warehouse, nil
 		}
 
@@ -163,6 +168,11 @@ func (b *Business) Update(ctx context.Context, bus Warehouse, uw UpdateWarehouse
 		return Warehouse{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(bus)); err != nil {
+		b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return bus, nil
 }
 
@@ -173,6 +183,11 @@ func (b *Business) Delete(ctx context.Context, bus Warehouse) error {
 
 	if err := b.storer.Delete(ctx, bus); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(bus)); err != nil {
+		b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

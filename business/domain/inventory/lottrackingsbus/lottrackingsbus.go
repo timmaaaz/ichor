@@ -90,6 +90,11 @@ func (b *Business) Create(ctx context.Context, nlt NewLotTrackings) (LotTracking
 		return LotTrackings{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(lt)); err != nil {
+		b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return lt, nil
 }
 
@@ -126,6 +131,11 @@ func (b *Business) Update(ctx context.Context, lt LotTrackings, ul UpdateLotTrac
 		return LotTrackings{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(lt)); err != nil {
+		b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return lt, nil
 }
 
@@ -137,6 +147,11 @@ func (b *Business) Delete(ctx context.Context, lt LotTrackings) error {
 	err := b.storer.Delete(ctx, lt)
 	if err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(lt)); err != nil {
+		b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

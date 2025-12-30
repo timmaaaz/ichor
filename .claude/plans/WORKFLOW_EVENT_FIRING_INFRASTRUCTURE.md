@@ -1495,14 +1495,16 @@ Track progress of adding delegate event firing to all domains. For each domain:
 
 | Package | Entity Name | Status | event.go | bus calls | all.go |
 |---------|-------------|--------|----------|-----------|--------|
-| userbus | users | ⏳ | ⬜ | ⬜ | ⬜ |
-| rolebus | roles | ⏳ | ⬜ | ⬜ | ⬜ |
-| userrolebus | user_roles | ⏳ | ⬜ | ⬜ | ⬜ |
-| tableaccessbus | table_access | ⏳ | ⬜ | ⬜ | ⬜ |
-| permissionsbus | permissions | ⏳ | ⬜ | ⬜ | ⬜ |
-| pagebus | pages | ⏳ | ⬜ | ⬜ | ⬜ |
-| rolepagebus | role_pages | ⏳ | ⬜ | ⬜ | ⬜ |
-| contactinfosbus | contact_infos | ⏳ | ⬜ | ⬜ | ⬜ |
+| userbus | users | ✅ | ✅ | ✅ | ✅ |
+| rolebus | roles | ✅ | ✅ | ✅ | ✅ |
+| userrolebus | user_roles | ✅ | ✅ | ✅ | ✅ |
+| tableaccessbus | table_access | ✅ | ✅ | ✅ | ✅ |
+| permissionsbus | permissions | N/A | N/A | N/A | N/A |
+| pagebus | pages | ✅ | ✅ | ✅ | ✅ |
+| rolepagebus | role_pages | ✅ | ✅ | ✅ | ✅ |
+| contactinfosbus | contact_infos | ✅ | ✅ | ✅ | ✅ |
+
+**Note**: permissionsbus is read-only (no Create/Update/Delete methods) and doesn't need delegate event firing.
 
 ---
 
@@ -1537,13 +1539,13 @@ Track progress of adding delegate event firing to all domains. For each domain:
 
 | Package | Entity Name | Status | event.go | bus calls | all.go |
 |---------|-------------|--------|----------|-----------|--------|
-| productbus | products | ⏳ | ⬜ | ⬜ | ⬜ |
-| productcategorybus | product_categories | ⏳ | ⬜ | ⬜ | ⬜ |
-| brandbus | brands | ⏳ | ⬜ | ⬜ | ⬜ |
-| productcostbus | product_costs | ⏳ | ⬜ | ⬜ | ⬜ |
-| costhistorybus | cost_histories | ⏳ | ⬜ | ⬜ | ⬜ |
-| physicalattributebus | physical_attributes | ⏳ | ⬜ | ⬜ | ⬜ |
-| metricsbus | metrics | ⏳ | ⬜ | ⬜ | ⬜ |
+| productbus | products | ✅ | ✅ | ✅ | ✅ |
+| productcategorybus | product_categories | ✅ | ✅ | ✅ | ✅ |
+| brandbus | brands | ✅ | ✅ | ✅ | ✅ |
+| productcostbus | product_costs | ✅ | ✅ | ✅ | ✅ |
+| costhistorybus | cost_history | ✅ | ✅ | ✅ | ✅ |
+| physicalattributebus | physical_attributes | ✅ | ✅ | ✅ | ✅ |
+| metricsbus | metrics | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -1551,12 +1553,12 @@ Track progress of adding delegate event firing to all domains. For each domain:
 
 | Package | Entity Name | Status | event.go | bus calls | all.go |
 |---------|-------------|--------|----------|-----------|--------|
-| supplierbus | suppliers | ⏳ | ⬜ | ⬜ | ⬜ |
-| supplierproductbus | supplier_products | ⏳ | ⬜ | ⬜ | ⬜ |
-| purchaseorderbus | purchase_orders | ⏳ | ⬜ | ⬜ | ⬜ |
-| purchaseorderlineitembus | purchase_order_line_items | ⏳ | ⬜ | ⬜ | ⬜ |
-| purchaseorderstatusbus | purchase_order_statuses | ⏳ | ⬜ | ⬜ | ⬜ |
-| purchaseorderlineitemstatusbus | purchase_order_line_item_statuses | ⏳ | ⬜ | ⬜ | ⬜ |
+| supplierbus | suppliers | ✅ | ✅ | ✅ | ✅ |
+| supplierproductbus | supplier_products | ✅ | ✅ | ✅ | ✅ |
+| purchaseorderbus | purchase_orders | ✅ | ✅ | ✅ | ✅ |
+| purchaseorderlineitembus | purchase_order_line_items | ✅ | ✅ | ✅ | ✅ |
+| purchaseorderstatusbus | purchase_order_statuses | ✅ | ✅ | ✅ | ✅ |
+| purchaseorderlineitemstatusbus | purchase_order_line_item_statuses | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -1564,16 +1566,16 @@ Track progress of adding delegate event firing to all domains. For each domain:
 
 | Package | Entity Name | Status | event.go | bus calls | all.go |
 |---------|-------------|--------|----------|-----------|--------|
-| warehousebus | warehouses | ⏳ | ⬜ | ⬜ | ⬜ |
-| zonebus | zones | ⏳ | ⬜ | ⬜ | ⬜ |
-| inventorylocationbus | inventory_locations | ⏳ | ⬜ | ⬜ | ⬜ |
-| inventoryitembus | inventory_items | ⏳ | ⬜ | ⬜ | ⬜ |
-| inventorytransactionbus | inventory_transactions | ⏳ | ⬜ | ⬜ | ⬜ |
-| inventoryadjustmentbus | inventory_adjustments | ⏳ | ⬜ | ⬜ | ⬜ |
-| transferorderbus | transfer_orders | ⏳ | ⬜ | ⬜ | ⬜ |
-| inspectionbus | inspections | ⏳ | ⬜ | ⬜ | ⬜ |
-| lottrackingsbus | lot_trackings | ⏳ | ⬜ | ⬜ | ⬜ |
-| serialnumberbus | serial_numbers | ⏳ | ⬜ | ⬜ | ⬜ |
+| warehousebus | warehouses | ✅ | ✅ | ✅ | ✅ |
+| zonebus | zones | ✅ | ✅ | ✅ | ✅ |
+| inventorylocationbus | inventory_locations | ✅ | ✅ | ✅ | ✅ |
+| inventoryitembus | inventory_items | ✅ | ✅ | ✅ | ✅ |
+| inventorytransactionbus | inventory_transactions | ✅ | ✅ | ✅ | ✅ |
+| inventoryadjustmentbus | inventory_adjustments | ✅ | ✅ | ✅ | ✅ |
+| transferorderbus | transfer_orders | ✅ | ✅ | ✅ | ✅ |
+| inspectionbus | inspections | ✅ | ✅ | ✅ | ✅ |
+| lottrackingsbus | lot_trackings | ✅ | ✅ | ✅ | ✅ |
+| serialnumberbus | serial_numbers | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -1595,14 +1597,14 @@ Track progress of adding delegate event firing to all domains. For each domain:
 |--------|-------|----------|-----------|-------|
 | Sales | 5 | 5 | 0 | |
 | Assets | 9 | 9 | 0 | |
-| Core | 8 | 0 | 8 | |
+| Core | 8 | 7 | 0 | 1 read-only (permissionsbus) |
 | HR | 6 | 6 | 0 | |
 | Geography | 5 | 3 | 0 | 2 read-only (N/A) |
-| Products | 7 | 0 | 7 | |
-| Procurement | 6 | 0 | 6 | |
-| Inventory | 10 | 0 | 10 | |
+| Products | 7 | 7 | 0 | |
+| Procurement | 6 | 6 | 0 | |
+| Inventory | 10 | 10 | 0 | |
 | Config | 5 | 0 | 5 | |
-| **Total** | **61** | **23** | **36** | 2 N/A |
+| **Total** | **61** | **53** | **5** | 3 N/A (read-only) |
 
 ---
 
