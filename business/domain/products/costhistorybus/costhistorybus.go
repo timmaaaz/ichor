@@ -92,6 +92,11 @@ func (b *Business) Create(ctx context.Context, nch NewCostHistory) (CostHistory,
 		return CostHistory{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(ch)); err != nil {
+		b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return ch, nil
 }
 
@@ -125,6 +130,11 @@ func (b *Business) Update(ctx context.Context, ch CostHistory, uch UpdateCostHis
 		return CostHistory{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(ch)); err != nil {
+		b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return ch, nil
 }
 
@@ -135,6 +145,11 @@ func (b *Business) Delete(ctx context.Context, ch CostHistory) error {
 
 	if err := b.storer.Delete(ctx, ch); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(ch)); err != nil {
+		b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

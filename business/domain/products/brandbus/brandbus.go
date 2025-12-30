@@ -85,6 +85,11 @@ func (b *Business) Create(ctx context.Context, na NewBrand) (Brand, error) {
 		return Brand{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(brand)); err != nil {
+		b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return brand, nil
 }
 
@@ -107,6 +112,11 @@ func (b *Business) Update(ctx context.Context, brand Brand, ub UpdateBrand) (Bra
 		return Brand{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(brand)); err != nil {
+		b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return brand, nil
 }
 
@@ -117,6 +127,11 @@ func (b *Business) Delete(ctx context.Context, ass Brand) error {
 
 	if err := b.storer.Delete(ctx, ass); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(ass)); err != nil {
+		b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

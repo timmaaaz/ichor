@@ -88,6 +88,11 @@ func (b *Business) Create(ctx context.Context, nm NewMetric) (Metric, error) {
 		return Metric{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(metric)); err != nil {
+		b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return metric, nil
 }
 
@@ -115,6 +120,11 @@ func (b *Business) Update(ctx context.Context, metric Metric, um UpdateMetric) (
 		return Metric{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(metric)); err != nil {
+		b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return metric, nil
 }
 
@@ -126,6 +136,11 @@ func (b *Business) Delete(ctx context.Context, metric Metric) error {
 	err := b.storer.Delete(ctx, metric)
 	if err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(metric)); err != nil {
+		b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

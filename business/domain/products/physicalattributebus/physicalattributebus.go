@@ -95,6 +95,11 @@ func (b *Business) Create(ctx context.Context, npc NewPhysicalAttribute) (Physic
 		return PhysicalAttribute{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(pc)); err != nil {
+		b.log.Error(ctx, "physicalattributebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return pc, nil
 }
 
@@ -146,6 +151,11 @@ func (b *Business) Update(ctx context.Context, pc PhysicalAttribute, upc UpdateP
 		return PhysicalAttribute{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(pc)); err != nil {
+		b.log.Error(ctx, "physicalattributebus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return pc, nil
 }
 
@@ -156,6 +166,11 @@ func (b *Business) Delete(ctx context.Context, ass PhysicalAttribute) error {
 
 	if err := b.storer.Delete(ctx, ass); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(ass)); err != nil {
+		b.log.Error(ctx, "physicalattributebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

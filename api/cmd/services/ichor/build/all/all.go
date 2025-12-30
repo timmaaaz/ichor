@@ -455,6 +455,15 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					delegateHandler.RegisterDomain(delegate, streetbus.DomainName, streetbus.EntityName)
 					delegateHandler.RegisterDomain(delegate, timezonebus.DomainName, timezonebus.EntityName)
 
+					// Register Products domain -> workflow events
+					delegateHandler.RegisterDomain(delegate, productbus.DomainName, productbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, productcategorybus.DomainName, productcategorybus.EntityName)
+					delegateHandler.RegisterDomain(delegate, brandbus.DomainName, brandbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, productcostbus.DomainName, productcostbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, costhistorybus.DomainName, costhistorybus.EntityName)
+					delegateHandler.RegisterDomain(delegate, physicalattributebus.DomainName, physicalattributebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, metricsbus.DomainName, metricsbus.EntityName)
+
 					// Additional domains can be registered here as they implement event.go files
 				}
 			}
