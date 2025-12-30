@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -40,12 +41,13 @@ func WithFileServer(static embed.FS, dir string) func(opts *Options) {
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build      string
-	Log        *logger.Logger
-	Auth       *auth.Auth
-	AuthClient *authclient.Client
-	DB         *sqlx.DB
-	Tracer     trace.Tracer
+	Build        string
+	Log          *logger.Logger
+	Auth         *auth.Auth
+	AuthClient   *authclient.Client
+	DB           *sqlx.DB
+	Tracer       trace.Tracer
+	RabbitClient *rabbitmq.Client
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance

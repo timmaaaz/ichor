@@ -265,6 +265,8 @@ import (
 	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
@@ -382,6 +384,36 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	pageContentBus := pagecontentbus.NewBusiness(cfg.Log, delegate, pagecontentdb.NewStore(cfg.Log, cfg.DB))
 	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
 	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB), pageContentBus, pageActionBus)
+
+	// =========================================================================
+	// Initialize Workflow Infrastructure
+	// =========================================================================
+
+	var eventPublisher *workflow.EventPublisher
+
+	if cfg.RabbitClient != nil && cfg.RabbitClient.IsConnected() {
+		workflowStore := workflowdb.NewStore(cfg.Log, cfg.DB)
+		workflowBus := workflow.NewBusiness(cfg.Log, workflowStore)
+
+		workflowEngine := workflow.NewEngine(cfg.Log, cfg.DB, workflowBus)
+		if err := workflowEngine.Initialize(context.Background(), workflowBus); err != nil {
+			cfg.Log.Error(context.Background(), "workflow engine init failed", "error", err)
+		} else {
+			queueManager, err := workflow.NewQueueManager(cfg.Log, cfg.DB, workflowEngine, cfg.RabbitClient)
+			if err != nil {
+				cfg.Log.Error(context.Background(), "queue manager creation failed", "error", err)
+			} else {
+				if err := queueManager.Initialize(context.Background()); err != nil {
+					cfg.Log.Error(context.Background(), "queue manager init failed", "error", err)
+				} else if err := queueManager.Start(context.Background()); err != nil {
+					cfg.Log.Error(context.Background(), "queue manager start failed", "error", err)
+				} else {
+					eventPublisher = workflow.NewEventPublisher(cfg.Log, queueManager)
+					cfg.Log.Info(context.Background(), "workflow event infrastructure initialized")
+				}
+			}
+		}
+	}
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,
@@ -899,6 +931,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	} else {
 		// Initialize formdata app and routes
 		formDataApp := formdataapp.NewApp(formDataRegistry, cfg.DB, formBus, formFieldBus)
+		formDataApp.SetEventPublisher(eventPublisher)
 
 		formdataapi.Routes(app, formdataapi.Config{
 			FormdataApp:    formDataApp,

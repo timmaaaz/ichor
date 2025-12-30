@@ -30,6 +30,7 @@ import (
 	"github.com/timmaaaz/ichor/foundation/keystore"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
@@ -125,6 +126,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 			TokenExpiration    time.Duration `conf:"default:20m"`
 			DevTokenExpiration time.Duration `conf:"default:8h"`
 		}
+		RabbitMQ struct {
+			URL           string        `conf:"default:amqp://guest:guest@rabbitmq-service:5672/"`
+			MaxRetries    int           `conf:"default:5"`
+			RetryDelay    time.Duration `conf:"default:5s"`
+			PrefetchCount int           `conf:"default:10"`
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -177,6 +184,32 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 
 	defer db.Close()
+
+	// -------------------------------------------------------------------------
+	// Initialize RabbitMQ Support
+
+	log.Info(ctx, "startup", "status", "initializing RabbitMQ support")
+
+	rabbitConfig := rabbitmq.Config{
+		URL:                cfg.RabbitMQ.URL,
+		MaxRetries:         cfg.RabbitMQ.MaxRetries,
+		RetryDelay:         cfg.RabbitMQ.RetryDelay,
+		PrefetchCount:      cfg.RabbitMQ.PrefetchCount,
+		PrefetchSize:       0,
+		PublisherConfirms:  true,
+		ExchangeName:       "workflow",
+		ExchangeType:       "topic",
+		DeadLetterExchange: "workflow.dlx",
+	}
+
+	rabbitClient := rabbitmq.NewClient(log, rabbitConfig)
+
+	if err := rabbitClient.WaitForConnection(30 * time.Second); err != nil {
+		return fmt.Errorf("connecting to RabbitMQ: %w", err)
+	}
+	defer rabbitClient.Close()
+
+	log.Info(ctx, "startup", "status", "RabbitMQ connected")
 
 	// -------------------------------------------------------------------------
 	// Configure OAuth Providers based on environment
@@ -277,11 +310,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	cfgMux := mux.Config{
-		Build:      build,
-		Log:        log,
-		AuthClient: authClient,
-		DB:         db,
-		Tracer:     tracer,
+		Build:        build,
+		Log:          log,
+		AuthClient:   authClient,
+		DB:           db,
+		Tracer:       tracer,
+		RabbitClient: rabbitClient,
 	}
 
 	routes, userBus := buildRoutes(cfgMux)
