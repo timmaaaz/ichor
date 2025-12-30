@@ -432,6 +432,15 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					delegateHandler.RegisterDomain(delegate, approvalstatusbus.DomainName, approvalstatusbus.EntityName)
 					delegateHandler.RegisterDomain(delegate, fulfillmentstatusbus.DomainName, fulfillmentstatusbus.EntityName)
 
+					// Register Core domain -> workflow events
+					delegateHandler.RegisterDomain(delegate, userbus.DomainName, userbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, rolebus.DomainName, rolebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, userrolebus.DomainName, userrolebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, tableaccessbus.DomainName, tableaccessbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, pagebus.DomainName, pagebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, rolepagebus.DomainName, rolepagebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, contactinfosbus.DomainName, contactinfosbus.EntityName)
+
 					// Additional domains can be registered here as they implement event.go files
 				}
 			}

@@ -2,48 +2,50 @@ package tableaccessbus
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 )
 
-// DomainName represents the name of this domain.
+// DomainName represents the name of this domain for delegate events.
 const DomainName = "tableaccess"
 
-// Set of delegate actions for CRUD operations.
+// EntityName is the workflow entity name used for event matching.
+// This should match the entity name in workflow.entities table.
+// The entity is stored as just the table name (not schema-qualified).
+const EntityName = "table_access"
+
+// Delegate action constants.
 const (
-	ActionCreated   = "created"
-	ActionRetrieved = "retrieved"
-	ActionUpdated   = "updated"
-	ActionDeleted   = "deleted"
+	ActionCreated = "created"
+	ActionUpdated = "updated"
+	ActionDeleted = "deleted"
 )
 
-// ===============================================================
-// Create Event
+// =============================================================================
+// Created Event
+// =============================================================================
 
 // ActionCreatedParms represents the parameters for the created action.
+// Note: This is a reference/lookup table without user tracking fields.
+// UserID is set to uuid.Nil for system-level operations.
 type ActionCreatedParms struct {
-	TableAccessID uuid.UUID
-	TableAccess   TableAccess
-}
-
-// String returns a string representation of the action parameters.
-func (ac *ActionCreatedParms) String() string {
-	return fmt.Sprintf("&EventParamsCreated{TableAccessID:%v, RoleID:%v, TableName:%v}",
-		ac.TableAccessID, ac.TableAccess.RoleID, ac.TableAccess.TableName)
+	EntityID uuid.UUID   `json:"entityID"`
+	UserID   uuid.UUID   `json:"userID"`
+	Entity   TableAccess `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
-func (ac *ActionCreatedParms) Marshal() ([]byte, error) {
-	return json.Marshal(ac)
+func (p *ActionCreatedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
 }
 
-// ActionCreatedData constructs the data for the created action.
+// ActionCreatedData constructs delegate data for table access creation events.
 func ActionCreatedData(tableAccess TableAccess) delegate.Data {
 	params := ActionCreatedParms{
-		TableAccessID: tableAccess.ID,
-		TableAccess:   tableAccess,
+		EntityID: tableAccess.ID,
+		UserID:   uuid.Nil, // Reference table - no user tracking
+		Entity:   tableAccess,
 	}
 
 	rawParams, err := params.Marshal()
@@ -58,64 +60,28 @@ func ActionCreatedData(tableAccess TableAccess) delegate.Data {
 	}
 }
 
-// ===============================================================
-// Retrieved Event
-
-// ActionRetrievedParms represents the parameters for the retrieved action.
-type ActionRetrievedParms struct {
-	TableAccessID uuid.UUID
-}
-
-// String returns a string representation of the action parameters.
-func (ar *ActionRetrievedParms) String() string {
-	return fmt.Sprintf("&EventParamsRetrieved{TableAccessID:%v}", ar.TableAccessID)
-}
-
-// Marshal returns the event parameters encoded as JSON.
-func (ar *ActionRetrievedParms) Marshal() ([]byte, error) {
-	return json.Marshal(ar)
-}
-
-// ActionRetrievedData constructs the data for the retrieved action.
-func ActionRetrievedData(tableAccessID uuid.UUID) delegate.Data {
-	params := ActionRetrievedParms{
-		TableAccessID: tableAccessID,
-	}
-
-	rawParams, err := params.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return delegate.Data{
-		Domain:    DomainName,
-		Action:    ActionRetrieved,
-		RawParams: rawParams,
-	}
-}
-
-// ===============================================================
+// =============================================================================
 // Updated Event
+// =============================================================================
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	TableAccess TableAccess
-}
-
-// String returns a string representation of the action parameters.
-func (au *ActionUpdatedParms) String() string {
-	return fmt.Sprintf("&EventParamsUpdated{TableAccessID:%+v}", au.TableAccess)
+	EntityID uuid.UUID   `json:"entityID"`
+	UserID   uuid.UUID   `json:"userID"`
+	Entity   TableAccess `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
-func (au *ActionUpdatedParms) Marshal() ([]byte, error) {
-	return json.Marshal(au)
+func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
 }
 
-// ActionUpdatedData constructs the data for the updated action.
-func ActionUpdatedData(ta TableAccess) delegate.Data {
+// ActionUpdatedData constructs delegate data for table access update events.
+func ActionUpdatedData(tableAccess TableAccess) delegate.Data {
 	params := ActionUpdatedParms{
-		TableAccess: ta,
+		EntityID: tableAccess.ID,
+		UserID:   uuid.Nil, // Reference table - no user tracking
+		Entity:   tableAccess,
 	}
 
 	rawParams, err := params.Marshal()
@@ -130,28 +96,28 @@ func ActionUpdatedData(ta TableAccess) delegate.Data {
 	}
 }
 
-// ===============================================================
+// =============================================================================
 // Deleted Event
+// =============================================================================
 
 // ActionDeletedParms represents the parameters for the deleted action.
 type ActionDeletedParms struct {
-	TableAccessID uuid.UUID
-}
-
-// String returns a string representation of the action parameters.
-func (ad *ActionDeletedParms) String() string {
-	return fmt.Sprintf("&EventParamsDeleted{TableAccessID:%v}", ad.TableAccessID)
+	EntityID uuid.UUID   `json:"entityID"`
+	UserID   uuid.UUID   `json:"userID"`
+	Entity   TableAccess `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
-func (ad *ActionDeletedParms) Marshal() ([]byte, error) {
-	return json.Marshal(ad)
+func (p *ActionDeletedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
 }
 
-// ActionDeletedData constructs the data for the deleted action.
-func ActionDeletedData(tableAccessID uuid.UUID) delegate.Data {
+// ActionDeletedData constructs delegate data for table access deletion events.
+func ActionDeletedData(tableAccess TableAccess) delegate.Data {
 	params := ActionDeletedParms{
-		TableAccessID: tableAccessID,
+		EntityID: tableAccess.ID,
+		UserID:   uuid.Nil, // Reference table - no user tracking
+		Entity:   tableAccess,
 	}
 
 	rawParams, err := params.Marshal()

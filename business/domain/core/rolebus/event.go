@@ -2,47 +2,50 @@ package rolebus
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 )
 
-// DomainName represents the name of this domain.
+// DomainName represents the name of this domain for delegate events.
 const DomainName = "role"
 
-// Set of delegate actions for CRUD operations.
+// EntityName is the workflow entity name used for event matching.
+// This should match the entity name in workflow.entities table.
+// The entity is stored as just the table name (not schema-qualified).
+const EntityName = "roles"
+
+// Delegate action constants.
 const (
-	ActionCreated   = "created"
-	ActionRetrieved = "retrieved"
-	ActionUpdated   = "updated"
-	ActionDeleted   = "deleted"
+	ActionCreated = "created"
+	ActionUpdated = "updated"
+	ActionDeleted = "deleted"
 )
 
-// ===============================================================
-// Create Event
+// =============================================================================
+// Created Event
+// =============================================================================
 
 // ActionCreatedParms represents the parameters for the created action.
+// Note: This is a reference/lookup table without user tracking fields.
+// UserID is set to uuid.Nil for system-level operations.
 type ActionCreatedParms struct {
-	RoleID uuid.UUID
-	Role   Role
-}
-
-// String returns a string representation of the action parameters.
-func (ac *ActionCreatedParms) String() string {
-	return fmt.Sprintf("&EventParamsCreated{RoleID:%v, Name:%v}", ac.RoleID, ac.Role.Name)
+	EntityID uuid.UUID `json:"entityID"`
+	UserID   uuid.UUID `json:"userID"`
+	Entity   Role      `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
-func (ac *ActionCreatedParms) Marshal() ([]byte, error) {
-	return json.Marshal(ac)
+func (p *ActionCreatedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
 }
 
-// ActionCreatedData constructs the data for the created action.
+// ActionCreatedData constructs delegate data for role creation events.
 func ActionCreatedData(role Role) delegate.Data {
 	params := ActionCreatedParms{
-		RoleID: role.ID,
-		Role:   role,
+		EntityID: role.ID,
+		UserID:   uuid.Nil, // Reference table - no user tracking
+		Entity:   role,
 	}
 
 	rawParams, err := params.Marshal()
@@ -57,64 +60,28 @@ func ActionCreatedData(role Role) delegate.Data {
 	}
 }
 
-// ===============================================================
-// Retrieved Event
-
-// ActionRetrievedParms represents the parameters for the retrieved action.
-type ActionRetrievedParms struct {
-	RoleID uuid.UUID
-}
-
-// String returns a string representation of the action parameters.
-func (ar *ActionRetrievedParms) String() string {
-	return fmt.Sprintf("&EventParamsRetrieved{RoleID:%v}", ar.RoleID)
-}
-
-// Marshal returns the event parameters encoded as JSON.
-func (ar *ActionRetrievedParms) Marshal() ([]byte, error) {
-	return json.Marshal(ar)
-}
-
-// ActionRetrievedData constructs the data for the retrieved action.
-func ActionRetrievedData(roleID uuid.UUID) delegate.Data {
-	params := ActionRetrievedParms{
-		RoleID: roleID,
-	}
-
-	rawParams, err := params.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return delegate.Data{
-		Domain:    DomainName,
-		Action:    ActionRetrieved,
-		RawParams: rawParams,
-	}
-}
-
-// ===============================================================
+// =============================================================================
 // Updated Event
+// =============================================================================
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	Role Role
-}
-
-// String returns a string representation of the action parameters.
-func (au *ActionUpdatedParms) String() string {
-	return fmt.Sprintf("&EventParamsUpdated{RoleID:%v}", au.Role.ID)
+	EntityID uuid.UUID `json:"entityID"`
+	UserID   uuid.UUID `json:"userID"`
+	Entity   Role      `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
-func (au *ActionUpdatedParms) Marshal() ([]byte, error) {
-	return json.Marshal(au)
+func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
 }
 
-// ActionUpdatedData constructs the data for the updated action.
-func ActionUpdatedData(r Role) delegate.Data {
+// ActionUpdatedData constructs delegate data for role update events.
+func ActionUpdatedData(role Role) delegate.Data {
 	params := ActionUpdatedParms{
-		Role: r,
+		EntityID: role.ID,
+		UserID:   uuid.Nil, // Reference table - no user tracking
+		Entity:   role,
 	}
 
 	rawParams, err := params.Marshal()
@@ -129,28 +96,28 @@ func ActionUpdatedData(r Role) delegate.Data {
 	}
 }
 
-// ===============================================================
+// =============================================================================
 // Deleted Event
+// =============================================================================
 
 // ActionDeletedParms represents the parameters for the deleted action.
 type ActionDeletedParms struct {
-	RoleID uuid.UUID
-}
-
-// String returns a string representation of the action parameters.
-func (ad *ActionDeletedParms) String() string {
-	return fmt.Sprintf("&EventParamsDeleted{RoleID:%v}", ad.RoleID)
+	EntityID uuid.UUID `json:"entityID"`
+	UserID   uuid.UUID `json:"userID"`
+	Entity   Role      `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
-func (ad *ActionDeletedParms) Marshal() ([]byte, error) {
-	return json.Marshal(ad)
+func (p *ActionDeletedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
 }
 
-// ActionDeletedData constructs the data for the deleted action.
-func ActionDeletedData(roleID uuid.UUID) delegate.Data {
+// ActionDeletedData constructs delegate data for role deletion events.
+func ActionDeletedData(role Role) delegate.Data {
 	params := ActionDeletedParms{
-		RoleID: roleID,
+		EntityID: role.ID,
+		UserID:   uuid.Nil, // Reference table - no user tracking
+		Entity:   role,
 	}
 
 	rawParams, err := params.Marshal()

@@ -2,43 +2,85 @@ package userbus
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 )
 
-// DomainName represents the name of this domain.
+// DomainName represents the name of this domain for delegate events.
 const DomainName = "user"
 
-// Set of delegate actions.
+// EntityName is the workflow entity name used for event matching.
+// This should match the entity name in workflow.entities table.
+// The entity is stored as just the table name (not schema-qualified).
+const EntityName = "users"
+
+// Delegate action constants.
 const (
+	ActionCreated = "created"
 	ActionUpdated = "updated"
+	ActionDeleted = "deleted"
 )
 
-// ActionUpdatedParms represents the parameters for the updated action.
-type ActionUpdatedParms struct {
-	UserID uuid.UUID
-	UpdateUser
-}
+// =============================================================================
+// Created Event
+// =============================================================================
 
-// String returns a string representation of the action parameters.
-func (au *ActionUpdatedParms) String() string {
-	return fmt.Sprintf("&EventParamsUpdated{UserID:%v, Enabled:%v}", au.UserID, au.Enabled)
+// ActionCreatedParms represents the parameters for the created action.
+// Note: User entity uses RequestedBy instead of CreatedBy for user tracking.
+type ActionCreatedParms struct {
+	EntityID uuid.UUID `json:"entityID"`
+	UserID   uuid.UUID `json:"userID"`
+	Entity   User      `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
-func (au *ActionUpdatedParms) Marshal() ([]byte, error) {
-	return json.Marshal(au)
+func (p *ActionCreatedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
 }
 
-// ActionUpdatedData constructs the data for the updated action.
-func ActionUpdatedData(uu UpdateUser, userID uuid.UUID) delegate.Data {
+// ActionCreatedData constructs delegate data for user creation events.
+func ActionCreatedData(user User) delegate.Data {
+	params := ActionCreatedParms{
+		EntityID: user.ID,
+		UserID:   user.RequestedBy, // User entity uses RequestedBy instead of CreatedBy
+		Entity:   user,
+	}
+
+	rawParams, err := params.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return delegate.Data{
+		Domain:    DomainName,
+		Action:    ActionCreated,
+		RawParams: rawParams,
+	}
+}
+
+// =============================================================================
+// Updated Event
+// =============================================================================
+
+// ActionUpdatedParms represents the parameters for the updated action.
+type ActionUpdatedParms struct {
+	EntityID uuid.UUID `json:"entityID"`
+	UserID   uuid.UUID `json:"userID"`
+	Entity   User      `json:"entity"`
+}
+
+// Marshal returns the event parameters encoded as JSON.
+func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+// ActionUpdatedData constructs delegate data for user update events.
+func ActionUpdatedData(user User) delegate.Data {
 	params := ActionUpdatedParms{
-		UserID: userID,
-		UpdateUser: UpdateUser{
-			Enabled: uu.Enabled,
-		},
+		EntityID: user.ID,
+		UserID:   uuid.Nil, // User entity doesn't have UpdatedBy field
+		Entity:   user,
 	}
 
 	rawParams, err := params.Marshal()
@@ -49,6 +91,42 @@ func ActionUpdatedData(uu UpdateUser, userID uuid.UUID) delegate.Data {
 	return delegate.Data{
 		Domain:    DomainName,
 		Action:    ActionUpdated,
+		RawParams: rawParams,
+	}
+}
+
+// =============================================================================
+// Deleted Event
+// =============================================================================
+
+// ActionDeletedParms represents the parameters for the deleted action.
+type ActionDeletedParms struct {
+	EntityID uuid.UUID `json:"entityID"`
+	UserID   uuid.UUID `json:"userID"`
+	Entity   User      `json:"entity"`
+}
+
+// Marshal returns the event parameters encoded as JSON.
+func (p *ActionDeletedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+// ActionDeletedData constructs delegate data for user deletion events.
+func ActionDeletedData(user User) delegate.Data {
+	params := ActionDeletedParms{
+		EntityID: user.ID,
+		UserID:   uuid.Nil, // User entity doesn't have UpdatedBy field
+		Entity:   user,
+	}
+
+	rawParams, err := params.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return delegate.Data{
+		Domain:    DomainName,
+		Action:    ActionDeleted,
 		RawParams: rawParams,
 	}
 }

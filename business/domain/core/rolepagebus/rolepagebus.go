@@ -81,6 +81,11 @@ func (b *Business) Create(ctx context.Context, nrp NewRolePage) (RolePage, error
 		return RolePage{}, fmt.Errorf("creating role page: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(rolePage)); err != nil {
+		b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return rolePage, nil
 }
 
@@ -97,9 +102,9 @@ func (b *Business) Update(ctx context.Context, rolePage RolePage, urp UpdateRole
 		return RolePage{}, fmt.Errorf("updating role page: %w", err)
 	}
 
-	// Inform subscribers of the update
+	// Fire delegate event for workflow automation
 	if err := b.del.Call(ctx, ActionUpdatedData(rolePage)); err != nil {
-		return RolePage{}, fmt.Errorf("calling delegate: %w", err)
+		b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return rolePage, nil
@@ -114,9 +119,9 @@ func (b *Business) Delete(ctx context.Context, rolePage RolePage) error {
 		return fmt.Errorf("deleting role page: %w", err)
 	}
 
-	// Inform subscribers of the deletion
-	if err := b.del.Call(ctx, ActionDeletedData(rolePage.ID)); err != nil {
-		return fmt.Errorf("calling delegate: %w", err)
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(rolePage)); err != nil {
+		b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

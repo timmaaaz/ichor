@@ -94,6 +94,11 @@ func (b *Business) Create(ctx context.Context, nta NewTableAccess) (TableAccess,
 		return TableAccess{}, fmt.Errorf("creating table access: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(ta)); err != nil {
+		b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return ta, nil
 }
 
@@ -125,9 +130,9 @@ func (b *Business) Update(ctx context.Context, ta TableAccess, uta UpdateTableAc
 		return TableAccess{}, fmt.Errorf("updating table access: %w", err)
 	}
 
-	// Inform permissions, need to clear cache
+	// Fire delegate event for workflow automation
 	if err := b.del.Call(ctx, ActionUpdatedData(ta)); err != nil {
-		return TableAccess{}, fmt.Errorf("calling delegate: %w", err)
+		b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return ta, nil
@@ -142,9 +147,9 @@ func (b *Business) Delete(ctx context.Context, ta TableAccess) error {
 		return fmt.Errorf("deleting table access: %w", err)
 	}
 
-	// Inform permissions, need to clear cache
-	if err := b.del.Call(ctx, ActionDeletedData(ta.ID)); err != nil {
-		return fmt.Errorf("calling delegate: %w", err)
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(ta)); err != nil {
+		b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

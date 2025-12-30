@@ -1,4 +1,4 @@
-package pagebus
+package contactinfosbus
 
 import (
 	"encoding/json"
@@ -8,12 +8,12 @@ import (
 )
 
 // DomainName represents the name of this domain for delegate events.
-const DomainName = "page"
+const DomainName = "contactinfo"
 
 // EntityName is the workflow entity name used for event matching.
 // This should match the entity name in workflow.entities table.
 // The entity is stored as just the table name (not schema-qualified).
-const EntityName = "pages"
+const EntityName = "contact_infos"
 
 // Delegate action constants.
 const (
@@ -30,9 +30,9 @@ const (
 // Note: This is a reference/lookup table without user tracking fields.
 // UserID is set to uuid.Nil for system-level operations.
 type ActionCreatedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   Page      `json:"entity"`
+	EntityID uuid.UUID    `json:"entityID"`
+	UserID   uuid.UUID    `json:"userID"`
+	Entity   ContactInfos `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -40,12 +40,12 @@ func (p *ActionCreatedParms) Marshal() ([]byte, error) {
 	return json.Marshal(p)
 }
 
-// ActionCreatedData constructs delegate data for page creation events.
-func ActionCreatedData(page Page) delegate.Data {
+// ActionCreatedData constructs delegate data for contact info creation events.
+func ActionCreatedData(contactInfo ContactInfos) delegate.Data {
 	params := ActionCreatedParms{
-		EntityID: page.ID,
+		EntityID: contactInfo.ID,
 		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   page,
+		Entity:   contactInfo,
 	}
 
 	rawParams, err := params.Marshal()
@@ -66,9 +66,9 @@ func ActionCreatedData(page Page) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   Page      `json:"entity"`
+	EntityID uuid.UUID    `json:"entityID"`
+	UserID   uuid.UUID    `json:"userID"`
+	Entity   ContactInfos `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -76,12 +76,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 	return json.Marshal(p)
 }
 
-// ActionUpdatedData constructs delegate data for page update events.
-func ActionUpdatedData(page Page) delegate.Data {
+// ActionUpdatedData constructs delegate data for contact info update events.
+func ActionUpdatedData(contactInfo ContactInfos) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: page.ID,
+		EntityID: contactInfo.ID,
 		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   page,
+		Entity:   contactInfo,
 	}
 
 	rawParams, err := params.Marshal()
@@ -102,9 +102,9 @@ func ActionUpdatedData(page Page) delegate.Data {
 
 // ActionDeletedParms represents the parameters for the deleted action.
 type ActionDeletedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   Page      `json:"entity"`
+	EntityID uuid.UUID    `json:"entityID"`
+	UserID   uuid.UUID    `json:"userID"`
+	Entity   ContactInfos `json:"entity"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -112,12 +112,12 @@ func (p *ActionDeletedParms) Marshal() ([]byte, error) {
 	return json.Marshal(p)
 }
 
-// ActionDeletedData constructs delegate data for page deletion events.
-func ActionDeletedData(page Page) delegate.Data {
+// ActionDeletedData constructs delegate data for contact info deletion events.
+func ActionDeletedData(contactInfo ContactInfos) delegate.Data {
 	params := ActionDeletedParms{
-		EntityID: page.ID,
+		EntityID: contactInfo.ID,
 		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   page,
+		Entity:   contactInfo,
 	}
 
 	rawParams, err := params.Marshal()

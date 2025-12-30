@@ -128,6 +128,11 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 		return User{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(usr)); err != nil {
+		b.log.Error(ctx, "userbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return usr, nil
 }
 
@@ -199,10 +204,9 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 		return User{}, fmt.Errorf("update: %w", err)
 	}
 
-	// Other domains may need to know when a user is updated so business
-	// logic can be applieb. This represents a delegate call to other domains.
-	if err := b.delegate.Call(ctx, ActionUpdatedData(uu, usr.ID)); err != nil {
-		return User{}, fmt.Errorf("failed to execute `%s` action: %w", ActionUpdated, err)
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(usr)); err != nil {
+		b.log.Error(ctx, "userbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return usr, nil
@@ -215,6 +219,11 @@ func (b *Business) Delete(ctx context.Context, usr User) error {
 
 	if err := b.storer.Delete(ctx, usr); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(usr)); err != nil {
+		b.log.Error(ctx, "userbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

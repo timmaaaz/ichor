@@ -86,6 +86,11 @@ func (b *Business) Create(ctx context.Context, np NewPage) (Page, error) {
 		return Page{}, fmt.Errorf("creating page: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(page)); err != nil {
+		b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return page, nil
 }
 
@@ -120,9 +125,9 @@ func (b *Business) Update(ctx context.Context, page Page, up UpdatePage) (Page, 
 		return Page{}, fmt.Errorf("updating page: %w", err)
 	}
 
-	// Inform subscribers of the update
+	// Fire delegate event for workflow automation
 	if err := b.del.Call(ctx, ActionUpdatedData(page)); err != nil {
-		return Page{}, fmt.Errorf("calling delegate: %w", err)
+		b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return page, nil
@@ -137,9 +142,9 @@ func (b *Business) Delete(ctx context.Context, page Page) error {
 		return fmt.Errorf("deleting page: %w", err)
 	}
 
-	// Inform subscribers of the deletion
-	if err := b.del.Call(ctx, ActionDeletedData(page.ID)); err != nil {
-		return fmt.Errorf("calling delegate: %w", err)
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(page)); err != nil {
+		b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

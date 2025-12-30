@@ -81,6 +81,11 @@ func (b *Business) Create(ctx context.Context, nur NewUserRole) (UserRole, error
 		return UserRole{}, fmt.Errorf("creating role: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(ur)); err != nil {
+		b.log.Error(ctx, "userrolebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return ur, nil
 }
 
@@ -97,9 +102,9 @@ func (b *Business) Update(ctx context.Context, ur UserRole, uur UpdateUserRole) 
 		return UserRole{}, fmt.Errorf("updating role: %w", err)
 	}
 
-	// Inform permissions, need to clear cache
+	// Fire delegate event for workflow automation
 	if err := b.del.Call(ctx, ActionUpdatedData(ur)); err != nil {
-		return UserRole{}, fmt.Errorf("calling delegate: %w", err)
+		b.log.Error(ctx, "userrolebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return ur, nil
@@ -114,9 +119,9 @@ func (b *Business) Delete(ctx context.Context, ur UserRole) error {
 		return fmt.Errorf("deleting user role: %w", err)
 	}
 
-	// Inform permissions, need to clear cache
-	if err := b.del.Call(ctx, ActionDeletedData(ur.ID)); err != nil {
-		return fmt.Errorf("calling delegate: %w", err)
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(ur)); err != nil {
+		b.log.Error(ctx, "userrolebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil
