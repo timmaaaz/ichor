@@ -84,6 +84,11 @@ func (b *Business) Create(ctx context.Context, nat NewAssetType) (AssetType, err
 		return AssetType{}, err
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(at)); err != nil {
+		b.log.Error(ctx, "assettypebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return at, nil
 }
 
@@ -107,6 +112,11 @@ func (b *Business) Update(ctx context.Context, at AssetType, uat UpdateAssetType
 		return AssetType{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(at)); err != nil {
+		b.log.Error(ctx, "assettypebus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return at, nil
 }
 
@@ -117,6 +127,11 @@ func (b *Business) Delete(ctx context.Context, at AssetType) error {
 
 	if err := b.storer.Delete(ctx, at); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(at)); err != nil {
+		b.log.Error(ctx, "assettypebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

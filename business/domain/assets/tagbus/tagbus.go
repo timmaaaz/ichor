@@ -84,6 +84,11 @@ func (b *Business) Create(ctx context.Context, nt NewTag) (Tag, error) {
 		return Tag{}, err
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(t)); err != nil {
+		b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return t, nil
 }
 
@@ -107,6 +112,11 @@ func (b *Business) Update(ctx context.Context, t Tag, ut UpdateTag) (Tag, error)
 		return Tag{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(t)); err != nil {
+		b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return t, nil
 }
 
@@ -117,6 +127,11 @@ func (b *Business) Delete(ctx context.Context, at Tag) error {
 
 	if err := b.storer.Delete(ctx, at); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(at)); err != nil {
+		b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

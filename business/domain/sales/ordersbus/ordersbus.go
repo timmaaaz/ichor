@@ -76,7 +76,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		now = *no.CreatedDate // Use provided date for seeding
 	}
 
-	status := Order{
+	order := Order{
 		ID:                  uuid.New(),
 		Number:              no.Number,
 		CustomerID:          no.CustomerID,
@@ -88,39 +88,50 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		UpdatedDate:         now,
 	}
 
-	if err := b.storer.Create(ctx, status); err != nil {
+	if err := b.storer.Create(ctx, order); err != nil {
 		return Order{}, err
 	}
-	return status, nil
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(order)); err != nil {
+		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
+	return order, nil
 }
 
-func (b *Business) Update(ctx context.Context, status Order, uStatus UpdateOrder) (Order, error) {
+func (b *Business) Update(ctx context.Context, order Order, uo UpdateOrder) (Order, error) {
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.update")
 	defer span.End()
 
-	if uStatus.Number != nil {
-		status.Number = *uStatus.Number
+	if uo.Number != nil {
+		order.Number = *uo.Number
 	}
-	if uStatus.CustomerID != nil {
-		status.CustomerID = *uStatus.CustomerID
+	if uo.CustomerID != nil {
+		order.CustomerID = *uo.CustomerID
 	}
-	if uStatus.DueDate != nil {
-		status.DueDate = *uStatus.DueDate
+	if uo.DueDate != nil {
+		order.DueDate = *uo.DueDate
 	}
-	if uStatus.FulfillmentStatusID != nil {
-		status.FulfillmentStatusID = *uStatus.FulfillmentStatusID
+	if uo.FulfillmentStatusID != nil {
+		order.FulfillmentStatusID = *uo.FulfillmentStatusID
 	}
-	if uStatus.UpdatedBy != nil {
-		status.UpdatedBy = *uStatus.UpdatedBy
+	if uo.UpdatedBy != nil {
+		order.UpdatedBy = *uo.UpdatedBy
 	}
 
-	status.UpdatedDate = time.Now().UTC()
+	order.UpdatedDate = time.Now().UTC()
 
-	if err := b.storer.Update(ctx, status); err != nil {
+	if err := b.storer.Update(ctx, order); err != nil {
 		return Order{}, fmt.Errorf("update: %w", err)
 	}
 
-	return status, nil
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(order)); err != nil {
+		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return order, nil
 }
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Order, error) {
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.query")
@@ -134,11 +145,20 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 	return statuses, nil
 }
 
-func (b *Business) Delete(ctx context.Context, status Order) error {
+func (b *Business) Delete(ctx context.Context, order Order) error {
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.delete")
 	defer span.End()
 
-	return b.storer.Delete(ctx, status)
+	if err := b.storer.Delete(ctx, order); err != nil {
+		return err
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(order)); err != nil {
+		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionDeleted, "err", err)
+	}
+
+	return nil
 }
 
 // Count returns the total number of Orders.

@@ -491,9 +491,19 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'sales.orders', true, true, true, true)
 
 ON CONFLICT DO NOTHING;
+
+-- Seed trigger types for workflow automation
+INSERT INTO workflow.trigger_types (id, name, description, is_active)
+VALUES
+    (gen_random_uuid(), 'on_create', 'Triggered when a new entity is created', true),
+    (gen_random_uuid(), 'on_update', 'Triggered when an existing entity is updated', true),
+    (gen_random_uuid(), 'on_delete', 'Triggered when an entity is deleted', true),
+    (gen_random_uuid(), 'scheduled', 'Triggered based on a schedule', true)
+ON CONFLICT (name) DO NOTHING;
+
 -- First, ensure we have the required entity types
-INSERT INTO workflow.entity_types (id, name, description, is_active) 
-VALUES 
+INSERT INTO workflow.entity_types (id, name, description, is_active)
+VALUES
     (gen_random_uuid(), 'table', 'Database table entity', true),
     (gen_random_uuid(), 'view', 'Database view entity', true)
 ON CONFLICT (name) DO NOTHING;

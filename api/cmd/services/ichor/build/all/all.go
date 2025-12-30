@@ -410,6 +410,29 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 				} else {
 					eventPublisher = workflow.NewEventPublisher(cfg.Log, queueManager)
 					cfg.Log.Info(context.Background(), "workflow event infrastructure initialized")
+
+					// Register delegate handlers for workflow event firing
+					delegateHandler := workflow.NewDelegateHandler(cfg.Log, eventPublisher)
+
+					// Register Sales domain -> workflow events
+					delegateHandler.RegisterDomain(delegate, ordersbus.DomainName, ordersbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, customersbus.DomainName, customersbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, orderlineitemsbus.DomainName, orderlineitemsbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, orderfulfillmentstatusbus.DomainName, orderfulfillmentstatusbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, lineitemfulfillmentstatusbus.DomainName, lineitemfulfillmentstatusbus.EntityName)
+
+					// Register Assets domain -> workflow events
+					delegateHandler.RegisterDomain(delegate, assetbus.DomainName, assetbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, validassetbus.DomainName, validassetbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, userassetbus.DomainName, userassetbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, assettypebus.DomainName, assettypebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, assetconditionbus.DomainName, assetconditionbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, assettagbus.DomainName, assettagbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, tagbus.DomainName, tagbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, approvalstatusbus.DomainName, approvalstatusbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, fulfillmentstatusbus.DomainName, fulfillmentstatusbus.EntityName)
+
+					// Additional domains can be registered here as they implement event.go files
 				}
 			}
 		}

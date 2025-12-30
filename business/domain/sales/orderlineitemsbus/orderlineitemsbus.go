@@ -92,6 +92,12 @@ func (b *Business) Create(ctx context.Context, newStatus NewOrderLineItem) (Orde
 	if err := b.storer.Create(ctx, status); err != nil {
 		return OrderLineItem{}, err
 	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(status)); err != nil {
+		b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return status, nil
 }
 
@@ -124,8 +130,14 @@ func (b *Business) Update(ctx context.Context, status OrderLineItem, uStatus Upd
 		return OrderLineItem{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(status)); err != nil {
+		b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return status, nil
 }
+
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]OrderLineItem, error) {
 	ctx, span := otel.AddSpan(ctx, "business.orderlineitemsbus.query")
 	defer span.End()
@@ -142,7 +154,16 @@ func (b *Business) Delete(ctx context.Context, status OrderLineItem) error {
 	ctx, span := otel.AddSpan(ctx, "business.orderlineitemsbus.delete")
 	defer span.End()
 
-	return b.storer.Delete(ctx, status)
+	if err := b.storer.Delete(ctx, status); err != nil {
+		return err
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(status)); err != nil {
+		b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionDeleted, "err", err)
+	}
+
+	return nil
 }
 
 // Count returns the total number of order line itemes.

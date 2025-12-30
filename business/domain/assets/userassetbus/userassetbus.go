@@ -84,6 +84,11 @@ func (b *Business) Create(ctx context.Context, nua NewUserAsset) (UserAsset, err
 		return UserAsset{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(asset)); err != nil {
+		b.log.Error(ctx, "userassetbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return asset, nil
 }
 
@@ -118,6 +123,11 @@ func (b *Business) Update(ctx context.Context, ass UserAsset, uua UpdateUserAsse
 		return UserAsset{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(ass)); err != nil {
+		b.log.Error(ctx, "userassetbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return ass, nil
 }
 
@@ -128,6 +138,11 @@ func (b *Business) Delete(ctx context.Context, ass UserAsset) error {
 
 	if err := b.storer.Delete(ctx, ass); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(ass)); err != nil {
+		b.log.Error(ctx, "userassetbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

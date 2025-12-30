@@ -91,6 +91,11 @@ func (b *Business) Create(ctx context.Context, nci NewCustomers) (Customers, err
 		return Customers{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(customers)); err != nil {
+		b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return customers, nil
 }
 
@@ -121,6 +126,11 @@ func (b *Business) Update(ctx context.Context, ci Customers, uci UpdateCustomers
 		return Customers{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(ci)); err != nil {
+		b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return ci, nil
 }
 
@@ -131,6 +141,11 @@ func (b *Business) Delete(ctx context.Context, ci Customers) error {
 
 	if err := b.storer.Delete(ctx, ci); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(ci)); err != nil {
+		b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

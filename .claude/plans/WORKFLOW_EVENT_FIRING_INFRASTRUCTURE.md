@@ -1036,16 +1036,602 @@ SELECT * FROM workflow.automation_executions ORDER BY executed_at DESC LIMIT 5;
 
 ---
 
-## Phase 2 (Future): Delegate Pattern Integration
+## Phase 2: Delegate Pattern Integration
 
-After Phase 1 is stable, add comprehensive coverage via delegate pattern:
+**Status**: [x] Complete (ordersbus reference implementation)
 
-1. Create `business/sdk/workflow/delegatehandler.go`
-2. Register workflow handler with delegate in all.go
-3. Add event.go to domain bus layers (ordersbus, etc.)
-4. Call `delegate.Call()` in Create/Update/Delete methods
+Phase 2 adds comprehensive coverage via the delegate pattern, enabling workflow events from ALL entry points (direct API, formdata, internal calls).
 
-This provides event firing from ALL entry points (direct API, formdata, internal calls).
+### Files Created/Modified
+
+| File | Purpose |
+|------|---------|
+| `business/sdk/workflow/delegatehandler.go` | NEW - Bridges delegate events to EventPublisher |
+| `business/domain/sales/ordersbus/event.go` | NEW - Domain event definitions for ordersbus |
+| `business/domain/sales/ordersbus/ordersbus.go` | MODIFIED - Added delegate.Call() in CRUD methods |
+| `api/cmd/services/ichor/build/all/all.go` | MODIFIED - Register delegate handler |
+| `business/sdk/workflow/delegatehandler_test.go` | NEW - Tests for delegate pattern |
+
+---
+
+### Step-by-Step: Adding Delegate Events to a New Domain
+
+Follow this pattern to add workflow event firing to any domain.
+
+#### Step 1: Create event.go in the domain package
+
+**File**: `business/domain/{area}/{entity}bus/event.go`
+
+Copy the complete template below and replace the placeholders:
+- `{PACKAGE}` → Package name (e.g., `customersbus`)
+- `{DOMAIN_NAME}` → Singular noun for delegate routing (e.g., `"customer"`, `"order"`, `"product"`)
+- `{ENTITY_NAME}` → Database table name, NOT schema-qualified (e.g., `"customers"`, `"orders"`, `"products"`)
+- `{EntityType}` → The domain's main struct type (e.g., `Customers`, `Order`, `Product`)
+- `{entityVar}` → Variable name for the entity (e.g., `customer`, `order`, `product`)
+
+**Complete event.go Template:**
+
+```go
+package {PACKAGE}
+
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
+)
+
+// DomainName represents the name of this domain for delegate events.
+const DomainName = "{DOMAIN_NAME}"
+
+// EntityName is the workflow entity name used for event matching.
+// This should match the entity name in workflow.entities table.
+// The entity is stored as just the table name (not schema-qualified).
+const EntityName = "{ENTITY_NAME}"
+
+// Delegate action constants.
+const (
+	ActionCreated = "created"
+	ActionUpdated = "updated"
+	ActionDeleted = "deleted"
+)
+
+// =============================================================================
+// Created Event
+// =============================================================================
+
+// ActionCreatedParms represents the parameters for the created action.
+type ActionCreatedParms struct {
+	EntityID uuid.UUID   `json:"entityID"`
+	UserID   uuid.UUID   `json:"userID"`
+	Entity   {EntityType} `json:"entity"`
+}
+
+// Marshal returns the event parameters encoded as JSON.
+func (p *ActionCreatedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+// ActionCreatedData constructs delegate data for {entityVar} creation events.
+func ActionCreatedData({entityVar} {EntityType}) delegate.Data {
+	params := ActionCreatedParms{
+		EntityID: {entityVar}.ID,
+		UserID:   {entityVar}.CreatedBy,
+		Entity:   {entityVar},
+	}
+
+	rawParams, err := params.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return delegate.Data{
+		Domain:    DomainName,
+		Action:    ActionCreated,
+		RawParams: rawParams,
+	}
+}
+
+// =============================================================================
+// Updated Event
+// =============================================================================
+
+// ActionUpdatedParms represents the parameters for the updated action.
+type ActionUpdatedParms struct {
+	EntityID uuid.UUID   `json:"entityID"`
+	UserID   uuid.UUID   `json:"userID"`
+	Entity   {EntityType} `json:"entity"`
+}
+
+// Marshal returns the event parameters encoded as JSON.
+func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+// ActionUpdatedData constructs delegate data for {entityVar} update events.
+func ActionUpdatedData({entityVar} {EntityType}) delegate.Data {
+	params := ActionUpdatedParms{
+		EntityID: {entityVar}.ID,
+		UserID:   {entityVar}.UpdatedBy,
+		Entity:   {entityVar},
+	}
+
+	rawParams, err := params.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return delegate.Data{
+		Domain:    DomainName,
+		Action:    ActionUpdated,
+		RawParams: rawParams,
+	}
+}
+
+// =============================================================================
+// Deleted Event
+// =============================================================================
+
+// ActionDeletedParms represents the parameters for the deleted action.
+type ActionDeletedParms struct {
+	EntityID uuid.UUID   `json:"entityID"`
+	UserID   uuid.UUID   `json:"userID"`
+	Entity   {EntityType} `json:"entity"`
+}
+
+// Marshal returns the event parameters encoded as JSON.
+func (p *ActionDeletedParms) Marshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+// ActionDeletedData constructs delegate data for {entityVar} deletion events.
+// Note: For delete, we use UpdatedBy as the user who performed the delete.
+func ActionDeletedData({entityVar} {EntityType}) delegate.Data {
+	params := ActionDeletedParms{
+		EntityID: {entityVar}.ID,
+		UserID:   {entityVar}.UpdatedBy, // UpdatedBy tracks who performed the delete
+		Entity:   {entityVar},
+	}
+
+	rawParams, err := params.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return delegate.Data{
+		Domain:    DomainName,
+		Action:    ActionDeleted,
+		RawParams: rawParams,
+	}
+}
+```
+
+---
+
+**Placeholder Reference Table:**
+
+| Placeholder | Description | Example (customersbus) | Example (ordersbus) |
+|-------------|-------------|------------------------|---------------------|
+| `{PACKAGE}` | Go package name | `customersbus` | `ordersbus` |
+| `{DOMAIN_NAME}` | Delegate routing key (singular) | `"customer"` | `"order"` |
+| `{ENTITY_NAME}` | DB table name (NOT schema-qualified) | `"customers"` | `"orders"` |
+| `{EntityType}` | Main struct type from model.go | `Customers` | `Order` |
+| `{entityVar}` | Variable name in functions | `customer` | `order` |
+
+**Important Notes:**
+- `{ENTITY_NAME}` must match the `name` column in `workflow.entities` table (table name only, not schema-qualified)
+- `{EntityType}` must be the exact struct name from the domain's `model.go` file
+- Use `CreatedBy` for `ActionCreatedData` UserID, `UpdatedBy` for `ActionUpdatedData` and `ActionDeletedData`
+- The three action constants (`ActionCreated`, `ActionUpdated`, `ActionDeleted`) are always the same values
+
+**Handling Reference/Lookup Tables (Without User Tracking):**
+
+Some entities are reference/lookup tables (e.g., `orderfulfillmentstatusbus`, `lineitemfulfillmentstatusbus`) that don't have `CreatedBy`/`UpdatedBy` fields. For these tables:
+
+1. Use `uuid.Nil` for the `UserID` field in all event params
+2. Add a comment explaining this is a reference table without user tracking
+
+Example for reference tables:
+```go
+// ActionCreatedParms represents the parameters for the created action.
+// Note: This is a reference/lookup table without user tracking fields.
+// UserID is set to uuid.Nil for system-level operations.
+type ActionCreatedParms struct {
+	EntityID uuid.UUID              `json:"entityID"`
+	UserID   uuid.UUID              `json:"userID"`
+	Entity   OrderFulfillmentStatus `json:"entity"`
+}
+
+func ActionCreatedData(status OrderFulfillmentStatus) delegate.Data {
+	params := ActionCreatedParms{
+		EntityID: status.ID,
+		UserID:   uuid.Nil, // Reference table - no user tracking
+		Entity:   status,
+	}
+	// ... rest of function
+}
+```
+
+Reference: See `orderfulfillmentstatusbus/event.go` or `lineitemfulfillmentstatusbus/event.go` for complete examples.
+
+#### Step 2: Add delegate.Call() to CRUD methods
+
+**File**: `business/domain/{area}/{entity}bus/{entity}bus.go`
+
+Add the delegate call after each successful database operation. The pattern is the same for all domains:
+
+**Code to add at end of Create method (before final return):**
+```go
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData({entityVar})); err != nil {
+		b.log.Error(ctx, "{package}: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
+	return {entityVar}, nil
+```
+
+**Code to add at end of Update method (before final return):**
+```go
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData({entityVar})); err != nil {
+		b.log.Error(ctx, "{package}: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return {entityVar}, nil
+```
+
+**Code to add at end of Delete method (before final return):**
+```go
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData({entityVar})); err != nil {
+		b.log.Error(ctx, "{package}: delegate call failed", "action", ActionDeleted, "err", err)
+	}
+
+	return nil
+```
+
+**Important Rules:**
+1. Add delegate call **AFTER** `b.storer.Create/Update/Delete()` succeeds
+2. Add delegate call **BEFORE** the final `return` statement
+3. **Never** return an error from delegate.Call() - log it and continue
+4. Use the entity variable **after** it has been modified (contains correct IDs, timestamps)
+5. Replace `{entityVar}` with the actual variable name used in that function
+6. Replace `{package}` with the package name in the log message (e.g., `"customersbus"`)
+
+**Example from ordersbus.go Create method:**
+```go
+func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.create")
+	defer span.End()
+
+	order := Order{
+		ID:                  b.delegate.GenerateUUID(),
+		// ... field assignments ...
+	}
+
+	if err := b.storer.Create(ctx, order); err != nil {
+		return Order{}, fmt.Errorf("create: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(order)); err != nil {
+		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
+	return order, nil
+}
+```
+
+---
+
+#### Step 3: Register in all.go
+
+**File**: `api/cmd/services/ichor/build/all/all.go`
+
+**Location**: Find the section with `delegateHandler.RegisterDomain()` calls (around line 380-400).
+
+**Add one line per domain:**
+```go
+delegateHandler.RegisterDomain(delegate, {package}.DomainName, {package}.EntityName)
+```
+
+**Example additions:**
+```go
+// Register ordersbus domain -> workflow events (already exists)
+delegateHandler.RegisterDomain(delegate, ordersbus.DomainName, ordersbus.EntityName)
+
+// Register customersbus domain -> workflow events
+delegateHandler.RegisterDomain(delegate, customersbus.DomainName, customersbus.EntityName)
+
+// Register orderlineitemsbus domain -> workflow events
+delegateHandler.RegisterDomain(delegate, orderlineitemsbus.DomainName, orderlineitemsbus.EntityName)
+```
+
+**Also add the import** if not already present:
+```go
+import (
+	// ... existing imports ...
+	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
+)
+```
+
+---
+
+#### Step 4: Verify
+
+```bash
+# 1. Build to check for compilation errors
+go build ./...
+
+# 2. Run the delegate handler tests (should still pass)
+go test -v ./business/sdk/workflow/... -run TestDelegateHandler
+
+# 3. Run all tests to catch any regressions
+make test
+```
+
+**Expected: All tests pass. If tests fail, check:**
+- Entity name matches workflow.entities table entry
+- Package import path is correct
+- delegate.Call() is placed after successful storer operation
+
+---
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           API Layer                                      │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐  │
+│  │   ordersapi      │    │  formdataapi     │    │  other apis...   │  │
+│  └────────┬─────────┘    └────────┬─────────┘    └────────┬─────────┘  │
+└───────────┼──────────────────────┼──────────────────────────┼───────────┘
+            │                      │                          │
+            ▼                      ▼                          ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          App Layer                                       │
+│  ┌──────────────────┐    ┌──────────────────┐                           │
+│  │   ordersapp      │    │  formdataapp     │◄───── EventPublisher      │
+│  └────────┬─────────┘    │   (Phase 1)      │       (fires after tx)    │
+│           │              └──────────────────┘                           │
+└───────────┼─────────────────────────────────────────────────────────────┘
+            │
+            ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        Business Layer                                    │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐  │
+│  │   ordersbus      │    │  customersbus    │    │  other buses...  │  │
+│  │  ┌────────────┐  │    │                  │    │                  │  │
+│  │  │  event.go  │  │    │                  │    │                  │  │
+│  │  └────────────┘  │    │                  │    │                  │  │
+│  └────────┬─────────┘    └──────────────────┘    └──────────────────┘  │
+│           │                                                              │
+│           ▼                                                              │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                      delegate.Delegate                            │   │
+│  │   ┌─────────────────────────────────────────────────────────┐    │   │
+│  │   │          DelegateHandler (Phase 2)                       │    │   │
+│  │   │   - Listens to: "order/created", "order/updated", etc.  │    │   │
+│  │   │   - Publishes to: EventPublisher                         │    │   │
+│  │   └─────────────────────────────────────────────────────────┘    │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+            │
+            ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        Workflow Infrastructure                           │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐  │
+│  │  EventPublisher  │───▶│   QueueManager   │───▶│   RabbitMQ       │  │
+│  └──────────────────┘    └────────┬─────────┘    └──────────────────┘  │
+│                                   │                                      │
+│                                   ▼                                      │
+│                          ┌──────────────────┐                           │
+│                          │  WorkflowEngine  │                           │
+│                          │  - TriggerProc   │                           │
+│                          │  - ActionExec    │                           │
+│                          └──────────────────┘                           │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Event Flow (Phase 2 - Delegate Pattern)
+
+1. **API Request** → ordersapi.create()
+2. **App Layer** → ordersapp.Create() validates, calls bus
+3. **Business Layer** → ordersbus.Create()
+   - Saves to database
+   - Calls `delegate.Call(ctx, ActionCreatedData(order))`
+4. **Delegate** → Dispatches to registered handlers
+5. **DelegateHandler** → Receives event, extracts params
+6. **EventPublisher** → Constructs TriggerEvent, queues to RabbitMQ (non-blocking)
+7. **QueueManager** → Consumer picks up event
+8. **WorkflowEngine** → Matches automation rules, executes actions
+
+**Key Benefit**: Events fire from ANY entry point (API, formdata, internal calls, admin tools).
+
+---
+
+### Domain Implementation Checklist
+
+Track progress of adding delegate event firing to all domains. For each domain:
+1. Create `event.go` file with DomainName, EntityName, and action functions
+2. Add `delegate.Call()` to Create/Update/Delete methods in the main bus file
+3. Register in `all.go` with `delegateHandler.RegisterDomain()`
+
+**Legend**: ✅ Complete | 🔄 In Progress | ⏳ Not Started
+
+---
+
+#### Sales Domain (`business/domain/sales/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| ordersbus | orders | ✅ | ✅ | ✅ | ✅ |
+| orderlineitemsbus | order_line_items | ✅ | ✅ | ✅ | ✅ |
+| customersbus | customers | ✅ | ✅ | ✅ | ✅ |
+| orderfulfillmentstatusbus | order_fulfillment_statuses | ✅ | ✅ | ✅ | ✅ |
+| lineitemfulfillmentstatusbus | line_item_fulfillment_statuses | ✅ | ✅ | ✅ | ✅ |
+
+---
+
+#### Assets Domain (`business/domain/assets/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| assetbus | assets | ✅ | ✅ | ✅ | ✅ |
+| validassetbus | valid_assets | ✅ | ✅ | ✅ | ✅ |
+| userassetbus | user_assets | ✅ | ✅ | ✅ | ✅ |
+| assettypebus | asset_types | ✅ | ✅ | ✅ | ✅ |
+| assetconditionbus | asset_conditions | ✅ | ✅ | ✅ | ✅ |
+| assettagbus | asset_tags | ✅ | ✅ | ✅ | ✅ |
+| tagbus | tags | ✅ | ✅ | ✅ | ✅ |
+| approvalstatusbus | approval_statuses | ✅ | ✅ | ✅ | ✅ |
+| fulfillmentstatusbus | fulfillment_statuses | ✅ | ✅ | ✅ | ✅ |
+
+---
+
+#### Core Domain (`business/domain/core/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| userbus | users | ⏳ | ⬜ | ⬜ | ⬜ |
+| rolebus | roles | ⏳ | ⬜ | ⬜ | ⬜ |
+| userrolebus | user_roles | ⏳ | ⬜ | ⬜ | ⬜ |
+| tableaccessbus | table_access | ⏳ | ⬜ | ⬜ | ⬜ |
+| permissionsbus | permissions | ⏳ | ⬜ | ⬜ | ⬜ |
+| pagebus | pages | ⏳ | ⬜ | ⬜ | ⬜ |
+| rolepagebus | role_pages | ⏳ | ⬜ | ⬜ | ⬜ |
+| contactinfosbus | contact_infos | ⏳ | ⬜ | ⬜ | ⬜ |
+
+---
+
+#### HR Domain (`business/domain/hr/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| homebus | homes | ⏳ | ⬜ | ⬜ | ⬜ |
+| officebus | offices | ⏳ | ⬜ | ⬜ | ⬜ |
+| titlebus | titles | ⏳ | ⬜ | ⬜ | ⬜ |
+| reportstobus | reports_to | ⏳ | ⬜ | ⬜ | ⬜ |
+| approvalbus | user_approval_statuses | ⏳ | ⬜ | ⬜ | ⬜ |
+| commentbus | user_approval_comments | ⏳ | ⬜ | ⬜ | ⬜ |
+
+---
+
+#### Geography Domain (`business/domain/geography/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| countrybus | countries | ⏳ | ⬜ | ⬜ | ⬜ |
+| regionbus | regions | ⏳ | ⬜ | ⬜ | ⬜ |
+| citybus | cities | ⏳ | ⬜ | ⬜ | ⬜ |
+| streetbus | streets | ⏳ | ⬜ | ⬜ | ⬜ |
+| timezonebus | timezones | ⏳ | ⬜ | ⬜ | ⬜ |
+
+---
+
+#### Products Domain (`business/domain/products/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| productbus | products | ⏳ | ⬜ | ⬜ | ⬜ |
+| productcategorybus | product_categories | ⏳ | ⬜ | ⬜ | ⬜ |
+| brandbus | brands | ⏳ | ⬜ | ⬜ | ⬜ |
+| productcostbus | product_costs | ⏳ | ⬜ | ⬜ | ⬜ |
+| costhistorybus | cost_histories | ⏳ | ⬜ | ⬜ | ⬜ |
+| physicalattributebus | physical_attributes | ⏳ | ⬜ | ⬜ | ⬜ |
+| metricsbus | metrics | ⏳ | ⬜ | ⬜ | ⬜ |
+
+---
+
+#### Procurement Domain (`business/domain/procurement/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| supplierbus | suppliers | ⏳ | ⬜ | ⬜ | ⬜ |
+| supplierproductbus | supplier_products | ⏳ | ⬜ | ⬜ | ⬜ |
+| purchaseorderbus | purchase_orders | ⏳ | ⬜ | ⬜ | ⬜ |
+| purchaseorderlineitembus | purchase_order_line_items | ⏳ | ⬜ | ⬜ | ⬜ |
+| purchaseorderstatusbus | purchase_order_statuses | ⏳ | ⬜ | ⬜ | ⬜ |
+| purchaseorderlineitemstatusbus | purchase_order_line_item_statuses | ⏳ | ⬜ | ⬜ | ⬜ |
+
+---
+
+#### Inventory Domain (`business/domain/inventory/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| warehousebus | warehouses | ⏳ | ⬜ | ⬜ | ⬜ |
+| zonebus | zones | ⏳ | ⬜ | ⬜ | ⬜ |
+| inventorylocationbus | inventory_locations | ⏳ | ⬜ | ⬜ | ⬜ |
+| inventoryitembus | inventory_items | ⏳ | ⬜ | ⬜ | ⬜ |
+| inventorytransactionbus | inventory_transactions | ⏳ | ⬜ | ⬜ | ⬜ |
+| inventoryadjustmentbus | inventory_adjustments | ⏳ | ⬜ | ⬜ | ⬜ |
+| transferorderbus | transfer_orders | ⏳ | ⬜ | ⬜ | ⬜ |
+| inspectionbus | inspections | ⏳ | ⬜ | ⬜ | ⬜ |
+| lottrackingsbus | lot_trackings | ⏳ | ⬜ | ⬜ | ⬜ |
+| serialnumberbus | serial_numbers | ⏳ | ⬜ | ⬜ | ⬜ |
+
+---
+
+#### Config Domain (`business/domain/config/`)
+
+| Package | Entity Name | Status | event.go | bus calls | all.go |
+|---------|-------------|--------|----------|-----------|--------|
+| formbus | forms | ⏳ | ⬜ | ⬜ | ⬜ |
+| formfieldbus | form_fields | ⏳ | ⬜ | ⬜ | ⬜ |
+| pageconfigbus | page_configs | ⏳ | ⬜ | ⬜ | ⬜ |
+| pagecontentbus | page_contents | ⏳ | ⬜ | ⬜ | ⬜ |
+| pageactionbus | page_actions | ⏳ | ⬜ | ⬜ | ⬜ |
+
+---
+
+#### Summary
+
+| Domain | Total | Complete | Remaining |
+|--------|-------|----------|-----------|
+| Sales | 5 | 5 | 0 |
+| Assets | 9 | 9 | 0 |
+| Core | 8 | 0 | 8 |
+| HR | 6 | 0 | 6 |
+| Geography | 5 | 0 | 5 |
+| Products | 7 | 0 | 7 |
+| Procurement | 6 | 0 | 6 |
+| Inventory | 10 | 0 | 10 |
+| Config | 5 | 0 | 5 |
+| **Total** | **61** | **14** | **47** |
+
+---
+
+#### Notes for Implementation
+
+1. **Entity Name Convention**: Use the table name from the database (not schema-qualified). For example, `orders` not `sales.orders`.
+
+2. **Domain Name Convention**: Use a short singular noun, e.g., `order`, `customer`, `product`.
+
+3. **Batch Implementation Strategy**: Process domains by priority:
+   - **High Priority**: Sales (orders, customers), Core (users), Procurement (purchase orders, suppliers)
+   - **Medium Priority**: Inventory, Assets, Products
+   - **Lower Priority**: HR, Geography, Config (reference data)
+
+4. **Skip Domains**: The `introspectionbus` domain is read-only and doesn't need workflow events.
+
+5. **Testing After Each Domain**: Run `go build ./...` and `make test` after each domain is implemented.
+
+---
+
+### Testing
+
+```bash
+# Run delegate handler tests
+go test -v ./business/sdk/workflow/... -run TestDelegateHandler
+
+# Expected output:
+# --- PASS: TestDelegateHandler_OrdersCreated
+# --- PASS: TestDelegateHandler_OrdersUpdated
+# --- PASS: TestDelegateHandler_OrdersDeleted
+```
 
 ---
 
