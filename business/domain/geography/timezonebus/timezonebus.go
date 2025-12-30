@@ -84,6 +84,11 @@ func (b *Business) Create(ctx context.Context, ntz NewTimezone) (Timezone, error
 		return Timezone{}, fmt.Errorf("store create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(tz)); err != nil {
+		b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return tz, nil
 }
 
@@ -112,6 +117,11 @@ func (b *Business) Update(ctx context.Context, tz Timezone, utz UpdateTimezone) 
 		return Timezone{}, fmt.Errorf("store update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(tz)); err != nil {
+		b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return tz, nil
 }
 
@@ -122,6 +132,11 @@ func (b *Business) Delete(ctx context.Context, tz Timezone) error {
 
 	if err := b.storer.Delete(ctx, tz); err != nil {
 		return fmt.Errorf("store delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(tz)); err != nil {
+		b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

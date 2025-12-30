@@ -1523,11 +1523,13 @@ Track progress of adding delegate event firing to all domains. For each domain:
 
 | Package | Entity Name | Status | event.go | bus calls | all.go |
 |---------|-------------|--------|----------|-----------|--------|
-| countrybus | countries | ⏳ | ⬜ | ⬜ | ⬜ |
-| regionbus | regions | ⏳ | ⬜ | ⬜ | ⬜ |
-| citybus | cities | ⏳ | ⬜ | ⬜ | ⬜ |
-| streetbus | streets | ⏳ | ⬜ | ⬜ | ⬜ |
-| timezonebus | timezones | ⏳ | ⬜ | ⬜ | ⬜ |
+| countrybus | countries | N/A | N/A | N/A | N/A |
+| regionbus | regions | N/A | N/A | N/A | N/A |
+| citybus | cities | ✅ | ✅ | ✅ | ✅ |
+| streetbus | streets | ✅ | ✅ | ✅ | ✅ |
+| timezonebus | timezones | ✅ | ✅ | ✅ | ✅ |
+
+**Note**: countrybus and regionbus are read-only lookup tables (no Create/Update/Delete methods) and don't need delegate event firing.
 
 ---
 
@@ -1589,18 +1591,18 @@ Track progress of adding delegate event firing to all domains. For each domain:
 
 #### Summary
 
-| Domain | Total | Complete | Remaining |
-|--------|-------|----------|-----------|
-| Sales | 5 | 5 | 0 |
-| Assets | 9 | 9 | 0 |
-| Core | 8 | 0 | 8 |
-| HR | 6 | 6 | 0 |
-| Geography | 5 | 0 | 5 |
-| Products | 7 | 0 | 7 |
-| Procurement | 6 | 0 | 6 |
-| Inventory | 10 | 0 | 10 |
-| Config | 5 | 0 | 5 |
-| **Total** | **61** | **20** | **41** |
+| Domain | Total | Complete | Remaining | Notes |
+|--------|-------|----------|-----------|-------|
+| Sales | 5 | 5 | 0 | |
+| Assets | 9 | 9 | 0 | |
+| Core | 8 | 0 | 8 | |
+| HR | 6 | 6 | 0 | |
+| Geography | 5 | 3 | 0 | 2 read-only (N/A) |
+| Products | 7 | 0 | 7 | |
+| Procurement | 6 | 0 | 6 | |
+| Inventory | 10 | 0 | 10 | |
+| Config | 5 | 0 | 5 | |
+| **Total** | **61** | **23** | **36** | 2 N/A |
 
 ---
 

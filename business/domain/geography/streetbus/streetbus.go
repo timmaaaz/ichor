@@ -83,6 +83,11 @@ func (b *Business) Create(ctx context.Context, ns NewStreet) (Street, error) {
 		return Street{}, fmt.Errorf("store create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(str)); err != nil {
+		b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return str, nil
 }
 
@@ -111,6 +116,11 @@ func (b *Business) Update(ctx context.Context, str Street, us UpdateStreet) (Str
 		return Street{}, fmt.Errorf("store update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(str)); err != nil {
+		b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return str, nil
 }
 
@@ -121,6 +131,11 @@ func (b *Business) Delete(ctx context.Context, str Street) error {
 
 	if err := b.storer.Delete(ctx, str); err != nil {
 		return fmt.Errorf("store delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(str)); err != nil {
+		b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

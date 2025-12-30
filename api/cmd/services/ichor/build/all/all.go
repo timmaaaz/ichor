@@ -449,6 +449,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					delegateHandler.RegisterDomain(delegate, reportstobus.DomainName, reportstobus.EntityName)
 					delegateHandler.RegisterDomain(delegate, titlebus.DomainName, titlebus.EntityName)
 
+					// Register Geography domain -> workflow events
+					// Note: countrybus and regionbus are read-only (no Create/Update/Delete) and don't need event registration
+					delegateHandler.RegisterDomain(delegate, citybus.DomainName, citybus.EntityName)
+					delegateHandler.RegisterDomain(delegate, streetbus.DomainName, streetbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, timezonebus.DomainName, timezonebus.EntityName)
+
 					// Additional domains can be registered here as they implement event.go files
 				}
 			}
