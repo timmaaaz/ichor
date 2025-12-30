@@ -103,6 +103,11 @@ func (b *Business) Create(ctx context.Context, nc NewPageContent) (PageContent, 
 		return PageContent{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(content)); err != nil {
+		b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return content, nil
 }
 
@@ -138,6 +143,11 @@ func (b *Business) Update(ctx context.Context, uc UpdatePageContent, contentID u
 		return PageContent{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionUpdatedData(content)); err != nil {
+		b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return content, nil
 }
 
@@ -146,8 +156,19 @@ func (b *Business) Delete(ctx context.Context, contentID uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.pagecontentbus.Delete")
 	defer span.End()
 
+	// Query the content before deletion for the event
+	content, err := b.storer.QueryByID(ctx, contentID)
+	if err != nil {
+		return fmt.Errorf("query: %w", err)
+	}
+
 	if err := b.storer.Delete(ctx, contentID); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(content)); err != nil {
+		b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

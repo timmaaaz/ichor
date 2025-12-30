@@ -109,6 +109,11 @@ func (b *Business) CreateButton(ctx context.Context, nba NewButtonAction) (PageA
 		return PageAction{}, fmt.Errorf("create button data: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(action)); err != nil {
+		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return action, nil
 }
 
@@ -148,6 +153,11 @@ func (b *Business) CreateDropdown(ctx context.Context, nda NewDropdownAction) (P
 		return PageAction{}, fmt.Errorf("querybyid: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(createdAction)); err != nil {
+		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return createdAction, nil
 }
 
@@ -166,6 +176,11 @@ func (b *Business) CreateSeparator(ctx context.Context, nsa NewSeparatorAction) 
 
 	if err := b.storer.CreateBaseAction(ctx, action); err != nil {
 		return PageAction{}, fmt.Errorf("create base: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(action)); err != nil {
+		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
 	}
 
 	return action, nil
@@ -222,6 +237,11 @@ func (b *Business) UpdateButton(ctx context.Context, action PageAction, uba Upda
 
 	if err := b.storer.UpdateButtonData(ctx, action.ID, *action.Button); err != nil {
 		return PageAction{}, fmt.Errorf("update button data: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(action)); err != nil {
+		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return action, nil
@@ -294,6 +314,11 @@ func (b *Business) UpdateDropdown(ctx context.Context, action PageAction, uda Up
 		return PageAction{}, fmt.Errorf("querybyid: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(updatedAction)); err != nil {
+		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return updatedAction, nil
 }
 
@@ -322,6 +347,11 @@ func (b *Business) UpdateSeparator(ctx context.Context, action PageAction, usa U
 		return PageAction{}, fmt.Errorf("update base: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(action)); err != nil {
+		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return action, nil
 }
 
@@ -332,6 +362,11 @@ func (b *Business) Delete(ctx context.Context, action PageAction) error {
 
 	if err := b.storer.Delete(ctx, action); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(action)); err != nil {
+		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

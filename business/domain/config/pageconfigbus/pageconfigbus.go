@@ -112,6 +112,11 @@ func (b *Business) Create(ctx context.Context, nc NewPageConfig) (PageConfig, er
 		return PageConfig{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionCreatedData(config)); err != nil {
+		b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return config, nil
 }
 
@@ -146,6 +151,11 @@ func (b *Business) Update(ctx context.Context, uc UpdatePageConfig, configID uui
 		return PageConfig{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionUpdatedData(config)); err != nil {
+		b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return config, nil
 }
 
@@ -154,8 +164,19 @@ func (b *Business) Delete(ctx context.Context, configID uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.Delete")
 	defer span.End()
 
+	// Query the config before deletion for the event
+	config, err := b.storer.QueryByID(ctx, configID)
+	if err != nil {
+		return fmt.Errorf("query: %w", err)
+	}
+
 	if err := b.storer.Delete(ctx, configID); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionDeletedData(config)); err != nil {
+		b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil

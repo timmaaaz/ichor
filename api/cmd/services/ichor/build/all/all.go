@@ -484,6 +484,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					delegateHandler.RegisterDomain(delegate, lottrackingsbus.DomainName, lottrackingsbus.EntityName)
 					delegateHandler.RegisterDomain(delegate, serialnumberbus.DomainName, serialnumberbus.EntityName)
 
+					// Config domain
+					delegateHandler.RegisterDomain(delegate, formbus.DomainName, formbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, formfieldbus.DomainName, formfieldbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, pageconfigbus.DomainName, pageconfigbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, pagecontentbus.DomainName, pagecontentbus.EntityName)
+					delegateHandler.RegisterDomain(delegate, pageactionbus.DomainName, pageactionbus.EntityName)
+
 					// Additional domains can be registered here as they implement event.go files
 				}
 			}

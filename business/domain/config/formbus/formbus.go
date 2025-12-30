@@ -91,6 +91,11 @@ func (b *Business) Create(ctx context.Context, nf NewForm) (Form, error) {
 		return Form{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(form)); err != nil {
+		b.log.Error(ctx, "formbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return form, nil
 }
 
@@ -107,6 +112,11 @@ func (b *Business) Update(ctx context.Context, form Form, uf UpdateForm) (Form, 
 		return Form{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(form)); err != nil {
+		b.log.Error(ctx, "formbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return form, nil
 }
 
@@ -117,6 +127,11 @@ func (b *Business) Delete(ctx context.Context, form Form) error {
 
 	if err := b.storer.Delete(ctx, form); err != nil {
 		return fmt.Errorf("delete: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(form)); err != nil {
+		b.log.Error(ctx, "formbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil
