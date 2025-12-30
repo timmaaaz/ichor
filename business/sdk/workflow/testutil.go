@@ -37,11 +37,21 @@ func TestNewTriggerTypes() []NewTriggerType {
 }
 
 // TestSeedTriggerTypes is a helper method for testing.
+// It creates trigger types if they don't exist, or retrieves existing ones.
 func TestSeedTriggerTypes(ctx context.Context, n int, api *Business) ([]TriggerType, error) {
 	newTriggerTypes := TestNewTriggerTypes()
 
 	triggerTypes := make([]TriggerType, len(newTriggerTypes))
 	for i, ntt := range newTriggerTypes {
+		// First try to query for existing trigger type by name
+		existing, err := api.QueryTriggerTypeByName(ctx, ntt.Name)
+		if err == nil {
+			// Trigger type already exists, use it
+			triggerTypes[i] = existing
+			continue
+		}
+
+		// If not found, create it
 		tt, err := api.CreateTriggerType(ctx, ntt)
 		if err != nil {
 			return nil, fmt.Errorf("seeding trigger type: idx: %d : %w", i, err)

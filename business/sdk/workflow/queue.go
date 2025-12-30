@@ -104,14 +104,16 @@ func DefaultQueueConfig() QueueConfig {
 	}
 }
 
-// NewQueueManager creates a new queue manager
-func NewQueueManager(log *logger.Logger, db *sqlx.DB, engine *Engine, client *rabbitmq.Client) (*QueueManager, error) {
+// NewQueueManager creates a new queue manager with the given WorkflowQueue.
+// For production, use rabbitmq.NewWorkflowQueue().
+// For testing, use rabbitmq.NewTestWorkflowQueue() to get unique queue names.
+func NewQueueManager(log *logger.Logger, db *sqlx.DB, engine *Engine, client *rabbitmq.Client, queue *rabbitmq.WorkflowQueue) (*QueueManager, error) {
 	qm := &QueueManager{
 		log:       log,
 		db:        db,
 		engine:    engine,
 		client:    client,
-		queue:     rabbitmq.NewWorkflowQueue(client, log),
+		queue:     queue,
 		config:    DefaultQueueConfig(),
 		consumers: make(map[string]*rabbitmq.Consumer),
 		stopChan:  make(chan struct{}),
@@ -538,6 +540,9 @@ func (qm *QueueManager) metricsCollector(ctx context.Context) {
 // Circuit breaker methods
 
 func (cb *CircuitBreaker) IsOpen() bool {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
 	state := cb.state.Load().(string)
 	if state == "closed" {
 		return false
@@ -557,6 +562,9 @@ func (cb *CircuitBreaker) IsOpen() bool {
 }
 
 func (qm *QueueManager) recordFailure() {
+	qm.circuitBreaker.mu.Lock()
+	defer qm.circuitBreaker.mu.Unlock()
+
 	count := qm.circuitBreaker.failureCount.Add(1)
 	qm.circuitBreaker.lastFailureTime.Store(time.Now())
 
@@ -568,10 +576,30 @@ func (qm *QueueManager) recordFailure() {
 }
 
 func (qm *QueueManager) recordSuccess() {
+	qm.circuitBreaker.mu.Lock()
+	defer qm.circuitBreaker.mu.Unlock()
+
 	state := qm.circuitBreaker.state.Load().(string)
 	if state == "half-open" {
 		qm.circuitBreaker.failureCount.Store(0)
 		qm.circuitBreaker.state.Store("closed")
 		qm.log.Info(context.Background(), "Circuit breaker closed")
 	}
+}
+
+// ResetCircuitBreaker resets the circuit breaker to closed state (for testing)
+func (qm *QueueManager) ResetCircuitBreaker() {
+	qm.circuitBreaker.mu.Lock()
+	defer qm.circuitBreaker.mu.Unlock()
+
+	qm.circuitBreaker.failureCount.Store(0)
+	qm.circuitBreaker.state.Store("closed")
+	qm.circuitBreaker.lastFailureTime.Store(time.Now())
+}
+
+// ResetMetrics resets all queue metrics to zero (for testing)
+func (qm *QueueManager) ResetMetrics() {
+	qm.metricsLock.Lock()
+	defer qm.metricsLock.Unlock()
+	qm.metrics = QueueMetrics{}
 }

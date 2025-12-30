@@ -30,11 +30,12 @@ func StartRabbitMQ() (Container, error) {
 	)
 
 	// Docker arguments for RabbitMQ
+	// Note: We do NOT specify -p port mappings here.
+	// The docker.StartContainer uses -P to assign random host ports,
+	// which allows tests to run alongside a dev server using port 5672.
 	dockerArgs := []string{
 		"-e", "RABBITMQ_DEFAULT_USER=guest",
 		"-e", "RABBITMQ_DEFAULT_PASS=guest",
-		"-p", "5672:5672", // AMQP port
-		"-p", "15672:15672", // Management UI port
 	}
 
 	// No additional app arguments needed for RabbitMQ
@@ -163,8 +164,9 @@ func GetTestContainer(t *testing.T) Container {
 		dockerArgs := []string{
 			"-e", "RABBITMQ_DEFAULT_USER=guest",
 			"-e", "RABBITMQ_DEFAULT_PASS=guest",
-			"-p", "5672:5672",
-			"-p", "15672:15672",
+			// Note: We do NOT specify -p port mappings here.
+			// The docker.StartContainer uses -P to assign random host ports,
+			// which allows tests to run alongside a dev server using port 5672.
 		}
 
 		c, err := docker.StartContainer(image, name, port, dockerArgs, []string{})
@@ -195,4 +197,12 @@ func GetTestContainer(t *testing.T) Container {
 	}
 
 	return *testContainer
+}
+
+// NewTestWorkflowQueue creates a WorkflowQueue with unique queue names for test isolation.
+// Each call generates a unique prefix based on timestamp, ensuring tests don't interfere
+// with each other even when running in parallel or alongside a dev server.
+func NewTestWorkflowQueue(client *Client, log *logger.Logger) *WorkflowQueue {
+	prefix := fmt.Sprintf("test_%d_", time.Now().UnixNano())
+	return NewWorkflowQueueWithPrefix(client, log, prefix)
 }

@@ -150,14 +150,18 @@ func insertUpdateFieldSeedData(t *testing.T, busDomain dbtest.BusDomain) (update
 		return updateFieldSeedData{}, fmt.Errorf("querying entity : %w", err)
 	}
 
-	// Create trigger type
-	triggerType, err := busDomain.Workflow.CreateTriggerType(ctx, workflow.NewTriggerType{
-		Name:        "on_update",
-		Description: "Triggers on update",
-		IsActive:    true,
-	})
+	// Get or create trigger type
+	triggerType, err := busDomain.Workflow.QueryTriggerTypeByName(ctx, "on_update")
 	if err != nil {
-		return updateFieldSeedData{}, fmt.Errorf("creating trigger type : %w", err)
+		// Trigger type doesn't exist, create it
+		triggerType, err = busDomain.Workflow.CreateTriggerType(ctx, workflow.NewTriggerType{
+			Name:        "on_update",
+			Description: "Triggers on update",
+			IsActive:    true,
+		})
+		if err != nil {
+			return updateFieldSeedData{}, fmt.Errorf("creating trigger type : %w", err)
+		}
 	}
 
 	// Create automation rule

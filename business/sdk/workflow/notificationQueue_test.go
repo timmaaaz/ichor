@@ -62,13 +62,13 @@ func TestNotificationQueueProcessor_Initialize(t *testing.T) {
 	defer client.Close()
 
 	// Create workflow queue for initialization
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
 	// Create notification processor with nil store (testing just initialization)
-	np := workflow.NewNotificationQueueProcessor(log, client, nil)
+	np := workflow.NewNotificationQueueProcessor(log, client, nil, queue)
 
 	ctx := context.Background()
 
@@ -91,7 +91,13 @@ func TestNotificationQueueProcessor_RegisterHandler(t *testing.T) {
 	}
 	defer client.Close()
 
-	np := workflow.NewNotificationQueueProcessor(log, client, nil)
+	// Initialize workflow queue
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
+
+	np := workflow.NewNotificationQueueProcessor(log, client, nil, queue)
 
 	// Create test handlers
 	emailHandler := &testNotificationHandler{channel: "email", available: true}
@@ -151,12 +157,12 @@ func TestNotificationQueueProcessor_StartStop(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
-	np := workflow.NewNotificationQueueProcessor(log, client, nil)
+	np := workflow.NewNotificationQueueProcessor(log, client, nil, queue)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
@@ -202,7 +208,7 @@ func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -211,7 +217,7 @@ func TestNotificationQueueProcessor_QueueAndProcess(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_Workflow")
 	dbStore := workflowdb.NewStore(log, db.DB)
 
-	np := workflow.NewNotificationQueueProcessor(log, client, dbStore)
+	np := workflow.NewNotificationQueueProcessor(log, client, dbStore, queue)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
@@ -344,7 +350,7 @@ func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -353,7 +359,7 @@ func TestNotificationQueueProcessor_FailureHandling(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_Workflow")
 	dbStore := workflowdb.NewStore(log, db.DB)
 
-	np := workflow.NewNotificationQueueProcessor(log, client, dbStore)
+	np := workflow.NewNotificationQueueProcessor(log, client, dbStore, queue)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
@@ -459,7 +465,7 @@ func TestNotificationQueueProcessor_AlertPriorities(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -468,7 +474,7 @@ func TestNotificationQueueProcessor_AlertPriorities(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_Workflow")
 	dbStore := workflowdb.NewStore(log, db.DB)
 
-	np := workflow.NewNotificationQueueProcessor(log, client, dbStore)
+	np := workflow.NewNotificationQueueProcessor(log, client, dbStore, queue)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
@@ -549,7 +555,7 @@ func TestNotificationQueueProcessor_ConcurrentMessages(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -558,7 +564,7 @@ func TestNotificationQueueProcessor_ConcurrentMessages(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_Workflow")
 	dbStore := workflowdb.NewStore(log, db.DB)
 
-	np := workflow.NewNotificationQueueProcessor(log, client, dbStore)
+	np := workflow.NewNotificationQueueProcessor(log, client, dbStore, queue)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {
@@ -727,12 +733,12 @@ func BenchmarkNotificationQueueProcessor_QueueNotification(b *testing.B) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		b.Fatalf("initializing workflow queue: %s", err)
 	}
 
-	np := workflow.NewNotificationQueueProcessor(log, client, nil)
+	np := workflow.NewNotificationQueueProcessor(log, client, nil, queue)
 
 	ctx := context.Background()
 	if err := np.Initialize(ctx); err != nil {

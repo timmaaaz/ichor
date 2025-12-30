@@ -131,12 +131,14 @@ func DefaultNotificationConfig() NotificationConfig {
 	}
 }
 
-// NewNotificationQueueProcessor creates a new notification processor
-func NewNotificationQueueProcessor(log *logger.Logger, client *rabbitmq.Client, store Storer) *NotificationQueueProcessor {
+// NewNotificationQueueProcessor creates a new notification processor.
+// The queue parameter is required and provides the workflow queue configuration.
+// For tests, use rabbitmq.NewTestWorkflowQueue to get isolated queue names.
+func NewNotificationQueueProcessor(log *logger.Logger, client *rabbitmq.Client, store Storer, queue *rabbitmq.WorkflowQueue) *NotificationQueueProcessor {
 	np := &NotificationQueueProcessor{
 		log:       log,
 		client:    client,
-		queue:     rabbitmq.NewWorkflowQueue(client, log),
+		queue:     queue,
 		store:     store,
 		config:    DefaultNotificationConfig(),
 		consumers: make(map[string]*rabbitmq.Consumer),

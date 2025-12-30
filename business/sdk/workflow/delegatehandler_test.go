@@ -33,7 +33,7 @@ func TestDelegateHandler_OrdersCreated(t *testing.T) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing queue: %s", err)
 	}
@@ -46,13 +46,14 @@ func TestDelegateHandler_OrdersCreated(t *testing.T) {
 	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
 
 	// Real workflow engine (no rules needed - just testing event queuing)
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
 
 	// Real queue manager
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -62,6 +63,8 @@ func TestDelegateHandler_OrdersCreated(t *testing.T) {
 	if err := qm.ClearQueue(ctx); err != nil {
 		t.Logf("Warning: could not clear queue: %v", err)
 	}
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 	if err := qm.Start(ctx); err != nil {
 		t.Fatalf("starting queue manager: %s", err)
 	}
@@ -125,7 +128,7 @@ func TestDelegateHandler_OrdersUpdated(t *testing.T) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing queue: %s", err)
 	}
@@ -136,12 +139,13 @@ func TestDelegateHandler_OrdersUpdated(t *testing.T) {
 
 	// Setup workflow infrastructure
 	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
 
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -151,6 +155,8 @@ func TestDelegateHandler_OrdersUpdated(t *testing.T) {
 	if err := qm.ClearQueue(ctx); err != nil {
 		t.Logf("Warning: could not clear queue: %v", err)
 	}
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 	if err := qm.Start(ctx); err != nil {
 		t.Fatalf("starting queue manager: %s", err)
 	}
@@ -211,7 +217,7 @@ func TestDelegateHandler_OrdersDeleted(t *testing.T) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing queue: %s", err)
 	}
@@ -222,12 +228,13 @@ func TestDelegateHandler_OrdersDeleted(t *testing.T) {
 
 	// Setup workflow infrastructure
 	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
 
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -237,6 +244,8 @@ func TestDelegateHandler_OrdersDeleted(t *testing.T) {
 	if err := qm.ClearQueue(ctx); err != nil {
 		t.Logf("Warning: could not clear queue: %v", err)
 	}
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 	if err := qm.Start(ctx); err != nil {
 		t.Fatalf("starting queue manager: %s", err)
 	}

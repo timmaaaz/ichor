@@ -35,7 +35,8 @@ import (
 var testContainer rabbitmq.Container
 
 func Test_AllocateInventory(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() removed - this test uses shared RabbitMQ infrastructure
+	// and cannot run concurrently with other workflow tests
 
 	db := dbtest.NewDatabase(t, "Test_AllocateInventory")
 
@@ -58,7 +59,7 @@ func Test_AllocateInventory(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}

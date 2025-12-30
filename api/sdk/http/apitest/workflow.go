@@ -44,8 +44,8 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 		t.Fatalf("connecting to rabbitmq: %s", err)
 	}
 
-	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, db.Log)
+	// Initialize workflow queue with test-prefixed names for isolation
+	queue := rabbitmq.NewTestWorkflowQueue(client, db.Log)
 	if err := queue.Initialize(ctx); err != nil {
 		client.Close()
 		t.Fatalf("initializing workflow queue: %s", err)
@@ -68,7 +68,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	registry.Register(communication.NewCreateAlertHandler(db.Log, db.DB))
 
 	// Create queue manager
-	qm, err := workflow.NewQueueManager(db.Log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(db.Log, db.DB, engine, client, queue)
 	if err != nil {
 		client.Close()
 		t.Fatalf("creating queue manager: %s", err)

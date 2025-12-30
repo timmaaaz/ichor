@@ -44,6 +44,7 @@ func newStubEngine(log *logger.Logger, db *sqlx.DB) *stubEngine {
 
 	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
 
+	workflow.ResetEngineForTesting()
 	return &stubEngine{
 		Engine: workflow.NewEngine(log, db, workflowBus),
 	}
@@ -89,7 +90,7 @@ func TestQueueManager_Initialize(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -100,7 +101,7 @@ func TestQueueManager_Initialize(t *testing.T) {
 	engine := newStubEngine(log, db.DB)
 
 	// Create queue manager
-	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client)
+	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -136,13 +137,13 @@ func TestQueueManager_QueueEvent(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
 	engine := &workflow.Engine{}
-	qm, err := workflow.NewQueueManager(log, nil, engine, client)
+	qm, err := workflow.NewQueueManager(log, nil, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -274,13 +275,13 @@ func TestQueueManager_StartStop(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
 	engine := &workflow.Engine{}
-	qm, err := workflow.NewQueueManager(log, nil, engine, client)
+	qm, err := workflow.NewQueueManager(log, nil, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -334,7 +335,7 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -424,6 +425,7 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 
 	// INITIALIZE ENGINE =======================================================
 	// Create engine
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 
 	// Now initialize the engine
@@ -436,7 +438,7 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 	registry.Register(communication.NewSendEmailHandler(log, db.DB))
 
 	// Create queue manager with real engine
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -449,6 +451,8 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 	if err := qm.ClearQueue(ctx); err != nil {
 		t.Logf("Warning: could not clear queue: %v", err)
 	}
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 
 	// Get initial metrics for comparison
 	initialMetrics := qm.GetMetrics()
@@ -631,7 +635,7 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -716,6 +720,7 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 	}
 
 	// Create real engine
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 
 	// Initialize the engine
@@ -728,10 +733,15 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 	registry.Register(communication.NewSendEmailHandler(log, db.DB))
 
 	// Create queue manager with real engine
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
+
+	// Ensure circuit breaker is reset at the end of the test for isolation
+	t.Cleanup(func() {
+		qm.ResetCircuitBreaker()
+	})
 
 	if err := qm.Initialize(ctx); err != nil {
 		t.Fatalf("initializing queue manager: %s", err)
@@ -741,6 +751,8 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 	if err := qm.ClearQueue(ctx); err != nil {
 		t.Logf("Warning: could not clear queue: %v", err)
 	}
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 
 	// Get initial metrics
 	initialMetrics := qm.GetMetrics()
@@ -881,7 +893,7 @@ func TestQueueManager_ClearQueue(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -900,6 +912,7 @@ func TestQueueManager_ClearQueue(t *testing.T) {
 	}
 
 	// Create real engine
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 
 	// Initialize the engine
@@ -908,7 +921,7 @@ func TestQueueManager_ClearQueue(t *testing.T) {
 	}
 
 	// Create queue manager with real engine
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -991,7 +1004,7 @@ func TestQueueManager_Metrics(t *testing.T) {
 	defer client.Close()
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -1010,6 +1023,7 @@ func TestQueueManager_Metrics(t *testing.T) {
 	}
 
 	// Create real engine
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 
 	// Initialize the engine
@@ -1018,7 +1032,7 @@ func TestQueueManager_Metrics(t *testing.T) {
 	}
 
 	// Create queue manager with real engine
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -1154,6 +1168,7 @@ func TestQueueManager_DetermineQueueType(t *testing.T) {
 	}
 
 	// Create real engine
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 
 	// Initialize the engine
@@ -1161,20 +1176,20 @@ func TestQueueManager_DetermineQueueType(t *testing.T) {
 		t.Fatalf("initializing engine: %s", err)
 	}
 
+	// Initialize workflow queue to create all queue types
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
+	if err := queue.Initialize(ctx); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
+
 	// Create queue manager
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
 
 	if err := qm.Initialize(ctx); err != nil {
 		t.Fatalf("initializing queue manager: %s", err)
-	}
-
-	// Initialize workflow queue to create all queue types
-	queue := rabbitmq.NewWorkflowQueue(client, log)
-	if err := queue.Initialize(ctx); err != nil {
-		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
 	for _, tt := range tests {
@@ -1232,6 +1247,7 @@ func TestQueueManager_ProcessingResult(t *testing.T) {
 	}
 
 	// Create real engine
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 
 	// Initialize the engine
@@ -1240,13 +1256,13 @@ func TestQueueManager_ProcessingResult(t *testing.T) {
 	}
 
 	// Initialize workflow queue
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(ctx); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
 
 	// Create queue manager
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -1341,8 +1357,13 @@ func BenchmarkQueueManager_QueueEvent(b *testing.B) {
 	}
 	defer client.Close()
 
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		b.Fatalf("initializing workflow queue: %s", err)
+	}
+
 	engine := &workflow.Engine{}
-	qm, err := workflow.NewQueueManager(log, nil, engine, client)
+	qm, err := workflow.NewQueueManager(log, nil, engine, client, queue)
 	if err != nil {
 		b.Fatalf("creating queue manager: %s", err)
 	}
@@ -1384,10 +1405,15 @@ func BenchmarkQueueManager_ProcessMessage(b *testing.B) {
 		b.Fatalf("connecting to rabbitmq: %s", err)
 	}
 	defer client.Close()
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		b.Fatalf("initializing workflow queue: %s", err)
+	}
+
 	db := sqlx.DB{}
 
 	engine := newStubEngine(log, &db)
-	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client)
+	qm, err := workflow.NewQueueManager(log, nil, engine.Engine, client, queue)
 	if err != nil {
 		b.Fatalf("creating queue manager: %s", err)
 	}

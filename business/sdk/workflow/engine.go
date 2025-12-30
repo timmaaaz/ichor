@@ -38,6 +38,14 @@ var (
 	engineOnce     sync.Once
 )
 
+// ResetEngineForTesting resets the singleton engine instance.
+// This should ONLY be used in tests to ensure each test gets a fresh engine
+// with its own database connection.
+func ResetEngineForTesting() {
+	engineInstance = nil
+	engineOnce = sync.Once{}
+}
+
 // GetRegistry returns the action registry from the executor
 func (e *Engine) GetRegistry() *ActionRegistry {
 	if e.executor != nil {
@@ -51,7 +59,7 @@ func (e *Engine) GetActionExecutor() *ActionExecutor {
 	return e.executor
 }
 
-// NewEngine creates or returns the singleton workflow engine instance
+// NewEngine creates or returns the singleton workflow engine instance.
 func NewEngine(log *logger.Logger, db *sqlx.DB, workflowBus *Business) *Engine {
 	engineOnce.Do(func() {
 		engineInstance = &Engine{
@@ -69,7 +77,6 @@ func NewEngine(log *logger.Logger, db *sqlx.DB, workflowBus *Business) *Engine {
 				StopOnCriticalFailure: true,
 			},
 		}
-		// TODO: Double check context on this one.
 		log.Info(context.Background(), "🔄 Workflow engine instance created")
 	})
 	return engineInstance

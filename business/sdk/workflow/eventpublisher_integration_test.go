@@ -35,7 +35,7 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -113,6 +113,7 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
 	// Initialize engine AFTER creating rules
 	// -------------------------------------------------------------------------
 
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
@@ -125,7 +126,7 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
 	registry.Register(communication.NewCreateAlertHandler(log, db.DB))
 
 	// Create queue manager
-	qm, err := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	if err != nil {
 		t.Fatalf("creating queue manager: %s", err)
 	}
@@ -135,6 +136,8 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
 	if err := qm.ClearQueue(ctx); err != nil {
 		t.Logf("Warning: could not clear queue: %v", err)
 	}
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 	if err := qm.Start(ctx); err != nil {
 		t.Fatalf("starting queue manager: %s", err)
 	}
@@ -244,7 +247,7 @@ func TestEventPublisher_MultipleEntityTypes(t *testing.T) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -311,13 +314,16 @@ func TestEventPublisher_MultipleEntityTypes(t *testing.T) {
 	})
 
 	// Initialize engine with rules
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 	engine.Initialize(ctx, workflowBus)
 	engine.GetRegistry().Register(communication.NewSendEmailHandler(log, db.DB))
 
-	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	qm.Initialize(ctx)
 	qm.ClearQueue(ctx)
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 	qm.Start(ctx)
 	defer qm.Stop(ctx)
 
@@ -363,7 +369,7 @@ func TestEventPublisher_TemplateSubstitution(t *testing.T) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	queue.Initialize(context.Background())
 
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_Template")
@@ -409,13 +415,16 @@ func TestEventPublisher_TemplateSubstitution(t *testing.T) {
 		TemplateID:     &emailTemplate.ID,
 	})
 
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 	engine.Initialize(ctx, workflowBus)
 	engine.GetRegistry().Register(communication.NewSendEmailHandler(log, db.DB))
 
-	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	qm.Initialize(ctx)
 	qm.ClearQueue(ctx)
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 	qm.Start(ctx)
 	defer qm.Stop(ctx)
 
@@ -468,7 +477,7 @@ func TestEventPublisher_UpdateWithFieldChanges(t *testing.T) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	queue.Initialize(context.Background())
 
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_FieldChanges")
@@ -487,7 +496,7 @@ func TestEventPublisher_UpdateWithFieldChanges(t *testing.T) {
 	emailTemplate, _ := workflowBus.CreateActionTemplate(ctx, workflow.NewActionTemplate{
 		Name:          "Status Change Template",
 		ActionType:    "send_email",
-		DefaultConfig: json.RawMessage(`{}`),
+		DefaultConfig: json.RawMessage(`{"recipients": ["test@example.com"]}`),
 		CreatedBy:     adminUserID,
 	})
 
@@ -509,13 +518,16 @@ func TestEventPublisher_UpdateWithFieldChanges(t *testing.T) {
 		TemplateID:       &emailTemplate.ID,
 	})
 
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 	engine.Initialize(ctx, workflowBus)
 	engine.GetRegistry().Register(communication.NewSendEmailHandler(log, db.DB))
 
-	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	qm.Initialize(ctx)
 	qm.ClearQueue(ctx)
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 	qm.Start(ctx)
 	defer qm.Stop(ctx)
 
@@ -565,7 +577,7 @@ func TestEventPublisher_HighVolume(t *testing.T) {
 	}
 	defer client.Close()
 
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	queue.Initialize(context.Background())
 
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_HighVolume")
@@ -573,12 +585,15 @@ func TestEventPublisher_HighVolume(t *testing.T) {
 
 	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
 
+	workflow.ResetEngineForTesting()
 	engine := workflow.NewEngine(log, db.DB, workflowBus)
 	engine.Initialize(ctx, workflowBus)
 
-	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client)
+	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client, queue)
 	qm.Initialize(ctx)
 	qm.ClearQueue(ctx)
+	qm.ResetCircuitBreaker() // Reset circuit breaker state for test isolation
+	qm.ResetMetrics()        // Reset metrics for clean assertions
 	qm.Start(ctx)
 	defer qm.Stop(ctx)
 

@@ -267,6 +267,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
@@ -399,7 +400,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		if err := workflowEngine.Initialize(context.Background(), workflowBus); err != nil {
 			cfg.Log.Error(context.Background(), "workflow engine init failed", "error", err)
 		} else {
-			queueManager, err := workflow.NewQueueManager(cfg.Log, cfg.DB, workflowEngine, cfg.RabbitClient)
+			workflowQueue := rabbitmq.NewWorkflowQueue(cfg.RabbitClient, cfg.Log)
+			queueManager, err := workflow.NewQueueManager(cfg.Log, cfg.DB, workflowEngine, cfg.RabbitClient, workflowQueue)
 			if err != nil {
 				cfg.Log.Error(context.Background(), "queue manager creation failed", "error", err)
 			} else {

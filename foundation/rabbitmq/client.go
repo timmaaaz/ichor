@@ -330,6 +330,15 @@ type WorkflowQueue struct {
 
 	// Queue configurations
 	queues map[QueueType]QueueConfig
+
+	// queuePrefix is prepended to all queue names for test isolation
+	queuePrefix string
+
+	// exchangeName is the exchange to use for this queue (prefixed for test isolation)
+	exchangeName string
+
+	// deadLetterExchange is the dead letter exchange (prefixed for test isolation)
+	deadLetterExchange string
 }
 
 // QueueConfig defines configuration for a specific queue
@@ -346,10 +355,28 @@ type QueueConfig struct {
 
 // NewWorkflowQueue creates a new workflow queue manager
 func NewWorkflowQueue(client *Client, log *logger.Logger) *WorkflowQueue {
+	return NewWorkflowQueueWithPrefix(client, log, "")
+}
+
+// NewWorkflowQueueWithPrefix creates a WorkflowQueue with prefixed queue names.
+// This is primarily used for test isolation where each test gets unique queue names.
+// For production use, pass an empty string as the prefix.
+func NewWorkflowQueueWithPrefix(client *Client, log *logger.Logger, prefix string) *WorkflowQueue {
+	// For test isolation, prefix the exchange names so each test gets its own exchange
+	exchangeName := client.config.ExchangeName
+	deadLetterExchange := client.config.DeadLetterExchange
+	if prefix != "" {
+		exchangeName = prefix + exchangeName
+		deadLetterExchange = prefix + deadLetterExchange
+	}
+
 	wq := &WorkflowQueue{
-		client: client,
-		log:    log,
-		queues: make(map[QueueType]QueueConfig),
+		client:             client,
+		log:                log,
+		queues:             make(map[QueueType]QueueConfig),
+		queuePrefix:        prefix,
+		exchangeName:       exchangeName,
+		deadLetterExchange: deadLetterExchange,
 	}
 
 	// Configure default queues
@@ -360,9 +387,13 @@ func NewWorkflowQueue(client *Client, log *logger.Logger) *WorkflowQueue {
 
 // setupDefaultQueues configures the default queue types
 func (wq *WorkflowQueue) setupDefaultQueues() {
+	// Use prefix for queue names and routing keys (empty string for production, unique prefix for tests)
+	// This ensures complete isolation between tests by routing messages to unique queues
+	p := wq.queuePrefix
+
 	wq.queues[QueueTypeWorkflow] = QueueConfig{
-		Name:              "workflow.general",
-		RoutingKey:        "workflow.*",
+		Name:              p + "workflow.general",
+		RoutingKey:        p + "workflow.*",
 		MaxPriority:       10,
 		MessageTTL:        24 * time.Hour,
 		MaxRetries:        3,
@@ -371,8 +402,8 @@ func (wq *WorkflowQueue) setupDefaultQueues() {
 	}
 
 	wq.queues[QueueTypeApproval] = QueueConfig{
-		Name:              "workflow.approval",
-		RoutingKey:        "approval.*",
+		Name:              p + "workflow.approval",
+		RoutingKey:        p + "approval.*",
 		MaxPriority:       10,
 		MessageTTL:        72 * time.Hour, // 3 days for approvals
 		MaxRetries:        5,
@@ -381,8 +412,8 @@ func (wq *WorkflowQueue) setupDefaultQueues() {
 	}
 
 	wq.queues[QueueTypeNotification] = QueueConfig{
-		Name:              "workflow.notification",
-		RoutingKey:        "notification.*",
+		Name:              p + "workflow.notification",
+		RoutingKey:        p + "notification.*",
 		MaxPriority:       5,
 		MessageTTL:        1 * time.Hour,
 		MaxRetries:        3,
@@ -391,8 +422,8 @@ func (wq *WorkflowQueue) setupDefaultQueues() {
 	}
 
 	wq.queues[QueueTypeInventory] = QueueConfig{
-		Name:              "workflow.inventory",
-		RoutingKey:        "inventory.*",
+		Name:              p + "workflow.inventory",
+		RoutingKey:        p + "inventory.*",
 		MaxPriority:       8,
 		MessageTTL:        2 * time.Hour,
 		MaxRetries:        3,
@@ -401,8 +432,8 @@ func (wq *WorkflowQueue) setupDefaultQueues() {
 	}
 
 	wq.queues[QueueTypeEmail] = QueueConfig{
-		Name:              "workflow.email",
-		RoutingKey:        "email.*",
+		Name:              p + "workflow.email",
+		RoutingKey:        p + "email.*",
 		MaxPriority:       3,
 		MessageTTL:        24 * time.Hour,
 		MaxRetries:        5,
@@ -411,8 +442,8 @@ func (wq *WorkflowQueue) setupDefaultQueues() {
 	}
 
 	wq.queues[QueueTypeAlert] = QueueConfig{
-		Name:              "workflow.alert",
-		RoutingKey:        "alert.*",
+		Name:              p + "workflow.alert",
+		RoutingKey:        p + "alert.*",
 		MaxPriority:       10,
 		MessageTTL:        30 * time.Minute,
 		MaxRetries:        1,
@@ -421,15 +452,33 @@ func (wq *WorkflowQueue) setupDefaultQueues() {
 	}
 }
 
-// In WorkflowQueue.Initialize method, after declaring the main queue:
+// Initialize sets up the workflow queue infrastructure.
 func (wq *WorkflowQueue) Initialize(ctx context.Context) error {
 	ch, err := wq.client.GetChannel()
 	if err != nil {
 		return fmt.Errorf("failed to get channel: %w", err)
 	}
 
-	// Create retry exchange first
-	retryExchangeName := wq.client.config.ExchangeName + ".retry"
+	// Declare main exchange (needed when using prefixed exchange names for test isolation)
+	if err := ch.ExchangeDeclare(
+		wq.exchangeName,
+		"topic",
+		true, false, false, false, nil,
+	); err != nil {
+		return fmt.Errorf("failed to declare main exchange: %w", err)
+	}
+
+	// Declare dead letter exchange
+	if err := ch.ExchangeDeclare(
+		wq.deadLetterExchange,
+		"direct",
+		true, false, false, false, nil,
+	); err != nil {
+		return fmt.Errorf("failed to declare DLX: %w", err)
+	}
+
+	// Create retry exchange
+	retryExchangeName := wq.exchangeName + ".retry"
 	if err := ch.ExchangeDeclare(
 		retryExchangeName,
 		"topic", // Change to topic to handle patterns
@@ -467,7 +516,7 @@ func (wq *WorkflowQueue) Initialize(ctx context.Context) error {
 			retryQueueName := config.Name + ".retry"
 			retryArgs := amqp.Table{
 				"x-message-ttl":          5000,
-				"x-dead-letter-exchange": wq.client.config.ExchangeName,
+				"x-dead-letter-exchange": wq.exchangeName,
 				// Don't specify routing key - preserve original
 			}
 
@@ -497,7 +546,7 @@ func (wq *WorkflowQueue) Initialize(ctx context.Context) error {
 		err = ch.QueueBind(
 			config.Name,
 			config.RoutingKey,
-			wq.client.config.ExchangeName,
+			wq.exchangeName,
 			false, nil,
 		)
 		if err != nil {
@@ -510,8 +559,10 @@ func (wq *WorkflowQueue) Initialize(ctx context.Context) error {
 
 // createDeadLetterQueue creates the dead letter queue
 func (wq *WorkflowQueue) createDeadLetterQueue(ch *amqp.Channel) error {
+	dlqName := wq.queuePrefix + "workflow.dead_letter"
+
 	_, err := ch.QueueDeclare(
-		"workflow.dead_letter",
+		dlqName,
 		true,  // durable
 		false, // auto-delete
 		false, // exclusive
@@ -526,9 +577,9 @@ func (wq *WorkflowQueue) createDeadLetterQueue(ch *amqp.Channel) error {
 
 	// Bind to DLX
 	return ch.QueueBind(
-		"workflow.dead_letter",
+		dlqName,
 		"#", // receive all dead letters
-		wq.client.config.DeadLetterExchange,
+		wq.deadLetterExchange,
 		false,
 		nil,
 	)
@@ -576,8 +627,8 @@ func (wq *WorkflowQueue) PublishWithDelay(ctx context.Context, queueType QueueTy
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
-	// Build routing key
-	routingKey := fmt.Sprintf("%s.%s", queueType, msg.EventType)
+	// Build routing key (include prefix for test isolation)
+	routingKey := fmt.Sprintf("%s%s.%s", wq.queuePrefix, queueType, msg.EventType)
 
 	// Prepare headers
 	headers := amqp.Table{
@@ -595,7 +646,7 @@ func (wq *WorkflowQueue) PublishWithDelay(ctx context.Context, queueType QueueTy
 	// Publish message
 	err = ch.PublishWithContext(
 		ctx,
-		wq.client.config.ExchangeName,
+		wq.exchangeName,
 		routingKey,
 		false, // mandatory
 		false, // immediate

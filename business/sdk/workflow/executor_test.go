@@ -268,7 +268,7 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 		workflowactions.ActionConfig{
 			Log: log,
 			DB:  db,
-			QueueClient: rabbitmq.NewWorkflowQueue(
+			QueueClient: rabbitmq.NewTestWorkflowQueue(
 				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
 				log,
 			),
@@ -399,7 +399,7 @@ func TestActionExecutor_MergeActionConfig(t *testing.T) {
 		workflowactions.ActionConfig{
 			Log: log,
 			DB:  db,
-			QueueClient: rabbitmq.NewWorkflowQueue(
+			QueueClient: rabbitmq.NewTestWorkflowQueue(
 				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
 				log,
 			),
@@ -549,7 +549,7 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 		workflowactions.ActionConfig{
 			Log: log,
 			DB:  db,
-			QueueClient: rabbitmq.NewWorkflowQueue(
+			QueueClient: rabbitmq.NewTestWorkflowQueue(
 				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
 				log,
 			),
@@ -662,7 +662,7 @@ func TestActionExecutor_ProcessTemplates(t *testing.T) {
 		workflowactions.ActionConfig{
 			Log: log,
 			DB:  db,
-			QueueClient: rabbitmq.NewWorkflowQueue(
+			QueueClient: rabbitmq.NewTestWorkflowQueue(
 				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
 				log,
 			),
@@ -738,7 +738,7 @@ func TestActionExecutor_ShouldStopOnFailure(t *testing.T) {
 		workflowactions.ActionConfig{
 			Log: log,
 			DB:  db,
-			QueueClient: rabbitmq.NewWorkflowQueue(
+			QueueClient: rabbitmq.NewTestWorkflowQueue(
 				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
 				log,
 			),
@@ -795,7 +795,7 @@ func TestActionExecutor_Stats(t *testing.T) {
 	defer client.Close()
 
 	// Create workflow queue for initialization
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -977,7 +977,8 @@ func TestActionExecutor_Stats(t *testing.T) {
 }
 
 func TestActionExecutor_ExecutionHistory(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() removed - this test uses shared RabbitMQ infrastructure
+	// and cannot run concurrently with other workflow tests
 
 	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string {
 		return otel.GetTraceID(context.Background())
@@ -1007,7 +1008,7 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
 	defer client.Close()
 
 	// Create workflow queue for initialization
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -1188,7 +1189,7 @@ func TestActionHandler_Implementations(t *testing.T) {
 	defer client.Close()
 
 	// Create workflow queue for initialization
-	queue := rabbitmq.NewWorkflowQueue(client, log)
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
 	if err := queue.Initialize(context.Background()); err != nil {
 		t.Fatalf("initializing workflow queue: %s", err)
 	}
@@ -1466,7 +1467,7 @@ func BenchmarkActionExecutor_ValidateActionConfig(b *testing.B) {
 		workflowactions.ActionConfig{
 			Log: log,
 			DB:  db,
-			QueueClient: rabbitmq.NewWorkflowQueue(
+			QueueClient: rabbitmq.NewTestWorkflowQueue(
 				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
 				log,
 			),
@@ -1505,7 +1506,7 @@ func BenchmarkActionExecutor_MergeConfig(b *testing.B) {
 		workflowactions.ActionConfig{
 			Log: log,
 			DB:  db,
-			QueueClient: rabbitmq.NewWorkflowQueue(
+			QueueClient: rabbitmq.NewTestWorkflowQueue(
 				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
 				log,
 			),
@@ -1547,7 +1548,7 @@ func BenchmarkActionExecutor_ProcessTemplates(b *testing.B) {
 		workflowactions.ActionConfig{
 			Log: log,
 			DB:  db,
-			QueueClient: rabbitmq.NewWorkflowQueue(
+			QueueClient: rabbitmq.NewTestWorkflowQueue(
 				rabbitmq.NewClient(log, rabbitmq.DefaultConfig()),
 				log,
 			),
