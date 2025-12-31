@@ -1,12 +1,15 @@
 package formdataapp
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/app/sdk/formdataregistry"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 func TestFindMissingFields(t *testing.T) {
@@ -98,7 +101,10 @@ func TestFindMissingFields(t *testing.T) {
 // =============================================================================
 
 func TestMergeLineItemFieldDefaults(t *testing.T) {
-	app := &App{}
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return "trace" })
+	app := &App{log: log}
+	ctx := context.Background()
 
 	tests := []struct {
 		name           string
@@ -170,6 +176,7 @@ func TestMergeLineItemFieldDefaults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := app.mergeLineItemFieldDefaults(
+				ctx,
 				json.RawMessage(tt.inputData),
 				tt.fields,
 				tt.operation,

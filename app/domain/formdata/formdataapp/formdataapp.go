@@ -18,10 +18,16 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
+
+// maxArrayItems is the maximum number of items allowed in an array operation.
+// This prevents DoS attacks via unbounded array submissions.
+const maxArrayItems = 1000
 
 // App manages dynamic form data operations across multiple entities.
 type App struct {
+	log            *logger.Logger
 	registry       *formdataregistry.Registry
 	db             *sqlx.DB
 	formBus        *formbus.Business
@@ -32,12 +38,14 @@ type App struct {
 
 // NewApp constructs a form data app.
 func NewApp(
+	log *logger.Logger,
 	registry *formdataregistry.Registry,
 	db *sqlx.DB,
 	formBus *formbus.Business,
 	formFieldBus *formfieldbus.Business,
 ) *App {
 	return &App{
+		log:          log,
 		registry:     registry,
 		db:           db,
 		formBus:      formBus,
@@ -50,6 +58,39 @@ func NewApp(
 // When set, workflow events will be fired after successful form data operations.
 func (a *App) SetEventPublisher(ep *workflow.EventPublisher) {
 	a.eventPublisher = ep
+}
+
+// resolveFKByName resolves a human-readable FK value to a UUID.
+//
+// This method uses the registry's QueryByNameFunc to resolve names to UUIDs,
+// following the Ardan Labs store → bus → app → api pattern. No raw SQL is used
+// in the app layer.
+//
+// Returns the UUID unchanged if value is already a valid UUID (fast path).
+func (a *App) resolveFKByName(ctx context.Context, dropdownConfig *formfieldbus.DropdownConfig, value string) (uuid.UUID, error) {
+	// Fast path: value is already a UUID
+	if id, err := uuid.Parse(value); err == nil {
+		return id, nil
+	}
+
+	// Get entity registration from whitelist
+	reg, err := a.registry.Get(dropdownConfig.Entity)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("entity %q not registered for FK resolution", dropdownConfig.Entity)
+	}
+
+	// Check if entity supports name-based lookup
+	if reg.QueryByNameFunc == nil {
+		return uuid.Nil, fmt.Errorf("entity %q does not support FK resolution by name", dropdownConfig.Entity)
+	}
+
+	// Use the registered business layer function to resolve the name
+	id, err := reg.QueryByNameFunc(ctx, value)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("value %q not found in %s: %w", value, dropdownConfig.Entity, err)
+	}
+
+	return id, nil
 }
 
 // pendingEvent tracks an event to fire after transaction commit.
@@ -303,7 +344,7 @@ func (a *App) executeSingleOperation(
 ) (any, error) {
 	// Merge field defaults before template processing
 	// This injects values like {{$me}} and {{$now}} for audit fields
-	mergedData, _, err := a.mergeFieldDefaults(data, entityFields, step.Operation)
+	mergedData, _, err := a.mergeFieldDefaults(ctx, data, entityFields, step.Operation)
 	if err != nil {
 		return nil, fmt.Errorf("merge field defaults: %w", err)
 	}
@@ -351,6 +392,11 @@ func (a *App) executeArrayOperation(
 		return nil, errs.Newf(errs.InvalidArgument, "array for %s cannot be empty", step.EntityName)
 	}
 
+	// Validate array size to prevent DoS attacks
+	if len(items) > maxArrayItems {
+		return nil, errs.Newf(errs.InvalidArgument, "array for %s exceeds maximum size of %d items", step.EntityName, maxArrayItems)
+	}
+
 	// Extract line item field configs from the parent lineitems field
 	// These define defaults like Hidden and DefaultValue* for line item fields
 	lineItemFields := a.extractLineItemFields(allFields, step.EntityName)
@@ -367,7 +413,7 @@ func (a *App) executeArrayOperation(
 		// Apply line item field defaults before processing
 		// This injects values like {{$me}} and {{$now}} for hidden audit fields
 		if len(lineItemFields) > 0 {
-			itemJSON, err = a.mergeLineItemFieldDefaults(itemJSON, lineItemFields, step.Operation)
+			itemJSON, err = a.mergeLineItemFieldDefaults(ctx, itemJSON, lineItemFields, step.Operation)
 			if err != nil {
 				return nil, fmt.Errorf("merge line item defaults for item %d: %w", idx, err)
 			}
@@ -448,7 +494,9 @@ type InjectionResult struct {
 // mergeFieldDefaults merges default values from field configurations into the data.
 // This injects values for fields that have default_value, default_value_create, or
 // default_value_update configured, but only if the field is not already provided.
+// For FK fields with dropdown config, names are resolved to UUIDs.
 func (a *App) mergeFieldDefaults(
+	ctx context.Context,
 	data json.RawMessage,
 	fieldConfigs []formfieldbus.FormField,
 	operation formdataregistry.EntityOperation,
@@ -484,6 +532,30 @@ func (a *App) mergeFieldDefaults(
 
 		// Only inject if field is not already provided in the data
 		if _, exists := dataMap[field.Name]; !exists {
+			// Check if field has dropdown config for FK resolution
+			var dropdownCfg struct {
+				Entity      string `json:"entity"`
+				LabelColumn string `json:"label_column"`
+				ValueColumn string `json:"value_column"`
+			}
+			if err := json.Unmarshal(field.Config, &dropdownCfg); err == nil && dropdownCfg.Entity != "" {
+				ddConfig := &formfieldbus.DropdownConfig{
+					Entity:      dropdownCfg.Entity,
+					LabelColumn: dropdownCfg.LabelColumn,
+					ValueColumn: dropdownCfg.ValueColumn,
+				}
+				resolvedID, err := a.resolveFKByName(ctx, ddConfig, defaultVal)
+				if err != nil {
+					a.log.Warn(ctx, "FK default resolution failed",
+						"field", field.Name,
+						"entity", dropdownCfg.Entity,
+						"default", defaultVal,
+						"error", err)
+					continue
+				}
+				defaultVal = resolvedID.String()
+			}
+
 			dataMap[field.Name] = defaultVal
 			injected.InjectedFields[field.Name] = defaultVal
 		}
@@ -525,8 +597,9 @@ func (a *App) extractLineItemFields(fields []formfieldbus.FormField, entityName 
 
 // mergeLineItemFieldDefaults injects default values for line item fields.
 // This is similar to mergeFieldDefaults but operates on LineItemField configs
-// instead of FormField configs.
+// instead of FormField configs. For FK fields with dropdown config, names are resolved to UUIDs.
 func (a *App) mergeLineItemFieldDefaults(
+	ctx context.Context,
 	data json.RawMessage,
 	lineItemFields []formfieldbus.LineItemField,
 	operation formdataregistry.EntityOperation,
@@ -555,6 +628,20 @@ func (a *App) mergeLineItemFieldDefaults(
 
 		// Only inject if field is not already provided in the data
 		if _, exists := dataMap[field.Name]; !exists {
+			// Check if field has dropdown config for FK resolution
+			if field.DropdownConfig != nil && field.DropdownConfig.Entity != "" {
+				resolvedID, err := a.resolveFKByName(ctx, field.DropdownConfig, defaultVal)
+				if err != nil {
+					a.log.Warn(ctx, "FK default resolution failed for line item field",
+						"field", field.Name,
+						"entity", field.DropdownConfig.Entity,
+						"default", defaultVal,
+						"error", err)
+					continue
+				}
+				defaultVal = resolvedID.String()
+			}
+
 			dataMap[field.Name] = defaultVal
 		}
 	}

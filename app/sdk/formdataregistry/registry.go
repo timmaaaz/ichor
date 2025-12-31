@@ -23,6 +23,13 @@ type EntityRegistration struct {
 	DecodeUpdate func(json.RawMessage) (interface{}, error)
 	UpdateFunc   func(context.Context, uuid.UUID, interface{}) (interface{}, error)
 	UpdateModel  interface{} // Example instance for reflection (e.g., userapp.UpdateUser{})
+
+	// FK RESOLUTION operations (optional)
+	// QueryByNameFunc resolves a human-readable name to a UUID for FK default resolution.
+	// This is used when form fields have default values like "Pending" that need to be
+	// resolved to UUIDs before insertion.
+	// Returns (uuid, nil) on success, (uuid.Nil, error) if not found or on error.
+	QueryByNameFunc func(ctx context.Context, name string) (uuid.UUID, error)
 }
 
 // Registry manages entity registrations with thread-safe lookup by name or UUID.

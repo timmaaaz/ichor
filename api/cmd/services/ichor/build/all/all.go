@@ -1014,7 +1014,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		// Continue without formdata support rather than failing startup
 	} else {
 		// Initialize formdata app and routes
-		formDataApp := formdataapp.NewApp(formDataRegistry, cfg.DB, formBus, formFieldBus)
+		formDataApp := formdataapp.NewApp(cfg.Log, formDataRegistry, cfg.DB, formBus, formFieldBus)
 		formDataApp.SetEventPublisher(eventPublisher)
 
 		formdataapi.Routes(app, formdataapi.Config{

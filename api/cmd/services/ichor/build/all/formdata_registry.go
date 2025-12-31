@@ -1998,9 +1998,10 @@ func buildFormDataRegistry(
 		return nil, fmt.Errorf("register sales.orders: %w", err)
 	}
 
-	// Register line_item_fulfillment_status entity
+	// Register line_item_fulfillment_statuses entity
+	// Note: Name uses plural form to match database table name for FK resolution
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "sales.line_item_fulfillment_status",
+		Name: "sales.line_item_fulfillment_statuses",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app lineitemfulfillmentstatusapp.NewLineItemFulfillmentStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -2029,13 +2030,17 @@ func buildFormDataRegistry(
 			return lineItemFulfillmentStatusApp.Update(ctx, model.(lineitemfulfillmentstatusapp.UpdateLineItemFulfillmentStatus), id)
 		},
 		UpdateModel: lineitemfulfillmentstatusapp.UpdateLineItemFulfillmentStatus{},
+		QueryByNameFunc: func(ctx context.Context, name string) (uuid.UUID, error) {
+			return lineItemFulfillmentStatusApp.QueryByName(ctx, name)
+		},
 	}); err != nil {
-		return nil, fmt.Errorf("register sales.line_item_fulfillment_status: %w", err)
+		return nil, fmt.Errorf("register sales.line_item_fulfillment_statuses: %w", err)
 	}
 
-	// Register order_fulfillment_status entity
+	// Register order_fulfillment_statuses entity
+	// Note: Name uses plural form to match database table name for FK resolution
 	if err := registry.Register(formdataregistry.EntityRegistration{
-		Name: "sales.order_fulfillment_status",
+		Name: "sales.order_fulfillment_statuses",
 		DecodeNew: func(data json.RawMessage) (interface{}, error) {
 			var app orderfulfillmentstatusapp.NewOrderFulfillmentStatus
 			if err := json.Unmarshal(data, &app); err != nil {
@@ -2064,8 +2069,11 @@ func buildFormDataRegistry(
 			return orderFulfillmentStatusApp.Update(ctx, model.(orderfulfillmentstatusapp.UpdateOrderFulfillmentStatus), id)
 		},
 		UpdateModel: orderfulfillmentstatusapp.UpdateOrderFulfillmentStatus{},
+		QueryByNameFunc: func(ctx context.Context, name string) (uuid.UUID, error) {
+			return orderFulfillmentStatusApp.QueryByName(ctx, name)
+		},
 	}); err != nil {
-		return nil, fmt.Errorf("register sales.order_fulfillment_status: %w", err)
+		return nil, fmt.Errorf("register sales.order_fulfillment_statuses: %w", err)
 	}
 
 	// =========================================================================

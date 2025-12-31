@@ -281,10 +281,11 @@ func GetFullSalesOrderFormFields(
 				Required: false,
 			},
 			{
-				Name:     "line_item_fulfillment_statuses_id",
-				Label:    "Fulfillment Status",
-				Type:     "dropdown",
-				Required: true,
+				Name:               "line_item_fulfillment_statuses_id",
+				Label:              "Fulfillment Status",
+				Type:               "dropdown",
+				Required:           true,
+				DefaultValueCreate: "Pending",
 				DropdownConfig: &formfieldbus.DropdownConfig{
 					Entity:      "sales.line_item_fulfillment_statuses",
 					LabelColumn: "name",

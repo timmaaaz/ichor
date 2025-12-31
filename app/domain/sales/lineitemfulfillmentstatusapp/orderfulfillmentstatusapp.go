@@ -131,3 +131,23 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (LineItemFulfillmentS
 
 	return ToAppLineItemFulfillmentStatus(status), nil
 }
+
+// QueryByName finds a line item fulfillment status by its name and returns the ID.
+// This is used for FK default resolution where form fields specify default values
+// by name (e.g., "Pending") that need to be resolved to UUIDs.
+func (a *App) QueryByName(ctx context.Context, name string) (uuid.UUID, error) {
+	filter := lineitemfulfillmentstatusbus.QueryFilter{
+		Name: &name,
+	}
+
+	statuses, err := a.lineitemfulfillmentstatusbus.Query(ctx, filter, order.By{}, page.MustParse("1", "1"))
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("query by name: %w", err)
+	}
+
+	if len(statuses) == 0 {
+		return uuid.Nil, errs.Newf(errs.NotFound, "line item fulfillment status with name %q not found", name)
+	}
+
+	return statuses[0].ID, nil
+}
