@@ -801,7 +801,8 @@ func queryAutomationRuleByID(busDomain dbtest.BusDomain, sd workflowSeedData) un
 
 func queryAutomationRulesByEntity(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
 	// Find rules for first entity
-	var expectedRules []workflow.AutomationRule
+	// Initialize as empty slice to match QueryRulesByEntity return type
+	expectedRules := []workflow.AutomationRule{}
 	for _, rule := range sd.AutomationRules {
 		if rule.EntityID == sd.Entities[0].ID {
 			expectedRules = append(expectedRules, rule)

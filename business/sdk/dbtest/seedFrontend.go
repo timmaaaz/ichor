@@ -64,6 +64,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -3640,6 +3641,197 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		log.Info(ctx, "✅ Created Sample Charts Dashboard page",
 			"page_config_id", sampleChartsDashboardPage.ID)
 	}
+
+	// =============================================================================
+	// WORKFLOW AUTOMATION RULES FOR ORDER PROCESSING
+	// =============================================================================
+
+	log.Info(ctx, "🔄 Seeding workflow automation rules for order processing...")
+
+	// First, ensure allocation_results entity exists for downstream workflow triggers
+	// This is a virtual entity used by the allocation system to fire workflow events
+	wfEntityType, err := busDomain.Workflow.QueryEntityTypeByName(ctx, "table")
+	if err != nil {
+		log.Error(ctx, "Failed to query entity type 'table' for automation rules", "error", err)
+		// Don't fail the entire seed - automation rules are enhancement, not critical
+	} else {
+		// Check if allocation_results entity exists, create if not
+		_, err := busDomain.Workflow.QueryEntityByName(ctx, "allocation_results")
+		if err != nil {
+			// Create the virtual entity for allocation results
+			_, createErr := busDomain.Workflow.CreateEntity(ctx, workflow.NewEntity{
+				Name:         "allocation_results",
+				EntityTypeID: wfEntityType.ID,
+				SchemaName:   "workflow",
+			})
+			if createErr != nil {
+				log.Error(ctx, "Failed to create allocation_results entity", "error", createErr)
+			} else {
+				log.Info(ctx, "✅ Created allocation_results entity for workflow events")
+			}
+		}
+
+		// Query required entities and trigger types
+		ordersEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "orders")
+		if err != nil {
+			log.Error(ctx, "Failed to query orders entity", "error", err)
+		}
+
+		allocationResultsEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "allocation_results")
+		if err != nil {
+			log.Error(ctx, "Failed to query allocation_results entity", "error", err)
+		}
+
+		onCreateTrigger, err := busDomain.Workflow.QueryTriggerTypeByName(ctx, "on_create")
+		if err != nil {
+			log.Error(ctx, "Failed to query on_create trigger type", "error", err)
+		}
+
+		// Create automation rules if we have all the required references
+		if ordersEntity.ID != uuid.Nil && wfEntityType.ID != uuid.Nil && onCreateTrigger.ID != uuid.Nil {
+			// Rule 1: Order Created -> Allocate Inventory
+			allocateConfig := map[string]interface{}{
+				"allocation_mode":     "reserve",
+				"allocation_strategy": "fifo",
+				"allow_partial":       false,
+				"priority":            "medium",
+				"reference_type":      "order",
+			}
+			allocateConfigJSON, _ := json.Marshal(allocateConfig)
+
+			orderAllocateRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Order Created - Allocate Inventory",
+				Description:   "When an order is created, attempt to reserve inventory for all line items",
+				EntityID:      ordersEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Order Allocate rule", "error", err)
+			} else {
+				_, err = busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: orderAllocateRule.ID,
+					Name:             "Allocate Inventory for Order",
+					Description:      "Reserve inventory for order line items",
+					ActionConfig:     json.RawMessage(allocateConfigJSON),
+					ExecutionOrder:   1,
+					IsActive:         true,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create allocate inventory action", "error", err)
+				} else {
+					log.Info(ctx, "✅ Created 'Order Created - Allocate Inventory' rule")
+				}
+			}
+		}
+
+		if allocationResultsEntity.ID != uuid.Nil && wfEntityType.ID != uuid.Nil && onCreateTrigger.ID != uuid.Nil {
+			// Rule 2: Allocation Success -> Update Line Item Status
+			successCondition := map[string]interface{}{
+				"field":    "status",
+				"operator": "equals",
+				"value":    "success",
+			}
+			successConditionJSON, _ := json.Marshal(successCondition)
+			successConditionRaw := json.RawMessage(successConditionJSON)
+
+			updateConfig := map[string]interface{}{
+				"target_entity": "order_line_items",
+				"target_field":  "line_item_fulfillment_statuses_id",
+				"new_value":     "Allocated",
+				"field_type":    "foreign_key",
+				"foreign_key_config": map[string]interface{}{
+					"reference_table": "sales.line_item_fulfillment_statuses",
+					"lookup_field":    "name",
+				},
+				"conditions": []map[string]interface{}{
+					{"field_name": "order_id", "operator": "equals", "value": "{{reference_id}}"},
+				},
+			}
+			updateConfigJSON, _ := json.Marshal(updateConfig)
+
+			allocationSuccessRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:              "Allocation Success - Update Line Items",
+				Description:       "When inventory allocation succeeds, update order line items to ALLOCATED status",
+				EntityID:          allocationResultsEntity.ID,
+				EntityTypeID:      wfEntityType.ID,
+				TriggerTypeID:     onCreateTrigger.ID,
+				TriggerConditions: &successConditionRaw,
+				IsActive:          true,
+				CreatedBy:         admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Allocation Success rule", "error", err)
+			} else {
+				_, err = busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: allocationSuccessRule.ID,
+					Name:             "Update Line Items to ALLOCATED",
+					Description:      "Set line item status to ALLOCATED after successful inventory reservation",
+					ActionConfig:     json.RawMessage(updateConfigJSON),
+					ExecutionOrder:   1,
+					IsActive:         true,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create update line items action", "error", err)
+				} else {
+					log.Info(ctx, "✅ Created 'Allocation Success - Update Line Items' rule")
+				}
+			}
+
+			// Rule 3: Allocation Failure -> Create Alert
+			failedCondition := map[string]interface{}{
+				"field":    "status",
+				"operator": "equals",
+				"value":    "failed",
+			}
+			failedConditionJSON, _ := json.Marshal(failedCondition)
+			failedConditionRaw := json.RawMessage(failedConditionJSON)
+
+			alertConfig := map[string]interface{}{
+				"alert_type": "inventory_allocation_failed",
+				"severity":   "high",
+				"message":    "Inventory allocation failed for order {{reference_id}}: insufficient inventory",
+				"context": map[string]interface{}{
+					"reference_id":   "{{reference_id}}",
+					"reference_type": "{{reference_type}}",
+					"failed_items":   "{{failed_items}}",
+				},
+			}
+			alertConfigJSON, _ := json.Marshal(alertConfig)
+
+			allocationFailedRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:              "Allocation Failed - Alert Operations",
+				Description:       "When inventory allocation fails, create an alert for the operations team",
+				EntityID:          allocationResultsEntity.ID,
+				EntityTypeID:      wfEntityType.ID,
+				TriggerTypeID:     onCreateTrigger.ID,
+				TriggerConditions: &failedConditionRaw,
+				IsActive:          true,
+				CreatedBy:         admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Allocation Failed rule", "error", err)
+			} else {
+				_, err = busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: allocationFailedRule.ID,
+					Name:             "Create Alert for Operations",
+					Description:      "Notify operations team of allocation failure",
+					ActionConfig:     json.RawMessage(alertConfigJSON),
+					ExecutionOrder:   1,
+					IsActive:         true,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create alert action", "error", err)
+				} else {
+					log.Info(ctx, "✅ Created 'Allocation Failed - Alert Operations' rule")
+				}
+			}
+		}
+	}
+
+	log.Info(ctx, "✅ Workflow automation rules seeding complete")
 
 	return nil
 }
