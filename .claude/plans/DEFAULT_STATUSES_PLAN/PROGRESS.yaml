@@ -282,14 +282,16 @@ phases:
     blockers: []
 
 context:
-  current_focus: "Phase 2 Complete - Ready for Phase 3 (Alert System Enhancement)"
-  next_task: "Build Phase 3 documentation, then implement alert system"
+  current_focus: "Phase 3 plan reviewed and updated with fixes - Ready for implementation"
+  next_task: "Implement Phase 3: Create alertbus, alertdb, update CreateAlertHandler, create alertapi"
   recent_changes:
-    - "Verified automation rules already seeded in seedFrontend.go (lines 3649-3834)"
-    - "Verified update_field batch update behavior works for multiple line items"
-    - "Confirmed Go compilation passes"
-    - "Confirmed all Phase 2 relevant tests pass"
-    - "Pre-existing test failure in workflow_crud_test.go (nil vs empty slice) is unrelated"
+    - "Phase 3 plan review completed (2025-12-31)"
+    - "Fixed ExpiresDate type to *time.Time (nullable)"
+    - "Added batch CreateRecipients method (avoid N+1)"
+    - "Fixed error handling: return errors on invalid UUIDs (don't silently skip)"
+    - "Simplified auth model: authentication only for user endpoints"
+    - "Added admin /workflow/alerts endpoint for admins"
+    - "Added Query/Count methods for admin access"
     - "Phase 2 marked complete on 2025-12-31"
   decisions:
     - "Decision: Use form config FK resolution (not template variables) for default status values"
@@ -299,6 +301,13 @@ context:
     - "Decision: AsyncActionHandler pattern for self-contained async actions"
     - "Decision: Real handlers preferred over mocks for integration tests"
     - "Decision: Handlers own their event firing lifecycle (not queue manager)"
+    - "Decision: Use minimal alertbus (not full business layer) - alerts are workflow-only creation with simple CRUD"
+    - "Decision: Skip alertapp layer - validation inline in handlers for simple read/update operations"
+    - "Decision: Recipient authorization in alertbus.Acknowledge/Dismiss (business layer, not middleware)"
+    - "Decision: No delegate.Delegate needed - alerts are workflow-internal, timestamps are audit-only"
+    - "Decision: No transaction support for now - orphaned alerts low-impact, acknowledge failure recoverable"
+    - "Decision: Authentication only for user endpoints (no table-level permissions) - business layer filters by recipient"
+    - "Decision: Allow any status transition (no state machine) - may add restrictions later if needed"
 
 dependencies:
   internal:
