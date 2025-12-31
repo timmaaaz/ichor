@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -255,9 +256,12 @@ func (qm *QueueManager) Start(ctx context.Context) error {
 
 // startConsumer starts a consumer for a specific queue type
 func (qm *QueueManager) startConsumer(ctx context.Context, queueType rabbitmq.QueueType) error {
-	consumer, err := qm.queue.Consume(ctx, queueType, func(ctx context.Context, msg *rabbitmq.Message) error {
+	// All queues use the same generic handler that routes based on message type
+	handler := func(ctx context.Context, msg *rabbitmq.Message) error {
 		return qm.processMessage(ctx, msg)
-	})
+	}
+
+	consumer, err := qm.queue.Consume(ctx, queueType, handler)
 
 	if err != nil {
 		return fmt.Errorf("failed to start consumer for %s: %w", queueType, err)
@@ -272,6 +276,128 @@ func (qm *QueueManager) startConsumer(ctx context.Context, queueType rabbitmq.Qu
 
 // processMessage processes a single message from the queue
 func (qm *QueueManager) processMessage(ctx context.Context, msg *rabbitmq.Message) error {
+	// Route async_action messages to the generic async handler
+	if msg.Type == "async_action" {
+		return qm.processAsyncAction(ctx, msg)
+	}
+
+	// Otherwise process as workflow trigger event
+	return qm.processWorkflowEvent(ctx, msg)
+}
+
+// processAsyncAction processes async action messages generically.
+// The handler is retrieved from the registry based on the request_type in the payload.
+func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Message) error {
+	startTime := time.Now()
+
+	// Check if this is a final failure callback from RabbitMQ client
+	// (called when max retries exceeded to allow final recording)
+	if _, isFinalFailure := msg.Payload["_final_failure"]; isFinalFailure {
+		// Already recorded failure on first attempt, just acknowledge
+		return nil
+	}
+
+	// Check circuit breaker
+	if qm.circuitBreaker.IsOpen() {
+		return fmt.Errorf("circuit breaker is open")
+	}
+
+	qm.log.Info(ctx, "Processing async action message",
+		"messageID", msg.ID,
+		"eventType", msg.EventType)
+
+	// Serialize payload to JSON for the handler
+	payloadData, err := json.Marshal(msg.Payload)
+	if err != nil {
+		qm.recordFailure()
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	// Deserialize just enough to get the request type
+	var queuedPayload QueuedPayload
+	if err := json.Unmarshal(payloadData, &queuedPayload); err != nil {
+		qm.recordFailure()
+		qm.updateMetric(func(m *QueueMetrics) {
+			m.TotalFailed++
+		})
+		return fmt.Errorf("failed to unmarshal queued payload: %w", err)
+	}
+
+	// Get the handler from the registry
+	registry := qm.engine.GetRegistry()
+	if registry == nil {
+		return fmt.Errorf("action registry not available")
+	}
+
+	handler, exists := registry.Get(queuedPayload.RequestType)
+	if !exists {
+		qm.recordFailure()
+		qm.updateMetric(func(m *QueueMetrics) {
+			m.TotalFailed++
+		})
+		return fmt.Errorf("handler not registered for request type: %s", queuedPayload.RequestType)
+	}
+
+	// Type assert to AsyncActionHandler
+	asyncHandler, ok := handler.(AsyncActionHandler)
+	if !ok {
+		qm.recordFailure()
+		qm.updateMetric(func(m *QueueMetrics) {
+			m.TotalFailed++
+		})
+		return fmt.Errorf("handler %s does not implement AsyncActionHandler interface", queuedPayload.RequestType)
+	}
+
+	// Create processing context with timeout
+	processCtx, cancel := context.WithTimeout(ctx, qm.config.ProcessingTimeout)
+	defer cancel()
+
+	// Create publisher for the handler to fire result events
+	publisher := NewEventPublisher(qm.log, qm)
+
+	// Call the handler's ProcessQueued method
+	err = asyncHandler.ProcessQueued(processCtx, payloadData, publisher)
+
+	processingTime := time.Since(startTime)
+
+	if err != nil {
+		qm.recordFailure()
+		qm.updateMetric(func(m *QueueMetrics) {
+			m.TotalFailed++
+		})
+
+		qm.log.Error(ctx, "Failed to process async action",
+			"messageID", msg.ID,
+			"requestType", queuedPayload.RequestType,
+			"error", err,
+			"processingTime", processingTime)
+
+		return err
+	}
+
+	// Success
+	qm.recordSuccess()
+	qm.updateMetric(func(m *QueueMetrics) {
+		m.TotalProcessed++
+		now := time.Now()
+		m.LastProcessedAt = &now
+
+		// Update average processing time
+		oldAvg := m.AverageProcessTimeMs
+		totalTime := oldAvg * (m.TotalProcessed - 1)
+		m.AverageProcessTimeMs = (totalTime + processingTime.Milliseconds()) / m.TotalProcessed
+	})
+
+	qm.log.Info(ctx, "Processed async action",
+		"messageID", msg.ID,
+		"requestType", queuedPayload.RequestType,
+		"processingTime", processingTime)
+
+	return nil
+}
+
+// processWorkflowEvent processes workflow trigger events
+func (qm *QueueManager) processWorkflowEvent(ctx context.Context, msg *rabbitmq.Message) error {
 	startTime := time.Now()
 
 	// Check circuit breaker

@@ -49,6 +49,16 @@ func (ep *EventPublisher) PublishDeleteEvent(ctx context.Context, entityName str
 	ep.queueEventNonBlocking(ctx, event)
 }
 
+// PublishCustomEvent fires a custom event with full control over the TriggerEvent.
+// Used by async action handlers to fire result events for downstream workflow rules.
+func (ep *EventPublisher) PublishCustomEvent(ctx context.Context, event TriggerEvent) {
+	// Ensure timestamp is set if not provided
+	if event.Timestamp.IsZero() {
+		event.Timestamp = time.Now().UTC()
+	}
+	ep.queueEventNonBlocking(ctx, event)
+}
+
 func (ep *EventPublisher) publishEvent(ctx context.Context, eventType, entityName string, result any, fieldChanges map[string]FieldChange, userID uuid.UUID) {
 	entityID, rawData, err := ep.extractEntityData(result)
 	if err != nil {

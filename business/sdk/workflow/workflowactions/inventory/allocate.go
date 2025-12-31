@@ -217,7 +217,8 @@ func (h *AllocateInventoryHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
-// Execute queues the allocation request for async processing
+// Execute queues the allocation request for async processing.
+// Returns QueuedAllocationResponse with tracking info.
 func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawMessage, execContext workflow.ActionExecutionContext) (any, error) {
 	var cfg AllocateInventoryConfig
 	if err := json.Unmarshal(config, &cfg); err != nil {
@@ -257,15 +258,39 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		MaxRetries:  3,
 	}
 
-	// Queue to RabbitMQ for async processing
-	queueType := rabbitmq.QueueTypeInventory
+	// Serialize the request for the queued payload
+	requestData, err := json.Marshal(request)
+	if err != nil {
+		return QueuedAllocationResponse{}, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// Create standard QueuedPayload wrapper for async processing
+	queuedPayload := workflow.QueuedPayload{
+		RequestType:      h.GetType(), // "allocate_inventory"
+		RequestData:      requestData,
+		ExecutionContext: execContext,
+		IdempotencyKey:   idempotencyKey,
+	}
+
+	payloadData, err := json.Marshal(queuedPayload)
+	if err != nil {
+		return QueuedAllocationResponse{}, fmt.Errorf("failed to marshal queued payload: %w", err)
+	}
+
+	// Convert to map for RabbitMQ message payload
+	var payloadMap map[string]interface{}
+	if err := json.Unmarshal(payloadData, &payloadMap); err != nil {
+		return QueuedAllocationResponse{}, fmt.Errorf("failed to convert payload to map: %w", err)
+	}
+
+	// Queue to RabbitMQ for async processing using generic async_action type
 	message := &rabbitmq.Message{
 		ID:           request.ID,
-		Type:         "inventory_allocation",
+		Type:         "async_action", // Generic type for all async actions
 		EntityName:   execContext.EntityName,
 		EntityID:     execContext.EntityID,
-		EventType:    "allocate_inventory",
-		Payload:      h.requestToPayload(request),
+		EventType:    h.GetType(), // "allocate_inventory"
+		Payload:      payloadMap,
 		Priority:     uint8(request.Priority),
 		Attempts:     0,
 		MaxAttempts:  request.MaxRetries,
@@ -274,7 +299,7 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		UserID:       execContext.UserID,
 	}
 
-	if err := h.queueClient.Publish(ctx, queueType, message); err != nil {
+	if err := h.queueClient.Publish(ctx, rabbitmq.QueueTypeInventory, message); err != nil {
 		return QueuedAllocationResponse{}, fmt.Errorf("failed to queue allocation request: %w", err)
 	}
 
@@ -286,6 +311,63 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		Priority:       request.Priority,
 		Message:        "Allocation request queued for processing",
 	}, nil
+}
+
+// ProcessQueued implements AsyncActionHandler for processing queued allocation requests.
+// This is called by the queue manager when an async_action message is dequeued.
+func (h *AllocateInventoryHandler) ProcessQueued(ctx context.Context, payload json.RawMessage, publisher *workflow.EventPublisher) error {
+	// Deserialize the standard QueuedPayload wrapper
+	var queuedPayload workflow.QueuedPayload
+	if err := json.Unmarshal(payload, &queuedPayload); err != nil {
+		return fmt.Errorf("failed to unmarshal queued payload: %w", err)
+	}
+
+	// Deserialize the action-specific AllocationRequest from RequestData
+	var request AllocationRequest
+	if err := json.Unmarshal(queuedPayload.RequestData, &request); err != nil {
+		return fmt.Errorf("failed to unmarshal allocation request: %w", err)
+	}
+
+	// Process the allocation using existing logic
+	result, err := h.ProcessAllocation(ctx, request)
+	if err != nil {
+		return fmt.Errorf("allocation processing failed: %w", err)
+	}
+
+	// Fire workflow event for downstream rule processing
+	h.fireAllocationResultEvent(ctx, result, request, publisher)
+
+	h.log.Info(ctx, "Async allocation completed",
+		"allocation_id", result.AllocationID,
+		"status", result.Status,
+		"total_allocated", result.TotalAllocated)
+
+	return nil
+}
+
+// fireAllocationResultEvent fires a workflow event for downstream rule processing.
+// This is called internally by ProcessQueued to trigger rules like "on allocation success -> update status".
+func (h *AllocateInventoryHandler) fireAllocationResultEvent(ctx context.Context, result *InventoryAllocationResult, request AllocationRequest, publisher *workflow.EventPublisher) {
+	event := workflow.TriggerEvent{
+		EventType:  "on_create",
+		EntityName: "allocation_results",
+		EntityID:   result.AllocationID,
+		Timestamp:  result.CompletedAt,
+		UserID:     request.Context.UserID,
+		RawData: map[string]interface{}{
+			"status":            result.Status,
+			"reference_id":      request.Config.ReferenceID,
+			"reference_type":    request.Config.ReferenceType,
+			"total_allocated":   result.TotalAllocated,
+			"total_requested":   result.TotalRequested,
+			"allocated_items":   result.AllocatedItems,
+			"failed_items":      result.FailedItems,
+			"idempotency_key":   result.IdempotencyKey,
+			"execution_time_ms": result.ExecutionTimeMs,
+		},
+	}
+
+	publisher.PublishCustomEvent(ctx, event)
 }
 
 // ProcessAllocation handles the actual allocation logic (called by queue consumer)

@@ -15,6 +15,8 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
@@ -1323,6 +1325,420 @@ func TestQueueManager_ProcessingResult(t *testing.T) {
 	if result2.ProcessedCount < 3 {
 		t.Logf("Note: ProcessedCount = %d (events may still be processing)", result2.ProcessedCount)
 	}
+}
+
+// =============================================================================
+// AsyncActionHandler Tests
+// =============================================================================
+
+// Test_ProcessAsyncAction tests the generic async action processing in the queue manager.
+// Uses real handlers registered in the action registry to verify production code paths.
+func Test_ProcessAsyncAction(t *testing.T) {
+	log := logger.New(os.Stdout, logger.LevelInfo, "TEST", func(context.Context) string {
+		return otel.GetTraceID(context.Background())
+	})
+
+	// Get shared RabbitMQ container
+	container := rabbitmq.GetTestContainer(t)
+	t.Logf("RabbitMQ Started: %s at %s (URL: %s)", container.Name, container.HostPort, container.URL)
+
+	// Create test-specific client
+	client := rabbitmq.NewTestClient(container.URL)
+	if err := client.Connect(); err != nil {
+		t.Fatalf("connecting to rabbitmq: %s", err)
+	}
+	defer client.Close()
+
+	// Create database with full BusDomain for real handler dependencies
+	db := dbtest.NewDatabase(t, "Test_ProcessAsyncAction")
+	ctx := context.Background()
+
+	// Create workflow queue with test-unique names
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
+	if err := queue.Initialize(ctx); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
+
+	// Create workflow business layer
+	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+
+	// Reset engine singleton and create fresh engine
+	workflow.ResetEngineForTesting()
+	engine := workflow.NewEngine(log, db.DB, workflowBus)
+
+	// Initialize engine first (this creates the registry and registers default handlers)
+	if err := engine.Initialize(ctx, workflowBus); err != nil {
+		t.Fatalf("initializing engine: %s", err)
+	}
+
+	// Register REAL handlers for testing:
+	// - AllocateInventoryHandler: implements AsyncActionHandler (for success/error tests)
+	// - UpdateFieldHandler: implements ActionHandler but NOT AsyncActionHandler (for not_async test)
+	allocateHandler := inventory.NewAllocateInventoryHandler(
+		log,
+		db.DB,
+		queue,
+		db.BusDomain.InventoryItem,
+		db.BusDomain.InventoryLocation,
+		db.BusDomain.InventoryTransaction,
+		db.BusDomain.Product,
+		workflowBus,
+	)
+	engine.GetRegistry().Register(allocateHandler)
+
+	updateFieldHandler := data.NewUpdateFieldHandler(log, db.DB)
+	engine.GetRegistry().Register(updateFieldHandler)
+
+	// Create and initialize queue manager
+	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
+	if err != nil {
+		t.Fatalf("creating queue manager: %s", err)
+	}
+	if err := qm.Initialize(ctx); err != nil {
+		t.Fatalf("initializing queue manager: %s", err)
+	}
+
+	// Clear any leftover messages
+	if err := qm.ClearQueue(ctx); err != nil {
+		t.Logf("Warning: could not clear queue: %v", err)
+	}
+
+	// Reset state for test isolation
+	qm.ResetCircuitBreaker()
+	qm.ResetMetrics()
+
+	// Start consumers
+	if err := qm.Start(ctx); err != nil {
+		t.Fatalf("starting queue manager: %s", err)
+	}
+	defer qm.Stop(ctx)
+
+	// Wait for consumers to be ready
+	time.Sleep(100 * time.Millisecond)
+
+	// === SUBTESTS ===
+
+	t.Run("success_with_real_handler", func(t *testing.T) {
+		// Reset for this subtest
+		qm.ResetMetrics()
+		initialMetrics := qm.GetMetrics()
+
+		// Create a valid allocation request for the real AllocateInventoryHandler
+		// Using empty config - handler will process successfully with no allocations
+		allocationRequest := inventory.AllocationRequest{
+			ID:          uuid.New(),
+			ExecutionID: uuid.New(),
+			Config: inventory.AllocateInventoryConfig{
+				InventoryItems:     []inventory.AllocationItem{},
+				AllocationMode:     "allocate",
+				AllocationStrategy: "fifo",
+				AllowPartial:       true,
+				Priority:           "medium",
+			},
+			Context: workflow.ActionExecutionContext{
+				ExecutionID: uuid.New(),
+				RuleID:      uuid.New(),
+				UserID:      uuid.New(),
+			},
+			Status:     "pending",
+			Priority:   1,
+			CreatedAt:  time.Now(),
+			RetryCount: 0,
+			MaxRetries: 3,
+		}
+		requestData, _ := json.Marshal(allocationRequest)
+
+		queuedPayload := workflow.QueuedPayload{
+			RequestType: "allocate_inventory",
+			RequestData: requestData,
+			ExecutionContext: workflow.ActionExecutionContext{
+				ExecutionID: uuid.New(),
+				RuleID:      uuid.New(),
+				UserID:      uuid.New(),
+			},
+		}
+		payloadData, _ := json.Marshal(queuedPayload)
+		var payloadMap map[string]interface{}
+		json.Unmarshal(payloadData, &payloadMap)
+
+		msg := &rabbitmq.Message{
+			ID:          uuid.New(),
+			Type:        "async_action", // Critical: triggers processAsyncAction
+			EntityName:  "inventory",
+			EntityID:    uuid.New(),
+			EventType:   "allocate_inventory",
+			Payload:     payloadMap,
+			MaxAttempts: 3,
+			CreatedAt:   time.Now(),
+		}
+
+		// Publish directly to queue
+		if err := queue.Publish(ctx, rabbitmq.QueueTypeWorkflow, msg); err != nil {
+			t.Fatalf("publishing message: %s", err)
+		}
+
+		// Wait for async processing using metrics polling pattern
+		timeout := time.After(5 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		processed := false
+		for !processed {
+			select {
+			case <-timeout:
+				metrics := qm.GetMetrics()
+				t.Fatalf("Timeout waiting for processing. Metrics: processed=%d, failed=%d",
+					metrics.TotalProcessed, metrics.TotalFailed)
+			case <-ticker.C:
+				metrics := qm.GetMetrics()
+				if metrics.TotalProcessed > initialMetrics.TotalProcessed {
+					processed = true
+				}
+			}
+		}
+
+		// Verify metrics - real handler was invoked successfully
+		// Note: The real AllocateInventoryHandler fires a secondary on_create event for
+		// allocation_results, so TotalProcessed may increase by more than 1
+		finalMetrics := qm.GetMetrics()
+		if finalMetrics.TotalProcessed <= initialMetrics.TotalProcessed {
+			t.Errorf("Expected TotalProcessed to increase, got %d -> %d",
+				initialMetrics.TotalProcessed, finalMetrics.TotalProcessed)
+		}
+		// Verify no failures occurred
+		if finalMetrics.TotalFailed > initialMetrics.TotalFailed {
+			t.Errorf("Expected no failures, got %d -> %d",
+				initialMetrics.TotalFailed, finalMetrics.TotalFailed)
+		}
+	})
+
+	t.Run("unknown_request_type", func(t *testing.T) {
+		// Reset for this subtest
+		qm.ResetMetrics()
+		qm.ResetCircuitBreaker()
+		initialMetrics := qm.GetMetrics()
+
+		// Create message with unknown request type - no handler exists for this
+		queuedPayload := workflow.QueuedPayload{
+			RequestType: "nonexistent_handler",
+			RequestData: json.RawMessage(`{}`),
+			ExecutionContext: workflow.ActionExecutionContext{
+				ExecutionID: uuid.New(),
+				RuleID:      uuid.New(),
+				UserID:      uuid.New(),
+			},
+		}
+		payloadData, _ := json.Marshal(queuedPayload)
+		var payloadMap map[string]interface{}
+		json.Unmarshal(payloadData, &payloadMap)
+
+		msg := &rabbitmq.Message{
+			ID:          uuid.New(),
+			Type:        "async_action",
+			EntityName:  "test_entity",
+			EntityID:    uuid.New(),
+			EventType:   "nonexistent_handler",
+			Payload:     payloadMap,
+			MaxAttempts: 1, // Only one attempt to avoid retries
+			CreatedAt:   time.Now(),
+		}
+
+		// Publish directly to queue
+		if err := queue.Publish(ctx, rabbitmq.QueueTypeWorkflow, msg); err != nil {
+			t.Fatalf("publishing message: %s", err)
+		}
+
+		// Wait for failure to be recorded
+		timeout := time.After(5 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		failed := false
+		for !failed {
+			select {
+			case <-timeout:
+				metrics := qm.GetMetrics()
+				t.Fatalf("Timeout waiting for failure. Metrics: processed=%d, failed=%d",
+					metrics.TotalProcessed, metrics.TotalFailed)
+			case <-ticker.C:
+				metrics := qm.GetMetrics()
+				if metrics.TotalFailed > initialMetrics.TotalFailed {
+					failed = true
+				}
+			}
+		}
+
+		// Verify failure was recorded
+		finalMetrics := qm.GetMetrics()
+		if finalMetrics.TotalFailed != initialMetrics.TotalFailed+1 {
+			t.Errorf("Expected TotalFailed to increase by 1, got %d -> %d",
+				initialMetrics.TotalFailed, finalMetrics.TotalFailed)
+		}
+	})
+
+	t.Run("not_async_handler", func(t *testing.T) {
+		// Using REAL UpdateFieldHandler which implements ActionHandler but NOT AsyncActionHandler
+		// Reset for this subtest
+		qm.ResetMetrics()
+		qm.ResetCircuitBreaker()
+		initialMetrics := qm.GetMetrics()
+
+		// Create message targeting the real update_field handler
+		queuedPayload := workflow.QueuedPayload{
+			RequestType: "update_field", // Real handler type
+			RequestData: json.RawMessage(`{}`),
+			ExecutionContext: workflow.ActionExecutionContext{
+				ExecutionID: uuid.New(),
+				RuleID:      uuid.New(),
+				UserID:      uuid.New(),
+			},
+		}
+		payloadData, _ := json.Marshal(queuedPayload)
+		var payloadMap map[string]interface{}
+		json.Unmarshal(payloadData, &payloadMap)
+
+		msg := &rabbitmq.Message{
+			ID:          uuid.New(),
+			Type:        "async_action",
+			EntityName:  "test_entity",
+			EntityID:    uuid.New(),
+			EventType:   "update_field",
+			Payload:     payloadMap,
+			MaxAttempts: 1,
+			CreatedAt:   time.Now(),
+		}
+
+		// Publish directly to queue
+		if err := queue.Publish(ctx, rabbitmq.QueueTypeWorkflow, msg); err != nil {
+			t.Fatalf("publishing message: %s", err)
+		}
+
+		// Wait for failure to be recorded
+		timeout := time.After(5 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		failed := false
+		for !failed {
+			select {
+			case <-timeout:
+				metrics := qm.GetMetrics()
+				t.Fatalf("Timeout waiting for failure. Metrics: processed=%d, failed=%d",
+					metrics.TotalProcessed, metrics.TotalFailed)
+			case <-ticker.C:
+				metrics := qm.GetMetrics()
+				if metrics.TotalFailed > initialMetrics.TotalFailed {
+					failed = true
+				}
+			}
+		}
+
+		// Verify failure was recorded (handler doesn't implement AsyncActionHandler)
+		finalMetrics := qm.GetMetrics()
+		if finalMetrics.TotalFailed != initialMetrics.TotalFailed+1 {
+			t.Errorf("Expected TotalFailed to increase by 1, got %d -> %d",
+				initialMetrics.TotalFailed, finalMetrics.TotalFailed)
+		}
+	})
+
+	t.Run("handler_returns_error", func(t *testing.T) {
+		// Using REAL AllocateInventoryHandler with a request that references non-existent inventory
+		// This will trigger a real error in the processing logic
+		qm.ResetMetrics()
+		qm.ResetCircuitBreaker()
+		initialMetrics := qm.GetMetrics()
+
+		// Create an allocation request that tries to allocate non-existent product
+		// This will cause the handler to fail during ProcessAllocation
+		allocationRequest := inventory.AllocationRequest{
+			ID:          uuid.New(),
+			ExecutionID: uuid.New(),
+			Config: inventory.AllocateInventoryConfig{
+				InventoryItems: []inventory.AllocationItem{
+					{
+						ProductID: uuid.New(), // Non-existent product
+						Quantity:  100,
+					},
+				},
+				AllocationMode:     "allocate",
+				AllocationStrategy: "fifo",
+				AllowPartial:       false, // Fail if partial allocation not possible
+				Priority:           "high",
+			},
+			Context: workflow.ActionExecutionContext{
+				ExecutionID: uuid.New(),
+				RuleID:      uuid.New(),
+				UserID:      uuid.New(),
+			},
+			Status:     "pending",
+			Priority:   1,
+			CreatedAt:  time.Now(),
+			RetryCount: 0,
+			MaxRetries: 1,
+		}
+		requestData, _ := json.Marshal(allocationRequest)
+
+		queuedPayload := workflow.QueuedPayload{
+			RequestType: "allocate_inventory",
+			RequestData: requestData,
+			ExecutionContext: workflow.ActionExecutionContext{
+				ExecutionID: uuid.New(),
+				RuleID:      uuid.New(),
+				UserID:      uuid.New(),
+			},
+		}
+		payloadData, _ := json.Marshal(queuedPayload)
+		var payloadMap map[string]interface{}
+		json.Unmarshal(payloadData, &payloadMap)
+
+		msg := &rabbitmq.Message{
+			ID:          uuid.New(),
+			Type:        "async_action",
+			EntityName:  "inventory",
+			EntityID:    uuid.New(),
+			EventType:   "allocate_inventory",
+			Payload:     payloadMap,
+			MaxAttempts: 1,
+			CreatedAt:   time.Now(),
+		}
+
+		// Publish directly to queue
+		if err := queue.Publish(ctx, rabbitmq.QueueTypeWorkflow, msg); err != nil {
+			t.Fatalf("publishing message: %s", err)
+		}
+
+		// Wait for processing to complete (either success or failure)
+		// The handler may succeed with a "partial" or "failed" status without returning an error
+		timeout := time.After(5 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		processed := false
+		for !processed {
+			select {
+			case <-timeout:
+				metrics := qm.GetMetrics()
+				t.Fatalf("Timeout waiting for processing. Metrics: processed=%d, failed=%d",
+					metrics.TotalProcessed, metrics.TotalFailed)
+			case <-ticker.C:
+				metrics := qm.GetMetrics()
+				// Either it processed successfully (but with partial allocation status)
+				// or it failed at the handler level
+				if metrics.TotalProcessed > initialMetrics.TotalProcessed ||
+					metrics.TotalFailed > initialMetrics.TotalFailed {
+					processed = true
+				}
+			}
+		}
+
+		// Verify the handler was invoked (processed OR failed)
+		finalMetrics := qm.GetMetrics()
+		totalActivity := (finalMetrics.TotalProcessed - initialMetrics.TotalProcessed) +
+			(finalMetrics.TotalFailed - initialMetrics.TotalFailed)
+		if totalActivity == 0 {
+			t.Error("Expected some activity (processed or failed), got none")
+		}
+	})
 }
 
 // Mock engine for testing

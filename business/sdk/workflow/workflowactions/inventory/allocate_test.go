@@ -654,3 +654,112 @@ func testFIFOStrategy(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocateSeedDa
 		},
 	}
 }
+
+// =============================================================================
+// ProcessQueued Unit Tests
+//
+// These tests verify the ProcessQueued method's error handling for malformed payloads.
+// Integration tests for the full async processing flow are in queue_test.go.
+// =============================================================================
+
+func Test_ProcessQueued(t *testing.T) {
+	db := dbtest.NewDatabase(t, "Test_ProcessQueued")
+
+	sd, err := insertAllocateSeedData(db.BusDomain)
+	if err != nil {
+		t.Fatalf("Seeding error: %s", err)
+	}
+
+	// Create the handler with all dependencies
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string {
+		return otel.GetTraceID(context.Background())
+	})
+
+	container := rabbitmq.GetTestContainer(t)
+	client := rabbitmq.NewTestClient(container.URL)
+	if err := client.Connect(); err != nil {
+		t.Fatalf("connecting to rabbitmq: %s", err)
+	}
+	defer client.Close()
+
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
+	if err := queue.Initialize(context.Background()); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
+
+	handler := inventory.NewAllocateInventoryHandler(
+		log,
+		db.DB,
+		queue,
+		db.BusDomain.InventoryItem,
+		db.BusDomain.InventoryLocation,
+		db.BusDomain.InventoryTransaction,
+		db.BusDomain.Product,
+		db.BusDomain.Workflow,
+	)
+
+	// -------------------------------------------------------------------------
+
+	unitest.Run(t, processQueuedTests(handler, sd), "processQueued")
+}
+
+func processQueuedTests(handler *inventory.AllocateInventoryHandler, sd allocateSeedData) []unitest.Table {
+	// Note: Most ProcessQueued paths are tested via integration tests in queue_test.go
+	// which uses the full async flow with real EventPublisher.
+	//
+	// These unit tests focus on the early error path that fails before
+	// reaching the EventPublisher (invalid JSON payload).
+	//
+	// The "invalid request data" case cannot be meaningfully tested here because:
+	// 1. Go's JSON unmarshalling is lenient - it ignores unknown fields and uses zero values
+	// 2. If unmarshal succeeds, ProcessAllocation runs and tries to use the publisher
+	// 3. We can't pass a nil publisher without causing a panic
+	// 4. The user prefers not to use mocks
+	//
+	// The full processing flow including publisher is covered by queue_test.go
+	return []unitest.Table{
+		processQueuedInvalidPayload(handler),
+	}
+}
+
+func processQueuedInvalidPayload(handler *inventory.AllocateInventoryHandler) unitest.Table {
+	return unitest.Table{
+		Name:    "process_queued_invalid_payload",
+		ExpResp: "failed to unmarshal queued payload",
+		ExcFunc: func(ctx context.Context) any {
+			// Invalid JSON payload - should fail to unmarshal QueuedPayload
+			invalidPayload := json.RawMessage(`{not valid json}`)
+
+			err := handler.ProcessQueued(ctx, invalidPayload, nil)
+			if err == nil {
+				return "expected error, got nil"
+			}
+			// Check that error message contains expected text
+			if !contains(err.Error(), "failed to unmarshal queued payload") {
+				return fmt.Sprintf("unexpected error: %s", err.Error())
+			}
+			return "failed to unmarshal queued payload"
+		},
+		CmpFunc: func(got any, exp any) string {
+			if got != exp {
+				return fmt.Sprintf("got %v, want %v", got, exp)
+			}
+			return ""
+		},
+	}
+}
+
+// contains checks if substr is in s
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
+}
+
+func containsHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
