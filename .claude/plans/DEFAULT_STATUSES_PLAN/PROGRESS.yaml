@@ -19,8 +19,8 @@ project:
 planning_status:
   phase_1_doc_created: true
   phase_2_doc_created: true
-  phase_3_doc_created: false
-  next_phase_to_document: 3
+  phase_3_doc_created: true
+  next_phase_to_document: null
 
 phases:
   - phase: 1
