@@ -41,6 +41,24 @@ services:
     depends_on:
       - database
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      ichor-system-network:
+        ipv4_address: 10.5.0.6
+
   auth:
     image: localhost/superior/auth:0.0.1
     pull_policy: never
@@ -92,6 +110,7 @@ services:
       - ICHOR_DB_HOST=database
       - ICHOR_DB_DISABLE_TLS=true
       - ICHOR_AUTH_HOST=http://auth:6000
+      - ICHOR_RABBIT_MQ_URL=amqp://guest:guest@rabbitmq:5672/
       - KUBERNETES_NAMESPACE
       - KUBERNETES_NAME
       - KUBERNETES_POD_IP
@@ -107,6 +126,7 @@ services:
         ipv4_address: 10.5.0.15
     depends_on:
       - init-migrate-seed
+      - rabbitmq
 
   metrics:
     image: localhost/superior/metrics:0.0.1
