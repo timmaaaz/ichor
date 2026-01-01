@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
@@ -65,7 +67,10 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	registry := engine.GetRegistry()
 	registry.Register(communication.NewSendEmailHandler(db.Log, db.DB))
 	registry.Register(communication.NewSendNotificationHandler(db.Log, db.DB))
-	registry.Register(communication.NewCreateAlertHandler(db.Log, db.DB))
+
+	// Create alertbus for CreateAlertHandler
+	alertBus := alertbus.NewBusiness(db.Log, alertdb.NewStore(db.Log, db.DB))
+	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus))
 
 	// Create queue manager
 	qm, err := workflow.NewQueueManager(db.Log, db.DB, engine, client, queue)

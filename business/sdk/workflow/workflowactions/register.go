@@ -7,6 +7,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
@@ -36,6 +37,9 @@ type BusDependencies struct {
 	InventoryTransaction *inventorytransactionbus.Business
 	Product              *productbus.Business
 	Workflow             *workflow.Business
+
+	// Workflow domain
+	Alert *alertbus.Business
 }
 
 // RegisterAll registers all standard workflow actions using the config
@@ -49,7 +53,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 	// Communication actions
 	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB))
 	registry.Register(communication.NewSendNotificationHandler(config.Log, config.DB))
-	registry.Register(communication.NewCreateAlertHandler(config.Log, config.DB))
+	registry.Register(communication.NewCreateAlertHandler(config.Log, config.Buses.Alert))
 
 	// Inventory actions - need additional dependencies
 	registry.Register(inventory.NewAllocateInventoryHandler(

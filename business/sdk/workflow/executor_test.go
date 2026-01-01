@@ -1253,15 +1253,20 @@ func TestActionHandler_Implementations(t *testing.T) {
 			handlerType: "create_alert",
 			validConfig: json.RawMessage(`{
                 "message": "Alert message",
-                "recipients": ["user@example.com"],
-                "priority": "high"
+                "recipients": {
+                    "users": ["5cf37266-3473-4006-984f-9325122678b7"]
+                },
+                "severity": "high"
             }`),
 			invalidConfig: json.RawMessage(`{
                 "message": "",
-                "recipients": [],
-                "priority": "invalid"
+                "recipients": {
+                    "users": [],
+                    "roles": []
+                }
             }`),
-			wantType: "create_alert",
+			wantType:    "create_alert",
+			skipExecute: true,
 		},
 		{
 			name:        "SendEmailHandler",

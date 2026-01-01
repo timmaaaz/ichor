@@ -1663,3 +1663,63 @@ SET config = jsonb_set(
 WHERE config->'data_source'->0->'group_by' IS NOT NULL
   AND jsonb_typeof(config->'data_source'->0->'group_by') = 'object';
 
+-- Version: 1.76
+-- Description: Create workflow alert tables
+CREATE TABLE workflow.alerts (
+   id UUID NOT NULL,
+   alert_type VARCHAR(100) NOT NULL,
+   severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+   title TEXT NOT NULL,
+   message TEXT NOT NULL,
+   context JSONB DEFAULT '{}',
+   source_entity_name VARCHAR(100) NULL,
+   source_entity_id UUID NULL,
+   source_rule_id UUID NULL,
+   status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'acknowledged', 'dismissed')),
+   expires_date TIMESTAMP NULL,
+   created_date TIMESTAMP NOT NULL,
+   updated_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (id),
+   FOREIGN KEY (source_rule_id) REFERENCES workflow.automation_rules(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_alerts_status ON workflow.alerts(status);
+CREATE INDEX idx_alerts_severity ON workflow.alerts(severity);
+CREATE INDEX idx_alerts_created_date ON workflow.alerts(created_date DESC);
+CREATE INDEX idx_alerts_source_rule ON workflow.alerts(source_rule_id);
+CREATE INDEX idx_alerts_expires_date ON workflow.alerts(expires_date) WHERE expires_date IS NOT NULL;
+
+-- Version: 1.77
+-- Description: Create alert recipients table
+CREATE TABLE workflow.alert_recipients (
+   id UUID NOT NULL,
+   alert_id UUID NOT NULL,
+   recipient_type VARCHAR(20) NOT NULL CHECK (recipient_type IN ('user', 'role')),
+   recipient_id UUID NOT NULL,
+   created_date TIMESTAMP NOT NULL,
+   PRIMARY KEY (id),
+   FOREIGN KEY (alert_id) REFERENCES workflow.alerts(id) ON DELETE CASCADE,
+   UNIQUE (alert_id, recipient_type, recipient_id)
+);
+
+CREATE INDEX idx_alert_recipients_alert ON workflow.alert_recipients(alert_id);
+CREATE INDEX idx_alert_recipients_recipient ON workflow.alert_recipients(recipient_type, recipient_id);
+CREATE INDEX idx_alert_recipients_lookup ON workflow.alert_recipients(recipient_id, recipient_type, alert_id);
+
+-- Version: 1.78
+-- Description: Create alert acknowledgments table
+CREATE TABLE workflow.alert_acknowledgments (
+   id UUID NOT NULL,
+   alert_id UUID NOT NULL,
+   acknowledged_by UUID NOT NULL,
+   acknowledged_date TIMESTAMP NOT NULL,
+   notes TEXT NULL,
+   PRIMARY KEY (id),
+   FOREIGN KEY (alert_id) REFERENCES workflow.alerts(id) ON DELETE CASCADE,
+   FOREIGN KEY (acknowledged_by) REFERENCES core.users(id) ON DELETE CASCADE,
+   UNIQUE (alert_id, acknowledged_by)
+);
+
+CREATE INDEX idx_alert_ack_alert ON workflow.alert_acknowledgments(alert_id);
+CREATE INDEX idx_alert_ack_user ON workflow.alert_acknowledgments(acknowledged_by);
+

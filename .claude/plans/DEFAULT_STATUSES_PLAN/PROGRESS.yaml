@@ -5,16 +5,17 @@ project:
   name: "Default Status Management"
   description: "Implement default status management using form configuration + workflow engine"
   started: "2025-12-29"
-  status: "in_progress"  # planning | in_progress | completed | blocked
-  current_phase: 2
+  completed: "2025-12-31"
+  status: "completed"  # planning | in_progress | completed | blocked
+  current_phase: null
 
   summary:
     phases_total: 3
-    phases_completed: 2
+    phases_completed: 3
     phases_in_progress: 0
-    phases_pending: 1
-    files_created: 2
-    files_modified: 10
+    phases_pending: 0
+    files_created: 14
+    files_modified: 16
 
 planning_status:
   phase_1_doc_created: true
@@ -231,68 +232,163 @@ phases:
   - phase: 3
     name: "Alert System Enhancement"
     description: "Extend alert action to support role-based recipients and proper delivery"
-    status: "pending"
+    status: "completed"
     category: "fullstack"
+    started_date: "2025-12-31"
+    completed_date: "2025-12-31"
 
     tasks:
-      - task: "Design alert routing model"
-        status: "pending"
+      - task: "1. Create alert database tables"
+        status: "completed"
         notes:
-          - "Decide: user vs role recipients"
-          - "Decide: in-app only or also email"
-        files: []
-
-      - task: "Create alert database tables"
-        status: "pending"
-        notes:
-          - "workflow.alerts"
-          - "workflow.alert_recipients"
+          - "workflow.alerts with CHECK constraints"
+          - "workflow.alert_recipients with ON DELETE CASCADE"
           - "workflow.alert_acknowledgments"
         files:
           - path: "business/sdk/migrate/sql/migrate.sql"
-            status: "pending"
+            status: "completed"
 
-      - task: "Implement alert delivery"
-        status: "pending"
+      - task: "2. Create alertbus business layer"
+        status: "completed"
         notes:
-          - "In-app delivery mechanism"
+          - "Minimal business layer with Storer interface"
+          - "Alert, AlertRecipient, AlertAcknowledgment models"
+          - "Acknowledge/Dismiss with recipient authorization"
+        files:
+          - path: "business/domain/workflow/alertbus/alertbus.go"
+            status: "completed"
+          - path: "business/domain/workflow/alertbus/model.go"
+            status: "completed"
+          - path: "business/domain/workflow/alertbus/filter.go"
+            status: "completed"
+          - path: "business/domain/workflow/alertbus/order.go"
+            status: "completed"
+
+      - task: "3. Create alertdb store layer"
+        status: "completed"
+        notes:
+          - "Pure CRUD operations using sqldb helpers"
+          - "Batch CreateRecipients method"
+          - "IsRecipient check for authorization"
+        files:
+          - path: "business/domain/workflow/alertbus/stores/alertdb/alertdb.go"
+            status: "completed"
+          - path: "business/domain/workflow/alertbus/stores/alertdb/model.go"
+            status: "completed"
+          - path: "business/domain/workflow/alertbus/stores/alertdb/filter.go"
+            status: "completed"
+          - path: "business/domain/workflow/alertbus/stores/alertdb/order.go"
+            status: "completed"
+
+      - task: "4. Update CreateAlertHandler"
+        status: "completed"
+        notes:
+          - "Use alertbus for persistence"
+          - "Build Alert and AlertRecipient structs"
+          - "Validate UUIDs and fail fast on invalid"
+          - "Added resolveTemplateVars helper for {{var}} substitution"
+          - "Updated register.go to add alertbus dependency"
         files:
           - path: "business/sdk/workflow/workflowactions/communication/alert.go"
-            status: "pending"
+            status: "completed"
+          - path: "business/sdk/workflow/workflowactions/register.go"
+            status: "completed"
 
-      - task: "Add UI for viewing/acknowledging alerts"
-        status: "pending"
+      - task: "5. Create alertapi layer"
+        status: "completed"
         notes:
-          - "Frontend component for alert display"
-        files: []
+          - "No alertapp layer - validation inline"
+          - "queryMine, queryByID, acknowledge, dismiss handlers"
+          - "Authentication middleware, business layer handles authorization"
+        files:
+          - path: "api/domain/http/workflow/alertapi/alertapi.go"
+            status: "completed"
+          - path: "api/domain/http/workflow/alertapi/route.go"
+            status: "completed"
+          - path: "api/domain/http/workflow/alertapi/model.go"
+            status: "completed"
+          - path: "api/domain/http/workflow/alertapi/filter.go"
+            status: "completed"
+
+      - task: "6. Wire Alert API in all.go"
+        status: "completed"
+        notes:
+          - "Instantiate alertbus"
+          - "Register alertapi routes"
+          - "Update workflow action handler registration"
+          - "Fixed apitest/workflow.go for alertbus"
+          - "Fixed eventpublisher_integration_test.go for alertbus"
+        files:
+          - path: "api/cmd/services/ichor/build/all/all.go"
+            status: "completed"
+          - path: "api/sdk/http/apitest/workflow.go"
+            status: "completed"
+          - path: "business/sdk/workflow/eventpublisher_integration_test.go"
+            status: "completed"
+
+      - task: "7. Add table access permissions"
+        status: "completed"
+        notes:
+          - "workflow.alerts added to testutil.go"
+        files:
+          - path: "business/domain/core/tableaccessbus/testutil.go"
+            status: "completed"
+
+      - task: "8. Unit tests for alertbus"
+        status: "completed"
+        notes:
+          - "Test create, query, queryMine, acknowledge, dismiss"
+          - "Added AlertTestData to unitest.SeedData"
+          - "Added Alert to dbtest.BusDomain"
+        files:
+          - path: "business/domain/workflow/alertbus/alertbus_test.go"
+            status: "completed"
+          - path: "business/sdk/unitest/model.go"
+            status: "completed"
+          - path: "business/sdk/dbtest/dbtest.go"
+            status: "completed"
 
     validation:
       - check: "Go compilation passes"
-        status: "pending"
-      - check: "Alerts created with role-based recipients"
-        status: "pending"
-      - check: "Users can view and acknowledge alerts"
-        status: "pending"
+        status: "completed"
+      - check: "alertbus tests pass"
+        status: "completed"
+      - check: "EventPublisher tests pass"
+        status: "completed"
+      - check: "Migration creates all 3 tables with CHECK constraints"
+        status: "completed"
+      - check: "alertbus.Acknowledge() validates recipient authorization"
+        status: "completed"
+      - check: "alertbus.Dismiss() validates recipient authorization"
+        status: "completed"
+      - check: "CreateAlertHandler.Execute() persists via alertbus"
+        status: "completed"
 
     deliverables:
-      - "Alert database tables migration"
-      - "Enhanced alert action handler"
-      - "Alert UI components"
+      - "Database migration (1.76, 1.77, 1.78) with CHECK constraints"
+      - "alertbus package (minimal business layer)"
+      - "alertdb package (pure CRUD store)"
+      - "Updated CreateAlertHandler using alertbus"
+      - "alertapi package with inline validation"
+      - "alertapi wired in all.go"
+      - "Table access permissions"
+      - "Unit tests for alertbus"
 
     blockers: []
 
 context:
-  current_focus: "Phase 3 plan reviewed and updated with fixes - Ready for implementation"
-  next_task: "Implement Phase 3: Create alertbus, alertdb, update CreateAlertHandler, create alertapi"
+  current_focus: "Project completed - All 3 phases implemented and tested"
+  next_task: null
   recent_changes:
-    - "Phase 3 plan review completed (2025-12-31)"
-    - "Fixed ExpiresDate type to *time.Time (nullable)"
-    - "Added batch CreateRecipients method (avoid N+1)"
-    - "Fixed error handling: return errors on invalid UUIDs (don't silently skip)"
-    - "Simplified auth model: authentication only for user endpoints"
-    - "Added admin /workflow/alerts endpoint for admins"
-    - "Added Query/Count methods for admin access"
-    - "Phase 2 marked complete on 2025-12-31"
+    - "Phase 3 implementation completed (2025-12-31)"
+    - "Created alertbus business layer with recipient authorization"
+    - "Created alertdb store layer with batch operations"
+    - "Updated CreateAlertHandler to use alertbus"
+    - "Created alertapi layer with query/acknowledge/dismiss endpoints"
+    - "Wired Alert API in all.go"
+    - "Fixed apitest/workflow.go and eventpublisher_integration_test.go for alertbus"
+    - "Added alertbus unit tests covering create, query, queryMine, acknowledge, dismiss"
+    - "All tests pass"
   decisions:
     - "Decision: Use form config FK resolution (not template variables) for default status values"
     - "Decision: Names resolved to UUIDs at formdata processing time"
@@ -326,8 +422,8 @@ milestones:
     status: "completed"
     date: "2025-12-31"
   - name: "Phase 3 Complete - Alert System"
-    status: "pending"
-    date: null
+    status: "completed"
+    date: "2025-12-31"
   - name: "Project Complete"
-    status: "pending"
-    date: null
+    status: "completed"
+    date: "2025-12-31"

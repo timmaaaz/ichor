@@ -58,6 +58,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
@@ -71,6 +72,12 @@ import (
 type User struct {
 	userbus.User
 	Homes []homebus.Home
+}
+
+// AlertTestData holds test-specific data for alert tests.
+type AlertTestData struct {
+	UserID uuid.UUID
+	RoleID uuid.UUID
 }
 
 // SeedData represents data that was seeded for the test.
@@ -137,6 +144,10 @@ type SeedData struct {
 	PageConfigs                   []pageconfigbus.PageConfig
 	PageContents                  []pagecontentbus.PageContent
 	PageConfigIDs                 []uuid.UUID
+
+	// Workflow
+	Alerts        []alertbus.Alert
+	AlertTestData *AlertTestData
 }
 
 type Table struct {

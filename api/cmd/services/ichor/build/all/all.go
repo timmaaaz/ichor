@@ -58,6 +58,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/sales/orderfulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/sales/orderlineitemsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/sales/ordersapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
@@ -263,6 +264,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -385,6 +388,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	pageContentBus := pagecontentbus.NewBusiness(cfg.Log, delegate, pagecontentdb.NewStore(cfg.Log, cfg.DB))
 	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
 	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB), pageContentBus, pageActionBus)
+
+	// Workflow domain
+	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
 
 	// =========================================================================
 	// Initialize Workflow Infrastructure
@@ -946,6 +952,15 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	pagecontentapi.Routes(app, pagecontentapi.Config{
 		Log:            cfg.Log,
 		PageContentBus: pageContentBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	// workflow
+	alertapi.Routes(app, alertapi.Config{
+		Log:            cfg.Log,
+		AlertBus:       alertBus,
+		UserRoleBus:    userRoleBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})

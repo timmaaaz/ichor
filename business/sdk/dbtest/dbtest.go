@@ -95,6 +95,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus/stores/orderlineitemsdb"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/stores/ordersdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
@@ -249,6 +251,7 @@ type BusDomain struct {
 
 	// Workflow
 	Workflow *workflow.Business
+	Alert    *alertbus.Business
 
 	// Data
 	ConfigStore *tablebuilder.ConfigStore
@@ -354,6 +357,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	// Workflow
 	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
 
 	// Data
 	configBus := tablebuilder.NewConfigStore(log, db)
@@ -426,6 +430,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Order:                     ordersBus,
 		OrderLineItem:             orderLineItemsBus,
 		Workflow:                  workflowBus,
+		Alert:                     alertBus,
 		ConfigStore:               configBus,
 		TableStore:                tableBus,
 		Form:                      formBus,
