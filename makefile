@@ -118,7 +118,7 @@ PROMETHEUS      := prom/prometheus:v2.54.0
 TEMPO           := grafana/tempo:2.5.0
 LOKI            := grafana/loki:3.1.0
 PROMTAIL        := grafana/promtail:3.1.0
-RABBITMQ       := rabbitmq:3.11.0
+RABBITMQ       := rabbitmq:3-management
 
 KIND_CLUSTER    := superior-starter-cluster
 NAMESPACE       := ichor-system
@@ -215,6 +215,7 @@ dev-up:
 	kind load docker-image $(TEMPO) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(LOKI) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(PROMTAIL) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(RABBITMQ) --name $(KIND_CLUSTER) & \
 	wait;
 
 dev-down:
@@ -252,6 +253,9 @@ dev-apply:
 
 	kustomize build zarf/k8s/dev/database | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
+
+	kustomize build zarf/k8s/dev/rabbitmq | kubectl apply -f -
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/rabbitmq
 
 	kustomize build zarf/k8s/dev/auth | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(AUTH_APP) --timeout=120s --for=condition=Ready
