@@ -59,6 +59,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/sales/orderlineitemsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/sales/ordersapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertws"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
@@ -266,12 +267,14 @@ import (
 	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
+	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
+	foundationws "github.com/timmaaaz/ichor/foundation/websocket"
 )
 
 // Routes constructs the add value which provides the implementation of
@@ -964,6 +967,49 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
+
+	// =========================================================================
+	// Initialize WebSocket Infrastructure for Real-time Alerts
+	// =========================================================================
+
+	// Create foundation Hub (generic, no business logic)
+	wsHub := foundationws.NewHub(cfg.Log)
+
+	// Create AlertHub (app layer with user/role semantics)
+	alertHub := alertws.NewAlertHub(wsHub, userRoleBus, cfg.Log)
+
+	// Start Hub metrics loop in background
+	go func() {
+		if err := wsHub.Run(context.Background()); err != nil && err != context.Canceled {
+			cfg.Log.Error(context.Background(), "websocket hub error", "error", err)
+		}
+	}()
+
+	// Register delegate handlers for role change events
+	alertHubDelegate := alertws.NewAlertHubDelegateHandler(alertHub, cfg.Log)
+	alertHubDelegate.RegisterRoleChanges(delegate)
+
+	// Start alert consumer (if RabbitMQ is connected)
+	if cfg.RabbitClient != nil && cfg.RabbitClient.IsConnected() {
+		workflowQueue := rabbitmq.NewWorkflowQueue(cfg.RabbitClient, cfg.Log)
+		alertConsumer := alertws.NewAlertConsumer(alertHub, workflowQueue, cfg.Log)
+		go func() {
+			cfg.Log.Info(context.Background(), "alert websocket consumer started")
+			if err := alertConsumer.Start(context.Background()); err != nil && err != context.Canceled {
+				cfg.Log.Error(context.Background(), "alert websocket consumer error", "error", err)
+			}
+		}()
+	}
+
+	// Register WebSocket routes for real-time alerts
+	wsAuth := mid.BearerQueryParam(cfg.Auth)
+	alertws.Routes(app, alertws.RouteConfig{
+		Log:                cfg.Log,
+		AlertHub:           alertHub,
+		CORSAllowedOrigins: []string{"*"}, // TODO: Configure from environment
+	}, wsAuth)
+
+	cfg.Log.Info(context.Background(), "websocket alert routes initialized")
 
 	// formdata - dynamic multi-entity operations
 	// Build registry with entity registrations
