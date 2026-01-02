@@ -10,6 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
@@ -20,6 +21,7 @@ type Config struct {
 	UserRoleBus    *userrolebus.Business
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
+	WorkflowQueue  *rabbitmq.WorkflowQueue
 }
 
 // RouteTable is the table name used for permission checks.
@@ -29,7 +31,7 @@ const RouteTable = "workflow.alerts"
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
-	api := newAPI(cfg.Log, cfg.AlertBus, cfg.UserRoleBus)
+	api := newAPI(cfg.Log, cfg.AlertBus, cfg.UserRoleBus, cfg.WorkflowQueue)
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	// User endpoints - authentication only, business layer handles recipient filtering
@@ -38,6 +40,9 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts/{id}", api.queryByID, authen)
 	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/{id}/acknowledge", api.acknowledge, authen)
 	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/{id}/dismiss", api.dismiss, authen)
+
+	// Test endpoint - creates a test alert for the authenticated user (for E2E WebSocket testing)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/test", api.testAlert, authen)
 
 	// Admin endpoint - requires read permission on workflow.alerts table
 	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts", api.query, authen,

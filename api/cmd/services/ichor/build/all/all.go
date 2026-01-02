@@ -969,6 +969,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		UserRoleBus:    userRoleBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+		WorkflowQueue:  workflowQueue,
 	})
 
 	// =========================================================================

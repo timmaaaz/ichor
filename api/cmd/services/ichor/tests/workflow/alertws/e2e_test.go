@@ -3,6 +3,7 @@ package alertws_test
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -356,4 +357,86 @@ func testE2EUserIsolation(t *testing.T, test *apitest.WSTest, sd AlertWSSeedData
 		// Expected - user 2 should not receive user 0's message
 		t.Log("User 2 correctly did not receive user 0's private alert")
 	}
+}
+
+// testE2ETestAlertEndpoint tests the complete flow via the HTTP endpoint:
+// 1. Connect WebSocket client with JWT auth
+// 2. Call POST /v1/workflow/alerts/test with JWT
+// 3. Verify HTTP response returns the created alert
+// 4. Verify alert is delivered to WebSocket client
+func testE2ETestAlertEndpoint(t *testing.T, test *apitest.WSTest, sd AlertWSSeedData) {
+	ctx := context.Background()
+
+	// Connect WebSocket client with valid JWT
+	conn := test.ConnectClient(t, sd.UserToken(0))
+	defer conn.Close(websocket.StatusNormalClosure, "test complete")
+
+	time.Sleep(500 * time.Millisecond)
+
+	// Build HTTP request with JWT auth
+	req, err := http.NewRequest(http.MethodPost, test.Server.URL+"/v1/workflow/alerts/test", nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+sd.UserToken(0))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to call test endpoint: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Verify HTTP response
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected 200 OK, got %d", resp.StatusCode)
+	}
+
+	var alert map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&alert); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify alert structure
+	if alert["alertType"] != "test_alert" {
+		t.Errorf("Expected alertType 'test_alert', got %v", alert["alertType"])
+	}
+	if alert["severity"] != "medium" {
+		t.Errorf("Expected severity 'medium', got %v", alert["severity"])
+	}
+	if alert["title"] != "Test Alert" {
+		t.Errorf("Expected title 'Test Alert', got %v", alert["title"])
+	}
+	if alert["status"] != "active" {
+		t.Errorf("Expected status 'active', got %v", alert["status"])
+	}
+
+	t.Logf("HTTP response received: alertType=%v, severity=%v", alert["alertType"], alert["severity"])
+
+	// Wait for WebSocket message delivery
+	readCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, msg, err := conn.Read(readCtx)
+	if err != nil {
+		t.Fatalf("Failed to receive WebSocket message: %v", err)
+	}
+
+	// Verify WebSocket message
+	var wsMsg map[string]interface{}
+	if err := json.Unmarshal(msg, &wsMsg); err != nil {
+		t.Fatalf("Failed to parse WebSocket message: %v", err)
+	}
+
+	if wsMsg["type"] != "alert" {
+		t.Errorf("Expected WebSocket message type 'alert', got %v", wsMsg["type"])
+	}
+
+	// Verify payload contains the test alert
+	if wsMsg["payload"] == nil {
+		t.Error("Expected payload in WebSocket message")
+	}
+
+	t.Logf("E2E test alert endpoint passed: HTTP response + WebSocket delivery verified")
+	t.Logf("WebSocket message: %s", string(msg))
 }

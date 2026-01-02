@@ -18,6 +18,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
@@ -32,16 +33,18 @@ var orderByFields = map[string]string{
 }
 
 type api struct {
-	log         *logger.Logger
-	alertBus    *alertbus.Business
-	userRoleBus *userrolebus.Business
+	log           *logger.Logger
+	alertBus      *alertbus.Business
+	userRoleBus   *userrolebus.Business
+	workflowQueue *rabbitmq.WorkflowQueue
 }
 
-func newAPI(log *logger.Logger, alertBus *alertbus.Business, userRoleBus *userrolebus.Business) *api {
+func newAPI(log *logger.Logger, alertBus *alertbus.Business, userRoleBus *userrolebus.Business, workflowQueue *rabbitmq.WorkflowQueue) *api {
 	return &api{
-		log:         log,
-		alertBus:    alertBus,
-		userRoleBus: userRoleBus,
+		log:           log,
+		alertBus:      alertBus,
+		userRoleBus:   userRoleBus,
+		workflowQueue: workflowQueue,
 	}
 }
 
@@ -224,4 +227,75 @@ func (a *api) getUserRoleIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID
 		roleIDs[i] = ur.RoleID
 	}
 	return roleIDs, nil
+}
+
+// testAlert creates a test alert for the authenticated user (for E2E WebSocket testing).
+func (a *api) testAlert(ctx context.Context, r *http.Request) web.Encoder {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	now := time.Now()
+	alertID := uuid.New()
+
+	// Create alert in database
+	alert := alertbus.Alert{
+		ID:          alertID,
+		AlertType:   "test_alert",
+		Severity:    alertbus.SeverityMedium,
+		Title:       "Test Alert",
+		Message:     "This is a test alert for E2E testing",
+		Status:      alertbus.StatusActive,
+		CreatedDate: now,
+		UpdatedDate: now,
+	}
+
+	if err := a.alertBus.Create(ctx, alert); err != nil {
+		return errs.Newf(errs.Internal, "create alert: %s", err)
+	}
+
+	// Create recipient record for the user
+	recipient := alertbus.AlertRecipient{
+		ID:            uuid.New(),
+		AlertID:       alertID,
+		RecipientType: "user",
+		RecipientID:   userID,
+		CreatedDate:   now,
+	}
+
+	if err := a.alertBus.CreateRecipients(ctx, []alertbus.AlertRecipient{recipient}); err != nil {
+		return errs.Newf(errs.Internal, "create recipient: %s", err)
+	}
+
+	// Publish to RabbitMQ (if available) for WebSocket delivery
+	if a.workflowQueue != nil {
+		alertPayload := map[string]interface{}{
+			"alert": map[string]interface{}{
+				"id":          alertID.String(),
+				"alertType":   "test_alert",
+				"severity":    alertbus.SeverityMedium,
+				"title":       "Test Alert",
+				"message":     "This is a test alert for E2E testing",
+				"status":      alertbus.StatusActive,
+				"createdDate": now.Format(time.RFC3339),
+				"updatedDate": now.Format(time.RFC3339),
+			},
+		}
+
+		msg := &rabbitmq.Message{
+			Type:       "alert",
+			EntityName: "workflow.alerts",
+			EntityID:   alertID,
+			UserID:     userID, // Target this user
+			Payload:    alertPayload,
+		}
+
+		if err := a.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg); err != nil {
+			a.log.Error(ctx, "failed to publish test alert to rabbitmq", "error", err)
+			// Don't fail the request - the alert is still created in the database
+		}
+	}
+
+	return toAppAlert(alert)
 }

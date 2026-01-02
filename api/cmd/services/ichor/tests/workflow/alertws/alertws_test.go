@@ -71,4 +71,7 @@ func Test_AlertWS_E2E(t *testing.T) {
 	t.Run("e2e-user-isolation", func(t *testing.T) {
 		testE2EUserIsolation(t, test, sd)
 	})
+	t.Run("e2e-test-alert-endpoint", func(t *testing.T) {
+		testE2ETestAlertEndpoint(t, test, sd)
+	})
 }
