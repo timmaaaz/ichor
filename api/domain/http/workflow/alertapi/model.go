@@ -2,6 +2,7 @@ package alertapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
@@ -101,4 +102,45 @@ type QueryParams struct {
 	SourceEntityName string
 	SourceEntityID   string
 	SourceRuleID     string
+}
+
+// BulkSelectedRequest represents the request body for bulk operations by IDs.
+type BulkSelectedRequest struct {
+	IDs   []string `json:"ids" validate:"required,min=1"`
+	Notes string   `json:"notes"`
+}
+
+// Decode implements the web.Decoder interface.
+func (app *BulkSelectedRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate validates the request.
+func (app BulkSelectedRequest) Validate() error {
+	if len(app.IDs) == 0 {
+		return fmt.Errorf("ids is required and must have at least one element")
+	}
+	return nil
+}
+
+// BulkAllRequest represents the request body for bulk all operations.
+type BulkAllRequest struct {
+	Notes string `json:"notes"`
+}
+
+// Decode implements the web.Decoder interface.
+func (app *BulkAllRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// BulkActionResult represents the response for bulk operations.
+type BulkActionResult struct {
+	Count   int `json:"count"`
+	Skipped int `json:"skipped"`
+}
+
+// Encode implements the web.Encoder interface.
+func (app BulkActionResult) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
 }

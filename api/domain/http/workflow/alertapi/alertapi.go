@@ -299,3 +299,127 @@ func (a *api) testAlert(ctx context.Context, r *http.Request) web.Encoder {
 
 	return toAppAlert(alert)
 }
+
+// acknowledgeSelected acknowledges multiple alerts by ID.
+func (a *api) acknowledgeSelected(ctx context.Context, r *http.Request) web.Encoder {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	roleIDs, err := a.getUserRoleIDs(ctx, userID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "get user roles: %s", err)
+	}
+
+	var req BulkSelectedRequest
+	if err := web.Decode(r, &req); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+	if err := req.Validate(); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	alertIDs, err := parseUUIDs(req.IDs)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	count, skipped, err := a.alertBus.AcknowledgeSelected(ctx, alertIDs, userID, roleIDs, req.Notes, time.Now())
+	if err != nil {
+		return errs.Newf(errs.Internal, "acknowledge selected: %s", err)
+	}
+
+	return BulkActionResult{Count: count, Skipped: skipped}
+}
+
+// acknowledgeAll acknowledges all active alerts for the user.
+func (a *api) acknowledgeAll(ctx context.Context, r *http.Request) web.Encoder {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	roleIDs, err := a.getUserRoleIDs(ctx, userID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "get user roles: %s", err)
+	}
+
+	var req BulkAllRequest
+	if err := web.Decode(r, &req); err != nil {
+		req = BulkAllRequest{} // Optional body
+	}
+
+	count, err := a.alertBus.AcknowledgeAll(ctx, userID, roleIDs, req.Notes, time.Now())
+	if err != nil {
+		return errs.Newf(errs.Internal, "acknowledge all: %s", err)
+	}
+
+	return BulkActionResult{Count: count, Skipped: 0}
+}
+
+// dismissSelected dismisses multiple alerts by ID.
+func (a *api) dismissSelected(ctx context.Context, r *http.Request) web.Encoder {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	roleIDs, err := a.getUserRoleIDs(ctx, userID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "get user roles: %s", err)
+	}
+
+	var req BulkSelectedRequest
+	if err := web.Decode(r, &req); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+	if err := req.Validate(); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	alertIDs, err := parseUUIDs(req.IDs)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	count, skipped, err := a.alertBus.DismissSelected(ctx, alertIDs, userID, roleIDs, time.Now())
+	if err != nil {
+		return errs.Newf(errs.Internal, "dismiss selected: %s", err)
+	}
+
+	return BulkActionResult{Count: count, Skipped: skipped}
+}
+
+// dismissAll dismisses all active alerts for the user.
+func (a *api) dismissAll(ctx context.Context, r *http.Request) web.Encoder {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	roleIDs, err := a.getUserRoleIDs(ctx, userID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "get user roles: %s", err)
+	}
+
+	count, err := a.alertBus.DismissAll(ctx, userID, roleIDs, time.Now())
+	if err != nil {
+		return errs.Newf(errs.Internal, "dismiss all: %s", err)
+	}
+
+	return BulkActionResult{Count: count, Skipped: 0}
+}
+
+// parseUUIDs converts a slice of string IDs to UUIDs.
+func parseUUIDs(ids []string) ([]uuid.UUID, error) {
+	result := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			return nil, fmt.Errorf("invalid id at index %d: %w", i, err)
+		}
+		result[i] = parsed
+	}
+	return result, nil
+}

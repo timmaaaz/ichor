@@ -1,11 +1,21 @@
 package alertapi
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 )
+
+// validSeverities contains the allowed severity values.
+var validSeverities = map[string]bool{
+	alertbus.SeverityLow:      true,
+	alertbus.SeverityMedium:   true,
+	alertbus.SeverityHigh:     true,
+	alertbus.SeverityCritical: true,
+}
 
 func parseQueryParams(r *http.Request) QueryParams {
 	values := r.URL.Query()
@@ -40,7 +50,14 @@ func parseFilter(qp QueryParams) (alertbus.QueryFilter, error) {
 	}
 
 	if qp.Severity != "" {
-		filter.Severity = &qp.Severity
+		severities := strings.Split(qp.Severity, ",")
+		for i := range severities {
+			severities[i] = strings.TrimSpace(severities[i])
+			if !validSeverities[severities[i]] {
+				return alertbus.QueryFilter{}, fmt.Errorf("invalid severity value: %s", severities[i])
+			}
+		}
+		filter.Severities = severities
 	}
 
 	if qp.Status != "" {

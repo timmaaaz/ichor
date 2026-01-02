@@ -37,12 +37,20 @@ func Routes(app *web.App, cfg Config) {
 	// User endpoints - authentication only, business layer handles recipient filtering
 	// Everyone can access alerts, but they only see alerts they're recipients of
 	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts/mine", api.queryMine, authen)
-	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts/{id}", api.queryByID, authen)
-	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/{id}/acknowledge", api.acknowledge, authen)
-	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/{id}/dismiss", api.dismiss, authen)
+
+	// Bulk action endpoints (must come before /{id} routes to avoid path conflicts)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/acknowledge-selected", api.acknowledgeSelected, authen)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/acknowledge-all", api.acknowledgeAll, authen)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/dismiss-selected", api.dismissSelected, authen)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/dismiss-all", api.dismissAll, authen)
 
 	// Test endpoint - creates a test alert for the authenticated user (for E2E WebSocket testing)
 	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/test", api.testAlert, authen)
+
+	// Single alert endpoints
+	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts/{id}", api.queryByID, authen)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/{id}/acknowledge", api.acknowledge, authen)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/{id}/dismiss", api.dismiss, authen)
 
 	// Admin endpoint - requires read permission on workflow.alerts table
 	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts", api.query, authen,

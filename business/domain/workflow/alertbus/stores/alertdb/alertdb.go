@@ -47,6 +47,27 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (alertbus.Storer, error) {
 	return &store, nil
 }
 
+// namedExecContextUsingIn executes a query with named parameters that includes IN clauses.
+func namedExecContextUsingIn(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, query string, data any) error {
+	named, args, err := sqlx.Named(query, data)
+	if err != nil {
+		return fmt.Errorf("sqlx.Named: %w", err)
+	}
+
+	query, args, err = sqlx.In(named, args...)
+	if err != nil {
+		return fmt.Errorf("sqlx.In: %w", err)
+	}
+
+	query = db.Rebind(query)
+
+	if _, err := db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("execcontext: %w", err)
+	}
+
+	return nil
+}
+
 // Create adds a new alert to the system.
 func (s *Store) Create(ctx context.Context, a alertbus.Alert) error {
 	const q = `
@@ -168,8 +189,14 @@ func (s *Store) Query(ctx context.Context, filter alertbus.QueryFilter, orderBy 
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
 
 	var dbAlerts []dbAlert
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbAlerts); err != nil {
-		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	if hasSeverities(filter) {
+		if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &dbAlerts); err != nil {
+			return nil, fmt.Errorf("namedqueryslice: %w", err)
+		}
+	} else {
+		if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbAlerts); err != nil {
+			return nil, fmt.Errorf("namedqueryslice: %w", err)
+		}
 	}
 
 	return toBusAlerts(dbAlerts), nil
@@ -228,7 +255,8 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
 
 	var dbAlerts []dbAlert
-	if len(roleIDs) > 0 {
+	// Use NamedQuerySliceUsingIn when we have role_ids or severities (IN clauses)
+	if len(roleIDs) > 0 || hasSeverities(filter) {
 		if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &dbAlerts); err != nil {
 			return nil, fmt.Errorf("namedqueryslice: %w", err)
 		}
@@ -257,8 +285,15 @@ func (s *Store) Count(ctx context.Context, filter alertbus.QueryFilter) (int, er
 	var count struct {
 		Count int `db:"count"`
 	}
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &count); err != nil {
-		return 0, fmt.Errorf("db: %w", err)
+
+	if hasSeverities(filter) {
+		if err := sqldb.NamedQueryStructUsingIn(ctx, s.log, s.db, buf.String(), data, &count); err != nil {
+			return 0, fmt.Errorf("db: %w", err)
+		}
+	} else {
+		if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &count); err != nil {
+			return 0, fmt.Errorf("db: %w", err)
+		}
 	}
 
 	return count.Count, nil
@@ -306,7 +341,8 @@ func (s *Store) CountByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 		Count int `db:"count"`
 	}
 
-	if len(roleIDs) > 0 {
+	// Use NamedQueryStructUsingIn when we have role_ids or severities (IN clauses)
+	if len(roleIDs) > 0 || hasSeverities(filter) {
 		if err := sqldb.NamedQueryStructUsingIn(ctx, s.log, s.db, buf.String(), data, &count); err != nil {
 			return 0, fmt.Errorf("db: %w", err)
 		}
@@ -401,4 +437,234 @@ func (s *Store) IsRecipient(ctx context.Context, alertID, userID uuid.UUID, role
 	}
 
 	return count.Count > 0, nil
+}
+
+// FilterRecipientAlerts returns the subset of alertIDs where the user is a recipient.
+func (s *Store) FilterRecipientAlerts(ctx context.Context, alertIDs []uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) ([]uuid.UUID, error) {
+	if len(alertIDs) == 0 {
+		return nil, nil
+	}
+
+	alertIDStrings := make([]string, len(alertIDs))
+	for i, id := range alertIDs {
+		alertIDStrings[i] = id.String()
+	}
+
+	roleIDStrings := make([]string, len(roleIDs))
+	for i, id := range roleIDs {
+		roleIDStrings[i] = id.String()
+	}
+
+	data := map[string]any{
+		"alert_ids": alertIDStrings,
+		"user_id":   userID.String(),
+		"role_ids":  roleIDStrings,
+	}
+
+	var q string
+	if len(roleIDs) > 0 {
+		q = `
+		SELECT DISTINCT
+			alert_id
+		FROM
+			workflow.alert_recipients
+		WHERE
+			alert_id IN (:alert_ids)
+			AND (
+				(recipient_type = 'user' AND recipient_id = :user_id)
+				OR (recipient_type = 'role' AND recipient_id IN (:role_ids))
+			)`
+	} else {
+		q = `
+		SELECT DISTINCT
+			alert_id
+		FROM
+			workflow.alert_recipients
+		WHERE
+			alert_id IN (:alert_ids)
+			AND recipient_type = 'user'
+			AND recipient_id = :user_id`
+	}
+
+	var results []struct {
+		AlertID string `db:"alert_id"`
+	}
+
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &results); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	ids := make([]uuid.UUID, len(results))
+	for i, r := range results {
+		id, err := uuid.Parse(r.AlertID)
+		if err != nil {
+			return nil, fmt.Errorf("parse uuid: %w", err)
+		}
+		ids[i] = id
+	}
+
+	return ids, nil
+}
+
+// QueryActiveByUserID returns the IDs of all active alerts for a user.
+func (s *Store) QueryActiveByUserID(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID) ([]uuid.UUID, error) {
+	roleIDStrings := make([]string, len(roleIDs))
+	for i, id := range roleIDs {
+		roleIDStrings[i] = id.String()
+	}
+
+	data := map[string]any{
+		"user_id":  userID.String(),
+		"role_ids": roleIDStrings,
+		"status":   alertbus.StatusActive,
+	}
+
+	var q string
+	if len(roleIDs) > 0 {
+		q = `
+		SELECT DISTINCT
+			a.id
+		FROM
+			workflow.alerts a
+		INNER JOIN workflow.alert_recipients ar ON a.id = ar.alert_id
+		WHERE
+			a.status = :status
+			AND (
+				(ar.recipient_type = 'user' AND ar.recipient_id = :user_id)
+				OR (ar.recipient_type = 'role' AND ar.recipient_id IN (:role_ids))
+			)`
+	} else {
+		q = `
+		SELECT DISTINCT
+			a.id
+		FROM
+			workflow.alerts a
+		INNER JOIN workflow.alert_recipients ar ON a.id = ar.alert_id
+		WHERE
+			a.status = :status
+			AND ar.recipient_type = 'user'
+			AND ar.recipient_id = :user_id`
+	}
+
+	var results []struct {
+		ID string `db:"id"`
+	}
+
+	if len(roleIDs) > 0 {
+		if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &results); err != nil {
+			return nil, fmt.Errorf("namedqueryslice: %w", err)
+		}
+	} else {
+		if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &results); err != nil {
+			return nil, fmt.Errorf("namedqueryslice: %w", err)
+		}
+	}
+
+	ids := make([]uuid.UUID, len(results))
+	for i, r := range results {
+		id, err := uuid.Parse(r.ID)
+		if err != nil {
+			return nil, fmt.Errorf("parse uuid: %w", err)
+		}
+		ids[i] = id
+	}
+
+	return ids, nil
+}
+
+// AcknowledgeMultiple creates acknowledgment records and updates status for multiple alerts.
+func (s *Store) AcknowledgeMultiple(ctx context.Context, alertIDs []uuid.UUID, userID uuid.UUID, notes string, now time.Time) (int, error) {
+	if len(alertIDs) == 0 {
+		return 0, nil
+	}
+
+	// Insert acknowledgment records (skip duplicates)
+	const ackQ = `
+	INSERT INTO workflow.alert_acknowledgments (
+		id, alert_id, acknowledged_by, acknowledged_date, notes
+	) VALUES (
+		:id, :alert_id, :acknowledged_by, :acknowledged_date, :notes
+	) ON CONFLICT (alert_id, acknowledged_by) DO NOTHING`
+
+	for _, alertID := range alertIDs {
+		ack := struct {
+			ID               string    `db:"id"`
+			AlertID          string    `db:"alert_id"`
+			AcknowledgedBy   string    `db:"acknowledged_by"`
+			AcknowledgedDate time.Time `db:"acknowledged_date"`
+			Notes            string    `db:"notes"`
+		}{
+			ID:               uuid.New().String(),
+			AlertID:          alertID.String(),
+			AcknowledgedBy:   userID.String(),
+			AcknowledgedDate: now,
+			Notes:            notes,
+		}
+
+		if err := sqldb.NamedExecContext(ctx, s.log, s.db, ackQ, ack); err != nil {
+			return 0, fmt.Errorf("namedexeccontext: %w", err)
+		}
+	}
+
+	// Update status to acknowledged for all alerts
+	alertIDStrings := make([]string, len(alertIDs))
+	for i, id := range alertIDs {
+		alertIDStrings[i] = id.String()
+	}
+
+	data := map[string]any{
+		"alert_ids":    alertIDStrings,
+		"status":       alertbus.StatusAcknowledged,
+		"updated_date": now,
+	}
+
+	const updateQ = `
+	UPDATE
+		workflow.alerts
+	SET
+		status = :status,
+		updated_date = :updated_date
+	WHERE
+		id IN (:alert_ids)`
+
+	if err := namedExecContextUsingIn(ctx, s.log, s.db, updateQ, data); err != nil {
+		return 0, fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return len(alertIDs), nil
+}
+
+// DismissMultiple updates status to dismissed for multiple alerts.
+func (s *Store) DismissMultiple(ctx context.Context, alertIDs []uuid.UUID, now time.Time) (int, error) {
+	if len(alertIDs) == 0 {
+		return 0, nil
+	}
+
+	alertIDStrings := make([]string, len(alertIDs))
+	for i, id := range alertIDs {
+		alertIDStrings[i] = id.String()
+	}
+
+	data := map[string]any{
+		"alert_ids":     alertIDStrings,
+		"status":        alertbus.StatusDismissed,
+		"active_status": alertbus.StatusActive,
+		"updated_date":  now,
+	}
+
+	const q = `
+	UPDATE
+		workflow.alerts
+	SET
+		status = :status,
+		updated_date = :updated_date
+	WHERE
+		id IN (:alert_ids)
+		AND status = :active_status`
+
+	if err := namedExecContextUsingIn(ctx, s.log, s.db, q, data); err != nil {
+		return 0, fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return len(alertIDs), nil
 }
