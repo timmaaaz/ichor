@@ -31,6 +31,8 @@ func NewAlertConsumer(alertHub *AlertHub, wq *rabbitmq.WorkflowQueue, log *logge
 
 // Start begins consuming alerts from RabbitMQ.
 // Blocks until context is cancelled.
+// Note: When using SetHandlerRegistry on QueueManager, Start() is not needed
+// as the QueueManager will route alert messages directly to HandleMessage.
 func (ac *AlertConsumer) Start(ctx context.Context) error {
 	consumer, err := ac.wq.Consume(ctx, rabbitmq.QueueTypeAlert, ac.handleAlert)
 	if err != nil {
@@ -41,6 +43,22 @@ func (ac *AlertConsumer) Start(ctx context.Context) error {
 	<-ctx.Done()
 	consumer.Stop()
 	return ctx.Err()
+}
+
+// =============================================================================
+// websocket.MessageHandler interface implementation
+// =============================================================================
+
+// MessageType returns the message type this handler processes.
+// Implements websocket.MessageHandler.
+func (ac *AlertConsumer) MessageType() string {
+	return "alert"
+}
+
+// HandleMessage processes a single alert message for WebSocket delivery.
+// Implements websocket.MessageHandler.
+func (ac *AlertConsumer) HandleMessage(ctx context.Context, msg *rabbitmq.Message) error {
+	return ac.handleAlert(ctx, msg)
 }
 
 // handleAlert processes a single alert message from RabbitMQ.

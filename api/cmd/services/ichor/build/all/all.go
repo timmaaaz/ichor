@@ -400,6 +400,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// =========================================================================
 
 	var eventPublisher *workflow.EventPublisher
+	var queueManager *workflow.QueueManager
+	var workflowQueue *rabbitmq.WorkflowQueue
 
 	if cfg.RabbitClient != nil && cfg.RabbitClient.IsConnected() {
 		workflowStore := workflowdb.NewStore(cfg.Log, cfg.DB)
@@ -409,8 +411,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		if err := workflowEngine.Initialize(context.Background(), workflowBus); err != nil {
 			cfg.Log.Error(context.Background(), "workflow engine init failed", "error", err)
 		} else {
-			workflowQueue := rabbitmq.NewWorkflowQueue(cfg.RabbitClient, cfg.Log)
-			queueManager, err := workflow.NewQueueManager(cfg.Log, cfg.DB, workflowEngine, cfg.RabbitClient, workflowQueue)
+			workflowQueue = rabbitmq.NewWorkflowQueue(cfg.RabbitClient, cfg.Log)
+			var err error
+			queueManager, err = workflow.NewQueueManager(cfg.Log, cfg.DB, workflowEngine, cfg.RabbitClient, workflowQueue)
 			if err != nil {
 				cfg.Log.Error(context.Background(), "queue manager creation failed", "error", err)
 			} else {
@@ -989,16 +992,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	alertHubDelegate := alertws.NewAlertHubDelegateHandler(alertHub, cfg.Log)
 	alertHubDelegate.RegisterRoleChanges(delegate)
 
-	// Start alert consumer (if RabbitMQ is connected)
-	if cfg.RabbitClient != nil && cfg.RabbitClient.IsConnected() {
-		workflowQueue := rabbitmq.NewWorkflowQueue(cfg.RabbitClient, cfg.Log)
+	// Wire up WebSocket message handlers via registry
+	// The QueueManager consumes from all queues; handlers in the registry
+	// intercept messages by type (e.g., "alert") for real-time delivery.
+	if queueManager != nil && workflowQueue != nil {
+		handlerRegistry := foundationws.NewHandlerRegistry()
+
+		// Register alert handler for WebSocket delivery
 		alertConsumer := alertws.NewAlertConsumer(alertHub, workflowQueue, cfg.Log)
-		go func() {
-			cfg.Log.Info(context.Background(), "alert websocket consumer started")
-			if err := alertConsumer.Start(context.Background()); err != nil && err != context.Canceled {
-				cfg.Log.Error(context.Background(), "alert websocket consumer error", "error", err)
-			}
-		}()
+		handlerRegistry.Register(alertConsumer)
+
+		// Wire registry to queue manager
+		queueManager.SetHandlerRegistry(handlerRegistry)
+		cfg.Log.Info(context.Background(), "websocket handler registry configured",
+			"handlers", handlerRegistry.Types())
 	}
 
 	// Register WebSocket routes for real-time alerts
