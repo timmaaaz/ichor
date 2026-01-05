@@ -140,7 +140,7 @@ func (a *App) QueryByName(ctx context.Context, name string) (uuid.UUID, error) {
 		Name: &name,
 	}
 
-	statuses, err := a.lineitemfulfillmentstatusbus.Query(ctx, filter, order.By{}, page.MustParse("1", "1"))
+	statuses, err := a.lineitemfulfillmentstatusbus.Query(ctx, filter, lineitemfulfillmentstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("query by name: %w", err)
 	}

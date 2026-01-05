@@ -392,7 +392,7 @@ INSERT INTO assets.fulfillment_status (id, name, icon_id) VALUES
     (uuid_generate_v4(), 'REJECTED', uuid_generate_v4()),
     (uuid_generate_v4(), 'IN_PROGRESS', uuid_generate_v4());
 
-INSERT INTO assets.asset_conditions (id, name) VALUES 
+INSERT INTO assets.asset_conditions (id, name) VALUES
     (uuid_generate_v4(), 'PERFECT'),
     (uuid_generate_v4(), 'GOOD'),
     (uuid_generate_v4(), 'USED'),
@@ -448,6 +448,8 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'geography.countries', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'geography.regions', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'geography.streets', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'geography.timezones', true, true, true, true),
+
     -- hr schema
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'hr.homes', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'hr.offices', true, true, true, true),
