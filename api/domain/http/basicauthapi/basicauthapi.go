@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -85,45 +86,32 @@ func NewAPI(cfg Config) *api {
 }
 
 // login handles user authentication with email and password
-func (a *api) login(w http.ResponseWriter, r *http.Request) {
+func (a *api) login(ctx context.Context, r *http.Request) web.Encoder {
 	var req LoginRequest
 	if err := web.Decode(r, &req); err != nil {
-		a.log.Error(r.Context(), "decoding login request: %s", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		a.log.Error(ctx, "decoding login request", "error", err)
+		return errs.New(errs.InvalidArgument, err)
 	}
-
-	// Query user from database
-	var user userbus.User
-
-	ctx := r.Context()
 
 	email, err := mail.ParseAddress(req.Email)
 	if err != nil {
 		a.log.Error(ctx, "parsing email address", "error", err)
-		http.Error(w, "invalid email format", http.StatusBadRequest)
-		return
+		return errs.Newf(errs.InvalidArgument, "invalid email format")
 	}
 
-	// Pass the mail.Address directly, not email.Address
-	user, err = a.userBus.QueryByEmail(ctx, *email)
+	user, err := a.userBus.QueryByEmail(ctx, *email)
 	if err != nil {
 		a.log.Info(ctx, "login attempt failed", "email", req.Email, "error", err)
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
-		return
+		return errs.Newf(errs.Unauthenticated, "invalid credentials")
 	}
 
-	// Check if user is enabled
 	if !user.Enabled {
-		http.Error(w, "account disabled", http.StatusUnauthorized)
-		return
+		return errs.Newf(errs.Unauthenticated, "account disabled")
 	}
 
-	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		a.log.Info(ctx, "invalid password", "email", req.Email)
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
-		return
+		return errs.Newf(errs.Unauthenticated, "invalid credentials")
 	}
 
 	roleStrings := make([]string, len(user.Roles))
@@ -131,7 +119,6 @@ func (a *api) login(w http.ResponseWriter, r *http.Request) {
 		roleStrings[i] = role.String()
 	}
 
-	// Generate JWT token
 	claims := auth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.ID.String(),
@@ -144,81 +131,57 @@ func (a *api) login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := a.auth.GenerateToken(a.tokenKey, claims)
 	if err != nil {
-		a.log.Error(ctx, "generating token: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		a.log.Error(ctx, "generating token", "error", err)
+		return errs.New(errs.Internal, err)
 	}
 
-	// Log successful login
 	a.log.Info(ctx, "user logged in", "user_id", user.ID, "email", user.Email)
 
-	// Return response
-	response := LoginResponse{
+	return LoginResponse{
 		Token:     token,
 		UserID:    user.ID.String(),
 		Email:     user.Email.Address,
 		Roles:     roleStrings,
 		ExpiresAt: time.Now().UTC().Add(a.tokenExpiration),
 	}
-
-	// Return response as JSON
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		a.log.Error(ctx, "encoding response: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 }
 
 // refresh handles token refresh requests
-func (a *api) refresh(w http.ResponseWriter, r *http.Request) {
+func (a *api) refresh(ctx context.Context, r *http.Request) web.Encoder {
 	var req RefreshRequest
 	if err := web.Decode(r, &req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
+		return errs.New(errs.InvalidArgument, err)
 	}
 
-	ctx := r.Context()
-
-	// Parse and validate the existing token
 	claims, err := a.auth.Authenticate(ctx, "Bearer "+req.Token)
 	if err != nil {
-		http.Error(w, "invalid token", http.StatusUnauthorized)
-		return
+		return errs.Newf(errs.Unauthenticated, "invalid token")
 	}
 
-	// Check if token is close to expiry (refresh only if less than 30 minutes remaining)
 	timeUntilExpiry := time.Until(claims.ExpiresAt.Time)
 	if timeUntilExpiry > 30*time.Minute {
-		http.Error(w, "token not eligible for refresh yet", http.StatusBadRequest)
-		return
+		return errs.Newf(errs.FailedPrecondition, "token not eligible for refresh yet")
 	}
 
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		http.Error(w, "invalid user ID", http.StatusBadRequest)
-		return
+		return errs.Newf(errs.InvalidArgument, "invalid user ID")
 	}
 
-	// Query user using userBus to ensure they still exist and are enabled
 	user, err := a.userBus.QueryByID(ctx, userID)
 	if err != nil {
-		http.Error(w, "user not found", http.StatusNotFound)
-		return
+		return errs.Newf(errs.NotFound, "user not found")
 	}
 
 	if !user.Enabled {
-		http.Error(w, "account disabled", http.StatusForbidden)
-		return
+		return errs.Newf(errs.PermissionDenied, "account disabled")
 	}
 
-	// Convert roles to string array
 	roleStrings := make([]string, len(user.Roles))
 	for i, role := range user.Roles {
 		roleStrings[i] = role.String()
 	}
 
-	// Generate new token with updated expiration
 	newClaims := auth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.ID.String(),
@@ -231,32 +194,22 @@ func (a *api) refresh(w http.ResponseWriter, r *http.Request) {
 
 	token, err := a.auth.GenerateToken(a.tokenKey, newClaims)
 	if err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
+		return errs.New(errs.Internal, err)
 	}
 
 	a.log.Info(ctx, "token refreshed", "user_id", user.ID)
 
-	response := LoginResponse{
+	return LoginResponse{
 		Token:     token,
 		UserID:    user.ID.String(),
 		Email:     user.Email.Address,
 		Roles:     roleStrings,
 		ExpiresAt: time.Now().UTC().Add(a.tokenExpiration),
 	}
-
-	// Return response as JSON
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
 }
 
 // logout handles user logout (optional - mainly for audit logging)
-func (a *api) logout(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	// Extract claims from the authorization header
+func (a *api) logout(ctx context.Context, r *http.Request) web.Encoder {
 	token := r.Header.Get("Authorization")
 	if len(token) > 7 && token[:7] == "Bearer " {
 		token = token[7:]
@@ -264,9 +217,7 @@ func (a *api) logout(w http.ResponseWriter, r *http.Request) {
 
 	claims, err := a.auth.Authenticate(ctx, "Bearer "+token)
 	if err != nil {
-		// Even if token is invalid, we can still "logout"
-		http.Error(w, "invalid token", http.StatusUnauthorized)
-		return
+		return errs.Newf(errs.Unauthenticated, "invalid token")
 	}
 
 	a.log.Info(ctx, "user logged out", "user_id", claims.Subject)
@@ -274,15 +225,8 @@ func (a *api) logout(w http.ResponseWriter, r *http.Request) {
 	// In a stateful session system, you would invalidate the token here
 	// For stateless JWT, the client just discards the token
 
-	response := loggedInOutResponse{
+	return loggedInOutResponse{
 		Message: "logged out",
-	}
-
-	// Return response as JSON
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
 	}
 }
 
