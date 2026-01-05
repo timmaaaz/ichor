@@ -59,6 +59,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/sales/orderlineitemsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/sales/ordersapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertws"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
@@ -266,12 +267,14 @@ import (
 	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
+	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
+	foundationws "github.com/timmaaaz/ichor/foundation/websocket"
 )
 
 // Routes constructs the add value which provides the implementation of
@@ -397,6 +400,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// =========================================================================
 
 	var eventPublisher *workflow.EventPublisher
+	var queueManager *workflow.QueueManager
+	var workflowQueue *rabbitmq.WorkflowQueue
 
 	if cfg.RabbitClient != nil && cfg.RabbitClient.IsConnected() {
 		workflowStore := workflowdb.NewStore(cfg.Log, cfg.DB)
@@ -406,8 +411,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		if err := workflowEngine.Initialize(context.Background(), workflowBus); err != nil {
 			cfg.Log.Error(context.Background(), "workflow engine init failed", "error", err)
 		} else {
-			workflowQueue := rabbitmq.NewWorkflowQueue(cfg.RabbitClient, cfg.Log)
-			queueManager, err := workflow.NewQueueManager(cfg.Log, cfg.DB, workflowEngine, cfg.RabbitClient, workflowQueue)
+			workflowQueue = rabbitmq.NewWorkflowQueue(cfg.RabbitClient, cfg.Log)
+			var err error
+			queueManager, err = workflow.NewQueueManager(cfg.Log, cfg.DB, workflowEngine, cfg.RabbitClient, workflowQueue)
 			if err != nil {
 				cfg.Log.Error(context.Background(), "queue manager creation failed", "error", err)
 			} else {
@@ -963,7 +969,55 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		UserRoleBus:    userRoleBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+		WorkflowQueue:  workflowQueue,
 	})
+
+	// =========================================================================
+	// Initialize WebSocket Infrastructure for Real-time Alerts
+	// =========================================================================
+
+	// Create foundation Hub (generic, no business logic)
+	wsHub := foundationws.NewHub(cfg.Log)
+
+	// Create AlertHub (app layer with user/role semantics)
+	alertHub := alertws.NewAlertHub(wsHub, userRoleBus, cfg.Log)
+
+	// Start Hub metrics loop in background
+	go func() {
+		if err := wsHub.Run(context.Background()); err != nil && err != context.Canceled {
+			cfg.Log.Error(context.Background(), "websocket hub error", "error", err)
+		}
+	}()
+
+	// Register delegate handlers for role change events
+	alertHubDelegate := alertws.NewAlertHubDelegateHandler(alertHub, cfg.Log)
+	alertHubDelegate.RegisterRoleChanges(delegate)
+
+	// Wire up WebSocket message handlers via registry
+	// The QueueManager consumes from all queues; handlers in the registry
+	// intercept messages by type (e.g., "alert") for real-time delivery.
+	if queueManager != nil && workflowQueue != nil {
+		handlerRegistry := foundationws.NewHandlerRegistry()
+
+		// Register alert handler for WebSocket delivery
+		alertConsumer := alertws.NewAlertConsumer(alertHub, workflowQueue, cfg.Log)
+		handlerRegistry.Register(alertConsumer)
+
+		// Wire registry to queue manager
+		queueManager.SetHandlerRegistry(handlerRegistry)
+		cfg.Log.Info(context.Background(), "websocket handler registry configured",
+			"handlers", handlerRegistry.Types())
+	}
+
+	// Register WebSocket routes for real-time alerts
+	wsAuth := mid.BearerQueryParam(cfg.Auth)
+	alertws.Routes(app, alertws.RouteConfig{
+		Log:                cfg.Log,
+		AlertHub:           alertHub,
+		CORSAllowedOrigins: []string{"*"}, // TODO: Configure from environment
+	}, wsAuth)
+
+	cfg.Log.Info(context.Background(), "websocket alert routes initialized")
 
 	// formdata - dynamic multi-entity operations
 	// Build registry with entity registrations

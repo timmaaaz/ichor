@@ -7,6 +7,11 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 )
 
+// hasSeverities returns true if the filter has multi-value severities that require IN clause.
+func hasSeverities(filter alertbus.QueryFilter) bool {
+	return len(filter.Severities) > 0
+}
+
 func applyFilter(filter alertbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
@@ -20,9 +25,9 @@ func applyFilter(filter alertbus.QueryFilter, data map[string]any, buf *bytes.Bu
 		wc = append(wc, "alert_type = :alert_type")
 	}
 
-	if filter.Severity != nil {
-		data["severity"] = *filter.Severity
-		wc = append(wc, "severity = :severity")
+	if len(filter.Severities) > 0 {
+		data["severities"] = filter.Severities
+		wc = append(wc, "severity IN (:severities)")
 	}
 
 	if filter.Status != nil {
@@ -64,9 +69,9 @@ func applyFilterWithJoin(filter alertbus.QueryFilter, data map[string]any, buf *
 		wc = append(wc, "a.alert_type = :alert_type")
 	}
 
-	if filter.Severity != nil {
-		data["severity"] = *filter.Severity
-		wc = append(wc, "a.severity = :severity")
+	if len(filter.Severities) > 0 {
+		data["severities"] = filter.Severities
+		wc = append(wc, "a.severity IN (:severities)")
 	}
 
 	if filter.Status != nil {

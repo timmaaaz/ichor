@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
+	"github.com/timmaaaz/ichor/foundation/websocket"
 )
 
 // QueueManager manages workflow event queuing and processing
@@ -38,6 +39,9 @@ type QueueManager struct {
 
 	// Circuit breaker
 	circuitBreaker *CircuitBreaker
+
+	// Handler registry for real-time message delivery (e.g., WebSocket alerts)
+	handlerRegistry *websocket.HandlerRegistry
 }
 
 // QueueConfig holds configuration for the queue manager
@@ -128,6 +132,13 @@ func NewQueueManager(log *logger.Logger, db *sqlx.DB, engine *Engine, client *ra
 	qm.circuitBreaker.lastFailureTime.Store(time.Now())
 
 	return qm, nil
+}
+
+// SetHandlerRegistry registers a handler registry for real-time message delivery.
+// Handlers in the registry are checked before processing messages as workflow events.
+// This allows message types like "alert" to be routed to WebSocket delivery.
+func (qm *QueueManager) SetHandlerRegistry(registry *websocket.HandlerRegistry) {
+	qm.handlerRegistry = registry
 }
 
 // Initialize sets up the queue infrastructure
@@ -276,6 +287,13 @@ func (qm *QueueManager) startConsumer(ctx context.Context, queueType rabbitmq.Qu
 
 // processMessage processes a single message from the queue
 func (qm *QueueManager) processMessage(ctx context.Context, msg *rabbitmq.Message) error {
+	// Check handler registry first (for real-time handlers like alerts)
+	if qm.handlerRegistry != nil {
+		if handler, ok := qm.handlerRegistry.Get(msg.Type); ok {
+			return handler.HandleMessage(ctx, msg)
+		}
+	}
+
 	// Route async_action messages to the generic async handler
 	if msg.Type == "async_action" {
 		return qm.processAsyncAction(ctx, msg)

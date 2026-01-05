@@ -37,3 +37,24 @@ func Basic(userBus *userbus.Business, ath *auth.Auth) web.MidFunc {
 
 	return addMidFunc(midFunc)
 }
+
+// BearerQueryParam creates middleware that validates JWT from query param or header.
+// This is specifically for WebSocket connections where browsers cannot set custom headers.
+// Security Note: Query param tokens appear in server logs - use short-lived tokens.
+func BearerQueryParam(ath *auth.Auth) web.MidFunc {
+	midFunc := func(ctx context.Context, r *http.Request, next mid.HandlerFunc) mid.Encoder {
+		// Try Authorization header first (standard flow)
+		token := r.Header.Get("authorization")
+
+		// Fall back to query parameter for WebSocket upgrade requests
+		if token == "" {
+			if qToken := r.URL.Query().Get("token"); qToken != "" {
+				token = "Bearer " + qToken
+			}
+		}
+
+		return mid.Bearer(ctx, ath, token, next)
+	}
+
+	return addMidFunc(midFunc)
+}

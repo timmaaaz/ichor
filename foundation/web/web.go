@@ -33,11 +33,12 @@ type Logger func(ctx context.Context, msg string, args ...any)
 // object for each of our http handlers. Feel free to add any configuration
 // data/logic on this App struct.
 type App struct {
-	log     Logger
-	tracer  trace.Tracer
-	mux     *http.ServeMux
-	otmux   http.Handler
-	mw      []MidFunc
+	log    Logger
+	tracer trace.Tracer
+	mux    *http.ServeMux // Standard HTTP routes (wrapped by OTEL)
+	rawMux *http.ServeMux // WebSocket/streaming routes (bypass OTEL)
+	otmux  http.Handler   // OTEL-wrapped version of mux
+	mw     []MidFunc
 	origins []string
 }
 
@@ -51,21 +52,32 @@ func NewApp(log Logger, tracer trace.Tracer, mw ...MidFunc) *App {
 	// https://w3c.github.io/trace-context/
 
 	mux := http.NewServeMux()
+	rawMux := http.NewServeMux()
 
 	return &App{
 		log:    log,
 		tracer: tracer,
 		mux:    mux,
+		rawMux: rawMux,
 		otmux:  otelhttp.NewHandler(mux, "request"),
 		mw:     mw,
 	}
 }
 
 // ServeHTTP implements the http.Handler interface. It's the entry point for
-// all http traffic and allows the opentelemetry mux to run first to handle
-// tracing. The opentelemetry mux then calls the application mux to handle
-// application traffic. This was set up in the NewApp function.
+// all http traffic. Routes registered via RawHandlerFunc bypass OTEL tracing
+// to avoid interference with WebSocket upgrades. All other routes go through
+// the OpenTelemetry handler for tracing.
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Check if this route is registered on the raw mux (e.g., WebSocket handlers).
+	// These bypass OTEL wrapping because otelhttp writes a 200 OK response after
+	// the handler returns, which interferes with WebSocket's 101 Switching Protocols.
+	if _, pattern := a.rawMux.Handler(r); pattern != "" {
+		a.rawMux.ServeHTTP(w, r)
+		return
+	}
+
+	// All other routes go through OTEL for tracing.
 	a.otmux.ServeHTTP(w, r)
 }
 
@@ -157,7 +169,23 @@ func (a *App) HandlerFunc(method string, group string, path string, handlerFunc 
 }
 
 // RawHandlerFunc sets a raw handler function for a given HTTP method and path
-// pair to the application server mux.
+// pair to the application server mux. This is designed for WebSocket handlers
+// and other handlers that need direct control over the HTTP response.
+//
+// IMPORTANT: All WebSocket endpoints MUST use this method, not HandlerFunc.
+// The standard HandlerFunc routes through otelhttp which writes HTTP 200 after
+// handlers return, breaking WebSocket's required 101 Switching Protocols response.
+//
+// Key differences from HandlerFunc:
+//   - Bypasses otelhttp wrapper (required for WebSocket 101 response)
+//   - Does NOT apply CORS middleware (WebSocket uses websocket.AcceptOptions.OriginPatterns)
+//   - Does NOT inject OTEL trace headers into response
+//   - Does NOT call web.Respond() - the raw handler writes its own response
+//   - Still applies authentication and other passed middleware
+//
+// For WebSocket authentication, use mid.BearerQueryParam which extracts JWT
+// from the ?token= query parameter since browsers cannot set headers on
+// WebSocket upgrade requests.
 func (a *App) RawHandlerFunc(method string, group string, path string, rawHandlerFunc http.HandlerFunc, mw ...MidFunc) {
 	handlerFunc := func(ctx context.Context, r *http.Request) Encoder {
 		r = r.WithContext(ctx)
@@ -168,15 +196,9 @@ func (a *App) RawHandlerFunc(method string, group string, path string, rawHandle
 	handlerFunc = wrapMiddleware(mw, handlerFunc)
 	handlerFunc = wrapMiddleware(a.mw, handlerFunc)
 
-	if a.origins != nil {
-		handlerFunc = wrapMiddleware([]MidFunc{a.corsHandler}, handlerFunc)
-	}
-
 	h := func(w http.ResponseWriter, r *http.Request) {
 		ctx := setTracer(r.Context(), a.tracer)
 		ctx = setWriter(ctx, w)
-
-		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(w.Header()))
 
 		handlerFunc(ctx, r)
 	}
@@ -187,7 +209,12 @@ func (a *App) RawHandlerFunc(method string, group string, path string, rawHandle
 	}
 	finalPath = fmt.Sprintf("%s %s", method, finalPath)
 
-	a.mux.HandleFunc(finalPath, h)
+	// Register directly on the raw mux to bypass otelhttp wrapper.
+	// WebSocket connections hijack the underlying connection, which conflicts
+	// with otelhttp's response writer wrapping. The otelhttp handler writes
+	// a 200 OK after the handler returns, even if the connection was hijacked
+	// for WebSocket upgrade (which should be 101 Switching Protocols).
+	a.rawMux.HandleFunc(finalPath, h)
 }
 
 // FileServerReact starts a file server based on the specified file system and

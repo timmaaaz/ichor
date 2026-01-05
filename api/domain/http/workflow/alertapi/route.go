@@ -10,6 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
@@ -20,6 +21,7 @@ type Config struct {
 	UserRoleBus    *userrolebus.Business
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
+	WorkflowQueue  *rabbitmq.WorkflowQueue
 }
 
 // RouteTable is the table name used for permission checks.
@@ -29,12 +31,23 @@ const RouteTable = "workflow.alerts"
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
-	api := newAPI(cfg.Log, cfg.AlertBus, cfg.UserRoleBus)
+	api := newAPI(cfg.Log, cfg.AlertBus, cfg.UserRoleBus, cfg.WorkflowQueue)
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	// User endpoints - authentication only, business layer handles recipient filtering
 	// Everyone can access alerts, but they only see alerts they're recipients of
 	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts/mine", api.queryMine, authen)
+
+	// Bulk action endpoints (must come before /{id} routes to avoid path conflicts)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/acknowledge-selected", api.acknowledgeSelected, authen)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/acknowledge-all", api.acknowledgeAll, authen)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/dismiss-selected", api.dismissSelected, authen)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/dismiss-all", api.dismissAll, authen)
+
+	// Test endpoint - creates a test alert for the authenticated user (for E2E WebSocket testing)
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/test", api.testAlert, authen)
+
+	// Single alert endpoints
 	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts/{id}", api.queryByID, authen)
 	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/{id}/acknowledge", api.acknowledge, authen)
 	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/{id}/dismiss", api.dismiss, authen)

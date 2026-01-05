@@ -36,6 +36,10 @@ type Storer interface {
 	CountByUserID(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, filter QueryFilter) (int, error)
 	UpdateStatus(ctx context.Context, alertID uuid.UUID, status string, now time.Time) error
 	IsRecipient(ctx context.Context, alertID, userID uuid.UUID, roleIDs []uuid.UUID) (bool, error)
+	FilterRecipientAlerts(ctx context.Context, alertIDs []uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) ([]uuid.UUID, error)
+	QueryActiveByUserID(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID) ([]uuid.UUID, error)
+	AcknowledgeMultiple(ctx context.Context, alertIDs []uuid.UUID, userID uuid.UUID, notes string, now time.Time) (int, error)
+	DismissMultiple(ctx context.Context, alertIDs []uuid.UUID, now time.Time) (int, error)
 }
 
 // Business manages alert operations.
@@ -205,4 +209,110 @@ func (b *Business) Dismiss(ctx context.Context, alertID, userID uuid.UUID, roleI
 	}
 
 	return b.storer.QueryByID(ctx, alertID)
+}
+
+// AcknowledgeSelected acknowledges specific alerts by ID.
+// Returns count of acknowledged alerts and count of skipped (non-recipient) alerts.
+func (b *Business) AcknowledgeSelected(ctx context.Context, alertIDs []uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID, notes string, now time.Time) (count, skipped int, err error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.acknowledgeselected")
+	defer span.End()
+
+	if len(alertIDs) == 0 {
+		return 0, 0, nil
+	}
+
+	// Filter to only alerts user can access
+	validIDs, err := b.storer.FilterRecipientAlerts(ctx, alertIDs, userID, roleIDs)
+	if err != nil {
+		return 0, 0, fmt.Errorf("filter recipient alerts: %w", err)
+	}
+
+	skipped = len(alertIDs) - len(validIDs)
+	if len(validIDs) == 0 {
+		return 0, skipped, nil
+	}
+
+	// Bulk acknowledge
+	count, err = b.storer.AcknowledgeMultiple(ctx, validIDs, userID, notes, now)
+	if err != nil {
+		return 0, 0, fmt.Errorf("acknowledge multiple: %w", err)
+	}
+
+	return count, skipped, nil
+}
+
+// AcknowledgeAll acknowledges all active alerts for a user.
+// Returns count of acknowledged alerts.
+func (b *Business) AcknowledgeAll(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, notes string, now time.Time) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.acknowledgeall")
+	defer span.End()
+
+	alertIDs, err := b.storer.QueryActiveByUserID(ctx, userID, roleIDs)
+	if err != nil {
+		return 0, fmt.Errorf("query active alerts: %w", err)
+	}
+
+	if len(alertIDs) == 0 {
+		return 0, nil
+	}
+
+	count, err := b.storer.AcknowledgeMultiple(ctx, alertIDs, userID, notes, now)
+	if err != nil {
+		return 0, fmt.Errorf("acknowledge multiple: %w", err)
+	}
+
+	return count, nil
+}
+
+// DismissSelected dismisses specific alerts by ID.
+// Returns count of dismissed alerts and count of skipped (non-recipient) alerts.
+func (b *Business) DismissSelected(ctx context.Context, alertIDs []uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID, now time.Time) (count, skipped int, err error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.dismissselected")
+	defer span.End()
+
+	if len(alertIDs) == 0 {
+		return 0, 0, nil
+	}
+
+	// Filter to only alerts user can access
+	validIDs, err := b.storer.FilterRecipientAlerts(ctx, alertIDs, userID, roleIDs)
+	if err != nil {
+		return 0, 0, fmt.Errorf("filter recipient alerts: %w", err)
+	}
+
+	skipped = len(alertIDs) - len(validIDs)
+	if len(validIDs) == 0 {
+		return 0, skipped, nil
+	}
+
+	// Bulk dismiss
+	count, err = b.storer.DismissMultiple(ctx, validIDs, now)
+	if err != nil {
+		return 0, 0, fmt.Errorf("dismiss multiple: %w", err)
+	}
+
+	return count, skipped, nil
+}
+
+// DismissAll dismisses all active alerts for a user.
+// Returns count of dismissed alerts.
+func (b *Business) DismissAll(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, now time.Time) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.dismissall")
+	defer span.End()
+
+	alertIDs, err := b.storer.QueryActiveByUserID(ctx, userID, roleIDs)
+	if err != nil {
+		return 0, fmt.Errorf("query active alerts: %w", err)
+	}
+
+	if len(alertIDs) == 0 {
+		return 0, nil
+	}
+
+	count, err := b.storer.DismissMultiple(ctx, alertIDs, now)
+	if err != nil {
+		return 0, fmt.Errorf("dismiss multiple: %w", err)
+	}
+
+	return count, nil
 }

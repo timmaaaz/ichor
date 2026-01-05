@@ -26,7 +26,7 @@ type Config struct {
 func Routes(app *web.App, cfg Config) {
 	api := NewAPI(cfg)
 
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/basic/login", api.login)
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/basic/refresh", api.refresh)
-	app.RawHandlerFunc(http.MethodPost, "", "/api/auth/basic/logout", api.logout)
+	app.HandlerFunc(http.MethodPost, "", "/api/auth/basic/login", api.login)
+	app.HandlerFunc(http.MethodPost, "", "/api/auth/basic/refresh", api.refresh)
+	app.HandlerFunc(http.MethodPost, "", "/api/auth/basic/logout", api.logout)
 }

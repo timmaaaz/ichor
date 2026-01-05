@@ -7,7 +7,7 @@ import "github.com/google/uuid"
 type QueryFilter struct {
 	ID               *uuid.UUID
 	AlertType        *string
-	Severity         *string
+	Severities       []string // Supports multiple severity values (e.g., "low,medium,high")
 	Status           *string
 	SourceEntityName *string
 	SourceEntityID   *uuid.UUID
