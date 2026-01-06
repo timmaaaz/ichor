@@ -3672,9 +3672,9 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		}
 
 		// Query required entities and trigger types
-		ordersEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "orders")
+		orderLineItemsEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "order_line_items")
 		if err != nil {
-			log.Error(ctx, "Failed to query orders entity", "error", err)
+			log.Error(ctx, "Failed to query order_line_items entity", "error", err)
 		}
 
 		allocationResultsEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "allocation_results")
@@ -3687,42 +3687,79 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			log.Error(ctx, "Failed to query on_create trigger type", "error", err)
 		}
 
+		// Create action templates for workflow actions
+		allocateTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Allocate Inventory Template",
+			Description:   "Template for allocating inventory",
+			ActionType:    "allocate_inventory",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create allocate_inventory template", "error", err)
+		}
+
+		updateFieldTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Update Field Template",
+			Description:   "Template for updating entity fields",
+			ActionType:    "update_field",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create update_field template", "error", err)
+		}
+
+		createAlertTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Create Alert Template",
+			Description:   "Template for creating alerts",
+			ActionType:    "create_alert",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create create_alert template", "error", err)
+		}
+
 		// Create automation rules if we have all the required references
-		if ordersEntity.ID != uuid.Nil && wfEntityType.ID != uuid.Nil && onCreateTrigger.ID != uuid.Nil {
-			// Rule 1: Order Created -> Allocate Inventory
+		if orderLineItemsEntity.ID != uuid.Nil && wfEntityType.ID != uuid.Nil && onCreateTrigger.ID != uuid.Nil {
+			// Rule 1: Line Item Created -> Allocate Inventory
+			// Triggers on each order_line_items.on_create, extracts product_id/quantity from RawData
 			allocateConfig := map[string]interface{}{
-				"allocation_mode":     "reserve",
-				"allocation_strategy": "fifo",
-				"allow_partial":       false,
-				"priority":            "medium",
-				"reference_type":      "order",
+				"source_from_line_item": true, // Extract product_id, quantity, order_id from line item RawData
+				"allocation_mode":       "reserve",
+				"allocation_strategy":   "fifo",
+				"allow_partial":         false,
+				"priority":              "high",
+				"reference_type":        "order",
 			}
 			allocateConfigJSON, _ := json.Marshal(allocateConfig)
 
 			orderAllocateRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
-				Name:          "Order Created - Allocate Inventory",
-				Description:   "When an order is created, attempt to reserve inventory for all line items",
-				EntityID:      ordersEntity.ID,
+				Name:          "Line Item Created - Allocate Inventory",
+				Description:   "When an order line item is created, attempt to reserve inventory for that product",
+				EntityID:      orderLineItemsEntity.ID,
 				EntityTypeID:  wfEntityType.ID,
 				TriggerTypeID: onCreateTrigger.ID,
 				IsActive:      true,
 				CreatedBy:     admins[0].ID,
 			})
 			if err != nil {
-				log.Error(ctx, "Failed to create Order Allocate rule", "error", err)
+				log.Error(ctx, "Failed to create Line Item Allocate rule", "error", err)
 			} else {
 				_, err = busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
 					AutomationRuleID: orderAllocateRule.ID,
-					Name:             "Allocate Inventory for Order",
-					Description:      "Reserve inventory for order line items",
+					Name:             "Allocate Inventory for Line Item",
+					Description:      "Reserve inventory for the line item's product",
 					ActionConfig:     json.RawMessage(allocateConfigJSON),
 					ExecutionOrder:   1,
 					IsActive:         true,
+					TemplateID:       &allocateTemplate.ID,
 				})
 				if err != nil {
 					log.Error(ctx, "Failed to create allocate inventory action", "error", err)
 				} else {
-					log.Info(ctx, "✅ Created 'Order Created - Allocate Inventory' rule")
+					log.Info(ctx, "✅ Created 'Line Item Created - Allocate Inventory' rule")
 				}
 			}
 		}
@@ -3730,17 +3767,21 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		if allocationResultsEntity.ID != uuid.Nil && wfEntityType.ID != uuid.Nil && onCreateTrigger.ID != uuid.Nil {
 			// Rule 2: Allocation Success -> Update Line Item Status
 			successCondition := map[string]interface{}{
-				"field":    "status",
-				"operator": "equals",
-				"value":    "success",
+				"field_conditions": []map[string]interface{}{
+					{
+						"field_name": "status",
+						"operator":   "equals",
+						"value":      "success",
+					},
+				},
 			}
 			successConditionJSON, _ := json.Marshal(successCondition)
 			successConditionRaw := json.RawMessage(successConditionJSON)
 
 			updateConfig := map[string]interface{}{
-				"target_entity": "order_line_items",
+				"target_entity": "sales.order_line_items",
 				"target_field":  "line_item_fulfillment_statuses_id",
-				"new_value":     "Allocated",
+				"new_value":     "ALLOCATED",
 				"field_type":    "foreign_key",
 				"foreign_key_config": map[string]interface{}{
 					"reference_table": "sales.line_item_fulfillment_statuses",
@@ -3772,6 +3813,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 					ActionConfig:     json.RawMessage(updateConfigJSON),
 					ExecutionOrder:   1,
 					IsActive:         true,
+					TemplateID:       &updateFieldTemplate.ID,
 				})
 				if err != nil {
 					log.Error(ctx, "Failed to create update line items action", "error", err)
@@ -3782,9 +3824,13 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 
 			// Rule 3: Allocation Failure -> Create Alert
 			failedCondition := map[string]interface{}{
-				"field":    "status",
-				"operator": "equals",
-				"value":    "failed",
+				"field_conditions": []map[string]interface{}{
+					{
+						"field_name": "status",
+						"operator":   "equals",
+						"value":      "failed",
+					},
+				},
 			}
 			failedConditionJSON, _ := json.Marshal(failedCondition)
 			failedConditionRaw := json.RawMessage(failedConditionJSON)
@@ -3792,7 +3838,12 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			alertConfig := map[string]interface{}{
 				"alert_type": "inventory_allocation_failed",
 				"severity":   "high",
+				"title":      "Inventory Allocation Failed",
 				"message":    "Inventory allocation failed for order {{reference_id}}: insufficient inventory",
+				"recipients": map[string]interface{}{
+					"users": []string{admins[0].ID.String()},
+					"roles": []string{},
+				},
 				"context": map[string]interface{}{
 					"reference_id":   "{{reference_id}}",
 					"reference_type": "{{reference_type}}",
@@ -3821,6 +3872,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 					ActionConfig:     json.RawMessage(alertConfigJSON),
 					ExecutionOrder:   1,
 					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
 				})
 				if err != nil {
 					log.Error(ctx, "Failed to create alert action", "error", err)

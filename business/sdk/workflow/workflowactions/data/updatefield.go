@@ -372,18 +372,34 @@ func (h *UpdateFieldHandler) buildTemplateContext(execContext workflow.ActionExe
 // isValidTableName validates table names against whitelist
 func (h *UpdateFieldHandler) isValidTableName(tableName string) bool {
 	validTables := []string{
-		"customers", "orders", "order_line_items", "products",
-		"inventory_items", "inventory_locations", "inventory_transactions",
-		"warehouses", "zones", "suppliers", "brands", "users",
-		"assets", "valid_assets", "offices", "countries", "regions",
-		"cities", "streets", "contact_infos", "product_categories",
-		"physical_attributes", "product_costs", "cost_history",
-		"supplier_products", "quality_metrics", "lot_trackings",
-		"serial_numbers", "quality_inspections", "inventory_adjustments",
-		"transfer_orders", "order_fulfillment_statuses", "line_item_fulfillment_statuses",
-		"automation_rules", "rule_actions", "action_templates", "rule_dependencies",
-		"trigger_types", "entity_types", "entities", "automation_executions",
-		"notification_deliveries", "table_configs", "roles", "user_roles", "table_access",
+		// sales schema
+		"sales.customers", "sales.orders", "sales.order_line_items",
+		"sales.order_fulfillment_statuses", "sales.line_item_fulfillment_statuses",
+		// products schema
+		"products.products", "products.brands", "products.product_categories",
+		"products.physical_attributes", "products.product_costs", "products.cost_history",
+		"products.quality_metrics",
+		// inventory schema
+		"inventory.inventory_items", "inventory.inventory_locations", "inventory.inventory_transactions",
+		"inventory.warehouses", "inventory.zones", "inventory.lot_trackings",
+		"inventory.serial_numbers", "inventory.inspections", "inventory.inventory_adjustments",
+		"inventory.transfer_orders",
+		// procurement schema
+		"procurement.suppliers", "procurement.supplier_products",
+		// core schema
+		"core.users", "core.roles", "core.user_roles", "core.contact_infos", "core.table_access",
+		// hr schema
+		"hr.offices",
+		// geography schema
+		"geography.countries", "geography.regions", "geography.cities", "geography.streets",
+		// assets schema
+		"assets.assets", "assets.valid_assets",
+		// config schema
+		"config.table_configs",
+		// workflow schema
+		"workflow.automation_rules", "workflow.rule_actions", "workflow.action_templates",
+		"workflow.rule_dependencies", "workflow.trigger_types", "workflow.entity_types",
+		"workflow.entities", "workflow.automation_executions", "workflow.notification_deliveries",
 	}
 
 	for _, valid := range validTables {
