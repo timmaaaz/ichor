@@ -127,7 +127,7 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
 	registry.Register(communication.NewSendEmailHandler(log, db.DB))
 	registry.Register(communication.NewSendNotificationHandler(log, db.DB))
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db.DB))
-	registry.Register(communication.NewCreateAlertHandler(log, alertBus))
+	registry.Register(communication.NewCreateAlertHandler(log, alertBus, nil))
 
 	// Create queue manager
 	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)
@@ -755,7 +755,7 @@ func TestEventPublisher_CreateAlert(t *testing.T) {
 	registry := engine.GetRegistry()
 	registry.Register(communication.NewSendEmailHandler(log, db.DB))
 	registry.Register(communication.NewSendNotificationHandler(log, db.DB))
-	registry.Register(communication.NewCreateAlertHandler(log, alertBus))
+	registry.Register(communication.NewCreateAlertHandler(log, alertBus, nil))
 
 	// Create queue manager
 	qm, err := workflow.NewQueueManager(log, db.DB, engine, client, queue)

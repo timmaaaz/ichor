@@ -272,6 +272,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 	foundationws "github.com/timmaaaz/ichor/foundation/websocket"
@@ -424,6 +425,23 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 				} else {
 					eventPublisher = workflow.NewEventPublisher(cfg.Log, queueManager)
 					cfg.Log.Info(context.Background(), "workflow event infrastructure initialized")
+
+					// Register workflow action handlers
+					actionRegistry := workflowEngine.GetRegistry()
+					workflowactions.RegisterAll(actionRegistry, workflowactions.ActionConfig{
+						Log:         cfg.Log,
+						DB:          cfg.DB,
+						QueueClient: workflowQueue,
+						Buses: workflowactions.BusDependencies{
+							InventoryItem:        inventoryItemBus,
+							InventoryLocation:    inventoryLocationBus,
+							InventoryTransaction: inventoryTransactionBus,
+							Product:              productBus,
+							Workflow:             workflowBus,
+							Alert:                alertBus,
+						},
+					})
+					cfg.Log.Info(context.Background(), "workflow action handlers registered")
 
 					// Register delegate handlers for workflow event firing
 					delegateHandler := workflow.NewDelegateHandler(cfg.Log, eventPublisher)

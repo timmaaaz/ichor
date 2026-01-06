@@ -247,11 +247,22 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 	if a.eventPublisher != nil {
 		userID, _ := mid.GetUserID(ctx)
 		for _, pe := range pendingEvents {
-			switch pe.operation {
-			case formdataregistry.OperationCreate:
-				a.eventPublisher.PublishCreateEvent(ctx, pe.entityName, pe.result, userID)
-			case formdataregistry.OperationUpdate:
-				a.eventPublisher.PublishUpdateEvent(ctx, pe.entityName, pe.result, nil, userID)
+			// Handle array results by publishing events synchronously in order
+			if arr, isArray := pe.result.([]any); isArray {
+				switch pe.operation {
+				case formdataregistry.OperationCreate:
+					a.eventPublisher.PublishCreateEventsBlocking(ctx, pe.entityName, arr, userID)
+				case formdataregistry.OperationUpdate:
+					a.eventPublisher.PublishUpdateEventsBlocking(ctx, pe.entityName, arr, userID)
+				}
+			} else {
+				// Single object result - use existing non-blocking method
+				switch pe.operation {
+				case formdataregistry.OperationCreate:
+					a.eventPublisher.PublishCreateEvent(ctx, pe.entityName, pe.result, userID)
+				case formdataregistry.OperationUpdate:
+					a.eventPublisher.PublishUpdateEvent(ctx, pe.entityName, pe.result, nil, userID)
+				}
 			}
 		}
 	}

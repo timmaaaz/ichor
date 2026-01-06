@@ -49,8 +49,8 @@ func insertAlertSeedData(busDomain dbtest.BusDomain, log *logger.Logger) (alertS
 	}
 	testUser := users[0]
 
-	// Create handler with the test logger
-	handler := communication.NewCreateAlertHandler(log, busDomain.Alert)
+	// Create handler with the test logger (nil workflowQueue for unit tests)
+	handler := communication.NewCreateAlertHandler(log, busDomain.Alert, nil)
 
 	return alertSeedData{
 		SeedData: unitest.SeedData{

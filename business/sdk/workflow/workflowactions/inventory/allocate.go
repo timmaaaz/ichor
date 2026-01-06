@@ -29,8 +29,9 @@ import (
 // AllocateInventoryConfig represents the configuration for inventory allocation
 type AllocateInventoryConfig struct {
 	InventoryItems     []AllocationItem `json:"inventory_items"`
-	AllocationMode     string           `json:"allocation_mode"`     // 'reserve' or 'allocate'
-	AllocationStrategy string           `json:"allocation_strategy"` // 'fifo', 'lifo', 'nearest_expiry', 'lowest_cost'
+	SourceFromLineItem bool             `json:"source_from_line_item"` // If true, extract product_id/quantity from line item RawData
+	AllocationMode     string           `json:"allocation_mode"`       // 'reserve' or 'allocate'
+	AllocationStrategy string           `json:"allocation_strategy"`   // 'fifo', 'lifo', 'nearest_expiry', 'lowest_cost'
 	AllowPartial       bool             `json:"allow_partial"`
 	ReservationHours   int              `json:"reservation_duration_hours,omitempty"`
 	Priority           string           `json:"priority"` // 'low', 'medium', 'high', 'critical'
@@ -106,6 +107,8 @@ type QueuedAllocationResponse struct {
 	IdempotencyKey string    `json:"idempotency_key"`
 	Priority       int       `json:"priority"`
 	Message        string    `json:"message"`
+	ReferenceID    string    `json:"reference_id,omitempty"`
+	ReferenceType  string    `json:"reference_type,omitempty"`
 }
 
 // ErrAlreadyProcessed is returned when an allocation has already been processed
@@ -179,7 +182,8 @@ func (h *AllocateInventoryHandler) Validate(config json.RawMessage) error {
 		return fmt.Errorf("invalid configuration format: %w", err)
 	}
 
-	if len(cfg.InventoryItems) == 0 {
+	// Allow empty inventory_items when sourcing from line item (extracted at execute time)
+	if len(cfg.InventoryItems) == 0 && !cfg.SourceFromLineItem {
 		return errors.New("inventory_items list is required and must not be empty")
 	}
 
@@ -200,7 +204,7 @@ func (h *AllocateInventoryHandler) Validate(config json.RawMessage) error {
 		return fmt.Errorf("invalid priority: %s", cfg.Priority)
 	}
 
-	// Validate items
+	// Validate explicitly provided items (only when not sourcing from line item)
 	for i, item := range cfg.InventoryItems {
 		if item.ProductID == uuid.Nil {
 			return fmt.Errorf("item %d: product_id is required", i)
@@ -220,19 +224,86 @@ func (h *AllocateInventoryHandler) Validate(config json.RawMessage) error {
 // Execute queues the allocation request for async processing.
 // Returns QueuedAllocationResponse with tracking info.
 func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawMessage, execContext workflow.ActionExecutionContext) (any, error) {
+	h.log.Info(ctx, "VERBOSE: AllocateInventoryHandler.Execute started",
+		"execution_id", execContext.ExecutionID,
+		"rule_id", execContext.RuleID,
+		"entity_name", execContext.EntityName,
+		"entity_id", execContext.EntityID,
+		"config_raw", string(config))
+
 	var cfg AllocateInventoryConfig
 	if err := json.Unmarshal(config, &cfg); err != nil {
+		h.log.Error(ctx, "VERBOSE: AllocateInventoryHandler failed to parse config",
+			"error", err.Error(),
+			"config_raw", string(config))
 		return QueuedAllocationResponse{}, fmt.Errorf("failed to parse config: %w", err)
 	}
+
+	// If sourcing from line item, extract product_id and quantity from RawData
+	if cfg.SourceFromLineItem {
+		productIDStr, _ := execContext.RawData["product_id"].(string)
+		productID, err := uuid.Parse(productIDStr)
+		if err != nil {
+			h.log.Error(ctx, "VERBOSE: Invalid product_id in line item RawData",
+				"product_id", productIDStr,
+				"error", err.Error())
+			return QueuedAllocationResponse{}, fmt.Errorf("invalid product_id in line item: %w", err)
+		}
+
+		// JSON numbers are float64
+		quantity, ok := execContext.RawData["quantity"].(float64)
+		if !ok || quantity <= 0 {
+			// Try int conversion for non-JSON sources
+			if qInt, ok := execContext.RawData["quantity"].(int); ok {
+				quantity = float64(qInt)
+			}
+		}
+		if quantity <= 0 {
+			h.log.Error(ctx, "VERBOSE: Invalid quantity in line item RawData",
+				"quantity", execContext.RawData["quantity"])
+			return QueuedAllocationResponse{}, errors.New("quantity must be greater than 0")
+		}
+
+		orderIDStr, _ := execContext.RawData["order_id"].(string)
+
+		cfg.InventoryItems = []AllocationItem{{
+			ProductID: productID,
+			Quantity:  int(quantity),
+		}}
+		cfg.ReferenceID = orderIDStr
+		cfg.ReferenceType = "order"
+
+		h.log.Info(ctx, "VERBOSE: Extracted allocation item from line item RawData",
+			"product_id", productID,
+			"quantity", int(quantity),
+			"order_id", orderIDStr)
+	}
+
+	h.log.Info(ctx, "VERBOSE: AllocateInventoryHandler config parsed",
+		"allocation_mode", cfg.AllocationMode,
+		"allocation_strategy", cfg.AllocationStrategy,
+		"item_count", len(cfg.InventoryItems),
+		"priority", cfg.Priority,
+		"source_from_line_item", cfg.SourceFromLineItem)
 
 	// Generate idempotency key based on execution context
 	idempotencyKey := fmt.Sprintf("%s_%s_%s", execContext.ExecutionID, execContext.RuleID, h.GetType())
 
 	// Check if this allocation was already processed (idempotency)
+	h.log.Info(ctx, "VERBOSE: Checking idempotency",
+		"idempotency_key", idempotencyKey)
+
 	existing, idempotencyResult, err := h.workflowBus.QueryAllocationResultByIdempotencyKey(ctx, idempotencyKey)
 	if err != nil {
+		h.log.Error(ctx, "VERBOSE: Idempotency check failed",
+			"idempotency_key", idempotencyKey,
+			"error", err.Error())
 		return QueuedAllocationResponse{}, fmt.Errorf("execute: %w", err)
 	}
+
+	h.log.Info(ctx, "VERBOSE: Idempotency check result",
+		"idempotency_key", idempotencyKey,
+		"result", idempotencyResult)
 
 	switch idempotencyResult {
 	case workflow.IdempotencyNotFound:
@@ -299,9 +370,21 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		UserID:       execContext.UserID,
 	}
 
+	h.log.Info(ctx, "VERBOSE: Publishing to RabbitMQ",
+		"queue_type", rabbitmq.QueueTypeInventory,
+		"message_id", message.ID)
+
 	if err := h.queueClient.Publish(ctx, rabbitmq.QueueTypeInventory, message); err != nil {
+		h.log.Error(ctx, "VERBOSE: Failed to publish to RabbitMQ",
+			"queue_type", rabbitmq.QueueTypeInventory,
+			"message_id", message.ID,
+			"error", err.Error())
 		return QueuedAllocationResponse{}, fmt.Errorf("failed to queue allocation request: %w", err)
 	}
+
+	h.log.Info(ctx, "VERBOSE: Successfully published to RabbitMQ",
+		"allocation_id", request.ID,
+		"status", "queued")
 
 	// Return immediate response with tracking info
 	return QueuedAllocationResponse{
@@ -310,6 +393,8 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		IdempotencyKey: idempotencyKey,
 		Priority:       request.Priority,
 		Message:        "Allocation request queued for processing",
+		ReferenceID:    cfg.ReferenceID,
+		ReferenceType:  cfg.ReferenceType,
 	}, nil
 }
 
@@ -331,6 +416,46 @@ func (h *AllocateInventoryHandler) ProcessQueued(ctx context.Context, payload js
 	// Process the allocation using existing logic
 	result, err := h.ProcessAllocation(ctx, request)
 	if err != nil {
+		// Even on failure, fire the workflow event so downstream rules (like alerts) can trigger.
+		// Create a failure result to pass to the event.
+		failureResult := &InventoryAllocationResult{
+			AllocationID:   request.ID,
+			Status:         "failed",
+			AllocatedItems: []AllocatedItem{},
+			FailedItems: []FailedItem{{
+				ProductID:    uuid.Nil,
+				Reason:       "processing_error",
+				ErrorMessage: err.Error(),
+			}},
+			TotalRequested:  0,
+			TotalAllocated:  0,
+			IdempotencyKey:  fmt.Sprintf("%s_%s_%s", request.ExecutionID, request.Context.RuleID, h.GetType()),
+			CreatedAt:       request.CreatedAt,
+			CompletedAt:     time.Now(),
+			ExecutionTimeMs: time.Since(request.CreatedAt).Milliseconds(),
+		}
+
+		// Extract info from config for the event
+		for _, item := range request.Config.InventoryItems {
+			failureResult.FailedItems = append(failureResult.FailedItems, FailedItem{
+				ProductID:         item.ProductID,
+				RequestedQuantity: item.Quantity,
+				Reason:            "allocation_failed",
+				ErrorMessage:      err.Error(),
+			})
+			failureResult.TotalRequested += item.Quantity
+		}
+		// Remove the placeholder entry if we added real items
+		if len(failureResult.FailedItems) > 1 {
+			failureResult.FailedItems = failureResult.FailedItems[1:]
+		}
+
+		h.fireAllocationResultEvent(ctx, failureResult, request, publisher)
+
+		h.log.Error(ctx, "Allocation processing failed, event fired for alerting",
+			"allocation_id", request.ID,
+			"error", err.Error())
+
 		return fmt.Errorf("allocation processing failed: %w", err)
 	}
 

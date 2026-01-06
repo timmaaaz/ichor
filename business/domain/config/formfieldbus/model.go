@@ -6,47 +6,52 @@ import (
 	"github.com/google/uuid"
 )
 
+// JSON tags are required for workflow event serialization. The workflow system
+// (via EventPublisher) marshals business models to JSON for RawData in TriggerEvents.
+// Without these tags, Go defaults to PascalCase keys, but workflow action handlers
+// expect snake_case keys to match API conventions.
+
 // FormField represents a field configuration within a form.
 type FormField struct {
-	ID           uuid.UUID
-	FormID       uuid.UUID
-	EntityID     uuid.UUID
-	EntitySchema string
-	EntityTable  string
-	Name         string
-	Label        string
-	FieldType    string
-	FieldOrder   int
-	Required     bool
-	Config       json.RawMessage
+	ID           uuid.UUID       `json:"id"`
+	FormID       uuid.UUID       `json:"form_id"`
+	EntityID     uuid.UUID       `json:"entity_id"`
+	EntitySchema string          `json:"entity_schema"`
+	EntityTable  string          `json:"entity_table"`
+	Name         string          `json:"name"`
+	Label        string          `json:"label"`
+	FieldType    string          `json:"field_type"`
+	FieldOrder   int             `json:"field_order"`
+	Required     bool            `json:"required"`
+	Config       json.RawMessage `json:"config"`
 }
 
 // NewFormField contains the information needed to create a new form field.
 type NewFormField struct {
-	FormID       uuid.UUID
-	EntityID     uuid.UUID
-	EntitySchema string
-	EntityTable  string
-	Name         string
-	Label        string
-	FieldType    string
-	FieldOrder   int
-	Required     bool
-	Config       json.RawMessage
+	FormID       uuid.UUID       `json:"form_id"`
+	EntityID     uuid.UUID       `json:"entity_id"`
+	EntitySchema string          `json:"entity_schema"`
+	EntityTable  string          `json:"entity_table"`
+	Name         string          `json:"name"`
+	Label        string          `json:"label"`
+	FieldType    string          `json:"field_type"`
+	FieldOrder   int             `json:"field_order"`
+	Required     bool            `json:"required"`
+	Config       json.RawMessage `json:"config"`
 }
 
 // UpdateFormField contains the information needed to update a form field.
 type UpdateFormField struct {
-	FormID       *uuid.UUID
-	EntityID     *uuid.UUID
-	EntitySchema *string
-	EntityTable  *string
-	Name         *string
-	Label        *string
-	FieldType    *string
-	FieldOrder   *int
-	Required     *bool
-	Config       *json.RawMessage
+	FormID       *uuid.UUID       `json:"form_id,omitempty"`
+	EntityID     *uuid.UUID       `json:"entity_id,omitempty"`
+	EntitySchema *string          `json:"entity_schema,omitempty"`
+	EntityTable  *string          `json:"entity_table,omitempty"`
+	Name         *string          `json:"name,omitempty"`
+	Label        *string          `json:"label,omitempty"`
+	FieldType    *string          `json:"field_type,omitempty"`
+	FieldOrder   *int             `json:"field_order,omitempty"`
+	Required     *bool            `json:"required,omitempty"`
+	Config       *json.RawMessage `json:"config,omitempty"`
 }
 
 // =============================================================================

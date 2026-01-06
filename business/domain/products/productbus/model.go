@@ -6,51 +6,56 @@ import (
 	"github.com/google/uuid"
 )
 
+// JSON tags are required for workflow event serialization. The workflow system
+// (via EventPublisher) marshals business models to JSON for RawData in TriggerEvents.
+// Without these tags, Go defaults to PascalCase keys, but workflow action handlers
+// expect snake_case keys to match API conventions.
+
 type Product struct {
-	ProductID            uuid.UUID
-	SKU                  string
-	BrandID              uuid.UUID
-	ProductCategoryID    uuid.UUID
-	Name                 string
-	Description          string
-	ModelNumber          string
-	UpcCode              string
-	Status               string
-	IsActive             bool
-	IsPerishable         bool
-	HandlingInstructions string
-	UnitsPerCase         int
-	CreatedDate          time.Time
-	UpdatedDate          time.Time
+	ProductID            uuid.UUID `json:"product_id"`
+	SKU                  string    `json:"sku"`
+	BrandID              uuid.UUID `json:"brand_id"`
+	ProductCategoryID    uuid.UUID `json:"product_category_id"`
+	Name                 string    `json:"name"`
+	Description          string    `json:"description"`
+	ModelNumber          string    `json:"model_number"`
+	UpcCode              string    `json:"upc_code"`
+	Status               string    `json:"status"`
+	IsActive             bool      `json:"is_active"`
+	IsPerishable         bool      `json:"is_perishable"`
+	HandlingInstructions string    `json:"handling_instructions"`
+	UnitsPerCase         int       `json:"units_per_case"`
+	CreatedDate          time.Time `json:"created_date"`
+	UpdatedDate          time.Time `json:"updated_date"`
 }
 
 type NewProduct struct {
-	SKU                  string
-	BrandID              uuid.UUID
-	ProductCategoryID    uuid.UUID
-	Name                 string
-	Description          string
-	ModelNumber          string
-	UpcCode              string
-	Status               string
-	IsActive             bool
-	IsPerishable         bool
-	HandlingInstructions string
-	UnitsPerCase         int
-	CreatedDate          *time.Time // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
+	SKU                  string     `json:"sku"`
+	BrandID              uuid.UUID  `json:"brand_id"`
+	ProductCategoryID    uuid.UUID  `json:"product_category_id"`
+	Name                 string     `json:"name"`
+	Description          string     `json:"description"`
+	ModelNumber          string     `json:"model_number"`
+	UpcCode              string     `json:"upc_code"`
+	Status               string     `json:"status"`
+	IsActive             bool       `json:"is_active"`
+	IsPerishable         bool       `json:"is_perishable"`
+	HandlingInstructions string     `json:"handling_instructions"`
+	UnitsPerCase         int        `json:"units_per_case"`
+	CreatedDate          *time.Time `json:"created_date,omitempty"` // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateProduct struct {
-	SKU                  *string
-	BrandID              *uuid.UUID
-	ProductCategoryID    *uuid.UUID
-	Name                 *string
-	Description          *string
-	ModelNumber          *string
-	UpcCode              *string
-	Status               *string
-	IsActive             *bool
-	IsPerishable         *bool
-	HandlingInstructions *string
-	UnitsPerCase         *int
+	SKU                  *string    `json:"sku,omitempty"`
+	BrandID              *uuid.UUID `json:"brand_id,omitempty"`
+	ProductCategoryID    *uuid.UUID `json:"product_category_id,omitempty"`
+	Name                 *string    `json:"name,omitempty"`
+	Description          *string    `json:"description,omitempty"`
+	ModelNumber          *string    `json:"model_number,omitempty"`
+	UpcCode              *string    `json:"upc_code,omitempty"`
+	Status               *string    `json:"status,omitempty"`
+	IsActive             *bool      `json:"is_active,omitempty"`
+	IsPerishable         *bool      `json:"is_perishable,omitempty"`
+	HandlingInstructions *string    `json:"handling_instructions,omitempty"`
+	UnitsPerCase         *int       `json:"units_per_case,omitempty"`
 }

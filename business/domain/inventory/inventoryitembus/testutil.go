@@ -14,18 +14,21 @@ func TestNewInventoryProducts(n int, locationIDs, productIDs uuid.UUIDs) []NewIn
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
+		// Set quantity to a base value with reserved/allocated as small fractions
+		// This ensures (quantity - reserved - allocated) > 0 for allocation availability
+		baseQty := 100 + idx
 		newInventoryProducts[i] = NewInventoryItem{
 			LocationID:            locationIDs[idx%len(locationIDs)],
 			ProductID:             productIDs[idx%len(productIDs)],
-			Quantity:              idx,
-			ReservedQuantity:      idx,
-			AllocatedQuantity:     idx,
-			MinimumStock:          idx,
-			MaximumStock:          idx,
-			ReorderPoint:          idx,
-			EconomicOrderQuantity: idx,
-			SafetyStock:           idx,
-			AvgDailyUsage:         idx,
+			Quantity:              baseQty,
+			ReservedQuantity:      0, // No reserved quantity - all available
+			AllocatedQuantity:     0, // No allocated quantity - all available
+			MinimumStock:          10,
+			MaximumStock:          baseQty * 2,
+			ReorderPoint:          20,
+			EconomicOrderQuantity: 50,
+			SafetyStock:           15,
+			AvgDailyUsage:         5,
 		}
 	}
 

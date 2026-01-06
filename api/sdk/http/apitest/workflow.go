@@ -70,7 +70,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 
 	// Create alertbus for CreateAlertHandler
 	alertBus := alertbus.NewBusiness(db.Log, alertdb.NewStore(db.Log, db.DB))
-	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus))
+	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil))
 
 	// Create queue manager
 	qm, err := workflow.NewQueueManager(db.Log, db.DB, engine, client, queue)

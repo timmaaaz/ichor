@@ -301,6 +301,8 @@ func allocateInventoryTests(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocate
 		testIdempotency(busDomain, db, sd),
 		testReservationMode(busDomain, db, sd),
 		testFIFOStrategy(busDomain, db, sd),
+		testSourceFromLineItem(busDomain, db, sd),
+		testOrderGroupedAllocation(busDomain, db, sd),
 	}
 }
 
@@ -656,6 +658,229 @@ func testFIFOStrategy(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocateSeedDa
 }
 
 // =============================================================================
+// SourceFromLineItem Tests
+//
+// These tests verify the SourceFromLineItem functionality which extracts
+// product_id, quantity, and order_id from the execution context's RawData.
+// =============================================================================
+
+func testSourceFromLineItem(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocateSeedData) unitest.Table {
+	if len(sd.Products) == 0 {
+		return unitest.Table{
+			Name:    "test_source_from_line_item_skip",
+			ExpResp: "skipped",
+			ExcFunc: func(ctx context.Context) any { return "skipped" },
+			CmpFunc: func(got any, exp any) string { return "" },
+		}
+	}
+
+	return unitest.Table{
+		Name:    "test_source_from_line_item",
+		ExpResp: "queued",
+		ExcFunc: func(ctx context.Context) any {
+			orderID := uuid.New()
+			lineItemID := uuid.New()
+
+			// Config with SourceFromLineItem enabled - no inventory_items needed
+			config := inventory.AllocateInventoryConfig{
+				SourceFromLineItem: true,
+				AllocationMode:     "reserve",
+				AllocationStrategy: "fifo",
+				AllowPartial:       false,
+				Priority:           "high",
+			}
+			configJSON, _ := json.Marshal(config)
+
+			// Create execution context with RawData simulating a line item
+			execContext := workflow.ActionExecutionContext{
+				EntityID:    lineItemID,
+				EntityName:  "order_line_items",
+				EventType:   "on_create",
+				UserID:      sd.Admins[0].ID,
+				RuleID:      uuid.New(),
+				RuleName:    "Test Line Item Allocation",
+				ExecutionID: uuid.New(),
+				Timestamp:   time.Now().UTC(),
+				RawData: map[string]interface{}{
+					"product_id": sd.Products[0].ProductID.String(),
+					"quantity":   float64(5),
+					"order_id":   orderID.String(),
+				},
+			}
+
+			// Execute - should extract from RawData and queue
+			result, err := sd.Handler.Execute(ctx, configJSON, execContext)
+			if err != nil {
+				return fmt.Errorf("execute failed: %w", err)
+			}
+
+			// Verify we got a queued response
+			queuedResp, ok := result.(inventory.QueuedAllocationResponse)
+			if !ok {
+				return fmt.Errorf("expected QueuedAllocationResponse, got %T", result)
+			}
+
+			return queuedResp.Status
+		},
+		CmpFunc: func(got any, exp any) string {
+			if got != exp {
+				return fmt.Sprintf("got %v, want %v", got, exp)
+			}
+			return ""
+		},
+	}
+}
+
+func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocateSeedData) unitest.Table {
+	if len(sd.Products) < 3 {
+		return unitest.Table{
+			Name:    "test_order_grouped_allocation_skip",
+			ExpResp: "skipped",
+			ExcFunc: func(ctx context.Context) any { return "skipped" },
+			CmpFunc: func(got any, exp any) string { return "" },
+		}
+	}
+
+	return unitest.Table{
+		Name:    "test_order_grouped_allocation",
+		ExpResp: true,
+		ExcFunc: func(ctx context.Context) any {
+			orderA := uuid.New()
+			orderB := uuid.New()
+
+			config := inventory.AllocateInventoryConfig{
+				SourceFromLineItem: true,
+				AllocationMode:     "reserve",
+				AllocationStrategy: "fifo",
+				AllowPartial:       false,
+				Priority:           "high",
+			}
+			configJSON, _ := json.Marshal(config)
+
+			// Track allocation order and verify ReferenceID grouping
+			type allocationRecord struct {
+				label       string
+				orderID     uuid.UUID
+				referenceID string
+			}
+			var allocations []allocationRecord
+
+			// Simulate Order A's line items (3 items) - should all be grouped
+			for i := 0; i < 3; i++ {
+				execCtx := workflow.ActionExecutionContext{
+					EntityID:    uuid.New(),
+					EntityName:  "order_line_items",
+					EventType:   "on_create",
+					UserID:      sd.Admins[0].ID,
+					RuleID:      uuid.New(),
+					RuleName:    "Test Grouped Allocation",
+					ExecutionID: uuid.New(),
+					Timestamp:   time.Now().UTC(),
+					RawData: map[string]interface{}{
+						"product_id": sd.Products[i].ProductID.String(),
+						"quantity":   float64(2),
+						"order_id":   orderA.String(),
+					},
+				}
+
+				result, err := sd.Handler.Execute(ctx, configJSON, execCtx)
+				if err != nil {
+					return fmt.Errorf("order A item %d failed: %w", i+1, err)
+				}
+
+				queuedResp, ok := result.(inventory.QueuedAllocationResponse)
+				if !ok {
+					return fmt.Errorf("expected QueuedAllocationResponse for A%d, got %T", i+1, result)
+				}
+
+				allocations = append(allocations, allocationRecord{
+					label:       fmt.Sprintf("A%d", i+1),
+					orderID:     orderA,
+					referenceID: queuedResp.ReferenceID,
+				})
+			}
+
+			// Simulate Order B's line items (2 items) - should be grouped separately
+			for i := 0; i < 2; i++ {
+				execCtx := workflow.ActionExecutionContext{
+					EntityID:    uuid.New(),
+					EntityName:  "order_line_items",
+					EventType:   "on_create",
+					UserID:      sd.Admins[0].ID,
+					RuleID:      uuid.New(),
+					RuleName:    "Test Grouped Allocation",
+					ExecutionID: uuid.New(),
+					Timestamp:   time.Now().UTC(),
+					RawData: map[string]interface{}{
+						"product_id": sd.Products[i].ProductID.String(),
+						"quantity":   float64(2),
+						"order_id":   orderB.String(),
+					},
+				}
+
+				result, err := sd.Handler.Execute(ctx, configJSON, execCtx)
+				if err != nil {
+					return fmt.Errorf("order B item %d failed: %w", i+1, err)
+				}
+
+				queuedResp, ok := result.(inventory.QueuedAllocationResponse)
+				if !ok {
+					return fmt.Errorf("expected QueuedAllocationResponse for B%d, got %T", i+1, result)
+				}
+
+				allocations = append(allocations, allocationRecord{
+					label:       fmt.Sprintf("B%d", i+1),
+					orderID:     orderB,
+					referenceID: queuedResp.ReferenceID,
+				})
+			}
+
+			// Verify:
+			// 1. Order preserved: A1, A2, A3, B1, B2
+			// 2. All Order A items have same ReferenceID (orderA)
+			// 3. All Order B items have same ReferenceID (orderB)
+			// 4. ReferenceIDs are different between orders
+
+			expectedLabels := []string{"A1", "A2", "A3", "B1", "B2"}
+			for i, exp := range expectedLabels {
+				if i >= len(allocations) || allocations[i].label != exp {
+					return fmt.Errorf("order mismatch at position %d: expected %s", i, exp)
+				}
+			}
+
+			// Verify Order A items all reference orderA
+			for i := 0; i < 3; i++ {
+				if allocations[i].referenceID != orderA.String() {
+					return fmt.Errorf("A%d has wrong ReferenceID: got %s, want %s",
+						i+1, allocations[i].referenceID, orderA.String())
+				}
+			}
+
+			// Verify Order B items all reference orderB
+			for i := 3; i < 5; i++ {
+				if allocations[i].referenceID != orderB.String() {
+					return fmt.Errorf("B%d has wrong ReferenceID: got %s, want %s",
+						i-2, allocations[i].referenceID, orderB.String())
+				}
+			}
+
+			// Verify orders are different
+			if orderA.String() == orderB.String() {
+				return fmt.Errorf("order IDs should be different")
+			}
+
+			return true
+		},
+		CmpFunc: func(got any, exp any) string {
+			if got != exp {
+				return fmt.Sprintf("order grouping failed: got %v, want %v", got, exp)
+			}
+			return ""
+		},
+	}
+}
+
+// =============================================================================
 // ProcessQueued Unit Tests
 //
 // These tests verify the ProcessQueued method's error handling for malformed payloads.
@@ -762,4 +987,167 @@ func containsHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// =============================================================================
+// ProcessQueued Failure Event Test
+//
+// This test verifies that when allocation fails (e.g., no inventory available),
+// the ProcessQueued method still fires a workflow event with status="failed"
+// so downstream rules (like alerts) can trigger.
+// =============================================================================
+
+func Test_ProcessQueued_FiresEventOnFailure(t *testing.T) {
+	db := dbtest.NewDatabase(t, "Test_ProcessQueued_FiresEventOnFailure")
+
+	// Create minimal seed data - specifically WITHOUT inventory for the product we'll test
+	ctx := context.Background()
+
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, db.BusDomain.User)
+	if err != nil {
+		t.Fatalf("Seeding admin: %s", err)
+	}
+
+	// Seed a product but DON'T seed any inventory for it
+	regions, _ := db.BusDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "1"))
+	regionIDs := []uuid.UUID{regions[0].ID}
+
+	cities, _ := citybus.TestSeedCities(ctx, 1, regionIDs, db.BusDomain.City)
+	cityIDs := []uuid.UUID{cities[0].ID}
+
+	streets, _ := streetbus.TestSeedStreets(ctx, 1, cityIDs, db.BusDomain.Street)
+	streetIDs := []uuid.UUID{streets[0].ID}
+
+	tzs, _ := db.BusDomain.Timezone.QueryAll(ctx)
+	tzIDs := []uuid.UUID{tzs[0].ID}
+
+	contactInfos, _ := contactinfosbus.TestSeedContactInfos(ctx, 1, streetIDs, tzIDs, db.BusDomain.ContactInfos)
+	contactIDs := uuid.UUIDs{contactInfos[0].ID}
+
+	brands, _ := brandbus.TestSeedBrands(ctx, 1, contactIDs, db.BusDomain.Brand)
+	brandIDs := uuid.UUIDs{brands[0].BrandID}
+
+	productCategories, _ := productcategorybus.TestSeedProductCategories(ctx, 1, db.BusDomain.ProductCategory)
+	productCategoryIDs := uuid.UUIDs{productCategories[0].ProductCategoryID}
+
+	products, _ := productbus.TestSeedProducts(ctx, 1, brandIDs, productCategoryIDs, db.BusDomain.Product)
+	productWithNoInventory := products[0]
+
+	// Create handler
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string {
+		return otel.GetTraceID(context.Background())
+	})
+
+	container := rabbitmq.GetTestContainer(t)
+	client := rabbitmq.NewTestClient(container.URL)
+	if err := client.Connect(); err != nil {
+		t.Fatalf("connecting to rabbitmq: %s", err)
+	}
+	defer client.Close()
+
+	queue := rabbitmq.NewTestWorkflowQueue(client, log)
+	if err := queue.Initialize(ctx); err != nil {
+		t.Fatalf("initializing workflow queue: %s", err)
+	}
+
+	handler := inventory.NewAllocateInventoryHandler(
+		log,
+		db.DB,
+		queue,
+		db.BusDomain.InventoryItem,
+		db.BusDomain.InventoryLocation,
+		db.BusDomain.InventoryTransaction,
+		db.BusDomain.Product,
+		db.BusDomain.Workflow,
+	)
+
+	// Build a valid QueuedPayload that will trigger allocation failure
+	execContext := workflow.ActionExecutionContext{
+		EntityID:    uuid.New(),
+		EntityName:  "order_line_items",
+		EventType:   "on_create",
+		UserID:      admins[0].ID,
+		RuleID:      uuid.New(),
+		RuleName:    "Test Failure Alert",
+		ExecutionID: uuid.New(),
+		Timestamp:   time.Now().UTC(),
+	}
+
+	allocConfig := inventory.AllocateInventoryConfig{
+		InventoryItems: []inventory.AllocationItem{{
+			ProductID: productWithNoInventory.ProductID,
+			Quantity:  10, // Request inventory that doesn't exist
+		}},
+		AllocationMode:     "allocate",
+		AllocationStrategy: "fifo",
+		AllowPartial:       false, // Must fail if not enough
+		Priority:           "high",
+		ReferenceID:        "TEST-ORDER-123",
+		ReferenceType:      "order",
+	}
+
+	request := inventory.AllocationRequest{
+		ID:          uuid.New(),
+		ExecutionID: execContext.ExecutionID,
+		Config:      allocConfig,
+		Context:     execContext,
+		Status:      "queued",
+		Priority:    10,
+		CreatedAt:   time.Now(),
+		MaxRetries:  3,
+	}
+
+	requestData, _ := json.Marshal(request)
+
+	queuedPayload := workflow.QueuedPayload{
+		RequestType:      "allocate_inventory",
+		RequestData:      requestData,
+		ExecutionContext: execContext,
+		IdempotencyKey:   fmt.Sprintf("%s_%s_allocate_inventory", execContext.ExecutionID, execContext.RuleID),
+	}
+
+	payloadJSON, _ := json.Marshal(queuedPayload)
+
+	// Create a real QueueManager and EventPublisher
+	queueManager, err := workflow.NewQueueManager(log, db.DB, nil, client, queue)
+	if err != nil {
+		t.Fatalf("creating queue manager: %s", err)
+	}
+	if err := queueManager.Initialize(ctx); err != nil {
+		t.Fatalf("initializing queue manager: %s", err)
+	}
+
+	eventPublisher := workflow.NewEventPublisher(log, queueManager)
+
+	// Execute ProcessQueued - this should fail but still fire an event
+	err = handler.ProcessQueued(ctx, payloadJSON, eventPublisher)
+
+	// We expect an error because allocation failed
+	if err == nil {
+		t.Fatal("expected allocation to fail, but it succeeded")
+	}
+
+	if !contains(err.Error(), "allocation processing failed") {
+		t.Fatalf("unexpected error: %s", err.Error())
+	}
+
+	// Give the async event publisher goroutine time to complete
+	time.Sleep(100 * time.Millisecond)
+
+	// Check logs for evidence that the event was fired
+	logOutput := buf.String()
+	if !contains(logOutput, "Allocation processing failed, event fired for alerting") {
+		t.Errorf("expected log message about event being fired on failure, got:\n%s", logOutput)
+	}
+
+	// The key verification: the log message confirms fireAllocationResultEvent was called
+	// before returning the error, which is the fix we implemented
+
+	t.Log("SUCCESS: ProcessQueued fires workflow event even when allocation fails")
+
+	// Cleanup with timeout to prevent blocking
+	stopCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	queueManager.Stop(stopCtx)
 }

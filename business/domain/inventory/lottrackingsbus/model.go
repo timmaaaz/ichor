@@ -6,35 +6,40 @@ import (
 	"github.com/google/uuid"
 )
 
+// JSON tags are required for workflow event serialization. The workflow system
+// (via EventPublisher) marshals business models to JSON for RawData in TriggerEvents.
+// Without these tags, Go defaults to PascalCase keys, but workflow action handlers
+// expect snake_case keys to match API conventions.
+
 type LotTrackings struct {
-	LotID             uuid.UUID
-	SupplierProductID uuid.UUID
-	LotNumber         string
-	ManufactureDate   time.Time
-	ExpirationDate    time.Time
-	RecievedDate      time.Time
-	Quantity          int
-	QualityStatus     string
-	CreatedDate       time.Time
-	UpdatedDate       time.Time
+	LotID             uuid.UUID `json:"lot_id"`
+	SupplierProductID uuid.UUID `json:"supplier_product_id"`
+	LotNumber         string    `json:"lot_number"`
+	ManufactureDate   time.Time `json:"manufacture_date"`
+	ExpirationDate    time.Time `json:"expiration_date"`
+	RecievedDate      time.Time `json:"recieved_date"`
+	Quantity          int       `json:"quantity"`
+	QualityStatus     string    `json:"quality_status"`
+	CreatedDate       time.Time `json:"created_date"`
+	UpdatedDate       time.Time `json:"updated_date"`
 }
 
 type NewLotTrackings struct {
-	SupplierProductID uuid.UUID
-	LotNumber         string
-	ManufactureDate   time.Time
-	ExpirationDate    time.Time
-	RecievedDate      time.Time
-	Quantity          int
-	QualityStatus     string
+	SupplierProductID uuid.UUID `json:"supplier_product_id"`
+	LotNumber         string    `json:"lot_number"`
+	ManufactureDate   time.Time `json:"manufacture_date"`
+	ExpirationDate    time.Time `json:"expiration_date"`
+	RecievedDate      time.Time `json:"recieved_date"`
+	Quantity          int       `json:"quantity"`
+	QualityStatus     string    `json:"quality_status"`
 }
 
 type UpdateLotTrackings struct {
-	SupplierProductID *uuid.UUID
-	LotNumber         *string
-	ManufactureDate   *time.Time
-	ExpirationDate    *time.Time
-	RecievedDate      *time.Time
-	Quantity          *int
-	QualityStatus     *string
+	SupplierProductID *uuid.UUID `json:"supplier_product_id,omitempty"`
+	LotNumber         *string    `json:"lot_number,omitempty"`
+	ManufactureDate   *time.Time `json:"manufacture_date,omitempty"`
+	ExpirationDate    *time.Time `json:"expiration_date,omitempty"`
+	RecievedDate      *time.Time `json:"recieved_date,omitempty"`
+	Quantity          *int       `json:"quantity,omitempty"`
+	QualityStatus     *string    `json:"quality_status,omitempty"`
 }

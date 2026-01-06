@@ -32,6 +32,22 @@ func (ep *EventPublisher) PublishCreateEvent(ctx context.Context, entityName str
 	ep.publishEvent(ctx, "on_create", entityName, result, nil, userID)
 }
 
+// PublishCreateEventsBlocking fires on_create events for multiple entities synchronously.
+// Events are queued in order, blocking until all are queued.
+// Used by FormData to ensure array items are queued atomically.
+func (ep *EventPublisher) PublishCreateEventsBlocking(ctx context.Context, entityName string, results []any, userID uuid.UUID) {
+	for _, result := range results {
+		ep.publishEventBlocking(ctx, "on_create", entityName, result, nil, userID)
+	}
+}
+
+// PublishUpdateEventsBlocking fires on_update events for multiple entities synchronously.
+func (ep *EventPublisher) PublishUpdateEventsBlocking(ctx context.Context, entityName string, results []any, userID uuid.UUID) {
+	for _, result := range results {
+		ep.publishEventBlocking(ctx, "on_update", entityName, result, nil, userID)
+	}
+}
+
 // PublishUpdateEvent fires an on_update event with optional field changes.
 func (ep *EventPublisher) PublishUpdateEvent(ctx context.Context, entityName string, result any, fieldChanges map[string]FieldChange, userID uuid.UUID) {
 	ep.publishEvent(ctx, "on_update", entityName, result, fieldChanges, userID)
@@ -102,6 +118,41 @@ func (ep *EventPublisher) queueEventNonBlocking(ctx context.Context, event Trigg
 				"eventType", event.EventType)
 		}
 	}()
+}
+
+func (ep *EventPublisher) publishEventBlocking(ctx context.Context, eventType, entityName string, result any, fieldChanges map[string]FieldChange, userID uuid.UUID) {
+	entityID, rawData, err := ep.extractEntityData(result)
+	if err != nil {
+		ep.log.Error(ctx, "workflow event: extract entity data failed",
+			"entityName", entityName,
+			"eventType", eventType,
+			"error", err)
+		return
+	}
+
+	event := TriggerEvent{
+		EventType:    eventType,
+		EntityName:   entityName,
+		EntityID:     entityID,
+		FieldChanges: fieldChanges,
+		Timestamp:    time.Now().UTC(),
+		RawData:      rawData,
+		UserID:       userID,
+	}
+
+	// Queue synchronously (blocking)
+	if err := ep.queueManager.QueueEvent(ctx, event); err != nil {
+		ep.log.Error(ctx, "workflow event: queue failed",
+			"entityName", event.EntityName,
+			"entityID", event.EntityID,
+			"eventType", event.EventType,
+			"error", err)
+	} else {
+		ep.log.Info(ctx, "workflow event queued",
+			"entityName", event.EntityName,
+			"entityID", event.EntityID,
+			"eventType", event.EventType)
+	}
 }
 
 // extractEntityData extracts ID and raw data from entity result.

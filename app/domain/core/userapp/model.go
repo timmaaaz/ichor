@@ -207,9 +207,12 @@ func toBusNewUser(app NewUser) (userbus.NewUser, error) {
 		return userbus.NewUser{}, fmt.Errorf("parse: %w", err)
 	}
 
-	birthday, err := time.Parse(dateFormat, app.Birthday)
-	if err != nil {
-		return userbus.NewUser{}, fmt.Errorf("parse: %w", err)
+	var birthday time.Time
+	if app.Birthday != "" {
+		birthday, err = time.Parse(dateFormat, app.Birthday)
+		if err != nil {
+			return userbus.NewUser{}, fmt.Errorf("parse: %w", err)
+		}
 	}
 
 	roles, err := userbus.ParseRoles(app.Roles)

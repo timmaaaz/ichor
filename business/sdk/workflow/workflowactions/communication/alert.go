@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
 
 // Ensure workflow import is used (for ActionExecutionContext)
@@ -34,15 +35,17 @@ type AlertConfig struct {
 
 // CreateAlertHandler handles create_alert actions.
 type CreateAlertHandler struct {
-	log      *logger.Logger
-	alertBus *alertbus.Business
+	log           *logger.Logger
+	alertBus      *alertbus.Business
+	workflowQueue *rabbitmq.WorkflowQueue
 }
 
 // NewCreateAlertHandler creates a new create alert handler.
-func NewCreateAlertHandler(log *logger.Logger, alertBus *alertbus.Business) *CreateAlertHandler {
+func NewCreateAlertHandler(log *logger.Logger, alertBus *alertbus.Business, workflowQueue *rabbitmq.WorkflowQueue) *CreateAlertHandler {
 	return &CreateAlertHandler{
-		log:      log,
-		alertBus: alertBus,
+		log:           log,
+		alertBus:      alertBus,
+		workflowQueue: workflowQueue,
 	}
 }
 
@@ -154,6 +157,11 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		return nil, fmt.Errorf("create recipients: %w", err)
 	}
 
+	// Publish to RabbitMQ for WebSocket delivery
+	if h.workflowQueue != nil {
+		h.publishAlertToWebSocket(ctx, alert, recipients)
+	}
+
 	h.log.Info(ctx, "create_alert action executed",
 		"alert_id", alert.ID,
 		"entity_id", execCtx.EntityID,
@@ -180,4 +188,51 @@ func resolveTemplateVars(template string, data map[string]interface{}) string {
 		}
 		return match // Keep original if not found
 	})
+}
+
+// publishAlertToWebSocket publishes alert messages to RabbitMQ for WebSocket delivery.
+// Each recipient gets a targeted message (user or role).
+func (h *CreateAlertHandler) publishAlertToWebSocket(ctx context.Context, alert alertbus.Alert, recipients []alertbus.AlertRecipient) {
+	// Build the alert payload once (shared across all messages)
+	alertData := map[string]interface{}{
+		"id":          alert.ID.String(),
+		"alertType":   alert.AlertType,
+		"severity":    alert.Severity,
+		"title":       alert.Title,
+		"message":     alert.Message,
+		"status":      alert.Status,
+		"createdDate": alert.CreatedDate.Format(time.RFC3339),
+		"updatedDate": alert.UpdatedDate.Format(time.RFC3339),
+	}
+
+	for _, recipient := range recipients {
+		// Build payload with alert data
+		payload := map[string]interface{}{
+			"alert": alertData,
+		}
+
+		msg := &rabbitmq.Message{
+			Type:       "alert",
+			EntityName: "workflow.alerts",
+			EntityID:   alert.ID,
+		}
+
+		// Target by user or role
+		if recipient.RecipientType == "user" {
+			msg.UserID = recipient.RecipientID
+		} else if recipient.RecipientType == "role" {
+			payload["role_id"] = recipient.RecipientID.String()
+		}
+
+		msg.Payload = payload
+
+		if err := h.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg); err != nil {
+			h.log.Error(ctx, "failed to publish alert to rabbitmq",
+				"alert_id", alert.ID,
+				"recipient_type", recipient.RecipientType,
+				"recipient_id", recipient.RecipientID,
+				"error", err)
+			// Continue - alert is already persisted, log error but don't fail
+		}
+	}
 }

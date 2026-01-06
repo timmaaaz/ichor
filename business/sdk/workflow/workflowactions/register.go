@@ -53,7 +53,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 	// Communication actions
 	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB))
 	registry.Register(communication.NewSendNotificationHandler(config.Log, config.DB))
-	registry.Register(communication.NewCreateAlertHandler(config.Log, config.Buses.Alert))
+	registry.Register(communication.NewCreateAlertHandler(config.Log, config.Buses.Alert, config.QueueClient))
 
 	// Inventory actions - need additional dependencies
 	registry.Register(inventory.NewAllocateInventoryHandler(

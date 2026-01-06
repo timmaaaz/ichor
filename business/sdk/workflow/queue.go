@@ -504,6 +504,9 @@ func (qm *QueueManager) processWorkflowEvent(ctx context.Context, msg *rabbitmq.
 			m.TotalFailed++
 		})
 
+		// Log detailed error information
+		qm.logExecutionErrors(ctx, execution)
+
 		// Return an error so RabbitMQ knows the message processing failed
 		return fmt.Errorf("workflow execution failed: %d errors", len(execution.Errors))
 	}
@@ -655,6 +658,43 @@ func (qm *QueueManager) updateMetric(fn func(*QueueMetrics)) {
 	qm.metricsLock.Lock()
 	defer qm.metricsLock.Unlock()
 	fn(&qm.metrics)
+}
+
+// logExecutionErrors logs detailed information about workflow execution failures
+func (qm *QueueManager) logExecutionErrors(ctx context.Context, execution *WorkflowExecution) {
+	// Log top-level errors
+	for i, errMsg := range execution.Errors {
+		qm.log.Error(ctx, "workflow execution error",
+			"execution_id", execution.ExecutionID,
+			"error_index", i,
+			"error", errMsg)
+	}
+
+	// Log action-level errors from batch results
+	for batchIdx, batch := range execution.BatchResults {
+		for _, ruleResult := range batch.RuleResults {
+			if ruleResult.Status == "failed" {
+				qm.log.Error(ctx, "rule execution failed",
+					"execution_id", execution.ExecutionID,
+					"batch", batchIdx,
+					"rule_id", ruleResult.RuleID,
+					"rule_name", ruleResult.RuleName,
+					"error", ruleResult.ErrorMessage)
+			}
+			for _, actionResult := range ruleResult.ActionResults {
+				if actionResult.Status == "failed" {
+					qm.log.Error(ctx, "action execution failed",
+						"execution_id", execution.ExecutionID,
+						"batch", batchIdx,
+						"rule_name", ruleResult.RuleName,
+						"action_id", actionResult.ActionID,
+						"action_name", actionResult.ActionName,
+						"action_type", actionResult.ActionType,
+						"error", actionResult.ErrorMessage)
+				}
+			}
+		}
+	}
 }
 
 func (qm *QueueManager) metricsCollector(ctx context.Context) {

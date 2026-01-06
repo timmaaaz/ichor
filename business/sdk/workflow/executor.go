@@ -213,6 +213,15 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 	startTime := time.Now()
 	actionID := action.ID
 
+	ae.log.Info(ctx, "VERBOSE: Starting action execution",
+		"action_id", actionID,
+		"action_name", action.Name,
+		"action_type", ae.getActionType(action),
+		"rule_id", executionContext.RuleID,
+		"rule_name", executionContext.RuleName,
+		"entity_name", executionContext.EntityName,
+		"entity_id", executionContext.EntityID)
+
 	// Track active execution
 	exec := &ActionExecution{
 		ActionID:  actionID,
@@ -238,6 +247,10 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 		result.ErrorMessage = fmt.Sprintf("Invalid action configuration: %v", validation.Errors)
 		result.CompletedAt = timePtr(time.Now())
 		result.Duration = time.Since(startTime)
+		ae.log.Error(ctx, "VERBOSE: Action validation failed",
+			"action_id", actionID,
+			"action_name", action.Name,
+			"validation_errors", validation.Errors)
 		return result
 	}
 
@@ -262,8 +275,17 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 		result.ErrorMessage = fmt.Sprintf("No handler for action type: %s", actionType)
 		result.CompletedAt = timePtr(time.Now())
 		result.Duration = time.Since(startTime)
+		ae.log.Error(ctx, "VERBOSE: No handler found for action type",
+			"action_id", actionID,
+			"action_name", action.Name,
+			"action_type", actionType)
 		return result
 	}
+
+	ae.log.Info(ctx, "VERBOSE: Found handler, executing action",
+		"action_id", actionID,
+		"action_type", actionType,
+		"config_length", len(processedConfig))
 
 	// Execute action with retry logic
 	var execErr error
@@ -284,7 +306,17 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 
 		resultData, execErr = handler.Execute(ctx, processedConfig, executionContext)
 		if execErr == nil {
+			ae.log.Info(ctx, "VERBOSE: Action executed successfully",
+				"action_id", actionID,
+				"action_type", actionType,
+				"attempt", i+1)
 			break
+		} else {
+			ae.log.Error(ctx, "VERBOSE: Action execution failed",
+				"action_id", actionID,
+				"action_type", actionType,
+				"attempt", i+1,
+				"error", execErr.Error())
 		}
 	}
 
@@ -292,6 +324,11 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 	if execErr != nil {
 		result.Status = "failed"
 		result.ErrorMessage = execErr.Error()
+		ae.log.Error(ctx, "VERBOSE: Action final result - FAILED",
+			"action_id", actionID,
+			"action_name", action.Name,
+			"action_type", actionType,
+			"error", execErr.Error())
 	} else {
 		result.Status = "success"
 		// To this:

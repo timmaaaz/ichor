@@ -16,16 +16,16 @@ type PageConfig struct {
 
 // NewPageConfig contains data required to create a new page configuration
 type NewPageConfig struct {
-	Name      string
-	UserID    uuid.UUID
-	IsDefault bool
+	Name      string    `json:"name"`
+	UserID    uuid.UUID `json:"user_id"`
+	IsDefault bool      `json:"is_default"`
 }
 
 // UpdatePageConfig contains data for updating an existing page configuration
 type UpdatePageConfig struct {
-	Name      *string
-	UserID    *uuid.UUID
-	IsDefault *bool
+	Name      *string    `json:"name,omitempty"`
+	UserID    *uuid.UUID `json:"user_id,omitempty"`
+	IsDefault *bool      `json:"is_default,omitempty"`
 }
 
 // PageConfigWithRelations represents a page config with its content and actions.
@@ -96,9 +96,9 @@ type DropdownItemExport struct {
 
 // ImportStats represents statistics from an import operation.
 type ImportStats struct {
-	ImportedCount int
-	SkippedCount  int
-	UpdatedCount  int
+	ImportedCount int `json:"imported_count"`
+	SkippedCount  int `json:"skipped_count"`
+	UpdatedCount  int `json:"updated_count"`
 }
 
 // Error code constants for validation
@@ -119,13 +119,13 @@ const (
 // ValidationResult represents the outcome of validating a page config import (business layer)
 // NOTE: Does NOT implement web.Encoder - that's the app layer's job
 type ValidationResult struct {
-	Valid  bool
-	Errors []ValidationError
+	Valid  bool              `json:"valid"`
+	Errors []ValidationError `json:"errors"`
 }
 
 // ValidationError represents a single validation error with JSON path (business layer)
 type ValidationError struct {
-	Field   string // JSON path: "contents[0].config.tableConfigId"
-	Message string // User-friendly error message
-	Code    string // Error code for i18n
+	Field   string `json:"field"`   // JSON path: "contents[0].config.tableConfigId"
+	Message string `json:"message"` // User-friendly error message
+	Code    string `json:"code"`    // Error code for i18n
 }

@@ -107,9 +107,12 @@ func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLine
 		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
 	}
 
-	discount, err := strconv.ParseFloat(app.Discount, 64)
-	if err != nil {
-		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
+	var discount float64
+	if app.Discount != "" {
+		discount, err = strconv.ParseFloat(app.Discount, 64)
+		if err != nil {
+			return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
+		}
 	}
 
 	lineItemFulfillmentStatusesID, err := uuid.Parse(app.LineItemFulfillmentStatusesID)

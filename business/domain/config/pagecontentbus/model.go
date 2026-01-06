@@ -40,45 +40,50 @@ const (
 // Business Models
 // =============================================================================
 
+// JSON tags are required for workflow event serialization. The workflow system
+// (via EventPublisher) marshals business models to JSON for RawData in TriggerEvents.
+// Without these tags, Go defaults to PascalCase keys, but workflow action handlers
+// expect snake_case keys to match API conventions.
+
 // PageContent represents a flexible content block on a page
 type PageContent struct {
-	ID            uuid.UUID
-	PageConfigID  uuid.UUID
-	ContentType   string
-	Label         string
-	TableConfigID uuid.UUID
-	FormID        uuid.UUID
-	ChartConfigID uuid.UUID
-	OrderIndex    int
-	ParentID      uuid.UUID
-	Layout        json.RawMessage
-	IsVisible     bool
-	IsDefault     bool
-	Children      []PageContent // Populated by queries, not stored in DB
+	ID            uuid.UUID       `json:"id"`
+	PageConfigID  uuid.UUID       `json:"page_config_id"`
+	ContentType   string          `json:"content_type"`
+	Label         string          `json:"label"`
+	TableConfigID uuid.UUID       `json:"table_config_id"`
+	FormID        uuid.UUID       `json:"form_id"`
+	ChartConfigID uuid.UUID       `json:"chart_config_id"`
+	OrderIndex    int             `json:"order_index"`
+	ParentID      uuid.UUID       `json:"parent_id"`
+	Layout        json.RawMessage `json:"layout"`
+	IsVisible     bool            `json:"is_visible"`
+	IsDefault     bool            `json:"is_default"`
+	Children      []PageContent   `json:"children"` // Populated by queries, not stored in DB
 }
 
 // NewPageContent contains data required to create a new page content block
 type NewPageContent struct {
-	PageConfigID  uuid.UUID
-	ContentType   string
-	Label         string
-	TableConfigID uuid.UUID
-	FormID        uuid.UUID
-	ChartConfigID uuid.UUID
-	OrderIndex    int
-	ParentID      uuid.UUID
-	Layout        json.RawMessage
-	IsVisible     bool
-	IsDefault     bool
+	PageConfigID  uuid.UUID       `json:"page_config_id"`
+	ContentType   string          `json:"content_type"`
+	Label         string          `json:"label"`
+	TableConfigID uuid.UUID       `json:"table_config_id"`
+	FormID        uuid.UUID       `json:"form_id"`
+	ChartConfigID uuid.UUID       `json:"chart_config_id"`
+	OrderIndex    int             `json:"order_index"`
+	ParentID      uuid.UUID       `json:"parent_id"`
+	Layout        json.RawMessage `json:"layout"`
+	IsVisible     bool            `json:"is_visible"`
+	IsDefault     bool            `json:"is_default"`
 }
 
 // UpdatePageContent contains data for updating an existing page content block
 type UpdatePageContent struct {
-	Label      *string
-	OrderIndex *int
-	Layout     *json.RawMessage
-	IsVisible  *bool
-	IsDefault  *bool
+	Label      *string          `json:"label,omitempty"`
+	OrderIndex *int             `json:"order_index,omitempty"`
+	Layout     *json.RawMessage `json:"layout,omitempty"`
+	IsVisible  *bool            `json:"is_visible,omitempty"`
+	IsDefault  *bool            `json:"is_default,omitempty"`
 }
 
 // LayoutConfig holds all layout/styling configuration (stored as JSONB)
