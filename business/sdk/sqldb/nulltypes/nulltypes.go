@@ -2,6 +2,7 @@ package nulltypes
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -9,6 +10,31 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// NullRawMessage is a nullable json.RawMessage for database scanning.
+// It implements sql.Scanner to handle NULL values from LEFT JOINs and nullable columns.
+type NullRawMessage struct {
+	Data  json.RawMessage
+	Valid bool
+}
+
+// Scan implements the sql.Scanner interface for NullRawMessage.
+func (n *NullRawMessage) Scan(value interface{}) error {
+	if value == nil {
+		n.Data, n.Valid = nil, false
+		return nil
+	}
+	n.Valid = true
+	switch v := value.(type) {
+	case []byte:
+		n.Data = json.RawMessage(v)
+	case string:
+		n.Data = json.RawMessage(v)
+	default:
+		return fmt.Errorf("unsupported type for NullRawMessage: %T", value)
+	}
+	return nil
+}
 
 func ToNullableUUID(u uuid.UUID) sql.NullString {
 	if u == uuid.Nil {

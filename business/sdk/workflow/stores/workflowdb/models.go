@@ -580,10 +580,10 @@ type ruleActionView struct {
 	ExecutionOrder   sql.NullInt32   `db:"execution_order"`
 	IsActive         sql.NullBool    `db:"is_active"`
 	// Template information
-	TemplateID            sql.NullString  `db:"template_id"`
-	TemplateName          sql.NullString  `db:"template_name"`
-	TemplateActionType    sql.NullString  `db:"template_action_type"`
-	TemplateDefaultConfig json.RawMessage `db:"template_default_config"`
+	TemplateID            sql.NullString         `db:"template_id"`
+	TemplateName          sql.NullString         `db:"template_name"`
+	TemplateActionType    sql.NullString         `db:"template_action_type"`
+	TemplateDefaultConfig nulltypes.NullRawMessage `db:"template_default_config"`
 }
 
 // toCoreRuleActionView converts a store ruleActionView to core RuleActionView
@@ -620,7 +620,9 @@ func toCoreRuleActionView(dbView ruleActionView) workflow.RuleActionView {
 	if dbView.TemplateActionType.Valid {
 		view.TemplateActionType = dbView.TemplateActionType.String
 	}
-	view.TemplateDefaultConfig = dbView.TemplateDefaultConfig
+	if dbView.TemplateDefaultConfig.Valid {
+		view.TemplateDefaultConfig = dbView.TemplateDefaultConfig.Data
+	}
 
 	return view
 }
