@@ -494,11 +494,11 @@ var OrdersTableConfig = &tablebuilder.Config{
 				ClientComputedColumns: []tablebuilder.ComputedColumn{
 					{
 						Name:       "days_until_due",
-						Expression: "Math.ceil((new Date(due_date) - new Date()) / (1000 * 60 * 60 * 24))",
+						Expression: "daysUntil(due_date)",
 					},
 					{
 						Name:       "is_overdue",
-						Expression: "new Date(due_date) < new Date() && status_name !== 'Delivered'",
+						Expression: "isOverdue(due_date) && status_name != 'Delivered'",
 					},
 				},
 			},
@@ -708,7 +708,7 @@ var SuppliersTableConfig = &tablebuilder.Config{
 				ClientComputedColumns: []tablebuilder.ComputedColumn{
 					{
 						Name:       "rating_stars",
-						Expression: "Math.round(rating * 2) / 2",
+						Expression: "round(rating * 2) / 2",
 					},
 					{
 						Name:       "performance_level",
@@ -3352,7 +3352,7 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 					},
 					{
 						Name:       "delivery_status",
-						Expression: "actual_delivery_date ? 'delivered' : (new Date(expected_delivery_date) < new Date() ? 'overdue' : 'pending')",
+						Expression: "hasValue(actual_delivery_date) ? 'delivered' : (isOverdue(expected_delivery_date) ? 'overdue' : 'pending')",
 					},
 				},
 			},
@@ -4112,7 +4112,7 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 					},
 					{
 						Name:       "days_pending",
-						Expression: "Math.floor((new Date() - new Date(order_date)) / (1000 * 60 * 60 * 24))",
+						Expression: "daysSince(order_date)",
 					},
 				},
 			},
@@ -4467,7 +4467,7 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 					},
 					{
 						Name:       "delivery_status",
-						Expression: "actual_delivery_date ? 'delivered' : (new Date(expected_delivery_date) < new Date() ? 'overdue' : 'pending')",
+						Expression: "hasValue(actual_delivery_date) ? 'delivered' : (isOverdue(expected_delivery_date) ? 'overdue' : 'pending')",
 					},
 				},
 			},

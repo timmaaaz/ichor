@@ -744,7 +744,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 					},
 					{
 						Name:       "days_employed",
-						Expression: "date_hired ? Math.floor((new Date() - new Date(date_hired)) / (1000 * 60 * 60 * 24)) : null",
+						Expression: "hasValue(date_hired) ? daysSince(date_hired) : nil",
 					},
 				},
 			},
