@@ -3841,7 +3841,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				"title":      "Inventory Allocation Failed",
 				"message":    "Inventory allocation failed for order {{reference_id}}: insufficient inventory",
 				"recipients": map[string]interface{}{
-					"users": []string{admins[0].ID.String()},
+					"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher from seed.sql
 					"roles": []string{},
 				},
 				"context": map[string]interface{}{

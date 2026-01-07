@@ -277,6 +277,9 @@ dev-logs:
 dev-logs-auth:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(AUTH_APP) --all-containers=true -f --tail=100 | go run api/cmd/tooling/logfmt/main.go
 
+dev-logs-websocket:
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/cmd/tooling/logfmt/main.go -service=$(ICHOR_APP) | grep -i websocket
+
 # ------------------------------------------------------------------------------
 
 dev-logs-init:
