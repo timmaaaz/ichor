@@ -740,6 +740,9 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 		t.Fatalf("creating queue manager: %s", err)
 	}
 
+	// Set a lower threshold for testing (default is 50, use 5 for faster test)
+	qm.SetCircuitBreakerThreshold(rabbitmq.QueueTypeWorkflow, 5)
+
 	// Ensure circuit breaker is reset at the end of the test for isolation
 	t.Cleanup(func() {
 		qm.ResetCircuitBreaker()

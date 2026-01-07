@@ -37,8 +37,8 @@ type QueueManager struct {
 	metrics     QueueMetrics
 	metricsLock sync.RWMutex
 
-	// Circuit breaker
-	circuitBreaker *CircuitBreaker
+	// Circuit breaker manager (per-queue-type + global)
+	circuitBreakerManager *CircuitBreakerManager
 
 	// Handler registry for real-time message delivery (e.g., WebSocket alerts)
 	handlerRegistry *websocket.HandlerRegistry
@@ -53,6 +53,10 @@ type QueueConfig struct {
 	MaxRetryDelay           time.Duration `json:"max_retry_delay"`
 	CircuitBreakerThreshold int           `json:"circuit_breaker_threshold"`
 	CircuitBreakerTimeout   time.Duration `json:"circuit_breaker_timeout"`
+
+	// Global circuit breaker settings (triggers when aggregate failures across all queues exceed threshold)
+	GlobalCircuitBreakerThreshold int           `json:"global_circuit_breaker_threshold"`
+	GlobalCircuitBreakerTimeout   time.Duration `json:"global_circuit_breaker_timeout"`
 }
 
 // QueueMetrics tracks queue performance metrics
@@ -70,12 +74,13 @@ type QueueMetrics struct {
 
 // QueueStatus represents the current queue status
 type QueueStatus struct {
-	IsRunning        bool            `json:"is_running"`
-	QueueDepth       int             `json:"queue_depth"`
-	ActiveWorkers    int             `json:"active_workers"`
-	CircuitBreakerOn bool            `json:"circuit_breaker_on"`
-	Metrics          QueueMetrics    `json:"metrics"`
-	ConsumerStatus   map[string]bool `json:"consumer_status"`
+	IsRunning            bool                     `json:"is_running"`
+	QueueDepth           int                      `json:"queue_depth"`
+	ActiveWorkers        int                      `json:"active_workers"`
+	CircuitBreakerOn     bool                     `json:"circuit_breaker_on"`      // True if ANY breaker is open (backwards compat)
+	CircuitBreakerStatus map[string]BreakerStatus `json:"circuit_breaker_status"` // Per-queue breaker status
+	Metrics              QueueMetrics             `json:"metrics"`
+	ConsumerStatus       map[string]bool          `json:"consumer_status"`
 }
 
 // CircuitBreaker manages downstream service failures
@@ -86,6 +91,41 @@ type CircuitBreaker struct {
 	failureCount     atomic.Int32
 	lastFailureTime  atomic.Value // stores time.Time
 	state            atomic.Value // stores string: "closed", "open", "half-open"
+}
+
+// CircuitBreakerManager manages multiple circuit breakers for different queue types
+type CircuitBreakerManager struct {
+	mu       sync.RWMutex
+	breakers map[rabbitmq.QueueType]*CircuitBreaker
+	global   *CircuitBreaker // Fallback for catastrophic failures
+	config   CircuitBreakerConfig
+}
+
+// CircuitBreakerConfig holds configuration for circuit breakers
+type CircuitBreakerConfig struct {
+	// Per-queue-type settings (default for all queues)
+	DefaultThreshold int           // Default: 50
+	DefaultTimeout   time.Duration // Default: 60s
+
+	// Global fallback settings
+	GlobalThreshold int           // Default: 100
+	GlobalTimeout   time.Duration // Default: 120s
+
+	// Optional per-queue overrides
+	QueueOverrides map[rabbitmq.QueueType]CircuitBreakerSettings
+}
+
+// CircuitBreakerSettings holds settings for a specific circuit breaker
+type CircuitBreakerSettings struct {
+	Threshold int
+	Timeout   time.Duration
+}
+
+// BreakerStatus represents the status of a single circuit breaker
+type BreakerStatus struct {
+	State        string     `json:"state"` // "closed", "open", "half-open"
+	FailureCount int32      `json:"failure_count"`
+	LastFailure  *time.Time `json:"last_failure,omitempty"`
 }
 
 // QueueProcessingResult represents the result of batch processing
@@ -99,13 +139,15 @@ type QueueProcessingResult struct {
 // DefaultQueueConfig returns default configuration
 func DefaultQueueConfig() QueueConfig {
 	return QueueConfig{
-		BatchSize:               10,
-		MaxConcurrentWorkers:    5,
-		ProcessingTimeout:       5 * time.Minute,
-		RetryDelay:              1 * time.Second,
-		MaxRetryDelay:           30 * time.Second,
-		CircuitBreakerThreshold: 5,
-		CircuitBreakerTimeout:   30 * time.Second,
+		BatchSize:                     10,
+		MaxConcurrentWorkers:          5,
+		ProcessingTimeout:             5 * time.Minute,
+		RetryDelay:                    1 * time.Second,
+		MaxRetryDelay:                 30 * time.Second,
+		CircuitBreakerThreshold:       50,              // Per-queue default (was 5)
+		CircuitBreakerTimeout:         60 * time.Second, // Per-queue default (was 30s)
+		GlobalCircuitBreakerThreshold: 100,              // Global fallback
+		GlobalCircuitBreakerTimeout:   120 * time.Second, // Global fallback
 	}
 }
 
@@ -113,23 +155,27 @@ func DefaultQueueConfig() QueueConfig {
 // For production, use rabbitmq.NewWorkflowQueue().
 // For testing, use rabbitmq.NewTestWorkflowQueue() to get unique queue names.
 func NewQueueManager(log *logger.Logger, db *sqlx.DB, engine *Engine, client *rabbitmq.Client, queue *rabbitmq.WorkflowQueue) (*QueueManager, error) {
-	qm := &QueueManager{
-		log:       log,
-		db:        db,
-		engine:    engine,
-		client:    client,
-		queue:     queue,
-		config:    DefaultQueueConfig(),
-		consumers: make(map[string]*rabbitmq.Consumer),
-		stopChan:  make(chan struct{}),
-		circuitBreaker: &CircuitBreaker{
-			failureThreshold: 5,
-			resetTimeout:     30 * time.Second,
-		},
+	cfg := DefaultQueueConfig()
+
+	// Create circuit breaker manager with config values
+	cbConfig := CircuitBreakerConfig{
+		DefaultThreshold: cfg.CircuitBreakerThreshold,
+		DefaultTimeout:   cfg.CircuitBreakerTimeout,
+		GlobalThreshold:  cfg.GlobalCircuitBreakerThreshold,
+		GlobalTimeout:    cfg.GlobalCircuitBreakerTimeout,
 	}
 
-	qm.circuitBreaker.state.Store("closed")
-	qm.circuitBreaker.lastFailureTime.Store(time.Now())
+	qm := &QueueManager{
+		log:                   log,
+		db:                    db,
+		engine:                engine,
+		client:                client,
+		queue:                 queue,
+		config:                cfg,
+		consumers:             make(map[string]*rabbitmq.Consumer),
+		stopChan:              make(chan struct{}),
+		circuitBreakerManager: NewCircuitBreakerManager(cbConfig),
+	}
 
 	return qm, nil
 }
@@ -156,10 +202,12 @@ func (qm *QueueManager) Initialize(ctx context.Context) error {
 
 // QueueEvent adds a trigger event to the queue
 func (qm *QueueManager) QueueEvent(ctx context.Context, event TriggerEvent) error {
+	// Determine queue type based on event
+	queueType := qm.determineQueueType(event)
 
-	// Check circuit breaker
-	if qm.circuitBreaker.IsOpen() {
-		return fmt.Errorf("circuit breaker is open, refusing new events")
+	// Check circuit breaker for this queue type
+	if qm.circuitBreakerManager.IsOpen(queueType) {
+		return fmt.Errorf("circuit breaker is open for queue type %s, refusing new events", queueType)
 	}
 
 	// Convert TriggerEvent to RabbitMQ Message
@@ -181,12 +229,9 @@ func (qm *QueueManager) QueueEvent(ctx context.Context, event TriggerEvent) erro
 		ScheduledFor: time.Now(),
 	}
 
-	// Determine queue type based on event
-	queueType := qm.determineQueueType(event)
-
 	// Publish to RabbitMQ
 	if err := qm.queue.Publish(ctx, queueType, msg); err != nil {
-		qm.recordFailure()
+		qm.recordFailure(queueType)
 		return fmt.Errorf("failed to queue event: %w", err)
 	}
 
@@ -315,11 +360,6 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 		return nil
 	}
 
-	// Check circuit breaker
-	if qm.circuitBreaker.IsOpen() {
-		return fmt.Errorf("circuit breaker is open")
-	}
-
 	qm.log.Info(ctx, "Processing async action message",
 		"messageID", msg.ID,
 		"eventType", msg.EventType)
@@ -327,18 +367,27 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 	// Serialize payload to JSON for the handler
 	payloadData, err := json.Marshal(msg.Payload)
 	if err != nil {
-		qm.recordFailure()
+		// Use workflow queue type as fallback when we can't determine the action type
+		qm.recordFailure(rabbitmq.QueueTypeWorkflow)
 		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
 	// Deserialize just enough to get the request type
 	var queuedPayload QueuedPayload
 	if err := json.Unmarshal(payloadData, &queuedPayload); err != nil {
-		qm.recordFailure()
+		qm.recordFailure(rabbitmq.QueueTypeWorkflow)
 		qm.updateMetric(func(m *QueueMetrics) {
 			m.TotalFailed++
 		})
 		return fmt.Errorf("failed to unmarshal queued payload: %w", err)
+	}
+
+	// Determine queue type based on the action's request type
+	queueType := qm.getQueueTypeForAction(queuedPayload.RequestType)
+
+	// Check circuit breaker for this action's queue type
+	if qm.circuitBreakerManager.IsOpen(queueType) {
+		return fmt.Errorf("circuit breaker is open for queue type %s", queueType)
 	}
 
 	// Get the handler from the registry
@@ -349,7 +398,7 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 
 	handler, exists := registry.Get(queuedPayload.RequestType)
 	if !exists {
-		qm.recordFailure()
+		qm.recordFailure(queueType)
 		qm.updateMetric(func(m *QueueMetrics) {
 			m.TotalFailed++
 		})
@@ -359,7 +408,7 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 	// Type assert to AsyncActionHandler
 	asyncHandler, ok := handler.(AsyncActionHandler)
 	if !ok {
-		qm.recordFailure()
+		qm.recordFailure(queueType)
 		qm.updateMetric(func(m *QueueMetrics) {
 			m.TotalFailed++
 		})
@@ -379,7 +428,7 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 	processingTime := time.Since(startTime)
 
 	if err != nil {
-		qm.recordFailure()
+		qm.recordFailure(queueType)
 		qm.updateMetric(func(m *QueueMetrics) {
 			m.TotalFailed++
 		})
@@ -387,6 +436,7 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 		qm.log.Error(ctx, "Failed to process async action",
 			"messageID", msg.ID,
 			"requestType", queuedPayload.RequestType,
+			"queueType", queueType,
 			"error", err,
 			"processingTime", processingTime)
 
@@ -394,7 +444,7 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 	}
 
 	// Success
-	qm.recordSuccess()
+	qm.recordSuccess(queueType)
 	qm.updateMetric(func(m *QueueMetrics) {
 		m.TotalProcessed++
 		now := time.Now()
@@ -409,6 +459,7 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 	qm.log.Info(ctx, "Processed async action",
 		"messageID", msg.ID,
 		"requestType", queuedPayload.RequestType,
+		"queueType", queueType,
 		"processingTime", processingTime)
 
 	return nil
@@ -417,11 +468,6 @@ func (qm *QueueManager) processAsyncAction(ctx context.Context, msg *rabbitmq.Me
 // processWorkflowEvent processes workflow trigger events
 func (qm *QueueManager) processWorkflowEvent(ctx context.Context, msg *rabbitmq.Message) error {
 	startTime := time.Now()
-
-	// Check circuit breaker
-	if qm.circuitBreaker.IsOpen() {
-		return fmt.Errorf("circuit breaker is open")
-	}
 
 	// Convert RabbitMQ message back to TriggerEvent
 	event := TriggerEvent{
@@ -473,6 +519,14 @@ func (qm *QueueManager) processWorkflowEvent(ctx context.Context, msg *rabbitmq.
 		}
 	}
 
+	// Determine queue type from reconstructed event
+	queueType := qm.determineQueueType(event)
+
+	// Check circuit breaker for this queue type
+	if qm.circuitBreakerManager.IsOpen(queueType) {
+		return fmt.Errorf("circuit breaker is open for queue type %s", queueType)
+	}
+
 	// Create processing context with timeout
 	processCtx, cancel := context.WithTimeout(ctx, qm.config.ProcessingTimeout)
 	defer cancel()
@@ -483,13 +537,14 @@ func (qm *QueueManager) processWorkflowEvent(ctx context.Context, msg *rabbitmq.
 	processingTime := time.Since(startTime)
 
 	if err != nil {
-		qm.recordFailure()
+		qm.recordFailure(queueType)
 		qm.updateMetric(func(m *QueueMetrics) {
 			m.TotalFailed++
 		})
 
 		qm.log.Error(ctx, "Failed to process workflow event",
 			"messageID", msg.ID,
+			"queueType", queueType,
 			"error", err,
 			"processingTime", processingTime)
 
@@ -499,7 +554,7 @@ func (qm *QueueManager) processWorkflowEvent(ctx context.Context, msg *rabbitmq.
 
 	// Check if the workflow execution itself failed
 	if execution.Status == StatusFailed {
-		qm.recordFailure()
+		qm.recordFailure(queueType)
 		qm.updateMetric(func(m *QueueMetrics) {
 			m.TotalFailed++
 		})
@@ -512,7 +567,7 @@ func (qm *QueueManager) processWorkflowEvent(ctx context.Context, msg *rabbitmq.
 	}
 
 	// Success
-	qm.recordSuccess()
+	qm.recordSuccess(queueType)
 	qm.updateMetric(func(m *QueueMetrics) {
 		m.TotalProcessed++
 		now := time.Now()
@@ -526,6 +581,7 @@ func (qm *QueueManager) processWorkflowEvent(ctx context.Context, msg *rabbitmq.
 
 	qm.log.Info(ctx, "Processed workflow event",
 		"messageID", msg.ID,
+		"queueType", queueType,
 		"processingTime", processingTime)
 
 	return nil
@@ -591,13 +647,17 @@ func (qm *QueueManager) GetQueueStatus(ctx context.Context) (*QueueStatus, error
 	metrics := qm.GetMetrics()
 	metrics.CurrentQueueDepth = stats.Messages
 
+	// Get per-queue circuit breaker status
+	cbStatus := qm.circuitBreakerManager.GetStatus()
+
 	return &QueueStatus{
-		IsRunning:        qm.isRunning.Load(),
-		QueueDepth:       stats.Messages,
-		ActiveWorkers:    len(qm.consumers),
-		CircuitBreakerOn: qm.circuitBreaker.IsOpen(),
-		Metrics:          metrics,
-		ConsumerStatus:   consumerStatus,
+		IsRunning:            qm.isRunning.Load(),
+		QueueDepth:           stats.Messages,
+		ActiveWorkers:        len(qm.consumers),
+		CircuitBreakerOn:     qm.circuitBreakerManager.IsAnyOpen(), // Backwards compat: true if ANY breaker is open
+		CircuitBreakerStatus: cbStatus,
+		Metrics:              metrics,
+		ConsumerStatus:       consumerStatus,
 	}, nil
 }
 
@@ -652,6 +712,28 @@ func (qm *QueueManager) determineQueueType(event TriggerEvent) rabbitmq.QueueTyp
 
 	// Default to general workflow queue
 	return rabbitmq.QueueTypeWorkflow
+}
+
+// getQueueTypeForAction maps action request types to appropriate queue types.
+// This enables per-action-type circuit breaker isolation.
+func (qm *QueueManager) getQueueTypeForAction(requestType string) rabbitmq.QueueType {
+	switch requestType {
+	case "send_email":
+		return rabbitmq.QueueTypeEmail
+	case "send_notification":
+		return rabbitmq.QueueTypeNotification
+	case "create_alert":
+		return rabbitmq.QueueTypeAlert
+	case "allocate_inventory":
+		return rabbitmq.QueueTypeInventory
+	case "seek_approval":
+		return rabbitmq.QueueTypeApproval
+	case "update_field":
+		// Data operations go to general workflow queue
+		return rabbitmq.QueueTypeWorkflow
+	default:
+		return rabbitmq.QueueTypeWorkflow
+	}
 }
 
 func (qm *QueueManager) updateMetric(fn func(*QueueMetrics)) {
@@ -721,8 +803,233 @@ func (qm *QueueManager) metricsCollector(ctx context.Context) {
 	}
 }
 
-// Circuit breaker methods
+// ============================================================================
+// CircuitBreakerManager methods
+// ============================================================================
 
+// NewCircuitBreakerManager creates a new circuit breaker manager with the given config.
+func NewCircuitBreakerManager(config CircuitBreakerConfig) *CircuitBreakerManager {
+	cbm := &CircuitBreakerManager{
+		breakers: make(map[rabbitmq.QueueType]*CircuitBreaker),
+		config:   config,
+	}
+
+	// Initialize per-queue breakers
+	queueTypes := []rabbitmq.QueueType{
+		rabbitmq.QueueTypeWorkflow,
+		rabbitmq.QueueTypeApproval,
+		rabbitmq.QueueTypeNotification,
+		rabbitmq.QueueTypeInventory,
+		rabbitmq.QueueTypeEmail,
+		rabbitmq.QueueTypeAlert,
+	}
+
+	for _, qt := range queueTypes {
+		threshold := config.DefaultThreshold
+		timeout := config.DefaultTimeout
+
+		// Apply overrides if present
+		if override, ok := config.QueueOverrides[qt]; ok {
+			if override.Threshold > 0 {
+				threshold = override.Threshold
+			}
+			if override.Timeout > 0 {
+				timeout = override.Timeout
+			}
+		}
+
+		cb := &CircuitBreaker{
+			failureThreshold: threshold,
+			resetTimeout:     timeout,
+		}
+		cb.state.Store("closed")
+		cb.lastFailureTime.Store(time.Now())
+		cbm.breakers[qt] = cb
+	}
+
+	// Initialize global breaker
+	cbm.global = &CircuitBreaker{
+		failureThreshold: config.GlobalThreshold,
+		resetTimeout:     config.GlobalTimeout,
+	}
+	cbm.global.state.Store("closed")
+	cbm.global.lastFailureTime.Store(time.Now())
+
+	return cbm
+}
+
+// IsOpen checks if the circuit breaker for the given queue type is open.
+// Returns true if either the queue-specific breaker OR the global breaker is open.
+func (cbm *CircuitBreakerManager) IsOpen(queueType rabbitmq.QueueType) bool {
+	// Check global breaker first
+	if cbm.global.IsOpen() {
+		return true
+	}
+
+	// Check queue-specific breaker
+	cbm.mu.RLock()
+	cb, exists := cbm.breakers[queueType]
+	cbm.mu.RUnlock()
+
+	if !exists {
+		return false
+	}
+
+	return cb.IsOpen()
+}
+
+// IsAnyOpen returns true if any circuit breaker (including global) is open.
+func (cbm *CircuitBreakerManager) IsAnyOpen() bool {
+	if cbm.global.IsOpen() {
+		return true
+	}
+
+	cbm.mu.RLock()
+	defer cbm.mu.RUnlock()
+
+	for _, cb := range cbm.breakers {
+		if cb.IsOpen() {
+			return true
+		}
+	}
+	return false
+}
+
+// RecordFailure records a failure for the given queue type.
+// Also increments the global failure counter.
+func (cbm *CircuitBreakerManager) RecordFailure(queueType rabbitmq.QueueType) {
+	// Record in queue-specific breaker
+	cbm.mu.RLock()
+	cb, exists := cbm.breakers[queueType]
+	cbm.mu.RUnlock()
+
+	if exists {
+		cb.mu.Lock()
+		count := cb.failureCount.Add(1)
+		cb.lastFailureTime.Store(time.Now())
+		if count >= int32(cb.failureThreshold) {
+			cb.state.Store("open")
+		}
+		cb.mu.Unlock()
+	}
+
+	// Also record in global breaker
+	cbm.global.mu.Lock()
+	globalCount := cbm.global.failureCount.Add(1)
+	cbm.global.lastFailureTime.Store(time.Now())
+	if globalCount >= int32(cbm.global.failureThreshold) {
+		cbm.global.state.Store("open")
+	}
+	cbm.global.mu.Unlock()
+}
+
+// RecordSuccess records a success for the given queue type.
+// May transition breakers from half-open to closed.
+func (cbm *CircuitBreakerManager) RecordSuccess(queueType rabbitmq.QueueType) {
+	// Record in queue-specific breaker
+	cbm.mu.RLock()
+	cb, exists := cbm.breakers[queueType]
+	cbm.mu.RUnlock()
+
+	if exists {
+		cb.mu.Lock()
+		state := cb.state.Load().(string)
+		if state == "half-open" {
+			cb.failureCount.Store(0)
+			cb.state.Store("closed")
+		}
+		cb.mu.Unlock()
+	}
+
+	// Also check global breaker
+	cbm.global.mu.Lock()
+	globalState := cbm.global.state.Load().(string)
+	if globalState == "half-open" {
+		cbm.global.failureCount.Store(0)
+		cbm.global.state.Store("closed")
+	}
+	cbm.global.mu.Unlock()
+}
+
+// GetStatus returns the status of all circuit breakers.
+func (cbm *CircuitBreakerManager) GetStatus() map[string]BreakerStatus {
+	status := make(map[string]BreakerStatus)
+
+	cbm.mu.RLock()
+	for qt, cb := range cbm.breakers {
+		status[string(qt)] = cb.GetStatus()
+	}
+	cbm.mu.RUnlock()
+
+	// Add global breaker status
+	status["global"] = cbm.global.GetStatus()
+
+	return status
+}
+
+// Reset resets all circuit breakers to closed state.
+func (cbm *CircuitBreakerManager) Reset() {
+	cbm.mu.Lock()
+	defer cbm.mu.Unlock()
+
+	for _, cb := range cbm.breakers {
+		cb.mu.Lock()
+		cb.failureCount.Store(0)
+		cb.state.Store("closed")
+		cb.lastFailureTime.Store(time.Now())
+		cb.mu.Unlock()
+	}
+
+	cbm.global.mu.Lock()
+	cbm.global.failureCount.Store(0)
+	cbm.global.state.Store("closed")
+	cbm.global.lastFailureTime.Store(time.Now())
+	cbm.global.mu.Unlock()
+}
+
+// SetThreshold sets the threshold for a specific queue type.
+func (cbm *CircuitBreakerManager) SetThreshold(queueType rabbitmq.QueueType, threshold int) {
+	cbm.mu.Lock()
+	defer cbm.mu.Unlock()
+
+	if cb, exists := cbm.breakers[queueType]; exists {
+		cb.mu.Lock()
+		cb.failureThreshold = threshold
+		cb.mu.Unlock()
+	}
+}
+
+// SetTimeout sets the timeout for a specific queue type.
+func (cbm *CircuitBreakerManager) SetTimeout(queueType rabbitmq.QueueType, timeout time.Duration) {
+	cbm.mu.Lock()
+	defer cbm.mu.Unlock()
+
+	if cb, exists := cbm.breakers[queueType]; exists {
+		cb.mu.Lock()
+		cb.resetTimeout = timeout
+		cb.mu.Unlock()
+	}
+}
+
+// SetGlobalThreshold sets the threshold for the global breaker.
+func (cbm *CircuitBreakerManager) SetGlobalThreshold(threshold int) {
+	cbm.global.mu.Lock()
+	defer cbm.global.mu.Unlock()
+	cbm.global.failureThreshold = threshold
+}
+
+// SetGlobalTimeout sets the timeout for the global breaker.
+func (cbm *CircuitBreakerManager) SetGlobalTimeout(timeout time.Duration) {
+	cbm.global.mu.Lock()
+	defer cbm.global.mu.Unlock()
+	cbm.global.resetTimeout = timeout
+}
+
+// ============================================================================
+// CircuitBreaker methods
+// ============================================================================
+
+// IsOpen checks if this circuit breaker is open.
 func (cb *CircuitBreaker) IsOpen() bool {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -745,40 +1052,73 @@ func (cb *CircuitBreaker) IsOpen() bool {
 	return false
 }
 
-func (qm *QueueManager) recordFailure() {
-	qm.circuitBreaker.mu.Lock()
-	defer qm.circuitBreaker.mu.Unlock()
+// GetStatus returns the current status of this circuit breaker.
+func (cb *CircuitBreaker) GetStatus() BreakerStatus {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
 
-	count := qm.circuitBreaker.failureCount.Add(1)
-	qm.circuitBreaker.lastFailureTime.Store(time.Now())
-
-	if count >= int32(qm.circuitBreaker.failureThreshold) {
-		qm.circuitBreaker.state.Store("open")
-		qm.log.Warn(context.Background(), "Circuit breaker opened",
-			"failures", count)
+	lastFailure := cb.lastFailureTime.Load().(time.Time)
+	return BreakerStatus{
+		State:        cb.state.Load().(string),
+		FailureCount: cb.failureCount.Load(),
+		LastFailure:  &lastFailure,
 	}
 }
 
-func (qm *QueueManager) recordSuccess() {
-	qm.circuitBreaker.mu.Lock()
-	defer qm.circuitBreaker.mu.Unlock()
+// ============================================================================
+// QueueManager circuit breaker methods
+// ============================================================================
 
-	state := qm.circuitBreaker.state.Load().(string)
-	if state == "half-open" {
-		qm.circuitBreaker.failureCount.Store(0)
-		qm.circuitBreaker.state.Store("closed")
-		qm.log.Info(context.Background(), "Circuit breaker closed")
+// recordFailure records a failure for the given queue type.
+func (qm *QueueManager) recordFailure(queueType rabbitmq.QueueType) {
+	qm.circuitBreakerManager.RecordFailure(queueType)
+
+	// Log when breaker opens
+	if qm.circuitBreakerManager.IsOpen(queueType) {
+		status := qm.circuitBreakerManager.GetStatus()
+		if bs, ok := status[string(queueType)]; ok && bs.State == "open" {
+			qm.log.Warn(context.Background(), "Circuit breaker opened",
+				"queueType", queueType,
+				"failures", bs.FailureCount)
+		}
 	}
 }
 
-// ResetCircuitBreaker resets the circuit breaker to closed state (for testing)
+// recordSuccess records a success for the given queue type.
+func (qm *QueueManager) recordSuccess(queueType rabbitmq.QueueType) {
+	wasOpen := qm.circuitBreakerManager.IsOpen(queueType)
+	qm.circuitBreakerManager.RecordSuccess(queueType)
+
+	// Log when breaker closes
+	if wasOpen && !qm.circuitBreakerManager.IsOpen(queueType) {
+		qm.log.Info(context.Background(), "Circuit breaker closed",
+			"queueType", queueType)
+	}
+}
+
+// ResetCircuitBreaker resets all circuit breakers to closed state (for testing)
 func (qm *QueueManager) ResetCircuitBreaker() {
-	qm.circuitBreaker.mu.Lock()
-	defer qm.circuitBreaker.mu.Unlock()
+	qm.circuitBreakerManager.Reset()
+}
 
-	qm.circuitBreaker.failureCount.Store(0)
-	qm.circuitBreaker.state.Store("closed")
-	qm.circuitBreaker.lastFailureTime.Store(time.Now())
+// SetCircuitBreakerThreshold allows tests to set custom thresholds per queue.
+func (qm *QueueManager) SetCircuitBreakerThreshold(queueType rabbitmq.QueueType, threshold int) {
+	qm.circuitBreakerManager.SetThreshold(queueType, threshold)
+}
+
+// SetCircuitBreakerTimeout allows tests to set custom timeouts per queue.
+func (qm *QueueManager) SetCircuitBreakerTimeout(queueType rabbitmq.QueueType, timeout time.Duration) {
+	qm.circuitBreakerManager.SetTimeout(queueType, timeout)
+}
+
+// SetGlobalCircuitBreakerThreshold allows tests to set the global breaker threshold.
+func (qm *QueueManager) SetGlobalCircuitBreakerThreshold(threshold int) {
+	qm.circuitBreakerManager.SetGlobalThreshold(threshold)
+}
+
+// RecordFailureForTesting allows tests to simulate failures for a specific queue type.
+func (qm *QueueManager) RecordFailureForTesting(queueType rabbitmq.QueueType) {
+	qm.recordFailure(queueType)
 }
 
 // ResetMetrics resets all queue metrics to zero (for testing)
