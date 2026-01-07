@@ -27,13 +27,12 @@ const maxArrayItems = 1000
 
 // App manages dynamic form data operations across multiple entities.
 type App struct {
-	log            *logger.Logger
-	registry       *formdataregistry.Registry
-	db             *sqlx.DB
-	formBus        *formbus.Business
-	formFieldBus   *formfieldbus.Business
-	templateProc   *workflow.TemplateProcessor
-	eventPublisher *workflow.EventPublisher
+	log          *logger.Logger
+	registry     *formdataregistry.Registry
+	db           *sqlx.DB
+	formBus      *formbus.Business
+	formFieldBus *formfieldbus.Business
+	templateProc *workflow.TemplateProcessor
 }
 
 // NewApp constructs a form data app.
@@ -52,12 +51,6 @@ func NewApp(
 		formFieldBus: formFieldBus,
 		templateProc: workflow.NewTemplateProcessor(workflow.DefaultTemplateProcessingOptions()),
 	}
-}
-
-// SetEventPublisher sets the workflow event publisher (optional).
-// When set, workflow events will be fired after successful form data operations.
-func (a *App) SetEventPublisher(ep *workflow.EventPublisher) {
-	a.eventPublisher = ep
 }
 
 // resolveFKByName resolves a human-readable FK value to a UUID.
@@ -91,13 +84,6 @@ func (a *App) resolveFKByName(ctx context.Context, dropdownConfig *formfieldbus.
 	}
 
 	return id, nil
-}
-
-// pendingEvent tracks an event to fire after transaction commit.
-type pendingEvent struct {
-	entityName string
-	operation  formdataregistry.EntityOperation
-	result     any
 }
 
 // UpsertFormData handles multi-entity transactional create/update operations.
@@ -200,9 +186,6 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 	results := make(map[string]any)
 	templateContext := make(workflow.TemplateContext)
 
-	// Collect events to fire after commit
-	var pendingEvents []pendingEvent
-
 	for _, step := range plan {
 		entityData, exists := req.Data[step.EntityName]
 		if !exists {
@@ -227,44 +210,11 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 
 		results[step.EntityName] = result
 		templateContext[step.EntityName] = result
-
-		// Queue event for post-commit firing
-		if a.eventPublisher != nil {
-			pendingEvents = append(pendingEvents, pendingEvent{
-				entityName: step.EntityName,
-				operation:  step.Operation,
-				result:     result,
-			})
-		}
 	}
 
 	// 5. Commit transaction
 	if err := tx.Commit(); err != nil {
 		return FormDataResponse{}, errs.Newf(errs.Internal, "commit: %s", err)
-	}
-
-	// 6. Fire workflow events AFTER successful commit
-	if a.eventPublisher != nil {
-		userID, _ := mid.GetUserID(ctx)
-		for _, pe := range pendingEvents {
-			// Handle array results by publishing events synchronously in order
-			if arr, isArray := pe.result.([]any); isArray {
-				switch pe.operation {
-				case formdataregistry.OperationCreate:
-					a.eventPublisher.PublishCreateEventsBlocking(ctx, pe.entityName, arr, userID)
-				case formdataregistry.OperationUpdate:
-					a.eventPublisher.PublishUpdateEventsBlocking(ctx, pe.entityName, arr, userID)
-				}
-			} else {
-				// Single object result - use existing non-blocking method
-				switch pe.operation {
-				case formdataregistry.OperationCreate:
-					a.eventPublisher.PublishCreateEvent(ctx, pe.entityName, pe.result, userID)
-				case formdataregistry.OperationUpdate:
-					a.eventPublisher.PublishUpdateEvent(ctx, pe.entityName, pe.result, nil, userID)
-				}
-			}
-		}
 	}
 
 	return FormDataResponse{

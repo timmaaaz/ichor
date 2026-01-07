@@ -1102,7 +1102,6 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	} else {
 		// Initialize formdata app and routes
 		formDataApp := formdataapp.NewApp(cfg.Log, formDataRegistry, cfg.DB, formBus, formFieldBus)
-		formDataApp.SetEventPublisher(eventPublisher)
 
 		formdataapi.Routes(app, formdataapi.Config{
 			FormdataApp:    formDataApp,
