@@ -227,9 +227,10 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 		FROM
 			workflow.alerts a
 		INNER JOIN workflow.alert_recipients ar ON a.id = ar.alert_id
-		WHERE
+		WHERE (
 			(ar.recipient_type = 'user' AND ar.recipient_id = :user_id)
-			OR (ar.recipient_type = 'role' AND ar.recipient_id IN (:role_ids))`
+			OR (ar.recipient_type = 'role' AND ar.recipient_id IN (:role_ids))
+		)`
 	} else {
 		q = `
 		SELECT DISTINCT
@@ -240,7 +241,7 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 			workflow.alerts a
 		INNER JOIN workflow.alert_recipients ar ON a.id = ar.alert_id
 		WHERE
-			ar.recipient_type = 'user' AND ar.recipient_id = :user_id`
+			(ar.recipient_type = 'user' AND ar.recipient_id = :user_id)`
 	}
 
 	buf := bytes.NewBufferString(q)
@@ -320,9 +321,10 @@ func (s *Store) CountByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 		FROM
 			workflow.alerts a
 		INNER JOIN workflow.alert_recipients ar ON a.id = ar.alert_id
-		WHERE
+		WHERE (
 			(ar.recipient_type = 'user' AND ar.recipient_id = :user_id)
-			OR (ar.recipient_type = 'role' AND ar.recipient_id IN (:role_ids))`
+			OR (ar.recipient_type = 'role' AND ar.recipient_id IN (:role_ids))
+		)`
 	} else {
 		q = `
 		SELECT
@@ -331,7 +333,7 @@ func (s *Store) CountByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 			workflow.alerts a
 		INNER JOIN workflow.alert_recipients ar ON a.id = ar.alert_id
 		WHERE
-			ar.recipient_type = 'user' AND ar.recipient_id = :user_id`
+			(ar.recipient_type = 'user' AND ar.recipient_id = :user_id)`
 	}
 
 	buf := bytes.NewBufferString(q)
