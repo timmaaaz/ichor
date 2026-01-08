@@ -30,6 +30,15 @@ var allPages = []pagebus.NewPage{
 		IsActive:   true,
 		ShowInMenu: true,
 	},
+	{
+		Path:       "/alerts",
+		Name:       "Notification Center",
+		Module:     "dashboard",
+		Icon:       "material-symbols:notifications",
+		SortOrder:  3,
+		IsActive:   true,
+		ShowInMenu: true,
+	},
 
 	// SALES MODULE
 	{
