@@ -195,14 +195,21 @@ func resolveTemplateVars(template string, data map[string]interface{}) string {
 func (h *CreateAlertHandler) publishAlertToWebSocket(ctx context.Context, alert alertbus.Alert, recipients []alertbus.AlertRecipient) {
 	// Build the alert payload once (shared across all messages)
 	alertData := map[string]interface{}{
-		"id":          alert.ID.String(),
-		"alertType":   alert.AlertType,
-		"severity":    alert.Severity,
-		"title":       alert.Title,
-		"message":     alert.Message,
-		"status":      alert.Status,
-		"createdDate": alert.CreatedDate.Format(time.RFC3339),
-		"updatedDate": alert.UpdatedDate.Format(time.RFC3339),
+		"id":               alert.ID.String(),
+		"alertType":        alert.AlertType,
+		"severity":         alert.Severity,
+		"title":            alert.Title,
+		"message":          alert.Message,
+		"status":           alert.Status,
+		"createdDate":      alert.CreatedDate.Format(time.RFC3339),
+		"updatedDate":      alert.UpdatedDate.Format(time.RFC3339),
+		"sourceEntityName": alert.SourceEntityName,
+		"context":          alert.Context,
+	}
+
+	// Only include sourceEntityId if it's not the zero UUID
+	if alert.SourceEntityID != uuid.Nil {
+		alertData["sourceEntityId"] = alert.SourceEntityID.String()
 	}
 
 	for _, recipient := range recipients {
