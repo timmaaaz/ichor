@@ -160,8 +160,8 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 				TemplateActionType: "create_alert",
 				ActionConfig: json.RawMessage(`{
 					"message": "Alert message",
-					"recipients": ["user@example.com"],
-					"priority": "high"
+					"recipients": {"users": ["550e8400-e29b-41d4-a716-446655440000"], "roles": []},
+					"severity": "high"
 				}`),
 			},
 			want: workflow.ActionValidationResult{
@@ -171,19 +171,19 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid create_alert - invalid priority",
+			name: "invalid create_alert - invalid severity",
 			action: workflow.RuleActionView{
 				ID:                 uuid.New(),
 				TemplateActionType: "create_alert",
 				ActionConfig: json.RawMessage(`{
 					"message": "Alert message",
-					"recipients": ["user@example.com"],
-					"priority": "urgent"
+					"recipients": {"users": ["550e8400-e29b-41d4-a716-446655440000"], "roles": []},
+					"severity": "urgent"
 				}`),
 			},
 			want: workflow.ActionValidationResult{
 				IsValid:  false,
-				Errors:   []string{"invalid priority level"},
+				Errors:   []string{"invalid severity level: urgent"},
 				Warnings: []string{},
 			},
 		},
@@ -193,7 +193,7 @@ func TestActionExecutor_ValidateActionConfig(t *testing.T) {
 				ID:                 uuid.New(),
 				TemplateActionType: "update_field",
 				ActionConfig: json.RawMessage(`{
-					"target_entity": "customers",
+					"target_entity": "sales.customers",
 					"target_field": "status",
 					"new_value": "active"
 				}`),
@@ -1285,7 +1285,7 @@ func TestActionHandler_Implementations(t *testing.T) {
 			name:        "UpdateFieldHandler",
 			handlerType: "update_field",
 			validConfig: json.RawMessage(`{
-                "target_entity": "automation_rules",
+                "target_entity": "workflow.automation_rules",
                 "target_field": "is_active",
                 "new_value": true
             }`),
