@@ -110,6 +110,8 @@ type LineItemsFieldConfig struct {
 	SingularItemLabel string          `json:"singular_item_label"`
 	MinItems          int             `json:"min_items"`
 	MaxItems          int             `json:"max_items"`
+	FullWidth         bool            `json:"full_width,omitempty"`
+	Columns           int             `json:"columns,omitempty"` // 1-6, default 2
 }
 
 // ToJSON marshals the config to json.RawMessage for use in FormField.Config.

@@ -297,6 +297,70 @@ func TestExtractLineItemFields(t *testing.T) {
 	}
 }
 
+func TestLineItemsConfigColumnsSerialization(t *testing.T) {
+	// Test that Columns field serializes/deserializes correctly
+	config := formfieldbus.LineItemsFieldConfig{
+		ExecutionOrder:    1,
+		Entity:            "sales.order_line_items",
+		ParentField:       "order_id",
+		Fields:            []formfieldbus.LineItemField{},
+		ItemLabel:         "Items",
+		SingularItemLabel: "Item",
+		MinItems:          0,
+		MaxItems:          10,
+		Columns:           4, // Test non-default value
+	}
+
+	// Serialize
+	configJSON, err := config.ToJSON()
+	if err != nil {
+		t.Fatalf("ToJSON failed: %v", err)
+	}
+
+	// Verify JSON contains columns field
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(configJSON, &parsed); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	columns, ok := parsed["columns"].(float64)
+	if !ok {
+		t.Fatalf("columns field not found or not a number")
+	}
+	if int(columns) != 4 {
+		t.Errorf("columns: got %v, want 4", columns)
+	}
+}
+
+func TestLineItemsConfigColumnsOmitEmpty(t *testing.T) {
+	// Test that Columns=0 is omitted from JSON (omitempty behavior)
+	config := formfieldbus.LineItemsFieldConfig{
+		ExecutionOrder:    1,
+		Entity:            "sales.order_line_items",
+		ParentField:       "order_id",
+		Fields:            []formfieldbus.LineItemField{},
+		ItemLabel:         "Items",
+		SingularItemLabel: "Item",
+		MinItems:          0,
+		MaxItems:          10,
+		// Columns not set (zero value)
+	}
+
+	configJSON, err := config.ToJSON()
+	if err != nil {
+		t.Fatalf("ToJSON failed: %v", err)
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(configJSON, &parsed); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	if _, exists := parsed["columns"]; exists {
+		t.Errorf("columns field should be omitted when zero")
+	}
+}
+
 // TestEntityKeyFormat verifies that entity keys use schema.table format.
 // This is a regression test for the bug where entityFieldsMap was built with
 // table-only keys (e.g., "customers") but looked up with schema.table keys

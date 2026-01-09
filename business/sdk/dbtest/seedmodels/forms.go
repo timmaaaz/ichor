@@ -307,6 +307,8 @@ func GetFullSalesOrderFormFields(
 		SingularItemLabel: "Item",
 		MinItems:          0,
 		MaxItems:          100,
+		FullWidth:         true,
+		Columns:           3, // 3 visible fields (product, quantity, discount) = 3 columns
 	}
 
 	configJSON, err := lineItemsConfig.ToJSON()
