@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/introspectionapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
 func Test_IntrospectionAPI(t *testing.T) {
@@ -23,6 +24,8 @@ func Test_IntrospectionAPI(t *testing.T) {
 	test.Run(t, queryTables200(sd), "query-tables-200")
 	test.Run(t, queryColumns200(sd), "query-columns-200")
 	test.Run(t, queryRelationships200(sd), "query-relationships-200")
+	test.Run(t, queryReferencingTables200(sd), "query-referencing-tables-200")
+	test.Run(t, queryReferencingTables401(sd), "query-referencing-tables-401")
 }
 
 func querySchemas200(sd apitest.SeedData) []apitest.Table {
@@ -168,6 +171,87 @@ func queryRelationships200(sd apitest.SeedData) []apitest.Table {
 					return "expected non-nil relationships response"
 				}
 				return ""
+			},
+		},
+	}
+}
+
+func queryReferencingTables200(sd apitest.SeedData) []apitest.Table {
+	// Expected: sales.order_line_items references sales.orders via order_id
+	expected := introspectionapp.ReferencingTables{
+		{
+			Schema:           "sales",
+			Table:            "order_line_items",
+			ForeignKeyColumn: "order_id",
+			ConstraintName:   "", // We don't check constraint name as it may vary
+		},
+	}
+
+	return []apitest.Table{
+		{
+			Name:       "basic",
+			URL:        "/v1/introspection/tables/sales/orders/referencing-tables",
+			Method:     http.MethodGet,
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			GotResp:    &introspectionapp.ReferencingTables{},
+			ExpResp:    &expected,
+			CmpFunc: func(got, exp any) string {
+				gotTables := got.(*introspectionapp.ReferencingTables)
+				expTables := exp.(*introspectionapp.ReferencingTables)
+
+				// Check if all expected referencing tables are present
+				gotMap := make(map[string]introspectionapp.ReferencingTable)
+				for _, t := range *gotTables {
+					key := t.Schema + "." + t.Table
+					gotMap[key] = t
+				}
+
+				for _, expTable := range *expTables {
+					key := expTable.Schema + "." + expTable.Table
+					gotTable, exists := gotMap[key]
+					if !exists {
+						return "missing expected referencing table: " + key
+					}
+					if gotTable.ForeignKeyColumn != expTable.ForeignKeyColumn {
+						return "FK column mismatch for " + key + ": expected " + expTable.ForeignKeyColumn + ", got " + gotTable.ForeignKeyColumn
+					}
+				}
+				return ""
+			},
+		},
+		{
+			Name:       "empty-result",
+			URL:        "/v1/introspection/tables/core/table_access/referencing-tables",
+			Method:     http.MethodGet,
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			GotResp:    &introspectionapp.ReferencingTables{},
+			ExpResp:    &introspectionapp.ReferencingTables{},
+			CmpFunc: func(got, exp any) string {
+				gotTables := got.(*introspectionapp.ReferencingTables)
+				if gotTables == nil {
+					return "expected non-nil response"
+				}
+				// Empty result is valid for tables with no children
+				return ""
+			},
+		},
+	}
+}
+
+func queryReferencingTables401(sd apitest.SeedData) []apitest.Table {
+	return []apitest.Table{
+		{
+			Name:       "empty-token",
+			URL:        "/v1/introspection/tables/sales/orders/referencing-tables",
+			Method:     http.MethodGet,
+			Token:      "&nbsp;",
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token contains an invalid number of segments"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}

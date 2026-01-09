@@ -58,3 +58,13 @@ func (a *App) QueryRelationships(ctx context.Context, schema, table string) (Rel
 
 	return Relationships(ToAppRelationships(relationships)), nil
 }
+
+// QueryReferencingTables returns all tables that have foreign keys pointing to the given table.
+func (a *App) QueryReferencingTables(ctx context.Context, schema, table string) (ReferencingTables, error) {
+	tables, err := a.introspectionBus.QueryReferencingTables(ctx, schema, table)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "query referencing tables: %s", err)
+	}
+
+	return ReferencingTables(ToAppReferencingTables(tables)), nil
+}

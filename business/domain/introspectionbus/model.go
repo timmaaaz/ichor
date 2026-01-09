@@ -30,3 +30,11 @@ type Relationship struct {
 	ReferencedColumn string `db:"referenced_column"`
 	RelationshipType string `db:"relationship_type"` // "many-to-one", "one-to-many", etc.
 }
+
+// ReferencingTable represents a table that has a foreign key pointing to another table.
+type ReferencingTable struct {
+	Schema           string `db:"schema"`
+	Table            string `db:"table"`
+	ForeignKeyColumn string `db:"fk_column"`
+	ConstraintName   string `db:"constraint_name"`
+}

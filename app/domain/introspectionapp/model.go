@@ -97,6 +97,29 @@ func (app Relationships) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
+// ReferencingTable represents a table that has a foreign key pointing to another table.
+type ReferencingTable struct {
+	Schema           string `json:"schema"`
+	Table            string `json:"table"`
+	ForeignKeyColumn string `json:"foreignKeyColumn"`
+	ConstraintName   string `json:"constraintName"`
+}
+
+// Encode implements the encoder interface.
+func (app ReferencingTable) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ReferencingTables is a collection wrapper that implements the Encoder interface.
+type ReferencingTables []ReferencingTable
+
+// Encode implements the encoder interface.
+func (app ReferencingTables) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
 // =============================================================================
 // Conversion functions
 
@@ -173,4 +196,23 @@ func ToAppRelationships(bus []introspectionbus.Relationship) []Relationship {
 		relationships[i] = ToAppRelationship(r)
 	}
 	return relationships
+}
+
+// ToAppReferencingTable converts a business ReferencingTable to app ReferencingTable.
+func ToAppReferencingTable(bus introspectionbus.ReferencingTable) ReferencingTable {
+	return ReferencingTable{
+		Schema:           bus.Schema,
+		Table:            bus.Table,
+		ForeignKeyColumn: bus.ForeignKeyColumn,
+		ConstraintName:   bus.ConstraintName,
+	}
+}
+
+// ToAppReferencingTables converts a slice of business ReferencingTables to app ReferencingTables.
+func ToAppReferencingTables(bus []introspectionbus.ReferencingTable) []ReferencingTable {
+	tables := make([]ReferencingTable, len(bus))
+	for i, t := range bus {
+		tables[i] = ToAppReferencingTable(t)
+	}
+	return tables
 }

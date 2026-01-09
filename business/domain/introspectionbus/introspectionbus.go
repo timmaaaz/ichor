@@ -173,3 +173,46 @@ func (b *Business) QueryRelationships(ctx context.Context, schema, table string)
 
 	return relationships, nil
 }
+
+// QueryReferencingTables returns all tables that have foreign keys pointing to the given table.
+func (b *Business) QueryReferencingTables(ctx context.Context, schema, table string) ([]ReferencingTable, error) {
+	ctx, span := otel.AddSpan(ctx, "business.introspectionbus.queryreferencingtables")
+	defer span.End()
+
+	const q = `
+	SELECT
+		tc.table_schema AS schema,
+		tc.table_name AS table,
+		kcu.column_name AS fk_column,
+		tc.constraint_name AS constraint_name
+	FROM
+		information_schema.table_constraints tc
+	JOIN
+		information_schema.key_column_usage kcu
+		ON tc.constraint_name = kcu.constraint_name
+		AND tc.table_schema = kcu.table_schema
+	JOIN
+		information_schema.constraint_column_usage ccu
+		ON tc.constraint_name = ccu.constraint_name
+	WHERE
+		tc.constraint_type = 'FOREIGN KEY'
+		AND ccu.table_schema = :schema
+		AND ccu.table_name = :table
+	ORDER BY
+		tc.table_schema, tc.table_name`
+
+	data := struct {
+		Schema string `db:"schema"`
+		Table  string `db:"table"`
+	}{
+		Schema: schema,
+		Table:  table,
+	}
+
+	var tables []ReferencingTable
+	if err := sqldb.NamedQuerySlice(ctx, b.log, b.db, q, data, &tables); err != nil {
+		return nil, fmt.Errorf("query referencing tables: %w", err)
+	}
+
+	return tables, nil
+}

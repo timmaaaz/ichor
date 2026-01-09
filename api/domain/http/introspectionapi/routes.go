@@ -45,4 +45,8 @@ func Routes(app *web.App, cfg Config) {
 	// GET /v1/introspection/tables/{schema}/{table}/relationships
 	app.HandlerFunc(http.MethodGet, version, "/introspection/tables/{schema}/{table}/relationships", api.queryRelationships, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAdminOnly))
+
+	// GET /v1/introspection/tables/{schema}/{table}/referencing-tables
+	app.HandlerFunc(http.MethodGet, version, "/introspection/tables/{schema}/{table}/referencing-tables", api.queryReferencingTables, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAdminOnly))
 }

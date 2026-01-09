@@ -62,3 +62,15 @@ func (api *api) queryRelationships(ctx context.Context, r *http.Request) web.Enc
 
 	return relationships
 }
+
+func (api *api) queryReferencingTables(ctx context.Context, r *http.Request) web.Encoder {
+	schema := web.Param(r, "schema")
+	table := web.Param(r, "table")
+
+	tables, err := api.introspectionApp.QueryReferencingTables(ctx, schema, table)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return tables
+}
