@@ -670,3 +670,52 @@ func (s *Store) DismissMultiple(ctx context.Context, alertIDs []uuid.UUID, now t
 
 	return len(alertIDs), nil
 }
+
+// ResolveRelatedAlerts updates the status of prior active/acknowledged alerts
+// to 'resolved' when a new success alert is created for the same source entity and alert type.
+func (s *Store) ResolveRelatedAlerts(ctx context.Context, sourceEntityID uuid.UUID, alertType string, excludeAlertID uuid.UUID, now time.Time) (int, error) {
+	data := map[string]any{
+		"source_entity_id": sourceEntityID.String(),
+		"alert_type":       alertType,
+		"exclude_id":       excludeAlertID.String(),
+		"new_status":       alertbus.StatusResolved,
+		"statuses":         []string{alertbus.StatusActive, alertbus.StatusAcknowledged},
+		"updated_date":     now,
+	}
+
+	const q = `
+	UPDATE
+		workflow.alerts
+	SET
+		status = :new_status,
+		updated_date = :updated_date
+	WHERE
+		source_entity_id = :source_entity_id
+		AND alert_type = :alert_type
+		AND id != :exclude_id
+		AND status IN (:statuses)`
+
+	named, args, err := sqlx.Named(q, data)
+	if err != nil {
+		return 0, fmt.Errorf("sqlx.Named: %w", err)
+	}
+
+	query, args, err := sqlx.In(named, args...)
+	if err != nil {
+		return 0, fmt.Errorf("sqlx.In: %w", err)
+	}
+
+	query = s.db.Rebind(query)
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("execcontext: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("rows affected: %w", err)
+	}
+
+	return int(rowsAffected), nil
+}

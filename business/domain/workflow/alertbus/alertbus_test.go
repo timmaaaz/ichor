@@ -30,6 +30,7 @@ func Test_Alert(t *testing.T) {
 	unitest.Run(t, queryMine(db.BusDomain, sd), "query-mine")
 	unitest.Run(t, acknowledge(db.BusDomain, sd), "acknowledge")
 	unitest.Run(t, dismiss(db.BusDomain, sd), "dismiss")
+	unitest.Run(t, resolveRelatedAlerts(db.BusDomain), "resolve-related-alerts")
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -351,6 +352,115 @@ func dismiss(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 				if gotResp.Status != expResp.Status {
 					return "status should be dismissed"
+				}
+
+				return ""
+			},
+		},
+	}
+}
+
+func resolveRelatedAlerts(busDomain dbtest.BusDomain) []unitest.Table {
+	now := time.Now().UTC().Truncate(time.Second)
+
+	return []unitest.Table{
+		{
+			Name: "ResolveRelatedAlerts",
+			ExpResp: alertbus.Alert{
+				Status: alertbus.StatusResolved,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				// Create source entity ID to link alerts
+				sourceEntityID := uuid.New()
+				alertType := "allocation_status"
+				contextData, _ := json.Marshal(map[string]any{})
+
+				// Create first "failure" alert (should get resolved)
+				failureAlert1 := alertbus.Alert{
+					ID:               uuid.New(),
+					AlertType:        alertType,
+					Severity:         alertbus.SeverityHigh,
+					Title:            "Allocation Failed",
+					Message:          "First failure",
+					Context:          contextData,
+					SourceEntityName: "sales_order",
+					SourceEntityID:   sourceEntityID,
+					Status:           alertbus.StatusActive,
+					CreatedDate:      now,
+					UpdatedDate:      now,
+				}
+				if err := busDomain.Alert.Create(ctx, failureAlert1); err != nil {
+					return fmt.Errorf("create failure alert 1: %w", err)
+				}
+
+				// Create second "failure" alert (should also get resolved)
+				failureAlert2 := alertbus.Alert{
+					ID:               uuid.New(),
+					AlertType:        alertType,
+					Severity:         alertbus.SeverityHigh,
+					Title:            "Allocation Failed",
+					Message:          "Second failure",
+					Context:          contextData,
+					SourceEntityName: "sales_order",
+					SourceEntityID:   sourceEntityID,
+					Status:           alertbus.StatusActive,
+					CreatedDate:      now.Add(time.Second),
+					UpdatedDate:      now.Add(time.Second),
+				}
+				if err := busDomain.Alert.Create(ctx, failureAlert2); err != nil {
+					return fmt.Errorf("create failure alert 2: %w", err)
+				}
+
+				// Create "success" alert (should NOT get resolved - it's excluded)
+				successAlert := alertbus.Alert{
+					ID:               uuid.New(),
+					AlertType:        alertType,
+					Severity:         alertbus.SeverityLow,
+					Title:            "Allocation Successful",
+					Message:          "Success!",
+					Context:          contextData,
+					SourceEntityName: "sales_order",
+					SourceEntityID:   sourceEntityID,
+					Status:           alertbus.StatusActive,
+					CreatedDate:      now.Add(2 * time.Second),
+					UpdatedDate:      now.Add(2 * time.Second),
+				}
+				if err := busDomain.Alert.Create(ctx, successAlert); err != nil {
+					return fmt.Errorf("create success alert: %w", err)
+				}
+
+				// Now resolve related alerts (excluding the success alert)
+				resolvedCount, err := busDomain.Alert.ResolveRelatedAlerts(ctx, sourceEntityID, alertType, successAlert.ID, now.Add(3*time.Second))
+				if err != nil {
+					return fmt.Errorf("resolve related alerts: %w", err)
+				}
+
+				// Verify count
+				if resolvedCount != 2 {
+					return fmt.Errorf("expected 2 resolved alerts, got %d", resolvedCount)
+				}
+
+				// Query the first failure alert to verify it was resolved
+				resolved, err := busDomain.Alert.QueryByID(ctx, failureAlert1.ID)
+				if err != nil {
+					return fmt.Errorf("query resolved alert: %w", err)
+				}
+
+				return resolved
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(alertbus.Alert)
+				if !exists {
+					return fmt.Sprintf("error occurred: %v", got)
+				}
+
+				expResp, exists := exp.(alertbus.Alert)
+				if !exists {
+					return "error occurred"
+				}
+
+				if gotResp.Status != expResp.Status {
+					return fmt.Sprintf("status should be resolved, got %s", gotResp.Status)
 				}
 
 				return ""

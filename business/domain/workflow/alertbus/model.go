@@ -18,6 +18,7 @@ const (
 	StatusActive       = "active"
 	StatusAcknowledged = "acknowledged"
 	StatusDismissed    = "dismissed"
+	StatusResolved     = "resolved" // Auto-resolved by subsequent success alert
 )
 
 // Severity constants for alert priority.

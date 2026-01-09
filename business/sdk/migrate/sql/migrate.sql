@@ -1675,7 +1675,7 @@ CREATE TABLE workflow.alerts (
    source_entity_name VARCHAR(100) NULL,
    source_entity_id UUID NULL,
    source_rule_id UUID NULL,
-   status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'acknowledged', 'dismissed')),
+   status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'acknowledged', 'dismissed', 'resolved')),
    expires_date TIMESTAMP NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
@@ -1688,6 +1688,7 @@ CREATE INDEX idx_alerts_severity ON workflow.alerts(severity);
 CREATE INDEX idx_alerts_created_date ON workflow.alerts(created_date DESC);
 CREATE INDEX idx_alerts_source_rule ON workflow.alerts(source_rule_id);
 CREATE INDEX idx_alerts_expires_date ON workflow.alerts(expires_date) WHERE expires_date IS NOT NULL;
+CREATE INDEX idx_alerts_source_entity_type_status ON workflow.alerts(source_entity_id, alert_type, status) WHERE source_entity_id IS NOT NULL;
 
 -- Version: 1.77
 -- Description: Create alert recipients table

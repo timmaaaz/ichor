@@ -226,6 +226,7 @@ func executeTests(busDomain dbtest.BusDomain, sd alertSeedData) []unitest.Table 
 		executeDefaultSeverity(busDomain, sd),
 		executeInvalidUserUUID(sd),
 		executeInvalidRoleUUID(sd),
+		executeResolvePrior(busDomain, sd),
 	}
 }
 
@@ -554,6 +555,99 @@ func executeInvalidRoleUUID(sd alertSeedData) unitest.Table {
 		CmpFunc: func(got, exp any) string {
 			if got != exp {
 				return fmt.Sprintf("got %v, want %v", got, exp)
+			}
+			return ""
+		},
+	}
+}
+
+func executeResolvePrior(busDomain dbtest.BusDomain, sd alertSeedData) unitest.Table {
+	return unitest.Table{
+		Name:    "resolve_prior",
+		ExpResp: 2, // Expect 2 prior alerts to be resolved
+		ExcFunc: func(ctx context.Context) any {
+			// Use a consistent entity ID for all alerts in this test
+			sourceEntityID := uuid.New()
+			alertType := "allocation_status"
+
+			// Create two "failure" alerts first (these should get resolved)
+			failureConfig := json.RawMessage(fmt.Sprintf(`{
+				"alert_type": "%s",
+				"severity": "high",
+				"title": "Allocation Failed",
+				"message": "Failed to allocate inventory",
+				"recipients": {
+					"users": ["%s"]
+				},
+				"resolve_prior": false
+			}`, alertType, sd.UserID))
+
+			failureExecCtx := workflow.ActionExecutionContext{
+				EntityID:    sourceEntityID,
+				EntityName:  "sales_order",
+				EventType:   "on_update",
+				UserID:      sd.UserID,
+				RuleID:      uuid.Nil,
+				RuleName:    "Allocation Failure Rule",
+				ExecutionID: uuid.New(),
+			}
+
+			// Create first failure alert
+			_, err := sd.Handler.Execute(ctx, failureConfig, failureExecCtx)
+			if err != nil {
+				return fmt.Errorf("create failure alert 1: %w", err)
+			}
+
+			// Create second failure alert
+			failureExecCtx.ExecutionID = uuid.New()
+			_, err = sd.Handler.Execute(ctx, failureConfig, failureExecCtx)
+			if err != nil {
+				return fmt.Errorf("create failure alert 2: %w", err)
+			}
+
+			// Now create a "success" alert with resolve_prior: true
+			successConfig := json.RawMessage(fmt.Sprintf(`{
+				"alert_type": "%s",
+				"severity": "low",
+				"title": "Allocation Successful",
+				"message": "Successfully allocated inventory",
+				"recipients": {
+					"users": ["%s"]
+				},
+				"resolve_prior": true
+			}`, alertType, sd.UserID))
+
+			successExecCtx := workflow.ActionExecutionContext{
+				EntityID:    sourceEntityID,
+				EntityName:  "sales_order",
+				EventType:   "on_update",
+				UserID:      sd.UserID,
+				RuleID:      uuid.Nil,
+				RuleName:    "Allocation Success Rule",
+				ExecutionID: uuid.New(),
+			}
+
+			result, err := sd.Handler.Execute(ctx, successConfig, successExecCtx)
+			if err != nil {
+				return fmt.Errorf("create success alert: %w", err)
+			}
+
+			resultMap, ok := result.(map[string]interface{})
+			if !ok {
+				return "unexpected result type"
+			}
+
+			// The handler returns resolved_count in its result
+			resolvedCount, ok := resultMap["resolved_count"].(int)
+			if !ok {
+				return fmt.Sprintf("resolved_count not found or wrong type: %v", resultMap["resolved_count"])
+			}
+
+			return resolvedCount
+		},
+		CmpFunc: func(got, exp any) string {
+			if got != exp {
+				return fmt.Sprintf("got %v resolved alerts, want %v", got, exp)
 			}
 			return ""
 		},

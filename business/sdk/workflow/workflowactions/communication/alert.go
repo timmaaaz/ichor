@@ -30,7 +30,8 @@ type AlertConfig struct {
 		Users []string `json:"users"`
 		Roles []string `json:"roles"`
 	} `json:"recipients"`
-	Context json.RawMessage `json:"context"`
+	Context      json.RawMessage `json:"context"`
+	ResolvePrior bool            `json:"resolve_prior"` // When true, resolves prior alerts with same source_entity_id + alert_type
 }
 
 // CreateAlertHandler handles create_alert actions.
@@ -157,6 +158,20 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		return nil, fmt.Errorf("create recipients: %w", err)
 	}
 
+	// Auto-resolve prior related alerts if configured
+	var resolvedCount int
+	if cfg.ResolvePrior && execCtx.EntityID != uuid.Nil && cfg.AlertType != "" {
+		var err error
+		resolvedCount, err = h.alertBus.ResolveRelatedAlerts(ctx, execCtx.EntityID, cfg.AlertType, alert.ID, now)
+		if err != nil {
+			// Log error but don't fail the alert creation
+			h.log.Error(ctx, "failed to resolve prior alerts",
+				"error", err,
+				"source_entity_id", execCtx.EntityID,
+				"alert_type", cfg.AlertType)
+		}
+	}
+
 	// Publish to RabbitMQ for WebSocket delivery
 	if h.workflowQueue != nil {
 		h.publishAlertToWebSocket(ctx, alert, recipients)
@@ -166,11 +181,13 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		"alert_id", alert.ID,
 		"entity_id", execCtx.EntityID,
 		"rule_name", execCtx.RuleName,
-		"recipients", len(recipients))
+		"recipients", len(recipients),
+		"resolved_prior", resolvedCount)
 
 	return map[string]interface{}{
-		"alert_id": alert.ID.String(),
-		"status":   "created",
+		"alert_id":       alert.ID.String(),
+		"status":         "created",
+		"resolved_count": resolvedCount,
 	}, nil
 }
 

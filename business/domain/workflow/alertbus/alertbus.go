@@ -40,6 +40,7 @@ type Storer interface {
 	QueryActiveByUserID(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID) ([]uuid.UUID, error)
 	AcknowledgeMultiple(ctx context.Context, alertIDs []uuid.UUID, userID uuid.UUID, notes string, now time.Time) (int, error)
 	DismissMultiple(ctx context.Context, alertIDs []uuid.UUID, now time.Time) (int, error)
+	ResolveRelatedAlerts(ctx context.Context, sourceEntityID uuid.UUID, alertType string, excludeAlertID uuid.UUID, now time.Time) (int, error)
 }
 
 // Business manages alert operations.
@@ -312,6 +313,33 @@ func (b *Business) DismissAll(ctx context.Context, userID uuid.UUID, roleIDs []u
 	count, err := b.storer.DismissMultiple(ctx, alertIDs, now)
 	if err != nil {
 		return 0, fmt.Errorf("dismiss multiple: %w", err)
+	}
+
+	return count, nil
+}
+
+// ResolveRelatedAlerts marks prior active/acknowledged alerts as resolved when a new
+// success alert is created for the same source entity and alert type.
+// Returns the count of resolved alerts.
+func (b *Business) ResolveRelatedAlerts(ctx context.Context, sourceEntityID uuid.UUID, alertType string, excludeAlertID uuid.UUID, now time.Time) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.resolverelatedalerts")
+	defer span.End()
+
+	// Require both sourceEntityID and alertType to resolve related alerts
+	if sourceEntityID == uuid.Nil || alertType == "" {
+		return 0, nil
+	}
+
+	count, err := b.storer.ResolveRelatedAlerts(ctx, sourceEntityID, alertType, excludeAlertID, now)
+	if err != nil {
+		return 0, fmt.Errorf("resolve related alerts: %w", err)
+	}
+
+	if count > 0 {
+		b.log.Info(ctx, "auto-resolved prior alerts",
+			"source_entity_id", sourceEntityID,
+			"alert_type", alertType,
+			"resolved_count", count)
 	}
 
 	return count, nil
