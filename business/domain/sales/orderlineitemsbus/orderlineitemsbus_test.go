@@ -21,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/types"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
@@ -239,13 +240,23 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 }
 
 func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	// Parse Money values for test
+	unitPrice, _ := types.ParseMoney("99.99")
+	discount, _ := types.ParseMoney("5.00")
+	lineTotal, _ := types.ParseMoney("94.99") // 1 * 99.99 - 5.00
+
 	return []unitest.Table{
 		{
 			Name: "Create",
 			ExpResp: orderlineitemsbus.OrderLineItem{
 				OrderID:                       sd.Orders[0].ID,
 				ProductID:                     sd.Products[0].ProductID,
+				Description:                   "Test line item",
 				Quantity:                      1,
+				UnitPrice:                     unitPrice,
+				Discount:                      discount,
+				DiscountType:                  "flat",
+				LineTotal:                     lineTotal,
 				LineItemFulfillmentStatusesID: sd.OrderLineItems[0].LineItemFulfillmentStatusesID,
 				CreatedBy:                     sd.Admins[0].ID,
 				UpdatedBy:                     sd.Admins[0].ID,
@@ -254,7 +265,12 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ofs, err := busDomain.OrderLineItem.Create(ctx, orderlineitemsbus.NewOrderLineItem{
 					OrderID:                       sd.Orders[0].ID,
 					ProductID:                     sd.Products[0].ProductID,
+					Description:                   "Test line item",
 					Quantity:                      1,
+					UnitPrice:                     unitPrice,
+					Discount:                      discount,
+					DiscountType:                  "flat",
+					LineTotal:                     lineTotal,
 					LineItemFulfillmentStatusesID: sd.OrderLineItems[0].LineItemFulfillmentStatusesID,
 					CreatedBy:                     sd.Admins[0].ID,
 				})
@@ -275,9 +291,19 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				expResp.ID = gotResp.ID // Ignore ID for comparison
+				expResp.CreatedDate = gotResp.CreatedDate
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
-				expResp.CreatedDate = gotResp.CreatedDate // Ignore ID for comparison
-				expResp.UpdatedDate = gotResp.UpdatedDate // Ignore ID for comparison
+				// Use Money.Equal() for comparison
+				if !gotResp.UnitPrice.Equal(expResp.UnitPrice) {
+					return fmt.Sprintf("unit_price mismatch: got %q, exp %q", gotResp.UnitPrice.Value(), expResp.UnitPrice.Value())
+				}
+				if !gotResp.Discount.Equal(expResp.Discount) {
+					return fmt.Sprintf("discount mismatch: got %q, exp %q", gotResp.Discount.Value(), expResp.Discount.Value())
+				}
+				if !gotResp.LineTotal.Equal(expResp.LineTotal) {
+					return fmt.Sprintf("line_total mismatch: got %q, exp %q", gotResp.LineTotal.Value(), expResp.LineTotal.Value())
+				}
 
 				return cmp.Diff(gotResp, expResp)
 			},
@@ -286,6 +312,10 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 }
 
 func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	// Parse Money values for test update
+	newUnitPrice, _ := types.ParseMoney("149.99")
+	newDescription := "Updated line item description"
+
 	return []unitest.Table{
 		{
 			Name: "Update",
@@ -293,7 +323,12 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ID:                            sd.OrderLineItems[0].ID,
 				OrderID:                       sd.OrderLineItems[0].OrderID,
 				ProductID:                     sd.Products[1].ProductID,
+				Description:                   newDescription,
 				Quantity:                      sd.OrderLineItems[0].Quantity,
+				UnitPrice:                     newUnitPrice,
+				Discount:                      sd.OrderLineItems[0].Discount,
+				DiscountType:                  sd.OrderLineItems[0].DiscountType,
+				LineTotal:                     sd.OrderLineItems[0].LineTotal,
 				LineItemFulfillmentStatusesID: sd.OrderLineItems[0].LineItemFulfillmentStatusesID,
 				CreatedBy:                     sd.OrderLineItems[0].CreatedBy,
 				UpdatedBy:                     sd.OrderLineItems[0].UpdatedBy,
@@ -301,7 +336,9 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.OrderLineItem.Update(ctx, sd.OrderLineItems[0], orderlineitemsbus.UpdateOrderLineItem{
-					ProductID: &sd.Products[1].ProductID,
+					ProductID:   &sd.Products[1].ProductID,
+					Description: &newDescription,
+					UnitPrice:   &newUnitPrice,
 				})
 				if err != nil {
 					return err
@@ -319,7 +356,18 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					return fmt.Sprintf("expected orderlineitemsbus.OrderLineItem, got %T", exp)
 				}
 
-				expResp.UpdatedDate = gotResp.UpdatedDate // Ignore ID for comparison
+				expResp.UpdatedDate = gotResp.UpdatedDate
+
+				// Use Money.Equal() for comparison
+				if !gotResp.UnitPrice.Equal(expResp.UnitPrice) {
+					return fmt.Sprintf("unit_price mismatch: got %q, exp %q", gotResp.UnitPrice.Value(), expResp.UnitPrice.Value())
+				}
+				if !gotResp.Discount.Equal(expResp.Discount) {
+					return fmt.Sprintf("discount mismatch: got %q, exp %q", gotResp.Discount.Value(), expResp.Discount.Value())
+				}
+				if !gotResp.LineTotal.Equal(expResp.LineTotal) {
+					return fmt.Sprintf("line_total mismatch: got %q, exp %q", gotResp.LineTotal.Value(), expResp.LineTotal.Value())
+				}
 
 				return cmp.Diff(gotResp, expResp)
 			},

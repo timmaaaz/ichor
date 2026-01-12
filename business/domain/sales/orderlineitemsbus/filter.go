@@ -10,8 +10,12 @@ type QueryFilter struct {
 	ID                            *uuid.UUID
 	OrderID                       *uuid.UUID
 	ProductID                     *uuid.UUID
+	Description                   *string
 	Quantity                      *int
-	Discount                      *float64
+	UnitPrice                     *string
+	Discount                      *string
+	DiscountType                  *string
+	LineTotal                     *string
 	LineItemFulfillmentStatusesID *uuid.UUID
 	CreatedBy                     *uuid.UUID
 	StartCreatedDate              *time.Time

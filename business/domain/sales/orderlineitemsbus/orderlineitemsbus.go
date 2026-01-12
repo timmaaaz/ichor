@@ -76,13 +76,23 @@ func (b *Business) Create(ctx context.Context, newStatus NewOrderLineItem) (Orde
 		now = *newStatus.CreatedDate // Use provided date for seeding
 	}
 
+	// Default discount_type to 'flat' if not specified
+	discountType := newStatus.DiscountType
+	if discountType == "" {
+		discountType = "flat"
+	}
+
 	status := OrderLineItem{
 		ID:                            uuid.New(),
 		OrderID:                       newStatus.OrderID,
 		ProductID:                     newStatus.ProductID,
-		LineItemFulfillmentStatusesID: newStatus.LineItemFulfillmentStatusesID,
+		Description:                   newStatus.Description,
 		Quantity:                      newStatus.Quantity,
+		UnitPrice:                     newStatus.UnitPrice,
 		Discount:                      newStatus.Discount,
+		DiscountType:                  discountType,
+		LineTotal:                     newStatus.LineTotal,
+		LineItemFulfillmentStatusesID: newStatus.LineItemFulfillmentStatusesID,
 		CreatedBy:                     newStatus.CreatedBy,
 		UpdatedBy:                     newStatus.CreatedBy,
 		CreatedDate:                   now,
@@ -111,11 +121,23 @@ func (b *Business) Update(ctx context.Context, status OrderLineItem, uStatus Upd
 	if uStatus.ProductID != nil {
 		status.ProductID = *uStatus.ProductID
 	}
+	if uStatus.Description != nil {
+		status.Description = *uStatus.Description
+	}
 	if uStatus.Quantity != nil {
 		status.Quantity = *uStatus.Quantity
 	}
+	if uStatus.UnitPrice != nil {
+		status.UnitPrice = *uStatus.UnitPrice
+	}
 	if uStatus.Discount != nil {
 		status.Discount = *uStatus.Discount
+	}
+	if uStatus.DiscountType != nil {
+		status.DiscountType = *uStatus.DiscountType
+	}
+	if uStatus.LineTotal != nil {
+		status.LineTotal = *uStatus.LineTotal
 	}
 	if uStatus.LineItemFulfillmentStatusesID != nil {
 		status.LineItemFulfillmentStatusesID = *uStatus.LineItemFulfillmentStatusesID

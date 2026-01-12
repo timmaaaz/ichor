@@ -44,12 +44,24 @@ func parseFilter(qp QueryParams) (orderlineitemsbus.QueryFilter, error) {
 		filter.Quantity = &quantity
 	}
 
+	if qp.Description != "" {
+		filter.Description = &qp.Description
+	}
+
+	if qp.UnitPrice != "" {
+		filter.UnitPrice = &qp.UnitPrice
+	}
+
 	if qp.Discount != "" {
-		discount, err := strconv.ParseFloat(qp.Discount, 64)
-		if err != nil {
-			return orderlineitemsbus.QueryFilter{}, errs.NewFieldsError("discount", err)
-		}
-		filter.Discount = &discount
+		filter.Discount = &qp.Discount
+	}
+
+	if qp.DiscountType != "" {
+		filter.DiscountType = &qp.DiscountType
+	}
+
+	if qp.LineTotal != "" {
+		filter.LineTotal = &qp.LineTotal
 	}
 
 	if qp.LineItemFulfillmentStatusesID != "" {

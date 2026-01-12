@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/types"
 )
 
 type QueryParams struct {
@@ -18,8 +19,12 @@ type QueryParams struct {
 	ID                            string
 	OrderID                       string
 	ProductID                     string
+	Description                   string
 	Quantity                      string
+	UnitPrice                     string
 	Discount                      string
+	DiscountType                  string
+	LineTotal                     string
 	LineItemFulfillmentStatusesID string
 	CreatedBy                     string
 	StartCreatedDate              string
@@ -30,16 +35,20 @@ type QueryParams struct {
 }
 
 type OrderLineItem struct {
-	ID                            string
-	OrderID                       string
-	ProductID                     string
-	Quantity                      string
-	Discount                      string
-	LineItemFulfillmentStatusesID string
-	CreatedBy                     string
-	CreatedDate                   string
-	UpdatedBy                     string
-	UpdatedDate                   string
+	ID                            string `json:"id"`
+	OrderID                       string `json:"order_id"`
+	ProductID                     string `json:"product_id"`
+	Description                   string `json:"description"`
+	Quantity                      string `json:"quantity"`
+	UnitPrice                     string `json:"unit_price"`
+	Discount                      string `json:"discount"`
+	DiscountType                  string `json:"discount_type"`
+	LineTotal                     string `json:"line_total"`
+	LineItemFulfillmentStatusesID string `json:"line_item_fulfillment_statuses_id"`
+	CreatedBy                     string `json:"created_by"`
+	CreatedDate                   string `json:"created_date"`
+	UpdatedBy                     string `json:"updated_by"`
+	UpdatedDate                   string `json:"updated_date"`
 }
 
 func (app OrderLineItem) Encode() ([]byte, string, error) {
@@ -52,13 +61,17 @@ func ToAppOrderLineItem(bus orderlineitemsbus.OrderLineItem) OrderLineItem {
 		ID:                            bus.ID.String(),
 		OrderID:                       bus.OrderID.String(),
 		ProductID:                     bus.ProductID.String(),
+		Description:                   bus.Description,
 		Quantity:                      strconv.Itoa(bus.Quantity),
-		Discount:                      strconv.FormatFloat(bus.Discount, 'f', 2, 64),
+		UnitPrice:                     bus.UnitPrice.Value(),
+		Discount:                      bus.Discount.Value(),
+		DiscountType:                  bus.DiscountType,
+		LineTotal:                     bus.LineTotal.Value(),
 		LineItemFulfillmentStatusesID: bus.LineItemFulfillmentStatusesID.String(),
 		CreatedBy:                     bus.CreatedBy.String(),
-		CreatedDate:                   bus.CreatedDate.String(),
+		CreatedDate:                   bus.CreatedDate.Format(time.RFC3339),
 		UpdatedBy:                     bus.UpdatedBy.String(),
-		UpdatedDate:                   bus.UpdatedDate.String(),
+		UpdatedDate:                   bus.UpdatedDate.Format(time.RFC3339),
 	}
 }
 
@@ -73,8 +86,12 @@ func ToAppOrderLineItems(bus []orderlineitemsbus.OrderLineItem) []OrderLineItem 
 type NewOrderLineItem struct {
 	OrderID                       string  `json:"order_id" validate:"required,uuid4"`
 	ProductID                     string  `json:"product_id" validate:"required,uuid4"`
+	Description                   string  `json:"description" validate:"omitempty"`
 	Quantity                      string  `json:"quantity" validate:"required,numeric"`
-	Discount                      string  `json:"discount" validate:"omitempty,numeric"`
+	UnitPrice                     string  `json:"unit_price" validate:"omitempty"`
+	Discount                      string  `json:"discount" validate:"omitempty"`
+	DiscountType                  string  `json:"discount_type" validate:"omitempty,oneof=flat percent"`
+	LineTotal                     string  `json:"line_total" validate:"omitempty"`
 	LineItemFulfillmentStatusesID string  `json:"line_item_fulfillment_statuses_id" validate:"required,uuid4"`
 	CreatedBy                     string  `json:"created_by" validate:"required,uuid4"`
 	CreatedDate                   *string `json:"created_date"` // Optional: for seeding/import
@@ -107,12 +124,25 @@ func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLine
 		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse quantity: %s", err)
 	}
 
-	var discount float64
-	if app.Discount != "" {
-		discount, err = strconv.ParseFloat(app.Discount, 64)
-		if err != nil {
-			return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
-		}
+	unitPrice, err := types.ParseMoney(app.UnitPrice)
+	if err != nil {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse unit_price: %s", err)
+	}
+
+	discount, err := types.ParseMoney(app.Discount)
+	if err != nil {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
+	}
+
+	// Validate discount_type if provided
+	discountType := app.DiscountType
+	if discountType != "" && discountType != "flat" && discountType != "percent" {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "discount_type must be 'flat' or 'percent'")
+	}
+
+	lineTotal, err := types.ParseMoney(app.LineTotal)
+	if err != nil {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse line_total: %s", err)
 	}
 
 	lineItemFulfillmentStatusesID, err := uuid.Parse(app.LineItemFulfillmentStatusesID)
@@ -128,8 +158,12 @@ func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLine
 	bus := orderlineitemsbus.NewOrderLineItem{
 		OrderID:                       orderID,
 		ProductID:                     productID,
+		Description:                   app.Description,
 		Quantity:                      quantity,
+		UnitPrice:                     unitPrice,
 		Discount:                      discount,
+		DiscountType:                  discountType,
+		LineTotal:                     lineTotal,
 		LineItemFulfillmentStatusesID: lineItemFulfillmentStatusesID,
 		CreatedBy:                     createdBy,
 		// CreatedDate: nil by default - API always uses server time
@@ -150,8 +184,12 @@ func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLine
 type UpdateOrderLineItem struct {
 	OrderID                       *string `json:"order_id" validate:"omitempty,uuid4"`
 	ProductID                     *string `json:"product_id" validate:"omitempty,uuid4"`
+	Description                   *string `json:"description" validate:"omitempty"`
 	Quantity                      *string `json:"quantity" validate:"omitempty,numeric"`
-	Discount                      *string `json:"discount" validate:"omitempty,numeric"`
+	UnitPrice                     *string `json:"unit_price" validate:"omitempty"`
+	Discount                      *string `json:"discount" validate:"omitempty"`
+	DiscountType                  *string `json:"discount_type" validate:"omitempty,oneof=flat percent"`
+	LineTotal                     *string `json:"line_total" validate:"omitempty"`
 	LineItemFulfillmentStatusesID *string `json:"line_item_fulfillment_statuses_id" validate:"omitempty,uuid4"`
 	UpdatedBy                     *string `json:"updated_by" validate:"omitempty,uuid4"`
 }
@@ -195,13 +233,39 @@ func toBusUpdateOrderLineItem(app UpdateOrderLineItem) (orderlineitemsbus.Update
 		quantity = &q
 	}
 
-	var discount *float64
+	var unitPrice *types.Money
+	if app.UnitPrice != nil {
+		m, err := types.ParseMoneyPtr(*app.UnitPrice)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse unit_price: %s", err)
+		}
+		unitPrice = m
+	}
+
+	var discount *types.Money
 	if app.Discount != nil {
-		d, err := strconv.ParseFloat(*app.Discount, 64)
+		m, err := types.ParseMoneyPtr(*app.Discount)
 		if err != nil {
 			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse discount: %s", err)
 		}
-		discount = &d
+		discount = m
+	}
+
+	var discountType *string
+	if app.DiscountType != nil {
+		if *app.DiscountType != "flat" && *app.DiscountType != "percent" {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "discount_type must be 'flat' or 'percent'")
+		}
+		discountType = app.DiscountType
+	}
+
+	var lineTotal *types.Money
+	if app.LineTotal != nil {
+		m, err := types.ParseMoneyPtr(*app.LineTotal)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse line_total: %s", err)
+		}
+		lineTotal = m
 	}
 
 	var lineItemFulfillmentStatusesID *uuid.UUID
@@ -225,8 +289,12 @@ func toBusUpdateOrderLineItem(app UpdateOrderLineItem) (orderlineitemsbus.Update
 	bus := orderlineitemsbus.UpdateOrderLineItem{
 		OrderID:                       orderID,
 		ProductID:                     productID,
+		Description:                   app.Description,
 		Quantity:                      quantity,
+		UnitPrice:                     unitPrice,
 		Discount:                      discount,
+		DiscountType:                  discountType,
+		LineTotal:                     lineTotal,
 		LineItemFulfillmentStatusesID: lineItemFulfillmentStatusesID,
 		UpdatedBy:                     updatedBy,
 	}

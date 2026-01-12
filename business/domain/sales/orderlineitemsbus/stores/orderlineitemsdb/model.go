@@ -1,46 +1,76 @@
 package orderlineitemsdb
 
 import (
+	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/types"
 )
 
 type orderLineItem struct {
-	ID                            uuid.UUID `db:"id"`
-	OrderID                       uuid.UUID `db:"order_id"`
-	ProductID                     uuid.UUID `db:"product_id"`
-	Quantity                      int       `db:"quantity"`
-	Discount                      float64   `db:"discount"`
-	LineItemFulfillmentStatusesID uuid.UUID `db:"line_item_fulfillment_statuses_id"`
-	CreatedBy                     uuid.UUID `db:"created_by"`
-	CreatedDate                   time.Time `db:"created_date"`
-	UpdatedBy                     uuid.UUID `db:"updated_by"`
-	UpdatedDate                   time.Time `db:"updated_date"`
+	ID                            uuid.UUID      `db:"id"`
+	OrderID                       uuid.UUID      `db:"order_id"`
+	ProductID                     uuid.UUID      `db:"product_id"`
+	Description                   string         `db:"description"`
+	Quantity                      int            `db:"quantity"`
+	UnitPrice                     sql.NullString `db:"unit_price"`
+	Discount                      sql.NullString `db:"discount"`
+	DiscountType                  string         `db:"discount_type"`
+	LineTotal                     sql.NullString `db:"line_total"`
+	LineItemFulfillmentStatusesID uuid.UUID      `db:"line_item_fulfillment_statuses_id"`
+	CreatedBy                     uuid.UUID      `db:"created_by"`
+	CreatedDate                   time.Time      `db:"created_date"`
+	UpdatedBy                     uuid.UUID      `db:"updated_by"`
+	UpdatedDate                   time.Time      `db:"updated_date"`
 }
 
-func toBusOrderLineItem(db orderLineItem) orderlineitemsbus.OrderLineItem {
+func toBusOrderLineItem(db orderLineItem) (orderlineitemsbus.OrderLineItem, error) {
+	unitPrice, err := types.ParseMoney(db.UnitPrice.String)
+	if err != nil {
+		return orderlineitemsbus.OrderLineItem{}, fmt.Errorf("tobusorderlineitem: unit_price: %w", err)
+	}
+
+	discount, err := types.ParseMoney(db.Discount.String)
+	if err != nil {
+		return orderlineitemsbus.OrderLineItem{}, fmt.Errorf("tobusorderlineitem: discount: %w", err)
+	}
+
+	lineTotal, err := types.ParseMoney(db.LineTotal.String)
+	if err != nil {
+		return orderlineitemsbus.OrderLineItem{}, fmt.Errorf("tobusorderlineitem: line_total: %w", err)
+	}
+
 	return orderlineitemsbus.OrderLineItem{
 		ID:                            db.ID,
 		OrderID:                       db.OrderID,
 		ProductID:                     db.ProductID,
+		Description:                   db.Description,
 		Quantity:                      db.Quantity,
-		Discount:                      db.Discount,
+		UnitPrice:                     unitPrice,
+		Discount:                      discount,
+		DiscountType:                  db.DiscountType,
+		LineTotal:                     lineTotal,
 		LineItemFulfillmentStatusesID: db.LineItemFulfillmentStatusesID,
 		CreatedBy:                     db.CreatedBy,
-		CreatedDate:                   db.CreatedDate,
+		CreatedDate:                   db.CreatedDate.In(time.Local),
 		UpdatedBy:                     db.UpdatedBy,
-		UpdatedDate:                   db.UpdatedDate,
-	}
+		UpdatedDate:                   db.UpdatedDate.In(time.Local),
+	}, nil
 }
 
-func toBusOrderLineItems(dbs []orderLineItem) []orderlineitemsbus.OrderLineItem {
-	app := make([]orderlineitemsbus.OrderLineItem, len(dbs))
+func toBusOrderLineItems(dbs []orderLineItem) ([]orderlineitemsbus.OrderLineItem, error) {
+	items := make([]orderlineitemsbus.OrderLineItem, len(dbs))
 	for i, db := range dbs {
-		app[i] = toBusOrderLineItem(db)
+		item, err := toBusOrderLineItem(db)
+		if err != nil {
+			return nil, fmt.Errorf("tobusorderlineitems[%d]: %w", i, err)
+		}
+		items[i] = item
 	}
-	return app
+	return items, nil
 }
 
 func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderLineItem {
@@ -48,12 +78,16 @@ func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderLineItem {
 		ID:                            app.ID,
 		OrderID:                       app.OrderID,
 		ProductID:                     app.ProductID,
+		Description:                   app.Description,
 		Quantity:                      app.Quantity,
-		Discount:                      app.Discount,
+		UnitPrice:                     app.UnitPrice.DBValue(),
+		Discount:                      app.Discount.DBValue(),
+		DiscountType:                  app.DiscountType,
+		LineTotal:                     app.LineTotal.DBValue(),
 		LineItemFulfillmentStatusesID: app.LineItemFulfillmentStatusesID,
 		CreatedBy:                     app.CreatedBy,
-		CreatedDate:                   app.CreatedDate,
+		CreatedDate:                   app.CreatedDate.UTC(),
 		UpdatedBy:                     app.UpdatedBy,
-		UpdatedDate:                   app.UpdatedDate,
+		UpdatedDate:                   app.UpdatedDate.UTC(),
 	}
 }

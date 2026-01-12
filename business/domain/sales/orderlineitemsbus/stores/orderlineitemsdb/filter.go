@@ -32,9 +32,29 @@ func applyFilter(filter orderlineitemsbus.QueryFilter, data map[string]any, buf 
 		wc = append(wc, "quantity = :quantity")
 	}
 
+	if filter.Description != nil {
+		data["description"] = "%" + *filter.Description + "%"
+		wc = append(wc, "description ILIKE :description")
+	}
+
+	if filter.UnitPrice != nil {
+		data["unit_price"] = *filter.UnitPrice
+		wc = append(wc, "unit_price = :unit_price")
+	}
+
 	if filter.Discount != nil {
 		data["discount"] = *filter.Discount
 		wc = append(wc, "discount = :discount")
+	}
+
+	if filter.DiscountType != nil {
+		data["discount_type"] = *filter.DiscountType
+		wc = append(wc, "discount_type = :discount_type")
+	}
+
+	if filter.LineTotal != nil {
+		data["line_total"] = *filter.LineTotal
+		wc = append(wc, "line_total = :line_total")
 	}
 
 	if filter.LineItemFulfillmentStatusesID != nil {
