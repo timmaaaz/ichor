@@ -82,6 +82,17 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		CustomerID:          no.CustomerID,
 		DueDate:             no.DueDate,
 		FulfillmentStatusID: no.FulfillmentStatusID,
+		OrderDate:           no.OrderDate,
+		BillingAddressID:    no.BillingAddressID,
+		ShippingAddressID:   no.ShippingAddressID,
+		Subtotal:            no.Subtotal,
+		TaxRate:             no.TaxRate,
+		TaxAmount:           no.TaxAmount,
+		ShippingCost:        no.ShippingCost,
+		TotalAmount:         no.TotalAmount,
+		Currency:            no.Currency,
+		PaymentTerms:        no.PaymentTerms,
+		Notes:               no.Notes,
 		CreatedBy:           no.CreatedBy,
 		UpdatedBy:           no.CreatedBy,
 		CreatedDate:         now,
@@ -115,6 +126,39 @@ func (b *Business) Update(ctx context.Context, order Order, uo UpdateOrder) (Ord
 	}
 	if uo.FulfillmentStatusID != nil {
 		order.FulfillmentStatusID = *uo.FulfillmentStatusID
+	}
+	if uo.OrderDate != nil {
+		order.OrderDate = *uo.OrderDate
+	}
+	if uo.BillingAddressID != nil {
+		order.BillingAddressID = uo.BillingAddressID
+	}
+	if uo.ShippingAddressID != nil {
+		order.ShippingAddressID = uo.ShippingAddressID
+	}
+	if uo.Subtotal != nil {
+		order.Subtotal = *uo.Subtotal
+	}
+	if uo.TaxRate != nil {
+		order.TaxRate = *uo.TaxRate
+	}
+	if uo.TaxAmount != nil {
+		order.TaxAmount = *uo.TaxAmount
+	}
+	if uo.ShippingCost != nil {
+		order.ShippingCost = *uo.ShippingCost
+	}
+	if uo.TotalAmount != nil {
+		order.TotalAmount = *uo.TotalAmount
+	}
+	if uo.Currency != nil {
+		order.Currency = *uo.Currency
+	}
+	if uo.PaymentTerms != nil {
+		order.PaymentTerms = *uo.PaymentTerms
+	}
+	if uo.Notes != nil {
+		order.Notes = *uo.Notes
 	}
 	if uo.UpdatedBy != nil {
 		order.UpdatedBy = *uo.UpdatedBy

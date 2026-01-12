@@ -43,9 +43,17 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (ordersbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, status ordersbus.Order) error {
 	const q = `
 	INSERT INTO sales.orders (
-	  id, number, customer_id, due_date, order_fulfillment_status_id, created_by, updated_by, created_date, updated_date
+	  id, number, customer_id, due_date, order_fulfillment_status_id,
+	  order_date, billing_address_id, shipping_address_id,
+	  subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
+	  currency, payment_terms, notes,
+	  created_by, updated_by, created_date, updated_date
     ) VALUES (
-        :id, :number, :customer_id, :due_date, :order_fulfillment_status_id, :created_by, :updated_by, :created_date, :updated_date
+        :id, :number, :customer_id, :due_date, :order_fulfillment_status_id,
+        :order_date, :billing_address_id, :shipping_address_id,
+        :subtotal, :tax_rate, :tax_amount, :shipping_cost, :total_amount,
+        :currency, :payment_terms, :notes,
+        :created_by, :updated_by, :created_date, :updated_date
     )
 	`
 
@@ -72,6 +80,17 @@ func (s *Store) Update(ctx context.Context, status ordersbus.Order) error {
         customer_id = :customer_id,
         due_date = :due_date,
         order_fulfillment_status_id = :order_fulfillment_status_id,
+        order_date = :order_date,
+        billing_address_id = :billing_address_id,
+        shipping_address_id = :shipping_address_id,
+        subtotal = :subtotal,
+        tax_rate = :tax_rate,
+        tax_amount = :tax_amount,
+        shipping_cost = :shipping_cost,
+        total_amount = :total_amount,
+        currency = :currency,
+        payment_terms = :payment_terms,
+        notes = :notes,
         created_by = :created_by,
         updated_by = :updated_by,
         created_date = :created_date,
@@ -114,7 +133,11 @@ func (s *Store) Query(ctx context.Context, filter ordersbus.QueryFilter, orderBy
 
 	const q = `
 	SELECT
-		id, number, customer_id, due_date, order_fulfillment_status_id, created_by, updated_by, created_date, updated_date
+		id, number, customer_id, due_date, order_fulfillment_status_id,
+		order_date, billing_address_id, shipping_address_id,
+		subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
+		currency, payment_terms, notes,
+		created_by, updated_by, created_date, updated_date
     FROM
 	    sales.orders
 		`
@@ -135,7 +158,12 @@ func (s *Store) Query(ctx context.Context, filter ordersbus.QueryFilter, orderBy
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
-	return toBusOrders(dbStatuses), nil
+	orders, err := toBusOrders(dbStatuses)
+	if err != nil {
+		return nil, fmt.Errorf("tobusorders: %w", err)
+	}
+
+	return orders, nil
 }
 
 func (s *Store) Count(ctx context.Context, filter ordersbus.QueryFilter) (int, error) {
@@ -167,20 +195,29 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (ordersbus.Or
 
 	const q = `
     SELECT
-        id, number, customer_id, due_date, order_fulfillment_status_id, created_by, updated_by, created_date, updated_date
+        id, number, customer_id, due_date, order_fulfillment_status_id,
+        order_date, billing_address_id, shipping_address_id,
+        subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
+        currency, payment_terms, notes,
+        created_by, updated_by, created_date, updated_date
     FROM
         sales.orders
     WHERE
         id = :id
     `
 
-	var dbOrder dbOrder
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbOrder); err != nil {
+	var dbOrd dbOrder
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbOrd); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return ordersbus.Order{}, ordersbus.ErrNotFound
 		}
 		return ordersbus.Order{}, fmt.Errorf("namedqueryrow: %w", err)
 	}
 
-	return toBusOrder(dbOrder), nil
+	order, err := toBusOrder(dbOrd)
+	if err != nil {
+		return ordersbus.Order{}, fmt.Errorf("tobusorder: %w", err)
+	}
+
+	return order, nil
 }

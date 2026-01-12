@@ -7,17 +7,63 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/types"
 )
 
+// currencies for test data variety
+var testCurrencies = []string{"USD", "EUR", "GBP", "CAD"}
+
+// paymentTerms for test data variety
+var testPaymentTerms = []string{"Net 30", "Net 60", "Due on Receipt", "COD", "Net 15"}
+
+// mustParseMoney parses money or panics (for test data only)
+func mustParseMoney(value string) types.Money {
+	m, err := types.ParseMoney(value)
+	if err != nil {
+		panic(fmt.Sprintf("invalid money value in test data: %s", value))
+	}
+	return m
+}
+
+// generateTestOrderAmounts generates realistic order amounts
+func generateTestOrderAmounts(i int) (subtotal, taxRate, taxAmount, shippingCost, totalAmount types.Money) {
+	// Generate varied but realistic amounts
+	baseAmount := float64(100 + (i%20)*50 + rand.Intn(100)) // $100-$1100 base
+	tax := baseAmount * 0.08                                // 8% tax
+	shipping := float64(10 + rand.Intn(20))                 // $10-$30 shipping
+	total := baseAmount + tax + shipping
+
+	subtotal = mustParseMoney(fmt.Sprintf("%.2f", baseAmount))
+	taxRate = mustParseMoney("0.08")
+	taxAmount = mustParseMoney(fmt.Sprintf("%.2f", tax))
+	shippingCost = mustParseMoney(fmt.Sprintf("%.2f", shipping))
+	totalAmount = mustParseMoney(fmt.Sprintf("%.2f", total))
+	return
+}
+
 func TestNewOrders(n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs) []NewOrder {
-	// Use actual Orders
 	orders := make([]NewOrder, 0, n)
+	now := time.Now()
+
 	for i := 0; i < n; i++ {
+		subtotal, taxRate, taxAmount, shippingCost, totalAmount := generateTestOrderAmounts(i)
+
 		orders = append(orders, NewOrder{
 			Number:              fmt.Sprintf("TST-%d", i+1),
 			CustomerID:          customerIDs[i%len(customerIDs)],
-			DueDate:             time.Now().AddDate(0, 0, i+1),
+			DueDate:             now.AddDate(0, 0, i+1),
 			FulfillmentStatusID: ofIDs[i%len(ofIDs)],
+			OrderDate:           now,
+			BillingAddressID:    nil, // Test data without addresses
+			ShippingAddressID:   nil,
+			Subtotal:            subtotal,
+			TaxRate:             taxRate,
+			TaxAmount:           taxAmount,
+			ShippingCost:        shippingCost,
+			TotalAmount:         totalAmount,
+			Currency:            testCurrencies[i%len(testCurrencies)],
+			PaymentTerms:        testPaymentTerms[i%len(testPaymentTerms)],
+			Notes:               fmt.Sprintf("Test order %d", i+1),
 			CreatedBy:           userIDs[i%len(userIDs)],
 		})
 	}
@@ -49,11 +95,24 @@ func TestNewOrdersHistorical(n int, daysBack int, userIDs uuid.UUIDs, customerID
 		daysAgo := (i * daysBack) / n
 		createdDate := now.AddDate(0, 0, -daysAgo)
 
+		subtotal, taxRate, taxAmount, shippingCost, totalAmount := generateTestOrderAmounts(i)
+
 		orders = append(orders, NewOrder{
 			Number:              fmt.Sprintf("SEED-%d", i+1),
 			CustomerID:          customerIDs[i%len(customerIDs)],
 			DueDate:             createdDate.AddDate(0, 0, 7), // Due 7 days after creation
 			FulfillmentStatusID: ofIDs[i%len(ofIDs)],
+			OrderDate:           createdDate,
+			BillingAddressID:    nil,
+			ShippingAddressID:   nil,
+			Subtotal:            subtotal,
+			TaxRate:             taxRate,
+			TaxAmount:           taxAmount,
+			ShippingCost:        shippingCost,
+			TotalAmount:         totalAmount,
+			Currency:            testCurrencies[i%len(testCurrencies)],
+			PaymentTerms:        testPaymentTerms[i%len(testPaymentTerms)],
+			Notes:               "",
 			CreatedBy:           userIDs[i%len(userIDs)],
 			CreatedDate:         &createdDate, // Explicit historical date
 		})
@@ -115,7 +174,7 @@ func TestNewOrdersFrontendWeighted(n int, daysBack int, userIDs uuid.UUIDs, cust
 	now := time.Now()
 
 	// Track how many orders we've placed on weekdays vs weekends
-	weekdayTarget := int(float64(n) * 0.75)  // 75% on weekdays
+	weekdayTarget := int(float64(n) * 0.75) // 75% on weekdays
 	weekdayCount := 0
 
 	for i := 0; i < n; i++ {
@@ -165,11 +224,24 @@ func TestNewOrdersFrontendWeighted(n int, daysBack int, userIDs uuid.UUIDs, cust
 			createdDate.Location(),
 		)
 
+		subtotal, taxRate, taxAmount, shippingCost, totalAmount := generateTestOrderAmounts(i)
+
 		orders = append(orders, NewOrder{
 			Number:              fmt.Sprintf("DEMO-%d", i+1),
 			CustomerID:          customerIDs[i%len(customerIDs)],
 			DueDate:             finalDate.AddDate(0, 0, 7), // Due 7 days after creation
 			FulfillmentStatusID: ofIDs[i%len(ofIDs)],
+			OrderDate:           finalDate,
+			BillingAddressID:    nil,
+			ShippingAddressID:   nil,
+			Subtotal:            subtotal,
+			TaxRate:             taxRate,
+			TaxAmount:           taxAmount,
+			ShippingCost:        shippingCost,
+			TotalAmount:         totalAmount,
+			Currency:            testCurrencies[i%len(testCurrencies)],
+			PaymentTerms:        testPaymentTerms[i%len(testPaymentTerms)],
+			Notes:               fmt.Sprintf("Demo order #%d", i+1),
 			CreatedBy:           userIDs[i%len(userIDs)],
 			CreatedDate:         &finalDate,
 		})

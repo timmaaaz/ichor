@@ -29,7 +29,27 @@ func applyFilter(filter ordersbus.QueryFilter, data map[string]any, buf *bytes.B
 
 	if filter.FulfillmentStatusID != nil {
 		data["fulfillment_status_id"] = *filter.FulfillmentStatusID
-		wc = append(wc, "fulfillment_status_id = :fulfillment_status_id")
+		wc = append(wc, "order_fulfillment_status_id = :fulfillment_status_id")
+	}
+
+	if filter.BillingAddressID != nil {
+		data["billing_address_id"] = *filter.BillingAddressID
+		wc = append(wc, "billing_address_id = :billing_address_id")
+	}
+
+	if filter.ShippingAddressID != nil {
+		data["shipping_address_id"] = *filter.ShippingAddressID
+		wc = append(wc, "shipping_address_id = :shipping_address_id")
+	}
+
+	if filter.Currency != nil {
+		data["currency"] = *filter.Currency
+		wc = append(wc, "currency = :currency")
+	}
+
+	if filter.PaymentTerms != nil {
+		data["payment_terms"] = "%" + *filter.PaymentTerms + "%"
+		wc = append(wc, "payment_terms ILIKE :payment_terms")
 	}
 
 	if filter.CreatedBy != nil {
@@ -52,6 +72,16 @@ func applyFilter(filter ordersbus.QueryFilter, data map[string]any, buf *bytes.B
 		wc = append(wc, "due_date <= :end_due_date")
 	}
 
+	if filter.StartOrderDate != nil {
+		data["start_order_date"] = *filter.StartOrderDate
+		wc = append(wc, "order_date >= :start_order_date")
+	}
+
+	if filter.EndOrderDate != nil {
+		data["end_order_date"] = *filter.EndOrderDate
+		wc = append(wc, "order_date <= :end_order_date")
+	}
+
 	if filter.StartCreatedDate != nil {
 		data["start_created_date"] = *filter.StartCreatedDate
 		wc = append(wc, "created_date >= :start_created_date")
@@ -70,6 +100,47 @@ func applyFilter(filter ordersbus.QueryFilter, data map[string]any, buf *bytes.B
 	if filter.EndUpdatedDate != nil {
 		data["end_updated_date"] = *filter.EndUpdatedDate
 		wc = append(wc, "updated_date <= :end_updated_date")
+	}
+
+	// Monetary range filters
+	if filter.MinSubtotal != nil {
+		data["min_subtotal"] = *filter.MinSubtotal
+		wc = append(wc, "subtotal::numeric >= :min_subtotal::numeric")
+	}
+
+	if filter.MaxSubtotal != nil {
+		data["max_subtotal"] = *filter.MaxSubtotal
+		wc = append(wc, "subtotal::numeric <= :max_subtotal::numeric")
+	}
+
+	if filter.MinTaxAmount != nil {
+		data["min_tax_amount"] = *filter.MinTaxAmount
+		wc = append(wc, "tax_amount::numeric >= :min_tax_amount::numeric")
+	}
+
+	if filter.MaxTaxAmount != nil {
+		data["max_tax_amount"] = *filter.MaxTaxAmount
+		wc = append(wc, "tax_amount::numeric <= :max_tax_amount::numeric")
+	}
+
+	if filter.MinShippingCost != nil {
+		data["min_shipping_cost"] = *filter.MinShippingCost
+		wc = append(wc, "shipping_cost::numeric >= :min_shipping_cost::numeric")
+	}
+
+	if filter.MaxShippingCost != nil {
+		data["max_shipping_cost"] = *filter.MaxShippingCost
+		wc = append(wc, "shipping_cost::numeric <= :max_shipping_cost::numeric")
+	}
+
+	if filter.MinTotalAmount != nil {
+		data["min_total_amount"] = *filter.MinTotalAmount
+		wc = append(wc, "total_amount::numeric >= :min_total_amount::numeric")
+	}
+
+	if filter.MaxTotalAmount != nil {
+		data["max_total_amount"] = *filter.MaxTotalAmount
+		wc = append(wc, "total_amount::numeric <= :max_total_amount::numeric")
 	}
 
 	if len(wc) > 0 {
