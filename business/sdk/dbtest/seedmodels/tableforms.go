@@ -433,8 +433,8 @@ func GetProductCategoryFormFields(formID uuid.UUID, entityID uuid.UUID) []formfi
 func GetCityFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{
-			FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "cities",
-			Name: "region_id", Label: "Region", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{}`),
+			FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "regions",
+			Name: "region_id", Label: "Region", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "geography.regions", "display_field": "name"}`),
 		},
 		{
 			FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "cities",

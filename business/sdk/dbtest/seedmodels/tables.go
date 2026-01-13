@@ -4757,3 +4757,140 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 		Actions: []string{"view", "export"},
 	},
 }
+
+// ProductsWithPricesLookup provides a dropdown lookup for products with their selling prices.
+// Used by order entry forms to populate unit_price when product is selected.
+//
+// JOIN Strategy: Uses INNER JOIN to only return products with valid prices.
+// Currency: Filters to USD only (multi-currency support deferred).
+// Price History: Sorts by name ascending for dropdown UX.
+//
+// KNOWN LIMITATION: May return duplicate products if multiple price records
+// match the filters (same currency). Frontend should deduplicate by product_id
+// if needed. Consider creating a database view with DISTINCT ON for guaranteed uniqueness.
+var ProductsWithPricesLookup = &tablebuilder.Config{
+	Title:           "Products with Selling Prices",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "products",
+			Schema: "products",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", Alias: "product_id", TableColumn: "products.id"},
+					{Name: "name", Alias: "product_name", TableColumn: "products.name"},
+					{Name: "sku", TableColumn: "products.sku"},
+					{Name: "is_active", TableColumn: "products.is_active"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "product_costs",
+						Schema:           "products",
+						RelationshipFrom: "products.id",
+						RelationshipTo:   "product_costs.product_id",
+						JoinType:         "inner",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "selling_price", TableColumn: "product_costs.selling_price"},
+							{Name: "purchase_cost", TableColumn: "product_costs.purchase_cost"},
+						},
+					},
+				},
+			},
+			Filters: []tablebuilder.Filter{
+				{
+					Column:   "is_active",
+					Operator: "eq",
+					Value:    true,
+				},
+				{
+					Column:   "currency",
+					Operator: "eq",
+					Value:    "USD",
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "name",
+					Direction: "asc",
+				},
+			},
+			Rows: 1000,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"product_id": {
+				Name:   "product_id",
+				Header: "ID",
+				Width:  100,
+				Type:   "uuid",
+			},
+			"product_name": {
+				Name:       "product_name",
+				Header:     "Product Name",
+				Width:      250,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"sku": {
+				Name:       "sku",
+				Header:     "SKU",
+				Width:      150,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"is_active": {
+				Name:       "is_active",
+				Header:     "Active",
+				Width:      100,
+				Type:       "boolean",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"selling_price": {
+				Name:       "selling_price",
+				Header:     "Selling Price",
+				Width:      150,
+				Type:       "number",
+				Align:      "right",
+				Sortable:   true,
+				Filterable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
+				},
+			},
+			"purchase_cost": {
+				Name:       "purchase_cost",
+				Header:     "Cost Price",
+				Width:      150,
+				Type:       "number",
+				Align:      "right",
+				Sortable:   true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
+				},
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "sales"},
+		Actions: []string{"view"},
+	},
+}
