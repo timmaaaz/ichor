@@ -23,7 +23,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
 				Name:           "NewName",
-				PaymentTerms:   "NewPaymentTerms",
+				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
 				IsActive:       "true",
@@ -32,7 +32,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &supplierapp.Supplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
 				Name:           "NewName",
-				PaymentTerms:   "NewPaymentTerms",
+				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
 				IsActive:       "true",
@@ -64,7 +64,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.NewSupplier{
 				Name:         "NewName",
-				PaymentTerms: "NewPaymentTerms",
 				LeadTimeDays: "8",
 				Rating:       "4.6",
 				IsActive:     "true",
@@ -83,32 +82,12 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
-				PaymentTerms:   "NewPaymentTerms",
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
 				IsActive:       "true",
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"name\",\"error\":\"name is a required field\"}]"),
-			CmpFunc: func(got, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
-			Name:       "missing-payment-terms",
-			URL:        "/v1/procurement/suppliers",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &supplierapp.NewSupplier{
-				ContactInfosID: sd.ContactInfos[0].ID,
-				Name:           "NewName",
-				LeadTimeDays:   "8",
-				Rating:         "4.6",
-				IsActive:       "true",
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"payment_terms\",\"error\":\"payment_terms is a required field\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -122,7 +101,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
 				Name:           "NewName",
-				PaymentTerms:   "NewPaymentTerms",
 				Rating:         "4.6",
 				IsActive:       "true",
 			},
@@ -141,7 +119,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
 				Name:           "NewName",
-				PaymentTerms:   "NewPaymentTerms",
 				LeadTimeDays:   "8",
 				IsActive:       "true",
 			},
@@ -160,7 +137,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
 				Name:           "NewName",
-				PaymentTerms:   "NewPaymentTerms",
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
 			},
@@ -179,7 +155,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &supplierapp.Supplier{
 				ContactInfosID: "not-a-uuid",
 				Name:           "NewName",
-				PaymentTerms:   "NewPaymentTerms",
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
 				IsActive:       "true",
@@ -204,7 +179,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: uuid.New().String(),
 				Name:           "NewName",
-				PaymentTerms:   "NewPaymentTerms",
+				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
 				IsActive:       "true",

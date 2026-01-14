@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
@@ -105,6 +106,7 @@ type SeedData struct {
 	UserAssets                    []userassetbus.UserAsset
 	Assets                        []assetbus.Asset
 	ContactInfos                  []contactinfosbus.ContactInfos
+	PaymentTerms                  []paymenttermbus.PaymentTerm
 	Brands                        []brandbus.Brand
 	ProductCategories             []productcategorybus.ProductCategory
 	Warehouses                    []warehousebus.Warehouse

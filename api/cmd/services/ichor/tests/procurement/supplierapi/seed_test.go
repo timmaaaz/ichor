@@ -8,9 +8,11 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/supplierapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/paymenttermapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/supplierapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -104,6 +106,11 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}
 
+	paymentTerms, err := paymenttermbus.TestSeedPaymentTerms(ctx, 2, busDomain.PaymentTerm)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding payment terms : %w", err)
+	}
+
 	// =========================================================================
 	// Permissions stuff
 	// =========================================================================
@@ -171,5 +178,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Users:        []apitest.User{tu1},
 		ContactInfos: contactinfosapp.ToAppContactInfos(contacts),
 		Suppliers:    supplierapp.ToAppSuppliers(suppliers),
+		PaymentTerms: paymenttermapp.ToAppPaymentTerms(paymentTerms),
 	}, nil
 }
