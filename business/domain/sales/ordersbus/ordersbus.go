@@ -91,7 +91,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		ShippingCost:        no.ShippingCost,
 		TotalAmount:         no.TotalAmount,
 		Currency:            no.Currency,
-		PaymentTerms:        no.PaymentTerms,
+		PaymentTermID:       no.PaymentTermID,
 		Notes:               no.Notes,
 		CreatedBy:           no.CreatedBy,
 		UpdatedBy:           no.CreatedBy,
@@ -154,8 +154,8 @@ func (b *Business) Update(ctx context.Context, order Order, uo UpdateOrder) (Ord
 	if uo.Currency != nil {
 		order.Currency = *uo.Currency
 	}
-	if uo.PaymentTerms != nil {
-		order.PaymentTerms = *uo.PaymentTerms
+	if uo.PaymentTermID != nil {
+		order.PaymentTermID = uo.PaymentTermID
 	}
 	if uo.Notes != nil {
 		order.Notes = *uo.Notes

@@ -24,7 +24,7 @@ type QueryParams struct {
 	BillingAddressID    string
 	ShippingAddressID   string
 	Currency            string
-	PaymentTerms        string
+	PaymentTermID       string
 	CreatedBy           string
 	UpdatedBy           string
 	StartDueDate        string
@@ -61,7 +61,7 @@ type Order struct {
 	ShippingCost        string `json:"shipping_cost"`
 	TotalAmount         string `json:"total_amount"`
 	Currency            string `json:"currency"`
-	PaymentTerms        string `json:"payment_terms"`
+	PaymentTermID       string `json:"payment_term_id,omitempty"`
 	Notes               string `json:"notes"`
 	CreatedBy           string `json:"created_by"`
 	UpdatedBy           string `json:"updated_by"`
@@ -88,7 +88,6 @@ func ToAppOrder(bus ordersbus.Order) Order {
 		ShippingCost:        bus.ShippingCost.Value(),
 		TotalAmount:         bus.TotalAmount.Value(),
 		Currency:            bus.Currency,
-		PaymentTerms:        bus.PaymentTerms,
 		Notes:               bus.Notes,
 		CreatedBy:           bus.CreatedBy.String(),
 		UpdatedBy:           bus.UpdatedBy.String(),
@@ -102,6 +101,9 @@ func ToAppOrder(bus ordersbus.Order) Order {
 	}
 	if bus.ShippingAddressID != nil {
 		app.ShippingAddressID = bus.ShippingAddressID.String()
+	}
+	if bus.PaymentTermID != nil {
+		app.PaymentTermID = bus.PaymentTermID.String()
 	}
 
 	return app
@@ -129,7 +131,7 @@ type NewOrder struct {
 	ShippingCost        string  `json:"shipping_cost"`
 	TotalAmount         string  `json:"total_amount"`
 	Currency            string  `json:"currency"`
-	PaymentTerms        string  `json:"payment_terms"`
+	PaymentTermID       string  `json:"payment_term_id" validate:"omitempty,uuid4"`
 	Notes               string  `json:"notes"`
 	CreatedBy           string  `json:"created_by" validate:"required,uuid4"`
 	CreatedDate         *string `json:"created_date"` // Optional: for seeding/import
@@ -231,10 +233,18 @@ func toBusNewOrder(app NewOrder) (ordersbus.NewOrder, error) {
 		ShippingCost:        shippingCost,
 		TotalAmount:         totalAmount,
 		Currency:            app.Currency,
-		PaymentTerms:        app.PaymentTerms,
 		Notes:               app.Notes,
 		CreatedBy:           createdBy,
 		// CreatedDate: nil by default - API always uses server time
+	}
+
+	// Parse optional PaymentTermID
+	if app.PaymentTermID != "" {
+		id, err := uuid.Parse(app.PaymentTermID)
+		if err != nil {
+			return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse paymentTermID: %s", err)
+		}
+		bus.PaymentTermID = &id
 	}
 
 	// Handle optional CreatedDate (for imports/admin tools only)
@@ -263,7 +273,7 @@ type UpdateOrder struct {
 	ShippingCost        *string `json:"shipping_cost" validate:"omitempty"`
 	TotalAmount         *string `json:"total_amount" validate:"omitempty"`
 	Currency            *string `json:"currency" validate:"omitempty"`
-	PaymentTerms        *string `json:"payment_terms" validate:"omitempty"`
+	PaymentTermID       *string `json:"payment_term_id" validate:"omitempty,uuid4"`
 	Notes               *string `json:"notes" validate:"omitempty"`
 	UpdatedBy           *string `json:"updated_by" validate:"omitempty,uuid4"`
 }
@@ -389,6 +399,15 @@ func toBusUpdateOrder(app UpdateOrder) (ordersbus.UpdateOrder, error) {
 		updatedBy = &id
 	}
 
+	var paymentTermID *uuid.UUID
+	if app.PaymentTermID != nil && *app.PaymentTermID != "" {
+		id, err := uuid.Parse(*app.PaymentTermID)
+		if err != nil {
+			return ordersbus.UpdateOrder{}, errs.Newf(errs.InvalidArgument, "parse paymentTermID: %s", err)
+		}
+		paymentTermID = &id
+	}
+
 	bus := ordersbus.UpdateOrder{
 		Number:              app.Number,
 		CustomerID:          customerID,
@@ -403,7 +422,7 @@ func toBusUpdateOrder(app UpdateOrder) (ordersbus.UpdateOrder, error) {
 		ShippingCost:        shippingCost,
 		TotalAmount:         totalAmount,
 		Currency:            app.Currency,
-		PaymentTerms:        app.PaymentTerms,
+		PaymentTermID:       paymentTermID,
 		Notes:               app.Notes,
 		UpdatedBy:           updatedBy,
 	}

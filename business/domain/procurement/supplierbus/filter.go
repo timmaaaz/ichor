@@ -11,7 +11,7 @@ type QueryFilter struct {
 	SupplierID     *uuid.UUID
 	ContactInfosID *uuid.UUID
 	Name           *string
-	PaymentTerms   *string
+	PaymentTermID  *uuid.UUID
 	LeadTimeDays   *int
 	Rating         *types.RoundedFloat
 	IsActive       *bool

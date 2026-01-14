@@ -20,6 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/config/pagecontentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/pageapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/paymenttermapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/rolepageapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/tableaccessapi"
@@ -91,6 +92,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
+	"github.com/timmaaaz/ichor/app/domain/core/paymenttermapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
@@ -155,6 +157,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
+	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus"
+	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus/stores/paymenttermdb"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionsdb"
@@ -367,6 +371,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	pageBus := pagebus.NewBusiness(cfg.Log, delegate, pagedb.NewStore(cfg.Log, cfg.DB))
+	paymentTermBus := paymenttermbus.NewBusiness(cfg.Log, delegate, paymenttermdb.NewStore(cfg.Log, cfg.DB))
 	rolePageBus := rolepagebus.NewBusiness(cfg.Log, delegate, rolepagedb.NewStore(cfg.Log, cfg.DB))
 	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
 	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, delegate, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
@@ -470,6 +475,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					delegateHandler.RegisterDomain(delegate, userrolebus.DomainName, userrolebus.EntityName)
 					delegateHandler.RegisterDomain(delegate, tableaccessbus.DomainName, tableaccessbus.EntityName)
 					delegateHandler.RegisterDomain(delegate, pagebus.DomainName, pagebus.EntityName)
+					delegateHandler.RegisterDomain(delegate, paymenttermbus.DomainName, paymenttermbus.EntityName)
 					delegateHandler.RegisterDomain(delegate, rolepagebus.DomainName, rolepagebus.EntityName)
 					delegateHandler.RegisterDomain(delegate, contactinfosbus.DomainName, contactinfosbus.EntityName)
 
@@ -738,6 +744,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	pageapi.Routes(app, pageapi.Config{
 		Log:            cfg.Log,
 		PageBus:        pageBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	paymenttermapi.Routes(app, paymenttermapi.Config{
+		Log:            cfg.Log,
+		PaymentTermBus: paymentTermBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
@@ -1044,6 +1057,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		assetapp.NewApp(assetBus),
 		roleapp.NewApp(roleBus),
 		pageapp.NewApp(pageBus),
+		paymenttermapp.NewApp(paymentTermBus),
 		rolepageapp.NewApp(rolePageBus),
 		tableaccessapp.NewApp(tableAccessBus),
 		userroleappimport.NewApp(userRoleBus),

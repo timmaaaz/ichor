@@ -20,7 +20,7 @@ type QueryParams struct {
 	SupplierID     string
 	ContactInfosID string
 	Name           string
-	PaymentTerms   string
+	PaymentTermID  string
 	LeadTimeDays   string
 	Rating         string
 	IsActive       string
@@ -32,7 +32,7 @@ type Supplier struct {
 	SupplierID     string `json:"supplier_id"`
 	ContactInfosID string `json:"contact_infos_id"`
 	Name           string `json:"name"`
-	PaymentTerms   string `json:"payment_terms"`
+	PaymentTermID  string `json:"payment_term_id,omitempty"`
 	LeadTimeDays   string `json:"lead_time_days"`
 	Rating         string `json:"rating"`
 	IsActive       string `json:"is_active"`
@@ -46,17 +46,22 @@ func (app Supplier) Encode() ([]byte, string, error) {
 }
 
 func ToAppSupplier(bus supplierbus.Supplier) Supplier {
-	return Supplier{
+	app := Supplier{
 		SupplierID:     bus.SupplierID.String(),
 		ContactInfosID: bus.ContactInfosID.String(),
 		Name:           bus.Name,
-		PaymentTerms:   bus.PaymentTerms,
 		LeadTimeDays:   fmt.Sprintf("%d", bus.LeadTimeDays),
 		Rating:         bus.Rating.String(),
 		IsActive:       fmt.Sprintf("%t", bus.IsActive),
 		CreatedDate:    bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:    bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
+
+	if bus.PaymentTermID != nil {
+		app.PaymentTermID = bus.PaymentTermID.String()
+	}
+
+	return app
 }
 
 func ToAppSuppliers(bus []supplierbus.Supplier) []Supplier {
@@ -70,7 +75,7 @@ func ToAppSuppliers(bus []supplierbus.Supplier) []Supplier {
 type NewSupplier struct {
 	ContactInfosID string `json:"contact_infos_id" validate:"required,min=36,max=36"`
 	Name           string `json:"name" validate:"required"`
-	PaymentTerms   string `json:"payment_terms" validate:"required"`
+	PaymentTermID  string `json:"payment_term_id" validate:"omitempty,uuid4"`
 	LeadTimeDays   string `json:"lead_time_days" validate:"required"`
 	Rating         string `json:"rating" validate:"required"`
 	IsActive       string `json:"is_active" validate:"required"`
@@ -108,20 +113,29 @@ func toBusNewSupplier(app NewSupplier) (supplierbus.NewSupplier, error) {
 		return supplierbus.NewSupplier{}, fmt.Errorf("invalid is active: %w", err)
 	}
 
-	return supplierbus.NewSupplier{
+	bus := supplierbus.NewSupplier{
 		ContactInfosID: ContactInfosID,
 		Name:           app.Name,
-		PaymentTerms:   app.PaymentTerms,
 		LeadTimeDays:   leadTimeDays,
 		Rating:         rating,
 		IsActive:       isActive,
-	}, nil
+	}
+
+	if app.PaymentTermID != "" {
+		paymentTermID, err := uuid.Parse(app.PaymentTermID)
+		if err != nil {
+			return supplierbus.NewSupplier{}, fmt.Errorf("parse paymentTermID: %w", err)
+		}
+		bus.PaymentTermID = &paymentTermID
+	}
+
+	return bus, nil
 }
 
 type UpdateSupplier struct {
 	ContactInfosID *string `json:"contact_infos_id" validate:"omitempty,min=36,max=36"`
 	Name           *string `json:"name" validate:"omitempty"`
-	PaymentTerms   *string `json:"payment_terms" validate:"omitempty"`
+	PaymentTermID  *string `json:"payment_term_id" validate:"omitempty,uuid4"`
 	LeadTimeDays   *string `json:"lead_time_days" validate:"omitempty"`
 	Rating         *string `json:"rating" validate:"omitempty"`
 	IsActive       *string `json:"is_active" validate:"omitempty"`
@@ -154,8 +168,12 @@ func toBusUpdateSupplier(app UpdateSupplier) (supplierbus.UpdateSupplier, error)
 		dest.Name = app.Name
 	}
 
-	if app.PaymentTerms != nil {
-		dest.PaymentTerms = app.PaymentTerms
+	if app.PaymentTermID != nil && *app.PaymentTermID != "" {
+		paymentTermID, err := uuid.Parse(*app.PaymentTermID)
+		if err != nil {
+			return supplierbus.UpdateSupplier{}, errs.NewFieldsError("payment_term_id", err)
+		}
+		dest.PaymentTermID = &paymentTermID
 	}
 
 	if app.LeadTimeDays != nil {

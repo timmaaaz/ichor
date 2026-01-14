@@ -17,6 +17,7 @@ var orderByFields = map[string]string{
 	ordersbus.OrderBySubtotal:                   "subtotal",
 	ordersbus.OrderByTotalAmount:                "total_amount",
 	ordersbus.OrderByCurrency:                   "currency",
+	ordersbus.OrderByPaymentTermID:              "payment_term_id",
 	ordersbus.OrderByCreatedBy:                  "created_by",
 	ordersbus.OrderByUpdatedBy:                  "updated_by",
 	ordersbus.OrderByCreatedDate:                "created_date",

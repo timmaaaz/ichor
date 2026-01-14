@@ -78,7 +78,7 @@ func (b *Business) Create(ctx context.Context, newSupplier NewSupplier) (Supplie
 		Name:           newSupplier.Name,
 		ContactInfosID: newSupplier.ContactInfosID,
 		IsActive:       newSupplier.IsActive,
-		PaymentTerms:   newSupplier.PaymentTerms,
+		PaymentTermID:  newSupplier.PaymentTermID,
 		LeadTimeDays:   newSupplier.LeadTimeDays,
 		Rating:         newSupplier.Rating,
 		CreatedDate:    now,
@@ -108,8 +108,8 @@ func (b *Business) Update(ctx context.Context, supplier Supplier, us UpdateSuppl
 	if us.Name != nil {
 		supplier.Name = *us.Name
 	}
-	if us.PaymentTerms != nil {
-		supplier.PaymentTerms = *us.PaymentTerms
+	if us.PaymentTermID != nil {
+		supplier.PaymentTermID = us.PaymentTermID
 	}
 	if us.LeadTimeDays != nil {
 		supplier.LeadTimeDays = *us.LeadTimeDays

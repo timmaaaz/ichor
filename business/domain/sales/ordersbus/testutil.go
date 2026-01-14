@@ -13,8 +13,6 @@ import (
 // currencies for test data variety
 var testCurrencies = []string{"USD", "EUR", "GBP", "CAD"}
 
-// paymentTerms for test data variety
-var testPaymentTerms = []string{"Net 30", "Net 60", "Due on Receipt", "COD", "Net 15"}
 
 // mustParseMoney parses money or panics (for test data only)
 func mustParseMoney(value string) types.Money {
@@ -62,7 +60,6 @@ func TestNewOrders(n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid
 			ShippingCost:        shippingCost,
 			TotalAmount:         totalAmount,
 			Currency:            testCurrencies[i%len(testCurrencies)],
-			PaymentTerms:        testPaymentTerms[i%len(testPaymentTerms)],
 			Notes:               fmt.Sprintf("Test order %d", i+1),
 			CreatedBy:           userIDs[i%len(userIDs)],
 		})
@@ -111,7 +108,6 @@ func TestNewOrdersHistorical(n int, daysBack int, userIDs uuid.UUIDs, customerID
 			ShippingCost:        shippingCost,
 			TotalAmount:         totalAmount,
 			Currency:            testCurrencies[i%len(testCurrencies)],
-			PaymentTerms:        testPaymentTerms[i%len(testPaymentTerms)],
 			Notes:               "",
 			CreatedBy:           userIDs[i%len(userIDs)],
 			CreatedDate:         &createdDate, // Explicit historical date
@@ -240,7 +236,6 @@ func TestNewOrdersFrontendWeighted(n int, daysBack int, userIDs uuid.UUIDs, cust
 			ShippingCost:        shippingCost,
 			TotalAmount:         totalAmount,
 			Currency:            testCurrencies[i%len(testCurrencies)],
-			PaymentTerms:        testPaymentTerms[i%len(testPaymentTerms)],
 			Notes:               fmt.Sprintf("Demo order #%d", i+1),
 			CreatedBy:           userIDs[i%len(userIDs)],
 			CreatedDate:         &finalDate,

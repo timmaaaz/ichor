@@ -10,7 +10,7 @@ const (
 	OrderBySupplierID     = "id"
 	OrderByContactInfosID = "contact_infos_id"
 	OrderByName           = "name"
-	OrderByPaymentTerms   = "payment_terms"
+	OrderByPaymentTermID  = "payment_term_id"
 	OrderByLeadTimeDays   = "lead_time_days"
 	OrderByRating         = "rating"
 	OrderByIsActive       = "is_active"

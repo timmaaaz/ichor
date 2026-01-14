@@ -14,7 +14,7 @@ type QueryFilter struct {
 	BillingAddressID    *uuid.UUID
 	ShippingAddressID   *uuid.UUID
 	Currency            *string
-	PaymentTerms        *string
+	PaymentTermID       *uuid.UUID
 	CreatedBy           *uuid.UUID
 	UpdatedBy           *uuid.UUID
 	StartDueDate        *time.Time

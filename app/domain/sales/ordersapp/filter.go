@@ -59,8 +59,12 @@ func parseFilter(qp QueryParams) (ordersbus.QueryFilter, error) {
 		filter.Currency = &qp.Currency
 	}
 
-	if qp.PaymentTerms != "" {
-		filter.PaymentTerms = &qp.PaymentTerms
+	if qp.PaymentTermID != "" {
+		id, err := uuid.Parse(qp.PaymentTermID)
+		if err != nil {
+			return ordersbus.QueryFilter{}, errs.NewFieldsError("payment_term_id", err)
+		}
+		filter.PaymentTermID = &id
 	}
 
 	if qp.CreatedBy != "" {

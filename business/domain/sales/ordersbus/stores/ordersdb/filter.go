@@ -47,9 +47,9 @@ func applyFilter(filter ordersbus.QueryFilter, data map[string]any, buf *bytes.B
 		wc = append(wc, "currency = :currency")
 	}
 
-	if filter.PaymentTerms != nil {
-		data["payment_terms"] = "%" + *filter.PaymentTerms + "%"
-		wc = append(wc, "payment_terms ILIKE :payment_terms")
+	if filter.PaymentTermID != nil {
+		data["payment_term_id"] = *filter.PaymentTermID
+		wc = append(wc, "payment_term_id = :payment_term_id")
 	}
 
 	if filter.CreatedBy != nil {

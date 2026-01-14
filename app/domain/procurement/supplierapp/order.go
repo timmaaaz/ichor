@@ -11,7 +11,7 @@ var orderByFields = map[string]string{
 	"id":               supplierbus.OrderBySupplierID,
 	"contact_infos_id": supplierbus.OrderByContactInfosID,
 	"name":             supplierbus.OrderByName,
-	"payment_terms":    supplierbus.OrderByPaymentTerms,
+	"payment_term_id":  supplierbus.OrderByPaymentTermID,
 	"lead_time_days":   supplierbus.OrderByLeadTimeDays,
 	"rating":           supplierbus.OrderByRating,
 	"is_active":        supplierbus.OrderByIsActive,

@@ -27,7 +27,7 @@ type Order struct {
 	ShippingCost        types.Money `json:"shipping_cost"`
 	TotalAmount         types.Money `json:"total_amount"`
 	Currency            string      `json:"currency"`
-	PaymentTerms        string      `json:"payment_terms"`
+	PaymentTermID       *uuid.UUID  `json:"payment_term_id,omitempty"`
 	Notes               string      `json:"notes"`
 	CreatedBy           uuid.UUID   `json:"created_by"`
 	UpdatedBy           uuid.UUID   `json:"updated_by"`
@@ -49,7 +49,7 @@ type NewOrder struct {
 	ShippingCost        types.Money `json:"shipping_cost"`
 	TotalAmount         types.Money `json:"total_amount"`
 	Currency            string      `json:"currency"`
-	PaymentTerms        string      `json:"payment_terms"`
+	PaymentTermID       *uuid.UUID  `json:"payment_term_id,omitempty"`
 	Notes               string      `json:"notes"`
 	CreatedBy           uuid.UUID   `json:"created_by"`
 	CreatedDate         *time.Time  `json:"created_date,omitempty"` // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
@@ -69,7 +69,7 @@ type UpdateOrder struct {
 	ShippingCost        *types.Money `json:"shipping_cost,omitempty"`
 	TotalAmount         *types.Money `json:"total_amount,omitempty"`
 	Currency            *string      `json:"currency,omitempty"`
-	PaymentTerms        *string      `json:"payment_terms,omitempty"`
+	PaymentTermID       *uuid.UUID   `json:"payment_term_id,omitempty"`
 	Notes               *string      `json:"notes,omitempty"`
 	UpdatedBy           *uuid.UUID   `json:"updated_by,omitempty"`
 }

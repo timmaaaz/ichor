@@ -20,7 +20,7 @@ func parseQueryParams(r *http.Request) (ordersapp.QueryParams, error) {
 		BillingAddressID:    values.Get("billing_address_id"),
 		ShippingAddressID:   values.Get("shipping_address_id"),
 		Currency:            values.Get("currency"),
-		PaymentTerms:        values.Get("payment_terms"),
+		PaymentTermID:       values.Get("payment_term_id"),
 		CreatedBy:           values.Get("created_by"),
 		UpdatedBy:           values.Get("updated_by"),
 		StartDueDate:        values.Get("start_due_date"),

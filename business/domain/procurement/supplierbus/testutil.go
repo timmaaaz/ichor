@@ -20,7 +20,6 @@ func TestNewSupplier(n int, ContactInfosIDs uuid.UUIDs) []NewSupplier {
 		newSuppliers[i] = NewSupplier{
 			ContactInfosID: ContactInfosIDs[idx%len(ContactInfosIDs)],
 			Name:           fmt.Sprintf("Name%d", idx),
-			PaymentTerms:   fmt.Sprintf("PaymentTerms%d", idx),
 			LeadTimeDays:   idx,
 			Rating:         types.MustParseRoundedFloat(fmt.Sprintf("%.2f", rand.Float64()*10)),
 			IsActive:       idx%2 == 0,

@@ -78,6 +78,14 @@ CREATE TABLE assets.asset_conditions (
    UNIQUE (name)
 );
 
+-- Version: 1.125
+-- Description: Create payment_terms lookup table
+CREATE TABLE core.payment_terms (
+   id UUID PRIMARY KEY,
+   name VARCHAR(100) UNIQUE NOT NULL,
+   description TEXT
+);
+
 -- Version: 1.13
 -- Description: Create table countries
 CREATE TABLE geography.countries (
@@ -537,14 +545,15 @@ CREATE TABLE procurement.suppliers (
    id UUID NOT NULL,
    contact_infos_id UUID NOT NULL,
    name VARCHAR(100) NOT NULL,
-   payment_terms TEXT NOT NULL,
+   payment_term_id UUID NULL,
    lead_time_days INTEGER NOT NULL,
    rating NUMERIC(10, 2) NOT NULL,
    is_active BOOLEAN NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
+   FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id),
+   FOREIGN KEY (payment_term_id) REFERENCES core.payment_terms(id) ON DELETE SET NULL
 );
 
 -- Version: 1.44
@@ -822,7 +831,7 @@ CREATE TABLE sales.orders (
    shipping_address_id UUID NULL,
    -- Order details
    order_date DATE NULL,
-   payment_terms VARCHAR(50) NULL,
+   payment_term_id UUID NULL,
    notes TEXT NULL,
    -- Financial fields
    subtotal DECIMAL(12,2) DEFAULT 0,
@@ -841,6 +850,7 @@ CREATE TABLE sales.orders (
    FOREIGN KEY (order_fulfillment_status_id) REFERENCES sales.order_fulfillment_statuses(id) ON DELETE SET NULL,
    FOREIGN KEY (billing_address_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
    FOREIGN KEY (shipping_address_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
+   FOREIGN KEY (payment_term_id) REFERENCES core.payment_terms(id) ON DELETE SET NULL,
    FOREIGN KEY (created_by) REFERENCES core.users(id),
    FOREIGN KEY (updated_by) REFERENCES core.users(id)
 );
@@ -1313,7 +1323,7 @@ SELECT
    -- New financial and address fields
    o.billing_address_id AS orders_billing_address_id,
    o.shipping_address_id AS orders_shipping_address_id,
-   o.payment_terms AS orders_payment_terms,
+   o.payment_term_id AS orders_payment_term_id,
    o.notes AS orders_notes,
    o.subtotal AS orders_subtotal,
    o.tax_rate AS orders_tax_rate,
@@ -1331,10 +1341,15 @@ SELECT
    c.updated_date AS customers_updated_date,
 
    ofs.name AS order_fulfillment_statuses_name,
-   ofs.description AS order_fulfillment_statuses_description
+   ofs.description AS order_fulfillment_statuses_description,
+
+   pt.id AS payment_term_id,
+   pt.name AS payment_term_name,
+   pt.description AS payment_term_description
 FROM sales.orders o
    INNER JOIN sales.customers c ON o.customer_id = c.id
-   LEFT JOIN sales.order_fulfillment_statuses ofs ON o.order_fulfillment_status_id = ofs.id;
+   LEFT JOIN sales.order_fulfillment_statuses ofs ON o.order_fulfillment_status_id = ofs.id
+   LEFT JOIN core.payment_terms pt ON o.payment_term_id = pt.id;
 
 CREATE OR REPLACE VIEW sales.order_line_items_base AS
 SELECT

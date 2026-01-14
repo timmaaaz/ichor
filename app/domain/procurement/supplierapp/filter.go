@@ -74,8 +74,12 @@ func parseFilter(qp QueryParams) (supplierbus.QueryFilter, error) {
 		filter.Rating = &rating
 	}
 
-	if qp.PaymentTerms != "" {
-		filter.PaymentTerms = &qp.PaymentTerms
+	if qp.PaymentTermID != "" {
+		id, err := uuid.Parse(qp.PaymentTermID)
+		if err != nil {
+			return supplierbus.QueryFilter{}, errs.NewFieldsError("payment_term_id", err)
+		}
+		filter.PaymentTermID = &id
 	}
 
 	return filter, nil

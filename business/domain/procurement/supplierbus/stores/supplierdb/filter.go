@@ -40,9 +40,9 @@ func applyFilter(filter supplierbus.QueryFilter, data map[string]any, buf *bytes
 		wc = append(wc, "is_active = :is_active")
 	}
 
-	if filter.PaymentTerms != nil {
-		data["payment_terms"] = *filter.PaymentTerms
-		wc = append(wc, "payment_terms = :payment_terms")
+	if filter.PaymentTermID != nil {
+		data["payment_term_id"] = *filter.PaymentTermID
+		wc = append(wc, "payment_term_id = :payment_term_id")
 	}
 
 	if filter.CreatedDate != nil {
