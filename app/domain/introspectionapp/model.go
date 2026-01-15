@@ -216,3 +216,124 @@ func ToAppReferencingTables(bus []introspectionbus.ReferencingTable) []Referenci
 	}
 	return tables
 }
+
+// =============================================================================
+// Enum Types
+
+// EnumType represents a PostgreSQL ENUM type with its values.
+type EnumType struct {
+	Name   string   `json:"name"`
+	Schema string   `json:"schema"`
+	Values []string `json:"values"`
+}
+
+// Encode implements the encoder interface.
+func (app EnumType) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// EnumTypes is a collection wrapper that implements the Encoder interface.
+type EnumTypes []EnumType
+
+// Encode implements the encoder interface.
+func (app EnumTypes) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// EnumValue represents a single value within a PostgreSQL ENUM type.
+type EnumValue struct {
+	Value     string `json:"value"`
+	SortOrder int    `json:"sortOrder"`
+}
+
+// Encode implements the encoder interface.
+func (app EnumValue) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// EnumValues is a collection wrapper that implements the Encoder interface.
+type EnumValues []EnumValue
+
+// Encode implements the encoder interface.
+func (app EnumValues) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ToAppEnumType converts a business EnumType to app EnumType.
+func ToAppEnumType(bus introspectionbus.EnumType) EnumType {
+	return EnumType{
+		Name:   bus.Name,
+		Schema: bus.Schema,
+		Values: []string(bus.Values),
+	}
+}
+
+// ToAppEnumTypes converts a slice of business EnumTypes to app EnumTypes.
+func ToAppEnumTypes(bus []introspectionbus.EnumType) []EnumType {
+	enums := make([]EnumType, len(bus))
+	for i, e := range bus {
+		enums[i] = ToAppEnumType(e)
+	}
+	return enums
+}
+
+// ToAppEnumValue converts a business EnumValue to app EnumValue.
+func ToAppEnumValue(bus introspectionbus.EnumValue) EnumValue {
+	return EnumValue{
+		Value:     bus.Value,
+		SortOrder: bus.SortOrder,
+	}
+}
+
+// ToAppEnumValues converts a slice of business EnumValues to app EnumValues.
+func ToAppEnumValues(bus []introspectionbus.EnumValue) []EnumValue {
+	values := make([]EnumValue, len(bus))
+	for i, v := range bus {
+		values[i] = ToAppEnumValue(v)
+	}
+	return values
+}
+
+// EnumOption represents a ready-to-use dropdown option (merged enum value + label).
+type EnumOption struct {
+	Value     string `json:"value"`
+	Label     string `json:"label"`
+	SortOrder int    `json:"sortOrder"`
+}
+
+// Encode implements the encoder interface.
+func (app EnumOption) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// EnumOptions is a collection wrapper that implements the Encoder interface.
+type EnumOptions []EnumOption
+
+// Encode implements the encoder interface.
+func (app EnumOptions) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ToAppEnumOption converts a business EnumOption to app EnumOption.
+func ToAppEnumOption(bus introspectionbus.EnumOption) EnumOption {
+	return EnumOption{
+		Value:     bus.Value,
+		Label:     bus.Label,
+		SortOrder: bus.SortOrder,
+	}
+}
+
+// ToAppEnumOptions converts a slice of business EnumOptions to app EnumOptions.
+func ToAppEnumOptions(bus []introspectionbus.EnumOption) []EnumOption {
+	options := make([]EnumOption, len(bus))
+	for i, o := range bus {
+		options[i] = ToAppEnumOption(o)
+	}
+	return options
+}

@@ -354,6 +354,16 @@ CREATE TABLE hr.user_approval_comments (
 
 CREATE TYPE contact_type as ENUM ('phone', 'email', 'mail', 'fax');
 
+-- ENUM types for dropdown fields (schema-scoped for organization)
+CREATE TYPE sales.discount_type AS ENUM ('flat', 'percent');
+CREATE TYPE config.content_type AS ENUM ('table', 'form', 'tabs', 'text', 'chart', 'container');
+CREATE TYPE config.action_type AS ENUM ('button', 'dropdown', 'separator');
+CREATE TYPE config.button_variant AS ENUM ('default', 'secondary', 'outline', 'ghost', 'destructive');
+CREATE TYPE config.button_alignment AS ENUM ('left', 'right');
+CREATE TYPE workflow.alert_severity AS ENUM ('low', 'medium', 'high', 'critical');
+CREATE TYPE workflow.alert_status AS ENUM ('active', 'acknowledged', 'dismissed', 'resolved');
+CREATE TYPE workflow.recipient_type AS ENUM ('user', 'role');
+
 -- Version: 1.31
 -- Description: Add contact_infos
 CREATE TABLE core.contact_infos (
@@ -863,7 +873,7 @@ CREATE TABLE sales.order_line_items (
    quantity INT NOT NULL DEFAULT 1,
    unit_price DECIMAL(12,2) DEFAULT 0,             -- Price per unit
    discount NUMERIC(10,2) DEFAULT 0,               -- Discount amount or percent value
-   discount_type VARCHAR(10) DEFAULT 'flat' CHECK (discount_type IN ('flat', 'percent')),
+   discount_type sales.discount_type DEFAULT 'flat',
    line_total DECIMAL(12,2) DEFAULT 0,             -- Calculated total
    line_item_fulfillment_statuses_id UUID NOT NULL,
    -- Audit columns
@@ -1179,7 +1189,7 @@ ORDER BY tc.updated_date DESC;
 CREATE TABLE config.page_actions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     page_config_id UUID NOT NULL,
-    action_type TEXT NOT NULL CHECK (action_type IN ('button', 'dropdown', 'separator')),
+    action_type config.action_type NOT NULL,
     action_order INT NOT NULL DEFAULT 1,
     is_active BOOLEAN DEFAULT TRUE,
 
@@ -1194,8 +1204,8 @@ CREATE TABLE config.page_action_buttons (
     label TEXT NOT NULL,
     icon TEXT,
     target_path TEXT NOT NULL,
-    variant TEXT DEFAULT 'default' CHECK (variant IN ('default', 'secondary', 'outline', 'ghost', 'destructive')),
-    alignment TEXT DEFAULT 'right' CHECK (alignment IN ('left', 'right')),
+    variant config.button_variant DEFAULT 'default',
+    alignment config.button_alignment DEFAULT 'right',
     confirmation_prompt TEXT,
 
     CONSTRAINT fk_button_action FOREIGN KEY (action_id)
@@ -1253,7 +1263,7 @@ CREATE TABLE IF NOT EXISTS config.page_content (
    page_config_id UUID NOT NULL,
 
    -- Content identification
-   content_type TEXT NOT NULL CHECK (content_type IN ('table', 'form', 'tabs', 'text', 'chart', 'container')),
+   content_type config.content_type NOT NULL,
    label TEXT,
 
    -- Content references (only one should be set based on content_type)
@@ -1720,14 +1730,14 @@ WHERE config->'data_source'->0->'group_by' IS NOT NULL
 CREATE TABLE workflow.alerts (
    id UUID NOT NULL,
    alert_type VARCHAR(100) NOT NULL,
-   severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+   severity workflow.alert_severity NOT NULL,
    title TEXT NOT NULL,
    message TEXT NOT NULL,
    context JSONB DEFAULT '{}',
    source_entity_name VARCHAR(100) NULL,
    source_entity_id UUID NULL,
    source_rule_id UUID NULL,
-   status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'acknowledged', 'dismissed', 'resolved')),
+   status workflow.alert_status NOT NULL DEFAULT 'active',
    expires_date TIMESTAMP NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
@@ -1747,7 +1757,7 @@ CREATE INDEX idx_alerts_source_entity_type_status ON workflow.alerts(source_enti
 CREATE TABLE workflow.alert_recipients (
    id UUID NOT NULL,
    alert_id UUID NOT NULL,
-   recipient_type VARCHAR(20) NOT NULL CHECK (recipient_type IN ('user', 'role')),
+   recipient_type workflow.recipient_type NOT NULL,
    recipient_id UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
@@ -1775,4 +1785,24 @@ CREATE TABLE workflow.alert_acknowledgments (
 
 CREATE INDEX idx_alert_ack_alert ON workflow.alert_acknowledgments(alert_id);
 CREATE INDEX idx_alert_ack_user ON workflow.alert_acknowledgments(acknowledged_by);
+
+-- Version: 1.79
+-- Description: Create enum_labels table for human-friendly display labels
+CREATE TABLE config.enum_labels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    enum_name VARCHAR(100) NOT NULL,      -- e.g., 'sales.discount_type' (schema.enum_name format)
+    value VARCHAR(100) NOT NULL,          -- e.g., 'flat' (must match enum value)
+    label VARCHAR(255) NOT NULL,          -- e.g., 'Flat Amount'
+    sort_order INTEGER DEFAULT 1000,      -- Override pg_enum sort if needed
+    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(enum_name, value)
+);
+
+CREATE INDEX idx_enum_labels_name ON config.enum_labels(enum_name);
+
+COMMENT ON TABLE config.enum_labels IS 'Human-friendly labels for PostgreSQL ENUM values';
+COMMENT ON COLUMN config.enum_labels.enum_name IS 'Full enum name in schema.enum_name format (e.g., sales.discount_type)';
+COMMENT ON COLUMN config.enum_labels.value IS 'Raw enum value that must match the PostgreSQL enum value';
+COMMENT ON COLUMN config.enum_labels.label IS 'Human-friendly display label for the enum value';
+COMMENT ON COLUMN config.enum_labels.sort_order IS 'Custom sort order (overrides pg_enum enumsortorder if needed)';
 

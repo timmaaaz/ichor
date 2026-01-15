@@ -1,5 +1,7 @@
 package introspectionbus
 
+import "github.com/timmaaaz/ichor/business/sdk/sqldb/dbarray"
+
 // Schema represents a PostgreSQL schema.
 type Schema struct {
 	Name string `db:"name"`
@@ -37,4 +39,32 @@ type ReferencingTable struct {
 	Table            string `db:"table"`
 	ForeignKeyColumn string `db:"fk_column"`
 	ConstraintName   string `db:"constraint_name"`
+}
+
+// EnumType represents a PostgreSQL ENUM type with its values.
+type EnumType struct {
+	Name   string        `db:"enum_name"`
+	Schema string        `db:"schema_name"`
+	Values dbarray.String `db:"values"` // Aggregated from pg_enum using array_agg
+}
+
+// EnumValue represents a single value within a PostgreSQL ENUM type.
+type EnumValue struct {
+	Value     string `db:"value"`
+	SortOrder int    `db:"sort_order"`
+}
+
+// EnumLabel represents a human-friendly label for an enum value.
+type EnumLabel struct {
+	EnumName  string `db:"enum_name"`
+	Value     string `db:"value"`
+	Label     string `db:"label"`
+	SortOrder int    `db:"sort_order"`
+}
+
+// EnumOption represents a ready-to-use dropdown option (merged enum value + label).
+type EnumOption struct {
+	Value     string `json:"value"`
+	Label     string `json:"label"`
+	SortOrder int    `json:"sortOrder"`
 }

@@ -74,3 +74,38 @@ func (api *api) queryReferencingTables(ctx context.Context, r *http.Request) web
 
 	return tables
 }
+
+func (api *api) queryEnumTypes(ctx context.Context, r *http.Request) web.Encoder {
+	schema := web.Param(r, "schema")
+
+	enums, err := api.introspectionApp.QueryEnumTypes(ctx, schema)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return enums
+}
+
+func (api *api) queryEnumValues(ctx context.Context, r *http.Request) web.Encoder {
+	schema := web.Param(r, "schema")
+	enumName := web.Param(r, "name")
+
+	values, err := api.introspectionApp.QueryEnumValues(ctx, schema, enumName)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return values
+}
+
+func (api *api) queryEnumOptions(ctx context.Context, r *http.Request) web.Encoder {
+	schema := web.Param(r, "schema")
+	enumName := web.Param(r, "name")
+
+	options, err := api.introspectionApp.QueryEnumOptions(ctx, schema, enumName)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return options
+}

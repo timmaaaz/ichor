@@ -49,4 +49,17 @@ func Routes(app *web.App, cfg Config) {
 	// GET /v1/introspection/tables/{schema}/{table}/referencing-tables
 	app.HandlerFunc(http.MethodGet, version, "/introspection/tables/{schema}/{table}/referencing-tables", api.queryReferencingTables, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAdminOnly))
+
+	// GET /v1/introspection/enums/{schema}
+	app.HandlerFunc(http.MethodGet, version, "/introspection/enums/{schema}", api.queryEnumTypes, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAdminOnly))
+
+	// GET /v1/introspection/enums/{schema}/{name}
+	app.HandlerFunc(http.MethodGet, version, "/introspection/enums/{schema}/{name}", api.queryEnumValues, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAdminOnly))
+
+	// GET /v1/config/enums/{schema}/{name}/options - Combined endpoint for frontend dropdown options
+	// Returns merged enum values with human-friendly labels from config.enum_labels
+	app.HandlerFunc(http.MethodGet, version, "/config/enums/{schema}/{name}/options", api.queryEnumOptions, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

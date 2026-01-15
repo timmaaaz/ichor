@@ -216,3 +216,171 @@ func (b *Business) QueryReferencingTables(ctx context.Context, schema, table str
 
 	return tables, nil
 }
+
+// QueryEnumTypes returns all ENUM types in a given schema.
+func (b *Business) QueryEnumTypes(ctx context.Context, schema string) ([]EnumType, error) {
+	ctx, span := otel.AddSpan(ctx, "business.introspectionbus.queryenumtypes")
+	defer span.End()
+
+	const q = `
+	SELECT
+		t.typname AS enum_name,
+		n.nspname AS schema_name,
+		array_agg(e.enumlabel ORDER BY e.enumsortorder) AS values
+	FROM pg_type t
+	JOIN pg_namespace n ON t.typnamespace = n.oid
+	JOIN pg_enum e ON t.oid = e.enumtypid
+	WHERE t.typtype = 'e'
+	  AND n.nspname = :schema
+	GROUP BY t.typname, n.nspname
+	ORDER BY t.typname`
+
+	data := struct {
+		Schema string `db:"schema"`
+	}{
+		Schema: schema,
+	}
+
+	var enums []EnumType
+	if err := sqldb.NamedQuerySlice(ctx, b.log, b.db, q, data, &enums); err != nil {
+		return nil, fmt.Errorf("query enum types: %w", err)
+	}
+
+	return enums, nil
+}
+
+// QueryEnumValues returns all values for a specific ENUM type.
+func (b *Business) QueryEnumValues(ctx context.Context, schema, enumName string) ([]EnumValue, error) {
+	ctx, span := otel.AddSpan(ctx, "business.introspectionbus.queryenumvalues")
+	defer span.End()
+
+	const q = `
+	SELECT
+		e.enumlabel AS value,
+		e.enumsortorder AS sort_order
+	FROM pg_type t
+	JOIN pg_namespace n ON t.typnamespace = n.oid
+	JOIN pg_enum e ON t.oid = e.enumtypid
+	WHERE t.typtype = 'e'
+	  AND n.nspname = :schema
+	  AND t.typname = :enum_name
+	ORDER BY e.enumsortorder`
+
+	data := struct {
+		Schema   string `db:"schema"`
+		EnumName string `db:"enum_name"`
+	}{
+		Schema:   schema,
+		EnumName: enumName,
+	}
+
+	var values []EnumValue
+	if err := sqldb.NamedQuerySlice(ctx, b.log, b.db, q, data, &values); err != nil {
+		return nil, fmt.Errorf("query enum values: %w", err)
+	}
+
+	return values, nil
+}
+
+// QueryEnumLabels returns labels for a specific enum from the config.enum_labels table.
+func (b *Business) QueryEnumLabels(ctx context.Context, enumName string) ([]EnumLabel, error) {
+	ctx, span := otel.AddSpan(ctx, "business.introspectionbus.queryenumlabels")
+	defer span.End()
+
+	const q = `
+	SELECT
+		enum_name,
+		value,
+		label,
+		sort_order
+	FROM config.enum_labels
+	WHERE enum_name = :enum_name
+	ORDER BY sort_order`
+
+	data := struct {
+		EnumName string `db:"enum_name"`
+	}{
+		EnumName: enumName,
+	}
+
+	var labels []EnumLabel
+	if err := sqldb.NamedQuerySlice(ctx, b.log, b.db, q, data, &labels); err != nil {
+		return nil, fmt.Errorf("query enum labels: %w", err)
+	}
+
+	return labels, nil
+}
+
+// QueryEnumOptions returns ready-to-use dropdown options by merging enum values with labels.
+// If a label exists in config.enum_labels, it's used; otherwise, the value is title-cased.
+func (b *Business) QueryEnumOptions(ctx context.Context, schema, enumName string) ([]EnumOption, error) {
+	ctx, span := otel.AddSpan(ctx, "business.introspectionbus.queryenumoptions")
+	defer span.End()
+
+	// Get enum values from PostgreSQL
+	values, err := b.QueryEnumValues(ctx, schema, enumName)
+	if err != nil {
+		return nil, fmt.Errorf("query enum values: %w", err)
+	}
+
+	// Get labels from config.enum_labels table
+	fullEnumName := schema + "." + enumName
+	labels, err := b.QueryEnumLabels(ctx, fullEnumName)
+	if err != nil {
+		return nil, fmt.Errorf("query enum labels: %w", err)
+	}
+
+	// Build a map of value -> label for quick lookup
+	labelMap := make(map[string]EnumLabel)
+	for _, l := range labels {
+		labelMap[l.Value] = l
+	}
+
+	// Merge values with labels
+	options := make([]EnumOption, len(values))
+	for i, v := range values {
+		opt := EnumOption{
+			Value:     v.Value,
+			SortOrder: v.SortOrder,
+		}
+
+		if label, ok := labelMap[v.Value]; ok {
+			opt.Label = label.Label
+			// Use label's sort_order if defined (non-default)
+			if label.SortOrder != 1000 {
+				opt.SortOrder = label.SortOrder
+			}
+		} else {
+			// Title-case the value as fallback
+			opt.Label = titleCase(v.Value)
+		}
+
+		options[i] = opt
+	}
+
+	return options, nil
+}
+
+// titleCase converts a snake_case or lowercase string to Title Case.
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	// Simple title case: capitalize first letter
+	result := make([]byte, len(s))
+	capitalizeNext := true
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '_' || c == '-' || c == ' ' {
+			result[i] = ' '
+			capitalizeNext = true
+		} else if capitalizeNext && c >= 'a' && c <= 'z' {
+			result[i] = c - 32 // Convert to uppercase
+			capitalizeNext = false
+		} else {
+			result[i] = c
+			capitalizeNext = false
+		}
+	}
+	return string(result)
+}

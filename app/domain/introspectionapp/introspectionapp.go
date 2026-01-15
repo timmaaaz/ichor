@@ -68,3 +68,33 @@ func (a *App) QueryReferencingTables(ctx context.Context, schema, table string) 
 
 	return ReferencingTables(ToAppReferencingTables(tables)), nil
 }
+
+// QueryEnumTypes returns all ENUM types in a given schema.
+func (a *App) QueryEnumTypes(ctx context.Context, schema string) (EnumTypes, error) {
+	enums, err := a.introspectionBus.QueryEnumTypes(ctx, schema)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "query enum types: %s", err)
+	}
+
+	return EnumTypes(ToAppEnumTypes(enums)), nil
+}
+
+// QueryEnumValues returns all values for a specific ENUM type.
+func (a *App) QueryEnumValues(ctx context.Context, schema, enumName string) (EnumValues, error) {
+	values, err := a.introspectionBus.QueryEnumValues(ctx, schema, enumName)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "query enum values: %s", err)
+	}
+
+	return EnumValues(ToAppEnumValues(values)), nil
+}
+
+// QueryEnumOptions returns ready-to-use dropdown options by merging enum values with labels.
+func (a *App) QueryEnumOptions(ctx context.Context, schema, enumName string) (EnumOptions, error) {
+	options, err := a.introspectionBus.QueryEnumOptions(ctx, schema, enumName)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "query enum options: %s", err)
+	}
+
+	return EnumOptions(ToAppEnumOptions(options)), nil
+}
