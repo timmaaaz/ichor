@@ -84,19 +84,118 @@ type ValidationConfig struct {
 	Max *int `json:"max,omitempty"`
 }
 
+// =============================================================================
+// CONDITIONAL FIELD CONFIGURATION TYPES
+// =============================================================================
+// These types enable dynamic field behavior based on related field values.
+
+// FieldOverrideConfig defines field property overrides for conditional field transformation.
+// These properties override the field's base configuration when the depends_on condition matches.
+type FieldOverrideConfig struct {
+	Type       string            `json:"type,omitempty"`       // Override field type (e.g., "currency", "percent")
+	Label      string            `json:"label,omitempty"`      // Override field label
+	Validation *ValidationConfig `json:"validation,omitempty"` // Override validation rules
+}
+
+// DependsOnConfig defines conditional field behavior based on another field's value.
+// This enables dynamic field transformation at runtime without frontend hardcoding.
+//
+// Example usage for discount field that changes based on discount_type:
+//
+//	DependsOn: &DependsOnConfig{
+//	    Field: "discount_type",
+//	    ValueMappings: map[string]FieldOverrideConfig{
+//	        "flat":    {Type: "currency", Label: "Discount ($)"},
+//	        "percent": {Type: "percent", Label: "Discount (%)", Validation: &ValidationConfig{Max: intPtr(100)}},
+//	    },
+//	    Default: FieldOverrideConfig{Type: "currency"},
+//	}
+type DependsOnConfig struct {
+	Field         string                         `json:"field"`             // Field name to watch (e.g., "discount_type")
+	ValueMappings map[string]FieldOverrideConfig `json:"value_mappings"`    // Map field values to override configs
+	Default       FieldOverrideConfig            `json:"default,omitempty"` // Default overrides when no mapping matches
+}
+
+// =============================================================================
+// FORM FIELD CONFIGURATION TYPES
+// =============================================================================
+// These types provide typed configuration for regular form fields.
+
+// InlineCreateConfig defines configuration for inline entity creation.
+type InlineCreateConfig struct {
+	Enabled    bool   `json:"enabled"`
+	FormName   string `json:"form_name,omitempty"`
+	ButtonText string `json:"button_text,omitempty"`
+}
+
+// FormFieldConfig defines the typed configuration for regular form fields.
+// This provides type safety when building form field configurations and
+// includes support for conditional field behavior via DependsOn.
+type FormFieldConfig struct {
+	// Default value configuration
+	DefaultValue       string `json:"default_value,omitempty"`
+	DefaultValueCreate string `json:"default_value_create,omitempty"`
+	DefaultValueUpdate string `json:"default_value_update,omitempty"`
+	Hidden             bool   `json:"hidden,omitempty"`
+
+	// Dropdown/combobox configuration
+	Entity       string              `json:"entity,omitempty"`
+	DisplayField string              `json:"display_field,omitempty"`
+	LabelColumn  string              `json:"label_column,omitempty"`
+	ValueColumn  string              `json:"value_column,omitempty"`
+	InlineCreate *InlineCreateConfig `json:"inline_create,omitempty"`
+
+	// Enum configuration
+	EnumName string `json:"enum_name,omitempty"`
+
+	// Validation
+	Min       *int    `json:"min,omitempty"`
+	Max       *int    `json:"max,omitempty"`
+	Step      float64 `json:"step,omitempty"`
+	Precision *int    `json:"precision,omitempty"`
+
+	// Multi-entity form configuration
+	ExecutionOrder int    `json:"execution_order,omitempty"`
+	ParentEntity   string `json:"parent_entity,omitempty"`
+	ParentField    string `json:"parent_field,omitempty"`
+
+	// Conditional field behavior
+	DependsOn *DependsOnConfig `json:"depends_on,omitempty"`
+}
+
+// ToJSON marshals the config to json.RawMessage for use in FormField.Config.
+func (c FormFieldConfig) ToJSON() (json.RawMessage, error) {
+	data, err := json.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(data), nil
+}
+
+// =============================================================================
+// LINE ITEM FIELD TYPES
+// =============================================================================
+
 // LineItemField defines a field within a lineitems configuration.
 type LineItemField struct {
 	Name           string            `json:"name"`
 	Label          string            `json:"label"`
-	Type           string            `json:"type"`
+	Type           string            `json:"type"` // text, number, dropdown, enum, date, currency, percent, hidden
 	Required       bool              `json:"required"`
-	DropdownConfig *DropdownConfig   `json:"dropdown_config,omitempty"`
+	DropdownConfig *DropdownConfig   `json:"dropdown_config,omitempty"` // For type: "dropdown" (FK lookups)
 	Validation     *ValidationConfig `json:"validation,omitempty"`
 	// Default value configuration - same fields as FieldDefaultConfig for consistency
 	Hidden             bool   `json:"hidden,omitempty"`               // If true, field is not rendered in UI
 	DefaultValue       string `json:"default_value,omitempty"`        // Applied to both create and update
 	DefaultValueCreate string `json:"default_value_create,omitempty"` // Only for create operations
 	DefaultValueUpdate string `json:"default_value_update,omitempty"` // Only for update operations
+	// EnumName references a PostgreSQL ENUM type for dropdown options.
+	// Required when Type is "enum". Format: "schema.enum_name" (e.g., "sales.discount_type")
+	EnumName string `json:"enum_name,omitempty"`
+	// DependsOn enables conditional field behavior based on another field's value.
+	// When set, the field's type/label/validation can change at runtime based on the
+	// value of another field in the same line item.
+	DependsOn *DependsOnConfig `json:"depends_on,omitempty"`
 }
 
 // LineItemsFieldConfig defines the configuration for a lineitems field type.

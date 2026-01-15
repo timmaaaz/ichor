@@ -248,6 +248,7 @@ func GetFullSalesOrderFormFields(
 	minQuantity := 1
 	maxQuantity := 10000
 	minZero := 0
+	maxPercent := 100
 
 	lineItemsConfig := formfieldbus.LineItemsFieldConfig{
 		ExecutionOrder: 2,
@@ -284,7 +285,7 @@ func GetFullSalesOrderFormFields(
 			{
 				Name:     "unit_price",
 				Label:    "Unit Price",
-				Type:     "number",
+				Type:     "currency",
 				Required: true,
 				Validation: &formfieldbus.ValidationConfig{
 					Min: &minZero,
@@ -293,20 +294,38 @@ func GetFullSalesOrderFormFields(
 			{
 				Name:     "discount",
 				Label:    "Discount",
-				Type:     "number",
+				Type:     "currency", // Default type
 				Required: false,
 				Validation: &formfieldbus.ValidationConfig{
 					Min: &minZero,
+				},
+				DependsOn: &formfieldbus.DependsOnConfig{
+					Field: "discount_type",
+					ValueMappings: map[string]formfieldbus.FieldOverrideConfig{
+						"flat": {
+							Type:  "currency",
+							Label: "Discount ($)",
+						},
+						"percent": {
+							Type:  "percent",
+							Label: "Discount (%)",
+							Validation: &formfieldbus.ValidationConfig{
+								Max: &maxPercent,
+							},
+						},
+					},
+					Default: formfieldbus.FieldOverrideConfig{
+						Type: "currency",
+					},
 				},
 			},
 			{
 				Name:               "discount_type",
 				Label:              "Discount Type",
-				Type:               "dropdown",
+				Type:               "enum",
 				Required:           false,
 				DefaultValueCreate: "flat",
-				// Note: Static dropdown options are rendered on frontend using default_value_create
-				// The frontend InlineLineItems component handles the flat/percent options display
+				EnumName:           "sales.discount_type", // PostgreSQL ENUM type
 			},
 			{
 				Name:               "line_item_fulfillment_statuses_id",

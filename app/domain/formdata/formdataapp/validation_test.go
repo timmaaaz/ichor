@@ -397,3 +397,213 @@ func TestEntityKeyFormat(t *testing.T) {
 		t.Errorf("table-only lookup should not succeed with schema.table keys")
 	}
 }
+
+// =============================================================================
+// DependsOnConfig Tests
+// =============================================================================
+
+func TestDependsOnConfigSerialization(t *testing.T) {
+	maxPercent := 100
+
+	config := formfieldbus.DependsOnConfig{
+		Field: "discount_type",
+		ValueMappings: map[string]formfieldbus.FieldOverrideConfig{
+			"flat": {
+				Type:  "currency",
+				Label: "Discount ($)",
+			},
+			"percent": {
+				Type:  "percent",
+				Label: "Discount (%)",
+				Validation: &formfieldbus.ValidationConfig{
+					Max: &maxPercent,
+				},
+			},
+		},
+		Default: formfieldbus.FieldOverrideConfig{
+			Type: "currency",
+		},
+	}
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("unmarshal to map failed: %v", err)
+	}
+
+	// Check field
+	if field, ok := parsed["field"].(string); !ok || field != "discount_type" {
+		t.Errorf("field: got %v, want discount_type", parsed["field"])
+	}
+
+	// Check value_mappings
+	mappings, ok := parsed["value_mappings"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("value_mappings not a map: %v", parsed["value_mappings"])
+	}
+	if len(mappings) != 2 {
+		t.Errorf("value_mappings length: got %d, want 2", len(mappings))
+	}
+
+	// Check flat mapping
+	flat, ok := mappings["flat"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("flat mapping not a map: %v", mappings["flat"])
+	}
+	if flat["type"] != "currency" {
+		t.Errorf("flat.type: got %v, want currency", flat["type"])
+	}
+
+	// Check percent mapping with nested validation
+	percent, ok := mappings["percent"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("percent mapping not a map: %v", mappings["percent"])
+	}
+	validation, ok := percent["validation"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("percent.validation not a map: %v", percent["validation"])
+	}
+	if validation["max"] != float64(100) {
+		t.Errorf("percent.validation.max: got %v, want 100", validation["max"])
+	}
+
+	// Check default
+	defaultCfg, ok := parsed["default"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("default not a map: %v", parsed["default"])
+	}
+	if defaultCfg["type"] != "currency" {
+		t.Errorf("default.type: got %v, want currency", defaultCfg["type"])
+	}
+}
+
+func TestDependsOnConfigRoundTrip(t *testing.T) {
+	maxPercent := 100
+
+	original := formfieldbus.DependsOnConfig{
+		Field: "discount_type",
+		ValueMappings: map[string]formfieldbus.FieldOverrideConfig{
+			"flat":    {Type: "currency", Label: "Discount ($)"},
+			"percent": {Type: "percent", Label: "Discount (%)", Validation: &formfieldbus.ValidationConfig{Max: &maxPercent}},
+		},
+		Default: formfieldbus.FieldOverrideConfig{Type: "currency"},
+	}
+
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	var result formfieldbus.DependsOnConfig
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+
+	if diff := cmp.Diff(original, result); diff != "" {
+		t.Errorf("round-trip mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestDependsOnConfigOmitEmpty(t *testing.T) {
+	config := formfieldbus.DependsOnConfig{
+		Field: "discount_type",
+		ValueMappings: map[string]formfieldbus.FieldOverrideConfig{
+			"flat": {Type: "currency"},
+		},
+		// Default intentionally not set (zero-valued struct)
+	}
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+
+	// Note: Default is a struct type (not a pointer), so Go's omitempty for structs
+	// means it will be serialized as an empty object {} when all fields are zero-valued.
+	// This is expected Go behavior. The key thing is that FieldOverrideConfig fields
+	// with omitempty ARE correctly omitted within the empty default object.
+	if defaultVal, exists := parsed["default"]; exists {
+		defaultMap, ok := defaultVal.(map[string]interface{})
+		if !ok {
+			t.Fatalf("default is not a map: %v", defaultVal)
+		}
+		// When Default struct is zero-valued, all its fields should be omitted
+		if len(defaultMap) != 0 {
+			t.Errorf("default should be empty map when zero-valued, got: %v", defaultMap)
+		}
+	}
+}
+
+func TestLineItemFieldWithDependsOn(t *testing.T) {
+	maxPercent := 100
+
+	field := formfieldbus.LineItemField{
+		Name:     "discount",
+		Label:    "Discount",
+		Type:     "currency",
+		Required: false,
+		DependsOn: &formfieldbus.DependsOnConfig{
+			Field: "discount_type",
+			ValueMappings: map[string]formfieldbus.FieldOverrideConfig{
+				"flat":    {Type: "currency", Label: "Discount ($)"},
+				"percent": {Type: "percent", Label: "Discount (%)", Validation: &formfieldbus.ValidationConfig{Max: &maxPercent}},
+			},
+			Default: formfieldbus.FieldOverrideConfig{Type: "currency"},
+		},
+	}
+
+	data, err := json.Marshal(field)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	var result formfieldbus.LineItemField
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+
+	if result.DependsOn == nil {
+		t.Fatal("DependsOn is nil after round-trip")
+	}
+
+	if result.DependsOn.Field != "discount_type" {
+		t.Errorf("DependsOn.Field: got %v, want discount_type", result.DependsOn.Field)
+	}
+
+	if len(result.DependsOn.ValueMappings) != 2 {
+		t.Errorf("DependsOn.ValueMappings length: got %d, want 2", len(result.DependsOn.ValueMappings))
+	}
+}
+
+func TestLineItemFieldDependsOnOmitEmpty(t *testing.T) {
+	field := formfieldbus.LineItemField{
+		Name:     "quantity",
+		Label:    "Quantity",
+		Type:     "number",
+		Required: true,
+		// DependsOn intentionally not set
+	}
+
+	data, err := json.Marshal(field)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+
+	if _, exists := parsed["depends_on"]; exists {
+		t.Errorf("depends_on should be omitted when nil, got: %v", parsed["depends_on"])
+	}
+}
