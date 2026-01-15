@@ -1162,6 +1162,61 @@ make dev-describe-node      # Cluster nodes
 - Verify Go version: `go version` (must be 1.23+)
 - Clean and rebuild: `go clean -modcache && go mod download && make build`
 
+## Decimal Arithmetic for Financial Calculations
+
+**Library**: `github.com/shopspring/decimal`
+
+**Why**: Go's `float64` has precision issues that cause errors in financial calculations:
+```go
+0.1 + 0.2 = 0.30000000000000004  // float64 - WRONG
+0.1 + 0.2 = 0.3                   // decimal - CORRECT
+```
+
+In financial systems, these tiny errors accumulate and cause real problems:
+- Orders might be off by pennies
+- Tax calculations become inconsistent
+- Audit trails become unreliable
+
+### Separation of Concerns
+
+| Layer | Type | Purpose |
+|-------|------|---------|
+| API/Storage | `types.Money` (string-based) | Safe storage, validation, serialization |
+| Calculations | `decimal.Decimal` | Arithmetic operations, precision math |
+
+### Why NOT Add Arithmetic to types.Money?
+
+The `types.Money` type (e.g., in `ordersbus/types/money.go`) is a **value object** designed for:
+- API boundaries (JSON serialization)
+- Database storage (VARCHAR)
+- Validation (format checking)
+
+It intentionally does **NOT** support arithmetic operations because:
+1. **Separation of concerns**: Money represents values, calculations package computes them
+2. **Domain purity**: The domain layer (ordersbus) stays focused on business rules
+3. **Flexibility**: Calculations can be used across different domains
+4. **Dependency isolation**: Only the calculation package needs the decimal library
+
+### Usage Pattern
+
+```go
+// Convert string/Money to decimal for calculations
+unitPrice, _ := decimal.NewFromString(order.UnitPrice.Value())
+
+// Perform calculations with precision
+total := quantity.Mul(unitPrice).Round(2)
+
+// Convert back to string for storage
+order.Total = total.String()
+```
+
+### Package Location
+
+Calculation helpers live in `business/sdk/calculations/` because:
+- Pure business logic (no HTTP, no context, no transactions)
+- Reusable across domains
+- Follows existing pattern: `business/sdk/page`, `business/sdk/order`
+
 ## Important Notes
 
 - **Never skip migrations** - Always add new version, never edit existing
@@ -1170,6 +1225,7 @@ make dev-describe-node      # Cluster nodes
 - **Use delegate** - For UUID generation, timestamps (testing seams)
 - **Cache carefully** - Only cache read-heavy, infrequently changing data
 - **Test everything** - Integration tests are primary test strategy
+- **Use decimal for money math** - Never use float64 for financial calculations
 
 ## Additional Resources
 

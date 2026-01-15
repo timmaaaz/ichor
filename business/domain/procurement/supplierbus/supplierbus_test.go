@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
@@ -99,10 +100,16 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding suppliers : %w", err)
 	}
 
+	paymentTerms, err := paymenttermbus.TestSeedPaymentTerms(ctx, 2, busDomain.PaymentTerm)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding payment terms : %w", err)
+	}
+
 	return unitest.SeedData{
 		Admins:       []unitest.User{{User: admins[0]}},
 		ContactInfos: contactInfos,
 		Suppliers:    suppliers,
+		PaymentTerms: paymentTerms,
 	}, nil
 }
 
@@ -145,7 +152,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: supplierbus.Supplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
 				Name:           "Name",
-				PaymentTerms:   "PaymentTerms",
+				PaymentTermID:  &sd.PaymentTerms[0].ID,
 				LeadTimeDays:   8,
 				Rating:         types.NewRoundedFloat(8.76),
 				IsActive:       true,
@@ -154,7 +161,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				newSupplier := supplierbus.NewSupplier{
 					ContactInfosID: sd.ContactInfos[0].ID,
 					Name:           "Name",
-					PaymentTerms:   "PaymentTerms",
+					PaymentTermID:  &sd.PaymentTerms[0].ID,
 					LeadTimeDays:   8,
 					Rating:         types.NewRoundedFloat(8.76),
 					IsActive:       true,
@@ -193,7 +200,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ContactInfosID: sd.ContactInfos[2].ID,
 				SupplierID:     sd.Suppliers[0].SupplierID,
 				Name:           "UpdatedName",
-				PaymentTerms:   "UpdatedPaymentTerms",
+				PaymentTermID:  &sd.PaymentTerms[1].ID,
 				LeadTimeDays:   10,
 				Rating:         types.MustParseRoundedFloat("9.87"),
 				IsActive:       false,
@@ -203,7 +210,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				updateSupplier := supplierbus.UpdateSupplier{
 					ContactInfosID: &sd.ContactInfos[2].ID,
 					Name:           dbtest.StringPointer("UpdatedName"),
-					PaymentTerms:   dbtest.StringPointer("UpdatedPaymentTerms"),
+					PaymentTermID:  &sd.PaymentTerms[1].ID,
 					LeadTimeDays:   dbtest.IntPointer(10),
 					Rating:         types.NewRoundedFloat(9.87).ToPtr(),
 					IsActive:       dbtest.BoolPointer(false),

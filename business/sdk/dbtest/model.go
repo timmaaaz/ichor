@@ -681,6 +681,15 @@ var allPages = []pagebus.NewPage{
 		IsActive:   true,
 		ShowInMenu: false,
 	},
+	{
+		Path:       "/sales/orders/:id/invoice",
+		Name:       "Invoice",
+		Module:     "sales",
+		Icon:       "material-symbols:receipt-long",
+		SortOrder:  73,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
 }
 
 // =============================================================================

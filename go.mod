@@ -7,6 +7,7 @@ require (
 	github.com/ardanlabs/conf/v3 v3.1.8
 	github.com/ardanlabs/darwin/v3 v3.3.1
 	github.com/arl/statsviz v0.6.0
+	github.com/coder/websocket v1.8.14
 	github.com/creativecreature/sturdyc v1.0.5
 	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-json-experiment/json v0.0.0-20240524174822-2d9f40f7385b
@@ -22,6 +23,7 @@ require (
 	github.com/markbates/goth v1.80.0
 	github.com/open-policy-agent/opa v0.67.1
 	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/shopspring/decimal v1.4.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0
 	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0
@@ -29,6 +31,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.28.0
 	go.opentelemetry.io/otel/trace v1.28.0
 	golang.org/x/crypto v0.26.0
+	golang.org/x/oauth2 v0.21.0
 )
 
 require (
@@ -39,7 +42,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/coder/websocket v1.8.14 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
@@ -68,7 +70,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	golang.org/x/net v0.28.0 // indirect
-	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect

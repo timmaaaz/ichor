@@ -19,6 +19,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
+	"github.com/timmaaaz/ichor/app/domain/core/paymenttermapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
 	"github.com/timmaaaz/ichor/app/domain/core/rolepageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/tableaccessapp"
@@ -120,6 +121,7 @@ func buildFormDataRegistry(
 	assetApp *assetapp.App,
 	roleApp *roleapp.App,
 	pageApp *pageapp.App,
+	paymentTermApp *paymenttermapp.App,
 	rolePageApp *rolepageapp.App,
 	tableAccessApp *tableaccessapp.App,
 	userRoleApp *userroleapp.App,
@@ -393,6 +395,41 @@ func buildFormDataRegistry(
 		UpdateModel: pageapp.UpdatePage{},
 	}); err != nil {
 		return nil, fmt.Errorf("register core.pages: %w", err)
+	}
+
+	// Register payment_terms entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "core.payment_terms",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app paymenttermapp.NewPaymentTerm
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return paymentTermApp.Create(ctx, model.(paymenttermapp.NewPaymentTerm))
+		},
+		CreateModel: paymenttermapp.NewPaymentTerm{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app paymenttermapp.UpdatePaymentTerm
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return paymentTermApp.Update(ctx, model.(paymenttermapp.UpdatePaymentTerm), id)
+		},
+		UpdateModel: paymenttermapp.UpdatePaymentTerm{},
+	}); err != nil {
+		return nil, fmt.Errorf("register core.payment_terms: %w", err)
 	}
 
 	// Register role_pages entity

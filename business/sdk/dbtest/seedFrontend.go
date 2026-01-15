@@ -698,6 +698,11 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("creating sales customers table config: %w", err)
 	}
 
+	_, err = configStore.Create(ctx, "products_with_prices_lookup", "products", seedmodels.ProductsWithPricesLookup, admins[0].ID)
+	if err != nil {
+		return fmt.Errorf("creating products with prices lookup config: %w", err)
+	}
+
 	// Procurement Module Configs
 	_, err = configStore.Create(ctx, "procurement_purchase_orders_config", "purchase_orders", seedmodels.PurchaseOrderTableConfig, admins[0].ID)
 	if err != nil {

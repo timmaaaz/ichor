@@ -78,6 +78,14 @@ CREATE TABLE assets.asset_conditions (
    UNIQUE (name)
 );
 
+-- Version: 1.125
+-- Description: Create payment_terms lookup table
+CREATE TABLE core.payment_terms (
+   id UUID PRIMARY KEY,
+   name VARCHAR(100) UNIQUE NOT NULL,
+   description TEXT
+);
+
 -- Version: 1.13
 -- Description: Create table countries
 CREATE TABLE geography.countries (
@@ -537,14 +545,15 @@ CREATE TABLE procurement.suppliers (
    id UUID NOT NULL,
    contact_infos_id UUID NOT NULL,
    name VARCHAR(100) NOT NULL,
-   payment_terms TEXT NOT NULL,
+   payment_term_id UUID NULL,
    lead_time_days INTEGER NOT NULL,
    rating NUMERIC(10, 2) NOT NULL,
    is_active BOOLEAN NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
+   FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id),
+   FOREIGN KEY (payment_term_id) REFERENCES core.payment_terms(id) ON DELETE SET NULL
 );
 
 -- Version: 1.44
@@ -817,6 +826,21 @@ CREATE TABLE sales.orders (
    customer_id UUID NOT NULL,
    due_date TIMESTAMP NOT NULL,
    order_fulfillment_status_id UUID NOT NULL,
+   -- Address references (same pattern as customers.delivery_address_id)
+   billing_address_id UUID NULL,
+   shipping_address_id UUID NULL,
+   -- Order details
+   order_date DATE NULL,
+   payment_term_id UUID NULL,
+   notes TEXT NULL,
+   -- Financial fields
+   subtotal DECIMAL(12,2) DEFAULT 0,
+   tax_rate DECIMAL(5,2) DEFAULT 0,    -- Whole percentage (e.g., 8.25 for 8.25%)
+   tax_amount DECIMAL(12,2) DEFAULT 0,
+   shipping_cost DECIMAL(12,2) DEFAULT 0,
+   total_amount DECIMAL(12,2) DEFAULT 0,
+   currency VARCHAR(3) DEFAULT 'USD',
+   -- Audit columns
    created_by UUID NOT NULL,
    updated_by UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
@@ -824,6 +848,9 @@ CREATE TABLE sales.orders (
    PRIMARY KEY (id),
    FOREIGN KEY (customer_id) REFERENCES sales.customers(id),
    FOREIGN KEY (order_fulfillment_status_id) REFERENCES sales.order_fulfillment_statuses(id) ON DELETE SET NULL,
+   FOREIGN KEY (billing_address_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
+   FOREIGN KEY (shipping_address_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
+   FOREIGN KEY (payment_term_id) REFERENCES core.payment_terms(id) ON DELETE SET NULL,
    FOREIGN KEY (created_by) REFERENCES core.users(id),
    FOREIGN KEY (updated_by) REFERENCES core.users(id)
 );
@@ -832,9 +859,14 @@ CREATE TABLE sales.order_line_items (
    id UUID NOT NULL,
    order_id UUID NOT NULL,
    product_id UUID NOT NULL,
-   quantity INT NOT NULL, 
-   discount NUMERIC(10,2) NULL, -- TODO: Refactor this to be either percent or flat amount
+   description TEXT NULL,                          -- Line item description
+   quantity INT NOT NULL DEFAULT 1,
+   unit_price DECIMAL(12,2) DEFAULT 0,             -- Price per unit
+   discount NUMERIC(10,2) DEFAULT 0,               -- Discount amount or percent value
+   discount_type VARCHAR(10) DEFAULT 'flat' CHECK (discount_type IN ('flat', 'percent')),
+   line_total DECIMAL(12,2) DEFAULT 0,             -- Calculated total
    line_item_fulfillment_statuses_id UUID NOT NULL,
+   -- Audit columns
    created_by UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_by UUID NOT NULL,
@@ -1282,12 +1314,23 @@ CREATE OR REPLACE VIEW sales.orders_base AS
 SELECT
    o.id AS orders_id,
    o.number AS orders_number,
-   o.created_date AS orders_order_date,
+   o.order_date AS orders_order_date,
    o.due_date AS orders_due_date,
    o.created_date AS orders_created_date,
    o.updated_date AS orders_updated_date,
    o.order_fulfillment_status_id AS orders_fulfillment_status_id,
    o.customer_id AS orders_customer_id,
+   -- New financial and address fields
+   o.billing_address_id AS orders_billing_address_id,
+   o.shipping_address_id AS orders_shipping_address_id,
+   o.payment_term_id AS orders_payment_term_id,
+   o.notes AS orders_notes,
+   o.subtotal AS orders_subtotal,
+   o.tax_rate AS orders_tax_rate,
+   o.tax_amount AS orders_tax_amount,
+   o.shipping_cost AS orders_shipping_cost,
+   o.total_amount AS orders_total_amount,
+   o.currency AS orders_currency,
 
    c.id AS customers_id,
    c.name AS customers_name,
@@ -1298,18 +1341,27 @@ SELECT
    c.updated_date AS customers_updated_date,
 
    ofs.name AS order_fulfillment_statuses_name,
-   ofs.description AS order_fulfillment_statuses_description
+   ofs.description AS order_fulfillment_statuses_description,
+
+   pt.id AS payment_term_id,
+   pt.name AS payment_term_name,
+   pt.description AS payment_term_description
 FROM sales.orders o
    INNER JOIN sales.customers c ON o.customer_id = c.id
-   LEFT JOIN sales.order_fulfillment_statuses ofs ON o.order_fulfillment_status_id = ofs.id;
+   LEFT JOIN sales.order_fulfillment_statuses ofs ON o.order_fulfillment_status_id = ofs.id
+   LEFT JOIN core.payment_terms pt ON o.payment_term_id = pt.id;
 
 CREATE OR REPLACE VIEW sales.order_line_items_base AS
 SELECT
    oli.id AS order_line_item_id,
    oli.order_id AS order_line_item_order_id,
    oli.product_id AS order_line_item_product_id,
+   oli.description AS order_line_item_description,
    oli.quantity AS order_line_item_quantity,
-   oli.discount AS order_line_item_discount, 
+   oli.unit_price AS order_line_item_unit_price,
+   oli.discount AS order_line_item_discount,
+   oli.discount_type AS order_line_item_discount_type,
+   oli.line_total AS order_line_item_line_total,
    oli.line_item_fulfillment_statuses_id AS line_item_fulfillment_statuses_id,
    oli.created_date AS order_line_item_created_date,
    oli.updated_date AS order_line_item_updated_date,

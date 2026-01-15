@@ -172,12 +172,12 @@ func GetFullSupplierFormFields(
 			EntityID:     supplierEntityID,
 			EntitySchema: "procurement",
 			EntityTable:  "suppliers",
-			Name:         "payment_terms",
+			Name:         "payment_term_id",
 			Label:        "Payment Terms",
-			FieldType:    "textarea",
+			FieldType:    "smart-combobox",
 			FieldOrder:   order,
-			Required:     true,
-			Config:       json.RawMessage(`{"execution_order": 2}`),
+			Required:     false,
+			Config:       json.RawMessage(`{"execution_order": 2, "entity": "core.payment_terms", "display_field": "name"}`),
 		},
 		{
 			FormID:       formID,
@@ -247,6 +247,7 @@ func GetFullSalesOrderFormFields(
 	// Using lineitems field type for card-based repeatable line items UI
 	minQuantity := 1
 	maxQuantity := 10000
+	minZero := 0
 
 	lineItemsConfig := formfieldbus.LineItemsFieldConfig{
 		ExecutionOrder: 2,
@@ -265,6 +266,12 @@ func GetFullSalesOrderFormFields(
 				},
 			},
 			{
+				Name:     "description",
+				Label:    "Description",
+				Type:     "textarea",
+				Required: false,
+			},
+			{
 				Name:     "quantity",
 				Label:    "Quantity",
 				Type:     "number",
@@ -275,10 +282,31 @@ func GetFullSalesOrderFormFields(
 				},
 			},
 			{
+				Name:     "unit_price",
+				Label:    "Unit Price",
+				Type:     "number",
+				Required: true,
+				Validation: &formfieldbus.ValidationConfig{
+					Min: &minZero,
+				},
+			},
+			{
 				Name:     "discount",
 				Label:    "Discount",
-				Type:     "text",
+				Type:     "number",
 				Required: false,
+				Validation: &formfieldbus.ValidationConfig{
+					Min: &minZero,
+				},
+			},
+			{
+				Name:               "discount_type",
+				Label:              "Discount Type",
+				Type:               "dropdown",
+				Required:           false,
+				DefaultValueCreate: "flat",
+				// Note: Static dropdown options are rendered on frontend using default_value_create
+				// The frontend InlineLineItems component handles the flat/percent options display
 			},
 			{
 				Name:               "line_item_fulfillment_statuses_id",
@@ -308,7 +336,7 @@ func GetFullSalesOrderFormFields(
 		MinItems:          0,
 		MaxItems:          100,
 		FullWidth:         true,
-		Columns:           3, // 3 visible fields (product, quantity, discount) = 3 columns
+		Columns:           5, // 5 visible fields (product, description, quantity, unit_price, discount + discount_type)
 	}
 
 	configJSON, err := lineItemsConfig.ToJSON()

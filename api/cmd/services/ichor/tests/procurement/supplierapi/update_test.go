@@ -24,7 +24,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Input: &supplierapp.UpdateSupplier{
 				ContactInfosID: &sd.ContactInfos[0].ID,
 				Name:           dbtest.StringPointer("UpdateSupplier"),
-				PaymentTerms:   dbtest.StringPointer("UpdatePaymentTerms"),
+				PaymentTermID:  &sd.PaymentTerms[0].ID,
 				LeadTimeDays:   dbtest.StringPointer("10"),
 				Rating:         dbtest.StringPointer("2.22"),
 				IsActive:       dbtest.StringPointer("true"),
@@ -33,7 +33,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &supplierapp.Supplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
 				Name:           "UpdateSupplier",
-				PaymentTerms:   "UpdatePaymentTerms",
+				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "10",
 				Rating:         "2.22",
 				IsActive:       "true",

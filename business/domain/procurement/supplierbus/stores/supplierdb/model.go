@@ -14,7 +14,7 @@ type supplier struct {
 	SupplierID     uuid.UUID      `db:"id"`
 	ContactInfosID uuid.UUID      `db:"contact_infos_id"`
 	Name           string         `db:"name"`
-	PaymentTerms   string         `db:"payment_terms"`
+	PaymentTermID  *uuid.UUID     `db:"payment_term_id"`
 	LeadTimeDays   int            `db:"lead_time_days"`
 	Rating         sql.NullString `db:"rating"`
 	IsActive       bool           `db:"is_active"`
@@ -27,7 +27,7 @@ func toDBSupplier(bus supplierbus.Supplier) supplier {
 		SupplierID:     bus.SupplierID,
 		ContactInfosID: bus.ContactInfosID,
 		Name:           bus.Name,
-		PaymentTerms:   bus.PaymentTerms,
+		PaymentTermID:  bus.PaymentTermID,
 		LeadTimeDays:   bus.LeadTimeDays,
 		Rating:         bus.Rating.DBValue(),
 		IsActive:       bus.IsActive,
@@ -47,7 +47,7 @@ func toBusSupplier(db supplier) (supplierbus.Supplier, error) {
 		SupplierID:     db.SupplierID,
 		ContactInfosID: db.ContactInfosID,
 		Name:           db.Name,
-		PaymentTerms:   db.PaymentTerms,
+		PaymentTermID:  db.PaymentTermID,
 		LeadTimeDays:   db.LeadTimeDays,
 		Rating:         rating,
 		IsActive:       db.IsActive,

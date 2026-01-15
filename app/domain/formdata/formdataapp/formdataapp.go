@@ -12,11 +12,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/shopspring/decimal"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/formdataregistry"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
+	"github.com/timmaaaz/ichor/business/sdk/calculations"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -210,6 +212,25 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 
 		results[step.EntityName] = result
 		templateContext[step.EntityName] = result
+	}
+
+	// 4b. Post-processing: Recalculate order totals if applicable
+	// This ensures backend is the single source of truth for financial calculations.
+	// Frontend calculations are treated as display-only; backend always recalculates.
+	if err := a.recalculateOrderTotalsIfNeeded(ctx, results); err != nil {
+		// Map validation errors to InvalidArgument (400), others to Internal (500)
+		if errors.Is(err, ErrParseInt) || errors.Is(err, ErrParseDecimal) ||
+			errors.Is(err, ErrMissingField) || errors.Is(err, ErrInvalidType) ||
+			errors.Is(err, calculations.ErrInvalidQuantity) ||
+			errors.Is(err, calculations.ErrInvalidUnitPrice) ||
+			errors.Is(err, calculations.ErrInvalidDiscount) ||
+			errors.Is(err, calculations.ErrInvalidDiscountType) ||
+			errors.Is(err, calculations.ErrInvalidTaxRate) ||
+			errors.Is(err, calculations.ErrInvalidShippingCost) ||
+			errors.Is(err, calculations.ErrOrderTotalExceeded) {
+			return FormDataResponse{}, errs.New(errs.InvalidArgument, err)
+		}
+		return FormDataResponse{}, errs.Newf(errs.Internal, "recalculate order totals: %s", err)
 	}
 
 	// 5. Commit transaction
@@ -608,4 +629,144 @@ func (a *App) mergeLineItemFieldDefaults(
 	}
 
 	return json.Marshal(dataMap)
+}
+
+// ============================================================================
+// Order Total Calculation Post-Processing
+// ============================================================================
+
+// recalculateOrderTotalsIfNeeded checks if both sales.orders and sales.order_line_items
+// are in results, and if so, recalculates and updates the order totals.
+//
+// This ensures the backend is the single source of truth for order totals.
+// Frontend-submitted totals are treated as display-only and always overridden
+// with backend-calculated values.
+//
+// Design Decision: Why formdataapp instead of ordersbus?
+// When ordersbus.Create() is called, line items haven't been created yet.
+// This post-processing hook runs after all entities are created but before
+// the transaction commits, giving us access to both the order and its line items.
+func (a *App) recalculateOrderTotalsIfNeeded(ctx context.Context, results map[string]any) error {
+	orderResult, hasOrder := results["sales.orders"]
+	lineItemsResult, hasLineItems := results["sales.order_line_items"]
+
+	if !hasOrder || !hasLineItems {
+		return nil // Nothing to recalculate
+	}
+
+	// Type assertion with proper error handling (NOT silent failure)
+	order, ok := orderResult.(map[string]any)
+	if !ok {
+		return fmt.Errorf("order result has unexpected type: %T", orderResult)
+	}
+
+	lineItems, ok := lineItemsResult.([]any)
+	if !ok {
+		return fmt.Errorf("line items result has unexpected type: %T (expected array)", lineItemsResult)
+	}
+
+	// Handle empty line items array
+	if len(lineItems) == 0 {
+		return nil // No line items to calculate from
+	}
+
+	// Convert line items to calculation input with error handling
+	calcItems := make([]calculations.LineItemInput, 0, len(lineItems))
+	for idx, item := range lineItems {
+		itemMap, ok := item.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%w: line item %d has type %T", ErrInvalidType, idx, item)
+		}
+
+		// Validate required fields exist
+		for _, field := range []string{"quantity", "unit_price"} {
+			if _, exists := itemMap[field]; !exists {
+				return fmt.Errorf("%w: line item %d missing %q", ErrMissingField, idx, field)
+			}
+		}
+
+		// Parse with error handling
+		quantity, err := parseIntFromAny(itemMap["quantity"])
+		if err != nil {
+			return fmt.Errorf("line item %d quantity: %w", idx, err)
+		}
+		unitPrice, err := parseDecimalFromAny(itemMap["unit_price"])
+		if err != nil {
+			return fmt.Errorf("line item %d unit_price: %w", idx, err)
+		}
+		discount, err := parseDecimalFromAny(itemMap["discount"])
+		if err != nil {
+			return fmt.Errorf("line item %d discount: %w", idx, err)
+		}
+		discountType, err := parseStringFromAny(itemMap["discount_type"])
+		if err != nil {
+			return fmt.Errorf("line item %d discount_type: %w", idx, err)
+		}
+
+		calcItems = append(calcItems, calculations.LineItemInput{
+			Quantity:     quantity,
+			UnitPrice:    unitPrice,
+			Discount:     discount,
+			DiscountType: discountType,
+		})
+	}
+
+	// Get tax rate and shipping from order with error handling
+	taxRate, err := parseDecimalFromAny(order["tax_rate"])
+	if err != nil {
+		return fmt.Errorf("order tax_rate: %w", err)
+	}
+	shippingCost, err := parseDecimalFromAny(order["shipping_cost"])
+	if err != nil {
+		return fmt.Errorf("order shipping_cost: %w", err)
+	}
+
+	// Calculate totals
+	calculated, err := calculations.CalculateOrderTotals(calcItems, taxRate, shippingCost)
+	if err != nil {
+		return fmt.Errorf("calculate order totals: %w", err)
+	}
+
+	// Log if significantly different from submitted values (helps debug frontend bugs)
+	submittedSubtotal, _ := parseDecimalFromAny(order["subtotal"]) // Ignore error - logging is best-effort
+	diff := calculated.Subtotal.Sub(submittedSubtotal).Abs()
+	if diff.GreaterThan(decimal.NewFromFloat(0.01)) {
+		a.log.Info(ctx, "order totals recalculated",
+			"order_id", order["id"],
+			"submitted_subtotal", submittedSubtotal.String(),
+			"calculated_subtotal", calculated.Subtotal.String(),
+			"difference", diff.String(),
+		)
+	}
+
+	// Update order with calculated values
+	orderID, ok := order["id"].(string)
+	if !ok {
+		return fmt.Errorf("order id not found or not string: %T", order["id"])
+	}
+
+	return a.updateOrderTotals(ctx, orderID, calculated)
+}
+
+// updateOrderTotals updates the order record with calculated totals.
+func (a *App) updateOrderTotals(ctx context.Context, orderID string, totals calculations.OrderTotals) error {
+	reg, err := a.registry.Get("sales.orders")
+	if err != nil {
+		return fmt.Errorf("get orders registry: %w", err)
+	}
+
+	updateData := map[string]any{
+		"id":           orderID,
+		"subtotal":     totals.Subtotal.String(),
+		"tax_amount":   totals.TaxAmount.String(),
+		"total_amount": totals.Total.String(),
+	}
+
+	updateJSON, err := json.Marshal(updateData)
+	if err != nil {
+		return fmt.Errorf("marshal update data: %w", err)
+	}
+
+	_, err = a.executeUpdate(ctx, reg, updateJSON)
+	return err
 }
