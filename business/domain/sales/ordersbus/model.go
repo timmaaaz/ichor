@@ -21,16 +21,16 @@ type Order struct {
 	OrderDate           time.Time   `json:"order_date"`
 	BillingAddressID    *uuid.UUID  `json:"billing_address_id,omitempty"`
 	ShippingAddressID   *uuid.UUID  `json:"shipping_address_id,omitempty"`
-	Subtotal            types.Money `json:"subtotal"`
-	TaxRate             types.Money `json:"tax_rate"`
-	TaxAmount           types.Money `json:"tax_amount"`
-	ShippingCost        types.Money `json:"shipping_cost"`
-	TotalAmount         types.Money `json:"total_amount"`
-	Currency            string      `json:"currency"`
-	PaymentTermID       *uuid.UUID  `json:"payment_term_id,omitempty"`
-	Notes               string      `json:"notes"`
-	CreatedBy           uuid.UUID   `json:"created_by"`
-	UpdatedBy           uuid.UUID   `json:"updated_by"`
+	Subtotal            types.Money      `json:"subtotal"`
+	TaxRate             types.Percentage `json:"tax_rate"`
+	TaxAmount           types.Money      `json:"tax_amount"`
+	ShippingCost        types.Money      `json:"shipping_cost"`
+	TotalAmount         types.Money      `json:"total_amount"`
+	Currency            string           `json:"currency"`
+	PaymentTermID       *uuid.UUID       `json:"payment_term_id,omitempty"`
+	Notes               string           `json:"notes"`
+	CreatedBy           uuid.UUID        `json:"created_by"`
+	UpdatedBy           uuid.UUID        `json:"updated_by"`
 	CreatedDate         time.Time   `json:"created_date"`
 	UpdatedDate         time.Time   `json:"updated_date"`
 }
@@ -43,16 +43,16 @@ type NewOrder struct {
 	OrderDate           time.Time   `json:"order_date"`
 	BillingAddressID    *uuid.UUID  `json:"billing_address_id,omitempty"`
 	ShippingAddressID   *uuid.UUID  `json:"shipping_address_id,omitempty"`
-	Subtotal            types.Money `json:"subtotal"`
-	TaxRate             types.Money `json:"tax_rate"`
-	TaxAmount           types.Money `json:"tax_amount"`
-	ShippingCost        types.Money `json:"shipping_cost"`
-	TotalAmount         types.Money `json:"total_amount"`
-	Currency            string      `json:"currency"`
-	PaymentTermID       *uuid.UUID  `json:"payment_term_id,omitempty"`
-	Notes               string      `json:"notes"`
-	CreatedBy           uuid.UUID   `json:"created_by"`
-	CreatedDate         *time.Time  `json:"created_date,omitempty"` // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
+	Subtotal            types.Money      `json:"subtotal"`
+	TaxRate             types.Percentage `json:"tax_rate"`
+	TaxAmount           types.Money      `json:"tax_amount"`
+	ShippingCost        types.Money      `json:"shipping_cost"`
+	TotalAmount         types.Money      `json:"total_amount"`
+	Currency            string           `json:"currency"`
+	PaymentTermID       *uuid.UUID       `json:"payment_term_id,omitempty"`
+	Notes               string           `json:"notes"`
+	CreatedBy           uuid.UUID        `json:"created_by"`
+	CreatedDate         *time.Time       `json:"created_date,omitempty"` // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
 type UpdateOrder struct {
@@ -64,7 +64,7 @@ type UpdateOrder struct {
 	BillingAddressID    *uuid.UUID   `json:"billing_address_id,omitempty"`
 	ShippingAddressID   *uuid.UUID   `json:"shipping_address_id,omitempty"`
 	Subtotal            *types.Money `json:"subtotal,omitempty"`
-	TaxRate             *types.Money `json:"tax_rate,omitempty"`
+	TaxRate             *types.Percentage `json:"tax_rate,omitempty"`
 	TaxAmount           *types.Money `json:"tax_amount,omitempty"`
 	ShippingCost        *types.Money `json:"shipping_cost,omitempty"`
 	TotalAmount         *types.Money `json:"total_amount,omitempty"`

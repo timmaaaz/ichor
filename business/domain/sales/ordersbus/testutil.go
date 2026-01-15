@@ -13,29 +13,19 @@ import (
 // currencies for test data variety
 var testCurrencies = []string{"USD", "EUR", "GBP", "CAD"}
 
-
-// mustParseMoney parses money or panics (for test data only)
-func mustParseMoney(value string) types.Money {
-	m, err := types.ParseMoney(value)
-	if err != nil {
-		panic(fmt.Sprintf("invalid money value in test data: %s", value))
-	}
-	return m
-}
-
 // generateTestOrderAmounts generates realistic order amounts
-func generateTestOrderAmounts(i int) (subtotal, taxRate, taxAmount, shippingCost, totalAmount types.Money) {
+func generateTestOrderAmounts(i int) (subtotal types.Money, taxRate types.Percentage, taxAmount, shippingCost, totalAmount types.Money) {
 	// Generate varied but realistic amounts
 	baseAmount := float64(100 + (i%20)*50 + rand.Intn(100)) // $100-$1100 base
 	tax := baseAmount * 0.08                                // 8% tax
 	shipping := float64(10 + rand.Intn(20))                 // $10-$30 shipping
 	total := baseAmount + tax + shipping
 
-	subtotal = mustParseMoney(fmt.Sprintf("%.2f", baseAmount))
-	taxRate = mustParseMoney("0.08")
-	taxAmount = mustParseMoney(fmt.Sprintf("%.2f", tax))
-	shippingCost = mustParseMoney(fmt.Sprintf("%.2f", shipping))
-	totalAmount = mustParseMoney(fmt.Sprintf("%.2f", total))
+	subtotal = types.MustParseMoney(fmt.Sprintf("%.2f", baseAmount))
+	taxRate = types.MustParsePercentage("8.00")
+	taxAmount = types.MustParseMoney(fmt.Sprintf("%.2f", tax))
+	shippingCost = types.MustParseMoney(fmt.Sprintf("%.2f", shipping))
+	totalAmount = types.MustParseMoney(fmt.Sprintf("%.2f", total))
 	return
 }
 

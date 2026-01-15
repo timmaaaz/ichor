@@ -180,7 +180,7 @@ func toBusNewOrder(app NewOrder) (ordersbus.NewOrder, error) {
 		return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse subtotal: %s", err)
 	}
 
-	taxRate, err := types.ParseMoney(app.TaxRate)
+	taxRate, err := types.ParsePercentage(app.TaxRate)
 	if err != nil {
 		return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse taxRate: %s", err)
 	}
@@ -354,13 +354,13 @@ func toBusUpdateOrder(app UpdateOrder) (ordersbus.UpdateOrder, error) {
 		subtotal = m
 	}
 
-	var taxRate *types.Money
+	var taxRate *types.Percentage
 	if app.TaxRate != nil {
-		m, err := types.ParseMoneyPtr(*app.TaxRate)
+		p, err := types.ParsePercentagePtr(*app.TaxRate)
 		if err != nil {
 			return ordersbus.UpdateOrder{}, errs.Newf(errs.InvalidArgument, "parse taxRate: %s", err)
 		}
-		taxRate = m
+		taxRate = p
 	}
 
 	var taxAmount *types.Money

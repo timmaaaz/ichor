@@ -192,12 +192,6 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	dueDate := now.AddDate(0, 0, 10)
 	orderDate := now
 
-	// Helper to parse money for test
-	mustParseMoney := func(v string) types.Money {
-		m, _ := types.ParseMoney(v)
-		return m
-	}
-
 	return []unitest.Table{
 		{
 			Name: "Create",
@@ -209,11 +203,11 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				OrderDate:           orderDate,
 				BillingAddressID:    nil,
 				ShippingAddressID:   nil,
-				Subtotal:            mustParseMoney("100.00"),
-				TaxRate:             mustParseMoney("0.08"),
-				TaxAmount:           mustParseMoney("8.00"),
-				ShippingCost:        mustParseMoney("10.00"),
-				TotalAmount:         mustParseMoney("118.00"),
+				Subtotal:            types.MustParseMoney("100.00"),
+				TaxRate:             types.MustParsePercentage("8.00"),
+				TaxAmount:           types.MustParseMoney("8.00"),
+				ShippingCost:        types.MustParseMoney("10.00"),
+				TotalAmount:         types.MustParseMoney("118.00"),
 				Currency:            "USD",
 				PaymentTermID:       &sd.PaymentTerms[0].ID,
 				Notes:               "Test order",
@@ -229,11 +223,11 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					OrderDate:           orderDate,
 					BillingAddressID:    nil,
 					ShippingAddressID:   nil,
-					Subtotal:            mustParseMoney("100.00"),
-					TaxRate:             mustParseMoney("0.08"),
-					TaxAmount:           mustParseMoney("8.00"),
-					ShippingCost:        mustParseMoney("10.00"),
-					TotalAmount:         mustParseMoney("118.00"),
+					Subtotal:            types.MustParseMoney("100.00"),
+					TaxRate:             types.MustParsePercentage("8.00"),
+					TaxAmount:           types.MustParseMoney("8.00"),
+					ShippingCost:        types.MustParseMoney("10.00"),
+					TotalAmount:         types.MustParseMoney("118.00"),
 					Currency:            "USD",
 					PaymentTermID:       &sd.PaymentTerms[0].ID,
 					Notes:               "Test order",

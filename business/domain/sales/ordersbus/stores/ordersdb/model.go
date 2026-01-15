@@ -39,7 +39,7 @@ func toBusOrder(db dbOrder) (ordersbus.Order, error) {
 		return ordersbus.Order{}, fmt.Errorf("tobusorder: subtotal: %w", err)
 	}
 
-	taxRate, err := types.ParseMoney(db.TaxRate.String)
+	taxRate, err := types.ParsePercentage(db.TaxRate.String)
 	if err != nil {
 		return ordersbus.Order{}, fmt.Errorf("tobusorder: tax_rate: %w", err)
 	}

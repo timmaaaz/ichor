@@ -37,6 +37,16 @@ func ParseMoneyPtr(value string) (*Money, error) {
 	return &m, nil
 }
 
+// MustParseMoney parses a string into a Money or panics.
+// For use in test code and seed data only.
+func MustParseMoney(value string) Money {
+	m, err := ParseMoney(value)
+	if err != nil {
+		panic(fmt.Sprintf("invalid money value: %s", value))
+	}
+	return m
+}
+
 // Value returns the string value of the Money.
 func (m Money) Value() string {
 	return m.value
