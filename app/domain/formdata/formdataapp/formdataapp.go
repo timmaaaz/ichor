@@ -337,6 +337,26 @@ func (a *App) executeSingleOperation(
 		return nil, fmt.Errorf("template processing errors: %v", processed.Errors)
 	}
 
+	// Convert processed data to map for validation
+	processedMap, ok := processed.Processed.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("processed data is not a map")
+	}
+
+	// Validate field constraints (defense in depth)
+	for _, field := range entityFields {
+		if value, exists := processedMap[field.Name]; exists {
+			// Numeric constraints (min/max)
+			if err := validateFieldConstraints(field, value); err != nil {
+				return nil, err
+			}
+			// Date constraints (must_be_future, min_date, max_date)
+			if err := validateDateConstraints(field, value, processedMap); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// Convert processed data back to JSON
 	processedData, err := json.Marshal(processed.Processed)
 	if err != nil {
@@ -769,4 +789,155 @@ func (a *App) updateOrderTotals(ctx context.Context, orderID string, totals calc
 
 	_, err = a.executeUpdate(ctx, reg, updateJSON)
 	return err
+}
+
+// ============================================================================
+// Field Validation (Defense in Depth)
+// ============================================================================
+
+// validateFieldConstraints checks field values against configured min/max constraints.
+// Returns an error if validation fails.
+func validateFieldConstraints(
+	fieldConfig formfieldbus.FormField,
+	value interface{},
+) error {
+	// Parse field config for validation rules
+	var cfg struct {
+		Min *int `json:"min"`
+		Max *int `json:"max"`
+	}
+	if err := json.Unmarshal(fieldConfig.Config, &cfg); err != nil {
+		return nil // If config can't be parsed, skip validation
+	}
+
+	if cfg.Min == nil && cfg.Max == nil {
+		return nil // No numeric constraints configured
+	}
+
+	numVal, err := toFloat64(value)
+	if err != nil {
+		return nil // Non-numeric values handled elsewhere
+	}
+
+	if cfg.Min != nil && numVal < float64(*cfg.Min) {
+		return errs.Newf(errs.InvalidArgument,
+			"%s must be at least %d", fieldConfig.Name, *cfg.Min)
+	}
+	if cfg.Max != nil && numVal > float64(*cfg.Max) {
+		return errs.Newf(errs.InvalidArgument,
+			"%s must be at most %d", fieldConfig.Name, *cfg.Max)
+	}
+	return nil
+}
+
+// validateDateConstraints checks date field values against configured constraints.
+// Supports: must_be_future, min_date ("today", "{{field}}", ISO date), max_date.
+func validateDateConstraints(
+	fieldConfig formfieldbus.FormField,
+	value interface{},
+	allValues map[string]interface{},
+) error {
+	// Parse field config for date validation rules
+	var cfg struct {
+		MustBeFuture bool   `json:"must_be_future"`
+		MinDate      string `json:"min_date"`
+		MaxDate      string `json:"max_date"`
+	}
+	if err := json.Unmarshal(fieldConfig.Config, &cfg); err != nil {
+		return nil // If config can't be parsed, skip validation
+	}
+
+	if !cfg.MustBeFuture && cfg.MinDate == "" && cfg.MaxDate == "" {
+		return nil // No date constraints configured
+	}
+
+	dateVal, err := toTime(value)
+	if err != nil {
+		return nil // Non-date values handled elsewhere
+	}
+
+	// Check must_be_future
+	if cfg.MustBeFuture {
+		today := time.Now().Truncate(24 * time.Hour)
+		if dateVal.Before(today) {
+			return errs.Newf(errs.InvalidArgument,
+				"%s must be in the future", fieldConfig.Name)
+		}
+	}
+
+	// Check min_date (can be "today", "{{field}}", or ISO date)
+	if cfg.MinDate != "" {
+		minDate, err := resolveDateConstraint(cfg.MinDate, allValues)
+		if err == nil && dateVal.Before(minDate) {
+			return errs.Newf(errs.InvalidArgument,
+				"%s must be on or after %s", fieldConfig.Name, minDate.Format("2006-01-02"))
+		}
+	}
+
+	// Check max_date
+	if cfg.MaxDate != "" {
+		maxDate, err := resolveDateConstraint(cfg.MaxDate, allValues)
+		if err == nil && dateVal.After(maxDate) {
+			return errs.Newf(errs.InvalidArgument,
+				"%s must be on or before %s", fieldConfig.Name, maxDate.Format("2006-01-02"))
+		}
+	}
+
+	return nil
+}
+
+// resolveDateConstraint resolves a date constraint string to a time.Time.
+// Supports: "today", "{{field_name}}", ISO date strings.
+func resolveDateConstraint(constraint string, allValues map[string]interface{}) (time.Time, error) {
+	if constraint == "today" {
+		return time.Now().Truncate(24 * time.Hour), nil
+	}
+
+	// Check for field reference: {{field_name}}
+	if len(constraint) > 4 && constraint[:2] == "{{" && constraint[len(constraint)-2:] == "}}" {
+		fieldName := constraint[2 : len(constraint)-2]
+		if fieldValue, ok := allValues[fieldName]; ok {
+			return toTime(fieldValue)
+		}
+		return time.Time{}, fmt.Errorf("field %s not found", fieldName)
+	}
+
+	// Try parsing as ISO date
+	return time.Parse("2006-01-02", constraint)
+}
+
+// toFloat64 converts various numeric types to float64.
+func toFloat64(value interface{}) (float64, error) {
+	switch v := value.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case string:
+		return decimal.RequireFromString(v).InexactFloat64(), nil
+	default:
+		return 0, fmt.Errorf("cannot convert %T to float64", value)
+	}
+}
+
+// toTime converts various date types to time.Time.
+func toTime(value interface{}) (time.Time, error) {
+	switch v := value.(type) {
+	case time.Time:
+		return v, nil
+	case string:
+		// Try multiple formats
+		for _, format := range []string{"2006-01-02", time.RFC3339, "2006-01-02T15:04:05Z"} {
+			if t, err := time.Parse(format, v); err == nil {
+				return t, nil
+			}
+		}
+		return time.Time{}, fmt.Errorf("cannot parse %s as date", v)
+	default:
+		return time.Time{}, fmt.Errorf("cannot convert %T to time.Time", value)
+	}
 }

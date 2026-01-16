@@ -189,7 +189,7 @@ func GetFullSupplierFormFields(
 			FieldType:    "number",
 			FieldOrder:   order + 1,
 			Required:     true,
-			Config:       json.RawMessage(`{"execution_order": 2}`),
+			Config:       json.RawMessage(`{"execution_order": 2, "min": 0, "max": 730}`),
 		},
 		{
 			FormID:       formID,
@@ -246,9 +246,10 @@ func GetFullSalesOrderFormFields(
 	// Section 2: Line Items (created second, references order_id from step 1)
 	// Using lineitems field type for card-based repeatable line items UI
 	minQuantity := 1
-	maxQuantity := 10000
+	maxQuantity := 1000000
 	minZero := 0
 	maxPercent := 100
+	maxCurrency := 10000000
 
 	lineItemsConfig := formfieldbus.LineItemsFieldConfig{
 		ExecutionOrder: 2,
@@ -289,6 +290,7 @@ func GetFullSalesOrderFormFields(
 				Required: true,
 				Validation: &formfieldbus.ValidationConfig{
 					Min: &minZero,
+					Max: &maxCurrency,
 				},
 			},
 			{

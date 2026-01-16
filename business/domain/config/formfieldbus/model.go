@@ -82,6 +82,10 @@ type DropdownConfig struct {
 type ValidationConfig struct {
 	Min *int `json:"min,omitempty"`
 	Max *int `json:"max,omitempty"`
+	// Date constraints
+	MinDate      string `json:"min_date,omitempty"`       // "today", "{{field_name}}", or ISO date
+	MaxDate      string `json:"max_date,omitempty"`       // "today", "{{field_name}}", or ISO date
+	MustBeFuture bool   `json:"must_be_future,omitempty"` // Shorthand for min_date: "today"
 }
 
 // =============================================================================
