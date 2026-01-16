@@ -262,9 +262,13 @@ func GetFullSalesOrderFormFields(
 				Type:     "dropdown",
 				Required: true,
 				DropdownConfig: &formfieldbus.DropdownConfig{
-					Entity:      "products.products",
-					LabelColumn: "name",
-					ValueColumn: "id",
+					TableConfigName: "products_with_prices_lookup",
+					LabelColumn:     "name",
+					ValueColumn:     "id",
+					AutoPopulate: []formfieldbus.AutoPopulateMapping{
+						{SourceColumn: "selling_price", TargetField: "unit_price"},
+						{SourceColumn: "description", TargetField: "description"},
+					},
 				},
 			},
 			{

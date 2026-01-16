@@ -70,12 +70,22 @@ type FieldDefaultConfig struct {
 	Hidden             bool   `json:"hidden,omitempty"`               // If true, field is not rendered in UI
 }
 
+// AutoPopulateMapping defines how to populate a target field from a dropdown selection.
+// When a user selects an option from a dropdown, additional fields can be auto-populated
+// with values from the selected record based on these mappings.
+type AutoPopulateMapping struct {
+	SourceColumn string `json:"source_column"` // Column from dropdown record to copy (e.g., "selling_price")
+	TargetField  string `json:"target_field"`  // Field to populate in the form/line item (e.g., "unit_price")
+}
+
 // DropdownConfig defines configuration for dropdown fields.
 type DropdownConfig struct {
-	Entity         string   `json:"entity"`                               // Format: "schema.table" (e.g., "products.products")
-	LabelColumn    string   `json:"label_column"`
-	ValueColumn    string   `json:"value_column"`
-	DisplayColumns []string `json:"additional_display_columns,omitempty"`
+	Entity          string                `json:"entity,omitempty"`            // Format: "schema.table" (e.g., "products.products") - direct table query
+	TableConfigName string                `json:"table_config_name,omitempty"` // Table config name for joined queries (preferred for complex lookups)
+	LabelColumn     string                `json:"label_column"`
+	ValueColumn     string                `json:"value_column"`
+	DisplayColumns  []string              `json:"additional_display_columns,omitempty"`
+	AutoPopulate    []AutoPopulateMapping `json:"auto_populate,omitempty"` // Auto-populate mappings for target fields
 }
 
 // ValidationConfig defines validation rules for fields.

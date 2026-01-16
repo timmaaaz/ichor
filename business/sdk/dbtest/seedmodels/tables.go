@@ -4785,8 +4785,9 @@ var ProductsWithPricesLookup = &tablebuilder.Config{
 			Schema: "products",
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "id", Alias: "product_id", TableColumn: "products.id"},
-					{Name: "name", Alias: "product_name", TableColumn: "products.name"},
+					{Name: "id", TableColumn: "products.id"},
+					{Name: "name", TableColumn: "products.name"},
+					{Name: "description", TableColumn: "products.description"},
 					{Name: "sku", TableColumn: "products.sku"},
 					{Name: "is_active", TableColumn: "products.is_active"},
 				},
@@ -4827,19 +4828,25 @@ var ProductsWithPricesLookup = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"product_id": {
-				Name:   "product_id",
+			"id": {
+				Name:   "id",
 				Header: "ID",
 				Width:  100,
 				Type:   "uuid",
 			},
-			"product_name": {
-				Name:       "product_name",
+			"name": {
+				Name:       "name",
 				Header:     "Product Name",
 				Width:      250,
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+			},
+			"description": {
+				Name:   "description",
+				Header: "Description",
+				Width:  300,
+				Type:   "string",
 			},
 			"sku": {
 				Name:       "sku",

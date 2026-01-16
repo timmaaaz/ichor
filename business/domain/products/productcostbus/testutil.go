@@ -13,6 +13,9 @@ import (
 
 const charString = "abcdefghijklmnopqrstuvwxyz"
 
+// Common ISO 4217 currency codes for realistic test data
+var currencyCodes = []string{"USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF", "CNY", "INR", "MXN"}
+
 func TestNewProductCosts(n int, productIDs uuid.UUIDs) []NewProductCost {
 	newProductCosts := make([]NewProductCost, n)
 
@@ -25,7 +28,7 @@ func TestNewProductCosts(n int, productIDs uuid.UUIDs) []NewProductCost {
 			ProductID:         productIDs[i%len(productIDs)],
 			PurchaseCost:      types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
 			SellingPrice:      types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64()+float64(i))),
-			Currency:          fmt.Sprintf("CurrencyCode%d", idx),
+			Currency:          currencyCodes[0], // Default to USD for seed data; use i%len(currencyCodes) for variety
 			MSRP:              types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
 			MarkupPercentage:  types.NewRoundedFloat(rand.Float64()),
 			LandedCost:        types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
