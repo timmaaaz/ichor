@@ -224,19 +224,13 @@ func (api *api) exportBlob(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	// Export blob returns business type, need to marshal to JSON
-	pkg, err := api.pageConfigApp.ExportBlob(ctx, configID)
+	// Export blob returns app layer type with snake_case JSON
+	pkg, err := api.pageConfigApp.ExportBlobAsApp(ctx, configID)
 	if err != nil {
 		return errs.NewError(err)
 	}
 
-	// Marshal and return as raw JSON
-	data, err := json.Marshal(pkg)
-	if err != nil {
-		return errs.New(errs.Internal, err)
-	}
-
-	return rawJSON(data)
+	return pkg // PageConfigPackage implements Encode()
 }
 
 // rawJSON is a simple wrapper to return raw JSON bytes

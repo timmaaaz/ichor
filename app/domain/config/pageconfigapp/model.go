@@ -168,24 +168,30 @@ func (app ExportPackage) Encode() ([]byte, string, error) {
 
 // PageConfigPackage represents a page config with its content and actions.
 type PageConfigPackage struct {
-	PageConfig PageConfig        `json:"pageConfig"`
-	Contents   []PageContentApp  `json:"contents"`
-	Actions    PageActionsApp    `json:"actions"`
+	PageConfig PageConfig       `json:"page_config"`
+	Contents   []PageContentApp `json:"contents"`
+	Actions    PageActionsApp   `json:"actions"`
+}
+
+// Encode implements the encoder interface for PageConfigPackage.
+func (app PageConfigPackage) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
 }
 
 // PageContentApp represents page content for export (app layer).
 type PageContentApp struct {
 	ID            string `json:"id"`
-	PageConfigID  string `json:"pageConfigId"`
-	ContentType   string `json:"contentType"`
+	PageConfigID  string `json:"page_config_id"`
+	ContentType   string `json:"content_type"`
 	Label         string `json:"label"`
-	TableConfigID string `json:"tableConfigId,omitempty"`
-	FormID        string `json:"formId,omitempty"`
-	OrderIndex    int    `json:"orderIndex"`
-	ParentID      string `json:"parentId,omitempty"`
+	TableConfigID string `json:"table_config_id,omitempty"`
+	FormID        string `json:"form_id,omitempty"`
+	OrderIndex    int    `json:"order_index"`
+	ParentID      string `json:"parent_id,omitempty"`
 	Layout        string `json:"layout,omitempty"`
-	IsVisible     bool   `json:"isVisible"`
-	IsDefault     bool   `json:"isDefault"`
+	IsVisible     bool   `json:"is_visible"`
+	IsDefault     bool   `json:"is_default"`
 }
 
 // PageActionsApp represents page actions for export (app layer).
@@ -198,10 +204,10 @@ type PageActionsApp struct {
 // PageActionApp represents a single page action for export (app layer).
 type PageActionApp struct {
 	ID           string             `json:"id"`
-	PageConfigID string             `json:"pageConfigId"`
-	ActionType   string             `json:"actionType"`
-	ActionOrder  int                `json:"actionOrder"`
-	IsActive     bool               `json:"isActive"`
+	PageConfigID string             `json:"page_config_id"`
+	ActionType   string             `json:"action_type"`
+	ActionOrder  int                `json:"action_order"`
+	IsActive     bool               `json:"is_active"`
 	Button       *ButtonActionApp   `json:"button,omitempty"`
 	Dropdown     *DropdownActionApp `json:"dropdown,omitempty"`
 }
@@ -210,10 +216,10 @@ type PageActionApp struct {
 type ButtonActionApp struct {
 	Label              string `json:"label"`
 	Icon               string `json:"icon"`
-	TargetPath         string `json:"targetPath"`
+	TargetPath         string `json:"target_path"`
 	Variant            string `json:"variant"`
 	Alignment          string `json:"alignment"`
-	ConfirmationPrompt string `json:"confirmationPrompt,omitempty"`
+	ConfirmationPrompt string `json:"confirmation_prompt,omitempty"`
 }
 
 // DropdownActionApp represents dropdown-specific data for export (app layer).
@@ -227,8 +233,8 @@ type DropdownActionApp struct {
 type DropdownItemApp struct {
 	ID         string `json:"id"`
 	Label      string `json:"label"`
-	TargetPath string `json:"targetPath"`
-	ItemOrder  int    `json:"itemOrder"`
+	TargetPath string `json:"target_path"`
+	ItemOrder  int    `json:"item_order"`
 }
 
 // ImportPackage represents a JSON import package for page configs.

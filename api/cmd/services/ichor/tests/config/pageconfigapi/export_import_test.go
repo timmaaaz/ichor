@@ -132,63 +132,63 @@ func export404(sd apitest.SeedData) []apitest.Table {
 // import200 tests successful import scenarios
 func import200(sd apitest.SeedData) []apitest.Table {
 	// Create a minimal page config export package using raw JSON
-	// The import endpoint expects the business layer format (PascalCase field names, UUID types)
+	// The import endpoint expects the snake_case format to match export
 	// Use json.RawMessage so apitest framework doesn't double-encode it
 
 	// Each test gets its own unique name to avoid conflicts
 	skipBlob := json.RawMessage(`{
-		"PageConfig": {
-			"Name": "Import Test Page ` + uuid.New().String() + `",
-			"UserID": "00000000-0000-0000-0000-000000000000",
-			"IsDefault": true
+		"page_config": {
+			"name": "Import Test Page ` + uuid.New().String() + `",
+			"user_id": "00000000-0000-0000-0000-000000000000",
+			"is_default": true
 		},
-		"Contents": [],
-		"Actions": {
-			"Buttons": [],
-			"Dropdowns": [],
-			"Separators": []
+		"contents": [],
+		"actions": {
+			"buttons": [],
+			"dropdowns": [],
+			"separators": []
 		}
 	}`)
 
 	replaceBlob := json.RawMessage(`{
-		"PageConfig": {
-			"Name": "Import Test Page ` + uuid.New().String() + `",
-			"UserID": "00000000-0000-0000-0000-000000000000",
-			"IsDefault": true
+		"page_config": {
+			"name": "Import Test Page ` + uuid.New().String() + `",
+			"user_id": "00000000-0000-0000-0000-000000000000",
+			"is_default": true
 		},
-		"Contents": [],
-		"Actions": {
-			"Buttons": [],
-			"Dropdowns": [],
-			"Separators": []
+		"contents": [],
+		"actions": {
+			"buttons": [],
+			"dropdowns": [],
+			"separators": []
 		}
 	}`)
 
 	mergeBlob := json.RawMessage(`{
-		"PageConfig": {
-			"Name": "Import Test Page ` + uuid.New().String() + `",
-			"UserID": "00000000-0000-0000-0000-000000000000",
-			"IsDefault": true
+		"page_config": {
+			"name": "Import Test Page ` + uuid.New().String() + `",
+			"user_id": "00000000-0000-0000-0000-000000000000",
+			"is_default": true
 		},
-		"Contents": [],
-		"Actions": {
-			"Buttons": [],
-			"Dropdowns": [],
-			"Separators": []
+		"contents": [],
+		"actions": {
+			"buttons": [],
+			"dropdowns": [],
+			"separators": []
 		}
 	}`)
 
 	defaultBlob := json.RawMessage(`{
-		"PageConfig": {
-			"Name": "Import Test Page ` + uuid.New().String() + `",
-			"UserID": "00000000-0000-0000-0000-000000000000",
-			"IsDefault": true
+		"page_config": {
+			"name": "Import Test Page ` + uuid.New().String() + `",
+			"user_id": "00000000-0000-0000-0000-000000000000",
+			"is_default": true
 		},
-		"Contents": [],
-		"Actions": {
-			"Buttons": [],
-			"Dropdowns": [],
-			"Separators": []
+		"contents": [],
+		"actions": {
+			"buttons": [],
+			"dropdowns": [],
+			"separators": []
 		}
 	}`)
 
@@ -289,7 +289,7 @@ func import400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
-			Input:      json.RawMessage(`{"PageConfig":{},"Contents":[],"Actions":{"Buttons":[],"Dropdowns":[],"Separators":[]}}`),
+			Input:      json.RawMessage(`{"page_config":{},"contents":[],"actions":{"buttons":[],"dropdowns":[],"separators":[]}}`),
 			GotResp:    &errs.Error{},
 			ExpResp:    errs.Newf(errs.InvalidArgument, "name is required"),
 			CmpFunc: func(got any, exp any) string {
@@ -309,7 +309,7 @@ func import400(sd apitest.SeedData) []apitest.Table {
 
 // import401 tests unauthorized import scenarios
 func import401(sd apitest.SeedData) []apitest.Table {
-	blob := json.RawMessage(`{"PageConfig":{"Name":"Test"},"Contents":[],"Actions":{"Buttons":[],"Dropdowns":[],"Separators":[]}}`)
+	blob := json.RawMessage(`{"page_config":{"name":"Test"},"contents":[],"actions":{"buttons":[],"dropdowns":[],"separators":[]}}`)
 
 	return []apitest.Table{
 		{

@@ -10,8 +10,8 @@ import (
 type PageConfig struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
-	UserID    uuid.UUID `json:"userId"` // Zero value means this is a default config
-	IsDefault bool      `json:"isDefault"`
+	UserID    uuid.UUID `json:"user_id"` // Zero value means this is a default config
+	IsDefault bool      `json:"is_default"`
 }
 
 // NewPageConfig contains data required to create a new page configuration
@@ -30,7 +30,7 @@ type UpdatePageConfig struct {
 
 // PageConfigWithRelations represents a page config with its content and actions.
 type PageConfigWithRelations struct {
-	PageConfig PageConfig          `json:"pageConfig"`
+	PageConfig PageConfig          `json:"page_config"`
 	Contents   []PageContentExport `json:"contents"`
 	Actions    PageActionsExport   `json:"actions"`
 }
@@ -38,17 +38,17 @@ type PageConfigWithRelations struct {
 // PageContentExport represents page content for export (simplified structure).
 type PageContentExport struct {
 	ID            uuid.UUID       `json:"id"`
-	PageConfigID  uuid.UUID       `json:"pageConfigId"`
-	ContentType   string          `json:"contentType"`
+	PageConfigID  uuid.UUID       `json:"page_config_id"`
+	ContentType   string          `json:"content_type"`
 	Label         string          `json:"label"`
-	TableConfigID uuid.UUID       `json:"tableConfigId"`
-	FormID        uuid.UUID       `json:"formId"`
-	ChartConfigID uuid.UUID       `json:"chartConfigId"`
-	OrderIndex    int             `json:"orderIndex"`
-	ParentID      uuid.UUID       `json:"parentId"`
+	TableConfigID uuid.UUID       `json:"table_config_id"`
+	FormID        uuid.UUID       `json:"form_id"`
+	ChartConfigID uuid.UUID       `json:"chart_config_id"`
+	OrderIndex    int             `json:"order_index"`
+	ParentID      uuid.UUID       `json:"parent_id"`
 	Layout        json.RawMessage `json:"layout"`
-	IsVisible     bool            `json:"isVisible"`
-	IsDefault     bool            `json:"isDefault"`
+	IsVisible     bool            `json:"is_visible"`
+	IsDefault     bool            `json:"is_default"`
 }
 
 // PageActionsExport represents page actions for export (grouped by type).
@@ -60,12 +60,12 @@ type PageActionsExport struct {
 
 // PageActionExport represents a single page action for export.
 type PageActionExport struct {
-	ID           uuid.UUID            `json:"id"`
-	PageConfigID uuid.UUID            `json:"pageConfigId"`
-	ActionType   string               `json:"actionType"`
-	ActionOrder  int                  `json:"actionOrder"`
-	IsActive     bool                 `json:"isActive"`
-	Button       *ButtonActionExport  `json:"button,omitempty"`
+	ID           uuid.UUID             `json:"id"`
+	PageConfigID uuid.UUID             `json:"page_config_id"`
+	ActionType   string                `json:"action_type"`
+	ActionOrder  int                   `json:"action_order"`
+	IsActive     bool                  `json:"is_active"`
+	Button       *ButtonActionExport   `json:"button,omitempty"`
 	Dropdown     *DropdownActionExport `json:"dropdown,omitempty"`
 }
 
@@ -73,10 +73,10 @@ type PageActionExport struct {
 type ButtonActionExport struct {
 	Label              string `json:"label"`
 	Icon               string `json:"icon"`
-	TargetPath         string `json:"targetPath"`
+	TargetPath         string `json:"target_path"`
 	Variant            string `json:"variant"`
 	Alignment          string `json:"alignment"`
-	ConfirmationPrompt string `json:"confirmationPrompt"`
+	ConfirmationPrompt string `json:"confirmation_prompt"`
 }
 
 // DropdownActionExport represents dropdown-specific data for export.
@@ -90,8 +90,8 @@ type DropdownActionExport struct {
 type DropdownItemExport struct {
 	ID         uuid.UUID `json:"id"`
 	Label      string    `json:"label"`
-	TargetPath string    `json:"targetPath"`
-	ItemOrder  int       `json:"itemOrder"`
+	TargetPath string    `json:"target_path"`
+	ItemOrder  int       `json:"item_order"`
 }
 
 // ImportStats represents statistics from an import operation.

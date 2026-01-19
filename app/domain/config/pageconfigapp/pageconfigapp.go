@@ -239,3 +239,12 @@ func (a *App) ExportBlob(ctx context.Context, configID uuid.UUID) (pageconfigbus
 
 	return results[0], nil
 }
+
+// ExportBlobAsApp exports a page config as app layer type (snake_case JSON).
+func (a *App) ExportBlobAsApp(ctx context.Context, configID uuid.UUID) (PageConfigPackage, error) {
+	busPkg, err := a.ExportBlob(ctx, configID)
+	if err != nil {
+		return PageConfigPackage{}, err
+	}
+	return toAppPageConfigWithRelations(busPkg), nil
+}
