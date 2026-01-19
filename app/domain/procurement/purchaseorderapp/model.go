@@ -32,29 +32,29 @@ type QueryParams struct {
 // PurchaseOrder represents a purchase order response.
 type PurchaseOrder struct {
 	ID                      string `json:"id"`
-	OrderNumber             string `json:"orderNumber"`
-	SupplierID              string `json:"supplierId"`
-	PurchaseOrderStatusID   string `json:"purchaseOrderStatusId"`
-	DeliveryWarehouseID     string `json:"deliveryWarehouseId"`
-	DeliveryLocationID      string `json:"deliveryLocationId"`
-	DeliveryStreetID        string `json:"deliveryStreetId"`
-	OrderDate               string `json:"orderDate"`
-	ExpectedDeliveryDate    string `json:"expectedDeliveryDate"`
-	ActualDeliveryDate      string `json:"actualDeliveryDate"`
+	OrderNumber             string `json:"order_number"`
+	SupplierID              string `json:"supplier_id"`
+	PurchaseOrderStatusID   string `json:"purchase_order_status_id"`
+	DeliveryWarehouseID     string `json:"delivery_warehouse_id"`
+	DeliveryLocationID      string `json:"delivery_location_id"`
+	DeliveryStreetID        string `json:"delivery_street_id"`
+	OrderDate               string `json:"order_date"`
+	ExpectedDeliveryDate    string `json:"expected_delivery_date"`
+	ActualDeliveryDate      string `json:"actual_delivery_date"`
 	Subtotal                string `json:"subtotal"`
-	TaxAmount               string `json:"taxAmount"`
-	ShippingCost            string `json:"shippingCost"`
-	TotalAmount             string `json:"totalAmount"`
+	TaxAmount               string `json:"tax_amount"`
+	ShippingCost            string `json:"shipping_cost"`
+	TotalAmount             string `json:"total_amount"`
 	Currency                string `json:"currency"`
-	RequestedBy             string `json:"requestedBy"`
-	ApprovedBy              string `json:"approvedBy"`
-	ApprovedDate            string `json:"approvedDate"`
+	RequestedBy             string `json:"requested_by"`
+	ApprovedBy              string `json:"approved_by"`
+	ApprovedDate            string `json:"approved_date"`
 	Notes                   string `json:"notes"`
-	SupplierReferenceNumber string `json:"supplierReferenceNumber"`
-	CreatedBy               string `json:"createdBy"`
-	UpdatedBy               string `json:"updatedBy"`
-	CreatedDate             string `json:"createdDate"`
-	UpdatedDate             string `json:"updatedDate"`
+	SupplierReferenceNumber string `json:"supplier_reference_number"`
+	CreatedBy               string `json:"created_by"`
+	UpdatedBy               string `json:"updated_by"`
+	CreatedDate             string `json:"created_date"`
+	UpdatedDate             string `json:"updated_date"`
 }
 
 // Encode implements the Encoder interface.
@@ -119,24 +119,24 @@ func ToAppPurchaseOrders(bus []purchaseorderbus.PurchaseOrder) []PurchaseOrder {
 
 // NewPurchaseOrder contains information needed to create a new purchase order.
 type NewPurchaseOrder struct {
-	OrderNumber             string  `json:"orderNumber" validate:"required"`
-	SupplierID              string  `json:"supplierId" validate:"required,uuid"`
-	PurchaseOrderStatusID   string  `json:"purchaseOrderStatusId" validate:"required,uuid"`
-	DeliveryWarehouseID     string  `json:"deliveryWarehouseId" validate:"required,uuid"`
-	DeliveryLocationID      string  `json:"deliveryLocationId" validate:"omitempty,uuid"`
-	DeliveryStreetID        string  `json:"deliveryStreetId" validate:"omitempty,uuid"`
-	OrderDate               string  `json:"orderDate" validate:"required"`
-	ExpectedDeliveryDate    string  `json:"expectedDeliveryDate" validate:"required"`
+	OrderNumber             string  `json:"order_number" validate:"required"`
+	SupplierID              string  `json:"supplier_id" validate:"required,uuid"`
+	PurchaseOrderStatusID   string  `json:"purchase_order_status_id" validate:"required,uuid"`
+	DeliveryWarehouseID     string  `json:"delivery_warehouse_id" validate:"required,uuid"`
+	DeliveryLocationID      string  `json:"delivery_location_id" validate:"omitempty,uuid"`
+	DeliveryStreetID        string  `json:"delivery_street_id" validate:"omitempty,uuid"`
+	OrderDate               string  `json:"order_date" validate:"required"`
+	ExpectedDeliveryDate    string  `json:"expected_delivery_date" validate:"required"`
 	Subtotal                string  `json:"subtotal" validate:"required"`
-	TaxAmount               string  `json:"taxAmount" validate:"required"`
-	ShippingCost            string  `json:"shippingCost" validate:"required"`
-	TotalAmount             string  `json:"totalAmount" validate:"required"`
+	TaxAmount               string  `json:"tax_amount" validate:"required"`
+	ShippingCost            string  `json:"shipping_cost" validate:"required"`
+	TotalAmount             string  `json:"total_amount" validate:"required"`
 	Currency                string  `json:"currency" validate:"required"`
-	RequestedBy             string  `json:"requestedBy" validate:"required,uuid"`
+	RequestedBy             string  `json:"requested_by" validate:"required,uuid"`
 	Notes                   string  `json:"notes"`
-	SupplierReferenceNumber string  `json:"supplierReferenceNumber"`
-	CreatedBy               string  `json:"createdBy" validate:"required,uuid"`
-	CreatedDate             *string `json:"createdDate"` // Optional: for seeding/import
+	SupplierReferenceNumber string  `json:"supplier_reference_number"`
+	CreatedBy               string  `json:"created_by" validate:"required,uuid"`
+	CreatedDate             *string `json:"created_date"` // Optional: for seeding/import
 }
 
 // Decode implements the Decoder interface.
@@ -260,25 +260,25 @@ func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOr
 
 // UpdatePurchaseOrder contains information needed to update a purchase order.
 type UpdatePurchaseOrder struct {
-	OrderNumber             *string `json:"orderNumber" validate:"omitempty"`
-	SupplierID              *string `json:"supplierId" validate:"omitempty,uuid"`
-	PurchaseOrderStatusID   *string `json:"purchaseOrderStatusId" validate:"omitempty,uuid"`
-	DeliveryWarehouseID     *string `json:"deliveryWarehouseId" validate:"omitempty,uuid"`
-	DeliveryLocationID      *string `json:"deliveryLocationId" validate:"omitempty,uuid"`
-	DeliveryStreetID        *string `json:"deliveryStreetId" validate:"omitempty,uuid"`
-	OrderDate               *string `json:"orderDate" validate:"omitempty"`
-	ExpectedDeliveryDate    *string `json:"expectedDeliveryDate" validate:"omitempty"`
-	ActualDeliveryDate      *string `json:"actualDeliveryDate" validate:"omitempty"`
+	OrderNumber             *string `json:"order_number" validate:"omitempty"`
+	SupplierID              *string `json:"supplier_id" validate:"omitempty,uuid"`
+	PurchaseOrderStatusID   *string `json:"purchase_order_status_id" validate:"omitempty,uuid"`
+	DeliveryWarehouseID     *string `json:"delivery_warehouse_id" validate:"omitempty,uuid"`
+	DeliveryLocationID      *string `json:"delivery_location_id" validate:"omitempty,uuid"`
+	DeliveryStreetID        *string `json:"delivery_street_id" validate:"omitempty,uuid"`
+	OrderDate               *string `json:"order_date" validate:"omitempty"`
+	ExpectedDeliveryDate    *string `json:"expected_delivery_date" validate:"omitempty"`
+	ActualDeliveryDate      *string `json:"actual_delivery_date" validate:"omitempty"`
 	Subtotal                *string `json:"subtotal" validate:"omitempty"`
-	TaxAmount               *string `json:"taxAmount" validate:"omitempty"`
-	ShippingCost            *string `json:"shippingCost" validate:"omitempty"`
-	TotalAmount             *string `json:"totalAmount" validate:"omitempty"`
+	TaxAmount               *string `json:"tax_amount" validate:"omitempty"`
+	ShippingCost            *string `json:"shipping_cost" validate:"omitempty"`
+	TotalAmount             *string `json:"total_amount" validate:"omitempty"`
 	Currency                *string `json:"currency" validate:"omitempty"`
-	ApprovedBy              *string `json:"approvedBy" validate:"omitempty,uuid"`
-	ApprovedDate            *string `json:"approvedDate" validate:"omitempty"`
+	ApprovedBy              *string `json:"approved_by" validate:"omitempty,uuid"`
+	ApprovedDate            *string `json:"approved_date" validate:"omitempty"`
 	Notes                   *string `json:"notes" validate:"omitempty"`
-	SupplierReferenceNumber *string `json:"supplierReferenceNumber" validate:"omitempty"`
-	UpdatedBy               *string `json:"updatedBy" validate:"omitempty,uuid"`
+	SupplierReferenceNumber *string `json:"supplier_reference_number" validate:"omitempty"`
+	UpdatedBy               *string `json:"updated_by" validate:"omitempty,uuid"`
 }
 
 // Decode implements the Decoder interface.
@@ -466,7 +466,7 @@ func (app QueryByIDsRequest) Validate() error {
 
 // ApproveRequest represents a request to approve a purchase order.
 type ApproveRequest struct {
-	ApprovedBy string `json:"approvedBy" validate:"required,uuid"`
+	ApprovedBy string `json:"approved_by" validate:"required,uuid"`
 }
 
 // Decode implements the Decoder interface.

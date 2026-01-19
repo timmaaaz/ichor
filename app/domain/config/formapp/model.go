@@ -23,8 +23,8 @@ type QueryParams struct {
 type Form struct {
 	ID                string `json:"id"`
 	Name              string `json:"name"`
-	IsReferenceData   bool   `json:"isReferenceData"`
-	AllowInlineCreate bool   `json:"allowInlineCreate"`
+	IsReferenceData   bool   `json:"is_reference_data"`
+	AllowInlineCreate bool   `json:"allow_inline_create"`
 }
 
 func (app Form) Encode() ([]byte, string, error) {
@@ -62,8 +62,8 @@ func (app Forms) Encode() ([]byte, string, error) {
 // NewForm represents data needed to create a form.
 type NewForm struct {
 	Name              string `json:"name" validate:"required,min=1,max=255"`
-	IsReferenceData   bool   `json:"isReferenceData"`
-	AllowInlineCreate bool   `json:"allowInlineCreate"`
+	IsReferenceData   bool   `json:"is_reference_data"`
+	AllowInlineCreate bool   `json:"allow_inline_create"`
 }
 
 func (app *NewForm) Decode(data []byte) error {
@@ -88,8 +88,8 @@ func toBusNewForm(app NewForm) formbus.NewForm {
 // UpdateForm represents data needed to update a form.
 type UpdateForm struct {
 	Name              *string `json:"name" validate:"omitempty,min=1,max=255"`
-	IsReferenceData   *bool   `json:"isReferenceData"`
-	AllowInlineCreate *bool   `json:"allowInlineCreate"`
+	IsReferenceData   *bool   `json:"is_reference_data"`
+	AllowInlineCreate *bool   `json:"allow_inline_create"`
 }
 
 func (app *UpdateForm) Decode(data []byte) error {
@@ -115,8 +115,8 @@ func toBusUpdateForm(app UpdateForm) formbus.UpdateForm {
 type FormFull struct {
 	ID                string                   `json:"id"`
 	Name              string                   `json:"name"`
-	IsReferenceData   bool                     `json:"isReferenceData"`
-	AllowInlineCreate bool                     `json:"allowInlineCreate"`
+	IsReferenceData   bool                     `json:"is_reference_data"`
+	AllowInlineCreate bool                     `json:"allow_inline_create"`
 	Fields            []formfieldapp.FormField `json:"fields"`
 }
 
@@ -140,7 +140,7 @@ func ToAppFormFull(form formbus.Form, fields []formfieldapp.FormField) FormFull 
 type ExportPackage struct {
 	Version    string        `json:"version"`
 	Type       string        `json:"type"`
-	ExportedAt string        `json:"exportedAt"`
+	ExportedAt string        `json:"exported_at"`
 	Count      int           `json:"count"`
 	Data       []FormPackage `json:"data"`
 }
@@ -187,9 +187,9 @@ func (app ImportPackage) Validate() error {
 
 // ImportResult represents the result of an import operation.
 type ImportResult struct {
-	ImportedCount int      `json:"importedCount"`
-	SkippedCount  int      `json:"skippedCount"`
-	UpdatedCount  int      `json:"updatedCount"`
+	ImportedCount int      `json:"imported_count"`
+	SkippedCount  int      `json:"skipped_count"`
+	UpdatedCount  int      `json:"updated_count"`
 	Errors        []string `json:"errors,omitempty"`
 }
 

@@ -184,7 +184,7 @@ func toBusUpdateTableConfig(app UpdateTableConfig) (*tablebuilder.Config, error)
 type ExportPackage struct {
 	Version    string        `json:"version"`
 	Type       string        `json:"type"`
-	ExportedAt string        `json:"exportedAt"`
+	ExportedAt string        `json:"exported_at"`
 	Count      int           `json:"count"`
 	Data       []TableConfig `json:"data"`
 }
@@ -231,9 +231,9 @@ func (app ImportPackage) Validate() error {
 
 // ImportResult represents the result of an import operation.
 type ImportResult struct {
-	ImportedCount int      `json:"importedCount"`
-	SkippedCount  int      `json:"skippedCount"`
-	UpdatedCount  int      `json:"updatedCount"`
+	ImportedCount int      `json:"imported_count"`
+	SkippedCount  int      `json:"skipped_count"`
+	UpdatedCount  int      `json:"updated_count"`
 	Errors        []string `json:"errors,omitempty"`
 }
 
@@ -432,8 +432,8 @@ type NewPageConfig = pageconfigapp.NewPageConfig
 type UpdatePageConfig = pageconfigapp.UpdatePageConfig
 
 type FullPageConfig struct {
-	PageConfig  PageConfig           `json:"pageConfig"`
-	PageActions ActionsGroupedByType `json:"pageActions"`
+	PageConfig  PageConfig           `json:"page_config"`
+	PageActions ActionsGroupedByType `json:"page_actions"`
 }
 
 // Encode implements the encoder interface.
@@ -581,7 +581,7 @@ func (app ChartResponse) Encode() ([]byte, string, error) {
 type SeriesData struct {
 	Name       string    `json:"name"`
 	Type       string    `json:"type,omitempty"`
-	YAxisIndex int       `json:"yAxisIndex,omitempty"`
+	YAxisIndex int       `json:"y_axis_index,omitempty"`
 	Data       []float64 `json:"data"`
 	Stack      string    `json:"stack,omitempty"`
 }
@@ -589,7 +589,7 @@ type SeriesData struct {
 // KPIData represents KPI-specific data
 type KPIData struct {
 	Value         float64 `json:"value"`
-	PreviousValue float64 `json:"previousValue,omitempty"`
+	PreviousValue float64 `json:"previous_value,omitempty"`
 	Change        float64 `json:"change,omitempty"`
 	Trend         string  `json:"trend,omitempty"`
 	Label         string  `json:"label"`
@@ -601,15 +601,15 @@ type KPIData struct {
 
 // ChartMeta contains metadata about the chart query
 type ChartMeta struct {
-	ExecutionTime int64  `json:"executionTimeMs"`
-	RowsProcessed int    `json:"rowsProcessed"`
+	ExecutionTime int64  `json:"execution_time_ms"`
+	RowsProcessed int    `json:"rows_processed"`
 	Error         string `json:"error,omitempty"`
 }
 
 // HeatmapData for heatmap charts
 type HeatmapData struct {
-	XCategories []string    `json:"xCategories"`
-	YCategories []string    `json:"yCategories"`
+	XCategories []string    `json:"x_categories"`
+	YCategories []string    `json:"y_categories"`
 	Data        [][]float64 `json:"data"`
 	Min         float64     `json:"min"`
 	Max         float64     `json:"max"`
@@ -618,8 +618,8 @@ type HeatmapData struct {
 // GanttData for Gantt charts
 type GanttData struct {
 	Name      string `json:"name"`
-	StartDate string `json:"startDate"`
-	EndDate   string `json:"endDate"`
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"end_date"`
 	Progress  int    `json:"progress,omitempty"`
 	Category  string `json:"category,omitempty"`
 }

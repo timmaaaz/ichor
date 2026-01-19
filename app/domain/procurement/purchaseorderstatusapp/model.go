@@ -22,7 +22,7 @@ type PurchaseOrderStatus struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	SortOrder   int    `json:"sortOrder"`
+	SortOrder   int    `json:"sort_order"`
 }
 
 func (app PurchaseOrderStatus) Encode() ([]byte, string, error) {
@@ -50,7 +50,7 @@ func ToAppPurchaseOrderStatuses(bus []purchaseorderstatusbus.PurchaseOrderStatus
 type NewPurchaseOrderStatus struct {
 	Name        string `json:"name" validate:"required"`
 	Description string `json:"description" validate:"omitempty"`
-	SortOrder   int    `json:"sortOrder" validate:"required"`
+	SortOrder   int    `json:"sort_order" validate:"required"`
 }
 
 func (app *NewPurchaseOrderStatus) Decode(data []byte) error {
@@ -75,7 +75,7 @@ func toBusNewPurchaseOrderStatus(app NewPurchaseOrderStatus) (purchaseorderstatu
 type UpdatePurchaseOrderStatus struct {
 	Name        *string `json:"name" validate:"omitempty"`
 	Description *string `json:"description" validate:"omitempty"`
-	SortOrder   *int    `json:"sortOrder" validate:"omitempty"`
+	SortOrder   *int    `json:"sort_order" validate:"omitempty"`
 }
 
 func (app *UpdatePurchaseOrderStatus) Decode(data []byte) error {

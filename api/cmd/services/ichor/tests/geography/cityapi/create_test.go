@@ -55,7 +55,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				Name: "New City",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"regionID\",\"error\":\"regionID is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"region_id\",\"error\":\"region_id is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

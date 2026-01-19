@@ -433,7 +433,7 @@ func GetProductCategoryFormFields(formID uuid.UUID, entityID uuid.UUID) []formfi
 func GetCityFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
 		{
-			FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "regions",
+			FormID: formID, EntityID: entityID, EntitySchema: "geography", EntityTable: "cities",
 			Name: "region_id", Label: "Region", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "geography.regions", "display_field": "name"}`),
 		},
 		{
@@ -892,7 +892,7 @@ func GetSalesOrderFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbu
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "shipping_cost", Label: "Shipping Cost", FieldType: "currency", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"min": 0, "max": 10000000, "precision": 2}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "payment_term_id", Label: "Payment Terms", FieldType: "smart-combobox", FieldOrder: 9, Required: false, Config: json.RawMessage(`{"entity": "core.payment_terms", "display_field": "name"}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "notes", Label: "Notes", FieldType: "textarea", FieldOrder: 10, Required: false, Config: json.RawMessage(`{}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "order_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "hidden", FieldOrder: 11, Required: false, Config: json.RawMessage(`{"entity": "sales.order_fulfillment_statuses", "label_column": "name", "value_column": "id", "default_value_create": "PENDING", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "fulfillment_status_id", Label: "Fulfillment Status", FieldType: "hidden", FieldOrder: 11, Required: false, Config: json.RawMessage(`{"entity": "sales.order_fulfillment_statuses", "label_column": "name", "value_column": "id", "default_value_create": "PENDING", "hidden": true}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "currency", Label: "Currency", FieldType: "hidden", FieldOrder: 12, Required: false, Config: json.RawMessage(`{"default_value_create": "USD", "hidden": true}`)},
 		// Audit fields - auto-populated by backend
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "orders", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 13, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
@@ -911,7 +911,7 @@ func GetSalesOrderLineItemFormFields(formID uuid.UUID, entityID uuid.UUID) []for
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "unit_price", Label: "Unit Price", FieldType: "currency", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"min": 0, "max": 10000000, "precision": 2}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "discount", Label: "Discount", FieldType: "currency", FieldOrder: 5, Required: false, Config: json.RawMessage(`{"min":0,"precision":2,"depends_on":{"field":"discount_type","value_mappings":{"flat":{"type":"currency","label":"Discount ($)"},"percent":{"type":"percent","label":"Discount (%)","validation":{"max":100}}},"default":{"type":"currency"}}}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "discount_type", Label: "Discount Type", FieldType: "enum", FieldOrder: 6, Required: false, Config: json.RawMessage(`{"enum_name": "sales.discount_type", "default_value_create": "flat"}`)},
-		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "line_item_fulfillment_status_id", Label: "Fulfillment Status", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"entity": "sales.line_item_fulfillment_statuses", "label_column": "name", "value_column": "id", "default_value_create": "PENDING", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "line_item_fulfillment_statuses_id", Label: "Fulfillment Status", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"entity": "sales.line_item_fulfillment_statuses", "label_column": "name", "value_column": "id", "default_value_create": "PENDING", "hidden": true}`)},
 		// Audit fields - auto-populated by backend
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "created_by", Label: "Created By", FieldType: "hidden", FieldOrder: 8, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$me}}", "hidden": true}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "sales", EntityTable: "order_line_items", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 9, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},

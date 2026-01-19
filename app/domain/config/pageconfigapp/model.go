@@ -24,8 +24,8 @@ type QueryParams struct {
 type PageConfig struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
-	UserID    string `json:"userId,omitempty"`
-	IsDefault bool   `json:"isDefault"`
+	UserID    string `json:"user_id,omitempty"`
+	IsDefault bool   `json:"is_default"`
 }
 
 // Encode implements the encoder interface for PageConfig
@@ -46,8 +46,8 @@ func (app PageConfigs) Encode() ([]byte, string, error) {
 // NewPageConfig contains data required to create a new page configuration
 type NewPageConfig struct {
 	Name      string `json:"name" validate:"required"`
-	UserID    string `json:"userId" validate:"omitempty,uuid"`
-	IsDefault bool   `json:"isDefault"`
+	UserID    string `json:"user_id" validate:"omitempty,uuid"`
+	IsDefault bool   `json:"is_default"`
 }
 
 // Decode implements the decoder interface for NewPageConfig
@@ -66,8 +66,8 @@ func (app NewPageConfig) Validate() error {
 // UpdatePageConfig contains data for updating an existing page configuration
 type UpdatePageConfig struct {
 	Name      *string `json:"name"`
-	UserID    *string `json:"userId" validate:"omitempty,uuid"`
-	IsDefault *bool   `json:"isDefault"`
+	UserID    *string `json:"user_id" validate:"omitempty,uuid"`
+	IsDefault *bool   `json:"is_default"`
 }
 
 // Decode implements the decoder interface for UpdatePageConfig
@@ -155,7 +155,7 @@ func toBusUpdatePageConfig(app UpdatePageConfig) (pageconfigbus.UpdatePageConfig
 type ExportPackage struct {
 	Version    string              `json:"version"`
 	Type       string              `json:"type"`
-	ExportedAt string              `json:"exportedAt"`
+	ExportedAt string              `json:"exported_at"`
 	Count      int                 `json:"count"`
 	Data       []PageConfigPackage `json:"data"`
 }
@@ -263,9 +263,9 @@ func (app ImportPackage) Validate() error {
 
 // ImportResult represents the result of an import operation.
 type ImportResult struct {
-	ImportedCount int      `json:"importedCount"`
-	SkippedCount  int      `json:"skippedCount"`
-	UpdatedCount  int      `json:"updatedCount"`
+	ImportedCount int      `json:"imported_count"`
+	SkippedCount  int      `json:"skipped_count"`
+	UpdatedCount  int      `json:"updated_count"`
 	Errors        []string `json:"errors,omitempty"`
 }
 

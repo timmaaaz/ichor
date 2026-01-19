@@ -30,7 +30,7 @@ func (app Schemas) Encode() ([]byte, string, error) {
 type Table struct {
 	Schema           string `json:"schema"`
 	Name             string `json:"name"`
-	RowCountEstimate *int   `json:"rowCountEstimate"`
+	RowCountEstimate *int   `json:"row_count_estimate"`
 }
 
 // Encode implements the encoder interface.
@@ -51,10 +51,10 @@ func (app Tables) Encode() ([]byte, string, error) {
 // Column represents a table column.
 type Column struct {
 	Name         string `json:"name"`
-	DataType     string `json:"dataType"`
-	IsNullable   bool   `json:"isNullable"`
-	IsPrimaryKey bool   `json:"isPrimaryKey"`
-	DefaultValue string `json:"defaultValue"`
+	DataType     string `json:"data_type"`
+	IsNullable   bool   `json:"is_nullable"`
+	IsPrimaryKey bool   `json:"is_primary_key"`
+	DefaultValue string `json:"default_value"`
 }
 
 // Encode implements the encoder interface.
@@ -74,12 +74,12 @@ func (app Columns) Encode() ([]byte, string, error) {
 
 // Relationship represents a foreign key relationship.
 type Relationship struct {
-	ForeignKeyName   string `json:"foreignKeyName"`
-	ColumnName       string `json:"columnName"`
-	ReferencedSchema string `json:"referencedSchema"`
-	ReferencedTable  string `json:"referencedTable"`
-	ReferencedColumn string `json:"referencedColumn"`
-	RelationshipType string `json:"relationshipType"`
+	ForeignKeyName   string `json:"foreign_key_name"`
+	ColumnName       string `json:"column_name"`
+	ReferencedSchema string `json:"referenced_schema"`
+	ReferencedTable  string `json:"referenced_table"`
+	ReferencedColumn string `json:"referenced_column"`
+	RelationshipType string `json:"relationship_type"`
 }
 
 // Encode implements the encoder interface.
@@ -101,8 +101,8 @@ func (app Relationships) Encode() ([]byte, string, error) {
 type ReferencingTable struct {
 	Schema           string `json:"schema"`
 	Table            string `json:"table"`
-	ForeignKeyColumn string `json:"foreignKeyColumn"`
-	ConstraintName   string `json:"constraintName"`
+	ForeignKeyColumn string `json:"foreign_key_column"`
+	ConstraintName   string `json:"constraint_name"`
 }
 
 // Encode implements the encoder interface.
@@ -245,7 +245,7 @@ func (app EnumTypes) Encode() ([]byte, string, error) {
 // EnumValue represents a single value within a PostgreSQL ENUM type.
 type EnumValue struct {
 	Value     string `json:"value"`
-	SortOrder int    `json:"sortOrder"`
+	SortOrder int    `json:"sort_order"`
 }
 
 // Encode implements the encoder interface.
@@ -302,7 +302,7 @@ func ToAppEnumValues(bus []introspectionbus.EnumValue) []EnumValue {
 type EnumOption struct {
 	Value     string `json:"value"`
 	Label     string `json:"label"`
-	SortOrder int    `json:"sortOrder"`
+	SortOrder int    `json:"sort_order"`
 }
 
 // Encode implements the encoder interface.

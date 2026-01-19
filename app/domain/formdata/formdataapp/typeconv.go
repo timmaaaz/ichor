@@ -70,6 +70,10 @@ func parseDecimalFromAny(val any) (decimal.Decimal, error) {
 	}
 	switch v := val.(type) {
 	case string:
+		// Empty string is treated as zero (common for optional fields)
+		if v == "" {
+			return decimal.Zero, nil
+		}
 		d, err := decimal.NewFromString(v)
 		if err != nil {
 			return decimal.Zero, fmt.Errorf("%w: string %q: %v", ErrParseDecimal, v, err)

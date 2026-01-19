@@ -29,7 +29,7 @@ type QueryParams struct {
 type Address struct {
 	Address1 string `json:"address1"`
 	Address2 string `json:"address2"`
-	ZipCode  string `json:"zipCode"`
+	ZipCode  string `json:"zip_code"`
 	City     string `json:"city"`
 	State    string `json:"state"`
 	Country  string `json:"country"`
@@ -38,11 +38,11 @@ type Address struct {
 // Home represents information about an individual home.
 type Home struct {
 	ID          string  `json:"id"`
-	UserID      string  `json:"userID"`
+	UserID      string  `json:"user_id"`
 	Type        string  `json:"type"`
 	Address     Address `json:"address"`
-	CreatedDate string  `json:"dateCreated"`
-	UpdatedDate string  `json:"dateUpdated"`
+	CreatedDate string  `json:"date_created"`
+	UpdatedDate string  `json:"date_updated"`
 }
 
 // Encode implements the encoder interface.
@@ -84,7 +84,7 @@ func toAppHomes(homes []homebus.Home) []Home {
 type NewAddress struct {
 	Address1 string `json:"address1" validate:"required,min=1,max=70"`
 	Address2 string `json:"address2" validate:"omitempty,max=70"`
-	ZipCode  string `json:"zipCode" validate:"required,numeric"`
+	ZipCode  string `json:"zip_code" validate:"required,numeric"`
 	City     string `json:"city" validate:"required"`
 	State    string `json:"state" validate:"required,min=1,max=48"`
 	Country  string `json:"country" validate:"required,iso3166_1_alpha2"`
@@ -154,7 +154,7 @@ func toBusNewHome(ctx context.Context, app NewHome) (homebus.NewHome, error) {
 type UpdateAddress struct {
 	Address1 *string `json:"address1" validate:"omitempty,min=1,max=70"`
 	Address2 *string `json:"address2" validate:"omitempty,max=70"`
-	ZipCode  *string `json:"zipCode" validate:"omitempty,numeric"`
+	ZipCode  *string `json:"zip_code" validate:"omitempty,numeric"`
 	City     *string `json:"city"`
 	State    *string `json:"state" validate:"omitempty,min=1,max=48"`
 	Country  *string `json:"country" validate:"omitempty,iso3166_1_alpha2"`

@@ -36,22 +36,22 @@ type QueryParams struct {
 // PurchaseOrderLineItem represents a purchase order line item response.
 type PurchaseOrderLineItem struct {
 	ID                   string `json:"id"`
-	PurchaseOrderID      string `json:"purchaseOrderId"`
-	SupplierProductID    string `json:"supplierProductId"`
-	QuantityOrdered      string `json:"quantityOrdered"`
-	QuantityReceived     string `json:"quantityReceived"`
-	QuantityCancelled    string `json:"quantityCancelled"`
-	UnitCost             string `json:"unitCost"`
+	PurchaseOrderID      string `json:"purchase_order_id"`
+	SupplierProductID    string `json:"supplier_product_id"`
+	QuantityOrdered      string `json:"quantity_ordered"`
+	QuantityReceived     string `json:"quantity_received"`
+	QuantityCancelled    string `json:"quantity_cancelled"`
+	UnitCost             string `json:"unit_cost"`
 	Discount             string `json:"discount"`
-	LineTotal            string `json:"lineTotal"`
-	LineItemStatusID     string `json:"lineItemStatusId"`
-	ExpectedDeliveryDate string `json:"expectedDeliveryDate"`
-	ActualDeliveryDate   string `json:"actualDeliveryDate"`
+	LineTotal            string `json:"line_total"`
+	LineItemStatusID     string `json:"line_item_status_id"`
+	ExpectedDeliveryDate string `json:"expected_delivery_date"`
+	ActualDeliveryDate   string `json:"actual_delivery_date"`
 	Notes                string `json:"notes"`
-	CreatedBy            string `json:"createdBy"`
-	UpdatedBy            string `json:"updatedBy"`
-	CreatedDate          string `json:"createdDate"`
-	UpdatedDate          string `json:"updatedDate"`
+	CreatedBy            string `json:"created_by"`
+	UpdatedBy            string `json:"updated_by"`
+	CreatedDate          string `json:"created_date"`
+	UpdatedDate          string `json:"updated_date"`
 }
 
 // Encode implements the Encoder interface.
@@ -99,16 +99,16 @@ func ToAppPurchaseOrderLineItems(bus []purchaseorderlineitembus.PurchaseOrderLin
 
 // NewPurchaseOrderLineItem contains information needed to create a new purchase order line item.
 type NewPurchaseOrderLineItem struct {
-	PurchaseOrderID      string `json:"purchaseOrderId" validate:"required"`
-	SupplierProductID    string `json:"supplierProductId" validate:"required"`
-	QuantityOrdered      string `json:"quantityOrdered" validate:"required"`
-	UnitCost             string `json:"unitCost" validate:"required"`
+	PurchaseOrderID      string `json:"purchase_order_id" validate:"required"`
+	SupplierProductID    string `json:"supplier_product_id" validate:"required"`
+	QuantityOrdered      string `json:"quantity_ordered" validate:"required"`
+	UnitCost             string `json:"unit_cost" validate:"required"`
 	Discount             string `json:"discount" validate:"required"`
-	LineTotal            string `json:"lineTotal" validate:"required"`
-	LineItemStatusID     string `json:"lineItemStatusId" validate:"required"`
-	ExpectedDeliveryDate string `json:"expectedDeliveryDate" validate:"required"`
+	LineTotal            string `json:"line_total" validate:"required"`
+	LineItemStatusID     string `json:"line_item_status_id" validate:"required"`
+	ExpectedDeliveryDate string `json:"expected_delivery_date" validate:"required"`
 	Notes                string `json:"notes"`
-	CreatedBy            string `json:"createdBy" validate:"required"`
+	CreatedBy            string `json:"created_by" validate:"required"`
 }
 
 // Decode implements the Decoder interface.
@@ -189,18 +189,18 @@ func toBusNewPurchaseOrderLineItem(app NewPurchaseOrderLineItem) (purchaseorderl
 
 // UpdatePurchaseOrderLineItem contains information needed to update a purchase order line item.
 type UpdatePurchaseOrderLineItem struct {
-	SupplierProductID    *string `json:"supplierProductId" validate:"omitempty"`
-	QuantityOrdered      *string `json:"quantityOrdered" validate:"omitempty"`
-	QuantityReceived     *string `json:"quantityReceived" validate:"omitempty"`
-	QuantityCancelled    *string `json:"quantityCancelled" validate:"omitempty"`
-	UnitCost             *string `json:"unitCost" validate:"omitempty"`
+	SupplierProductID    *string `json:"supplier_product_id" validate:"omitempty"`
+	QuantityOrdered      *string `json:"quantity_ordered" validate:"omitempty"`
+	QuantityReceived     *string `json:"quantity_received" validate:"omitempty"`
+	QuantityCancelled    *string `json:"quantity_cancelled" validate:"omitempty"`
+	UnitCost             *string `json:"unit_cost" validate:"omitempty"`
 	Discount             *string `json:"discount" validate:"omitempty"`
-	LineTotal            *string `json:"lineTotal" validate:"omitempty"`
-	LineItemStatusID     *string `json:"lineItemStatusId" validate:"omitempty"`
-	ExpectedDeliveryDate *string `json:"expectedDeliveryDate" validate:"omitempty"`
-	ActualDeliveryDate   *string `json:"actualDeliveryDate" validate:"omitempty"`
+	LineTotal            *string `json:"line_total" validate:"omitempty"`
+	LineItemStatusID     *string `json:"line_item_status_id" validate:"omitempty"`
+	ExpectedDeliveryDate *string `json:"expected_delivery_date" validate:"omitempty"`
+	ActualDeliveryDate   *string `json:"actual_delivery_date" validate:"omitempty"`
 	Notes                *string `json:"notes" validate:"omitempty"`
-	UpdatedBy            *string `json:"updatedBy" validate:"omitempty"`
+	UpdatedBy            *string `json:"updated_by" validate:"omitempty"`
 }
 
 // Decode implements the Decoder interface.
@@ -343,7 +343,7 @@ func (app QueryByIDsRequest) Validate() error {
 // ReceiveQuantityRequest represents a request to receive quantity for a line item.
 type ReceiveQuantityRequest struct {
 	Quantity   string `json:"quantity" validate:"required"`
-	ReceivedBy string `json:"receivedBy" validate:"required"`
+	ReceivedBy string `json:"received_by" validate:"required"`
 }
 
 // Decode implements the Decoder interface.

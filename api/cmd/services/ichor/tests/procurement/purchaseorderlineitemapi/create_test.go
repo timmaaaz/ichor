@@ -81,7 +81,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				CreatedBy:            sd.Admins[0].ID.String(),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"purchaseOrderId\",\"error\":\"purchaseOrderId is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"purchase_order_id\",\"error\":\"purchase_order_id is a required field\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

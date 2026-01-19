@@ -674,15 +674,18 @@ func (a *App) recalculateOrderTotalsIfNeeded(ctx context.Context, results map[st
 		return nil // Nothing to recalculate
 	}
 
-	// Type assertion with proper error handling (NOT silent failure)
-	order, ok := orderResult.(map[string]any)
-	if !ok {
-		return fmt.Errorf("order result has unexpected type: %T", orderResult)
+	// Convert order result to map[string]any
+	// Results may be typed structs (e.g., ordersapp.Order) or maps depending on
+	// how the registry returns them. We normalize to map for uniform handling.
+	order, err := toMapAny(orderResult)
+	if err != nil {
+		return fmt.Errorf("convert order to map: %w", err)
 	}
 
-	lineItems, ok := lineItemsResult.([]any)
-	if !ok {
-		return fmt.Errorf("line items result has unexpected type: %T (expected array)", lineItemsResult)
+	// Convert line items to []any of maps
+	lineItems, err := toSliceOfMaps(lineItemsResult)
+	if err != nil {
+		return fmt.Errorf("convert line items to slice: %w", err)
 	}
 
 	// Handle empty line items array
@@ -940,4 +943,56 @@ func toTime(value interface{}) (time.Time, error) {
 	default:
 		return time.Time{}, fmt.Errorf("cannot convert %T to time.Time", value)
 	}
+}
+
+// toMapAny converts any value to map[string]any by JSON marshaling/unmarshaling.
+// This handles both typed structs (e.g., ordersapp.Order) and existing maps.
+func toMapAny(v any) (map[string]any, error) {
+	// If already a map, return directly
+	if m, ok := v.(map[string]any); ok {
+		return m, nil
+	}
+
+	// Marshal to JSON then unmarshal to map
+	data, err := json.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("marshal: %w", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return result, nil
+}
+
+// toSliceOfMaps converts a slice result to []any where each element is a map[string]any.
+// Handles both []any (already unmarshaled) and typed slices (e.g., []orderlineitemsapp.OrderLineItem).
+func toSliceOfMaps(v any) ([]any, error) {
+	// If already []any, convert each element to map
+	if slice, ok := v.([]any); ok {
+		result := make([]any, len(slice))
+		for i, item := range slice {
+			m, err := toMapAny(item)
+			if err != nil {
+				return nil, fmt.Errorf("item %d: %w", i, err)
+			}
+			result[i] = m
+		}
+		return result, nil
+	}
+
+	// Otherwise, marshal the whole slice and unmarshal as []any
+	data, err := json.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("marshal slice: %w", err)
+	}
+
+	var result []any
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("unmarshal slice: %w", err)
+	}
+
+	return result, nil
 }

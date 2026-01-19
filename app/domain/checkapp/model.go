@@ -8,10 +8,10 @@ type Info struct {
 	Build      string `json:"build,omitempty"`
 	Host       string `json:"host,omitempty"`
 	Name       string `json:"name,omitempty"`
-	PodIP      string `json:"podIP,omitempty"`
+	PodIP      string `json:"pod_ip,omitempty"`
 	Node       string `json:"node,omitempty"`
 	Namespace  string `json:"namespace,omitempty"`
-	GOMAXPROCS int    `json:"GOMAXPROCS,omitempty"`
+	GOMAXPROCS int    `json:"gomaxprocs,omitempty"`
 }
 
 // Encode implements the encoder interface.

@@ -25,9 +25,9 @@ type Page struct {
 	Name       string `json:"name"`
 	Module     string `json:"module"`
 	Icon       string `json:"icon"`
-	SortOrder  int    `json:"sortOrder"`
-	IsActive   bool   `json:"isActive"`
-	ShowInMenu bool   `json:"showInMenu"`
+	SortOrder  int    `json:"sort_order"`
+	IsActive   bool   `json:"is_active"`
+	ShowInMenu bool   `json:"show_in_menu"`
 }
 
 func (app Page) Encode() ([]byte, string, error) {
@@ -72,9 +72,9 @@ type NewPage struct {
 	Name       string `json:"name" validate:"required"`
 	Module     string `json:"module" validate:"required"`
 	Icon       string `json:"icon"`
-	SortOrder  int    `json:"sortOrder"`
-	IsActive   bool   `json:"isActive"`
-	ShowInMenu bool   `json:"showInMenu"`
+	SortOrder  int    `json:"sort_order"`
+	IsActive   bool   `json:"is_active"`
+	ShowInMenu bool   `json:"show_in_menu"`
 }
 
 func (app *NewPage) Decode(data []byte) error {
@@ -107,9 +107,9 @@ type UpdatePage struct {
 	Name       *string `json:"name"`
 	Module     *string `json:"module"`
 	Icon       *string `json:"icon"`
-	SortOrder  *int    `json:"sortOrder"`
-	IsActive   *bool   `json:"isActive"`
-	ShowInMenu *bool   `json:"showInMenu"`
+	SortOrder  *int    `json:"sort_order"`
+	IsActive   *bool   `json:"is_active"`
+	ShowInMenu *bool   `json:"show_in_menu"`
 }
 
 // Decode implements the decoder interface.

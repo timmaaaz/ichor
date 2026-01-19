@@ -67,7 +67,7 @@ func createButton400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input:      &pageactionapp.NewButtonAction{},
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"pageConfigId\",\"error\":\"pageConfigId is a required field\"},{\"field\":\"label\",\"error\":\"label is a required field\"},{\"field\":\"actionUrl\",\"error\":\"actionUrl is a required field\"},{\"field\":\"variant\",\"error\":\"variant is a required field\"},{\"field\":\"alignment\",\"error\":\"alignment is a required field\"}]"),
+			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"page_config_id\",\"error\":\"page_config_id is a required field\"},{\"field\":\"label\",\"error\":\"label is a required field\"},{\"field\":\"action_url\",\"error\":\"action_url is a required field\"},{\"field\":\"variant\",\"error\":\"variant is a required field\"},{\"field\":\"alignment\",\"error\":\"alignment is a required field\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -241,7 +241,7 @@ func createSeparator400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input:      &pageactionapp.NewSeparatorAction{},
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"pageConfigId\",\"error\":\"pageConfigId is a required field\"}]"),
+			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"page_config_id\",\"error\":\"page_config_id is a required field\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

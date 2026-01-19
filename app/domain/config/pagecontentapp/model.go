@@ -24,17 +24,17 @@ type QueryParams struct {
 // PageContent represents the application layer model for page content
 type PageContent struct {
 	ID            string          `json:"id"`
-	PageConfigID  string          `json:"pageConfigId"`
-	ContentType   string          `json:"contentType"`
+	PageConfigID  string          `json:"page_config_id"`
+	ContentType   string          `json:"content_type"`
 	Label         string          `json:"label,omitempty"`
-	TableConfigID string          `json:"tableConfigId,omitempty"`
-	FormID        string          `json:"formId,omitempty"`
-	ChartConfigID string          `json:"chartConfigId,omitempty"`
-	OrderIndex    int             `json:"orderIndex"`
-	ParentID      string          `json:"parentId,omitempty"`
+	TableConfigID string          `json:"table_config_id,omitempty"`
+	FormID        string          `json:"form_id,omitempty"`
+	ChartConfigID string          `json:"chart_config_id,omitempty"`
+	OrderIndex    int             `json:"order_index"`
+	ParentID      string          `json:"parent_id,omitempty"`
 	Layout        json.RawMessage `json:"layout"`
-	IsVisible     bool            `json:"isVisible"`
-	IsDefault     bool            `json:"isDefault"`
+	IsVisible     bool            `json:"is_visible"`
+	IsDefault     bool            `json:"is_default"`
 	Children      []PageContent   `json:"children,omitempty"`
 }
 
@@ -55,17 +55,17 @@ func (app PageContents) Encode() ([]byte, string, error) {
 
 // NewPageContent contains data required to create a new page content block
 type NewPageContent struct {
-	PageConfigID  string          `json:"pageConfigId" validate:"required,uuid"`
-	ContentType   string          `json:"contentType" validate:"required,oneof=table form tabs container text chart"`
+	PageConfigID  string          `json:"page_config_id" validate:"required,uuid"`
+	ContentType   string          `json:"content_type" validate:"required,oneof=table form tabs container text chart"`
 	Label         string          `json:"label"`
-	TableConfigID string          `json:"tableConfigId" validate:"omitempty,uuid"`
-	FormID        string          `json:"formId" validate:"omitempty,uuid"`
-	ChartConfigID string          `json:"chartConfigId" validate:"omitempty,uuid"`
-	OrderIndex    int             `json:"orderIndex"`
-	ParentID      string          `json:"parentId" validate:"omitempty,uuid"`
+	TableConfigID string          `json:"table_config_id" validate:"omitempty,uuid"`
+	FormID        string          `json:"form_id" validate:"omitempty,uuid"`
+	ChartConfigID string          `json:"chart_config_id" validate:"omitempty,uuid"`
+	OrderIndex    int             `json:"order_index"`
+	ParentID      string          `json:"parent_id" validate:"omitempty,uuid"`
 	Layout        json.RawMessage `json:"layout"`
-	IsVisible     bool            `json:"isVisible"`
-	IsDefault     bool            `json:"isDefault"`
+	IsVisible     bool            `json:"is_visible"`
+	IsDefault     bool            `json:"is_default"`
 }
 
 // Decode implements the decoder interface for NewPageContent
@@ -96,10 +96,10 @@ func (app NewPageContent) Validate() error {
 // UpdatePageContent contains data for updating an existing page content block
 type UpdatePageContent struct {
 	Label      *string          `json:"label"`
-	OrderIndex *int             `json:"orderIndex"`
+	OrderIndex *int             `json:"order_index"`
 	Layout     *json.RawMessage `json:"layout"`
-	IsVisible  *bool            `json:"isVisible"`
-	IsDefault  *bool            `json:"isDefault"`
+	IsVisible  *bool            `json:"is_visible"`
+	IsDefault  *bool            `json:"is_default"`
 }
 
 // Decode implements the decoder interface for UpdatePageContent

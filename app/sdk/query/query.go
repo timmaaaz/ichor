@@ -12,7 +12,7 @@ type Result[T any] struct {
 	Items       []T `json:"items"`
 	Total       int `json:"total"`
 	Page        int `json:"page"`
-	RowsPerPage int `json:"rowsPerPage"`
+	RowsPerPage int `json:"rows_per_page"`
 }
 
 // NewResult constructs a result value to return query results.

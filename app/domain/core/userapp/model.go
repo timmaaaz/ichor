@@ -254,7 +254,7 @@ type UpdateUserRole struct {
 
 // UpdateApproveUser defines the data needed to approve a user.
 type UpdateApproveUser struct {
-	ApprovedBy string `json:"approvedBy" validate:"required"`
+	ApprovedBy string `json:"approved_by" validate:"required"`
 }
 
 // Decode implements the decoder interface.

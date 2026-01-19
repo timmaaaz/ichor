@@ -20,9 +20,9 @@ type QueryParams struct {
 
 type RolePage struct {
 	ID        string `json:"id"`
-	RoleID    string `json:"roleId"`
-	PageID    string `json:"pageId"`
-	CanAccess bool   `json:"canAccess"`
+	RoleID    string `json:"role_id"`
+	PageID    string `json:"page_id"`
+	CanAccess bool   `json:"can_access"`
 }
 
 func (app RolePage) Encode() ([]byte, string, error) {
@@ -50,9 +50,9 @@ func ToAppRolePages(bus []rolepagebus.RolePage) []RolePage {
 // =============================================================================
 
 type NewRolePage struct {
-	RoleID    string `json:"roleId" validate:"required"`
-	PageID    string `json:"pageId" validate:"required"`
-	CanAccess bool   `json:"canAccess"`
+	RoleID    string `json:"role_id" validate:"required"`
+	PageID    string `json:"page_id" validate:"required"`
+	CanAccess bool   `json:"can_access"`
 }
 
 func (app *NewRolePage) Decode(data []byte) error {
@@ -88,7 +88,7 @@ func toBusNewRolePage(app NewRolePage) (rolepagebus.NewRolePage, error) {
 // =============================================================================
 
 type UpdateRolePage struct {
-	CanAccess *bool `json:"canAccess"`
+	CanAccess *bool `json:"can_access"`
 }
 
 // Decode implements the decoder interface.

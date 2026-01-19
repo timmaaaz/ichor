@@ -26,10 +26,10 @@ type QueryParams struct {
 // PageAction represents a unified page action response.
 type PageAction struct {
 	ID           string          `json:"id"`
-	PageConfigID string          `json:"pageConfigId"`
-	ActionType   string          `json:"actionType"`
-	ActionOrder  int             `json:"actionOrder"`
-	IsActive     bool            `json:"isActive"`
+	PageConfigID string          `json:"page_config_id"`
+	ActionType   string          `json:"action_type"`
+	ActionOrder  int             `json:"action_order"`
+	IsActive     bool            `json:"is_active"`
 	Button       *ButtonAction   `json:"button,omitempty"`
 	Dropdown     *DropdownAction `json:"dropdown,omitempty"`
 }
@@ -43,10 +43,10 @@ func (app PageAction) Encode() ([]byte, string, error) {
 type ButtonAction struct {
 	Label              string `json:"label"`
 	Icon               string `json:"icon,omitempty"`
-	TargetPath         string `json:"actionUrl"`
+	TargetPath         string `json:"action_url"`
 	Variant            string `json:"variant"`
 	Alignment          string `json:"alignment"`
-	ConfirmationPrompt string `json:"confirmationPrompt,omitempty"`
+	ConfirmationPrompt string `json:"confirmation_prompt,omitempty"`
 }
 
 // DropdownAction contains dropdown-specific configuration including items.
@@ -60,8 +60,8 @@ type DropdownAction struct {
 type DropdownItem struct {
 	ID         string `json:"id"`
 	Label      string `json:"label"`
-	TargetPath string `json:"targetPath"`
-	ItemOrder  int    `json:"itemOrder"`
+	TargetPath string `json:"target_path"`
+	ItemOrder  int    `json:"item_order"`
 }
 
 // ActionsGroupedByType represents page actions grouped by their type.
@@ -149,15 +149,15 @@ func ToAppActionsGroupedByType(bus pageactionbus.ActionsGroupedByType) ActionsGr
 
 // NewButtonAction contains information needed to create a button action.
 type NewButtonAction struct {
-	PageConfigID       string `json:"pageConfigId" validate:"required,uuid"`
-	ActionOrder        int    `json:"actionOrder"`
-	IsActive           bool   `json:"isActive"`
+	PageConfigID       string `json:"page_config_id" validate:"required,uuid"`
+	ActionOrder        int    `json:"action_order"`
+	IsActive           bool   `json:"is_active"`
 	Label              string `json:"label" validate:"required"`
 	Icon               string `json:"icon"`
-	TargetPath         string `json:"actionUrl" validate:"required"`
+	TargetPath         string `json:"action_url" validate:"required"`
 	Variant            string `json:"variant" validate:"required,oneof=default secondary outline ghost destructive"`
 	Alignment          string `json:"alignment" validate:"required,oneof=left right"`
-	ConfirmationPrompt string `json:"confirmationPrompt"`
+	ConfirmationPrompt string `json:"confirmation_prompt"`
 }
 
 func (app *NewButtonAction) Decode(data []byte) error {
@@ -193,15 +193,15 @@ func toBusNewButtonAction(app NewButtonAction) (pageactionbus.NewButtonAction, e
 // NewDropdownItem contains information needed to create a dropdown item.
 type NewDropdownItem struct {
 	Label      string `json:"label" validate:"required"`
-	TargetPath string `json:"targetPath" validate:"required"`
-	ItemOrder  int    `json:"itemOrder"`
+	TargetPath string `json:"target_path" validate:"required"`
+	ItemOrder  int    `json:"item_order"`
 }
 
 // NewDropdownAction contains information needed to create a dropdown action.
 type NewDropdownAction struct {
-	PageConfigID string            `json:"pageConfigId" validate:"required,uuid"`
-	ActionOrder  int               `json:"actionOrder"`
-	IsActive     bool              `json:"isActive"`
+	PageConfigID string            `json:"page_config_id" validate:"required,uuid"`
+	ActionOrder  int               `json:"action_order"`
+	IsActive     bool              `json:"is_active"`
 	Label        string            `json:"label" validate:"required"`
 	Icon         string            `json:"icon"`
 	Items        []NewDropdownItem `json:"items" validate:"required,min=1,dive"`
@@ -245,9 +245,9 @@ func toBusNewDropdownAction(app NewDropdownAction) (pageactionbus.NewDropdownAct
 
 // NewSeparatorAction contains information needed to create a separator action.
 type NewSeparatorAction struct {
-	PageConfigID string `json:"pageConfigId" validate:"required,uuid"`
-	ActionOrder  int    `json:"actionOrder"`
-	IsActive     bool   `json:"isActive"`
+	PageConfigID string `json:"page_config_id" validate:"required,uuid"`
+	ActionOrder  int    `json:"action_order"`
+	IsActive     bool   `json:"is_active"`
 }
 
 func (app *NewSeparatorAction) Decode(data []byte) error {
@@ -280,15 +280,15 @@ func toBusNewSeparatorAction(app NewSeparatorAction) (pageactionbus.NewSeparator
 
 // UpdateButtonAction contains information needed to update a button action.
 type UpdateButtonAction struct {
-	PageConfigID       *string `json:"pageConfigId" validate:"omitempty,uuid"`
-	ActionOrder        *int    `json:"actionOrder"`
-	IsActive           *bool   `json:"isActive"`
+	PageConfigID       *string `json:"page_config_id" validate:"omitempty,uuid"`
+	ActionOrder        *int    `json:"action_order"`
+	IsActive           *bool   `json:"is_active"`
 	Label              *string `json:"label"`
 	Icon               *string `json:"icon"`
-	TargetPath         *string `json:"actionUrl"`
+	TargetPath         *string `json:"action_url"`
 	Variant            *string `json:"variant" validate:"omitempty,oneof=default secondary outline ghost destructive"`
 	Alignment          *string `json:"alignment" validate:"omitempty,oneof=left right"`
-	ConfirmationPrompt *string `json:"confirmationPrompt"`
+	ConfirmationPrompt *string `json:"confirmation_prompt"`
 }
 
 func (app *UpdateButtonAction) Decode(data []byte) error {
@@ -327,9 +327,9 @@ func toBusUpdateButtonAction(app UpdateButtonAction) (pageactionbus.UpdateButton
 
 // UpdateDropdownAction contains information needed to update a dropdown action.
 type UpdateDropdownAction struct {
-	PageConfigID *string            `json:"pageConfigId" validate:"omitempty,uuid"`
-	ActionOrder  *int               `json:"actionOrder"`
-	IsActive     *bool              `json:"isActive"`
+	PageConfigID *string            `json:"page_config_id" validate:"omitempty,uuid"`
+	ActionOrder  *int               `json:"action_order"`
+	IsActive     *bool              `json:"is_active"`
 	Label        *string            `json:"label"`
 	Icon         *string            `json:"icon"`
 	Items        *[]NewDropdownItem `json:"items" validate:"omitempty,min=1,dive"`
@@ -379,9 +379,9 @@ func toBusUpdateDropdownAction(app UpdateDropdownAction) (pageactionbus.UpdateDr
 
 // UpdateSeparatorAction contains information needed to update a separator action.
 type UpdateSeparatorAction struct {
-	PageConfigID *string `json:"pageConfigId" validate:"omitempty,uuid"`
-	ActionOrder  *int    `json:"actionOrder"`
-	IsActive     *bool   `json:"isActive"`
+	PageConfigID *string `json:"page_config_id" validate:"omitempty,uuid"`
+	ActionOrder  *int    `json:"action_order"`
+	IsActive     *bool   `json:"is_active"`
 }
 
 func (app *UpdateSeparatorAction) Decode(data []byte) error {
@@ -418,7 +418,7 @@ func toBusUpdateSeparatorAction(app UpdateSeparatorAction) (pageactionbus.Update
 
 // BatchActionRequest represents a single action in a batch create request.
 type BatchActionRequest struct {
-	ActionType string              `json:"actionType" validate:"required,oneof=button dropdown separator"`
+	ActionType string              `json:"action_type" validate:"required,oneof=button dropdown separator"`
 	Button     *NewButtonAction    `json:"button" validate:"required_if=ActionType button"`
 	Dropdown   *NewDropdownAction  `json:"dropdown" validate:"required_if=ActionType dropdown"`
 	Separator  *NewSeparatorAction `json:"separator" validate:"required_if=ActionType separator"`

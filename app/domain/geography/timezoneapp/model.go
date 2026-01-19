@@ -23,9 +23,9 @@ type QueryParams struct {
 type Timezone struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
-	UTCOffset   string `json:"utcOffset"`
-	IsActive    bool   `json:"isActive"`
+	DisplayName string `json:"display_name"`
+	UTCOffset   string `json:"utc_offset"`
+	IsActive    bool   `json:"is_active"`
 }
 
 // Encode implements the encoder interface.
@@ -59,9 +59,9 @@ func ToAppTimezones(bus []timezonebus.Timezone) []Timezone {
 // NewTimezone defines the data needed to add a timezone.
 type NewTimezone struct {
 	Name        string `json:"name" validate:"required"`
-	DisplayName string `json:"displayName" validate:"required"`
-	UTCOffset   string `json:"utcOffset" validate:"required"`
-	IsActive    bool   `json:"isActive"`
+	DisplayName string `json:"display_name" validate:"required"`
+	UTCOffset   string `json:"utc_offset" validate:"required"`
+	IsActive    bool   `json:"is_active"`
 }
 
 // Decode implements the decoder interface.
@@ -92,9 +92,9 @@ func toBusNewTimezone(app NewTimezone) timezonebus.NewTimezone {
 // UpdateTimezone defines the data needed to update a timezone.
 type UpdateTimezone struct {
 	Name        *string `json:"name"`
-	DisplayName *string `json:"displayName"`
-	UTCOffset   *string `json:"utcOffset"`
-	IsActive    *bool   `json:"isActive"`
+	DisplayName *string `json:"display_name"`
+	UTCOffset   *string `json:"utc_offset"`
+	IsActive    *bool   `json:"is_active"`
 }
 
 // Decode implements the decoder interface.

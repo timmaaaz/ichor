@@ -70,7 +70,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input:      &pagecontentapp.NewPageContent{},
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"pageConfigId\",\"error\":\"pageConfigId is a required field\"},{\"field\":\"contentType\",\"error\":\"contentType is a required field\"}]"),
+			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"page_config_id\",\"error\":\"page_config_id is a required field\"},{\"field\":\"content_type\",\"error\":\"content_type is a required field\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
