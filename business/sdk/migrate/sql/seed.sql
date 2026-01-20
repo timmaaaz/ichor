@@ -411,31 +411,31 @@ INSERT INTO core.user_roles (id, user_id, role_id) VALUES
     (gen_random_uuid(), '5cf37266-3473-4006-984f-9325122678b7', '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1')
 ON CONFLICT DO NOTHING;
 
--- Payment Terms lookup data (hardcoded UUIDs for test predictability)
+-- Payment Terms lookup data (UUIDs are v4-compliant for API validation compatibility)
 INSERT INTO core.payment_terms (id, name, description) VALUES
     -- Standard Net Terms (first 5 are commonly used in tests)
-    ('a0000000-0000-0000-0000-000000000001', 'Net 30', 'Payment due within 30 days of invoice date'),
-    ('a0000000-0000-0000-0000-000000000002', 'Net 60', 'Payment due within 60 days of invoice date'),
-    ('a0000000-0000-0000-0000-000000000003', 'Due on Receipt', 'Payment due immediately upon receipt of invoice'),
-    ('a0000000-0000-0000-0000-000000000004', 'Net 15', 'Payment due within 15 days of invoice date'),
-    ('a0000000-0000-0000-0000-000000000005', 'Net 45', 'Payment due within 45 days of invoice date'),
+    ('a0000000-0000-4000-8000-000000000001', 'Net 30', 'Payment due within 30 days of invoice date'),
+    ('a0000000-0000-4000-8000-000000000002', 'Net 60', 'Payment due within 60 days of invoice date'),
+    ('a0000000-0000-4000-8000-000000000003', 'Due on Receipt', 'Payment due immediately upon receipt of invoice'),
+    ('a0000000-0000-4000-8000-000000000004', 'Net 15', 'Payment due within 15 days of invoice date'),
+    ('a0000000-0000-4000-8000-000000000005', 'Net 45', 'Payment due within 45 days of invoice date'),
     -- Additional Net Terms
-    ('a0000000-0000-0000-0000-000000000006', 'Net 7', 'Payment due within 7 days of invoice date'),
-    ('a0000000-0000-0000-0000-000000000007', 'Net 10', 'Payment due within 10 days of invoice date'),
-    ('a0000000-0000-0000-0000-000000000008', 'Net 21', 'Payment due within 21 days of invoice date'),
-    ('a0000000-0000-0000-0000-000000000009', 'Net 90', 'Payment due within 90 days of invoice date'),
+    ('a0000000-0000-4000-8000-000000000006', 'Net 7', 'Payment due within 7 days of invoice date'),
+    ('a0000000-0000-4000-8000-000000000007', 'Net 10', 'Payment due within 10 days of invoice date'),
+    ('a0000000-0000-4000-8000-000000000008', 'Net 21', 'Payment due within 21 days of invoice date'),
+    ('a0000000-0000-4000-8000-000000000009', 'Net 90', 'Payment due within 90 days of invoice date'),
     -- Prepayment Terms
-    ('a0000000-0000-0000-0000-000000000010', 'Prepaid', 'Full payment required before order fulfillment'),
-    ('a0000000-0000-0000-0000-000000000011', 'COD', 'Cash on Delivery - payment due at time of delivery'),
-    ('a0000000-0000-0000-0000-000000000012', 'CIA', 'Cash in Advance - full payment before shipping'),
-    ('a0000000-0000-0000-0000-000000000013', '50% Deposit', '50% payment due upfront, balance on delivery'),
+    ('a0000000-0000-4000-8000-000000000010', 'Prepaid', 'Full payment required before order fulfillment'),
+    ('a0000000-0000-4000-8000-000000000011', 'COD', 'Cash on Delivery - payment due at time of delivery'),
+    ('a0000000-0000-4000-8000-000000000012', 'CIA', 'Cash in Advance - full payment before shipping'),
+    ('a0000000-0000-4000-8000-000000000013', '50% Deposit', '50% payment due upfront, balance on delivery'),
     -- End of Month Terms
-    ('a0000000-0000-0000-0000-000000000014', 'EOM', 'Payment due at end of month'),
-    ('a0000000-0000-0000-0000-000000000015', 'MFI', 'Month Following Invoice - due end of next month'),
-    ('a0000000-0000-0000-0000-000000000016', '15 MFI', '15 days after month following invoice'),
+    ('a0000000-0000-4000-8000-000000000014', 'EOM', 'Payment due at end of month'),
+    ('a0000000-0000-4000-8000-000000000015', 'MFI', 'Month Following Invoice - due end of next month'),
+    ('a0000000-0000-4000-8000-000000000016', '15 MFI', '15 days after month following invoice'),
     -- Credit Terms
-    ('a0000000-0000-0000-0000-000000000017', 'Open Account', 'Standard credit account with flexible terms'),
-    ('a0000000-0000-0000-0000-000000000018', 'Letter of Credit', 'Payment secured by letter of credit')
+    ('a0000000-0000-4000-8000-000000000017', 'Open Account', 'Standard credit account with flexible terms'),
+    ('a0000000-0000-4000-8000-000000000018', 'Letter of Credit', 'Payment secured by letter of credit')
 ON CONFLICT (name) DO NOTHING;
 
 -- Grant full table access to the ADMIN role
