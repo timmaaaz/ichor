@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestNewPurchaseOrders(n int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs) []NewPurchaseOrder {
+func TestNewPurchaseOrders(n int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewPurchaseOrder {
 	orders := make([]NewPurchaseOrder, 0, n)
 	for i := 0; i < n; i++ {
 		subtotal := 1000.00 + float64(i*100)
@@ -29,7 +29,7 @@ func TestNewPurchaseOrders(n int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, 
 			TaxAmount:                tax,
 			ShippingCost:             shipping,
 			TotalAmount:              total,
-			Currency:                 "USD",
+			CurrencyID:               currencyIDs[i%len(currencyIDs)],
 			RequestedBy:              userIDs[i%len(userIDs)],
 			Notes:                    fmt.Sprintf("Test purchase order %d", i+1),
 			SupplierReferenceNumber:  fmt.Sprintf("SUP-REF-%d", i+1),
@@ -39,8 +39,8 @@ func TestNewPurchaseOrders(n int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, 
 	return orders
 }
 
-func TestSeedPurchaseOrders(ctx context.Context, n int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs, api *Business) ([]PurchaseOrder, error) {
-	newOrders := TestNewPurchaseOrders(n, supplierIDs, statusIDs, warehouseIDs, streetIDs, userIDs)
+func TestSeedPurchaseOrders(ctx context.Context, n int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs, currencyIDs uuid.UUIDs, api *Business) ([]PurchaseOrder, error) {
+	newOrders := TestNewPurchaseOrders(n, supplierIDs, statusIDs, warehouseIDs, streetIDs, userIDs, currencyIDs)
 	orders := make([]PurchaseOrder, len(newOrders))
 	for i, no := range newOrders {
 		order, err := api.Create(ctx, no)
@@ -55,7 +55,7 @@ func TestSeedPurchaseOrders(ctx context.Context, n int, supplierIDs uuid.UUIDs, 
 // TestNewPurchaseOrdersHistorical creates purchase orders distributed across a time range for seeding.
 // daysBack specifies how many days of history to generate (e.g., 90, 180).
 // Purchase orders are evenly distributed across the time range.
-func TestNewPurchaseOrdersHistorical(n int, daysBack int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs) []NewPurchaseOrder {
+func TestNewPurchaseOrdersHistorical(n int, daysBack int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewPurchaseOrder {
 	orders := make([]NewPurchaseOrder, 0, n)
 	now := time.Now()
 
@@ -83,7 +83,7 @@ func TestNewPurchaseOrdersHistorical(n int, daysBack int, supplierIDs uuid.UUIDs
 			TaxAmount:                tax,
 			ShippingCost:             shipping,
 			TotalAmount:              total,
-			Currency:                 "USD",
+			CurrencyID:               currencyIDs[i%len(currencyIDs)],
 			RequestedBy:              userIDs[i%len(userIDs)],
 			Notes:                    fmt.Sprintf("Historical PO %d", i+1),
 			SupplierReferenceNumber:  fmt.Sprintf("SUP-HIST-%d", i+1),
@@ -95,8 +95,8 @@ func TestNewPurchaseOrdersHistorical(n int, daysBack int, supplierIDs uuid.UUIDs
 }
 
 // TestSeedPurchaseOrdersHistorical seeds purchase orders with historical date distribution.
-func TestSeedPurchaseOrdersHistorical(ctx context.Context, n int, daysBack int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs, api *Business) ([]PurchaseOrder, error) {
-	newOrders := TestNewPurchaseOrdersHistorical(n, daysBack, supplierIDs, statusIDs, warehouseIDs, streetIDs, userIDs)
+func TestSeedPurchaseOrdersHistorical(ctx context.Context, n int, daysBack int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs, currencyIDs uuid.UUIDs, api *Business) ([]PurchaseOrder, error) {
+	newOrders := TestNewPurchaseOrdersHistorical(n, daysBack, supplierIDs, statusIDs, warehouseIDs, streetIDs, userIDs, currencyIDs)
 	orders := make([]PurchaseOrder, len(newOrders))
 	for i, no := range newOrders {
 		order, err := api.Create(ctx, no)

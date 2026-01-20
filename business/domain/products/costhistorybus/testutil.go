@@ -11,7 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus/types"
 )
 
-func TestNewCostHistory(n int, productIDs uuid.UUIDs) []NewCostHistory {
+func TestNewCostHistory(n int, productIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewCostHistory {
 	newCostHistories := make([]NewCostHistory, n)
 
 	idx := rand.Intn(10000)
@@ -22,7 +22,7 @@ func TestNewCostHistory(n int, productIDs uuid.UUIDs) []NewCostHistory {
 			ProductID:     productIDs[i%len(productIDs)],
 			CostType:      fmt.Sprintf("CostType%d", idx),
 			Amount:        types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64()*10)),
-			Currency:      fmt.Sprintf("Currency%d", idx),
+			CurrencyID:    currencyIDs[i%len(currencyIDs)],
 			EffectiveDate: time.Now(),
 			EndDate:       time.Now().AddDate(0, 3, 0),
 		}
@@ -31,8 +31,8 @@ func TestNewCostHistory(n int, productIDs uuid.UUIDs) []NewCostHistory {
 	return newCostHistories
 }
 
-func TestSeedCostHistories(ctx context.Context, n int, productIDs uuid.UUIDs, api *Business) ([]CostHistory, error) {
-	newCostHistories := TestNewCostHistory(n, productIDs)
+func TestSeedCostHistories(ctx context.Context, n int, productIDs uuid.UUIDs, currencyIDs uuid.UUIDs, api *Business) ([]CostHistory, error) {
+	newCostHistories := TestNewCostHistory(n, productIDs, currencyIDs)
 
 	costHistories := make([]CostHistory, len(newCostHistories))
 
@@ -54,7 +54,7 @@ func TestSeedCostHistories(ctx context.Context, n int, productIDs uuid.UUIDs, ap
 // TestNewCostHistoryHistorical creates cost histories distributed across a time range for seeding.
 // daysBack specifies how many days of history to generate (180-365 days recommended).
 // Cost histories are evenly distributed across the time range.
-func TestNewCostHistoryHistorical(n int, daysBack int, productIDs uuid.UUIDs) []NewCostHistory {
+func TestNewCostHistoryHistorical(n int, daysBack int, productIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewCostHistory {
 	newCostHistories := make([]NewCostHistory, n)
 	now := time.Now()
 
@@ -72,7 +72,7 @@ func TestNewCostHistoryHistorical(n int, daysBack int, productIDs uuid.UUIDs) []
 			ProductID:     productIDs[i%len(productIDs)],
 			CostType:      fmt.Sprintf("CostType%d", idx),
 			Amount:        types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64()*10)),
-			Currency:      fmt.Sprintf("Currency%d", idx),
+			CurrencyID:    currencyIDs[i%len(currencyIDs)],
 			EffectiveDate: effectiveDate,
 			EndDate:       endDate,
 			CreatedDate:   &createdDate,
@@ -83,8 +83,8 @@ func TestNewCostHistoryHistorical(n int, daysBack int, productIDs uuid.UUIDs) []
 }
 
 // TestSeedCostHistoriesHistorical seeds cost histories with historical date distribution.
-func TestSeedCostHistoriesHistorical(ctx context.Context, n int, daysBack int, productIDs uuid.UUIDs, api *Business) ([]CostHistory, error) {
-	newCostHistories := TestNewCostHistoryHistorical(n, daysBack, productIDs)
+func TestSeedCostHistoriesHistorical(ctx context.Context, n int, daysBack int, productIDs uuid.UUIDs, currencyIDs uuid.UUIDs, api *Business) ([]CostHistory, error) {
+	newCostHistories := TestNewCostHistoryHistorical(n, daysBack, productIDs, currencyIDs)
 
 	costHistories := make([]CostHistory, len(newCostHistories))
 

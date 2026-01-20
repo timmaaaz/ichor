@@ -23,7 +23,7 @@ type purchaseOrder struct {
 	TaxAmount               float64        `db:"tax_amount"`
 	ShippingCost            float64        `db:"shipping_cost"`
 	TotalAmount             float64        `db:"total_amount"`
-	Currency                string         `db:"currency"`
+	CurrencyID              uuid.UUID      `db:"currency_id"`
 	RequestedBy             uuid.UUID      `db:"requested_by"`
 	ApprovedBy              uuid.NullUUID  `db:"approved_by"`
 	ApprovedDate            sql.NullTime   `db:"approved_date"`
@@ -48,7 +48,7 @@ func toDBPurchaseOrder(bus purchaseorderbus.PurchaseOrder) purchaseOrder {
 		TaxAmount:             bus.TaxAmount,
 		ShippingCost:          bus.ShippingCost,
 		TotalAmount:           bus.TotalAmount,
-		Currency:              bus.Currency,
+		CurrencyID:            bus.CurrencyID,
 		RequestedBy:           bus.RequestedBy,
 		CreatedBy:             bus.CreatedBy,
 		UpdatedBy:             bus.UpdatedBy,
@@ -100,7 +100,7 @@ func toBusPurchaseOrder(db purchaseOrder) purchaseorderbus.PurchaseOrder {
 		TaxAmount:             db.TaxAmount,
 		ShippingCost:          db.ShippingCost,
 		TotalAmount:           db.TotalAmount,
-		Currency:              db.Currency,
+		CurrencyID:            db.CurrencyID,
 		RequestedBy:           db.RequestedBy,
 		CreatedBy:             db.CreatedBy,
 		UpdatedBy:             db.UpdatedBy,

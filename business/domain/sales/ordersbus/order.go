@@ -13,7 +13,7 @@ const (
 	OrderByOrderDate                  = "order_date"
 	OrderBySubtotal                   = "subtotal"
 	OrderByTotalAmount                = "total_amount"
-	OrderByCurrency                   = "currency"
+	OrderByCurrencyID                 = "currency_id"
 	OrderByPaymentTermID              = "payment_term_id"
 	OrderByCreatedBy                  = "created_by"
 	OrderByUpdatedBy                  = "updated_by"

@@ -30,9 +30,9 @@ func applyFilter(filter productcostbus.QueryFilter, data map[string]any, buf *by
 		wc = append(wc, "selling_price = :selling_price")
 	}
 
-	if filter.Currency != nil {
-		data["currency"] = *filter.Currency
-		wc = append(wc, "currency = :currency")
+	if filter.CurrencyID != nil {
+		data["currency_id"] = *filter.CurrencyID
+		wc = append(wc, "currency_id = :currency_id")
 	}
 
 	if filter.MSRP != nil {

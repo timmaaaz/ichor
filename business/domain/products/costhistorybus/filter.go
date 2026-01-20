@@ -12,7 +12,7 @@ type QueryFilter struct {
 	ProductID     *uuid.UUID
 	CostType      *string
 	Amount        *types.Money
-	Currency      *string
+	CurrencyID    *uuid.UUID
 	EffectiveDate *time.Time
 	EndDate       *time.Time
 	CreatedDate   *time.Time

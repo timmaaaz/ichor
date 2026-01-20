@@ -15,7 +15,7 @@ type costHistory struct {
 	ProductID     uuid.UUID      `db:"product_id"`
 	CostType      string         `db:"cost_type"`
 	Amount        sql.NullString `db:"amount"`
-	Currency      string         `db:"currency"`
+	CurrencyID    uuid.UUID      `db:"currency_id"`
 	EffectiveDate time.Time      `db:"effective_date"`
 	EndDate       time.Time      `db:"end_date"`
 	CreatedDate   time.Time      `db:"created_date"`
@@ -28,7 +28,7 @@ func toDBCostHistory(bus costhistorybus.CostHistory) costHistory {
 		ProductID:     bus.ProductID,
 		CostType:      bus.CostType,
 		Amount:        bus.Amount.DBValue(),
-		Currency:      bus.Currency,
+		CurrencyID:    bus.CurrencyID,
 		EffectiveDate: bus.EffectiveDate.UTC(),
 		EndDate:       bus.EndDate.UTC(),
 		CreatedDate:   bus.CreatedDate.UTC(),
@@ -47,7 +47,7 @@ func toBusCostHistory(db costHistory) (costhistorybus.CostHistory, error) {
 		ProductID:     db.ProductID,
 		CostType:      db.CostType,
 		Amount:        amt,
-		Currency:      db.Currency,
+		CurrencyID:    db.CurrencyID,
 		EffectiveDate: db.EffectiveDate.Local(),
 		EndDate:       db.EndDate.Local(),
 		CreatedDate:   db.CreatedDate.Local(),

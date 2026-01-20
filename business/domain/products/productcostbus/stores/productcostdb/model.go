@@ -15,7 +15,7 @@ type productCost struct {
 	ProductID         uuid.UUID      `db:"product_id"`
 	PurchaseCost      sql.NullString `db:"purchase_cost"`
 	SellingPrice      sql.NullString `db:"selling_price"`
-	Currency          string         `db:"currency"`
+	CurrencyID        uuid.UUID      `db:"currency_id"`
 	MSRP              sql.NullString `db:"msrp"`
 	MarkupPercentage  sql.NullString `db:"markup_percentage"`
 	LandedCost        sql.NullString `db:"landed_cost"`
@@ -34,7 +34,7 @@ func toDBProductCost(bus productcostbus.ProductCost) productCost {
 		ProductID:         bus.ProductID,
 		PurchaseCost:      bus.PurchaseCost.DBValue(),
 		SellingPrice:      bus.SellingPrice.DBValue(),
-		Currency:          bus.Currency,
+		CurrencyID:        bus.CurrencyID,
 		MSRP:              bus.MSRP.DBValue(),
 		MarkupPercentage:  bus.MarkupPercentage.DBValue(),
 		LandedCost:        bus.LandedCost.DBValue(),
@@ -95,7 +95,7 @@ func toBusProductCost(db productCost) (productcostbus.ProductCost, error) {
 		ProductID:         db.ProductID,
 		PurchaseCost:      purchaseCost,
 		SellingPrice:      sellingPrice,
-		Currency:          db.Currency,
+		CurrencyID:        db.CurrencyID,
 		MSRP:              MSRP,
 		MarkupPercentage:  markupPercentage,
 		LandedCost:        landedCost,

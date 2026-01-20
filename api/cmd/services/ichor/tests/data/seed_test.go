@@ -59,6 +59,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -763,7 +764,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
-	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	// Seed currencies for orders
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
+	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, currencyIDs, busDomain.Order)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding Orders: %w", err)
 	}
@@ -807,7 +818,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		productIDs = append(productIDs, p.ProductID)
 	}
 
-	productCosts, err := productcostbus.TestSeedProductCosts(ctx, 20, productIDs, busDomain.ProductCost)
+	productCosts, err := productcostbus.TestSeedProductCosts(ctx, 20, productIDs, currencyIDs, busDomain.ProductCost)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding product cost : %w", err)
 	}
@@ -822,7 +833,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding metrics : %w", err)
 	}
 
-	costHistories, err := costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, busDomain.CostHistory)
+	costHistories, err := costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, currencyIDs, busDomain.CostHistory)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding cost history : %w", err)
 	}

@@ -12,7 +12,7 @@ var orderByFields = map[string]string{
 	productcostbus.OrderByProductID:         "product_id",
 	productcostbus.OrderByPurchaseCost:      "purchase_cost",
 	productcostbus.OrderBySellingPrice:      "selling_price",
-	productcostbus.OrderByCurrency:          "currency",
+	productcostbus.OrderByCurrencyID:        "currency_id",
 	productcostbus.OrderByMSRP:              "msrp",
 	productcostbus.OrderByMarkupPercentage:  "markup_percentage",
 	productcostbus.OrderByLandedCost:        "landed_cost",

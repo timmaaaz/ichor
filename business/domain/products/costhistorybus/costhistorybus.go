@@ -81,7 +81,7 @@ func (b *Business) Create(ctx context.Context, nch NewCostHistory) (CostHistory,
 		ProductID:     nch.ProductID,
 		CostType:      nch.CostType,
 		Amount:        nch.Amount,
-		Currency:      nch.Currency,
+		CurrencyID:    nch.CurrencyID,
 		EffectiveDate: nch.EffectiveDate,
 		EndDate:       nch.EndDate,
 		CreatedDate:   now,
@@ -114,8 +114,8 @@ func (b *Business) Update(ctx context.Context, ch CostHistory, uch UpdateCostHis
 	if uch.Amount != nil {
 		ch.Amount = *uch.Amount
 	}
-	if uch.Currency != nil {
-		ch.Currency = *uch.Currency
+	if uch.CurrencyID != nil {
+		ch.CurrencyID = *uch.CurrencyID
 	}
 	if uch.EffectiveDate != nil {
 		ch.EffectiveDate = *uch.EffectiveDate

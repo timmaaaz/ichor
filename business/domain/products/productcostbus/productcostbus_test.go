@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
@@ -127,7 +128,16 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		productIDs[i] = p.ProductID
 	}
 
-	productCosts, err := productcostbus.TestSeedProductCosts(ctx, 20, productIDs, busDomain.ProductCost)
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
+	productCosts, err := productcostbus.TestSeedProductCosts(ctx, 20, productIDs, currencyIDs, busDomain.ProductCost)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding product cost : %w", err)
 	}
@@ -183,7 +193,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ProductID:         sd.Products[2].ProductID,
 				PurchaseCost:      sd.ProductCosts[2].PurchaseCost,
 				SellingPrice:      sd.ProductCosts[2].SellingPrice,
-				Currency:          sd.ProductCosts[2].Currency,
+				CurrencyID:          sd.ProductCosts[2].CurrencyID,
 				MSRP:              sd.ProductCosts[2].MSRP,
 				MarkupPercentage:  sd.ProductCosts[2].MarkupPercentage,
 				LandedCost:        sd.ProductCosts[2].LandedCost,
@@ -198,7 +208,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					ProductID:         sd.Products[2].ProductID,
 					PurchaseCost:      sd.ProductCosts[2].PurchaseCost,
 					SellingPrice:      sd.ProductCosts[2].SellingPrice,
-					Currency:          sd.ProductCosts[2].Currency,
+					CurrencyID:          sd.ProductCosts[2].CurrencyID,
 					MSRP:              sd.ProductCosts[2].MSRP,
 					MarkupPercentage:  sd.ProductCosts[2].MarkupPercentage,
 					LandedCost:        sd.ProductCosts[2].LandedCost,
@@ -242,7 +252,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ProductID:         sd.Products[2].ProductID,
 				PurchaseCost:      sd.ProductCosts[2].PurchaseCost,
 				SellingPrice:      sd.ProductCosts[2].SellingPrice,
-				Currency:          sd.ProductCosts[2].Currency,
+				CurrencyID:          sd.ProductCosts[2].CurrencyID,
 				MSRP:              sd.ProductCosts[2].MSRP,
 				MarkupPercentage:  sd.ProductCosts[2].MarkupPercentage,
 				LandedCost:        sd.ProductCosts[2].LandedCost,
@@ -258,7 +268,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					ProductID:         &sd.Products[2].ProductID,
 					PurchaseCost:      &sd.ProductCosts[2].PurchaseCost,
 					SellingPrice:      &sd.ProductCosts[2].SellingPrice,
-					Currency:          &sd.ProductCosts[2].Currency,
+					CurrencyID:          &sd.ProductCosts[2].CurrencyID,
 					MSRP:              &sd.ProductCosts[2].MSRP,
 					MarkupPercentage:  &sd.ProductCosts[2].MarkupPercentage,
 					LandedCost:        &sd.ProductCosts[2].LandedCost,

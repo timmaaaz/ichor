@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
@@ -727,7 +728,16 @@ func insertSeedData(busDomain dbtest.BusDomain, configStore *tablebuilder.Config
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
-	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
+	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, currencyIDs, busDomain.Order)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding Orders: %w", err)
 	}

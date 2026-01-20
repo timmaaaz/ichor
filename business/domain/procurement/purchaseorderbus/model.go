@@ -27,7 +27,7 @@ type PurchaseOrder struct {
 	TaxAmount               float64   `json:"tax_amount"`
 	ShippingCost            float64   `json:"shipping_cost"`
 	TotalAmount             float64   `json:"total_amount"`
-	Currency                string    `json:"currency"`
+	CurrencyID              uuid.UUID `json:"currency_id"`
 	RequestedBy             uuid.UUID `json:"requested_by"`
 	ApprovedBy              uuid.UUID `json:"approved_by"`
 	ApprovedDate            time.Time `json:"approved_date"`
@@ -53,7 +53,7 @@ type NewPurchaseOrder struct {
 	TaxAmount               float64    `json:"tax_amount"`
 	ShippingCost            float64    `json:"shipping_cost"`
 	TotalAmount             float64    `json:"total_amount"`
-	Currency                string     `json:"currency"`
+	CurrencyID              uuid.UUID  `json:"currency_id"`
 	RequestedBy             uuid.UUID  `json:"requested_by"`
 	Notes                   string     `json:"notes"`
 	SupplierReferenceNumber string     `json:"supplier_reference_number"`
@@ -76,7 +76,7 @@ type UpdatePurchaseOrder struct {
 	TaxAmount               *float64   `json:"tax_amount,omitempty"`
 	ShippingCost            *float64   `json:"shipping_cost,omitempty"`
 	TotalAmount             *float64   `json:"total_amount,omitempty"`
-	Currency                *string    `json:"currency,omitempty"`
+	CurrencyID              *uuid.UUID `json:"currency_id,omitempty"`
 	ApprovedBy              *uuid.UUID `json:"approved_by,omitempty"`
 	ApprovedDate            *time.Time `json:"approved_date,omitempty"`
 	Notes                   *string    `json:"notes,omitempty"`

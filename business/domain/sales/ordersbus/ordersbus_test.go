@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
@@ -122,7 +123,16 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding payment terms: %w", err)
 	}
 
-	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
+	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, currencyIDs, busDomain.Order)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding Orders: %w", err)
 	}
@@ -208,7 +218,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				TaxAmount:           types.MustParseMoney("8.00"),
 				ShippingCost:        types.MustParseMoney("10.00"),
 				TotalAmount:         types.MustParseMoney("118.00"),
-				Currency:            "USD",
+				CurrencyID:            sd.Orders[0].CurrencyID,
 				PaymentTermID:       &sd.PaymentTerms[0].ID,
 				Notes:               "Test order",
 				CreatedBy:           sd.Admins[0].ID,
@@ -228,7 +238,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					TaxAmount:           types.MustParseMoney("8.00"),
 					ShippingCost:        types.MustParseMoney("10.00"),
 					TotalAmount:         types.MustParseMoney("118.00"),
-					Currency:            "USD",
+					CurrencyID:            sd.Orders[0].CurrencyID,
 					PaymentTermID:       &sd.PaymentTerms[0].ID,
 					Notes:               "Test order",
 					CreatedBy:           sd.Admins[0].ID,
@@ -282,7 +292,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				TaxAmount:           sd.Orders[0].TaxAmount,
 				ShippingCost:        sd.Orders[0].ShippingCost,
 				TotalAmount:         sd.Orders[0].TotalAmount,
-				Currency:            sd.Orders[0].Currency,
+				CurrencyID:            sd.Orders[0].CurrencyID,
 				PaymentTermID:       sd.Orders[0].PaymentTermID,
 				Notes:               sd.Orders[0].Notes,
 				CreatedBy:           sd.Orders[0].CreatedBy,

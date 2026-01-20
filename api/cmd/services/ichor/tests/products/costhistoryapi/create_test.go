@@ -27,7 +27,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Input: &costhistoryapp.NewCostHistory{
 				ProductID:     sd.Products[0].ProductID,
 				CostType:      "TYPE 1",
-				Currency:      "USD",
+				CurrencyID:    sd.Currencies[0].ID.String(),
 				Amount:        "33.33",
 				EndDate:       later,
 				EffectiveDate: now,
@@ -36,7 +36,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &costhistoryapp.CostHistory{
 				ProductID:     sd.Products[0].ProductID,
 				CostType:      "TYPE 1",
-				Currency:      "USD",
+				CurrencyID:    sd.Currencies[0].ID.String(),
 				Amount:        "33.33",
 				EndDate:       later,
 				EffectiveDate: now,
@@ -71,7 +71,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &costhistoryapp.NewCostHistory{
 				CostType:      "TYPE 1",
-				Currency:      "USD",
+				CurrencyID:    sd.Currencies[0].ID.String(),
 				Amount:        "33.33",
 				EndDate:       later,
 				EffectiveDate: now,
@@ -90,7 +90,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &costhistoryapp.NewCostHistory{
 				ProductID:     sd.Products[0].ProductID,
-				Currency:      "USD",
+				CurrencyID:    sd.Currencies[0].ID.String(),
 				Amount:        "33.33",
 				EndDate:       later,
 				EffectiveDate: now,
@@ -102,7 +102,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "missing-currency",
+			Name:       "missing-currency-id",
 			URL:        "/v1/products/cost-history",
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
@@ -115,7 +115,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				EffectiveDate: now,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"currency\",\"error\":\"currency is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"currency_id\",\"error\":\"currency_id is a required field\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -129,7 +129,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &costhistoryapp.NewCostHistory{
 				ProductID:     sd.Products[0].ProductID,
 				CostType:      "TYPE 1",
-				Currency:      "USD",
+				CurrencyID:    sd.Currencies[0].ID.String(),
 				EndDate:       later,
 				EffectiveDate: now,
 			},
@@ -148,7 +148,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &costhistoryapp.NewCostHistory{
 				ProductID:     sd.Products[0].ProductID,
 				CostType:      "TYPE 1",
-				Currency:      "USD",
+				CurrencyID:    sd.Currencies[0].ID.String(),
 				Amount:        "33.33",
 				EffectiveDate: now,
 			},
@@ -165,11 +165,11 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &costhistoryapp.NewCostHistory{
-				ProductID: sd.Products[0].ProductID,
-				CostType:  "TYPE 1",
-				Currency:  "USD",
-				Amount:    "33.33",
-				EndDate:   later,
+				ProductID:  sd.Products[0].ProductID,
+				CostType:   "TYPE 1",
+				CurrencyID: sd.Currencies[0].ID.String(),
+				Amount:     "33.33",
+				EndDate:    later,
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"effective_date\",\"error\":\"effective_date is a required field\"}]"),
@@ -187,7 +187,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &costhistoryapp.NewCostHistory{
 				ProductID:     "not a uuid",
 				CostType:      "TYPE 1",
-				Currency:      "USD",
+				CurrencyID:    sd.Currencies[0].ID.String(),
 				Amount:        "33.33",
 				EndDate:       later,
 				EffectiveDate: now,
@@ -214,7 +214,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 			Input: &costhistoryapp.NewCostHistory{
 				ProductID:     uuid.NewString(),
 				CostType:      "TYPE 1",
-				Currency:      "USD",
+				CurrencyID:    sd.Currencies[0].ID.String(),
 				Amount:        "33.33",
 				EndDate:       later,
 				EffectiveDate: now,

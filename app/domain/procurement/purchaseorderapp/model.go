@@ -45,7 +45,7 @@ type PurchaseOrder struct {
 	TaxAmount               string `json:"tax_amount"`
 	ShippingCost            string `json:"shipping_cost"`
 	TotalAmount             string `json:"total_amount"`
-	Currency                string `json:"currency"`
+	CurrencyID              string `json:"currency_id"`
 	RequestedBy             string `json:"requested_by"`
 	ApprovedBy              string `json:"approved_by"`
 	ApprovedDate            string `json:"approved_date"`
@@ -95,7 +95,7 @@ func ToAppPurchaseOrder(bus purchaseorderbus.PurchaseOrder) PurchaseOrder {
 		TaxAmount:               fmt.Sprintf("%.2f", bus.TaxAmount),
 		ShippingCost:            fmt.Sprintf("%.2f", bus.ShippingCost),
 		TotalAmount:             fmt.Sprintf("%.2f", bus.TotalAmount),
-		Currency:                bus.Currency,
+		CurrencyID:              bus.CurrencyID.String(),
 		RequestedBy:             bus.RequestedBy.String(),
 		ApprovedBy:              approvedBy,
 		ApprovedDate:            approvedDate,
@@ -131,7 +131,7 @@ type NewPurchaseOrder struct {
 	TaxAmount               string  `json:"tax_amount" validate:"required"`
 	ShippingCost            string  `json:"shipping_cost" validate:"required"`
 	TotalAmount             string  `json:"total_amount" validate:"required"`
-	Currency                string  `json:"currency" validate:"required"`
+	CurrencyID              string  `json:"currency_id" validate:"required,uuid"`
 	RequestedBy             string  `json:"requested_by" validate:"required,uuid"`
 	Notes                   string  `json:"notes"`
 	SupplierReferenceNumber string  `json:"supplier_reference_number"`
@@ -225,6 +225,11 @@ func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOr
 		return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("createdBy", err)
 	}
 
+	currencyID, err := uuid.Parse(app.CurrencyID)
+	if err != nil {
+		return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("currencyId", err)
+	}
+
 	bus := purchaseorderbus.NewPurchaseOrder{
 		OrderNumber:             app.OrderNumber,
 		SupplierID:              supplierID,
@@ -238,7 +243,7 @@ func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOr
 		TaxAmount:               taxAmount,
 		ShippingCost:            shippingCost,
 		TotalAmount:             totalAmount,
-		Currency:                app.Currency,
+		CurrencyID:              currencyID,
 		RequestedBy:             requestedBy,
 		Notes:                   app.Notes,
 		SupplierReferenceNumber: app.SupplierReferenceNumber,
@@ -273,7 +278,7 @@ type UpdatePurchaseOrder struct {
 	TaxAmount               *string `json:"tax_amount" validate:"omitempty"`
 	ShippingCost            *string `json:"shipping_cost" validate:"omitempty"`
 	TotalAmount             *string `json:"total_amount" validate:"omitempty"`
-	Currency                *string `json:"currency" validate:"omitempty"`
+	CurrencyID              *string `json:"currency_id" validate:"omitempty,uuid"`
 	ApprovedBy              *string `json:"approved_by" validate:"omitempty,uuid"`
 	ApprovedDate            *string `json:"approved_date" validate:"omitempty"`
 	Notes                   *string `json:"notes" validate:"omitempty"`
@@ -398,8 +403,12 @@ func toBusUpdatePurchaseOrder(app UpdatePurchaseOrder) (purchaseorderbus.UpdateP
 		dest.TotalAmount = &totalAmount
 	}
 
-	if app.Currency != nil {
-		dest.Currency = app.Currency
+	if app.CurrencyID != nil {
+		currencyID, err := uuid.Parse(*app.CurrencyID)
+		if err != nil {
+			return purchaseorderbus.UpdatePurchaseOrder{}, errs.NewFieldsError("currencyId", err)
+		}
+		dest.CurrencyID = &currencyID
 	}
 
 	if app.ApprovedBy != nil {

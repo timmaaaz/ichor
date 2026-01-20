@@ -17,7 +17,7 @@ func parseQueryParams(r *http.Request) (costhistoryapp.QueryParams, error) {
 		ProductID:     values.Get("product_id"),
 		CostType:      values.Get("cost_type"),
 		Amount:        values.Get("amount"),
-		Currency:      values.Get("currency"),
+		CurrencyID:    values.Get("currency_id"),
 		CreatedDate:   values.Get("created_date"),
 		UpdatedDate:   values.Get("updated_date"),
 		EffectiveDate: values.Get("effective_date"),

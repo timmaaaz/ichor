@@ -9,7 +9,7 @@ const (
 	OrderByProductID         = "product_id"
 	OrderByPurchaseCost      = "purchase_cost"
 	OrderBySellingPrice      = "selling_price"
-	OrderByCurrency          = "currency"
+	OrderByCurrencyID        = "currency_id"
 	OrderByMSRP              = "msrp"
 	OrderByMarkupPercentage  = "markup_percentage"
 	OrderByLandedCost        = "landed_cost"

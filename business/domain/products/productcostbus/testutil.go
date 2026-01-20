@@ -13,10 +13,7 @@ import (
 
 const charString = "abcdefghijklmnopqrstuvwxyz"
 
-// Common ISO 4217 currency codes for realistic test data
-var currencyCodes = []string{"USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF", "CNY", "INR", "MXN"}
-
-func TestNewProductCosts(n int, productIDs uuid.UUIDs) []NewProductCost {
+func TestNewProductCosts(n int, productIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewProductCost {
 	newProductCosts := make([]NewProductCost, n)
 
 	idx := rand.Intn(10000)
@@ -28,7 +25,7 @@ func TestNewProductCosts(n int, productIDs uuid.UUIDs) []NewProductCost {
 			ProductID:         productIDs[i%len(productIDs)],
 			PurchaseCost:      types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
 			SellingPrice:      types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64()+float64(i))),
-			Currency:          currencyCodes[0], // Default to USD for seed data; use i%len(currencyCodes) for variety
+			CurrencyID:        currencyIDs[i%len(currencyIDs)],
 			MSRP:              types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
 			MarkupPercentage:  types.NewRoundedFloat(rand.Float64()),
 			LandedCost:        types.MustParseMoney(fmt.Sprintf("%.2f", rand.Float64())),
@@ -43,8 +40,8 @@ func TestNewProductCosts(n int, productIDs uuid.UUIDs) []NewProductCost {
 	return newProductCosts
 }
 
-func TestSeedProductCosts(ctx context.Context, n int, productIDs uuid.UUIDs, api *Business) ([]ProductCost, error) {
-	newProductCosts := TestNewProductCosts(n, productIDs)
+func TestSeedProductCosts(ctx context.Context, n int, productIDs uuid.UUIDs, currencyIDs uuid.UUIDs, api *Business) ([]ProductCost, error) {
+	newProductCosts := TestNewProductCosts(n, productIDs, currencyIDs)
 
 	productCosts := make([]ProductCost, len(newProductCosts))
 

@@ -48,9 +48,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (costhistorybus.Storer, err
 func (s *Store) Create(ctx context.Context, ch costhistorybus.CostHistory) error {
 	const q = `
     INSERT INTO products.cost_history (
-        id, product_id, cost_type, amount, currency,  effective_date, end_date, created_date, updated_date
+        id, product_id, cost_type, amount, currency_id,  effective_date, end_date, created_date, updated_date
     ) VALUES (
-        :id, :product_id, :cost_type, :amount, :currency, :effective_date, :end_date, :created_date, :updated_date
+        :id, :product_id, :cost_type, :amount, :currency_id, :effective_date, :end_date, :created_date, :updated_date
     )
     `
 
@@ -75,7 +75,7 @@ func (s *Store) Update(ctx context.Context, ch costhistorybus.CostHistory) error
         product_id = :product_id,
         cost_type = :cost_type,
         amount = :amount,
-        currency = :currency,
+        currency_id = :currency_id,
         effective_date = :effective_date,
         end_date = :end_date,
         updated_date = :updated_date
@@ -118,7 +118,7 @@ func (s *Store) Query(ctx context.Context, filter costhistorybus.QueryFilter, or
 
 	const q = `
 	SELECT 
-		id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
+		id, product_id, cost_type, amount, currency_id, effective_date, end_date, updated_date, created_date
 	FROM
 		products.cost_history
 	`
@@ -174,7 +174,7 @@ func (s *Store) QueryByID(ctx context.Context, costHistoryID uuid.UUID) (costhis
 
 	const q = `
 	SELECT 
-		id, product_id, cost_type, amount, currency, effective_date, end_date, updated_date, created_date
+		id, product_id, cost_type, amount, currency_id, effective_date, end_date, updated_date, created_date
 	FROM
 		products.cost_history
 	WHERE 

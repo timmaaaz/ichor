@@ -21,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
@@ -306,8 +307,18 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
+	// Seed currencies for orders, product costs, cost history, and purchase orders
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
 	// Use weighted random distribution for frontend demo (better heatmap visualization)
-	orders, err := ordersbus.TestSeedOrdersFrontendWeighted(ctx, 200, 90, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	orders, err := ordersbus.TestSeedOrdersFrontendWeighted(ctx, 200, 90, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, currencyIDs, busDomain.Order)
 	if err != nil {
 		return fmt.Errorf("seeding Orders: %w", err)
 	}
@@ -351,7 +362,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		productIDs = append(productIDs, p.ProductID)
 	}
 
-	_, err = productcostbus.TestSeedProductCosts(ctx, 20, productIDs, busDomain.ProductCost)
+	_, err = productcostbus.TestSeedProductCosts(ctx, 20, productIDs, currencyIDs, busDomain.ProductCost)
 	if err != nil {
 		return fmt.Errorf("seeding product cost : %w", err)
 	}
@@ -366,7 +377,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding metrics : %w", err)
 	}
 
-	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, busDomain.CostHistory)
+	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, currencyIDs, busDomain.CostHistory)
 	if err != nil {
 		return fmt.Errorf("seeding cost history : %w", err)
 	}
@@ -536,7 +547,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Purchase Orders
-	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrdersHistorical(ctx, 10, 120, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, busDomain.PurchaseOrder)
+	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrdersHistorical(ctx, 10, 120, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, currencyIDs, busDomain.PurchaseOrder)
 	if err != nil {
 		return fmt.Errorf("seeding purchase orders : %w", err)
 	}
