@@ -1806,3 +1806,29 @@ COMMENT ON COLUMN config.enum_labels.value IS 'Raw enum value that must match th
 COMMENT ON COLUMN config.enum_labels.label IS 'Human-friendly display label for the enum value';
 COMMENT ON COLUMN config.enum_labels.sort_order IS 'Custom sort order (overrides pg_enum enumsortorder if needed)';
 
+-- Version: 1.80
+-- Description: Create currencies reference table
+CREATE TABLE core.currencies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(3) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    symbol VARCHAR(10) NOT NULL,
+    locale VARCHAR(10) NOT NULL,
+    decimal_places INT NOT NULL DEFAULT 2,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_by UUID REFERENCES core.users(id),
+    created_date TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES core.users(id),
+    updated_date TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_currencies_code ON core.currencies(code);
+CREATE INDEX idx_currencies_is_active ON core.currencies(is_active);
+CREATE INDEX idx_currencies_sort_order ON core.currencies(sort_order);
+
+COMMENT ON TABLE core.currencies IS 'Reference table for supported currencies';
+COMMENT ON COLUMN core.currencies.code IS 'ISO 4217 currency code (e.g., USD, EUR)';
+COMMENT ON COLUMN core.currencies.symbol IS 'Currency symbol for display (e.g., $, €)';
+COMMENT ON COLUMN core.currencies.locale IS 'Locale identifier for formatting (e.g., en-US)';
+COMMENT ON COLUMN core.currencies.decimal_places IS 'Number of decimal places for this currency (e.g., 2 for USD, 0 for JPY)';
