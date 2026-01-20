@@ -674,7 +674,6 @@ var builtInFilters = map[string]FilterFunc{
 
 	// Number filters
 	"currency": func(value interface{}, args ...string) (interface{}, error) {
-		// Simple currency formatting - could be enhanced
 		num, err := toFloat64(value)
 		if err != nil {
 			return value, err
@@ -684,15 +683,32 @@ var builtInFilters = map[string]FilterFunc{
 			currency = args[0]
 		}
 		symbol := "$"
+		decimals := 2
 		switch currency {
+		case "USD":
+			symbol = "$"
 		case "EUR":
 			symbol = "€"
 		case "GBP":
 			symbol = "£"
 		case "JPY":
 			symbol = "¥"
+			decimals = 0
+		case "CAD":
+			symbol = "$"
+		case "AUD":
+			symbol = "$"
+		case "CHF":
+			symbol = "CHF "
+		case "CNY":
+			symbol = "¥"
+		case "INR":
+			symbol = "₹"
+		case "MXN":
+			symbol = "$"
 		}
-		return fmt.Sprintf("%s%.2f", symbol, num), nil
+		format := fmt.Sprintf("%%s%%.%df", decimals)
+		return fmt.Sprintf(format, symbol, num), nil
 	},
 	"round": func(value interface{}, args ...string) (interface{}, error) {
 		num, err := toFloat64(value)
