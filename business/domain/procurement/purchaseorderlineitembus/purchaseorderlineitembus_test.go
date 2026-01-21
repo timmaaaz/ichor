@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
@@ -184,8 +185,18 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		poliStatusIDs = append(poliStatusIDs, polis.ID)
 	}
 
+	// Currencies
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
 	// Purchase orders
-	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, count, supplierIDs, poStatusIDs, warehouseIDs, streetIDs, userIDs, busDomain.PurchaseOrder)
+	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, count, supplierIDs, poStatusIDs, warehouseIDs, streetIDs, userIDs, currencyIDs, busDomain.PurchaseOrder)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding purchase orders: %w", err)
 	}

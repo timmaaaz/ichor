@@ -59,6 +59,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -141,8 +142,8 @@ var SimpleConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"id": {
-				Name:   "id",
+			"inventory_items.id": {
+				Name:   "inventory_items.id",
 				Header: "ID",
 				Width:  100,
 				Type:   "uuid",
@@ -160,8 +161,8 @@ var SimpleConfig = &tablebuilder.Config{
 					Precision: 0,
 				},
 			},
-			"product_id": {
-				Name:   "product_id",
+			"inventory_items.product_id": {
+				Name:   "inventory_items.product_id",
 				Header: "Product",
 				Width:  200,
 				Type:   "uuid",
@@ -170,8 +171,8 @@ var SimpleConfig = &tablebuilder.Config{
 					Label: "View Product",
 				},
 			},
-			"location_id": {
-				Name:   "location_id",
+			"inventory_items.location_id": {
+				Name:   "inventory_items.location_id",
 				Header: "Location",
 				Width:  200,
 				Type:   "uuid",
@@ -216,26 +217,26 @@ var PageConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"id": {
-				Name:   "id",
+			"products.id": {
+				Name:   "products.id",
 				Header: "ID",
 				Width:  100,
 				Type:   "uuid",
 			},
-			"name": {
-				Name:   "name",
+			"products.name": {
+				Name:   "products.name",
 				Header: "Name",
 				Width:  200,
 				Type:   "string",
 			},
-			"sku": {
-				Name:   "sku",
+			"products.sku": {
+				Name:   "products.sku",
 				Header: "SKU",
 				Width:  120,
 				Type:   "string",
 			},
-			"is_active": {
-				Name:   "is_active",
+			"products.is_active": {
+				Name:   "products.is_active",
 				Header: "Active",
 				Width:  80,
 				Type:   "boolean",
@@ -319,8 +320,8 @@ var ComplexConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"id": {
-				Name:   "id",
+			"inventory_items.id": {
+				Name:   "inventory_items.id",
 				Header: "ID",
 				Width:  100,
 				Type:   "uuid",
@@ -373,20 +374,20 @@ var ComplexConfig = &tablebuilder.Config{
 					Label: "View Product",
 				},
 			},
-			"reorder_point": {
-				Name:   "reorder_point",
+			"inventory_items.reorder_point": {
+				Name:   "inventory_items.reorder_point",
 				Header: "Reorder Point",
 				Width:  100,
 				Type:   "number",
 			},
-			"maximum_stock": {
-				Name:   "maximum_stock",
+			"inventory_items.maximum_stock": {
+				Name:   "inventory_items.maximum_stock",
 				Header: "Maximum Stock",
 				Width:  100,
 				Type:   "number",
 			},
-			"sku": {
-				Name:   "sku",
+			"products.sku": {
+				Name:   "products.sku",
 				Header: "SKU",
 				Width:  120,
 				Type:   "string",
@@ -448,14 +449,14 @@ var KPIChartConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"quantity": {
-				Name:   "quantity",
+			"inventory_items.quantity": {
+				Name:   "inventory_items.quantity",
 				Header: "Quantity",
 				Width:  100,
 				Type:   "number",
 			},
 			"_chart": {
-				CellTemplate: `{"chartType":"kpi","valueColumns":["quantity"],"kpi":{"label":"Total Inventory","format":"number"}}`,
+				CellTemplate: `{"chartType":"kpi","valueColumns":["inventory_items.quantity"],"kpi":{"label":"Total Inventory","format":"number"}}`,
 			},
 		},
 	},
@@ -493,20 +494,20 @@ var BarChartConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"location_id": {
-				Name:   "location_id",
+			"inventory_items.location_id": {
+				Name:   "inventory_items.location_id",
 				Header: "Location",
 				Width:  100,
 				Type:   "uuid",
 			},
-			"quantity": {
-				Name:   "quantity",
+			"inventory_items.quantity": {
+				Name:   "inventory_items.quantity",
 				Header: "Quantity",
 				Width:  100,
 				Type:   "number",
 			},
 			"_chart": {
-				CellTemplate: `{"chartType":"bar","categoryColumn":"location_id","valueColumns":["quantity"]}`,
+				CellTemplate: `{"chartType":"bar","categoryColumn":"inventory_items.location_id","valueColumns":["inventory_items.quantity"]}`,
 			},
 		},
 	},
@@ -544,20 +545,20 @@ var PieChartConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"location_id": {
-				Name:   "location_id",
+			"inventory_items.location_id": {
+				Name:   "inventory_items.location_id",
 				Header: "Location",
 				Width:  100,
 				Type:   "uuid",
 			},
-			"quantity": {
-				Name:   "quantity",
+			"inventory_items.quantity": {
+				Name:   "inventory_items.quantity",
 				Header: "Quantity",
 				Width:  100,
 				Type:   "number",
 			},
 			"_chart": {
-				CellTemplate: `{"chartType":"pie","categoryColumn":"location_id","valueColumns":["quantity"]}`,
+				CellTemplate: `{"chartType":"pie","categoryColumn":"inventory_items.location_id","valueColumns":["inventory_items.quantity"]}`,
 			},
 		},
 	},
@@ -763,7 +764,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
-	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	// Seed currencies for orders
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
+	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, currencyIDs, busDomain.Order)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding Orders: %w", err)
 	}
@@ -807,7 +818,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		productIDs = append(productIDs, p.ProductID)
 	}
 
-	productCosts, err := productcostbus.TestSeedProductCosts(ctx, 20, productIDs, busDomain.ProductCost)
+	productCosts, err := productcostbus.TestSeedProductCosts(ctx, 20, productIDs, currencyIDs, busDomain.ProductCost)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding product cost : %w", err)
 	}
@@ -822,7 +833,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding metrics : %w", err)
 	}
 
-	costHistories, err := costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, busDomain.CostHistory)
+	costHistories, err := costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, currencyIDs, busDomain.CostHistory)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding cost history : %w", err)
 	}

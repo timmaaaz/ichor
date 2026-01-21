@@ -17,7 +17,7 @@ type ProductCost struct {
 	ProductID         uuid.UUID          `json:"product_id"`
 	PurchaseCost      types.Money        `json:"purchase_cost"`
 	SellingPrice      types.Money        `json:"selling_price"`
-	Currency          string             `json:"currency"`
+	CurrencyID        uuid.UUID          `json:"currency_id"`
 	MSRP              types.Money        `json:"msrp"`
 	MarkupPercentage  types.RoundedFloat `json:"markup_percentage"`
 	LandedCost        types.Money        `json:"landed_cost"`
@@ -34,7 +34,7 @@ type NewProductCost struct {
 	ProductID         uuid.UUID          `json:"product_id"`
 	PurchaseCost      types.Money        `json:"purchase_cost"`
 	SellingPrice      types.Money        `json:"selling_price"`
-	Currency          string             `json:"currency"`
+	CurrencyID        uuid.UUID          `json:"currency_id"`
 	MSRP              types.Money        `json:"msrp"`
 	MarkupPercentage  types.RoundedFloat `json:"markup_percentage"`
 	LandedCost        types.Money        `json:"landed_cost"`
@@ -49,7 +49,7 @@ type UpdateProductCost struct {
 	ProductID         *uuid.UUID          `json:"product_id,omitempty"`
 	PurchaseCost      *types.Money        `json:"purchase_cost,omitempty"`
 	SellingPrice      *types.Money        `json:"selling_price,omitempty"`
-	Currency          *string             `json:"currency,omitempty"`
+	CurrencyID        *uuid.UUID          `json:"currency_id,omitempty"`
 	MSRP              *types.Money        `json:"msrp,omitempty"`
 	MarkupPercentage  *types.RoundedFloat `json:"markup_percentage,omitempty"`
 	LandedCost        *types.Money        `json:"landed_cost,omitempty"`

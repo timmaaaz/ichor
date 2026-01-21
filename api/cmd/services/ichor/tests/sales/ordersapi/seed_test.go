@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -116,7 +117,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
-	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admin[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	// Seed currencies for orders
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
+	orders, err := ordersbus.TestSeedOrders(ctx, count, uuid.UUIDs{admin[0].ID}, customerIDs, oflIDs, currencyIDs, busDomain.Order)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding Orders: %w", err)
 	}
@@ -185,5 +196,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Orders:                   ordersapp.ToAppOrders(orders),
 		Customers:                customersapp.ToAppCustomers(customers),
 		OrderFulfillmentStatuses: orderfulfillmentstatusapp.ToAppOrderFulfillmentStatuses(ofls),
+		Currencies:               currencies,
 	}, nil
 }

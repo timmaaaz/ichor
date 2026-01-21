@@ -18,7 +18,7 @@ func parseQueryParams(r *http.Request) (productcostapp.QueryParams, error) {
 		PurchaseCost:      values.Get("purchase_cost"),
 		CreatedDate:       values.Get("created_date"),
 		UpdatedDate:       values.Get("updated_date"),
-		Currency:          values.Get("currency"),
+		CurrencyID:        values.Get("currency_id"),
 		SellingPrice:      values.Get("selling_price"),
 		MSRP:              values.Get("msrp"),
 		MarkupPercentage:  values.Get("markup_percentage"),

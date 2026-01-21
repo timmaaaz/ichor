@@ -52,7 +52,7 @@ func (s *Store) Create(ctx context.Context, po purchaseorderbus.PurchaseOrder) e
 		id, order_number, supplier_id, purchase_order_status_id,
 		delivery_warehouse_id, delivery_location_id, delivery_street_id,
 		order_date, expected_delivery_date, actual_delivery_date,
-		subtotal, tax_amount, shipping_cost, total_amount, currency,
+		subtotal, tax_amount, shipping_cost, total_amount, currency_id,
 		requested_by, approved_by, approved_date,
 		notes, supplier_reference_number,
 		created_by, updated_by, created_date, updated_date
@@ -60,7 +60,7 @@ func (s *Store) Create(ctx context.Context, po purchaseorderbus.PurchaseOrder) e
 		:id, :order_number, :supplier_id, :purchase_order_status_id,
 		:delivery_warehouse_id, :delivery_location_id, :delivery_street_id,
 		:order_date, :expected_delivery_date, :actual_delivery_date,
-		:subtotal, :tax_amount, :shipping_cost, :total_amount, :currency,
+		:subtotal, :tax_amount, :shipping_cost, :total_amount, :currency_id,
 		:requested_by, :approved_by, :approved_date,
 		:notes, :supplier_reference_number,
 		:created_by, :updated_by, :created_date, :updated_date
@@ -96,7 +96,7 @@ func (s *Store) Update(ctx context.Context, po purchaseorderbus.PurchaseOrder) e
 		tax_amount = :tax_amount,
 		shipping_cost = :shipping_cost,
 		total_amount = :total_amount,
-		currency = :currency,
+		currency_id = :currency_id,
 		approved_by = :approved_by,
 		approved_date = :approved_date,
 		notes = :notes,
@@ -144,7 +144,7 @@ func (s *Store) Query(ctx context.Context, filter purchaseorderbus.QueryFilter, 
 		id, order_number, supplier_id, purchase_order_status_id,
 		delivery_warehouse_id, delivery_location_id, delivery_street_id,
 		order_date, expected_delivery_date, actual_delivery_date,
-		subtotal, tax_amount, shipping_cost, total_amount, currency,
+		subtotal, tax_amount, shipping_cost, total_amount, currency_id,
 		requested_by, approved_by, approved_date,
 		notes, supplier_reference_number,
 		created_by, updated_by, created_date, updated_date
@@ -206,7 +206,7 @@ func (s *Store) QueryByID(ctx context.Context, poID uuid.UUID) (purchaseorderbus
 		id, order_number, supplier_id, purchase_order_status_id,
 		delivery_warehouse_id, delivery_location_id, delivery_street_id,
 		order_date, expected_delivery_date, actual_delivery_date,
-		subtotal, tax_amount, shipping_cost, total_amount, currency,
+		subtotal, tax_amount, shipping_cost, total_amount, currency_id,
 		requested_by, approved_by, approved_date,
 		notes, supplier_reference_number,
 		created_by, updated_by, created_date, updated_date
@@ -244,7 +244,7 @@ func (s *Store) QueryByIDs(ctx context.Context, poIDs []uuid.UUID) ([]purchaseor
 		id, order_number, supplier_id, purchase_order_status_id,
 		delivery_warehouse_id, delivery_location_id, delivery_street_id,
 		order_date, expected_delivery_date, actual_delivery_date,
-		subtotal, tax_amount, shipping_cost, total_amount, currency,
+		subtotal, tax_amount, shipping_cost, total_amount, currency_id,
 		requested_by, approved_by, approved_date,
 		notes, supplier_reference_number,
 		created_by, updated_by, created_date, updated_date

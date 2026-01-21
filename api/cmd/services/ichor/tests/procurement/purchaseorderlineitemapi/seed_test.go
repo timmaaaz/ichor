@@ -19,6 +19,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/products/productapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -225,9 +226,19 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding inventory locations: %w", err)
 	}
 
+	// Seed currencies for purchase orders
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
 	// Seed purchase orders
 	userIDs := []uuid.UUID{tu1.ID, tu2.ID}
-	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, 10, supplierIDs, statusIDs, warehouseIDs, streetIDs, userIDs, busDomain.PurchaseOrder)
+	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, 10, supplierIDs, statusIDs, warehouseIDs, streetIDs, userIDs, currencyIDs, busDomain.PurchaseOrder)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding purchase orders: %w", err)
 	}

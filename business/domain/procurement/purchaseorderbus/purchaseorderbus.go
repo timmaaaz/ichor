@@ -91,7 +91,7 @@ func (b *Business) Create(ctx context.Context, npo NewPurchaseOrder) (PurchaseOr
 		TaxAmount:                npo.TaxAmount,
 		ShippingCost:             npo.ShippingCost,
 		TotalAmount:              npo.TotalAmount,
-		Currency:                 npo.Currency,
+		CurrencyID:               npo.CurrencyID,
 		RequestedBy:              npo.RequestedBy,
 		Notes:                    npo.Notes,
 		SupplierReferenceNumber:  npo.SupplierReferenceNumber,
@@ -157,8 +157,8 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 	if upo.TotalAmount != nil {
 		po.TotalAmount = *upo.TotalAmount
 	}
-	if upo.Currency != nil {
-		po.Currency = *upo.Currency
+	if upo.CurrencyID != nil {
+		po.CurrencyID = *upo.CurrencyID
 	}
 	if upo.ApprovedBy != nil {
 		po.ApprovedBy = *upo.ApprovedBy

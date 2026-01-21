@@ -9,7 +9,7 @@ const (
 	OrderByProductID     = "product_id"
 	OrderByCostType      = "cost_type"
 	OrderByAmount        = "amount"
-	OrderByCurrency      = "currency"
+	OrderByCurrencyID    = "currency_id"
 	OrderByEffectiveDate = "effective_date"
 	OrderByEndDate       = "end_date"
 	OrderByCreatedDate   = "created_date"

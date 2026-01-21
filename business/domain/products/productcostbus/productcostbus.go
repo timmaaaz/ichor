@@ -78,7 +78,7 @@ func (b *Business) Create(ctx context.Context, npc NewProductCost) (ProductCost,
 		ProductID:         npc.ProductID,
 		PurchaseCost:      npc.PurchaseCost,
 		SellingPrice:      npc.SellingPrice,
-		Currency:          npc.Currency,
+		CurrencyID:        npc.CurrencyID,
 		MSRP:              npc.MSRP,
 		MarkupPercentage:  npc.MarkupPercentage,
 		LandedCost:        npc.LandedCost,
@@ -117,8 +117,8 @@ func (b *Business) Update(ctx context.Context, pc ProductCost, upc UpdateProduct
 	if upc.SellingPrice != nil {
 		pc.SellingPrice = *upc.SellingPrice
 	}
-	if upc.Currency != nil {
-		pc.Currency = *upc.Currency
+	if upc.CurrencyID != nil {
+		pc.CurrencyID = *upc.CurrencyID
 	}
 	if upc.MSRP != nil {
 		pc.MSRP = *upc.MSRP

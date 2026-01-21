@@ -78,7 +78,7 @@ CREATE TABLE assets.asset_conditions (
    UNIQUE (name)
 );
 
--- Version: 1.125
+-- Version: 1.13
 -- Description: Create payment_terms lookup table
 CREATE TABLE core.payment_terms (
    id UUID PRIMARY KEY,
@@ -86,7 +86,7 @@ CREATE TABLE core.payment_terms (
    description TEXT
 );
 
--- Version: 1.13
+-- Version: 1.14
 -- Description: Create table countries
 CREATE TABLE geography.countries (
    id UUID NOT NULL,
@@ -97,7 +97,7 @@ CREATE TABLE geography.countries (
    PRIMARY KEY (id)
 );
 
--- Version: 1.14
+-- Version: 1.15
 -- Description: Create table regions
 CREATE TABLE geography.regions (
    id UUID NOT NULL,
@@ -109,7 +109,7 @@ CREATE TABLE geography.regions (
    FOREIGN KEY (country_id) REFERENCES geography.countries(id) ON DELETE CASCADE
 );
 
--- Version: 1.15
+-- Version: 1.16
 -- Description: create table cities
 CREATE TABLE geography.cities (
    id UUID NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE geography.cities (
    FOREIGN KEY (region_id) REFERENCES geography.regions(id) ON DELETE CASCADE
 );
 
--- Version: 1.16
+-- Version: 1.17
 -- Description: create table streets
 CREATE TABLE geography.streets (
    id UUID NOT NULL,
@@ -132,7 +132,7 @@ CREATE TABLE geography.streets (
    FOREIGN KEY (city_id) REFERENCES geography.cities(id) ON DELETE SET NULL-- Check this cascade relationship
 );
 
--- Version: 1.165
+-- Version: 1.18
 -- Description: Create timezones table
 CREATE TABLE geography.timezones (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -142,7 +142,7 @@ CREATE TABLE geography.timezones (
    is_active BOOLEAN DEFAULT TRUE
 );
 
--- Version: 1.17
+-- Version: 1.19
 -- Description: Create table user_approval_status
 CREATE TABLE hr.user_approval_status (
    id UUID NOT NULL,
@@ -154,7 +154,7 @@ CREATE TABLE hr.user_approval_status (
    PRIMARY KEY (id)
 );
 
--- Version: 1.18
+-- Version: 1.20
 -- Description: Create table titles
 CREATE TABLE hr.titles (
    id UUID NOT NULL, 
@@ -163,7 +163,7 @@ CREATE TABLE hr.titles (
    PRIMARY KEY (id)
 );
 
--- Version: 1.19
+-- Version: 1.21
 -- Description: Create table offices
 CREATE TABLE hr.offices (
    id UUID NOT NULL, 
@@ -173,7 +173,7 @@ CREATE TABLE hr.offices (
    FOREIGN KEY (street_id) REFERENCES geography.streets(id) ON DELETE CASCADE
 );
 
--- Version: 1.20
+-- Version: 1.22
 -- Description: Create table users
 CREATE TABLE core.users (
    id UUID NOT NULL,
@@ -206,7 +206,7 @@ CREATE TABLE core.users (
    FOREIGN KEY (user_approval_status_id) REFERENCES hr.user_approval_status(id) ON DELETE CASCADE
 );
 
--- Version: 1.21
+-- Version: 1.23
 -- Description: Create table valid_assets
 CREATE TABLE assets.valid_assets (
    id UUID NOT NULL,
@@ -234,7 +234,7 @@ CREATE TABLE assets.valid_assets (
    CONSTRAINT fk_assets_updated_by FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE CASCADE
 );
 
--- Version: 1.22
+-- Version: 1.24
 -- Description: Create table homes
 CREATE TABLE hr.homes (
    id UUID NOT NULL,
@@ -252,7 +252,7 @@ CREATE TABLE hr.homes (
    FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE CASCADE
 );
 
--- Version: 1.23
+-- Version: 1.25
 -- Description: Add approval status
 CREATE TABLE assets.approval_status (
    id UUID NOT NULL,
@@ -264,7 +264,7 @@ CREATE TABLE assets.approval_status (
    PRIMARY KEY (id)
 );
 
--- Version: 1.24
+-- Version: 1.26
 -- Description: Add fulfillment status
 CREATE TABLE assets.fulfillment_status (
    id UUID NOT NULL,
@@ -276,7 +276,7 @@ CREATE TABLE assets.fulfillment_status (
    PRIMARY KEY (id)
 );
 
--- Version: 1.25
+-- Version: 1.27
 -- Description: Add Tags
 CREATE TABLE assets.tags (
    id UUID NOT NULL, 
@@ -285,7 +285,7 @@ CREATE TABLE assets.tags (
    PRIMARY KEY (id)
 );
 
--- Version: 1.26
+-- Version: 1.28
 -- Description: Add asset_tags
 CREATE TABLE assets.asset_tags (
    id UUID NOT NULL,
@@ -296,7 +296,7 @@ CREATE TABLE assets.asset_tags (
    FOREIGN KEY (tag_id) REFERENCES assets.tags(id) ON DELETE CASCADE
 );
 
--- Version: 1.27
+-- Version: 1.29
 -- Description: Creates reports to table
 CREATE TABLE hr.reports_to (
    id UUID NOT NULL,
@@ -307,7 +307,7 @@ CREATE TABLE hr.reports_to (
    FOREIGN KEY (boss_id) REFERENCES core.users(id) ON DELETE CASCADE
 );
 
--- Version: 1.28
+-- Version: 1.30
 -- Description: Add assets
 CREATE TABLE assets.assets (
    id UUID NOT NULL,
@@ -320,7 +320,7 @@ CREATE TABLE assets.assets (
    FOREIGN KEY (asset_condition_id) REFERENCES assets.asset_conditions(id) ON DELETE CASCADE
 );
 
--- Version: 1.29
+-- Version: 1.31
 -- Description: Add user_assets
 CREATE TABLE assets.user_assets (
    id UUID NOT NULL,
@@ -339,7 +339,7 @@ CREATE TABLE assets.user_assets (
    FOREIGN KEY (fulfillment_status_id) REFERENCES assets.fulfillment_status(id) ON DELETE CASCADE
 );
 
--- Version: 1.30
+-- Version: 1.32
 -- Description: Add user_approval_comments
 CREATE TABLE hr.user_approval_comments (
    id UUID NOT NULL,
@@ -364,7 +364,7 @@ CREATE TYPE workflow.alert_severity AS ENUM ('low', 'medium', 'high', 'critical'
 CREATE TYPE workflow.alert_status AS ENUM ('active', 'acknowledged', 'dismissed', 'resolved');
 CREATE TYPE workflow.recipient_type AS ENUM ('user', 'role');
 
--- Version: 1.31
+-- Version: 1.33
 -- Description: Add contact_infos
 CREATE TABLE core.contact_infos (
    id UUID NOT NULL,
@@ -383,7 +383,7 @@ CREATE TABLE core.contact_infos (
    PRIMARY KEY (id)
 );
 
--- Version: 1.32
+-- Version: 1.34
 -- Description: add brands
 CREATE TABLE products.brands (
    id UUID NOT NULL,
@@ -395,7 +395,7 @@ CREATE TABLE products.brands (
    FOREIGN KEY (contact_infos_id) REFERENCES core.contact_infos(id)
 );
 
--- Version: 1.33
+-- Version: 1.35
 -- Description: add product_categoriesp
 CREATE TABLE products.product_categories (
    id UUID NOT NULL,
@@ -406,7 +406,7 @@ CREATE TABLE products.product_categories (
    PRIMARY KEY (id)
 );
 
--- Version: 1.34
+-- Version: 1.36
 -- Description: Create table warehouses
 CREATE TABLE inventory.warehouses (
    id UUID NOT NULL,
@@ -426,7 +426,7 @@ CREATE TABLE inventory.warehouses (
 -- Core Permissions
 -- =============================================================================
 
--- Version: 1.35
+-- Version: 1.37
 -- Description: Create table roles
 CREATE TABLE core.roles (
     id UUID PRIMARY KEY,
@@ -434,7 +434,7 @@ CREATE TABLE core.roles (
     description TEXT
 );
 
--- Version: 1.36
+-- Version: 1.38
 -- Description: Create table user_roles
 CREATE TABLE core.user_roles (
       id UUID NOT NULL,
@@ -446,7 +446,7 @@ CREATE TABLE core.user_roles (
       FOREIGN KEY (role_id) REFERENCES core.roles(id) ON DELETE CASCADE
 );
 
--- Version: 1.37
+-- Version: 1.39
 -- Description: Create table table_access
 CREATE TABLE core.table_access (
     id UUID PRIMARY KEY,
@@ -459,7 +459,7 @@ CREATE TABLE core.table_access (
     UNIQUE(role_id, table_name)
 );
 
--- Version: 1.38
+-- Version: 1.40
 -- Description: Create table pages
 CREATE TABLE core.pages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -472,7 +472,7 @@ CREATE TABLE core.pages (
     show_in_menu BOOLEAN DEFAULT TRUE
 );
 
--- Version: 1.39
+-- Version: 1.41
 -- Description: Create table role_pages
 CREATE TABLE core.role_pages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -482,7 +482,7 @@ CREATE TABLE core.role_pages (
     UNIQUE(role_id, page_id)
 );
 
--- Version: 1.40
+-- Version: 1.42
 -- Description: add products
 CREATE TABLE products.products (
    id UUID NOT NULL,
@@ -505,7 +505,7 @@ CREATE TABLE products.products (
    FOREIGN KEY (category_id) REFERENCES products.product_categories(id)
 );
 
--- Version: 1.41
+-- Version: 1.43
 -- Description: add physical_attributes
 CREATE TABLE products.physical_attributes (
    id UUID NOT NULL,
@@ -527,14 +527,41 @@ CREATE TABLE products.physical_attributes (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.42
+-- Version: 1.44
+-- Description: Create currencies reference table
+CREATE TABLE core.currencies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(3) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    symbol VARCHAR(10) NOT NULL,
+    locale VARCHAR(10) NOT NULL,
+    decimal_places INT NOT NULL DEFAULT 2,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_by UUID REFERENCES core.users(id),
+    created_date TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES core.users(id),
+    updated_date TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_currencies_code ON core.currencies(code);
+CREATE INDEX idx_currencies_is_active ON core.currencies(is_active);
+CREATE INDEX idx_currencies_sort_order ON core.currencies(sort_order);
+
+COMMENT ON TABLE core.currencies IS 'Reference table for supported currencies';
+COMMENT ON COLUMN core.currencies.code IS 'ISO 4217 currency code (e.g., USD, EUR)';
+COMMENT ON COLUMN core.currencies.symbol IS 'Currency symbol for display (e.g., $, €)';
+COMMENT ON COLUMN core.currencies.locale IS 'Locale identifier for formatting (e.g., en-US)';
+COMMENT ON COLUMN core.currencies.decimal_places IS 'Number of decimal places for this currency (e.g., 2 for USD, 0 for JPY)';
+
+-- Version: 1.45
 -- Description: add product_costs
 CREATE TABLE products.product_costs (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    purchase_cost NUMERIC(10,2) NOT NULL,
    selling_price NUMERIC(10,2) NOT NULL,
-   currency VARCHAR(50) NOT NULL,
+   currency_id UUID NOT NULL,
    msrp NUMERIC(10,2) NOT NULL,
    markup_percentage NUMERIC(10,4) NOT NULL,
    landed_cost NUMERIC(10,2) NOT NULL,
@@ -546,10 +573,11 @@ CREATE TABLE products.product_costs (
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products.products(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id),
+   FOREIGN KEY (currency_id) REFERENCES core.currencies(id)
 );
 
--- Version: 1.43
+-- Version: 1.46
 -- Description: add suppliers
 CREATE TABLE procurement.suppliers (
    id UUID NOT NULL,
@@ -566,23 +594,24 @@ CREATE TABLE procurement.suppliers (
    FOREIGN KEY (payment_term_id) REFERENCES core.payment_terms(id) ON DELETE SET NULL
 );
 
--- Version: 1.44
+-- Version: 1.47
 -- Description: add cost_history
 CREATE TABLE products.cost_history (
    id UUID NOT NULL,
    product_id UUID NOT NULL,
    cost_type VARCHAR(50) NOT NULL,
    amount NUMERIC(10,2) NOT NULL,
-   currency VARCHAR(50) NOT NULL,
+   currency_id UUID NOT NULL,
    effective_date TIMESTAMP NOT NULL,
    end_date TIMESTAMP NOT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
-   FOREIGN KEY (product_id) REFERENCES products.products(id)
+   FOREIGN KEY (product_id) REFERENCES products.products(id),
+   FOREIGN KEY (currency_id) REFERENCES core.currencies(id)
 );
 
--- Version: 1.45
+-- Version: 1.48
 -- Description: add supplier_products
 CREATE TABLE procurement.supplier_products (
    id UUID NOT NULL,
@@ -601,7 +630,7 @@ CREATE TABLE procurement.supplier_products (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.46
+-- Version: 1.49
 -- Description: add quality_metrics
 CREATE TABLE products.quality_metrics (
    id UUID NOT NULL,
@@ -615,7 +644,7 @@ CREATE TABLE products.quality_metrics (
    FOREIGN KEY (product_id) REFERENCES products.products(id)
 );
 
--- Version: 1.47
+-- Version: 1.50
 -- Description: add lot tracking
 CREATE TABLE inventory.lot_trackings (
    id UUID NOT NULL,
@@ -632,7 +661,7 @@ CREATE TABLE inventory.lot_trackings (
    FOREIGN KEY (supplier_product_id) REFERENCES procurement.supplier_products(id)
 );
 
--- Version: 1.48
+-- Version: 1.51
 -- Description: add zones
 CREATE TABLE inventory.zones (
    id UUID NOT NULL,
@@ -645,7 +674,7 @@ CREATE TABLE inventory.zones (
    FOREIGN KEY (warehouse_id) REFERENCES inventory.warehouses(id)
 );
 
--- Version: 1.49
+-- Version: 1.52
 -- Description: add inventory_locations
 CREATE TABLE inventory.inventory_locations (
    id UUID NOT NULL,
@@ -666,7 +695,7 @@ CREATE TABLE inventory.inventory_locations (
    FOREIGN KEY (warehouse_id) REFERENCES inventory.warehouses(id)
 );
 
--- Version: 1.50
+-- Version: 1.53
 -- Description: add inventory_items
 CREATE TABLE inventory.inventory_items (
    id UUID NOT NULL,
@@ -688,7 +717,7 @@ CREATE TABLE inventory.inventory_items (
    FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id)
 );
 
--- Version: 1.51
+-- Version: 1.54
 -- Description: add serial_numbers
 CREATE TABLE inventory.serial_numbers (
    id UUID NOT NULL,
@@ -705,7 +734,7 @@ CREATE TABLE inventory.serial_numbers (
    FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
--- Version: 1.52
+-- Version: 1.55
 -- Description: add quality_inspections
 CREATE TABLE inventory.quality_inspections (
    id UUID NOT NULL,
@@ -724,7 +753,7 @@ CREATE TABLE inventory.quality_inspections (
    FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
--- Version: 1.53
+-- Version: 1.56
 -- Description: add inventory_transactions
 CREATE TABLE inventory.inventory_transactions (
    id UUID NOT NULL,
@@ -743,7 +772,7 @@ CREATE TABLE inventory.inventory_transactions (
    FOREIGN KEY (user_id) REFERENCES core.users(id)
 );
 
--- Version: 1.54
+-- Version: 1.57
 -- Description: add inventory_adjustments
 CREATE TABLE inventory.inventory_adjustments (
    id UUID NOT NULL,
@@ -764,7 +793,7 @@ CREATE TABLE inventory.inventory_adjustments (
    FOREIGN KEY (approved_by) REFERENCES core.users(id)
 );
 
--- Version: 1.55
+-- Version: 1.58
 -- Description: transfer_orders
 CREATE TABLE inventory.transfer_orders (
    id UUID NOT NULL,
@@ -790,6 +819,9 @@ CREATE TABLE inventory.transfer_orders (
 -- =============================================================================
 -- ORDERS
 -- =============================================================================
+
+-- Version: 1.59
+-- Description: Create table order_fulfillment_statuses
 CREATE TABLE sales.order_fulfillment_statuses (
    id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
@@ -801,6 +833,8 @@ CREATE TABLE sales.order_fulfillment_statuses (
    UNIQUE (name)
 );
 
+-- Version: 1.60
+-- Description: Create table line_item_fulfillment_statuses
 CREATE TABLE sales.line_item_fulfillment_statuses (
    id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
@@ -812,7 +846,8 @@ CREATE TABLE sales.line_item_fulfillment_statuses (
    UNIQUE (name)
 );
 
-
+-- Version: 1.61
+-- Description: Create table customers
 CREATE TABLE sales.customers (
    id UUID NOT NULL,
    name VARCHAR(100) NOT NULL,
@@ -830,6 +865,8 @@ CREATE TABLE sales.customers (
    FOREIGN KEY (updated_by) REFERENCES core.users(id)
 );
 
+-- Version: 1.62
+-- Description: Create table orders
 CREATE TABLE sales.orders (
    id UUID NOT NULL,
    number VARCHAR(100) NOT NULL,
@@ -849,7 +886,7 @@ CREATE TABLE sales.orders (
    tax_amount DECIMAL(12,2) DEFAULT 0,
    shipping_cost DECIMAL(12,2) DEFAULT 0,
    total_amount DECIMAL(12,2) DEFAULT 0,
-   currency VARCHAR(3) DEFAULT 'USD',
+   currency_id UUID NOT NULL,
    -- Audit columns
    created_by UUID NOT NULL,
    updated_by UUID NOT NULL,
@@ -861,10 +898,13 @@ CREATE TABLE sales.orders (
    FOREIGN KEY (billing_address_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
    FOREIGN KEY (shipping_address_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
    FOREIGN KEY (payment_term_id) REFERENCES core.payment_terms(id) ON DELETE SET NULL,
+   FOREIGN KEY (currency_id) REFERENCES core.currencies(id),
    FOREIGN KEY (created_by) REFERENCES core.users(id),
    FOREIGN KEY (updated_by) REFERENCES core.users(id)
 );
 
+-- Version: 1.63
+-- Description: Create table order_line_items
 CREATE TABLE sales.order_line_items (
    id UUID NOT NULL,
    order_id UUID NOT NULL,
@@ -892,6 +932,9 @@ CREATE TABLE sales.order_line_items (
 -- =============================================================================
 -- WORKFLOW TABLES
 -- =============================================================================
+
+-- Version: 1.64
+-- Description: Create table trigger_types
 CREATE TABLE workflow.trigger_types (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(50) NOT NULL UNIQUE,
@@ -901,6 +944,8 @@ CREATE TABLE workflow.trigger_types (
    FOREIGN KEY (deactivated_by) REFERENCES core.users(id)
 );
 
+-- Version: 1.65
+-- Description: Create table entity_types
 CREATE TABLE workflow.entity_types (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(50) NOT NULL UNIQUE,
@@ -910,7 +955,8 @@ CREATE TABLE workflow.entity_types (
    FOREIGN KEY (deactivated_by) REFERENCES core.users(id)
 );
 
--- Define automation rules
+-- Version: 1.66
+-- Description: Create table automation_rules
 CREATE TABLE workflow.automation_rules (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(100) NOT NULL,
@@ -934,7 +980,8 @@ CREATE TABLE workflow.automation_rules (
    deactivated_by UUID NULL REFERENCES core.users(id)
 );
 
--- Track rule executions
+-- Version: 1.67
+-- Description: Create table automation_executions
 CREATE TABLE workflow.automation_executions (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    automation_rules_id UUID NOT NULL REFERENCES workflow.automation_rules(id),
@@ -947,6 +994,8 @@ CREATE TABLE workflow.automation_executions (
    executed_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- Version: 1.68
+-- Description: Create table action_templates
 CREATE TABLE workflow.action_templates (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    name VARCHAR(100) NOT NULL UNIQUE,
@@ -959,6 +1008,8 @@ CREATE TABLE workflow.action_templates (
    deactivated_by UUID NULL REFERENCES core.users(id)
 );
 
+-- Version: 1.69
+-- Description: Create table rule_actions
 CREATE TABLE workflow.rule_actions (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    automation_rules_id UUID NOT NULL REFERENCES workflow.automation_rules(id),
@@ -971,13 +1022,16 @@ CREATE TABLE workflow.rule_actions (
    deactivated_by UUID NULL REFERENCES core.users(id)
 );
 
+-- Version: 1.70
+-- Description: Create table rule_dependencies
 CREATE TABLE workflow.rule_dependencies (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    parent_rule_id UUID REFERENCES workflow.automation_rules(id),
    child_rule_id UUID REFERENCES workflow.automation_rules(id)
 );
 
--- Create entities table
+-- Version: 1.71
+-- Description: Create table entities
 CREATE TABLE workflow.entities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -988,7 +1042,8 @@ CREATE TABLE workflow.entities (
     deactivated_by UUID NULL REFERENCES core.users(id)
 );
 
--- Track notification deliveries from workflow actions
+-- Version: 1.72
+-- Description: Create table notification_deliveries
 CREATE TABLE workflow.notification_deliveries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     notification_id UUID NOT NULL, -- References the data structure NotificationPayload in the notification queue, probably this will be referencing logs
@@ -1015,7 +1070,8 @@ CREATE TABLE workflow.notification_deliveries (
    --  INDEX idx_notification_deliveries_created_at (created_at)
 );
 
--- Add to your migration file
+-- Version: 1.73
+-- Description: Create table allocation_results
 CREATE TABLE workflow.allocation_results (
     id UUID PRIMARY KEY,
     idempotency_key VARCHAR(255) UNIQUE NOT NULL,
@@ -1025,7 +1081,7 @@ CREATE TABLE workflow.allocation_results (
 CREATE INDEX idx_allocation_idempotency ON workflow.allocation_results(idempotency_key);
 
 -- Migration: Create table_configs table for storing table configurations
--- Version: 1.60
+-- Version: 1.74
 -- Description: Create table for storing dynamic table configurations
 CREATE TABLE IF NOT EXISTS config.table_configs (
     id UUID PRIMARY KEY,
@@ -1061,7 +1117,7 @@ COMMENT ON COLUMN config.table_configs.updated_by IS 'User who last updated this
 
 
 -- Migration: Create page_configs for storing page configurations
--- Version: 1.61
+-- Version: 1.75
 -- Description: Create table for storing page configurations
 CREATE TABLE IF NOT EXISTS config.page_configs (
    id UUID PRIMARY KEY,
@@ -1086,7 +1142,7 @@ COMMENT ON INDEX config.unique_default_page_config IS 'Ensures only one default 
 COMMENT ON CONSTRAINT check_default_no_user ON config.page_configs IS 'Ensures default configs have no user_id and non-default configs have a user_id';
 
 -- Migration: Create page_tab_configs for storing tab configurations within pages
--- Version: 1.62
+-- Version: 1.76
 -- Description: Create table for storing tab configurations within pages
 CREATE TABLE IF NOT EXISTS config.page_tab_configs (
    id UUID PRIMARY KEY,
@@ -1100,7 +1156,7 @@ CREATE TABLE IF NOT EXISTS config.page_tab_configs (
    CONSTRAINT fk_page_tab_configs_config FOREIGN KEY (config_id) REFERENCES config.table_configs(id) ON DELETE CASCADE
 );
 
--- Version: 1.63
+-- Version: 1.77
 -- Description: Create forms table for form configurations
 CREATE TABLE IF NOT EXISTS config.forms (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1124,7 +1180,7 @@ COMMENT ON COLUMN config.forms.is_reference_data IS
 COMMENT ON COLUMN config.forms.allow_inline_create IS
     'If true, this form can be embedded for inline entity creation within other forms';
 
--- Version: 1.64
+-- Version: 1.78
 -- Description: Create form_fields table for form field configurations
 CREATE TABLE IF NOT EXISTS config.form_fields (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1184,7 +1240,7 @@ ORDER BY tc.updated_date DESC;
 -- GRANT INSERT, UPDATE, DELETE ON config.table_configs TO authenticated;
 -- GRANT SELECT ON config.active_table_configs TO authenticated;
 
--- Version: 1.65
+-- Version: 1.79
 -- Description: Create table page_actions (base table for all action types)
 CREATE TABLE config.page_actions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1197,7 +1253,7 @@ CREATE TABLE config.page_actions (
         REFERENCES config.page_configs(id) ON DELETE CASCADE
 );
 
--- Version: 1.66
+-- Version: 1.80
 -- Description: Create table page_action_buttons
 CREATE TABLE config.page_action_buttons (
     action_id UUID PRIMARY KEY,
@@ -1212,7 +1268,7 @@ CREATE TABLE config.page_action_buttons (
         REFERENCES config.page_actions(id) ON DELETE CASCADE
 );
 
--- Version: 1.67
+-- Version: 1.81
 -- Description: Create table page_action_dropdowns
 CREATE TABLE config.page_action_dropdowns (
     action_id UUID PRIMARY KEY,
@@ -1223,7 +1279,7 @@ CREATE TABLE config.page_action_dropdowns (
         REFERENCES config.page_actions(id) ON DELETE CASCADE
 );
 
--- Version: 1.68
+-- Version: 1.82
 -- Description: Create table page_action_dropdown_items
 CREATE TABLE config.page_action_dropdown_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1236,7 +1292,7 @@ CREATE TABLE config.page_action_dropdown_items (
         REFERENCES config.page_action_dropdowns(action_id) ON DELETE CASCADE
 );
 
--- Version: 1.69
+-- Version: 1.83
 -- Description: Add entity_schema and entity_table columns to form_fields
 ALTER TABLE config.form_fields
     ADD COLUMN entity_schema TEXT NOT NULL DEFAULT 'core',
@@ -1256,7 +1312,7 @@ CREATE INDEX IF NOT EXISTS idx_form_fields_schema_table ON config.form_fields(en
 COMMENT ON COLUMN config.form_fields.entity_schema IS 'Database schema name for the entity this field belongs to';
 COMMENT ON COLUMN config.form_fields.entity_table IS 'Database table name for the entity this field belongs to';
 
--- Version: 1.70
+-- Version: 1.84
 -- Description: Create flexible page content blocks system for user-customizable layouts
 CREATE TABLE IF NOT EXISTS config.page_content (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1340,7 +1396,7 @@ SELECT
    o.tax_amount AS orders_tax_amount,
    o.shipping_cost AS orders_shipping_cost,
    o.total_amount AS orders_total_amount,
-   o.currency AS orders_currency,
+   o.currency_id AS orders_currency_id,
 
    c.id AS customers_id,
    c.name AS customers_name,
@@ -1465,7 +1521,7 @@ CREATE OR REPLACE VIEW workflow.rule_actions_view AS
    FROM workflow.rule_actions ra
    LEFT JOIN workflow.action_templates at ON ra.template_id = at.id;
 
--- Version: 1.56
+-- Version: 1.85
 -- Description: Create purchase order status table
 CREATE TABLE procurement.purchase_order_statuses (
    id UUID PRIMARY KEY,
@@ -1474,7 +1530,7 @@ CREATE TABLE procurement.purchase_order_statuses (
    sort_order INTEGER DEFAULT 1000
 );
 
--- Version: 1.57
+-- Version: 1.86
 -- Description: Create purchase order line item status table
 CREATE TABLE procurement.purchase_order_line_item_statuses (
    id UUID PRIMARY KEY,
@@ -1483,7 +1539,7 @@ CREATE TABLE procurement.purchase_order_line_item_statuses (
    sort_order INTEGER DEFAULT 1000
 );
 
--- Version: 1.58
+-- Version: 1.87
 -- Description: Create purchase orders table
 CREATE TABLE procurement.purchase_orders (
    id UUID PRIMARY KEY,
@@ -1506,7 +1562,7 @@ CREATE TABLE procurement.purchase_orders (
    tax_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
    shipping_cost NUMERIC(10,2) NOT NULL DEFAULT 0.00,
    total_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-   currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+   currency_id UUID NOT NULL,
 
    -- Workflow
    requested_by UUID NOT NULL,
@@ -1528,6 +1584,7 @@ CREATE TABLE procurement.purchase_orders (
    FOREIGN KEY (delivery_warehouse_id) REFERENCES inventory.warehouses(id) ON DELETE RESTRICT,
    FOREIGN KEY (delivery_location_id) REFERENCES inventory.inventory_locations(id) ON DELETE SET NULL,
    FOREIGN KEY (delivery_street_id) REFERENCES geography.streets(id) ON DELETE SET NULL,
+   FOREIGN KEY (currency_id) REFERENCES core.currencies(id) ON DELETE RESTRICT,
    FOREIGN KEY (requested_by) REFERENCES core.users(id) ON DELETE RESTRICT,
    FOREIGN KEY (approved_by) REFERENCES core.users(id) ON DELETE SET NULL,
    FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE RESTRICT,
@@ -1546,7 +1603,7 @@ CREATE INDEX idx_purchase_orders_order_date ON procurement.purchase_orders(order
 CREATE INDEX idx_purchase_orders_expected_delivery ON procurement.purchase_orders(expected_delivery_date);
 CREATE INDEX idx_purchase_orders_requested_by ON procurement.purchase_orders(requested_by);
 
--- Version: 1.59
+-- Version: 1.88
 -- Description: Create purchase order line items table
 CREATE TABLE procurement.purchase_order_line_items (
    id UUID PRIMARY KEY,
@@ -1594,15 +1651,15 @@ CREATE INDEX idx_po_line_items_po ON procurement.purchase_order_line_items(purch
 CREATE INDEX idx_po_line_items_supplier_product ON procurement.purchase_order_line_items(supplier_product_id);
 CREATE INDEX idx_po_line_items_status ON procurement.purchase_order_line_items(line_item_status_id);
 
--- Version: 1.71
+-- Version: 1.89
 -- Description: Drop legacy page_tab_configs table (replaced by page_content system)
 DROP TABLE IF EXISTS config.page_tab_configs;
 
--- Version: 1.72
+-- Version: 1.90
 -- Description: Increase table_name column size to accommodate schema prefixes
 ALTER TABLE core.table_access ALTER COLUMN table_name TYPE VARCHAR(100);
 
--- Version: 1.73
+-- Version: 1.91
 -- Description: Add schema prefixes to existing table names
 -- Assets schema
 UPDATE core.table_access SET table_name = 'assets.asset_types' WHERE table_name = 'asset_types';
@@ -1684,7 +1741,7 @@ UPDATE core.table_access SET table_name = 'config.page_action_buttons' WHERE tab
 UPDATE core.table_access SET table_name = 'config.page_action_dropdowns' WHERE table_name = 'page_action_dropdowns';
 UPDATE core.table_access SET table_name = 'config.page_action_dropdown_items' WHERE table_name = 'page_action_dropdown_items';
 
--- Version: 1.74
+-- Version: 1.92
 -- Description: Add chart_config_id column to page_content table for chart content type
 ALTER TABLE config.page_content
 ADD COLUMN chart_config_id UUID NULL;
@@ -1709,7 +1766,7 @@ ADD CONSTRAINT check_content_reference CHECK (
 
 COMMENT ON COLUMN config.page_content.chart_config_id IS 'References table_configs for chart widget configurations';
 
--- Version: 1.75
+-- Version: 1.93
 -- Description: Convert GroupBy from object to array in table_configs for multi-dimensional grouping support
 UPDATE config.table_configs
 SET config = jsonb_set(
@@ -1725,7 +1782,7 @@ SET config = jsonb_set(
 WHERE config->'data_source'->0->'group_by' IS NOT NULL
   AND jsonb_typeof(config->'data_source'->0->'group_by') = 'object';
 
--- Version: 1.76
+-- Version: 1.94
 -- Description: Create workflow alert tables
 CREATE TABLE workflow.alerts (
    id UUID NOT NULL,
@@ -1752,7 +1809,7 @@ CREATE INDEX idx_alerts_source_rule ON workflow.alerts(source_rule_id);
 CREATE INDEX idx_alerts_expires_date ON workflow.alerts(expires_date) WHERE expires_date IS NOT NULL;
 CREATE INDEX idx_alerts_source_entity_type_status ON workflow.alerts(source_entity_id, alert_type, status) WHERE source_entity_id IS NOT NULL;
 
--- Version: 1.77
+-- Version: 1.95
 -- Description: Create alert recipients table
 CREATE TABLE workflow.alert_recipients (
    id UUID NOT NULL,
@@ -1769,7 +1826,7 @@ CREATE INDEX idx_alert_recipients_alert ON workflow.alert_recipients(alert_id);
 CREATE INDEX idx_alert_recipients_recipient ON workflow.alert_recipients(recipient_type, recipient_id);
 CREATE INDEX idx_alert_recipients_lookup ON workflow.alert_recipients(recipient_id, recipient_type, alert_id);
 
--- Version: 1.78
+-- Version: 1.96
 -- Description: Create alert acknowledgments table
 CREATE TABLE workflow.alert_acknowledgments (
    id UUID NOT NULL,
@@ -1786,7 +1843,7 @@ CREATE TABLE workflow.alert_acknowledgments (
 CREATE INDEX idx_alert_ack_alert ON workflow.alert_acknowledgments(alert_id);
 CREATE INDEX idx_alert_ack_user ON workflow.alert_acknowledgments(acknowledged_by);
 
--- Version: 1.79
+-- Version: 1.97
 -- Description: Create enum_labels table for human-friendly display labels
 CREATE TABLE config.enum_labels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1805,4 +1862,3 @@ COMMENT ON COLUMN config.enum_labels.enum_name IS 'Full enum name in schema.enum
 COMMENT ON COLUMN config.enum_labels.value IS 'Raw enum value that must match the PostgreSQL enum value';
 COMMENT ON COLUMN config.enum_labels.label IS 'Human-friendly display label for the enum value';
 COMMENT ON COLUMN config.enum_labels.sort_order IS 'Custom sort order (overrides pg_enum enumsortorder if needed)';
-

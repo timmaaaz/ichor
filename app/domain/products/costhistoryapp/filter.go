@@ -64,8 +64,12 @@ func parseFilter(qp QueryParams) (costhistorybus.QueryFilter, error) {
 		filter.EffectiveDate = &t
 	}
 
-	if qp.Currency != "" {
-		filter.Currency = &qp.Currency
+	if qp.CurrencyID != "" {
+		id, err := uuid.Parse(qp.CurrencyID)
+		if err != nil {
+			return costhistorybus.QueryFilter{}, err
+		}
+		filter.CurrencyID = &id
 	}
 
 	if qp.EffectiveDate != "" {

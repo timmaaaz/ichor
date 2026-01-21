@@ -20,7 +20,7 @@ type QueryParams struct {
 	ProductID         string
 	PurchaseCost      string
 	SellingPrice      string
-	Currency          string
+	CurrencyID        string
 	MSRP              string
 	MarkupPercentage  string
 	LandedCost        string
@@ -38,7 +38,7 @@ type ProductCost struct {
 	ProductID         string `json:"product_id"`
 	PurchaseCost      string `json:"purchase_cost"`
 	SellingPrice      string `json:"selling_price"`
-	Currency          string `json:"currency"`
+	CurrencyID        string `json:"currency_id"`
 	MSRP              string `json:"msrp"`
 	MarkupPercentage  string `json:"markup_percentage"`
 	LandedCost        string `json:"landed_cost"`
@@ -62,7 +62,7 @@ func ToAppProductCost(bus productcostbus.ProductCost) ProductCost {
 		ProductID:         bus.ProductID.String(),
 		PurchaseCost:      bus.PurchaseCost.Value(),
 		SellingPrice:      bus.SellingPrice.Value(),
-		Currency:          bus.Currency,
+		CurrencyID:        bus.CurrencyID.String(),
 		MSRP:              bus.MSRP.Value(),
 		MarkupPercentage:  bus.MarkupPercentage.String(),
 		LandedCost:        bus.LandedCost.Value(),
@@ -90,7 +90,7 @@ type NewProductCost struct {
 	ProductID         string `json:"product_id" validate:"required,min=36,max=36"`
 	PurchaseCost      string `json:"purchase_cost" validate:"required"`
 	SellingPrice      string `json:"selling_price" validate:"required"`
-	Currency          string `json:"currency" validate:"required"`
+	CurrencyID        string `json:"currency_id" validate:"required,min=36,max=36"`
 	MSRP              string `json:"msrp" validate:"required"`
 	MarkupPercentage  string `json:"markup_percentage" validate:"required"`
 	LandedCost        string `json:"landed_cost" validate:"required"`
@@ -128,6 +128,11 @@ func toBusNewProductCost(app NewProductCost) (productcostbus.NewProductCost, err
 	sellingPrice, err := types.ParseMoney(app.SellingPrice)
 	if err != nil {
 		return productcostbus.NewProductCost{}, errs.NewFieldsError("sellingPrice", err)
+	}
+
+	currencyID, err := uuid.Parse(app.CurrencyID)
+	if err != nil {
+		return productcostbus.NewProductCost{}, errs.NewFieldsError("currencyID", err)
 	}
 
 	msrp, err := types.ParseMoney(app.MSRP)
@@ -169,7 +174,7 @@ func toBusNewProductCost(app NewProductCost) (productcostbus.NewProductCost, err
 		ProductID:         productID,
 		PurchaseCost:      purchaseCost,
 		SellingPrice:      sellingPrice,
-		Currency:          app.Currency,
+		CurrencyID:        currencyID,
 		MSRP:              msrp,
 		MarkupPercentage:  markupPercentage,
 		LandedCost:        landedCost,
@@ -187,7 +192,7 @@ type UpdateProductCost struct {
 	ProductID         *string `json:"product_id" validate:"omitempty,min=36,max=36"`
 	PurchaseCost      *string `json:"purchase_cost"`
 	SellingPrice      *string `json:"selling_price"`
-	Currency          *string `json:"currency"`
+	CurrencyID        *string `json:"currency_id" validate:"omitempty,min=36,max=36"`
 	MSRP              *string `json:"msrp"`
 	MarkupPercentage  *string `json:"markup_percentage"`
 	LandedCost        *string `json:"landed_cost"`
@@ -297,8 +302,12 @@ func toBusUpdateProductCost(app UpdateProductCost) (productcostbus.UpdateProduct
 		upc.EffectiveDate = &effectiveDate
 	}
 
-	if app.Currency != nil {
-		upc.Currency = app.Currency
+	if app.CurrencyID != nil {
+		currencyID, err := uuid.Parse(*app.CurrencyID)
+		if err != nil {
+			return productcostbus.UpdateProductCost{}, errs.NewFieldsError("currencyID", err)
+		}
+		upc.CurrencyID = &currencyID
 	}
 
 	if app.ABCClassification != nil {

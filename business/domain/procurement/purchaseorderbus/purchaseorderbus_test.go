@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
@@ -129,8 +130,18 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		poStatusIDs = append(poStatusIDs, pos.ID)
 	}
 
+	// Currencies
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
 	// Purchase orders
-	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, count, supplierIDs, poStatusIDs, warehouseIDs, streetIDs, userIDs, busDomain.PurchaseOrder)
+	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, count, supplierIDs, poStatusIDs, warehouseIDs, streetIDs, userIDs, currencyIDs, busDomain.PurchaseOrder)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding purchase orders: %w", err)
 	}
@@ -212,7 +223,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				TaxAmount:                tax,
 				ShippingCost:             shipping,
 				TotalAmount:              total,
-				Currency:                 "USD",
+				CurrencyID:                 sd.PurchaseOrders[0].CurrencyID,
 				RequestedBy:              sd.Admins[0].ID,
 				ApprovedBy:               uuid.Nil,
 				Notes:                    "Test purchase order",
@@ -232,7 +243,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					TaxAmount:                tax,
 					ShippingCost:             shipping,
 					TotalAmount:              total,
-					Currency:                 "USD",
+					CurrencyID:                 sd.PurchaseOrders[0].CurrencyID,
 					RequestedBy:              sd.Admins[0].ID,
 					Notes:                    "Test purchase order",
 					SupplierReferenceNumber:  "SUP-REF-TEST",
@@ -288,7 +299,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				TaxAmount:                sd.PurchaseOrders[0].TaxAmount,
 				ShippingCost:             sd.PurchaseOrders[0].ShippingCost,
 				TotalAmount:              sd.PurchaseOrders[0].TotalAmount,
-				Currency:                 sd.PurchaseOrders[0].Currency,
+				CurrencyID:                 sd.PurchaseOrders[0].CurrencyID,
 				RequestedBy:              sd.PurchaseOrders[0].RequestedBy,
 				ApprovedBy:               sd.PurchaseOrders[0].ApprovedBy,
 				ApprovedDate:             sd.PurchaseOrders[0].ApprovedDate,

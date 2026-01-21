@@ -12,7 +12,7 @@ type QueryFilter struct {
 	ProductID         *uuid.UUID
 	PurchaseCost      *types.Money
 	SellingPrice      *types.Money
-	Currency          *string
+	CurrencyID        *uuid.UUID
 	MSRP              *types.Money
 	MarkupPercentage  *types.RoundedFloat
 	LandedCost        *types.Money

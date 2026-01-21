@@ -28,6 +28,14 @@ func parseFilter(qp QueryParams) (productcostbus.QueryFilter, error) {
 		filter.ProductID = &id
 	}
 
+	if qp.CurrencyID != "" {
+		id, err := uuid.Parse(qp.CurrencyID)
+		if err != nil {
+			return productcostbus.QueryFilter{}, errs.NewFieldsError("currency_id", err)
+		}
+		filter.CurrencyID = &id
+	}
+
 	if qp.EffectiveDate != "" {
 		t, err := time.Parse(timeutil.FORMAT, qp.EffectiveDate)
 		if err != nil {

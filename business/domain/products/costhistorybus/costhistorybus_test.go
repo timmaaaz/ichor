@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
@@ -128,7 +129,16 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		productIDs[i] = p.ProductID
 	}
 
-	costHistory, err := costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, busDomain.CostHistory)
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return unitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
+	costHistory, err := costhistorybus.TestSeedCostHistories(ctx, 40, productIDs, currencyIDs, busDomain.CostHistory)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding cost history : %w", err)
 	}
@@ -183,7 +193,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ProductID:     sd.Products[0].ProductID,
 				CostType:      sd.CostHistory[2].CostType,
 				Amount:        sd.CostHistory[2].Amount,
-				Currency:      sd.CostHistory[2].Currency,
+				CurrencyID:      sd.CostHistory[2].CurrencyID,
 				EffectiveDate: sd.CostHistory[2].EffectiveDate,
 				EndDate:       sd.CostHistory[2].EndDate,
 			},
@@ -193,7 +203,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					ProductID:     sd.Products[0].ProductID,
 					CostType:      sd.CostHistory[2].CostType,
 					Amount:        sd.CostHistory[2].Amount,
-					Currency:      sd.CostHistory[2].Currency,
+					CurrencyID:      sd.CostHistory[2].CurrencyID,
 					EffectiveDate: sd.CostHistory[2].EffectiveDate,
 					EndDate:       sd.CostHistory[2].EndDate,
 				}
@@ -229,7 +239,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ProductID:     sd.Products[0].ProductID,
 				CostType:      sd.CostHistory[1].CostType,
 				Amount:        sd.CostHistory[2].Amount,
-				Currency:      sd.CostHistory[3].Currency,
+				CurrencyID:      sd.CostHistory[3].CurrencyID,
 				EffectiveDate: sd.CostHistory[4].EffectiveDate,
 				EndDate:       sd.CostHistory[5].EndDate,
 				CreatedDate:   sd.CostHistory[0].CreatedDate,
@@ -239,7 +249,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					ProductID:     &sd.Products[0].ProductID,
 					CostType:      &sd.CostHistory[1].CostType,
 					Amount:        &sd.CostHistory[2].Amount,
-					Currency:      &sd.CostHistory[3].Currency,
+					CurrencyID:      &sd.CostHistory[3].CurrencyID,
 					EffectiveDate: &sd.CostHistory[4].EffectiveDate,
 					EndDate:       &sd.CostHistory[5].EndDate,
 				}

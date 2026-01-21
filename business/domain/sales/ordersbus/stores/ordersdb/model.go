@@ -24,7 +24,7 @@ type dbOrder struct {
 	TaxAmount           sql.NullString `db:"tax_amount"`
 	ShippingCost        sql.NullString `db:"shipping_cost"`
 	TotalAmount         sql.NullString `db:"total_amount"`
-	Currency            string         `db:"currency"`
+	CurrencyID          uuid.UUID      `db:"currency_id"`
 	PaymentTermID       *uuid.UUID     `db:"payment_term_id"`
 	Notes               string         `db:"notes"`
 	CreatedBy           uuid.UUID      `db:"created_by"`
@@ -73,7 +73,7 @@ func toBusOrder(db dbOrder) (ordersbus.Order, error) {
 		TaxAmount:           taxAmount,
 		ShippingCost:        shippingCost,
 		TotalAmount:         totalAmount,
-		Currency:            db.Currency,
+		CurrencyID:            db.CurrencyID,
 		PaymentTermID:       db.PaymentTermID,
 		Notes:               db.Notes,
 		CreatedBy:           db.CreatedBy,
@@ -110,7 +110,7 @@ func toDBOrder(bus ordersbus.Order) dbOrder {
 		TaxAmount:           bus.TaxAmount.DBValue(),
 		ShippingCost:        bus.ShippingCost.DBValue(),
 		TotalAmount:         bus.TotalAmount.DBValue(),
-		Currency:            bus.Currency,
+		CurrencyID:            bus.CurrencyID,
 		PaymentTermID:       bus.PaymentTermID,
 		Notes:               bus.Notes,
 		CreatedBy:           bus.CreatedBy,

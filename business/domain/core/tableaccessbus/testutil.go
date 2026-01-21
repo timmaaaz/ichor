@@ -44,6 +44,7 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 		{RoleID: uuid.Nil, TableName: "core.role_pages", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "core.table_access", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 		{RoleID: uuid.Nil, TableName: "core.payment_terms", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "core.currencies", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 
 		// Sales schema
 		{RoleID: uuid.Nil, TableName: "assets.fulfillment_status", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},

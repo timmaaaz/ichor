@@ -20,6 +20,9 @@ import (
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus/stores/currencycache"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus/stores/currencydb"
 	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus"
 	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus/stores/paymenttermdb"
 	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
@@ -195,6 +198,7 @@ type BusDomain struct {
 	ContactInfos *contactinfosbus.Business
 	Customers    *customersbus.Business
 	PaymentTerm  *paymenttermbus.Business
+	Currency     *currencybus.Business
 
 	// Inventory
 	Brand             *brandbus.Business
@@ -302,6 +306,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	contactInfosBus := contactinfosbus.NewBusiness(log, delegate, contactinfosdb.NewStore(log, db))
 	customersBus := customersbus.NewBusiness(log, delegate, customersdb.NewStore(log, db))
 	paymentTermBus := paymenttermbus.NewBusiness(log, delegate, paymenttermdb.NewStore(log, db))
+	currencyBus := currencybus.NewBusiness(log, delegate, currencycache.NewStore(log, currencydb.NewStore(log, db), 60*time.Minute))
 
 	// Inventory
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
@@ -400,6 +405,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		ContactInfos:              contactInfosBus,
 		Customers:                 customersBus,
 		PaymentTerm:               paymentTermBus,
+		Currency:                  currencyBus,
 		Brand:                     brandBus,
 		Warehouse:                 warehouseBus,
 		Role:                      roleBus,

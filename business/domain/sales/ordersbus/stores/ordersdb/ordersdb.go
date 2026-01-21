@@ -46,13 +46,13 @@ func (s *Store) Create(ctx context.Context, status ordersbus.Order) error {
 	  id, number, customer_id, due_date, order_fulfillment_status_id,
 	  order_date, billing_address_id, shipping_address_id,
 	  subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
-	  currency, payment_term_id, notes,
+	  currency_id, payment_term_id, notes,
 	  created_by, updated_by, created_date, updated_date
     ) VALUES (
         :id, :number, :customer_id, :due_date, :order_fulfillment_status_id,
         :order_date, :billing_address_id, :shipping_address_id,
         :subtotal, :tax_rate, :tax_amount, :shipping_cost, :total_amount,
-        :currency, :payment_term_id, :notes,
+        :currency_id, :payment_term_id, :notes,
         :created_by, :updated_by, :created_date, :updated_date
     )
 	`
@@ -88,7 +88,7 @@ func (s *Store) Update(ctx context.Context, status ordersbus.Order) error {
         tax_amount = :tax_amount,
         shipping_cost = :shipping_cost,
         total_amount = :total_amount,
-        currency = :currency,
+        currency_id = :currency_id,
         payment_term_id = :payment_term_id,
         notes = :notes,
         created_by = :created_by,
@@ -136,7 +136,7 @@ func (s *Store) Query(ctx context.Context, filter ordersbus.QueryFilter, orderBy
 		id, number, customer_id, due_date, order_fulfillment_status_id,
 		order_date, billing_address_id, shipping_address_id,
 		subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
-		currency, payment_term_id, notes,
+		currency_id, payment_term_id, notes,
 		created_by, updated_by, created_date, updated_date
     FROM
 	    sales.orders
@@ -198,7 +198,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (ordersbus.Or
         id, number, customer_id, due_date, order_fulfillment_status_id,
         order_date, billing_address_id, shipping_address_id,
         subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
-        currency, payment_term_id, notes,
+        currency_id, payment_term_id, notes,
         created_by, updated_by, created_date, updated_date
     FROM
         sales.orders

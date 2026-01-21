@@ -188,6 +188,70 @@ func TestTemplateProcessor_Filters(t *testing.T) {
 			want: "Total: €123.45",
 		},
 		{
+			name:     "currency filter GBP",
+			template: "Total: {{amount | currency:GBP}}",
+			context: workflow.TemplateContext{
+				"amount": 123.45,
+			},
+			want: "Total: £123.45",
+		},
+		{
+			name:     "currency filter JPY zero decimals",
+			template: "Total: {{amount | currency:JPY}}",
+			context: workflow.TemplateContext{
+				"amount": 12345,
+			},
+			want: "Total: ¥12345",
+		},
+		{
+			name:     "currency filter CAD",
+			template: "Total: {{amount | currency:CAD}}",
+			context: workflow.TemplateContext{
+				"amount": 99.99,
+			},
+			want: "Total: $99.99",
+		},
+		{
+			name:     "currency filter AUD",
+			template: "Total: {{amount | currency:AUD}}",
+			context: workflow.TemplateContext{
+				"amount": 49.50,
+			},
+			want: "Total: $49.50",
+		},
+		{
+			name:     "currency filter CHF",
+			template: "Total: {{amount | currency:CHF}}",
+			context: workflow.TemplateContext{
+				"amount": 199.00,
+			},
+			want: "Total: CHF 199.00",
+		},
+		{
+			name:     "currency filter CNY",
+			template: "Total: {{amount | currency:CNY}}",
+			context: workflow.TemplateContext{
+				"amount": 888.88,
+			},
+			want: "Total: ¥888.88",
+		},
+		{
+			name:     "currency filter INR",
+			template: "Total: {{amount | currency:INR}}",
+			context: workflow.TemplateContext{
+				"amount": 1500.00,
+			},
+			want: "Total: ₹1500.00",
+		},
+		{
+			name:     "currency filter MXN",
+			template: "Total: {{amount | currency:MXN}}",
+			context: workflow.TemplateContext{
+				"amount": 2500.50,
+			},
+			want: "Total: $2500.50",
+		},
+		{
 			name:     "round filter",
 			template: "Value: {{value | round:2}}",
 			context: workflow.TemplateContext{

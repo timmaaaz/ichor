@@ -18,6 +18,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/app/domain/core/currencyapp"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/paymenttermapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
@@ -122,6 +123,7 @@ func buildFormDataRegistry(
 	roleApp *roleapp.App,
 	pageApp *pageapp.App,
 	paymentTermApp *paymenttermapp.App,
+	currencyApp *currencyapp.App,
 	rolePageApp *rolepageapp.App,
 	tableAccessApp *tableaccessapp.App,
 	userRoleApp *userroleapp.App,
@@ -430,6 +432,41 @@ func buildFormDataRegistry(
 		UpdateModel: paymenttermapp.UpdatePaymentTerm{},
 	}); err != nil {
 		return nil, fmt.Errorf("register core.payment_terms: %w", err)
+	}
+
+	// Register currencies entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "core.currencies",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app currencyapp.NewCurrency
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return currencyApp.Create(ctx, model.(currencyapp.NewCurrency))
+		},
+		CreateModel: currencyapp.NewCurrency{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app currencyapp.UpdateCurrency
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return currencyApp.Update(ctx, model.(currencyapp.UpdateCurrency), id)
+		},
+		UpdateModel: currencyapp.UpdateCurrency{},
+	}); err != nil {
+		return nil, fmt.Errorf("register core.currencies: %w", err)
 	}
 
 	// Register role_pages entity

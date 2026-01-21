@@ -20,7 +20,7 @@ type QueryParams struct {
 	ProductID     string
 	CostType      string
 	Amount        string
-	Currency      string
+	CurrencyID    string
 	EffectiveDate string
 	EndDate       string
 	CreatedDate   string
@@ -32,7 +32,7 @@ type CostHistory struct {
 	ProductID     string `json:"product_id"`
 	CostType      string `json:"cost_type"`
 	Amount        string `json:"amount"`
-	Currency      string `json:"currency"`
+	CurrencyID    string `json:"currency_id"`
 	EffectiveDate string `json:"effective_date"`
 	EndDate       string `json:"end_date"`
 	CreatedDate   string `json:"created_date"`
@@ -50,7 +50,7 @@ func ToAppCostHistory(bus costhistorybus.CostHistory) CostHistory {
 		ProductID:     bus.ProductID.String(),
 		CostType:      bus.CostType,
 		Amount:        bus.Amount.Value(),
-		Currency:      bus.Currency,
+		CurrencyID:    bus.CurrencyID.String(),
 		EffectiveDate: bus.EffectiveDate.Format(timeutil.FORMAT),
 		EndDate:       bus.EndDate.Format(timeutil.FORMAT),
 		CreatedDate:   bus.CreatedDate.Format(timeutil.FORMAT),
@@ -72,7 +72,7 @@ type NewCostHistory struct {
 	ProductID     string  `json:"product_id" validate:"required,min=36,max=36"`
 	CostType      string  `json:"cost_type" validate:"required"`
 	Amount        string  `json:"amount" validate:"required"`
-	Currency      string  `json:"currency" validate:"required"`
+	CurrencyID    string  `json:"currency_id" validate:"required,min=36,max=36"`
 	EffectiveDate string  `json:"effective_date" validate:"required"`
 	EndDate       string  `json:"end_date" validate:"required"`
 	CreatedDate   *string `json:"created_date"` // Optional: for seeding/import
@@ -111,11 +111,16 @@ func toBusNewCostHistory(app NewCostHistory) (costhistorybus.NewCostHistory, err
 		return costhistorybus.NewCostHistory{}, errs.Newf(errs.InvalidArgument, "parse end_date: %s", err)
 	}
 
+	currencyID, err := uuid.Parse(app.CurrencyID)
+	if err != nil {
+		return costhistorybus.NewCostHistory{}, errs.Newf(errs.InvalidArgument, "parse currency_id: %s", err)
+	}
+
 	bus := costhistorybus.NewCostHistory{
 		ProductID:     productID,
 		CostType:      app.CostType,
 		Amount:        amount,
-		Currency:      app.Currency,
+		CurrencyID:    currencyID,
 		EffectiveDate: effectiveDate,
 		EndDate:       endDate,
 		// CreatedDate: nil by default - API always uses server time
@@ -139,7 +144,7 @@ type UpdateCostHistory struct {
 	ProductID     *string `json:"product_id" validate:"omitempty,min=36,max=36"`
 	CostType      *string `json:"cost_type" validate:"omitempty"`
 	Amount        *string `json:"amount" validate:"omitempty"`
-	Currency      *string `json:"currency" validate:"omitempty"`
+	CurrencyID    *string `json:"currency_id" validate:"omitempty,min=36,max=36"`
 	EffectiveDate *string `json:"effective_date" validate:"omitempty"`
 	EndDate       *string `json:"end_date" validate:"omitempty"`
 }
@@ -192,7 +197,14 @@ func toBusUpdateCostHistory(app UpdateCostHistory) (costhistorybus.UpdateCostHis
 	}
 
 	bus.CostType = app.CostType
-	bus.Currency = app.Currency
+
+	if app.CurrencyID != nil {
+		currencyID, err := uuid.Parse(*app.CurrencyID)
+		if err != nil {
+			return costhistorybus.UpdateCostHistory{}, errs.Newf(errs.InvalidArgument, "parse currency_id: %s", err)
+		}
+		bus.CurrencyID = &currencyID
+	}
 
 	return bus, nil
 }

@@ -34,7 +34,7 @@ func approve200(sd apitest.SeedData) []apitest.Table {
 				TaxAmount:               sd.PurchaseOrders[0].TaxAmount,
 				ShippingCost:            sd.PurchaseOrders[0].ShippingCost,
 				TotalAmount:             sd.PurchaseOrders[0].TotalAmount,
-				Currency:                sd.PurchaseOrders[0].Currency,
+				CurrencyID:              sd.PurchaseOrders[0].CurrencyID,
 				RequestedBy:             sd.PurchaseOrders[0].RequestedBy,
 				ApprovedBy:              sd.Admins[0].ID.String(),
 				Notes:                   sd.PurchaseOrders[0].Notes,

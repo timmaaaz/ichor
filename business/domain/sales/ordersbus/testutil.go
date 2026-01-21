@@ -10,9 +10,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/types"
 )
 
-// currencies for test data variety
-var testCurrencies = []string{"USD", "EUR", "GBP", "CAD"}
-
 // generateTestOrderAmounts generates realistic order amounts
 func generateTestOrderAmounts(i int) (subtotal types.Money, taxRate types.Percentage, taxAmount, shippingCost, totalAmount types.Money) {
 	// Generate varied but realistic amounts
@@ -29,7 +26,7 @@ func generateTestOrderAmounts(i int) (subtotal types.Money, taxRate types.Percen
 	return
 }
 
-func TestNewOrders(n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs) []NewOrder {
+func TestNewOrders(n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewOrder {
 	orders := make([]NewOrder, 0, n)
 	now := time.Now()
 
@@ -49,7 +46,7 @@ func TestNewOrders(n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid
 			TaxAmount:           taxAmount,
 			ShippingCost:        shippingCost,
 			TotalAmount:         totalAmount,
-			Currency:            testCurrencies[i%len(testCurrencies)],
+			CurrencyID:          currencyIDs[i%len(currencyIDs)],
 			Notes:               fmt.Sprintf("Test order %d", i+1),
 			CreatedBy:           userIDs[i%len(userIDs)],
 		})
@@ -57,8 +54,8 @@ func TestNewOrders(n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid
 	return orders
 }
 
-func TestSeedOrders(ctx context.Context, n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, api *Business) ([]Order, error) {
-	newOrders := TestNewOrders(n, userIDs, customerIDs, ofIDs)
+func TestSeedOrders(ctx context.Context, n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, currencyIDs uuid.UUIDs, api *Business) ([]Order, error) {
+	newOrders := TestNewOrders(n, userIDs, customerIDs, ofIDs, currencyIDs)
 	orders := make([]Order, len(newOrders))
 	for i, ns := range newOrders {
 		s, err := api.Create(ctx, ns)
@@ -73,7 +70,7 @@ func TestSeedOrders(ctx context.Context, n int, userIDs uuid.UUIDs, customerIDs 
 // TestNewOrdersHistorical creates orders distributed across a time range for seeding.
 // daysBack specifies how many days of history to generate (e.g., 30, 90, 365).
 // Orders are evenly distributed across the time range.
-func TestNewOrdersHistorical(n int, daysBack int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs) []NewOrder {
+func TestNewOrdersHistorical(n int, daysBack int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewOrder {
 	orders := make([]NewOrder, 0, n)
 	now := time.Now()
 
@@ -97,7 +94,7 @@ func TestNewOrdersHistorical(n int, daysBack int, userIDs uuid.UUIDs, customerID
 			TaxAmount:           taxAmount,
 			ShippingCost:        shippingCost,
 			TotalAmount:         totalAmount,
-			Currency:            testCurrencies[i%len(testCurrencies)],
+			CurrencyID:          currencyIDs[i%len(currencyIDs)],
 			Notes:               "",
 			CreatedBy:           userIDs[i%len(userIDs)],
 			CreatedDate:         &createdDate, // Explicit historical date
@@ -107,8 +104,8 @@ func TestNewOrdersHistorical(n int, daysBack int, userIDs uuid.UUIDs, customerID
 }
 
 // TestSeedOrdersHistorical seeds orders with historical date distribution.
-func TestSeedOrdersHistorical(ctx context.Context, n int, daysBack int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, api *Business) ([]Order, error) {
-	newOrders := TestNewOrdersHistorical(n, daysBack, userIDs, customerIDs, ofIDs)
+func TestSeedOrdersHistorical(ctx context.Context, n int, daysBack int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, currencyIDs uuid.UUIDs, api *Business) ([]Order, error) {
+	newOrders := TestNewOrdersHistorical(n, daysBack, userIDs, customerIDs, ofIDs, currencyIDs)
 	orders := make([]Order, len(newOrders))
 	for i, no := range newOrders {
 		order, err := api.Create(ctx, no)
@@ -155,7 +152,7 @@ func isWeekday(t time.Time) bool {
 // across business hours and days for realistic heatmap visualization.
 // This function is specifically designed for frontend seed data and should NOT
 // be used in unit/integration tests where predictable data is required.
-func TestNewOrdersFrontendWeighted(n int, daysBack int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs) []NewOrder {
+func TestNewOrdersFrontendWeighted(n int, daysBack int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewOrder {
 	orders := make([]NewOrder, 0, n)
 	now := time.Now()
 
@@ -225,7 +222,7 @@ func TestNewOrdersFrontendWeighted(n int, daysBack int, userIDs uuid.UUIDs, cust
 			TaxAmount:           taxAmount,
 			ShippingCost:        shippingCost,
 			TotalAmount:         totalAmount,
-			Currency:            testCurrencies[i%len(testCurrencies)],
+			CurrencyID:          currencyIDs[i%len(currencyIDs)],
 			Notes:               fmt.Sprintf("Demo order #%d", i+1),
 			CreatedBy:           userIDs[i%len(userIDs)],
 			CreatedDate:         &finalDate,
@@ -238,8 +235,8 @@ func TestNewOrdersFrontendWeighted(n int, daysBack int, userIDs uuid.UUIDs, cust
 // TestSeedOrdersFrontendWeighted seeds orders with weighted random distribution
 // for realistic frontend visualization. Uses business-hour and weekday weighting
 // to create patterns that show well in heatmap charts.
-func TestSeedOrdersFrontendWeighted(ctx context.Context, n int, daysBack int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, api *Business) ([]Order, error) {
-	newOrders := TestNewOrdersFrontendWeighted(n, daysBack, userIDs, customerIDs, ofIDs)
+func TestSeedOrdersFrontendWeighted(ctx context.Context, n int, daysBack int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid.UUIDs, currencyIDs uuid.UUIDs, api *Business) ([]Order, error) {
+	newOrders := TestNewOrdersFrontendWeighted(n, daysBack, userIDs, customerIDs, ofIDs, currencyIDs)
 	orders := make([]Order, len(newOrders))
 	for i, no := range newOrders {
 		order, err := api.Create(ctx, no)

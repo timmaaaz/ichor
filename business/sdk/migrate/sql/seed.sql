@@ -287,6 +287,20 @@ INSERT INTO geography.timezones (id, name, display_name, utc_offset, is_active) 
     (uuid_generate_v4(), 'UTC', 'Coordinated Universal Time', '+00:00', TRUE)
 ;
 
+-- Currency Reference Data (Common ISO 4217 currencies)
+INSERT INTO core.currencies (id, code, name, symbol, locale, decimal_places, is_active, sort_order) VALUES
+    (uuid_generate_v4(), 'USD', 'US Dollar', '$', 'en-US', 2, TRUE, 1),
+    (uuid_generate_v4(), 'EUR', 'Euro', '€', 'en-EU', 2, TRUE, 2),
+    (uuid_generate_v4(), 'GBP', 'British Pound', '£', 'en-GB', 2, TRUE, 3),
+    (uuid_generate_v4(), 'CAD', 'Canadian Dollar', '$', 'en-CA', 2, TRUE, 4),
+    (uuid_generate_v4(), 'AUD', 'Australian Dollar', '$', 'en-AU', 2, TRUE, 5),
+    (uuid_generate_v4(), 'JPY', 'Japanese Yen', '¥', 'ja-JP', 0, TRUE, 6),
+    (uuid_generate_v4(), 'CHF', 'Swiss Franc', 'CHF', 'de-CH', 2, TRUE, 7),
+    (uuid_generate_v4(), 'CNY', 'Chinese Yuan', '¥', 'zh-CN', 2, TRUE, 8),
+    (uuid_generate_v4(), 'INR', 'Indian Rupee', '₹', 'en-IN', 2, TRUE, 9),
+    (uuid_generate_v4(), 'MXN', 'Mexican Peso', '$', 'es-MX', 2, TRUE, 10)
+;
+
 -- Version: 1.02
 -- Description: Insert data into regions table
 INSERT INTO geography.regions (id, country_id, name, code) VALUES

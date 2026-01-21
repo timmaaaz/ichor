@@ -49,10 +49,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productcostbus.Storer, err
 func (s *Store) Create(ctx context.Context, productcost productcostbus.ProductCost) error {
 	const q = `
     INSERT INTO products.product_costs (
-        id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
+        id, product_id, purchase_cost, selling_price, currency_id, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     ) VALUES (
-		:id, :product_id, :purchase_cost, :selling_price, :currency, :msrp, :markup_percentage, :landed_cost, :carrying_cost,
+		:id, :product_id, :purchase_cost, :selling_price, :currency_id, :msrp, :markup_percentage, :landed_cost, :carrying_cost,
 		:abc_classification, :depreciation_value, :insurance_value, :effective_date, :created_date, :updated_date
 	)
     `
@@ -79,7 +79,7 @@ func (s *Store) Update(ctx context.Context, pc productcostbus.ProductCost) error
 		product_id = :product_id,
 		purchase_cost = :purchase_cost,
 		selling_price = :selling_price,
-		currency = :currency,
+		currency_id = :currency_id,
 		msrp = :msrp,
 		markup_percentage = :markup_percentage,
 		landed_cost = :landed_cost,
@@ -130,7 +130,7 @@ func (s *Store) Query(ctx context.Context, filter productcostbus.QueryFilter, or
 
 	const q = `
     SELECT
-		id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
+		id, product_id, purchase_cost, selling_price, currency_id, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     FROM
         products.product_costs`
@@ -187,7 +187,7 @@ func (s *Store) QueryByID(ctx context.Context, productID uuid.UUID) (productcost
 
 	const q = `
     SELECT
-        id, product_id, purchase_cost, selling_price, currency, msrp, markup_percentage, landed_cost, carrying_cost,
+        id, product_id, purchase_cost, selling_price, currency_id, msrp, markup_percentage, landed_cost, carrying_cost,
 		abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date
     FROM
         products.product_costs

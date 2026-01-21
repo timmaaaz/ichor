@@ -16,6 +16,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/domain/config/pagecontentapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/paymenttermapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
@@ -100,6 +101,7 @@ type SeedData struct {
 	Assets                      []assetapp.Asset
 	ContactInfos                []contactinfosapp.ContactInfos
 	PaymentTerms                []paymenttermapp.PaymentTerm
+	Currencies                  []currencybus.Currency
 	Customers                   []customersapp.Customers
 	Brands                      []brandapp.Brand
 	ProductCategories           []productcategoryapp.ProductCategory

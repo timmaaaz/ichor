@@ -56,8 +56,8 @@ var newConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"orders_id": {
-				Name:   "orders_id",
+			"orders.id": {
+				Name:   "orders.id",
 				Header: "Order ID",
 				Width:  100,
 				Type:   "uuid",

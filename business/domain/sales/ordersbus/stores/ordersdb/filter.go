@@ -42,9 +42,9 @@ func applyFilter(filter ordersbus.QueryFilter, data map[string]any, buf *bytes.B
 		wc = append(wc, "shipping_address_id = :shipping_address_id")
 	}
 
-	if filter.Currency != nil {
-		data["currency"] = *filter.Currency
-		wc = append(wc, "currency = :currency")
+	if filter.CurrencyID != nil {
+		data["currency_id"] = *filter.CurrencyID
+		wc = append(wc, "currency_id = :currency_id")
 	}
 
 	if filter.PaymentTermID != nil {

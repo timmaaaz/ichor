@@ -17,7 +17,7 @@ type CostHistory struct {
 	ProductID     uuid.UUID   `json:"product_id"`
 	CostType      string      `json:"cost_type"`
 	Amount        types.Money `json:"amount"`
-	Currency      string      `json:"currency"`
+	CurrencyID    uuid.UUID   `json:"currency_id"`
 	EffectiveDate time.Time   `json:"effective_date"`
 	EndDate       time.Time   `json:"end_date"`
 	CreatedDate   time.Time   `json:"created_date"`
@@ -28,7 +28,7 @@ type NewCostHistory struct {
 	ProductID     uuid.UUID   `json:"product_id"`
 	CostType      string      `json:"cost_type"`
 	Amount        types.Money `json:"amount"`
-	Currency      string      `json:"currency"`
+	CurrencyID    uuid.UUID   `json:"currency_id"`
 	EffectiveDate time.Time   `json:"effective_date"`
 	EndDate       time.Time   `json:"end_date"`
 	CreatedDate   *time.Time  `json:"created_date,omitempty"` // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
@@ -38,7 +38,7 @@ type UpdateCostHistory struct {
 	ProductID     *uuid.UUID   `json:"product_id,omitempty"`
 	CostType      *string      `json:"cost_type,omitempty"`
 	Amount        *types.Money `json:"amount,omitempty"`
-	Currency      *string      `json:"currency,omitempty"`
+	CurrencyID    *uuid.UUID   `json:"currency_id,omitempty"`
 	EffectiveDate *time.Time   `json:"effective_date,omitempty"`
 	EndDate       *time.Time   `json:"end_date,omitempty"`
 }

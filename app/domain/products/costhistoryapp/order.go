@@ -12,7 +12,7 @@ var orderByFields = map[string]string{
 	"product_id":     costhistorybus.OrderByProductID,
 	"cost_type":      costhistorybus.OrderByCostType,
 	"amount":         costhistorybus.OrderByAmount,
-	"currency":       costhistorybus.OrderByCurrency,
+	"currency_id":    costhistorybus.OrderByCurrencyID,
 	"effective_date": costhistorybus.OrderByEffectiveDate,
 	"end_date":       costhistorybus.OrderByEndDate,
 	"created_date":   costhistorybus.OrderByCreatedDate,

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
@@ -238,6 +239,13 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 	}
 	customerID := customers[0].ID
 
+	// 3. Seed currencies for orders
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 1, db.BusDomain.Currency)
+	if err != nil {
+		t.Fatalf("seeding currencies: %s", err)
+	}
+	currencyID := currencies[0].ID
+
 	// -------------------------------------------------------------------------
 	// Test: Create order fires on_create event
 	// -------------------------------------------------------------------------
@@ -251,6 +259,7 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 			CustomerID:          customerID,
 			DueDate:             time.Now().Add(7 * 24 * time.Hour),
 			FulfillmentStatusID: fulfillmentStatusID,
+			CurrencyID:          currencyID,
 			CreatedBy:           adminUserID,
 		}
 
@@ -296,6 +305,7 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 			CustomerID:          customerID,
 			DueDate:             time.Now().Add(7 * 24 * time.Hour),
 			FulfillmentStatusID: fulfillmentStatusID,
+			CurrencyID:          currencyID,
 			CreatedBy:           adminUserID,
 		}
 
@@ -360,6 +370,7 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 			CustomerID:          customerID,
 			DueDate:             time.Now().Add(7 * 24 * time.Hour),
 			FulfillmentStatusID: fulfillmentStatusID,
+			CurrencyID:          currencyID,
 			CreatedBy:           adminUserID,
 		}
 

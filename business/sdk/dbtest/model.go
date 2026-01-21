@@ -789,16 +789,16 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Sortable:   true,
 				Filterable: true,
 			},
-			"username": {
-				Name:       "username",
+			"users.username": {
+				Name:       "users.username",
 				Header:     "Username",
 				Width:      150,
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
-			"email": {
-				Name:       "email",
+			"users.email": {
+				Name:       "users.email",
 				Header:     "Email",
 				Width:      250,
 				Type:       "string",
@@ -828,8 +828,8 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Filterable: true,
 				Type:       "status",
 			},
-			"enabled": {
-				Name:   "enabled",
+			"users.enabled": {
+				Name:   "users.enabled",
 				Header: "Active",
 				Width:  80,
 				Align:  "center",
@@ -838,8 +838,8 @@ var adminUsersTableConfig = &tablebuilder.Config{
 					Type: "boolean",
 				},
 			},
-			"date_hired": {
-				Name:     "date_hired",
+			"users.date_hired": {
+				Name:     "users.date_hired",
 				Header:   "Date Hired",
 				Width:    120,
 				Type:     "datetime",
@@ -860,30 +860,30 @@ var adminUsersTableConfig = &tablebuilder.Config{
 					Precision: 0,
 				},
 			},
-			"id": {
-				Name:   "id",
+			"users.id": {
+				Name:   "users.id",
 				Header: "Actions",
 				Width:  100,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/admin/users/{id}",
+					URL:   "/admin/users/{users.id}",
 					Label: "View",
 				},
 			},
-			"first_name": {
-				Name:   "first_name",
+			"users.first_name": {
+				Name:   "users.first_name",
 				Header: "First Name",
 				Width:  150,
 				Type:   "string",
 			},
-			"last_name": {
-				Name:   "last_name",
+			"users.last_name": {
+				Name:   "users.last_name",
 				Header: "Last Name",
 				Width:  150,
 				Type:   "string",
 			},
-			"created_date": {
-				Name:   "created_date",
+			"users.created_date": {
+				Name:   "users.created_date",
 				Header: "Created Date",
 				Width:  150,
 				Type:   "datetime",
@@ -952,28 +952,28 @@ var adminRolesTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"name": {
-				Name:       "name",
+			"roles.name": {
+				Name:       "roles.name",
 				Header:     "Role Name",
 				Width:      200,
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
-			"description": {
-				Name:       "description",
+			"roles.description": {
+				Name:       "roles.description",
 				Header:     "Description",
 				Width:      400,
 				Type:       "string",
 				Filterable: true,
 			},
-			"id": {
-				Name:   "id",
+			"roles.id": {
+				Name:   "roles.id",
 				Header: "Actions",
 				Width:  100,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/admin/roles/{id}",
+					URL:   "/admin/roles/{roles.id}",
 					Label: "View",
 				},
 			},
@@ -1039,8 +1039,8 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"id": {
-				Name:   "id",
+			"table_access.id": {
+				Name:   "table_access.id",
 				Header: "ID",
 				Width:  100,
 				Type:   "uuid",
@@ -1053,16 +1053,16 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Sortable:   true,
 				Filterable: true,
 			},
-			"table_name": {
-				Name:       "table_name",
+			"table_access.table_name": {
+				Name:       "table_access.table_name",
 				Header:     "Table",
 				Width:      200,
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
-			"can_create": {
-				Name:   "can_create",
+			"table_access.can_create": {
+				Name:   "table_access.can_create",
 				Header: "Create",
 				Width:  80,
 				Type:   "boolean",
@@ -1071,8 +1071,8 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 					Type: "boolean",
 				},
 			},
-			"can_read": {
-				Name:   "can_read",
+			"table_access.can_read": {
+				Name:   "table_access.can_read",
 				Header: "Read",
 				Width:  80,
 				Type:   "boolean",
@@ -1081,8 +1081,8 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 					Type: "boolean",
 				},
 			},
-			"can_update": {
-				Name:   "can_update",
+			"table_access.can_update": {
+				Name:   "table_access.can_update",
 				Header: "Update",
 				Width:  80,
 				Type:   "boolean",
@@ -1091,8 +1091,8 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 					Type: "boolean",
 				},
 			},
-			"can_delete": {
-				Name:   "can_delete",
+			"table_access.can_delete": {
+				Name:   "table_access.can_delete",
 				Header: "Delete",
 				Width:  80,
 				Type:   "boolean",
@@ -1104,7 +1104,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
 			{
-				Column:     "can_create",
+				Column:     "table_access.can_create",
 				Condition:  "eq",
 				Value:      true,
 				Color:      "#2e7d32",
@@ -1112,7 +1112,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Icon:       "check",
 			},
 			{
-				Column:     "can_read",
+				Column:     "table_access.can_read",
 				Condition:  "eq",
 				Value:      true,
 				Color:      "#2e7d32",
@@ -1120,7 +1120,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Icon:       "check",
 			},
 			{
-				Column:     "can_update",
+				Column:     "table_access.can_update",
 				Condition:  "eq",
 				Value:      true,
 				Color:      "#2e7d32",
@@ -1128,7 +1128,7 @@ var adminTableAccessTableConfig = &tablebuilder.Config{
 				Icon:       "check",
 			},
 			{
-				Column:     "can_delete",
+				Column:     "table_access.can_delete",
 				Condition:  "eq",
 				Value:      true,
 				Color:      "#2e7d32",
@@ -1197,8 +1197,8 @@ var adminAuditTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"executed_at": {
-				Name:     "executed_at",
+			"automation_executions.executed_at": {
+				Name:     "automation_executions.executed_at",
 				Header:   "Execution Time",
 				Width:    180,
 				Type:     "datetime",
@@ -1216,16 +1216,16 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Sortable:   true,
 				Filterable: true,
 			},
-			"entity_type": {
-				Name:       "entity_type",
+			"automation_executions.entity_type": {
+				Name:       "automation_executions.entity_type",
 				Header:     "Entity Type",
 				Width:      150,
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
-			"status": {
-				Name:         "status",
+			"automation_executions.status": {
+				Name:         "automation_executions.status",
 				Header:       "Status",
 				Width:        120,
 				Type:         "status",
@@ -1233,8 +1233,8 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Filterable:   true,
 				CellTemplate: "status",
 			},
-			"execution_time_ms": {
-				Name:     "execution_time_ms",
+			"automation_executions.execution_time_ms": {
+				Name:     "automation_executions.execution_time_ms",
 				Header:   "Duration (ms)",
 				Width:    120,
 				Type:     "number",
@@ -1245,14 +1245,14 @@ var adminAuditTableConfig = &tablebuilder.Config{
 					Precision: 0,
 				},
 			},
-			"error_message": {
-				Name:   "error_message",
+			"automation_executions.error_message": {
+				Name:   "automation_executions.error_message",
 				Header: "Error",
 				Width:  300,
 				Type:   "string",
 			},
-			"id": {
-				Name:   "id",
+			"automation_executions.id": {
+				Name:   "automation_executions.id",
 				Header: "Details",
 				Width:  100,
 				Type:   "uuid",
@@ -1264,7 +1264,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
 			{
-				Column:     "status",
+				Column:     "automation_executions.status",
 				Condition:  "eq",
 				Value:      "success",
 				Color:      "#2e7d32",
@@ -1272,7 +1272,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Icon:       "check-circle",
 			},
 			{
-				Column:     "status",
+				Column:     "automation_executions.status",
 				Condition:  "eq",
 				Value:      "failed",
 				Color:      "#c62828",
@@ -1280,7 +1280,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Icon:       "x-circle",
 			},
 			{
-				Column:     "status",
+				Column:     "automation_executions.status",
 				Condition:  "eq",
 				Value:      "partial",
 				Color:      "#f57c00",
@@ -1318,11 +1318,11 @@ var adminConfigTableConfig = &tablebuilder.Config{
 			Schema: "config",
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
-					{Name: "id", TableColumn: "table_configs.id"},
-					{Name: "name", TableColumn: "table_configs.name"},
-					{Name: "description", TableColumn: "table_configs.description"},
-					{Name: "created_date", TableColumn: "table_configs.created_date"},
-					{Name: "updated_date", TableColumn: "table_configs.updated_date"},
+					{Name: "id", Alias: "table_configs_id", TableColumn: "table_configs.id"},
+					{Name: "name", Alias: "table_configs_name", TableColumn: "table_configs.name"},
+					{Name: "description", Alias: "table_configs_description", TableColumn: "table_configs.description"},
+					{Name: "created_date", Alias: "table_configs_created_date", TableColumn: "table_configs.created_date"},
+					{Name: "updated_date", Alias: "table_configs_updated_date", TableColumn: "table_configs.updated_date"},
 				},
 				ForeignTables: []tablebuilder.ForeignTable{
 					{
@@ -1351,7 +1351,7 @@ var adminConfigTableConfig = &tablebuilder.Config{
 			},
 			Sort: []tablebuilder.Sort{
 				{
-					Column:    "updated_date",
+					Column:    "table_configs.updated_date",
 					Direction: "desc",
 				},
 			},
@@ -1360,33 +1360,33 @@ var adminConfigTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"id": {
-				Name:   "id",
+			"table_configs_id": {
+				Name:   "table_configs_id",
 				Header: "Actions",
 				Width:  100,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/admin/config/{id}",
+					URL:   "/admin/config/{table_configs_id}",
 					Label: "View",
 				},
 			},
-			"name": {
-				Name:       "name",
+			"table_configs_name": {
+				Name:       "table_configs_name",
 				Header:     "Config Name",
 				Width:      250,
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
 			},
-			"description": {
-				Name:       "description",
+			"table_configs_description": {
+				Name:       "table_configs_description",
 				Header:     "Description",
 				Width:      400,
 				Type:       "string",
 				Filterable: true,
 			},
-			"created_date": {
-				Name:     "created_date",
+			"table_configs_created_date": {
+				Name:     "table_configs_created_date",
 				Header:   "Created Date",
 				Width:    180,
 				Type:     "datetime",
@@ -1410,8 +1410,8 @@ var adminConfigTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Filterable: true,
 			},
-			"updated_date": {
-				Name:     "updated_date",
+			"table_configs_updated_date": {
+				Name:     "table_configs_updated_date",
 				Header:   "Last Updated",
 				Width:    180,
 				Type:     "datetime",

@@ -21,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
@@ -306,8 +307,30 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
+	// Query for USD currency (seeded in seed.sql) for product costs
+	// All product prices are stored in USD - conversion happens at display time
+	usdCode := "USD"
+	usdCurrencies, err := busDomain.Currency.Query(ctx, currencybus.QueryFilter{Code: &usdCode}, currencybus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		return fmt.Errorf("querying USD currency: %w", err)
+	}
+	if len(usdCurrencies) == 0 {
+		return fmt.Errorf("USD currency not found - ensure seed.sql has run")
+	}
+	usdCurrencyID := usdCurrencies[0].ID
+
+	// Seed test currencies for orders (variety in demo data)
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
 	// Use weighted random distribution for frontend demo (better heatmap visualization)
-	orders, err := ordersbus.TestSeedOrdersFrontendWeighted(ctx, 200, 90, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, busDomain.Order)
+	orders, err := ordersbus.TestSeedOrdersFrontendWeighted(ctx, 200, 90, uuid.UUIDs{admins[0].ID}, customerIDs, oflIDs, currencyIDs, busDomain.Order)
 	if err != nil {
 		return fmt.Errorf("seeding Orders: %w", err)
 	}
@@ -351,7 +374,8 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		productIDs = append(productIDs, p.ProductID)
 	}
 
-	_, err = productcostbus.TestSeedProductCosts(ctx, 20, productIDs, busDomain.ProductCost)
+	// All product costs use USD - single base currency for consistency
+	_, err = productcostbus.TestSeedProductCosts(ctx, 20, productIDs, uuid.UUIDs{usdCurrencyID}, busDomain.ProductCost)
 	if err != nil {
 		return fmt.Errorf("seeding product cost : %w", err)
 	}
@@ -366,7 +390,8 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding metrics : %w", err)
 	}
 
-	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, busDomain.CostHistory)
+	// Cost history also uses USD for consistency
+	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, uuid.UUIDs{usdCurrencyID}, busDomain.CostHistory)
 	if err != nil {
 		return fmt.Errorf("seeding cost history : %w", err)
 	}
@@ -536,7 +561,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 
 	// Purchase Orders
-	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrdersHistorical(ctx, 10, 120, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, busDomain.PurchaseOrder)
+	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrdersHistorical(ctx, 10, 120, supplierIDs, poStatusIDs, warehouseIDs, strIDs, userIDs, currencyIDs, busDomain.PurchaseOrder)
 	if err != nil {
 		return fmt.Errorf("seeding purchase orders : %w", err)
 	}

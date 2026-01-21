@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/products/productcategoryapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -135,7 +136,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		productIDs[i] = p.ProductID
 	}
 
-	costHistories, err := costhistorybus.TestSeedCostHistories(ctx, 50, productIDs, busDomain.CostHistory)
+	// Seed currencies for cost histories
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+	currencyIDs := make(uuid.UUIDs, len(currencies))
+	for i, c := range currencies {
+		currencyIDs[i] = c.ID
+	}
+
+	costHistories, err := costhistorybus.TestSeedCostHistories(ctx, 50, productIDs, currencyIDs, busDomain.CostHistory)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding cost history : %w", err)
 	}
@@ -210,5 +221,6 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Brands:            brandapp.ToAppBrands(brands),
 		Products:          productapp.ToAppProducts(products),
 		CostHistory:       costhistoryapp.ToAppCostHistories(costHistories),
+		Currencies:        currencies,
 	}, nil
 }
