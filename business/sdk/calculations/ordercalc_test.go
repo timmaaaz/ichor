@@ -163,6 +163,79 @@ func TestCalculateLineTotal_PercentDiscount(t *testing.T) {
 	}
 }
 
+func TestCalculateLineTotal_ItemizedDiscount(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    LineItemInput
+		expected decimal.Decimal
+		wantErr  bool
+	}{
+		{
+			name: "basic itemized discount",
+			input: LineItemInput{
+				Quantity:     5,
+				UnitPrice:    decimal.NewFromFloat(10.00),
+				Discount:     decimal.NewFromFloat(2.50),
+				DiscountType: "itemized",
+			},
+			expected: decimal.NewFromFloat(37.50), // (5 × 10) - (5 × 2.50) = 37.50
+		},
+		{
+			name: "zero discount",
+			input: LineItemInput{
+				Quantity:     5,
+				UnitPrice:    decimal.NewFromFloat(10.00),
+				Discount:     decimal.Zero,
+				DiscountType: "itemized",
+			},
+			expected: decimal.NewFromFloat(50.00), // (5 × 10) - (5 × 0) = 50
+		},
+		{
+			name: "discount exceeds unit price - returns zero",
+			input: LineItemInput{
+				Quantity:     2,
+				UnitPrice:    decimal.NewFromFloat(5.00),
+				Discount:     decimal.NewFromFloat(10.00),
+				DiscountType: "itemized",
+			},
+			expected: decimal.Zero, // (2 × 5) - (2 × 10) = -10 → clamped to 0
+		},
+		{
+			name: "decimal precision",
+			input: LineItemInput{
+				Quantity:     3,
+				UnitPrice:    decimal.NewFromFloat(9.99),
+				Discount:     decimal.NewFromFloat(1.50),
+				DiscountType: "itemized",
+			},
+			expected: decimal.NewFromFloat(25.47), // (3 × 9.99) - (3 × 1.50) = 25.47
+		},
+		{
+			name: "single item",
+			input: LineItemInput{
+				Quantity:     1,
+				UnitPrice:    decimal.NewFromFloat(100.00),
+				Discount:     decimal.NewFromFloat(15.00),
+				DiscountType: "itemized",
+			},
+			expected: decimal.NewFromFloat(85.00), // (1 × 100) - (1 × 15) = 85
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := CalculateLineTotal(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CalculateLineTotal() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !result.Equal(tt.expected) {
+				t.Errorf("CalculateLineTotal() = %s, want %s", result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestCalculateLineTotal_Validation(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -376,6 +449,16 @@ func TestLineItemInput_Validate(t *testing.T) {
 				UnitPrice:    decimal.NewFromFloat(5.00),
 				Discount:     decimal.NewFromFloat(15.00),
 				DiscountType: "percent",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid with itemized discount",
+			input: LineItemInput{
+				Quantity:     10,
+				UnitPrice:    decimal.NewFromFloat(5.00),
+				Discount:     decimal.NewFromFloat(1.00),
+				DiscountType: "itemized",
 			},
 			wantErr: false,
 		},

@@ -1862,3 +1862,7 @@ COMMENT ON COLUMN config.enum_labels.enum_name IS 'Full enum name in schema.enum
 COMMENT ON COLUMN config.enum_labels.value IS 'Raw enum value that must match the PostgreSQL enum value';
 COMMENT ON COLUMN config.enum_labels.label IS 'Human-friendly display label for the enum value';
 COMMENT ON COLUMN config.enum_labels.sort_order IS 'Custom sort order (overrides pg_enum enumsortorder if needed)';
+
+-- Version: 1.98
+-- Description: Add itemized discount type
+ALTER TYPE sales.discount_type ADD VALUE 'itemized';

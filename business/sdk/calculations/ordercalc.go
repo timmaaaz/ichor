@@ -58,7 +58,7 @@ type LineItemInput struct {
 	Quantity     int
 	UnitPrice    decimal.Decimal
 	Discount     decimal.Decimal
-	DiscountType string // "flat" or "percent"
+	DiscountType string // "flat", "percent", or "itemized"
 }
 
 // Validate checks that line item input is within acceptable bounds.
@@ -75,8 +75,8 @@ func (l LineItemInput) Validate() error {
 	if l.UnitPrice.GreaterThan(maxUnitPriceDecimal) {
 		return fmt.Errorf("%w: %s exceeds max %s", ErrInvalidUnitPrice, l.UnitPrice, MaxUnitPrice)
 	}
-	if l.DiscountType != "flat" && l.DiscountType != "percent" && l.DiscountType != "" {
-		return fmt.Errorf("%w: got %q (must be 'flat' or 'percent')", ErrInvalidDiscountType, l.DiscountType)
+	if l.DiscountType != "flat" && l.DiscountType != "percent" && l.DiscountType != "itemized" && l.DiscountType != "" {
+		return fmt.Errorf("%w: got %q (must be 'flat', 'percent', or 'itemized')", ErrInvalidDiscountType, l.DiscountType)
 	}
 	return nil
 }
@@ -119,6 +119,16 @@ func CalculateLineTotal(item LineItemInput) (decimal.Decimal, error) {
 		// gross × (1 - discount/100)
 		multiplier := decimal.NewFromInt(1).Sub(pct.Div(decimal.NewFromInt(100)))
 		return gross.Mul(multiplier).Round(2), nil
+
+	case "itemized":
+		// (quantity × unit_price) - (quantity × discount)
+		qtyDecimal := decimal.NewFromInt(int64(item.Quantity))
+		totalDiscount := qtyDecimal.Mul(item.Discount)
+		result := gross.Sub(totalDiscount)
+		if result.LessThan(decimal.Zero) {
+			return decimal.Zero, nil
+		}
+		return result.Round(2), nil
 
 	default: // "flat"
 		result := gross.Sub(item.Discount)

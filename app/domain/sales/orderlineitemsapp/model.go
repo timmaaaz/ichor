@@ -90,7 +90,7 @@ type NewOrderLineItem struct {
 	Quantity                      string  `json:"quantity" validate:"required,numeric"`
 	UnitPrice                     string  `json:"unit_price" validate:"omitempty"`
 	Discount                      string  `json:"discount" validate:"omitempty"`
-	DiscountType                  string  `json:"discount_type" validate:"omitempty,oneof=flat percent"`
+	DiscountType                  string  `json:"discount_type" validate:"omitempty,oneof=flat percent itemized"`
 	LineTotal                     string  `json:"line_total" validate:"omitempty"`
 	LineItemFulfillmentStatusesID string  `json:"line_item_fulfillment_statuses_id" validate:"required,uuid4"`
 	CreatedBy                     string  `json:"created_by" validate:"required,uuid4"`
@@ -136,8 +136,8 @@ func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLine
 
 	// Validate discount_type if provided
 	discountType := app.DiscountType
-	if discountType != "" && discountType != "flat" && discountType != "percent" {
-		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "discount_type must be 'flat' or 'percent'")
+	if discountType != "" && discountType != "flat" && discountType != "percent" && discountType != "itemized" {
+		return orderlineitemsbus.NewOrderLineItem{}, errs.Newf(errs.InvalidArgument, "discount_type must be 'flat', 'percent', or 'itemized'")
 	}
 
 	lineTotal, err := types.ParseMoney(app.LineTotal)
@@ -188,7 +188,7 @@ type UpdateOrderLineItem struct {
 	Quantity                      *string `json:"quantity" validate:"omitempty,numeric"`
 	UnitPrice                     *string `json:"unit_price" validate:"omitempty"`
 	Discount                      *string `json:"discount" validate:"omitempty"`
-	DiscountType                  *string `json:"discount_type" validate:"omitempty,oneof=flat percent"`
+	DiscountType                  *string `json:"discount_type" validate:"omitempty,oneof=flat percent itemized"`
 	LineTotal                     *string `json:"line_total" validate:"omitempty"`
 	LineItemFulfillmentStatusesID *string `json:"line_item_fulfillment_statuses_id" validate:"omitempty,uuid4"`
 	UpdatedBy                     *string `json:"updated_by" validate:"omitempty,uuid4"`
@@ -253,8 +253,8 @@ func toBusUpdateOrderLineItem(app UpdateOrderLineItem) (orderlineitemsbus.Update
 
 	var discountType *string
 	if app.DiscountType != nil {
-		if *app.DiscountType != "flat" && *app.DiscountType != "percent" {
-			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "discount_type must be 'flat' or 'percent'")
+		if *app.DiscountType != "flat" && *app.DiscountType != "percent" && *app.DiscountType != "itemized" {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "discount_type must be 'flat', 'percent', or 'itemized'")
 		}
 		discountType = app.DiscountType
 	}
