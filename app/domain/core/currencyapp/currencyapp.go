@@ -3,6 +3,7 @@ package currencyapp
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
@@ -134,4 +135,24 @@ func (a *App) QueryAll(ctx context.Context) (Currencies, error) {
 	}
 
 	return Currencies(ToAppCurrencies(currencies)), nil
+}
+
+// QueryByCode finds a currency by its code and returns the ID.
+// This is used for FK default resolution where form fields specify default values
+// by code (e.g., "USD") that need to be resolved to UUIDs.
+func (a *App) QueryByCode(ctx context.Context, code string) (uuid.UUID, error) {
+	filter := currencybus.QueryFilter{
+		Code: &code,
+	}
+
+	currencies, err := a.currencybus.Query(ctx, filter, currencybus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("query by code: %w", err)
+	}
+
+	if len(currencies) == 0 {
+		return uuid.Nil, errs.Newf(errs.NotFound, "currency with code %q not found", code)
+	}
+
+	return currencies[0].ID, nil
 }

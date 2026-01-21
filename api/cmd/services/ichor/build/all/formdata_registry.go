@@ -465,6 +465,9 @@ func buildFormDataRegistry(
 			return currencyApp.Update(ctx, model.(currencyapp.UpdateCurrency), id)
 		},
 		UpdateModel: currencyapp.UpdateCurrency{},
+		QueryByNameFunc: func(ctx context.Context, name string) (uuid.UUID, error) {
+			return currencyApp.QueryByCode(ctx, name)
+		},
 	}); err != nil {
 		return nil, fmt.Errorf("register core.currencies: %w", err)
 	}

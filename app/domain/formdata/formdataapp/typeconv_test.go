@@ -62,7 +62,7 @@ func TestParseDecimalFromAny(t *testing.T) {
 		{"string integer", "42", decimal.NewFromInt(42), nil},
 		{"string negative", "-5.25", decimal.NewFromFloat(-5.25), nil},
 		{"string invalid", "abc", decimal.Zero, ErrParseDecimal},
-		{"string empty", "", decimal.Zero, ErrParseDecimal},
+		{"string empty", "", decimal.Zero, nil}, // Empty string treated as zero (consistent with ParseMoney)
 		{"float64", 42.75, decimal.NewFromFloat(42.75), nil},
 		{"float64 zero", 0.0, decimal.Zero, nil},
 		{"int", 42, decimal.NewFromInt(42), nil},

@@ -71,7 +71,10 @@ func parseDecimalFromAny(val any) (decimal.Decimal, error) {
 	switch v := val.(type) {
 	case string:
 		if v == "" {
-			return decimal.Zero, fmt.Errorf("%w: empty string", ErrParseDecimal)
+			// Empty string is treated as zero (same as nil)
+			// This is consistent with ParseMoney and other domain type parsers
+			// which treat empty strings as valid "no value" cases
+			return decimal.Zero, nil
 		}
 		d, err := decimal.NewFromString(v)
 		if err != nil {

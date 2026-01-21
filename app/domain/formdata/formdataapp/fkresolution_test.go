@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -538,6 +539,108 @@ func TestMergeLineItemFieldDefaults_FKResolutionAttempted(t *testing.T) {
 	logOutput := buf.String()
 	if !containsSubstring(logOutput, "FK default resolution failed for line item field") {
 		t.Errorf("expected warning log for FK resolution failure, got: %s", logOutput)
+	}
+}
+
+// TestResolveFKByName_CurrencyResolution verifies that currency FK resolution
+// works correctly using QueryByCode.
+func TestResolveFKByName_CurrencyResolution(t *testing.T) {
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return "trace" })
+
+	expectedCurrencyID := uuid.New()
+
+	// Create registry with currency entity that has QueryByNameFunc
+	registry := formdataregistry.New()
+	registry.Register(formdataregistry.EntityRegistration{
+		Name: "core.currencies",
+		QueryByNameFunc: func(ctx context.Context, name string) (uuid.UUID, error) {
+			if name == "USD" {
+				return expectedCurrencyID, nil
+			}
+			return uuid.Nil, fmt.Errorf("currency with code %q not found", name)
+		},
+	})
+
+	app := &App{
+		log:      log,
+		registry: registry,
+	}
+
+	ctx := context.Background()
+
+	dropdownConfig := &formfieldbus.DropdownConfig{
+		Entity:      "core.currencies",
+		LabelColumn: "name",
+		ValueColumn: "id",
+	}
+
+	// Should successfully resolve "USD" to the expected UUID
+	result, err := app.resolveFKByName(ctx, dropdownConfig, "USD")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result != expectedCurrencyID {
+		t.Errorf("expected resolved ID %v, got %v", expectedCurrencyID, result)
+	}
+}
+
+// TestMergeFieldDefaults_CurrencyFKResolutionSuccess verifies that mergeFieldDefaults
+// successfully resolves currency FK defaults when the entity has QueryByNameFunc.
+func TestMergeFieldDefaults_CurrencyFKResolutionSuccess(t *testing.T) {
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return "trace" })
+
+	expectedCurrencyID := uuid.New()
+
+	// Create registry with currency entity that has QueryByNameFunc
+	registry := formdataregistry.New()
+	registry.Register(formdataregistry.EntityRegistration{
+		Name: "core.currencies",
+		QueryByNameFunc: func(ctx context.Context, name string) (uuid.UUID, error) {
+			if name == "USD" {
+				return expectedCurrencyID, nil
+			}
+			return uuid.Nil, fmt.Errorf("currency with code %q not found", name)
+		},
+	})
+
+	app := &App{
+		log:      log,
+		registry: registry,
+	}
+
+	ctx := context.Background()
+
+	// Field WITH currency entity config and QueryByNameFunc registered
+	fieldWithCurrency := formfieldbus.FormField{
+		Name:   "currency_id",
+		Config: []byte(`{"entity": "core.currencies", "label_column": "name", "value_column": "id", "default_value_create": "USD"}`),
+	}
+
+	fields := []formfieldbus.FormField{fieldWithCurrency}
+	inputData := []byte(`{}`)
+
+	result, injected, err := app.mergeFieldDefaults(ctx, inputData, fields, formdataregistry.OperationCreate)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Parse result
+	var resultMap map[string]interface{}
+	if err := json.Unmarshal(result, &resultMap); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
+	}
+
+	// Field should be injected with the resolved UUID
+	if currencyID, ok := resultMap["currency_id"]; !ok || currencyID != expectedCurrencyID.String() {
+		t.Errorf("expected currency_id to be %s, got %v", expectedCurrencyID, resultMap["currency_id"])
+	}
+
+	// Verify it was tracked as injected
+	if injected.InjectedFields["currency_id"] != expectedCurrencyID.String() {
+		t.Errorf("expected currency_id in injected fields with value %s, got: %v", expectedCurrencyID, injected.InjectedFields)
 	}
 }
 
