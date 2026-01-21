@@ -134,7 +134,9 @@ func (qb *QueryBuilder) buildSelectColumns(config SelectConfig, baseTable string
 		colExpr := goqu.T(baseTable).Col(col.Name)
 
 		if col.Alias != "" {
-			cols = append(cols, colExpr.As(col.Alias))
+			cols = append(cols, colExpr.As(goqu.C(col.Alias)))
+		} else if col.TableColumn != "" {
+			cols = append(cols, colExpr.As(goqu.C(col.TableColumn)))
 		} else {
 			// No alias - just use the column as-is
 			cols = append(cols, colExpr)
@@ -158,7 +160,9 @@ func (qb *QueryBuilder) buildForeignColumns(foreignTables []ForeignTable, prefix
 			colExpr := goqu.T(tableRef).Col(col.Name)
 
 			if col.Alias != "" {
-				cols = append(cols, colExpr.As(col.Alias))
+				cols = append(cols, colExpr.As(goqu.C(col.Alias)))
+			} else if col.TableColumn != "" {
+				cols = append(cols, colExpr.As(goqu.C(col.TableColumn)))
 			} else {
 				cols = append(cols, colExpr)
 			}

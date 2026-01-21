@@ -263,11 +263,11 @@ func GetFullSalesOrderFormFields(
 				Required: true,
 				DropdownConfig: &formfieldbus.DropdownConfig{
 					TableConfigName: "products_with_prices_lookup",
-					LabelColumn:     "name",
-					ValueColumn:     "id",
+					LabelColumn:     "products.name",
+					ValueColumn:     "products.id",
 					AutoPopulate: []formfieldbus.AutoPopulateMapping{
-						{SourceColumn: "selling_price", TargetField: "unit_price"},
-						{SourceColumn: "description", TargetField: "description"},
+						{SourceColumn: "product_costs.selling_price", TargetField: "unit_price"},
+						{SourceColumn: "products.description", TargetField: "description"},
 					},
 				},
 			},
@@ -342,8 +342,8 @@ func GetFullSalesOrderFormFields(
 				DefaultValueCreate: "PENDING",
 				DropdownConfig: &formfieldbus.DropdownConfig{
 					Entity:      "sales.line_item_fulfillment_statuses",
-					LabelColumn: "name",
-					ValueColumn: "id",
+					LabelColumn: "line_item_fulfillment_statuses.name",
+					ValueColumn: "line_item_fulfillment_statuses.id",
 				},
 			},
 			// Audit fields - hidden with magic variable defaults

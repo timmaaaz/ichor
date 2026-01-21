@@ -91,10 +91,10 @@ var productsList = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"id":        {Type: "uuid"},
-			"name":      {Type: "string"},
-			"sku":       {Type: "string"},
-			"is_active": {Type: "boolean"},
+			"products.id":        {Type: "uuid"},
+			"products.name":      {Type: "string"},
+			"products.sku":       {Type: "string"},
+			"products.is_active": {Type: "boolean"},
 		},
 		Pagination: &tablebuilder.PaginationConfig{
 			Enabled:         true,
@@ -153,8 +153,8 @@ var currentOrders = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			// orders table columns
-			"orders_id":                   {Type: "uuid"},
+			// orders table columns (key = TableColumn when no Alias)
+			"orders.id":                   {Type: "uuid"},
 			"order_number":                {Type: "string", Name: "order_number", Header: "Order #", Width: 150, Sortable: true, Filterable: true},
 			"order_date":                  {Type: "datetime", Name: "order_date", Header: "Order Date", Width: 120, Format: &tablebuilder.FormatConfig{Type: "date", Format: "2006-01-02"}},
 			"order_due_date":              {Type: "datetime"},
@@ -222,7 +222,7 @@ var inventoryItems = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"id": {Type: "uuid"},
+			"inventory_items.id": {Type: "uuid"},
 			"current_stock": {
 				Type:       "number",
 				Name:       "current_stock",
@@ -236,37 +236,37 @@ var inventoryItems = &tablebuilder.Config{
 					Precision: 0,
 				},
 			},
-			"product_id": {
+			"inventory_items.product_id": {
 				Type:       "lookup",
-				Name:       "product_id",
+				Name:       "inventory_items.product_id",
 				Header:     "Product",
 				Width:      200,
 				Filterable: true,
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/products/{product_id}",
+					URL:   "/products/{inventory_items.product_id}",
 					Label: "View Product",
 				},
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "products.products",
-					LabelColumn: "name",
-					ValueColumn: "id",
+					LabelColumn: "products.name",
+					ValueColumn: "products.id",
 				},
 			},
-			"location_id": {
+			"inventory_items.location_id": {
 				Type:       "lookup",
-				Name:       "location_id",
+				Name:       "inventory_items.location_id",
 				Header:     "Location",
 				Width:      200,
 				Filterable: true,
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/inventory/locations/{location_id}",
+					URL:   "/inventory/locations/{inventory_items.location_id}",
 					Label: "View Location",
 				},
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:         "inventory.inventory_locations",
-					LabelColumn:    "aisle",
-					ValueColumn:    "id",
-					DisplayColumns: []string{"rack", "shelf", "bin"},
+					LabelColumn:    "inventory_locations.aisle",
+					ValueColumn:    "inventory_locations.id",
+					DisplayColumns: []string{"inventory_locations.rack", "inventory_locations.shelf", "inventory_locations.bin"},
 				},
 			},
 		},
@@ -345,9 +345,9 @@ var currentInventoryProducts = &tablebuilder.Config{
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
 			// inventory_items columns
-			"id":            {Type: "uuid"},
-			"reorder_point": {Type: "number"},
-			"maximum_stock": {Type: "number"},
+			"inventory_items.id":            {Type: "uuid"},
+			"inventory_items.reorder_point": {Type: "number"},
+			"inventory_items.maximum_stock": {Type: "number"},
 			"product_name": {
 				Type:       "string",
 				Name:       "product_name",
@@ -396,7 +396,7 @@ var currentInventoryProducts = &tablebuilder.Config{
 					Label: "View Product",
 				},
 			},
-			"sku": {Type: "string"},
+			"products.sku": {Type: "string"},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
 			{
@@ -526,13 +526,13 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
 			// inventory_adjustments columns
-			"notes":        {Type: "string"},
-			"created_date": {Type: "datetime"},
+			"inventory_adjustments.notes":        {Type: "string"},
+			"inventory_adjustments.created_date": {Type: "datetime"},
 			// foreign table columns
-			"aisle": {Type: "string"},
-			"rack":  {Type: "string"},
-			"shelf": {Type: "string"},
-			"bin":   {Type: "string"},
+			"inventory_locations.aisle": {Type: "string"},
+			"inventory_locations.rack":  {Type: "string"},
+			"inventory_locations.shelf": {Type: "string"},
+			"inventory_locations.bin":   {Type: "string"},
 			"product_name": {
 				Type:       "string",
 				Name:       "product_name",
@@ -563,9 +563,9 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 				Width:      150,
 				Filterable: true,
 			},
-			"quantity_change": {
+			"inventory_adjustments.quantity_change": {
 				Type:     "number",
-				Name:     "quantity_change",
+				Name:     "inventory_adjustments.quantity_change",
 				Header:   "Qty Change",
 				Width:    100,
 				Align:    "right",
@@ -575,9 +575,9 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 					Precision: 0,
 				},
 			},
-			"reason_code": {
+			"inventory_adjustments.reason_code": {
 				Type:       "string",
-				Name:       "reason_code",
+				Name:       "inventory_adjustments.reason_code",
 				Header:     "Reason",
 				Width:      120,
 				Filterable: true,
@@ -596,9 +596,9 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 				Width:      130,
 				Filterable: true,
 			},
-			"adjustment_date": {
+			"inventory_adjustments.adjustment_date": {
 				Type:     "datetime",
-				Name:     "adjustment_date",
+				Name:     "inventory_adjustments.adjustment_date",
 				Header:   "Date",
 				Width:    150,
 				Sortable: true,
@@ -607,20 +607,20 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 					Format: "2006-01-02 15:04",
 				},
 			},
-			"id": {
+			"inventory_adjustments.id": {
 				Type:   "uuid",
-				Name:   "id",
+				Name:   "inventory_adjustments.id",
 				Header: "Actions",
 				Width:  100,
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/inventory/adjustments/{id}",
+					URL:   "/inventory/adjustments/{inventory_adjustments.id}",
 					Label: "View",
 				},
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
 			{
-				Column:     "quantity_change",
+				Column:     "inventory_adjustments.quantity_change",
 				Condition:  "lt",
 				Value:      0,
 				Color:      "#c62828",
@@ -628,7 +628,7 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 				Icon:       "trending-down",
 			},
 			{
-				Column:     "quantity_change",
+				Column:     "inventory_adjustments.quantity_change",
 				Condition:  "gt",
 				Value:      0,
 				Color:      "#2e7d32",
@@ -967,10 +967,17 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 		},
 		VisualSettings: tablebuilder.VisualSettings{
 			Columns: map[string]tablebuilder.ColumnConfig{
+				"order_id": {
+					Name:   "order_id",
+					Header: "Order ID",
+					Width:  100,
+					Type:   "uuid",
+				},
 				"order_number": {
 					Name:       "order_number",
 					Header:     "Order #",
 					Width:      150,
+					Type:       "string",
 					Sortable:   true,
 					Filterable: true,
 					Link: &tablebuilder.LinkConfig{
@@ -982,6 +989,7 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 					Name:       "customer_name",
 					Header:     "Customer",
 					Width:      200,
+					Type:       "string",
 					Sortable:   true,
 					Filterable: true,
 				},
@@ -989,6 +997,7 @@ func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configS
 					Name:   "status",
 					Header: "Status",
 					Width:  120,
+					Type:   "string",
 				},
 			},
 		},
@@ -1088,11 +1097,11 @@ func inventoryAdjustmentsExample(ctx context.Context, store *tablebuilder.Store)
 		"product_sku",
 		"warehouse_name",
 		"location_code",
-		"quantity_change",
-		"reason_code",
+		"inventory_adjustments.quantity_change",
+		"inventory_adjustments.reason_code",
 		"adjusted_by_username",
 		"approved_by_username",
-		"adjustment_date",
+		"inventory_adjustments.adjustment_date",
 	}
 
 	fmt.Printf("Verifying expected columns are present...\n")
@@ -2113,20 +2122,20 @@ func Test_ColumnTypeFromVisualSettings(t *testing.T) {
 		},
 		VisualSettings: tablebuilder.VisualSettings{
 			Columns: map[string]tablebuilder.ColumnConfig{
-				"id": {
-					Name: "id",
+				"users.id": {
+					Name: "users.id",
 					Type: "uuid",
 				},
-				"username": {
-					Name: "username",
+				"users.username": {
+					Name: "users.username",
 					Type: "string",
 				},
-				"enabled": {
-					Name: "enabled",
+				"users.enabled": {
+					Name: "users.enabled",
 					Type: "boolean",
 				},
-				"created_date": {
-					Name: "created_date",
+				"users.created_date": {
+					Name: "users.created_date",
 					Type: "datetime",
 				},
 			},
@@ -2151,10 +2160,10 @@ func Test_ColumnTypeFromVisualSettings(t *testing.T) {
 
 	// Test cases: field name -> expected type
 	expectedTypes := map[string]string{
-		"id":           "uuid",     // Explicit type from VisualSettings
-		"username":     "string",   // No Type field, should default to "string"
-		"enabled":      "boolean",  // Explicit type from VisualSettings
-		"created_date": "datetime", // Explicit type from VisualSettings
+		"users.id":           "uuid",     // Explicit type from VisualSettings
+		"users.username":     "string",   // Explicit type from VisualSettings
+		"users.enabled":      "boolean",  // Explicit type from VisualSettings
+		"users.created_date": "datetime", // Explicit type from VisualSettings
 	}
 
 	for field, expectedType := range expectedTypes {

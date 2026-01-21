@@ -22,6 +22,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				Number:              "ORD-12345",
 				CustomerID:          sd.Customers[0].ID,
 				FulfillmentStatusID: sd.OrderFulfillmentStatuses[0].ID,
+				CurrencyID:          sd.Currencies[0].ID.String(),
 				CreatedBy:           sd.Admins[0].ID.String(),
 				DueDate:             time.Now().Add(3 * 24 * time.Hour).Format("2006-01-02"),
 				OrderDate:           time.Now().Format("2006-01-02"),
@@ -31,6 +32,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				Number:              "ORD-12345",
 				CustomerID:          sd.Customers[0].ID,
 				FulfillmentStatusID: sd.OrderFulfillmentStatuses[0].ID,
+				CurrencyID:          sd.Currencies[0].ID.String(),
 				CreatedBy:           sd.Admins[0].ID.String(),
 				UpdatedBy:           sd.Admins[0].ID.String(),
 				DueDate:             time.Now().Add(3 * 24 * time.Hour).Format("2006-01-02"),
@@ -66,6 +68,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &ordersapp.NewOrder{
 				CustomerID:          sd.Customers[0].ID,
 				FulfillmentStatusID: sd.OrderFulfillmentStatuses[0].ID,
+				CurrencyID:          sd.Currencies[0].ID.String(),
 				CreatedBy:           sd.Admins[0].ID.String(),
 				DueDate:             time.Now().Add(3 * 24 * time.Hour).Format("2006-01-02"),
 				OrderDate:           time.Now().Format("2006-01-02"),
@@ -89,6 +92,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &ordersapp.NewOrder{
 				Number:              "ORD-12345",
 				FulfillmentStatusID: sd.OrderFulfillmentStatuses[0].ID,
+				CurrencyID:          sd.Currencies[0].ID.String(),
 				CreatedBy:           sd.Admins[0].ID.String(),
 				DueDate:             time.Now().Add(3 * 24 * time.Hour).Format("2006-01-02"),
 				OrderDate:           time.Now().Format("2006-01-02"),
@@ -113,6 +117,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				Number:              "ORD-12345",
 				CustomerID:          sd.Customers[0].ID,
 				FulfillmentStatusID: sd.OrderFulfillmentStatuses[0].ID,
+				CurrencyID:          sd.Currencies[0].ID.String(),
 				CreatedBy:           sd.Admins[0].ID.String(),
 				OrderDate:           time.Now().Format("2006-01-02"),
 			},
@@ -135,12 +140,37 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Input: &ordersapp.NewOrder{
 				Number:     "ORD-12345",
 				CustomerID: sd.Customers[0].ID,
+				CurrencyID: sd.Currencies[0].ID.String(),
 				CreatedBy:  sd.Admins[0].ID.String(),
 				DueDate:    time.Now().Add(3 * 24 * time.Hour).Format("2006-01-02"),
 				OrderDate:  time.Now().Format("2006-01-02"),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"fulfillment_status_id\",\"error\":\"fulfillment_status_id is a required field\"}]"),
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*errs.Error)
+				if !exists {
+					return "error occurred"
+				}
+				return cmp.Diff(exp, gotResp)
+			},
+		},
+		{
+			Name:       "missing currency id",
+			URL:        "/v1/sales/orders",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &ordersapp.NewOrder{
+				Number:              "ORD-12345",
+				CustomerID:          sd.Customers[0].ID,
+				FulfillmentStatusID: sd.OrderFulfillmentStatuses[0].ID,
+				CreatedBy:           sd.Admins[0].ID.String(),
+				DueDate:             time.Now().Add(3 * 24 * time.Hour).Format("2006-01-02"),
+				OrderDate:           time.Now().Format("2006-01-02"),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"currency_id\",\"error\":\"currency_id is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*errs.Error)
 				if !exists {
@@ -159,6 +189,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				Number:              "ORD-12345",
 				CustomerID:          sd.Customers[0].ID,
 				FulfillmentStatusID: sd.OrderFulfillmentStatuses[0].ID,
+				CurrencyID:          sd.Currencies[0].ID.String(),
 				DueDate:             time.Now().Add(3 * 24 * time.Hour).Format("2006-01-02"),
 				OrderDate:           time.Now().Format("2006-01-02"),
 			},

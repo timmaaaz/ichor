@@ -535,6 +535,9 @@ func getFieldName(col ColumnDefinition) string {
 	if col.Alias != "" {
 		return col.Alias // "current_stock"
 	}
+	if col.TableColumn != "" {
+		return col.TableColumn // "products.name"
+	}
 	return col.Name // "quantity"
 }
 

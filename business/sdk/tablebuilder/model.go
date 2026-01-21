@@ -404,6 +404,8 @@ func (c *Config) validateColumnTypes() error {
 		fieldName := col.Name
 		if col.Alias != "" {
 			fieldName = col.Alias
+		} else if col.TableColumn != "" {
+			fieldName = col.TableColumn
 		}
 
 		vs, ok := c.VisualSettings.Columns[fieldName]
@@ -441,6 +443,8 @@ func (c *Config) validateForeignTableColumnTypes(foreignTables []ForeignTable) e
 			fieldName := col.Name
 			if col.Alias != "" {
 				fieldName = col.Alias
+			} else if col.TableColumn != "" {
+				fieldName = col.TableColumn
 			}
 
 			vs, ok := c.VisualSettings.Columns[fieldName]

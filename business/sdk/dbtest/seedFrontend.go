@@ -307,7 +307,19 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		oflIDs = append(oflIDs, ofl.ID)
 	}
 
-	// Seed currencies for orders, product costs, cost history, and purchase orders
+	// Query for USD currency (seeded in seed.sql) for product costs
+	// All product prices are stored in USD - conversion happens at display time
+	usdCode := "USD"
+	usdCurrencies, err := busDomain.Currency.Query(ctx, currencybus.QueryFilter{Code: &usdCode}, currencybus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		return fmt.Errorf("querying USD currency: %w", err)
+	}
+	if len(usdCurrencies) == 0 {
+		return fmt.Errorf("USD currency not found - ensure seed.sql has run")
+	}
+	usdCurrencyID := usdCurrencies[0].ID
+
+	// Seed test currencies for orders (variety in demo data)
 	currencies, err := currencybus.TestSeedCurrencies(ctx, 5, busDomain.Currency)
 	if err != nil {
 		return fmt.Errorf("seeding currencies: %w", err)
@@ -362,7 +374,8 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		productIDs = append(productIDs, p.ProductID)
 	}
 
-	_, err = productcostbus.TestSeedProductCosts(ctx, 20, productIDs, currencyIDs, busDomain.ProductCost)
+	// All product costs use USD - single base currency for consistency
+	_, err = productcostbus.TestSeedProductCosts(ctx, 20, productIDs, uuid.UUIDs{usdCurrencyID}, busDomain.ProductCost)
 	if err != nil {
 		return fmt.Errorf("seeding product cost : %w", err)
 	}
@@ -377,7 +390,8 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding metrics : %w", err)
 	}
 
-	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, currencyIDs, busDomain.CostHistory)
+	// Cost history also uses USD for consistency
+	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, uuid.UUIDs{usdCurrencyID}, busDomain.CostHistory)
 	if err != nil {
 		return fmt.Errorf("seeding cost history : %w", err)
 	}

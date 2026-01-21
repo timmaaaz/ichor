@@ -36,14 +36,15 @@ func update200(sd apitest.SeedData) []apitest.Table {
 	)
 
 	// Add corresponding VisualSettings entries (required by validation)
-	updatedSimple.VisualSettings.Columns["minimum_stock"] = tablebuilder.ColumnConfig{
-		Name:   "minimum_stock",
+	// Use TableColumn as the key since these columns don't have aliases
+	updatedSimple.VisualSettings.Columns["inventory_items.minimum_stock"] = tablebuilder.ColumnConfig{
+		Name:   "inventory_items.minimum_stock",
 		Header: "Minimum Stock",
 		Width:  120,
 		Type:   "number",
 	}
-	updatedSimple.VisualSettings.Columns["maximum_stock"] = tablebuilder.ColumnConfig{
-		Name:   "maximum_stock",
+	updatedSimple.VisualSettings.Columns["inventory_items.maximum_stock"] = tablebuilder.ColumnConfig{
+		Name:   "inventory_items.maximum_stock",
 		Header: "Maximum Stock",
 		Width:  120,
 		Type:   "number",
