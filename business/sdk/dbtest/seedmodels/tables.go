@@ -4958,12 +4958,12 @@ var ProductsWithPricesLookup = &tablebuilder.Config{
 				},
 			},
 			"product_costs.purchase_cost": {
-				Name:       "product_costs.purchase_cost",
-				Header:     "Cost Price",
-				Width:      150,
-				Type:       "number",
-				Align:      "right",
-				Sortable:   true,
+				Name:     "product_costs.purchase_cost",
+				Header:   "Cost Price",
+				Width:    150,
+				Type:     "number",
+				Align:    "right",
+				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:      "currency",
 					Precision: 2,

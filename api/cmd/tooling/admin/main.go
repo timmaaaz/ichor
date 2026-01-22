@@ -146,13 +146,19 @@ func processCommands(args conf.Args, log *logger.Logger, cfg config) error {
 			return fmt.Errorf("generating token: %w", err)
 		}
 
+	case "validate-configs":
+		if err := commands.ValidateConfigs(); err != nil {
+			return fmt.Errorf("validating configs: %w", err)
+		}
+
 	default:
-		fmt.Println("migrate:    create the schema in the database")
-		fmt.Println("seed:       add data to the database")
-		fmt.Println("useradd:    add a new user to the database")
-		fmt.Println("users:      get a list of users from the database")
-		fmt.Println("genkey:     generate a set of private/public key files")
-		fmt.Println("gentoken:   generate a JWT for a user with claims")
+		fmt.Println("migrate:          create the schema in the database")
+		fmt.Println("seed:             add data to the database")
+		fmt.Println("useradd:          add a new user to the database")
+		fmt.Println("users:            get a list of users from the database")
+		fmt.Println("genkey:           generate a set of private/public key files")
+		fmt.Println("gentoken:         generate a JWT for a user with claims")
+		fmt.Println("validate-configs: validate all seed table/chart configurations")
 		fmt.Println("provide a command to get more help.")
 		return commands.ErrHelp
 	}
