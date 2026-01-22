@@ -375,6 +375,9 @@ seed-frontend:
 validate-configs:
 	go run api/cmd/tooling/admin/main.go validate-configs
 
+validate-workflows:
+	go run api/cmd/tooling/admin/main.go validate-workflows
+
 reseed-frontend: dev-database-recreate dev-update-apply seed-frontend
 
 pgcli:
