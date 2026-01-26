@@ -36,7 +36,7 @@ func TestNewOrders(n int, userIDs uuid.UUIDs, customerIDs uuid.UUIDs, ofIDs uuid
 		orders = append(orders, NewOrder{
 			Number:              fmt.Sprintf("TST-%d", i+1),
 			CustomerID:          customerIDs[i%len(customerIDs)],
-			DueDate:             now.AddDate(0, 0, i+1),
+			DueDate:             now.AddDate(0, 0, 7+rand.Intn(54)), // Due 7-60 days after order
 			FulfillmentStatusID: ofIDs[i%len(ofIDs)],
 			OrderDate:           now,
 			BillingAddressID:    nil, // Test data without addresses
@@ -84,7 +84,7 @@ func TestNewOrdersHistorical(n int, daysBack int, userIDs uuid.UUIDs, customerID
 		orders = append(orders, NewOrder{
 			Number:              fmt.Sprintf("SEED-%d", i+1),
 			CustomerID:          customerIDs[i%len(customerIDs)],
-			DueDate:             createdDate.AddDate(0, 0, 7), // Due 7 days after creation
+			DueDate:             createdDate.AddDate(0, 0, 7+rand.Intn(54)), // Due 7-60 days after creation
 			FulfillmentStatusID: ofIDs[i%len(ofIDs)],
 			OrderDate:           createdDate,
 			BillingAddressID:    nil,
@@ -212,7 +212,7 @@ func TestNewOrdersFrontendWeighted(n int, daysBack int, userIDs uuid.UUIDs, cust
 		orders = append(orders, NewOrder{
 			Number:              fmt.Sprintf("DEMO-%d", i+1),
 			CustomerID:          customerIDs[i%len(customerIDs)],
-			DueDate:             finalDate.AddDate(0, 0, 7), // Due 7 days after creation
+			DueDate:             finalDate.AddDate(0, 0, 7+rand.Intn(54)), // Due 7-60 days after creation
 			FulfillmentStatusID: ofIDs[i%len(ofIDs)],
 			OrderDate:           finalDate,
 			BillingAddressID:    nil,

@@ -309,7 +309,8 @@ Visual configuration for a single column.
 | `header` | `string` | No | Display header | - |
 | `width` | `int` | No | Column width (px) | > 0 |
 | `align` | `string` | No | Text alignment | `"left"`, `"center"`, `"right"` |
-| `type` | `string` | **Yes** | Data type | See valid column types |
+| `type` | `string` | Cond. | Data type | Required unless `hidden=true`; see valid column types |
+| `hidden` | `bool` | No | Hide column from display | If true, column is selected but not rendered |
 | `sortable` | `bool` | No | Enable sorting | - |
 | `filterable` | `bool` | No | Enable filtering | - |
 | `cell_template` | `string` | No | Custom renderer | - |
@@ -318,7 +319,13 @@ Visual configuration for a single column.
 | `link` | `*LinkConfig` | No | Clickable link | - |
 | `lookup` | `*LookupConfig` | No | Dropdown config | Required when `type="lookup"` |
 
-**Source:** [model.go:187-200](business/sdk/tablebuilder/model.go#L187-L200)
+**Source:** [model.go:187-201](business/sdk/tablebuilder/model.go#L187-L201)
+
+**Hidden Columns:**
+- When `hidden: true`, the column is selected in the query (data is available in row)
+- The column is exempt from `type` validation requirement
+- Frontend should skip rendering this column in the table
+- Use case: columns needed for lookup labels or other data purposes but not displayed directly
 
 ---
 
@@ -357,12 +364,18 @@ Defines clickable link configuration.
 | Field | Type | Required | Description | Validation Rules |
 |-------|------|----------|-------------|------------------|
 | `url` | `string` | **Yes** | Link URL | Valid URL template |
-| `label` | `string` | **Yes** | Link text | - |
+| `label` | `string` | Cond. | Static link text | Either `label` or `label_column` required |
+| `label_column` | `string` | Cond. | Column name to use as dynamic label | Takes precedence over `label` |
 
-**Source:** [model.go:217-220](business/sdk/tablebuilder/model.go#L217-L220)
+**Source:** [model.go:216-221](business/sdk/tablebuilder/model.go#L216-L221)
 
 **URL Template Variables:**
 - `{field_name}` - replaced with row value
+
+**Label Behavior:**
+- If `label_column` is set, frontend uses that column's value from the row as the link text
+- If only `label` is set, use the static text
+- `label_column` takes precedence over `label` if both are set
 
 ---
 

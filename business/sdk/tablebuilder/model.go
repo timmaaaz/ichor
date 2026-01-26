@@ -188,8 +188,9 @@ type ColumnConfig struct {
 	Name         string          `json:"name"`
 	Header       string          `json:"header"`
 	Width        int             `json:"width,omitempty"`
-	Align        string          `json:"align,omitempty"` // left, center, right
-	Type         string          `json:"type,omitempty"`  // linktotal, status, lookup, etc.
+	Align        string          `json:"align,omitempty"`  // left, center, right
+	Type         string          `json:"type,omitempty"`   // linktotal, status, lookup, etc.
+	Hidden       bool            `json:"hidden,omitempty"` // Column selected but not displayed (e.g., for lookup labels)
 	Sortable     bool            `json:"sortable,omitempty"`
 	Filterable   bool            `json:"filterable,omitempty"`
 	CellTemplate string          `json:"cell_template,omitempty"`
@@ -215,8 +216,9 @@ type EditableConfig struct {
 
 // LinkConfig defines link configuration
 type LinkConfig struct {
-	URL   string `json:"url"`
-	Label string `json:"label"`
+	URL         string `json:"url"`
+	Label       string `json:"label,omitempty"`        // Static label text
+	LabelColumn string `json:"label_column,omitempty"` // Column name to use as dynamic label (takes precedence over Label)
 }
 
 // LookupConfig defines configuration for lookup dropdown filters.
@@ -386,6 +388,7 @@ func (c *Config) Validate() error {
 // validateColumnTypes ensures all columns have valid types defined in VisualSettings.
 // This is required for type-aware filtering, charting, and other type-dependent features.
 // Chart widgets are skipped because they use ChartVisualSettings via the "_chart" key instead.
+// Exempt columns (LabelColumn references, hidden columns) don't require a Type field.
 func (c *Config) validateColumnTypes() error {
 	if len(c.DataSource) == 0 {
 		return nil
@@ -399,6 +402,9 @@ func (c *Config) validateColumnTypes() error {
 
 	ds := c.DataSource[0]
 
+	// Collect columns exempt from Type validation
+	exemptColumns := c.collectExemptColumnsForValidation()
+
 	// Check regular columns
 	for _, col := range ds.Select.Columns {
 		fieldName := col.Name
@@ -408,6 +414,11 @@ func (c *Config) validateColumnTypes() error {
 			fieldName = col.TableColumn
 		}
 
+		// Skip exempt columns
+		if exemptColumns[fieldName] {
+			continue
+		}
+
 		vs, ok := c.VisualSettings.Columns[fieldName]
 		if !ok || vs.Type == "" {
 			return fmt.Errorf("%w: %s", ErrMissingColumnType, fieldName)
@@ -415,15 +426,24 @@ func (c *Config) validateColumnTypes() error {
 		if !IsValidColumnType(vs.Type) {
 			return fmt.Errorf("%w: %s has invalid type %q", ErrInvalidColumn, fieldName, vs.Type)
 		}
+		// Datetime columns must have a Format config
+		if vs.Type == "datetime" && vs.Format == nil {
+			return fmt.Errorf("%w: %s", ErrMissingDatetimeFormat, fieldName)
+		}
 	}
 
 	// Check foreign table columns recursively
-	if err := c.validateForeignTableColumnTypes(ds.Select.ForeignTables); err != nil {
+	if err := c.validateForeignTableColumnTypes(ds.Select.ForeignTables, exemptColumns); err != nil {
 		return err
 	}
 
 	// Check computed columns (they should have type "computed" or a specific type)
 	for _, cc := range ds.Select.ClientComputedColumns {
+		// Skip exempt columns
+		if exemptColumns[cc.Name] {
+			continue
+		}
+
 		vs, ok := c.VisualSettings.Columns[cc.Name]
 		if !ok || vs.Type == "" {
 			return fmt.Errorf("%w: %s (computed)", ErrMissingColumnType, cc.Name)
@@ -431,13 +451,36 @@ func (c *Config) validateColumnTypes() error {
 		if !IsValidColumnType(vs.Type) {
 			return fmt.Errorf("%w: %s has invalid type %q", ErrInvalidColumn, cc.Name, vs.Type)
 		}
+		// Datetime columns must have a Format config
+		if vs.Type == "datetime" && vs.Format == nil {
+			return fmt.Errorf("%w: %s (computed)", ErrMissingDatetimeFormat, cc.Name)
+		}
 	}
 
 	return nil
 }
 
+// collectExemptColumnsForValidation returns a set of column names that are exempt from Type validation.
+// This includes:
+// 1. Columns used as LabelColumn in LinkConfig (display purposes in links)
+// 2. Columns marked as Hidden (selected for data but not displayed)
+func (c *Config) collectExemptColumnsForValidation() map[string]bool {
+	exempt := make(map[string]bool)
+	for name, colConfig := range c.VisualSettings.Columns {
+		// Exempt LabelColumn references
+		if colConfig.Link != nil && colConfig.Link.LabelColumn != "" {
+			exempt[colConfig.Link.LabelColumn] = true
+		}
+		// Exempt hidden columns
+		if colConfig.Hidden {
+			exempt[name] = true
+		}
+	}
+	return exempt
+}
+
 // validateForeignTableColumnTypes recursively validates column types for foreign tables.
-func (c *Config) validateForeignTableColumnTypes(foreignTables []ForeignTable) error {
+func (c *Config) validateForeignTableColumnTypes(foreignTables []ForeignTable, exemptColumns map[string]bool) error {
 	for _, ft := range foreignTables {
 		for _, col := range ft.Columns {
 			fieldName := col.Name
@@ -447,6 +490,11 @@ func (c *Config) validateForeignTableColumnTypes(foreignTables []ForeignTable) e
 				fieldName = col.TableColumn
 			}
 
+			// Skip exempt columns
+			if exemptColumns[fieldName] {
+				continue
+			}
+
 			vs, ok := c.VisualSettings.Columns[fieldName]
 			if !ok || vs.Type == "" {
 				return fmt.Errorf("%w: %s (from %s.%s)", ErrMissingColumnType, fieldName, ft.Schema, ft.Table)
@@ -454,10 +502,14 @@ func (c *Config) validateForeignTableColumnTypes(foreignTables []ForeignTable) e
 			if !IsValidColumnType(vs.Type) {
 				return fmt.Errorf("%w: %s has invalid type %q", ErrInvalidColumn, fieldName, vs.Type)
 			}
+			// Datetime columns must have a Format config
+			if vs.Type == "datetime" && vs.Format == nil {
+				return fmt.Errorf("%w: %s (from %s.%s)", ErrMissingDatetimeFormat, fieldName, ft.Schema, ft.Table)
+			}
 		}
 
 		// Recursively check nested foreign tables
-		if err := c.validateForeignTableColumnTypes(ft.ForeignTables); err != nil {
+		if err := c.validateForeignTableColumnTypes(ft.ForeignTables, exemptColumns); err != nil {
 			return err
 		}
 	}
