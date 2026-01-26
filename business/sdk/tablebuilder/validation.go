@@ -186,6 +186,7 @@ func (c *Config) ValidateConfig() *ValidationResult {
 	// 3. VisualSettings validation (for table widgets)
 	if c.WidgetType != "chart" {
 		c.validateVisualSettings(result)
+		c.validateSelectedColumnsHaveVisualSettings(result)
 	}
 
 	// 4. Permissions validation
@@ -416,6 +417,11 @@ func (c *Config) validateVisualSettings(result *ValidationResult) {
 	for name, col := range c.VisualSettings.Columns {
 		colPrefix := fmt.Sprintf("%s.columns[%s]", prefix, name)
 
+		// Hidden columns don't require a Type
+		if col.Hidden {
+			continue
+		}
+
 		if col.Type == "" {
 			result.AddError(colPrefix+".type", "type is required", "REQUIRED")
 		} else if !IsValidColumnType(col.Type) {
@@ -433,6 +439,11 @@ func (c *Config) validateVisualSettings(result *ValidationResult) {
 		// Validate format config
 		if col.Format != nil {
 			c.validateFormatConfig(result, col.Format, colPrefix+".format")
+		}
+
+		// Datetime columns must have a Format config to ensure proper display
+		if col.Type == "datetime" && col.Format == nil {
+			result.AddError(colPrefix+".format", "format is required for datetime columns", "REQUIRED")
 		}
 
 		// Validate editable config
@@ -485,6 +496,115 @@ func (c *Config) validateFormatConfig(result *ValidationResult, f *FormatConfig,
 	if f.Precision < 0 {
 		result.AddError(prefix+".precision", "precision must be >= 0", "INVALID_VALUE")
 	}
+
+	// Validate date format string when type is date or datetime
+	if (f.Type == "date" || f.Type == "datetime") && f.Format != "" {
+		if err := ValidateDateFormatString(f.Format); err != nil {
+			result.AddError(prefix+".format", err.Error(), "INVALID_DATE_FORMAT")
+		}
+	}
+}
+
+// ValidateDateFormatString validates that a date format string uses only valid date-fns tokens.
+// It rejects Go date format strings (2006-01-02 style) and returns descriptive errors.
+//
+// Valid format: "yyyy-MM-dd HH:mm:ss"
+// Invalid format: "2006-01-02 15:04:05" (Go style)
+func ValidateDateFormatString(format string) error {
+	if format == "" {
+		return nil // Empty format is allowed (uses default)
+	}
+
+	// Check for Go date format patterns
+	if containsGoDatePattern(format) {
+		return fmt.Errorf("%w: found Go date format pattern in %q. Use date-fns tokens instead (e.g., yyyy-MM-dd instead of 2006-01-02). See https://date-fns.org/docs/format", ErrGoDateFormatDetected, format)
+	}
+
+	// Extract and validate tokens from the format string
+	tokens := extractDateTokens(format)
+	for _, token := range tokens {
+		if !AllowedDateFnsTokens[token] {
+			return fmt.Errorf("%w: unknown token %q in format %q. Valid tokens include: yyyy, MM, dd, HH, mm, ss. See https://date-fns.org/docs/format", ErrInvalidDateFormat, token, format)
+		}
+	}
+
+	return nil
+}
+
+// containsGoDatePattern checks if a format string contains Go date format magic numbers.
+func containsGoDatePattern(format string) bool {
+	// Check for common Go date format patterns
+	goPatterns := []string{
+		"2006",  // Year indicator
+		"01-",   // Month at start or middle
+		"-01-",  // Month in middle
+		"-01",   // Month at end (but not -01 in other contexts)
+		"/01/",  // Month with slashes
+		"01/",   // Month at start with slash
+		"/01",   // Month at end with slash
+		"-02",   // Day at end
+		"02-",   // Day at start
+		"-02-",  // Day in middle
+		"/02/",  // Day with slashes
+		"02/",   // Day at start with slash
+		"/02",   // Day at end with slash
+		" 15:",  // 24-hour time with space prefix
+		"T15:",  // 24-hour time with T prefix
+		":04:",  // Minutes in middle
+		":04",   // Minutes at end
+		":05",   // Seconds
+	}
+
+	for _, pattern := range goPatterns {
+		if strings.Contains(format, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// extractDateTokens extracts date-fns tokens from a format string.
+// It handles separators and escaped text (within single quotes) and returns only the token parts.
+func extractDateTokens(format string) []string {
+	var tokens []string
+	var currentToken strings.Builder
+	inEscape := false
+
+	for _, r := range format {
+		// Handle escaped text (text within single quotes)
+		if r == '\'' {
+			if currentToken.Len() > 0 {
+				tokens = append(tokens, currentToken.String())
+				currentToken.Reset()
+			}
+			inEscape = !inEscape
+			continue
+		}
+
+		if inEscape {
+			// Inside escaped section, skip characters
+			continue
+		}
+
+		// Check if this is a separator
+		if AllowedDateFormatSeparators[r] {
+			if currentToken.Len() > 0 {
+				tokens = append(tokens, currentToken.String())
+				currentToken.Reset()
+			}
+			continue
+		}
+
+		// Accumulate token characters
+		currentToken.WriteRune(r)
+	}
+
+	// Don't forget the last token
+	if currentToken.Len() > 0 {
+		tokens = append(tokens, currentToken.String())
+	}
+
+	return tokens
 }
 
 // validateEditableConfig validates an EditableConfig configuration
@@ -517,8 +637,9 @@ func (c *Config) validateLinkConfig(result *ValidationResult, l *LinkConfig, pre
 		result.AddError(prefix+".url", "url is required", "REQUIRED")
 	}
 
-	if l.Label == "" {
-		result.AddError(prefix+".label", "label is required", "REQUIRED")
+	// Either Label or LabelColumn must be provided
+	if l.Label == "" && l.LabelColumn == "" {
+		result.AddError(prefix+".label", "either label or label_column is required", "REQUIRED")
 	}
 }
 
@@ -608,6 +729,115 @@ func (c *Config) validatePermissions(result *ValidationResult) {
 	for i, action := range c.Permissions.Actions {
 		if !AllowedPermissionActions[action] {
 			result.AddError(fmt.Sprintf("%s.actions[%d]", prefix, i), fmt.Sprintf("invalid action: %s", action), "INVALID_VALUE")
+		}
+	}
+}
+
+// validateSelectedColumnsHaveVisualSettings ensures all selected columns have visual settings with valid types.
+// This catches errors where columns are selected in DataSource but missing from VisualSettings.Columns.
+// Exempt columns (LabelColumn references, hidden columns) don't require a Type field.
+func (c *Config) validateSelectedColumnsHaveVisualSettings(result *ValidationResult) {
+	if len(c.DataSource) == 0 {
+		return
+	}
+
+	ds := c.DataSource[0]
+
+	// Collect columns exempt from Type validation
+	exemptColumns := c.collectExemptColumns()
+
+	// Check regular columns
+	for i, col := range ds.Select.Columns {
+		fieldName := col.Name
+		if col.Alias != "" {
+			fieldName = col.Alias
+		} else if col.TableColumn != "" {
+			fieldName = col.TableColumn
+		}
+
+		// Skip exempt columns
+		if exemptColumns[fieldName] {
+			continue
+		}
+
+		prefix := fmt.Sprintf("data_source[0].select.columns[%d]", i)
+		vs, ok := c.VisualSettings.Columns[fieldName]
+		if !ok {
+			result.AddError(prefix, fmt.Sprintf("column %q missing from visual_settings.columns", fieldName), "MISSING_VISUAL_SETTINGS")
+		} else if vs.Type == "" {
+			result.AddError(fmt.Sprintf("visual_settings.columns[%s].type", fieldName), "type is required", "REQUIRED")
+		}
+	}
+
+	// Check foreign table columns recursively
+	c.validateForeignTableColumnsHaveVisualSettings(result, ds.Select.ForeignTables, "data_source[0].select.foreign_tables", exemptColumns)
+
+	// Check computed columns
+	for i, cc := range ds.Select.ClientComputedColumns {
+		// Skip exempt columns
+		if exemptColumns[cc.Name] {
+			continue
+		}
+
+		prefix := fmt.Sprintf("data_source[0].select.client_computed_columns[%d]", i)
+		vs, ok := c.VisualSettings.Columns[cc.Name]
+		if !ok {
+			result.AddError(prefix, fmt.Sprintf("computed column %q missing from visual_settings.columns", cc.Name), "MISSING_VISUAL_SETTINGS")
+		} else if vs.Type == "" {
+			result.AddError(fmt.Sprintf("visual_settings.columns[%s].type", cc.Name), "type is required", "REQUIRED")
+		}
+	}
+}
+
+// collectExemptColumns returns a set of column names that are exempt from Type validation.
+// This includes:
+// 1. Columns used as LabelColumn in LinkConfig (display purposes in links)
+// 2. Columns marked as Hidden (selected for data but not displayed)
+func (c *Config) collectExemptColumns() map[string]bool {
+	exempt := make(map[string]bool)
+	for name, colConfig := range c.VisualSettings.Columns {
+		// Exempt LabelColumn references
+		if colConfig.Link != nil && colConfig.Link.LabelColumn != "" {
+			exempt[colConfig.Link.LabelColumn] = true
+		}
+		// Exempt hidden columns
+		if colConfig.Hidden {
+			exempt[name] = true
+		}
+	}
+	return exempt
+}
+
+// validateForeignTableColumnsHaveVisualSettings recursively validates foreign table columns.
+func (c *Config) validateForeignTableColumnsHaveVisualSettings(result *ValidationResult, foreignTables []ForeignTable, prefix string, exemptColumns map[string]bool) {
+	for i, ft := range foreignTables {
+		ftPrefix := fmt.Sprintf("%s[%d]", prefix, i)
+
+		for j, col := range ft.Columns {
+			fieldName := col.Name
+			if col.Alias != "" {
+				fieldName = col.Alias
+			} else if col.TableColumn != "" {
+				fieldName = col.TableColumn
+			}
+
+			// Skip exempt columns
+			if exemptColumns[fieldName] {
+				continue
+			}
+
+			colPrefix := fmt.Sprintf("%s.columns[%d]", ftPrefix, j)
+			vs, ok := c.VisualSettings.Columns[fieldName]
+			if !ok {
+				result.AddError(colPrefix, fmt.Sprintf("column %q (from %s.%s) missing from visual_settings.columns", fieldName, ft.Schema, ft.Table), "MISSING_VISUAL_SETTINGS")
+			} else if vs.Type == "" {
+				result.AddError(fmt.Sprintf("visual_settings.columns[%s].type", fieldName), "type is required", "REQUIRED")
+			}
+		}
+
+		// Recursively check nested foreign tables
+		if len(ft.ForeignTables) > 0 {
+			c.validateForeignTableColumnsHaveVisualSettings(result, ft.ForeignTables, ftPrefix+".foreign_tables", exemptColumns)
 		}
 	}
 }

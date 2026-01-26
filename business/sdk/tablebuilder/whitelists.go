@@ -128,3 +128,62 @@ var AllowedRelationshipDirections = map[string]bool{
 	"parent_to_child": true,
 	"child_to_parent": true,
 }
+
+// AllowedDateFnsTokens defines valid date-fns format tokens for date/datetime formatting.
+// These tokens are used by the frontend JavaScript date-fns library.
+// Reference: https://date-fns.org/docs/format
+var AllowedDateFnsTokens = map[string]bool{
+	// Year
+	"yyyy": true, // 4-digit year: 2024
+	"yy":   true, // 2-digit year: 24
+
+	// Month
+	"MMMM": true, // Full month name: January
+	"MMM":  true, // Abbreviated month: Jan
+	"MM":   true, // 2-digit month: 01-12
+	"M":    true, // 1-2 digit month: 1-12
+
+	// Day
+	"dd": true, // 2-digit day: 01-31
+	"d":  true, // 1-2 digit day: 1-31
+	"do": true, // Day with ordinal: 1st, 2nd, 3rd
+
+	// Weekday
+	"EEEE": true, // Full weekday: Monday
+	"EEE":  true, // Abbreviated weekday: Mon
+	"E":    true, // Short weekday: M
+
+	// Hour
+	"HH": true, // 24-hour padded: 00-23
+	"H":  true, // 24-hour: 0-23
+	"hh": true, // 12-hour padded: 01-12
+	"h":  true, // 12-hour: 1-12
+
+	// Minute
+	"mm": true, // Padded minutes: 00-59
+	"m":  true, // Minutes: 0-59
+
+	// Second
+	"ss": true, // Padded seconds: 00-59
+	"s":  true, // Seconds: 0-59
+
+	// AM/PM
+	"a":   true, // AM/PM: am, pm
+	"aaa": true, // AM/PM uppercase: AM, PM
+
+	// Timezone
+	"z":   true, // Short timezone: EST
+	"zzz": true, // Long timezone: Eastern Standard Time
+}
+
+// AllowedDateFormatSeparators defines valid separators between date format tokens.
+var AllowedDateFormatSeparators = map[rune]bool{
+	'-':  true, // ISO date separator
+	'/':  true, // US date separator
+	'.':  true, // European date separator
+	' ':  true, // Space separator
+	':':  true, // Time separator
+	',':  true, // Comma
+	'T':  true, // ISO datetime separator
+	'\'': true, // Escaped literal text delimiter
+}

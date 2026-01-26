@@ -846,7 +846,7 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "date",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"days_employed": {
@@ -887,6 +887,10 @@ var adminUsersTableConfig = &tablebuilder.Config{
 				Header: "Created Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "yyyy-MM-dd",
+				},
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{
@@ -1205,7 +1209,7 @@ var adminAuditTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04:05",
+					Format: "yyyy-MM-dd HH:mm:ss",
 				},
 			},
 			"rule_name": {
@@ -1393,7 +1397,7 @@ var adminConfigTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"created_by_username": {
@@ -1418,7 +1422,7 @@ var adminConfigTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 		},

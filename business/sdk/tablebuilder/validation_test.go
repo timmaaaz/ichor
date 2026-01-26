@@ -1,6 +1,7 @@
 package tablebuilder_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
@@ -1169,5 +1170,133 @@ func TestValidateConfig_ChartWidgetSkipsColumnTypeValidation(t *testing.T) {
 		if err.Code == "REQUIRED" && err.Field == "visual_settings.columns" {
 			t.Error("chart widgets should not require visual_settings.columns")
 		}
+	}
+}
+
+// =============================================================================
+// Date Format Validation Tests
+// =============================================================================
+
+func TestValidateDateFormatString(t *testing.T) {
+	validFormats := []string{
+		"yyyy-MM-dd",
+		"MM-dd-yyyy",
+		"yyyy-MM-dd HH:mm",
+		"yyyy-MM-dd HH:mm:ss",
+		"dd/MM/yyyy",
+		"MMM dd, yyyy",
+		"EEEE, MMMM do, yyyy",
+		"HH:mm:ss",
+		"hh:mm a",
+		"yyyy-MM-dd'T'HH:mm:ss",
+		"", // Empty is valid
+	}
+
+	for _, format := range validFormats {
+		t.Run("valid_"+format, func(t *testing.T) {
+			err := tablebuilder.ValidateDateFormatString(format)
+			if err != nil {
+				t.Errorf("ValidateDateFormatString(%q) unexpected error: %v", format, err)
+			}
+		})
+	}
+}
+
+func TestValidateDateFormatString_RejectsGoFormats(t *testing.T) {
+	goFormats := []struct {
+		name   string
+		format string
+	}{
+		{"basic date", "2006-01-02"},
+		{"US date", "01-02-2006"},
+		{"datetime", "2006-01-02 15:04"},
+		{"full datetime", "2006-01-02 15:04:05"},
+		{"time only", "15:04:05"},
+		{"ISO datetime", "2006-01-02T15:04:05"},
+	}
+
+	for _, tt := range goFormats {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tablebuilder.ValidateDateFormatString(tt.format)
+			if err == nil {
+				t.Errorf("ValidateDateFormatString(%q) expected error for Go format, got nil", tt.format)
+			}
+			if err != nil && !errors.Is(err, tablebuilder.ErrGoDateFormatDetected) {
+				t.Errorf("ValidateDateFormatString(%q) expected ErrGoDateFormatDetected, got: %v", tt.format, err)
+			}
+		})
+	}
+}
+
+func TestValidateDateFormatString_RejectsInvalidTokens(t *testing.T) {
+	invalidFormats := []struct {
+		name   string
+		format string
+	}{
+		{"invalid token YYYY", "YYYY-mm-dd"}, // YYYY is not valid, should be yyyy
+		{"invalid quarter", "QQQ"},           // Quarter tokens not supported
+		{"invalid week", "ww"},               // Week tokens not supported
+	}
+
+	for _, tt := range invalidFormats {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tablebuilder.ValidateDateFormatString(tt.format)
+			if err == nil {
+				t.Errorf("ValidateDateFormatString(%q) expected error for invalid token, got nil", tt.format)
+			}
+		})
+	}
+}
+
+func TestValidateConfig_DateFormatInFormatConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		format      string
+		expectError bool
+	}{
+		{"valid date-fns format", "yyyy-MM-dd", false},
+		{"valid datetime format", "yyyy-MM-dd HH:mm:ss", false},
+		{"Go date format rejected", "2006-01-02", true},
+		{"Go datetime format rejected", "2006-01-02 15:04:05", true},
+		{"empty format valid", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := tablebuilder.Config{
+				Title: "Test",
+				DataSource: []tablebuilder.DataSource{
+					{Source: "test"},
+				},
+				VisualSettings: tablebuilder.VisualSettings{
+					Columns: map[string]tablebuilder.ColumnConfig{
+						"date_col": {
+							Name: "date_col",
+							Type: "datetime",
+							Format: &tablebuilder.FormatConfig{
+								Type:   "date",
+								Format: tt.format,
+							},
+						},
+					},
+				},
+			}
+			result := config.ValidateConfig()
+
+			hasFormatError := false
+			for _, err := range result.Errors {
+				if err.Field == "visual_settings.columns[date_col].format.format" {
+					hasFormatError = true
+					break
+				}
+			}
+
+			if tt.expectError && !hasFormatError {
+				t.Errorf("expected format error for %q, got none", tt.format)
+			}
+			if !tt.expectError && hasFormatError {
+				t.Errorf("unexpected format error for %q", tt.format)
+			}
+		})
 	}
 }
