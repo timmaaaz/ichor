@@ -3,6 +3,7 @@ package tablebuilder
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -625,6 +626,55 @@ func (c *Config) validateVisualSettings(result *ValidationResult) {
 	// Validate table actions
 	for name, action := range c.VisualSettings.TableActions {
 		c.validateAction(result, action, fmt.Sprintf("%s.table_actions[%s]", prefix, name))
+	}
+
+	// Check for strict Order enforcement
+	var hasOrder, missingOrder []string
+	for name, col := range c.VisualSettings.Columns {
+		if col.Hidden {
+			// Warn if hidden column has Order set (likely mistake)
+			if col.Order != 0 {
+				result.AddWarning(
+					fmt.Sprintf("visual_settings.columns[%s].order", name),
+					fmt.Sprintf("column '%s' is hidden but has Order value set - this will be ignored", name),
+				)
+			}
+			continue // Skip hidden columns for strict order check
+		}
+
+		// Validate Order bounds
+		if col.Order < -1000 || col.Order > 1000 {
+			result.AddError(
+				fmt.Sprintf("visual_settings.columns[%s].order", name),
+				fmt.Sprintf("order value %d is out of reasonable range [-1000, 1000]", col.Order),
+				"INVALID_VALUE",
+			)
+		}
+
+		if col.Order != 0 {
+			hasOrder = append(hasOrder, name)
+		} else {
+			missingOrder = append(missingOrder, name)
+		}
+	}
+
+	// Sort for deterministic error messages (Go maps have non-deterministic iteration)
+	sort.Strings(hasOrder)
+	sort.Strings(missingOrder)
+
+	if len(hasOrder) > 0 && len(missingOrder) > 0 {
+		result.AddError(
+			"visual_settings.columns",
+			fmt.Sprintf(
+				"Mixed explicit and implicit column ordering detected. "+
+					"When any visible column has an explicit Order value, ALL visible columns must have Order values. "+
+					"Columns with Order: [%s]. Columns without Order: [%s]. "+
+					"Tip: Use Order values like 10, 20, 30 to allow easy insertions later.",
+				strings.Join(hasOrder, ", "),
+				strings.Join(missingOrder, ", "),
+			),
+			"STRICT_ORDER",
+		)
 	}
 }
 

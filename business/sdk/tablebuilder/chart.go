@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -638,11 +639,38 @@ func (ct *ChartTransformer) detectCategoricalColumns(data *TableData) (string, [
 	var valueColumns []string
 
 	row := data.Data[0]
-	for key, val := range row {
-		if ct.isNumericValue(val) {
-			valueColumns = append(valueColumns, key)
-		} else if categoryCol == "" {
-			categoryCol = key
+
+	// Use metadata columns for deterministic ordering if available
+	if len(data.Meta.Columns) > 0 {
+		for _, col := range data.Meta.Columns {
+			key := col.Field
+			val, exists := row[key]
+			if !exists {
+				continue
+			}
+
+			if ct.isNumericValue(val) {
+				valueColumns = append(valueColumns, key)
+			} else if categoryCol == "" {
+				categoryCol = key
+			}
+		}
+	} else {
+		// Fallback to deterministic map iteration using sorted keys
+		// This handles edge cases where metadata isn't populated
+		keys := make([]string, 0, len(row))
+		for key := range row {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			val := row[key]
+			if ct.isNumericValue(val) {
+				valueColumns = append(valueColumns, key)
+			} else if categoryCol == "" {
+				categoryCol = key
+			}
 		}
 	}
 

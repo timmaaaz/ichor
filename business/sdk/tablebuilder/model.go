@@ -191,6 +191,7 @@ type ColumnConfig struct {
 	Align        string          `json:"align,omitempty"`  // left, center, right
 	Type         string          `json:"type,omitempty"`   // linktotal, status, lookup, etc.
 	Hidden       bool            `json:"hidden,omitempty"` // Column selected but not displayed (e.g., for lookup labels)
+	Order        int             `json:"order,omitempty"`  // Display order (lower = earlier, 0 = implicit order)
 	Sortable     bool            `json:"sortable,omitempty"`
 	Filterable   bool            `json:"filterable,omitempty"`
 	CellTemplate string          `json:"cell_template,omitempty"`
@@ -305,6 +306,7 @@ type ColumnMetadata struct {
 	SourceColumn string `json:"source_column,omitempty"`
 	SourceSchema string `json:"source_schema,omitempty"`
 	Hidden       bool   `json:"hidden,omitempty"`
+	Order        int    `json:"order,omitempty"` // Display order for frontend (lower = earlier)
 
 	// Flags
 	IsPrimaryKey bool   `json:"is_primary_key,omitempty"`
