@@ -1300,3 +1300,251 @@ func TestValidateConfig_DateFormatInFormatConfig(t *testing.T) {
 		})
 	}
 }
+
+// =============================================================================
+// Computed Column Field Reference Validation Tests
+// =============================================================================
+
+func TestValidateConfig_ComputedColumnFieldReferences(t *testing.T) {
+	t.Run("valid field reference with alias", func(t *testing.T) {
+		config := tablebuilder.Config{
+			Title: "Test",
+			DataSource: []tablebuilder.DataSource{
+				{
+					Source: "test",
+					Select: tablebuilder.SelectConfig{
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "quantity", Alias: "qty"},
+						},
+						ClientComputedColumns: []tablebuilder.ComputedColumn{
+							{Name: "doubled", Expression: "qty * 2"},
+						},
+					},
+				},
+			},
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"qty":     {Type: "number"},
+					"doubled": {Type: "number"},
+				},
+			},
+		}
+		result := config.ValidateConfig()
+
+		for _, err := range result.Errors {
+			if err.Code == "INVALID_FIELD_REFERENCE" {
+				t.Errorf("unexpected field reference error: %v", err)
+			}
+		}
+	})
+
+	t.Run("invalid field reference", func(t *testing.T) {
+		config := tablebuilder.Config{
+			Title: "Test",
+			DataSource: []tablebuilder.DataSource{
+				{
+					Source: "test",
+					Select: tablebuilder.SelectConfig{
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "quantity", Alias: "qty"},
+						},
+						ClientComputedColumns: []tablebuilder.ComputedColumn{
+							{Name: "bad", Expression: "missing_field * 2"},
+						},
+					},
+				},
+			},
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"qty": {Type: "number"},
+					"bad": {Type: "number"},
+				},
+			},
+		}
+		result := config.ValidateConfig()
+
+		found := false
+		for _, err := range result.Errors {
+			if err.Code == "INVALID_FIELD_REFERENCE" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("expected INVALID_FIELD_REFERENCE error for missing_field")
+		}
+	})
+
+	t.Run("valid with TableColumn using underscore transform", func(t *testing.T) {
+		config := tablebuilder.Config{
+			Title: "Test",
+			DataSource: []tablebuilder.DataSource{
+				{
+					Source: "orders",
+					Select: tablebuilder.SelectConfig{
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "due_date", TableColumn: "orders.due_date"},
+						},
+						ClientComputedColumns: []tablebuilder.ComputedColumn{
+							{Name: "days", Expression: "daysUntil(orders_due_date)"},
+						},
+					},
+				},
+			},
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"orders.due_date": {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
+					"days":            {Type: "number"},
+				},
+			},
+		}
+		result := config.ValidateConfig()
+
+		for _, err := range result.Errors {
+			if err.Code == "INVALID_FIELD_REFERENCE" {
+				t.Errorf("unexpected field reference error: %v", err)
+			}
+		}
+	})
+
+	t.Run("valid with TableColumn using dot notation", func(t *testing.T) {
+		config := tablebuilder.Config{
+			Title: "Test",
+			DataSource: []tablebuilder.DataSource{
+				{
+					Source: "orders",
+					Select: tablebuilder.SelectConfig{
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "due_date", TableColumn: "orders.due_date"},
+						},
+						ClientComputedColumns: []tablebuilder.ComputedColumn{
+							{Name: "days", Expression: "daysUntil(orders.due_date)"},
+						},
+					},
+				},
+			},
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"orders.due_date": {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
+					"days":            {Type: "number"},
+				},
+			},
+		}
+		result := config.ValidateConfig()
+
+		for _, err := range result.Errors {
+			if err.Code == "INVALID_FIELD_REFERENCE" {
+				t.Errorf("unexpected field reference error: %v", err)
+			}
+		}
+	})
+
+	t.Run("valid with foreign table column", func(t *testing.T) {
+		config := tablebuilder.Config{
+			Title: "Test",
+			DataSource: []tablebuilder.DataSource{
+				{
+					Source: "orders",
+					Select: tablebuilder.SelectConfig{
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "id"},
+						},
+						ForeignTables: []tablebuilder.ForeignTable{
+							{
+								Table:            "customers",
+								RelationshipFrom: "orders.customer_id",
+								RelationshipTo:   "customers.id",
+								Columns: []tablebuilder.ColumnDefinition{
+									{Name: "name", Alias: "customer_name"},
+								},
+							},
+						},
+						ClientComputedColumns: []tablebuilder.ComputedColumn{
+							{Name: "greeting", Expression: "customer_name"},
+						},
+					},
+				},
+			},
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"id":            {Type: "uuid"},
+					"customer_name": {Type: "string"},
+					"greeting":      {Type: "string"},
+				},
+			},
+		}
+		result := config.ValidateConfig()
+
+		for _, err := range result.Errors {
+			if err.Code == "INVALID_FIELD_REFERENCE" {
+				t.Errorf("unexpected field reference error: %v", err)
+			}
+		}
+	})
+
+	t.Run("computed column can reference another computed column", func(t *testing.T) {
+		config := tablebuilder.Config{
+			Title: "Test",
+			DataSource: []tablebuilder.DataSource{
+				{
+					Source: "test",
+					Select: tablebuilder.SelectConfig{
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "value"},
+						},
+						ClientComputedColumns: []tablebuilder.ComputedColumn{
+							{Name: "doubled", Expression: "value * 2"},
+							{Name: "quadrupled", Expression: "doubled * 2"},
+						},
+					},
+				},
+			},
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"value":      {Type: "number"},
+					"doubled":    {Type: "number"},
+					"quadrupled": {Type: "number"},
+				},
+			},
+		}
+		result := config.ValidateConfig()
+
+		for _, err := range result.Errors {
+			if err.Code == "INVALID_FIELD_REFERENCE" {
+				t.Errorf("unexpected field reference error: %v", err)
+			}
+		}
+	})
+
+	t.Run("known functions are not treated as field references", func(t *testing.T) {
+		config := tablebuilder.Config{
+			Title: "Test",
+			DataSource: []tablebuilder.DataSource{
+				{
+					Source: "test",
+					Select: tablebuilder.SelectConfig{
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "date_field"},
+						},
+						ClientComputedColumns: []tablebuilder.ComputedColumn{
+							{Name: "result", Expression: "daysUntil(date_field) > 0 ? true : false"},
+						},
+					},
+				},
+			},
+			VisualSettings: tablebuilder.VisualSettings{
+				Columns: map[string]tablebuilder.ColumnConfig{
+					"date_field": {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
+					"result":     {Type: "boolean"},
+				},
+			},
+		}
+		result := config.ValidateConfig()
+
+		for _, err := range result.Errors {
+			if err.Code == "INVALID_FIELD_REFERENCE" {
+				t.Errorf("unexpected field reference error (function treated as field): %v", err)
+			}
+		}
+	})
+}

@@ -166,6 +166,130 @@ func isValidColumnReference(col string) bool {
 }
 
 // =============================================================================
+// Computed Column Field Reference Validation
+// =============================================================================
+
+// knownExpressionFunctions contains function names and keywords that should not
+// be treated as field references when validating computed column expressions.
+var knownExpressionFunctions = map[string]bool{
+	// Math functions
+	"ceil": true, "floor": true, "round": true,
+	// Date functions
+	"now": true, "daysUntil": true, "daysSince": true, "isOverdue": true,
+	// Utility functions
+	"hasValue": true,
+	// Boolean literals and keywords
+	"true": true, "false": true, "null": true, "nil": true,
+	// JavaScript methods that might appear in expressions (for client-side eval)
+	"toFixed": true, "toString": true, "toUpperCase": true, "toLowerCase": true,
+}
+
+// fieldRefPattern matches identifiers that could be field references
+var fieldRefPattern = regexp.MustCompile(`[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*`)
+
+// singleQuoteStringPattern matches single-quoted strings
+var singleQuoteStringPattern = regexp.MustCompile(`'[^']*'`)
+
+// doubleQuoteStringPattern matches double-quoted strings
+var doubleQuoteStringPattern = regexp.MustCompile(`"[^"]*"`)
+
+// extractFieldReferences extracts potential field references from an expression.
+// Returns identifiers that look like field names (not function names, operators, or literals).
+// String literals (single or double quoted) are removed before extraction.
+// Method calls like "field.toFixed(2)" are handled by extracting just "field".
+func extractFieldReferences(expression string) []string {
+	// Remove string literals first to avoid matching text inside quotes
+	exprWithoutStrings := singleQuoteStringPattern.ReplaceAllString(expression, "")
+	exprWithoutStrings = doubleQuoteStringPattern.ReplaceAllString(exprWithoutStrings, "")
+
+	matches := fieldRefPattern.FindAllString(exprWithoutStrings, -1)
+
+	var fields []string
+	seen := make(map[string]bool)
+	for _, match := range matches {
+		// Skip known functions and keywords
+		if knownExpressionFunctions[match] {
+			continue
+		}
+
+		// Handle method calls like "field.toFixed" - extract the base field
+		// and skip if the last part is a known function
+		parts := strings.Split(match, ".")
+		if len(parts) > 1 {
+			lastPart := parts[len(parts)-1]
+			if knownExpressionFunctions[lastPart] {
+				// This is a method call - validate only the base field part
+				baseField := strings.Join(parts[:len(parts)-1], ".")
+				if !seen[baseField] && !knownExpressionFunctions[baseField] {
+					seen[baseField] = true
+					fields = append(fields, baseField)
+				}
+				continue
+			}
+		}
+
+		// Skip duplicates
+		if seen[match] {
+			continue
+		}
+		seen[match] = true
+		fields = append(fields, match)
+	}
+
+	return fields
+}
+
+// collectValidFieldNames returns all valid field names for a data source.
+// These are the names that will exist in the row data after query execution.
+// Both original names and underscore versions are included (dots become underscores in evaluator).
+func collectValidFieldNames(ds *DataSource) map[string]bool {
+	fields := make(map[string]bool)
+
+	// Collect from main columns
+	for _, col := range ds.Select.Columns {
+		fieldName := getFieldNameForValidation(col)
+		fields[fieldName] = true
+		// Also add underscore version since evaluator converts dots to underscores
+		fields[strings.ReplaceAll(fieldName, ".", "_")] = true
+	}
+
+	// Collect from foreign tables recursively
+	collectForeignTableFields(ds.Select.ForeignTables, fields)
+
+	// Collect from computed columns (they can reference each other)
+	for _, cc := range ds.Select.ClientComputedColumns {
+		fields[cc.Name] = true
+	}
+
+	return fields
+}
+
+// getFieldNameForValidation returns the field name as it will appear in the data row.
+// Priority: Alias > TableColumn > Name (same as store.go getFieldName)
+func getFieldNameForValidation(col ColumnDefinition) string {
+	if col.Alias != "" {
+		return col.Alias
+	}
+	if col.TableColumn != "" {
+		return col.TableColumn
+	}
+	return col.Name
+}
+
+// collectForeignTableFields recursively collects field names from foreign tables.
+func collectForeignTableFields(foreignTables []ForeignTable, fields map[string]bool) {
+	for _, ft := range foreignTables {
+		for _, col := range ft.Columns {
+			fieldName := getFieldNameForValidation(col)
+			fields[fieldName] = true
+			fields[strings.ReplaceAll(fieldName, ".", "_")] = true
+		}
+		// Recurse into nested foreign tables
+		collectForeignTableFields(ft.ForeignTables, fields)
+	}
+}
+
+// =============================================================================
 // Comprehensive Configuration Validation
 // =============================================================================
 
@@ -273,9 +397,10 @@ func (c *Config) validateDataSource(result *ValidationResult, ds DataSource, pre
 		c.validateForeignTable(result, ft, fmt.Sprintf("%s.select.foreign_tables[%d]", prefix, i))
 	}
 
-	// Validate computed columns
+	// Validate computed columns with field reference checking
+	validFields := collectValidFieldNames(&ds)
 	for i, cc := range ds.Select.ClientComputedColumns {
-		c.validateComputedColumn(result, cc, fmt.Sprintf("%s.select.client_computed_columns[%d]", prefix, i))
+		c.validateComputedColumn(result, cc, fmt.Sprintf("%s.select.client_computed_columns[%d]", prefix, i), validFields)
 	}
 
 	// Validate metrics (for charts)
@@ -397,7 +522,7 @@ func (c *Config) validateForeignTable(result *ValidationResult, ft ForeignTable,
 }
 
 // validateComputedColumn validates a ComputedColumn configuration
-func (c *Config) validateComputedColumn(result *ValidationResult, cc ComputedColumn, prefix string) {
+func (c *Config) validateComputedColumn(result *ValidationResult, cc ComputedColumn, prefix string, validFields map[string]bool) {
 	if cc.Name == "" {
 		result.AddError(prefix+".name", "name is required", "REQUIRED")
 	} else if !isValidColumnReference(cc.Name) {
@@ -406,6 +531,22 @@ func (c *Config) validateComputedColumn(result *ValidationResult, cc ComputedCol
 
 	if cc.Expression == "" {
 		result.AddError(prefix+".expression", "expression is required", "REQUIRED")
+	}
+
+	// Validate field references in expression
+	if cc.Expression != "" && validFields != nil {
+		refs := extractFieldReferences(cc.Expression)
+		for _, ref := range refs {
+			// Check both the raw reference and underscore version (dots become underscores in evaluator)
+			underscoreRef := strings.ReplaceAll(ref, ".", "_")
+			if !validFields[ref] && !validFields[underscoreRef] {
+				result.AddError(
+					prefix+".expression",
+					fmt.Sprintf("expression references unknown field %q", ref),
+					"INVALID_FIELD_REFERENCE",
+				)
+			}
+		}
 	}
 }
 

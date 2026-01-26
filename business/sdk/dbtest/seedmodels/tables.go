@@ -103,8 +103,8 @@ var ComplexConfig = &tablebuilder.Config{
 				Columns: []tablebuilder.ColumnDefinition{
 					{Name: "id", TableColumn: "inventory_items.id"},
 					{Name: "quantity", Alias: "current_quantity", TableColumn: "inventory_items.quantity"},
-					{Name: "reorder_point", TableColumn: "inventory_items.reorder_point"},
-					{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
+					{Name: "reorder_point", Alias: "reorder_point", TableColumn: "inventory_items.reorder_point"},
+					{Name: "maximum_stock", Alias: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
 				},
 				ForeignTables: []tablebuilder.ForeignTable{
 
@@ -157,6 +157,9 @@ var ComplexConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL: "/products/products/{product_id}",
+				},
 			},
 			"current_quantity": {
 				Name:   "current_quantity",
@@ -189,38 +192,24 @@ var ComplexConfig = &tablebuilder.Config{
 				},
 			},
 			"product_id": {
-				Name:       "product_id",
-				Header:     "Product",
-				Width:      200,
-				Type:       "lookup",
-				Filterable: true,
-				Link: &tablebuilder.LinkConfig{
-					URL:   "/products/products/{product_id}",
-					Label: "View Product",
-				},
-				Lookup: &tablebuilder.LookupConfig{
-					Entity:      "products.products",
-					LabelColumn: "products.name",
-					ValueColumn: "products.id",
-				},
+				Hidden: true,
 			},
 			"inventory_items.id": {
-				Name:   "inventory_items.id",
-				Header: "ID",
-				Width:  100,
-				Type:   "uuid",
+				Hidden: true,
 			},
-			"inventory_items.reorder_point": {
-				Name:   "inventory_items.reorder_point",
+			"reorder_point": {
+				Name:   "reorder_point",
 				Header: "Reorder Point",
 				Width:  100,
 				Type:   "number",
+				Hidden: true,
 			},
-			"inventory_items.maximum_stock": {
-				Name:   "inventory_items.maximum_stock",
+			"maximum_stock": {
+				Name:   "maximum_stock",
 				Header: "Maximum Stock",
 				Width:  100,
 				Type:   "number",
+				Hidden: true,
 			},
 			"products.sku": {
 				Name:   "products.sku",
@@ -480,7 +469,7 @@ var OrdersTableConfig = &tablebuilder.Config{
 				Columns: []tablebuilder.ColumnDefinition{
 					{Name: "id", TableColumn: "orders.id"},
 					{Name: "number", Alias: "order_number", TableColumn: "orders.number"},
-					{Name: "due_date", TableColumn: "orders.due_date"},
+					{Name: "due_date", Alias: "due_date", TableColumn: "orders.due_date"},
 					{Name: "customer_id", TableColumn: "orders.customer_id"},
 					{Name: "order_fulfillment_status_id", TableColumn: "orders.order_fulfillment_status_id"},
 					{Name: "created_date", TableColumn: "orders.created_date"},
@@ -531,8 +520,8 @@ var OrdersTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"orders.due_date": {
-				Name:     "orders.due_date",
+			"due_date": {
+				Name:     "due_date",
 				Header:   "Due Date",
 				Width:    120,
 				Sortable: true,
@@ -939,8 +928,8 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 					{Name: "id", TableColumn: "order_line_items.id"},
 					{Name: "order_id", TableColumn: "order_line_items.order_id"},
 					{Name: "product_id", TableColumn: "order_line_items.product_id"},
-					{Name: "quantity", TableColumn: "order_line_items.quantity"},
-					{Name: "discount", TableColumn: "order_line_items.discount"},
+					{Name: "quantity", Alias: "quantity", TableColumn: "order_line_items.quantity"},
+					{Name: "discount", Alias: "discount", TableColumn: "order_line_items.discount"},
 					{Name: "line_item_fulfillment_statuses_id", TableColumn: "order_line_items.line_item_fulfillment_statuses_id"},
 					{Name: "created_by", TableColumn: "order_line_items.created_by"},
 					{Name: "created_date", TableColumn: "order_line_items.created_date"},
@@ -981,6 +970,7 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
 							{Name: "sku", Alias: "product_sku", TableColumn: "products.sku"},
+							{Name: "unit_price", Alias: "product_unit_price", TableColumn: "products.unit_price"},
 						},
 					},
 					{
@@ -1072,13 +1062,14 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Filterable: true,
 			},
-			"order_line_items.quantity": {
-				Name:     "order_line_items.quantity",
+			"quantity": {
+				Name:     "quantity",
 				Header:   "Qty",
 				Width:    80,
 				Align:    "center",
 				Type:     "number",
 				Sortable: true,
+				Hidden:   true,
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
 					Precision: 0,
@@ -1088,13 +1079,14 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 					Placeholder: "0",
 				},
 			},
-			"order_line_items.discount": {
-				Name:     "order_line_items.discount",
+			"discount": {
+				Name:     "discount",
 				Header:   "Discount %",
 				Width:    100,
 				Align:    "right",
 				Type:     "number",
 				Sortable: true,
+				Hidden:   true,
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
 					Precision: 2,
@@ -1102,6 +1094,18 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Editable: &tablebuilder.EditableConfig{
 					Type:        "number",
 					Placeholder: "0.00",
+				},
+			},
+			"product_unit_price": {
+				Name:   "product_unit_price",
+				Header: "Unit Price",
+				Width:  100,
+				Align:  "right",
+				Type:   "number",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
 				},
 			},
 			"discount_amount": {
@@ -1876,8 +1880,8 @@ var HrEmployeesTableConfig = &tablebuilder.Config{
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
 					{Name: "id", TableColumn: "users.id"},
-					{Name: "first_name", TableColumn: "users.first_name"},
-					{Name: "last_name", TableColumn: "users.last_name"},
+					{Name: "first_name", Alias: "first_name", TableColumn: "users.first_name"},
+					{Name: "last_name", Alias: "last_name", TableColumn: "users.last_name"},
 					{Name: "email", TableColumn: "users.email"},
 					{Name: "enabled", TableColumn: "users.enabled"},
 					{Name: "date_hired", TableColumn: "users.date_hired"},
@@ -1962,6 +1966,20 @@ var HrEmployeesTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"first_name": {
+				Name:   "first_name",
+				Header: "First Name",
+				Width:  100,
+				Type:   "string",
+				Hidden: true,
+			},
+			"last_name": {
+				Name:   "last_name",
+				Header: "Last Name",
+				Width:  100,
+				Type:   "string",
+				Hidden: true,
+			},
 			"full_name": {
 				Name:       "full_name",
 				Header:     "Name",
@@ -2105,7 +2123,7 @@ var HrOfficesTableConfig = &tablebuilder.Config{
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "line_1", Alias: "street_line_1", TableColumn: "streets.line_1"},
 							{Name: "line_2", Alias: "street_line_2", TableColumn: "streets.line_2"},
-							{Name: "postal_code", TableColumn: "streets.postal_code"},
+							{Name: "postal_code", Alias: "postal_code", TableColumn: "streets.postal_code"},
 						},
 						ForeignTables: []tablebuilder.ForeignTable{
 							{
@@ -2164,6 +2182,13 @@ var HrOfficesTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"postal_code": {
+				Name:   "postal_code",
+				Header: "Postal Code",
+				Width:  100,
+				Type:   "string",
+				Hidden: true,
+			},
 			"offices_name": {
 				Name:       "offices_name",
 				Header:     "Office Name",
@@ -2499,10 +2524,10 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 						RelationshipTo:   "inventory_locations.id",
 						JoinType:         "left",
 						Columns: []tablebuilder.ColumnDefinition{
-							{Name: "aisle", TableColumn: "inventory_locations.aisle"},
-							{Name: "rack", TableColumn: "inventory_locations.rack"},
-							{Name: "shelf", TableColumn: "inventory_locations.shelf"},
-							{Name: "bin", TableColumn: "inventory_locations.bin"},
+							{Name: "aisle", Alias: "aisle", TableColumn: "inventory_locations.aisle"},
+							{Name: "rack", Alias: "rack", TableColumn: "inventory_locations.rack"},
+							{Name: "shelf", Alias: "shelf", TableColumn: "inventory_locations.shelf"},
+							{Name: "bin", Alias: "bin", TableColumn: "inventory_locations.bin"},
 						},
 						ForeignTables: []tablebuilder.ForeignTable{
 							{
@@ -2558,6 +2583,34 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"aisle": {
+				Name:   "aisle",
+				Header: "Aisle",
+				Width:  80,
+				Type:   "string",
+				Hidden: true,
+			},
+			"rack": {
+				Name:   "rack",
+				Header: "Rack",
+				Width:  80,
+				Type:   "string",
+				Hidden: true,
+			},
+			"shelf": {
+				Name:   "shelf",
+				Header: "Shelf",
+				Width:  80,
+				Type:   "string",
+				Hidden: true,
+			},
+			"bin": {
+				Name:   "bin",
+				Header: "Bin",
+				Width:  80,
+				Type:   "string",
+				Hidden: true,
+			},
 			"product_name": {
 				Name:       "product_name",
 				Header:     "Product",
@@ -3273,12 +3326,12 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
 					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
 					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
-					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
-					{Name: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
+					{Name: "expected_delivery_date", Alias: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
+					{Name: "actual_delivery_date", Alias: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
 					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
 					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
 					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
-					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "total_amount", Alias: "total_amount", TableColumn: "purchase_orders.total_amount"},
 					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
 					{Name: "approved_by", TableColumn: "purchase_orders.approved_by"},
 					{Name: "approved_date", TableColumn: "purchase_orders.approved_date"},
@@ -3399,6 +3452,39 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"expected_delivery_date": {
+				Name:   "expected_delivery_date",
+				Header: "Expected Delivery",
+				Width:  150,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"actual_delivery_date": {
+				Name:   "actual_delivery_date",
+				Header: "Actual Delivery",
+				Width:  150,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"total_amount": {
+				Name:   "total_amount",
+				Header: "Total",
+				Width:  100,
+				Type:   "number",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
+				},
+			},
 			"purchase_orders.order_number": {
 				Name:       "purchase_orders.order_number",
 				Header:     "PO Number",
@@ -4112,12 +4198,12 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 					{Name: "supplier_id", TableColumn: "purchase_orders.supplier_id"},
 					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
 					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
-					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
+					{Name: "order_date", Alias: "order_date", TableColumn: "purchase_orders.order_date"},
 					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
 					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
 					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
 					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
-					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "total_amount", Alias: "total_amount", TableColumn: "purchase_orders.total_amount"},
 					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
 					{Name: "notes", TableColumn: "purchase_orders.notes"},
 					{Name: "created_date", TableColumn: "purchase_orders.created_date"},
@@ -4225,6 +4311,28 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"order_date": {
+				Name:   "order_date",
+				Header: "Order Date",
+				Width:  130,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"total_amount": {
+				Name:   "total_amount",
+				Header: "Total",
+				Width:  100,
+				Type:   "number",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
+				},
+			},
 			"purchase_orders.order_number": {
 				Name:       "purchase_orders.order_number",
 				Header:     "PO Number",
@@ -4479,12 +4587,12 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
 					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
 					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
-					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
-					{Name: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
+					{Name: "expected_delivery_date", Alias: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
+					{Name: "actual_delivery_date", Alias: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
 					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
 					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
 					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
-					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "total_amount", Alias: "total_amount", TableColumn: "purchase_orders.total_amount"},
 					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
 					{Name: "approved_by", TableColumn: "purchase_orders.approved_by"},
 					{Name: "approved_date", TableColumn: "purchase_orders.approved_date"},
@@ -4611,6 +4719,39 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"expected_delivery_date": {
+				Name:   "expected_delivery_date",
+				Header: "Expected Delivery",
+				Width:  150,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"actual_delivery_date": {
+				Name:   "actual_delivery_date",
+				Header: "Actual Delivery",
+				Width:  150,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"total_amount": {
+				Name:   "total_amount",
+				Header: "Total",
+				Width:  100,
+				Type:   "number",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
+				},
+			},
 			"purchase_orders.order_number": {
 				Name:       "purchase_orders.order_number",
 				Header:     "PO Number",
