@@ -10,10 +10,14 @@ var (
 	ErrInvalidDataSource = errors.New("invalid data source configuration")
 
 	// Column errors
-	ErrColumnNotFound    = errors.New("column not found")
-	ErrInvalidColumn     = errors.New("invalid column configuration")
-	ErrDuplicateColumn   = errors.New("duplicate column name")
-	ErrMissingColumnType = errors.New("column missing type in visual settings")
+	ErrColumnNotFound        = errors.New("column not found")
+	ErrInvalidColumn         = errors.New("invalid column configuration")
+	ErrDuplicateColumn       = errors.New("duplicate column name")
+	ErrMissingColumnType     = errors.New("column missing type in visual settings")
+	ErrMissingDatetimeFormat = errors.New("datetime column missing format configuration")
+
+	// Date format errors
+	ErrGoDateFormatDetected = errors.New("Go date format detected, use date-fns format instead")
 
 	// Query errors
 	ErrInvalidQuery  = errors.New("invalid query")

@@ -103,8 +103,8 @@ var ComplexConfig = &tablebuilder.Config{
 				Columns: []tablebuilder.ColumnDefinition{
 					{Name: "id", TableColumn: "inventory_items.id"},
 					{Name: "quantity", Alias: "current_quantity", TableColumn: "inventory_items.quantity"},
-					{Name: "reorder_point", TableColumn: "inventory_items.reorder_point"},
-					{Name: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
+					{Name: "reorder_point", Alias: "reorder_point", TableColumn: "inventory_items.reorder_point"},
+					{Name: "maximum_stock", Alias: "maximum_stock", TableColumn: "inventory_items.maximum_stock"},
 				},
 				ForeignTables: []tablebuilder.ForeignTable{
 
@@ -157,6 +157,9 @@ var ComplexConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL: "/products/products/{product_id}",
+				},
 			},
 			"current_quantity": {
 				Name:   "current_quantity",
@@ -189,38 +192,24 @@ var ComplexConfig = &tablebuilder.Config{
 				},
 			},
 			"product_id": {
-				Name:       "product_id",
-				Header:     "Product",
-				Width:      200,
-				Type:       "lookup",
-				Filterable: true,
-				Link: &tablebuilder.LinkConfig{
-					URL:   "/products/products/{product_id}",
-					Label: "View Product",
-				},
-				Lookup: &tablebuilder.LookupConfig{
-					Entity:      "products.products",
-					LabelColumn: "products.name",
-					ValueColumn: "products.id",
-				},
+				Hidden: true,
 			},
 			"inventory_items.id": {
-				Name:   "inventory_items.id",
-				Header: "ID",
-				Width:  100,
-				Type:   "uuid",
+				Hidden: true,
 			},
-			"inventory_items.reorder_point": {
-				Name:   "inventory_items.reorder_point",
+			"reorder_point": {
+				Name:   "reorder_point",
 				Header: "Reorder Point",
 				Width:  100,
 				Type:   "number",
+				Hidden: true,
 			},
-			"inventory_items.maximum_stock": {
-				Name:   "inventory_items.maximum_stock",
+			"maximum_stock": {
+				Name:   "maximum_stock",
 				Header: "Maximum Stock",
 				Width:  100,
 				Type:   "number",
+				Hidden: true,
 			},
 			"products.sku": {
 				Name:   "products.sku",
@@ -320,7 +309,7 @@ var OrdersConfig = &tablebuilder.Config{
 				Type:   "datetime",
 				Format: &tablebuilder.FormatConfig{
 					Type:   "date",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"fulfillment_status_name": {
@@ -334,18 +323,30 @@ var OrdersConfig = &tablebuilder.Config{
 				Header: "Due Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "yyyy-MM-dd",
+				},
 			},
 			"order_created_date": {
 				Name:   "order_created_date",
 				Header: "Created Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "yyyy-MM-dd",
+				},
 			},
 			"order_updated_date": {
 				Name:   "order_updated_date",
 				Header: "Updated Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "yyyy-MM-dd",
+				},
 			},
 			"order_fulfillment_status_id": {
 				Name:       "order_fulfillment_status_id",
@@ -418,12 +419,20 @@ var OrdersConfig = &tablebuilder.Config{
 				Header: "Customer Created",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "yyyy-MM-dd",
+				},
 			},
 			"customer_updated_date": {
 				Name:   "customer_updated_date",
 				Header: "Customer Updated",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "yyyy-MM-dd",
+				},
 			},
 			"fulfillment_status_description": {
 				Name:   "fulfillment_status_description",
@@ -460,7 +469,7 @@ var OrdersTableConfig = &tablebuilder.Config{
 				Columns: []tablebuilder.ColumnDefinition{
 					{Name: "id", TableColumn: "orders.id"},
 					{Name: "number", Alias: "order_number", TableColumn: "orders.number"},
-					{Name: "due_date", TableColumn: "orders.due_date"},
+					{Name: "due_date", Alias: "due_date", TableColumn: "orders.due_date"},
 					{Name: "customer_id", TableColumn: "orders.customer_id"},
 					{Name: "order_fulfillment_status_id", TableColumn: "orders.order_fulfillment_status_id"},
 					{Name: "created_date", TableColumn: "orders.created_date"},
@@ -474,9 +483,7 @@ var OrdersTableConfig = &tablebuilder.Config{
 						RelationshipTo:   "customers.id",
 						JoinType:         "left",
 						Columns: []tablebuilder.ColumnDefinition{
-							{Name: "id", Alias: "customer_id_fk", TableColumn: "customers.id"},
 							{Name: "name", Alias: "customer_name", TableColumn: "customers.name"},
-							{Name: "contact_id", Alias: "customer_contact_id", TableColumn: "customers.contact_id"},
 						},
 					},
 					{
@@ -513,31 +520,15 @@ var OrdersTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
-			"order_number": {
-				Name:       "order_number",
-				Header:     "Order #",
-				Width:      150,
-				Type:       "string",
-				Sortable:   true,
-				Filterable: true,
-			},
-			"customer_name": {
-				Name:       "customer_name",
-				Header:     "Customer",
-				Width:      200,
-				Type:       "string",
-				Sortable:   true,
-				Filterable: true,
-			},
-			"orders.due_date": {
-				Name:     "orders.due_date",
+			"due_date": {
+				Name:     "due_date",
 				Header:   "Due Date",
 				Width:    120,
 				Sortable: true,
 				Type:     "datetime",
 				Format: &tablebuilder.FormatConfig{
 					Type:   "date",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"status_name": {
@@ -562,12 +553,12 @@ var OrdersTableConfig = &tablebuilder.Config{
 			},
 			"orders.id": {
 				Name:   "orders.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Order #",
+				Width:  150,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/sales/orders/{orders.id}",
-					Label: "View",
+					URL:         "/sales/orders/{orders.id}",
+					LabelColumn: "order_number",
 				},
 			},
 			"is_overdue": {
@@ -577,52 +568,40 @@ var OrdersTableConfig = &tablebuilder.Config{
 				Type:   "boolean",
 			},
 			"orders.customer_id": {
-				Name:       "orders.customer_id",
-				Header:     "Customer",
-				Width:      200,
-				Type:       "lookup",
-				Filterable: true,
-				Lookup: &tablebuilder.LookupConfig{
-					Entity:      "sales.customers",
-					LabelColumn: "customers.name",
-					ValueColumn: "customers.id",
+				Name:   "orders.customer_id",
+				Header: "Customer",
+				Width:  200,
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/sales/customers/{orders.customer_id}",
+					LabelColumn: "customer_name",
 				},
 			},
+			"customer_name": {
+				Hidden: true,
+			},
 			"orders.order_fulfillment_status_id": {
-				Name:       "orders.order_fulfillment_status_id",
-				Header:     "Fulfillment Status",
-				Width:      150,
-				Type:       "lookup",
-				Filterable: true,
-				Lookup: &tablebuilder.LookupConfig{
-					Entity:      "sales.order_fulfillment_statuses",
-					LabelColumn: "order_fulfillment_statuses.name",
-					ValueColumn: "order_fulfillment_statuses.id",
-				},
+				Hidden: true,
 			},
 			"orders.created_date": {
 				Name:   "orders.created_date",
 				Header: "Created Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"orders.updated_date": {
 				Name:   "orders.updated_date",
 				Header: "Updated Date",
 				Width:  120,
 				Type:   "datetime",
-			},
-			"customer_id_fk": {
-				Name:   "customer_id_fk",
-				Header: "Customer FK",
-				Width:  100,
-				Type:   "uuid",
-			},
-			"customer_contact_id": {
-				Name:   "customer_contact_id",
-				Header: "Customer Contact ID",
-				Width:  100,
-				Type:   "uuid",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"status_description": {
 				Name:   "status_description",
@@ -810,12 +789,12 @@ var SuppliersTableConfig = &tablebuilder.Config{
 			},
 			"suppliers_id": {
 				Name:   "suppliers_id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Supplier",
+				Width:  200,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/procurement/suppliers/{suppliers_id}",
-					Label: "View",
+					URL:         "/procurement/suppliers/{suppliers_id}",
+					LabelColumn: "suppliers_name",
 				},
 			},
 			"suppliers_contact_infos_id": {
@@ -835,12 +814,20 @@ var SuppliersTableConfig = &tablebuilder.Config{
 				Header: "Created Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"suppliers_updated_date": {
 				Name:   "suppliers_updated_date",
 				Header: "Updated Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"primary_phone_number": {
 				Name:   "primary_phone_number",
@@ -941,8 +928,8 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 					{Name: "id", TableColumn: "order_line_items.id"},
 					{Name: "order_id", TableColumn: "order_line_items.order_id"},
 					{Name: "product_id", TableColumn: "order_line_items.product_id"},
-					{Name: "quantity", TableColumn: "order_line_items.quantity"},
-					{Name: "discount", TableColumn: "order_line_items.discount"},
+					{Name: "quantity", Alias: "quantity", TableColumn: "order_line_items.quantity"},
+					{Name: "discount", Alias: "discount", TableColumn: "order_line_items.discount"},
 					{Name: "line_item_fulfillment_statuses_id", TableColumn: "order_line_items.line_item_fulfillment_statuses_id"},
 					{Name: "created_by", TableColumn: "order_line_items.created_by"},
 					{Name: "created_date", TableColumn: "order_line_items.created_date"},
@@ -983,6 +970,7 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "name", Alias: "product_name", TableColumn: "products.name"},
 							{Name: "sku", Alias: "product_sku", TableColumn: "products.sku"},
+							{Name: "unit_price", Alias: "product_unit_price", TableColumn: "products.unit_price"},
 						},
 					},
 					{
@@ -1074,13 +1062,14 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Filterable: true,
 			},
-			"order_line_items.quantity": {
-				Name:     "order_line_items.quantity",
+			"quantity": {
+				Name:     "quantity",
 				Header:   "Qty",
 				Width:    80,
 				Align:    "center",
 				Type:     "number",
 				Sortable: true,
+				Hidden:   true,
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
 					Precision: 0,
@@ -1090,13 +1079,14 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 					Placeholder: "0",
 				},
 			},
-			"order_line_items.discount": {
-				Name:     "order_line_items.discount",
+			"discount": {
+				Name:     "discount",
 				Header:   "Discount %",
 				Width:    100,
 				Align:    "right",
 				Type:     "number",
 				Sortable: true,
+				Hidden:   true,
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
 					Precision: 2,
@@ -1104,6 +1094,18 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Editable: &tablebuilder.EditableConfig{
 					Type:        "number",
 					Placeholder: "0.00",
+				},
+			},
+			"product_unit_price": {
+				Name:   "product_unit_price",
+				Header: "Unit Price",
+				Width:  100,
+				Align:  "right",
+				Type:   "number",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
 				},
 			},
 			"discount_amount": {
@@ -1147,7 +1149,7 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "date",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"created_by_full_name": {
@@ -1164,17 +1166,17 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"order_line_items.id": {
 				Name:   "order_line_items.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Product",
+				Width:  200,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/sales/order-line-items/{order_line_items.id}",
-					Label: "View",
+					URL:         "/sales/order-line-items/{order_line_items.id}",
+					LabelColumn: "product_name",
 				},
 			},
 			"order_line_items.order_id": {
@@ -1230,6 +1232,10 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Header: "Updated Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"order_customer_id": {
 				Name:       "order_customer_id",
@@ -1389,7 +1395,7 @@ var CategoriesTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"product_categories.updated_date": {
@@ -1400,17 +1406,17 @@ var CategoriesTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"product_category_id": {
 				Name:   "product_category_id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Category",
+				Width:  180,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/products/categories/{product_category_id}",
-					Label: "View",
+					URL:         "/products/categories/{product_category_id}",
+					LabelColumn: "product_categories.name",
 				},
 			},
 			"product_categories.id": {
@@ -1567,17 +1573,17 @@ var AssetsListTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "date",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"assets.id": {
 				Name:   "assets.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Asset",
+				Width:  200,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/assets/list/{assets.id}",
-					Label: "View",
+					URL:         "/assets/list/{assets.id}",
+					LabelColumn: "asset_name",
 				},
 			},
 			"valid_assets.maintenance_interval": {
@@ -1763,17 +1769,17 @@ var AssetsRequestsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "date",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"user_assets.id": {
 				Name:   "user_assets.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Asset",
+				Width:  200,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/assets/requests/{user_assets.id}",
-					Label: "View",
+					URL:         "/assets/requests/{user_assets.id}",
+					LabelColumn: "asset_name",
 				},
 			},
 			"user_assets.last_maintenance": {
@@ -1781,6 +1787,10 @@ var AssetsRequestsTableConfig = &tablebuilder.Config{
 				Header: "Last Maintenance",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"user_first_name": {
 				Name:   "user_first_name",
@@ -1870,8 +1880,8 @@ var HrEmployeesTableConfig = &tablebuilder.Config{
 			Select: tablebuilder.SelectConfig{
 				Columns: []tablebuilder.ColumnDefinition{
 					{Name: "id", TableColumn: "users.id"},
-					{Name: "first_name", TableColumn: "users.first_name"},
-					{Name: "last_name", TableColumn: "users.last_name"},
+					{Name: "first_name", Alias: "first_name", TableColumn: "users.first_name"},
+					{Name: "last_name", Alias: "last_name", TableColumn: "users.last_name"},
 					{Name: "email", TableColumn: "users.email"},
 					{Name: "enabled", TableColumn: "users.enabled"},
 					{Name: "date_hired", TableColumn: "users.date_hired"},
@@ -1956,6 +1966,20 @@ var HrEmployeesTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"first_name": {
+				Name:   "first_name",
+				Header: "First Name",
+				Width:  100,
+				Type:   "string",
+				Hidden: true,
+			},
+			"last_name": {
+				Name:   "last_name",
+				Header: "Last Name",
+				Width:  100,
+				Type:   "string",
+				Hidden: true,
+			},
 			"full_name": {
 				Name:       "full_name",
 				Header:     "Name",
@@ -2002,7 +2026,7 @@ var HrEmployeesTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "date",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"users.enabled": {
@@ -2017,12 +2041,12 @@ var HrEmployeesTableConfig = &tablebuilder.Config{
 			},
 			"users.id": {
 				Name:   "users.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Employee",
+				Width:  150,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/hr/employees/{users.id}",
-					Label: "View",
+					URL:         "/hr/employees/{users.id}",
+					LabelColumn: "users.username",
 				},
 			},
 			"users.first_name": {
@@ -2099,7 +2123,7 @@ var HrOfficesTableConfig = &tablebuilder.Config{
 						Columns: []tablebuilder.ColumnDefinition{
 							{Name: "line_1", Alias: "street_line_1", TableColumn: "streets.line_1"},
 							{Name: "line_2", Alias: "street_line_2", TableColumn: "streets.line_2"},
-							{Name: "postal_code", TableColumn: "streets.postal_code"},
+							{Name: "postal_code", Alias: "postal_code", TableColumn: "streets.postal_code"},
 						},
 						ForeignTables: []tablebuilder.ForeignTable{
 							{
@@ -2158,6 +2182,13 @@ var HrOfficesTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"postal_code": {
+				Name:   "postal_code",
+				Header: "Postal Code",
+				Width:  100,
+				Type:   "string",
+				Hidden: true,
+			},
 			"offices_name": {
 				Name:       "offices_name",
 				Header:     "Office Name",
@@ -2198,12 +2229,12 @@ var HrOfficesTableConfig = &tablebuilder.Config{
 			},
 			"offices_id": {
 				Name:   "offices_id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Office",
+				Width:  180,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/hr/offices/{offices_id}",
-					Label: "View",
+					URL:         "/hr/offices/{offices_id}",
+					LabelColumn: "offices_name",
 				},
 			},
 			"street_line_1": {
@@ -2383,17 +2414,17 @@ var InventoryWarehousesTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"warehouses.id": {
 				Name:   "warehouses.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Warehouse",
+				Width:  180,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/inventory/warehouses/{warehouses.id}",
-					Label: "View",
+					URL:         "/inventory/warehouses/{warehouses.id}",
+					LabelColumn: "warehouses.name",
 				},
 			},
 			"warehouses.updated_date": {
@@ -2401,6 +2432,10 @@ var InventoryWarehousesTableConfig = &tablebuilder.Config{
 				Header: "Updated Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"streets.postal_code": {
 				Name:   "streets.postal_code",
@@ -2489,10 +2524,10 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 						RelationshipTo:   "inventory_locations.id",
 						JoinType:         "left",
 						Columns: []tablebuilder.ColumnDefinition{
-							{Name: "aisle", TableColumn: "inventory_locations.aisle"},
-							{Name: "rack", TableColumn: "inventory_locations.rack"},
-							{Name: "shelf", TableColumn: "inventory_locations.shelf"},
-							{Name: "bin", TableColumn: "inventory_locations.bin"},
+							{Name: "aisle", Alias: "aisle", TableColumn: "inventory_locations.aisle"},
+							{Name: "rack", Alias: "rack", TableColumn: "inventory_locations.rack"},
+							{Name: "shelf", Alias: "shelf", TableColumn: "inventory_locations.shelf"},
+							{Name: "bin", Alias: "bin", TableColumn: "inventory_locations.bin"},
 						},
 						ForeignTables: []tablebuilder.ForeignTable{
 							{
@@ -2548,6 +2583,34 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"aisle": {
+				Name:   "aisle",
+				Header: "Aisle",
+				Width:  80,
+				Type:   "string",
+				Hidden: true,
+			},
+			"rack": {
+				Name:   "rack",
+				Header: "Rack",
+				Width:  80,
+				Type:   "string",
+				Hidden: true,
+			},
+			"shelf": {
+				Name:   "shelf",
+				Header: "Shelf",
+				Width:  80,
+				Type:   "string",
+				Hidden: true,
+			},
+			"bin": {
+				Name:   "bin",
+				Header: "Bin",
+				Width:  80,
+				Type:   "string",
+				Hidden: true,
+			},
 			"product_name": {
 				Name:       "product_name",
 				Header:     "Product",
@@ -2619,17 +2682,17 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"inventory_adjustments.id": {
 				Name:   "inventory_adjustments.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Product",
+				Width:  200,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/inventory/adjustments/{inventory_adjustments.id}",
-					Label: "View",
+					URL:         "/inventory/adjustments/{inventory_adjustments.id}",
+					LabelColumn: "product_name",
 				},
 			},
 			"inventory_adjustments.notes": {
@@ -2643,6 +2706,10 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 				Header: "Created Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"inventory_locations.aisle": {
 				Name:   "inventory_locations.aisle",
@@ -2902,17 +2969,17 @@ var InventoryTransfersTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"transfer_orders.id": {
 				Name:   "transfer_orders.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Product",
+				Width:  200,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/inventory/transfers/{transfer_orders.id}",
-					Label: "View",
+					URL:         "/inventory/transfers/{transfer_orders.id}",
+					LabelColumn: "product_name",
 				},
 			},
 			"transfer_orders.created_date": {
@@ -2920,6 +2987,10 @@ var InventoryTransfersTableConfig = &tablebuilder.Config{
 				Header: "Created Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"from_aisle": {
 				Name:   "from_aisle",
@@ -3156,17 +3227,17 @@ var SalesCustomersTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"customers.id": {
 				Name:   "customers.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "Customer",
+				Width:  200,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/sales/customers/{customers.id}",
-					Label: "View",
+					URL:         "/sales/customers/{customers.id}",
+					LabelColumn: "customers.name",
 				},
 			},
 			"customers.notes": {
@@ -3180,6 +3251,10 @@ var SalesCustomersTableConfig = &tablebuilder.Config{
 				Header: "Updated Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"contact_first_name": {
 				Name:   "contact_first_name",
@@ -3251,12 +3326,12 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
 					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
 					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
-					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
-					{Name: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
+					{Name: "expected_delivery_date", Alias: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
+					{Name: "actual_delivery_date", Alias: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
 					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
 					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
 					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
-					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "total_amount", Alias: "total_amount", TableColumn: "purchase_orders.total_amount"},
 					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
 					{Name: "approved_by", TableColumn: "purchase_orders.approved_by"},
 					{Name: "approved_date", TableColumn: "purchase_orders.approved_date"},
@@ -3377,6 +3452,39 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"expected_delivery_date": {
+				Name:   "expected_delivery_date",
+				Header: "Expected Delivery",
+				Width:  150,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"actual_delivery_date": {
+				Name:   "actual_delivery_date",
+				Header: "Actual Delivery",
+				Width:  150,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"total_amount": {
+				Name:   "total_amount",
+				Header: "Total",
+				Width:  100,
+				Type:   "number",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
+				},
+			},
 			"purchase_orders.order_number": {
 				Name:       "purchase_orders.order_number",
 				Header:     "PO Number",
@@ -3414,7 +3522,7 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"purchase_orders.expected_delivery_date": {
@@ -3425,7 +3533,7 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"formatted_total": {
@@ -3450,12 +3558,12 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 			},
 			"purchase_orders.id": {
 				Name:   "purchase_orders.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "PO #",
+				Width:  150,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/procurement/purchase-orders/{purchase_orders.id}",
-					Label: "View",
+					URL:         "/procurement/purchase-orders/{purchase_orders.id}",
+					LabelColumn: "purchase_orders.order_number",
 				},
 			},
 			"purchase_orders.supplier_id": {
@@ -3499,6 +3607,10 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Header: "Actual Delivery",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"purchase_orders.subtotal": {
 				Name:   "purchase_orders.subtotal",
@@ -3553,6 +3665,10 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Header: "Approved Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"purchase_orders.notes": {
 				Name:   "purchase_orders.notes",
@@ -3565,12 +3681,20 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Header: "Created Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"purchase_orders.updated_date": {
 				Name:   "purchase_orders.updated_date",
 				Header: "Updated Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"supplier_payment_terms": {
 				Name:   "supplier_payment_terms",
@@ -3882,7 +4006,7 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"created_by_username": {
@@ -3894,12 +4018,12 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			},
 			"line_item_id": {
 				Name:   "line_item_id",
-				Header: "Actions",
-				Width:  100,
+				Header: "PO #",
+				Width:  150,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/procurement/purchase-order-line-items/{line_item_id}",
-					Label: "View",
+					URL:         "/procurement/purchase-order-line-items/{line_item_id}",
+					LabelColumn: "po_order_number",
 				},
 			},
 			"line_item_purchase_order_id": {
@@ -3955,6 +4079,10 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Header: "Actual Delivery",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"line_item_notes": {
 				Name:   "line_item_notes",
@@ -3973,6 +4101,10 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Header: "Created Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"line_item_updated_by": {
 				Name:   "line_item_updated_by",
@@ -3985,6 +4117,10 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Header: "Updated Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"po_supplier_id": {
 				Name:       "po_supplier_id",
@@ -4003,6 +4139,10 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Header: "PO Order Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"product_id": {
 				Name:       "product_id",
@@ -4058,12 +4198,12 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 					{Name: "supplier_id", TableColumn: "purchase_orders.supplier_id"},
 					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
 					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
-					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
+					{Name: "order_date", Alias: "order_date", TableColumn: "purchase_orders.order_date"},
 					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
 					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
 					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
 					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
-					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "total_amount", Alias: "total_amount", TableColumn: "purchase_orders.total_amount"},
 					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
 					{Name: "notes", TableColumn: "purchase_orders.notes"},
 					{Name: "created_date", TableColumn: "purchase_orders.created_date"},
@@ -4171,6 +4311,28 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"order_date": {
+				Name:   "order_date",
+				Header: "Order Date",
+				Width:  130,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"total_amount": {
+				Name:   "total_amount",
+				Header: "Total",
+				Width:  100,
+				Type:   "number",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
+				},
+			},
 			"purchase_orders.order_number": {
 				Name:       "purchase_orders.order_number",
 				Header:     "PO Number",
@@ -4209,7 +4371,7 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"purchase_orders.expected_delivery_date": {
@@ -4220,7 +4382,7 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"formatted_total": {
@@ -4244,12 +4406,12 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 			},
 			"purchase_orders.id": {
 				Name:   "purchase_orders.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "PO #",
+				Width:  150,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/procurement/purchase-orders/{purchase_orders.id}/approve",
-					Label: "Review",
+					URL:         "/procurement/purchase-orders/{purchase_orders.id}/approve",
+					LabelColumn: "purchase_orders.order_number",
 				},
 			},
 			"purchase_orders.supplier_id": {
@@ -4341,6 +4503,10 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 				Header: "Created Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"supplier_payment_terms": {
 				Name:   "supplier_payment_terms",
@@ -4421,12 +4587,12 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 					{Name: "purchase_order_status_id", TableColumn: "purchase_orders.purchase_order_status_id"},
 					{Name: "delivery_warehouse_id", TableColumn: "purchase_orders.delivery_warehouse_id"},
 					{Name: "order_date", TableColumn: "purchase_orders.order_date"},
-					{Name: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
-					{Name: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
+					{Name: "expected_delivery_date", Alias: "expected_delivery_date", TableColumn: "purchase_orders.expected_delivery_date"},
+					{Name: "actual_delivery_date", Alias: "actual_delivery_date", TableColumn: "purchase_orders.actual_delivery_date"},
 					{Name: "subtotal", TableColumn: "purchase_orders.subtotal"},
 					{Name: "tax_amount", TableColumn: "purchase_orders.tax_amount"},
 					{Name: "shipping_cost", TableColumn: "purchase_orders.shipping_cost"},
-					{Name: "total_amount", TableColumn: "purchase_orders.total_amount"},
+					{Name: "total_amount", Alias: "total_amount", TableColumn: "purchase_orders.total_amount"},
 					{Name: "requested_by", TableColumn: "purchase_orders.requested_by"},
 					{Name: "approved_by", TableColumn: "purchase_orders.approved_by"},
 					{Name: "approved_date", TableColumn: "purchase_orders.approved_date"},
@@ -4553,6 +4719,39 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 	},
 	VisualSettings: tablebuilder.VisualSettings{
 		Columns: map[string]tablebuilder.ColumnConfig{
+			"expected_delivery_date": {
+				Name:   "expected_delivery_date",
+				Header: "Expected Delivery",
+				Width:  150,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"actual_delivery_date": {
+				Name:   "actual_delivery_date",
+				Header: "Actual Delivery",
+				Width:  150,
+				Type:   "datetime",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"total_amount": {
+				Name:   "total_amount",
+				Header: "Total",
+				Width:  100,
+				Type:   "number",
+				Hidden: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "currency",
+					Precision: 2,
+				},
+			},
 			"purchase_orders.order_number": {
 				Name:       "purchase_orders.order_number",
 				Header:     "PO Number",
@@ -4591,7 +4790,7 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"purchase_orders.approved_date": {
@@ -4602,7 +4801,7 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"purchase_orders.expected_delivery_date": {
@@ -4613,7 +4812,7 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02",
+					Format: "yyyy-MM-dd",
 				},
 			},
 			"formatted_total": {
@@ -4645,12 +4844,12 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 			},
 			"purchase_orders.id": {
 				Name:   "purchase_orders.id",
-				Header: "Actions",
-				Width:  100,
+				Header: "PO #",
+				Width:  150,
 				Type:   "uuid",
 				Link: &tablebuilder.LinkConfig{
-					URL:   "/procurement/purchase-orders/{purchase_orders.id}",
-					Label: "View",
+					URL:         "/procurement/purchase-orders/{purchase_orders.id}",
+					LabelColumn: "purchase_orders.order_number",
 				},
 			},
 			"purchase_orders.supplier_id": {
@@ -4694,6 +4893,10 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Header: "Actual Delivery",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"purchase_orders.subtotal": {
 				Name:   "purchase_orders.subtotal",
@@ -4754,6 +4957,10 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Header: "Created Date",
 				Width:  150,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
 			},
 			"supplier_payment_terms": {
 				Name:   "supplier_payment_terms",
@@ -4958,12 +5165,12 @@ var ProductsWithPricesLookup = &tablebuilder.Config{
 				},
 			},
 			"product_costs.purchase_cost": {
-				Name:       "product_costs.purchase_cost",
-				Header:     "Cost Price",
-				Width:      150,
-				Type:       "number",
-				Align:      "right",
-				Sortable:   true,
+				Name:     "product_costs.purchase_cost",
+				Header:   "Cost Price",
+				Width:    150,
+				Type:     "number",
+				Align:    "right",
+				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:      "currency",
 					Precision: 2,
@@ -4985,5 +5192,751 @@ var ProductsWithPricesLookup = &tablebuilder.Config{
 	Permissions: tablebuilder.Permissions{
 		Roles:   []string{"admin", "sales"},
 		Actions: []string{"view"},
+	},
+}
+
+// =============================================================================
+// ADMIN MODULE CONFIGS
+// =============================================================================
+
+// AdminUsersTableConfig is the Users Management Page Config
+var AdminUsersTableConfig = &tablebuilder.Config{
+	Title:           "User Management",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "users",
+			Schema: "core",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "users.id"},
+					{Name: "username", TableColumn: "users.username"},
+					{Name: "first_name", TableColumn: "users.first_name"},
+					{Name: "last_name", TableColumn: "users.last_name"},
+					{Name: "email", TableColumn: "users.email"},
+					{Name: "enabled", TableColumn: "users.enabled"},
+					{Name: "date_hired", TableColumn: "users.date_hired"},
+					{Name: "created_date", TableColumn: "users.created_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "titles",
+						Schema:           "hr",
+						RelationshipFrom: "users.title_id",
+						RelationshipTo:   "titles.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "title_name", TableColumn: "titles.name"},
+						},
+					},
+					{
+						Table:            "offices",
+						Schema:           "hr",
+						RelationshipFrom: "users.office_id",
+						RelationshipTo:   "offices.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "office_name", TableColumn: "offices.name"},
+						},
+					},
+					{
+						Table:            "user_approval_status",
+						Schema:           "hr",
+						RelationshipFrom: "users.user_approval_status_id",
+						RelationshipTo:   "user_approval_status.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "approval_status_name", TableColumn: "user_approval_status.name"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "full_name",
+						Expression: "first_name + ' ' + last_name",
+					},
+					{
+						Name:       "days_employed",
+						Expression: "hasValue(date_hired) ? daysSince(date_hired) : nil",
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "last_name",
+					Direction: "asc",
+				},
+				{
+					Column:    "first_name",
+					Direction: "asc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"full_name": {
+				Name:       "full_name",
+				Header:     "Name",
+				Width:      200,
+				Type:       "computed",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"users.username": {
+				Name:       "users.username",
+				Header:     "Username",
+				Width:      150,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"users.email": {
+				Name:       "users.email",
+				Header:     "Email",
+				Width:      250,
+				Type:       "string",
+				Filterable: true,
+			},
+			"title_name": {
+				Name:       "title_name",
+				Header:     "Title",
+				Width:      150,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"office_name": {
+				Name:       "office_name",
+				Header:     "Office",
+				Width:      150,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"approval_status_name": {
+				Name:       "approval_status_name",
+				Header:     "Status",
+				Width:      120,
+				Sortable:   true,
+				Filterable: true,
+				Type:       "status",
+			},
+			"users.enabled": {
+				Name:   "users.enabled",
+				Header: "Active",
+				Width:  80,
+				Align:  "center",
+				Type:   "boolean",
+				Format: &tablebuilder.FormatConfig{
+					Type: "boolean",
+				},
+			},
+			"users.date_hired": {
+				Name:     "users.date_hired",
+				Header:   "Date Hired",
+				Width:    120,
+				Type:     "datetime",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "yyyy-MM-dd",
+				},
+			},
+			"days_employed": {
+				Name:   "days_employed",
+				Header: "Days Employed",
+				Width:  120,
+				Align:  "right",
+				Type:   "computed",
+				Format: &tablebuilder.FormatConfig{
+					Type:      "number",
+					Precision: 0,
+				},
+			},
+			"users.id": {
+				Name:   "users.id",
+				Header: "Actions",
+				Width:  100,
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/admin/users/{users.id}",
+					Label: "View",
+				},
+			},
+			"users.first_name": {
+				Name:   "users.first_name",
+				Header: "First Name",
+				Width:  150,
+				Type:   "string",
+			},
+			"users.last_name": {
+				Name:   "users.last_name",
+				Header: "Last Name",
+				Width:  150,
+				Type:   "string",
+			},
+			"users.created_date": {
+				Name:   "users.created_date",
+				Header: "Created Date",
+				Width:  150,
+				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "yyyy-MM-dd",
+				},
+			},
+		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{
+			{
+				Column:     "enabled",
+				Condition:  "eq",
+				Value:      false,
+				Color:      "#757575",
+				Background: "#f5f5f5",
+			},
+			{
+				Column:     "approval_status_name",
+				Condition:  "eq",
+				Value:      "Pending",
+				Color:      "#f57c00",
+				Background: "#fff3e0",
+				Icon:       "clock",
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view", "edit", "export"},
+	},
+}
+
+// AdminRolesTableConfig is the Roles Management Page Config
+var AdminRolesTableConfig = &tablebuilder.Config{
+	Title:           "Role Management",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "roles",
+			Schema: "core",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "roles.id"},
+					{Name: "name", TableColumn: "roles.name"},
+					{Name: "description", TableColumn: "roles.description"},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "name",
+					Direction: "asc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"roles.name": {
+				Name:       "roles.name",
+				Header:     "Role Name",
+				Width:      200,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"roles.description": {
+				Name:       "roles.description",
+				Header:     "Description",
+				Width:      400,
+				Type:       "string",
+				Filterable: true,
+			},
+			"roles.id": {
+				Name:   "roles.id",
+				Header: "Actions",
+				Width:  100,
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/admin/roles/{roles.id}",
+					Label: "View",
+				},
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view", "edit", "delete", "export"},
+	},
+}
+
+// AdminTableAccessTableConfig is the Table Access (Permissions) Config
+var AdminTableAccessTableConfig = &tablebuilder.Config{
+	Title:           "Table Permissions",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "table_access",
+			Schema: "core",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "table_access.id"},
+					{Name: "table_name", TableColumn: "table_access.table_name"},
+					{Name: "can_create", TableColumn: "table_access.can_create"},
+					{Name: "can_read", TableColumn: "table_access.can_read"},
+					{Name: "can_update", TableColumn: "table_access.can_update"},
+					{Name: "can_delete", TableColumn: "table_access.can_delete"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "roles",
+						Schema:           "core",
+						RelationshipFrom: "table_access.role_id",
+						RelationshipTo:   "roles.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "role_name", TableColumn: "roles.name"},
+						},
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "table_name",
+					Direction: "asc",
+				},
+			},
+			Rows: 100,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"table_access.id": {
+				Name:   "table_access.id",
+				Header: "ID",
+				Width:  100,
+				Type:   "uuid",
+			},
+			"role_name": {
+				Name:       "role_name",
+				Header:     "Role",
+				Width:      150,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"table_access.table_name": {
+				Name:       "table_access.table_name",
+				Header:     "Table",
+				Width:      200,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"table_access.can_create": {
+				Name:   "table_access.can_create",
+				Header: "Create",
+				Width:  80,
+				Type:   "boolean",
+				Align:  "center",
+				Format: &tablebuilder.FormatConfig{
+					Type: "boolean",
+				},
+			},
+			"table_access.can_read": {
+				Name:   "table_access.can_read",
+				Header: "Read",
+				Width:  80,
+				Type:   "boolean",
+				Align:  "center",
+				Format: &tablebuilder.FormatConfig{
+					Type: "boolean",
+				},
+			},
+			"table_access.can_update": {
+				Name:   "table_access.can_update",
+				Header: "Update",
+				Width:  80,
+				Type:   "boolean",
+				Align:  "center",
+				Format: &tablebuilder.FormatConfig{
+					Type: "boolean",
+				},
+			},
+			"table_access.can_delete": {
+				Name:   "table_access.can_delete",
+				Header: "Delete",
+				Width:  80,
+				Type:   "boolean",
+				Align:  "center",
+				Format: &tablebuilder.FormatConfig{
+					Type: "boolean",
+				},
+			},
+		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{
+			{
+				Column:     "table_access.can_create",
+				Condition:  "eq",
+				Value:      true,
+				Color:      "#2e7d32",
+				Background: "#e8f5e9",
+				Icon:       "check",
+			},
+			{
+				Column:     "table_access.can_read",
+				Condition:  "eq",
+				Value:      true,
+				Color:      "#2e7d32",
+				Background: "#e8f5e9",
+				Icon:       "check",
+			},
+			{
+				Column:     "table_access.can_update",
+				Condition:  "eq",
+				Value:      true,
+				Color:      "#2e7d32",
+				Background: "#e8f5e9",
+				Icon:       "check",
+			},
+			{
+				Column:     "table_access.can_delete",
+				Condition:  "eq",
+				Value:      true,
+				Color:      "#2e7d32",
+				Background: "#e8f5e9",
+				Icon:       "check",
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{25, 50, 100, 200},
+			DefaultPageSize: 50,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view", "edit"},
+	},
+}
+
+// AdminAuditTableConfig is the Audit Logs Page Config
+var AdminAuditTableConfig = &tablebuilder.Config{
+	Title:           "Audit Logs",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 60,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "automation_executions",
+			Schema: "workflow",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "automation_executions.id"},
+					{Name: "entity_type", TableColumn: "automation_executions.entity_type"},
+					{Name: "status", TableColumn: "automation_executions.status"},
+					{Name: "error_message", TableColumn: "automation_executions.error_message"},
+					{Name: "execution_time_ms", TableColumn: "automation_executions.execution_time_ms"},
+					{Name: "executed_at", TableColumn: "automation_executions.executed_at"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "automation_rules",
+						Schema:           "workflow",
+						RelationshipFrom: "automation_executions.automation_rules_id",
+						RelationshipTo:   "automation_rules.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "rule_name", TableColumn: "automation_rules.name"},
+						},
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "executed_at",
+					Direction: "desc",
+				},
+			},
+			Rows: 100,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"automation_executions.executed_at": {
+				Name:     "automation_executions.executed_at",
+				Header:   "Execution Time",
+				Width:    180,
+				Type:     "datetime",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd HH:mm:ss",
+				},
+			},
+			"rule_name": {
+				Name:       "rule_name",
+				Header:     "Rule",
+				Width:      200,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"automation_executions.entity_type": {
+				Name:       "automation_executions.entity_type",
+				Header:     "Entity Type",
+				Width:      150,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"automation_executions.status": {
+				Name:         "automation_executions.status",
+				Header:       "Status",
+				Width:        120,
+				Type:         "status",
+				Sortable:     true,
+				Filterable:   true,
+				CellTemplate: "status",
+			},
+			"automation_executions.execution_time_ms": {
+				Name:     "automation_executions.execution_time_ms",
+				Header:   "Duration (ms)",
+				Width:    120,
+				Type:     "number",
+				Align:    "right",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "number",
+					Precision: 0,
+				},
+			},
+			"automation_executions.error_message": {
+				Name:   "automation_executions.error_message",
+				Header: "Error",
+				Width:  300,
+				Type:   "string",
+			},
+			"automation_executions.id": {
+				Name:   "automation_executions.id",
+				Header: "Details",
+				Width:  100,
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/admin/audit/{id}",
+					Label: "View",
+				},
+			},
+		},
+		ConditionalFormatting: []tablebuilder.ConditionalFormat{
+			{
+				Column:     "automation_executions.status",
+				Condition:  "eq",
+				Value:      "success",
+				Color:      "#2e7d32",
+				Background: "#e8f5e9",
+				Icon:       "check-circle",
+			},
+			{
+				Column:     "automation_executions.status",
+				Condition:  "eq",
+				Value:      "failed",
+				Color:      "#c62828",
+				Background: "#ffebee",
+				Icon:       "x-circle",
+			},
+			{
+				Column:     "automation_executions.status",
+				Condition:  "eq",
+				Value:      "partial",
+				Color:      "#f57c00",
+				Background: "#fff3e0",
+				Icon:       "alert-circle",
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{25, 50, 100, 200},
+			DefaultPageSize: 50,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view", "export"},
+	},
+}
+
+// AdminConfigTableConfig is the Table Configs Management Page Config
+var AdminConfigTableConfig = &tablebuilder.Config{
+	Title:           "Table Configurations",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "table_configs",
+			Schema: "config",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", Alias: "table_configs_id", TableColumn: "table_configs.id"},
+					{Name: "name", Alias: "table_configs_name", TableColumn: "table_configs.name"},
+					{Name: "description", Alias: "table_configs_description", TableColumn: "table_configs.description"},
+					{Name: "created_date", Alias: "table_configs_created_date", TableColumn: "table_configs.created_date"},
+					{Name: "updated_date", Alias: "table_configs_updated_date", TableColumn: "table_configs.updated_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "users",
+						Alias:            "created_by_user",
+						Schema:           "core",
+						RelationshipFrom: "table_configs.created_by",
+						RelationshipTo:   "created_by_user.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "created_by_username", TableColumn: "created_by_user.username"},
+						},
+					},
+					{
+						Table:            "users",
+						Alias:            "updated_by_user",
+						Schema:           "core",
+						RelationshipFrom: "table_configs.updated_by",
+						RelationshipTo:   "updated_by_user.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "updated_by_username", TableColumn: "updated_by_user.username"},
+						},
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "table_configs.updated_date",
+					Direction: "desc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"table_configs_id": {
+				Name:   "table_configs_id",
+				Header: "Actions",
+				Width:  100,
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/admin/config/{table_configs_id}",
+					Label: "View",
+				},
+			},
+			"table_configs_name": {
+				Name:       "table_configs_name",
+				Header:     "Config Name",
+				Width:      250,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"table_configs_description": {
+				Name:       "table_configs_description",
+				Header:     "Description",
+				Width:      400,
+				Type:       "string",
+				Filterable: true,
+			},
+			"table_configs_created_date": {
+				Name:     "table_configs_created_date",
+				Header:   "Created Date",
+				Width:    180,
+				Type:     "datetime",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd HH:mm",
+				},
+			},
+			"created_by_username": {
+				Name:       "created_by_username",
+				Header:     "Created By",
+				Width:      150,
+				Type:       "string",
+				Filterable: true,
+			},
+			"updated_by_username": {
+				Name:       "updated_by_username",
+				Header:     "Updated By",
+				Width:      150,
+				Type:       "string",
+				Filterable: true,
+			},
+			"table_configs_updated_date": {
+				Name:     "table_configs_updated_date",
+				Header:   "Last Updated",
+				Width:    180,
+				Type:     "datetime",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd HH:mm",
+				},
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view", "edit", "delete", "export"},
 	},
 }

@@ -372,6 +372,12 @@ seed: migrate
 seed-frontend:
 	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed-frontend
 
+validate-configs:
+	go run api/cmd/tooling/admin/main.go validate-configs
+
+validate-workflows:
+	go run api/cmd/tooling/admin/main.go validate-workflows
+
 reseed-frontend: dev-database-recreate dev-update-apply seed-frontend
 
 pgcli:

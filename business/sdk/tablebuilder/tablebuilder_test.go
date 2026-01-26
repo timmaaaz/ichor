@@ -156,10 +156,10 @@ var currentOrders = &tablebuilder.Config{
 			// orders table columns (key = TableColumn when no Alias)
 			"orders.id":                   {Type: "uuid"},
 			"order_number":                {Type: "string", Name: "order_number", Header: "Order #", Width: 150, Sortable: true, Filterable: true},
-			"order_date":                  {Type: "datetime", Name: "order_date", Header: "Order Date", Width: 120, Format: &tablebuilder.FormatConfig{Type: "date", Format: "2006-01-02"}},
-			"order_due_date":              {Type: "datetime"},
-			"order_created_date":          {Type: "datetime"},
-			"order_updated_date":          {Type: "datetime"},
+			"order_date":                  {Type: "datetime", Name: "order_date", Header: "Order Date", Width: 120, Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
+			"order_due_date":              {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
+			"order_created_date":          {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
+			"order_updated_date":          {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
 			"order_fulfillment_status_id": {Type: "uuid"},
 			"order_customer_id":           {Type: "uuid"},
 			// customers table columns
@@ -167,8 +167,8 @@ var currentOrders = &tablebuilder.Config{
 			"customer_contact_info_id":     {Type: "uuid"},
 			"customer_delivery_address_id": {Type: "uuid"},
 			"customer_notes":               {Type: "string"},
-			"customer_created_date":        {Type: "datetime"},
-			"customer_updated_date":        {Type: "datetime"},
+			"customer_created_date":        {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
+			"customer_updated_date":        {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
 			// order_fulfillment_statuses columns
 			"fulfillment_status_name":        {Type: "string", Name: "fulfillment_status_name", Header: "Status", Width: 120},
 			"fulfillment_status_description": {Type: "string"},
@@ -527,7 +527,7 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 		Columns: map[string]tablebuilder.ColumnConfig{
 			// inventory_adjustments columns
 			"inventory_adjustments.notes":        {Type: "string"},
-			"inventory_adjustments.created_date": {Type: "datetime"},
+			"inventory_adjustments.created_date": {Type: "datetime", Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"}},
 			// foreign table columns
 			"inventory_locations.aisle": {Type: "string"},
 			"inventory_locations.rack":  {Type: "string"},
@@ -604,7 +604,7 @@ var inventoryAdjustmentsPageConfig = &tablebuilder.Config{
 				Sortable: true,
 				Format: &tablebuilder.FormatConfig{
 					Type:   "datetime",
-					Format: "2006-01-02 15:04",
+					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
 			"inventory_adjustments.id": {
@@ -2135,8 +2135,9 @@ func Test_ColumnTypeFromVisualSettings(t *testing.T) {
 					Type: "boolean",
 				},
 				"users.created_date": {
-					Name: "users.created_date",
-					Type: "datetime",
+					Name:   "users.created_date",
+					Type:   "datetime",
+					Format: &tablebuilder.FormatConfig{Type: "date", Format: "yyyy-MM-dd"},
 				},
 			},
 		},

@@ -227,6 +227,127 @@ func Test_ConfigValidateColumnTypes(t *testing.T) {
 			},
 			wantErr: false, // Chart widgets skip column type validation
 		},
+		{
+			name: "datetime column without format config",
+			config: Config{
+				Title: "Test Config",
+				DataSource: []DataSource{
+					{
+						Source: "test_table",
+						Schema: "test",
+						Select: SelectConfig{
+							Columns: []ColumnDefinition{
+								{Name: "id"},
+								{Name: "created_date"},
+							},
+						},
+					},
+				},
+				VisualSettings: VisualSettings{
+					Columns: map[string]ColumnConfig{
+						"id":           {Type: "uuid"},
+						"created_date": {Type: "datetime"}, // Missing Format config
+					},
+				},
+			},
+			wantErr:     true,
+			errContains: ErrMissingDatetimeFormat,
+		},
+		{
+			name: "datetime column with format config",
+			config: Config{
+				Title: "Test Config",
+				DataSource: []DataSource{
+					{
+						Source: "test_table",
+						Schema: "test",
+						Select: SelectConfig{
+							Columns: []ColumnDefinition{
+								{Name: "id"},
+								{Name: "created_date"},
+							},
+						},
+					},
+				},
+				VisualSettings: VisualSettings{
+					Columns: map[string]ColumnConfig{
+						"id": {Type: "uuid"},
+						"created_date": {
+							Type: "datetime",
+							Format: &FormatConfig{
+								Type:   "date",
+								Format: "yyyy-MM-dd",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "datetime foreign table column without format config",
+			config: Config{
+				Title: "Test Config",
+				DataSource: []DataSource{
+					{
+						Source: "test_table",
+						Schema: "test",
+						Select: SelectConfig{
+							Columns: []ColumnDefinition{
+								{Name: "id"},
+							},
+							ForeignTables: []ForeignTable{
+								{
+									Table:            "foreign_table",
+									Schema:           "test",
+									RelationshipFrom: "id",
+									RelationshipTo:   "foreign_id",
+									Columns: []ColumnDefinition{
+										{Name: "foreign_date"},
+									},
+								},
+							},
+						},
+					},
+				},
+				VisualSettings: VisualSettings{
+					Columns: map[string]ColumnConfig{
+						"id":           {Type: "uuid"},
+						"foreign_date": {Type: "datetime"}, // Missing Format config
+					},
+				},
+			},
+			wantErr:     true,
+			errContains: ErrMissingDatetimeFormat,
+		},
+		{
+			name: "datetime computed column without format config",
+			config: Config{
+				Title: "Test Config",
+				DataSource: []DataSource{
+					{
+						Source: "test_table",
+						Schema: "test",
+						Select: SelectConfig{
+							Columns: []ColumnDefinition{
+								{Name: "id"},
+							},
+							ClientComputedColumns: []ComputedColumn{
+								{Name: "computed_date", Expression: "NOW()"},
+							},
+						},
+					},
+				},
+				VisualSettings: VisualSettings{
+					Columns: map[string]ColumnConfig{
+						"id":            {Type: "uuid"},
+						"computed_date": {Type: "datetime"}, // Missing Format config
+					},
+				},
+			},
+			wantErr:     true,
+			errContains: ErrMissingDatetimeFormat,
+		},
 	}
 
 	for _, tt := range tests {

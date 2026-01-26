@@ -5,6 +5,7 @@ package dataapp
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
@@ -382,8 +383,9 @@ type EditableConfig struct {
 
 // LinkConfig - MATCHES business layer exactly
 type LinkConfig struct {
-	URL   string `json:"url"`
-	Label string `json:"label"`
+	URL         string `json:"url"`
+	Label       string `json:"label,omitempty"`
+	LabelColumn string `json:"label_column,omitempty"`
 }
 
 // RelationshipInfo - MATCHES business layer exactly
@@ -447,6 +449,12 @@ func toAppTableData(bus *tablebuilder.TableData) TableData {
 	// Convert data rows (simple map conversion)
 	data := make([]map[string]any, len(bus.Data))
 	for i, row := range bus.Data {
+		// DEBUG: Log date-related fields before JSON serialization
+		for key, val := range row {
+			if strings.Contains(strings.ToLower(key), "date") || strings.Contains(strings.ToLower(key), "due") {
+				fmt.Printf("[DEBUG-DATE] toAppTableData - Field: %s, Type: %T, Value: %v\n", key, val, val)
+			}
+		}
 		data[i] = map[string]any(row)
 	}
 
@@ -529,8 +537,9 @@ func toAppLinkConfig(bus *tablebuilder.LinkConfig) *LinkConfig {
 		return nil
 	}
 	return &LinkConfig{
-		URL:   bus.URL,
-		Label: bus.Label,
+		URL:         bus.URL,
+		Label:       bus.Label,
+		LabelColumn: bus.LabelColumn,
 	}
 }
 

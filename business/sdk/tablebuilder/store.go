@@ -189,6 +189,14 @@ func (s *Store) executeQuery(ctx context.Context, query string, args map[string]
 		if err := rows.MapScan(row); err != nil {
 			return nil, fmt.Errorf("map scan: %w", err)
 		}
+
+		// DEBUG: Log date-related fields to trace formatting issues
+		for key, val := range row {
+			if strings.Contains(strings.ToLower(key), "date") || strings.Contains(strings.ToLower(key), "due") {
+				fmt.Printf("[DEBUG-DATE] MapScan - Field: %s, Type: %T, Value: %v\n", key, val, val)
+			}
+		}
+
 		results = append(results, row)
 	}
 
@@ -338,6 +346,14 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 	// Determine the primary table name
 	primaryTable := strings.TrimSuffix(ds.Source, "_base")
 
+	// Collect LabelColumn references - these should be hidden as they're only used for link labels
+	labelColumns := make(map[string]bool)
+	for _, vs := range config.VisualSettings.Columns {
+		if vs.Link != nil && vs.Link.LabelColumn != "" {
+			labelColumns[vs.Link.LabelColumn] = true
+		}
+	}
+
 	for _, col := range ds.Select.Columns {
 		meta := ColumnMetadata{
 			DatabaseName: col.Name,
@@ -368,9 +384,16 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			meta.Hidden = true
 		}
 
-		// Visual settings can override hidden
-		if _, ok := config.VisualSettings.Columns[meta.Field]; ok {
-			meta.Hidden = false
+		// Visual settings can override hidden (but respect explicit Hidden: true in visual settings)
+		if vs, ok := config.VisualSettings.Columns[meta.Field]; ok {
+			if !vs.Hidden {
+				meta.Hidden = false
+			}
+		}
+
+		// Hide columns that are only used as LabelColumn references for links
+		if labelColumns[meta.Field] {
+			meta.Hidden = true
 		}
 
 		// Apply visual settings
@@ -387,6 +410,16 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			meta.Editable = vs.Editable
 			meta.Link = vs.Link
 
+			// DEBUG: Log format config for date-related fields
+			if strings.Contains(strings.ToLower(meta.Field), "date") || strings.Contains(strings.ToLower(meta.Field), "due") {
+				fmt.Printf("[DEBUG-DATE] Metadata - Field: %s, Type: %s, Format: %+v\n", meta.Field, meta.Type, vs.Format)
+			}
+
+			// Respect explicit hidden setting from visual settings
+			if vs.Hidden {
+				meta.Hidden = true
+			}
+
 			// Override type if explicitly configured
 			if vs.Type != "" {
 				meta.Type = vs.Type
@@ -397,7 +430,7 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 	}
 
 	// Process foreign table columns
-	metadata = append(metadata, s.buildForeignColumnMetadata(ds.Select.ForeignTables, config)...)
+	metadata = append(metadata, s.buildForeignColumnMetadata(ds.Select.ForeignTables, config, labelColumns)...)
 
 	// Process computed columns
 	for _, cc := range ds.Select.ClientComputedColumns {
@@ -424,7 +457,7 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 	return metadata
 }
 
-func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config *Config) []ColumnMetadata {
+func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config *Config, labelColumns map[string]bool) []ColumnMetadata {
 	metadata := make([]ColumnMetadata, 0)
 
 	for _, ft := range foreignTables {
@@ -452,6 +485,11 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 				}
 			}
 
+			// Hide columns that are only used as LabelColumn references for links
+			if labelColumns[meta.Field] {
+				meta.Hidden = true
+			}
+
 			if vs, ok := config.VisualSettings.Columns[meta.Field]; ok {
 				meta.Header = vs.Header
 				meta.Width = vs.Width
@@ -460,6 +498,11 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 				meta.Filterable = vs.Filterable
 				meta.Format = vs.Format
 				meta.Link = vs.Link
+
+				// Respect explicit hidden setting from visual settings
+				if vs.Hidden {
+					meta.Hidden = true
+				}
 
 				// Override type if explicitly configured
 				if vs.Type != "" {
@@ -471,7 +514,7 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 		}
 
 		// Recursively process nested foreign tables
-		metadata = append(metadata, s.buildForeignColumnMetadata(ft.ForeignTables, config)...)
+		metadata = append(metadata, s.buildForeignColumnMetadata(ft.ForeignTables, config, labelColumns)...)
 	}
 
 	return metadata
