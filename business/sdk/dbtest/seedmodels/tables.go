@@ -557,15 +557,22 @@ var OrdersTableConfig = &tablebuilder.Config{
 					Precision: 0,
 				},
 			},
-			"orders.id": {
-				Name:   "orders.id",
-				Header: "Order #",
-				Width:  150,
-				Type:   "uuid",
+			"order_number": {
+				Name:     "order_number",
+				Header:   "Order #",
+				Width:    150,
+				Type:     "string",
+				Sortable: true,
 				Link: &tablebuilder.LinkConfig{
 					URL:         "/sales/orders/{orders.id}",
 					LabelColumn: "order_number",
 				},
+			},
+			"orders.id": {
+				Name:   "orders.id",
+				Header: "Order ID",
+				Type:   "uuid",
+				Hidden: true,
 			},
 			"is_overdue": {
 				Name:   "is_overdue",
@@ -573,17 +580,21 @@ var OrdersTableConfig = &tablebuilder.Config{
 				Width:  80,
 				Type:   "boolean",
 			},
-			"orders.customer_id": {
-				Name:   "orders.customer_id",
-				Header: "Customer",
-				Width:  200,
-				Type:   "uuid",
+			"customer_name": {
+				Name:     "customer_name",
+				Header:   "Customer",
+				Width:    200,
+				Type:     "string",
+				Sortable: true,
 				Link: &tablebuilder.LinkConfig{
 					URL:         "/sales/customers/{orders.customer_id}",
 					LabelColumn: "customer_name",
 				},
 			},
-			"customer_name": {
+			"orders.customer_id": {
+				Name:   "orders.customer_id",
+				Header: "Customer ID",
+				Type:   "uuid",
 				Hidden: true,
 			},
 			"orders.order_fulfillment_status_id": {
@@ -739,6 +750,10 @@ var SuppliersTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/procurement/suppliers/{suppliers_id}",
+					LabelColumn: "suppliers_name",
+				},
 			},
 			"payment_terms": {
 				Name:       "payment_terms",
@@ -795,13 +810,9 @@ var SuppliersTableConfig = &tablebuilder.Config{
 			},
 			"suppliers_id": {
 				Name:   "suppliers_id",
-				Header: "Supplier",
-				Width:  200,
+				Header: "Supplier ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/procurement/suppliers/{suppliers_id}",
-					LabelColumn: "suppliers_name",
-				},
+				Hidden: true,
 			},
 			"suppliers_contact_infos_id": {
 				Hidden: true,
@@ -1051,6 +1062,10 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/sales/order-line-items/{order_line_items.id}",
+					LabelColumn: "product_name",
+				},
 			},
 			"product_sku": {
 				Name:       "product_sku",
@@ -1168,13 +1183,9 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 			},
 			"order_line_items.id": {
 				Name:   "order_line_items.id",
-				Header: "Product",
-				Width:  200,
+				Header: "Line Item ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/sales/order-line-items/{order_line_items.id}",
-					LabelColumn: "product_name",
-				},
+				Hidden: true,
 			},
 			"order_line_items.order_id": {
 				Name:       "order_line_items.order_id",
@@ -1372,6 +1383,10 @@ var CategoriesTableConfig = &tablebuilder.Config{
 					Type:        "text",
 					Placeholder: "Category name",
 				},
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/products/categories/{product_categories.id}",
+					LabelColumn: "product_categories.name",
+				},
 			},
 			"product_categories.description": {
 				Name:       "product_categories.description",
@@ -1406,21 +1421,11 @@ var CategoriesTableConfig = &tablebuilder.Config{
 					Format: "yyyy-MM-dd HH:mm",
 				},
 			},
-			"product_category_id": {
-				Name:   "product_category_id",
-				Header: "Category",
-				Width:  180,
-				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/products/categories/{product_category_id}",
-					LabelColumn: "product_categories.name",
-				},
-			},
 			"product_categories.id": {
 				Name:   "product_categories.id",
-				Header: "ID",
-				Width:  100,
+				Header: "Category ID",
 				Type:   "uuid",
+				Hidden: true,
 			},
 		},
 		Pagination: &tablebuilder.PaginationConfig{
@@ -1517,6 +1522,10 @@ var AssetsListTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/assets/list/{assets.id}",
+					LabelColumn: "asset_name",
+				},
 			},
 			"asset_type_name": {
 				Name:       "asset_type_name",
@@ -1575,13 +1584,9 @@ var AssetsListTableConfig = &tablebuilder.Config{
 			},
 			"assets.id": {
 				Name:   "assets.id",
-				Header: "Asset",
-				Width:  200,
+				Header: "Asset ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/assets/list/{assets.id}",
-					LabelColumn: "asset_name",
-				},
+				Hidden: true,
 			},
 			"valid_assets.maintenance_interval": {
 				Name:   "valid_assets.maintenance_interval",
@@ -1725,6 +1730,10 @@ var AssetsRequestsTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/assets/requests/{user_assets.id}",
+					LabelColumn: "asset_name",
+				},
 			},
 			"asset_serial_number": {
 				Name:       "asset_serial_number",
@@ -1771,13 +1780,9 @@ var AssetsRequestsTableConfig = &tablebuilder.Config{
 			},
 			"user_assets.id": {
 				Name:   "user_assets.id",
-				Header: "Asset",
-				Width:  200,
+				Header: "User Asset ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/assets/requests/{user_assets.id}",
-					LabelColumn: "asset_name",
-				},
+				Hidden: true,
 			},
 			"user_assets.last_maintenance": {
 				Name:   "user_assets.last_maintenance",
@@ -1984,6 +1989,10 @@ var HrEmployeesTableConfig = &tablebuilder.Config{
 				Type:       "computed",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/hr/employees/{users.id}",
+					LabelColumn: "full_name",
+				},
 			},
 			"users.email": {
 				Name:       "users.email",
@@ -2038,13 +2047,9 @@ var HrEmployeesTableConfig = &tablebuilder.Config{
 			},
 			"users.id": {
 				Name:   "users.id",
-				Header: "Employee",
-				Width:  150,
+				Header: "User ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/hr/employees/{users.id}",
-					LabelColumn: "users.username",
-				},
+				Hidden: true,
 			},
 			"users.first_name": {
 				Name:   "users.first_name",
@@ -2193,6 +2198,10 @@ var HrOfficesTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/hr/offices/{offices_id}",
+					LabelColumn: "offices_name",
+				},
 			},
 			"full_address": {
 				Name:       "full_address",
@@ -2226,13 +2235,9 @@ var HrOfficesTableConfig = &tablebuilder.Config{
 			},
 			"offices_id": {
 				Name:   "offices_id",
-				Header: "Office",
-				Width:  180,
+				Header: "Office ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/hr/offices/{offices_id}",
-					LabelColumn: "offices_name",
-				},
+				Hidden: true,
 			},
 			"street_line_1": {
 				Name:   "street_line_1",
@@ -2371,6 +2376,10 @@ var InventoryWarehousesTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/inventory/warehouses/{warehouses.id}",
+					LabelColumn: "warehouses.name",
+				},
 			},
 			"location": {
 				Name:       "location",
@@ -2416,13 +2425,9 @@ var InventoryWarehousesTableConfig = &tablebuilder.Config{
 			},
 			"warehouses.id": {
 				Name:   "warehouses.id",
-				Header: "Warehouse",
-				Width:  180,
+				Header: "Warehouse ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/inventory/warehouses/{warehouses.id}",
-					LabelColumn: "warehouses.name",
-				},
+				Hidden: true,
 			},
 			"warehouses.updated_date": {
 				Name:   "warehouses.updated_date",
@@ -2615,6 +2620,10 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/inventory/adjustments/{inventory_adjustments.id}",
+					LabelColumn: "product_name",
+				},
 			},
 			"product_sku": {
 				Name:       "product_sku",
@@ -2684,13 +2693,9 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 			},
 			"inventory_adjustments.id": {
 				Name:   "inventory_adjustments.id",
-				Header: "Product",
-				Width:  200,
+				Header: "Adjustment ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/inventory/adjustments/{inventory_adjustments.id}",
-					LabelColumn: "product_name",
-				},
+				Hidden: true,
 			},
 			"inventory_adjustments.notes": {
 				Name:   "inventory_adjustments.notes",
@@ -2901,6 +2906,10 @@ var InventoryTransfersTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/inventory/transfers/{transfer_orders.id}",
+					LabelColumn: "product_name",
+				},
 			},
 			"product_sku": {
 				Name:       "product_sku",
@@ -2971,13 +2980,9 @@ var InventoryTransfersTableConfig = &tablebuilder.Config{
 			},
 			"transfer_orders.id": {
 				Name:   "transfer_orders.id",
-				Header: "Product",
-				Width:  200,
+				Header: "Transfer ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/inventory/transfers/{transfer_orders.id}",
-					LabelColumn: "product_name",
-				},
+				Hidden: true,
 			},
 			"transfer_orders.created_date": {
 				Name:   "transfer_orders.created_date",
@@ -3180,6 +3185,10 @@ var SalesCustomersTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/sales/customers/{customers.id}",
+					LabelColumn: "customers.name",
+				},
 			},
 			"contact_full_name": {
 				Name:       "contact_full_name",
@@ -3229,13 +3238,9 @@ var SalesCustomersTableConfig = &tablebuilder.Config{
 			},
 			"customers.id": {
 				Name:   "customers.id",
-				Header: "Customer",
-				Width:  200,
+				Header: "Customer ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/sales/customers/{customers.id}",
-					LabelColumn: "customers.name",
-				},
+				Hidden: true,
 			},
 			"customers.notes": {
 				Name:   "customers.notes",
@@ -3489,9 +3494,22 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/procurement/purchase-orders/{purchase_orders.id}",
+					LabelColumn: "purchase_orders.order_number",
+				},
 			},
 			"supplier_name": {
-				Hidden: true,
+				Name:       "supplier_name",
+				Header:     "Supplier",
+				Width:      200,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/procurement/suppliers/{purchase_orders.supplier_id}",
+					LabelColumn: "supplier_name",
+				},
 			},
 			"status_name": {
 				Name:       "status_name",
@@ -3501,7 +3519,16 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Filterable: true,
 			},
 			"warehouse_name": {
-				Hidden: true,
+				Name:       "warehouse_name",
+				Header:     "Warehouse",
+				Width:      200,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/inventory/warehouses/{purchase_orders.delivery_warehouse_id}",
+					LabelColumn: "warehouse_name",
+				},
 			},
 			"purchase_orders.order_date": {
 				Name:     "purchase_orders.order_date",
@@ -3540,28 +3567,27 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Filterable:   true,
 			},
 			"requested_by_full_name": {
-				Hidden: true,
+				Name:       "requested_by_full_name",
+				Header:     "Requested By",
+				Width:      150,
+				Type:       "computed",
+				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/core/users/{purchase_orders.requested_by}",
+					LabelColumn: "requested_by_full_name",
+				},
 			},
 			"purchase_orders.id": {
 				Name:   "purchase_orders.id",
-				Header: "PO #",
-				Width:  150,
+				Header: "PO ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/procurement/purchase-orders/{purchase_orders.id}",
-					LabelColumn: "purchase_orders.order_number",
-				},
+				Hidden: true,
 			},
 			"purchase_orders.supplier_id": {
-				Name:       "purchase_orders.supplier_id",
-				Header:     "Supplier",
-				Width:      200,
-				Type:       "uuid",
-				Filterable: true,
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/procurement/suppliers/{purchase_orders.supplier_id}",
-					LabelColumn: "supplier_name",
-				},
+				Name:   "purchase_orders.supplier_id",
+				Header: "Supplier ID",
+				Type:   "uuid",
+				Hidden: true,
 			},
 			"purchase_orders.purchase_order_status_id": {
 				Name:       "purchase_orders.purchase_order_status_id",
@@ -3576,15 +3602,10 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				},
 			},
 			"purchase_orders.delivery_warehouse_id": {
-				Name:       "purchase_orders.delivery_warehouse_id",
-				Header:     "Warehouse",
-				Width:      200,
-				Type:       "uuid",
-				Filterable: true,
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/inventory/warehouses/{purchase_orders.delivery_warehouse_id}",
-					LabelColumn: "warehouse_name",
-				},
+				Name:   "purchase_orders.delivery_warehouse_id",
+				Header: "Warehouse ID",
+				Type:   "uuid",
+				Hidden: true,
 			},
 			"purchase_orders.actual_delivery_date": {
 				Name:   "purchase_orders.actual_delivery_date",
@@ -3633,15 +3654,10 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 				Type:   "string",
 			},
 			"purchase_orders.requested_by": {
-				Name:       "purchase_orders.requested_by",
-				Header:     "Requested By",
-				Width:      150,
-				Type:       "uuid",
-				Filterable: true,
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/core/users/{purchase_orders.requested_by}",
-					LabelColumn: "requested_by_full_name",
-				},
+				Name:   "purchase_orders.requested_by",
+				Header: "Requested By ID",
+				Type:   "uuid",
+				Hidden: true,
 			},
 			"purchase_orders.approved_by": {
 				Name:   "purchase_orders.approved_by",
@@ -3900,7 +3916,12 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Header:     "PO Number",
 				Width:      150,
 				Type:       "string",
+				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/procurement/purchase-order-line-items/{line_item_id}",
+					LabelColumn: "po_number",
+				},
 			},
 			"supplier_name": {
 				Name:       "supplier_name",
@@ -4007,13 +4028,9 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			},
 			"line_item_id": {
 				Name:   "line_item_id",
-				Header: "PO #",
-				Width:  150,
+				Header: "Line Item ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/procurement/purchase-order-line-items/{line_item_id}",
-					LabelColumn: "po_order_number",
-				},
+				Hidden: true,
 			},
 			"line_item_purchase_order_id": {
 				Name:       "line_item_purchase_order_id",
@@ -4329,6 +4346,10 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/procurement/purchase-orders/{purchase_orders.id}/approve",
+					LabelColumn: "purchase_orders.order_number",
+				},
 			},
 			"supplier_name": {
 				Name:       "supplier_name",
@@ -4395,13 +4416,9 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 			},
 			"purchase_orders.id": {
 				Name:   "purchase_orders.id",
-				Header: "PO #",
-				Width:  150,
+				Header: "PO ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/procurement/purchase-orders/{purchase_orders.id}/approve",
-					LabelColumn: "purchase_orders.order_number",
-				},
+				Hidden: true,
 			},
 			"purchase_orders.supplier_id": {
 				Name:       "purchase_orders.supplier_id",
@@ -4748,6 +4765,10 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Type:       "string",
 				Sortable:   true,
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/procurement/purchase-orders/{purchase_orders.id}",
+					LabelColumn: "purchase_orders.order_number",
+				},
 			},
 			"supplier_name": {
 				Name:       "supplier_name",
@@ -4833,13 +4854,9 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 			},
 			"purchase_orders.id": {
 				Name:   "purchase_orders.id",
-				Header: "PO #",
-				Width:  150,
+				Header: "PO ID",
 				Type:   "uuid",
-				Link: &tablebuilder.LinkConfig{
-					URL:         "/procurement/purchase-orders/{purchase_orders.id}",
-					LabelColumn: "purchase_orders.order_number",
-				},
+				Hidden: true,
 			},
 			"purchase_orders.supplier_id": {
 				Name:       "purchase_orders.supplier_id",

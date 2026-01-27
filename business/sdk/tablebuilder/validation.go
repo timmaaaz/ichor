@@ -166,6 +166,31 @@ func isValidColumnReference(col string) bool {
 	return columnRefPattern.MatchString(col)
 }
 
+// isIDColumn checks if a column name represents an ID/reference field.
+// These columns typically end with ".id", "_id", or are exactly "id".
+// ID columns should not have LinkConfig with LabelColumn because:
+// - Users expect to sort by the displayed value, not the UUID
+// - Sorting by UUID produces unintuitive alphabetical ordering
+func isIDColumn(name string) bool {
+	// Exact match for "id"
+	if name == "id" {
+		return true
+	}
+
+	// Check for common ID column patterns
+	// Handles: "table.id", "schema.table.id"
+	if strings.HasSuffix(name, ".id") {
+		return true
+	}
+
+	// Handles: "customer_id", "table.customer_id"
+	if strings.HasSuffix(name, "_id") {
+		return true
+	}
+
+	return false
+}
+
 // =============================================================================
 // Computed Column Field Reference Validation
 // =============================================================================
@@ -605,6 +630,21 @@ func (c *Config) validateVisualSettings(result *ValidationResult) {
 		// Validate link config
 		if col.Link != nil {
 			c.validateLinkConfig(result, col.Link, colPrefix+".link")
+
+			// Check for ID columns with LinkConfig that have LabelColumn (anti-pattern)
+			// ID columns should be hidden and the display column should have the Link
+			if col.Link.LabelColumn != "" && isIDColumn(name) {
+				result.AddError(
+					colPrefix+".link",
+					fmt.Sprintf(
+						"ID column %q should not have a LinkConfig with LabelColumn. "+
+							"When users sort by %q, they will sort by UUID values instead of the display value %q. "+
+							"Fix: Move the Link to the %q column and set %q as Hidden.",
+						name, name, col.Link.LabelColumn, col.Link.LabelColumn, name,
+					),
+					"ID_COLUMN_WITH_LINK",
+				)
+			}
 		}
 	}
 

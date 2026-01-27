@@ -953,6 +953,152 @@ func TestValidateConfig_LinkActionRequiresURL(t *testing.T) {
 }
 
 // =============================================================================
+// ID Column with Link Validation Tests
+// =============================================================================
+
+func TestValidateConfig_IDColumnWithLink(t *testing.T) {
+	tests := []struct {
+		name        string
+		columnKey   string
+		column      tablebuilder.ColumnConfig
+		expectError bool
+		errorCode   string
+	}{
+		{
+			name:      "id column with label column - error",
+			columnKey: "orders.id",
+			column: tablebuilder.ColumnConfig{
+				Name:   "orders.id",
+				Header: "Order #",
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/sales/orders/{orders.id}",
+					LabelColumn: "order_number",
+				},
+			},
+			expectError: true,
+			errorCode:   "ID_COLUMN_WITH_LINK",
+		},
+		{
+			name:      "column ending in _id with label column - error",
+			columnKey: "customer_id",
+			column: tablebuilder.ColumnConfig{
+				Name:   "customer_id",
+				Header: "Customer",
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/customers/{customer_id}",
+					LabelColumn: "customer_name",
+				},
+			},
+			expectError: true,
+			errorCode:   "ID_COLUMN_WITH_LINK",
+		},
+		{
+			name:      "plain id column with label column - error",
+			columnKey: "id",
+			column: tablebuilder.ColumnConfig{
+				Name:   "id",
+				Header: "ID",
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/items/{id}",
+					LabelColumn: "name",
+				},
+			},
+			expectError: true,
+			errorCode:   "ID_COLUMN_WITH_LINK",
+		},
+		{
+			name:      "id column with static label - ok",
+			columnKey: "orders.id",
+			column: tablebuilder.ColumnConfig{
+				Name:   "orders.id",
+				Header: "Actions",
+				Type:   "uuid",
+				Link: &tablebuilder.LinkConfig{
+					URL:   "/sales/orders/{orders.id}",
+					Label: "View", // Static label, no LabelColumn
+				},
+			},
+			expectError: false,
+		},
+		{
+			name:      "id column without link - ok",
+			columnKey: "orders.id",
+			column: tablebuilder.ColumnConfig{
+				Name:   "orders.id",
+				Header: "Order ID",
+				Type:   "uuid",
+				Hidden: true,
+			},
+			expectError: false,
+		},
+		{
+			name:      "non-id column with label column - ok",
+			columnKey: "order_number",
+			column: tablebuilder.ColumnConfig{
+				Name:     "order_number",
+				Header:   "Order #",
+				Type:     "string",
+				Sortable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/sales/orders/{orders.id}",
+					LabelColumn: "order_number",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name:      "column with id in middle - ok",
+			columnKey: "video_identifier",
+			column: tablebuilder.ColumnConfig{
+				Name:   "video_identifier",
+				Header: "Video",
+				Type:   "string",
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/videos/{video_identifier}",
+					LabelColumn: "video_title",
+				},
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := tablebuilder.Config{
+				Title: "Test",
+				DataSource: []tablebuilder.DataSource{
+					{Source: "test"},
+				},
+				VisualSettings: tablebuilder.VisualSettings{
+					Columns: map[string]tablebuilder.ColumnConfig{
+						tt.columnKey: tt.column,
+					},
+				},
+			}
+			result := config.ValidateConfig()
+
+			hasIDLinkError := false
+			for _, err := range result.Errors {
+				if err.Code == tt.errorCode {
+					hasIDLinkError = true
+					break
+				}
+			}
+
+			if tt.expectError && !hasIDLinkError {
+				t.Errorf("expected %s error for column %q, got none. Errors: %v", tt.errorCode, tt.columnKey, result.Errors)
+			}
+			if !tt.expectError && hasIDLinkError {
+				t.Errorf("unexpected %s error for column %q", tt.errorCode, tt.columnKey)
+			}
+		})
+	}
+}
+
+// =============================================================================
 // Permission Actions Validation Tests
 // =============================================================================
 
