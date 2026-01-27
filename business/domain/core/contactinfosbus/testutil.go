@@ -9,6 +9,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// generatePhoneNumber creates a random phone number in (XXX) XXX-XXXX format.
+func generatePhoneNumber() string {
+	areaCode := rand.Intn(900) + 100    // 100-999
+	exchange := rand.Intn(900) + 100    // 100-999
+	subscriber := rand.Intn(10000)      // 0000-9999
+	return fmt.Sprintf("(%03d) %03d-%04d", areaCode, exchange, subscriber)
+}
+
+// generateEmail creates an email using first and last name.
+func generateEmail(firstName, lastName string) string {
+	domains := []string{"gmail.com", "yahoo.com", "outlook.com", "email.com"}
+	domain := domains[rand.Intn(len(domains))]
+	return fmt.Sprintf("%s.%s@%s", firstName, lastName, domain)
+}
+
 func TestNewContactInfos(n int, streetIDs, timezoneIDs uuid.UUIDs) []NewContactInfos {
 	newContactInfos := make([]NewContactInfos, n)
 
@@ -16,12 +31,15 @@ func TestNewContactInfos(n int, streetIDs, timezoneIDs uuid.UUIDs) []NewContactI
 	for i := 0; i < n; i++ {
 		idx++
 
+		firstName := fmt.Sprintf("First%d", idx)
+		lastName := fmt.Sprintf("Last%d", idx)
+
 		nc := NewContactInfos{
-			FirstName:            fmt.Sprintf("FirstName%d", idx),
-			LastName:             fmt.Sprintf("LastName%d", idx),
-			EmailAddress:         fmt.Sprintf("EmailAddress%d", idx),
-			PrimaryPhone:         fmt.Sprintf("PrimaryPhone%d", idx),
-			SecondaryPhone:       fmt.Sprintf("SecondaryPhone%d", idx),
+			FirstName:            firstName,
+			LastName:             lastName,
+			EmailAddress:         generateEmail(firstName, lastName),
+			PrimaryPhone:         generatePhoneNumber(),
+			SecondaryPhone:       generatePhoneNumber(),
 			StreetID:             streetIDs[i%len(streetIDs)],
 			DeliveryAddressID:    streetIDs[(i+1)%len(streetIDs)],
 			AvailableHoursStart:  "8:00:00",

@@ -804,16 +804,7 @@ var SuppliersTableConfig = &tablebuilder.Config{
 				},
 			},
 			"suppliers_contact_infos_id": {
-				Name:       "suppliers_contact_infos_id",
-				Header:     "Contact Info",
-				Width:      200,
-				Type:       "lookup",
-				Filterable: true,
-				Lookup: &tablebuilder.LookupConfig{
-					Entity:      "core.contact_infos",
-					LabelColumn: "contact_infos.email_address",
-					ValueColumn: "contact_infos.id",
-				},
+				Hidden: true,
 			},
 			"suppliers_created_date": {
 				Name:   "suppliers_created_date",
