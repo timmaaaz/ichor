@@ -110,7 +110,7 @@ Actions attached to automation rules.
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | `id` | UUID | NO | `gen_random_uuid()` | Primary key |
-| `automation_rule_id` | UUID | NO | - | FK to automation_rules |
+| `automation_rules_id` | UUID | NO | - | FK to automation_rules |
 | `name` | TEXT | NO | - | Action name |
 | `description` | TEXT | YES | - | Description |
 | `action_config` | JSONB | NO | - | Action configuration |
@@ -142,21 +142,19 @@ Records of workflow executions.
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | `id` | UUID | NO | `gen_random_uuid()` | Primary key |
-| `rule_id` | UUID | NO | - | FK to automation_rules |
-| `trigger_event_type` | TEXT | NO | - | Event type |
-| `entity_id` | UUID | YES | - | Triggering entity ID |
-| `status` | TEXT | NO | - | Execution status |
-| `executed_at` | TIMESTAMPTZ | NO | `now()` | Execution timestamp |
-| `completed_at` | TIMESTAMPTZ | YES | - | Completion timestamp |
+| `automation_rules_id` | UUID | NO | - | FK to automation_rules |
+| `entity_type` | VARCHAR(50) | NO | - | Entity type that triggered |
+| `trigger_data` | JSONB | YES | - | Trigger event data |
+| `actions_executed` | JSONB | YES | - | Record of executed actions |
+| `status` | VARCHAR(20) | NO | - | Execution status |
 | `error_message` | TEXT | YES | - | Error if failed |
-| `execution_context` | JSONB | YES | - | Execution context |
+| `execution_time_ms` | INTEGER | YES | - | Execution duration in ms |
+| `executed_at` | TIMESTAMP | NO | `now()` | Execution timestamp |
 
 **Status values:**
-- `pending` - Not yet started
-- `running` - Currently executing
-- `completed` - Successfully finished
+- `success` - Successfully finished
 - `failed` - Execution failed
-- `cancelled` - Execution cancelled
+- `partial` - Partially completed
 
 ### workflow.notification_deliveries
 
@@ -165,13 +163,21 @@ Tracks notification delivery status.
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | `id` | UUID | NO | `gen_random_uuid()` | Primary key |
-| `notification_id` | UUID | YES | - | Parent notification |
-| `channel` | TEXT | NO | - | Delivery channel |
-| `recipient_id` | UUID | NO | - | User ID |
-| `status` | TEXT | NO | `'pending'` | Delivery status |
-| `sent_at` | TIMESTAMPTZ | YES | - | When sent |
-| `delivered_at` | TIMESTAMPTZ | YES | - | When delivered |
+| `notification_id` | UUID | NO | - | References NotificationPayload in queue |
+| `automation_execution_id` | UUID | YES | - | FK to automation_executions |
+| `rule_id` | UUID | YES | - | FK to automation_rules |
+| `action_id` | UUID | YES | - | FK to rule_actions |
+| `recipient_id` | UUID | NO | - | User ID or email |
+| `channel` | VARCHAR(50) | NO | - | Delivery channel (email, sms, push, in_app) |
+| `status` | VARCHAR(20) | NO | - | Delivery status |
+| `attempts` | INTEGER | YES | `1` | Number of delivery attempts |
+| `sent_at` | TIMESTAMP | YES | - | When sent |
+| `delivered_at` | TIMESTAMP | YES | - | When delivered |
+| `failed_at` | TIMESTAMP | YES | - | When failed |
 | `error_message` | TEXT | YES | - | Error if failed |
+| `provider_response` | JSONB | YES | - | Provider-specific response data |
+| `created_date` | TIMESTAMP | NO | `now()` | Creation timestamp |
+| `updated_date` | TIMESTAMP | NO | `now()` | Last update timestamp |
 
 **Status values:**
 - `pending` - Awaiting delivery
@@ -180,6 +186,20 @@ Tracks notification delivery status.
 - `failed` - Delivery failed
 - `bounced` - Bounced back
 - `retrying` - Retry in progress
+
+### workflow.allocation_results
+
+Stores idempotent inventory allocation results.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | UUID | NO | - | Primary key |
+| `idempotency_key` | VARCHAR(255) | NO | - | Unique key for deduplication |
+| `allocation_data` | JSONB | NO | - | Allocation result data |
+| `created_date` | TIMESTAMP | NO | - | Creation timestamp |
+
+**Indexes:**
+- `idx_allocation_idempotency` on `idempotency_key`
 
 ## Alert Tables
 
@@ -235,8 +255,8 @@ Tracks alert acknowledgments.
 |--------|------|----------|---------|-------------|
 | `id` | UUID | NO | `gen_random_uuid()` | Primary key |
 | `alert_id` | UUID | NO | - | FK to alerts (CASCADE) |
-| `user_id` | UUID | NO | - | FK to core.users |
-| `acknowledged_date` | TIMESTAMPTZ | NO | `now()` | When acknowledged |
+| `acknowledged_by` | UUID | NO | - | FK to core.users |
+| `acknowledged_date` | TIMESTAMP | NO | - | When acknowledged |
 | `notes` | TEXT | YES | - | Optional notes |
 
 ## Indexes
@@ -279,16 +299,23 @@ All foreign key relationships:
 | automation_rules | created_by | core.users(id) |
 | automation_rules | updated_by | core.users(id) |
 | action_templates | created_by | core.users(id) |
-| rule_actions | automation_rule_id | automation_rules(id) |
+| rule_actions | automation_rules_id | automation_rules(id) |
 | rule_actions | template_id | action_templates(id) |
 | rule_dependencies | parent_rule_id | automation_rules(id) |
 | rule_dependencies | child_rule_id | automation_rules(id) |
-| automation_executions | rule_id | automation_rules(id) |
+| automation_executions | automation_rules_id | automation_rules(id) |
 | alerts | source_rule_id | automation_rules(id) |
 | alert_recipients | alert_id | alerts(id) CASCADE |
 | alert_acknowledgments | alert_id | alerts(id) CASCADE |
-| alert_acknowledgments | user_id | core.users(id) |
+| alert_acknowledgments | acknowledged_by | core.users(id) |
 
 ## Migration Reference
 
-Workflow tables are created in migrations around versions 1.70-1.80 in `business/sdk/migrate/sql/migrate.sql`.
+Workflow tables are created in migrations versions 1.64-1.96 in `business/sdk/migrate/sql/migrate.sql`:
+
+- **1.64-1.65**: trigger_types, entity_types
+- **1.66-1.67**: automation_rules, automation_executions
+- **1.68-1.69**: action_templates, rule_actions
+- **1.70-1.71**: rule_dependencies, entities
+- **1.72-1.73**: notification_deliveries, allocation_results
+- **1.94-1.96**: alerts, alert_recipients, alert_acknowledgments

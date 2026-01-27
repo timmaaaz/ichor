@@ -164,6 +164,136 @@ Dismiss/hide an alert.
 - Updates alert status to "dismissed"
 - Alert no longer appears in active queries
 
+### Bulk Action Endpoints
+
+#### POST /workflow/alerts/acknowledge-selected
+
+Acknowledge multiple alerts by ID.
+
+**Request Body:**
+
+```json
+{
+  "ids": ["uuid1", "uuid2", "uuid3"],
+  "notes": "Reviewed all pending alerts (optional)"
+}
+```
+
+**Response:**
+
+```json
+{
+  "count": 3,
+  "skipped": 0
+}
+```
+
+**Notes:**
+- Only acknowledges alerts where user is a recipient
+- `skipped` indicates alerts where user was not a recipient
+
+---
+
+#### POST /workflow/alerts/acknowledge-all
+
+Acknowledge all active alerts for the current user.
+
+**Request Body:**
+
+```json
+{
+  "notes": "Bulk acknowledgment (optional)"
+}
+```
+
+**Response:**
+
+```json
+{
+  "count": 15,
+  "skipped": 0
+}
+```
+
+---
+
+#### POST /workflow/alerts/dismiss-selected
+
+Dismiss multiple alerts by ID.
+
+**Request Body:**
+
+```json
+{
+  "ids": ["uuid1", "uuid2", "uuid3"],
+  "notes": "Optional notes"
+}
+```
+
+**Response:**
+
+```json
+{
+  "count": 3,
+  "skipped": 0
+}
+```
+
+**Notes:**
+- Only dismisses active alerts where user is a recipient
+- `skipped` indicates alerts where user was not a recipient
+
+---
+
+#### POST /workflow/alerts/dismiss-all
+
+Dismiss all active alerts for the current user.
+
+**Request Body:**
+
+```json
+{
+  "notes": "Optional notes"
+}
+```
+
+**Response:**
+
+```json
+{
+  "count": 10,
+  "skipped": 0
+}
+```
+
+### Debug/Test Endpoints
+
+#### POST /workflow/alerts/test
+
+Creates a test alert for the authenticated user (for E2E WebSocket testing).
+
+**Request Body:** None required
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "alertType": "test_alert",
+  "severity": "medium",
+  "title": "Test Alert",
+  "message": "This is a test alert for E2E testing",
+  "status": "active",
+  "createdDate": "2025-01-01T12:00:00Z",
+  "updatedDate": "2025-01-01T12:00:00Z"
+}
+```
+
+**Notes:**
+- Creates alert in database with current user as recipient
+- Publishes to RabbitMQ for WebSocket delivery (if available)
+- Useful for testing real-time alert functionality
+
 ### Admin Endpoints
 
 These endpoints require `workflow.alerts` read permission.

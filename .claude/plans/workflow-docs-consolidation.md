@@ -546,12 +546,12 @@ However, in `buildWhereClause` (updatefield.go:228-252), `not_in` falls through 
 ---
 
 ## Phase 4: Audit - Database & API
-**Status**: Not Started
+**Status**: ✅ COMPLETE (8 discrepancies found and fixed)
 
 ### Files to Audit Against
 
 **Database Migrations:**
-- `business/sdk/migrate/sql/migrate.sql` (workflow tables ~versions 1.70-1.80)
+- `business/sdk/migrate/sql/migrate.sql` (workflow tables ~versions 1.64-1.96)
 
 **Business Layer:**
 | Package | Purpose |
@@ -568,14 +568,174 @@ However, in `buildWhereClause` (updatefield.go:228-252), `not_in` falls through 
 | `api/domain/http/workflow/alertapi/model.go` | API models |
 
 ### Audit Checklist
-- [ ] **migrate.sql**: Verify all workflow tables match schema docs
-- [ ] **alertbus/model.go**: Verify Alert, AlertRecipient, AlertAcknowledgment structs
-- [ ] **alertdb/**: Verify CRUD operations match documentation
-- [ ] **alertapi/route.go**: Verify all endpoints match API reference
-- [ ] **alertapi/model.go**: Verify request/response models
+- [x] **migrate.sql**: Verified all workflow tables match schema docs
+- [x] **alertbus/model.go**: Verified Alert, AlertRecipient, AlertAcknowledgment structs
+- [x] **alertdb/**: Verified CRUD operations match documentation
+- [x] **alertapi/route.go**: Verified all endpoints match API reference
+- [x] **alertapi/model.go**: Verified request/response models
 
 ### Discrepancies Found
-_(To be filled during audit)_
+
+#### 1. database-schema.md - automation_executions Table Schema Mismatch
+**Location**: `docs/workflow/database-schema.md:138-159`
+**Issue**: Documentation shows different column structure than actual migration
+
+**Documentation says:**
+| Column | Type |
+|--------|------|
+| `rule_id` | UUID |
+| `trigger_event_type` | TEXT |
+| `entity_id` | UUID |
+| `status` | TEXT |
+| `executed_at`, `completed_at` | TIMESTAMPTZ |
+| `error_message` | TEXT |
+| `execution_context` | JSONB |
+
+**Actual migration (migrate.sql:985-995):**
+| Column | Type |
+|--------|------|
+| `automation_rules_id` | UUID (not `rule_id`) |
+| `entity_type` | VARCHAR(50) (not `trigger_event_type`) |
+| `trigger_data` | JSONB (not documented) |
+| `actions_executed` | JSONB (not documented) |
+| `status` | VARCHAR(20) |
+| `error_message` | TEXT |
+| `execution_time_ms` | INTEGER (not documented) |
+| `executed_at` | TIMESTAMP |
+| No `entity_id`, `completed_at`, or `execution_context` columns |
+
+**Action Required**: Update database-schema.md to match actual migration
+
+---
+
+#### 2. database-schema.md - rule_actions Column Name Mismatch
+**Location**: `docs/workflow/database-schema.md:113`
+**Issue**: Documentation shows `automation_rule_id` but actual is `automation_rules_id`
+
+**Documentation says:**
+```
+| `automation_rule_id` | UUID | NO | - | FK to automation_rules |
+```
+
+**Actual migration (migrate.sql:1015):**
+```sql
+automation_rules_id UUID NOT NULL REFERENCES workflow.automation_rules(id),
+```
+
+**Action Required**: Update column name to `automation_rules_id`
+
+---
+
+#### 3. database-schema.md - notification_deliveries Schema Mismatch
+**Location**: `docs/workflow/database-schema.md:161-175`
+**Issue**: Documentation shows simplified schema, actual has many more columns
+
+**Documentation shows:**
+- `notification_id`, `channel`, `recipient_id`, `status`, `sent_at`, `delivered_at`, `error_message`
+
+**Actual migration (migrate.sql:1047-1063) has additional:**
+- `automation_execution_id` (FK)
+- `rule_id` (FK)
+- `action_id` (FK)
+- `attempts` (INTEGER)
+- `failed_at` (TIMESTAMP)
+- `provider_response` (JSONB)
+- `created_date`, `updated_date` (TIMESTAMP)
+
+**Action Required**: Update notification_deliveries table documentation
+
+---
+
+#### 4. database-schema.md - Missing allocation_results Table
+**Location**: `docs/workflow/database-schema.md`
+**Issue**: Table not documented
+
+**Actual migration (migrate.sql:1075-1081):**
+```sql
+CREATE TABLE workflow.allocation_results (
+    id UUID PRIMARY KEY,
+    idempotency_key VARCHAR(255) UNIQUE NOT NULL,
+    allocation_data JSONB NOT NULL,
+    created_date TIMESTAMP NOT NULL
+);
+```
+
+**Action Required**: Add allocation_results table to database-schema.md
+
+---
+
+#### 5. database-schema.md - alert_acknowledgments Column Name Mismatch
+**Location**: `docs/workflow/database-schema.md:238`
+**Issue**: Documentation shows `user_id` but actual is `acknowledged_by`
+
+**Documentation says:**
+```
+| `user_id` | UUID | NO | - | FK to core.users |
+```
+
+**Actual migration (migrate.sql:1834):**
+```sql
+acknowledged_by UUID NOT NULL,
+```
+
+**Action Required**: Update column name to `acknowledged_by`
+
+---
+
+#### 6. database-schema.md - Migration Version Reference Wrong
+**Location**: `docs/workflow/database-schema.md:294`
+**Issue**: Documentation says versions 1.70-1.80, actual is 1.64-1.96
+
+**Documentation says:**
+> Workflow tables are created in migrations around versions 1.70-1.80
+
+**Actual:**
+- Trigger/entity types: 1.64-1.65
+- Automation rules/executions: 1.66-1.67
+- Action templates/rule actions: 1.68-1.69
+- Rule dependencies/entities: 1.70-1.71
+- Notification deliveries/allocation results: 1.72-1.73
+- Alert tables: 1.94-1.96
+
+**Action Required**: Update version reference
+
+---
+
+#### 7. api-reference.md - Missing Bulk Action Endpoints
+**Location**: `docs/workflow/api-reference.md`
+**Issue**: 4 bulk action endpoints not documented
+
+**Actual routes (route.go:42-45):**
+- `POST /workflow/alerts/acknowledge-selected`
+- `POST /workflow/alerts/acknowledge-all`
+- `POST /workflow/alerts/dismiss-selected`
+- `POST /workflow/alerts/dismiss-all`
+
+**Action Required**: Add bulk action endpoint documentation
+
+---
+
+#### 8. api-reference.md - Missing Test Endpoint
+**Location**: `docs/workflow/api-reference.md`
+**Issue**: Test alert endpoint not documented
+
+**Actual route (route.go:48):**
+- `POST /workflow/alerts/test` - Creates test alert for E2E WebSocket testing
+
+**Action Required**: Add test endpoint documentation (or note as internal/debug endpoint)
+
+---
+
+### Fixes Applied
+
+1. ✅ **Fixed database-schema.md** - Updated automation_executions table to match actual migration
+2. ✅ **Fixed database-schema.md** - Changed `automation_rule_id` to `automation_rules_id` in rule_actions
+3. ✅ **Fixed database-schema.md** - Updated notification_deliveries with all columns
+4. ✅ **Fixed database-schema.md** - Added allocation_results table
+5. ✅ **Fixed database-schema.md** - Changed `user_id` to `acknowledged_by` in alert_acknowledgments
+6. ✅ **Fixed database-schema.md** - Updated migration version reference to 1.64-1.96
+7. ✅ **Fixed api-reference.md** - Added bulk action endpoint documentation
+8. ✅ **Fixed api-reference.md** - Added test endpoint documentation
 
 ---
 
@@ -612,5 +772,7 @@ _(To be filled during audit)_
 | 2026-01-27 | Phase 2 | Fixed all 15 discrepancies in architecture.md and templates.md |
 | 2026-01-27 | Phase 3 | Audited 7 action handler files, found 4 discrepancies |
 | 2026-01-27 | Phase 3 | Fixed all 4 discrepancies in overview.md and update-field.md |
+| 2026-01-27 | Phase 4 | Audited migrate.sql and alertapi files, found 8 discrepancies |
+| 2026-01-27 | Phase 4 | Fixed all 8 discrepancies in database-schema.md and api-reference.md |
 | | | |
 
