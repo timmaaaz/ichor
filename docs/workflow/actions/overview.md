@@ -19,55 +19,56 @@ All action handlers implement this interface:
 
 ```go
 type ActionHandler interface {
-    Type() string
+    Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (any, error)
     Validate(config json.RawMessage) error
-    Execute(ctx context.Context, config json.RawMessage, execCtx ExecutionContext) (*ActionResult, error)
+    GetType() string
 }
 ```
 
-**Source**: `business/sdk/workflow/interfaces.go`
+**Source**: `business/sdk/workflow/interfaces.go:38-42`
 
 ### Methods
 
 | Method | Purpose |
 |--------|---------|
-| `Type()` | Returns the action type identifier (e.g., `"create_alert"`) |
+| `GetType()` | Returns the action type identifier (e.g., `"create_alert"`) |
 | `Validate()` | Validates configuration before rule creation |
 | `Execute()` | Executes the action with given config and context |
 
-## ActionResult
+### Return Type
 
-Actions return an `ActionResult` with execution details:
+The `Execute()` method returns `(any, error)` for maximum flexibility - each handler returns its own result type. Common patterns:
 
-```go
-type ActionResult struct {
-    Status       string                 // "success", "failed", "skipped"
-    ActionType   string                 // The action type
-    Message      string                 // Human-readable result
-    Data         map[string]interface{} // Action-specific data
-    Error        string                 // Error message if failed
-    Duration     time.Duration          // Execution time
-}
-```
+- `map[string]interface{}` - Simple key-value results
+- Custom structs - Type-safe results (e.g., `QueuedAllocationResponse`)
 
-## ExecutionContext
+## ActionExecutionContext
 
 Context passed to action handlers:
 
 ```go
-type ExecutionContext struct {
-    Event       TriggerEvent           // The triggering event
-    Rule        AutomationRule         // The matched rule
-    ExecutionID uuid.UUID              // Unique execution ID
-    RawData     map[string]interface{} // Entity data for templates
+type ActionExecutionContext struct {
+    EntityID     uuid.UUID              // The entity's UUID
+    EntityName   string                 // Table name (e.g., "sales.orders")
+    EventType    string                 // "on_create", "on_update", "on_delete"
+    UserID       uuid.UUID              // User who triggered
+    RuleID       uuid.UUID              // The matched rule ID
+    RuleName     string                 // Rule name for logging
+    ExecutionID  uuid.UUID              // Unique execution ID
+    Timestamp    time.Time              // When the event occurred
+    RawData      map[string]interface{} // Entity data for templates
+    FieldChanges map[string]FieldChange // Changed fields (update events)
 }
 ```
 
+**Source**: `business/sdk/workflow/models.go`
+
 Handlers can access:
-- `execCtx.Event.EntityID` - The entity's UUID
-- `execCtx.Event.EntityName` - Table name
-- `execCtx.Event.UserID` - User who triggered
-- `execCtx.RawData["field"]` - Entity field values
+- `context.EntityID` - The entity's UUID
+- `context.EntityName` - Table name
+- `context.UserID` - User who triggered
+- `context.RawData["field"]` - Entity field values
+- `context.FieldChanges["field"]` - Old and new values (for updates)
 
 ## Action Registry
 
@@ -151,7 +152,7 @@ func NewMyActionHandler(log *logger.Logger, db *sqlx.DB) *MyActionHandler {
     return &MyActionHandler{log: log, db: db}
 }
 
-func (h *MyActionHandler) Type() string {
+func (h *MyActionHandler) GetType() string {
     return "my_action"
 }
 
@@ -164,16 +165,15 @@ func (h *MyActionHandler) Validate(config json.RawMessage) error {
     return nil
 }
 
-func (h *MyActionHandler) Execute(ctx context.Context, config json.RawMessage, execCtx workflow.ExecutionContext) (*workflow.ActionResult, error) {
+func (h *MyActionHandler) Execute(ctx context.Context, config json.RawMessage, context workflow.ActionExecutionContext) (any, error) {
     var cfg MyActionConfig
     json.Unmarshal(config, &cfg)
 
     // Execute action...
 
-    return &workflow.ActionResult{
-        Status:     "success",
-        ActionType: h.Type(),
-        Message:    "Action completed",
+    return map[string]interface{}{
+        "status":  "success",
+        "message": "Action completed",
     }, nil
 }
 ```

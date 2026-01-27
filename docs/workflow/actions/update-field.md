@@ -68,9 +68,11 @@ Updates database fields dynamically based on configuration. Supports conditional
 | `is_null` | Field is NULL |
 | `is_not_null` | Field is NOT NULL |
 | `in` | Value in array |
-| `not_in` | Value not in array |
+| `not_in` | Value not in array (⚠️ see note) |
 
 **Source**: `business/sdk/workflow/workflowactions/data/updatefield.go:414-425`
+
+> **Note**: The `not_in` operator is validated but currently falls through to `equals` in query building. Use `not_equals` with multiple conditions as an alternative.
 
 ## Table Whitelist
 
