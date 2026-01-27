@@ -2,6 +2,7 @@ package tablebuilder_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
@@ -1547,4 +1548,130 @@ func TestValidateConfig_ComputedColumnFieldReferences(t *testing.T) {
 			}
 		}
 	})
+}
+
+// =============================================================================
+// Column Order Validation Tests
+// =============================================================================
+
+func TestValidateConfig_ColumnOrderStrict(t *testing.T) {
+	tests := []struct {
+		name         string
+		columns      map[string]tablebuilder.ColumnConfig
+		wantErrors   []string
+		wantWarnings []string
+	}{
+		{
+			name: "all_columns_with_order",
+			columns: map[string]tablebuilder.ColumnConfig{
+				"col1": {Name: "col1", Type: "string", Order: 1},
+				"col2": {Name: "col2", Type: "string", Order: 2},
+			},
+			wantErrors: nil,
+		},
+		{
+			name: "all_columns_with_order_zero",
+			columns: map[string]tablebuilder.ColumnConfig{
+				"col1": {Name: "col1", Type: "string", Order: 0},
+				"col2": {Name: "col2", Type: "string", Order: 0},
+			},
+			wantErrors: nil, // No explicit order, so no strict enforcement
+		},
+		{
+			name: "mixed_order_and_no_order",
+			columns: map[string]tablebuilder.ColumnConfig{
+				"col1": {Name: "col1", Type: "string", Order: 1},
+				"col2": {Name: "col2", Type: "string", Order: 0}, // Missing
+			},
+			wantErrors: []string{"STRICT_ORDER"},
+		},
+		{
+			name: "hidden_column_with_order_warns",
+			columns: map[string]tablebuilder.ColumnConfig{
+				"col1": {Name: "col1", Type: "string", Order: 1},
+				"col2": {Name: "col2", Type: "string", Order: 2},
+				"col3": {Name: "col3", Type: "string", Hidden: true, Order: 5},
+			},
+			wantErrors:   nil,
+			wantWarnings: []string{"is hidden but has Order value"},
+		},
+		{
+			name: "negative_order_values",
+			columns: map[string]tablebuilder.ColumnConfig{
+				"col1": {Name: "col1", Type: "string", Order: -10},
+				"col2": {Name: "col2", Type: "string", Order: 5},
+			},
+			wantErrors: nil,
+		},
+		{
+			name: "duplicate_order_values",
+			columns: map[string]tablebuilder.ColumnConfig{
+				"col1": {Name: "col1", Type: "string", Order: 5},
+				"col2": {Name: "col2", Type: "string", Order: 5},
+				"col3": {Name: "col3", Type: "string", Order: 10},
+			},
+			wantErrors: nil, // Allowed, stable sort with secondary key applies
+		},
+		{
+			name: "order_out_of_bounds_high",
+			columns: map[string]tablebuilder.ColumnConfig{
+				"col1": {Name: "col1", Type: "string", Order: 1001},
+				"col2": {Name: "col2", Type: "string", Order: 2},
+			},
+			wantErrors: []string{"INVALID_VALUE"},
+		},
+		{
+			name: "order_out_of_bounds_low",
+			columns: map[string]tablebuilder.ColumnConfig{
+				"col1": {Name: "col1", Type: "string", Order: -1001},
+				"col2": {Name: "col2", Type: "string", Order: 2},
+			},
+			wantErrors: []string{"INVALID_VALUE"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &tablebuilder.Config{
+				Title:      "Test",
+				WidgetType: "table",
+				DataSource: []tablebuilder.DataSource{
+					{Source: "test"},
+				},
+				VisualSettings: tablebuilder.VisualSettings{
+					Columns: tt.columns,
+				},
+			}
+
+			result := config.ValidateConfig()
+
+			// Check errors
+			for _, wantErr := range tt.wantErrors {
+				found := false
+				for _, err := range result.Errors {
+					if strings.Contains(err.Code, wantErr) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error with code %q, but not found. Got errors: %v", wantErr, result.Errors)
+				}
+			}
+
+			// Check warnings
+			for _, wantWarn := range tt.wantWarnings {
+				found := false
+				for _, warn := range result.Warnings {
+					if strings.Contains(warn.Message, wantWarn) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected warning containing %q, but not found. Got warnings: %v", wantWarn, result.Warnings)
+				}
+			}
+		})
+	}
 }

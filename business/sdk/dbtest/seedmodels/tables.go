@@ -155,10 +155,12 @@ var ComplexConfig = &tablebuilder.Config{
 				Header:     "Product",
 				Width:      250,
 				Type:       "string",
+				Order:      10, // Display first
 				Sortable:   true,
 				Filterable: true,
 				Link: &tablebuilder.LinkConfig{
-					URL: "/products/products/{product_id}",
+					URL:         "/products/products/{product_id}",
+					LabelColumn: "product_name",
 				},
 			},
 			"current_quantity": {
@@ -167,6 +169,7 @@ var ComplexConfig = &tablebuilder.Config{
 				Width:  120,
 				Align:  "right",
 				Type:   "number",
+				Order:  20, // Display second
 				Format: &tablebuilder.FormatConfig{
 					Type:      "number",
 					Precision: 0,
@@ -178,6 +181,7 @@ var ComplexConfig = &tablebuilder.Config{
 				Width:        100,
 				Align:        "center",
 				Type:         "computed",
+				Order:        30, // Display third
 				CellTemplate: "status",
 			},
 			"stock_percentage": {
@@ -186,6 +190,7 @@ var ComplexConfig = &tablebuilder.Config{
 				Width:  100,
 				Align:  "right",
 				Type:   "computed",
+				Order:  40, // Display fourth
 				Format: &tablebuilder.FormatConfig{
 					Type:      "percent",
 					Precision: 1,
@@ -216,6 +221,7 @@ var ComplexConfig = &tablebuilder.Config{
 				Header: "SKU",
 				Width:  120,
 				Type:   "string",
+				Order:  50, // Display fifth
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{

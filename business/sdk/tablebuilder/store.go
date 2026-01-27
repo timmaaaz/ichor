@@ -3,6 +3,7 @@ package tablebuilder
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -452,6 +453,47 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 		}
 
 		metadata = append(metadata, meta)
+	}
+
+	// Copy Order values from VisualSettings to metadata
+	for i := range metadata {
+		if vs, ok := config.VisualSettings.Columns[metadata[i].Field]; ok {
+			metadata[i].Order = vs.Order
+		}
+	}
+
+	// Sort by Order (only if any column has explicit order)
+	hasExplicitOrder := false
+	for _, m := range metadata {
+		if m.Order != 0 {
+			hasExplicitOrder = true
+			break
+		}
+	}
+
+	if hasExplicitOrder {
+		// Filter out hidden columns before sorting
+		var visibleMetadata []ColumnMetadata
+		var hiddenMetadata []ColumnMetadata
+		for _, m := range metadata {
+			if vs, ok := config.VisualSettings.Columns[m.Field]; ok && vs.Hidden {
+				hiddenMetadata = append(hiddenMetadata, m)
+			} else {
+				visibleMetadata = append(visibleMetadata, m)
+			}
+		}
+
+		sort.SliceStable(visibleMetadata, func(i, j int) bool {
+			// Primary sort by Order
+			if visibleMetadata[i].Order != visibleMetadata[j].Order {
+				return visibleMetadata[i].Order < visibleMetadata[j].Order
+			}
+			// Secondary sort by Field name for determinism when Order is equal
+			return visibleMetadata[i].Field < visibleMetadata[j].Field
+		})
+
+		// Rebuild metadata with hidden columns at end
+		metadata = append(visibleMetadata, hiddenMetadata...)
 	}
 
 	return metadata
