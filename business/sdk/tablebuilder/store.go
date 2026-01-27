@@ -348,9 +348,10 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 	primaryTable := strings.TrimSuffix(ds.Source, "_base")
 
 	// Collect LabelColumn references - these should be hidden as they're only used for link labels
+	// Exception: don't hide a column if it references itself (column with link uses its own value as label)
 	labelColumns := make(map[string]bool)
-	for _, vs := range config.VisualSettings.Columns {
-		if vs.Link != nil && vs.Link.LabelColumn != "" {
+	for colName, vs := range config.VisualSettings.Columns {
+		if vs.Link != nil && vs.Link.LabelColumn != "" && vs.Link.LabelColumn != colName {
 			labelColumns[vs.Link.LabelColumn] = true
 		}
 	}
