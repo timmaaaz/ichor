@@ -96,6 +96,7 @@ func TestSeedTableAccess(ctx context.Context, roleIDs uuid.UUIDs, api *Business)
 
 		// Workflow schema
 		{RoleID: uuid.Nil, TableName: "workflow.alerts", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
+		{RoleID: uuid.Nil, TableName: "workflow.action_permissions", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
 
 		// Special tables (kept without schema prefix)
 		{RoleID: uuid.Nil, TableName: "formdata", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
