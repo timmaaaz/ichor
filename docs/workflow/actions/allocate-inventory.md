@@ -303,6 +303,12 @@ Audit trail of all inventory movements.
 3. **Transfer orders** - Allocate from source warehouse
 4. **Pre-orders** - Reserve inventory for upcoming products
 
+## Related Documentation
+
+- [Database Schema](../database-schema.md) - allocation_results table
+- [Architecture](../architecture.md) - Queue processing and async handlers
+- [Rules](../configuration/rules.md) - How to create automation rules
+
 ## Key Files
 
 | File | Purpose |

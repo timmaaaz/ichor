@@ -278,3 +278,10 @@ Bad: `Rule 1`
 - Start simple, add conditions as needed
 - Test with broad conditions first
 - Use `changed_to` instead of `equals` for status workflows
+
+## Related Documentation
+
+- [Triggers](triggers.md) - Trigger types and condition operators
+- [Templates](templates.md) - Template variables for action configs
+- [Actions](../actions/) - Action configuration for each type
+- [Database Schema](../database-schema.md) - Table definitions

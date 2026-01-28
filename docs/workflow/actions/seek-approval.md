@@ -147,6 +147,12 @@ Typically used with `create_alert` to notify approvers:
 }
 ```
 
+## Related Documentation
+
+- [create_alert](create-alert.md) - Often used together to notify approvers
+- [Rules](../configuration/rules.md) - How to create automation rules
+- [Architecture](../architecture.md) - How action handlers are executed
+
 ## Key Files
 
 | File | Purpose |

@@ -507,3 +507,11 @@ The queue manager implements circuit breakers to handle downstream service failu
 - A failed request in half-open state reopens the breaker
 
 **Source**: `business/sdk/workflow/queue.go:86-130`
+
+## Related Documentation
+
+- [Database Schema](database-schema.md) - Workflow table definitions
+- [Event Infrastructure](event-infrastructure.md) - EventPublisher and delegate pattern details
+- [Actions Overview](actions/overview.md) - Action handler interface and registry
+- [Adding Domains](adding-domains.md) - How to add workflow events to domains
+- [Testing](testing.md) - Testing patterns and examples

@@ -264,9 +264,14 @@ Only these tables can be updated (security feature):
 - Logs operations for debugging
 - Handles missing foreign keys gracefully (create or fail)
 
+## Related Documentation
+
+- [Templates](../configuration/templates.md) - Template variables and filters
+- [Rules](../configuration/rules.md) - How to create automation rules
+- [Architecture](../architecture.md) - How action handlers are executed
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
 | `business/sdk/workflow/workflowactions/data/updatefield.go` | Handler implementation |
-| `business/sdk/workflow/workflowactions/data/updatefield_overview.md` | Original docs (archived) |

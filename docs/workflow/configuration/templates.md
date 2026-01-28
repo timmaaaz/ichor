@@ -218,3 +218,10 @@ Missing variables are replaced with empty string (no error).
 - Variable lookup is O(1) from map
 - Filter application is sequential
 - No external I/O during processing
+
+## Related Documentation
+
+- [Rules](rules.md) - Automation rule configuration
+- [Triggers](triggers.md) - Trigger conditions that provide field values
+- [Actions](../actions/) - Action configuration with templates
+- [Architecture](../architecture.md) - TemplateProcessor implementation

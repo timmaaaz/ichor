@@ -528,3 +528,9 @@ timeout := time.After(10 * time.Second) // Increase from 5s
 1. Ensure migrations are current
 2. Check foreign key constraints
 3. Verify test data seeding completed
+
+## Related Documentation
+
+- [Architecture](architecture.md) - System overview and component details
+- [Event Infrastructure](event-infrastructure.md) - EventPublisher and delegate pattern
+- [Actions Overview](actions/overview.md) - Action handler testing

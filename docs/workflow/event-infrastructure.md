@@ -474,6 +474,12 @@ Errors are logged at multiple levels:
 3. EventPublisher: queue failures
 4. QueueManager: processing failures
 
+## Related Documentation
+
+- [Architecture](architecture.md) - System overview and component details
+- [Adding Domains](adding-domains.md) - Step-by-step guide for adding workflow events
+- [Testing](testing.md) - Testing patterns for event infrastructure
+
 ## Key Files
 
 | File | Purpose |

@@ -212,6 +212,12 @@ Notification deliveries are tracked in `workflow.notification_deliveries`:
 3. **Redundancy** - Send via multiple channels for important messages
 4. **User preferences** - Different users receive via different channels
 
+## Related Documentation
+
+- [Database Schema](../database-schema.md) - notification_deliveries table
+- [Templates](../configuration/templates.md) - Template variables and filters
+- [Rules](../configuration/rules.md) - How to create automation rules
+
 ## Key Files
 
 | File | Purpose |

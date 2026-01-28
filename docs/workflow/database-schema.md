@@ -319,3 +319,10 @@ Workflow tables are created in migrations versions 1.64-1.96 in `business/sdk/mi
 - **1.70-1.71**: rule_dependencies, entities
 - **1.72-1.73**: notification_deliveries, allocation_results
 - **1.94-1.96**: alerts, alert_recipients, alert_acknowledgments
+
+## Related Documentation
+
+- [Architecture](architecture.md) - System overview and component details
+- [API Reference](api-reference.md) - REST endpoints for alerts
+- [Configuration/Rules](configuration/rules.md) - How to create automation rules
+- [Configuration/Triggers](configuration/triggers.md) - Trigger types and conditions

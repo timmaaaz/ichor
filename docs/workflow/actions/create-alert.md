@@ -233,6 +233,13 @@ go test -v ./business/sdk/workflow/workflowactions/communication/... -run Alert
 go test -v ./business/sdk/workflow/... -run TestEventPublisher_CreateAlert
 ```
 
+## Related Documentation
+
+- [API Reference](../api-reference.md) - REST endpoints for alert management
+- [Database Schema](../database-schema.md) - Alert table structure
+- [Templates](../configuration/templates.md) - Template variables and filters
+- [Rules](../configuration/rules.md) - How to create automation rules
+
 ## Key Files
 
 | File | Purpose |

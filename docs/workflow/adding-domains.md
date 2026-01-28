@@ -439,7 +439,11 @@ Track which domains have workflow events implemented:
 | inventoryitembus | inventory_items | ✅ |
 | inventorylocationbus | inventory_locations | ✅ |
 
-See the full checklist in [WORKFLOW_EVENT_FIRING_INFRASTRUCTURE.md](../.claude/plans/completed-plans/WORKFLOW_EVENT_FIRING_INFRASTRUCTURE.md).
+## Related Documentation
+
+- [Event Infrastructure](event-infrastructure.md) - EventPublisher and delegate pattern details
+- [Architecture](architecture.md) - System overview and component details
+- [Testing](testing.md) - Testing patterns for workflow events
 
 ## Troubleshooting
 

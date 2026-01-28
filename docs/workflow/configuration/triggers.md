@@ -254,3 +254,9 @@ When evaluating conditions, field values are extracted from:
 2. **FieldChanges**: For update events, previous and new values
 
 For `changed_from` and `changed_to` operators, the processor uses `FieldChanges` to detect actual changes.
+
+## Related Documentation
+
+- [Rules](rules.md) - Automation rule configuration
+- [Templates](templates.md) - Template variables for action configs
+- [Architecture](../architecture.md) - TriggerProcessor implementation

@@ -120,6 +120,12 @@ The email handler integrates with the configured email service. In testing, emai
 3. **Internal notifications** - Alert staff to important events
 4. **Approval requests** - Request approval via email
 
+## Related Documentation
+
+- [Templates](../configuration/templates.md) - Template variables and filters
+- [Rules](../configuration/rules.md) - How to create automation rules
+- [send_notification](send-notification.md) - Multi-channel notifications
+
 ## Key Files
 
 | File | Purpose |

@@ -521,6 +521,14 @@ registry.Register(formdataregistry.EntityRegistration{
 })
 ```
 
+### Workflow Engine (Automation System)
+
+Event-driven automation for business processes. **All workflow documentation lives in `docs/workflow/`**.
+
+**When to read workflow docs**: automation rules, triggers, alerts, notifications, email actions, approval workflows, inventory allocation, delegate events, EventPublisher, QueueManager, RabbitMQ integration, workflow tables (automation_rules, rule_actions, alerts, etc.)
+
+**Entry point**: `docs/workflow/README.md` - Start here for overview and navigation to specific topics.
+
 ### Authentication & Authorization
 
 **JWT-based** with RSA keys:
