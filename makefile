@@ -375,8 +375,20 @@ seed-frontend:
 validate-configs:
 	go run api/cmd/tooling/admin/main.go validate-configs
 
+validate-forms:
+	go run api/cmd/tooling/admin/main.go validate-forms
+
 validate-workflows:
 	go run api/cmd/tooling/admin/main.go validate-workflows
+
+validate-all: validate-configs validate-forms validate-workflows
+
+# Deep schema validation (requires database, runs as integration test)
+validate-forms-deep:
+	go test -v -run TestFormConfigsAgainstSchema ./business/sdk/dbtest/...
+
+# Run all form validations (structural + deep)
+validate-forms-all: validate-forms validate-forms-deep
 
 reseed-frontend: dev-database-recreate dev-update-apply seed-frontend
 

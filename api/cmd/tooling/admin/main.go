@@ -156,6 +156,11 @@ func processCommands(args conf.Args, log *logger.Logger, cfg config) error {
 			return fmt.Errorf("validating workflows: %w", err)
 		}
 
+	case "validate-forms":
+		if err := commands.ValidateForms(); err != nil {
+			return fmt.Errorf("validating forms: %w", err)
+		}
+
 	default:
 		fmt.Println("migrate:            create the schema in the database")
 		fmt.Println("seed:               add data to the database")
@@ -164,6 +169,7 @@ func processCommands(args conf.Args, log *logger.Logger, cfg config) error {
 		fmt.Println("genkey:             generate a set of private/public key files")
 		fmt.Println("gentoken:           generate a JWT for a user with claims")
 		fmt.Println("validate-configs:   validate all seed table/chart configurations")
+		fmt.Println("validate-forms:     validate all seed form configurations")
 		fmt.Println("validate-workflows: validate workflow rules and action configurations")
 		fmt.Println("provide a command to get more help.")
 		return commands.ErrHelp
