@@ -34,11 +34,29 @@ import (
 // - Validate types at runtime where results are consumed
 // - Keep type assertions close to the framework boundary
 
-// ActionHandler defines the interface for action type handlers
+// ActionHandler defines the interface for action type handlers.
+// Handlers implement both automated workflow execution and manual execution capabilities.
 type ActionHandler interface {
+	// Execute performs the action with the given configuration and context.
+	// Returns the result data (type varies by handler) and any error encountered.
 	Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (any, error)
+
+	// Validate validates the action configuration before execution.
 	Validate(config json.RawMessage) error
+
+	// GetType returns the unique identifier for this action type (e.g., "allocate_inventory").
 	GetType() string
+
+	// SupportsManualExecution returns true if this action can be triggered manually via API.
+	// Returns false for actions like update_field that should only run via automation.
+	SupportsManualExecution() bool
+
+	// IsAsync returns true if this action queues work for async processing.
+	// Async actions return immediately with tracking info; sync actions complete inline.
+	IsAsync() bool
+
+	// GetDescription returns a human-readable description for discovery APIs.
+	GetDescription() string
 }
 
 // ActionRegistry manages action handlers

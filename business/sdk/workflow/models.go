@@ -72,6 +72,20 @@ const (
 	StatusCancelled ExecutionStatus = "cancelled"
 )
 
+// TriggerSource constants for distinguishing automated vs manual executions
+const (
+	TriggerSourceAutomation = "automation"
+	TriggerSourceManual     = "manual"
+)
+
+// EventType constants for action execution
+const (
+	EventTypeOnCreate      = "on_create"
+	EventTypeOnUpdate      = "on_update"
+	EventTypeOnDelete      = "on_delete"
+	EventTypeManualTrigger = "manual_trigger"
+)
+
 // BatchResult represents the result of executing a batch of rules
 type BatchResult struct {
 	BatchNumber int           `json:"batch_number"`
@@ -128,18 +142,20 @@ type WorkflowStats struct {
 	LastExecutionAt         *time.Time    `json:"last_execution_at"`
 }
 
-// ActionExecutionContext provides context for action execution
+// ActionExecutionContext provides context for action execution.
+// It supports both automated workflow execution and manual action execution.
 type ActionExecutionContext struct {
-	EntityID     uuid.UUID              `json:"entity_id,omitempty"`
-	EntityName   string                 `json:"entity_name"`
-	EventType    string                 `json:"event_type"`
-	FieldChanges map[string]FieldChange `json:"field_changes,omitempty"`
-	RawData      map[string]interface{} `json:"raw_data,omitempty"`
-	Timestamp    time.Time              `json:"timestamp"`
-	UserID       uuid.UUID              `json:"user_id,omitempty"`
-	RuleID       uuid.UUID              `json:"rule_id"`
-	RuleName     string                 `json:"rule_name"`
-	ExecutionID  uuid.UUID              `json:"execution_id,omitempty"`
+	EntityID      uuid.UUID              `json:"entity_id,omitempty"`
+	EntityName    string                 `json:"entity_name"`
+	EventType     string                 `json:"event_type"` // "on_create", "on_update", "on_delete", "manual_trigger"
+	FieldChanges  map[string]FieldChange `json:"field_changes,omitempty"`
+	RawData       map[string]interface{} `json:"raw_data,omitempty"`
+	Timestamp     time.Time              `json:"timestamp"`
+	UserID        uuid.UUID              `json:"user_id,omitempty"`
+	RuleID        *uuid.UUID             `json:"rule_id,omitempty"`      // Pointer: nil for manual executions
+	RuleName      string                 `json:"rule_name"`
+	ExecutionID   uuid.UUID              `json:"execution_id,omitempty"`
+	TriggerSource string                 `json:"trigger_source"` // "automation" or "manual"
 }
 
 // =============================================================================
@@ -365,10 +381,10 @@ type NewRuleDependency struct {
 // =============================================================================
 // Automation Execution
 // =============================================================================
-// AutomationExecution represents an execution record of an automation rule
+// AutomationExecution represents an execution record of an automation rule or manual action
 type AutomationExecution struct {
 	ID               uuid.UUID
-	AutomationRuleID uuid.UUID
+	AutomationRuleID *uuid.UUID // Pointer: nil for manual executions
 	EntityType       string
 	TriggerData      json.RawMessage
 	ActionsExecuted  json.RawMessage
@@ -376,17 +392,23 @@ type AutomationExecution struct {
 	ErrorMessage     string
 	ExecutionTimeMs  int
 	ExecutedAt       time.Time
+	TriggerSource    string     // "automation" or "manual"
+	ExecutedBy       *uuid.UUID // User who triggered manual execution
+	ActionType       string     // For manual executions: the action type that was executed
 }
 
 // NewAutomationExecution contains information needed to record a new execution
 type NewAutomationExecution struct {
-	AutomationRuleID uuid.UUID
+	AutomationRuleID *uuid.UUID // Pointer: nil for manual executions
 	EntityType       string
 	TriggerData      json.RawMessage
 	ActionsExecuted  json.RawMessage
 	Status           ExecutionStatus
 	ErrorMessage     string
 	ExecutionTimeMs  int
+	TriggerSource    string     // "automation" or "manual"
+	ExecutedBy       *uuid.UUID // User who triggered manual execution
+	ActionType       string     // For manual executions: the action type
 }
 
 // =============================================================================

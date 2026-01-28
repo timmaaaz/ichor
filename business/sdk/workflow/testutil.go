@@ -302,14 +302,16 @@ func TestNewAutomationExecutions(n int, ruleIDs []uuid.UUID) []NewAutomationExec
 		}
 		actionsExecutedJSON, _ := json.Marshal(actionsExecuted)
 
+		ruleID := ruleIDs[i%len(ruleIDs)]
 		exec := NewAutomationExecution{
-			AutomationRuleID: ruleIDs[i%len(ruleIDs)],
+			AutomationRuleID: &ruleID,
 			EntityType:       fmt.Sprintf("EntityType%d", idx),
 			TriggerData:      triggerDataJSON,
 			ActionsExecuted:  actionsExecutedJSON,
 			Status:           statuses[i%len(statuses)],
 			ErrorMessage:     "",
 			ExecutionTimeMs:  100 + rand.Intn(900), // Random time between 100-1000ms
+			TriggerSource:    TriggerSourceAutomation,
 		}
 
 		// Add error message for failed executions

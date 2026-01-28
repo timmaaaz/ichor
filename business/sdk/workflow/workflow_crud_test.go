@@ -1416,26 +1416,29 @@ func createAutomationExecution(busDomain dbtest.BusDomain, sd workflowSeedData) 
 	}
 	actionsExecutedJSON, _ := json.Marshal(actionsExecuted)
 
+	ruleID := sd.AutomationRules[0].ID
 	return unitest.Table{
 		Name: "create",
 		ExpResp: workflow.AutomationExecution{
-			AutomationRuleID: sd.AutomationRules[0].ID,
+			AutomationRuleID: &ruleID,
 			EntityType:       "test_entity_type",
 			TriggerData:      triggerDataJSON,
 			ActionsExecuted:  actionsExecutedJSON,
 			Status:           workflow.StatusCompleted,
 			ErrorMessage:     "",
 			ExecutionTimeMs:  250,
+			TriggerSource:    workflow.TriggerSourceAutomation,
 		},
 		ExcFunc: func(ctx context.Context) any {
 			nae := workflow.NewAutomationExecution{
-				AutomationRuleID: sd.AutomationRules[0].ID,
+				AutomationRuleID: &ruleID,
 				EntityType:       "test_entity_type",
 				TriggerData:      triggerDataJSON,
 				ActionsExecuted:  actionsExecutedJSON,
 				Status:           workflow.StatusCompleted,
 				ErrorMessage:     "",
 				ExecutionTimeMs:  250,
+				TriggerSource:    workflow.TriggerSourceAutomation,
 			}
 
 			resp, err := busDomain.Workflow.CreateExecution(ctx, nae)
@@ -1462,9 +1465,10 @@ func createAutomationExecution(busDomain dbtest.BusDomain, sd workflowSeedData) 
 
 func queryExecutionHistory(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
 	// Find executions for first rule
+	targetRuleID := sd.AutomationRules[0].ID
 	var expectedExecutions []workflow.AutomationExecution
 	for _, exec := range sd.AutomationExecutions {
-		if exec.AutomationRuleID == sd.AutomationRules[0].ID {
+		if exec.AutomationRuleID != nil && *exec.AutomationRuleID == targetRuleID {
 			expectedExecutions = append(expectedExecutions, exec)
 			if len(expectedExecutions) >= 5 {
 				break

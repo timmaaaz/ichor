@@ -419,10 +419,10 @@ func toDBRuleDependency(rd workflow.RuleDependency) ruleDependency {
 	}
 }
 
-// automationExecution represents an execution record of an automation rule
+// automationExecution represents an execution record of an automation rule or manual action
 type automationExecution struct {
 	ID                string          `db:"id"`
-	AutomationRulesID string          `db:"automation_rules_id"`
+	AutomationRulesID sql.NullString  `db:"automation_rules_id"` // Nullable for manual executions
 	EntityType        string          `db:"entity_type"`
 	TriggerData       json.RawMessage `db:"trigger_data"`
 	ActionsExecuted   json.RawMessage `db:"actions_executed"`
@@ -430,24 +430,41 @@ type automationExecution struct {
 	ErrorMessage      sql.NullString  `db:"error_message"`
 	ExecutionTimeMs   sql.NullInt32   `db:"execution_time_ms"`
 	ExecutedAt        time.Time       `db:"executed_at"`
+	TriggerSource     sql.NullString  `db:"trigger_source"` // 'automation' or 'manual'
+	ExecutedBy        sql.NullString  `db:"executed_by"`    // User who triggered manual execution
+	ActionType        sql.NullString  `db:"action_type"`    // For manual executions
 }
 
 // toCoreAutomationExecution converts a store automationExecution to core AutomationExecution
 func toCoreAutomationExecution(dbExec automationExecution) workflow.AutomationExecution {
 	ae := workflow.AutomationExecution{
-		ID:               uuid.MustParse(dbExec.ID),
-		AutomationRuleID: uuid.MustParse(dbExec.AutomationRulesID),
-		EntityType:       dbExec.EntityType,
-		TriggerData:      dbExec.TriggerData,
-		ActionsExecuted:  dbExec.ActionsExecuted,
-		Status:           workflow.ExecutionStatus(dbExec.Status),
-		ExecutedAt:       dbExec.ExecutedAt,
+		ID:          uuid.MustParse(dbExec.ID),
+		EntityType:  dbExec.EntityType,
+		TriggerData: dbExec.TriggerData,
+		ActionsExecuted: dbExec.ActionsExecuted,
+		Status:      workflow.ExecutionStatus(dbExec.Status),
+		ExecutedAt:  dbExec.ExecutedAt,
+	}
+	// Handle nullable AutomationRuleID
+	if dbExec.AutomationRulesID.Valid {
+		ruleID := uuid.MustParse(dbExec.AutomationRulesID.String)
+		ae.AutomationRuleID = &ruleID
 	}
 	if dbExec.ErrorMessage.Valid {
 		ae.ErrorMessage = dbExec.ErrorMessage.String
 	}
 	if dbExec.ExecutionTimeMs.Valid {
 		ae.ExecutionTimeMs = int(dbExec.ExecutionTimeMs.Int32)
+	}
+	if dbExec.TriggerSource.Valid {
+		ae.TriggerSource = dbExec.TriggerSource.String
+	}
+	if dbExec.ExecutedBy.Valid {
+		executedBy := uuid.MustParse(dbExec.ExecutedBy.String)
+		ae.ExecutedBy = &executedBy
+	}
+	if dbExec.ActionType.Valid {
+		ae.ActionType = dbExec.ActionType.String
 	}
 	return ae
 }
@@ -463,19 +480,31 @@ func toCoreAutomationExecutionSlice(dbExecs []automationExecution) []workflow.Au
 // toDBAutomationExecution converts a core AutomationExecution to store values
 func toDBAutomationExecution(ae workflow.AutomationExecution) automationExecution {
 	dbExec := automationExecution{
-		ID:                ae.ID.String(),
-		AutomationRulesID: ae.AutomationRuleID.String(),
-		EntityType:        ae.EntityType,
-		TriggerData:       ae.TriggerData,
-		ActionsExecuted:   ae.ActionsExecuted,
-		Status:            string(ae.Status),
-		ExecutedAt:        time.Now(),
+		ID:              ae.ID.String(),
+		EntityType:      ae.EntityType,
+		TriggerData:     ae.TriggerData,
+		ActionsExecuted: ae.ActionsExecuted,
+		Status:          string(ae.Status),
+		ExecutedAt:      time.Now(),
+	}
+	// Handle nullable AutomationRuleID
+	if ae.AutomationRuleID != nil {
+		dbExec.AutomationRulesID = sql.NullString{String: ae.AutomationRuleID.String(), Valid: true}
 	}
 	if ae.ErrorMessage != "" {
 		dbExec.ErrorMessage = sql.NullString{String: ae.ErrorMessage, Valid: true}
 	}
 	if ae.ExecutionTimeMs > 0 {
 		dbExec.ExecutionTimeMs = sql.NullInt32{Int32: int32(ae.ExecutionTimeMs), Valid: true}
+	}
+	if ae.TriggerSource != "" {
+		dbExec.TriggerSource = sql.NullString{String: ae.TriggerSource, Valid: true}
+	}
+	if ae.ExecutedBy != nil {
+		dbExec.ExecutedBy = sql.NullString{String: ae.ExecutedBy.String(), Valid: true}
+	}
+	if ae.ActionType != "" {
+		dbExec.ActionType = sql.NullString{String: ae.ActionType, Valid: true}
 	}
 	return dbExec
 }

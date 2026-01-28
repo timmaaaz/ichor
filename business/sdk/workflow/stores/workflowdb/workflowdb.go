@@ -927,10 +927,12 @@ func (s *Store) CreateExecution(ctx context.Context, exec workflow.AutomationExe
 	const q = `
 	INSERT INTO workflow.automation_executions (
 		id, automation_rules_id, entity_type, trigger_data, actions_executed,
-		status, error_message, execution_time_ms, executed_at
+		status, error_message, execution_time_ms, executed_at,
+		trigger_source, executed_by, action_type
 	) VALUES (
 		:id, :automation_rules_id, :entity_type, :trigger_data, :actions_executed,
-		:status, :error_message, :execution_time_ms, :executed_at
+		:status, :error_message, :execution_time_ms, :executed_at,
+		:trigger_source, :executed_by, :action_type
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAutomationExecution(exec)); err != nil {
@@ -953,10 +955,11 @@ func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, lim
 	const q = `
 	SELECT
 		id, automation_rules_id, entity_type, trigger_data, actions_executed,
-		status, error_message, execution_time_ms, executed_at
+		status, error_message, execution_time_ms, executed_at,
+		trigger_source, executed_by, action_type
 	FROM
 		workflow.automation_executions
-	WHERE 
+	WHERE
 		automation_rules_id = :automation_rules_id
 	LIMIT :limit`
 

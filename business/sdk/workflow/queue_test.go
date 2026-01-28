@@ -1438,11 +1438,15 @@ func Test_ProcessAsyncAction(t *testing.T) {
 				AllowPartial:       true,
 				Priority:           "medium",
 			},
-			Context: workflow.ActionExecutionContext{
-				ExecutionID: uuid.New(),
-				RuleID:      uuid.New(),
-				UserID:      uuid.New(),
-			},
+			Context: func() workflow.ActionExecutionContext {
+				rID := uuid.New()
+				return workflow.ActionExecutionContext{
+					ExecutionID:   uuid.New(),
+					RuleID:        &rID,
+					UserID:        uuid.New(),
+					TriggerSource: workflow.TriggerSourceAutomation,
+				}
+			}(),
 			Status:     "pending",
 			Priority:   1,
 			CreatedAt:  time.Now(),
@@ -1454,11 +1458,15 @@ func Test_ProcessAsyncAction(t *testing.T) {
 		queuedPayload := workflow.QueuedPayload{
 			RequestType: "allocate_inventory",
 			RequestData: requestData,
-			ExecutionContext: workflow.ActionExecutionContext{
-				ExecutionID: uuid.New(),
-				RuleID:      uuid.New(),
-				UserID:      uuid.New(),
-			},
+			ExecutionContext: func() workflow.ActionExecutionContext {
+				rID := uuid.New()
+				return workflow.ActionExecutionContext{
+					ExecutionID:   uuid.New(),
+					RuleID:        &rID,
+					UserID:        uuid.New(),
+					TriggerSource: workflow.TriggerSourceAutomation,
+				}
+			}(),
 		}
 		payloadData, _ := json.Marshal(queuedPayload)
 		var payloadMap map[string]interface{}
@@ -1522,13 +1530,15 @@ func Test_ProcessAsyncAction(t *testing.T) {
 		initialMetrics := qm.GetMetrics()
 
 		// Create message with unknown request type - no handler exists for this
+		unknownRuleID := uuid.New()
 		queuedPayload := workflow.QueuedPayload{
 			RequestType: "nonexistent_handler",
 			RequestData: json.RawMessage(`{}`),
 			ExecutionContext: workflow.ActionExecutionContext{
-				ExecutionID: uuid.New(),
-				RuleID:      uuid.New(),
-				UserID:      uuid.New(),
+				ExecutionID:   uuid.New(),
+				RuleID:        &unknownRuleID,
+				UserID:        uuid.New(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 			},
 		}
 		payloadData, _ := json.Marshal(queuedPayload)
@@ -1587,13 +1597,15 @@ func Test_ProcessAsyncAction(t *testing.T) {
 		initialMetrics := qm.GetMetrics()
 
 		// Create message targeting the real update_field handler
+		updateFieldRuleID := uuid.New()
 		queuedPayload := workflow.QueuedPayload{
 			RequestType: "update_field", // Real handler type
 			RequestData: json.RawMessage(`{}`),
 			ExecutionContext: workflow.ActionExecutionContext{
-				ExecutionID: uuid.New(),
-				RuleID:      uuid.New(),
-				UserID:      uuid.New(),
+				ExecutionID:   uuid.New(),
+				RuleID:        &updateFieldRuleID,
+				UserID:        uuid.New(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 			},
 		}
 		payloadData, _ := json.Marshal(queuedPayload)
@@ -1653,6 +1665,7 @@ func Test_ProcessAsyncAction(t *testing.T) {
 
 		// Create an allocation request that tries to allocate non-existent product
 		// This will cause the handler to fail during ProcessAllocation
+		failureRuleID1 := uuid.New()
 		allocationRequest := inventory.AllocationRequest{
 			ID:          uuid.New(),
 			ExecutionID: uuid.New(),
@@ -1669,9 +1682,10 @@ func Test_ProcessAsyncAction(t *testing.T) {
 				Priority:           "high",
 			},
 			Context: workflow.ActionExecutionContext{
-				ExecutionID: uuid.New(),
-				RuleID:      uuid.New(),
-				UserID:      uuid.New(),
+				ExecutionID:   uuid.New(),
+				RuleID:        &failureRuleID1,
+				UserID:        uuid.New(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 			},
 			Status:     "pending",
 			Priority:   1,
@@ -1681,13 +1695,15 @@ func Test_ProcessAsyncAction(t *testing.T) {
 		}
 		requestData, _ := json.Marshal(allocationRequest)
 
+		failureRuleID2 := uuid.New()
 		queuedPayload := workflow.QueuedPayload{
 			RequestType: "allocate_inventory",
 			RequestData: requestData,
 			ExecutionContext: workflow.ActionExecutionContext{
-				ExecutionID: uuid.New(),
-				RuleID:      uuid.New(),
-				UserID:      uuid.New(),
+				ExecutionID:   uuid.New(),
+				RuleID:        &failureRuleID2,
+				UserID:        uuid.New(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 			},
 		}
 		payloadData, _ := json.Marshal(queuedPayload)

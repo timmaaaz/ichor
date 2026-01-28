@@ -29,6 +29,21 @@ func (h *SendEmailHandler) GetType() string {
 	return "send_email"
 }
 
+// SupportsManualExecution returns true - emails can be sent manually
+func (h *SendEmailHandler) SupportsManualExecution() bool {
+	return true
+}
+
+// IsAsync returns true - email sending is queued for async processing
+func (h *SendEmailHandler) IsAsync() bool {
+	return true
+}
+
+// GetDescription returns a human-readable description for discovery APIs
+func (h *SendEmailHandler) GetDescription() string {
+	return "Send an email to specified recipients"
+}
+
 func (h *SendEmailHandler) Validate(config json.RawMessage) error {
 	var cfg struct {
 		Recipients      []string `json:"recipients"`

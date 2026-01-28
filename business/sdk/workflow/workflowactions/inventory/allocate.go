@@ -175,6 +175,21 @@ func (h *AllocateInventoryHandler) GetType() string {
 	return "allocate_inventory"
 }
 
+// SupportsManualExecution returns true - inventory allocation can be triggered manually
+func (h *AllocateInventoryHandler) SupportsManualExecution() bool {
+	return true
+}
+
+// IsAsync returns true - inventory allocation queues work for async processing
+func (h *AllocateInventoryHandler) IsAsync() bool {
+	return true
+}
+
+// GetDescription returns a human-readable description for discovery APIs
+func (h *AllocateInventoryHandler) GetDescription() string {
+	return "Allocate inventory items from warehouse locations"
+}
+
 // Validate validates the allocation configuration
 func (h *AllocateInventoryHandler) Validate(config json.RawMessage) error {
 	var cfg AllocateInventoryConfig
@@ -287,7 +302,12 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		"source_from_line_item", cfg.SourceFromLineItem)
 
 	// Generate idempotency key based on execution context
-	idempotencyKey := fmt.Sprintf("%s_%s_%s", execContext.ExecutionID, execContext.RuleID, h.GetType())
+	// For manual executions (nil RuleID), use "manual" as the rule identifier
+	ruleIDStr := "manual"
+	if execContext.RuleID != nil {
+		ruleIDStr = execContext.RuleID.String()
+	}
+	idempotencyKey := fmt.Sprintf("%s_%s_%s", execContext.ExecutionID, ruleIDStr, h.GetType())
 
 	// Check if this allocation was already processed (idempotency)
 	h.log.Info(ctx, "VERBOSE: Checking idempotency",
@@ -418,6 +438,11 @@ func (h *AllocateInventoryHandler) ProcessQueued(ctx context.Context, payload js
 	if err != nil {
 		// Even on failure, fire the workflow event so downstream rules (like alerts) can trigger.
 		// Create a failure result to pass to the event.
+		// For manual executions (nil RuleID), use "manual" as the rule identifier
+		failureRuleIDStr := "manual"
+		if request.Context.RuleID != nil {
+			failureRuleIDStr = request.Context.RuleID.String()
+		}
 		failureResult := &InventoryAllocationResult{
 			AllocationID:   request.ID,
 			Status:         "failed",
@@ -429,7 +454,7 @@ func (h *AllocateInventoryHandler) ProcessQueued(ctx context.Context, payload js
 			}},
 			TotalRequested:  0,
 			TotalAllocated:  0,
-			IdempotencyKey:  fmt.Sprintf("%s_%s_%s", request.ExecutionID, request.Context.RuleID, h.GetType()),
+			IdempotencyKey:  fmt.Sprintf("%s_%s_%s", request.ExecutionID, failureRuleIDStr, h.GetType()),
 			CreatedAt:       request.CreatedAt,
 			CompletedAt:     time.Now(),
 			ExecutionTimeMs: time.Since(request.CreatedAt).Milliseconds(),
@@ -498,7 +523,12 @@ func (h *AllocateInventoryHandler) fireAllocationResultEvent(ctx context.Context
 // ProcessAllocation handles the actual allocation logic (called by queue consumer)
 func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, request AllocationRequest) (*InventoryAllocationResult, error) {
 	startTime := time.Now()
-	idempotencyKey := fmt.Sprintf("%s_%s_%s", request.ExecutionID, request.Context.RuleID, h.GetType())
+	// For manual executions (nil RuleID), use "manual" as the rule identifier
+	ruleIDStr := "manual"
+	if request.Context.RuleID != nil {
+		ruleIDStr = request.Context.RuleID.String()
+	}
+	idempotencyKey := fmt.Sprintf("%s_%s_%s", request.ExecutionID, ruleIDStr, h.GetType())
 
 	// Double-check idempotency in case of race conditions
 	existing, idempotencyResult, err := h.workflowBus.QueryAllocationResultByIdempotencyKey(ctx, idempotencyKey)

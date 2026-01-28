@@ -453,7 +453,7 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 				EventType:  "on_update",
 				Timestamp:  time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
 				UserID:     userID1,
-				RuleID:     ruleID1,
+				RuleID:     &ruleID1,
 				RuleName:   "Update Customer Status",
 			},
 			want: workflow.TemplateContext{
@@ -474,7 +474,7 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 				EventType:  "on_create",
 				Timestamp:  time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
 				UserID:     userID2,
-				RuleID:     ruleID2,
+				RuleID:     &ruleID2,
 				RuleName:   "Process New Order",
 				RawData: map[string]interface{}{
 					"order_total":  199.99,
@@ -503,7 +503,7 @@ func TestActionExecutor_BuildTemplateContext(t *testing.T) {
 				EventType:  "on_update",
 				Timestamp:  time.Date(2024, 3, 15, 10, 0, 0, 0, time.UTC),
 				UserID:     userID1,
-				RuleID:     ruleID1,
+				RuleID:     &ruleID1,
 				RuleName:   "Track Status Changes",
 				FieldChanges: map[string]workflow.FieldChange{
 					"status": {
@@ -925,7 +925,7 @@ func TestActionExecutor_Stats(t *testing.T) {
 		EntityName:  "customers",
 		EventType:   "on_create",
 		UserID:      uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
-		RuleID:      rule.ID,
+		RuleID:      &rule.ID,
 		ExecutionID: uuid.New(),
 		Timestamp:   time.Now(),
 		RawData: map[string]interface{}{
@@ -1116,7 +1116,7 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
 			EntityName:  "customers",
 			EventType:   "on_create",
 			UserID:      userID,
-			RuleID:      rule.ID,
+			RuleID:      &rule.ID,
 			ExecutionID: uuid.New(),
 			Timestamp:   time.Now(),
 		}
@@ -1344,15 +1344,17 @@ func TestActionHandler_Implementations(t *testing.T) {
 			}
 
 			// Test Execute with proper context
+			testRuleID := uuid.New()
 			execContext := workflow.ActionExecutionContext{
-				EntityID:    uuid.New(),
-				EntityName:  "test",
-				EventType:   "on_create",
-				RuleID:      uuid.New(),
-				RuleName:    "Test Rule",
-				UserID:      userID,
-				ExecutionID: uuid.New(),
-				Timestamp:   time.Now(),
+				EntityID:      uuid.New(),
+				EntityName:    "test",
+				EventType:     "on_create",
+				RuleID:        &testRuleID,
+				RuleName:      "Test Rule",
+				UserID:        userID,
+				ExecutionID:   uuid.New(),
+				Timestamp:     time.Now(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 			}
 
 			result, err := handler.Execute(ctx, tt.validConfig, execContext)

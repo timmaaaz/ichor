@@ -372,16 +372,17 @@ func (e *Engine) executeRule(ctx context.Context, ruleID uuid.UUID, event Trigge
 
 	// Create execution context for the rule
 	executionContext := ActionExecutionContext{
-		EntityID:     event.EntityID,
-		EntityName:   event.EntityName,
-		EventType:    event.EventType,
-		FieldChanges: event.FieldChanges,
-		RawData:      event.RawData,
-		Timestamp:    event.Timestamp,
-		UserID:       event.UserID,
-		RuleID:       ruleID,
-		RuleName:     "Unknown Rule", // Will be updated by action executor
-		ExecutionID:  executionID,
+		EntityID:      event.EntityID,
+		EntityName:    event.EntityName,
+		EventType:     event.EventType,
+		FieldChanges:  event.FieldChanges,
+		RawData:       event.RawData,
+		Timestamp:     event.Timestamp,
+		UserID:        event.UserID,
+		RuleID:        &ruleID,
+		RuleName:      "Unknown Rule", // Will be updated by action executor
+		ExecutionID:   executionID,
+		TriggerSource: TriggerSourceAutomation,
 	}
 
 	// Use action executor to run all actions for this rule

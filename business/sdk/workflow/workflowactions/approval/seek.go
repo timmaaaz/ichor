@@ -29,6 +29,21 @@ func (h *SeekApprovalHandler) GetType() string {
 	return "seek_approval"
 }
 
+// SupportsManualExecution returns true - approval requests can be initiated manually
+func (h *SeekApprovalHandler) SupportsManualExecution() bool {
+	return true
+}
+
+// IsAsync returns false - approval request creation completes inline
+func (h *SeekApprovalHandler) IsAsync() bool {
+	return false
+}
+
+// GetDescription returns a human-readable description for discovery APIs
+func (h *SeekApprovalHandler) GetDescription() string {
+	return "Request approval from specified approvers"
+}
+
 func (h *SeekApprovalHandler) Validate(config json.RawMessage) error {
 	var cfg struct {
 		Approvers    []string `json:"approvers"`

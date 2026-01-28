@@ -15,7 +15,7 @@ import (
 // ActionExecution represents an active action execution
 type ActionExecution struct {
 	ActionID  uuid.UUID
-	RuleID    uuid.UUID
+	RuleID    *uuid.UUID // Pointer to support nil for manual executions
 	StartedAt time.Time
 	Status    string // TODO: Make into execution status
 	Context   ActionExecutionContext
@@ -217,7 +217,7 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 		"action_id", actionID,
 		"action_name", action.Name,
 		"action_type", ae.getActionType(action),
-		"rule_id", executionContext.RuleID,
+		"rule_id", executionContext.RuleID, // Pointer - may be nil for manual executions
 		"rule_name", executionContext.RuleName,
 		"entity_name", executionContext.EntityName,
 		"entity_id", executionContext.EntityID)
@@ -225,7 +225,7 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 	// Track active execution
 	exec := &ActionExecution{
 		ActionID:  actionID,
-		RuleID:    executionContext.RuleID,
+		RuleID:    executionContext.RuleID, // Already a pointer
 		StartedAt: startTime,
 		Status:    "running",
 		Context:   executionContext,
@@ -516,7 +516,10 @@ func (ae *ActionExecutor) buildTemplateContext(execContext ActionExecutionContex
 	context["event_type"] = execContext.EventType
 	context["timestamp"] = execContext.Timestamp
 	context["user_id"] = execContext.UserID
-	context["rule_id"] = execContext.RuleID
+	// Handle pointer-based RuleID (nil for manual executions)
+	if execContext.RuleID != nil {
+		context["rule_id"] = *execContext.RuleID
+	}
 	context["rule_name"] = execContext.RuleName
 
 	// Add raw data fields

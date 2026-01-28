@@ -237,15 +237,17 @@ func insertAllocateSeedData(busDomain dbtest.BusDomain) (allocateSeedData, error
 	}
 
 	// Create execution context for testing
+	ruleID := uuid.New()
 	execContext := workflow.ActionExecutionContext{
-		EntityID:    uuid.New(),
-		EntityName:  "orders",
-		EventType:   "on_create",
-		UserID:      adminIDs[0],
-		RuleID:      uuid.New(),
-		RuleName:    "Test Allocation Rule",
-		ExecutionID: uuid.New(),
-		Timestamp:   time.Now().UTC(),
+		EntityID:      uuid.New(),
+		EntityName:    "orders",
+		EventType:     "on_create",
+		UserID:        adminIDs[0],
+		RuleID:        &ruleID,
+		RuleName:      "Test Allocation Rule",
+		ExecutionID:   uuid.New(),
+		Timestamp:     time.Now().UTC(),
+		TriggerSource: workflow.TriggerSourceAutomation,
 	}
 
 	return allocateSeedData{
@@ -490,15 +492,17 @@ func testIdempotency(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocateSeedDat
 		ExpResp: true,
 		ExcFunc: func(ctx context.Context) any {
 			// Use same execution context for both calls
+			idempRuleID := uuid.New()
 			execContext := workflow.ActionExecutionContext{
-				EntityID:    uuid.New(),
-				EntityName:  "orders",
-				EventType:   "on_create",
-				UserID:      sd.Admins[0].ID,
-				RuleID:      uuid.New(),
-				RuleName:    "Idempotency Test",
-				ExecutionID: uuid.New(), // Same execution ID
-				Timestamp:   time.Now().UTC(),
+				EntityID:      uuid.New(),
+				EntityName:    "orders",
+				EventType:     "on_create",
+				UserID:        sd.Admins[0].ID,
+				RuleID:        &idempRuleID,
+				RuleName:      "Idempotency Test",
+				ExecutionID:   uuid.New(), // Same execution ID
+				Timestamp:     time.Now().UTC(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 			}
 
 			config := inventory.AllocateInventoryConfig{
@@ -692,15 +696,17 @@ func testSourceFromLineItem(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocate
 			configJSON, _ := json.Marshal(config)
 
 			// Create execution context with RawData simulating a line item
+			lineItemRuleID := uuid.New()
 			execContext := workflow.ActionExecutionContext{
-				EntityID:    lineItemID,
-				EntityName:  "order_line_items",
-				EventType:   "on_create",
-				UserID:      sd.Admins[0].ID,
-				RuleID:      uuid.New(),
-				RuleName:    "Test Line Item Allocation",
-				ExecutionID: uuid.New(),
-				Timestamp:   time.Now().UTC(),
+				EntityID:      lineItemID,
+				EntityName:    "order_line_items",
+				EventType:     "on_create",
+				UserID:        sd.Admins[0].ID,
+				RuleID:        &lineItemRuleID,
+				RuleName:      "Test Line Item Allocation",
+				ExecutionID:   uuid.New(),
+				Timestamp:     time.Now().UTC(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 				RawData: map[string]interface{}{
 					"product_id": sd.Products[0].ProductID.String(),
 					"quantity":   float64(5),
@@ -767,15 +773,17 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 
 			// Simulate Order A's line items (3 items) - should all be grouped
 			for i := 0; i < 3; i++ {
+				groupedRuleID := uuid.New()
 				execCtx := workflow.ActionExecutionContext{
-					EntityID:    uuid.New(),
-					EntityName:  "order_line_items",
-					EventType:   "on_create",
-					UserID:      sd.Admins[0].ID,
-					RuleID:      uuid.New(),
-					RuleName:    "Test Grouped Allocation",
-					ExecutionID: uuid.New(),
-					Timestamp:   time.Now().UTC(),
+					EntityID:      uuid.New(),
+					EntityName:    "order_line_items",
+					EventType:     "on_create",
+					UserID:        sd.Admins[0].ID,
+					RuleID:        &groupedRuleID,
+					RuleName:      "Test Grouped Allocation",
+					ExecutionID:   uuid.New(),
+					Timestamp:     time.Now().UTC(),
+					TriggerSource: workflow.TriggerSourceAutomation,
 					RawData: map[string]interface{}{
 						"product_id": sd.Products[i].ProductID.String(),
 						"quantity":   float64(2),
@@ -802,15 +810,17 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 
 			// Simulate Order B's line items (2 items) - should be grouped separately
 			for i := 0; i < 2; i++ {
+				orderBRuleID := uuid.New()
 				execCtx := workflow.ActionExecutionContext{
-					EntityID:    uuid.New(),
-					EntityName:  "order_line_items",
-					EventType:   "on_create",
-					UserID:      sd.Admins[0].ID,
-					RuleID:      uuid.New(),
-					RuleName:    "Test Grouped Allocation",
-					ExecutionID: uuid.New(),
-					Timestamp:   time.Now().UTC(),
+					EntityID:      uuid.New(),
+					EntityName:    "order_line_items",
+					EventType:     "on_create",
+					UserID:        sd.Admins[0].ID,
+					RuleID:        &orderBRuleID,
+					RuleName:      "Test Grouped Allocation",
+					ExecutionID:   uuid.New(),
+					Timestamp:     time.Now().UTC(),
+					TriggerSource: workflow.TriggerSourceAutomation,
 					RawData: map[string]interface{}{
 						"product_id": sd.Products[i].ProductID.String(),
 						"quantity":   float64(2),
@@ -1063,15 +1073,17 @@ func Test_ProcessQueued_FiresEventOnFailure(t *testing.T) {
 	)
 
 	// Build a valid QueuedPayload that will trigger allocation failure
+	failureRuleID := uuid.New()
 	execContext := workflow.ActionExecutionContext{
-		EntityID:    uuid.New(),
-		EntityName:  "order_line_items",
-		EventType:   "on_create",
-		UserID:      admins[0].ID,
-		RuleID:      uuid.New(),
-		RuleName:    "Test Failure Alert",
-		ExecutionID: uuid.New(),
-		Timestamp:   time.Now().UTC(),
+		EntityID:      uuid.New(),
+		EntityName:    "order_line_items",
+		EventType:     "on_create",
+		UserID:        admins[0].ID,
+		RuleID:        &failureRuleID,
+		RuleName:      "Test Failure Alert",
+		ExecutionID:   uuid.New(),
+		Timestamp:     time.Now().UTC(),
+		TriggerSource: workflow.TriggerSourceAutomation,
 	}
 
 	allocConfig := inventory.AllocateInventoryConfig{
@@ -1104,7 +1116,7 @@ func Test_ProcessQueued_FiresEventOnFailure(t *testing.T) {
 		RequestType:      "allocate_inventory",
 		RequestData:      requestData,
 		ExecutionContext: execContext,
-		IdempotencyKey:   fmt.Sprintf("%s_%s_allocate_inventory", execContext.ExecutionID, execContext.RuleID),
+		IdempotencyKey:   fmt.Sprintf("%s_%s_allocate_inventory", execContext.ExecutionID, execContext.RuleID.String()),
 	}
 
 	payloadJSON, _ := json.Marshal(queuedPayload)
