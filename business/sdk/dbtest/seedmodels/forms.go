@@ -64,7 +64,22 @@ func GetFullCustomerFormFields(
 	streetEntityID uuid.UUID,
 ) []formfieldbus.NewFormField {
 	var fields []formfieldbus.NewFormField
-	order := 1
+	order := 0
+
+	// ID field - required for update operations to work correctly
+	fields = append(fields, formfieldbus.NewFormField{
+		FormID:       formID,
+		EntityID:     customerEntityID,
+		EntitySchema: "sales",
+		EntityTable:  "customers",
+		Name:         "id",
+		Label:        "ID",
+		FieldType:    "hidden",
+		FieldOrder:   order,
+		Required:     false,
+		Config:       json.RawMessage(`{"hidden": true, "execution_order": 3}`),
+	})
+	order++
 
 	// Section 1: Customer basic info (will be created last but shown first)
 	fields = append(fields, formfieldbus.NewFormField{
@@ -135,7 +150,22 @@ func GetFullSupplierFormFields(
 	contactEntityID uuid.UUID,
 ) []formfieldbus.NewFormField {
 	var fields []formfieldbus.NewFormField
-	order := 1
+	order := 0
+
+	// ID field - required for update operations to work correctly
+	fields = append(fields, formfieldbus.NewFormField{
+		FormID:       formID,
+		EntityID:     supplierEntityID,
+		EntitySchema: "procurement",
+		EntityTable:  "suppliers",
+		Name:         "id",
+		Label:        "ID",
+		FieldType:    "hidden",
+		FieldOrder:   order,
+		Required:     false,
+		Config:       json.RawMessage(`{"hidden": true, "execution_order": 2}`),
+	})
+	order++
 
 	// Section 1: Supplier basic info
 	fields = append(fields, formfieldbus.NewFormField{
@@ -256,6 +286,13 @@ func GetFullSalesOrderFormFields(
 		Entity:         "sales.order_line_items",
 		ParentField:    "order_id",
 		Fields: []formfieldbus.LineItemField{
+			// ID field - required for update operations to work correctly
+			{
+				Name:   "id",
+				Label:  "ID",
+				Type:   "hidden",
+				Hidden: true,
+			},
 			{
 				Name:     "product_id",
 				Label:    "Product",
@@ -342,8 +379,8 @@ func GetFullSalesOrderFormFields(
 				DefaultValueCreate: "PENDING",
 				DropdownConfig: &formfieldbus.DropdownConfig{
 					Entity:      "sales.line_item_fulfillment_statuses",
-					LabelColumn: "line_item_fulfillment_statuses.name",
-					ValueColumn: "line_item_fulfillment_statuses.id",
+					LabelColumn: "name",
+					ValueColumn: "id",
 				},
 			},
 			// Audit fields - hidden with magic variable defaults
