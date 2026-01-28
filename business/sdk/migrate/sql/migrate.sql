@@ -981,18 +981,25 @@ CREATE TABLE workflow.automation_rules (
 );
 
 -- Version: 1.67
--- Description: Create table automation_executions
+-- Description: Create table automation_executions (supports both automation and manual triggers)
 CREATE TABLE workflow.automation_executions (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-   automation_rules_id UUID NOT NULL REFERENCES workflow.automation_rules(id),
+   automation_rules_id UUID REFERENCES workflow.automation_rules(id),  -- NULLABLE for manual executions
    entity_type VARCHAR(50) NOT NULL,
    trigger_data JSONB,
    actions_executed JSONB,
-   status VARCHAR(20) NOT NULL, -- 'success', 'failed', 'partial'
+   status VARCHAR(20) NOT NULL, -- 'success', 'failed', 'partial', 'queued', 'processing'
    error_message TEXT,
    execution_time_ms INTEGER,
-   executed_at TIMESTAMP NOT NULL DEFAULT NOW()
+   executed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+   trigger_source VARCHAR(20) NOT NULL DEFAULT 'automation',  -- 'automation' or 'manual'
+   executed_by UUID REFERENCES core.users(id),                -- User who triggered (required for manual)
+   action_type VARCHAR(100)                                   -- Action type for manual executions
 );
+
+CREATE INDEX idx_automation_executions_trigger_source ON workflow.automation_executions(trigger_source);
+CREATE INDEX idx_automation_executions_executed_by ON workflow.automation_executions(executed_by);
+CREATE INDEX idx_automation_executions_status ON workflow.automation_executions(status);
 
 -- Version: 1.68
 -- Description: Create table action_templates
@@ -1866,3 +1873,40 @@ COMMENT ON COLUMN config.enum_labels.sort_order IS 'Custom sort order (overrides
 -- Version: 1.98
 -- Description: Add itemized discount type
 ALTER TYPE sales.discount_type ADD VALUE 'itemized';
+
+-- Version: 1.990
+-- Description: Create workflow action_permissions table for manual action authorization
+CREATE TABLE workflow.action_permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role_id UUID NOT NULL REFERENCES core.roles(id) ON DELETE CASCADE,
+    action_type VARCHAR(100) NOT NULL,
+    is_allowed BOOLEAN NOT NULL DEFAULT TRUE,
+    constraints JSONB DEFAULT '{}',  -- Stubbed for future constraint implementation
+    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(role_id, action_type)
+);
+
+CREATE INDEX idx_action_permissions_role ON workflow.action_permissions(role_id);
+CREATE INDEX idx_action_permissions_type ON workflow.action_permissions(action_type);
+
+COMMENT ON TABLE workflow.action_permissions IS 'Controls which roles can manually execute workflow actions';
+COMMENT ON COLUMN workflow.action_permissions.role_id IS 'Role that is granted this permission';
+COMMENT ON COLUMN workflow.action_permissions.action_type IS 'Action type identifier (e.g., allocate_inventory, send_email)';
+COMMENT ON COLUMN workflow.action_permissions.is_allowed IS 'Whether the role is allowed to execute this action';
+COMMENT ON COLUMN workflow.action_permissions.constraints IS 'Future: JSONB constraints for fine-grained permission control';
+
+-- Version: 1.991
+-- Description: Seed default action permissions for admin role
+-- Note: update_field is intentionally excluded from manual execution
+INSERT INTO workflow.action_permissions (role_id, action_type, is_allowed)
+SELECT r.id, action_type, true
+FROM core.roles r
+CROSS JOIN (VALUES
+    ('allocate_inventory'),
+    ('create_alert'),
+    ('send_email'),
+    ('send_notification'),
+    ('seek_approval')
+) AS actions(action_type)
+WHERE r.name = 'admin';
