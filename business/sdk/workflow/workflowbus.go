@@ -911,6 +911,9 @@ func (b *Business) CreateExecution(ctx context.Context, nae NewAutomationExecuti
 		ErrorMessage:     nae.ErrorMessage,
 		ExecutionTimeMs:  nae.ExecutionTimeMs,
 		ExecutedAt:       now,
+		TriggerSource:    nae.TriggerSource,
+		ExecutedBy:       nae.ExecutedBy,
+		ActionType:       nae.ActionType,
 	}
 
 	if err := b.storer.CreateExecution(ctx, execution); err != nil {
