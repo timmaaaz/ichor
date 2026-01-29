@@ -1,12 +1,15 @@
 package workflowdb
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -1139,11 +1142,11 @@ func (s *Store) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UU
 	const q = `
 	SELECT
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id, template_name, 
+		execution_order, is_active, template_id, template_name,
 		template_action_type, template_default_config
 	FROM
 		workflow.rule_actions_view
-	WHERE 
+	WHERE
 		automation_rules_id = :automation_rules_id
 	ORDER BY
 		execution_order ASC`
@@ -1154,4 +1157,155 @@ func (s *Store) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UU
 	}
 
 	return toCoreRuleActionViews(dbRuleActionsViews), nil
+}
+
+// QueryAutomationRulesViewPaginated retrieves rules with pagination, filtering, and ordering.
+func (s *Store) QueryAutomationRulesViewPaginated(
+	ctx context.Context,
+	filter workflow.AutomationRuleFilter,
+	orderBy order.By,
+	pg page.Page,
+) ([]workflow.AutomationRuleView, error) {
+	data := map[string]any{
+		"offset":        (pg.Number() - 1) * pg.RowsPerPage(),
+		"rows_per_page": pg.RowsPerPage(),
+	}
+
+	const baseQuery = `
+	SELECT
+		ar.id,
+		ar.name,
+		ar.description,
+		ar.entity_id,
+		ar.trigger_conditions,
+		ar.is_active,
+		ar.created_date,
+		ar.updated_date,
+		ar.created_by,
+		ar.updated_by,
+		ar.trigger_type_id,
+		COALESCE(tt.name, '') AS trigger_type_name,
+		COALESCE(tt.description, '') AS trigger_type_description,
+		ar.entity_type_id,
+		COALESCE(et.name, '') AS entity_type_name,
+		COALESCE(et.description, '') AS entity_type_description,
+		COALESCE(e.name, '') AS entity_name,
+		COALESCE(e.schema_name, '') AS entity_schema_name,
+		COALESCE((
+			SELECT json_agg(json_build_object(
+				'id', ra.id,
+				'name', ra.name,
+				'description', ra.description,
+				'action_config', ra.action_config,
+				'execution_order', ra.execution_order,
+				'is_active', ra.is_active,
+				'template_id', ra.template_id,
+				'deactivated_by', ra.deactivated_by
+			) ORDER BY ra.execution_order)
+			FROM workflow.rule_actions ra
+			WHERE ra.automation_rules_id = ar.id
+		), '[]'::json) AS actions
+	FROM
+		workflow.automation_rules ar
+	LEFT JOIN
+		workflow.trigger_types tt ON ar.trigger_type_id = tt.id
+	LEFT JOIN
+		workflow.entity_types et ON ar.entity_type_id = et.id
+	LEFT JOIN
+		workflow.entities e ON ar.entity_id = e.id`
+
+	buf := bytes.NewBufferString(baseQuery)
+
+	applyAutomationRuleFilter(filter, data, buf)
+
+	orderByClause, err := orderByClauseAutomationRule(orderBy)
+	if err != nil {
+		return nil, fmt.Errorf("orderby: %w", err)
+	}
+	buf.WriteString(orderByClause)
+
+	buf.WriteString(" LIMIT :rows_per_page OFFSET :offset")
+
+	var dbRules []automationRulesView
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbRules); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreAutomationRuleViews(dbRules), nil
+}
+
+// CountAutomationRulesView counts rules matching the filter.
+func (s *Store) CountAutomationRulesView(
+	ctx context.Context,
+	filter workflow.AutomationRuleFilter,
+) (int, error) {
+	data := map[string]any{}
+
+	const baseQuery = `
+	SELECT COUNT(ar.id)
+	FROM workflow.automation_rules ar`
+
+	buf := bytes.NewBufferString(baseQuery)
+
+	applyAutomationRuleFilter(filter, data, buf)
+
+	var count int
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &count); err != nil {
+		return 0, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return count, nil
+}
+
+// QueryActionByID retrieves a single action by its ID.
+func (s *Store) QueryActionByID(ctx context.Context, actionID uuid.UUID) (workflow.RuleAction, error) {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: actionID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, automation_rules_id, name, description, action_config,
+		execution_order, is_active, template_id
+	FROM workflow.rule_actions
+	WHERE id = :id`
+
+	var dbAction ruleAction
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbAction); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.RuleAction{}, workflow.ErrNotFound
+		}
+		return workflow.RuleAction{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreRuleAction(dbAction), nil
+}
+
+// QueryActionViewByID retrieves a single action view by its ID (with template info).
+func (s *Store) QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (workflow.RuleActionView, error) {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: actionID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, automation_rules_id, name, description, action_config,
+		execution_order, is_active, template_id, template_name,
+		template_action_type, template_default_config
+	FROM workflow.rule_actions_view
+	WHERE id = :id`
+
+	var dbActionView ruleActionView
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbActionView); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.RuleActionView{}, workflow.ErrNotFound
+		}
+		return workflow.RuleActionView{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreRuleActionView(dbActionView), nil
 }

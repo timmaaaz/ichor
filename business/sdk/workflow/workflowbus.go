@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
@@ -79,6 +81,14 @@ type Storer interface {
 
 	QueryAutomationRulesView(ctx context.Context) ([]AutomationRuleView, error)
 	QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error)
+
+	// Paginated query methods
+	QueryAutomationRulesViewPaginated(ctx context.Context, filter AutomationRuleFilter, orderBy order.By, page page.Page) ([]AutomationRuleView, error)
+	CountAutomationRulesView(ctx context.Context, filter AutomationRuleFilter) (int, error)
+
+	// Single action query methods
+	QueryActionByID(ctx context.Context, actionID uuid.UUID) (RuleAction, error)
+	QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (RuleActionView, error)
 }
 
 // Set of error variables for CRUD operations.
@@ -88,6 +98,7 @@ var (
 	ErrInvalidDependency     = errors.New("invalid rule dependency")
 	ErrCircularDependency    = errors.New("circular dependency detected")
 	ErrIdempotencyFailure    = errors.New("idempotency failure")
+	ErrActionNotInRule       = errors.New("action does not belong to specified rule")
 )
 
 type IdempotencyResult int
@@ -994,4 +1005,61 @@ func (b *Business) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid
 	}
 
 	return actionsView, nil
+}
+
+// QueryAutomationRulesViewPaginated retrieves a paginated view of automation rules.
+func (b *Business) QueryAutomationRulesViewPaginated(
+	ctx context.Context,
+	filter AutomationRuleFilter,
+	orderBy order.By,
+	pg page.Page,
+) ([]AutomationRuleView, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryautomationrulesviewpaginated")
+	defer span.End()
+
+	rulesView, err := b.storer.QueryAutomationRulesViewPaginated(ctx, filter, orderBy, pg)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return rulesView, nil
+}
+
+// CountAutomationRulesView returns the total count of rules matching the filter.
+func (b *Business) CountAutomationRulesView(ctx context.Context, filter AutomationRuleFilter) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.countautomationrulesview")
+	defer span.End()
+
+	count, err := b.storer.CountAutomationRulesView(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("count: %w", err)
+	}
+
+	return count, nil
+}
+
+// QueryActionByID retrieves a single rule action by ID.
+func (b *Business) QueryActionByID(ctx context.Context, actionID uuid.UUID) (RuleAction, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryactionbyid")
+	defer span.End()
+
+	action, err := b.storer.QueryActionByID(ctx, actionID)
+	if err != nil {
+		return RuleAction{}, fmt.Errorf("query: actionID[%s]: %w", actionID, err)
+	}
+
+	return action, nil
+}
+
+// QueryActionViewByID retrieves a single rule action view by ID (with template info).
+func (b *Business) QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (RuleActionView, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryactionviewbyid")
+	defer span.End()
+
+	actionView, err := b.storer.QueryActionViewByID(ctx, actionID)
+	if err != nil {
+		return RuleActionView{}, fmt.Errorf("query: actionID[%s]: %w", actionID, err)
+	}
+
+	return actionView, nil
 }
