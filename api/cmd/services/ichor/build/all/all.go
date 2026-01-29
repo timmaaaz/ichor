@@ -60,6 +60,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/sales/orderfulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/sales/orderlineitemsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/sales/ordersapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/actionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertws"
 
@@ -274,6 +275,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus/stores/actionpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
@@ -406,6 +409,11 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Workflow domain
 	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
+	actionPermBus := actionpermissionsbus.NewBusiness(cfg.Log, actionpermissionsdb.NewStore(cfg.Log, cfg.DB))
+
+	// Create a standalone ActionRegistry that works with or without RabbitMQ
+	// This enables the actionapi routes to be registered even in test environments
+	actionRegistry := workflow.NewActionRegistry()
 
 	// =========================================================================
 	// Initialize Workflow Infrastructure
@@ -437,8 +445,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					eventPublisher = workflow.NewEventPublisher(cfg.Log, queueManager)
 					cfg.Log.Info(context.Background(), "workflow event infrastructure initialized")
 
-					// Register workflow action handlers
-					actionRegistry := workflowEngine.GetRegistry()
+					// Register workflow action handlers to the shared registry
 					workflowactions.RegisterAll(actionRegistry, workflowactions.ActionConfig{
 						Log:         cfg.Log,
 						DB:          cfg.DB,
@@ -541,6 +548,19 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			}
 		}
 	}
+
+	// Create ActionService for unified action execution (works with empty registry in tests)
+	actionService := workflow.NewActionService(cfg.Log, cfg.DB, actionRegistry)
+
+	// Wire action API routes for manual action execution
+	actionapi.Routes(app, actionapi.Config{
+		Log:           cfg.Log,
+		ActionService: actionService,
+		ActionPermBus: actionPermBus,
+		UserRoleBus:   userRoleBus,
+		AuthClient:    cfg.AuthClient,
+	})
+	cfg.Log.Info(context.Background(), "workflow action API routes initialized")
 
 	checkapi.Routes(app, checkapi.Config{
 		Build: cfg.Build,

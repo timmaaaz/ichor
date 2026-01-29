@@ -50,9 +50,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (actionpermissionsbus.Store
 func (s *Store) Create(ctx context.Context, ap actionpermissionsbus.ActionPermission) error {
 	const q = `
 	INSERT INTO workflow.action_permissions (
-		id, role_id, action_type, is_allowed, constraints, created_at, updated_at
+		id, role_id, action_type, is_allowed, constraints, created_date, updated_date
 	) VALUES (
-		:id, :role_id, :action_type, :is_allowed, :constraints, :created_at, :updated_at
+		:id, :role_id, :action_type, :is_allowed, :constraints, :created_date, :updated_date
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBActionPermission(ap)); err != nil {
@@ -73,7 +73,7 @@ func (s *Store) Update(ctx context.Context, ap actionpermissionsbus.ActionPermis
 	SET
 		is_allowed = :is_allowed,
 		constraints = :constraints,
-		updated_at = :updated_at
+		updated_date = :updated_date
 	WHERE
 		id = :id`
 
@@ -114,7 +114,7 @@ func (s *Store) Query(ctx context.Context, filter actionpermissionsbus.QueryFilt
 
 	const q = `
 	SELECT
-		id, role_id, action_type, is_allowed, constraints, created_at, updated_at
+		id, role_id, action_type, is_allowed, constraints, created_date, updated_date
 	FROM
 		workflow.action_permissions`
 
@@ -171,7 +171,7 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (actionpermissionsb
 
 	const q = `
 	SELECT
-		id, role_id, action_type, is_allowed, constraints, created_at, updated_at
+		id, role_id, action_type, is_allowed, constraints, created_date, updated_date
 	FROM
 		workflow.action_permissions
 	WHERE
@@ -200,7 +200,7 @@ func (s *Store) QueryByRoleAndAction(ctx context.Context, roleID uuid.UUID, acti
 
 	const q = `
 	SELECT
-		id, role_id, action_type, is_allowed, constraints, created_at, updated_at
+		id, role_id, action_type, is_allowed, constraints, created_date, updated_date
 	FROM
 		workflow.action_permissions
 	WHERE
@@ -237,7 +237,7 @@ func (s *Store) QueryByRoleIDs(ctx context.Context, roleIDs []uuid.UUID, actionT
 
 	const q = `
 	SELECT
-		id, role_id, action_type, is_allowed, constraints, created_at, updated_at
+		id, role_id, action_type, is_allowed, constraints, created_date, updated_date
 	FROM
 		workflow.action_permissions
 	WHERE

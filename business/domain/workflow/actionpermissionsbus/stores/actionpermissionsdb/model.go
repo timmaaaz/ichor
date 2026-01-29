@@ -16,8 +16,8 @@ type dbActionPermission struct {
 	ActionType  string          `db:"action_type"`
 	IsAllowed   bool            `db:"is_allowed"`
 	Constraints json.RawMessage `db:"constraints"`
-	CreatedAt   time.Time       `db:"created_at"`
-	UpdatedAt   time.Time       `db:"updated_at"`
+	CreatedAt   time.Time       `db:"created_date"`
+	UpdatedAt   time.Time       `db:"updated_date"`
 }
 
 func toDBActionPermission(ap actionpermissionsbus.ActionPermission) dbActionPermission {
