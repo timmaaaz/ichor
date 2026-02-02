@@ -423,6 +423,7 @@ func toDBRuleDependency(rd workflow.RuleDependency) ruleDependency {
 type automationExecution struct {
 	ID                string          `db:"id"`
 	AutomationRulesID sql.NullString  `db:"automation_rules_id"` // Nullable for manual executions
+	RuleName          sql.NullString  `db:"rule_name"`           // From LEFT JOIN with automation_rules
 	EntityType        string          `db:"entity_type"`
 	TriggerData       json.RawMessage `db:"trigger_data"`
 	ActionsExecuted   json.RawMessage `db:"actions_executed"`
@@ -438,17 +439,20 @@ type automationExecution struct {
 // toCoreAutomationExecution converts a store automationExecution to core AutomationExecution
 func toCoreAutomationExecution(dbExec automationExecution) workflow.AutomationExecution {
 	ae := workflow.AutomationExecution{
-		ID:          uuid.MustParse(dbExec.ID),
-		EntityType:  dbExec.EntityType,
-		TriggerData: dbExec.TriggerData,
+		ID:              uuid.MustParse(dbExec.ID),
+		EntityType:      dbExec.EntityType,
+		TriggerData:     dbExec.TriggerData,
 		ActionsExecuted: dbExec.ActionsExecuted,
-		Status:      workflow.ExecutionStatus(dbExec.Status),
-		ExecutedAt:  dbExec.ExecutedAt,
+		Status:          workflow.ExecutionStatus(dbExec.Status),
+		ExecutedAt:      dbExec.ExecutedAt,
 	}
 	// Handle nullable AutomationRuleID
 	if dbExec.AutomationRulesID.Valid {
 		ruleID := uuid.MustParse(dbExec.AutomationRulesID.String)
 		ae.AutomationRuleID = &ruleID
+	}
+	if dbExec.RuleName.Valid {
+		ae.RuleName = dbExec.RuleName.String
 	}
 	if dbExec.ErrorMessage.Valid {
 		ae.ErrorMessage = dbExec.ErrorMessage.String

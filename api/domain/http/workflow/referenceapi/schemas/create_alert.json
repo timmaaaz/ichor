@@ -1,0 +1,45 @@
+{
+    "type": "object",
+    "required": ["alert_type", "severity", "title", "message"],
+    "properties": {
+        "alert_type": {
+            "type": "string",
+            "description": "Type/category of alert"
+        },
+        "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"],
+            "description": "Severity level"
+        },
+        "title": {
+            "type": "string",
+            "description": "Alert title - supports template variables"
+        },
+        "message": {
+            "type": "string",
+            "description": "Alert message body - supports template variables"
+        },
+        "recipients": {
+            "type": "object",
+            "description": "Who should receive the alert",
+            "properties": {
+                "users": {
+                    "type": "array",
+                    "items": {"type": "string", "format": "uuid"}
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {"type": "string", "format": "uuid"}
+                }
+            }
+        },
+        "context": {
+            "type": "object",
+            "description": "Additional context data stored with alert"
+        },
+        "resolve_prior": {
+            "type": "boolean",
+            "description": "Whether to resolve prior alerts of same type"
+        }
+    }
+}

@@ -63,6 +63,9 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/actionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertws"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/executionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/referenceapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/ruleapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
@@ -411,6 +414,10 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
 	actionPermBus := actionpermissionsbus.NewBusiness(cfg.Log, actionpermissionsdb.NewStore(cfg.Log, cfg.DB))
 
+	// Create workflowBus outside the RabbitMQ block so it's available for reference API
+	workflowStore := workflowdb.NewStore(cfg.Log, cfg.DB)
+	workflowBus := workflow.NewBusiness(cfg.Log, workflowStore)
+
 	// Create a standalone ActionRegistry that works with or without RabbitMQ
 	// This enables the actionapi routes to be registered even in test environments
 	actionRegistry := workflow.NewActionRegistry()
@@ -424,8 +431,6 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	var workflowQueue *rabbitmq.WorkflowQueue
 
 	if cfg.RabbitClient != nil && cfg.RabbitClient.IsConnected() {
-		workflowStore := workflowdb.NewStore(cfg.Log, cfg.DB)
-		workflowBus := workflow.NewBusiness(cfg.Log, workflowStore)
 
 		workflowEngine := workflow.NewEngine(cfg.Log, cfg.DB, workflowBus)
 		if err := workflowEngine.Initialize(context.Background(), workflowBus); err != nil {
@@ -1035,6 +1040,26 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 		WorkflowQueue:  workflowQueue,
+	})
+
+	referenceapi.Routes(app, referenceapi.Config{
+		Log:            cfg.Log,
+		WorkflowBus:    workflowBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	ruleapi.Routes(app, ruleapi.Config{
+		Log:            cfg.Log,
+		WorkflowBus:    workflowBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	executionapi.Routes(app, executionapi.Config{
+		Log:         cfg.Log,
+		WorkflowBus: workflowBus,
+		AuthClient:  cfg.AuthClient,
 	})
 
 	// =========================================================================

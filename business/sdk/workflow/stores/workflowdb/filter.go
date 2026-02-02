@@ -7,6 +7,45 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 )
 
+func applyExecutionFilter(filter workflow.ExecutionFilter, data map[string]any, buf *bytes.Buffer) {
+	var wc []string
+
+	if filter.ID != nil {
+		data["id"] = filter.ID.String()
+		wc = append(wc, "ae.id = :id")
+	}
+
+	if filter.RuleID != nil {
+		data["automation_rules_id"] = filter.RuleID.String()
+		wc = append(wc, "ae.automation_rules_id = :automation_rules_id")
+	}
+
+	if filter.Status != nil {
+		data["status"] = string(*filter.Status)
+		wc = append(wc, "ae.status = :status")
+	}
+
+	if filter.TriggerSource != nil {
+		data["trigger_source"] = *filter.TriggerSource
+		wc = append(wc, "ae.trigger_source = :trigger_source")
+	}
+
+	if filter.DateFrom != nil {
+		data["date_from"] = filter.DateFrom.UTC()
+		wc = append(wc, "ae.executed_at >= :date_from")
+	}
+
+	if filter.DateTo != nil {
+		data["date_to"] = filter.DateTo.UTC()
+		wc = append(wc, "ae.executed_at <= :date_to")
+	}
+
+	if len(wc) > 0 {
+		buf.WriteString(" WHERE ")
+		buf.WriteString(strings.Join(wc, " AND "))
+	}
+}
+
 func applyAutomationRuleFilter(filter workflow.AutomationRuleFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 

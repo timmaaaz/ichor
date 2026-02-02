@@ -385,6 +385,7 @@ type NewRuleDependency struct {
 type AutomationExecution struct {
 	ID               uuid.UUID
 	AutomationRuleID *uuid.UUID // Pointer: nil for manual executions
+	RuleName         string     // Rule name from LEFT JOIN (empty for manual executions)
 	EntityType       string
 	TriggerData      json.RawMessage
 	ActionsExecuted  json.RawMessage

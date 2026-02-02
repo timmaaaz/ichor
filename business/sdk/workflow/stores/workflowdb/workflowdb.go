@@ -1204,7 +1204,7 @@ func (s *Store) QueryAutomationRulesViewPaginated(
 			) ORDER BY ra.execution_order)
 			FROM workflow.rule_actions ra
 			WHERE ra.automation_rules_id = ar.id
-		), '[]'::json) AS actions
+		), '[]'::::json) AS actions
 	FROM
 		workflow.automation_rules ar
 	LEFT JOIN
@@ -1242,19 +1242,21 @@ func (s *Store) CountAutomationRulesView(
 	data := map[string]any{}
 
 	const baseQuery = `
-	SELECT COUNT(ar.id)
+	SELECT COUNT(ar.id) AS count
 	FROM workflow.automation_rules ar`
 
 	buf := bytes.NewBufferString(baseQuery)
 
 	applyAutomationRuleFilter(filter, data, buf)
 
-	var count int
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &count); err != nil {
+	var result struct {
+		Count int `db:"count"`
+	}
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &result); err != nil {
 		return 0, fmt.Errorf("namedquerystruct: %w", err)
 	}
 
-	return count, nil
+	return result.Count, nil
 }
 
 // QueryActionByID retrieves a single action by its ID.
@@ -1308,4 +1310,122 @@ func (s *Store) QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (wo
 	}
 
 	return toCoreRuleActionView(dbActionView), nil
+}
+
+// =============================================================================
+// Execution Paginated Queries
+
+// QueryExecutionsPaginated retrieves executions with pagination, filtering, and ordering.
+func (s *Store) QueryExecutionsPaginated(
+	ctx context.Context,
+	filter workflow.ExecutionFilter,
+	orderBy order.By,
+	pg page.Page,
+) ([]workflow.AutomationExecution, error) {
+	data := map[string]any{
+		"offset":        (pg.Number() - 1) * pg.RowsPerPage(),
+		"rows_per_page": pg.RowsPerPage(),
+	}
+
+	const baseQuery = `
+	SELECT
+		ae.id,
+		ae.automation_rules_id,
+		ar.name AS rule_name,
+		ae.entity_type,
+		ae.trigger_data,
+		ae.actions_executed,
+		ae.status,
+		ae.error_message,
+		ae.execution_time_ms,
+		ae.executed_at,
+		ae.trigger_source,
+		ae.executed_by,
+		ae.action_type
+	FROM
+		workflow.automation_executions ae
+	LEFT JOIN
+		workflow.automation_rules ar ON ae.automation_rules_id = ar.id`
+
+	buf := bytes.NewBufferString(baseQuery)
+
+	applyExecutionFilter(filter, data, buf)
+
+	orderByClause, err := orderByClauseExecution(orderBy)
+	if err != nil {
+		return nil, fmt.Errorf("orderby: %w", err)
+	}
+	buf.WriteString(orderByClause)
+
+	buf.WriteString(" LIMIT :rows_per_page OFFSET :offset")
+
+	var dbExecutions []automationExecution
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbExecutions); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreAutomationExecutionSlice(dbExecutions), nil
+}
+
+// CountExecutions counts executions matching the filter.
+func (s *Store) CountExecutions(
+	ctx context.Context,
+	filter workflow.ExecutionFilter,
+) (int, error) {
+	data := map[string]any{}
+
+	const baseQuery = `
+	SELECT COUNT(ae.id) AS count
+	FROM workflow.automation_executions ae`
+
+	buf := bytes.NewBufferString(baseQuery)
+
+	applyExecutionFilter(filter, data, buf)
+
+	var result struct {
+		Count int `db:"count"`
+	}
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &result); err != nil {
+		return 0, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return result.Count, nil
+}
+
+// QueryExecutionByID retrieves a single execution by its ID.
+func (s *Store) QueryExecutionByID(ctx context.Context, id uuid.UUID) (workflow.AutomationExecution, error) {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: id.String(),
+	}
+
+	const q = `
+	SELECT
+		ae.id,
+		ae.automation_rules_id,
+		ar.name AS rule_name,
+		ae.entity_type,
+		ae.trigger_data,
+		ae.actions_executed,
+		ae.status,
+		ae.error_message,
+		ae.execution_time_ms,
+		ae.executed_at,
+		ae.trigger_source,
+		ae.executed_by,
+		ae.action_type
+	FROM workflow.automation_executions ae
+	LEFT JOIN workflow.automation_rules ar ON ae.automation_rules_id = ar.id
+	WHERE ae.id = :id`
+
+	var dbExecution automationExecution
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbExecution); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.AutomationExecution{}, workflow.ErrNotFound
+		}
+		return workflow.AutomationExecution{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreAutomationExecution(dbExecution), nil
 }

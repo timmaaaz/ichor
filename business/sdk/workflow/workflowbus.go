@@ -89,6 +89,11 @@ type Storer interface {
 	// Single action query methods
 	QueryActionByID(ctx context.Context, actionID uuid.UUID) (RuleAction, error)
 	QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (RuleActionView, error)
+
+	// Execution paginated query methods
+	QueryExecutionsPaginated(ctx context.Context, filter ExecutionFilter, orderBy order.By, page page.Page) ([]AutomationExecution, error)
+	CountExecutions(ctx context.Context, filter ExecutionFilter) (int, error)
+	QueryExecutionByID(ctx context.Context, id uuid.UUID) (AutomationExecution, error)
 }
 
 // Set of error variables for CRUD operations.
@@ -1062,4 +1067,51 @@ func (b *Business) QueryActionViewByID(ctx context.Context, actionID uuid.UUID) 
 	}
 
 	return actionView, nil
+}
+
+// =============================================================================
+// Execution Paginated Queries
+
+// QueryExecutionsPaginated returns paginated execution history.
+func (b *Business) QueryExecutionsPaginated(
+	ctx context.Context,
+	filter ExecutionFilter,
+	orderBy order.By,
+	pg page.Page,
+) ([]AutomationExecution, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryexecutionspaginated")
+	defer span.End()
+
+	executions, err := b.storer.QueryExecutionsPaginated(ctx, filter, orderBy, pg)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return executions, nil
+}
+
+// CountExecutions returns total count for pagination.
+func (b *Business) CountExecutions(ctx context.Context, filter ExecutionFilter) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.countexecutions")
+	defer span.End()
+
+	count, err := b.storer.CountExecutions(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("count: %w", err)
+	}
+
+	return count, nil
+}
+
+// QueryExecutionByID returns a single execution by its ID.
+func (b *Business) QueryExecutionByID(ctx context.Context, id uuid.UUID) (AutomationExecution, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryexecutionbyid")
+	defer span.End()
+
+	execution, err := b.storer.QueryExecutionByID(ctx, id)
+	if err != nil {
+		return AutomationExecution{}, fmt.Errorf("query: id[%s]: %w", id, err)
+	}
+
+	return execution, nil
 }

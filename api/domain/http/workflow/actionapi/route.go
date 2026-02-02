@@ -37,6 +37,6 @@ func Routes(app *web.App, cfg Config) {
 	// Permission checking is done in the app layer based on action_permissions table
 	app.HandlerFunc(http.MethodPost, version, "/workflow/actions/{actionType}/execute", api.execute, authen)
 
-	// Get execution status (for tracking async actions)
-	app.HandlerFunc(http.MethodGet, version, "/workflow/executions/{executionId}", api.getExecutionStatus, authen)
+	// Get execution status for manual actions (for tracking async actions)
+	app.HandlerFunc(http.MethodGet, version, "/workflow/actions/executions/{executionId}", api.getExecutionStatus, authen)
 }

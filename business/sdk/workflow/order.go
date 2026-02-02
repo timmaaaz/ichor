@@ -20,3 +20,15 @@ const (
 	ActionOrderByExecutionOrder = "execution_order"
 	ActionOrderByIsActive       = "is_active"
 )
+
+// Order field constants for execution history.
+const (
+	ExecutionOrderByID          = "id"
+	ExecutionOrderByExecutedAt  = "executed_at"
+	ExecutionOrderByStatus      = "status"
+	ExecutionOrderByRuleID      = "automation_rules_id"
+	ExecutionOrderByEntityType  = "entity_type"
+)
+
+// DefaultExecutionOrderBy is the default ordering for execution queries.
+var DefaultExecutionOrderBy = order.NewBy(ExecutionOrderByExecutedAt, order.DESC)

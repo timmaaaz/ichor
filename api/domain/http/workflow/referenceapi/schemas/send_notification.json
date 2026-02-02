@@ -1,0 +1,34 @@
+{
+    "type": "object",
+    "required": ["recipients", "channels"],
+    "properties": {
+        "recipients": {
+            "type": "array",
+            "description": "User IDs to notify",
+            "items": {"type": "string", "format": "uuid"}
+        },
+        "channels": {
+            "type": "array",
+            "description": "Notification channels (e.g., 'in_app', 'push', 'sms')",
+            "items": {"type": "string"}
+        },
+        "title": {
+            "type": "string",
+            "description": "Notification title - supports template variables"
+        },
+        "message": {
+            "type": "string",
+            "description": "Notification message - supports template variables"
+        },
+        "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Priority level"
+        },
+        "action_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Link to navigate to when clicked"
+        }
+    }
+}
