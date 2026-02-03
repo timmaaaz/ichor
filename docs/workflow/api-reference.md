@@ -459,11 +459,470 @@ GET /workflow/alerts/mine?status=active&severity=high
 
 This returns alerts that are both active AND high severity.
 
+## Edge API (Graph-Based Execution)
+
+Base path: `/v1/workflow/rules/{ruleID}/edges`
+
+The Edge API enables graph-based workflow execution with conditional branching. Edges define directed connections between actions, allowing for complex flows like if/else branching, diamond patterns, and parallel paths.
+
+**Permission Table**: `workflow.automation_rules`
+
+### Edge Types
+
+| Type | Constant | Description |
+|------|----------|-------------|
+| `start` | `EdgeTypeStart` | Entry point into the graph (source is null) |
+| `sequence` | `EdgeTypeSequence` | Linear progression, always followed |
+| `always` | `EdgeTypeAlways` | Unconditional edge, always followed |
+| `true_branch` | `EdgeTypeTrueBranch` | Only followed when condition evaluates to `true` |
+| `false_branch` | `EdgeTypeFalseBranch` | Only followed when condition evaluates to `false` |
+
+### GET /workflow/rules/{ruleID}/edges
+
+List all edges for a rule.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ruleID` | UUID | Rule ID |
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "rule_id": "uuid",
+    "source_action_id": null,
+    "target_action_id": "uuid",
+    "edge_type": "start",
+    "edge_order": 1,
+    "created_date": "2025-01-01T12:00:00Z"
+  },
+  {
+    "id": "uuid",
+    "rule_id": "uuid",
+    "source_action_id": "uuid",
+    "target_action_id": "uuid",
+    "edge_type": "sequence",
+    "edge_order": 1,
+    "created_date": "2025-01-01T12:00:00Z"
+  }
+]
+```
+
+---
+
+### GET /workflow/rules/{ruleID}/edges/{edgeID}
+
+Get a single edge by ID.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ruleID` | UUID | Rule ID |
+| `edgeID` | UUID | Edge ID |
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "rule_id": "uuid",
+  "source_action_id": "uuid",
+  "target_action_id": "uuid",
+  "edge_type": "true_branch",
+  "edge_order": 1,
+  "created_date": "2025-01-01T12:00:00Z"
+}
+```
+
+---
+
+### POST /workflow/rules/{ruleID}/edges
+
+Create a new edge.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ruleID` | UUID | Rule ID |
+
+**Request Body:**
+
+```json
+{
+  "source_action_id": "uuid-or-null",
+  "target_action_id": "uuid",
+  "edge_type": "sequence",
+  "edge_order": 1
+}
+```
+
+**Request Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `source_action_id` | UUID/null | Conditional | Source action (null for `start` edges) |
+| `target_action_id` | UUID | **Yes** | Target action |
+| `edge_type` | string | **Yes** | One of: `start`, `sequence`, `true_branch`, `false_branch`, `always` |
+| `edge_order` | int | No | Order for deterministic traversal (default: 0) |
+
+**Validation Rules:**
+
+- `start` edges MUST have `source_action_id` as null
+- Non-start edges MUST have a `source_action_id`
+- Target action must exist and belong to the specified rule
+- Source action (if provided) must exist and belong to the specified rule
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "rule_id": "uuid",
+  "source_action_id": null,
+  "target_action_id": "uuid",
+  "edge_type": "start",
+  "edge_order": 1,
+  "created_date": "2025-01-01T12:00:00Z"
+}
+```
+
+---
+
+### DELETE /workflow/rules/{ruleID}/edges/{edgeID}
+
+Delete a single edge.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ruleID` | UUID | Rule ID |
+| `edgeID` | UUID | Edge ID |
+
+**Response:** `204 No Content`
+
+---
+
+### DELETE /workflow/rules/{ruleID}/edges-all
+
+Delete all edges for a rule (reset to linear execution).
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ruleID` | UUID | Rule ID |
+
+**Response:** `204 No Content`
+
+**Notes:**
+- After deleting all edges, the rule falls back to linear `execution_order` execution
+- Useful for resetting a rule's action graph
+
+---
+
+## Cascade Visualization API
+
+Endpoint for analyzing downstream workflow dependencies.
+
+### GET /workflow/rules/{id}/cascade-map
+
+Get all downstream workflows that could be triggered by a rule's actions.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | Rule ID to analyze |
+
+**Response:**
+
+```json
+{
+  "rule_id": "uuid",
+  "rule_name": "Order Status Update",
+  "actions": [
+    {
+      "action_id": "uuid",
+      "action_name": "Update Status",
+      "action_type": "update_field",
+      "modifies_entity": "sales.orders",
+      "triggers_event": "on_update",
+      "modified_fields": ["status"],
+      "downstream_workflows": [
+        {
+          "rule_id": "uuid",
+          "rule_name": "Order Shipped Notification",
+          "trigger_conditions": {"status": {"operator": "equals", "value": "shipped"}},
+          "will_trigger_if": "any sales.orders update (with conditions)"
+        }
+      ]
+    },
+    {
+      "action_id": "uuid",
+      "action_name": "Send Email",
+      "action_type": "send_email",
+      "downstream_workflows": []
+    }
+  ]
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rule_id` | string | ID of the analyzed rule |
+| `rule_name` | string | Name of the analyzed rule |
+| `actions` | array | Actions and their downstream effects |
+
+**ActionCascadeInfo Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `action_id` | string | Action ID |
+| `action_name` | string | Action name |
+| `action_type` | string | Action type (e.g., `update_field`) |
+| `modifies_entity` | string | Entity being modified (if any) |
+| `triggers_event` | string | Event type triggered (`on_create`, `on_update`, `on_delete`) |
+| `modified_fields` | array | Fields being changed |
+| `downstream_workflows` | array | Workflows that may be triggered |
+
+**DownstreamWorkflowInfo Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rule_id` | string | Downstream rule ID |
+| `rule_name` | string | Downstream rule name |
+| `trigger_conditions` | object | Raw trigger conditions (nullable) |
+| `will_trigger_if` | string | Human-readable trigger description |
+
+**Notes:**
+- Only active rules are included in downstream workflows
+- Self-triggers are excluded (rule doesn't show itself)
+- Only actions implementing `EntityModifier` show modifications (currently: `update_field`)
+
+See [cascade-visualization.md](cascade-visualization.md) for detailed documentation.
+
+---
+
+## Rule Testing/Simulation API
+
+Endpoints for testing rules without executing them.
+
+### POST /workflow/rules/{id}/test
+
+Test a rule with sample data (dry run simulation).
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | Rule ID to test |
+
+**Request Body:**
+
+```json
+{
+  "sample_data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "pending",
+    "total": 1500.00,
+    "customer_name": "Acme Corp"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "rule_id": "uuid",
+  "rule_name": "High Value Order Alert",
+  "would_trigger": true,
+  "matched_conditions": [
+    {
+      "field": "total",
+      "operator": "greater_than",
+      "expected": 1000,
+      "actual": 1500,
+      "matched": true
+    }
+  ],
+  "actions_to_execute": [
+    {
+      "action_id": "uuid",
+      "action_name": "Send Alert",
+      "action_type": "create_alert",
+      "order": 1,
+      "preview": {
+        "message": "High value order from Acme Corp"
+      }
+    }
+  ],
+  "template_preview": {
+    "entity.id": "550e8400-e29b-41d4-a716-446655440000",
+    "entity.status": "pending",
+    "entity.total": "1500",
+    "entity.customer_name": "Acme Corp"
+  },
+  "validation_errors": []
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rule_id` | UUID | Rule ID |
+| `rule_name` | string | Rule name |
+| `would_trigger` | bool | Whether the rule would trigger with this data |
+| `matched_conditions` | array | Condition evaluation results |
+| `actions_to_execute` | array | Actions that would run |
+| `template_preview` | object | Template variable previews |
+| `validation_errors` | array | Any validation issues |
+
+**Condition Operators Supported:**
+
+| Operator | Aliases | Description |
+|----------|---------|-------------|
+| `equals` | `eq`, `=`, `==` | Exact match |
+| `not_equals` | `neq`, `!=`, `<>` | Not equal |
+| `greater_than` | `gt`, `>` | Greater than |
+| `greater_than_or_equals` | `gte`, `>=` | Greater than or equal |
+| `less_than` | `lt`, `<` | Less than |
+| `less_than_or_equals` | `lte`, `<=` | Less than or equal |
+| `contains` | - | String contains |
+| `not_contains` | - | String does not contain |
+| `starts_with` | - | String starts with |
+| `ends_with` | - | String ends with |
+| `is_empty` | - | Value is empty/null |
+| `is_not_empty` | - | Value is not empty |
+| `in` | - | Value in list |
+| `not_in` | - | Value not in list |
+
+---
+
+### GET /workflow/rules/{id}/executions
+
+List execution history for a rule.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | Rule ID |
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | int | Page number (default: 1) |
+| `rows` | int | Rows per page (default: 20) |
+
+**Response:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "rule_id": "uuid",
+      "entity_id": "uuid",
+      "entity_name": "orders",
+      "trigger_type": "on_update",
+      "status": "completed",
+      "started_at": "2025-01-01T12:00:00Z",
+      "completed_at": "2025-01-01T12:00:05Z",
+      "error_message": null
+    }
+  ],
+  "total": 50,
+  "page": 1,
+  "rowsPerPage": 20
+}
+```
+
+---
+
+## Error Responses
+
+All APIs use consistent error responses.
+
+### 400 Bad Request
+
+Invalid parameters or request body.
+
+```json
+{
+  "error": "invalid_argument",
+  "message": "Invalid rule ID format"
+}
+```
+
+### 401 Unauthorized
+
+Missing or invalid authentication.
+
+```json
+{
+  "error": "unauthenticated",
+  "message": "Authentication required"
+}
+```
+
+### 403 Forbidden
+
+User lacks required permissions.
+
+```json
+{
+  "error": "permission_denied",
+  "message": "Not authorized to access this resource"
+}
+```
+
+### 404 Not Found
+
+Resource not found.
+
+```json
+{
+  "error": "not_found",
+  "message": "Rule not found"
+}
+```
+
+### 412 Precondition Failed
+
+Validation failed.
+
+```json
+{
+  "error": "failed_precondition",
+  "message": "start edges must not have a source_action_id"
+}
+```
+
+---
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `api/domain/http/workflow/alertapi/alertapi.go` | HTTP handlers |
-| `api/domain/http/workflow/alertapi/route.go` | Route definitions |
-| `api/domain/http/workflow/alertapi/model.go` | API models |
-| `api/domain/http/workflow/alertapi/filter.go` | Filter parsing |
+| `api/domain/http/workflow/alertapi/alertapi.go` | Alert HTTP handlers |
+| `api/domain/http/workflow/alertapi/route.go` | Alert route definitions |
+| `api/domain/http/workflow/alertapi/model.go` | Alert API models |
+| `api/domain/http/workflow/alertapi/filter.go` | Alert filter parsing |
+| `api/domain/http/workflow/edgeapi/edgeapi.go` | Edge HTTP handlers |
+| `api/domain/http/workflow/edgeapi/route.go` | Edge route definitions |
+| `api/domain/http/workflow/edgeapi/model.go` | Edge API models |
+| `api/domain/http/workflow/ruleapi/cascade.go` | Cascade visualization handler |
+| `api/domain/http/workflow/ruleapi/simulate.go` | Rule simulation handler |
+| `api/domain/http/workflow/ruleapi/route.go` | Rule route definitions |

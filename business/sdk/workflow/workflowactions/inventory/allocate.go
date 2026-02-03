@@ -816,3 +816,25 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+// GetEntityModifications implements workflow.EntityModifier for cascade visualization.
+// Returns the entities that this action may modify based on its configuration.
+// Inventory allocation modifies inventory_items (reserved/allocated quantities)
+// and creates allocation_results records.
+func (h *AllocateInventoryHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
+	// Inventory allocation always:
+	// 1. Updates inventory_items (reserved_quantity or allocated_quantity)
+	// 2. Creates an allocation_results record (which fires on_create event)
+	return []workflow.EntityModification{
+		{
+			EntityName: "inventory.inventory_items",
+			EventType:  "on_update",
+			Fields:     []string{"reserved_quantity", "allocated_quantity"},
+		},
+		{
+			EntityName: "allocation_results",
+			EventType:  "on_create",
+			Fields:     nil, // New record, all fields are "created"
+		},
+	}
+}

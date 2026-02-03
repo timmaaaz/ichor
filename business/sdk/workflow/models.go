@@ -119,6 +119,7 @@ type ActionResult struct {
 	Duration     time.Duration          `json:"duration_ms"`
 	StartedAt    time.Time              `json:"started_at"`
 	CompletedAt  *time.Time             `json:"completed_at,omitempty"`
+	BranchTaken  string                 `json:"branch_taken,omitempty"` // For condition actions: "true_branch" or "false_branch"
 }
 
 // WorkflowConfig holds configuration for the workflow engine
@@ -376,6 +377,48 @@ type NewRuleDependency struct {
 	ID           uuid.UUID
 	ParentRuleID uuid.UUID
 	ChildRuleID  uuid.UUID
+}
+
+// =============================================================================
+// Action Edge (for workflow branching/condition nodes)
+// =============================================================================
+
+// EdgeType constants for action edges
+const (
+	EdgeTypeStart       = "start"        // Entry point into action graph (source is nil)
+	EdgeTypeSequence    = "sequence"     // Linear progression to next action
+	EdgeTypeTrueBranch  = "true_branch"  // Condition evaluated to true
+	EdgeTypeFalseBranch = "false_branch" // Condition evaluated to false
+	EdgeTypeAlways      = "always"       // Unconditional edge (always follow)
+)
+
+// ActionEdge represents a directed edge between actions in a workflow graph.
+// Used to support branching (condition nodes) within a rule's action sequence.
+type ActionEdge struct {
+	ID             uuid.UUID
+	RuleID         uuid.UUID
+	SourceActionID *uuid.UUID // nil for start edges (entry points)
+	TargetActionID uuid.UUID
+	EdgeType       string // start, sequence, true_branch, false_branch, always
+	EdgeOrder      int    // For deterministic traversal when multiple edges share same source
+	CreatedDate    time.Time
+}
+
+// NewActionEdge contains information needed to create a new action edge
+type NewActionEdge struct {
+	RuleID         uuid.UUID
+	SourceActionID *uuid.UUID
+	TargetActionID uuid.UUID
+	EdgeType       string
+	EdgeOrder      int
+}
+
+// ConditionResult represents the result of evaluating a condition action.
+// Returned by the evaluate_condition action handler.
+type ConditionResult struct {
+	Evaluated   bool   `json:"evaluated"`    // Whether evaluation was performed
+	Result      bool   `json:"result"`       // The boolean result of the condition
+	BranchTaken string `json:"branch_taken"` // "true_branch" or "false_branch"
 }
 
 // =============================================================================

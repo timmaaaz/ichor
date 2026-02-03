@@ -63,6 +63,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/actionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertws"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/edgeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/executionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/referenceapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/ruleapi"
@@ -421,6 +422,10 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// Create a standalone ActionRegistry that works with or without RabbitMQ
 	// This enables the actionapi routes to be registered even in test environments
 	actionRegistry := workflow.NewActionRegistry()
+
+	// Register core action handlers that don't require RabbitMQ.
+	// This enables cascade visualization to work in all environments including tests.
+	workflowactions.RegisterCoreActions(actionRegistry, cfg.Log, cfg.DB)
 
 	// =========================================================================
 	// Initialize Workflow Infrastructure
@@ -1050,6 +1055,14 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	ruleapi.Routes(app, ruleapi.Config{
+		Log:            cfg.Log,
+		WorkflowBus:    workflowBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+		ActionRegistry: actionRegistry,
+	})
+
+	edgeapi.Routes(app, edgeapi.Config{
 		Log:            cfg.Log,
 		WorkflowBus:    workflowBus,
 		AuthClient:     cfg.AuthClient,

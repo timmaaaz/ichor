@@ -8,7 +8,9 @@ The Ichor workflow engine provides event-driven automation for business processe
 |----------|-------------|
 | [Architecture](architecture.md) | System overview, event flow, components |
 | [Configuration](configuration/) | Triggers, rules, and template variables |
-| [Actions](actions/) | All 6 action types and their configuration |
+| [Actions](actions/) | All 7 action types and their configuration |
+| [Branching](branching.md) | Graph-based execution and conditional workflows |
+| [Cascade Visualization](cascade-visualization.md) | Downstream workflow detection |
 | [Database Schema](database-schema.md) | Workflow tables and relationships |
 | [API Reference](api-reference.md) | REST endpoints for alerts |
 | [Event Infrastructure](event-infrastructure.md) | EventPublisher and delegate pattern |
@@ -45,6 +47,7 @@ The Ichor workflow engine provides event-driven automation for business processe
 | `send_notification` | Multi-channel notifications (email, SMS, push, in-app) |
 | `seek_approval` | Initiates approval workflows |
 | `allocate_inventory` | Reserves or allocates inventory |
+| `evaluate_condition` | Evaluates conditions for branching workflows |
 
 ## Getting Started
 
@@ -77,6 +80,25 @@ Actions are stored in `workflow.rule_actions`. Each action has:
 
 See [Actions](actions/) for configuration details for each action type.
 
+### 4. Execution Modes
+
+Rules support two execution modes:
+
+| Mode | Description |
+|------|-------------|
+| **Linear** | Actions execute based on `execution_order`. Default mode. |
+| **Graph** | Actions execute based on `action_edges`. Enables branching with `evaluate_condition`. |
+
+The executor automatically detects which mode to use:
+- If the rule has edges in `workflow.action_edges`, graph mode is used
+- If no edges exist, linear mode is used (backwards compatible)
+
+**Graph mode** enables conditional workflows using the `evaluate_condition` action:
+- The condition action sets `BranchTaken` to `"true_branch"` or `"false_branch"`
+- Edges with matching types are followed; others are skipped
+
+See [Branching](branching.md) for complete documentation on graph-based workflows.
+
 ## Configuration Reference
 
 ### Trigger Types
@@ -100,6 +122,8 @@ See [Actions](actions/) for configuration details for each action type.
 | `less_than` | Numeric/string comparison |
 | `contains` | Substring match |
 | `in` | Value in array |
+| `is_null` | Field is null/empty |
+| `is_not_null` | Field has a value |
 
 ### Template Variables
 
@@ -141,6 +165,7 @@ All workflow tables are in the `workflow` schema:
 | `automation_rules` | Rule definitions |
 | `rule_actions` | Actions attached to rules |
 | `action_templates` | Reusable action configurations |
+| `action_edges` | Directed edges for graph-based execution (branching) |
 | `rule_dependencies` | Dependencies between rules |
 | `automation_executions` | Execution history |
 | `notification_deliveries` | Notification delivery tracking |

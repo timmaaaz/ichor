@@ -444,6 +444,22 @@ func (h *UpdateFieldHandler) isValidOperator(operator string) bool {
 	return false
 }
 
+// GetEntityModifications implements workflow.EntityModifier for cascade visualization.
+// Returns the entity and field that this action will modify based on its configuration.
+func (h *UpdateFieldHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
+	var cfg UpdateFieldConfig
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return nil
+	}
+
+	// update_field always triggers an on_update event for the target entity
+	return []workflow.EntityModification{{
+		EntityName: cfg.TargetEntity,
+		EventType:  "on_update",
+		Fields:     []string{cfg.TargetField},
+	}}
+}
+
 // // Context returns a context for template processing
 // func (tc workflow.TemplateContext) Context() context.Context {
 // 	return context.Background()

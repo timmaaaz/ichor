@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -44,6 +45,9 @@ type BusDependencies struct {
 
 // RegisterAll registers all standard workflow actions using the config
 func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
+	// Control flow actions - only need log
+	registry.Register(control.NewEvaluateConditionHandler(config.Log))
+
 	// Data actions - only need log and db
 	registry.Register(data.NewUpdateFieldHandler(config.Log, config.DB))
 
@@ -80,4 +84,22 @@ func RegisterInventoryActions(registry *workflow.ActionRegistry, config ActionCo
 		config.Buses.Product,
 		config.Buses.Workflow,
 	))
+}
+
+// RegisterCoreActions registers action handlers that don't require RabbitMQ or heavy dependencies.
+// This should be called even in test environments to enable cascade visualization.
+// These handlers implement EntityModifier for cascade detection.
+func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, db *sqlx.DB) {
+	// Control flow actions - only need log
+	registry.Register(control.NewEvaluateConditionHandler(log))
+
+	// Data actions - only need log and db, implements EntityModifier for cascade
+	registry.Register(data.NewUpdateFieldHandler(log, db))
+
+	// Approval actions - only need log and db
+	registry.Register(approval.NewSeekApprovalHandler(log, db))
+
+	// Communication actions that don't need queue
+	registry.Register(communication.NewSendEmailHandler(log, db))
+	registry.Register(communication.NewSendNotificationHandler(log, db))
 }

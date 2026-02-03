@@ -53,7 +53,7 @@ var actionTypeMetadata = map[string]struct {
 	"seek_approval": {
 		Name:           "Seek Approval",
 		Description:    "Creates an approval request for specified users",
-		Category:       "workflow",
+		Category:       "approval",
 		SupportsManual: false,
 		IsAsync:        true,
 	},

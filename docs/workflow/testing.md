@@ -17,8 +17,12 @@ This follows the existing patterns in `queue_test.go`.
 | Category | Location | Purpose |
 |----------|----------|---------|
 | Unit Tests | `business/sdk/workflow/*_test.go` | Component testing |
+| Graph Executor Tests | `business/sdk/workflow/executor_graph_test.go` | Graph-based execution |
+| Condition Tests | `business/sdk/workflow/workflowactions/control/condition_test.go` | Condition evaluation |
 | Integration Tests | `business/sdk/workflow/eventpublisher_integration_test.go` | Full flow testing |
-| API Tests | `api/cmd/services/ichor/tests/workflow/alertapi/` | HTTP endpoint testing |
+| Alert API Tests | `api/cmd/services/ichor/tests/workflow/alertapi/` | Alert HTTP endpoints |
+| Edge API Tests | `api/cmd/services/ichor/tests/workflow/edgeapi/` | Edge CRUD endpoints |
+| Cascade API Tests | `api/cmd/services/ichor/tests/workflow/ruleapi/cascade_test.go` | Cascade visualization |
 | Action Tests | `business/sdk/workflow/workflowactions/*/` | Action handler testing |
 
 ## Test Setup Pattern
@@ -364,6 +368,255 @@ func TestCreateAlertHandler_Execute(t *testing.T) {
 }
 ```
 
+## Graph Execution Tests
+
+**File**: `business/sdk/workflow/executor_graph_test.go`
+
+Tests the graph-based action execution in `ExecuteRuleActionsGraph`.
+
+### What These Tests Cover
+
+- Backwards compatibility (fallback to linear execution when no edges)
+- Start edge handling (single/multiple entry points)
+- Sequential execution via `sequence` and `always` edge types
+- Branch execution based on condition results (`true_branch`/`false_branch`)
+- Complex graph patterns (diamond, parallel branches, nested conditions)
+- Cycle prevention (visited nodes not re-executed)
+- Edge ordering for deterministic execution
+- `ShouldFollowEdge` logic for all edge types
+
+### Graph Test Setup Pattern
+
+```go
+func TestGraphExecution(t *testing.T) {
+    // Setup with real DB and RabbitMQ
+    ae, workflowBus, ctx := graphTestSetup(t)
+
+    // Create a rule
+    entity, _ := workflowBus.QueryEntityByName(ctx, "orders")
+    entityType, _ := workflowBus.QueryEntityTypeByName(ctx, "table")
+    triggerType, _ := workflowBus.QueryTriggerTypeByName(ctx, "on_update")
+
+    rule, _ := workflowBus.CreateRule(ctx, workflow.NewAutomationRule{
+        Name:          "Test Rule",
+        EntityID:      entity.ID,
+        EntityTypeID:  entityType.ID,
+        TriggerTypeID: triggerType.ID,
+        IsActive:      true,
+        CreatedBy:     adminUserID,
+    })
+
+    // Create actions
+    conditionAction, _ := workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+        AutomationRuleID: rule.ID,
+        Name:             "Check Status",
+        ActionConfig:     json.RawMessage(`{"conditions": [...], "logic_type": "and"}`),
+        ExecutionOrder:   1,
+        IsActive:         true,
+    })
+
+    // Create edges to define graph structure
+    workflowBus.CreateEdge(ctx, workflow.NewActionEdge{
+        RuleID:         rule.ID,
+        SourceActionID: nil,  // Start edge
+        TargetActionID: conditionAction.ID,
+        EdgeType:       workflow.EdgeTypeStart,
+        EdgeOrder:      0,
+    })
+
+    // Execute using graph mode
+    execCtx := workflow.ActionExecutionContext{...}
+    result, err := ae.ExecuteRuleActionsGraph(ctx, rule.ID, execCtx)
+}
+```
+
+### Testing Branch Decisions
+
+```go
+func TestBranchExecution(t *testing.T) {
+    // ... setup ...
+
+    // Create edges for branching
+    workflowBus.CreateEdge(ctx, workflow.NewActionEdge{
+        RuleID:         rule.ID,
+        SourceActionID: &conditionActionID,
+        TargetActionID: trueActionID,
+        EdgeType:       workflow.EdgeTypeTrueBranch,
+        EdgeOrder:      0,
+    })
+
+    workflowBus.CreateEdge(ctx, workflow.NewActionEdge{
+        RuleID:         rule.ID,
+        SourceActionID: &conditionActionID,
+        TargetActionID: falseActionID,
+        EdgeType:       workflow.EdgeTypeFalseBranch,
+        EdgeOrder:      0,
+    })
+
+    // Execute with data that makes condition true
+    execCtx := workflow.ActionExecutionContext{
+        RawData: map[string]interface{}{"status": "approved"},
+    }
+    result, _ := ae.ExecuteRuleActionsGraph(ctx, rule.ID, execCtx)
+
+    // Verify only true branch executed
+    for _, ar := range result.ActionResults {
+        if ar.ActionID == falseActionID && ar.Status != "skipped" {
+            t.Error("False branch should not have executed")
+        }
+    }
+}
+```
+
+## Condition Handler Tests
+
+**File**: `business/sdk/workflow/workflowactions/control/condition_test.go`
+
+Pure unit tests for the `evaluate_condition` action handler. No external services required.
+
+### What These Tests Cover
+
+- Validation of condition configurations
+- All 10 operators: `equals`, `not_equals`, `greater_than`, `less_than`, `contains`, `in`, `is_null`, `is_not_null`, `changed_from`, `changed_to`
+- Logic combinations (`AND`/`OR`)
+- Branch result generation (`true_branch`/`false_branch`)
+- Edge cases (nil data, missing fields, type mismatches, json.Number handling)
+- Handler metadata (`GetType`, `GetDescription`, `SupportsManualExecution`, `IsAsync`)
+
+### Condition Validation Test
+
+```go
+func TestValidate_Operators(t *testing.T) {
+    handler := control.NewEvaluateConditionHandler(log)
+
+    tests := []struct {
+        name    string
+        config  string
+        wantErr bool
+    }{
+        {
+            name:    "equals operator",
+            config:  `{"conditions": [{"field_name": "status", "operator": "equals", "value": "active"}]}`,
+            wantErr: false,
+        },
+        {
+            name:    "is_null operator",
+            config:  `{"conditions": [{"field_name": "deleted_at", "operator": "is_null"}]}`,
+            wantErr: false,
+        },
+        {
+            name:    "invalid operator",
+            config:  `{"conditions": [{"field_name": "status", "operator": "invalid", "value": "test"}]}`,
+            wantErr: true,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := handler.Validate(json.RawMessage(tt.config))
+            if (err != nil) != tt.wantErr {
+                t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+            }
+        })
+    }
+}
+```
+
+### Condition Execution Test
+
+```go
+func TestExecute_BranchResult(t *testing.T) {
+    handler := control.NewEvaluateConditionHandler(log)
+
+    config := json.RawMessage(`{
+        "conditions": [
+            {"field_name": "amount", "operator": "greater_than", "value": 100}
+        ]
+    }`)
+
+    execCtx := workflow.ActionExecutionContext{
+        RawData: map[string]interface{}{"amount": 150},
+    }
+
+    result, err := handler.Execute(ctx, config, execCtx)
+    if err != nil {
+        t.Fatalf("Execute() error: %v", err)
+    }
+
+    if result.BranchTaken != workflow.EdgeTypeTrueBranch {
+        t.Errorf("BranchTaken = %q, want %q", result.BranchTaken, workflow.EdgeTypeTrueBranch)
+    }
+}
+```
+
+## Edge API Tests
+
+**Directory**: `api/cmd/services/ichor/tests/workflow/edgeapi/`
+
+HTTP endpoint tests for edge CRUD operations.
+
+### Test Files
+
+| File | Purpose |
+|------|---------|
+| `edge_test.go` | Main test entry point |
+| `create_test.go` | Create edge tests |
+| `query_test.go` | Query edges tests |
+| `delete_test.go` | Delete edge tests |
+| `seed_test.go` | Test data seeding |
+
+### Running Edge API Tests
+
+```bash
+go test -v ./api/cmd/services/ichor/tests/workflow/edgeapi/...
+```
+
+### Edge API Test Pattern
+
+```go
+func Test_EdgeAPI(t *testing.T) {
+    test := apitest.StartTest(t, "edgeapi_test")
+
+    sd := test.SeedData()
+
+    test.Run(t, query200(sd), "query-200")
+    test.Run(t, create200(sd), "create-200")
+    test.Run(t, delete200(sd), "delete-200")
+}
+
+func create200(sd apitest.SeedData) []apitest.Table {
+    return []apitest.Table{
+        {
+            Name:       "create-edge",
+            Method:     http.MethodPost,
+            URL:        fmt.Sprintf("/v1/workflow/rules/%s/edges", sd.Rules[0].ID),
+            Token:      sd.AdminToken,
+            StatusCode: http.StatusOK,
+            Input: map[string]interface{}{
+                "source_action_id": nil,
+                "target_action_id": sd.Actions[0].ID.String(),
+                "edge_type":        "start",
+                "edge_order":       0,
+            },
+        },
+    }
+}
+```
+
+## Cascade API Tests
+
+**Files**:
+- `api/cmd/services/ichor/tests/workflow/ruleapi/cascade_test.go`
+- `api/cmd/services/ichor/tests/workflow/ruleapi/cascade_seed_test.go`
+
+Tests the cascade visualization endpoint that shows downstream workflows.
+
+### Running Cascade Tests
+
+```bash
+go test -v ./api/cmd/services/ichor/tests/workflow/ruleapi/... -run Cascade
+```
+
 ## Delegate Handler Tests
 
 **File**: `business/sdk/workflow/delegatehandler_test.go`
@@ -430,6 +683,30 @@ go test -v ./business/sdk/workflow/... -run Integration
 
 ```bash
 go test -v ./api/cmd/services/ichor/tests/workflow/alertapi/...
+```
+
+### Run Edge API Tests
+
+```bash
+go test -v ./api/cmd/services/ichor/tests/workflow/edgeapi/...
+```
+
+### Run Graph Execution Tests
+
+```bash
+go test -v ./business/sdk/workflow/... -run Graph
+```
+
+### Run Condition Handler Tests
+
+```bash
+go test -v ./business/sdk/workflow/workflowactions/control/...
+```
+
+### Run Cascade Tests
+
+```bash
+go test -v ./api/cmd/services/ichor/tests/workflow/ruleapi/... -run Cascade
 ```
 
 ## Manual Testing
@@ -532,5 +809,8 @@ timeout := time.After(10 * time.Second) // Increase from 5s
 ## Related Documentation
 
 - [Architecture](architecture.md) - System overview and component details
+- [Branching](branching.md) - Graph-based execution and conditional workflows
 - [Event Infrastructure](event-infrastructure.md) - EventPublisher and delegate pattern
 - [Actions Overview](actions/overview.md) - Action handler testing
+- [Evaluate Condition](actions/evaluate-condition.md) - Condition action handler
+- [Configuration Rules](configuration/rules.md) - ActionEdge model and edge types

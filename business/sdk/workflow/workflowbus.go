@@ -90,6 +90,13 @@ type Storer interface {
 	QueryActionByID(ctx context.Context, actionID uuid.UUID) (RuleAction, error)
 	QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (RuleActionView, error)
 
+	// Action edge methods (for workflow branching/condition nodes)
+	CreateActionEdge(ctx context.Context, edge NewActionEdge) (ActionEdge, error)
+	QueryEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) ([]ActionEdge, error)
+	QueryEdgeByID(ctx context.Context, edgeID uuid.UUID) (ActionEdge, error)
+	DeleteActionEdge(ctx context.Context, edgeID uuid.UUID) error
+	DeleteEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) error
+
 	// Execution paginated query methods
 	QueryExecutionsPaginated(ctx context.Context, filter ExecutionFilter, orderBy order.By, page page.Page) ([]AutomationExecution, error)
 	CountExecutions(ctx context.Context, filter ExecutionFilter) (int, error)
@@ -1114,4 +1121,70 @@ func (b *Business) QueryExecutionByID(ctx context.Context, id uuid.UUID) (Automa
 	}
 
 	return execution, nil
+}
+
+// =============================================================================
+// Action Edges (for workflow branching/condition nodes)
+
+// CreateActionEdge creates a new action edge in the workflow graph.
+func (b *Business) CreateActionEdge(ctx context.Context, nae NewActionEdge) (ActionEdge, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createactionedge")
+	defer span.End()
+
+	edge, err := b.storer.CreateActionEdge(ctx, nae)
+	if err != nil {
+		return ActionEdge{}, fmt.Errorf("create: %w", err)
+	}
+
+	return edge, nil
+}
+
+// QueryEdgesByRuleID retrieves all action edges for a specific rule.
+func (b *Business) QueryEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) ([]ActionEdge, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryedgesbyruleid")
+	defer span.End()
+
+	edges, err := b.storer.QueryEdgesByRuleID(ctx, ruleID)
+	if err != nil {
+		return nil, fmt.Errorf("query: ruleID[%s]: %w", ruleID, err)
+	}
+
+	return edges, nil
+}
+
+// QueryEdgeByID retrieves a single action edge by its ID.
+func (b *Business) QueryEdgeByID(ctx context.Context, edgeID uuid.UUID) (ActionEdge, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryedgebyid")
+	defer span.End()
+
+	edge, err := b.storer.QueryEdgeByID(ctx, edgeID)
+	if err != nil {
+		return ActionEdge{}, fmt.Errorf("query: edgeID[%s]: %w", edgeID, err)
+	}
+
+	return edge, nil
+}
+
+// DeleteActionEdge removes an action edge from the workflow graph.
+func (b *Business) DeleteActionEdge(ctx context.Context, edgeID uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deleteactionedge")
+	defer span.End()
+
+	if err := b.storer.DeleteActionEdge(ctx, edgeID); err != nil {
+		return fmt.Errorf("delete: edgeID[%s]: %w", edgeID, err)
+	}
+
+	return nil
+}
+
+// DeleteEdgesByRuleID removes all action edges for a specific rule.
+func (b *Business) DeleteEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deleteedgesbyruleid")
+	defer span.End()
+
+	if err := b.storer.DeleteEdgesByRuleID(ctx, ruleID); err != nil {
+		return fmt.Errorf("delete: ruleID[%s]: %w", ruleID, err)
+	}
+
+	return nil
 }

@@ -474,11 +474,34 @@ Errors are logged at multiple levels:
 3. EventPublisher: queue failures
 4. QueueManager: processing failures
 
+## Cascade Visualization and the Event System
+
+The cascade visualization feature leverages the event infrastructure to show downstream workflow effects. When an action handler implements the `EntityModifier` interface (see [Cascade Visualization](cascade-visualization.md)), it declares which entities it modifies and what events those modifications produce.
+
+The cascade map endpoint (`/workflow/rules/{id}/cascade-map`) uses this information to:
+1. Identify which events an action will emit (e.g., `update_field` on "orders" emits `on_update` for "orders")
+2. Find other rules that trigger on those events
+3. Build a graph of potential downstream workflows
+
+This helps operators understand the full impact of enabling a workflow rule before it runs.
+
+## Condition Node Results
+
+When workflows include `evaluate_condition` actions, the condition result flows through the system:
+
+1. The condition handler evaluates field values and returns a `ConditionResult` with `BranchTaken` ("true" or "false")
+2. The graph executor examines this result to determine which edges to follow (`true_branch` or `false_branch`)
+3. The execution log records which branch was taken for debugging
+
+See [Branching](branching.md) for details on how condition results control execution flow.
+
 ## Related Documentation
 
 - [Architecture](architecture.md) - System overview and component details
 - [Adding Domains](adding-domains.md) - Step-by-step guide for adding workflow events
 - [Testing](testing.md) - Testing patterns for event infrastructure
+- [Cascade Visualization](cascade-visualization.md) - Understanding downstream workflow effects
+- [Branching](branching.md) - Graph-based execution with conditional paths
 
 ## Key Files
 

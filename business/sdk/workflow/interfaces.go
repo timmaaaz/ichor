@@ -128,3 +128,34 @@ type QueuedPayload struct {
 	// IdempotencyKey for deduplication
 	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
+
+// =============================================================================
+// Entity Modifier Interface (for Cascade Visualization)
+// =============================================================================
+
+// EntityModifier is an optional interface for action handlers that modify entities.
+// Used for cascade visualization to determine which downstream workflows may trigger.
+// Action handlers that modify entities should implement this interface to enable
+// the cascade visualization API to show users what workflows will be triggered.
+type EntityModifier interface {
+	// GetEntityModifications returns what entities/fields this action modifies
+	// based on the provided configuration. Returns nil if the action doesn't
+	// modify entities (e.g., send_email, send_notification).
+	GetEntityModifications(config json.RawMessage) []EntityModification
+}
+
+// EntityModification describes an entity modification caused by an action.
+// Used to match against automation rules to determine which downstream
+// workflows would be triggered when this action executes.
+type EntityModification struct {
+	// EntityName is the fully-qualified table name (e.g., "sales.orders", "inventory.inventory_items")
+	EntityName string `json:"entity_name"`
+
+	// EventType indicates what kind of event this modification triggers.
+	// Valid values: "on_create", "on_update", "on_delete"
+	EventType string `json:"event_type"`
+
+	// Fields lists which fields are modified (optional, for on_update events).
+	// Used for more precise cascade matching when rules have field-specific conditions.
+	Fields []string `json:"fields,omitempty"`
+}

@@ -1429,3 +1429,106 @@ func (s *Store) QueryExecutionByID(ctx context.Context, id uuid.UUID) (workflow.
 
 	return toCoreAutomationExecution(dbExecution), nil
 }
+
+// =============================================================================
+// Action Edges (for workflow branching/condition nodes)
+
+// CreateActionEdge inserts a new action edge into the database.
+func (s *Store) CreateActionEdge(ctx context.Context, edge workflow.NewActionEdge) (workflow.ActionEdge, error) {
+	dbEdge := toDBNewActionEdge(edge)
+
+	const q = `
+	INSERT INTO workflow.action_edges (
+		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+	) VALUES (
+		:id, :rule_id, :source_action_id, :target_action_id, :edge_type, :edge_order, :created_date
+	)`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, dbEdge); err != nil {
+		return workflow.ActionEdge{}, fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return toCoreActionEdge(dbEdge), nil
+}
+
+// QueryEdgesByRuleID returns all edges for a rule, ordered by edge_order.
+func (s *Store) QueryEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) ([]workflow.ActionEdge, error) {
+	data := struct {
+		RuleID string `db:"rule_id"`
+	}{
+		RuleID: ruleID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+	FROM workflow.action_edges
+	WHERE rule_id = :rule_id
+	ORDER BY edge_order ASC`
+
+	var dbEdges []actionEdge
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbEdges); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreActionEdgeSlice(dbEdges), nil
+}
+
+// QueryEdgeByID retrieves a single edge by its ID.
+func (s *Store) QueryEdgeByID(ctx context.Context, edgeID uuid.UUID) (workflow.ActionEdge, error) {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: edgeID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+	FROM workflow.action_edges
+	WHERE id = :id`
+
+	var dbEdge actionEdge
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbEdge); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.ActionEdge{}, workflow.ErrNotFound
+		}
+		return workflow.ActionEdge{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreActionEdge(dbEdge), nil
+}
+
+// DeleteActionEdge deletes an edge by ID.
+func (s *Store) DeleteActionEdge(ctx context.Context, edgeID uuid.UUID) error {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: edgeID.String(),
+	}
+
+	const q = `DELETE FROM workflow.action_edges WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteEdgesByRuleID deletes all edges for a rule.
+func (s *Store) DeleteEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) error {
+	data := struct {
+		RuleID string `db:"rule_id"`
+	}{
+		RuleID: ruleID.String(),
+	}
+
+	const q = `DELETE FROM workflow.action_edges WHERE rule_id = :rule_id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}

@@ -208,6 +208,235 @@ func (ae *ActionExecutor) ExecuteRuleActions(ctx context.Context, ruleID uuid.UU
 	return result, nil
 }
 
+// ExecuteRuleActionsGraph executes actions following the edge graph.
+// Falls back to linear execution_order if no edges exist (backwards compatible).
+func (ae *ActionExecutor) ExecuteRuleActionsGraph(ctx context.Context, ruleID uuid.UUID, executionContext ActionExecutionContext) (BatchExecutionResult, error) {
+	startTime := time.Now()
+
+	// Load edges for this rule
+	edges, err := ae.workflowBus.QueryEdgesByRuleID(ctx, ruleID)
+	if err != nil {
+		return BatchExecutionResult{}, fmt.Errorf("failed to load edges: %w", err)
+	}
+
+	// Backwards compatibility: if no edges, use linear execution
+	if len(edges) == 0 {
+		ae.log.Info(ctx, "No edges found for rule, falling back to linear execution",
+			"ruleID", ruleID)
+		return ae.ExecuteRuleActions(ctx, ruleID, executionContext)
+	}
+
+	// Load all actions
+	actions, err := ae.workflowBus.QueryRoleActionsViewByRuleID(ctx, ruleID)
+	if err != nil {
+		return BatchExecutionResult{}, fmt.Errorf("failed to load actions: %w", err)
+	}
+
+	// Get rule name for result
+	ruleName := ae.getRuleName(ctx, ruleID)
+	executionContext.RuleName = ruleName
+
+	ae.log.Info(ctx, "Executing actions using graph traversal",
+		"ruleID", ruleID,
+		"ruleName", ruleName,
+		"actionCount", len(actions),
+		"edgeCount", len(edges))
+
+	// Build action map for quick lookup
+	actionMap := make(map[uuid.UUID]RuleActionView)
+	for _, action := range actions {
+		actionMap[action.ID] = action
+	}
+
+	// Build adjacency list from edges
+	outgoingEdges := make(map[uuid.UUID][]ActionEdge) // source -> edges
+	var startEdges []ActionEdge
+
+	for _, edge := range edges {
+		if edge.SourceActionID == nil {
+			startEdges = append(startEdges, edge)
+		} else {
+			outgoingEdges[*edge.SourceActionID] = append(outgoingEdges[*edge.SourceActionID], edge)
+		}
+	}
+
+	// Validate we have start edges
+	if len(startEdges) == 0 {
+		ae.log.Warn(ctx, "No start edges found for rule, falling back to linear execution",
+			"ruleID", ruleID)
+		return ae.ExecuteRuleActions(ctx, ruleID, executionContext)
+	}
+
+	// Sort start edges by edge_order for deterministic execution
+	sortEdgesByOrder(startEdges)
+
+	// Execute using BFS from start edges
+	actionResults := make([]ActionResult, 0)
+	executed := make(map[uuid.UUID]bool)
+	resultMap := make(map[uuid.UUID]ActionResult) // Track results for branch decisions
+	queue := make([]uuid.UUID, 0)
+
+	successCount := 0
+	failedCount := 0
+	skippedCount := 0
+
+	// Add start edge targets to queue (in order)
+	for _, edge := range startEdges {
+		queue = append(queue, edge.TargetActionID)
+	}
+
+	for len(queue) > 0 {
+		actionID := queue[0]
+		queue = queue[1:]
+
+		if executed[actionID] {
+			continue
+		}
+		executed[actionID] = true
+
+		action, exists := actionMap[actionID]
+		if !exists {
+			ae.log.Warn(ctx, "Action not found in action map",
+				"actionID", actionID,
+				"ruleID", ruleID)
+			continue
+		}
+
+		if !action.IsActive {
+			skippedCount++
+			result := ActionResult{
+				ActionID:   action.ID,
+				ActionName: action.Name,
+				ActionType: ae.getActionType(action),
+				Status:     "skipped",
+				StartedAt:  time.Now(),
+			}
+			actionResults = append(actionResults, result)
+			resultMap[actionID] = result
+			continue
+		}
+
+		// Execute the action
+		result := ae.executeAction(ctx, action, executionContext)
+		actionResults = append(actionResults, result)
+		resultMap[actionID] = result
+
+		switch result.Status {
+		case "success":
+			successCount++
+		case "failed":
+			failedCount++
+			// Stop on critical failure if configured
+			if ae.shouldStopOnFailure(action) {
+				ae.log.Error(ctx, "Critical action failed, stopping graph execution",
+					"actionID", action.ID,
+					"actionName", action.Name)
+				// Don't add more actions to queue
+				continue
+			}
+		case "skipped":
+			skippedCount++
+		}
+
+		// Determine which edges to follow based on result
+		nextEdges := outgoingEdges[actionID]
+		sortEdgesByOrder(nextEdges)
+
+		for _, edge := range nextEdges {
+			shouldFollow := ae.ShouldFollowEdge(edge, result)
+
+			if shouldFollow && !executed[edge.TargetActionID] {
+				queue = append(queue, edge.TargetActionID)
+			}
+		}
+	}
+
+	completedAt := time.Now()
+	duration := completedAt.Sub(startTime)
+
+	// Determine overall status
+	status := "success"
+	errorMessage := ""
+	if failedCount > 0 {
+		status = "failed"
+		errorMessage = fmt.Sprintf("%d actions failed", failedCount)
+	}
+
+	batchResult := BatchExecutionResult{
+		RuleID:             ruleID,
+		RuleName:           ruleName,
+		TotalActions:       len(actionResults),
+		SuccessfulActions:  successCount,
+		FailedActions:      failedCount,
+		SkippedActions:     skippedCount,
+		ActionResults:      actionResults,
+		TotalExecutionTime: duration,
+		StartedAt:          startTime,
+		CompletedAt:        completedAt,
+		Context:            executionContext,
+		Status:             status,
+		ErrorMessage:       errorMessage,
+	}
+
+	// Update statistics
+	ae.updateStats(batchResult)
+
+	// Add to history
+	ae.mu.Lock()
+	ae.history = append(ae.history, batchResult)
+	if len(ae.history) > 1000 {
+		ae.history = ae.history[len(ae.history)-1000:]
+	}
+	ae.mu.Unlock()
+
+	ae.log.Info(ctx, "Graph execution completed",
+		"ruleID", ruleID,
+		"ruleName", ruleName,
+		"totalExecuted", len(actionResults),
+		"successful", successCount,
+		"failed", failedCount,
+		"skipped", skippedCount,
+		"duration", duration)
+
+	return batchResult, nil
+}
+
+// ShouldFollowEdge determines if an edge should be followed based on the action result.
+// Exported for testing purposes.
+func (ae *ActionExecutor) ShouldFollowEdge(edge ActionEdge, result ActionResult) bool {
+	switch edge.EdgeType {
+	case EdgeTypeAlways, EdgeTypeSequence:
+		// Always follow these edges regardless of result
+		return true
+	case EdgeTypeTrueBranch:
+		// Only follow if the action returned true_branch
+		return result.BranchTaken == EdgeTypeTrueBranch
+	case EdgeTypeFalseBranch:
+		// Only follow if the action returned false_branch
+		return result.BranchTaken == EdgeTypeFalseBranch
+	case EdgeTypeStart:
+		// Start edges shouldn't appear here (they have nil source)
+		return false
+	default:
+		// Unknown edge type - don't follow
+		ae.log.Warn(context.Background(), "Unknown edge type",
+			"edgeType", edge.EdgeType,
+			"edgeID", edge.ID)
+		return false
+	}
+}
+
+// sortEdgesByOrder sorts edges by their EdgeOrder field for deterministic execution.
+func sortEdgesByOrder(edges []ActionEdge) {
+	for i := 0; i < len(edges)-1; i++ {
+		for j := i + 1; j < len(edges); j++ {
+			if edges[i].EdgeOrder > edges[j].EdgeOrder {
+				edges[i], edges[j] = edges[j], edges[i]
+			}
+		}
+	}
+}
+
 // executeAction executes a single action
 func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionView, executionContext ActionExecutionContext) ActionResult {
 	startTime := time.Now()
@@ -331,8 +560,16 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 			"error", execErr.Error())
 	} else {
 		result.Status = "success"
-		// To this:
-		if resultData != nil {
+
+		// Check if this is a condition result and extract BranchTaken
+		if condResult, ok := resultData.(ConditionResult); ok {
+			result.BranchTaken = condResult.BranchTaken
+			result.ResultData = map[string]interface{}{
+				"evaluated":    condResult.Evaluated,
+				"result":       condResult.Result,
+				"branch_taken": condResult.BranchTaken,
+			}
+		} else if resultData != nil {
 			// Type assert to map[string]interface{} if possible
 			if data, ok := resultData.(map[string]interface{}); ok {
 				result.ResultData = data

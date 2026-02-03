@@ -439,11 +439,39 @@ Track which domains have workflow events implemented:
 | inventoryitembus | inventory_items | ✅ |
 | inventorylocationbus | inventory_locations | ✅ |
 
+## EntityModifier Interface (For Action Handlers)
+
+If you're creating a custom action handler that **modifies entities** (not just reads them), consider implementing the `EntityModifier` interface. This enables cascade visualization to detect downstream workflow effects.
+
+```go
+// EntityModifier is implemented by action handlers that modify entities.
+// This enables cascade visualization to show downstream workflows.
+type EntityModifier interface {
+    GetEntityModifications(config json.RawMessage) ([]EntityModification, error)
+}
+
+type EntityModification struct {
+    EntityName string   // e.g., "orders"
+    EventType  string   // e.g., "on_update"
+    Fields     []string // Fields that may be modified
+}
+```
+
+Currently, only `UpdateFieldHandler` implements this interface. When adding new action types that modify entities:
+
+1. Implement `GetEntityModifications()` to declare which entities/fields the action modifies
+2. The cascade map endpoint will automatically detect downstream workflows that trigger on those modifications
+3. New domains automatically work with cascade visualization once their events are registered
+
+See [Cascade Visualization](cascade-visualization.md) for more details on how this integrates with the workflow system.
+
 ## Related Documentation
 
 - [Event Infrastructure](event-infrastructure.md) - EventPublisher and delegate pattern details
 - [Architecture](architecture.md) - System overview and component details
 - [Testing](testing.md) - Testing patterns for workflow events
+- [Cascade Visualization](cascade-visualization.md) - Understanding downstream workflow effects
+- [Actions Overview](actions/overview.md) - Action handler interfaces including EntityModifier
 
 ## Troubleshooting
 

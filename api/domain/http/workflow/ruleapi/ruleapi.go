@@ -24,13 +24,15 @@ import (
 type api struct {
 	log         *logger.Logger
 	workflowBus *workflow.Business
+	registry    *workflow.ActionRegistry // For cascade visualization (Phase 12.8)
 }
 
 // newAPI creates a new rule API handler.
-func newAPI(log *logger.Logger, workflowBus *workflow.Business) *api {
+func newAPI(log *logger.Logger, workflowBus *workflow.Business, registry *workflow.ActionRegistry) *api {
 	return &api{
 		log:         log,
 		workflowBus: workflowBus,
+		registry:    registry,
 	}
 }
 

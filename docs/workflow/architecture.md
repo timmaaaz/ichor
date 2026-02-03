@@ -243,6 +243,7 @@ func (r *ActionRegistry) Get(actionType string) (ActionHandler, bool)
 - `send_notification` - SendNotificationHandler
 - `seek_approval` - SeekApprovalHandler
 - `allocate_inventory` - AllocateInventoryHandler
+- `evaluate_condition` - ConditionHandler (branching support)
 
 ### ActionHandler Interface
 
@@ -253,10 +254,46 @@ type ActionHandler interface {
     Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (any, error)
     Validate(config json.RawMessage) error
     GetType() string
+    SupportsManualExecution() bool
+    IsAsync() bool
+    GetDescription() string
 }
 ```
 
 All action handlers must implement this interface. The `Execute` method returns `any` to allow different handlers to return different result types - this trades compile-time type safety for runtime flexibility, which is necessary for a plugin/registry system.
+
+**Interface methods:**
+| Method | Description |
+|--------|-------------|
+| `Execute` | Performs the action with config and context |
+| `Validate` | Validates configuration before execution |
+| `GetType` | Returns unique identifier (e.g., `"allocate_inventory"`) |
+| `SupportsManualExecution` | Returns true if action can be triggered via API |
+| `IsAsync` | Returns true if action queues work for async processing |
+| `GetDescription` | Returns human-readable description for discovery APIs |
+
+### EntityModifier Interface
+
+**Location**: `business/sdk/workflow/interfaces.go`
+
+Optional interface for action handlers that modify database entities. Used for cascade visualization to determine which downstream workflows may trigger.
+
+```go
+type EntityModifier interface {
+    GetEntityModifications(config json.RawMessage) []EntityModification
+}
+
+type EntityModification struct {
+    EntityName string   // Fully-qualified table name (e.g., "sales.orders")
+    EventType  string   // "on_create", "on_update", or "on_delete"
+    Fields     []string // Modified fields (for on_update events)
+}
+```
+
+**Currently implemented by:**
+- `UpdateFieldHandler` - Declares which entity/field it modifies
+
+See [cascade-visualization.md](cascade-visualization.md) for details on how this enables downstream workflow detection.
 
 ### AsyncActionHandler Interface
 
@@ -436,6 +473,43 @@ execution_order=1: [email, alert]  ← run in parallel
 execution_order=2: [update_field]  ← waits for order 1
 execution_order=3: [approval]      ← waits for order 2
 ```
+
+### Graph-Based Execution (Branching)
+
+Rules can use graph-based execution for conditional branching. When `action_edges` are defined, the executor uses BFS traversal instead of linear `execution_order`.
+
+**Execution model:**
+- Rules WITHOUT edges: Linear execution by `execution_order` (backwards compatible)
+- Rules WITH edges: Graph traversal using directed edges
+
+**Edge types:**
+| Type | Description |
+|------|-------------|
+| `start` | Entry point into graph (source_action_id is null) |
+| `sequence` | Always-followed linear edge |
+| `always` | Unconditional edge |
+| `true_branch` | Followed when condition evaluates to `true` |
+| `false_branch` | Followed when condition evaluates to `false` |
+
+**Graph execution flow:**
+```
+1. Load edges for rule
+2. If no edges, fall back to linear execution
+3. Build adjacency list (source → target edges)
+4. Find start edges (source_action_id is null)
+5. Execute using BFS queue
+6. After each action, follow applicable outgoing edges
+7. Track visited actions to prevent cycles
+```
+
+**Branch following logic** (`ShouldFollowEdge`):
+- `always`, `sequence`: Always follow
+- `true_branch`: Follow when `result.BranchTaken == "true_branch"`
+- `false_branch`: Follow when `result.BranchTaken == "false_branch"`
+
+**Source**: `business/sdk/workflow/executor.go:211-427`
+
+See [branching.md](branching.md) for detailed patterns and examples.
 
 ### Caching
 

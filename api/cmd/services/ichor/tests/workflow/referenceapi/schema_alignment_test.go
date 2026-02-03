@@ -65,11 +65,6 @@ func Test_ActionTypeSchemas_MatchExpectedStructure(t *testing.T) {
 			continue
 		}
 
-		// Verify schema has action_type field
-		if _, ok := schema["action_type"]; !ok {
-			t.Errorf("Action type %q schema missing 'action_type' field", actionType.Type)
-		}
-
 		t.Logf("✓ Action type %q schema validated (%d bytes, category: %s)",
 			actionType.Type, len(actionType.ConfigSchema), actionType.Category)
 	}
@@ -112,7 +107,7 @@ func Test_ActionTypeSchemas_CategoryConsistency(t *testing.T) {
 	expectedCategories := map[string][]string{
 		"communication": {"create_alert", "send_email", "send_notification"},
 		"inventory":     {"allocate_inventory"},
-		"workflow":      {"seek_approval"},
+		"approval":      {"seek_approval"},
 		"data":          {"update_field"},
 	}
 

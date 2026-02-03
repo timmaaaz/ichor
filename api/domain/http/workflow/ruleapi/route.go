@@ -18,6 +18,7 @@ type Config struct {
 	WorkflowBus    *workflow.Business
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
+	ActionRegistry *workflow.ActionRegistry // For cascade visualization (Phase 12.8)
 }
 
 // RouteTable is the table name used for permission checks.
@@ -27,7 +28,7 @@ const RouteTable = "workflow.automation_rules"
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
-	api := newAPI(cfg.Log, cfg.WorkflowBus)
+	api := newAPI(cfg.Log, cfg.WorkflowBus, cfg.ActionRegistry)
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	// List rules - requires read permission
@@ -92,5 +93,13 @@ func Routes(app *web.App, cfg Config) {
 
 	// List execution history for a rule - uses Read permission
 	app.HandlerFunc(http.MethodGet, version, "/workflow/rules/{id}/executions", api.queryRuleExecutions, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	// ============================================================
+	// Cascade Visualization (Phase 12.8)
+	// ============================================================
+
+	// Get cascade map showing downstream workflows - uses Read permission (read-only)
+	app.HandlerFunc(http.MethodGet, version, "/workflow/rules/{id}/cascade-map", api.cascadeMap, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

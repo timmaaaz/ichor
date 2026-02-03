@@ -133,6 +133,48 @@ Dependencies between automation rules.
 - Parent and child must be different rules
 - No circular dependencies allowed
 
+### workflow.action_edges
+
+Defines directed edges between actions for graph-based workflow execution with branching support.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | UUID | NO | `gen_random_uuid()` | Primary key |
+| `rule_id` | UUID | NO | - | FK to automation_rules (CASCADE) |
+| `source_action_id` | UUID | YES | - | FK to rule_actions (NULL for start edges) |
+| `target_action_id` | UUID | NO | - | FK to rule_actions (CASCADE) |
+| `edge_type` | VARCHAR(20) | NO | - | Type of edge |
+| `edge_order` | INTEGER | NO | `0` | Order for deterministic traversal |
+| `created_date` | TIMESTAMP | NO | `now()` | Creation timestamp |
+
+**Edge type values:**
+| Type | Description |
+|------|-------------|
+| `start` | Entry point into the graph (source_action_id must be NULL) |
+| `sequence` | Linear progression, always followed |
+| `true_branch` | Only followed when condition evaluates to `true` |
+| `false_branch` | Only followed when condition evaluates to `false` |
+| `always` | Unconditional edge, always followed |
+
+**Constraints:**
+- `CHECK (edge_type IN ('start', 'sequence', 'true_branch', 'false_branch', 'always'))`
+- `UNIQUE(source_action_id, target_action_id, edge_type)` - Prevents duplicate edges
+
+**Indexes:**
+```sql
+CREATE INDEX idx_action_edges_source ON workflow.action_edges(source_action_id);
+CREATE INDEX idx_action_edges_target ON workflow.action_edges(target_action_id);
+CREATE INDEX idx_action_edges_rule ON workflow.action_edges(rule_id);
+```
+
+**Usage notes:**
+- Rules WITHOUT edges fall back to linear `execution_order` execution (backwards compatible)
+- Rules WITH edges use graph-based BFS traversal
+- `edge_order` determines processing order when multiple edges share the same source
+- The executor tracks executed actions to prevent cycles
+
+See [branching.md](branching.md) for detailed graph execution documentation.
+
 ## Execution Tables
 
 ### workflow.automation_executions
@@ -308,6 +350,9 @@ All foreign key relationships:
 | alert_recipients | alert_id | alerts(id) CASCADE |
 | alert_acknowledgments | alert_id | alerts(id) CASCADE |
 | alert_acknowledgments | acknowledged_by | core.users(id) |
+| action_edges | rule_id | automation_rules(id) CASCADE |
+| action_edges | source_action_id | rule_actions(id) CASCADE |
+| action_edges | target_action_id | rule_actions(id) CASCADE |
 
 ## Migration Reference
 
@@ -319,6 +364,7 @@ Workflow tables are created in migrations versions 1.64-1.96 in `business/sdk/mi
 - **1.70-1.71**: rule_dependencies, entities
 - **1.72-1.73**: notification_deliveries, allocation_results
 - **1.94-1.96**: alerts, alert_recipients, alert_acknowledgments
+- **1.992**: action_edges (graph-based branching)
 
 ## Related Documentation
 

@@ -1910,3 +1910,27 @@ CROSS JOIN (VALUES
     ('seek_approval')
 ) AS actions(action_type)
 WHERE r.name = 'admin';
+
+-- Version: 1.992
+-- Description: Add action edges for workflow branching (condition nodes)
+CREATE TABLE workflow.action_edges (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   rule_id UUID NOT NULL REFERENCES workflow.automation_rules(id) ON DELETE CASCADE,
+   source_action_id UUID REFERENCES workflow.rule_actions(id) ON DELETE CASCADE,
+   target_action_id UUID NOT NULL REFERENCES workflow.rule_actions(id) ON DELETE CASCADE,
+   edge_type VARCHAR(20) NOT NULL CHECK (edge_type IN ('start', 'sequence', 'true_branch', 'false_branch', 'always')),
+   edge_order INTEGER DEFAULT 0,
+   created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+   CONSTRAINT unique_edge UNIQUE(source_action_id, target_action_id, edge_type)
+);
+
+CREATE INDEX idx_action_edges_source ON workflow.action_edges(source_action_id);
+CREATE INDEX idx_action_edges_target ON workflow.action_edges(target_action_id);
+CREATE INDEX idx_action_edges_rule ON workflow.action_edges(rule_id);
+
+COMMENT ON TABLE workflow.action_edges IS 'Defines edges between actions in a workflow graph for branching support';
+COMMENT ON COLUMN workflow.action_edges.rule_id IS 'The automation rule this edge belongs to';
+COMMENT ON COLUMN workflow.action_edges.source_action_id IS 'Source action (NULL for start edges)';
+COMMENT ON COLUMN workflow.action_edges.target_action_id IS 'Target action to execute';
+COMMENT ON COLUMN workflow.action_edges.edge_type IS 'Type: start, sequence, true_branch, false_branch, always';
+COMMENT ON COLUMN workflow.action_edges.edge_order IS 'Order when multiple edges have same source (for deterministic traversal)';

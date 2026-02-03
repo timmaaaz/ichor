@@ -801,3 +801,84 @@ func toDBAllocationResult(ar workflow.AllocationResult) allocationResult {
 		CreatedDate:    time.Now(),
 	}
 }
+
+// actionEdge represents a directed edge between actions in a workflow graph
+type actionEdge struct {
+	ID             string         `db:"id"`
+	RuleID         string         `db:"rule_id"`
+	SourceActionID sql.NullString `db:"source_action_id"` // NULL for start edges
+	TargetActionID string         `db:"target_action_id"`
+	EdgeType       string         `db:"edge_type"`
+	EdgeOrder      int            `db:"edge_order"`
+	CreatedDate    time.Time      `db:"created_date"`
+}
+
+// toCoreActionEdge converts a store actionEdge to core ActionEdge
+func toCoreActionEdge(dbEdge actionEdge) workflow.ActionEdge {
+	edge := workflow.ActionEdge{
+		ID:             uuid.MustParse(dbEdge.ID),
+		RuleID:         uuid.MustParse(dbEdge.RuleID),
+		TargetActionID: uuid.MustParse(dbEdge.TargetActionID),
+		EdgeType:       dbEdge.EdgeType,
+		EdgeOrder:      dbEdge.EdgeOrder,
+		CreatedDate:    dbEdge.CreatedDate,
+	}
+
+	if dbEdge.SourceActionID.Valid {
+		sourceID := uuid.MustParse(dbEdge.SourceActionID.String)
+		edge.SourceActionID = &sourceID
+	}
+
+	return edge
+}
+
+// toCoreActionEdgeSlice converts multiple store edges to core edges
+func toCoreActionEdgeSlice(dbEdges []actionEdge) []workflow.ActionEdge {
+	edges := make([]workflow.ActionEdge, len(dbEdges))
+	for i, dbEdge := range dbEdges {
+		edges[i] = toCoreActionEdge(dbEdge)
+	}
+	return edges
+}
+
+// toDBActionEdge converts a core ActionEdge to store values
+func toDBActionEdge(edge workflow.ActionEdge) actionEdge {
+	dbEdge := actionEdge{
+		ID:             edge.ID.String(),
+		RuleID:         edge.RuleID.String(),
+		TargetActionID: edge.TargetActionID.String(),
+		EdgeType:       edge.EdgeType,
+		EdgeOrder:      edge.EdgeOrder,
+		CreatedDate:    edge.CreatedDate,
+	}
+
+	if edge.SourceActionID != nil {
+		dbEdge.SourceActionID = sql.NullString{
+			String: edge.SourceActionID.String(),
+			Valid:  true,
+		}
+	}
+
+	return dbEdge
+}
+
+// toDBNewActionEdge converts a core NewActionEdge to store values for insertion
+func toDBNewActionEdge(edge workflow.NewActionEdge) actionEdge {
+	dbEdge := actionEdge{
+		ID:             uuid.New().String(),
+		RuleID:         edge.RuleID.String(),
+		TargetActionID: edge.TargetActionID.String(),
+		EdgeType:       edge.EdgeType,
+		EdgeOrder:      edge.EdgeOrder,
+		CreatedDate:    time.Now(),
+	}
+
+	if edge.SourceActionID != nil {
+		dbEdge.SourceActionID = sql.NullString{
+			String: edge.SourceActionID.String(),
+			Valid:  true,
+		}
+	}
+
+	return dbEdge
+}
