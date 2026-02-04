@@ -461,6 +461,7 @@ func (b *Business) CreateRule(ctx context.Context, nar NewAutomationRule) (Autom
 		EntityTypeID:      nar.EntityTypeID,
 		TriggerTypeID:     nar.TriggerTypeID,
 		TriggerConditions: nar.TriggerConditions,
+		CanvasLayout:      nar.CanvasLayout,
 		IsActive:          nar.IsActive,
 		CreatedDate:       now,
 		UpdatedDate:       now,
@@ -497,6 +498,9 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 	}
 	if uar.TriggerConditions != nil {
 		rule.TriggerConditions = uar.TriggerConditions
+	}
+	if uar.CanvasLayout != nil {
+		rule.CanvasLayout = *uar.CanvasLayout
 	}
 	if uar.IsActive != nil {
 		rule.IsActive = *uar.IsActive

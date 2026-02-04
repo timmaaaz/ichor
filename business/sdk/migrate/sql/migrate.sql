@@ -968,7 +968,10 @@ CREATE TABLE workflow.automation_rules (
    trigger_type_id UUID NOT NULL REFERENCES workflow.trigger_types(id),
 
    trigger_conditions JSONB NULL, -- When to trigger
-      
+
+   -- Visual editor state
+   canvas_layout JSONB DEFAULT '{}',
+
    -- Control
    is_active BOOLEAN NOT NULL DEFAULT TRUE,
    
@@ -1469,12 +1472,13 @@ FROM sales.order_line_items oli
    LEFT JOIN products.product_categories c ON p.category_id = c.id
    LEFT JOIN sales.line_item_fulfillment_statuses ofs ON oli.id = ofs.id;
 
-CREATE OR REPLACE VIEW workflow.automation_rules_view AS 
-SELECT 
+CREATE OR REPLACE VIEW workflow.automation_rules_view AS
+SELECT
     ar.id,
     ar.name,
     ar.description,
     ar.trigger_conditions,
+    ar.canvas_layout,
     ar.is_active,
     ar.created_date,
     ar.updated_date,

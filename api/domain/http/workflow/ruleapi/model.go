@@ -32,6 +32,7 @@ type CreateRuleRequest struct {
 	EntityTypeID      uuid.UUID           `json:"entity_type_id"`
 	TriggerTypeID     uuid.UUID           `json:"trigger_type_id"`
 	TriggerConditions json.RawMessage     `json:"trigger_conditions"`
+	CanvasLayout      json.RawMessage     `json:"canvas_layout,omitempty"`
 	IsActive          bool                `json:"is_active"`
 	Actions           []CreateActionInput `json:"actions,omitempty"`
 }
@@ -59,6 +60,7 @@ type UpdateRuleRequest struct {
 	EntityTypeID      *uuid.UUID       `json:"entity_type_id,omitempty"`
 	TriggerTypeID     *uuid.UUID       `json:"trigger_type_id,omitempty"`
 	TriggerConditions *json.RawMessage `json:"trigger_conditions,omitempty"`
+	CanvasLayout      *json.RawMessage `json:"canvas_layout,omitempty"`
 	IsActive          *bool            `json:"is_active,omitempty"`
 }
 
@@ -95,6 +97,7 @@ type RuleResponse struct {
 	TriggerTypeID     uuid.UUID        `json:"trigger_type_id"`
 	TriggerTypeName   string           `json:"trigger_type_name"`
 	TriggerConditions json.RawMessage  `json:"trigger_conditions"`
+	CanvasLayout      json.RawMessage  `json:"canvas_layout,omitempty"`
 	IsActive          bool             `json:"is_active"`
 	CreatedBy         uuid.UUID        `json:"created_by"`
 	UpdatedBy         uuid.UUID        `json:"updated_by"`

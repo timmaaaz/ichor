@@ -260,6 +260,7 @@ type AutomationRule struct {
 	EntityTypeID      uuid.UUID
 	TriggerTypeID     uuid.UUID
 	TriggerConditions *json.RawMessage
+	CanvasLayout      json.RawMessage
 	IsActive          bool
 	CreatedDate       time.Time
 	UpdatedDate       time.Time
@@ -276,6 +277,7 @@ type NewAutomationRule struct {
 	EntityTypeID      uuid.UUID
 	TriggerTypeID     uuid.UUID
 	TriggerConditions *json.RawMessage
+	CanvasLayout      json.RawMessage
 	IsActive          bool
 	CreatedBy         uuid.UUID
 }
@@ -288,6 +290,7 @@ type UpdateAutomationRule struct {
 	EntityTypeID      *uuid.UUID
 	TriggerTypeID     *uuid.UUID
 	TriggerConditions *json.RawMessage
+	CanvasLayout      *json.RawMessage
 	IsActive          *bool
 	UpdatedBy         *uuid.UUID
 }
@@ -574,6 +577,7 @@ type AutomationRuleView struct {
 	Description       *string
 	EntityID          *uuid.UUID
 	TriggerConditions *json.RawMessage
+	CanvasLayout      json.RawMessage
 	Actions           json.RawMessage
 	IsActive          bool
 	CreatedDate       time.Time

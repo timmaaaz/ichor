@@ -187,10 +187,20 @@ func TestNewRuleActions(n int, ruleIDs []uuid.UUID, templateIDs *[]uuid.UUID) []
 	for i := 0; i < n; i++ {
 		idx++
 
-		// Create sample action config
+		// Create sample action config with a valid action_type for execution
+		// Using create_alert with required recipients structure
+		// Generate a deterministic UUID for the recipient based on index
+		recipientUUID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("test-recipient-%d", idx)))
 		config := map[string]interface{}{
-			"action_param": fmt.Sprintf("param_%d", idx),
-			"enabled":      true,
+			"action_type": "create_alert",
+			"alert_type":  fmt.Sprintf("test_alert_%d", idx),
+			"severity":    "medium",
+			"title":       fmt.Sprintf("Test Alert %d", idx),
+			"message":     fmt.Sprintf("Test message for action %d", idx),
+			"recipients": map[string]interface{}{
+				"users": []string{recipientUUID.String()},
+				"roles": []string{},
+			},
 		}
 		configJSON, _ := json.Marshal(config)
 

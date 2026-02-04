@@ -67,6 +67,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/executionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/referenceapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/ruleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/workflowsaveapi"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
@@ -1073,6 +1074,14 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Log:         cfg.Log,
 		WorkflowBus: workflowBus,
 		AuthClient:  cfg.AuthClient,
+	})
+
+	workflowsaveapi.Routes(app, workflowsaveapi.Config{
+		Log:            cfg.Log,
+		DB:             cfg.DB,
+		WorkflowBus:    workflowBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	// =========================================================================

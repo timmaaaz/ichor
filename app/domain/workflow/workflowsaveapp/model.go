@@ -1,0 +1,100 @@
+// Package workflowsaveapp provides the application layer for transactional workflow save operations.
+package workflowsaveapp
+
+import (
+	"encoding/json"
+
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+)
+
+// SaveWorkflowRequest represents a complete workflow save request including
+// the rule, all actions, and all edges.
+type SaveWorkflowRequest struct {
+	Name              string              `json:"name" validate:"required,min=1,max=255"`
+	Description       string              `json:"description" validate:"max=1000"`
+	IsActive          bool                `json:"is_active"`
+	EntityID          string              `json:"entity_id" validate:"required,uuid"`
+	TriggerTypeID     string              `json:"trigger_type_id" validate:"required,uuid"`
+	TriggerConditions json.RawMessage     `json:"trigger_conditions"`
+	Actions           []SaveActionRequest `json:"actions" validate:"required,min=1,dive"`
+	Edges             []SaveEdgeRequest   `json:"edges" validate:"dive"`
+	CanvasLayout      json.RawMessage     `json:"canvas_layout"`
+}
+
+// Decode implements the Decoder interface.
+func (r *SaveWorkflowRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, r)
+}
+
+// Validate checks the SaveWorkflowRequest for validity.
+func (r SaveWorkflowRequest) Validate() error {
+	if err := errs.Check(r); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+// SaveActionRequest represents an action to save within a workflow.
+// If ID is nil or empty, a new action will be created.
+// If ID contains a UUID, the existing action will be updated.
+type SaveActionRequest struct {
+	ID             *string         `json:"id"`
+	Name           string          `json:"name" validate:"required,min=1,max=255"`
+	Description    string          `json:"description" validate:"max=1000"`
+	ActionType     string          `json:"action_type" validate:"required,oneof=create_alert send_email send_notification update_field seek_approval allocate_inventory evaluate_condition"`
+	ActionConfig   json.RawMessage `json:"action_config" validate:"required"`
+	ExecutionOrder int             `json:"execution_order" validate:"required,min=1"`
+	IsActive       bool            `json:"is_active"`
+}
+
+// SaveEdgeRequest represents an edge between actions in the workflow graph.
+// SourceActionID can be empty for start edges.
+// TargetActionID uses "temp:N" format to reference new actions by array index.
+type SaveEdgeRequest struct {
+	SourceActionID string `json:"source_action_id"`
+	TargetActionID string `json:"target_action_id" validate:"required"`
+	EdgeType       string `json:"edge_type" validate:"required,oneof=start sequence true_branch false_branch always"`
+	EdgeOrder      int    `json:"edge_order" validate:"min=0"`
+}
+
+// SaveWorkflowResponse represents the complete saved workflow.
+type SaveWorkflowResponse struct {
+	ID                string               `json:"id"`
+	Name              string               `json:"name"`
+	Description       string               `json:"description"`
+	IsActive          bool                 `json:"is_active"`
+	EntityID          string               `json:"entity_id"`
+	TriggerTypeID     string               `json:"trigger_type_id"`
+	TriggerConditions json.RawMessage      `json:"trigger_conditions"`
+	Actions           []SaveActionResponse `json:"actions"`
+	Edges             []SaveEdgeResponse   `json:"edges"`
+	CanvasLayout      json.RawMessage      `json:"canvas_layout"`
+	CreatedDate       string               `json:"created_date"`
+	UpdatedDate       string               `json:"updated_date"`
+}
+
+// Encode implements the Encoder interface.
+func (r SaveWorkflowResponse) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(r)
+	return data, "application/json", err
+}
+
+// SaveActionResponse represents a saved action in the response.
+type SaveActionResponse struct {
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	Description    string          `json:"description"`
+	ActionType     string          `json:"action_type"`
+	ActionConfig   json.RawMessage `json:"action_config"`
+	ExecutionOrder int             `json:"execution_order"`
+	IsActive       bool            `json:"is_active"`
+}
+
+// SaveEdgeResponse represents a saved edge in the response.
+type SaveEdgeResponse struct {
+	ID             string `json:"id"`
+	SourceActionID string `json:"source_action_id"`
+	TargetActionID string `json:"target_action_id"`
+	EdgeType       string `json:"edge_type"`
+	EdgeOrder      int    `json:"edge_order"`
+}

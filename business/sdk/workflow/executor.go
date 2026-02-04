@@ -774,10 +774,26 @@ func (ae *ActionExecutor) buildTemplateContext(execContext ActionExecutionContex
 	return context
 }
 
-// getActionType determines the action type from the action view
+// getActionType determines the action type from the action view.
+// It first checks TemplateActionType (for template-based actions),
+// then falls back to extracting action_type from the ActionConfig JSON.
 func (ae *ActionExecutor) getActionType(action RuleActionView) string {
-	// TODO: Check if this is necessary after type revamp
-	return action.TemplateActionType
+	// First try template action type (for template-based actions)
+	if action.TemplateActionType != "" {
+		return action.TemplateActionType
+	}
+
+	// Fall back to extracting from config (for directly-configured actions)
+	if len(action.ActionConfig) > 0 {
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(action.ActionConfig, &configMap); err == nil {
+			if actionType, ok := configMap["action_type"].(string); ok && actionType != "" {
+				return actionType
+			}
+		}
+	}
+
+	return ""
 }
 
 // shouldStopOnFailure determines if execution should stop after this action fails

@@ -183,6 +183,7 @@ type automationRule struct {
 	EntityTypeID      string         `db:"entity_type_id"`
 	TriggerTypeID     string         `db:"trigger_type_id"`
 	TriggerConditions sql.NullString `db:"trigger_conditions"`
+	CanvasLayout      sql.NullString `db:"canvas_layout"`
 	IsActive          bool           `db:"is_active"`
 	CreatedDate       time.Time      `db:"created_date"`
 	UpdatedDate       time.Time      `db:"updated_date"`
@@ -218,6 +219,10 @@ func toCoreAutomationRule(dbRule automationRule) workflow.AutomationRule {
 		if err := json.Unmarshal([]byte(dbRule.TriggerConditions.String), &tc); err == nil {
 			ar.TriggerConditions = &tc
 		}
+	}
+
+	if dbRule.CanvasLayout.Valid {
+		ar.CanvasLayout = json.RawMessage(dbRule.CanvasLayout.String)
 	}
 
 	return ar
@@ -259,6 +264,10 @@ func toDBAutomationRule(ar workflow.AutomationRule) (automationRule, error) {
 			return automationRule{}, err
 		}
 		ret.TriggerConditions = sql.NullString{String: string(tcBytes), Valid: true}
+	}
+
+	if len(ar.CanvasLayout) > 0 {
+		ret.CanvasLayout = sql.NullString{String: string(ar.CanvasLayout), Valid: true}
 	}
 
 	return ret, nil
@@ -520,6 +529,7 @@ type automationRulesView struct {
 	Description       sql.NullString  `db:"description"`
 	EntityID          sql.NullString  `db:"entity_id"`
 	TriggerConditions sql.NullString  `db:"trigger_conditions"`
+	CanvasLayout      sql.NullString  `db:"canvas_layout"`
 	Actions           json.RawMessage `db:"actions"`
 	IsActive          bool            `db:"is_active"`
 	CreatedDate       time.Time       `db:"created_date"`
@@ -589,6 +599,9 @@ func toCoreAutomationRuleView(dbView automationRulesView) workflow.AutomationRul
 		if err := json.Unmarshal([]byte(dbView.TriggerConditions.String), &tc); err == nil {
 			view.TriggerConditions = &tc
 		}
+	}
+	if dbView.CanvasLayout.Valid {
+		view.CanvasLayout = json.RawMessage(dbView.CanvasLayout.String)
 	}
 
 	return view

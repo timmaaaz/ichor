@@ -16,6 +16,7 @@ func toRuleResponse(rule workflow.AutomationRuleView) RuleResponse {
 		EntitySchemaName: rule.EntitySchemaName,
 		EntityTypeName:   rule.EntityTypeName,
 		TriggerTypeName:  rule.TriggerTypeName,
+		CanvasLayout:     rule.CanvasLayout,
 		IsActive:         rule.IsActive,
 		CreatedBy:        rule.CreatedBy,
 		UpdatedBy:        rule.UpdatedBy,
@@ -97,6 +98,7 @@ func toNewAutomationRule(req CreateRuleRequest, createdBy uuid.UUID) workflow.Ne
 		EntityTypeID:      req.EntityTypeID,
 		TriggerTypeID:     req.TriggerTypeID,
 		TriggerConditions: triggerConditions,
+		CanvasLayout:      req.CanvasLayout,
 		IsActive:          req.IsActive,
 		CreatedBy:         createdBy,
 	}
@@ -111,6 +113,7 @@ func toUpdateAutomationRule(req UpdateRuleRequest, updatedBy uuid.UUID) workflow
 		EntityTypeID:      req.EntityTypeID,
 		TriggerTypeID:     req.TriggerTypeID,
 		TriggerConditions: req.TriggerConditions,
+		CanvasLayout:      req.CanvasLayout,
 		IsActive:          req.IsActive,
 		UpdatedBy:         &updatedBy,
 	}
