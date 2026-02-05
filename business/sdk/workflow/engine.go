@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -17,6 +18,7 @@ type Engine struct {
 	log         *logger.Logger
 	db          *sqlx.DB
 	workflowBus *Business
+	delegate    *delegate.Delegate
 
 	// Sub-components
 	triggerProcessor *TriggerProcessor
@@ -60,12 +62,13 @@ func (e *Engine) GetActionExecutor() *ActionExecutor {
 }
 
 // NewEngine creates or returns the singleton workflow engine instance.
-func NewEngine(log *logger.Logger, db *sqlx.DB, workflowBus *Business) *Engine {
+func NewEngine(log *logger.Logger, db *sqlx.DB, del *delegate.Delegate, workflowBus *Business) *Engine {
 	engineOnce.Do(func() {
 		engineInstance = &Engine{
 			log:              log,
 			db:               db,
 			workflowBus:      workflowBus,
+			delegate:         del,
 			activeExecutions: make(map[uuid.UUID]*WorkflowExecution),
 			executionHistory: make([]*WorkflowExecution, 0),
 			config: WorkflowConfig{
@@ -116,10 +119,39 @@ func (e *Engine) Initialize(ctx context.Context, workflowBus *Business) error {
 	// 	return fmt.Errorf("failed to initialize queue manager: %w", err)
 	// }
 
+	// Register rule change handlers for immediate cache invalidation
+	if e.delegate != nil {
+		e.registerRuleChangeHandlers(ctx)
+	}
+
 	e.isInitialized = true
 	e.log.Info(ctx, "✅ Workflow engine initialized successfully")
 
 	return nil
+}
+
+// registerRuleChangeHandlers registers delegate handlers for rule lifecycle events.
+// When rules are created, updated, activated, or deactivated, the trigger processor
+// cache is immediately refreshed so changes take effect without waiting for cache timeout.
+func (e *Engine) registerRuleChangeHandlers(ctx context.Context) {
+	invalidateCache := func(ctx context.Context, data delegate.Data) error {
+		if e.triggerProcessor != nil {
+			if err := e.triggerProcessor.RefreshRules(ctx); err != nil {
+				e.log.Error(ctx, "failed to refresh rules cache", "error", err)
+			} else {
+				e.log.Info(ctx, "rules cache refreshed due to rule change", "action", data.Action)
+			}
+		}
+		return nil
+	}
+
+	e.delegate.Register(DomainName, ActionRuleCreated, invalidateCache)
+	e.delegate.Register(DomainName, ActionRuleUpdated, invalidateCache)
+	e.delegate.Register(DomainName, ActionRuleDeleted, invalidateCache)
+	e.delegate.Register(DomainName, ActionRuleActivated, invalidateCache)
+	e.delegate.Register(DomainName, ActionRuleDeactivated, invalidateCache)
+
+	e.log.Info(ctx, "registered rule change handlers for cache invalidation")
 }
 
 // ExecuteWorkflow executes a complete workflow for the given trigger event

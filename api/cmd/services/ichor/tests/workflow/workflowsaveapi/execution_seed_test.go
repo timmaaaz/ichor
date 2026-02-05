@@ -142,7 +142,7 @@ func createSimpleWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd SaveS
 		AutomationRuleID: rule.ID,
 		Name:             "Create Alert",
 		Description:      "Creates an alert",
-		ActionConfig:     json.RawMessage(`{"alert_type":"simple_test","severity":"info","title":"Simple Test Alert","message":"Test message from simple workflow"}`),
+		ActionConfig:     json.RawMessage(`{"alert_type":"simple_test","severity":"low","title":"Simple Test Alert","message":"Test message from simple workflow","recipients":{"users":["` + sd.Users[0].ID.String() + `"],"roles":[]}}`),
 		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &alertTemplateID,
@@ -224,13 +224,14 @@ func createSequenceWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sav
 
 	// Create 3 actions
 	actions := make([]workflow.RuleAction, 3)
+	userIDStr := sd.Users[0].ID.String()
 	for i := 0; i < 3; i++ {
 		stepNum := string(rune('1' + i))
 		action, err := wfBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 			AutomationRuleID: rule.ID,
 			Name:             "Sequence Action " + stepNum,
 			Description:      "Step " + stepNum + " of sequence",
-			ActionConfig:     json.RawMessage(`{"alert_type":"sequence_step","severity":"info","title":"Step ` + stepNum + `","message":"Sequence step ` + stepNum + `"}`),
+			ActionConfig:     json.RawMessage(`{"alert_type":"sequence_step","severity":"low","title":"Step ` + stepNum + `","message":"Sequence step ` + stepNum + `","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
 			ExecutionOrder:   i + 1,
 			IsActive:         true,
 			TemplateID:       &alertTemplateID,
@@ -352,11 +353,12 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 	}
 
 	// Create true branch action (alert for high value)
+	userIDStr := sd.Users[0].ID.String()
 	trueBranchAction, err := wfBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: rule.ID,
 		Name:             "High Value Alert",
 		Description:      "Alert for high value items",
-		ActionConfig:     json.RawMessage(`{"alert_type":"high_value","severity":"warning","title":"High Value Alert","message":"Amount exceeds threshold"}`),
+		ActionConfig:     json.RawMessage(`{"alert_type":"high_value","severity":"high","title":"High Value Alert","message":"Amount exceeds threshold","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
 		ExecutionOrder:   2,
 		IsActive:         true,
 		TemplateID:       &alertTemplateID,
@@ -370,7 +372,7 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 		AutomationRuleID: rule.ID,
 		Name:             "Normal Value Alert",
 		Description:      "Alert for normal value items",
-		ActionConfig:     json.RawMessage(`{"alert_type":"normal_value","severity":"info","title":"Normal Value Alert","message":"Standard processing"}`),
+		ActionConfig:     json.RawMessage(`{"alert_type":"normal_value","severity":"low","title":"Normal Value Alert","message":"Standard processing","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
 		ExecutionOrder:   2,
 		IsActive:         true,
 		TemplateID:       &alertTemplateID,

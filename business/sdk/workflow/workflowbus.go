@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -122,15 +123,17 @@ const (
 
 // Business manages the set of APIs for workflow automation access.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log      *logger.Logger
+	storer   Storer
+	delegate *delegate.Delegate
 }
 
 // NewBusiness constructs a workflow business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:      log,
+		storer:   storer,
+		delegate: del,
 	}
 }
 
@@ -143,8 +146,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}
 
 	bus := Business{
-		log:    b.log,
-		storer: storer,
+		log:      b.log,
+		storer:   storer,
+		delegate: b.delegate,
 	}
 
 	return &bus, nil
@@ -473,6 +477,13 @@ func (b *Business) CreateRule(ctx context.Context, nar NewAutomationRule) (Autom
 		return AutomationRule{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for rule cache invalidation
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleCreated, rule.ID)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleCreated, "err", err)
+		}
+	}
+
 	return rule, nil
 }
 
@@ -515,6 +526,13 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 		return AutomationRule{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for rule cache invalidation
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleUpdated, rule.ID)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleUpdated, "err", err)
+		}
+	}
+
 	return rule, nil
 }
 
@@ -527,6 +545,13 @@ func (b *Business) DeactivateRule(ctx context.Context, rule AutomationRule) erro
 		return fmt.Errorf("deactivate: %w", err)
 	}
 
+	// Fire delegate event for rule cache invalidation
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleDeactivated, rule.ID)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleDeactivated, "err", err)
+		}
+	}
+
 	return nil
 }
 
@@ -537,6 +562,13 @@ func (b *Business) ActivateRule(ctx context.Context, rule AutomationRule) error 
 
 	if err := b.storer.ActivateRule(ctx, rule); err != nil {
 		return fmt.Errorf("activate: %w", err)
+	}
+
+	// Fire delegate event for rule cache invalidation
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleActivated, rule.ID)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleActivated, "err", err)
+		}
 	}
 
 	return nil

@@ -10,6 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
 
@@ -54,10 +55,10 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	}
 
 	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(db.Log, workflowdb.NewStore(db.Log, db.DB))
+	workflowBus := workflow.NewBusiness(db.Log, db.BusDomain.Delegate, workflowdb.NewStore(db.Log, db.DB))
 
 	// Create and initialize engine
-	engine := workflow.NewEngine(db.Log, db.DB, workflowBus)
+	engine := workflow.NewEngine(db.Log, db.DB, db.BusDomain.Delegate, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		client.Close()
 		t.Fatalf("initializing workflow engine: %s", err)
@@ -71,6 +72,9 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	// Create alertbus for CreateAlertHandler
 	alertBus := alertbus.NewBusiness(db.Log, alertdb.NewStore(db.Log, db.DB))
 	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil))
+
+	// Register control flow handlers
+	registry.Register(control.NewEvaluateConditionHandler(db.Log))
 
 	// Create queue manager
 	qm, err := workflow.NewQueueManager(db.Log, db.DB, engine, client, queue)

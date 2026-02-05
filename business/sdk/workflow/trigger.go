@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -65,7 +66,8 @@ type TriggerProcessor struct {
 	db          *sqlx.DB
 	workflowBus *Business
 
-	// Cached data
+	// Cached data with thread safety
+	mu           sync.RWMutex
 	activeRules  []AutomationRuleView
 	lastLoadTime time.Time
 	cacheTimeout time.Duration
@@ -95,6 +97,9 @@ func (tp *TriggerProcessor) Initialize(ctx context.Context) error {
 
 // loadMetadata loads active rules and related metadata
 func (tp *TriggerProcessor) loadMetadata(ctx context.Context) error {
+	tp.mu.Lock()
+	defer tp.mu.Unlock()
+
 	// Check if cache is still valid
 	if time.Since(tp.lastLoadTime) < tp.cacheTimeout && len(tp.activeRules) > 0 {
 		return nil
@@ -442,6 +447,9 @@ func (tp *TriggerProcessor) isSupportedEventType(eventType string) bool {
 }
 
 func (tp *TriggerProcessor) hasRulesForEntity(entityName string) bool {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+
 	for _, rule := range tp.activeRules {
 		if rule.EntityName == entityName {
 			return true
@@ -451,6 +459,9 @@ func (tp *TriggerProcessor) hasRulesForEntity(entityName string) bool {
 }
 
 func (tp *TriggerProcessor) getRulesForEntity(entityName string) []AutomationRuleView {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+
 	rules := make([]AutomationRuleView, 0)
 	for _, rule := range tp.activeRules {
 		if rule.EntityName == entityName && rule.IsActive {
@@ -462,6 +473,9 @@ func (tp *TriggerProcessor) getRulesForEntity(entityName string) []AutomationRul
 
 // GetMatchedRulesForEntity returns rules that would match for a given entity and event type
 func (tp *TriggerProcessor) GetMatchedRulesForEntity(entityName string, eventType string) []AutomationRuleView {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+
 	matched := make([]AutomationRuleView, 0)
 	expectedTriggerType := eventType
 
@@ -478,6 +492,9 @@ func (tp *TriggerProcessor) GetMatchedRulesForEntity(entityName string, eventTyp
 
 // RefreshRules forces a reload of rules from the database
 func (tp *TriggerProcessor) RefreshRules(ctx context.Context) error {
+	tp.mu.Lock()
 	tp.lastLoadTime = time.Time{} // Reset cache time to force reload
+	tp.mu.Unlock()
+
 	return tp.loadMetadata(ctx)
 }

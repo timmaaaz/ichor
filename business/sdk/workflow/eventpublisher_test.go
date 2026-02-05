@@ -41,11 +41,11 @@ func TestEventPublisher_PublishCreateEvent(t *testing.T) {
 	ctx := context.Background()
 
 	// Real workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Real workflow engine (no rules needed - just testing event queuing)
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
@@ -126,11 +126,11 @@ func TestEventPublisher_PublishUpdateEvent(t *testing.T) {
 	ctx := context.Background()
 
 	// Real workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Real workflow engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
@@ -215,11 +215,11 @@ func TestEventPublisher_PublishDeleteEvent(t *testing.T) {
 	ctx := context.Background()
 
 	// Real workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Real workflow engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
@@ -290,9 +290,9 @@ func TestEventPublisher_ExtractEntityID(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_ExtractID")
 	ctx := context.Background()
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
@@ -398,9 +398,9 @@ func TestEventPublisher_NilResult(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_NilResult")
 	ctx := context.Background()
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
@@ -462,9 +462,9 @@ func TestEventPublisher_NonBlocking(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_NonBlocking")
 	ctx := context.Background()
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}

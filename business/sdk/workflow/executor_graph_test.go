@@ -61,7 +61,7 @@ func graphTestSetup(t *testing.T) (*workflow.ActionExecutor, *workflow.Business,
 	db := ndb.DB
 	ctx := context.Background()
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db))
 
 	// Seed base workflow data
 	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)

@@ -48,7 +48,7 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
 	ctx := context.Background()
 
 	// Real workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// NOTE: Do NOT call TestSeedFullWorkflow - trigger types and entities are
 	// already seeded by the database migration/seed process. Calling it again
@@ -117,7 +117,7 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
@@ -259,7 +259,7 @@ func TestEventPublisher_MultipleEntityTypes(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_MultiEntity")
 	ctx := context.Background()
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	adminUserID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
 
 	// NOTE: Trigger types and entities are already seeded by database migrations.
@@ -319,7 +319,7 @@ func TestEventPublisher_MultipleEntityTypes(t *testing.T) {
 
 	// Initialize engine with rules
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	engine.Initialize(ctx, workflowBus)
 	engine.GetRegistry().Register(communication.NewSendEmailHandler(log, db.DB))
 
@@ -379,7 +379,7 @@ func TestEventPublisher_TemplateSubstitution(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_Template")
 	ctx := context.Background()
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	adminUserID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
 
 	// NOTE: Trigger types and entities are already seeded by database migrations.
@@ -420,7 +420,7 @@ func TestEventPublisher_TemplateSubstitution(t *testing.T) {
 	})
 
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	engine.Initialize(ctx, workflowBus)
 	engine.GetRegistry().Register(communication.NewSendEmailHandler(log, db.DB))
 
@@ -487,7 +487,7 @@ func TestEventPublisher_UpdateWithFieldChanges(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_FieldChanges")
 	ctx := context.Background()
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	adminUserID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
 
 	// NOTE: Trigger types and entities are already seeded by database migrations.
@@ -523,7 +523,7 @@ func TestEventPublisher_UpdateWithFieldChanges(t *testing.T) {
 	})
 
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	engine.Initialize(ctx, workflowBus)
 	engine.GetRegistry().Register(communication.NewSendEmailHandler(log, db.DB))
 
@@ -587,10 +587,10 @@ func TestEventPublisher_HighVolume(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_EventPublisher_HighVolume")
 	ctx := context.Background()
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	engine.Initialize(ctx, workflowBus)
 
 	qm, _ := workflow.NewQueueManager(log, db.DB, engine, client, queue)
@@ -667,7 +667,7 @@ func TestEventPublisher_CreateAlert(t *testing.T) {
 	ctx := context.Background()
 
 	// Real workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db.DB))
 
 	adminUserID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
@@ -746,7 +746,7 @@ func TestEventPublisher_CreateAlert(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}

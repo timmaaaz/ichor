@@ -418,7 +418,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Create workflowBus outside the RabbitMQ block so it's available for reference API
 	workflowStore := workflowdb.NewStore(cfg.Log, cfg.DB)
-	workflowBus := workflow.NewBusiness(cfg.Log, workflowStore)
+	workflowBus := workflow.NewBusiness(cfg.Log, delegate, workflowStore)
 
 	// Create a standalone ActionRegistry that works with or without RabbitMQ
 	// This enables the actionapi routes to be registered even in test environments
@@ -438,7 +438,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	if cfg.RabbitClient != nil && cfg.RabbitClient.IsConnected() {
 
-		workflowEngine := workflow.NewEngine(cfg.Log, cfg.DB, workflowBus)
+		workflowEngine := workflow.NewEngine(cfg.Log, cfg.DB, delegate, workflowBus)
 		if err := workflowEngine.Initialize(context.Background(), workflowBus); err != nil {
 			cfg.Log.Error(context.Background(), "workflow engine init failed", "error", err)
 		} else {

@@ -43,11 +43,11 @@ func TestDelegateHandler_OrdersCreated(t *testing.T) {
 	ctx := context.Background()
 
 	// Real workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Real workflow engine (no rules needed - just testing event queuing)
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
@@ -138,9 +138,9 @@ func TestDelegateHandler_OrdersUpdated(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup workflow infrastructure
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}
@@ -227,9 +227,9 @@ func TestDelegateHandler_OrdersDeleted(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup workflow infrastructure
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
 		t.Fatalf("initializing engine: %s", err)
 	}

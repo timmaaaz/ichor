@@ -2,6 +2,8 @@ package workflowsaveapi_test
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,7 +75,7 @@ func testExecuteSingleCreateAlert(t *testing.T, sd ExecutionTestData) {
 
 	// Verify execution completed
 	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed, got %s (errors: %v)", execution.Status, execution.Errors)
+		t.Fatalf("expected completed:\n%s", formatExecutionErrors(execution))
 	}
 }
 
@@ -110,7 +112,7 @@ func testExecuteSequence3Actions(t *testing.T, sd ExecutionTestData) {
 
 	// Verify execution completed
 	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed, got %s (errors: %v)", execution.Status, execution.Errors)
+		t.Fatalf("expected completed:\n%s", formatExecutionErrors(execution))
 	}
 
 	// Parse the sequence workflow rule ID
@@ -178,7 +180,7 @@ func testExecuteBranchTrue(t *testing.T, sd ExecutionTestData) {
 
 	// Verify execution completed
 	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed, got %s (errors: %v)", execution.Status, execution.Errors)
+		t.Fatalf("expected completed:\n%s", formatExecutionErrors(execution))
 	}
 
 	// Parse the branching workflow rule ID
@@ -245,7 +247,7 @@ func testExecuteBranchFalse(t *testing.T, sd ExecutionTestData) {
 
 	// Verify execution completed
 	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed, got %s (errors: %v)", execution.Status, execution.Errors)
+		t.Fatalf("expected completed:\n%s", formatExecutionErrors(execution))
 	}
 
 	// Parse the branching workflow rule ID
@@ -437,4 +439,30 @@ func testNoMatchingRules(t *testing.T, sd ExecutionTestData) {
 	if len(execution.BatchResults) != 0 {
 		t.Fatalf("expected 0 batch results, got %d", len(execution.BatchResults))
 	}
+}
+
+// formatExecutionErrors extracts detailed error information from a workflow execution
+// to make test failures unambiguous.
+func formatExecutionErrors(execution *workflow.WorkflowExecution) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("status=%s, errors=%v", execution.Status, execution.Errors))
+
+	for i, batch := range execution.BatchResults {
+		if batch.BatchStatus != "completed" {
+			sb.WriteString(fmt.Sprintf("\n  batch[%d] status=%s:", i, batch.BatchStatus))
+			for j, rule := range batch.RuleResults {
+				if rule.Status != "success" {
+					sb.WriteString(fmt.Sprintf("\n    rule[%d] %s (ID=%s): %s",
+						j, rule.RuleName, rule.RuleID, rule.ErrorMessage))
+					for k, action := range rule.ActionResults {
+						if action.Status != "success" {
+							sb.WriteString(fmt.Sprintf("\n      action[%d] %s (%s): %s",
+								k, action.ActionName, action.ActionType, action.ErrorMessage))
+						}
+					}
+				}
+			}
+		}
+	}
+	return sb.String()
 }

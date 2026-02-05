@@ -44,11 +44,11 @@ type stubEngine struct {
 
 func newStubEngine(log *logger.Logger, db *sqlx.DB) *stubEngine {
 
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db))
 
 	workflow.ResetEngineForTesting()
 	return &stubEngine{
-		Engine: workflow.NewEngine(log, db, workflowBus),
+		Engine: workflow.NewEngine(log, db, nil, workflowBus),
 	}
 }
 
@@ -347,7 +347,7 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 	ctx := context.Background()
 
 	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Seed
 	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)
@@ -428,7 +428,7 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 	// INITIALIZE ENGINE =======================================================
 	// Create engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 
 	// Now initialize the engine
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
@@ -647,7 +647,7 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 	ctx := context.Background()
 
 	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Seed basic data
 	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)
@@ -723,7 +723,7 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 
 	// Create real engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 
 	// Initialize the engine
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
@@ -908,7 +908,7 @@ func TestQueueManager_ClearQueue(t *testing.T) {
 	ctx := context.Background()
 
 	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Seed basic data (entities, trigger types, etc.)
 	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)
@@ -918,7 +918,7 @@ func TestQueueManager_ClearQueue(t *testing.T) {
 
 	// Create real engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 
 	// Initialize the engine
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
@@ -1019,7 +1019,7 @@ func TestQueueManager_Metrics(t *testing.T) {
 	ctx := context.Background()
 
 	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Seed basic data
 	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)
@@ -1029,7 +1029,7 @@ func TestQueueManager_Metrics(t *testing.T) {
 
 	// Create real engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 
 	// Initialize the engine
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
@@ -1164,7 +1164,7 @@ func TestQueueManager_DetermineQueueType(t *testing.T) {
 	ctx := context.Background()
 
 	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Seed basic data
 	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)
@@ -1174,7 +1174,7 @@ func TestQueueManager_DetermineQueueType(t *testing.T) {
 
 	// Create real engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 
 	// Initialize the engine
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
@@ -1243,7 +1243,7 @@ func TestQueueManager_ProcessingResult(t *testing.T) {
 	ctx := context.Background()
 
 	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Seed basic data
 	_, err := workflow.TestSeedFullWorkflow(ctx, uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"), workflowBus)
@@ -1253,7 +1253,7 @@ func TestQueueManager_ProcessingResult(t *testing.T) {
 
 	// Create real engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 
 	// Initialize the engine
 	if err := engine.Initialize(ctx, workflowBus); err != nil {
@@ -1363,11 +1363,11 @@ func Test_ProcessAsyncAction(t *testing.T) {
 	}
 
 	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db.DB))
+	workflowBus := workflow.NewBusiness(log, nil, workflowdb.NewStore(log, db.DB))
 
 	// Reset engine singleton and create fresh engine
 	workflow.ResetEngineForTesting()
-	engine := workflow.NewEngine(log, db.DB, workflowBus)
+	engine := workflow.NewEngine(log, db.DB, nil, workflowBus)
 
 	// Initialize engine first (this creates the registry and registers default handlers)
 	if err := engine.Initialize(ctx, workflowBus); err != nil {

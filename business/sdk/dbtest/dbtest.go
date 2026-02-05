@@ -369,7 +369,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	orderLineItemsBus := orderlineitemsbus.NewBusiness(log, delegate, orderlineitemsdb.NewStore(log, db))
 
 	// Workflow
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+	workflowBus := workflow.NewBusiness(log, delegate, workflowdb.NewStore(log, db))
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
 	actionPermissionsBus := actionpermissionsbus.NewBusiness(log, actionpermissionsdb.NewStore(log, db))
 
