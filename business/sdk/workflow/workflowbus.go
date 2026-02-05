@@ -477,7 +477,11 @@ func (b *Business) CreateRule(ctx context.Context, nar NewAutomationRule) (Autom
 		return AutomationRule{}, fmt.Errorf("create: %w", err)
 	}
 
-	// Fire delegate event for rule cache invalidation
+	// Fire delegate event for rule cache invalidation.
+	// NOTE: When called within a transaction, this event fires but the cache refresh
+	// will not see the new rule (not yet committed). Transactional callers (e.g.,
+	// workflowsaveapp) should fire the delegate again after commit to ensure the
+	// cache is properly refreshed.
 	if b.delegate != nil {
 		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleCreated, rule.ID)); err != nil {
 			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleCreated, "err", err)
@@ -526,7 +530,11 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 		return AutomationRule{}, fmt.Errorf("update: %w", err)
 	}
 
-	// Fire delegate event for rule cache invalidation
+	// Fire delegate event for rule cache invalidation.
+	// NOTE: When called within a transaction, this event fires but the cache refresh
+	// will not see the updated rule (not yet committed). Transactional callers (e.g.,
+	// workflowsaveapp) should fire the delegate again after commit to ensure the
+	// cache is properly refreshed.
 	if b.delegate != nil {
 		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleUpdated, rule.ID)); err != nil {
 			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleUpdated, "err", err)

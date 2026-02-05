@@ -9,6 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -19,6 +20,7 @@ type Config struct {
 	Log            *logger.Logger
 	DB             *sqlx.DB
 	WorkflowBus    *workflow.Business
+	Delegate       *delegate.Delegate
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
 }
@@ -30,7 +32,7 @@ const RouteTable = "workflow.automation_rules"
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
-	workflowApp := workflowsaveapp.NewApp(cfg.Log, cfg.DB, cfg.WorkflowBus)
+	workflowApp := workflowsaveapp.NewApp(cfg.Log, cfg.DB, cfg.WorkflowBus, cfg.Delegate)
 	api := newAPI(workflowApp)
 	authen := mid.Authenticate(cfg.AuthClient)
 

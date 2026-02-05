@@ -139,7 +139,8 @@ func (e *Engine) registerRuleChangeHandlers(ctx context.Context) {
 			if err := e.triggerProcessor.RefreshRules(ctx); err != nil {
 				e.log.Error(ctx, "failed to refresh rules cache", "error", err)
 			} else {
-				e.log.Info(ctx, "rules cache refreshed due to rule change", "action", data.Action)
+				ruleCount := e.triggerProcessor.GetActiveRuleCount()
+				e.log.Info(ctx, "rules cache refreshed due to rule change", "action", data.Action, "ruleCount", ruleCount)
 			}
 		}
 		return nil

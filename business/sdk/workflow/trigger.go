@@ -498,3 +498,10 @@ func (tp *TriggerProcessor) RefreshRules(ctx context.Context) error {
 
 	return tp.loadMetadata(ctx)
 }
+
+// GetActiveRuleCount returns the number of cached active rules.
+func (tp *TriggerProcessor) GetActiveRuleCount() int {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+	return len(tp.activeRules)
+}

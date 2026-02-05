@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -22,14 +23,16 @@ type App struct {
 	log         *logger.Logger
 	db          *sqlx.DB
 	workflowBus *workflow.Business
+	delegate    *delegate.Delegate
 }
 
 // NewApp constructs a workflow save app API for use.
-func NewApp(log *logger.Logger, db *sqlx.DB, workflowBus *workflow.Business) *App {
+func NewApp(log *logger.Logger, db *sqlx.DB, workflowBus *workflow.Business, del *delegate.Delegate) *App {
 	return &App{
 		log:         log,
 		db:          db,
 		workflowBus: workflowBus,
+		delegate:    del,
 	}
 }
 
@@ -93,6 +96,14 @@ func (a *App) SaveWorkflow(ctx context.Context, ruleID uuid.UUID, req SaveWorkfl
 		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "commit: %s", err)
 	}
 
+	// 10. Fire delegate event AFTER commit to invalidate cache
+	if a.delegate != nil {
+		a.log.Info(ctx, "workflowsaveapp: transaction committed, firing delegate event", "ruleID", ruleID, "action", "updated")
+		if err := a.delegate.Call(ctx, workflow.ActionRuleChangedData(workflow.ActionRuleUpdated, ruleID)); err != nil {
+			a.log.Error(ctx, "workflowsaveapp: delegate call failed", "action", workflow.ActionRuleUpdated, "err", err)
+		}
+	}
+
 	return buildResponse(rule, savedActions, savedEdges, req.CanvasLayout), nil
 }
 
@@ -150,6 +161,14 @@ func (a *App) CreateWorkflow(ctx context.Context, userID uuid.UUID, req SaveWork
 	// 9. Commit transaction
 	if err := tx.Commit(); err != nil {
 		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "commit: %s", err)
+	}
+
+	// 10. Fire delegate event AFTER commit to invalidate cache
+	if a.delegate != nil {
+		a.log.Info(ctx, "workflowsaveapp: transaction committed, firing delegate event", "ruleID", rule.ID, "action", "created")
+		if err := a.delegate.Call(ctx, workflow.ActionRuleChangedData(workflow.ActionRuleCreated, rule.ID)); err != nil {
+			a.log.Error(ctx, "workflowsaveapp: delegate call failed", "action", workflow.ActionRuleCreated, "err", err)
+		}
 	}
 
 	return buildResponse(rule, savedActions, savedEdges, req.CanvasLayout), nil

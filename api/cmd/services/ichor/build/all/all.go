@@ -456,8 +456,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 					eventPublisher = workflow.NewEventPublisher(cfg.Log, queueManager)
 					cfg.Log.Info(context.Background(), "workflow event infrastructure initialized")
 
-					// Register workflow action handlers to the shared registry
-					workflowactions.RegisterAll(actionRegistry, workflowactions.ActionConfig{
+					// Register workflow action handlers to the engine's registry
+					// (not the standalone actionRegistry - the engine uses its own internal registry)
+					workflowactions.RegisterAll(workflowEngine.GetRegistry(), workflowactions.ActionConfig{
 						Log:         cfg.Log,
 						DB:          cfg.DB,
 						QueueClient: workflowQueue,
@@ -1080,6 +1081,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Log:            cfg.Log,
 		DB:             cfg.DB,
 		WorkflowBus:    workflowBus,
+		Delegate:       delegate,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
