@@ -58,4 +58,30 @@ func Test_WorkflowSaveAPI(t *testing.T) {
 
 	esd := insertExecutionSeedData(t, test, sd)
 	runExecutionTests(t, esd)
+
+	// ============================================================
+	// Phase 8: End-to-End Trigger Integration Tests
+	// ============================================================
+	// Note: These tests verify that real entity CRUD operations trigger
+	// workflow execution through the delegate/event system.
+
+	tsd := insertTriggerSeedData(t, test, esd)
+	runTriggerTests(t, tsd)
+
+	// ============================================================
+	// Phase 9: Action-Specific Integration Tests
+	// ============================================================
+	// Note: These tests verify that each action type executes correctly
+	// with proper configuration and produces expected side effects.
+
+	runActionTests(t, esd)
+
+	// ============================================================
+	// Phase 10: Error Handling & Edge Case Tests
+	// ============================================================
+	// Note: These tests verify proper error handling, rollback behavior,
+	// and edge cases including action failures, condition errors,
+	// concurrency, and queue failures.
+
+	runErrorTests(t, esd)
 }
