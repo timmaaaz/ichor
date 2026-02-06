@@ -334,7 +334,6 @@ type ruleAction struct {
 	Name             string          `db:"name"`
 	Description      string          `db:"description"`
 	ActionConfig     json.RawMessage `db:"action_config"`
-	ExecutionOrder   int             `db:"execution_order"`
 	IsActive         bool            `db:"is_active"`
 	TemplateID       sql.NullString  `db:"template_id"`
 	DeactivatedBy    sql.NullString  `db:"deactivated_by"`
@@ -352,7 +351,6 @@ func toCoreRuleAction(dbAction ruleAction) workflow.RuleAction {
 		Description:      dbAction.Description,
 		Name:             dbAction.Name,
 		ActionConfig:     dbAction.ActionConfig,
-		ExecutionOrder:   dbAction.ExecutionOrder,
 		IsActive:         dbAction.IsActive,
 		DeactivatedBy:    deactivatedBy,
 	}
@@ -385,7 +383,6 @@ func toDBRuleAction(ra workflow.RuleAction) ruleAction {
 		Name:             ra.Name,
 		Description:      ra.Description,
 		ActionConfig:     ra.ActionConfig,
-		ExecutionOrder:   ra.ExecutionOrder,
 		IsActive:         ra.IsActive,
 		DeactivatedBy:    deactivatedBy,
 	}
@@ -623,7 +620,6 @@ type ruleActionView struct {
 	Name             sql.NullString  `db:"name"`
 	Description      sql.NullString  `db:"description"`
 	ActionConfig     json.RawMessage `db:"action_config"`
-	ExecutionOrder   sql.NullInt32   `db:"execution_order"`
 	IsActive         sql.NullBool    `db:"is_active"`
 	// Template information
 	TemplateID            sql.NullString         `db:"template_id"`
@@ -649,9 +645,6 @@ func toCoreRuleActionView(dbView ruleActionView) workflow.RuleActionView {
 	}
 	if dbView.Description.Valid {
 		view.Description = dbView.Description.String
-	}
-	if dbView.ExecutionOrder.Valid {
-		view.ExecutionOrder = int(dbView.ExecutionOrder.Int32)
 	}
 	if dbView.IsActive.Valid {
 		view.IsActive = dbView.IsActive.Bool

@@ -82,13 +82,6 @@ func ValidateCreateRule(req CreateRuleRequest) *ValidationErrors {
 				})
 			}
 		}
-		// Validate execution order is non-negative
-		if action.ExecutionOrder < 0 {
-			errors = append(errors, ValidationError{
-				Field:   fmt.Sprintf("actions[%d].execution_order", i),
-				Message: "execution_order must be non-negative",
-			})
-		}
 	}
 
 	if len(errors) > 0 {

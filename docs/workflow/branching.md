@@ -4,14 +4,12 @@ This document explains how workflows can use graph-based execution with conditio
 
 ## Overview
 
-By default, workflow rules execute actions in a linear sequence based on `execution_order`. Graph-based execution enables:
+Workflow rules execute actions using graph-based traversal with action edges. This enables:
 
 - **Conditional branching** - Execute different actions based on condition results
 - **Parallel entry points** - Start multiple action paths simultaneously
 - **Convergence** - Multiple branches can lead to a common action
 - **Complex flows** - Nested conditions, diamond patterns, and more
-
-The graph executor is **backwards compatible** - rules without edges automatically fall back to linear `execution_order` execution.
 
 ## Core Concepts
 
@@ -60,7 +58,7 @@ type ActionEdge struct {
 The executor uses **Breadth-First Search (BFS)** traversal:
 
 1. Load all edges for the rule
-2. If no edges exist, fall back to linear execution
+2. If no edges exist, return an error (edges are required)
 3. Build adjacency list: `source_action_id → [edges]`
 4. Identify start edges (where `source_action_id` is nil)
 5. Sort start edges by `edge_order`
@@ -91,21 +89,20 @@ func ShouldFollowEdge(edge ActionEdge, result ActionResult) bool {
 
 **Source**: `business/sdk/workflow/executor.go:404-427`
 
-### Backwards Compatibility
+### Edge Requirement
 
-Rules execute using graph traversal only when edges exist:
+All rules with actions must have edges defining execution flow. The validation
+layer enforces this at save time, and the executor returns an error at runtime
+if edges are missing:
 
 ```go
-// Falls back to linear execution if:
-// 1. No edges exist for the rule
-// 2. Edges exist but no start edges defined
-
 if len(edges) == 0 {
-    return ae.ExecuteRuleActions(ctx, ruleID, executionContext)  // Linear
+    return BatchExecutionResult{
+        RuleID: ruleID, Status: "failed",
+        ErrorMessage: "rule has no edges - all rules with actions require edges",
+    }, fmt.Errorf("executeRuleActionsGraph: rule %s has no edges", ruleID)
 }
 ```
-
-This means existing rules continue to work without modification.
 
 ## Workflow Patterns
 
@@ -330,7 +327,7 @@ GET /v1/workflow/rules/{ruleID}/edges
 DELETE /v1/workflow/rules/{ruleID}/edges/{edgeID}
 ```
 
-### Delete All Edges (Reset to Linear)
+### Delete All Edges
 
 ```bash
 DELETE /v1/workflow/rules/{ruleID}/edges-all
@@ -402,22 +399,9 @@ This example implements a tiered approval system:
 
 ## Best Practices
 
-### When to Use Graph Execution
-
-**Use graph execution when**:
-- You need conditional branching based on data values
-- Different scenarios require different action sequences
-- You want to skip certain actions based on conditions
-- Multiple independent action paths should run from the same trigger
-
-**Use linear execution when**:
-- Actions should always run in the same order
-- There's no conditional logic needed
-- Simplicity is more important than flexibility
-
 ### Design Guidelines
 
-1. **Always include start edges** - Without start edges, graph execution falls back to linear mode
+1. **Always include start edges** - Every rule with actions must have at least one start edge
 
 2. **Use meaningful edge_order values** - Space them out (1, 10, 20) to allow insertions
 
@@ -433,7 +417,7 @@ This example implements a tiered approval system:
 
 | Mistake | Problem | Solution |
 |---------|---------|----------|
-| Missing start edge | Falls back to linear execution | Add a start edge with `source_action_id: null` |
+| Missing start edge | Execution fails (no entry point) | Add a start edge with `source_action_id: null` |
 | No false_branch | Execution stops when condition is false | Add false_branch edge or accept early termination |
 | Circular edges | Could cause infinite loop | Executor prevents this, but avoid for clarity |
 | Wrong edge_order | Non-deterministic execution order | Use explicit ordering (1, 2, 3...) |
@@ -442,7 +426,6 @@ This example implements a tiered approval system:
 
 The test file `business/sdk/workflow/executor_graph_test.go` demonstrates all patterns:
 
-- `TestGraphExec_NoEdges_FallsBackToLinear` - Backwards compatibility
 - `TestGraphExec_SingleStartEdge` / `MultipleStartEdges` - Entry points
 - `TestGraphExec_TrueBranch_WhenConditionTrue` - Branch following
 - `TestGraphExec_DiamondPattern` - Converging branches

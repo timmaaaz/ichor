@@ -35,12 +35,13 @@ func listActions200Admin(sd ActionSeedData) []apitest.Table {
 }
 
 func listActions200UserWithPermissions(sd ActionSeedData) []apitest.Table {
-	// In test environments without RabbitMQ, no action handlers are registered,
-	// so the action registry is empty. The user has permissions for actions,
-	// but since no handlers exist, the filtered list is empty.
-	// This tests that the endpoint works correctly - in production with handlers
-	// registered, the user would see their permitted actions.
-	expActions := actionapp.AvailableActions{}
+	// Core action handlers (including send_notification) are registered via
+	// RegisterCoreActions even without RabbitMQ. The user has permissions for
+	// create_alert and send_notification, and send_notification is registered,
+	// so they should see it in the list.
+	expActions := actionapp.AvailableActions{
+		{Type: "send_notification", Description: "Send an in-app notification", IsAsync: false},
+	}
 
 	return []apitest.Table{
 		{
@@ -55,9 +56,16 @@ func listActions200UserWithPermissions(sd ActionSeedData) []apitest.Table {
 				gotResp := got.(*actionapp.AvailableActions)
 				expResp := exp.(*actionapp.AvailableActions)
 
-				// In test env, both should be empty since no handlers are registered
 				if len(*gotResp) != len(*expResp) {
 					return cmp.Diff(gotResp, expResp)
+				}
+
+				// Verify the expected action is present
+				for i, exp := range *expResp {
+					got := (*gotResp)[i]
+					if got.Type != exp.Type || got.Description != exp.Description || got.IsAsync != exp.IsAsync {
+						return cmp.Diff(gotResp, expResp)
+					}
 				}
 
 				return ""

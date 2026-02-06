@@ -1,17 +1,17 @@
-# Default Status Management Next Phase Command
+# Universal Action Edge Enforcement Next Phase Command
 
-Execute the next pending phase in the Default Status Management implementation plan, or continue the current in-progress phase.
+Execute the next pending phase in the Universal Action Edge Enforcement implementation plan, or continue the current in-progress phase.
 
 ## Your Task
 
 ### 1. Determine Which Phase to Execute
 
-1. Read `.claude/plans/DEFAULT_STATUSES_PLAN/PROGRESS.yaml`
+1. Read `.claude/plans/MISSING_ACTION_EDGES_PLAN/PROGRESS.yaml`
 2. Check the `current_phase` field and phase statuses:
    - If a phase has status `in_progress`, continue that phase
    - Otherwise, find the first phase with status `pending`
    - If all phases are `completed`, congratulate the user and exit
-3. Verify phase documentation exists (e.g., `.claude/plans/DEFAULT_STATUSES_PLAN/phases/PHASE_1_*.md`)
+3. Verify phase documentation exists (e.g., `.claude/plans/MISSING_ACTION_EDGES_PLAN/phases/PHASE_1_*.md`)
 
 ### 2. Check Dependencies
 
@@ -22,9 +22,9 @@ For the selected phase:
 
 ### 3. Load Phase Instructions
 
-Load the corresponding phase file from `.claude/plans/DEFAULT_STATUSES_PLAN/phases/PHASE_N_*.md`
+Load the corresponding phase file from `.claude/plans/MISSING_ACTION_EDGES_PLAN/phases/PHASE_N_*.md`
 
-If phase documentation doesn't exist, suggest running `/default-statuses-build-phase` first.
+If phase documentation doesn't exist, suggest running `/missing-action-edges-build-phase` first.
 
 ### 4. Check Prerequisites
 
@@ -32,6 +32,7 @@ Before starting, verify:
 - All previous phases are marked `completed` in PROGRESS.yaml
 - If prerequisites are not met, inform the user and ask if they want to continue anyway
 - For backend phases, ensure Go backend access is available
+- For database phases, ensure database access is available
 
 ### 5. Update PROGRESS.yaml - Phase Start
 
@@ -131,8 +132,8 @@ Provide a comprehensive summary:
 ### Code Quality
 
 - Follow all patterns and conventions in CLAUDE.md
-- Run `go build` to verify compilation
-- Run `make lint` for linting
+- Run Go compilation: `go build ./...`
+- Run linting: `make lint`
 - Ensure all code compiles before marking tasks complete
 
 ### Testing as You Go
@@ -148,23 +149,46 @@ Provide a comprehensive summary:
 - Show progress frequently
 - Ask for confirmation before major changes
 
+## Category-Specific Notes
+
+### Backend Phases (Go)
+
+- Follow Ardan Labs patterns from CLAUDE.md
+- Test endpoints with curl commands or API tests
+- Run `go build ./...` to verify compilation
+- Run `make test` to verify tests pass
+
+### Testing Phases
+
+- Write tests as you create components
+- Aim for meaningful coverage
+- Test critical paths thoroughly
+- Document test scenarios
+
+### Documentation Phases
+
+- Update docs with new patterns
+- Document breaking changes
+- Create examples for complex features
+- Update API documentation
+
 ## Example Usage
 
-User runs: `/default-statuses-next`
+User runs: `/missing-action-edges-next`
 
 You respond:
 
 1. "Reading PROGRESS.yaml to determine next phase..."
-2. "Phase 1 (Form Configuration FK Default Resolution) is next. Prerequisites: None"
+2. "Phase 2 (Remove execution_order Field) is next. Prerequisites: Phase 1 ✅"
 3. "Loading phase documentation..."
-4. "Starting Phase 1..."
+4. "Starting Phase 2..."
 5. [Update PROGRESS.yaml]
 6. [Create todo list with TodoWrite]
-7. "Working on Task 1: Add FK default resolution to formdataapp..."
+7. "Working on Task 1: Add database migration..."
 8. [Execute task, update PROGRESS.yaml]
 9. "Task 1 complete! Moving to Task 2..."
 10. [Continue through all tasks]
 11. "Running phase validation checks..."
 12. [Validate phase completion]
-13. "Phase 1 complete! Summary: [details]"
-14. "Ready for Phase 2. Run `/default-statuses-next` again to continue."
+13. "Phase 2 complete! Summary: [details]"
+14. "Ready for Phase 3. Run `/missing-action-edges-next` again to continue."

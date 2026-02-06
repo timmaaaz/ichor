@@ -203,13 +203,20 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
     })
 
     // Create rule action
-    workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+    action, _ := workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
         AutomationRuleID: rule.ID,
         Name:             "Send Order Notification",
         ActionConfig:     json.RawMessage(`{"subject": "New Order: {{number}}"}`),
-        ExecutionOrder:   1,
         IsActive:         true,
         TemplateID:       &template.ID,
+    })
+
+    // Create start edge (required for all rules with actions)
+    workflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+        RuleID:         rule.ID,
+        TargetActionID: action.ID,
+        EdgeType:       workflow.EdgeTypeStart,
+        EdgeOrder:      0,
     })
 
     // Initialize engine AFTER creating rules
@@ -376,7 +383,7 @@ Tests the graph-based action execution in `ExecuteRuleActionsGraph`.
 
 ### What These Tests Cover
 
-- Backwards compatibility (fallback to linear execution when no edges)
+- Edge requirement enforcement (rules with actions must have edges)
 - Start edge handling (single/multiple entry points)
 - Sequential execution via `sequence` and `always` edge types
 - Branch execution based on condition results (`true_branch`/`false_branch`)
@@ -411,7 +418,6 @@ func TestGraphExecution(t *testing.T) {
         AutomationRuleID: rule.ID,
         Name:             "Check Status",
         ActionConfig:     json.RawMessage(`{"conditions": [...], "logic_type": "and"}`),
-        ExecutionOrder:   1,
         IsActive:         true,
     })
 

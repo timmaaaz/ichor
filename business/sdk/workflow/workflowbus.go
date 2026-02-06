@@ -633,7 +633,6 @@ func (b *Business) CreateRuleAction(ctx context.Context, nra NewRuleAction) (Rul
 		Name:             nra.Name,
 		Description:      nra.Description,
 		ActionConfig:     nra.ActionConfig,
-		ExecutionOrder:   nra.ExecutionOrder,
 		IsActive:         nra.IsActive,
 		TemplateID:       nra.TemplateID,
 	}
@@ -658,9 +657,6 @@ func (b *Business) UpdateRuleAction(ctx context.Context, action RuleAction, ura 
 	}
 	if ura.ActionConfig != nil {
 		action.ActionConfig = *ura.ActionConfig
-	}
-	if ura.ExecutionOrder != nil {
-		action.ExecutionOrder = *ura.ExecutionOrder
 	}
 	if ura.IsActive != nil {
 		action.IsActive = *ura.IsActive

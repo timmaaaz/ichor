@@ -168,12 +168,22 @@ func insertCascadeSeedData(db *dbtest.Database, ath *auth.Auth) (CascadeSeedData
 		Name:             "Update Status Action",
 		Description:      "Updates entity status field",
 		ActionConfig:     updateFieldConfig,
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &updateFieldTemplate.ID,
 	})
 	if err != nil {
 		return CascadeSeedData{}, fmt.Errorf("creating primary rule action: %w", err)
+	}
+
+	_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         primaryRule.ID,
+		SourceActionID: nil,
+		TargetActionID: primaryAction.ID,
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      0,
+	})
+	if err != nil {
+		return CascadeSeedData{}, fmt.Errorf("creating edge for primary rule action: %w", err)
 	}
 
 	// =========================================================================
@@ -198,17 +208,27 @@ func insertCascadeSeedData(db *dbtest.Database, ath *auth.Auth) (CascadeSeedData
 		downstreamRules[i] = rule
 
 		// Add a simple action to each downstream rule (linked to generic template)
-		_, err = busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+		downstreamAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
 			AutomationRuleID: rule.ID,
 			Name:             fmt.Sprintf("Downstream Action %d", i+1),
 			Description:      "Action for downstream rule",
 			ActionConfig:     createGenericActionConfig(),
-			ExecutionOrder:   1,
 			IsActive:         true,
 			TemplateID:       &genericTemplate.ID,
 		})
 		if err != nil {
 			return CascadeSeedData{}, fmt.Errorf("creating downstream rule %d action: %w", i+1, err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+			RuleID:         rule.ID,
+			SourceActionID: nil,
+			TargetActionID: downstreamAction.ID,
+			EdgeType:       workflow.EdgeTypeStart,
+			EdgeOrder:      0,
+		})
+		if err != nil {
+			return CascadeSeedData{}, fmt.Errorf("creating edge for downstream rule %d action: %w", i+1, err)
 		}
 	}
 
@@ -235,12 +255,22 @@ func insertCascadeSeedData(db *dbtest.Database, ath *auth.Auth) (CascadeSeedData
 		Name:             "Generic Action",
 		Description:      "Generic action that doesn't modify entities",
 		ActionConfig:     createGenericActionConfig(),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &genericTemplate.ID,
 	})
 	if err != nil {
 		return CascadeSeedData{}, fmt.Errorf("creating non-modifying action: %w", err)
+	}
+
+	_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         nonModifyingRule.ID,
+		SourceActionID: nil,
+		TargetActionID: nonModifyingAction.ID,
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      0,
+	})
+	if err != nil {
+		return CascadeSeedData{}, fmt.Errorf("creating edge for non-modifying action: %w", err)
 	}
 
 	// =========================================================================
@@ -266,7 +296,6 @@ func insertCascadeSeedData(db *dbtest.Database, ath *auth.Auth) (CascadeSeedData
 		Name:             "Mixed Modifying Action",
 		Description:      "Updates entity field",
 		ActionConfig:     createUpdateFieldActionConfig(fullTableName, "status", "mixed"),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &updateFieldTemplate.ID,
 	})
@@ -280,12 +309,35 @@ func insertCascadeSeedData(db *dbtest.Database, ath *auth.Auth) (CascadeSeedData
 		Name:             "Mixed Non-Modifying Action",
 		Description:      "Generic action",
 		ActionConfig:     createGenericActionConfig(),
-		ExecutionOrder:   2,
 		IsActive:         true,
 		TemplateID:       &genericTemplate.ID,
 	})
 	if err != nil {
 		return CascadeSeedData{}, fmt.Errorf("creating mixed non-modifying action: %w", err)
+	}
+
+	// Create edge chain for mixed rule: start -> modifying -> non-modifying
+	_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         mixedRule.ID,
+		SourceActionID: nil,
+		TargetActionID: mixedModifyingAction.ID,
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      0,
+	})
+	if err != nil {
+		return CascadeSeedData{}, fmt.Errorf("creating start edge for mixed rule: %w", err)
+	}
+
+	mixedModifyingActionID := mixedModifyingAction.ID
+	_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         mixedRule.ID,
+		SourceActionID: &mixedModifyingActionID,
+		TargetActionID: mixedNonModifyingAction.ID,
+		EdgeType:       workflow.EdgeTypeSequence,
+		EdgeOrder:      1,
+	})
+	if err != nil {
+		return CascadeSeedData{}, fmt.Errorf("creating sequence edge for mixed rule: %w", err)
 	}
 
 	// =========================================================================
@@ -311,12 +363,22 @@ func insertCascadeSeedData(db *dbtest.Database, ath *auth.Auth) (CascadeSeedData
 		Name:             "Self Trigger Action",
 		Description:      "Updates entity that rule is listening to",
 		ActionConfig:     createUpdateFieldActionConfig(fullTableName, "status", "self_trigger"),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &updateFieldTemplate.ID,
 	})
 	if err != nil {
 		return CascadeSeedData{}, fmt.Errorf("creating self trigger action: %w", err)
+	}
+
+	_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         selfTriggerRule.ID,
+		SourceActionID: nil,
+		TargetActionID: selfTriggerAction.ID,
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      0,
+	})
+	if err != nil {
+		return CascadeSeedData{}, fmt.Errorf("creating edge for self trigger action: %w", err)
 	}
 
 	// =========================================================================

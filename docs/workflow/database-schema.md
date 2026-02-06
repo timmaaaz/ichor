@@ -114,7 +114,6 @@ Actions attached to automation rules.
 | `name` | TEXT | NO | - | Action name |
 | `description` | TEXT | YES | - | Description |
 | `action_config` | JSONB | NO | - | Action configuration |
-| `execution_order` | INT | NO | - | Execution order (≥1) |
 | `is_active` | BOOLEAN | YES | `true` | Whether active |
 | `template_id` | UUID | YES | - | FK to action_templates |
 | `deactivated_by` | UUID | YES | - | FK to core.users |
@@ -168,8 +167,8 @@ CREATE INDEX idx_action_edges_rule ON workflow.action_edges(rule_id);
 ```
 
 **Usage notes:**
-- Rules WITHOUT edges fall back to linear `execution_order` execution (backwards compatible)
-- Rules WITH edges use graph-based BFS traversal
+- All rules with actions require edges for execution
+- Execution uses graph-based BFS traversal via `action_edges`
 - `edge_order` determines processing order when multiple edges share the same source
 - The executor tracks executed actions to prevent cycles
 
@@ -313,7 +312,6 @@ CREATE INDEX idx_automation_rules_active ON workflow.automation_rules(is_active)
 
 -- Actions by rule
 CREATE INDEX idx_rule_actions_rule ON workflow.rule_actions(automation_rule_id);
-CREATE INDEX idx_rule_actions_order ON workflow.rule_actions(execution_order);
 
 -- Executions by rule and status
 CREATE INDEX idx_automation_executions_rule ON workflow.automation_executions(rule_id);

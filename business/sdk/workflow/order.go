@@ -16,9 +16,8 @@ const (
 
 // Order field constants for rule actions.
 const (
-	ActionOrderByID             = "id"
-	ActionOrderByExecutionOrder = "execution_order"
-	ActionOrderByIsActive       = "is_active"
+	ActionOrderByID       = "id"
+	ActionOrderByIsActive = "is_active"
 )
 
 // Order field constants for execution history.

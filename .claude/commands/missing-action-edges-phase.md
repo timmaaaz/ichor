@@ -1,20 +1,20 @@
-# Default Status Management Phase Jump Command
+# Universal Action Edge Enforcement Phase Jump Command
 
-Jump to and execute a specific phase in the Default Status Management implementation plan.
+Jump to and execute a specific phase in the Universal Action Edge Enforcement implementation plan.
 
 ## Your Task
 
 ### 1. Parse Parameters
 
-This command takes a phase number parameter: `/default-statuses-phase N`
+This command takes a phase number parameter: `/missing-action-edges-phase N`
 
 If no parameter provided, ask the user which phase they want to jump to.
 
 ### 2. Validate Phase Number
 
-1. Read `.claude/plans/DEFAULT_STATUSES_PLAN/PROGRESS.yaml`
-2. Verify phase number is valid (between 1 and 3)
-3. Check if phase documentation exists (`.claude/plans/DEFAULT_STATUSES_PLAN/phases/PHASE_N_*.md`)
+1. Read `.claude/plans/MISSING_ACTION_EDGES_PLAN/PROGRESS.yaml`
+2. Verify phase number is valid (between 1 and 6)
+3. Check if phase documentation exists (`.claude/plans/MISSING_ACTION_EDGES_PLAN/phases/PHASE_N_*.md`)
 
 ### 3. Check Prerequisites
 
@@ -33,9 +33,14 @@ Before jumping to the phase:
    - Wait for user confirmation
 
 2. Check phase dependencies:
-   - Phase 2 depends on Phase 1
-   - Phase 3 depends on Phase 2
+   - Read `dependencies.internal` from the phase in PROGRESS.yaml
+   - Verify all dependency phases are `completed`
    - If not, warn the user and ask for confirmation
+
+3. Check external dependencies:
+   - Read `dependencies.external` from PROGRESS.yaml
+   - Verify all external plans are completed
+   - If not, warn the user
 
 ### 4. Update Current Phase
 
@@ -47,7 +52,7 @@ If user confirms (or no warnings):
 
 ### 5. Execute the Phase
 
-Follow the exact same workflow as the `/default-statuses-next` command:
+Follow the exact same workflow as the `/missing-action-edges-next` command:
 
 1. Load phase documentation
 2. Set phase status to `in_progress`
@@ -57,7 +62,7 @@ Follow the exact same workflow as the `/default-statuses-next` command:
 6. Mark phase as completed if validation passes
 7. Provide completion summary
 
-Refer to the `default-statuses-next.md` for detailed execution steps.
+Refer to the `next.md.template` for detailed execution steps.
 
 ## Important Notes
 
@@ -78,26 +83,13 @@ Refer to the `default-statuses-next.md` for detailed execution steps.
 
 ### Error Handling
 
-- If phase documentation doesn't exist, suggest running `/default-statuses-build-phase`
+- If phase documentation doesn't exist, suggest running `/missing-action-edges-build-phase`
 - If jumping to a phase that's currently `blocked`, explain the blocker first
 - If phase has status `in_progress`, ask if they want to continue or restart
 
-## Phase Reference
-
-| Phase | Name | Dependencies |
-|-------|------|--------------|
-| 1 | Form Configuration FK Default Resolution | None |
-| 2 | Workflow Integration for Status Transitions | Phase 1 |
-| 3 | Alert System Enhancement | Phase 2 |
-
 ## Example Usage
 
-```bash
-# Jump to Phase 2
-/default-statuses-phase 2
+### Scenario 1: Jumping Ahead
 
-# If Phase 1 not complete, you'll see:
-# ⚠️  Warning: Phase 1 (Form Configuration FK Default Resolution) is not completed.
-# Phase 2 depends on FK default resolution being implemented.
-# Do you want to proceed anyway? (yes/no)
 ```
+User: /missing-action-edges-phase 5

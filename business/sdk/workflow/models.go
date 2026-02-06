@@ -338,7 +338,6 @@ type RuleAction struct {
 	Name             string
 	Description      string
 	ActionConfig     json.RawMessage
-	ExecutionOrder   int
 	IsActive         bool
 	TemplateID       *uuid.UUID // Nullable
 	DeactivatedBy    uuid.UUID  // Nullable, tracks who deactivated the action
@@ -350,18 +349,16 @@ type NewRuleAction struct {
 	Name             string
 	Description      string
 	ActionConfig     json.RawMessage
-	ExecutionOrder   int
 	IsActive         bool
 	TemplateID       *uuid.UUID
 }
 
 // UpdateRuleAction contains information needed to update a rule action
 type UpdateRuleAction struct {
-	Name           *string
-	Description    *string
-	ActionConfig   *json.RawMessage
-	ExecutionOrder *int
-	IsActive       *bool
+	Name         *string
+	Description  *string
+	ActionConfig *json.RawMessage
+	IsActive     *bool
 	TemplateID     *uuid.UUID
 }
 
@@ -604,7 +601,6 @@ type RuleActionView struct {
 	Name              string
 	Description       string
 	ActionConfig      json.RawMessage
-	ExecutionOrder    int
 	IsActive          bool
 	TemplateID        *uuid.UUID
 	// Template information

@@ -417,7 +417,6 @@ func TestQueueManager_ProcessMessage(t *testing.T) {
 			"subject": "New Customer: {{name}}",
 			"body": "A new customer {{name}} with email {{email}} has been created."
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &emailTemplate.ID,
 	})
@@ -713,7 +712,6 @@ func TestQueueManager_CircuitBreaker(t *testing.T) {
 			"simulate_failure": true,
 			"failure_message": "Connection refused: SMTP server at smtp.example.com:587 is not responding"
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &emailTemplate.ID,
 	})

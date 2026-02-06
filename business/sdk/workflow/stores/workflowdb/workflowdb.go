@@ -655,10 +655,10 @@ func (s *Store) CreateRuleAction(ctx context.Context, action workflow.RuleAction
 	const q = `
 	INSERT INTO workflow.rule_actions (
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id, deactivated_by
+		is_active, template_id, deactivated_by
 	) VALUES (
 		:id, :automation_rules_id, :name, :description, :action_config,
-		:execution_order, :is_active, :template_id, :deactivated_by
+		:is_active, :template_id, :deactivated_by
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRuleAction(action)); err != nil {
@@ -678,7 +678,6 @@ func (s *Store) UpdateRuleAction(ctx context.Context, action workflow.RuleAction
 		name = :name,
 		description = :description,
 		action_config = :action_config,
-		execution_order = :execution_order,
 		is_active = :is_active,
 		template_id = :template_id
 	WHERE
@@ -738,10 +737,10 @@ func (s *Store) QueryActionsByRule(ctx context.Context, ruleID uuid.UUID) ([]wor
 	const q = `
 	SELECT
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id
+		is_active, template_id
 	FROM
 		workflow.rule_actions
-	WHERE 
+	WHERE
 		automation_rules_id = :automation_rules_id`
 
 	var dbActions []ruleAction
@@ -1143,14 +1142,12 @@ func (s *Store) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UU
 	const q = `
 	SELECT
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id, template_name,
+		is_active, template_id, template_name,
 		template_action_type, template_default_config
 	FROM
 		workflow.rule_actions_view
 	WHERE
-		automation_rules_id = :automation_rules_id
-	ORDER BY
-		execution_order ASC`
+		automation_rules_id = :automation_rules_id`
 
 	var dbRuleActionsViews []ruleActionView
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbRuleActionsViews); err != nil {
@@ -1199,11 +1196,10 @@ func (s *Store) QueryAutomationRulesViewPaginated(
 				'name', ra.name,
 				'description', ra.description,
 				'action_config', ra.action_config,
-				'execution_order', ra.execution_order,
 				'is_active', ra.is_active,
 				'template_id', ra.template_id,
 				'deactivated_by', ra.deactivated_by
-			) ORDER BY ra.execution_order)
+			) ORDER BY ra.name)
 			FROM workflow.rule_actions ra
 			WHERE ra.automation_rules_id = ar.id
 		), '[]'::::json) AS actions
@@ -1272,7 +1268,7 @@ func (s *Store) QueryActionByID(ctx context.Context, actionID uuid.UUID) (workfl
 	const q = `
 	SELECT
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id
+		is_active, template_id
 	FROM workflow.rule_actions
 	WHERE id = :id`
 
@@ -1298,7 +1294,7 @@ func (s *Store) QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (wo
 	const q = `
 	SELECT
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id, template_name,
+		is_active, template_id, template_name,
 		template_action_type, template_default_config
 	FROM workflow.rule_actions_view
 	WHERE id = :id`

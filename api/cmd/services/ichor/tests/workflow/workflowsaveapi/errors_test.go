@@ -87,7 +87,6 @@ func testActionFailsSequenceStops(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Action 1 - Valid",
 		ActionConfig:     json.RawMessage(`{"alert_type":"test","severity":"low","title":"Test 1","message":"Should succeed","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -100,7 +99,6 @@ func testActionFailsSequenceStops(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Action 2 - Invalid Config",
 		ActionConfig:     json.RawMessage(`{"invalid_field":"this should fail"}`), // Missing required 'conditions' field
-		ExecutionOrder:   2,
 		IsActive:         true,
 		TemplateID:       &sd.EvaluateConditionTemplate.ID,
 	})
@@ -113,7 +111,6 @@ func testActionFailsSequenceStops(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Action 3 - Should Skip",
 		ActionConfig:     json.RawMessage(`{"alert_type":"test","severity":"low","title":"Test 3","message":"Should be skipped","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
-		ExecutionOrder:   3,
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -244,7 +241,6 @@ func testActionTimeout(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Timeout Test Action",
 		ActionConfig:     json.RawMessage(`{"alert_type":"timeout_test","severity":"low","title":"Timeout Test","message":"Testing timeout","recipients":{"users":["` + sd.Users[0].ID.String() + `"],"roles":[]}}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -319,7 +315,6 @@ func testConditionFieldNotFound(t *testing.T, sd ExecutionTestData) {
 		ActionConfig: json.RawMessage(`{
 			"conditions": [{"field_name": "nonexistent_field_xyz", "operator": "equals", "value": "test"}]
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.EvaluateConditionTemplate.ID,
 	})
@@ -412,7 +407,6 @@ func testConditionTypeMismatch(t *testing.T, sd ExecutionTestData) {
 		ActionConfig: json.RawMessage(`{
 			"conditions": [{"field_name": "name", "operator": "greater_than", "value": 100}]
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.EvaluateConditionTemplate.ID,
 	})
@@ -488,7 +482,6 @@ func testConcurrentTriggersSameRule(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Concurrent Test Action",
 		ActionConfig:     json.RawMessage(`{"alert_type":"concurrent_test","severity":"low","title":"Concurrent","message":"Test","recipients":{"users":["` + sd.Users[0].ID.String() + `"],"roles":[]}}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -610,7 +603,6 @@ func testQueueRetrySuccess(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Queue Test Action",
 		ActionConfig:     json.RawMessage(`{"alert_type":"queue_test","severity":"low","title":"Queue","message":"Test","recipients":{"users":["` + sd.Users[0].ID.String() + `"],"roles":[]}}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -753,7 +745,6 @@ func testInactiveActionSkipped(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Active Action 1",
 		ActionConfig:     json.RawMessage(`{"alert_type":"active_test","severity":"low","title":"Active 1","message":"Should execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
-		ExecutionOrder:   1,
 		IsActive:         true, // Active
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -766,7 +757,6 @@ func testInactiveActionSkipped(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Inactive Action 2",
 		ActionConfig:     json.RawMessage(`{"alert_type":"inactive_test","severity":"high","title":"Inactive 2","message":"Should NOT execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
-		ExecutionOrder:   2,
 		IsActive:         false, // INACTIVE
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -779,7 +769,6 @@ func testInactiveActionSkipped(t *testing.T, sd ExecutionTestData) {
 		AutomationRuleID: rule.ID,
 		Name:             "Active Action 3",
 		ActionConfig:     json.RawMessage(`{"alert_type":"active_test","severity":"low","title":"Active 3","message":"Should execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
-		ExecutionOrder:   3,
 		IsActive:         true, // Active
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})

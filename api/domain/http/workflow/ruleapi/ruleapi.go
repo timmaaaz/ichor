@@ -581,21 +581,6 @@ func (a *api) validateRule(ctx context.Context, r *http.Request) web.Encoder {
 		}
 	}
 
-	// Check for duplicate execution orders
-	orderMap := make(map[int]int)
-	for _, action := range actions {
-		orderMap[action.ExecutionOrder]++
-	}
-	for order, count := range orderMap {
-		if count > 1 {
-			issues = append(issues, ValidationIssue{
-				Level:   "warning",
-				Field:   "execution_order",
-				Message: fmt.Sprintf("Multiple actions have execution_order %d", order),
-			})
-		}
-	}
-
 	// Determine overall validity (errors make it invalid, warnings don't)
 	isValid := true
 	for _, issue := range issues {

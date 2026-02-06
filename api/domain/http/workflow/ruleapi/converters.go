@@ -60,7 +60,6 @@ func toActionResponse(action workflow.RuleActionView) ActionResponse {
 		Name:           action.Name,
 		Description:    action.Description,
 		ActionConfig:   action.ActionConfig,
-		ExecutionOrder: action.ExecutionOrder,
 		IsActive:       action.IsActive,
 		TemplateID:     action.TemplateID,
 		TemplateName:   action.TemplateName,
@@ -126,7 +125,6 @@ func toNewRuleAction(ruleID uuid.UUID, input CreateActionInput) workflow.NewRule
 		Name:             input.Name,
 		Description:      input.Description,
 		ActionConfig:     input.ActionConfig,
-		ExecutionOrder:   input.ExecutionOrder,
 		IsActive:         input.IsActive,
 		TemplateID:       input.TemplateID,
 	}
@@ -144,7 +142,6 @@ func toNewRuleActionFromRequest(ruleID uuid.UUID, req CreateActionRequest) workf
 		Name:             req.Name,
 		Description:      req.Description,
 		ActionConfig:     req.ActionConfig,
-		ExecutionOrder:   req.ExecutionOrder,
 		IsActive:         req.IsActive,
 		TemplateID:       req.TemplateID,
 	}
@@ -154,11 +151,10 @@ func toNewRuleActionFromRequest(ruleID uuid.UUID, req CreateActionRequest) workf
 // Note: No ID or UpdatedBy parameters - these are handled separately.
 func toUpdateRuleAction(req UpdateActionRequest) workflow.UpdateRuleAction {
 	return workflow.UpdateRuleAction{
-		Name:           req.Name,
-		Description:    req.Description,
-		ActionConfig:   req.ActionConfig,
-		ExecutionOrder: req.ExecutionOrder,
-		IsActive:       req.IsActive,
+		Name:         req.Name,
+		Description:  req.Description,
+		ActionConfig: req.ActionConfig,
+		IsActive:     req.IsActive,
 		TemplateID:     req.TemplateID,
 	}
 }

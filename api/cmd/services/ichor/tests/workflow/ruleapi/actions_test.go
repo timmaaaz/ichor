@@ -109,7 +109,6 @@ func createAction201(sd RuleSeedData) []apitest.Table {
 				Name:           "Test Action " + uuid.New().String()[:8],
 				Description:    "A test action created via API",
 				ActionConfig:   actionConfigJSON,
-				ExecutionOrder: 10,
 				IsActive:       true,
 			},
 			GotResp: &ruleapi.ActionResponse{},
@@ -155,7 +154,6 @@ func createAction400(sd RuleSeedData) []apitest.Table {
 			Input: ruleapi.CreateActionRequest{
 				Name:           "", // Missing name
 				ActionConfig:   json.RawMessage(`{"type": "test"}`),
-				ExecutionOrder: 1,
 				IsActive:       true,
 			},
 			GotResp: &map[string]any{},
@@ -173,7 +171,6 @@ func createAction400(sd RuleSeedData) []apitest.Table {
 			Input: ruleapi.CreateActionRequest{
 				Name:           "Test Action",
 				ActionConfig:   nil, // Missing action config
-				ExecutionOrder: 1,
 				IsActive:       true,
 			},
 			GotResp: &map[string]any{},
@@ -201,7 +198,6 @@ func createAction404(sd RuleSeedData) []apitest.Table {
 			Input: ruleapi.CreateActionRequest{
 				Name:           "Test Action",
 				ActionConfig:   json.RawMessage(`{"type": "test"}`),
-				ExecutionOrder: 1,
 				IsActive:       true,
 			},
 			GotResp: &map[string]any{},
@@ -230,7 +226,6 @@ func createAction401(sd RuleSeedData) []apitest.Table {
 			Input: ruleapi.CreateActionRequest{
 				Name:           "Test Action",
 				ActionConfig:   json.RawMessage(`{"type": "test"}`),
-				ExecutionOrder: 1,
 				IsActive:       true,
 			},
 			GotResp: &map[string]any{},
@@ -268,7 +263,6 @@ func updateAction200(sd RuleSeedData) []apitest.Table {
 	}
 
 	newName := "Updated Action Name"
-	newOrder := 99
 
 	table := []apitest.Table{
 		{
@@ -290,30 +284,6 @@ func updateAction200(sd RuleSeedData) []apitest.Table {
 
 				if gotResp.Name != newName {
 					return fmt.Sprintf("expected name %s, got %s", newName, gotResp.Name)
-				}
-
-				return ""
-			},
-		},
-		{
-			Name:       "update-execution-order",
-			URL:        fmt.Sprintf("/v1/workflow/rules/%s/actions/%s", actionForRule.RuleID, actionForRule.ID),
-			Token:      sd.Users[0].Token,
-			StatusCode: http.StatusOK,
-			Method:     http.MethodPut,
-			Input: ruleapi.UpdateActionRequest{
-				ExecutionOrder: &newOrder,
-			},
-			GotResp: &ruleapi.ActionResponse{},
-			ExpResp: &ruleapi.ActionResponse{},
-			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(*ruleapi.ActionResponse)
-				if !exists {
-					return "error getting action response"
-				}
-
-				if gotResp.ExecutionOrder != newOrder {
-					return fmt.Sprintf("expected execution order %d, got %d", newOrder, gotResp.ExecutionOrder)
 				}
 
 				return ""

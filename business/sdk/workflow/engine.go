@@ -418,8 +418,8 @@ func (e *Engine) executeRule(ctx context.Context, ruleID uuid.UUID, event Trigge
 		TriggerSource: TriggerSourceAutomation,
 	}
 
-	// Use action executor to run all actions for this rule
-	batchResult, err := e.executor.ExecuteRuleActions(ctx, ruleID, executionContext)
+	// Use graph-based execution (edges define execution flow)
+	batchResult, err := e.executor.ExecuteRuleActionsGraph(ctx, ruleID, executionContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute rule actions: %w", err)
 	}

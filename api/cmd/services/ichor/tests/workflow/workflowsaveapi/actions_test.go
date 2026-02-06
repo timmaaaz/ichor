@@ -91,7 +91,6 @@ func testCreateAlertBasic(t *testing.T, sd ExecutionTestData) {
 			"message": "This is a basic test alert",
 			"recipients": {"users": ["` + sd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.CreateAlertTemplate.ID,
 	})
@@ -190,7 +189,6 @@ func testCreateAlertWithRecipients(t *testing.T, sd ExecutionTestData) {
 				"roles": []
 			}
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.CreateAlertTemplate.ID,
 	})
@@ -280,7 +278,6 @@ func testCreateAlertTemplateVars(t *testing.T, sd ExecutionTestData) {
 			"message": "Status is {{status}} and value is {{value}}",
 			"recipients": {"users": ["` + sd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.CreateAlertTemplate.ID,
 	})
@@ -378,7 +375,6 @@ func testCreateAlertSeverityLevels(t *testing.T, sd ExecutionTestData) {
 					"message": "Testing ` + severity + ` severity",
 					"recipients": {"users": ["` + sd.Users[0].ID.String() + `"], "roles": []}
 				}`),
-				ExecutionOrder: 1,
 				IsActive:       true,
 				TemplateID:     &sd.CreateAlertTemplate.ID,
 			})
@@ -472,7 +468,6 @@ func testSendEmailBasic(t *testing.T, sd ExecutionTestData) {
 			"subject": "Test Email Subject",
 			"body": "This is a test email body"
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.SendEmailTemplate.ID,
 	})
@@ -571,7 +566,6 @@ func testSendEmailMultipleRecipients(t *testing.T, sd ExecutionTestData) {
 			"subject": "Multi-Recipient Test",
 			"body": "Email sent to multiple recipients"
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.SendEmailTemplate.ID,
 	})
@@ -669,7 +663,6 @@ func testConditionEqualsTrue(t *testing.T, sd ExecutionTestData) {
 		ActionConfig: json.RawMessage(`{
 			"conditions": [{"field_name": "status", "operator": "equals", "value": "active"}]
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.EvaluateConditionTemplate.ID,
 	})
@@ -688,7 +681,6 @@ func testConditionEqualsTrue(t *testing.T, sd ExecutionTestData) {
 			"message": "Condition evaluated to true",
 			"recipients": {"users": ["` + sd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 2,
 		IsActive:       true,
 		TemplateID:     &sd.CreateAlertTemplate.ID,
 	})
@@ -798,7 +790,6 @@ func testConditionEqualsFalse(t *testing.T, sd ExecutionTestData) {
 		ActionConfig: json.RawMessage(`{
 			"conditions": [{"field_name": "status", "operator": "equals", "value": "active"}]
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.EvaluateConditionTemplate.ID,
 	})
@@ -817,7 +808,6 @@ func testConditionEqualsFalse(t *testing.T, sd ExecutionTestData) {
 			"message": "Condition evaluated to false",
 			"recipients": {"users": ["` + sd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 2,
 		IsActive:       true,
 		TemplateID:     &sd.CreateAlertTemplate.ID,
 	})
@@ -927,7 +917,6 @@ func testConditionGreaterThan(t *testing.T, sd ExecutionTestData) {
 		ActionConfig: json.RawMessage(`{
 			"conditions": [{"field_name": "amount", "operator": "greater_than", "value": 1000}]
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.EvaluateConditionTemplate.ID,
 	})
@@ -946,7 +935,6 @@ func testConditionGreaterThan(t *testing.T, sd ExecutionTestData) {
 			"message": "Amount exceeds threshold",
 			"recipients": {"users": ["` + sd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 2,
 		IsActive:       true,
 		TemplateID:     &sd.CreateAlertTemplate.ID,
 	})
@@ -1050,7 +1038,6 @@ func testConditionMultipleAnd(t *testing.T, sd ExecutionTestData) {
 			],
 			"logic_type": "and"
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &sd.EvaluateConditionTemplate.ID,
 	})
@@ -1069,7 +1056,6 @@ func testConditionMultipleAnd(t *testing.T, sd ExecutionTestData) {
 			"message": "Both status=approved AND amount>500",
 			"recipients": {"users": ["` + sd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 2,
 		IsActive:       true,
 		TemplateID:     &sd.CreateAlertTemplate.ID,
 	})

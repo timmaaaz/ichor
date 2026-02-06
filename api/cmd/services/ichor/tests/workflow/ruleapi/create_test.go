@@ -90,7 +90,6 @@ func createRule201(sd RuleSeedData) []apitest.Table {
 						Name:           "Action 1",
 						Description:    "First action",
 						ActionConfig:   actionConfigJSON,
-						ExecutionOrder: 1,
 						IsActive:       true,
 					},
 				},

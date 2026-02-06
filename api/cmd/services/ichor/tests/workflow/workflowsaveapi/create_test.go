@@ -40,7 +40,6 @@ func create200Basic(sd SaveSeedData) []apitest.Table {
 						Name:           "Create Alert",
 						Description:    "Creates an alert",
 						ActionType:     "create_alert",
-						ExecutionOrder: 1,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","severity":"info","title":"Test Alert","message":"Test message"}`),
 					},
@@ -59,7 +58,6 @@ func create200Basic(sd SaveSeedData) []apitest.Table {
 						Name:           "Create Alert",
 						Description:    "Creates an alert",
 						ActionType:     "create_alert",
-						ExecutionOrder: 1,
 						IsActive:       true,
 					},
 				},
@@ -95,21 +93,18 @@ func create200WithSequence(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Action 1",
 						ActionType:     "create_alert",
-						ExecutionOrder: 1,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"step1","severity":"info","title":"Step 1","message":"First step"}`),
 					},
 					{
 						Name:           "Action 2",
 						ActionType:     "create_alert",
-						ExecutionOrder: 2,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"step2","severity":"info","title":"Step 2","message":"Second step"}`),
 					},
 					{
 						Name:           "Action 3",
 						ActionType:     "create_alert",
-						ExecutionOrder: 3,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"step3","severity":"info","title":"Step 3","message":"Third step"}`),
 					},
@@ -181,21 +176,18 @@ func create200WithBranch(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Evaluate Amount",
 						ActionType:     "evaluate_condition",
-						ExecutionOrder: 1,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"conditions":[{"field":"amount","operator":"greater_than","value":1000}]}`),
 					},
 					{
 						Name:           "High Value Alert",
 						ActionType:     "create_alert",
-						ExecutionOrder: 2,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"high_value","severity":"warning","title":"High Value","message":"Amount exceeds threshold"}`),
 					},
 					{
 						Name:           "Normal Alert",
 						ActionType:     "create_alert",
-						ExecutionOrder: 2,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"normal","severity":"info","title":"Normal","message":"Standard processing"}`),
 					},
@@ -269,7 +261,6 @@ func create200WithCanvasLayout(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Create Alert",
 						ActionType:     "create_alert",
-						ExecutionOrder: 1,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","severity":"info","title":"Test","message":"Test"}`),
 					},
@@ -330,14 +321,12 @@ func create200TempIDResolution(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "First Action",
 						ActionType:     "create_alert",
-						ExecutionOrder: 1,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","severity":"info","title":"Test","message":"First"}`),
 					},
 					{
 						Name:           "Second Action",
 						ActionType:     "create_alert",
-						ExecutionOrder: 2,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","severity":"info","title":"Test","message":"Second"}`),
 					},
@@ -420,7 +409,7 @@ func create400(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{{TargetActionID: "temp:0", EdgeType: "start"}},
@@ -449,7 +438,7 @@ func create400(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: "", // Missing
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{{TargetActionID: "temp:0", EdgeType: "start"}},
@@ -478,7 +467,7 @@ func create400(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "invalid_type", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "invalid_type", IsActive: true,
 						ActionConfig: json.RawMessage(`{"some":"config"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{{TargetActionID: "temp:0", EdgeType: "start"}},
@@ -507,7 +496,7 @@ func create400(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test"}`)}, // Missing required fields
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{{TargetActionID: "temp:0", EdgeType: "start"}},
@@ -536,7 +525,7 @@ func create400(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
@@ -577,7 +566,7 @@ func create401(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{{TargetActionID: "temp:0", EdgeType: "start"}},

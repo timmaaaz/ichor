@@ -104,7 +104,6 @@ func TestEventPublisher_IntegrationWithRules(t *testing.T) {
 		AutomationRuleID: rule.ID,
 		Name:             "Send Order Notification",
 		ActionConfig:     json.RawMessage(`{"subject": "New Order: {{number}}", "body": "Order created for customer {{customer_id}}"}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &emailTemplate.ID,
 	})
@@ -294,7 +293,6 @@ func TestEventPublisher_MultipleEntityTypes(t *testing.T) {
 		AutomationRuleID: orderRule.ID,
 		Name:             "Order Email",
 		ActionConfig:     json.RawMessage(`{"subject": "Order Created"}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &emailTemplate.ID,
 	})
@@ -312,7 +310,6 @@ func TestEventPublisher_MultipleEntityTypes(t *testing.T) {
 		AutomationRuleID: customerRule.ID,
 		Name:             "Customer Email",
 		ActionConfig:     json.RawMessage(`{"subject": "Customer Updated"}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &emailTemplate.ID,
 	})
@@ -414,7 +411,6 @@ func TestEventPublisher_TemplateSubstitution(t *testing.T) {
 			"subject": "Welcome {{name}}!",
 			"body": "Hello {{name}}, your account {{id}} has been created."
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &emailTemplate.ID,
 	})
@@ -517,7 +513,6 @@ func TestEventPublisher_UpdateWithFieldChanges(t *testing.T) {
 		AutomationRuleID: rule.ID,
 		Name:             "Status Change Email",
 		ActionConfig:     json.RawMessage(`{"subject": "Order status changed"}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &emailTemplate.ID,
 	})
@@ -733,7 +728,6 @@ func TestEventPublisher_CreateAlert(t *testing.T) {
 				"users": ["5cf37266-3473-4006-984f-9325122678b7"]
 			}
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &alertTemplate.ID,
 	})

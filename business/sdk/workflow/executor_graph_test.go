@@ -30,7 +30,6 @@ import (
 Package workflow_test tests the graph-based action execution in ExecuteRuleActionsGraph.
 
 WHAT THIS TESTS:
-- Backwards compatibility (fallback to linear execution when no edges exist)
 - Start edge handling (single/multiple entry points)
 - Sequential execution via 'sequence' and 'always' edge types
 - Branch execution based on condition results (true_branch/false_branch)
@@ -40,7 +39,6 @@ WHAT THIS TESTS:
 - shouldFollowEdge logic for all edge types
 
 WHAT THIS DOES NOT TEST:
-- Actual database persistence of edges (covered by integration tests)
 - Full workflow engine integration (covered by E2E tests)
 - Real action side effects (emails, alerts, etc.)
 */
@@ -193,7 +191,6 @@ func createTestRule(
 			AutomationRuleID: rule.ID,
 			Name:             a.name,
 			ActionConfig:     config,
-			ExecutionOrder:   i + 1,
 			IsActive:         a.isActive,
 			TemplateID:       templateID,
 		})
@@ -237,94 +234,6 @@ type testEdge struct {
 	targetIdx int
 	edgeType  string
 	edgeOrder int
-}
-
-// =============================================================================
-// Backwards Compatibility Tests
-// =============================================================================
-
-func TestGraphExec_NoEdges_FallsBackToLinear(t *testing.T) {
-	ae, workflowBus, ctx := graphTestSetup(t)
-	userID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
-
-	// Create rule with actions but NO edges
-	actions := []testAction{
-		{name: "Action A", isActive: true},
-		{name: "Action B", isActive: true},
-		{name: "Action C", isActive: true},
-	}
-
-	ruleID, _ := createTestRule(t, ctx, workflowBus, userID, actions, nil) // No edges
-
-	entity, _ := workflowBus.QueryEntityByName(ctx, "customers")
-
-	execContext := workflow.ActionExecutionContext{
-		EntityID:      entity.ID,
-		EntityName:    "customers",
-		EventType:     "on_create",
-		UserID:        userID,
-		RuleID:        &ruleID,
-		ExecutionID:   uuid.New(),
-		Timestamp:     time.Now(),
-		TriggerSource: workflow.TriggerSourceAutomation,
-	}
-
-	// Execute using graph method (should fall back to linear)
-	result, err := ae.ExecuteRuleActionsGraph(ctx, ruleID, execContext)
-	if err != nil {
-		t.Fatalf("ExecuteRuleActionsGraph failed: %v", err)
-	}
-
-	// Should execute all 3 actions in order
-	if result.TotalActions != 3 {
-		t.Errorf("TotalActions = %d, want 3", result.TotalActions)
-	}
-	if result.SuccessfulActions != 3 {
-		t.Errorf("SuccessfulActions = %d, want 3", result.SuccessfulActions)
-	}
-
-	// Verify execution order
-	expectedOrder := []string{"Action A", "Action B", "Action C"}
-	for i, ar := range result.ActionResults {
-		if ar.ActionName != expectedOrder[i] {
-			t.Errorf("ActionResults[%d].ActionName = %s, want %s", i, ar.ActionName, expectedOrder[i])
-		}
-	}
-}
-
-func TestGraphExec_EmptyEdges_FallsBackToLinear(t *testing.T) {
-	ae, workflowBus, ctx := graphTestSetup(t)
-	userID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
-
-	// Create rule with actions but explicitly empty edges slice
-	actions := []testAction{
-		{name: "Action 1", isActive: true},
-		{name: "Action 2", isActive: true},
-	}
-
-	ruleID, _ := createTestRule(t, ctx, workflowBus, userID, actions, []testEdge{}) // Empty edges slice
-
-	entity, _ := workflowBus.QueryEntityByName(ctx, "customers")
-
-	execContext := workflow.ActionExecutionContext{
-		EntityID:      entity.ID,
-		EntityName:    "customers",
-		EventType:     "on_create",
-		UserID:        userID,
-		RuleID:        &ruleID,
-		ExecutionID:   uuid.New(),
-		Timestamp:     time.Now(),
-		TriggerSource: workflow.TriggerSourceAutomation,
-	}
-
-	result, err := ae.ExecuteRuleActionsGraph(ctx, ruleID, execContext)
-	if err != nil {
-		t.Fatalf("ExecuteRuleActionsGraph failed: %v", err)
-	}
-
-	if result.TotalActions != 2 {
-		t.Errorf("TotalActions = %d, want 2", result.TotalActions)
-	}
 }
 
 // =============================================================================
@@ -415,46 +324,6 @@ func TestGraphExec_MultipleStartEdges(t *testing.T) {
 	}
 	if result.SuccessfulActions != 2 {
 		t.Errorf("SuccessfulActions = %d, want 2", result.SuccessfulActions)
-	}
-}
-
-func TestGraphExec_NoStartEdge_FallsBackToLinear(t *testing.T) {
-	ae, workflowBus, ctx := graphTestSetup(t)
-	userID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7")
-
-	actions := []testAction{
-		{name: "Action A", isActive: true},
-		{name: "Action B", isActive: true},
-	}
-
-	// Create edges but no start edge (edge between actions only)
-	edges := []testEdge{
-		{sourceIdx: 0, targetIdx: 1, edgeType: workflow.EdgeTypeSequence, edgeOrder: 1}, // A -> B (no start edge)
-	}
-
-	ruleID, _ := createTestRule(t, ctx, workflowBus, userID, actions, edges)
-
-	entity, _ := workflowBus.QueryEntityByName(ctx, "customers")
-
-	execContext := workflow.ActionExecutionContext{
-		EntityID:      entity.ID,
-		EntityName:    "customers",
-		EventType:     "on_create",
-		UserID:        userID,
-		RuleID:        &ruleID,
-		ExecutionID:   uuid.New(),
-		Timestamp:     time.Now(),
-		TriggerSource: workflow.TriggerSourceAutomation,
-	}
-
-	result, err := ae.ExecuteRuleActionsGraph(ctx, ruleID, execContext)
-	if err != nil {
-		t.Fatalf("ExecuteRuleActionsGraph failed: %v", err)
-	}
-
-	// Should fall back to linear execution (both actions execute)
-	if result.TotalActions != 2 {
-		t.Errorf("TotalActions = %d, want 2 (fallback to linear)", result.TotalActions)
 	}
 }
 
@@ -795,6 +664,17 @@ func TestGraphExec_DiamondPattern(t *testing.T) {
 		if ar.ActionName == "Normal Priority Path" {
 			t.Error("Normal Priority Path should not have executed on high priority")
 		}
+	}
+
+	// Verify convergence point executed exactly once (not duplicated from both branches)
+	convergenceCount := 0
+	for _, ar := range result.ActionResults {
+		if ar.ActionName == "Convergence Point" {
+			convergenceCount++
+		}
+	}
+	if convergenceCount != 1 {
+		t.Errorf("Convergence Point executed %d times, want 1", convergenceCount)
 	}
 }
 

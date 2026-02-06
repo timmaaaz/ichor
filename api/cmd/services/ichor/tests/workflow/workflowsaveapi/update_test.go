@@ -43,7 +43,6 @@ func update200RuleOnly(sd SaveSeedData) []apitest.Table {
 			Description:    action.Description,
 			ActionType:     "create_alert",
 			ActionConfig:   validAlertConfig(action.Name), // Use valid config instead of seeded config
-			ExecutionOrder: action.ExecutionOrder,
 			IsActive:       action.IsActive,
 		}
 	}
@@ -125,7 +124,6 @@ func update200AddAction(sd SaveSeedData) []apitest.Table {
 			Description:    action.Description,
 			ActionType:     "create_alert",
 			ActionConfig:   validAlertConfig(action.Name),
-			ExecutionOrder: action.ExecutionOrder,
 			IsActive:       action.IsActive,
 		}
 	}
@@ -136,7 +134,6 @@ func update200AddAction(sd SaveSeedData) []apitest.Table {
 		Name:           "New Added Action",
 		Description:    "A newly added action",
 		ActionType:     "create_alert",
-		ExecutionOrder: len(sd.ExistingActions) + 1,
 		IsActive:       true,
 		ActionConfig:   json.RawMessage(`{"alert_type":"new","severity":"info","title":"New","message":"New action"}`),
 	}
@@ -230,7 +227,6 @@ func update200UpdateAction(sd SaveSeedData) []apitest.Table {
 			Description:    action.Description,
 			ActionType:     "create_alert",
 			ActionConfig:   validAlertConfig(action.Name),
-			ExecutionOrder: action.ExecutionOrder,
 			IsActive:       action.IsActive,
 		}
 	}
@@ -322,7 +318,6 @@ func update200DeleteAction(sd SaveSeedData) []apitest.Table {
 			Description:    action.Description,
 			ActionType:     "create_alert",
 			ActionConfig:   validAlertConfig(action.Name),
-			ExecutionOrder: action.ExecutionOrder,
 			IsActive:       action.IsActive,
 		}
 	}
@@ -401,7 +396,6 @@ func update200ReplaceEdges(sd SaveSeedData) []apitest.Table {
 			Description:    action.Description,
 			ActionType:     "create_alert",
 			ActionConfig:   validAlertConfig(action.Name),
-			ExecutionOrder: action.ExecutionOrder,
 			IsActive:       action.IsActive,
 		}
 	}
@@ -493,7 +487,6 @@ func update200CanvasLayout(sd SaveSeedData) []apitest.Table {
 			Description:    action.Description,
 			ActionType:     "create_alert",
 			ActionConfig:   validAlertConfig(action.Name),
-			ExecutionOrder: action.ExecutionOrder,
 			IsActive:       action.IsActive,
 		}
 	}
@@ -582,7 +575,7 @@ func update400(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.ExistingRule.EntityID.String(),
 				TriggerTypeID: sd.ExistingRule.TriggerTypeID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{{TargetActionID: "temp:0", EdgeType: "start"}},
@@ -615,7 +608,6 @@ func update400(sd SaveSeedData) []apitest.Table {
 						ID:             strPtr(uuid.New().String()), // ID that doesn't belong to this rule
 						Name:           "Action",
 						ActionType:     "create_alert",
-						ExecutionOrder: 1,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`),
 					},
@@ -656,7 +648,7 @@ func update401(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.ExistingRule.EntityID.String(),
 				TriggerTypeID: sd.ExistingRule.TriggerTypeID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{{TargetActionID: "temp:0", EdgeType: "start"}},
@@ -686,7 +678,7 @@ func update404(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{{TargetActionID: "temp:0", EdgeType: "start"}},

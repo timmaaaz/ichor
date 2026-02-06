@@ -177,21 +177,7 @@ registry.Register(control.NewConditionHandler(log))  // Branching support
 
 ## Execution Order
 
-### Linear Execution (Default)
-
-Actions execute based on their `execution_order` in the rule:
-
-```
-Order 1: [action_a, action_b]  ← Parallel (same order)
-Order 2: [action_c]            ← Sequential (waits for order 1)
-Order 3: [action_d, action_e]  ← Parallel (waits for order 2)
-```
-
-Actions with the same execution order run concurrently.
-
-### Graph-Based Execution (Branching)
-
-When `action_edges` are defined for a rule, the executor uses BFS graph traversal instead of `execution_order`:
+Actions execute using BFS graph traversal based on `action_edges`. All rules with actions must have edges defining the execution flow.
 
 ```
 [Start] ──start──▶ [Condition] ──true_branch──▶ [Action A]
@@ -204,7 +190,7 @@ Graph execution enables:
 - Converging branches (diamond patterns)
 - Nested conditions
 
-Rules WITHOUT edges automatically fall back to linear `execution_order` execution (backwards compatible).
+Rules without actions are saved as inactive drafts and do not execute.
 
 See [branching.md](../branching.md) for detailed patterns and the [Edge API](../api-reference.md#edge-api-graph-based-execution) for creating edges.
 

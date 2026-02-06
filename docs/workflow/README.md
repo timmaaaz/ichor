@@ -75,29 +75,26 @@ Automation rules are stored in the `workflow.automation_rules` table. A rule req
 Actions are stored in `workflow.rule_actions`. Each action has:
 
 - **Action Config**: JSON configuration specific to the action type
-- **Execution Order**: Order in which actions execute (same order = parallel)
+- **Action Edges**: Directed edges defining execution flow (see [Branching](branching.md))
 - **Template Variables**: Dynamic values like `{{entity_id}}`, `{{customer_name}}`
 
 See [Actions](actions/) for configuration details for each action type.
 
-### 4. Execution Modes
+### 4. Action Execution
 
-Rules support two execution modes:
+Rules with actions execute using graph-based BFS traversal via `action_edges`. Edges define the execution order and flow:
 
-| Mode | Description |
-|------|-------------|
-| **Linear** | Actions execute based on `execution_order`. Default mode. |
-| **Graph** | Actions execute based on `action_edges`. Enables branching with `evaluate_condition`. |
+| Edge Type | Description |
+|-----------|-------------|
+| **start** | Entry point — connects to the first action (no source) |
+| **sequence** | Unconditional flow from one action to the next |
+| **true_branch** | Conditional path taken when `evaluate_condition` returns true |
+| **false_branch** | Conditional path taken when `evaluate_condition` returns false |
+| **always** | Always-execute path from a condition (runs regardless of branch) |
 
-The executor automatically detects which mode to use:
-- If the rule has edges in `workflow.action_edges`, graph mode is used
-- If no edges exist, linear mode is used (backwards compatible)
+**All rules with actions must have edges.** Rules without actions (trigger-only rules) are valid and saved as inactive drafts.
 
-**Graph mode** enables conditional workflows using the `evaluate_condition` action:
-- The condition action sets `BranchTaken` to `"true_branch"` or `"false_branch"`
-- Edges with matching types are followed; others are skipped
-
-See [Branching](branching.md) for complete documentation on graph-based workflows.
+See [Branching](branching.md) for complete documentation on conditional workflows.
 
 ## Configuration Reference
 

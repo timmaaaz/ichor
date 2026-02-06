@@ -109,23 +109,11 @@ Individual actions attached to automation rules.
 | `name` | string | Yes | Action name (max 100 chars) |
 | `description` | string | No | Human-readable description |
 | `action_config` | JSONB | Yes | Action configuration (varies by type) |
-| `execution_order` | int | Yes | Order of execution (>= 1) |
 | `is_active` | bool | No | Whether action is active (default true) |
 | `template_id` | UUID | No | FK to `workflow.action_templates` |
 | `deactivated_by` | UUID | No | User who deactivated |
 
 **Source**: `business/sdk/workflow/models.go:315-325`
-
-### Execution Order
-
-Actions with the **same** `execution_order` run in **parallel**.
-Actions with **different** orders run **sequentially**.
-
-```
-Order 1: [send_email, create_alert]  ← parallel
-Order 2: [update_field]               ← waits for 1
-Order 3: [seek_approval]              ← waits for 2
-```
 
 ### Action Config
 
@@ -151,7 +139,6 @@ See [Actions](../actions/) for configuration schemas for each action type:
     "subject": "Your Order {{number}} Has Shipped",
     "body": "Dear {{customer_name}}, your order is on its way!"
   },
-  "execution_order": 1,
   "is_active": true
 }
 ```
@@ -418,16 +405,6 @@ Condition ──┤                           ├──→ Confirmation
             └─ [false] → Normal Priority ┘
 ```
 
-### Backwards Compatibility
-
-The graph executor is **fully backwards compatible**:
-
-1. If a rule has **no edges**, the executor falls back to `execution_order`-based linear execution
-2. Existing rules without edges continue to work exactly as before
-3. You can migrate rules incrementally by adding edges
-
-**Source**: `business/sdk/workflow/executor.go:222-227`
-
 ## Best Practices
 
 ### Rule Naming
@@ -440,32 +417,18 @@ Use descriptive names that indicate:
 Good: `Order Shipped - Send Customer Email`
 Bad: `Rule 1`
 
-### Edges vs Execution Order
+### Edge Design Best Practices
 
-Choose the right execution model based on your workflow needs:
+All rules with actions require edges. When designing workflows:
 
-**Use `execution_order` (Linear) when:**
-- All actions run unconditionally in sequence
-- No branching logic is needed
-- Simpler to reason about and maintain
-- Migrating from existing rules
+- **Always define a `start` edge** — this is the entry point (no source action)
+- **Use `sequence` edges** for unconditional linear flows (Action A → Action B)
+- **Use `true_branch` / `false_branch` edges** after `evaluate_condition` actions
+- **Use `always` edges** for actions that should run regardless of condition outcome
+- **Set `edge_order`** to control execution priority when multiple edges share the same source
+- **Draft workflows** — rules without actions are saved as inactive and can have edges added later
 
-**Use edges (Graph) when:**
-- You need conditional branching (`evaluate_condition` action)
-- Different paths should execute based on conditions
-- You need diamond patterns (branches that reconverge)
-- Complex workflows with multiple decision points
-
-**Can I mix them?**
-No. If a rule has edges, the graph executor is used exclusively. The `execution_order` field is ignored when edges exist.
-
-### Execution Order (Linear Mode)
-
-1. Put independent actions at the same order (parallel)
-2. Put dependent actions at higher orders (sequential)
-3. Put validation/approval actions last
-
-### Edge Order (Graph Mode)
+### Edge Order
 
 1. Use `edge_order` to control execution when multiple edges share the same source
 2. Lower values execute first (0, 1, 2...)

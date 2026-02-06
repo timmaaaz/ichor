@@ -204,7 +204,6 @@ func insertUpdateFieldSeedData(t *testing.T, busDomain dbtest.BusDomain) (update
 			"target_field": "name",
 			"new_value": "Updated Name"
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &template.ID,
 	})

@@ -132,8 +132,7 @@ Typically used with `create_alert` to notify approvers:
     "recipients": {
       "users": ["manager-uuid"]
     }
-  },
-  "execution_order": 1
+  }
 }
 
 // Action 2: Seek approval
@@ -142,8 +141,7 @@ Typically used with `create_alert` to notify approvers:
   "config": {
     "approvers": ["manager-uuid"],
     "approval_type": "any"
-  },
-  "execution_order": 1
+  }
 }
 ```
 

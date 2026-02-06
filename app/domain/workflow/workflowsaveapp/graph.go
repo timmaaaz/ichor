@@ -7,13 +7,21 @@ import (
 )
 
 // ValidateGraph validates the workflow graph structure for cycles and reachability.
-// It ensures:
-// 1. Exactly one start edge exists
-// 2. No cycles exist in the graph
-// 3. All actions are reachable from the start
+//
+// Validation rules:
+//  1. Workflows with no actions are valid (draft mode) — returns nil immediately.
+//  2. Workflows with actions MUST have at least one edge defining execution flow.
+//  3. Exactly one start edge is required.
+//  4. No cycles are allowed in the graph.
+//  5. All actions must be reachable from the start edge.
 func ValidateGraph(actions []SaveActionRequest, edges []SaveEdgeRequest) error {
 	if len(actions) == 0 {
-		return fmt.Errorf("at least one action is required")
+		return nil // No actions means no graph to validate
+	}
+
+	// Rules with actions must have edges defining the execution flow.
+	if len(edges) == 0 {
+		return fmt.Errorf("rules with actions require at least one edge defining execution flow")
 	}
 
 	// Count start edges

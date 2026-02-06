@@ -184,9 +184,8 @@ func (e *Engine) Initialize(ctx, workflowBus) error
 **Execution flow:**
 1. Receive TriggerEvent
 2. TriggerProcessor evaluates which rules match
-3. Group actions by execution order (same order = parallel batch)
-4. Execute each batch through ActionExecutor
-5. Record execution history
+3. Execute actions via graph-based BFS traversal through ActionExecutor
+4. Record execution history
 
 ### TriggerProcessor
 
@@ -465,22 +464,9 @@ Events are queued to RabbitMQ and processed asynchronously:
 - Workflow processing doesn't add latency
 - Scalable by adding more consumers
 
-### Parallel Execution
+### Graph-Based Execution
 
-Actions with the same `execution_order` run in parallel:
-```
-execution_order=1: [email, alert]  ← run in parallel
-execution_order=2: [update_field]  ← waits for order 1
-execution_order=3: [approval]      ← waits for order 2
-```
-
-### Graph-Based Execution (Branching)
-
-Rules can use graph-based execution for conditional branching. When `action_edges` are defined, the executor uses BFS traversal instead of linear `execution_order`.
-
-**Execution model:**
-- Rules WITHOUT edges: Linear execution by `execution_order` (backwards compatible)
-- Rules WITH edges: Graph traversal using directed edges
+All rules with actions use graph-based BFS traversal via directed edges. Rules without actions are saved as inactive drafts.
 
 **Edge types:**
 | Type | Description |
@@ -494,7 +480,7 @@ Rules can use graph-based execution for conditional branching. When `action_edge
 **Graph execution flow:**
 ```
 1. Load edges for rule
-2. If no edges, fall back to linear execution
+2. If no edges, return error (edges are required)
 3. Build adjacency list (source → target edges)
 4. Find start edges (source_action_id is null)
 5. Execute using BFS queue

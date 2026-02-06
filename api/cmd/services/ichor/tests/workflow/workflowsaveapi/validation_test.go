@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/workflow/workflowsaveapp"
@@ -39,7 +40,6 @@ func validationActionConfig(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Create Alert",
 						ActionType:     "create_alert",
-						ExecutionOrder: 1,
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","severity":"warning","title":"Test Alert","message":"Test message"}`),
 					},
@@ -74,7 +74,7 @@ func validationActionConfig(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Create Alert",
 						ActionType:     "create_alert",
-						ExecutionOrder: 1,
+
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","title":"Test","message":"Test"}`), // Missing severity
 					},
@@ -112,7 +112,7 @@ func validationActionConfig(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Send Email",
 						ActionType:     "send_email",
-						ExecutionOrder: 1,
+
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"recipients":["test@example.com"],"subject":"Test Subject","body":"Test body"}`),
 					},
@@ -147,7 +147,7 @@ func validationActionConfig(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Send Email",
 						ActionType:     "send_email",
-						ExecutionOrder: 1,
+
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"subject":"Test Subject","body":"Test body"}`), // Missing recipients
 					},
@@ -185,21 +185,21 @@ func validationActionConfig(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Evaluate Condition",
 						ActionType:     "evaluate_condition",
-						ExecutionOrder: 1,
+
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"conditions":[{"field":"status","operator":"equals","value":"active"}]}`),
 					},
 					{
 						Name:           "True Path",
 						ActionType:     "create_alert",
-						ExecutionOrder: 2,
+
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","severity":"info","title":"True","message":"Condition was true"}`),
 					},
 					{
 						Name:           "False Path",
 						ActionType:     "create_alert",
-						ExecutionOrder: 2,
+
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"alert_type":"test","severity":"info","title":"False","message":"Condition was false"}`),
 					},
@@ -238,7 +238,7 @@ func validationActionConfig(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Evaluate Condition",
 						ActionType:     "evaluate_condition",
-						ExecutionOrder: 1,
+
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{}`), // Missing conditions
 					},
@@ -276,7 +276,7 @@ func validationActionConfig(sd SaveSeedData) []apitest.Table {
 					{
 						Name:           "Update Field",
 						ActionType:     "update_field",
-						ExecutionOrder: 1,
+
 						IsActive:       true,
 						ActionConfig:   json.RawMessage(`{"target_field":"status"}`), // Missing target_entity
 					},
@@ -325,9 +325,9 @@ func validationGraph(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action 1", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action 1", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
-					{Name: "Action 2", ActionType: "create_alert", ExecutionOrder: 2, IsActive: true,
+					{Name: "Action 2", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
@@ -360,9 +360,9 @@ func validationGraph(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action 1", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action 1", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
-					{Name: "Action 2", ActionType: "create_alert", ExecutionOrder: 2, IsActive: true,
+					{Name: "Action 2", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
@@ -398,9 +398,9 @@ func validationGraph(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action 1", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action 1", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
-					{Name: "Action 2", ActionType: "create_alert", ExecutionOrder: 2, IsActive: true,
+					{Name: "Action 2", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
@@ -434,7 +434,7 @@ func validationGraph(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action 1", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action 1", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
@@ -470,9 +470,9 @@ func validationGraph(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action 1", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action 1", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
-					{Name: "Action 2 - Unreachable", ActionType: "create_alert", ExecutionOrder: 2, IsActive: true,
+					{Name: "Action 2 - Unreachable", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
@@ -508,7 +508,7 @@ func validationGraph(sd SaveSeedData) []apitest.Table {
 				EntityID:      sd.Entities[0].ID.String(),
 				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
 				Actions: []workflowsaveapp.SaveActionRequest{
-					{Name: "Action", ActionType: "create_alert", ExecutionOrder: 1, IsActive: true,
+					{Name: "Action", ActionType: "create_alert", IsActive: true,
 						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"T","message":"M"}`)},
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
@@ -524,6 +524,94 @@ func validationGraph(sd SaveSeedData) []apitest.Table {
 				}
 				if gotErr.Code != errs.InvalidArgument {
 					return fmt.Sprintf("expected InvalidArgument, got %v", gotErr.Code)
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// =============================================================================
+// Edge Requirement Validation Tests
+// =============================================================================
+
+// validationEdgeRequirement tests the Phase 1 validation matrix:
+//   - Actions without edges → rejected (InvalidArgument)
+//   - No actions, no edges  → allowed (draft workflow, forced inactive)
+func validationEdgeRequirement(sd SaveSeedData) []apitest.Table {
+	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 {
+		return nil
+	}
+
+	return []apitest.Table{
+		{
+			Name:       "actions-without-edges-rejected",
+			URL:        "/v1/workflow/rules/full",
+			Token:      sd.Users[0].Token,
+			StatusCode: http.StatusBadRequest,
+			Method:     http.MethodPost,
+			Input: workflowsaveapp.SaveWorkflowRequest{
+				Name:          "Actions Without Edges",
+				IsActive:      true,
+				EntityID:      sd.Entities[0].ID.String(),
+				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
+				Actions: []workflowsaveapp.SaveActionRequest{
+					{
+						Name:         "Orphan Action",
+						ActionType:   "create_alert",
+						IsActive:     true,
+						ActionConfig: json.RawMessage(`{"alert_type":"test","severity":"info","title":"Test","message":"This should fail"}`),
+					},
+				},
+				// No Edges field — actions exist but no edges
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(*errs.Error)
+				if !ok {
+					return "failed to cast to error"
+				}
+				if gotErr.Code != errs.InvalidArgument {
+					return fmt.Sprintf("expected InvalidArgument, got %v", gotErr.Code)
+				}
+				if !strings.Contains(strings.ToLower(gotErr.Error()), "edge") {
+					return "expected error message to mention 'edge'"
+				}
+				return ""
+			},
+		},
+		{
+			Name:       "no-actions-no-edges-allowed",
+			URL:        "/v1/workflow/rules/full",
+			Token:      sd.Users[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodPost,
+			Input: workflowsaveapp.SaveWorkflowRequest{
+				Name:          "Draft Workflow No Actions",
+				IsActive:      true, // User requests active — should be forced inactive
+				EntityID:      sd.Entities[0].ID.String(),
+				TriggerTypeID: sd.TriggerTypes[0].ID.String(),
+				// No Actions, No Edges — draft workflow
+			},
+			GotResp: &workflowsaveapp.SaveWorkflowResponse{},
+			ExpResp: &workflowsaveapp.SaveWorkflowResponse{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, ok := got.(*workflowsaveapp.SaveWorkflowResponse)
+				if !ok {
+					return "failed to cast response"
+				}
+				if gotResp.ID == "" {
+					return "expected draft workflow to be created"
+				}
+				if gotResp.IsActive {
+					return "expected draft workflow to be forced inactive (is_active should be false)"
+				}
+				if len(gotResp.Actions) != 0 {
+					return fmt.Sprintf("expected zero actions, got %d", len(gotResp.Actions))
+				}
+				if len(gotResp.Edges) != 0 {
+					return fmt.Sprintf("expected zero edges, got %d", len(gotResp.Edges))
 				}
 				return ""
 			},

@@ -3777,18 +3777,27 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			if err != nil {
 				log.Error(ctx, "Failed to create Line Item Allocate rule", "error", err)
 			} else {
-				_, err = busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+				allocateAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
 					AutomationRuleID: orderAllocateRule.ID,
 					Name:             "Allocate Inventory for Line Item",
 					Description:      "Reserve inventory for the line item's product",
 					ActionConfig:     json.RawMessage(allocateConfigJSON),
-					ExecutionOrder:   1,
 					IsActive:         true,
 					TemplateID:       &allocateTemplate.ID,
 				})
 				if err != nil {
 					log.Error(ctx, "Failed to create allocate inventory action", "error", err)
 				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         orderAllocateRule.ID,
+						SourceActionID: nil,
+						TargetActionID: allocateAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create edge for allocate inventory action", "error", err)
+					}
 					log.Info(ctx, "✅ Created 'Line Item Created - Allocate Inventory' rule")
 				}
 			}
@@ -3836,18 +3845,27 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			if err != nil {
 				log.Error(ctx, "Failed to create Allocation Success rule", "error", err)
 			} else {
-				_, err = busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+				updateAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
 					AutomationRuleID: allocationSuccessRule.ID,
 					Name:             "Update Line Items to ALLOCATED",
 					Description:      "Set line item status to ALLOCATED after successful inventory reservation",
 					ActionConfig:     json.RawMessage(updateConfigJSON),
-					ExecutionOrder:   1,
 					IsActive:         true,
 					TemplateID:       &updateFieldTemplate.ID,
 				})
 				if err != nil {
 					log.Error(ctx, "Failed to create update line items action", "error", err)
 				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         allocationSuccessRule.ID,
+						SourceActionID: nil,
+						TargetActionID: updateAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create edge for update line items action", "error", err)
+					}
 					log.Info(ctx, "✅ Created 'Allocation Success - Update Line Items' rule")
 				}
 			}
@@ -3895,18 +3913,27 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			if err != nil {
 				log.Error(ctx, "Failed to create Allocation Failed rule", "error", err)
 			} else {
-				_, err = busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+				alertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
 					AutomationRuleID: allocationFailedRule.ID,
 					Name:             "Create Alert for Operations",
 					Description:      "Notify operations team of allocation failure",
 					ActionConfig:     json.RawMessage(alertConfigJSON),
-					ExecutionOrder:   1,
 					IsActive:         true,
 					TemplateID:       &createAlertTemplate.ID,
 				})
 				if err != nil {
 					log.Error(ctx, "Failed to create alert action", "error", err)
 				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         allocationFailedRule.ID,
+						SourceActionID: nil,
+						TargetActionID: alertAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create edge for alert action", "error", err)
+					}
 					log.Info(ctx, "✅ Created 'Allocation Failed - Alert Operations' rule")
 				}
 			}

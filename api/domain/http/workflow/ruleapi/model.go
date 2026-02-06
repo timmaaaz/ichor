@@ -46,10 +46,9 @@ func (r *CreateRuleRequest) Decode(data []byte) error {
 type CreateActionInput struct {
 	Name           string          `json:"name"`
 	Description    string          `json:"description"`
-	ActionConfig   json.RawMessage `json:"action_config"`
-	ExecutionOrder int             `json:"execution_order"`
-	IsActive       bool            `json:"is_active"`
-	TemplateID     *uuid.UUID      `json:"template_id,omitempty"`
+	ActionConfig json.RawMessage `json:"action_config"`
+	IsActive     bool            `json:"is_active"`
+	TemplateID   *uuid.UUID      `json:"template_id,omitempty"`
 }
 
 // UpdateRuleRequest is the request body for updating a rule (partial update).
@@ -119,11 +118,10 @@ type ActionResponse struct {
 	RuleID         uuid.UUID       `json:"rule_id"`
 	Name           string          `json:"name"`
 	Description    string          `json:"description"`
-	ActionConfig   json.RawMessage `json:"action_config"`
-	ExecutionOrder int             `json:"execution_order"`
-	IsActive       bool            `json:"is_active"`
-	TemplateID     *uuid.UUID      `json:"template_id,omitempty"`
-	TemplateName   string          `json:"template_name,omitempty"`
+	ActionConfig json.RawMessage `json:"action_config"`
+	IsActive     bool            `json:"is_active"`
+	TemplateID   *uuid.UUID      `json:"template_id,omitempty"`
+	TemplateName string          `json:"template_name,omitempty"`
 }
 
 // Encode implements web.Encoder for ActionResponse.

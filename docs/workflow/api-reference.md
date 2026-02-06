@@ -611,7 +611,7 @@ Delete a single edge.
 
 ### DELETE /workflow/rules/{ruleID}/edges-all
 
-Delete all edges for a rule (reset to linear execution).
+Delete all edges for a rule.
 
 **Path Parameters:**
 
@@ -622,8 +622,8 @@ Delete all edges for a rule (reset to linear execution).
 **Response:** `204 No Content`
 
 **Notes:**
-- After deleting all edges, the rule falls back to linear `execution_order` execution
-- Useful for resetting a rule's action graph
+- After deleting all edges, the rule will not execute (edges are required for rules with actions)
+- Useful for resetting a rule's action graph before rebuilding
 
 ---
 

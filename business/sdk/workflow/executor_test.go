@@ -47,7 +47,7 @@ WHAT THIS TESTS:
 - Database integration for loading rule actions (with real PostgreSQL)
 - Database integration for retrieving rule names (with real PostgreSQL)
 - SQL query correctness and data mapping
-- Action ordering by execution_order field
+- Action ordering by graph edge traversal
 
 WHAT THIS DOES NOT TEST:
 - Real action execution side effects (emails, alerts, actual inventory allocation)
@@ -883,9 +883,8 @@ func TestActionExecutor_Stats(t *testing.T) {
                 "subject": "Test Email 1",
                 "body": "Test body 1"
             }`),
-			ExecutionOrder: 1,
-			IsActive:       true,
-			TemplateID:     &template.ID,
+			IsActive:   true,
+			TemplateID: &template.ID,
 		},
 		{
 			AutomationRuleID: rule.ID,
@@ -895,9 +894,8 @@ func TestActionExecutor_Stats(t *testing.T) {
                 "subject": "Test Email 2",
                 "body": "Test body 2"
             }`),
-			ExecutionOrder: 2,
-			IsActive:       true,
-			TemplateID:     &template.ID,
+			IsActive:   true,
+			TemplateID: &template.ID,
 		},
 		{
 			AutomationRuleID: rule.ID,
@@ -906,34 +904,60 @@ func TestActionExecutor_Stats(t *testing.T) {
                 "recipients": [],
                 "subject": ""
             }`), // This will fail validation
-			ExecutionOrder: 3,
-			IsActive:       true,
-			TemplateID:     &template.ID,
+			IsActive:   true,
+			TemplateID: &template.ID,
 		},
 	}
 
+	var actionIDs []uuid.UUID
 	for _, action := range actions {
-		_, err := workflowBus.CreateRuleAction(ctx, action)
+		created, err := workflowBus.CreateRuleAction(ctx, action)
 		if err != nil {
 			t.Fatalf("Failed to create rule action: %v", err)
+		}
+		actionIDs = append(actionIDs, created.ID)
+	}
+
+	// Create edges: Start -> Action0 -> Action1 -> Action2
+	_, err = workflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         rule.ID,
+		TargetActionID: actionIDs[0],
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      1,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create start edge: %v", err)
+	}
+
+	for k := 0; k < len(actionIDs)-1; k++ {
+		_, err = workflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+			RuleID:         rule.ID,
+			SourceActionID: &actionIDs[k],
+			TargetActionID: actionIDs[k+1],
+			EdgeType:       workflow.EdgeTypeSequence,
+			EdgeOrder:      1,
+		})
+		if err != nil {
+			t.Fatalf("Failed to create edge: %v", err)
 		}
 	}
 
 	// Execute the rule actions
 	execContext := workflow.ActionExecutionContext{
-		EntityID:    entity.ID,
-		EntityName:  "customers",
-		EventType:   "on_create",
-		UserID:      uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
-		RuleID:      &rule.ID,
-		ExecutionID: uuid.New(),
-		Timestamp:   time.Now(),
+		EntityID:      entity.ID,
+		EntityName:    "customers",
+		EventType:     "on_create",
+		UserID:        uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7"),
+		RuleID:        &rule.ID,
+		ExecutionID:   uuid.New(),
+		Timestamp:     time.Now(),
+		TriggerSource: workflow.TriggerSourceAutomation,
 		RawData: map[string]interface{}{
 			"test": "data",
 		},
 	}
 
-	result, err := ae.ExecuteRuleActions(ctx, rule.ID, execContext)
+	result, err := ae.ExecuteRuleActionsGraph(ctx, rule.ID, execContext)
 	if err != nil {
 		t.Fatalf("Failed to execute rule actions: %v", err)
 	}
@@ -1083,6 +1107,7 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
 		}
 
 		// Create actions for this rule (i+1 actions, where i succeed)
+		var actionIDs []uuid.UUID
 		for j := 0; j <= i; j++ {
 			actionConfig := json.RawMessage(`{
                 "recipients": ["test@example.com"],
@@ -1097,31 +1122,53 @@ func TestActionExecutor_ExecutionHistory(t *testing.T) {
                 }`)
 			}
 
-			_, err := workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+			created, err := workflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 				AutomationRuleID: rule.ID,
 				Name:             fmt.Sprintf("Action %d", j),
 				ActionConfig:     actionConfig,
-				ExecutionOrder:   j + 1,
 				IsActive:         true,
 				TemplateID:       &template.ID,
 			})
 			if err != nil {
 				t.Fatalf("Failed to create action: %v", err)
 			}
+			actionIDs = append(actionIDs, created.ID)
+		}
+
+		// Create edges: Start → Action0 → Action1 → ... → ActionN
+		for k, actionID := range actionIDs {
+			var sourceID *uuid.UUID
+			edgeType := "start"
+			if k > 0 {
+				srcID := actionIDs[k-1]
+				sourceID = &srcID
+				edgeType = "sequence"
+			}
+			_, err = workflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+				RuleID:         rule.ID,
+				SourceActionID: sourceID,
+				TargetActionID: actionID,
+				EdgeType:       edgeType,
+				EdgeOrder:      k + 1,
+			})
+			if err != nil {
+				t.Fatalf("Failed to create edge for action %d: %v", k, err)
+			}
 		}
 
 		// Execute the rule
 		execContext := workflow.ActionExecutionContext{
-			EntityID:    entity.ID,
-			EntityName:  "customers",
-			EventType:   "on_create",
-			UserID:      userID,
-			RuleID:      &rule.ID,
-			ExecutionID: uuid.New(),
-			Timestamp:   time.Now(),
+			EntityID:      entity.ID,
+			EntityName:    "customers",
+			EventType:     "on_create",
+			UserID:        userID,
+			RuleID:        &rule.ID,
+			ExecutionID:   uuid.New(),
+			Timestamp:     time.Now(),
+			TriggerSource: workflow.TriggerSourceAutomation,
 		}
 
-		_, err = ae.ExecuteRuleActions(ctx, rule.ID, execContext)
+		_, err = ae.ExecuteRuleActionsGraph(ctx, rule.ID, execContext)
 		if err != nil {
 			t.Fatalf("Failed to execute rule actions for rule %d: %v", i, err)
 		}
@@ -1446,7 +1493,7 @@ func testShouldStopOnFailure(ae *workflow.ActionExecutor, action workflow.RuleAc
 
 func testUpdateStats(ae *workflow.ActionExecutor, result workflow.BatchExecutionResult) {
 	// This simulates the updateStats method
-	// In real tests, you'd test this through ExecuteRuleActions
+	// In real tests, you'd test this through ExecuteRuleActionsGraph
 	stats := ae.GetStats()
 	stats.TotalActionsExecuted += result.TotalActions
 	stats.SuccessfulExecutions += result.SuccessfulActions
@@ -1458,7 +1505,7 @@ func testUpdateStats(ae *workflow.ActionExecutor, result workflow.BatchExecution
 
 func testAddToHistory(ae *workflow.ActionExecutor, result workflow.BatchExecutionResult) {
 	// This simulates adding to history
-	// In real tests, you'd test this through ExecuteRuleActions
+	// In real tests, you'd test this through ExecuteRuleActionsGraph
 	// Note: This is a simplified version for testing
 }
 

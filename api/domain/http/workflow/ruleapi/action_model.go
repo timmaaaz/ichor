@@ -17,7 +17,6 @@ type CreateActionRequest struct {
 	Name           string          `json:"name"`
 	Description    string          `json:"description"`
 	ActionConfig   json.RawMessage `json:"action_config"`
-	ExecutionOrder int             `json:"execution_order"`
 	IsActive       bool            `json:"is_active"`
 	TemplateID     *uuid.UUID      `json:"template_id,omitempty"`
 }
@@ -29,11 +28,10 @@ func (r *CreateActionRequest) Decode(data []byte) error {
 
 // UpdateActionRequest is the request body for updating an action (partial update).
 type UpdateActionRequest struct {
-	Name           *string          `json:"name,omitempty"`
-	Description    *string          `json:"description,omitempty"`
-	ActionConfig   *json.RawMessage `json:"action_config,omitempty"`
-	ExecutionOrder *int             `json:"execution_order,omitempty"`
-	IsActive       *bool            `json:"is_active,omitempty"`
+	Name         *string          `json:"name,omitempty"`
+	Description  *string          `json:"description,omitempty"`
+	ActionConfig *json.RawMessage `json:"action_config,omitempty"`
+	IsActive     *bool            `json:"is_active,omitempty"`
 	TemplateID     *uuid.UUID       `json:"template_id,omitempty"`
 }
 
@@ -105,13 +103,6 @@ func ValidateCreateAction(req CreateActionRequest) *ValidationErrors {
 			})
 		}
 	}
-	if req.ExecutionOrder < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "execution_order",
-			Message: "execution_order must be non-negative",
-		})
-	}
-
 	if len(errors) > 0 {
 		return &ValidationErrors{Errors: errors}
 	}
@@ -141,13 +132,6 @@ func ValidateUpdateAction(req UpdateActionRequest) *ValidationErrors {
 			})
 		}
 	}
-	if req.ExecutionOrder != nil && *req.ExecutionOrder < 0 {
-		errors = append(errors, ValidationError{
-			Field:   "execution_order",
-			Message: "execution_order must be non-negative",
-		})
-	}
-
 	if len(errors) > 0 {
 		return &ValidationErrors{Errors: errors}
 	}

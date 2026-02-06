@@ -78,7 +78,7 @@ func TestWorkflow_OrderCreateEvent(t *testing.T) {
 	}
 
 	// Create rule action
-	_, err = wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+	emailAction, err := wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: rule.ID,
 		Name:             "Send Order Email",
 		Description:      "Send email notification for new order",
@@ -87,12 +87,23 @@ func TestWorkflow_OrderCreateEvent(t *testing.T) {
 			"subject": "New Order Created: {{number}}",
 			"body": "A new order has been created.\n\nOrder Number: {{number}}\nCustomer ID: {{customer_id}}"
 		}`),
-		ExecutionOrder: 1,
+
 		IsActive:       true,
 		TemplateID:     &emailTemplate.ID,
 	})
 	if err != nil {
 		t.Fatalf("creating rule action: %s", err)
+	}
+
+	_, err = wf.WorkflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         rule.ID,
+		SourceActionID: nil,
+		TargetActionID: emailAction.ID,
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      0,
+	})
+	if err != nil {
+		t.Fatalf("creating edge for rule action: %s", err)
 	}
 
 	// Re-initialize engine to pick up the new rule
@@ -178,7 +189,7 @@ func TestWorkflow_OrderCreateEvent(t *testing.T) {
 		}
 
 		// Create action with simulate_failure
-		_, err = wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+		failAction, err := wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 			AutomationRuleID: failRule.ID,
 			Name:             "Failing Email Action",
 			Description:      "Email action that simulates failure",
@@ -189,12 +200,23 @@ func TestWorkflow_OrderCreateEvent(t *testing.T) {
 				"simulate_failure": true,
 				"failure_message": "Simulated SMTP connection refused"
 			}`),
-			ExecutionOrder: 1,
+
 			IsActive:       true,
 			TemplateID:     &emailTemplate.ID,
 		})
 		if err != nil {
 			t.Fatalf("creating failing action: %s", err)
+		}
+
+		_, err = wf.WorkflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+			RuleID:         failRule.ID,
+			SourceActionID: nil,
+			TargetActionID: failAction.ID,
+			EdgeType:       workflow.EdgeTypeStart,
+			EdgeOrder:      0,
+		})
+		if err != nil {
+			t.Fatalf("creating edge for failing action: %s", err)
 		}
 
 		// Re-initialize engine to pick up the new rule

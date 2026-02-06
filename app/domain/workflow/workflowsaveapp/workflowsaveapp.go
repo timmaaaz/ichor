@@ -36,25 +36,37 @@ func NewApp(log *logger.Logger, db *sqlx.DB, workflowBus *workflow.Business, del
 	}
 }
 
+// prepareRequest validates the request and prepares it for saving. When actions
+// are present, action configs and graph structure are validated. When no actions
+// are present, IsActive is forced to false (draft workflow).
+func prepareRequest(req *SaveWorkflowRequest) error {
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	if len(req.Actions) > 0 {
+		if err := ValidateActionConfigs(req.Actions); err != nil {
+			return errs.Newf(errs.InvalidArgument, "action config: %s", err)
+		}
+
+		if err := ValidateGraph(req.Actions, req.Edges); err != nil {
+			return errs.Newf(errs.InvalidArgument, "graph: %s", err)
+		}
+	} else {
+		req.IsActive = false
+	}
+
+	return nil
+}
+
 // SaveWorkflow updates an existing workflow atomically (rule + actions + edges).
 // This performs all operations within a single database transaction.
 func (a *App) SaveWorkflow(ctx context.Context, ruleID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error) {
-	// 1. Validate request structure
-	if err := req.Validate(); err != nil {
+	if err := prepareRequest(&req); err != nil {
 		return SaveWorkflowResponse{}, err
 	}
 
-	// 2. Validate action configs
-	if err := ValidateActionConfigs(req.Actions); err != nil {
-		return SaveWorkflowResponse{}, errs.Newf(errs.InvalidArgument, "action config: %s", err)
-	}
-
-	// 3. Validate graph structure
-	if err := ValidateGraph(req.Actions, req.Edges); err != nil {
-		return SaveWorkflowResponse{}, errs.Newf(errs.InvalidArgument, "graph: %s", err)
-	}
-
-	// 4. Begin transaction
+	// Begin transaction
 	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "begin tx: %s", err)
@@ -110,22 +122,11 @@ func (a *App) SaveWorkflow(ctx context.Context, ruleID uuid.UUID, req SaveWorkfl
 // CreateWorkflow creates a new workflow atomically (rule + actions + edges).
 // This performs all operations within a single database transaction.
 func (a *App) CreateWorkflow(ctx context.Context, userID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error) {
-	// 1. Validate request structure
-	if err := req.Validate(); err != nil {
+	if err := prepareRequest(&req); err != nil {
 		return SaveWorkflowResponse{}, err
 	}
 
-	// 2. Validate action configs
-	if err := ValidateActionConfigs(req.Actions); err != nil {
-		return SaveWorkflowResponse{}, errs.Newf(errs.InvalidArgument, "action config: %s", err)
-	}
-
-	// 3. Validate graph structure
-	if err := ValidateGraph(req.Actions, req.Edges); err != nil {
-		return SaveWorkflowResponse{}, errs.Newf(errs.InvalidArgument, "graph: %s", err)
-	}
-
-	// 4. Begin transaction
+	// Begin transaction
 	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "begin tx: %s", err)
@@ -324,11 +325,10 @@ func (a *App) syncActions(ctx context.Context, bus *workflow.Business, ruleID uu
 			actionType := getActionTypeFromConfig(reqAction.ActionConfig)
 
 			update := workflow.UpdateRuleAction{
-				Name:           &reqAction.Name,
-				Description:    &reqAction.Description,
-				ActionConfig:   &reqAction.ActionConfig,
-				ExecutionOrder: &reqAction.ExecutionOrder,
-				IsActive:       &reqAction.IsActive,
+				Name:         &reqAction.Name,
+				Description:  &reqAction.Description,
+				ActionConfig: &reqAction.ActionConfig,
+				IsActive:     &reqAction.IsActive,
 			}
 
 			// Store action type in config if not already present
@@ -361,7 +361,6 @@ func (a *App) syncActions(ctx context.Context, bus *workflow.Business, ruleID uu
 				Name:             reqAction.Name,
 				Description:      reqAction.Description,
 				ActionConfig:     configWithType,
-				ExecutionOrder:   reqAction.ExecutionOrder,
 				IsActive:         reqAction.IsActive,
 			}
 
@@ -405,7 +404,6 @@ func (a *App) createAllActions(ctx context.Context, bus *workflow.Business, rule
 			Name:             reqAction.Name,
 			Description:      reqAction.Description,
 			ActionConfig:     configWithType,
-			ExecutionOrder:   reqAction.ExecutionOrder,
 			IsActive:         reqAction.IsActive,
 		}
 
@@ -534,10 +532,9 @@ func buildResponse(rule workflow.AutomationRule, actions []workflow.RuleAction, 
 			ID:             action.ID.String(),
 			Name:           action.Name,
 			Description:    action.Description,
-			ActionType:     getActionTypeFromConfig(action.ActionConfig),
-			ActionConfig:   action.ActionConfig,
-			ExecutionOrder: action.ExecutionOrder,
-			IsActive:       action.IsActive,
+			ActionType:   getActionTypeFromConfig(action.ActionConfig),
+			ActionConfig: action.ActionConfig,
+			IsActive:     action.IsActive,
 		}
 	}
 

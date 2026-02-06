@@ -1,10 +1,10 @@
-# Default Status Management Status Command
+# Universal Action Edge Enforcement Status Command
 
-Read `.claude/plans/DEFAULT_STATUSES_PLAN/PROGRESS.yaml` and display a comprehensive status report of the Default Status Management implementation progress.
+Read `.claude/plans/MISSING_ACTION_EDGES_PLAN/PROGRESS.yaml` and display a comprehensive status report of the Universal Action Edge Enforcement implementation progress.
 
 ## Your Task
 
-1. Read the PROGRESS.yaml file from `.claude/plans/DEFAULT_STATUSES_PLAN/PROGRESS.yaml`
+1. Read the PROGRESS.yaml file from `.claude/plans/MISSING_ACTION_EDGES_PLAN/PROGRESS.yaml`
 2. Display a formatted status report including:
    - Overall project status and current phase
    - Summary metrics (phases completed, files created/modified, etc.)
@@ -36,55 +36,86 @@ Use a clear, hierarchical format with:
 ### Example Output Structure
 
 ```
-📊 Default Status Management - Status Report
+📊 Universal Action Edge Enforcement - Status Report
 
 ══════════════════════════════════════════════════════════════
 
 PROJECT OVERVIEW
 Status: 🔄 In Progress
-Current Phase: 1 / 3
+Current Phase: 3 / 6
 Progress: [████████░░░░░░░░] 33%
 
 SUMMARY
-✅ Phases Completed: 0 / 3 (0%)
-🔄 Phases In Progress: 0
+✅ Phases Completed: 2 / 6 (33%)
+🔄 Phases In Progress: 1
 ⏳ Phases Pending: 3
-📁 Files Created: 0
-📝 Files Modified: 0
+👀 Phases Reviewed: X / Y completed (with grades)
+📁 Files Created: 12
+📝 Files Modified: 2
 
 PLANNING STATUS
-⏳ Phase 1 Documentation Pending
-⏳ Phase 2 Documentation Pending
-⏳ Phase 3 Documentation Pending
+✅ Phase 1 Documentation Created
+✅ Phase 2 Documentation Created
+✅ Phase 3 Documentation Created
+⏳ Phase 4 Documentation Pending
+⏳ Phase 5 Documentation Pending
+⏳ Phase 6 Documentation Pending
 
 ══════════════════════════════════════════════════════════════
 
 PHASE BREAKDOWN
 
-Phase 1: Form Configuration FK Default Resolution
+Phase 1: Validation Layer Changes
+Status: ✅ Completed | 👀 Reviewed (B+)
+Category: backend
+Tasks: 1/1 completed (100%)
+
+Phase 2: Remove execution_order Field
+Status: ✅ Completed
+Category: backend
+Tasks: 6/6 completed (100%)
+Note: Not yet reviewed
+
+Phase 3: Remove Linear Executor
+Status: 🔄 In Progress
+Category: backend
+Tasks: 1/3 completed (33%)
+Current Task: Delete ExecuteRuleActions() function
+
+Phase 4: Test Updates
+Status: ⏳ Pending
+Category: testing
+
+Phase 5: Seed Data Updates
 Status: ⏳ Pending
 Category: backend
-Tasks: 0/4 completed (0%)
 
-Phase 2: Workflow Integration for Status Transitions
+Phase 6: Documentation Updates
 Status: ⏳ Pending
-Category: backend
-Tasks: 0/3 completed (0%)
+Category: documentation
 
-Phase 3: Alert System Enhancement
-Status: ⏳ Pending
-Category: fullstack
-Tasks: 0/4 completed (0%)
+══════════════════════════════════════════════════════════════
+
+DEPENDENCIES
+
+Internal Dependencies:
+  Phase 4 depends on: Phase 2, Phase 3 ✅
+
+External Dependencies:
+  None
 
 ══════════════════════════════════════════════════════════════
 
 CURRENT FOCUS
-Working on: Planning phase documentation
-Next Task: Create Phase 1 documentation using /default-statuses-build-phase
+Working on: Phase 3 - Remove Linear Executor
+Next Task: Delete ExecuteRuleActions() function
+Recent Changes:
+  - Removed execution_order from all models
+  - Added database migration
 
 Key Decisions:
-  - Use form config FK resolution (not template variables) for default status values
-  - Names resolved to UUIDs at formdata processing time
+  - Require edges universally (Option B)
+  - Remove execution_order field entirely
 
 ══════════════════════════════════════════════════════════════
 
@@ -94,17 +125,20 @@ None currently
 ══════════════════════════════════════════════════════════════
 
 MILESTONES
-⏳ Planning Complete
-⏳ Phase 1 Complete - FK Default Resolution
-⏳ Phase 2 Complete - Workflow Integration
-⏳ Phase 3 Complete - Alert System
+✅ Planning Complete (2026-02-05)
+⏳ Phase 1 Complete (Validation)
+⏳ Phase 2-3 Complete (Remove Old Code)
+⏳ Phase 4-5 Complete (Tests & Seeds)
+⏳ Phase 6 Complete (Documentation)
 ⏳ Project Complete
 
 ══════════════════════════════════════════════════════════════
 
 NEXT STEPS
-1. Run /default-statuses-build-phase to create Phase 1 documentation
-2. Run /default-statuses-next to begin implementation
+1. Complete Phase 3 (2 tasks remaining)
+2. Run /missing-action-edges-review 3 to get code review (optional)
+3. Run /missing-action-edges-validate to check Phase 3 completion criteria
+4. Run /missing-action-edges-next to continue implementation
 ```
 
 ## Tips
@@ -116,3 +150,16 @@ NEXT STEPS
 - If blockers exist, make them very visible
 - Include helpful next steps at the end
 - Note phase categories for context
+
+## Review Status Display
+
+For each phase, check `reviewed` and `review_grade` fields:
+- If `reviewed: true`: Show "👀 Reviewed ({{grade}})" after status
+- If `reviewed: false` and status is `completed`: Show "Note: Not yet reviewed"
+- Grades B- or below should be highlighted as needing re-review
+
+In the summary section, show:
+- Total phases reviewed vs completed
+- Average grade (if tracking)
+- Any phases needing re-review (grade < B)
+

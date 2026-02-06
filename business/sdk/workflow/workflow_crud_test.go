@@ -1129,7 +1129,6 @@ func createRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 			Name:             "test_action",
 			Description:      "Test rule action",
 			ActionConfig:     configJSON,
-			ExecutionOrder:   99,
 			IsActive:         true,
 			TemplateID:       &sd.ActionTemplates[0].ID,
 		},
@@ -1139,7 +1138,6 @@ func createRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 				Name:             "test_action",
 				Description:      "Test rule action",
 				ActionConfig:     configJSON,
-				ExecutionOrder:   99,
 				IsActive:         true,
 				TemplateID:       &sd.ActionTemplates[0].ID,
 			}
@@ -1175,7 +1173,7 @@ func queryActionsByRule(busDomain dbtest.BusDomain, sd workflowSeedData) unitest
 	}
 
 	sort.Slice(expectedActions, func(i, j int) bool {
-		return expectedActions[i].ExecutionOrder < expectedActions[j].ExecutionOrder
+		return expectedActions[i].Name < expectedActions[j].Name
 	})
 
 	return unitest.Table{
@@ -1188,7 +1186,7 @@ func queryActionsByRule(busDomain dbtest.BusDomain, sd workflowSeedData) unitest
 			}
 
 			sort.Slice(resp, func(i, j int) bool {
-				return resp[i].ExecutionOrder < resp[j].ExecutionOrder
+				return resp[i].Name < resp[j].Name
 			})
 
 			return resp
@@ -1223,7 +1221,6 @@ func updateRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 			Name:             "updated_action",
 			Description:      "Updated action description",
 			ActionConfig:     newConfigJSON,
-			ExecutionOrder:   50,
 			IsActive:         false,
 			TemplateID:       dbtest.UUIDPointer(sd.ActionTemplates[1].ID),
 		},
@@ -1232,7 +1229,6 @@ func updateRuleAction(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.T
 				Name:           dbtest.StringPointer("updated_action"),
 				Description:    dbtest.StringPointer("Updated action description"),
 				ActionConfig:   &raw,
-				ExecutionOrder: dbtest.IntPointer(50),
 				IsActive:       dbtest.BoolPointer(false),
 				TemplateID:     dbtest.UUIDPointer(sd.ActionTemplates[1].ID), //
 			}

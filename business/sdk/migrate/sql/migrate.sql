@@ -1026,7 +1026,6 @@ CREATE TABLE workflow.rule_actions (
    name VARCHAR(100) NOT NULL,
    description TEXT,
    action_config JSONB NOT NULL,
-   execution_order INTEGER NOT NULL DEFAULT 1,
    is_active BOOLEAN DEFAULT TRUE,
    template_id UUID NULL REFERENCES workflow.action_templates(id),
    deactivated_by UUID NULL REFERENCES core.users(id)
@@ -1523,7 +1522,6 @@ CREATE OR REPLACE VIEW workflow.rule_actions_view AS
       ra.name,
       ra.description,
       ra.action_config,
-      ra.execution_order,
       ra.is_active,
       ra.template_id,
       at.name as template_name,

@@ -209,7 +209,6 @@ func TestNewRuleActions(n int, ruleIDs []uuid.UUID, templateIDs *[]uuid.UUID) []
 			Name:             fmt.Sprintf("Action%d", idx),
 			Description:      fmt.Sprintf("Description for action %d", idx),
 			ActionConfig:     configJSON,
-			ExecutionOrder:   i + 1,
 			IsActive:         true,
 		}
 
@@ -237,6 +236,42 @@ func TestSeedRuleActions(ctx context.Context, n int, ruleIDs []uuid.UUID, templa
 		}
 
 		actions[i] = action
+	}
+
+	// Group actions by rule ID for edge creation.
+	actionsByRule := make(map[uuid.UUID][]RuleAction)
+	for _, a := range actions {
+		actionsByRule[a.AutomationRuleID] = append(actionsByRule[a.AutomationRuleID], a)
+	}
+
+	// Create edge chains for each rule.
+	for ruleID, ruleActions := range actionsByRule {
+		// Start edge: nil -> first action
+		_, err := api.CreateActionEdge(ctx, NewActionEdge{
+			RuleID:         ruleID,
+			SourceActionID: nil,
+			TargetActionID: ruleActions[0].ID,
+			EdgeType:       EdgeTypeStart,
+			EdgeOrder:      0,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("seeding start edge for rule %s: %w", ruleID, err)
+		}
+
+		// Sequence edges: action[i] -> action[i+1]
+		for i := 0; i < len(ruleActions)-1; i++ {
+			sourceID := ruleActions[i].ID
+			_, err := api.CreateActionEdge(ctx, NewActionEdge{
+				RuleID:         ruleID,
+				SourceActionID: &sourceID,
+				TargetActionID: ruleActions[i+1].ID,
+				EdgeType:       EdgeTypeSequence,
+				EdgeOrder:      i + 1,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("seeding edge for rule %s action %d: %w", ruleID, i, err)
+			}
+		}
 	}
 
 	return actions, nil

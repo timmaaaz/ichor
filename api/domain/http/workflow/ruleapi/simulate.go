@@ -69,7 +69,6 @@ type ActionPreview struct {
 	ActionID   uuid.UUID         `json:"action_id"`
 	ActionName string            `json:"action_name"`
 	ActionType string            `json:"action_type"`
-	Order      int               `json:"order"`
 	Preview    map[string]string `json:"preview"`
 }
 
@@ -131,7 +130,6 @@ func (a *api) testRule(ctx context.Context, r *http.Request) web.Encoder {
 			ActionID:   action.ID,
 			ActionName: action.Name,
 			ActionType: extractActionType(action.ActionConfig),
-			Order:      action.ExecutionOrder,
 			Preview:    make(map[string]string),
 		}
 

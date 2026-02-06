@@ -48,6 +48,7 @@ func Test_WorkflowSaveAPI(t *testing.T) {
 
 	test.Run(t, validationActionConfig(sd), "validation-action-config")
 	test.Run(t, validationGraph(sd), "validation-graph")
+	test.Run(t, validationEdgeRequirement(sd), "validation-edge-requirement")
 
 	// ============================================================
 	// Phase 7: Workflow Execution Integration Tests

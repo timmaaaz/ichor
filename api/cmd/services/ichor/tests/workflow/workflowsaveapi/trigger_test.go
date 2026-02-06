@@ -172,7 +172,6 @@ func testCustomerCreateTriggersWorkflow(t *testing.T, tsd TriggerTestData) {
 			"message": "Customer was created via trigger test",
 			"recipients": {"users": ["` + tsd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &tsd.CreateAlertTemplate.ID,
 	})
@@ -312,7 +311,6 @@ func testCustomerUpdateTriggersWorkflow(t *testing.T, tsd TriggerTestData) {
 			"message": "Customer was updated via trigger test",
 			"recipients": {"users": ["` + tsd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &tsd.CreateAlertTemplate.ID,
 	})
@@ -451,7 +449,6 @@ func testInactiveRuleNoTrigger(t *testing.T, tsd TriggerTestData) {
 			"message": "If you see this, the inactive rule was incorrectly triggered",
 			"recipients": {"users": ["` + tsd.Users[0].ID.String() + `"], "roles": []}
 		}`),
-		ExecutionOrder: 1,
 		IsActive:       true,
 		TemplateID:     &tsd.CreateAlertTemplate.ID,
 	})

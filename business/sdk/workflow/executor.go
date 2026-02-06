@@ -109,107 +109,12 @@ func (ae *ActionExecutor) Initialize(ctx context.Context) error {
 	return nil
 }
 
-// ExecuteRuleActions executes all actions for a given rule
-func (ae *ActionExecutor) ExecuteRuleActions(ctx context.Context, ruleID uuid.UUID, executionContext ActionExecutionContext) (BatchExecutionResult, error) {
-	startTime := time.Now()
-
-	// Load actions for the rule
-	actions, err := ae.workflowBus.QueryRoleActionsViewByRuleID(ctx, ruleID)
-	if err != nil {
-		return BatchExecutionResult{}, fmt.Errorf("failed to load rule actions: %w", err)
-	}
-
-	// Get rule name for result
-	ruleName := ae.getRuleName(ctx, ruleID)
-	executionContext.RuleName = ruleName
-
-	ae.log.Info(ctx, "Executing actions for rule",
-		"ruleID", ruleID,
-		"ruleName", ruleName,
-		"actionCount", len(actions))
-
-	// Execute actions in order
-	actionResults := make([]ActionResult, 0, len(actions))
-	successCount := 0
-	failedCount := 0
-	skippedCount := 0
-
-	for _, action := range actions {
-		if !action.IsActive {
-			skippedCount++
-			actionResults = append(actionResults, ActionResult{
-				ActionID:   action.ID,
-				ActionName: action.Name,
-				ActionType: ae.getActionType(action),
-				Status:     "skipped",
-				StartedAt:  time.Now(),
-			})
-			continue
-		}
-
-		result := ae.executeAction(ctx, action, executionContext)
-		actionResults = append(actionResults, result)
-
-		switch result.Status {
-		case "success":
-			successCount++
-		case "failed":
-			failedCount++
-			// Stop on critical failure if configured
-			if ae.shouldStopOnFailure(action) {
-				ae.log.Error(ctx, "Critical action failed, stopping execution",
-					"actionID", action.ID,
-					"actionName", action.Name)
-				break
-			}
-		case "skipped":
-			skippedCount++
-		}
-	}
-
-	completedAt := time.Now()
-	duration := completedAt.Sub(startTime)
-
-	// Determine overall status
-	status := "success"
-	errorMessage := ""
-	if failedCount > 0 {
-		status = "failed"
-		errorMessage = fmt.Sprintf("%d actions failed", failedCount)
-	}
-
-	result := BatchExecutionResult{
-		RuleID:             ruleID,
-		RuleName:           ruleName,
-		TotalActions:       len(actions),
-		SuccessfulActions:  successCount,
-		FailedActions:      failedCount,
-		SkippedActions:     skippedCount,
-		ActionResults:      actionResults,
-		TotalExecutionTime: duration,
-		StartedAt:          startTime,
-		CompletedAt:        completedAt,
-		Context:            executionContext,
-		Status:             status,
-		ErrorMessage:       errorMessage,
-	}
-
-	// Update statistics
-	ae.updateStats(result)
-
-	// Add to history
-	ae.mu.Lock()
-	ae.history = append(ae.history, result)
-	if len(ae.history) > 1000 { // Limit history size
-		ae.history = ae.history[len(ae.history)-1000:]
-	}
-	ae.mu.Unlock()
-
-	return result, nil
-}
-
 // ExecuteRuleActionsGraph executes actions following the edge graph.
-// Falls back to linear execution_order if no edges exist (backwards compatible).
+// All rules with actions must have edges defining execution flow (enforced by
+// the validation layer). Returns an error if the rule has no edges or no start edges.
+//
+// Start edges are identified by source_action_id = NULL, indicating the beginning
+// of the execution graph.
 func (ae *ActionExecutor) ExecuteRuleActionsGraph(ctx context.Context, ruleID uuid.UUID, executionContext ActionExecutionContext) (BatchExecutionResult, error) {
 	startTime := time.Now()
 
@@ -219,11 +124,16 @@ func (ae *ActionExecutor) ExecuteRuleActionsGraph(ctx context.Context, ruleID uu
 		return BatchExecutionResult{}, fmt.Errorf("failed to load edges: %w", err)
 	}
 
-	// Backwards compatibility: if no edges, use linear execution
+	// All rules with actions must have edges (enforced by validation layer)
 	if len(edges) == 0 {
-		ae.log.Info(ctx, "No edges found for rule, falling back to linear execution",
-			"ruleID", ruleID)
-		return ae.ExecuteRuleActions(ctx, ruleID, executionContext)
+		return BatchExecutionResult{
+			RuleID:       ruleID,
+			TotalActions: 0,
+			Status:       "failed",
+			ErrorMessage: "rule has no edges - all rules with actions require edges",
+			StartedAt:    startTime,
+			CompletedAt:  time.Now(),
+		}, fmt.Errorf("executeRuleActionsGraph: rule %s has no edges - all rules with actions require edges", ruleID)
 	}
 
 	// Load all actions
@@ -262,9 +172,14 @@ func (ae *ActionExecutor) ExecuteRuleActionsGraph(ctx context.Context, ruleID uu
 
 	// Validate we have start edges
 	if len(startEdges) == 0 {
-		ae.log.Warn(ctx, "No start edges found for rule, falling back to linear execution",
-			"ruleID", ruleID)
-		return ae.ExecuteRuleActions(ctx, ruleID, executionContext)
+		return BatchExecutionResult{
+			RuleID:       ruleID,
+			TotalActions: len(actions),
+			Status:       "failed",
+			ErrorMessage: "no start edges found - at least one edge with nil source_action_id is required",
+			StartedAt:    startTime,
+			CompletedAt:  time.Now(),
+		}, fmt.Errorf("executeRuleActionsGraph: rule %s has no start edges - at least one edge with nil source_action_id is required", ruleID)
 	}
 
 	// Sort start edges by edge_order for deterministic execution
@@ -588,35 +503,6 @@ func (ae *ActionExecutor) executeAction(ctx context.Context, action RuleActionVi
 
 	return result
 }
-
-// loadRuleActions loads actions for a rule from the database
-// func (ae *ActionExecutor) loadRuleActions(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error) {
-// 	query := `
-// 		SELECT
-// 			ra.id,
-// 			ra.automation_rules_id,
-// 			ra.name,
-// 			ra.description,
-// 			ra.action_config,
-// 			ra.execution_order,
-// 			ra.is_active,
-// 			ra.template_id,
-// 			at.name as template_name,
-// 			at.action_type as template_action_type,
-// 			at.default_config as template_default_config
-// 		FROM workflow.rule_actions ra
-// 		LEFT JOIN workflow.action_templates at ON ra.template_id = at.id
-// 		WHERE ra.automation_rules_id = $1
-// 		ORDER BY ra.execution_order ASC
-// 	`
-
-// 	var actions []RuleActionView
-// 	if err := ae.db.SelectContext(ctx, &actions, query, ruleID); err != nil {
-// 		return nil, fmt.Errorf("failed to load rule actions: %w", err)
-// 	}
-
-// 	return actions, nil
-// }
 
 // getRuleName gets the name of a rule
 func (ae *ActionExecutor) getRuleName(ctx context.Context, ruleID uuid.UUID) string {

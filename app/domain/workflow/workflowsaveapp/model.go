@@ -15,9 +15,12 @@ type SaveWorkflowRequest struct {
 	IsActive          bool                `json:"is_active"`
 	EntityID          string              `json:"entity_id" validate:"required,uuid"`
 	TriggerTypeID     string              `json:"trigger_type_id" validate:"required,uuid"`
-	TriggerConditions json.RawMessage     `json:"trigger_conditions"`
-	Actions           []SaveActionRequest `json:"actions" validate:"required,min=1,dive"`
-	Edges             []SaveEdgeRequest   `json:"edges" validate:"dive"`
+	TriggerConditions json.RawMessage `json:"trigger_conditions"`
+
+	// Actions can be empty for draft workflows (trigger-only, no actions yet).
+	// When present, edges must also be provided; see ValidateGraph.
+	Actions []SaveActionRequest `json:"actions" validate:"dive"`
+	Edges   []SaveEdgeRequest   `json:"edges" validate:"dive"`
 	CanvasLayout      json.RawMessage     `json:"canvas_layout"`
 }
 
@@ -43,7 +46,6 @@ type SaveActionRequest struct {
 	Description    string          `json:"description" validate:"max=1000"`
 	ActionType     string          `json:"action_type" validate:"required,oneof=create_alert send_email send_notification update_field seek_approval allocate_inventory evaluate_condition"`
 	ActionConfig   json.RawMessage `json:"action_config" validate:"required"`
-	ExecutionOrder int             `json:"execution_order" validate:"required,min=1"`
 	IsActive       bool            `json:"is_active"`
 }
 
@@ -86,7 +88,6 @@ type SaveActionResponse struct {
 	Description    string          `json:"description"`
 	ActionType     string          `json:"action_type"`
 	ActionConfig   json.RawMessage `json:"action_config"`
-	ExecutionOrder int             `json:"execution_order"`
 	IsActive       bool            `json:"is_active"`
 }
 

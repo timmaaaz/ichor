@@ -143,7 +143,6 @@ func createSimpleWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd SaveS
 		Name:             "Create Alert",
 		Description:      "Creates an alert",
 		ActionConfig:     json.RawMessage(`{"alert_type":"simple_test","severity":"low","title":"Simple Test Alert","message":"Test message from simple workflow","recipients":{"users":["` + sd.Users[0].ID.String() + `"],"roles":[]}}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &alertTemplateID,
 	})
@@ -177,7 +176,6 @@ func createSimpleWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd SaveS
 				Description:    action.Description,
 				ActionType:     "create_alert",
 				ActionConfig:   action.ActionConfig,
-				ExecutionOrder: action.ExecutionOrder,
 				IsActive:       action.IsActive,
 			},
 		},
@@ -232,7 +230,6 @@ func createSequenceWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sav
 			Name:             "Sequence Action " + stepNum,
 			Description:      "Step " + stepNum + " of sequence",
 			ActionConfig:     json.RawMessage(`{"alert_type":"sequence_step","severity":"low","title":"Step ` + stepNum + `","message":"Sequence step ` + stepNum + `","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
-			ExecutionOrder:   i + 1,
 			IsActive:         true,
 			TemplateID:       &alertTemplateID,
 		})
@@ -283,7 +280,6 @@ func createSequenceWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sav
 			Description:    a.Description,
 			ActionType:     "create_alert",
 			ActionConfig:   a.ActionConfig,
-			ExecutionOrder: a.ExecutionOrder,
 			IsActive:       a.IsActive,
 		}
 	}
@@ -344,7 +340,6 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 		Name:             "Evaluate Amount",
 		Description:      "Evaluates if amount > 1000",
 		ActionConfig:     json.RawMessage(`{"conditions":[{"field":"amount","operator":"greater_than","value":1000}]}`),
-		ExecutionOrder:   1,
 		IsActive:         true,
 		TemplateID:       &conditionTemplateID,
 	})
@@ -359,7 +354,6 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 		Name:             "High Value Alert",
 		Description:      "Alert for high value items",
 		ActionConfig:     json.RawMessage(`{"alert_type":"high_value","severity":"high","title":"High Value Alert","message":"Amount exceeds threshold","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
-		ExecutionOrder:   2,
 		IsActive:         true,
 		TemplateID:       &alertTemplateID,
 	})
@@ -373,7 +367,6 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 		Name:             "Normal Value Alert",
 		Description:      "Alert for normal value items",
 		ActionConfig:     json.RawMessage(`{"alert_type":"normal_value","severity":"low","title":"Normal Value Alert","message":"Standard processing","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
-		ExecutionOrder:   2,
 		IsActive:         true,
 		TemplateID:       &alertTemplateID,
 	})
@@ -433,7 +426,6 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 				Description:    conditionAction.Description,
 				ActionType:     "evaluate_condition",
 				ActionConfig:   conditionAction.ActionConfig,
-				ExecutionOrder: conditionAction.ExecutionOrder,
 				IsActive:       conditionAction.IsActive,
 			},
 			{
@@ -442,7 +434,6 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 				Description:    trueBranchAction.Description,
 				ActionType:     "create_alert",
 				ActionConfig:   trueBranchAction.ActionConfig,
-				ExecutionOrder: trueBranchAction.ExecutionOrder,
 				IsActive:       trueBranchAction.IsActive,
 			},
 			{
@@ -451,7 +442,6 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 				Description:    falseBranchAction.Description,
 				ActionType:     "create_alert",
 				ActionConfig:   falseBranchAction.ActionConfig,
-				ExecutionOrder: falseBranchAction.ExecutionOrder,
 				IsActive:       falseBranchAction.IsActive,
 			},
 		},

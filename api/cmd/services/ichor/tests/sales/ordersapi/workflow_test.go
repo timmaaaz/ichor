@@ -98,7 +98,7 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 		t.Fatalf("creating on_create rule: %s", err)
 	}
 
-	_, err = wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+	createAction, err := wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: ruleCreate.ID,
 		Name:             "Send Create Email",
 		ActionConfig: json.RawMessage(`{
@@ -106,12 +106,23 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 			"subject": "Order Created: {{Number}}",
 			"body": "Order {{ID}} was created"
 		}`),
-		ExecutionOrder: 1,
+
 		IsActive:       true,
 		TemplateID:     &emailTemplate.ID,
 	})
 	if err != nil {
 		t.Fatalf("creating on_create rule action: %s", err)
+	}
+
+	_, err = wf.WorkflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         ruleCreate.ID,
+		SourceActionID: nil,
+		TargetActionID: createAction.ID,
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      0,
+	})
+	if err != nil {
+		t.Fatalf("creating edge for on_create rule action: %s", err)
 	}
 
 	// Create automation rule for order update
@@ -129,7 +140,7 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 		t.Fatalf("creating on_update rule: %s", err)
 	}
 
-	_, err = wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+	updateAction, err := wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: ruleUpdate.ID,
 		Name:             "Send Update Email",
 		ActionConfig: json.RawMessage(`{
@@ -137,12 +148,23 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 			"subject": "Order Updated: {{Number}}",
 			"body": "Order {{ID}} was updated"
 		}`),
-		ExecutionOrder: 1,
+
 		IsActive:       true,
 		TemplateID:     &emailTemplate.ID,
 	})
 	if err != nil {
 		t.Fatalf("creating on_update rule action: %s", err)
+	}
+
+	_, err = wf.WorkflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         ruleUpdate.ID,
+		SourceActionID: nil,
+		TargetActionID: updateAction.ID,
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      0,
+	})
+	if err != nil {
+		t.Fatalf("creating edge for on_update rule action: %s", err)
 	}
 
 	// Create automation rule for order delete
@@ -160,7 +182,7 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 		t.Fatalf("creating on_delete rule: %s", err)
 	}
 
-	_, err = wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
+	deleteAction, err := wf.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: ruleDelete.ID,
 		Name:             "Send Delete Email",
 		ActionConfig: json.RawMessage(`{
@@ -168,12 +190,23 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 			"subject": "Order Deleted: {{Number}}",
 			"body": "Order {{ID}} was deleted"
 		}`),
-		ExecutionOrder: 1,
+
 		IsActive:       true,
 		TemplateID:     &emailTemplate.ID,
 	})
 	if err != nil {
 		t.Fatalf("creating on_delete rule action: %s", err)
+	}
+
+	_, err = wf.WorkflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
+		RuleID:         ruleDelete.ID,
+		SourceActionID: nil,
+		TargetActionID: deleteAction.ID,
+		EdgeType:       workflow.EdgeTypeStart,
+		EdgeOrder:      0,
+	})
+	if err != nil {
+		t.Fatalf("creating edge for on_delete rule action: %s", err)
 	}
 
 	// Re-initialize engine to pick up new rules
