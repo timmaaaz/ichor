@@ -21,6 +21,11 @@ type Column struct {
 	IsNullable   bool   `db:"is_nullable"`
 	IsPrimaryKey bool   `db:"is_primary_key"`
 	DefaultValue string `db:"default_value"`
+	// Foreign key metadata (NULL if not a FK)
+	IsForeignKey     bool    `db:"is_foreign_key"`
+	ReferencedSchema *string `db:"referenced_schema"`
+	ReferencedTable  *string `db:"referenced_table"`
+	ReferencedColumn *string `db:"referenced_column"`
 }
 
 // Relationship represents a foreign key relationship.

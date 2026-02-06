@@ -242,8 +242,8 @@ func TestWorkflow_OrderCreateEvent(t *testing.T) {
 
 		wf.QueueManager.QueueEvent(ctx, event)
 
-		// Wait for processing
-		time.Sleep(500 * time.Millisecond)
+		// Wait for processing (needs longer timeout due to retry delays)
+		waitForProcessing(t, wf.QueueManager, initialMetrics, 10*time.Second)
 
 		// Event should be processed (even if actions fail)
 		finalMetrics := wf.QueueManager.GetMetrics()

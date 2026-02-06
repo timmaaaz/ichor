@@ -146,7 +146,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				OrderDate:  time.Now().Format("2006-01-02"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"fulfillment_status_id\",\"error\":\"fulfillment_status_id is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"order_fulfillment_status_id\",\"error\":\"order_fulfillment_status_id is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*errs.Error)
 				if !exists {

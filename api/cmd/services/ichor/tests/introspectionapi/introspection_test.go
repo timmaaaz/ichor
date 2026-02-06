@@ -23,6 +23,7 @@ func Test_IntrospectionAPI(t *testing.T) {
 	test.Run(t, querySchemas200(sd), "query-schemas-200")
 	test.Run(t, queryTables200(sd), "query-tables-200")
 	test.Run(t, queryColumns200(sd), "query-columns-200")
+	test.Run(t, queryColumnsWithFK200(sd), "query-columns-fk-200")
 	test.Run(t, queryRelationships200(sd), "query-relationships-200")
 	test.Run(t, queryReferencingTables200(sd), "query-referencing-tables-200")
 	test.Run(t, queryReferencingTables401(sd), "query-referencing-tables-401")
@@ -142,6 +143,44 @@ func queryColumns200(sd apitest.SeedData) []apitest.Table {
 					}
 				}
 				return ""
+			},
+		},
+	}
+}
+
+func queryColumnsWithFK200(sd apitest.SeedData) []apitest.Table {
+	// Test table with known FK: core.user_roles has user_id -> core.users.id
+	return []apitest.Table{
+		{
+			Name:       "fk-columns",
+			URL:        "/v1/introspection/tables/core/user_roles/columns",
+			Method:     http.MethodGet,
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			GotResp:    &introspectionapp.Columns{},
+			ExpResp:    &introspectionapp.Columns{},
+			CmpFunc: func(got, exp any) string {
+				gotCols := got.(*introspectionapp.Columns)
+
+				// Find user_id column and verify FK metadata
+				for _, c := range *gotCols {
+					if c.Name == "user_id" {
+						if !c.IsForeignKey {
+							return "user_id should be marked as foreign key"
+						}
+						if c.ReferencedSchema == nil || *c.ReferencedSchema != "core" {
+							return "user_id should reference core schema"
+						}
+						if c.ReferencedTable == nil || *c.ReferencedTable != "users" {
+							return "user_id should reference users table"
+						}
+						if c.ReferencedColumn == nil || *c.ReferencedColumn != "id" {
+							return "user_id should reference id column"
+						}
+						return "" // Success
+					}
+				}
+				return "user_id column not found"
 			},
 		},
 	}

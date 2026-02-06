@@ -51,7 +51,7 @@ type Order struct {
 	Number              string `json:"number"`
 	CustomerID          string `json:"customer_id"`
 	DueDate             string `json:"due_date"`
-	FulfillmentStatusID string `json:"fulfillment_status_id"`
+	FulfillmentStatusID string `json:"order_fulfillment_status_id"`
 	OrderDate           string `json:"order_date"`
 	BillingAddressID    string `json:"billing_address_id,omitempty"`
 	ShippingAddressID   string `json:"shipping_address_id,omitempty"`
@@ -121,7 +121,7 @@ type NewOrder struct {
 	Number              string  `json:"number" validate:"required"`
 	CustomerID          string  `json:"customer_id" validate:"required,uuid4"`
 	DueDate             string  `json:"due_date" validate:"required"`
-	FulfillmentStatusID string  `json:"fulfillment_status_id" validate:"required,uuid4"`
+	FulfillmentStatusID string  `json:"order_fulfillment_status_id" validate:"required,uuid4"`
 	OrderDate           string  `json:"order_date" validate:"required"`
 	BillingAddressID    string  `json:"billing_address_id" validate:"omitempty,uuid4"`
 	ShippingAddressID   string  `json:"shipping_address_id" validate:"omitempty,uuid4"`
@@ -268,7 +268,7 @@ type UpdateOrder struct {
 	Number              *string `json:"number" validate:"omitempty"`
 	CustomerID          *string `json:"customer_id" validate:"omitempty,uuid4"`
 	DueDate             *string `json:"due_date" validate:"omitempty"`
-	FulfillmentStatusID *string `json:"fulfillment_status_id" validate:"omitempty,uuid4"`
+	FulfillmentStatusID *string `json:"order_fulfillment_status_id" validate:"omitempty,uuid4"`
 	OrderDate           *string `json:"order_date" validate:"omitempty"`
 	BillingAddressID    *string `json:"billing_address_id" validate:"omitempty,uuid4"`
 	ShippingAddressID   *string `json:"shipping_address_id" validate:"omitempty,uuid4"`

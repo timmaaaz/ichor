@@ -31,13 +31,15 @@ func (b *Business) QuerySchemas(ctx context.Context) ([]Schema, error) {
 
 	const q = `
 	SELECT
-		schema_name AS name
+		nspname AS name
 	FROM
-		information_schema.schemata
+		pg_catalog.pg_namespace
 	WHERE
-		schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+		nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+		AND nspname NOT LIKE 'pg_temp_%'
+		AND nspname NOT LIKE 'pg_toast_temp_%'
 	ORDER BY
-		schema_name`
+		nspname`
 
 	var schemas []Schema
 	if err := sqldb.NamedQuerySlice(ctx, b.log, b.db, q, struct{}{}, &schemas); err != nil {
@@ -54,20 +56,18 @@ func (b *Business) QueryTables(ctx context.Context, schema string) ([]Table, err
 
 	const q = `
 	SELECT
-		t.table_schema AS schema,
-		t.table_name AS name,
+		n.nspname AS schema,
+		c.relname AS name,
 		CAST(c.reltuples AS bigint) AS row_count_estimate
 	FROM
-		information_schema.tables t
-	LEFT JOIN
-		pg_class c ON c.relname = t.table_name
-	LEFT JOIN
-		pg_namespace n ON n.oid = c.relnamespace AND n.nspname = t.table_schema
+		pg_catalog.pg_class c
+	JOIN
+		pg_catalog.pg_namespace n ON c.relnamespace = n.oid
 	WHERE
-		t.table_schema = :schema
-		AND t.table_type = 'BASE TABLE'
+		n.nspname = :schema
+		AND c.relkind = 'r'
 	ORDER BY
-		t.table_name`
+		c.relname`
 
 	data := struct {
 		Schema string `db:"schema"`
@@ -83,35 +83,60 @@ func (b *Business) QueryTables(ctx context.Context, schema string) ([]Table, err
 	return tables, nil
 }
 
-// QueryColumns returns all columns for a given table.
+// QueryColumns returns all columns for a given table, enriched with FK metadata.
 func (b *Business) QueryColumns(ctx context.Context, schema, table string) ([]Column, error) {
 	ctx, span := otel.AddSpan(ctx, "business.introspectionbus.querycolumns")
 	defer span.End()
 
 	const q = `
 	SELECT
-		c.column_name AS name,
-		c.data_type AS data_type,
-		c.is_nullable = 'YES' AS is_nullable,
-		COALESCE(c.column_default, '') AS default_value,
-		EXISTS(
-			SELECT 1
-			FROM information_schema.table_constraints tc
-			JOIN information_schema.key_column_usage kcu
-				ON tc.constraint_name = kcu.constraint_name
-				AND tc.table_schema = kcu.table_schema
-			WHERE tc.constraint_type = 'PRIMARY KEY'
-				AND tc.table_schema = :schema
-				AND tc.table_name = :table
-				AND kcu.column_name = c.column_name
-		) AS is_primary_key
+		a.attname AS name,
+		pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+		NOT a.attnotnull AS is_nullable,
+		COALESCE(pg_get_expr(d.adbin, d.adrelid), '') AS default_value,
+		COALESCE(pk.is_pk, FALSE) AS is_primary_key,
+		fk.conname IS NOT NULL AS is_foreign_key,
+		fk_ns.nspname AS referenced_schema,
+		fk_cl.relname AS referenced_table,
+		fk_att.attname AS referenced_column
 	FROM
-		information_schema.columns c
+		pg_catalog.pg_attribute a
+	JOIN pg_catalog.pg_class c ON a.attrelid = c.oid
+	JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+	-- Default values
+	LEFT JOIN pg_catalog.pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+	-- Primary key detection
+	LEFT JOIN (
+		SELECT
+			conrelid,
+			unnest(conkey) AS attnum,
+			TRUE AS is_pk
+		FROM pg_catalog.pg_constraint
+		WHERE contype = 'p'
+	) pk ON a.attrelid = pk.conrelid AND a.attnum = pk.attnum
+	-- Foreign key detection with referenced table info
+	LEFT JOIN LATERAL (
+		SELECT
+			con.conname,
+			con.confrelid,
+			col_idx.ord,
+			(con.confkey)[col_idx.ord] AS ref_attnum
+		FROM pg_catalog.pg_constraint con
+		CROSS JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS col_idx(attnum, ord)
+		WHERE con.contype = 'f'
+		  AND con.conrelid = a.attrelid
+		  AND col_idx.attnum = a.attnum
+	) fk ON TRUE
+	LEFT JOIN pg_catalog.pg_class fk_cl ON fk.confrelid = fk_cl.oid
+	LEFT JOIN pg_catalog.pg_namespace fk_ns ON fk_cl.relnamespace = fk_ns.oid
+	LEFT JOIN pg_catalog.pg_attribute fk_att ON fk.confrelid = fk_att.attrelid AND fk.ref_attnum = fk_att.attnum
 	WHERE
-		c.table_schema = :schema
-		AND c.table_name = :table
+		n.nspname = :schema
+		AND c.relname = :table
+		AND a.attnum > 0           -- Exclude system columns
+		AND NOT a.attisdropped     -- Exclude dropped columns
 	ORDER BY
-		c.ordinal_position`
+		a.attnum`
 
 	data := struct {
 		Schema string `db:"schema"`
@@ -136,27 +161,30 @@ func (b *Business) QueryRelationships(ctx context.Context, schema, table string)
 
 	const q = `
 	SELECT
-		tc.constraint_name AS foreign_key_name,
-		kcu.column_name AS column_name,
-		ccu.table_schema AS referenced_schema,
-		ccu.table_name AS referenced_table,
-		ccu.column_name AS referenced_column,
+		con.conname AS foreign_key_name,
+		att.attname AS column_name,
+		ref_ns.nspname AS referenced_schema,
+		ref_cl.relname AS referenced_table,
+		ref_att.attname AS referenced_column,
 		'many-to-one' AS relationship_type
 	FROM
-		information_schema.table_constraints tc
-	JOIN
-		information_schema.key_column_usage kcu
-		ON tc.constraint_name = kcu.constraint_name
-		AND tc.table_schema = kcu.table_schema
-	JOIN
-		information_schema.constraint_column_usage ccu
-		ON tc.constraint_name = ccu.constraint_name
+		pg_catalog.pg_constraint con
+	JOIN pg_catalog.pg_class cl ON con.conrelid = cl.oid
+	JOIN pg_catalog.pg_namespace ns ON cl.relnamespace = ns.oid
+	JOIN pg_catalog.pg_class ref_cl ON con.confrelid = ref_cl.oid
+	JOIN pg_catalog.pg_namespace ref_ns ON ref_cl.relnamespace = ref_ns.oid
+	CROSS JOIN LATERAL unnest(con.conkey, con.confkey)
+		WITH ORDINALITY AS cols(src_attnum, ref_attnum, ord)
+	JOIN pg_catalog.pg_attribute att
+		ON att.attrelid = con.conrelid AND att.attnum = cols.src_attnum
+	JOIN pg_catalog.pg_attribute ref_att
+		ON ref_att.attrelid = con.confrelid AND ref_att.attnum = cols.ref_attnum
 	WHERE
-		tc.constraint_type = 'FOREIGN KEY'
-		AND tc.table_schema = :schema
-		AND tc.table_name = :table
+		con.contype = 'f'
+		AND ns.nspname = :schema
+		AND cl.relname = :table
 	ORDER BY
-		kcu.ordinal_position`
+		con.conname, cols.ord`
 
 	data := struct {
 		Schema string `db:"schema"`
@@ -181,25 +209,26 @@ func (b *Business) QueryReferencingTables(ctx context.Context, schema, table str
 
 	const q = `
 	SELECT
-		tc.table_schema AS schema,
-		tc.table_name AS table,
-		kcu.column_name AS fk_column,
-		tc.constraint_name AS constraint_name
+		ns.nspname AS schema,
+		cl.relname AS table,
+		att.attname AS fk_column,
+		con.conname AS constraint_name
 	FROM
-		information_schema.table_constraints tc
-	JOIN
-		information_schema.key_column_usage kcu
-		ON tc.constraint_name = kcu.constraint_name
-		AND tc.table_schema = kcu.table_schema
-	JOIN
-		information_schema.constraint_column_usage ccu
-		ON tc.constraint_name = ccu.constraint_name
+		pg_catalog.pg_constraint con
+	JOIN pg_catalog.pg_class cl ON con.conrelid = cl.oid
+	JOIN pg_catalog.pg_namespace ns ON cl.relnamespace = ns.oid
+	JOIN pg_catalog.pg_class ref_cl ON con.confrelid = ref_cl.oid
+	JOIN pg_catalog.pg_namespace ref_ns ON ref_cl.relnamespace = ref_ns.oid
+	CROSS JOIN LATERAL unnest(con.conkey)
+		WITH ORDINALITY AS cols(attnum, ord)
+	JOIN pg_catalog.pg_attribute att
+		ON att.attrelid = con.conrelid AND att.attnum = cols.attnum
 	WHERE
-		tc.constraint_type = 'FOREIGN KEY'
-		AND ccu.table_schema = :schema
-		AND ccu.table_name = :table
+		con.contype = 'f'
+		AND ref_ns.nspname = :schema
+		AND ref_cl.relname = :table
 	ORDER BY
-		tc.table_schema, tc.table_name`
+		ns.nspname, cl.relname`
 
 	data := struct {
 		Schema string `db:"schema"`

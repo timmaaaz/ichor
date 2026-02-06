@@ -64,13 +64,16 @@ func createEdgeStart200(sd EdgeSeedData) []apitest.Table {
 }
 
 func createEdgeSequence200(sd EdgeSeedData) []apitest.Table {
-	if len(sd.Rules) == 0 || len(sd.Actions) < 3 {
+	if len(sd.Rules) == 0 || len(sd.Actions) < 4 {
 		return nil
 	}
 
 	ruleID := sd.Rules[0].ID
-	sourceActionID := sd.Actions[1].ID
-	targetActionID := sd.Actions[2].ID
+	// Use Actions[0] -> Actions[3] to avoid duplicate with existing chain edges
+	// TestSeedRuleActions creates edges: start->0, 0->1, 1->2, 2->3
+	// So 0->3 is a valid new edge that doesn't exist yet
+	sourceActionID := sd.Actions[0].ID
+	targetActionID := sd.Actions[3].ID
 
 	table := []apitest.Table{
 		{

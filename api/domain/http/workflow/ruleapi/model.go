@@ -114,14 +114,15 @@ func (r RuleResponse) Encode() ([]byte, string, error) {
 // ActionResponse is the response for a single action.
 // Maps from workflow.RuleActionView
 type ActionResponse struct {
-	ID             uuid.UUID       `json:"id"`
-	RuleID         uuid.UUID       `json:"rule_id"`
-	Name           string          `json:"name"`
-	Description    string          `json:"description"`
-	ActionConfig json.RawMessage `json:"action_config"`
-	IsActive     bool            `json:"is_active"`
-	TemplateID   *uuid.UUID      `json:"template_id,omitempty"`
-	TemplateName string          `json:"template_name,omitempty"`
+	ID                 uuid.UUID       `json:"id"`
+	RuleID             uuid.UUID       `json:"rule_id"`
+	Name               string          `json:"name"`
+	Description        string          `json:"description"`
+	ActionConfig       json.RawMessage `json:"action_config"`
+	IsActive           bool            `json:"is_active"`
+	TemplateID         *uuid.UUID      `json:"template_id,omitempty"`
+	TemplateName       string          `json:"template_name,omitempty"`
+	TemplateActionType string          `json:"template_action_type,omitempty"`
 }
 
 // Encode implements web.Encoder for ActionResponse.

@@ -573,41 +573,44 @@ ON CONFLICT (name) DO NOTHING;
 WITH entity_data AS (
     -- Get all tables from your schemas
     SELECT DISTINCT
-        t.table_name as name,
-        t.table_schema as schema_name,
+        c.relname as name,
+        n.nspname as schema_name,
         'table' as entity_type_name,
-        CASE 
-            WHEN t.table_schema = 'core' THEN 'Core system tables for authentication and base configuration'
-            WHEN t.table_schema = 'hr' THEN 'Human Resources tables'
-            WHEN t.table_schema = 'geography' THEN 'Location and geography reference tables'
-            WHEN t.table_schema = 'assets' THEN 'Asset management tables'
-            WHEN t.table_schema = 'inventory' THEN 'Inventory and warehouse management tables'
-            WHEN t.table_schema = 'products' THEN 'Product information management tables'
-            WHEN t.table_schema = 'procurement' THEN 'Supply chain and procurement tables'
-            WHEN t.table_schema = 'sales' THEN 'Sales and order management tables'
-            WHEN t.table_schema = 'workflow' THEN 'Workflow and automation tables'
-            WHEN t.table_schema = 'config' THEN 'Configuration tables'
+        CASE
+            WHEN n.nspname = 'core' THEN 'Core system tables for authentication and base configuration'
+            WHEN n.nspname = 'hr' THEN 'Human Resources tables'
+            WHEN n.nspname = 'geography' THEN 'Location and geography reference tables'
+            WHEN n.nspname = 'assets' THEN 'Asset management tables'
+            WHEN n.nspname = 'inventory' THEN 'Inventory and warehouse management tables'
+            WHEN n.nspname = 'products' THEN 'Product information management tables'
+            WHEN n.nspname = 'procurement' THEN 'Supply chain and procurement tables'
+            WHEN n.nspname = 'sales' THEN 'Sales and order management tables'
+            WHEN n.nspname = 'workflow' THEN 'Workflow and automation tables'
+            WHEN n.nspname = 'config' THEN 'Configuration tables'
             ELSE 'Database table'
         END as description
-    FROM information_schema.tables t
-    WHERE t.table_schema IN ('core', 'hr', 'geography', 'assets', 'inventory', 'products', 'procurement', 'sales', 'workflow', 'config')
-      AND t.table_type = 'BASE TABLE'
-    
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname IN ('core', 'hr', 'geography', 'assets', 'inventory', 'products', 'procurement', 'sales', 'workflow', 'config')
+      AND c.relkind = 'r'
+
     UNION ALL
-    
+
     -- Get all views from your schemas
     SELECT DISTINCT
-        v.table_name as name,
-        v.table_schema as schema_name,
+        c.relname as name,
+        n.nspname as schema_name,
         'view' as entity_type_name,
-        CASE 
-            WHEN v.table_schema = 'sales' THEN 'Sales management view'
-            WHEN v.table_schema = 'workflow' THEN 'Workflow management view'
-            WHEN v.table_schema = 'config' THEN 'Configuration view'
+        CASE
+            WHEN n.nspname = 'sales' THEN 'Sales management view'
+            WHEN n.nspname = 'workflow' THEN 'Workflow management view'
+            WHEN n.nspname = 'config' THEN 'Configuration view'
             ELSE 'Database view'
         END as description
-    FROM information_schema.views v
-    WHERE v.table_schema IN ('core', 'hr', 'geography', 'assets', 'inventory', 'products', 'procurement', 'sales', 'workflow', 'config')
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname IN ('core', 'hr', 'geography', 'assets', 'inventory', 'products', 'procurement', 'sales', 'workflow', 'config')
+      AND c.relkind = 'v'
 )
 INSERT INTO workflow.entities (
     id,

@@ -121,37 +121,13 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (EdgeSeedData, error) {
 	}
 
 	// =========================================================================
-	// Seed some initial edges for the primary rule (for query/delete tests)
+	// Query existing edges created by TestSeedRuleActions (for query/delete tests)
+	// Note: TestSeedRuleActions automatically creates edges (start + sequence chain)
 	// =========================================================================
-
-	// Create a simple chain: start -> action[0] -> action[1]
-	edges := make([]workflow.ActionEdge, 0, 3)
-
-	// Start edge pointing to first action
-	startEdge, err := busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
-		RuleID:         primaryRule.ID,
-		SourceActionID: nil, // Start edge has no source
-		TargetActionID: primaryActions[0].ID,
-		EdgeType:       workflow.EdgeTypeStart,
-		EdgeOrder:      0,
-	})
+	edges, err := busDomain.Workflow.QueryEdgesByRuleID(ctx, primaryRule.ID)
 	if err != nil {
-		return EdgeSeedData{}, fmt.Errorf("seeding start edge: %w", err)
+		return EdgeSeedData{}, fmt.Errorf("querying edges: %w", err)
 	}
-	edges = append(edges, startEdge)
-
-	// Sequence edge from action[0] to action[1]
-	seqEdge, err := busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
-		RuleID:         primaryRule.ID,
-		SourceActionID: &primaryActions[0].ID,
-		TargetActionID: primaryActions[1].ID,
-		EdgeType:       workflow.EdgeTypeSequence,
-		EdgeOrder:      1,
-	})
-	if err != nil {
-		return EdgeSeedData{}, fmt.Errorf("seeding sequence edge: %w", err)
-	}
-	edges = append(edges, seqEdge)
 
 	// =========================================================================
 	// Table Permissions - Grant admin user full access to workflow.automation_rules

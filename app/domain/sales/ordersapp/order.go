@@ -12,7 +12,7 @@ var orderByFields = map[string]string{
 	"number":                ordersbus.OrderByNumber,
 	"customer_id":           ordersbus.OrderByCustomerID,
 	"due_date":              ordersbus.OrderByDueDate,
-	"fulfillment_status_id": ordersbus.OrderByOrderByFulfillmentStatusID,
+	"order_fulfillment_status_id": ordersbus.OrderByOrderByFulfillmentStatusID,
 	"order_date":            ordersbus.OrderByOrderDate,
 	"subtotal":              ordersbus.OrderBySubtotal,
 	"total_amount":          ordersbus.OrderByTotalAmount,

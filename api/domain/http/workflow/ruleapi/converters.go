@@ -56,13 +56,14 @@ func toRuleResponses(rules []workflow.AutomationRuleView) RuleList {
 // toActionResponse converts a workflow.RuleActionView to ActionResponse.
 func toActionResponse(action workflow.RuleActionView) ActionResponse {
 	resp := ActionResponse{
-		ID:             action.ID,
-		Name:           action.Name,
-		Description:    action.Description,
-		ActionConfig:   action.ActionConfig,
-		IsActive:       action.IsActive,
-		TemplateID:     action.TemplateID,
-		TemplateName:   action.TemplateName,
+		ID:                 action.ID,
+		Name:               action.Name,
+		Description:        action.Description,
+		ActionConfig:       action.ActionConfig,
+		IsActive:           action.IsActive,
+		TemplateID:         action.TemplateID,
+		TemplateName:       action.TemplateName,
+		TemplateActionType: action.TemplateActionType,
 	}
 
 	// RuleActionView uses AutomationRulesID (note the 's')

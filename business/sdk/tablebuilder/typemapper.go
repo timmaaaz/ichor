@@ -20,7 +20,7 @@ func IsValidColumnType(colType string) bool {
 	return ValidColumnTypes[colType]
 }
 
-// pgTypeMappings maps PostgreSQL data types from information_schema
+// pgTypeMappings maps PostgreSQL data types from pg_catalog
 // to frontend filter types used by the Table Builder.
 //
 // Type categories:
@@ -74,7 +74,7 @@ var pgTypeMappings = map[string]string{
 	"jsonb": "string",
 }
 
-// mapPostgreSQLType converts PostgreSQL data types from information_schema
+// mapPostgreSQLType converts PostgreSQL data types from pg_catalog
 // to frontend filter types used by the Table Builder.
 //
 // The function handles:

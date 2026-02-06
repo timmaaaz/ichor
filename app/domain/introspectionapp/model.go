@@ -55,6 +55,11 @@ type Column struct {
 	IsNullable   bool   `json:"is_nullable"`
 	IsPrimaryKey bool   `json:"is_primary_key"`
 	DefaultValue string `json:"default_value"`
+	// Foreign key metadata
+	IsForeignKey     bool    `json:"is_foreign_key"`
+	ReferencedSchema *string `json:"referenced_schema,omitempty"`
+	ReferencedTable  *string `json:"referenced_table,omitempty"`
+	ReferencedColumn *string `json:"referenced_column,omitempty"`
 }
 
 // Encode implements the encoder interface.
@@ -160,11 +165,15 @@ func ToAppTables(bus []introspectionbus.Table) []Table {
 // ToAppColumn converts a business Column to app Column.
 func ToAppColumn(bus introspectionbus.Column) Column {
 	return Column{
-		Name:         bus.Name,
-		DataType:     bus.DataType,
-		IsNullable:   bus.IsNullable,
-		IsPrimaryKey: bus.IsPrimaryKey,
-		DefaultValue: bus.DefaultValue,
+		Name:             bus.Name,
+		DataType:         bus.DataType,
+		IsNullable:       bus.IsNullable,
+		IsPrimaryKey:     bus.IsPrimaryKey,
+		DefaultValue:     bus.DefaultValue,
+		IsForeignKey:     bus.IsForeignKey,
+		ReferencedSchema: bus.ReferencedSchema,
+		ReferencedTable:  bus.ReferencedTable,
+		ReferencedColumn: bus.ReferencedColumn,
 	}
 }
 

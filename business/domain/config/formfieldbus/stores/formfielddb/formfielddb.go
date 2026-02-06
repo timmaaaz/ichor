@@ -51,9 +51,11 @@ func (s *Store) Create(ctx context.Context, field formfieldbus.FormField) error 
 	const checkTable = `
 	SELECT EXISTS (
 		SELECT 1
-		FROM information_schema.tables
-		WHERE table_schema = :schema
-		AND table_name = :table
+		FROM pg_catalog.pg_class c
+		JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+		WHERE n.nspname = :schema
+		AND c.relname = :table
+		AND c.relkind IN ('r', 'v')
 	)`
 
 	exists := struct {
@@ -99,9 +101,11 @@ func (s *Store) Update(ctx context.Context, field formfieldbus.FormField) error 
 	const checkTable = `
 	SELECT EXISTS (
 		SELECT 1
-		FROM information_schema.tables
-		WHERE table_schema = :schema
-		AND table_name = :table
+		FROM pg_catalog.pg_class c
+		JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+		WHERE n.nspname = :schema
+		AND c.relname = :table
+		AND c.relkind IN ('r', 'v')
 	)`
 
 	exists := struct {
