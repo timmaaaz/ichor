@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ichor-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal
+  namespace: ichor-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal
+  template:
+    metadata:
+      labels:
+        app: temporal
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        # Temporal Server with auto-setup (creates schemas on first boot)
+        - name: temporal
+          image: temporalio/auto-setup:1.26.2
+          ports:
+            - name: grpc
+              containerPort: 7233
+          resources:
+            requests:
+              cpu: 100m
+            limits:
+              cpu: 1000m
+          env:
+            - name: DB
+              value: "postgres12"
+            - name: DB_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PWD
+              value: "postgres"
+            - name: POSTGRES_SEEDS
+              value: "database-service"
+            - name: BIND_ON_IP
+              value: "0.0.0.0"
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+
+        # Temporal Web UI (sidecar - connects to server via localhost)
+        - name: temporal-ui
+          image: temporalio/ui:2.34.0
+          ports:
+            - name: ui
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 50m
+            limits:
+              cpu: 200m
+          env:
+            - name: TEMPORAL_ADDRESS
+              value: "localhost:7233"
+            - name: TEMPORAL_CORS_ORIGINS
+              value: "http://localhost:3000"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: ui
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: ui
+            initialDelaySeconds: 15
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-service
+  namespace: ichor-system
+spec:
+  type: ClusterIP
+  selector:
+    app: temporal
+  ports:
+    - name: grpc
+      port: 7233
+      targetPort: grpc
+    - name: ui
+      port: 8080
+      targetPort: ui

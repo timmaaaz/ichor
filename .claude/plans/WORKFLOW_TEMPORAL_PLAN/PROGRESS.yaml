@@ -1,0 +1,990 @@
+# Workflow Temporal Implementation - Progress Tracking
+# This file tracks the implementation progress of Temporal-based workflow engine
+
+project:
+  name: "Workflow Temporal Implementation"
+  description: "Implement Temporal-based workflow engine that interprets visual workflow graphs with full durability, parallel branch support, and async continuation"
+  started: "2026-02-07"
+  status: "in_progress"  # planning | in_progress | completed | blocked
+  current_phase: 2
+
+  summary:
+    phases_total: 13
+    phases_completed: 1
+    phases_in_progress: 0
+    phases_pending: 12
+    files_created: 12
+    files_modified: 4
+
+planning_status:
+  phase_1_doc_created: true
+  phase_2_doc_created: true
+  phase_3_doc_created: false
+  phase_4_doc_created: false
+  phase_5_doc_created: false
+  phase_6_doc_created: false
+  phase_7_doc_created: false
+  phase_8_doc_created: false
+  phase_9_doc_created: false
+  phase_10_doc_created: false
+  phase_11_doc_created: false
+  phase_12_doc_created: false
+  phase_13_doc_created: false
+  next_phase_to_document: 3
+
+system_validation:
+  plan_review_system:
+    validated: false
+    validated_date: null
+    checks:
+      - name: "plan-review.md.template exists"
+        status: "pending"
+      - name: "PROGRESS.yaml.template has plan review fields"
+        status: "pending"
+      - name: "create-plan.md references 10 commands"
+        status: "pending"
+      - name: "All phases have plan_reviewed field"
+        status: "pending"
+      - name: "All phases have plan_review_grade field"
+        status: "pending"
+
+phases:
+  # ============================================================================
+  # INFRASTRUCTURE & EVALUATION (Phases 1-2)
+  # ============================================================================
+
+  - phase: 1
+    name: "Infrastructure Setup"
+    description: "FOUNDATIONAL: Set up Temporal server, workflow-worker service skeleton, test container infrastructure, integrate with make dev-bounce. MUST complete before any other phase can be tested."
+    status: "completed"
+    category: "infrastructure"
+
+    plan_reviewed: true
+    plan_review_grade: "A-"
+
+    reviewed: true
+    review_grade: "A-"
+
+    tasks:
+      - task: "Create Temporal K8s manifests (following rabbitmq pattern)"
+        status: "completed"
+        notes:
+          - "Must integrate with make dev-bounce workflow"
+          - "Add to dev-apply in Makefile"
+          - "Combined deployment + service into single dev-temporal.yaml (matching rabbitmq pattern)"
+        files:
+          - path: "zarf/k8s/dev/temporal/kustomization.yaml"
+            status: "completed"
+          - path: "zarf/k8s/dev/temporal/dev-temporal.yaml"
+            status: "completed"
+
+      - task: "Create workflow-worker base K8s manifests"
+        status: "completed"
+        notes:
+          - "Follow zarf/k8s/base/ichor pattern"
+        files:
+          - path: "zarf/k8s/base/workflow-worker/base-workflow-worker.yaml"
+            status: "completed"
+          - path: "zarf/k8s/base/workflow-worker/kustomization.yaml"
+            status: "completed"
+
+      - task: "Create workflow-worker dev K8s manifests"
+        status: "completed"
+        notes:
+          - "Follow zarf/k8s/dev/ichor pattern"
+        files:
+          - path: "zarf/k8s/dev/workflow-worker/kustomization.yaml"
+            status: "completed"
+          - path: "zarf/k8s/dev/workflow-worker/dev-workflow-worker-configmap.yaml"
+            status: "completed"
+          - path: "zarf/k8s/dev/workflow-worker/dev-workflow-worker-patch-deploy.yaml"
+            status: "completed"
+
+      - task: "Create workflow-worker Dockerfile"
+        status: "completed"
+        notes: []
+        files:
+          - path: "zarf/docker/dockerfile.workflow-worker"
+            status: "completed"
+
+      - task: "Create Temporal test container infrastructure (following RabbitMQ pattern)"
+        status: "completed"
+        notes:
+          - "Follow pattern established in foundation/rabbitmq/rabbitmq.go"
+          - "Uses temporalio/temporal:1.3.0 with SQLite dev server for test containers"
+          - "StartTemporal() - starts container"
+          - "GetTestContainer(t) - returns shared container (singleton)"
+          - "NewTestClient(hostPort) - creates test client bypassing singleton"
+          - "Container struct with HostPort"
+          - "waitForReady() uses client.Dial + CheckHealth"
+          - "Added Temporal SDK dependency to go.mod/go.sum/vendor"
+        files:
+          - path: "foundation/temporal/temporal.go"
+            status: "completed"
+          - path: "foundation/temporal/temporal_test.go"
+            status: "completed"
+
+      - task: "Update Makefile with workflow-worker targets"
+        status: "completed"
+        notes:
+          - "Added TEMPORAL and TEMPORAL_UI image variables"
+          - "Added WORKFLOW_WORKER_APP and WORKFLOW_WORKER_IMAGE variables"
+          - "Added workflow-worker to build, dev-load, dev-restart targets"
+          - "Added temporal to dev-apply (after database, before rabbitmq)"
+          - "Added workflow-worker to dev-apply (after ichor)"
+          - "Added dev-logs-workflow-worker, dev-describe-workflow-worker, temporal-ui targets"
+          - "Updated dev-docker to pull temporal + ui images"
+          - "Updated dev-up to load temporal + ui images"
+          - "Updated help target"
+        files:
+          - path: "Makefile"
+            status: "completed"
+
+      - task: "Create workflow-worker placeholder main.go"
+        status: "completed"
+        notes:
+          - "Minimal placeholder that waits for shutdown signal"
+          - "Full implementation in Phase 9"
+        files:
+          - path: "api/cmd/services/workflow-worker/main.go"
+            status: "completed"
+
+      - task: "Verify dev-bounce works with new services"
+        status: "completed"
+        notes:
+          - "Run make dev-bounce"
+          - "Verify Temporal UI accessible"
+          - "Verify workflow-worker pod running"
+          - "MANUAL: Requires KIND cluster to be running"
+          - "VERIFIED 2026-02-09: All pods Running, Temporal 2/2 containers"
+          - "FIX: Added BIND_ON_IP=0.0.0.0 to Temporal deployment (server was binding to pod IP, preventing sidecar UI and port-forward)"
+          - "FIX: Changed temporal-ui Makefile target to use kubectl port-forward on port 8280 (avoids conflict with app on port 8080)"
+          - "Verified: default namespace exists and is healthy via UI API"
+          - "Verified: gRPC health check passes via port-forward"
+        files: []
+
+      - task: "Verify test container infrastructure works"
+        status: "completed"
+        notes:
+          - "Run go test ./foundation/temporal/..."
+          - "Verify container starts and is reachable"
+          - "Verify tests can execute workflows against test container"
+          - "MANUAL: Requires Docker to pull temporalio/temporal:1.3.0"
+          - "VERIFIED 2026-02-09: All 3 tests pass (GetTestContainer, NewTestClient, SimpleWorkflow)"
+          - "Container starts in ~2s, executes workflow in ~0.1s"
+          - "Uses temporalio/temporal:latest with SQLite dev server"
+        files: []
+
+    validation:
+      - check: "make dev-bounce completes successfully"
+        status: "completed"
+      - check: "Temporal UI accessible at configured port"
+        status: "completed"
+      - check: "workflow-worker pod reaches Running state"
+        status: "completed"
+      - check: "Temporal namespace exists and is healthy"
+        status: "completed"
+      - check: "go test ./foundation/temporal/... passes"
+        status: "completed"
+      - check: "Test container can execute simple workflow"
+        status: "completed"
+
+    deliverables:
+      - "Temporal K8s manifests in zarf/k8s/dev/temporal/"
+      - "workflow-worker K8s manifests in zarf/k8s/base/workflow-worker/ and zarf/k8s/dev/workflow-worker/"
+      - "workflow-worker Dockerfile"
+      - "Temporal test container infrastructure in foundation/temporal/"
+      - "Updated Makefile with all new targets"
+
+    blockers: []
+
+  - phase: 2
+    name: "Temporalgraph Evaluation"
+    description: "Evaluate temporalgraph library for compatibility with visual graph requirements"
+    status: "pending"
+    category: "research"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Review temporalgraph library documentation and source"
+        status: "pending"
+        notes:
+          - "Repository: https://github.com/saltosystems/temporalgraph"
+        files: []
+
+      - task: "Evaluate edge type support"
+        status: "pending"
+        notes:
+          - "Required: start, sequence, true_branch, false_branch, always, parallel"
+        files: []
+
+      - task: "Evaluate convergence detection capability"
+        status: "pending"
+        notes:
+          - "Must detect nodes with multiple incoming edges"
+          - "Must wait for all branches before continuing"
+        files: []
+
+      - task: "Evaluate runtime graph definition support"
+        status: "pending"
+        notes:
+          - "Graphs defined at runtime via UI, not compile-time"
+          - "Must interpret database-stored graph definitions"
+        files: []
+
+      - task: "Document decision and rationale"
+        status: "pending"
+        notes: []
+        files:
+          - path: ".claude/plans/WORKFLOW_TEMPORAL_PLAN/decisions/TEMPORALGRAPH_EVALUATION.md"
+            status: "pending"
+
+    validation:
+      - check: "Decision document created with clear recommendation"
+        status: "pending"
+      - check: "All evaluation criteria addressed"
+        status: "pending"
+
+    deliverables:
+      - "Decision document: use temporalgraph library OR proceed with custom implementation"
+
+    blockers: []
+
+  # ============================================================================
+  # CORE IMPLEMENTATION (Phases 3-6)
+  # ============================================================================
+
+  - phase: 3
+    name: "Core Models & Context"
+    description: "Implement WorkflowInput, GraphDefinition, MergedContext models with payload size handling"
+    status: "pending"
+    category: "backend"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Create temporal package directory structure"
+        status: "pending"
+        notes: []
+        files:
+          - path: "business/sdk/workflow/temporal/"
+            status: "pending"
+
+      - task: "Implement models.go"
+        status: "pending"
+        notes:
+          - "WorkflowInput, GraphDefinition, ActionNode, ActionEdge"
+          - "MergedContext with result sanitization"
+          - "BranchInput, BranchOutput for parallel execution"
+          - "ActionActivityInput, ActionActivityOutput"
+          - "MaxResultValueSize constant (50KB)"
+          - "sanitizeResult for payload truncation"
+        files:
+          - path: "business/sdk/workflow/temporal/models.go"
+            status: "pending"
+
+      - task: "Write unit tests for MergedContext"
+        status: "pending"
+        notes:
+          - "Test MergeResult"
+          - "Test Clone"
+          - "Test sanitizeResult truncation"
+        files:
+          - path: "business/sdk/workflow/temporal/models_test.go"
+            status: "pending"
+
+    validation:
+      - check: "go build passes"
+        status: "pending"
+      - check: "Unit tests pass"
+        status: "pending"
+      - check: "Large values truncated correctly"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/models.go"
+      - "business/sdk/workflow/temporal/models_test.go"
+
+    blockers: []
+
+  - phase: 4
+    name: "Graph Executor"
+    description: "Implement graph traversal with deterministic map iteration for Temporal replay safety"
+    status: "pending"
+    category: "backend"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Implement graph_executor.go"
+        status: "pending"
+        notes:
+          - "GraphExecutor struct with indexed lookups"
+          - "GetStartActions for edges with nil source"
+          - "GetNextActions with edge type logic"
+          - "FindConvergencePoint with SORTED map iteration"
+          - "findReachableNodes BFS traversal"
+          - "calculateMinDepth for closest convergence"
+          - "HasMultipleIncoming for convergence detection"
+        files:
+          - path: "business/sdk/workflow/temporal/graph_executor.go"
+            status: "pending"
+
+      - task: "Write comprehensive unit tests"
+        status: "pending"
+        notes:
+          - "Test all edge types"
+          - "Test convergence detection"
+          - "Test determinism (run same graph multiple times)"
+        files:
+          - path: "business/sdk/workflow/temporal/graph_executor_test.go"
+            status: "pending"
+
+    validation:
+      - check: "go build passes"
+        status: "pending"
+      - check: "Unit tests pass"
+        status: "pending"
+      - check: "Determinism test: same input produces same output 100 times"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/graph_executor.go"
+      - "business/sdk/workflow/temporal/graph_executor_test.go"
+
+    blockers: []
+
+  - phase: 5
+    name: "Workflow Implementation"
+    description: "Implement main workflow with Continue-As-New, versioning, parallel execution"
+    status: "pending"
+    category: "backend"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Implement workflow.go core functions"
+        status: "pending"
+        notes:
+          - "ExecuteGraphWorkflow main entry"
+          - "checkContinueAsNew at HistoryLengthThreshold"
+          - "executeActions dispatcher"
+          - "executeSingleAction with activity options"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow.go"
+            status: "pending"
+
+      - task: "Implement parallel execution functions"
+        status: "pending"
+        notes:
+          - "executeFireAndForget for branches without convergence"
+          - "executeParallelWithConvergence using child workflows"
+          - "ExecuteBranchUntilConvergence child workflow"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow.go"
+            status: "pending"
+
+      - task: "Implement workflow versioning"
+        status: "pending"
+        notes:
+          - "workflow.GetVersion for safe deployments"
+          - "Version switch for future logic changes"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow.go"
+            status: "pending"
+
+      - task: "Add action type helpers"
+        status: "pending"
+        notes:
+          - "isAsyncAction for longer timeouts"
+          - "isHumanAction for multi-day timeouts"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow.go"
+            status: "pending"
+
+    validation:
+      - check: "go build passes"
+        status: "pending"
+      - check: "No non-deterministic operations in workflow code"
+        status: "pending"
+      - check: "Continue-As-New configured at 10K events"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/workflow.go"
+
+    blockers: []
+
+  - phase: 6
+    name: "Activities & Async"
+    description: "Implement activity wrappers, action registry, async completion pattern"
+    status: "pending"
+    category: "backend"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Implement activities.go"
+        status: "pending"
+        notes:
+          - "ActionHandler interface"
+          - "ActionExecutionContext struct"
+          - "ActionRegistry with Register/GetHandler"
+          - "ActivityDependencies and SetActivityDependencies"
+          - "ExecuteActionActivity dispatcher"
+          - "toResultMap conversion helper"
+        files:
+          - path: "business/sdk/workflow/temporal/activities.go"
+            status: "pending"
+
+      - task: "Implement activities_async.go"
+        status: "pending"
+        notes:
+          - "AsyncActionHandler interface"
+          - "ExecuteAsyncActionActivity with ErrResultPending"
+        files:
+          - path: "business/sdk/workflow/temporal/activities_async.go"
+            status: "pending"
+
+      - task: "Implement async_completer.go"
+        status: "pending"
+        notes:
+          - "AsyncCompleter struct"
+          - "Complete and Fail methods"
+          - "RabbitMQ consumer integration example"
+        files:
+          - path: "business/sdk/workflow/temporal/async_completer.go"
+            status: "pending"
+
+      - task: "Adapt existing action handlers for Temporal"
+        status: "pending"
+        notes:
+          - "Review existing handlers in workflowactions/"
+          - "Ensure they implement ActionHandler interface"
+          - "Note any handlers needing async pattern"
+        files: []
+
+    validation:
+      - check: "go build passes"
+        status: "pending"
+      - check: "ActionHandler interface compatible with existing handlers"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/activities.go"
+      - "business/sdk/workflow/temporal/activities_async.go"
+      - "business/sdk/workflow/temporal/async_completer.go"
+
+    blockers: []
+
+  # ============================================================================
+  # INTEGRATION (Phases 7-9)
+  # ============================================================================
+
+  - phase: 7
+    name: "Trigger System"
+    description: "Implement entity event to Temporal workflow dispatch"
+    status: "pending"
+    category: "backend"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Implement trigger.go"
+        status: "pending"
+        notes:
+          - "EntityEvent struct"
+          - "EdgeStore interface"
+          - "WorkflowTrigger struct"
+          - "OnEntityEvent handler"
+          - "loadGraphDefinition from database"
+        files:
+          - path: "business/sdk/workflow/temporal/trigger.go"
+            status: "pending"
+
+      - task: "Write unit tests for trigger logic"
+        status: "pending"
+        notes:
+          - "Mock EdgeStore"
+          - "Mock Temporal client"
+          - "Test rule matching"
+        files:
+          - path: "business/sdk/workflow/temporal/trigger_test.go"
+            status: "pending"
+
+    validation:
+      - check: "go build passes"
+        status: "pending"
+      - check: "Unit tests pass"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/trigger.go"
+      - "business/sdk/workflow/temporal/trigger_test.go"
+
+    blockers: []
+
+  - phase: 8
+    name: "Edge Store Adapter"
+    description: "Implement database adapter for loading graph definitions from PostgreSQL"
+    status: "pending"
+    category: "backend"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Create stores/edgedb directory"
+        status: "pending"
+        notes: []
+        files:
+          - path: "business/sdk/workflow/temporal/stores/edgedb/"
+            status: "pending"
+
+      - task: "Implement edgedb.go"
+        status: "pending"
+        notes:
+          - "Store struct with logger and db"
+          - "dbAction and dbEdge models"
+          - "QueryActionsByRule SQL query"
+          - "QueryEdgesByRule SQL query"
+          - "Conversion to temporal.ActionNode/ActionEdge"
+        files:
+          - path: "business/sdk/workflow/temporal/stores/edgedb/edgedb.go"
+            status: "pending"
+
+      - task: "Write integration tests"
+        status: "pending"
+        notes:
+          - "Use dbtest package"
+          - "Test with seeded workflow data"
+        files:
+          - path: "business/sdk/workflow/temporal/stores/edgedb/edgedb_test.go"
+            status: "pending"
+
+    validation:
+      - check: "go build passes"
+        status: "pending"
+      - check: "Integration tests pass against test database"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/stores/edgedb/edgedb.go"
+      - "business/sdk/workflow/temporal/stores/edgedb/edgedb_test.go"
+
+    blockers: []
+
+  - phase: 9
+    name: "Worker Service & Wiring"
+    description: "Create worker entry point, wire action handlers, integrate with main service"
+    status: "pending"
+    category: "backend"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Create workflow-worker service entry point"
+        status: "pending"
+        notes:
+          - "Configuration parsing"
+          - "Database connection"
+          - "Temporal client creation"
+          - "Action registry initialization"
+          - "Worker creation and registration"
+          - "Graceful shutdown handling"
+        files:
+          - path: "api/cmd/services/workflow-worker/main.go"
+            status: "pending"
+
+      - task: "Implement buildActionRegistry"
+        status: "pending"
+        notes:
+          - "Register all action handlers"
+          - "control, inventory, notification, persistence"
+        files:
+          - path: "api/cmd/services/workflow-worker/main.go"
+            status: "pending"
+
+      - task: "Implement Temporal logger adapter"
+        status: "pending"
+        notes:
+          - "Adapt foundation/logger to Temporal logger interface"
+        files:
+          - path: "api/cmd/services/workflow-worker/main.go"
+            status: "pending"
+
+      - task: "Update all.go for Temporal trigger integration"
+        status: "pending"
+        notes:
+          - "Initialize Temporal client"
+          - "Create WorkflowTrigger"
+          - "Wire to entity event system"
+        files:
+          - path: "api/cmd/services/ichor/build/all/all.go"
+            status: "pending"
+
+    validation:
+      - check: "go build ./api/cmd/services/workflow-worker passes"
+        status: "pending"
+      - check: "Worker starts and connects to Temporal"
+        status: "pending"
+      - check: "Worker registers workflows and activities"
+        status: "pending"
+
+    deliverables:
+      - "api/cmd/services/workflow-worker/main.go"
+      - "Updated api/cmd/services/ichor/build/all/all.go"
+
+    blockers: []
+
+  # ============================================================================
+  # TESTING (Phases 10-12)
+  # ============================================================================
+
+  - phase: 10
+    name: "Graph Executor Unit Tests"
+    description: "Comprehensive determinism and consistency testing for graph executor"
+    status: "pending"
+    category: "testing"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Determinism stress tests"
+        status: "pending"
+        notes:
+          - "Run same graph 1000 times"
+          - "Verify identical convergence point selection"
+          - "Test with complex parallel structures"
+        files:
+          - path: "business/sdk/workflow/temporal/graph_executor_determinism_test.go"
+            status: "pending"
+
+      - task: "Edge type coverage tests"
+        status: "pending"
+        notes:
+          - "Test each edge type in isolation"
+          - "Test edge type combinations"
+          - "Test condition branching (true_branch/false_branch)"
+        files:
+          - path: "business/sdk/workflow/temporal/graph_executor_edges_test.go"
+            status: "pending"
+
+      - task: "Convergence point tests"
+        status: "pending"
+        notes:
+          - "Diamond patterns"
+          - "Multiple convergence points"
+          - "No convergence (fire-and-forget)"
+        files:
+          - path: "business/sdk/workflow/temporal/graph_executor_convergence_test.go"
+            status: "pending"
+
+    validation:
+      - check: "All determinism tests pass"
+        status: "pending"
+      - check: "100% edge type coverage"
+        status: "pending"
+      - check: "Convergence detection correct for all graph shapes"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/graph_executor_determinism_test.go"
+      - "business/sdk/workflow/temporal/graph_executor_edges_test.go"
+      - "business/sdk/workflow/temporal/graph_executor_convergence_test.go"
+
+    blockers: []
+
+  - phase: 11
+    name: "Workflow Integration Tests"
+    description: "End-to-end workflow execution tests with Temporal test framework"
+    status: "pending"
+    category: "testing"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Set up Temporal test environment"
+        status: "pending"
+        notes:
+          - "Use testsuite.WorkflowTestSuite"
+          - "Configure test environment"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow_test.go"
+            status: "pending"
+
+      - task: "Simple workflow execution tests"
+        status: "pending"
+        notes:
+          - "Single action workflow"
+          - "Sequential actions"
+          - "Template variable resolution"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow_test.go"
+            status: "pending"
+
+      - task: "Parallel execution tests"
+        status: "pending"
+        notes:
+          - "Parallel branches with convergence"
+          - "Fire-and-forget branches"
+          - "Nested parallel structures"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow_parallel_test.go"
+            status: "pending"
+
+      - task: "Replay testing"
+        status: "pending"
+        notes:
+          - "Record workflow history"
+          - "Replay with same input"
+          - "Verify identical command sequence"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow_replay_test.go"
+            status: "pending"
+
+    validation:
+      - check: "All workflow tests pass"
+        status: "pending"
+      - check: "Replay tests verify determinism"
+        status: "pending"
+      - check: "Parallel execution tests cover all patterns"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/workflow_test.go"
+      - "business/sdk/workflow/temporal/workflow_parallel_test.go"
+      - "business/sdk/workflow/temporal/workflow_replay_test.go"
+
+    blockers: []
+
+  - phase: 12
+    name: "Edge Case & Limit Tests"
+    description: "Test Continue-As-New, payload limits, error handling, async completion"
+    status: "pending"
+    category: "testing"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Continue-As-New tests"
+        status: "pending"
+        notes:
+          - "Trigger at history threshold"
+          - "Verify context preserved across continuation"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow_continueasnew_test.go"
+            status: "pending"
+
+      - task: "Payload size limit tests"
+        status: "pending"
+        notes:
+          - "Large action results"
+          - "Truncation verification"
+          - "Context size warnings"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow_payload_test.go"
+            status: "pending"
+
+      - task: "Async activity completion tests"
+        status: "pending"
+        notes:
+          - "Mock RabbitMQ response"
+          - "Test Complete and Fail paths"
+          - "Timeout handling"
+        files:
+          - path: "business/sdk/workflow/temporal/activities_async_test.go"
+            status: "pending"
+
+      - task: "Error handling tests"
+        status: "pending"
+        notes:
+          - "Activity failures"
+          - "Retry behavior"
+          - "Branch failure in parallel execution"
+        files:
+          - path: "business/sdk/workflow/temporal/workflow_errors_test.go"
+            status: "pending"
+
+    validation:
+      - check: "Continue-As-New triggers correctly"
+        status: "pending"
+      - check: "Payload truncation works"
+        status: "pending"
+      - check: "Async completion works end-to-end"
+        status: "pending"
+
+    deliverables:
+      - "business/sdk/workflow/temporal/workflow_continueasnew_test.go"
+      - "business/sdk/workflow/temporal/workflow_payload_test.go"
+      - "business/sdk/workflow/temporal/activities_async_test.go"
+      - "business/sdk/workflow/temporal/workflow_errors_test.go"
+
+    blockers: []
+
+  # ============================================================================
+  # DEPLOYMENT (Phase 13)
+  # ============================================================================
+
+  - phase: 13
+    name: "Kubernetes Deployment"
+    description: "Create K8s manifests for workflow-worker, finalize dev environment"
+    status: "pending"
+    category: "deployment"
+
+    plan_reviewed: false
+    plan_review_grade: null
+
+    reviewed: false
+    review_grade: null
+
+    tasks:
+      - task: "Verify all K8s manifests from Phase 1"
+        status: "pending"
+        notes:
+          - "Ensure Temporal accessible from worker"
+          - "Ensure database accessible from worker"
+          - "Check resource limits appropriate"
+        files: []
+
+      - task: "Add health check endpoints to worker"
+        status: "pending"
+        notes:
+          - "Liveness probe"
+          - "Readiness probe"
+        files:
+          - path: "api/cmd/services/workflow-worker/main.go"
+            status: "pending"
+
+      - task: "Add dev-logs-workflow-worker target"
+        status: "pending"
+        notes: []
+        files:
+          - path: "Makefile"
+            status: "pending"
+
+      - task: "End-to-end deployment test"
+        status: "pending"
+        notes:
+          - "make dev-bounce"
+          - "Trigger workflow via entity event"
+          - "Verify execution in Temporal UI"
+        files: []
+
+    validation:
+      - check: "make dev-bounce completes with workflow-worker running"
+        status: "pending"
+      - check: "Workflow triggers and executes successfully"
+        status: "pending"
+      - check: "Temporal UI shows workflow execution details"
+        status: "pending"
+
+    deliverables:
+      - "Final K8s configuration verified"
+      - "Health check endpoints added"
+      - "make dev-logs-workflow-worker target"
+
+    blockers: []
+
+context:
+  current_focus: "Phase 2 - Temporalgraph Evaluation (research phase, can proceed independently)"
+  next_task: "Evaluate temporalgraph library for compatibility with visual graph requirements"
+  recent_changes:
+    - "Phase 1 COMPLETED 2026-02-09: All 9 tasks verified and passing"
+    - "FIX: Added BIND_ON_IP=0.0.0.0 to Temporal K8s deployment (auto-setup binds to pod IP by default, preventing UI sidecar and port-forward)"
+    - "FIX: Changed temporal-ui Makefile target to port-forward on 8280 (avoids conflict with app on port 8080)"
+    - "VERIFIED: All 11 pods Running (temporal 2/2, workflow-worker 1/1, all existing services healthy)"
+    - "VERIFIED: Temporal default namespace healthy, gRPC health check passes"
+    - "VERIFIED: Test container infrastructure - 3/3 tests pass (container start, health check, workflow execution)"
+  decisions:
+    - "Decision: Using Temporal for workflow orchestration (durability, visibility, proven at scale)"
+    - "Decision: Separate worker process from main API (independent scaling)"
+    - "Decision: Phase 1 must integrate with make dev-bounce"
+    - "Decision: Temporalgraph library evaluation before custom implementation"
+    - "Decision: Production ops will be separate plan"
+    - "Decision: Temporal test container infrastructure required in Phase 1 (following RabbitMQ pattern in foundation/rabbitmq/rabbitmq.go)"
+    - "Decision: K8s dev cluster uses PostgreSQL for Temporal (temporalio/auto-setup:1.26.2 with DB=postgres12 -> database-service)"
+    - "Decision: Temporal Web UI deployed as sidecar container (temporalio/ui:2.34.0) on port 8080"
+    - "Decision: Test containers use temporalio/temporal:latest with SQLite dev server (self-contained, no external DB)"
+    - "RESOLVED: K8s health probes use tcpSocket on gRPC port 7233; UI uses httpGet on port 8080; test container uses client.Dial + CheckHealth"
+    - "RESOLVED: BIND_ON_IP=0.0.0.0 required for temporalio/auto-setup in K8s (binds to pod IP by default, not 0.0.0.0)"
+    - "RESOLVED: Temporal UI port-forward to 8280 to avoid conflict with app on port 8080"
+
+dependencies:
+  internal:
+    - "CRITICAL: Phase 1 (Infrastructure) blocks ALL other phases - cannot test anything without dev-bounce working AND test container infrastructure"
+    - "Phase 1 MUST include test container infrastructure (foundation/temporal/) following RabbitMQ pattern"
+    - "Phase 2 (Evaluation) can run in parallel with Phase 1 (research only, no code)"
+    - "Phase 3 depends on Phase 1 (need Temporal running AND test container) AND Phase 2 decision (library vs custom)"
+    - "Phases 4-6 depend on Phase 3 models"
+    - "Phases 7-9 depend on Phase 6 activities"
+    - "Phases 10-12 depend on Phase 9 wiring AND Phase 1 infrastructure (need Temporal test container for integration tests)"
+    - "Phase 13 validates Phase 1 infrastructure with full end-to-end test"
+  external:
+    - "Existing workflow action handlers must implement ActionHandler interface"
+    - "RabbitMQ available for async activity completion"
+    - "Docker available for test container infrastructure"
+
+milestones:
+  - name: "Planning Complete"
+    status: "achieved"
+    date: "2026-02-07"
+  - name: "Infrastructure Ready (Phase 1)"
+    status: "achieved"
+    date: "2026-02-09"
+  - name: "Core Implementation Complete (Phases 3-6)"
+    status: "pending"
+    date: null
+  - name: "Integration Complete (Phases 7-9)"
+    status: "pending"
+    date: null
+  - name: "Testing Complete (Phases 10-12)"
+    status: "pending"
+    date: null
+  - name: "Project Complete"
+    status: "pending"
+    date: null

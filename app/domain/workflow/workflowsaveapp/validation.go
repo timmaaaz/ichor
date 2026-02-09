@@ -166,8 +166,9 @@ func validateSeekApprovalConfig(config json.RawMessage) error {
 
 // AllocateInventoryConfig defines the required fields for allocate_inventory action.
 type AllocateInventoryConfig struct {
-	InventoryItems []any  `json:"inventory_items"`
-	AllocationMode string `json:"allocation_mode"`
+	InventoryItems     []any  `json:"inventory_items"`
+	AllocationMode     string `json:"allocation_mode"`
+	SourceFromLineItem bool   `json:"source_from_line_item"`
 }
 
 func validateAllocateInventoryConfig(config json.RawMessage) error {
@@ -175,8 +176,10 @@ func validateAllocateInventoryConfig(config json.RawMessage) error {
 	if err := json.Unmarshal(config, &c); err != nil {
 		return fmt.Errorf("invalid config JSON: %w", err)
 	}
-	if len(c.InventoryItems) == 0 {
-		return fmt.Errorf("inventory_items is required")
+	// Only require inventory_items if NOT sourcing from line item
+	// This matches the runtime validation in workflowactions/inventory/allocate.go
+	if !c.SourceFromLineItem && len(c.InventoryItems) == 0 {
+		return fmt.Errorf("inventory_items is required when source_from_line_item is false")
 	}
 	if c.AllocationMode == "" {
 		return fmt.Errorf("allocation_mode is required")

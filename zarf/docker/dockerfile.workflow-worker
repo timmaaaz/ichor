@@ -1,0 +1,27 @@
+# Build the Go Binary.
+FROM golang:1.23 AS build_workflow_worker
+ENV CGO_ENABLED=0
+ARG BUILD_REF
+
+COPY . /service
+
+# Build the worker binary.
+WORKDIR /service/api/cmd/services/workflow-worker
+RUN go build -ldflags "-X main.build=${BUILD_REF}"
+
+# Run the Go Binary in Alpine.
+FROM alpine:3.20
+ARG BUILD_DATE
+ARG BUILD_REF
+RUN addgroup -g 1000 -S ichor && \
+    adduser -u 1000 -h /service -G ichor -S ichor
+COPY --from=build_workflow_worker --chown=ichor:ichor /service/api/cmd/services/workflow-worker/workflow-worker /service/workflow-worker
+WORKDIR /service
+USER ichor
+CMD ["./workflow-worker"]
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+    org.opencontainers.image.title="workflow-worker" \
+    org.opencontainers.image.authors="Superior ERP" \
+    org.opencontainers.image.revision="${BUILD_REF}" \
+    org.opencontainers.image.vendor="Ardan Labs"

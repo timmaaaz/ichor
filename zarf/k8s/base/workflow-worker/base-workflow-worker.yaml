@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ichor-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-worker
+  namespace: ichor-system
+spec:
+  selector:
+    matchLabels:
+      app: workflow-worker
+  template:
+    metadata:
+      labels:
+        app: workflow-worker
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: workflow-worker
+          image: workflow-worker-image
+          env:
+            - name: ICHOR_DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: db_user
+                  optional: true
+            - name: ICHOR_DB_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: db_password
+                  optional: true
+            - name: ICHOR_DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: db_host
+                  optional: true
+            - name: ICHOR_DB_DISABLE_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: db_disabletls
+                  optional: true
+            - name: ICHOR_TEMPORAL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: workflow-worker-config
+                  key: temporal_host
+                  optional: true
+            - name: ICHOR_TEMPORAL_NAMESPACE
+              valueFrom:
+                configMapKeyRef:
+                  name: workflow-worker-config
+                  key: temporal_namespace
+                  optional: true
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBERNETES_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: KUBERNETES_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
