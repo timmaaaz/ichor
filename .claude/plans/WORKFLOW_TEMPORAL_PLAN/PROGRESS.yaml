@@ -6,14 +6,14 @@ project:
   description: "Implement Temporal-based workflow engine that interprets visual workflow graphs with full durability, parallel branch support, and async continuation"
   started: "2026-02-07"
   status: "in_progress"  # planning | in_progress | completed | blocked
-  current_phase: 2
+  current_phase: 3
 
   summary:
     phases_total: 13
-    phases_completed: 1
+    phases_completed: 2
     phases_in_progress: 0
-    phases_pending: 12
-    files_created: 12
+    phases_pending: 11
+    files_created: 13
     files_modified: 4
 
 planning_status:
@@ -201,7 +201,7 @@ phases:
   - phase: 2
     name: "Temporalgraph Evaluation"
     description: "Evaluate temporalgraph library for compatibility with visual graph requirements"
-    status: "pending"
+    status: "completed"
     category: "research"
 
     plan_reviewed: false
@@ -212,43 +212,66 @@ phases:
 
     tasks:
       - task: "Review temporalgraph library documentation and source"
-        status: "pending"
+        status: "completed"
         notes:
-          - "Repository: https://github.com/saltosystems/temporalgraph"
+          - "Repository originally listed as https://github.com/saltosystems/temporalgraph - 404"
+          - "Actual repo: https://github.com/Nickqiaoo/temporalgraph/ (MIT license, 5 stars, 0 forks, early-stage)"
+          - "Listed on Temporal Code Exchange: https://temporal.io/code-exchange/temporalgraph-graph-based-orchestration"
+          - "Built on top of Temporal Go SDK - compiles DAGs into activity-based execution runners"
+          - "API: NewGraph -> AddNode -> AddEdge -> AddBranch -> Compile -> Invoke"
+          - "16 files in compose/ package - core library"
+          - "Type-safe with generics (Graph[I, O]) - requires Go type parameters at definition time"
         files: []
 
       - task: "Evaluate edge type support"
-        status: "pending"
+        status: "completed"
         notes:
           - "Required: start, sequence, true_branch, false_branch, always, parallel"
+          - "RESULT: Library has START/END constants but no semantic edge types"
+          - "AddEdge only connects nodes by string key - no edge type/label support"
+          - "Branching via AddBranch with condition functions, not typed edges"
+          - "No concept of our edge types (start, sequence, true_branch, false_branch, always)"
+          - "Would need significant wrapper layer to map our edge types to library concepts"
         files: []
 
       - task: "Evaluate convergence detection capability"
-        status: "pending"
+        status: "completed"
         notes:
           - "Must detect nodes with multiple incoming edges"
           - "Must wait for all branches before continuing"
+          - "RESULT: Library handles convergence via channelManager with data/control predecessors"
+          - "Nodes wait for all predecessors automatically - this works well"
+          - "But convergence is implicit from graph structure, not configurable"
+          - "Our fire-and-forget pattern (parallel without convergence) would need workaround"
         files: []
 
       - task: "Evaluate runtime graph definition support"
-        status: "pending"
+        status: "completed"
         notes:
-          - "Graphs defined at runtime via UI, not compile-time"
-          - "Must interpret database-stored graph definitions"
+          - "RESULT: CRITICAL BLOCKER - Library requires Go function references at AddNode time"
+          - "AddNode signature: AddNode(key string, activity any, input any, acopt ActivityOptions)"
+          - "The 'activity' parameter must be a Go function with signature func(ctx, I) (O, error)"
+          - "Cannot construct graph from database-stored ActionNode/ActionEdge at runtime"
+          - "Would need a single generic activity function that dispatches by action type"
+          - "Type-safe generics (Graph[I, O]) fight against our dynamic dispatch model"
+          - "Our workflow definitions change per-rule with arbitrary node/edge combinations from UI"
         files: []
 
       - task: "Document decision and rationale"
-        status: "pending"
-        notes: []
+        status: "completed"
+        notes:
+          - "Decision: DO NOT ADOPT - proceed with custom GraphExecutor"
+          - "Three factors: runtime graph blocker, edge type mismatch, library maturity risk"
+          - "No changes needed to Phases 3-6 plan"
         files:
           - path: ".claude/plans/WORKFLOW_TEMPORAL_PLAN/decisions/TEMPORALGRAPH_EVALUATION.md"
-            status: "pending"
+            status: "completed"
 
     validation:
       - check: "Decision document created with clear recommendation"
-        status: "pending"
+        status: "completed"
       - check: "All evaluation criteria addressed"
-        status: "pending"
+        status: "completed"
 
     deliverables:
       - "Decision document: use temporalgraph library OR proceed with custom implementation"
@@ -931,9 +954,14 @@ phases:
     blockers: []
 
 context:
-  current_focus: "Phase 2 - Temporalgraph Evaluation (research phase, can proceed independently)"
-  next_task: "Evaluate temporalgraph library for compatibility with visual graph requirements"
+  current_focus: "Phase 3 - Core Models & Context (first code phase, depends on Phase 2 decision)"
+  next_task: "Create temporal package directory structure and implement models.go"
   recent_changes:
+    - "Phase 2 COMPLETED 2026-02-09: Temporalgraph library evaluated - DO NOT ADOPT"
+    - "Decision: Library requires compile-time Go function references (incompatible with our runtime DB-driven graphs)"
+    - "Decision: Library has no semantic edge type support (our typed edges have no equivalent)"
+    - "Decision: Library too early-stage (5 stars, 0 forks, 2 contributors)"
+    - "Phases 3-6 plan unchanged - custom GraphExecutor confirmed as right approach"
     - "Phase 1 COMPLETED 2026-02-09: All 9 tasks verified and passing"
     - "FIX: Added BIND_ON_IP=0.0.0.0 to Temporal K8s deployment (auto-setup binds to pod IP by default, preventing UI sidecar and port-forward)"
     - "FIX: Changed temporal-ui Makefile target to port-forward on 8280 (avoids conflict with app on port 8080)"
@@ -953,6 +981,7 @@ context:
     - "RESOLVED: K8s health probes use tcpSocket on gRPC port 7233; UI uses httpGet on port 8080; test container uses client.Dial + CheckHealth"
     - "RESOLVED: BIND_ON_IP=0.0.0.0 required for temporalio/auto-setup in K8s (binds to pod IP by default, not 0.0.0.0)"
     - "RESOLVED: Temporal UI port-forward to 8280 to avoid conflict with app on port 8080"
+    - "RESOLVED: DO NOT ADOPT temporalgraph library - incompatible with runtime graph definition, no semantic edge types, early-stage maturity"
 
 dependencies:
   internal:
