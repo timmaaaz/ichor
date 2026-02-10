@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 	"go.opentelemetry.io/otel/trace"
+	"go.temporal.io/sdk/client"
 )
 
 // Options represent optional parameters.
@@ -41,13 +42,14 @@ func WithFileServer(static embed.FS, dir string) func(opts *Options) {
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build        string
-	Log          *logger.Logger
-	Auth         *auth.Auth
-	AuthClient   *authclient.Client
-	DB           *sqlx.DB
-	Tracer       trace.Tracer
-	RabbitClient *rabbitmq.Client
+	Build          string
+	Log            *logger.Logger
+	Auth           *auth.Auth
+	AuthClient     *authclient.Client
+	DB             *sqlx.DB
+	Tracer         trace.Tracer
+	RabbitClient   *rabbitmq.Client
+	TemporalClient client.Client // nil means Temporal disabled
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance

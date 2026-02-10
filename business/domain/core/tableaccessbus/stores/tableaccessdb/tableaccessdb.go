@@ -68,9 +68,11 @@ func (s *Store) Create(ctx context.Context, ta tableaccessbus.TableAccess) error
 		const checkTable = `
 		SELECT EXISTS (
 			SELECT 1
-			FROM information_schema.tables
-			WHERE table_schema = :schema_name
-			AND table_name = :table_name
+			FROM pg_catalog.pg_class c
+			JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+			WHERE n.nspname = :schema_name
+			AND c.relname = :table_name
+			AND c.relkind IN ('r', 'v')
 		)`
 
 		tmp := struct {

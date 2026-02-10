@@ -29,6 +29,21 @@ func (h *SendNotificationHandler) GetType() string {
 	return "send_notification"
 }
 
+// SupportsManualExecution returns true - notifications can be sent manually
+func (h *SendNotificationHandler) SupportsManualExecution() bool {
+	return true
+}
+
+// IsAsync returns false - notification creation completes inline
+func (h *SendNotificationHandler) IsAsync() bool {
+	return false
+}
+
+// GetDescription returns a human-readable description for discovery APIs
+func (h *SendNotificationHandler) GetDescription() string {
+	return "Send an in-app notification"
+}
+
 func (h *SendNotificationHandler) Validate(config json.RawMessage) error {
 	var cfg struct {
 		Recipients []string `json:"recipients"`

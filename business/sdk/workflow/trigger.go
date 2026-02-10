@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -65,7 +67,8 @@ type TriggerProcessor struct {
 	db          *sqlx.DB
 	workflowBus *Business
 
-	// Cached data
+	// Cached data with thread safety
+	mu           sync.RWMutex
 	activeRules  []AutomationRuleView
 	lastLoadTime time.Time
 	cacheTimeout time.Duration
@@ -95,6 +98,9 @@ func (tp *TriggerProcessor) Initialize(ctx context.Context) error {
 
 // loadMetadata loads active rules and related metadata
 func (tp *TriggerProcessor) loadMetadata(ctx context.Context) error {
+	tp.mu.Lock()
+	defer tp.mu.Unlock()
+
 	// Check if cache is still valid
 	if time.Since(tp.lastLoadTime) < tp.cacheTimeout && len(tp.activeRules) > 0 {
 		return nil
@@ -442,6 +448,9 @@ func (tp *TriggerProcessor) isSupportedEventType(eventType string) bool {
 }
 
 func (tp *TriggerProcessor) hasRulesForEntity(entityName string) bool {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+
 	for _, rule := range tp.activeRules {
 		if rule.EntityName == entityName {
 			return true
@@ -451,6 +460,9 @@ func (tp *TriggerProcessor) hasRulesForEntity(entityName string) bool {
 }
 
 func (tp *TriggerProcessor) getRulesForEntity(entityName string) []AutomationRuleView {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+
 	rules := make([]AutomationRuleView, 0)
 	for _, rule := range tp.activeRules {
 		if rule.EntityName == entityName && rule.IsActive {
@@ -462,6 +474,9 @@ func (tp *TriggerProcessor) getRulesForEntity(entityName string) []AutomationRul
 
 // GetMatchedRulesForEntity returns rules that would match for a given entity and event type
 func (tp *TriggerProcessor) GetMatchedRulesForEntity(entityName string, eventType string) []AutomationRuleView {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+
 	matched := make([]AutomationRuleView, 0)
 	expectedTriggerType := eventType
 
@@ -478,6 +493,36 @@ func (tp *TriggerProcessor) GetMatchedRulesForEntity(entityName string, eventTyp
 
 // RefreshRules forces a reload of rules from the database
 func (tp *TriggerProcessor) RefreshRules(ctx context.Context) error {
+	tp.mu.Lock()
 	tp.lastLoadTime = time.Time{} // Reset cache time to force reload
+	tp.mu.Unlock()
+
 	return tp.loadMetadata(ctx)
+}
+
+// RegisterCacheInvalidation registers delegate handlers for automation rule
+// lifecycle events that invalidate the trigger processor's rule cache.
+func (tp *TriggerProcessor) RegisterCacheInvalidation(del *delegate.Delegate) {
+	handler := func(ctx context.Context, data delegate.Data) error {
+		tp.log.Info(ctx, "trigger processor: refreshing rules", "action", data.Action)
+		if err := tp.RefreshRules(ctx); err != nil {
+			tp.log.Error(ctx, "trigger processor: refresh failed", "error", err)
+		}
+		return nil // Don't fail the delegate chain
+	}
+
+	del.Register(DomainName, ActionRuleCreated, handler)
+	del.Register(DomainName, ActionRuleUpdated, handler)
+	del.Register(DomainName, ActionRuleDeleted, handler)
+	del.Register(DomainName, ActionRuleActivated, handler)
+	del.Register(DomainName, ActionRuleDeactivated, handler)
+
+	tp.log.Info(context.Background(), "trigger processor: cache invalidation registered")
+}
+
+// GetActiveRuleCount returns the number of cached active rules.
+func (tp *TriggerProcessor) GetActiveRuleCount() int {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+	return len(tp.activeRules)
 }

@@ -57,6 +57,22 @@ func (h *UpdateFieldHandler) GetType() string {
 	return "update_field"
 }
 
+// SupportsManualExecution returns false - field updates should only happen via automation.
+// For manual field updates, use the entity's CRUD endpoints directly.
+func (h *UpdateFieldHandler) SupportsManualExecution() bool {
+	return false
+}
+
+// IsAsync returns false - field updates complete inline
+func (h *UpdateFieldHandler) IsAsync() bool {
+	return false
+}
+
+// GetDescription returns a human-readable description for discovery APIs
+func (h *UpdateFieldHandler) GetDescription() string {
+	return "Update a field value on an entity"
+}
+
 // Validate validates the update field configuration
 func (h *UpdateFieldHandler) Validate(config json.RawMessage) error {
 	var cfg UpdateFieldConfig
@@ -349,7 +365,10 @@ func (h *UpdateFieldHandler) buildTemplateContext(execContext workflow.ActionExe
 	context["event_type"] = execContext.EventType
 	context["timestamp"] = execContext.Timestamp
 	context["user_id"] = execContext.UserID
-	context["rule_id"] = execContext.RuleID
+	// Handle pointer-based RuleID (nil for manual executions)
+	if execContext.RuleID != nil {
+		context["rule_id"] = *execContext.RuleID
+	}
 	context["rule_name"] = execContext.RuleName
 	context["execution_id"] = execContext.ExecutionID
 
@@ -423,6 +442,22 @@ func (h *UpdateFieldHandler) isValidOperator(operator string) bool {
 		}
 	}
 	return false
+}
+
+// GetEntityModifications implements workflow.EntityModifier for cascade visualization.
+// Returns the entity and field that this action will modify based on its configuration.
+func (h *UpdateFieldHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
+	var cfg UpdateFieldConfig
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return nil
+	}
+
+	// update_field always triggers an on_update event for the target entity
+	return []workflow.EntityModification{{
+		EntityName: cfg.TargetEntity,
+		EventType:  "on_update",
+		Fields:     []string{cfg.TargetField},
+	}}
 }
 
 // // Context returns a context for template processing

@@ -1,0 +1,813 @@
+# Universal Action Edge Enforcement - Progress Tracking
+# This file tracks the implementation progress of requiring edges for all workflow rules with actions
+
+project:
+  name: "Universal Action Edge Enforcement"
+  description: "Require action edges for all workflow rules that have actions, eliminating the dual execution mode"
+  started: "2026-02-05"
+  status: "completed"  # planning | in_progress | completed | blocked
+  current_phase: 6
+
+  summary:
+    phases_total: 6
+    phases_completed: 6
+    phases_in_progress: 0
+    phases_pending: 0
+    files_created: 0
+    files_modified: 48
+
+planning_status:
+  phase_1_doc_created: true
+  phase_2_doc_created: true
+  phase_3_doc_created: true
+  phase_4_doc_created: true
+  phase_5_doc_created: true
+  phase_6_doc_created: true
+  next_phase_to_document: null
+
+system_validation:
+  plan_review_system:
+    validated: false
+    validated_date: null
+    checks:
+      - name: "plan-review.md.template exists"
+        status: "pending"
+      - name: "PROGRESS.yaml.template has plan review fields"
+        status: "pending"
+      - name: "create-plan.md references 10 commands"
+        status: "pending"
+      - name: "All phases have plan_reviewed field"
+        status: "pending"
+      - name: "All phases have plan_review_grade field"
+        status: "pending"
+
+phases:
+  - phase: 1
+    name: "Validation Layer Changes"
+    description: "Enforce that rules with actions must have edges connecting them"
+    status: "completed"
+    category: "backend"
+
+    plan_reviewed: true
+    plan_review_grade: "A"
+
+    reviewed: true
+    review_grade: "A"
+    review_notes:
+      - "Initial review grade: B+ (duplication, missing docs)"
+      - "Post-review refactoring: extracted prepareRequest() helper, added validation matrix docs"
+      - "Re-review grade: A (all B+ issues resolved, excellent architecture)"
+      - "Remaining recommendation: Add explicit tests for draft-workflow and actions-without-edges cases (Phase 4)"
+
+    tasks:
+      - task: "Allow saving workflows without actions (remove required,min=1 from Actions validate tag)"
+        status: "completed"
+        notes:
+          - "Change validate tag from 'required,min=1,dive' to 'dive' in model.go"
+          - "Enables draft/incomplete workflow saving"
+        files:
+          - path: "app/domain/workflow/workflowsaveapp/model.go"
+            status: "completed"
+
+      - task: "Skip graph validation when no actions exist + auto-deactivate draft workflows"
+        status: "completed"
+        notes:
+          - "Extracted prepareRequest() helper (code review improvement)"
+          - "Validates action configs + graph when actions present"
+          - "Forces is_active=false when no actions (draft workflow)"
+          - "Single function called by both SaveWorkflow() and CreateWorkflow()"
+        files:
+          - path: "app/domain/workflow/workflowsaveapp/workflowsaveapp.go"
+            status: "completed"
+
+      - task: "Add edge requirement validation to ValidateGraph()"
+        status: "completed"
+        notes:
+          - "Change len(actions)==0 from error to return nil"
+          - "Add: if len(edges) == 0, return error about requiring edges"
+        files:
+          - path: "app/domain/workflow/workflowsaveapp/graph.go"
+            status: "completed"
+
+      - task: "Verify integration test impact"
+        status: "completed"
+        notes:
+          - "Search for tests with actions but no edges"
+          - "Document expected failures for Phase 4/5"
+          - "RESULT: Phase 1 changes do NOT break any existing tests (all workflowsaveapi tests already include edges)"
+          - "Phase 3+ will affect: cascade_seed_test.go (6 actions, no edges), ordersapi/workflow_test.go (3 actions), formdataapi/workflow_test.go (2 actions), testutil.go TestSeedRuleActions/TestSeedFullWorkflow, executor_test.go (uses linear ExecuteRuleActions)"
+        files:
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/"
+            status: "completed"
+
+    validation:
+      - check: "Go compilation passes"
+        status: "completed"
+      - check: "Draft workflow (no actions) can be saved"
+        status: "completed"
+      - check: "Draft workflow forced inactive regardless of request"
+        status: "completed"
+      - check: "New validation rejects actions without edges"
+        status: "completed"
+      - check: "Existing valid workflows (actions + edges) still pass"
+        status: "completed"
+
+    deliverables:
+      - "Updated model.go: removed required,min=1 from Actions, added field comment"
+      - "Updated workflowsaveapp.go: extracted prepareRequest() helper for validation + auto-deactivation"
+      - "Updated graph.go: edge requirement validation + validation rules doc comment"
+      - "Documented list of expected test failures"
+
+    blockers: []
+
+  - phase: 2
+    name: "Remove execution_order Field"
+    description: "Remove the execution_order field entirely from the codebase"
+    status: "completed"
+    category: "backend"
+
+    plan_reviewed: true
+    plan_review_grade: "B+"
+    plan_review_notes:
+      - "Revised: Direct table modification instead of ALTER TABLE (not in production)"
+      - "Revised: Consolidated migration tasks 1&2 into single task with sub-tasks"
+      - "Resolved: ORDER BY ra.name for JSON agg, remove ORDER BY from QueryRoleActionsViewByRuleID"
+      - "Resolved: order.By not needed for action queries (internal lookups, not paginated endpoints)"
+      - "Resolved: No transaction changes needed (workflowsaveapp already uses proper transactions)"
+      - "Resolved: No cache invalidation needed (no sturdyc on RuleAction)"
+      - "Resolved: All 'also check' instructions converted to explicit sub-tasks with file paths"
+      - "Added: converters.go (4 functions) as explicit file in API layer task"
+      - "Added: workflowsaveapp.go (3 conversion sites) as explicit file in app layer task"
+
+    reviewed: true
+    review_grade: "A-"
+    review_notes:
+      - "Grade A-: Complete, methodical removal across all layers (DB, business, store, API, app)"
+      - "Preserved unrelated ExecutionOrderBy* constants correctly"
+      - "Clean SQL changes with proper ORDER BY replacements (ra.name for JSON agg, no ORDER BY for action queries)"
+      - "No security, performance, or architectural issues found"
+      - "Minor: Consider adding explanatory comments for removed ORDER BY clauses"
+      - "Minor: Consider adding migration comment noting execution_order was removed in favor of graph-based ordering"
+      - "Expected test breakage correctly documented (Phase 4/5)"
+
+    tasks:
+      - task: "Remove execution_order from database schema and views"
+        status: "completed"
+        notes:
+          - "Direct modification of CREATE TABLE (not ALTER TABLE - not in production)"
+          - "Remove column from rule_actions table definition"
+          - "Remove from rule_actions_view SELECT clause"
+          - "automation_rules_view SQL does NOT contain execution_order (JSON agg is in Go code)"
+        files:
+          - path: "business/sdk/migrate/sql/migrate.sql"
+            status: "completed"
+
+      - task: "Remove from business layer models"
+        status: "completed"
+        notes:
+          - "4 structs in models.go, 1 constant in order.go"
+          - "Preserve ExecutionOrderBy* constants (action_executions, unrelated)"
+        files:
+          - path: "business/sdk/workflow/models.go"
+            status: "completed"
+          - path: "business/sdk/workflow/order.go"
+            status: "completed"
+
+      - task: "Remove from database store operations"
+        status: "completed"
+        notes:
+          - "5 changes in models.go (struct fields + conversion functions)"
+          - "7 changes in workflowdb.go (INSERT, UPDATE, 4x SELECT, JSON agg)"
+          - "Change JSON agg ORDER BY to ra.name"
+          - "Remove ORDER BY from QueryRoleActionsViewByRuleID entirely"
+          - "No changes needed in stores/workflowdb/order.go"
+        files:
+          - path: "business/sdk/workflow/stores/workflowdb/models.go"
+            status: "completed"
+          - path: "business/sdk/workflow/stores/workflowdb/workflowdb.go"
+            status: "completed"
+
+      - task: "Remove from business layer logic"
+        status: "completed"
+        notes:
+          - "2 changes: CreateRuleAction struct init, UpdateRuleAction conditional block"
+        files:
+          - path: "business/sdk/workflow/workflowbus.go"
+            status: "completed"
+
+      - task: "Remove from API layer"
+        status: "completed"
+        notes:
+          - "4 changes in action_model.go (2 struct fields, 2 validation blocks)"
+          - "2 changes in model.go (CreateActionInput, ActionResponse)"
+          - "1 change in validation.go (ValidateCreateRule)"
+          - "1 change in ruleapi.go (duplicate detection block)"
+          - "4 changes in converters.go (toNewRuleAction, toNewRuleActionFromRequest, toActionResponse, toUpdateRuleAction)"
+          - "Extra: simulate.go (ActionPreview.Order field and action.ExecutionOrder reference)"
+        files:
+          - path: "api/domain/http/workflow/ruleapi/action_model.go"
+            status: "completed"
+          - path: "api/domain/http/workflow/ruleapi/model.go"
+            status: "completed"
+          - path: "api/domain/http/workflow/ruleapi/validation.go"
+            status: "completed"
+          - path: "api/domain/http/workflow/ruleapi/ruleapi.go"
+            status: "completed"
+          - path: "api/domain/http/workflow/ruleapi/converters.go"
+            status: "completed"
+          - path: "api/domain/http/workflow/ruleapi/simulate.go"
+            status: "completed"
+
+      - task: "Remove from app layer"
+        status: "completed"
+        notes:
+          - "2 changes in model.go (SaveActionRequest, SaveActionResponse)"
+          - "5 changes in workflowsaveapp.go (syncActions update, syncActions create, createAllActions, buildResponse)"
+        files:
+          - path: "app/domain/workflow/workflowsaveapp/model.go"
+            status: "completed"
+          - path: "app/domain/workflow/workflowsaveapp/workflowsaveapp.go"
+            status: "completed"
+
+    validation:
+      - check: "Go compilation passes (production code; test helpers expected to break)"
+        status: "completed"
+      - check: "No references to execution_order remain in production code (except ExecutionOrderBy* and config.ExecutionOrder in formfieldbus)"
+        status: "completed"
+
+    deliverables:
+      - "Modified CREATE TABLE without execution_order column"
+      - "Modified rule_actions_view without execution_order"
+      - "Modified JSON agg: removed execution_order, ORDER BY ra.name"
+      - "Cleaned business layer models and logic"
+      - "Cleaned database store models and queries"
+      - "Cleaned API layer models, validation, handlers, and converters"
+      - "Cleaned app layer models and conversions"
+
+    blockers: []
+
+  - phase: 3
+    name: "Remove Linear Executor"
+    description: "Remove the linear execution fallback path, keep only graph execution"
+    status: "completed"
+    category: "backend"
+
+    plan_reviewed: true
+    plan_review_grade: "A-"
+    plan_review_notes:
+      - "Critical: Error returns should include meaningful BatchExecutionResult with Status='failed' instead of empty struct"
+      - "Critical: Add database validation prerequisite - verify no orphaned rules without edges"
+      - "Important: Include function context in error messages (executeRuleActionsGraph prefix)"
+      - "Important: Make commented-out loadRuleActions cleanup an explicit task"
+      - "Important: Add rollback strategy section"
+      - "Minor: Clarify implementation order: Task 2 → Task 3 → Task 1"
+
+    reviewed: true
+    review_grade: "A-"
+    review_notes:
+      - "Grade A-: Core implementation excellent - error handling, return structure, and engine integration done correctly"
+      - "Error guards return both structured BatchExecutionResult (Status='failed', ErrorMessage) AND wrapped error - good dual-return pattern"
+      - "Doc comment accurately describes edge requirement and validation layer enforcement"
+      - "Clean engine.go transition: single call site change with clear comment"
+      - "All dead code properly removed (ExecuteRuleActions function + commented-out loadRuleActions)"
+      - "Error messages include function context prefix (executeRuleActionsGraph:) as recommended by plan review"
+      - "FIXED: docs/workflow/branching.md updated - replaced stale 'Backwards Compatibility' section with 'Edge Requirement'"
+      - "executor_test.go lines 936,1124 reference deleted function - expected, Phase 4 scope"
+      - "No security, performance, or architectural issues found"
+
+    tasks:
+      - task: "Replace fallback logic in ExecuteRuleActionsGraph() with errors"
+        status: "completed"
+        notes:
+          - "Lines 222-227 and 264-268 in executor.go"
+          - "Return meaningful BatchExecutionResult with Status='failed' and ErrorMessage"
+          - "Include function context in error: executeRuleActionsGraph: rule %s has no edges..."
+          - "Update doc comment to document error conditions and remove backwards-compat note"
+        files:
+          - path: "business/sdk/workflow/executor.go"
+            status: "completed"
+
+      - task: "Update engine to use graph executor only"
+        status: "completed"
+        notes:
+          - "Line 422: Change from ExecuteRuleActions() to ExecuteRuleActionsGraph()"
+          - "Pre-verify line 422 is the only reference in engine.go"
+        files:
+          - path: "business/sdk/workflow/engine.go"
+            status: "completed"
+
+      - task: "Delete ExecuteRuleActions() function"
+        status: "completed"
+        notes:
+          - "Lines 112-209 in executor.go"
+          - "Safe to delete after Tasks 1 and 2 remove all callers"
+        files:
+          - path: "business/sdk/workflow/executor.go"
+            status: "completed"
+
+      - task: "Remove dead commented-out loadRuleActions code"
+        status: "completed"
+        notes:
+          - "Lines 592-619 in executor.go (commented-out function)"
+          - "References execution_order, used by linear executor"
+        files:
+          - path: "business/sdk/workflow/executor.go"
+            status: "completed"
+
+    validation:
+      - check: "go build ./business/sdk/workflow/... compiles successfully"
+        status: "completed"
+      - check: "go vet ./business/sdk/workflow/... passes"
+        status: "completed"
+        notes: "Test files have expected failures (ExecutionOrder, ExecuteRuleActions) - Phase 4 scope"
+      - check: "grep for ExecuteRuleActions (non-Graph) in production code returns zero results"
+        status: "completed"
+      - check: "BatchExecutionResult in error cases has Status='failed' and ErrorMessage populated"
+        status: "completed"
+      - check: "Error messages include function context prefix"
+        status: "completed"
+      - check: "Doc comment documents error conditions, no backwards-compat mention"
+        status: "completed"
+      - check: "Commented-out loadRuleActions function is removed"
+        status: "completed"
+
+    deliverables:
+      - "Updated ExecuteRuleActionsGraph() fallbacks to return meaningful errors"
+      - "Updated ExecuteRuleActionsGraph() doc comment with error conditions"
+      - "Updated engine.go to call ExecuteRuleActionsGraph()"
+      - "Deleted ExecuteRuleActions() linear executor function"
+      - "Deleted commented-out loadRuleActions function"
+      - "No production code references to ExecuteRuleActions() remain"
+
+    blockers: []
+
+  - phase: 4
+    name: "Test Updates"
+    description: "Remove obsolete tests, update others to include edges"
+    status: "completed"
+    category: "testing"
+
+    plan_reviewed: true
+    plan_review_grade: "A-"
+    plan_review_notes:
+      - "Re-review: B+ → A- (comprehensive plan, minor line number/Task 2 concerns)"
+      - "Resolved: Fixed AutomationRuleID → RuleID in all edge creation examples"
+      - "Resolved: Removed non-existent CreatedBy field from NewActionEdge examples"
+      - "Resolved: Added explicit Task 2 to update createTestRule helper (used by 20+ tests)"
+      - "Resolved: Verified Phase 1 wraps ValidateGraph errors with errs.InvalidArgument (workflowsaveapp.go lines 54, 131)"
+      - "Resolved: Verified Phase 1 draft auto-deactivation implemented (workflowsaveapp.go lines 59-61)"
+      - "Resolved: Kept TriggerSource instructions (NOT present in Stats/History tests, only in handler test at line 1357)"
+      - "Resolved: Clarified Task 4 nested loop with explicit capture of created.ID"
+      - "Resolved: Added Task 6 cross-check for ExecutionOrder in validation_test.go"
+      - "Resolved: Added gotchas for t.Parallel(), createTestRule usage, validation error dependencies"
+      - "Resolved: Added NewActionEdge struct reference (models.go lines 408-414) to plan"
+
+    reviewed: true
+    review_grade: "A-"
+    review_notes:
+      - "Grade A-: Comprehensive test updates across 19 files, excellent graph executor coverage"
+      - "Strengths: Proper test isolation (dbtest per test), correct edge creation patterns (Start→A→B→C), consistent use of workflow.EdgeType* constants"
+      - "Strengths: Excellent new validationEdgeRequirement tests validate both rejection and draft-deactivation paths"
+      - "Strengths: createTestRule helper well-designed with testAction/testEdge structs for clean data construction"
+      - "Stale comment: executor_test.go line 50 still references 'Action ordering by execution_order field' - should say 'edge traversal'"
+      - "Stale comment: executor_graph_test.go WHAT THIS DOES NOT TEST says 'Actual database persistence of edges' but edges ARE persisted via CreateActionEdge"
+      - "Minor: executor_test.go line 32 has unresolved TODO: 'Streamline workflow actions register all'"
+      - "Suggestion: DiamondPattern test should explicitly assert convergence point executes exactly once"
+      - "Suggestion: Add validation tests for non-condition-action-with-branch-edges, malformed JSON configs, duplicate edges"
+      - "No security, performance, or architectural issues found"
+
+    tasks:
+      - task: "Delete linear fallback tests"
+        status: "completed"
+        notes:
+          - "Deleted 3 fallback test functions and 'Backwards Compatibility Tests' section header"
+          - "Also removed 'Backwards compatibility' from package doc comment"
+        files:
+          - path: "business/sdk/workflow/executor_graph_test.go"
+            status: "completed"
+
+      - task: "Update createTestRule helper to remove ExecutionOrder"
+        status: "completed"
+        notes:
+          - "Removed ExecutionOrder: i + 1 from createTestRule helper"
+        files:
+          - path: "business/sdk/workflow/executor_graph_test.go"
+            status: "completed"
+
+      - task: "Update TestActionExecutor_Stats to use graph executor"
+        status: "completed"
+        notes:
+          - "Removed ExecutionOrder, captured action IDs, created edges, added TriggerSource"
+          - "Changed ExecuteRuleActions() to ExecuteRuleActionsGraph()"
+        files:
+          - path: "business/sdk/workflow/executor_test.go"
+            status: "completed"
+
+      - task: "Update TestActionExecutor_ExecutionHistory to use graph executor"
+        status: "completed"
+        notes:
+          - "Same pattern as Stats test: removed ExecutionOrder, captured IDs, created edges"
+          - "Added TriggerSource, changed to ExecuteRuleActionsGraph()"
+        files:
+          - path: "business/sdk/workflow/executor_test.go"
+            status: "completed"
+
+      - task: "Add validation test for actions without edges"
+        status: "completed"
+        notes:
+          - "Added validationEdgeRequirement function with 2 test cases"
+          - "Wired into save_test.go test runner"
+        files:
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/validation_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/save_test.go"
+            status: "completed"
+
+      - task: "Remove all remaining ExecutionOrder from test files"
+        status: "completed"
+        notes:
+          - "Removed ExecutionOrder from 16 test files across workflow, ruleapi, workflowsaveapi, ordersapi, and formdataapi"
+          - "Updated sort comparisons in workflow_crud_test.go from .ExecutionOrder to .Name"
+          - "Removed entire 'update-execution-order' test case from ruleapi/actions_test.go"
+          - "Updated stale comments referencing ExecuteRuleActions to ExecuteRuleActionsGraph"
+          - "Preserved formfieldbus.LineItemsFieldConfig.ExecutionOrder (unrelated domain)"
+        files:
+          - path: "business/sdk/workflow/eventpublisher_integration_test.go"
+            status: "completed"
+          - path: "business/sdk/workflow/queue_test.go"
+            status: "completed"
+          - path: "business/sdk/workflow/workflow_crud_test.go"
+            status: "completed"
+          - path: "business/sdk/workflow/workflowactions/data/updatefield_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/ruleapi/actions_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/ruleapi/cascade_seed_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/ruleapi/create_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/create_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/update_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/execution_seed_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/trigger_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/actions_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/errors_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/sales/ordersapi/workflow_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/formdata/formdataapi/workflow_test.go"
+            status: "completed"
+
+    validation:
+      - check: "Go compilation passes: go build ./..."
+        status: "completed"
+      - check: "go vet ./... passes"
+        status: "completed"
+      - check: "No test references ExecuteRuleActions() (linear executor)"
+        status: "completed"
+      - check: "No test references ExecutionOrder (except ExecutionOrderBy* constants and formfieldbus)"
+        status: "completed"
+      - check: "createTestRule helper compiles without ExecutionOrder"
+        status: "completed"
+      - check: "New validation test compiles and wired into runner"
+        status: "completed"
+      - check: "Full test suite: make test"
+        status: "pending"
+        notes: "Requires running infrastructure (DB, RabbitMQ)"
+
+    deliverables:
+      - "Removed 3 obsolete linear fallback test functions"
+      - "Removed 'Backwards Compatibility Tests' section header"
+      - "Updated createTestRule helper (removed ExecutionOrder)"
+      - "Updated TestActionExecutor_Stats for graph execution with edges"
+      - "Updated TestActionExecutor_ExecutionHistory for graph execution with edges"
+      - "Added validationEdgeRequirement test function with 2 test cases"
+      - "Removed ExecutionOrder from 16 test files across entire codebase"
+      - "Updated stale comments referencing deleted linear executor"
+
+    blockers: []
+
+  - phase: 5
+    name: "Seed Data Updates"
+    description: "All seeded workflow rules must have proper edges"
+    status: "completed"
+    category: "backend"
+
+    plan_reviewed: true
+    plan_review_grade: "A-"
+    plan_review_notes:
+      - "Re-review: B+ → A- (5 of 6 previous findings fully addressed, 1 partially)"
+      - "Resolved: Map iteration ordering - plan correctly preserves per-rule action order via append"
+      - "Resolved: Explicit Phase 2 prerequisite - TestNewRuleActions ExecutionOrder check added"
+      - "Resolved: MixedActionsRule complexity - multi-action chain (start + sequence) documented"
+      - "Resolved: Task 8 streamlined to verification-only (no longer busywork)"
+      - "Resolved: ExecutionOrder prerequisite added to prerequisites and gotchas"
+      - "Partially resolved: String literals still used in code examples instead of workflow.EdgeType* constants"
+      - "New: Task numbering error (7 → 9 → 8) - renumber sequentially"
+      - "New: Task 9 variable naming (allocateAction) will cause redeclaration if followed literally - use generic 'action'"
+      - "New: Missing concrete database validation query for start edge invariant"
+      - "Recommended: Iterate ruleIDs slice instead of map for deterministic inter-rule ordering in Task 1"
+
+    reviewed: true
+    review_grade: "A-"
+    review_notes:
+      - "Grade A-: Correct, consistent, and comprehensive edge creation across all 4 modified files"
+      - "Strengths: Proper edge chain construction (start + sequence), correct pointer handling for SourceActionID"
+      - "Strengths: Consistent use of workflow.EdgeTypeStart/EdgeTypeSequence constants (no string literals)"
+      - "Strengths: No orphaned actions - every CreateRuleAction followed by CreateActionEdge"
+      - "Strengths: Context-appropriate error handling (fmt.Errorf in helpers, t.Fatalf in tests)"
+      - "Strengths: Comprehensive coverage (6 rule scenarios in cascade, 3 events in orders, 2 scenarios in formdata)"
+      - "Minor: Map iteration in testutil.go (actionsByRule) is non-deterministic - consider sorting ruleIDs before edge creation"
+      - "Suggestion: Add godoc comment to TestSeedRuleActions documenting edge creation behavior"
+      - "No security, performance, or architectural issues found"
+
+    tasks:
+      - task: "Update TestSeedRuleActions()"
+        status: "completed"
+        notes:
+          - "Added edge creation after action creation"
+          - "Groups actions by rule ID, creates start + sequence edges for each rule"
+          - "Uses EdgeTypeStart/EdgeTypeSequence constants"
+        files:
+          - path: "business/sdk/workflow/testutil.go"
+            status: "completed"
+
+      - task: "Verify TestSeedFullWorkflow() (no changes needed)"
+        status: "completed"
+        notes:
+          - "Delegates to TestSeedRuleActions() which now creates edges internally"
+          - "No additional action creation outside the helper"
+        files:
+          - path: "business/sdk/workflow/testutil.go"
+            status: "completed"
+
+      - task: "Verify ruleapi seed insertSeedData() (no changes needed)"
+        status: "completed"
+        notes:
+          - "Uses TestSeedRuleActions() helper which now creates edges internally"
+        files:
+          - path: "api/cmd/services/ichor/tests/workflow/ruleapi/seed_test.go"
+            status: "completed"
+
+      - task: "Update cascade seed insertCascadeSeedData()"
+        status: "completed"
+        notes:
+          - "Added start edges for 5 rules (primaryRule, 2 downstream, nonModifying, selfTrigger)"
+          - "Added start + sequence edges for mixedActionsRule (2 actions)"
+          - "InactiveDownstreamRule has no actions - no edges needed"
+          - "Captured previously-discarded downstream action variable for edge creation"
+        files:
+          - path: "api/cmd/services/ichor/tests/workflow/ruleapi/cascade_seed_test.go"
+            status: "completed"
+
+      - task: "Verify executionapi seed insertSeedData() (no changes needed)"
+        status: "completed"
+        notes:
+          - "Uses TestSeedRuleActions() helper which now creates edges internally"
+        files:
+          - path: "api/cmd/services/ichor/tests/workflow/executionapi/seed_test.go"
+            status: "completed"
+
+      - task: "Update inline rule creation in ordersapi and formdataapi"
+        status: "completed"
+        notes:
+          - "ordersapi/workflow_test.go: Added start edges for 3 rules (create, update, delete)"
+          - "formdataapi/workflow_test.go: Added start edges for 2 rules (email, fail)"
+          - "workflowsaveapi tests already have edges - verified, no changes needed"
+        files:
+          - path: "api/cmd/services/ichor/tests/sales/ordersapi/workflow_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/formdata/formdataapi/workflow_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/actions_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/errors_test.go"
+            status: "completed"
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/trigger_test.go"
+            status: "completed"
+
+      - task: "Verify seedFrontend.go (already has edges)"
+        status: "completed"
+        notes:
+          - "seedFrontend.go already has edge creation for all 3 rules"
+          - "No changes needed"
+        files:
+          - path: "business/sdk/dbtest/seedFrontend.go"
+            status: "completed"
+
+    validation:
+      - check: "All seed functions create edges for actions"
+        status: "completed"
+      - check: "make test passes"
+        status: "pending"
+        notes: "Requires running infrastructure (DB, RabbitMQ)"
+      - check: "make seed works correctly"
+        status: "pending"
+        notes: "Requires running infrastructure"
+      - check: "go build ./... passes"
+        status: "completed"
+      - check: "go vet ./... passes"
+        status: "completed"
+      - check: "No orphaned actions without edges in any seed/test file"
+        status: "completed"
+      - check: "No remaining ExecutionOrder references in seed/test files"
+        status: "completed"
+
+    deliverables:
+      - "Updated TestSeedRuleActions() with edge creation (groups by rule, start + sequence)"
+      - "Verified TestSeedFullWorkflow(), ruleapi/seed_test.go, executionapi/seed_test.go delegate to updated helper"
+      - "Updated cascade_seed_test.go with edges for 6 rules (including multi-action chain)"
+      - "Updated ordersapi/workflow_test.go with start edges for 3 rules"
+      - "Updated formdataapi/workflow_test.go with start edges for 2 rules"
+      - "Verified seedFrontend.go already has edges (no changes needed)"
+      - "Verified workflowsaveapi test files already have edges (no changes needed)"
+
+    blockers: []
+
+  - phase: 6
+    name: "Documentation Updates"
+    description: "Remove references to linear execution mode, document edge requirement"
+    status: "completed"
+    category: "documentation"
+
+    plan_reviewed: true
+    plan_review_grade: "A-"
+    plan_review_notes:
+      - "Excellent: Every change shows current and replacement content side by side"
+      - "Excellent: Concrete grep-based validation criteria"
+      - "Excellent: Gotchas warn about edge_order vs execution_order confusion"
+      - "Minor: Task 6 '[Keep the existing graph traversal explanation]' is vague — needs clarification"
+      - "Minor: Line numbers may have shifted — verify before executing"
+      - "Minor: grep may miss execution_order inside code fence blocks"
+
+    reviewed: true
+    review_grade: "A"
+    review_notes:
+      - "Grade A: Complete and thorough removal of all stale references across 9 files (7 planned + 2 found during validation)"
+      - "All 8 validation grep checks pass: zero results for execution_order, linear execution, backwards compatible, fall back, ExecuteRuleActions (non-Graph), ExecutionOrder, broken anchor links"
+      - "Edge requirement consistently documented across 6+ files (README, branching, architecture, overview, rules, database-schema, api-reference, testing)"
+      - "No broken internal anchor links, no orphaned section references"
+      - "JSON examples all clean (no execution_order, no trailing commas)"
+      - "edge_order correctly preserved throughout (not confused with execution_order)"
+      - "Remaining 'fallback' references are circuit-breaker/reflection context (correct, unrelated)"
+      - "No critical or minor issues found"
+
+    tasks:
+      - task: "Update workflow README"
+        status: "completed"
+        notes:
+          - "Replaced 'Execution Modes' section with 'Action Execution'"
+          - "Updated action description to reference edges instead of execution order"
+        files:
+          - path: "docs/workflow/README.md"
+            status: "completed"
+
+      - task: "Update branching documentation"
+        status: "completed"
+        notes:
+          - "Removed backwards compatibility line and section"
+          - "Updated algorithm to show error on missing edges"
+          - "Removed linear execution references from Best Practices"
+          - "Updated Common Mistakes table"
+          - "Removed fallback test reference"
+        files:
+          - path: "docs/workflow/branching.md"
+            status: "completed"
+
+      - task: "Update database schema documentation"
+        status: "completed"
+        notes:
+          - "Removed execution_order column from rule_actions table"
+          - "Updated usage notes to require edges"
+          - "Removed execution_order index"
+        files:
+          - path: "docs/workflow/database-schema.md"
+            status: "completed"
+
+      - task: "Update architecture documentation"
+        status: "completed"
+        notes:
+          - "Removed Parallel Execution section"
+          - "Updated graph execution to be the only mode"
+          - "Updated engine execution flow description"
+        files:
+          - path: "docs/workflow/architecture.md"
+            status: "completed"
+
+      - task: "Update rules configuration documentation"
+        status: "completed"
+        notes:
+          - "Removed execution_order from table and examples"
+          - "Removed Execution Order, Backwards Compatibility, and Linear Mode sections"
+          - "Replaced Edges vs Execution Order with Edge Design Best Practices"
+        files:
+          - path: "docs/workflow/configuration/rules.md"
+            status: "completed"
+
+      - task: "Update actions overview documentation"
+        status: "completed"
+        notes:
+          - "Removed Linear Execution subsection"
+          - "Simplified to single Execution Order section using graph-only language"
+        files:
+          - path: "docs/workflow/actions/overview.md"
+            status: "completed"
+
+      - task: "Update API reference"
+        status: "completed"
+        notes:
+          - "Updated edge deletion notes to reflect edge requirement"
+        files:
+          - path: "docs/workflow/api-reference.md"
+            status: "completed"
+
+      - task: "Fix additional stale references (found during validation)"
+        status: "completed"
+        notes:
+          - "Removed execution_order from seek-approval.md JSON examples"
+          - "Updated testing.md: backwards compat → edge requirement, removed ExecutionOrder from code examples"
+        files:
+          - path: "docs/workflow/actions/seek-approval.md"
+            status: "completed"
+          - path: "docs/workflow/testing.md"
+            status: "completed"
+
+    validation:
+      - check: "No references to execution_order in docs"
+        status: "completed"
+      - check: "No references to linear execution in docs"
+        status: "completed"
+      - check: "Edge requirement documented"
+        status: "completed"
+
+    deliverables:
+      - "Updated 9 documentation files (7 planned + 2 found during validation)"
+      - "Removed all execution_order references (column, field, JSON examples)"
+      - "Removed all linear execution and backwards compatibility language"
+      - "Documented edge requirement in README, branching, architecture, overview, API reference"
+
+    blockers: []
+
+context:
+  current_focus: "PROJECT COMPLETE"
+  next_task: "None - all phases completed"
+  recent_changes:
+    - "Phase 6 COMPLETED: Documentation Updates (9 files modified)"
+    - "Phase 6: Updated 7 planned doc files + 2 additional (seek-approval.md, testing.md)"
+    - "Phase 6: All validation checks pass (zero stale references)"
+    - "Phase 5 COMPLETED: Seed Data Updates"
+    - "Phase 4 COMPLETED: Test Updates"
+    - "Phase 3 COMPLETED: Remove Linear Executor"
+    - "Phase 2 COMPLETED: Remove execution_order Field"
+    - "Phase 1 COMPLETED: Validation Layer Changes"
+  decisions:
+    - "Decision: Require edges universally (Option B)"
+    - "Decision: Remove execution_order field entirely"
+    - "Decision: Validation in app layer only (workflowsaveapp)"
+    - "Decision: Allow saving incomplete/draft workflows (no actions) for consistent UX"
+    - "Decision: Auto-deactivate rules with no actions (force is_active=false)"
+    - "Plan Review: Add production data risk assessment before deployment"
+    - "Plan Review: Clarify this is an error message improvement, not entirely new validation"
+    - "Phase 2 Plan Review (B+): Consolidated migration tasks into direct table modification (not in prod)"
+    - "Phase 2 Plan Review (B+): ORDER BY resolved: ra.name for JSON agg, remove ORDER BY from QueryRoleActionsViewByRuleID"
+    - "Phase 2 Plan Review (B+): order.By not needed for action queries (internal lookups only)"
+    - "Phase 2 Plan Review (B+): No cache invalidation needed (confirmed no sturdyc on RuleAction)"
+    - "Phase 2 Plan Review (B+): No additional transaction work needed (workflowsaveapp already handles correctly)"
+    - "Phase 2 Plan Review (B+): All 'also check' instructions converted to explicit sub-tasks"
+    - "Phase 2 Plan Review (B+): Added converters.go and workflowsaveapp.go as explicit files"
+    - "Phase 3 Plan Review (A-): Error returns should include meaningful BatchExecutionResult with Status='failed'"
+    - "Phase 3 Plan Review (A-): Add database validation prerequisite before deployment"
+    - "Phase 3 Plan Review (A-): Implementation order: Task 2 → Task 3 → Task 1 (update callers before deleting function)"
+    - "Phase 4 Plan Review (B+): Fix AutomationRuleID → RuleID in edge creation examples"
+    - "Phase 4 Plan Review (B+): Add explicit createTestRule helper update task (used by 20+ tests)"
+    - "Phase 4 Plan Review (B+): Verify Phase 1 error wrapping and draft deactivation before implementing"
+    - "Phase 4 Plan Review (B+): Remove redundant TriggerSource instructions, clarify Task 3 loop logic"
+
+dependencies:
+  internal: []
+  external: []
+
+milestones:
+  - name: "Planning Complete"
+    status: "pending"
+    date: null
+  - name: "Phase 1 Complete (Validation)"
+    status: "completed"
+    date: "2026-02-06"
+  - name: "Phase 2-3 Complete (Remove Old Code)"
+    status: "completed"
+    date: "2026-02-06"
+  - name: "Phase 4-5 Complete (Tests & Seeds)"
+    status: "completed"
+    date: "2026-02-06"
+  - name: "Phase 6 Complete (Documentation)"
+    status: "completed"
+    date: "2026-02-06"
+  - name: "Project Complete"
+    status: "completed"
+    date: "2026-02-06"

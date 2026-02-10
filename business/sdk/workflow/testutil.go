@@ -152,6 +152,7 @@ func TestNewActionTemplates(n int, createdBy uuid.UUID) []NewActionTemplate {
 			Name:          fmt.Sprintf("Template%d", idx),
 			Description:   fmt.Sprintf("Description for template %d", idx),
 			ActionType:    fmt.Sprintf("ActionType%d", idx),
+			Icon:          "material-symbols:bolt",
 			DefaultConfig: configJSON,
 			CreatedBy:     createdBy,
 		}
@@ -187,10 +188,20 @@ func TestNewRuleActions(n int, ruleIDs []uuid.UUID, templateIDs *[]uuid.UUID) []
 	for i := 0; i < n; i++ {
 		idx++
 
-		// Create sample action config
+		// Create sample action config with a valid action_type for execution
+		// Using create_alert with required recipients structure
+		// Generate a deterministic UUID for the recipient based on index
+		recipientUUID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("test-recipient-%d", idx)))
 		config := map[string]interface{}{
-			"action_param": fmt.Sprintf("param_%d", idx),
-			"enabled":      true,
+			"action_type": "create_alert",
+			"alert_type":  fmt.Sprintf("test_alert_%d", idx),
+			"severity":    "medium",
+			"title":       fmt.Sprintf("Test Alert %d", idx),
+			"message":     fmt.Sprintf("Test message for action %d", idx),
+			"recipients": map[string]interface{}{
+				"users": []string{recipientUUID.String()},
+				"roles": []string{},
+			},
 		}
 		configJSON, _ := json.Marshal(config)
 
@@ -199,7 +210,6 @@ func TestNewRuleActions(n int, ruleIDs []uuid.UUID, templateIDs *[]uuid.UUID) []
 			Name:             fmt.Sprintf("Action%d", idx),
 			Description:      fmt.Sprintf("Description for action %d", idx),
 			ActionConfig:     configJSON,
-			ExecutionOrder:   i + 1,
 			IsActive:         true,
 		}
 
@@ -227,6 +237,42 @@ func TestSeedRuleActions(ctx context.Context, n int, ruleIDs []uuid.UUID, templa
 		}
 
 		actions[i] = action
+	}
+
+	// Group actions by rule ID for edge creation.
+	actionsByRule := make(map[uuid.UUID][]RuleAction)
+	for _, a := range actions {
+		actionsByRule[a.AutomationRuleID] = append(actionsByRule[a.AutomationRuleID], a)
+	}
+
+	// Create edge chains for each rule.
+	for ruleID, ruleActions := range actionsByRule {
+		// Start edge: nil -> first action
+		_, err := api.CreateActionEdge(ctx, NewActionEdge{
+			RuleID:         ruleID,
+			SourceActionID: nil,
+			TargetActionID: ruleActions[0].ID,
+			EdgeType:       EdgeTypeStart,
+			EdgeOrder:      0,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("seeding start edge for rule %s: %w", ruleID, err)
+		}
+
+		// Sequence edges: action[i] -> action[i+1]
+		for i := 0; i < len(ruleActions)-1; i++ {
+			sourceID := ruleActions[i].ID
+			_, err := api.CreateActionEdge(ctx, NewActionEdge{
+				RuleID:         ruleID,
+				SourceActionID: &sourceID,
+				TargetActionID: ruleActions[i+1].ID,
+				EdgeType:       EdgeTypeSequence,
+				EdgeOrder:      i + 1,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("seeding edge for rule %s action %d: %w", ruleID, i, err)
+			}
+		}
 	}
 
 	return actions, nil
@@ -302,14 +348,16 @@ func TestNewAutomationExecutions(n int, ruleIDs []uuid.UUID) []NewAutomationExec
 		}
 		actionsExecutedJSON, _ := json.Marshal(actionsExecuted)
 
+		ruleID := ruleIDs[i%len(ruleIDs)]
 		exec := NewAutomationExecution{
-			AutomationRuleID: ruleIDs[i%len(ruleIDs)],
+			AutomationRuleID: &ruleID,
 			EntityType:       fmt.Sprintf("EntityType%d", idx),
 			TriggerData:      triggerDataJSON,
 			ActionsExecuted:  actionsExecutedJSON,
 			Status:           statuses[i%len(statuses)],
 			ErrorMessage:     "",
 			ExecutionTimeMs:  100 + rand.Intn(900), // Random time between 100-1000ms
+			TriggerSource:    TriggerSourceAutomation,
 		}
 
 		// Add error message for failed executions

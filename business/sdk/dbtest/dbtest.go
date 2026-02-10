@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"math"
 	"math/rand"
+	"os/exec"
 	"reflect"
 	"testing"
 	"time"
@@ -23,17 +24,16 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/currencybus/stores/currencycache"
 	"github.com/timmaaaz/ichor/business/domain/core/currencybus/stores/currencydb"
+	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
+	"github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus"
 	"github.com/timmaaaz/ichor/business/domain/core/paymenttermbus/stores/paymenttermdb"
-	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionscache"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus/stores/permissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/rolecache"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus/stores/roledb"
-	"github.com/timmaaaz/ichor/business/domain/core/pagebus"
-	"github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus/stores/rolepagedb"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
@@ -46,6 +46,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/approvalbus/stores/approvaldb"
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus/stores/commentdb"
+	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus/stores/inspectiondb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
@@ -66,18 +67,18 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus/stores/warehousedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus/stores/zonedb"
-	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
-	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus/stores/supplierdb"
-	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
-	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus/stores/supplierproductdb"
-	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus/stores/purchaseorderstatusdb"
-	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
-	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus/stores/purchaseorderlineitemstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus/stores/purchaseorderdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus/stores/purchaseorderlineitemdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus/stores/purchaseorderlineitemstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus/stores/purchaseorderstatusdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus/stores/supplierdb"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus/stores/supplierproductdb"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus/stores/branddb"
 	"github.com/timmaaaz/ichor/business/domain/products/costhistorybus"
@@ -100,6 +101,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus/stores/orderlineitemsdb"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/stores/ordersdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus/stores/actionpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 
@@ -232,10 +235,10 @@ type BusDomain struct {
 	CostHistory     *costhistorybus.Business
 
 	// Purchase Orders
-	PurchaseOrderStatus           *purchaseorderstatusbus.Business
-	PurchaseOrderLineItemStatus   *purchaseorderlineitemstatusbus.Business
-	PurchaseOrder                 *purchaseorderbus.Business
-	PurchaseOrderLineItem         *purchaseorderlineitembus.Business
+	PurchaseOrderStatus         *purchaseorderstatusbus.Business
+	PurchaseOrderLineItemStatus *purchaseorderlineitemstatusbus.Business
+	PurchaseOrder               *purchaseorderbus.Business
+	PurchaseOrderLineItem       *purchaseorderlineitembus.Business
 
 	// Quality
 	Metrics    *metricsbus.Business
@@ -257,8 +260,9 @@ type BusDomain struct {
 	OrderLineItem             *orderlineitemsbus.Business
 
 	// Workflow
-	Workflow *workflow.Business
-	Alert    *alertbus.Business
+	Workflow          *workflow.Business
+	Alert             *alertbus.Business
+	ActionPermissions *actionpermissionsbus.Business
 
 	// Data
 	ConfigStore *tablebuilder.ConfigStore
@@ -365,8 +369,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	orderLineItemsBus := orderlineitemsbus.NewBusiness(log, delegate, orderlineitemsdb.NewStore(log, db))
 
 	// Workflow
-	workflowBus := workflow.NewBusiness(log, workflowdb.NewStore(log, db))
+	workflowBus := workflow.NewBusiness(log, delegate, workflowdb.NewStore(log, db))
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
+	actionPermissionsBus := actionpermissionsbus.NewBusiness(log, actionpermissionsdb.NewStore(log, db))
 
 	// Data
 	configBus := tablebuilder.NewConfigStore(log, db)
@@ -380,75 +385,76 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	pageConfigBus := pageconfigbus.NewBusiness(log, delegate, pageconfigdb.NewStore(log, db), pageContentBus, pageActionBus)
 
 	return BusDomain{
-		Delegate:                  delegate,
-		Home:                      homeBus,
-		AssetType:                 assetTypeBus,
-		ValidAsset:                validAssetBus,
-		User:                      userBus,
-		UserApprovalStatus:        userapprovalstatusbus,
-		UserApprovalComment:       userApprovalCommentBus,
-		Country:                   countryBus,
-		Region:                    regionBus,
-		City:                      cityBus,
-		Street:                    streetBus,
-		Timezone:                  timezoneBus,
-		ApprovalStatus:            approvalstatusBus,
-		FulfillmentStatus:         fulfillmentstatusBus,
-		AssetCondition:            assetConditionBus,
-		Tag:                       tagBus,
-		AssetTag:                  assetTagBus,
-		Title:                     titlebus,
-		ReportsTo:                 reportsToBus,
-		Office:                    officeBus,
-		UserAsset:                 userAssetBus,
-		Asset:                     assetBus,
-		ContactInfos:              contactInfosBus,
-		Customers:                 customersBus,
-		PaymentTerm:               paymentTermBus,
-		Currency:                  currencyBus,
-		Brand:                     brandBus,
-		Warehouse:                 warehouseBus,
-		Role:                      roleBus,
-		Page:                      pageBus,
-		RolePage:                  rolePageBus,
-		UserRole:                  userRoleBus,
-		ProductCategory:           productCategoryBus,
-		TableAccess:               tableAccessBus,
-		Permissions:               permissionsBus,
-		Introspection:             introspectionBus,
-		Product:                   productBus,
-		PhysicalAttribute:         physicalAttributeBus,
-		ProductCost:               productCostBus,
-		Supplier:                  supplierBus,
-		CostHistory:               costHistoryBus,
-		SupplierProduct:           supplierProductBus,
-		PurchaseOrderStatus:       purchaseOrderStatusBus,
+		Delegate:                    delegate,
+		Home:                        homeBus,
+		AssetType:                   assetTypeBus,
+		ValidAsset:                  validAssetBus,
+		User:                        userBus,
+		UserApprovalStatus:          userapprovalstatusbus,
+		UserApprovalComment:         userApprovalCommentBus,
+		Country:                     countryBus,
+		Region:                      regionBus,
+		City:                        cityBus,
+		Street:                      streetBus,
+		Timezone:                    timezoneBus,
+		ApprovalStatus:              approvalstatusBus,
+		FulfillmentStatus:           fulfillmentstatusBus,
+		AssetCondition:              assetConditionBus,
+		Tag:                         tagBus,
+		AssetTag:                    assetTagBus,
+		Title:                       titlebus,
+		ReportsTo:                   reportsToBus,
+		Office:                      officeBus,
+		UserAsset:                   userAssetBus,
+		Asset:                       assetBus,
+		ContactInfos:                contactInfosBus,
+		Customers:                   customersBus,
+		PaymentTerm:                 paymentTermBus,
+		Currency:                    currencyBus,
+		Brand:                       brandBus,
+		Warehouse:                   warehouseBus,
+		Role:                        roleBus,
+		Page:                        pageBus,
+		RolePage:                    rolePageBus,
+		UserRole:                    userRoleBus,
+		ProductCategory:             productCategoryBus,
+		TableAccess:                 tableAccessBus,
+		Permissions:                 permissionsBus,
+		Introspection:               introspectionBus,
+		Product:                     productBus,
+		PhysicalAttribute:           physicalAttributeBus,
+		ProductCost:                 productCostBus,
+		Supplier:                    supplierBus,
+		CostHistory:                 costHistoryBus,
+		SupplierProduct:             supplierProductBus,
+		PurchaseOrderStatus:         purchaseOrderStatusBus,
 		PurchaseOrderLineItemStatus: purchaseOrderLineItemStatusBus,
-		PurchaseOrder:             purchaseOrderBus,
-		PurchaseOrderLineItem:     purchaseOrderLineItemBus,
-		Metrics:                   metricsBus,
-		LotTrackings:              lotTrackingsBus,
-		Zones:                     zoneBus,
-		InventoryLocation:         inventoryLocationBus,
-		InventoryItem:             inventoryItemBus,
-		Inspection:                inspectionBus,
-		SerialNumber:              serialNumberBus,
-		InventoryTransaction:      inventoryTransactionBus,
-		InventoryAdjustment:       inventoryAdjustmentBus,
-		TransferOrder:             transferOrderBus,
-		OrderFulfillmentStatus:    orderFulfillmentStatusBus,
-		LineItemFulfillmentStatus: lineItemFulfillmentStatusBus,
-		Order:                     ordersBus,
-		OrderLineItem:             orderLineItemsBus,
-		Workflow:                  workflowBus,
-		Alert:                     alertBus,
-		ConfigStore:               configBus,
-		TableStore:                tableBus,
-		Form:                      formBus,
-		FormField:                 formFieldBus,
-		PageAction:                pageActionBus,
-		PageConfig:                pageConfigBus,
-		PageContent:               pageContentBus,
+		PurchaseOrder:               purchaseOrderBus,
+		PurchaseOrderLineItem:       purchaseOrderLineItemBus,
+		Metrics:                     metricsBus,
+		LotTrackings:                lotTrackingsBus,
+		Zones:                       zoneBus,
+		InventoryLocation:           inventoryLocationBus,
+		InventoryItem:               inventoryItemBus,
+		Inspection:                  inspectionBus,
+		SerialNumber:                serialNumberBus,
+		InventoryTransaction:        inventoryTransactionBus,
+		InventoryAdjustment:         inventoryAdjustmentBus,
+		TransferOrder:               transferOrderBus,
+		OrderFulfillmentStatus:      orderFulfillmentStatusBus,
+		LineItemFulfillmentStatus:   lineItemFulfillmentStatusBus,
+		Order:                       ordersBus,
+		OrderLineItem:               orderLineItemsBus,
+		Workflow:                    workflowBus,
+		Alert:                       alertBus,
+		ActionPermissions:           actionPermissionsBus,
+		ConfigStore:                 configBus,
+		TableStore:                  tableBus,
+		Form:                        formBus,
+		FormField:                   formFieldBus,
+		PageAction:                  pageActionBus,
+		PageConfig:                  pageConfigBus,
+		PageContent:                 pageContentBus,
 	}
 
 }
@@ -472,8 +478,8 @@ func NewDatabase(t *testing.T, testName string) *Database {
 	dockerArgs := []string{"-e", "POSTGRES_PASSWORD=postgres"}
 	appArgs := []string{"-c", "log_statement=all"}
 
-	// cmd := exec.Command("docker", "rm", "-f", name)
-	// cmd.Run() // Ignore error - container might not exist
+	cmd := exec.Command("docker", "rm", "-f", name)
+	cmd.Run() // Ignore error - container might not exist
 
 	c, err := docker.StartContainer(image, name, port, dockerArgs, appArgs)
 	if err != nil {

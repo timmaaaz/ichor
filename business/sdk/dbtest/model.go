@@ -690,6 +690,42 @@ var allPages = []pagebus.NewPage{
 		IsActive:   true,
 		ShowInMenu: false,
 	},
+	{
+		Path:       "/workflow",
+		Name:       "Automation Rules",
+		Module:     "workflow",
+		Icon:       "material-symbols:account-tree",
+		SortOrder:  74,
+		IsActive:   true,
+		ShowInMenu: true,
+	},
+	{
+		Path:       "/workflow/editor/:id",
+		Name:       "Workflow Editor",
+		Module:     "workflow",
+		Icon:       "material-symbols:schema",
+		SortOrder:  75,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
+	{
+		Path:       "/workflow/executions",
+		Name:       "Execution History",
+		Module:     "workflow",
+		Icon:       "material-symbols:history",
+		SortOrder:  76,
+		IsActive:   true,
+		ShowInMenu: true,
+	},
+	{
+		Path:       "/workflow/editor",
+		Name:       "Workflow Editor",
+		Module:     "workflow",
+		Icon:       "material-symbols:history",
+		SortOrder:  77,
+		IsActive:   true,
+		ShowInMenu: true,
+	},
 }
 
 // =============================================================================

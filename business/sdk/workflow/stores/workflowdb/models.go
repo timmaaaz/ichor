@@ -183,6 +183,7 @@ type automationRule struct {
 	EntityTypeID      string         `db:"entity_type_id"`
 	TriggerTypeID     string         `db:"trigger_type_id"`
 	TriggerConditions sql.NullString `db:"trigger_conditions"`
+	CanvasLayout      sql.NullString `db:"canvas_layout"`
 	IsActive          bool           `db:"is_active"`
 	CreatedDate       time.Time      `db:"created_date"`
 	UpdatedDate       time.Time      `db:"updated_date"`
@@ -218,6 +219,10 @@ func toCoreAutomationRule(dbRule automationRule) workflow.AutomationRule {
 		if err := json.Unmarshal([]byte(dbRule.TriggerConditions.String), &tc); err == nil {
 			ar.TriggerConditions = &tc
 		}
+	}
+
+	if dbRule.CanvasLayout.Valid {
+		ar.CanvasLayout = json.RawMessage(dbRule.CanvasLayout.String)
 	}
 
 	return ar
@@ -261,6 +266,10 @@ func toDBAutomationRule(ar workflow.AutomationRule) (automationRule, error) {
 		ret.TriggerConditions = sql.NullString{String: string(tcBytes), Valid: true}
 	}
 
+	if len(ar.CanvasLayout) > 0 {
+		ret.CanvasLayout = sql.NullString{String: string(ar.CanvasLayout), Valid: true}
+	}
+
 	return ret, nil
 }
 
@@ -270,6 +279,7 @@ type actionTemplate struct {
 	Name          string          `db:"name"`
 	Description   string          `db:"description"`
 	ActionType    string          `db:"action_type"`
+	Icon          string          `db:"icon"`
 	DefaultConfig json.RawMessage `db:"default_config"`
 	CreatedDate   time.Time       `db:"created_date"`
 	CreatedBy     string          `db:"created_by"`
@@ -289,6 +299,7 @@ func toCoreActionTemplate(dbTemplate actionTemplate) workflow.ActionTemplate {
 		Name:          dbTemplate.Name,
 		Description:   dbTemplate.Description,
 		ActionType:    dbTemplate.ActionType,
+		Icon:          dbTemplate.Icon,
 		DefaultConfig: dbTemplate.DefaultConfig,
 		CreatedDate:   dbTemplate.CreatedDate,
 		CreatedBy:     uuid.MustParse(dbTemplate.CreatedBy),
@@ -310,6 +321,7 @@ func toDBActionTemplate(at workflow.ActionTemplate) actionTemplate {
 		Name:          at.Name,
 		Description:   at.Description,
 		ActionType:    at.ActionType,
+		Icon:          at.Icon,
 		DefaultConfig: at.DefaultConfig,
 		CreatedDate:   time.Now(),
 		CreatedBy:     at.CreatedBy.String(),
@@ -325,7 +337,6 @@ type ruleAction struct {
 	Name             string          `db:"name"`
 	Description      string          `db:"description"`
 	ActionConfig     json.RawMessage `db:"action_config"`
-	ExecutionOrder   int             `db:"execution_order"`
 	IsActive         bool            `db:"is_active"`
 	TemplateID       sql.NullString  `db:"template_id"`
 	DeactivatedBy    sql.NullString  `db:"deactivated_by"`
@@ -343,7 +354,6 @@ func toCoreRuleAction(dbAction ruleAction) workflow.RuleAction {
 		Description:      dbAction.Description,
 		Name:             dbAction.Name,
 		ActionConfig:     dbAction.ActionConfig,
-		ExecutionOrder:   dbAction.ExecutionOrder,
 		IsActive:         dbAction.IsActive,
 		DeactivatedBy:    deactivatedBy,
 	}
@@ -376,7 +386,6 @@ func toDBRuleAction(ra workflow.RuleAction) ruleAction {
 		Name:             ra.Name,
 		Description:      ra.Description,
 		ActionConfig:     ra.ActionConfig,
-		ExecutionOrder:   ra.ExecutionOrder,
 		IsActive:         ra.IsActive,
 		DeactivatedBy:    deactivatedBy,
 	}
@@ -419,10 +428,11 @@ func toDBRuleDependency(rd workflow.RuleDependency) ruleDependency {
 	}
 }
 
-// automationExecution represents an execution record of an automation rule
+// automationExecution represents an execution record of an automation rule or manual action
 type automationExecution struct {
 	ID                string          `db:"id"`
-	AutomationRulesID string          `db:"automation_rules_id"`
+	AutomationRulesID sql.NullString  `db:"automation_rules_id"` // Nullable for manual executions
+	RuleName          sql.NullString  `db:"rule_name"`           // From LEFT JOIN with automation_rules
 	EntityType        string          `db:"entity_type"`
 	TriggerData       json.RawMessage `db:"trigger_data"`
 	ActionsExecuted   json.RawMessage `db:"actions_executed"`
@@ -430,24 +440,44 @@ type automationExecution struct {
 	ErrorMessage      sql.NullString  `db:"error_message"`
 	ExecutionTimeMs   sql.NullInt32   `db:"execution_time_ms"`
 	ExecutedAt        time.Time       `db:"executed_at"`
+	TriggerSource     sql.NullString  `db:"trigger_source"` // 'automation' or 'manual'
+	ExecutedBy        sql.NullString  `db:"executed_by"`    // User who triggered manual execution
+	ActionType        sql.NullString  `db:"action_type"`    // For manual executions
 }
 
 // toCoreAutomationExecution converts a store automationExecution to core AutomationExecution
 func toCoreAutomationExecution(dbExec automationExecution) workflow.AutomationExecution {
 	ae := workflow.AutomationExecution{
-		ID:               uuid.MustParse(dbExec.ID),
-		AutomationRuleID: uuid.MustParse(dbExec.AutomationRulesID),
-		EntityType:       dbExec.EntityType,
-		TriggerData:      dbExec.TriggerData,
-		ActionsExecuted:  dbExec.ActionsExecuted,
-		Status:           workflow.ExecutionStatus(dbExec.Status),
-		ExecutedAt:       dbExec.ExecutedAt,
+		ID:              uuid.MustParse(dbExec.ID),
+		EntityType:      dbExec.EntityType,
+		TriggerData:     dbExec.TriggerData,
+		ActionsExecuted: dbExec.ActionsExecuted,
+		Status:          workflow.ExecutionStatus(dbExec.Status),
+		ExecutedAt:      dbExec.ExecutedAt,
+	}
+	// Handle nullable AutomationRuleID
+	if dbExec.AutomationRulesID.Valid {
+		ruleID := uuid.MustParse(dbExec.AutomationRulesID.String)
+		ae.AutomationRuleID = &ruleID
+	}
+	if dbExec.RuleName.Valid {
+		ae.RuleName = dbExec.RuleName.String
 	}
 	if dbExec.ErrorMessage.Valid {
 		ae.ErrorMessage = dbExec.ErrorMessage.String
 	}
 	if dbExec.ExecutionTimeMs.Valid {
 		ae.ExecutionTimeMs = int(dbExec.ExecutionTimeMs.Int32)
+	}
+	if dbExec.TriggerSource.Valid {
+		ae.TriggerSource = dbExec.TriggerSource.String
+	}
+	if dbExec.ExecutedBy.Valid {
+		executedBy := uuid.MustParse(dbExec.ExecutedBy.String)
+		ae.ExecutedBy = &executedBy
+	}
+	if dbExec.ActionType.Valid {
+		ae.ActionType = dbExec.ActionType.String
 	}
 	return ae
 }
@@ -463,19 +493,31 @@ func toCoreAutomationExecutionSlice(dbExecs []automationExecution) []workflow.Au
 // toDBAutomationExecution converts a core AutomationExecution to store values
 func toDBAutomationExecution(ae workflow.AutomationExecution) automationExecution {
 	dbExec := automationExecution{
-		ID:                ae.ID.String(),
-		AutomationRulesID: ae.AutomationRuleID.String(),
-		EntityType:        ae.EntityType,
-		TriggerData:       ae.TriggerData,
-		ActionsExecuted:   ae.ActionsExecuted,
-		Status:            string(ae.Status),
-		ExecutedAt:        time.Now(),
+		ID:              ae.ID.String(),
+		EntityType:      ae.EntityType,
+		TriggerData:     ae.TriggerData,
+		ActionsExecuted: ae.ActionsExecuted,
+		Status:          string(ae.Status),
+		ExecutedAt:      time.Now(),
+	}
+	// Handle nullable AutomationRuleID
+	if ae.AutomationRuleID != nil {
+		dbExec.AutomationRulesID = sql.NullString{String: ae.AutomationRuleID.String(), Valid: true}
 	}
 	if ae.ErrorMessage != "" {
 		dbExec.ErrorMessage = sql.NullString{String: ae.ErrorMessage, Valid: true}
 	}
 	if ae.ExecutionTimeMs > 0 {
 		dbExec.ExecutionTimeMs = sql.NullInt32{Int32: int32(ae.ExecutionTimeMs), Valid: true}
+	}
+	if ae.TriggerSource != "" {
+		dbExec.TriggerSource = sql.NullString{String: ae.TriggerSource, Valid: true}
+	}
+	if ae.ExecutedBy != nil {
+		dbExec.ExecutedBy = sql.NullString{String: ae.ExecutedBy.String(), Valid: true}
+	}
+	if ae.ActionType != "" {
+		dbExec.ActionType = sql.NullString{String: ae.ActionType, Valid: true}
 	}
 	return dbExec
 }
@@ -487,6 +529,7 @@ type automationRulesView struct {
 	Description       sql.NullString  `db:"description"`
 	EntityID          sql.NullString  `db:"entity_id"`
 	TriggerConditions sql.NullString  `db:"trigger_conditions"`
+	CanvasLayout      sql.NullString  `db:"canvas_layout"`
 	Actions           json.RawMessage `db:"actions"`
 	IsActive          bool            `db:"is_active"`
 	CreatedDate       time.Time       `db:"created_date"`
@@ -557,6 +600,9 @@ func toCoreAutomationRuleView(dbView automationRulesView) workflow.AutomationRul
 			view.TriggerConditions = &tc
 		}
 	}
+	if dbView.CanvasLayout.Valid {
+		view.CanvasLayout = json.RawMessage(dbView.CanvasLayout.String)
+	}
 
 	return view
 }
@@ -577,7 +623,6 @@ type ruleActionView struct {
 	Name             sql.NullString  `db:"name"`
 	Description      sql.NullString  `db:"description"`
 	ActionConfig     json.RawMessage `db:"action_config"`
-	ExecutionOrder   sql.NullInt32   `db:"execution_order"`
 	IsActive         sql.NullBool    `db:"is_active"`
 	// Template information
 	TemplateID            sql.NullString         `db:"template_id"`
@@ -603,9 +648,6 @@ func toCoreRuleActionView(dbView ruleActionView) workflow.RuleActionView {
 	}
 	if dbView.Description.Valid {
 		view.Description = dbView.Description.String
-	}
-	if dbView.ExecutionOrder.Valid {
-		view.ExecutionOrder = int(dbView.ExecutionOrder.Int32)
 	}
 	if dbView.IsActive.Valid {
 		view.IsActive = dbView.IsActive.Bool
@@ -767,4 +809,85 @@ func toDBAllocationResult(ar workflow.AllocationResult) allocationResult {
 		AllocationData: ar.AllocationData,
 		CreatedDate:    time.Now(),
 	}
+}
+
+// actionEdge represents a directed edge between actions in a workflow graph
+type actionEdge struct {
+	ID             string         `db:"id"`
+	RuleID         string         `db:"rule_id"`
+	SourceActionID sql.NullString `db:"source_action_id"` // NULL for start edges
+	TargetActionID string         `db:"target_action_id"`
+	EdgeType       string         `db:"edge_type"`
+	EdgeOrder      int            `db:"edge_order"`
+	CreatedDate    time.Time      `db:"created_date"`
+}
+
+// toCoreActionEdge converts a store actionEdge to core ActionEdge
+func toCoreActionEdge(dbEdge actionEdge) workflow.ActionEdge {
+	edge := workflow.ActionEdge{
+		ID:             uuid.MustParse(dbEdge.ID),
+		RuleID:         uuid.MustParse(dbEdge.RuleID),
+		TargetActionID: uuid.MustParse(dbEdge.TargetActionID),
+		EdgeType:       dbEdge.EdgeType,
+		EdgeOrder:      dbEdge.EdgeOrder,
+		CreatedDate:    dbEdge.CreatedDate,
+	}
+
+	if dbEdge.SourceActionID.Valid {
+		sourceID := uuid.MustParse(dbEdge.SourceActionID.String)
+		edge.SourceActionID = &sourceID
+	}
+
+	return edge
+}
+
+// toCoreActionEdgeSlice converts multiple store edges to core edges
+func toCoreActionEdgeSlice(dbEdges []actionEdge) []workflow.ActionEdge {
+	edges := make([]workflow.ActionEdge, len(dbEdges))
+	for i, dbEdge := range dbEdges {
+		edges[i] = toCoreActionEdge(dbEdge)
+	}
+	return edges
+}
+
+// toDBActionEdge converts a core ActionEdge to store values
+func toDBActionEdge(edge workflow.ActionEdge) actionEdge {
+	dbEdge := actionEdge{
+		ID:             edge.ID.String(),
+		RuleID:         edge.RuleID.String(),
+		TargetActionID: edge.TargetActionID.String(),
+		EdgeType:       edge.EdgeType,
+		EdgeOrder:      edge.EdgeOrder,
+		CreatedDate:    edge.CreatedDate,
+	}
+
+	if edge.SourceActionID != nil {
+		dbEdge.SourceActionID = sql.NullString{
+			String: edge.SourceActionID.String(),
+			Valid:  true,
+		}
+	}
+
+	return dbEdge
+}
+
+// toDBNewActionEdge converts a core NewActionEdge to store values for insertion
+func toDBNewActionEdge(edge workflow.NewActionEdge) actionEdge {
+	dbEdge := actionEdge{
+		ID:             uuid.New().String(),
+		RuleID:         edge.RuleID.String(),
+		TargetActionID: edge.TargetActionID.String(),
+		EdgeType:       edge.EdgeType,
+		EdgeOrder:      edge.EdgeOrder,
+		CreatedDate:    time.Now(),
+	}
+
+	if edge.SourceActionID != nil {
+		dbEdge.SourceActionID = sql.NullString{
+			String: edge.SourceActionID.String(),
+			Valid:  true,
+		}
+	}
+
+	return dbEdge
 }

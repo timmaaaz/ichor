@@ -1,171 +1,40 @@
 # Event Infrastructure
 
-This document covers the EventPublisher, DelegateHandler, and how workflow events flow from business layer operations to the workflow engine.
+This document covers the TemporalDelegateHandler, delegate pattern, and how workflow events flow from business layer operations to Temporal for execution.
 
 ## Overview
 
 The event infrastructure enables workflow automation by:
 
-1. Capturing entity changes in the business layer
-2. Converting them to workflow events
-3. Queuing them for asynchronous processing
-4. Executing matched automation rules
+1. Capturing entity changes in the business layer via delegate events
+2. Converting them to TriggerEvents via the TemporalDelegateHandler
+3. Evaluating matching automation rules via WorkflowTrigger
+4. Dispatching matched workflows to Temporal for durable execution
 
-## Two Entry Points
-
-Events can enter the workflow system through two paths:
-
-### Path 1: FormData (App Layer)
-
-For multi-entity transactions via the formdata API:
+All events enter the workflow system through a single path: the delegate pattern.
 
 ```
-formdata API → UpsertFormData() → tx.Commit() → EventPublisher
+Business Layer → delegate.Call() → TemporalDelegateHandler → WorkflowTrigger → Temporal
 ```
 
-Events fire after transaction commit, ensuring data consistency.
+## TemporalDelegateHandler
 
-### Path 2: Delegate Pattern (Business Layer)
+**Location**: `business/sdk/workflow/temporal/delegatehandler.go`
 
-For direct API calls and all other entry points:
-
-```
-ordersapi → ordersapp → ordersbus.Create() → delegate.Call() → DelegateHandler → EventPublisher
-```
-
-Events fire within the business layer via the delegate pattern.
-
-## EventPublisher
-
-**Location**: `business/sdk/workflow/eventpublisher.go`
-
-The EventPublisher provides non-blocking workflow event publishing.
-
-### Structure
-
-```go
-type EventPublisher struct {
-    log          *logger.Logger
-    queueManager *QueueManager
-}
-```
-
-### Methods
-
-#### PublishCreateEvent
-
-Fires an `on_create` event.
-
-```go
-func (ep *EventPublisher) PublishCreateEvent(
-    ctx context.Context,
-    entityName string,
-    result interface{},
-    userID uuid.UUID,
-)
-```
-
-**Parameters:**
-- `entityName`: Table name (e.g., "orders")
-- `result`: Entity data (usually app layer response)
-- `userID`: User who created the entity
-
-#### PublishUpdateEvent
-
-Fires an `on_update` event with field changes.
-
-```go
-func (ep *EventPublisher) PublishUpdateEvent(
-    ctx context.Context,
-    entityName string,
-    result interface{},
-    fieldChanges map[string]FieldChange,
-    userID uuid.UUID,
-)
-```
-
-**Parameters:**
-- `fieldChanges`: Map of field names to old/new values
-
-#### PublishDeleteEvent
-
-Fires an `on_delete` event.
-
-```go
-func (ep *EventPublisher) PublishDeleteEvent(
-    ctx context.Context,
-    entityName string,
-    entityID uuid.UUID,
-    userID uuid.UUID,
-)
-```
-
-### Non-Blocking Design
-
-Events are queued in a goroutine to avoid blocking the primary operation:
-
-```go
-func (ep *EventPublisher) queueEventNonBlocking(ctx context.Context, event TriggerEvent) {
-    go func() {
-        queueCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-        defer cancel()
-
-        if err := ep.queueManager.QueueEvent(queueCtx, event); err != nil {
-            ep.log.Error(queueCtx, "workflow event: queue failed", ...)
-            // Never fail the primary operation
-        }
-    }()
-}
-```
-
-**Key points:**
-- 5-second timeout for queue operations
-- Errors are logged but never returned
-- Primary operation always completes
-
-### Entity Data Extraction
-
-The EventPublisher extracts entity ID and data from the result:
-
-1. JSON marshal the result to get a map
-2. Look for `id` field in the JSON
-3. Fallback to reflection for struct field `ID`
-
-```go
-func (ep *EventPublisher) extractEntityData(result interface{}) (uuid.UUID, map[string]interface{}, error) {
-    // JSON marshal/unmarshal for map representation
-    data, _ := json.Marshal(result)
-    var rawData map[string]interface{}
-    json.Unmarshal(data, &rawData)
-
-    // Extract ID from JSON
-    if id, ok := rawData["id"].(string); ok {
-        entityID, _ = uuid.Parse(id)
-    }
-
-    return entityID, rawData, nil
-}
-```
-
-## DelegateHandler
-
-**Location**: `business/sdk/workflow/delegatehandler.go`
-
-Bridges the delegate pattern to workflow events.
+Bridges the delegate pattern to the Temporal workflow system. Replaces the old `DelegateHandler` → `EventPublisher` → `RabbitMQ` pipeline with direct Temporal dispatch.
 
 ### Structure
 
 ```go
 type DelegateHandler struct {
-    log            *logger.Logger
-    eventPublisher *EventPublisher
-    domainMappings map[string]string  // domain -> entity name
+    log     *logger.Logger
+    trigger *WorkflowTrigger
 }
 ```
 
 ### Registration
 
-Domains register with the delegate handler:
+Domains register with the delegate handler during startup:
 
 ```go
 func (h *DelegateHandler) RegisterDomain(
@@ -194,30 +63,33 @@ When a delegate event fires:
 
 ```go
 func (h *DelegateHandler) handleEvent(ctx context.Context, data delegate.Data) error {
-    // 1. Parse params from delegate data
-    var params struct {
-        EntityID uuid.UUID       `json:"entityID"`
-        UserID   uuid.UUID       `json:"userID"`
-        Entity   json.RawMessage `json:"entity"`
-    }
-    json.Unmarshal(data.RawParams, &params)
+    // 1. Extract entity data from params (JSON + reflection)
+    entityID, rawData, _ := extractEntityData(data.RawParams)
 
-    // 2. Get entity name from mapping
-    entityName := h.domainMappings[data.Domain]
-
-    // 3. Publish appropriate event
-    switch data.Action {
-    case "created":
-        h.eventPublisher.PublishCreateEvent(ctx, entityName, params.Entity, params.UserID)
-    case "updated":
-        h.eventPublisher.PublishUpdateEvent(ctx, entityName, params.Entity, nil, params.UserID)
-    case "deleted":
-        h.eventPublisher.PublishDeleteEvent(ctx, entityName, params.EntityID, params.UserID)
+    // 2. Construct TriggerEvent
+    event := workflow.TriggerEvent{
+        EventType:  mapAction(data.Action),  // created → on_create
+        EntityName: entityName,
+        EntityID:   entityID,
+        RawData:    rawData,
+        // ...
     }
+
+    // 3. Dispatch in goroutine (non-blocking, fail-open)
+    go func() {
+        if err := h.trigger.OnEntityEvent(ctx, event); err != nil {
+            h.log.Error(ctx, "workflow trigger failed", "err", err)
+        }
+    }()
 
     return nil
 }
 ```
+
+**Key behaviors:**
+- Non-blocking: dispatches in a goroutine so the primary operation always completes
+- Fail-open: errors are logged but never returned to the caller
+- Entity data extracted via JSON marshal/unmarshal with reflection fallback for ID
 
 ## Domain Event Pattern
 
@@ -344,24 +216,24 @@ func (b *Business) Delete(ctx context.Context, order Order) error {
 
 ## Registration in all.go
 
-Register domains with the delegate handler during startup:
+Register domains with the TemporalDelegateHandler during startup:
 
 ```go
-// In all.go Add() function
+// In all.go Add() function (inside TemporalHostPort guard)
 
 // Create delegate handler
-delegateHandler := workflow.NewDelegateHandler(cfg.Log, eventPublisher)
+delegateHandler := temporal.NewDelegateHandler(cfg.Log, workflowTrigger)
 
 // Register domains
 delegateHandler.RegisterDomain(delegate, ordersbus.DomainName, ordersbus.EntityName)
 delegateHandler.RegisterDomain(delegate, customersbus.DomainName, customersbus.EntityName)
 delegateHandler.RegisterDomain(delegate, productbus.DomainName, productbus.EntityName)
-// ... register other domains
+// ... register ~60 domains total
 ```
 
 ## TriggerEvent Structure
 
-The final event sent to the workflow engine:
+The event sent to the WorkflowTrigger:
 
 ```go
 type TriggerEvent struct {
@@ -398,7 +270,7 @@ type FieldChange struct {
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           Delegate System                                    │
 │                                                                             │
-│  3. Dispatches to DelegateHandler                                           │
+│  3. Dispatches to TemporalDelegateHandler                                   │
 │       │                                                                      │
 │       └── Receives: domain="order", action="created", params={...}          │
 │                    │                                                         │
@@ -406,47 +278,30 @@ type FieldChange struct {
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        DelegateHandler                                       │
+│                   TemporalDelegateHandler (goroutine)                        │
 │                                                                             │
-│  4. Maps domain to entity name                                              │
+│  4. Extracts entity data, constructs TriggerEvent                           │
 │       │                                                                      │
-│       └── eventPublisher.PublishCreateEvent("orders", entity, userID)       │
+│       └── workflowTrigger.OnEntityEvent(ctx, triggerEvent)                  │
 │                    │                                                         │
 └────────────────────┼─────────────────────────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        EventPublisher (goroutine)                            │
+│                        WorkflowTrigger                                       │
 │                                                                             │
-│  5. Constructs TriggerEvent                                                 │
+│  5. Evaluates matching rules via TriggerProcessor                           │
+│  6. Loads graph definition from EdgeStore for each match                    │
 │       │                                                                      │
-│       └── queueManager.QueueEvent(ctx, event)                               │
+│       └── temporalClient.ExecuteWorkflow(ctx, workflowInput)                │
 │                    │                                                         │
 └────────────────────┼─────────────────────────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           RabbitMQ                                           │
+│                        Temporal → workflow-worker                             │
 │                                                                             │
-│  6. Event queued for async processing                                       │
-│                    │                                                         │
-└────────────────────┼─────────────────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        QueueManager Consumer                                 │
-│                                                                             │
-│  7. Picks up message                                                        │
-│       │                                                                      │
-│       └── engine.ExecuteWorkflow(ctx, event)                                │
-│                    │                                                         │
-└────────────────────┼─────────────────────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        WorkflowEngine                                        │
-│                                                                             │
-│  8. Evaluates rules, executes matching actions                              │
+│  7. GraphExecutor traverses graph, executes actions as activities            │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -470,22 +325,43 @@ return order, nil
 
 Errors are logged at multiple levels:
 1. Business layer: delegate.Call() failures
-2. DelegateHandler: event processing failures
-3. EventPublisher: queue failures
-4. QueueManager: processing failures
+2. TemporalDelegateHandler: event extraction or dispatch failures
+3. WorkflowTrigger: rule matching or Temporal dispatch failures
+4. Temporal: activity execution failures (with configurable retries)
+
+## Cascade Visualization and the Event System
+
+The cascade visualization feature leverages the event infrastructure to show downstream workflow effects. When an action handler implements the `EntityModifier` interface (see [Cascade Visualization](cascade-visualization.md)), it declares which entities it modifies and what events those modifications produce.
+
+The cascade map endpoint (`/workflow/rules/{id}/cascade-map`) uses this information to:
+1. Identify which events an action will emit (e.g., `update_field` on "orders" emits `on_update` for "orders")
+2. Find other rules that trigger on those events
+3. Build a graph of potential downstream workflows
+
+## Condition Node Results
+
+When workflows include `evaluate_condition` actions, the condition result flows through the system:
+
+1. The condition handler evaluates field values and returns a result with `BranchTaken` ("true_branch" or "false_branch")
+2. The GraphExecutor examines this result to determine which edges to follow
+3. Temporal records the execution path for visibility
+
+See [Branching](branching.md) for details on how condition results control execution flow.
 
 ## Related Documentation
 
-- [Architecture](architecture.md) - System overview and component details
-- [Adding Domains](adding-domains.md) - Step-by-step guide for adding workflow events
-- [Testing](testing.md) - Testing patterns for event infrastructure
+- [Architecture](architecture.md) — System overview and component details
+- [Adding Domains](adding-domains.md) — Step-by-step guide for adding workflow events
+- [Testing](testing.md) — Testing patterns for event infrastructure
+- [Cascade Visualization](cascade-visualization.md) — Understanding downstream workflow effects
+- [Branching](branching.md) — Graph-based execution with conditional paths
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `business/sdk/workflow/eventpublisher.go` | Event publishing |
-| `business/sdk/workflow/delegatehandler.go` | Delegate bridge |
+| `business/sdk/workflow/temporal/delegatehandler.go` | Temporal delegate bridge |
+| `business/sdk/workflow/temporal/trigger.go` | Rule matching and Temporal dispatch |
 | `business/sdk/delegate/delegate.go` | Core delegate system |
 | `business/domain/sales/ordersbus/event.go` | Example domain events |
 | `api/cmd/services/ichor/build/all/all.go` | Registration |

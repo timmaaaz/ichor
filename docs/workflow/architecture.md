@@ -1,115 +1,59 @@
 # Workflow Engine Architecture
 
-This document describes the architecture of the Ichor workflow automation engine.
+This document describes the architecture of the Ichor workflow automation engine, powered by [Temporal](https://temporal.io).
 
 ## System Overview
 
-The workflow engine enables event-driven automation. When business entities change, events flow through the system to trigger configured actions.
+The workflow engine enables event-driven automation. When business entities change, events flow through the system to trigger configured actions. The system is split across two services:
+
+- **ichor** (main API): Captures entity events and dispatches workflows to Temporal
+- **workflow-worker**: Picks up workflow tasks from Temporal and executes action graphs
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           API Layer                                          │
-│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐       │
-│  │   ordersapi      │    │  formdataapi     │    │  other apis...   │       │
-│  └────────┬─────────┘    └────────┬─────────┘    └────────┬─────────┘       │
-└───────────┼──────────────────────┼──────────────────────────┼───────────────┘
-            │                      │                          │
-            ▼                      ▼                          ▼
+│                           API Layer (ichor service)                          │
+│  ordersapi / formdataapi / other apis...                                    │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │ delegate.Call()
+                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          App Layer                                           │
-│  ┌──────────────────┐    ┌──────────────────┐                               │
-│  │   ordersapp      │    │  formdataapp     │◄───── EventPublisher          │
-│  └────────┬─────────┘    │   (Phase 1)      │       (fires after tx)        │
-│           │              └──────────────────┘                               │
-└───────────┼─────────────────────────────────────────────────────────────────┘
-            │
-            ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        Business Layer                                        │
-│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐       │
-│  │   ordersbus      │    │  customersbus    │    │  other buses...  │       │
-│  │  ┌────────────┐  │    │                  │    │                  │       │
-│  │  │  event.go  │  │    │                  │    │                  │       │
-│  │  └────────────┘  │    │                  │    │                  │       │
-│  └────────┬─────────┘    └──────────────────┘    └──────────────────┘       │
-│           │                                                                  │
-│           ▼                                                                  │
-│  ┌──────────────────────────────────────────────────────────────────┐       │
-│  │                      delegate.Delegate                            │       │
-│  │   ┌─────────────────────────────────────────────────────────┐    │       │
-│  │   │          DelegateHandler                                 │    │       │
-│  │   │   - Listens to: "order/created", "order/updated", etc.  │    │       │
-│  │   │   - Publishes to: EventPublisher                         │    │       │
-│  │   └─────────────────────────────────────────────────────────┘    │       │
-│  └──────────────────────────────────────────────────────────────────┘       │
-└─────────────────────────────────────────────────────────────────────────────┘
-            │
-            ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        Workflow Infrastructure                               │
-│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐       │
-│  │  EventPublisher  │───▶│   QueueManager   │───▶│   RabbitMQ       │       │
-│  └──────────────────┘    └────────┬─────────┘    └──────────────────┘       │
+│                        Trigger Side (ichor service)                          │
+│  TemporalDelegateHandler → WorkflowTrigger → TriggerProcessor               │
 │                                   │                                          │
-│                                   ▼                                          │
-│                          ┌──────────────────┐                               │
-│                          │  WorkflowEngine  │                               │
-│                          │  - TriggerProc   │                               │
-│                          │  - ActionExec    │                               │
-│                          └──────────────────┘                               │
+│                                   │ client.ExecuteWorkflow()                │
+└───────────────────────────────────┼─────────────────────────────────────────┘
+                                    │ (Temporal task queue)
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      Execution Side (workflow-worker service)                │
+│  ExecuteGraphWorkflow → GraphExecutor → Activities → ActionHandlers         │
+│  ├── Linear: executeSingleAction                                            │
+│  ├── Parallel: executeParallelWithConvergence                               │
+│  └── Fire-and-forget: child workflows + PARENT_CLOSE_POLICY_ABANDON         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Core Components
 
-### EventPublisher
+### TemporalDelegateHandler
 
-**Location**: `business/sdk/workflow/eventpublisher.go`
+**Location**: `business/sdk/workflow/temporal/delegatehandler.go`
 
-The EventPublisher provides non-blocking workflow event publishing. Events are queued asynchronously - failures are logged but never block the primary operation.
-
-```go
-type EventPublisher struct {
-    log          *logger.Logger
-    queueManager *QueueManager
-}
-
-// Standard event methods (non-blocking):
-func (ep *EventPublisher) PublishCreateEvent(ctx, entityName, result, userID)
-func (ep *EventPublisher) PublishUpdateEvent(ctx, entityName, result, fieldChanges, userID)
-func (ep *EventPublisher) PublishDeleteEvent(ctx, entityName, entityID, userID)
-
-// Blocking methods for batch operations (e.g., FormData):
-func (ep *EventPublisher) PublishCreateEventsBlocking(ctx, entityName, results []any, userID)
-func (ep *EventPublisher) PublishUpdateEventsBlocking(ctx, entityName, results []any, userID)
-
-// Custom event method for async action handlers:
-func (ep *EventPublisher) PublishCustomEvent(ctx, event TriggerEvent)
-```
-
-**Key behaviors:**
-- Events are queued in a goroutine (non-blocking)
-- 5-second timeout for queue operations
-- Extracts entity ID from result via JSON or reflection
-- Logs errors but never fails the primary operation
-
-### DelegateHandler
-
-**Location**: `business/sdk/workflow/delegatehandler.go`
-
-Bridges the delegate pattern to the workflow event system. Listens for domain events and converts them to workflow TriggerEvents.
+Bridges the delegate pattern to the Temporal workflow system. Listens for domain events and dispatches them to the WorkflowTrigger.
 
 ```go
 type DelegateHandler struct {
-    log       *logger.Logger
-    publisher *EventPublisher
+    log     *logger.Logger
+    trigger *WorkflowTrigger
 }
 
-// Registration:
 func (h *DelegateHandler) RegisterDomain(delegate, domainName, entityName)
 ```
 
-The entity name is passed directly to `RegisterDomain` rather than stored in a mapping. This simplifies the handler while allowing multiple domains to be registered.
+**Key behaviors:**
+- Dispatches events in a goroutine (non-blocking, fail-open)
+- Extracts entity data via JSON marshaling and reflection
+- Same `RegisterDomain` interface as old handler — domain registration unchanged
 
 **Event mapping:**
 | Domain Action | Workflow Event Type |
@@ -118,107 +62,133 @@ The entity name is passed directly to `RegisterDomain` rather than stored in a m
 | `updated` | `on_update` |
 | `deleted` | `on_delete` |
 
-### QueueManager
+### WorkflowTrigger
 
-**Location**: `business/sdk/workflow/queue.go`
+**Location**: `business/sdk/workflow/temporal/trigger.go`
 
-Manages the RabbitMQ queue for workflow events. Handles publishing, consuming, and processing.
-
-```go
-// Simplified view - see queue.go for full implementation
-type QueueManager struct {
-    log    *logger.Logger
-    db     *sqlx.DB
-    engine *Engine
-    client *rabbitmq.Client
-    queue  *rabbitmq.WorkflowQueue
-    config QueueConfig
-    // ... state management, metrics, circuit breakers
-}
-
-// Key methods:
-func (qm *QueueManager) QueueEvent(ctx, event TriggerEvent) error
-func (qm *QueueManager) Start(ctx) error  // Starts consumers
-func (qm *QueueManager) Stop(ctx) error   // Stops consumers
-```
-
-> **Note**: The struct shown above is simplified. The actual implementation includes additional fields for state management (`mu`, `isRunning`, `consumers`, `stopChan`, `processingWG`), metrics tracking (`metrics`, `metricsLock`), circuit breaker management (`circuitBreakerManager`), and WebSocket handler registry (`handlerRegistry`).
-
-**Features:**
-- Configurable consumer count
-- Metrics tracking (enqueued, processed, failed)
-- Dead letter queue for failed messages
-- Graceful shutdown
-- Per-queue-type circuit breakers with global fallback
-- WebSocket handler registry for real-time message delivery
-
-### Engine (WorkflowEngine)
-
-**Location**: `business/sdk/workflow/engine.go`
-
-The core engine that evaluates events against rules and executes actions. Implemented as a singleton.
+Receives TriggerEvents, evaluates matching rules via TriggerProcessor, and dispatches Temporal workflows for each match.
 
 ```go
-// Simplified view - see engine.go for full implementation
-type Engine struct {
-    log              *logger.Logger
-    db               *sqlx.DB
-    workflowBus      *Business
-
-    // Sub-components
-    triggerProcessor *TriggerProcessor
-    dependencies     *DependencyResolver
-    executor         *ActionExecutor
-
-    // State management (mu, isInitialized, activeExecutions, executionHistory, stats, config)
+type WorkflowTrigger struct {
+    log       *logger.Logger
+    matcher   RuleMatcher
+    edgeStore EdgeStore
+    starter   WorkflowStarter
 }
 
-// Key methods:
-func (e *Engine) ExecuteWorkflow(ctx, event TriggerEvent) (*WorkflowExecution, error)
-func (e *Engine) GetRegistry() *ActionRegistry  // Returns registry from executor
-func (e *Engine) Initialize(ctx, workflowBus) error
+func (wt *WorkflowTrigger) OnEntityEvent(ctx, event TriggerEvent) error
 ```
 
-> **Note**: The action registry is accessed through the `ActionExecutor` component (`e.executor.GetRegistry()`), not stored directly on the Engine.
+**Key behaviors:**
+- Loads graph definition (actions + edges) from EdgeStore for each matched rule
+- Dispatches workflow to Temporal with `WorkflowInput` containing the full graph
+- Workflow ID format: `workflow-{ruleID}-{entityID}-{executionID}`
+- Fail-open per rule: individual rule failures logged and skipped, other rules still dispatched
 
-**Execution flow:**
-1. Receive TriggerEvent
-2. TriggerProcessor evaluates which rules match
-3. Group actions by execution order (same order = parallel batch)
-4. Execute each batch through ActionExecutor
-5. Record execution history
+### GraphExecutor
+
+**Location**: `business/sdk/workflow/temporal/graph_executor.go`
+
+Deterministic graph traversal engine that interprets visual workflow graphs at runtime.
+
+```go
+type GraphExecutor struct {
+    actions    map[uuid.UUID]ActionNode
+    edges      []ActionEdge
+    bySource   map[uuid.UUID][]ActionEdge
+    byTarget   map[uuid.UUID][]ActionEdge
+}
+
+func NewGraphExecutor(graph GraphDefinition) *GraphExecutor
+func (ge *GraphExecutor) GetStartActions() []ActionNode
+func (ge *GraphExecutor) GetNextActions(actionID uuid.UUID, result map[string]any) []ActionNode
+func (ge *GraphExecutor) FindConvergencePoint(actionIDs []uuid.UUID) uuid.UUID
+```
+
+**Determinism guarantees:**
+- Sorted map iteration (by SortOrder, then UUID tie-breaking)
+- No non-deterministic operations (no `time.Now()`, `rand`, or bare goroutines)
+- Safe for Temporal workflow replay
+
+**Supports all 5 edge types:**
+| Type | Description |
+|------|-------------|
+| `start` | Entry point (source_action_id is null) |
+| `sequence` | Unconditional linear flow |
+| `true_branch` | Followed when condition evaluates to true |
+| `false_branch` | Followed when condition evaluates to false |
+| `always` | Always-execute path from a condition |
+
+**Convergence detection:**
+- BFS-based reachability analysis from all parallel branches
+- Identifies the nearest node reachable from all branches (convergence point)
+- `uuid.Nil` convergence point signals fire-and-forget (no waiting)
+
+### Workflow Implementation
+
+**Location**: `business/sdk/workflow/temporal/workflow.go`
+
+The main Temporal workflow that interprets action graphs.
+
+**Key functions:**
+- `ExecuteGraphWorkflow` — main entry point, validates input, traverses graph
+- `executeSingleAction` — executes one action as a Temporal activity
+- `executeParallelWithConvergence` — forks child workflows, waits for all at convergence
+- `executeFireAndForget` — child workflows with `PARENT_CLOSE_POLICY_ABANDON`
+- `ExecuteBranchUntilConvergence` — child workflow for a single branch
+
+**Continue-As-New:**
+- Triggers at `HistoryLengthThreshold` (10,000 history events)
+- Preserves full `MergedContext` via `ContinuationState` on `WorkflowInput`
+- Prevents unbounded history growth for long-running workflows
+
+**Versioning:**
+- `workflow.GetVersion(ctx, "graph-interpreter", DefaultVersion, 1)`
+- Enables safe schema evolution without breaking in-flight workflows
+
+### Activities
+
+**Location**: `business/sdk/workflow/temporal/activities.go`
+
+Activities bridge Temporal's activity system to action handlers.
+
+```go
+type Activities struct {
+    Registry      *workflowactions.ActionRegistry
+    AsyncRegistry *AsyncRegistry
+}
+
+func (a *Activities) ExecuteActionActivity(ctx, input ActionActivityInput) (ActionActivityOutput, error)
+func (a *Activities) ExecuteAsyncActionActivity(ctx, input ActionActivityInput) (ActionActivityOutput, error)
+```
+
+**Activity routing:**
+- Regular actions → `ExecuteActionActivity` (MaximumAttempts=3)
+- Async actions (send_email, allocate_inventory) → `ExecuteAsyncActionActivity` (MaximumAttempts=1)
+- Human actions (manager_approval, manual_review, etc.) → `ExecuteAsyncActionActivity` (MaximumAttempts=1)
 
 ### TriggerProcessor
 
 **Location**: `business/sdk/workflow/trigger.go`
 
-Evaluates trigger events against automation rules.
+Evaluates trigger events against automation rules. Unchanged from the old architecture.
 
 ```go
 type TriggerProcessor struct {
     log          *logger.Logger
     db           *sqlx.DB
     workflowBus  *Business
-
-    // Cached data
-    activeRules  []AutomationRuleView  // Note: uses view model, not base model
+    activeRules  []AutomationRuleView
     lastLoadTime time.Time
-    cacheTimeout time.Duration         // Default: 5 minutes
+    cacheTimeout time.Duration
 }
 
-// Key methods:
-func (tp *TriggerProcessor) Initialize(ctx) error           // Loads rules on startup
-func (tp *TriggerProcessor) ProcessEvent(ctx, event) (*ProcessingResult, error)  // Returns matched rules
-func (tp *TriggerProcessor) RefreshRules(ctx) error         // Forces cache reload
+func (tp *TriggerProcessor) Initialize(ctx) error
+func (tp *TriggerProcessor) ProcessEvent(ctx, event) (*ProcessingResult, error)
+func (tp *TriggerProcessor) RefreshRules(ctx) error
 ```
 
-> **Note**: Rules are loaded internally via `Initialize()` and cached. There is no public `LoadRules()` method - use `RefreshRules()` to force a reload.
-
-**Condition evaluation:**
-- Supports 8 operators (equals, not_equals, changed_from, etc.)
-- Multiple conditions use AND logic
-- Field values extracted from event's RawData
-- Previous values for `changed_from` come from FieldChanges
+> **Note**: Rules are loaded via `Initialize()` and cached. Use `RefreshRules()` to force a reload. Cache invalidation is registered via `RegisterCacheInvalidation(delegate)`.
 
 ### ActionRegistry
 
@@ -231,18 +201,18 @@ type ActionRegistry struct {
     handlers map[string]ActionHandler
 }
 
-// Registration:
 func (r *ActionRegistry) Register(handler ActionHandler)
 func (r *ActionRegistry) Get(actionType string) (ActionHandler, bool)
 ```
 
 **Registered handlers:**
-- `create_alert` - CreateAlertHandler
-- `update_field` - UpdateFieldHandler
-- `send_email` - SendEmailHandler
-- `send_notification` - SendNotificationHandler
-- `seek_approval` - SeekApprovalHandler
-- `allocate_inventory` - AllocateInventoryHandler
+- `create_alert` — CreateAlertHandler
+- `update_field` — UpdateFieldHandler
+- `send_email` — SendEmailHandler
+- `send_notification` — SendNotificationHandler
+- `seek_approval` — SeekApprovalHandler
+- `allocate_inventory` — AllocateInventoryHandler
+- `evaluate_condition` — ConditionHandler (branching support)
 
 ### ActionHandler Interface
 
@@ -253,29 +223,29 @@ type ActionHandler interface {
     Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (any, error)
     Validate(config json.RawMessage) error
     GetType() string
+    SupportsManualExecution() bool
+    IsAsync() bool
+    GetDescription() string
 }
 ```
 
-All action handlers must implement this interface. The `Execute` method returns `any` to allow different handlers to return different result types - this trades compile-time type safety for runtime flexibility, which is necessary for a plugin/registry system.
+All 7 action handlers implement this interface. The interface is unchanged from the old architecture.
 
-### AsyncActionHandler Interface
+### EntityModifier Interface
 
 **Location**: `business/sdk/workflow/interfaces.go`
 
-For actions that queue work asynchronously (like inventory allocation), handlers can implement the extended `AsyncActionHandler` interface:
+Optional interface for action handlers that modify database entities. Used for cascade visualization.
 
 ```go
-type AsyncActionHandler interface {
-    ActionHandler
-
-    // ProcessQueued processes a queued message asynchronously.
-    // payload contains the serialized QueuedPayload (use json.Unmarshal)
-    // publisher is used to fire result events for downstream workflow rules
-    ProcessQueued(ctx context.Context, payload json.RawMessage, publisher *EventPublisher) error
+type EntityModifier interface {
+    GetEntityModifications(config json.RawMessage) []EntityModification
 }
 ```
 
-The handler is responsible for deserializing the payload, performing the async work, and firing result events via the publisher.
+Currently implemented by `UpdateFieldHandler`.
+
+See [cascade-visualization.md](cascade-visualization.md) for details.
 
 ## Event Flow
 
@@ -287,7 +257,6 @@ The handler is responsible for deserializing the payload, performing the async w
 
 2. App Layer
    └── ordersapp.Create(ctx, app.NewOrder)
-       └── Validates and calls business layer
 
 3. Business Layer
    └── ordersbus.Create(ctx, bus.NewOrder)
@@ -296,34 +265,34 @@ The handler is responsible for deserializing the payload, performing the async w
 
 4. Delegate System
    └── Dispatches to registered handlers
-       └── DelegateHandler receives "order/created"
+       └── TemporalDelegateHandler receives "order/created"
 
-5. DelegateHandler
-   └── Extracts entity data from params
-       └── eventPublisher.PublishCreateEvent(ctx, "orders", entity, userID)
+5. TemporalDelegateHandler (goroutine)
+   └── Extracts entity data
+       └── workflowTrigger.OnEntityEvent(ctx, triggerEvent)
 
-6. EventPublisher (goroutine)
-   └── Constructs TriggerEvent
-       └── queueManager.QueueEvent(ctx, event)
-
-7. RabbitMQ
-   └── Message queued to workflow queue
-
-8. QueueManager Consumer
-   └── Picks up message
-       └── engine.ExecuteWorkflow(ctx, event)
-
-9. WorkflowEngine
-   ├── triggerProcessor.EvaluateEvent(event)
+6. WorkflowTrigger
+   ├── triggerProcessor.ProcessEvent(event)
    │   └── Returns matched rules
    └── For each matched rule:
-       └── actionExecutor.Execute(actions, execCtx)
+       ├── edgeStore.QueryActionsByRule / QueryEdgesByRule
+       └── temporalClient.ExecuteWorkflow(ctx, workflowInput)
+
+7. Temporal Server
+   └── Task queued on "ichor-workflow" task queue
+
+8. workflow-worker
+   └── Picks up task
+       └── ExecuteGraphWorkflow(ctx, workflowInput)
+
+9. GraphExecutor
+   ├── GetStartActions() → first actions
+   └── For each action:
+       ├── Execute as Temporal activity
+       └── GetNextActions() → follow edges
 
 10. ActionHandler
     └── Executes action (create alert, send email, etc.)
-
-11. Execution History
-    └── Records results in automation_executions
 ```
 
 ### TriggerEvent Structure
@@ -338,22 +307,6 @@ type TriggerEvent struct {
     RawData      map[string]interface{}    // Entity data snapshot
     UserID       uuid.UUID                 // User who triggered
 }
-
-type FieldChange struct {
-    OldValue interface{}
-    NewValue interface{}
-}
-```
-
-### ExecutionContext Structure
-
-```go
-type ExecutionContext struct {
-    Event       TriggerEvent
-    Rule        AutomationRule
-    ExecutionID uuid.UUID
-    RawData     map[string]interface{}  // Template variable context
-}
 ```
 
 ## Initialization
@@ -365,31 +318,46 @@ type ExecutionContext struct {
 workflowStore := workflowdb.NewStore(cfg.Log, cfg.DB)
 workflowBus := workflow.NewBusiness(cfg.Log, workflowStore)
 
-// 2. Create and initialize engine
-workflowEngine := workflow.NewEngine(cfg.Log, cfg.DB, workflowBus)
-workflowEngine.Initialize(ctx, workflowBus)
+// 2. Connect to Temporal (conditional on TemporalHostPort)
+if cfg.TemporalHostPort != "" {
+    temporalClient, _ := client.Dial(client.Options{HostPort: cfg.TemporalHostPort})
 
-// 3. Register action handlers
-registry := workflowEngine.GetRegistry()
-registry.Register(communication.NewCreateAlertHandler(log, db, alertBus))
-registry.Register(communication.NewSendEmailHandler(log, db))
-registry.Register(communication.NewSendNotificationHandler(log, db))
-registry.Register(data.NewUpdateFieldHandler(log, db))
-registry.Register(approval.NewSeekApprovalHandler(log, db))
-registry.Register(inventory.NewAllocateInventoryHandler(log, db, ...))
+    // 3. Create edge store for loading graph definitions
+    edgeStore := edgedb.NewStore(cfg.Log, cfg.DB)
 
-// 4. Create queue manager and start consumers
-queueManager, _ := workflow.NewQueueManager(log, db, workflowEngine, rabbitClient)
-queueManager.Initialize(ctx)
-queueManager.Start(ctx)
+    // 4. Create and initialize trigger processor
+    triggerProcessor := workflow.NewTriggerProcessor(cfg.Log, cfg.DB, workflowBus)
+    triggerProcessor.Initialize(ctx)
+    triggerProcessor.RegisterCacheInvalidation(delegate)
 
-// 5. Create event publisher
-eventPublisher := workflow.NewEventPublisher(log, queueManager)
+    // 5. Create workflow trigger
+    workflowTrigger := temporal.NewWorkflowTrigger(cfg.Log, triggerProcessor, edgeStore, temporalClient)
 
-// 6. Create delegate handler and register domains
-delegateHandler := workflow.NewDelegateHandler(log, eventPublisher)
-delegateHandler.RegisterDomain(delegate, ordersbus.DomainName, ordersbus.EntityName)
-// ... register other domains
+    // 6. Create delegate handler and register ~60 domains
+    delegateHandler := temporal.NewDelegateHandler(cfg.Log, workflowTrigger)
+    delegateHandler.RegisterDomain(delegate, ordersbus.DomainName, ordersbus.EntityName)
+    // ... register other domains
+}
+```
+
+### Worker Startup (workflow-worker/main.go)
+
+```go
+// 1. Connect to Temporal and database
+temporalClient, _ := client.Dial(client.Options{HostPort: cfg.Temporal.HostPort})
+db := sqldb.Open(cfg.DB)
+
+// 2. Build action registry
+registry := workflowactions.RegisterCoreActions(log, db)
+
+// 3. Create worker
+w := worker.New(temporalClient, temporal.TaskQueue, worker.Options{})
+w.RegisterWorkflow(temporal.ExecuteGraphWorkflow)
+w.RegisterWorkflow(temporal.ExecuteBranchUntilConvergence)
+w.RegisterActivity(&temporal.Activities{Registry: registry, AsyncRegistry: temporal.NewAsyncRegistry()})
+
+// 4. Start worker
+w.Run(worker.InterruptCh())
 ```
 
 ## Error Handling
@@ -399,16 +367,22 @@ delegateHandler.RegisterDomain(delegate, ordersbus.DomainName, ordersbus.EntityN
 Workflow failures should **never** block the primary operation. A failed email notification should not prevent an order from being created.
 
 **Implementation:**
-1. EventPublisher queues events in a goroutine
-2. Errors are logged but not returned
+1. TemporalDelegateHandler dispatches in a goroutine
+2. Errors are logged but not returned to the business layer
 3. Primary operation always completes
-4. Failed events go to dead letter queue for retry/investigation
+4. Temporal provides durable retry for failed workflows
 
 ### Retry Strategy
 
-- RabbitMQ handles message redelivery
-- Dead letter queue for messages that fail repeatedly
-- Configurable retry count and backoff
+Temporal handles retries automatically based on activity type:
+
+| Activity Type | MaximumAttempts | Rationale |
+|---------------|-----------------|-----------|
+| Regular (evaluate_condition, update_field, etc.) | 3 | Safe to retry |
+| Async (send_email, allocate_inventory) | 1 | Prevent duplicate side effects |
+| Human (manager_approval, manual_review, etc.) | 1 | Prevent duplicate side effects |
+
+Per-rule fail-open: if one rule's workflow dispatch fails, other matched rules still execute.
 
 ### Execution Tracking
 
@@ -419,99 +393,56 @@ All executions are recorded in `workflow.automation_executions`:
 - Error messages
 - Execution timing
 
+Temporal also provides built-in workflow visibility via the Temporal UI (port 8280).
+
 ## Performance Considerations
 
 ### Async Processing
 
-Events are queued to RabbitMQ and processed asynchronously:
+Events are dispatched to Temporal and processed by the workflow-worker:
 - API requests return immediately
-- Workflow processing doesn't add latency
-- Scalable by adding more consumers
+- Workflow processing doesn't add latency to the primary operation
+- Scalable by adding more workflow-worker replicas
 
-### Parallel Execution
+### Graph-Based Execution
 
-Actions with the same `execution_order` run in parallel:
-```
-execution_order=1: [email, alert]  ← run in parallel
-execution_order=2: [update_field]  ← waits for order 1
-execution_order=3: [approval]      ← waits for order 2
-```
+All rules with actions use graph-based traversal via directed edges. Rules without actions are saved as inactive drafts.
+
+**Execution patterns:**
+- **Linear**: Actions execute sequentially via `sequence` edges
+- **Branching**: Condition actions route to `true_branch` or `false_branch`
+- **Parallel**: Multiple next actions fork into child workflows that converge
+- **Fire-and-forget**: Parallel branches with no convergence point
 
 ### Caching
 
-- Rules are loaded once during engine initialization
-- Rule changes require engine restart or reload
+- Rules are loaded by TriggerProcessor on startup and cached (5-minute TTL)
+- Cache invalidation registered via delegate events (rule create/update/delete)
 - Template processor caches parsed templates
 
 ## Configuration
 
-### RabbitMQ Settings
+### Temporal Settings
 
-```go
-RabbitMQ struct {
-    URL           string        // amqp://guest:guest@rabbitmq:5672/
-    MaxRetries    int           // default: 5
-    RetryDelay    time.Duration // default: 5s
-    PrefetchCount int           // default: 10
-}
-```
+| Environment Variable | Description | Default |
+|---------------------|-------------|---------|
+| `ICHOR_TEMPORAL_HOSTPORT` | Temporal server address | `""` (disabled) |
 
-### Queue Types
+When `TemporalHostPort` is empty, the Temporal trigger system is disabled and events are not dispatched to workflows.
 
-The system uses multiple specialized queues for different action types:
+### Task Queue
 
-| Queue Type | Purpose |
-|------------|---------|
-| `QueueTypeWorkflow` | General workflow events and data operations |
-| `QueueTypeApproval` | Approval request processing |
-| `QueueTypeNotification` | Push notification delivery |
-| `QueueTypeInventory` | Inventory allocation operations |
-| `QueueTypeEmail` | Email sending |
-| `QueueTypeAlert` | Alert creation and WebSocket delivery |
+The system uses a single task queue: `ichor-workflow`
 
-**Source**: `business/sdk/workflow/queue.go:289-296`
-
-### Queue Settings
-
-- Durable: Yes
-- Auto-delete: No
-- Dead letter exchange: `workflow_dlx`
-
-### Circuit Breaker
-
-The queue manager implements circuit breakers to handle downstream service failures gracefully.
-
-**Per-Queue Circuit Breakers:**
-- Each queue type has its own circuit breaker
-- Failures in one queue type don't affect others
-- Default threshold: 50 failures
-- Default timeout: 60 seconds
-
-**Global Circuit Breaker:**
-- Fallback for catastrophic failures across all queues
-- Default threshold: 100 failures
-- Default timeout: 120 seconds
-
-**Circuit Breaker States:**
-| State | Description |
-|-------|-------------|
-| `closed` | Normal operation, requests flow through |
-| `open` | Too many failures, requests are rejected immediately |
-| `half-open` | Recovery mode, allowing test requests through |
-
-**Behavior:**
-- When failures exceed the threshold, the breaker opens
-- While open, new events for that queue type are rejected
-- After the timeout, the breaker transitions to half-open
-- A successful request in half-open state closes the breaker
-- A failed request in half-open state reopens the breaker
-
-**Source**: `business/sdk/workflow/queue.go:86-130`
+All workflow types and activities are registered on this queue. Multiple workers can process the same queue for horizontal scaling.
 
 ## Related Documentation
 
-- [Database Schema](database-schema.md) - Workflow table definitions
-- [Event Infrastructure](event-infrastructure.md) - EventPublisher and delegate pattern details
-- [Actions Overview](actions/overview.md) - Action handler interface and registry
-- [Adding Domains](adding-domains.md) - How to add workflow events to domains
-- [Testing](testing.md) - Testing patterns and examples
+- [Temporal Integration](temporal.md) — Detailed Temporal architecture and design
+- [Worker Deployment](worker-deployment.md) — Worker service operations
+- [Migration from RabbitMQ](migration-from-rabbitmq.md) — What changed and why
+- [Database Schema](database-schema.md) — Workflow table definitions
+- [Event Infrastructure](event-infrastructure.md) — Delegate pattern and workflow dispatch
+- [Actions Overview](actions/overview.md) — Action handler interface and registry
+- [Adding Domains](adding-domains.md) — How to add workflow events to domains
+- [Testing](testing.md) — Testing patterns and examples

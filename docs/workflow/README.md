@@ -8,10 +8,15 @@ The Ichor workflow engine provides event-driven automation for business processe
 |----------|-------------|
 | [Architecture](architecture.md) | System overview, event flow, components |
 | [Configuration](configuration/) | Triggers, rules, and template variables |
-| [Actions](actions/) | All 6 action types and their configuration |
+| [Actions](actions/) | All 7 action types and their configuration |
+| [Branching](branching.md) | Graph-based execution and conditional workflows |
+| [Cascade Visualization](cascade-visualization.md) | Downstream workflow detection |
 | [Database Schema](database-schema.md) | Workflow tables and relationships |
 | [API Reference](api-reference.md) | REST endpoints for alerts |
-| [Event Infrastructure](event-infrastructure.md) | EventPublisher and delegate pattern |
+| [Event Infrastructure](event-infrastructure.md) | Delegate pattern and workflow dispatch |
+| [Temporal Integration](temporal.md) | Temporal architecture, GraphExecutor, activities |
+| [Worker Deployment](worker-deployment.md) | Workflow-worker service operations |
+| [Migration from RabbitMQ](migration-from-rabbitmq.md) | What changed and why |
 | [Testing](testing.md) | Testing patterns and examples |
 | [Adding Domains](adding-domains.md) | How to add workflow events to new domains |
 
@@ -21,7 +26,7 @@ The Ichor workflow engine provides event-driven automation for business processe
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           WORKFLOW ENGINE                                    │
 │                                                                             │
-│  EventPublisher ──► RabbitMQ ──► QueueManager ──► Engine ──► ActionExecutor │
+│  DelegateHandler ──► WorkflowTrigger ──► Temporal ──► Worker ──► Activities │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -45,6 +50,7 @@ The Ichor workflow engine provides event-driven automation for business processe
 | `send_notification` | Multi-channel notifications (email, SMS, push, in-app) |
 | `seek_approval` | Initiates approval workflows |
 | `allocate_inventory` | Reserves or allocates inventory |
+| `evaluate_condition` | Evaluates conditions for branching workflows |
 
 ## Getting Started
 
@@ -52,11 +58,11 @@ The Ichor workflow engine provides event-driven automation for business processe
 
 1. An entity is created/updated/deleted via API or formdata
 2. The business layer fires a delegate event
-3. `DelegateHandler` converts it to a `TriggerEvent`
-4. `EventPublisher` queues the event to RabbitMQ
-5. `QueueManager` consumer picks up the event
-6. `Engine` evaluates matching automation rules
-7. Matched rules' actions are executed by `ActionExecutor`
+3. `TemporalDelegateHandler` converts it to a `TriggerEvent`
+4. `WorkflowTrigger` evaluates matching automation rules
+5. For each matched rule, loads graph definition from DB
+6. Dispatches workflow to Temporal (`workflow-worker` picks up)
+7. `GraphExecutor` traverses action graph, executing each action as an activity
 
 ### 2. Creating an Automation Rule
 
@@ -72,10 +78,26 @@ Automation rules are stored in the `workflow.automation_rules` table. A rule req
 Actions are stored in `workflow.rule_actions`. Each action has:
 
 - **Action Config**: JSON configuration specific to the action type
-- **Execution Order**: Order in which actions execute (same order = parallel)
+- **Action Edges**: Directed edges defining execution flow (see [Branching](branching.md))
 - **Template Variables**: Dynamic values like `{{entity_id}}`, `{{customer_name}}`
 
 See [Actions](actions/) for configuration details for each action type.
+
+### 4. Action Execution
+
+Rules with actions execute using graph-based BFS traversal via `action_edges`. Edges define the execution order and flow:
+
+| Edge Type | Description |
+|-----------|-------------|
+| **start** | Entry point — connects to the first action (no source) |
+| **sequence** | Unconditional flow from one action to the next |
+| **true_branch** | Conditional path taken when `evaluate_condition` returns true |
+| **false_branch** | Conditional path taken when `evaluate_condition` returns false |
+| **always** | Always-execute path from a condition (runs regardless of branch) |
+
+**All rules with actions must have edges.** Rules without actions (trigger-only rules) are valid and saved as inactive drafts.
+
+See [Branching](branching.md) for complete documentation on conditional workflows.
 
 ## Configuration Reference
 
@@ -100,6 +122,8 @@ See [Actions](actions/) for configuration details for each action type.
 | `less_than` | Numeric/string comparison |
 | `contains` | Substring match |
 | `in` | Value in array |
+| `is_null` | Field is null/empty |
+| `is_not_null` | Field has a value |
 
 ### Template Variables
 
@@ -119,13 +143,16 @@ See [Templates](configuration/templates.md) for all available variables and filt
 | Purpose | Location |
 |---------|----------|
 | Core models | `business/sdk/workflow/models.go` |
-| Engine | `business/sdk/workflow/engine.go` |
 | Trigger processing | `business/sdk/workflow/trigger.go` |
 | Template processing | `business/sdk/workflow/template.go` |
-| Queue management | `business/sdk/workflow/queue.go` |
-| Event publisher | `business/sdk/workflow/eventpublisher.go` |
-| Delegate handler | `business/sdk/workflow/delegatehandler.go` |
+| Temporal delegate handler | `business/sdk/workflow/temporal/delegatehandler.go` |
+| Workflow trigger | `business/sdk/workflow/temporal/trigger.go` |
+| Graph executor | `business/sdk/workflow/temporal/graph_executor.go` |
+| Workflow implementation | `business/sdk/workflow/temporal/workflow.go` |
+| Activities | `business/sdk/workflow/temporal/activities.go` |
+| Edge store adapter | `business/sdk/workflow/temporal/stores/edgedb/edgedb.go` |
 | Action handlers | `business/sdk/workflow/workflowactions/` |
+| Worker service | `api/cmd/services/workflow-worker/main.go` |
 | Alert business layer | `business/domain/workflow/alertbus/` |
 | Alert API | `api/domain/http/workflow/alertapi/` |
 
@@ -141,6 +168,7 @@ All workflow tables are in the `workflow` schema:
 | `automation_rules` | Rule definitions |
 | `rule_actions` | Actions attached to rules |
 | `action_templates` | Reusable action configurations |
+| `action_edges` | Directed edges for graph-based execution (branching) |
 | `rule_dependencies` | Dependencies between rules |
 | `automation_executions` | Execution history |
 | `notification_deliveries` | Notification delivery tracking |

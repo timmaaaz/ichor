@@ -9,104 +9,96 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
-	"github.com/timmaaaz/ichor/foundation/rabbitmq"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
+	foundationtemporal "github.com/timmaaaz/ichor/foundation/temporal"
+	temporalclient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/worker"
 )
 
-// WorkflowInfra holds the workflow infrastructure components for tests.
-// This is optional infrastructure that can be initialized by tests that need
-// to test workflow event processing.
+// WorkflowInfra holds the Temporal-based workflow infrastructure for tests.
 type WorkflowInfra struct {
-	QueueManager *workflow.QueueManager
-	Engine       *workflow.Engine
-	WorkflowBus  *workflow.Business
-	Client       *rabbitmq.Client
+	WorkflowBus      *workflow.Business
+	TemporalClient   temporalclient.Client
+	WorkflowTrigger  *temporal.WorkflowTrigger
+	DelegateHandler  *temporal.DelegateHandler
+	TriggerProcessor *workflow.TriggerProcessor
+	Worker           worker.Worker
 }
 
-// InitWorkflowInfra sets up the workflow infrastructure for testing.
-// This is a standalone function that tests can call when they need workflow
-// capabilities. It uses the shared RabbitMQ test container.
-//
-// Usage:
-//
-//	db := dbtest.NewDatabase(t, "Test_Name")
-//	wf := apitest.InitWorkflowInfra(t, db)
-//	defer wf.Cleanup()
-//
-//	// Use wf.QueueManager, wf.Engine, wf.WorkflowBus as needed
+// InitWorkflowInfra sets up Temporal workflow infrastructure for testing.
 func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	t.Helper()
 	ctx := context.Background()
 
-	// Get shared RabbitMQ container
-	container := rabbitmq.GetTestContainer(t)
-
-	client := rabbitmq.NewTestClient(container.URL)
-	if err := client.Connect(); err != nil {
-		t.Fatalf("connecting to rabbitmq: %s", err)
+	// 1. Get shared Temporal test container.
+	container := foundationtemporal.GetTestContainer(t)
+	tc, err := temporalclient.Dial(temporalclient.Options{
+		HostPort: container.HostPort,
+	})
+	if err != nil {
+		t.Fatalf("connecting to temporal: %s", err)
 	}
 
-	// Initialize workflow queue with test-prefixed names for isolation
-	queue := rabbitmq.NewTestWorkflowQueue(client, db.Log)
-	if err := queue.Initialize(ctx); err != nil {
-		client.Close()
-		t.Fatalf("initializing workflow queue: %s", err)
-	}
+	// 2. Create workflow business layer.
+	workflowBus := workflow.NewBusiness(db.Log, db.BusDomain.Delegate, workflowdb.NewStore(db.Log, db.DB))
 
-	// Create workflow business layer
-	workflowBus := workflow.NewBusiness(db.Log, workflowdb.NewStore(db.Log, db.DB))
-
-	// Create and initialize engine
-	engine := workflow.NewEngine(db.Log, db.DB, workflowBus)
-	if err := engine.Initialize(ctx, workflowBus); err != nil {
-		client.Close()
-		t.Fatalf("initializing workflow engine: %s", err)
-	}
-
-	// Register action handlers
-	registry := engine.GetRegistry()
+	// 3. Build action registry (same 4 handlers as before).
+	registry := workflow.NewActionRegistry()
 	registry.Register(communication.NewSendEmailHandler(db.Log, db.DB))
 	registry.Register(communication.NewSendNotificationHandler(db.Log, db.DB))
-
-	// Create alertbus for CreateAlertHandler
 	alertBus := alertbus.NewBusiness(db.Log, alertdb.NewStore(db.Log, db.DB))
 	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil))
+	registry.Register(control.NewEvaluateConditionHandler(db.Log))
 
-	// Create queue manager
-	qm, err := workflow.NewQueueManager(db.Log, db.DB, engine, client, queue)
-	if err != nil {
-		client.Close()
-		t.Fatalf("creating queue manager: %s", err)
+	// 4. Create and start test worker with unique task queue per test.
+	taskQueue := "test-workflow-" + t.Name()
+	w := worker.New(tc, taskQueue, worker.Options{})
+	w.RegisterWorkflow(temporal.ExecuteGraphWorkflow)
+	w.RegisterWorkflow(temporal.ExecuteBranchUntilConvergence)
+	activities := &temporal.Activities{
+		Registry:      registry,
+		AsyncRegistry: temporal.NewAsyncRegistry(),
+	}
+	w.RegisterActivity(activities)
+
+	if err := w.Start(); err != nil {
+		tc.Close()
+		t.Fatalf("starting temporal worker: %s", err)
 	}
 
-	if err := qm.Initialize(ctx); err != nil {
-		client.Close()
-		t.Fatalf("initializing queue manager: %s", err)
+	// 5. Create trigger infrastructure.
+	edgeStore := edgedb.NewStore(db.Log, db.DB)
+	triggerProcessor := workflow.NewTriggerProcessor(db.Log, db.DB, workflowBus)
+	if err := triggerProcessor.Initialize(ctx); err != nil {
+		w.Stop()
+		tc.Close()
+		t.Fatalf("initializing trigger processor: %s", err)
 	}
 
-	// Clear any lingering messages
-	if err := qm.ClearQueue(ctx); err != nil {
-		t.Logf("Warning: could not clear queue: %v", err)
-	}
+	workflowTrigger := temporal.NewWorkflowTrigger(
+		db.Log, tc, triggerProcessor, edgeStore,
+	)
 
-	// Start consumers
-	if err := qm.Start(ctx); err != nil {
-		client.Close()
-		t.Fatalf("starting queue manager: %s", err)
-	}
+	// 6. Create delegate handler.
+	delegateHandler := temporal.NewDelegateHandler(db.Log, workflowTrigger)
 
-	// Register cleanup via t.Cleanup for automatic resource release
+	// 7. Register cleanup.
 	t.Cleanup(func() {
-		qm.Stop(context.Background())
-		client.Close()
+		w.Stop()
+		tc.Close()
 	})
 
-	t.Log("Workflow infrastructure initialized")
+	t.Log("Temporal workflow infrastructure initialized")
 
 	return &WorkflowInfra{
-		QueueManager: qm,
-		Engine:       engine,
-		WorkflowBus:  workflowBus,
-		Client:       client,
+		WorkflowBus:      workflowBus,
+		TemporalClient:   tc,
+		WorkflowTrigger:  workflowTrigger,
+		DelegateHandler:  delegateHandler,
+		TriggerProcessor: triggerProcessor,
+		Worker:           w,
 	}
 }

@@ -251,7 +251,7 @@ func executeCreatesAlert(busDomain dbtest.BusDomain, sd alertSeedData) unitest.T
 				EntityName:  "orders",
 				EventType:   "on_create",
 				UserID:      sd.UserID,
-				RuleID:      uuid.Nil,
+				RuleID:      nil, // nil for test executions
 				RuleName:    "Test Rule",
 				ExecutionID: uuid.New(),
 			}
@@ -299,7 +299,7 @@ func executeCreatesRecipients(busDomain dbtest.BusDomain, sd alertSeedData) unit
 				EntityName:  "orders",
 				EventType:   "on_update",
 				UserID:      sd.UserID,
-				RuleID:      uuid.Nil,
+				RuleID:      nil, // nil for test executions
 				RuleName:    "Multi-recipient Rule",
 				ExecutionID: uuid.New(),
 			}
@@ -377,7 +377,7 @@ func executeTemplateSubstitution(busDomain dbtest.BusDomain, sd alertSeedData) u
 				EntityName:  "orders",
 				EventType:   "on_create",
 				UserID:      sd.UserID,
-				RuleID:      uuid.Nil,
+				RuleID:      nil, // nil for test executions
 				RuleName:    "Template Test Rule",
 				ExecutionID: uuid.New(),
 				RawData: map[string]interface{}{
@@ -443,7 +443,7 @@ func executeDefaultSeverity(busDomain dbtest.BusDomain, sd alertSeedData) unites
 				EntityName:  "orders",
 				EventType:   "on_create",
 				UserID:      sd.UserID,
-				RuleID:      uuid.Nil,
+				RuleID:      nil, // nil for test executions
 				RuleName:    "Default Severity Rule",
 				ExecutionID: uuid.New(),
 			}
@@ -497,14 +497,16 @@ func executeInvalidUserUUID(sd alertSeedData) unitest.Table {
 				}
 			}`)
 
+			invalidUserRuleID := uuid.New()
 			execCtx := workflow.ActionExecutionContext{
-				EntityID:    uuid.New(),
-				EntityName:  "orders",
-				EventType:   "on_create",
-				UserID:      sd.UserID,
-				RuleID:      uuid.New(),
-				RuleName:    "Invalid UUID Rule",
-				ExecutionID: uuid.New(),
+				EntityID:      uuid.New(),
+				EntityName:    "orders",
+				EventType:     "on_create",
+				UserID:        sd.UserID,
+				RuleID:        &invalidUserRuleID,
+				RuleName:      "Invalid UUID Rule",
+				ExecutionID:   uuid.New(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 			}
 
 			_, err := sd.Handler.Execute(ctx, config, execCtx)
@@ -536,14 +538,16 @@ func executeInvalidRoleUUID(sd alertSeedData) unitest.Table {
 				}
 			}`, sd.UserID))
 
+			invalidRoleRuleID := uuid.New()
 			execCtx := workflow.ActionExecutionContext{
-				EntityID:    uuid.New(),
-				EntityName:  "orders",
-				EventType:   "on_create",
-				UserID:      sd.UserID,
-				RuleID:      uuid.New(),
-				RuleName:    "Invalid Role UUID Rule",
-				ExecutionID: uuid.New(),
+				EntityID:      uuid.New(),
+				EntityName:    "orders",
+				EventType:     "on_create",
+				UserID:        sd.UserID,
+				RuleID:        &invalidRoleRuleID,
+				RuleName:      "Invalid Role UUID Rule",
+				ExecutionID:   uuid.New(),
+				TriggerSource: workflow.TriggerSourceAutomation,
 			}
 
 			_, err := sd.Handler.Execute(ctx, config, execCtx)
@@ -587,7 +591,7 @@ func executeResolvePrior(busDomain dbtest.BusDomain, sd alertSeedData) unitest.T
 				EntityName:  "sales_order",
 				EventType:   "on_update",
 				UserID:      sd.UserID,
-				RuleID:      uuid.Nil,
+				RuleID:      nil, // nil for test executions
 				RuleName:    "Allocation Failure Rule",
 				ExecutionID: uuid.New(),
 			}
@@ -622,7 +626,7 @@ func executeResolvePrior(busDomain dbtest.BusDomain, sd alertSeedData) unitest.T
 				EntityName:  "sales_order",
 				EventType:   "on_update",
 				UserID:      sd.UserID,
-				RuleID:      uuid.Nil,
+				RuleID:      nil, // nil for test executions
 				RuleName:    "Allocation Success Rule",
 				ExecutionID: uuid.New(),
 			}

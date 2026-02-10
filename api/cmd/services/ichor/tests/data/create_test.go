@@ -91,18 +91,30 @@ var newConfig = &tablebuilder.Config{
 				Header: "Due Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "2006-01-02",
+				},
 			},
 			"order_created_date": {
 				Name:   "order_created_date",
 				Header: "Created Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "2006-01-02",
+				},
 			},
 			"order_updated_date": {
 				Name:   "order_updated_date",
 				Header: "Updated Date",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "2006-01-02",
+				},
 			},
 			"order_fulfillment_status_id": {
 				Name:   "order_fulfillment_status_id",
@@ -145,12 +157,20 @@ var newConfig = &tablebuilder.Config{
 				Header: "Customer Created",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "2006-01-02",
+				},
 			},
 			"customer_updated_date": {
 				Name:   "customer_updated_date",
 				Header: "Customer Updated",
 				Width:  120,
 				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "2006-01-02",
+				},
 			},
 			"fulfillment_status_description": {
 				Name:   "fulfillment_status_description",

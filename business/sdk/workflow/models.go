@@ -27,40 +27,6 @@ type FieldChange struct {
 	NewValue any `json:"new_value"`
 }
 
-// ExecutionBatch represents a batch of rules that can execute in parallel
-type ExecutionBatch struct {
-	BatchNumber       int           `json:"batch_number"`
-	RuleIDs           uuid.UUIDs    `json:"rule_ids"`
-	CanRunParallel    bool          `json:"can_run_parallel"`
-	EstimatedDuration time.Duration `json:"estimated_duration_ms"`
-	DependencyLevel   int           `json:"dependency_level"`
-}
-
-// ExecutionPlan represents the planned execution of matched rules
-type ExecutionPlan struct {
-	PlanID                 uuid.UUID        `json:"plan_id"`
-	TriggerEvent           TriggerEvent     `json:"trigger_event"`
-	MatchedRuleCount       int              `json:"matched_rule_count"`
-	ExecutionBatches       []ExecutionBatch `json:"execution_batches"`
-	TotalBatches           int              `json:"total_batches"`
-	EstimatedTotalDuration time.Duration    `json:"estimated_total_duration_ms"`
-	CreatedAt              time.Time        `json:"created_at"`
-}
-
-// WorkflowExecution represents an active or completed workflow execution
-type WorkflowExecution struct {
-	ExecutionID   uuid.UUID       `json:"execution_id"`
-	TriggerEvent  TriggerEvent    `json:"trigger_event"`
-	ExecutionPlan ExecutionPlan   `json:"execution_plan"`
-	CurrentBatch  int             `json:"current_batch"`
-	Status        ExecutionStatus `json:"status"`
-	StartedAt     time.Time       `json:"started_at"`
-	CompletedAt   *time.Time      `json:"completed_at,omitempty"`
-	TotalDuration *time.Duration  `json:"total_duration_ms,omitempty"`
-	BatchResults  []BatchResult   `json:"batch_results"`
-	Errors        []string        `json:"errors"`
-}
-
 // ExecutionStatus represents the status of a workflow execution
 type ExecutionStatus string
 
@@ -72,74 +38,34 @@ const (
 	StatusCancelled ExecutionStatus = "cancelled"
 )
 
-// BatchResult represents the result of executing a batch of rules
-type BatchResult struct {
-	BatchNumber int           `json:"batch_number"`
-	RuleResults []RuleResult  `json:"rule_results"`
-	BatchStatus string        `json:"batch_status"`
-	StartedAt   time.Time     `json:"started_at"`
-	CompletedAt time.Time     `json:"completed_at"`
-	Duration    time.Duration `json:"duration_ms"`
-}
+// TriggerSource constants for distinguishing automated vs manual executions
+const (
+	TriggerSourceAutomation = "automation"
+	TriggerSourceManual     = "manual"
+)
 
-// RuleResult represents the result of executing a single rule
-type RuleResult struct {
-	RuleID        uuid.UUID      `json:"rule_id"`
-	RuleName      string         `json:"rule_name"`
-	Status        string         `json:"status"`
-	ActionResults []ActionResult `json:"action_results"`
-	StartedAt     time.Time      `json:"started_at"`
-	CompletedAt   *time.Time     `json:"completed_at,omitempty"`
-	Duration      time.Duration  `json:"duration_ms"`
-	ErrorMessage  string         `json:"error_message,omitempty"`
-}
+// EventType constants for action execution
+const (
+	EventTypeOnCreate      = "on_create"
+	EventTypeOnUpdate      = "on_update"
+	EventTypeOnDelete      = "on_delete"
+	EventTypeManualTrigger = "manual_trigger"
+)
 
-// ActionResult represents the result of executing a single action
-type ActionResult struct {
-	ActionID     uuid.UUID              `json:"action_id"`
-	ActionName   string                 `json:"action_name"`
-	ActionType   string                 `json:"action_type"`
-	Status       string                 `json:"status"`
-	ResultData   map[string]interface{} `json:"result_data,omitempty"`
-	ErrorMessage string                 `json:"error_message,omitempty"`
-	Duration     time.Duration          `json:"duration_ms"`
-	StartedAt    time.Time              `json:"started_at"`
-	CompletedAt  *time.Time             `json:"completed_at,omitempty"`
-}
-
-// WorkflowConfig holds configuration for the workflow engine
-type WorkflowConfig struct {
-	MaxParallelRules      int           `json:"max_parallel_rules"`
-	MaxParallelActions    int           `json:"max_parallel_actions"`
-	DefaultTimeout        time.Duration `json:"default_timeout_ms"`
-	RetryFailedActions    bool          `json:"retry_failed_actions"`
-	MaxRetries            int           `json:"max_retries"`
-	StopOnCriticalFailure bool          `json:"stop_on_critical_failure"`
-}
-
-// WorkflowStats tracks workflow execution statistics
-type WorkflowStats struct {
-	TotalWorkflowsProcessed int           `json:"total_workflows_processed"`
-	SuccessfulWorkflows     int           `json:"successful_workflows"`
-	FailedWorkflows         int           `json:"failed_workflows"`
-	AverageWorkflowDuration time.Duration `json:"average_workflow_duration_ms"`
-	TotalRulesExecuted      int           `json:"total_rules_executed"`
-	TotalActionsExecuted    int           `json:"total_actions_executed"`
-	LastExecutionAt         *time.Time    `json:"last_execution_at"`
-}
-
-// ActionExecutionContext provides context for action execution
+// ActionExecutionContext provides context for action execution.
+// It supports both automated workflow execution and manual action execution.
 type ActionExecutionContext struct {
-	EntityID     uuid.UUID              `json:"entity_id,omitempty"`
-	EntityName   string                 `json:"entity_name"`
-	EventType    string                 `json:"event_type"`
-	FieldChanges map[string]FieldChange `json:"field_changes,omitempty"`
-	RawData      map[string]interface{} `json:"raw_data,omitempty"`
-	Timestamp    time.Time              `json:"timestamp"`
-	UserID       uuid.UUID              `json:"user_id,omitempty"`
-	RuleID       uuid.UUID              `json:"rule_id"`
-	RuleName     string                 `json:"rule_name"`
-	ExecutionID  uuid.UUID              `json:"execution_id,omitempty"`
+	EntityID      uuid.UUID              `json:"entity_id,omitempty"`
+	EntityName    string                 `json:"entity_name"`
+	EventType     string                 `json:"event_type"` // "on_create", "on_update", "on_delete", "manual_trigger"
+	FieldChanges  map[string]FieldChange `json:"field_changes,omitempty"`
+	RawData       map[string]interface{} `json:"raw_data,omitempty"`
+	Timestamp     time.Time              `json:"timestamp"`
+	UserID        uuid.UUID              `json:"user_id,omitempty"`
+	RuleID        *uuid.UUID             `json:"rule_id,omitempty"`      // Pointer: nil for manual executions
+	RuleName      string                 `json:"rule_name"`
+	ExecutionID   uuid.UUID              `json:"execution_id,omitempty"`
+	TriggerSource string                 `json:"trigger_source"` // "automation" or "manual"
 }
 
 // =============================================================================
@@ -243,6 +169,7 @@ type AutomationRule struct {
 	EntityTypeID      uuid.UUID
 	TriggerTypeID     uuid.UUID
 	TriggerConditions *json.RawMessage
+	CanvasLayout      json.RawMessage
 	IsActive          bool
 	CreatedDate       time.Time
 	UpdatedDate       time.Time
@@ -259,6 +186,7 @@ type NewAutomationRule struct {
 	EntityTypeID      uuid.UUID
 	TriggerTypeID     uuid.UUID
 	TriggerConditions *json.RawMessage
+	CanvasLayout      json.RawMessage
 	IsActive          bool
 	CreatedBy         uuid.UUID
 }
@@ -271,6 +199,7 @@ type UpdateAutomationRule struct {
 	EntityTypeID      *uuid.UUID
 	TriggerTypeID     *uuid.UUID
 	TriggerConditions *json.RawMessage
+	CanvasLayout      *json.RawMessage
 	IsActive          *bool
 	UpdatedBy         *uuid.UUID
 }
@@ -284,6 +213,7 @@ type ActionTemplate struct {
 	Name          string
 	Description   string
 	ActionType    string
+	Icon          string
 	DefaultConfig json.RawMessage
 	CreatedDate   time.Time
 	CreatedBy     uuid.UUID
@@ -296,6 +226,7 @@ type NewActionTemplate struct {
 	Name          string
 	Description   string
 	ActionType    string
+	Icon          string
 	DefaultConfig json.RawMessage
 	CreatedBy     uuid.UUID
 }
@@ -305,6 +236,7 @@ type UpdateActionTemplate struct {
 	Name          *string
 	Description   *string
 	ActionType    *string
+	Icon          *string
 	DefaultConfig *json.RawMessage
 }
 
@@ -318,7 +250,6 @@ type RuleAction struct {
 	Name             string
 	Description      string
 	ActionConfig     json.RawMessage
-	ExecutionOrder   int
 	IsActive         bool
 	TemplateID       *uuid.UUID // Nullable
 	DeactivatedBy    uuid.UUID  // Nullable, tracks who deactivated the action
@@ -330,18 +261,16 @@ type NewRuleAction struct {
 	Name             string
 	Description      string
 	ActionConfig     json.RawMessage
-	ExecutionOrder   int
 	IsActive         bool
 	TemplateID       *uuid.UUID
 }
 
 // UpdateRuleAction contains information needed to update a rule action
 type UpdateRuleAction struct {
-	Name           *string
-	Description    *string
-	ActionConfig   *json.RawMessage
-	ExecutionOrder *int
-	IsActive       *bool
+	Name         *string
+	Description  *string
+	ActionConfig *json.RawMessage
+	IsActive     *bool
 	TemplateID     *uuid.UUID
 }
 
@@ -363,12 +292,55 @@ type NewRuleDependency struct {
 }
 
 // =============================================================================
+// Action Edge (for workflow branching/condition nodes)
+// =============================================================================
+
+// EdgeType constants for action edges
+const (
+	EdgeTypeStart       = "start"        // Entry point into action graph (source is nil)
+	EdgeTypeSequence    = "sequence"     // Linear progression to next action
+	EdgeTypeTrueBranch  = "true_branch"  // Condition evaluated to true
+	EdgeTypeFalseBranch = "false_branch" // Condition evaluated to false
+	EdgeTypeAlways      = "always"       // Unconditional edge (always follow)
+)
+
+// ActionEdge represents a directed edge between actions in a workflow graph.
+// Used to support branching (condition nodes) within a rule's action sequence.
+type ActionEdge struct {
+	ID             uuid.UUID
+	RuleID         uuid.UUID
+	SourceActionID *uuid.UUID // nil for start edges (entry points)
+	TargetActionID uuid.UUID
+	EdgeType       string // start, sequence, true_branch, false_branch, always
+	EdgeOrder      int    // For deterministic traversal when multiple edges share same source
+	CreatedDate    time.Time
+}
+
+// NewActionEdge contains information needed to create a new action edge
+type NewActionEdge struct {
+	RuleID         uuid.UUID
+	SourceActionID *uuid.UUID
+	TargetActionID uuid.UUID
+	EdgeType       string
+	EdgeOrder      int
+}
+
+// ConditionResult represents the result of evaluating a condition action.
+// Returned by the evaluate_condition action handler.
+type ConditionResult struct {
+	Evaluated   bool   `json:"evaluated"`    // Whether evaluation was performed
+	Result      bool   `json:"result"`       // The boolean result of the condition
+	BranchTaken string `json:"branch_taken"` // "true_branch" or "false_branch"
+}
+
+// =============================================================================
 // Automation Execution
 // =============================================================================
-// AutomationExecution represents an execution record of an automation rule
+// AutomationExecution represents an execution record of an automation rule or manual action
 type AutomationExecution struct {
 	ID               uuid.UUID
-	AutomationRuleID uuid.UUID
+	AutomationRuleID *uuid.UUID // Pointer: nil for manual executions
+	RuleName         string     // Rule name from LEFT JOIN (empty for manual executions)
 	EntityType       string
 	TriggerData      json.RawMessage
 	ActionsExecuted  json.RawMessage
@@ -376,17 +348,23 @@ type AutomationExecution struct {
 	ErrorMessage     string
 	ExecutionTimeMs  int
 	ExecutedAt       time.Time
+	TriggerSource    string     // "automation" or "manual"
+	ExecutedBy       *uuid.UUID // User who triggered manual execution
+	ActionType       string     // For manual executions: the action type that was executed
 }
 
 // NewAutomationExecution contains information needed to record a new execution
 type NewAutomationExecution struct {
-	AutomationRuleID uuid.UUID
+	AutomationRuleID *uuid.UUID // Pointer: nil for manual executions
 	EntityType       string
 	TriggerData      json.RawMessage
 	ActionsExecuted  json.RawMessage
 	Status           ExecutionStatus
 	ErrorMessage     string
 	ExecutionTimeMs  int
+	TriggerSource    string     // "automation" or "manual"
+	ExecutedBy       *uuid.UUID // User who triggered manual execution
+	ActionType       string     // For manual executions: the action type
 }
 
 // =============================================================================
@@ -508,6 +486,7 @@ type AutomationRuleView struct {
 	Description       *string
 	EntityID          *uuid.UUID
 	TriggerConditions *json.RawMessage
+	CanvasLayout      json.RawMessage
 	Actions           json.RawMessage
 	IsActive          bool
 	CreatedDate       time.Time
@@ -534,7 +513,6 @@ type RuleActionView struct {
 	Name              string
 	Description       string
 	ActionConfig      json.RawMessage
-	ExecutionOrder    int
 	IsActive          bool
 	TemplateID        *uuid.UUID
 	// Template information

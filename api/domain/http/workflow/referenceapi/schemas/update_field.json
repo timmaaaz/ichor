@@ -1,0 +1,45 @@
+{
+    "type": "object",
+    "required": ["target_entity", "target_field", "new_value"],
+    "properties": {
+        "target_entity": {
+            "type": "string",
+            "description": "Target entity (schema.table)"
+        },
+        "target_field": {
+            "type": "string",
+            "description": "Field to update"
+        },
+        "new_value": {
+            "description": "New value - supports template variables"
+        },
+        "field_type": {
+            "type": "string",
+            "description": "Type of the field (for validation)"
+        },
+        "foreign_key_config": {
+            "type": "object",
+            "description": "Foreign key lookup configuration",
+            "properties": {
+                "reference_table": {"type": "string"},
+                "lookup_field": {"type": "string"},
+                "id_field": {"type": "string"},
+                "allow_create": {"type": "boolean"},
+                "create_config": {"type": "object"}
+            }
+        },
+        "conditions": {
+            "type": "array",
+            "description": "Conditions that must be met to update",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "field": {"type": "string"},
+                    "operator": {"type": "string"},
+                    "value": {}
+                }
+            }
+        },
+        "timeout_ms": {"type": "integer"}
+    }
+}

@@ -119,6 +119,8 @@ TEMPO           := grafana/tempo:2.5.0
 LOKI            := grafana/loki:3.1.0
 PROMTAIL        := grafana/promtail:3.1.0
 RABBITMQ       := rabbitmq:3-management
+TEMPORAL        := temporalio/auto-setup:1.26.2
+TEMPORAL_UI     := temporalio/ui:2.34.0
 
 KIND_CLUSTER    := superior-starter-cluster
 NAMESPACE       := ichor-system
@@ -129,6 +131,8 @@ VERSION         := 0.0.1
 ICHOR_IMAGE     := $(BASE_IMAGE_NAME)/$(ICHOR_APP):$(VERSION)
 METRICS_IMAGE   := $(BASE_IMAGE_NAME)/metrics:$(VERSION)
 AUTH_IMAGE      := $(BASE_IMAGE_NAME)/$(AUTH_APP):$(VERSION)
+WORKFLOW_WORKER_APP    := workflow-worker
+WORKFLOW_WORKER_IMAGE  := $(BASE_IMAGE_NAME)/$(WORKFLOW_WORKER_APP):$(VERSION)
 
 # VERSION       := "0.0.1-$(shell git rev-parse --short HEAD)"
 
@@ -166,13 +170,15 @@ dev-docker:
 	docker pull $(LOKI) & \
 	docker pull $(PROMTAIL) & \
 	docker pull $(RABBITMQ) & \
+	docker pull $(TEMPORAL) & \
+	docker pull $(TEMPORAL_UI) & \
 	wait;
 
 # ==============================================================================
 # Building containers
 
-.PHONY: build ichor metrics auth
-build: ichor metrics auth
+.PHONY: build ichor metrics auth workflow-worker
+build: ichor metrics auth workflow-worker
 
 ichor:
 	docker build \
@@ -198,6 +204,14 @@ auth:
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		.
 
+workflow-worker:
+	docker build \
+		-f zarf/docker/dockerfile.workflow-worker \
+		-t $(WORKFLOW_WORKER_IMAGE) \
+		--build-arg BUILD_REF=$(VERSION) \
+		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+		.
+
 # ==============================================================================
 # Running from within k8s/kind
 
@@ -216,6 +230,8 @@ dev-up:
 	kind load docker-image $(LOKI) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(PROMTAIL) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(RABBITMQ) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(TEMPORAL) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(TEMPORAL_UI) --name $(KIND_CLUSTER) & \
 	wait;
 
 dev-down:
@@ -242,6 +258,7 @@ dev-load:
 	kind load docker-image $(ICHOR_IMAGE) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(METRICS_IMAGE) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(AUTH_IMAGE) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(WORKFLOW_WORKER_IMAGE) --name $(KIND_CLUSTER) & \
 	wait;
 
 dev-apply:
@@ -254,6 +271,9 @@ dev-apply:
 	kustomize build zarf/k8s/dev/database | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
+	kustomize build zarf/k8s/dev/temporal | kubectl apply -f -
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/temporal
+
 	kustomize build zarf/k8s/dev/rabbitmq | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/rabbitmq
 
@@ -263,9 +283,13 @@ dev-apply:
 	kustomize build zarf/k8s/dev/ichor | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(ICHOR_APP) --timeout=120s --for=condition=Ready
 
+	kustomize build zarf/k8s/dev/workflow-worker | kubectl apply -f -
+	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(WORKFLOW_WORKER_APP) --timeout=120s --for=condition=Ready
+
 dev-restart:
 	kubectl rollout restart deployment $(AUTH_APP) --namespace=$(NAMESPACE)
 	kubectl rollout restart deployment $(ICHOR_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(WORKFLOW_WORKER_APP) --namespace=$(NAMESPACE)
 
 dev-update: build dev-load dev-restart
 
@@ -296,6 +320,17 @@ dev-describe-ichor:
 
 dev-describe-auth:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=$(AUTH_APP)
+
+dev-logs-workflow-worker:
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(WORKFLOW_WORKER_APP) --all-containers=true -f --tail=100
+
+dev-describe-workflow-worker:
+	kubectl describe pod --namespace=$(NAMESPACE) -l app=$(WORKFLOW_WORKER_APP)
+
+temporal-ui:
+	@echo "Temporal UI available at http://localhost:8280"
+	@echo "Press Ctrl+C to stop port forwarding"
+	kubectl port-forward --namespace=$(NAMESPACE) svc/temporal-service 8280:8080
 
 dev-describe-database:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=database
@@ -662,6 +697,7 @@ help:
 	@echo "  ichor                   Build the ichor container"
 	@echo "  metrics                 Build the metrics container"
 	@echo "  auth                    Build the auth container"
+	@echo "  workflow-worker         Build the workflow-worker container"
 	@echo "  dev-up                  Start the KIND cluster"
 	@echo "  dev-down                Stop the KIND cluster"
 	@echo "  dev-status-all          Show the status of the KIND cluster"
@@ -673,11 +709,14 @@ help:
 	@echo "  dev-update-apply        Build, load, and apply the deployments"
 	@echo "  dev-logs                Show the logs for the ichor service"
 	@echo "  dev-logs-auth           Show the logs for the auth service"
+	@echo "  dev-logs-workflow-worker Show the logs for the workflow-worker"
 	@echo "  dev-logs-init           Show the logs for the init container"
 	@echo "  dev-describe-node       Show the node details"
 	@echo "  dev-describe-deployment Show the deployment details"
 	@echo "  dev-describe-ichor      Show the ichor pod details"
 	@echo "  dev-describe-auth       Show the auth pod details"
+	@echo "  dev-describe-workflow-worker Show the workflow-worker pod details"
+	@echo "  temporal-ui             Port-forward Temporal Web UI to localhost:8280"
 	@echo "  dev-describe-database   Show the database pod details"
 	@echo "  dev-describe-grafana    Show the grafana pod details"
 	@echo "  dev-logs-db             Show the logs for the database service"

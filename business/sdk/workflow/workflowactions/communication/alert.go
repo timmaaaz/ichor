@@ -55,6 +55,21 @@ func (h *CreateAlertHandler) GetType() string {
 	return "create_alert"
 }
 
+// SupportsManualExecution returns true - alerts can be triggered manually
+func (h *CreateAlertHandler) SupportsManualExecution() bool {
+	return true
+}
+
+// IsAsync returns false - alert creation completes inline
+func (h *CreateAlertHandler) IsAsync() bool {
+	return false
+}
+
+// GetDescription returns a human-readable description for discovery APIs
+func (h *CreateAlertHandler) GetDescription() string {
+	return "Create an alert notification for users or roles"
+}
+
 // Validate validates the action configuration before execution.
 func (h *CreateAlertHandler) Validate(config json.RawMessage) error {
 	var cfg AlertConfig
@@ -101,6 +116,12 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		context = json.RawMessage(`{}`)
 	}
 
+	// Handle pointer-based RuleID (nil for manual executions)
+	sourceRuleID := uuid.Nil
+	if execCtx.RuleID != nil {
+		sourceRuleID = *execCtx.RuleID
+	}
+
 	// Build Alert struct
 	alert := alertbus.Alert{
 		ID:               uuid.New(),
@@ -111,7 +132,7 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		Context:          context,
 		SourceEntityName: execCtx.EntityName,
 		SourceEntityID:   execCtx.EntityID,
-		SourceRuleID:     execCtx.RuleID,
+		SourceRuleID:     sourceRuleID,
 		Status:           alertbus.StatusActive,
 		CreatedDate:      now,
 		UpdatedDate:      now,

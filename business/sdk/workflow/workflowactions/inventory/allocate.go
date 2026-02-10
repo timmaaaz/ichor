@@ -16,7 +16,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
-	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
 
 // TODO: Add to AllocationStrategy options:
@@ -139,7 +138,6 @@ type inventoryItemLock struct {
 type AllocateInventoryHandler struct {
 	log              *logger.Logger
 	db               *sqlx.DB
-	queueClient      *rabbitmq.WorkflowQueue
 	inventoryItemBus *inventoryitembus.Business
 	locationBus      *inventorylocationbus.Business
 	transactionBus   *inventorytransactionbus.Business
@@ -151,7 +149,6 @@ type AllocateInventoryHandler struct {
 func NewAllocateInventoryHandler(
 	log *logger.Logger,
 	db *sqlx.DB,
-	queueClient *rabbitmq.WorkflowQueue,
 	inventoryItemBus *inventoryitembus.Business,
 	locationBus *inventorylocationbus.Business,
 	transactionBus *inventorytransactionbus.Business,
@@ -161,7 +158,6 @@ func NewAllocateInventoryHandler(
 	return &AllocateInventoryHandler{
 		log:              log,
 		db:               db,
-		queueClient:      queueClient,
 		inventoryItemBus: inventoryItemBus,
 		locationBus:      locationBus,
 		transactionBus:   transactionBus,
@@ -173,6 +169,21 @@ func NewAllocateInventoryHandler(
 // GetType returns the action type
 func (h *AllocateInventoryHandler) GetType() string {
 	return "allocate_inventory"
+}
+
+// SupportsManualExecution returns true - inventory allocation can be triggered manually
+func (h *AllocateInventoryHandler) SupportsManualExecution() bool {
+	return true
+}
+
+// IsAsync returns true - inventory allocation queues work for async processing
+func (h *AllocateInventoryHandler) IsAsync() bool {
+	return true
+}
+
+// GetDescription returns a human-readable description for discovery APIs
+func (h *AllocateInventoryHandler) GetDescription() string {
+	return "Allocate inventory items from warehouse locations"
 }
 
 // Validate validates the allocation configuration
@@ -287,7 +298,12 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		"source_from_line_item", cfg.SourceFromLineItem)
 
 	// Generate idempotency key based on execution context
-	idempotencyKey := fmt.Sprintf("%s_%s_%s", execContext.ExecutionID, execContext.RuleID, h.GetType())
+	// For manual executions (nil RuleID), use "manual" as the rule identifier
+	ruleIDStr := "manual"
+	if execContext.RuleID != nil {
+		ruleIDStr = execContext.RuleID.String()
+	}
+	idempotencyKey := fmt.Sprintf("%s_%s_%s", execContext.ExecutionID, ruleIDStr, h.GetType())
 
 	// Check if this allocation was already processed (idempotency)
 	h.log.Info(ctx, "VERBOSE: Checking idempotency",
@@ -322,183 +338,39 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		ExecutionID: execContext.ExecutionID,
 		Config:      cfg,
 		Context:     execContext,
-		Status:      "queued",
+		Status:      "processing",
 		Priority:    h.calculatePriority(cfg.Priority),
 		CreatedAt:   time.Now(),
 		RetryCount:  0,
 		MaxRetries:  3,
 	}
 
-	// Serialize the request for the queued payload
-	requestData, err := json.Marshal(request)
+	// Process allocation synchronously (Temporal handles async/retry).
+	result, err := h.ProcessAllocation(ctx, request)
 	if err != nil {
-		return QueuedAllocationResponse{}, fmt.Errorf("failed to marshal request: %w", err)
+		return QueuedAllocationResponse{}, fmt.Errorf("allocation failed: %w", err)
 	}
 
-	// Create standard QueuedPayload wrapper for async processing
-	queuedPayload := workflow.QueuedPayload{
-		RequestType:      h.GetType(), // "allocate_inventory"
-		RequestData:      requestData,
-		ExecutionContext: execContext,
-		IdempotencyKey:   idempotencyKey,
-	}
-
-	payloadData, err := json.Marshal(queuedPayload)
-	if err != nil {
-		return QueuedAllocationResponse{}, fmt.Errorf("failed to marshal queued payload: %w", err)
-	}
-
-	// Convert to map for RabbitMQ message payload
-	var payloadMap map[string]interface{}
-	if err := json.Unmarshal(payloadData, &payloadMap); err != nil {
-		return QueuedAllocationResponse{}, fmt.Errorf("failed to convert payload to map: %w", err)
-	}
-
-	// Queue to RabbitMQ for async processing using generic async_action type
-	message := &rabbitmq.Message{
-		ID:           request.ID,
-		Type:         "async_action", // Generic type for all async actions
-		EntityName:   execContext.EntityName,
-		EntityID:     execContext.EntityID,
-		EventType:    h.GetType(), // "allocate_inventory"
-		Payload:      payloadMap,
-		Priority:     uint8(request.Priority),
-		Attempts:     0,
-		MaxAttempts:  request.MaxRetries,
-		CreatedAt:    request.CreatedAt,
-		ScheduledFor: request.CreatedAt,
-		UserID:       execContext.UserID,
-	}
-
-	h.log.Info(ctx, "VERBOSE: Publishing to RabbitMQ",
-		"queue_type", rabbitmq.QueueTypeInventory,
-		"message_id", message.ID)
-
-	if err := h.queueClient.Publish(ctx, rabbitmq.QueueTypeInventory, message); err != nil {
-		h.log.Error(ctx, "VERBOSE: Failed to publish to RabbitMQ",
-			"queue_type", rabbitmq.QueueTypeInventory,
-			"message_id", message.ID,
-			"error", err.Error())
-		return QueuedAllocationResponse{}, fmt.Errorf("failed to queue allocation request: %w", err)
-	}
-
-	h.log.Info(ctx, "VERBOSE: Successfully published to RabbitMQ",
-		"allocation_id", request.ID,
-		"status", "queued")
-
-	// Return immediate response with tracking info
 	return QueuedAllocationResponse{
-		AllocationID:   request.ID,
-		Status:         "queued",
-		IdempotencyKey: idempotencyKey,
+		AllocationID:   result.AllocationID,
+		Status:         result.Status,
+		IdempotencyKey: result.IdempotencyKey,
 		Priority:       request.Priority,
-		Message:        "Allocation request queued for processing",
+		Message:        fmt.Sprintf("Allocation completed: %s", result.Status),
 		ReferenceID:    cfg.ReferenceID,
 		ReferenceType:  cfg.ReferenceType,
 	}, nil
 }
 
-// ProcessQueued implements AsyncActionHandler for processing queued allocation requests.
-// This is called by the queue manager when an async_action message is dequeued.
-func (h *AllocateInventoryHandler) ProcessQueued(ctx context.Context, payload json.RawMessage, publisher *workflow.EventPublisher) error {
-	// Deserialize the standard QueuedPayload wrapper
-	var queuedPayload workflow.QueuedPayload
-	if err := json.Unmarshal(payload, &queuedPayload); err != nil {
-		return fmt.Errorf("failed to unmarshal queued payload: %w", err)
-	}
-
-	// Deserialize the action-specific AllocationRequest from RequestData
-	var request AllocationRequest
-	if err := json.Unmarshal(queuedPayload.RequestData, &request); err != nil {
-		return fmt.Errorf("failed to unmarshal allocation request: %w", err)
-	}
-
-	// Process the allocation using existing logic
-	result, err := h.ProcessAllocation(ctx, request)
-	if err != nil {
-		// Even on failure, fire the workflow event so downstream rules (like alerts) can trigger.
-		// Create a failure result to pass to the event.
-		failureResult := &InventoryAllocationResult{
-			AllocationID:   request.ID,
-			Status:         "failed",
-			AllocatedItems: []AllocatedItem{},
-			FailedItems: []FailedItem{{
-				ProductID:    uuid.Nil,
-				Reason:       "processing_error",
-				ErrorMessage: err.Error(),
-			}},
-			TotalRequested:  0,
-			TotalAllocated:  0,
-			IdempotencyKey:  fmt.Sprintf("%s_%s_%s", request.ExecutionID, request.Context.RuleID, h.GetType()),
-			CreatedAt:       request.CreatedAt,
-			CompletedAt:     time.Now(),
-			ExecutionTimeMs: time.Since(request.CreatedAt).Milliseconds(),
-		}
-
-		// Extract info from config for the event
-		for _, item := range request.Config.InventoryItems {
-			failureResult.FailedItems = append(failureResult.FailedItems, FailedItem{
-				ProductID:         item.ProductID,
-				RequestedQuantity: item.Quantity,
-				Reason:            "allocation_failed",
-				ErrorMessage:      err.Error(),
-			})
-			failureResult.TotalRequested += item.Quantity
-		}
-		// Remove the placeholder entry if we added real items
-		if len(failureResult.FailedItems) > 1 {
-			failureResult.FailedItems = failureResult.FailedItems[1:]
-		}
-
-		h.fireAllocationResultEvent(ctx, failureResult, request, publisher)
-
-		h.log.Error(ctx, "Allocation processing failed, event fired for alerting",
-			"allocation_id", request.ID,
-			"error", err.Error())
-
-		return fmt.Errorf("allocation processing failed: %w", err)
-	}
-
-	// Fire workflow event for downstream rule processing
-	h.fireAllocationResultEvent(ctx, result, request, publisher)
-
-	h.log.Info(ctx, "Async allocation completed",
-		"allocation_id", result.AllocationID,
-		"status", result.Status,
-		"total_allocated", result.TotalAllocated)
-
-	return nil
-}
-
-// fireAllocationResultEvent fires a workflow event for downstream rule processing.
-// This is called internally by ProcessQueued to trigger rules like "on allocation success -> update status".
-func (h *AllocateInventoryHandler) fireAllocationResultEvent(ctx context.Context, result *InventoryAllocationResult, request AllocationRequest, publisher *workflow.EventPublisher) {
-	event := workflow.TriggerEvent{
-		EventType:  "on_create",
-		EntityName: "allocation_results",
-		EntityID:   result.AllocationID,
-		Timestamp:  result.CompletedAt,
-		UserID:     request.Context.UserID,
-		RawData: map[string]interface{}{
-			"status":            result.Status,
-			"reference_id":      request.Config.ReferenceID,
-			"reference_type":    request.Config.ReferenceType,
-			"total_allocated":   result.TotalAllocated,
-			"total_requested":   result.TotalRequested,
-			"allocated_items":   result.AllocatedItems,
-			"failed_items":      result.FailedItems,
-			"idempotency_key":   result.IdempotencyKey,
-			"execution_time_ms": result.ExecutionTimeMs,
-		},
-	}
-
-	publisher.PublishCustomEvent(ctx, event)
-}
-
-// ProcessAllocation handles the actual allocation logic (called by queue consumer)
+// ProcessAllocation handles the actual allocation logic.
 func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, request AllocationRequest) (*InventoryAllocationResult, error) {
 	startTime := time.Now()
-	idempotencyKey := fmt.Sprintf("%s_%s_%s", request.ExecutionID, request.Context.RuleID, h.GetType())
+	// For manual executions (nil RuleID), use "manual" as the rule identifier
+	ruleIDStr := "manual"
+	if request.Context.RuleID != nil {
+		ruleIDStr = request.Context.RuleID.String()
+	}
+	idempotencyKey := fmt.Sprintf("%s_%s_%s", request.ExecutionID, ruleIDStr, h.GetType())
 
 	// Double-check idempotency in case of race conditions
 	existing, idempotencyResult, err := h.workflowBus.QueryAllocationResultByIdempotencyKey(ctx, idempotencyKey)
@@ -785,4 +657,26 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// GetEntityModifications implements workflow.EntityModifier for cascade visualization.
+// Returns the entities that this action may modify based on its configuration.
+// Inventory allocation modifies inventory_items (reserved/allocated quantities)
+// and creates allocation_results records.
+func (h *AllocateInventoryHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
+	// Inventory allocation always:
+	// 1. Updates inventory_items (reserved_quantity or allocated_quantity)
+	// 2. Creates an allocation_results record (which fires on_create event)
+	return []workflow.EntityModification{
+		{
+			EntityName: "inventory.inventory_items",
+			EventType:  "on_update",
+			Fields:     []string{"reserved_quantity", "allocated_quantity"},
+		},
+		{
+			EntityName: "allocation_results",
+			EventType:  "on_create",
+			Fields:     nil, // New record, all fields are "created"
+		},
+	}
 }

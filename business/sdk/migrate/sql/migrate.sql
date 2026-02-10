@@ -968,7 +968,10 @@ CREATE TABLE workflow.automation_rules (
    trigger_type_id UUID NOT NULL REFERENCES workflow.trigger_types(id),
 
    trigger_conditions JSONB NULL, -- When to trigger
-      
+
+   -- Visual editor state
+   canvas_layout JSONB DEFAULT '{}',
+
    -- Control
    is_active BOOLEAN NOT NULL DEFAULT TRUE,
    
@@ -981,18 +984,25 @@ CREATE TABLE workflow.automation_rules (
 );
 
 -- Version: 1.67
--- Description: Create table automation_executions
+-- Description: Create table automation_executions (supports both automation and manual triggers)
 CREATE TABLE workflow.automation_executions (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-   automation_rules_id UUID NOT NULL REFERENCES workflow.automation_rules(id),
+   automation_rules_id UUID REFERENCES workflow.automation_rules(id),  -- NULLABLE for manual executions
    entity_type VARCHAR(50) NOT NULL,
    trigger_data JSONB,
    actions_executed JSONB,
-   status VARCHAR(20) NOT NULL, -- 'success', 'failed', 'partial'
+   status VARCHAR(20) NOT NULL, -- 'success', 'failed', 'partial', 'queued', 'processing'
    error_message TEXT,
    execution_time_ms INTEGER,
-   executed_at TIMESTAMP NOT NULL DEFAULT NOW()
+   executed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+   trigger_source VARCHAR(20) NOT NULL DEFAULT 'automation',  -- 'automation' or 'manual'
+   executed_by UUID REFERENCES core.users(id),                -- User who triggered (required for manual)
+   action_type VARCHAR(100)                                   -- Action type for manual executions
 );
+
+CREATE INDEX idx_automation_executions_trigger_source ON workflow.automation_executions(trigger_source);
+CREATE INDEX idx_automation_executions_executed_by ON workflow.automation_executions(executed_by);
+CREATE INDEX idx_automation_executions_status ON workflow.automation_executions(status);
 
 -- Version: 1.68
 -- Description: Create table action_templates
@@ -1001,6 +1011,7 @@ CREATE TABLE workflow.action_templates (
    name VARCHAR(100) NOT NULL UNIQUE,
    description TEXT,
    action_type VARCHAR(50) NOT NULL,
+   icon VARCHAR(100) NULL,
    default_config JSONB NOT NULL,
    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
    created_by UUID NOT NULL REFERENCES core.users(id),
@@ -1016,7 +1027,6 @@ CREATE TABLE workflow.rule_actions (
    name VARCHAR(100) NOT NULL,
    description TEXT,
    action_config JSONB NOT NULL,
-   execution_order INTEGER NOT NULL DEFAULT 1,
    is_active BOOLEAN DEFAULT TRUE,
    template_id UUID NULL REFERENCES workflow.action_templates(id),
    deactivated_by UUID NULL REFERENCES core.users(id)
@@ -1462,12 +1472,13 @@ FROM sales.order_line_items oli
    LEFT JOIN products.product_categories c ON p.category_id = c.id
    LEFT JOIN sales.line_item_fulfillment_statuses ofs ON oli.id = ofs.id;
 
-CREATE OR REPLACE VIEW workflow.automation_rules_view AS 
-SELECT 
+CREATE OR REPLACE VIEW workflow.automation_rules_view AS
+SELECT
     ar.id,
     ar.name,
     ar.description,
     ar.trigger_conditions,
+    ar.canvas_layout,
     ar.is_active,
     ar.created_date,
     ar.updated_date,
@@ -1512,11 +1523,11 @@ CREATE OR REPLACE VIEW workflow.rule_actions_view AS
       ra.name,
       ra.description,
       ra.action_config,
-      ra.execution_order,
       ra.is_active,
       ra.template_id,
       at.name as template_name,
       at.action_type as template_action_type,
+      at.icon as template_icon,
       at.default_config as template_default_config
    FROM workflow.rule_actions ra
    LEFT JOIN workflow.action_templates at ON ra.template_id = at.id;
@@ -1866,3 +1877,64 @@ COMMENT ON COLUMN config.enum_labels.sort_order IS 'Custom sort order (overrides
 -- Version: 1.98
 -- Description: Add itemized discount type
 ALTER TYPE sales.discount_type ADD VALUE 'itemized';
+
+-- Version: 1.990
+-- Description: Create workflow action_permissions table for manual action authorization
+CREATE TABLE workflow.action_permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role_id UUID NOT NULL REFERENCES core.roles(id) ON DELETE CASCADE,
+    action_type VARCHAR(100) NOT NULL,
+    is_allowed BOOLEAN NOT NULL DEFAULT TRUE,
+    constraints JSONB DEFAULT '{}',  -- Stubbed for future constraint implementation
+    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(role_id, action_type)
+);
+
+CREATE INDEX idx_action_permissions_role ON workflow.action_permissions(role_id);
+CREATE INDEX idx_action_permissions_type ON workflow.action_permissions(action_type);
+
+COMMENT ON TABLE workflow.action_permissions IS 'Controls which roles can manually execute workflow actions';
+COMMENT ON COLUMN workflow.action_permissions.role_id IS 'Role that is granted this permission';
+COMMENT ON COLUMN workflow.action_permissions.action_type IS 'Action type identifier (e.g., allocate_inventory, send_email)';
+COMMENT ON COLUMN workflow.action_permissions.is_allowed IS 'Whether the role is allowed to execute this action';
+COMMENT ON COLUMN workflow.action_permissions.constraints IS 'Future: JSONB constraints for fine-grained permission control';
+
+-- Version: 1.991
+-- Description: Seed default action permissions for admin role
+-- Note: update_field is intentionally excluded from manual execution
+INSERT INTO workflow.action_permissions (role_id, action_type, is_allowed)
+SELECT r.id, action_type, true
+FROM core.roles r
+CROSS JOIN (VALUES
+    ('allocate_inventory'),
+    ('create_alert'),
+    ('send_email'),
+    ('send_notification'),
+    ('seek_approval')
+) AS actions(action_type)
+WHERE r.name = 'admin';
+
+-- Version: 1.992
+-- Description: Add action edges for workflow branching (condition nodes)
+CREATE TABLE workflow.action_edges (
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   rule_id UUID NOT NULL REFERENCES workflow.automation_rules(id) ON DELETE CASCADE,
+   source_action_id UUID REFERENCES workflow.rule_actions(id) ON DELETE CASCADE,
+   target_action_id UUID NOT NULL REFERENCES workflow.rule_actions(id) ON DELETE CASCADE,
+   edge_type VARCHAR(20) NOT NULL CHECK (edge_type IN ('start', 'sequence', 'true_branch', 'false_branch', 'always')),
+   edge_order INTEGER DEFAULT 0,
+   created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+   CONSTRAINT unique_edge UNIQUE(source_action_id, target_action_id, edge_type)
+);
+
+CREATE INDEX idx_action_edges_source ON workflow.action_edges(source_action_id);
+CREATE INDEX idx_action_edges_target ON workflow.action_edges(target_action_id);
+CREATE INDEX idx_action_edges_rule ON workflow.action_edges(rule_id);
+
+COMMENT ON TABLE workflow.action_edges IS 'Defines edges between actions in a workflow graph for branching support';
+COMMENT ON COLUMN workflow.action_edges.rule_id IS 'The automation rule this edge belongs to';
+COMMENT ON COLUMN workflow.action_edges.source_action_id IS 'Source action (NULL for start edges)';
+COMMENT ON COLUMN workflow.action_edges.target_action_id IS 'Target action to execute';
+COMMENT ON COLUMN workflow.action_edges.edge_type IS 'Type: start, sequence, true_branch, false_branch, always';
+COMMENT ON COLUMN workflow.action_edges.edge_order IS 'Order when multiple edges have same source (for deterministic traversal)';

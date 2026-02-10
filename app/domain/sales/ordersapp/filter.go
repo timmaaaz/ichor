@@ -34,7 +34,7 @@ func parseFilter(qp QueryParams) (ordersbus.QueryFilter, error) {
 	if qp.FulfillmentStatusID != "" {
 		id, err := uuid.Parse(qp.FulfillmentStatusID)
 		if err != nil {
-			return ordersbus.QueryFilter{}, errs.NewFieldsError("fulfillment_status_id", err)
+			return ordersbus.QueryFilter{}, errs.NewFieldsError("order_fulfillment_status_id", err)
 		}
 		filter.FulfillmentStatusID = &id
 	}

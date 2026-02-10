@@ -32,6 +32,7 @@ import (
 	"github.com/timmaaaz/ichor/foundation/otel"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
+	"go.temporal.io/sdk/client"
 )
 
 /*
@@ -132,6 +133,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 			RetryDelay    time.Duration `conf:"default:5s"`
 			PrefetchCount int           `conf:"default:10"`
 		}
+		Temporal struct {
+			HostPort string `conf:"default:temporal-service.ichor-system.svc.cluster.local:7233"`
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -210,6 +214,23 @@ func run(ctx context.Context, log *logger.Logger) error {
 	defer rabbitClient.Close()
 
 	log.Info(ctx, "startup", "status", "RabbitMQ connected")
+
+	// -------------------------------------------------------------------------
+	// Initialize Temporal Client
+
+	var temporalClient client.Client
+	if cfg.Temporal.HostPort != "" {
+		tc, err := client.Dial(client.Options{
+			HostPort: cfg.Temporal.HostPort,
+		})
+		if err != nil {
+			log.Error(ctx, "temporal: client creation failed, workflow dispatch disabled", "error", err)
+		} else {
+			temporalClient = tc
+			defer temporalClient.Close()
+			log.Info(ctx, "startup", "status", "Temporal client connected", "host", cfg.Temporal.HostPort)
+		}
+	}
 
 	// -------------------------------------------------------------------------
 	// Configure OAuth Providers based on environment
@@ -310,13 +331,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	cfgMux := mux.Config{
-		Build:        build,
-		Log:          log,
-		Auth:         oauthAuth,
-		AuthClient:   authClient,
-		DB:           db,
-		Tracer:       tracer,
-		RabbitClient: rabbitClient,
+		Build:          build,
+		Log:            log,
+		Auth:           oauthAuth,
+		AuthClient:     authClient,
+		DB:             db,
+		Tracer:         tracer,
+		RabbitClient:   rabbitClient,
+		TemporalClient: temporalClient,
 	}
 
 	routes, userBus := buildRoutes(cfgMux)

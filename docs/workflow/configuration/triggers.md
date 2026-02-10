@@ -255,8 +255,19 @@ When evaluating conditions, field values are extracted from:
 
 For `changed_from` and `changed_to` operators, the processor uses `FieldChanges` to detect actual changes.
 
+## Operators in evaluate_condition Action
+
+The same operators documented above (`equals`, `not_equals`, `changed_from`, `changed_to`, `greater_than`, `less_than`, `contains`, `in`, `is_null`, `is_not_null`) are also used by the `evaluate_condition` action for in-workflow branching logic. The key difference:
+
+- **Trigger conditions**: Determine whether a rule fires at all
+- **evaluate_condition action**: Determines which branch to take during rule execution
+
+See [Evaluate Condition](../actions/evaluate-condition.md) for action-specific usage and [Branching](../branching.md) for how condition results control workflow execution flow.
+
 ## Related Documentation
 
 - [Rules](rules.md) - Automation rule configuration
 - [Templates](templates.md) - Template variables for action configs
 - [Architecture](../architecture.md) - TriggerProcessor implementation
+- [Evaluate Condition Action](../actions/evaluate-condition.md) - Condition evaluation during execution
+- [Branching](../branching.md) - Graph-based execution with conditional paths

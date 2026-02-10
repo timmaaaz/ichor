@@ -1,12 +1,15 @@
 package workflowdb
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -472,11 +475,11 @@ func (s *Store) CreateRule(ctx context.Context, rule workflow.AutomationRule) er
 	const q = `
 	INSERT INTO workflow.automation_rules (
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
-		trigger_conditions, is_active, created_date, updated_date,
+		trigger_conditions, canvas_layout, is_active, created_date, updated_date,
 		created_by, updated_by
 	) VALUES (
 		:id, :name, :description, :entity_id, :entity_type_id, :trigger_type_id,
-		:trigger_conditions, :is_active, :created_date, :updated_date,
+		:trigger_conditions, :canvas_layout, :is_active, :created_date, :updated_date,
 		:created_by, :updated_by
 	)`
 
@@ -497,13 +500,14 @@ func (s *Store) UpdateRule(ctx context.Context, rule workflow.AutomationRule) er
 	const q = `
 	UPDATE
 		workflow.automation_rules
-	SET 
+	SET
 		name = :name,
 		description = :description,
 		entity_id = :entity_id,
 		entity_type_id = :entity_type_id,
 		trigger_type_id = :trigger_type_id,
 		trigger_conditions = :trigger_conditions,
+		canvas_layout = :canvas_layout,
 		is_active = :is_active,
 		updated_date = :updated_date,
 		updated_by = :updated_by
@@ -579,11 +583,11 @@ func (s *Store) QueryRuleByID(ctx context.Context, userID uuid.UUID) (workflow.A
 	const q = `
 	SELECT
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
-		trigger_conditions, is_active, created_date, updated_date,
+		trigger_conditions, canvas_layout, is_active, created_date, updated_date,
 		created_by, updated_by
 	FROM
 		workflow.automation_rules
-	WHERE 
+	WHERE
 		id = :id`
 
 	var dbRule automationRule
@@ -608,11 +612,11 @@ func (s *Store) QueryRulesByEntity(ctx context.Context, entityID uuid.UUID) ([]w
 	const q = `
 	SELECT
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
-		trigger_conditions, is_active, created_date, updated_date,
+		trigger_conditions, canvas_layout, is_active, created_date, updated_date,
 		created_by, updated_by
 	FROM
 		workflow.automation_rules
-	WHERE 
+	WHERE
 		entity_id = :entity_id`
 
 	var dbRules []automationRule
@@ -628,11 +632,11 @@ func (s *Store) QueryActiveRules(ctx context.Context) ([]workflow.AutomationRule
 	const q = `
 	SELECT
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
-		trigger_conditions, is_active, created_date, updated_date,
+		trigger_conditions, canvas_layout, is_active, created_date, updated_date,
 		created_by, updated_by
 	FROM
 		workflow.automation_rules
-	WHERE 
+	WHERE
 		is_active = true`
 
 	var dbRules []automationRule
@@ -651,10 +655,10 @@ func (s *Store) CreateRuleAction(ctx context.Context, action workflow.RuleAction
 	const q = `
 	INSERT INTO workflow.rule_actions (
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id, deactivated_by
+		is_active, template_id, deactivated_by
 	) VALUES (
 		:id, :automation_rules_id, :name, :description, :action_config,
-		:execution_order, :is_active, :template_id, :deactivated_by
+		:is_active, :template_id, :deactivated_by
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBRuleAction(action)); err != nil {
@@ -674,7 +678,6 @@ func (s *Store) UpdateRuleAction(ctx context.Context, action workflow.RuleAction
 		name = :name,
 		description = :description,
 		action_config = :action_config,
-		execution_order = :execution_order,
 		is_active = :is_active,
 		template_id = :template_id
 	WHERE
@@ -734,10 +737,10 @@ func (s *Store) QueryActionsByRule(ctx context.Context, ruleID uuid.UUID) ([]wor
 	const q = `
 	SELECT
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id
+		is_active, template_id
 	FROM
 		workflow.rule_actions
-	WHERE 
+	WHERE
 		automation_rules_id = :automation_rules_id`
 
 	var dbActions []ruleAction
@@ -805,10 +808,10 @@ func (s *Store) QueryDependencies(ctx context.Context) ([]workflow.RuleDependenc
 func (s *Store) CreateActionTemplate(ctx context.Context, template workflow.ActionTemplate) error {
 	const q = `
 	INSERT INTO workflow.action_templates (
-		id, name, description, action_type, default_config,
+		id, name, description, action_type, icon, default_config,
 		created_date, created_by
 	) VALUES (
-		:id, :name, :description, :action_type, :default_config,
+		:id, :name, :description, :action_type, :icon, :default_config,
 		:created_date, :created_by
 	)`
 
@@ -824,10 +827,11 @@ func (s *Store) UpdateActionTemplate(ctx context.Context, template workflow.Acti
 	const q = `
 	UPDATE
 		workflow.action_templates
-	SET 
+	SET
 		name = :name,
 		description = :description,
 		action_type = :action_type,
+		icon = :icon,
 		default_config = :default_config
 	WHERE
 		id = :id`
@@ -877,11 +881,9 @@ func (s *Store) ActivateActionTemplate(ctx context.Context, templateID uuid.UUID
 		id = :id`
 
 	data := struct {
-		ID          string `db:"id"`
-		ActivatedBy string `db:"activated_by"`
+		ID string `db:"id"`
 	}{
-		ID:          templateID.String(),
-		ActivatedBy: activatedBy.String(),
+		ID: templateID.String(),
 	}
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
@@ -901,11 +903,11 @@ func (s *Store) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (wo
 
 	const q = `
 	SELECT
-		id, name, description, action_type, default_config,
-		created_date, created_by
+		id, name, description, action_type, icon, default_config,
+		created_date, created_by, is_active, deactivated_by
 	FROM
 		workflow.action_templates
-	WHERE 
+	WHERE
 		id = :id`
 
 	var dbTemplate actionTemplate
@@ -919,6 +921,52 @@ func (s *Store) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (wo
 	return toCoreActionTemplate(dbTemplate), nil
 }
 
+// QueryAllTemplates retrieves all action templates from the database.
+func (s *Store) QueryAllTemplates(ctx context.Context) ([]workflow.ActionTemplate, error) {
+	const q = `
+	SELECT
+		id, name, description, action_type, icon, default_config,
+		created_date, created_by, is_active, deactivated_by
+	FROM
+		workflow.action_templates`
+
+	var dbTemplates []actionTemplate
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbTemplates); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	templates := make([]workflow.ActionTemplate, len(dbTemplates))
+	for i, dbt := range dbTemplates {
+		templates[i] = toCoreActionTemplate(dbt)
+	}
+
+	return templates, nil
+}
+
+// QueryActiveTemplates retrieves only active action templates from the database.
+func (s *Store) QueryActiveTemplates(ctx context.Context) ([]workflow.ActionTemplate, error) {
+	const q = `
+	SELECT
+		id, name, description, action_type, icon, default_config,
+		created_date, created_by, is_active, deactivated_by
+	FROM
+		workflow.action_templates
+	WHERE
+		is_active = true`
+
+	var dbTemplates []actionTemplate
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbTemplates); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	templates := make([]workflow.ActionTemplate, len(dbTemplates))
+	for i, dbt := range dbTemplates {
+		templates[i] = toCoreActionTemplate(dbt)
+	}
+
+	return templates, nil
+}
+
 // =============================================================================
 // Automation Executions
 
@@ -927,10 +975,12 @@ func (s *Store) CreateExecution(ctx context.Context, exec workflow.AutomationExe
 	const q = `
 	INSERT INTO workflow.automation_executions (
 		id, automation_rules_id, entity_type, trigger_data, actions_executed,
-		status, error_message, execution_time_ms, executed_at
+		status, error_message, execution_time_ms, executed_at,
+		trigger_source, executed_by, action_type
 	) VALUES (
 		:id, :automation_rules_id, :entity_type, :trigger_data, :actions_executed,
-		:status, :error_message, :execution_time_ms, :executed_at
+		:status, :error_message, :execution_time_ms, :executed_at,
+		:trigger_source, :executed_by, :action_type
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAutomationExecution(exec)); err != nil {
@@ -953,10 +1003,11 @@ func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, lim
 	const q = `
 	SELECT
 		id, automation_rules_id, entity_type, trigger_data, actions_executed,
-		status, error_message, execution_time_ms, executed_at
+		status, error_message, execution_time_ms, executed_at,
+		trigger_source, executed_by, action_type
 	FROM
 		workflow.automation_executions
-	WHERE 
+	WHERE
 		automation_rules_id = :automation_rules_id
 	LIMIT :limit`
 
@@ -1110,7 +1161,7 @@ func (s *Store) QueryAllocationResultByIdempotencyKey(ctx context.Context, idemp
 func (s *Store) QueryAutomationRulesView(ctx context.Context) ([]workflow.AutomationRuleView, error) {
 	const q = `
 	SELECT
-		id, name, description, trigger_conditions, is_active, created_date, updated_date,
+		id, name, description, trigger_conditions, canvas_layout, is_active, created_date, updated_date,
 		created_by, updated_by, trigger_type_id, trigger_type_name, trigger_type_description,
 		entity_type_id, entity_type_name, entity_type_description, entity_name, entity_id
 	FROM
@@ -1136,14 +1187,12 @@ func (s *Store) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UU
 	const q = `
 	SELECT
 		id, automation_rules_id, name, description, action_config,
-		execution_order, is_active, template_id, template_name, 
+		is_active, template_id, template_name,
 		template_action_type, template_default_config
 	FROM
 		workflow.rule_actions_view
-	WHERE 
-		automation_rules_id = :automation_rules_id
-	ORDER BY
-		execution_order ASC`
+	WHERE
+		automation_rules_id = :automation_rules_id`
 
 	var dbRuleActionsViews []ruleActionView
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbRuleActionsViews); err != nil {
@@ -1151,4 +1200,378 @@ func (s *Store) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UU
 	}
 
 	return toCoreRuleActionViews(dbRuleActionsViews), nil
+}
+
+// QueryAutomationRulesViewPaginated retrieves rules with pagination, filtering, and ordering.
+func (s *Store) QueryAutomationRulesViewPaginated(
+	ctx context.Context,
+	filter workflow.AutomationRuleFilter,
+	orderBy order.By,
+	pg page.Page,
+) ([]workflow.AutomationRuleView, error) {
+	data := map[string]any{
+		"offset":        (pg.Number() - 1) * pg.RowsPerPage(),
+		"rows_per_page": pg.RowsPerPage(),
+	}
+
+	const baseQuery = `
+	SELECT
+		ar.id,
+		ar.name,
+		ar.description,
+		ar.entity_id,
+		ar.trigger_conditions,
+		ar.canvas_layout,
+		ar.is_active,
+		ar.created_date,
+		ar.updated_date,
+		ar.created_by,
+		ar.updated_by,
+		ar.trigger_type_id,
+		COALESCE(tt.name, '') AS trigger_type_name,
+		COALESCE(tt.description, '') AS trigger_type_description,
+		ar.entity_type_id,
+		COALESCE(et.name, '') AS entity_type_name,
+		COALESCE(et.description, '') AS entity_type_description,
+		COALESCE(e.name, '') AS entity_name,
+		COALESCE(e.schema_name, '') AS entity_schema_name,
+		COALESCE((
+			SELECT json_agg(json_build_object(
+				'id', ra.id,
+				'name', ra.name,
+				'description', ra.description,
+				'action_config', ra.action_config,
+				'is_active', ra.is_active,
+				'template_id', ra.template_id,
+				'deactivated_by', ra.deactivated_by
+			) ORDER BY ra.name)
+			FROM workflow.rule_actions ra
+			WHERE ra.automation_rules_id = ar.id
+		), '[]'::::json) AS actions
+	FROM
+		workflow.automation_rules ar
+	LEFT JOIN
+		workflow.trigger_types tt ON ar.trigger_type_id = tt.id
+	LEFT JOIN
+		workflow.entity_types et ON ar.entity_type_id = et.id
+	LEFT JOIN
+		workflow.entities e ON ar.entity_id = e.id`
+
+	buf := bytes.NewBufferString(baseQuery)
+
+	applyAutomationRuleFilter(filter, data, buf)
+
+	orderByClause, err := orderByClauseAutomationRule(orderBy)
+	if err != nil {
+		return nil, fmt.Errorf("orderby: %w", err)
+	}
+	buf.WriteString(orderByClause)
+
+	buf.WriteString(" LIMIT :rows_per_page OFFSET :offset")
+
+	var dbRules []automationRulesView
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbRules); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreAutomationRuleViews(dbRules), nil
+}
+
+// CountAutomationRulesView counts rules matching the filter.
+func (s *Store) CountAutomationRulesView(
+	ctx context.Context,
+	filter workflow.AutomationRuleFilter,
+) (int, error) {
+	data := map[string]any{}
+
+	const baseQuery = `
+	SELECT COUNT(ar.id) AS count
+	FROM workflow.automation_rules ar`
+
+	buf := bytes.NewBufferString(baseQuery)
+
+	applyAutomationRuleFilter(filter, data, buf)
+
+	var result struct {
+		Count int `db:"count"`
+	}
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &result); err != nil {
+		return 0, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return result.Count, nil
+}
+
+// QueryActionByID retrieves a single action by its ID.
+func (s *Store) QueryActionByID(ctx context.Context, actionID uuid.UUID) (workflow.RuleAction, error) {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: actionID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, automation_rules_id, name, description, action_config,
+		is_active, template_id
+	FROM workflow.rule_actions
+	WHERE id = :id`
+
+	var dbAction ruleAction
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbAction); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.RuleAction{}, workflow.ErrNotFound
+		}
+		return workflow.RuleAction{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreRuleAction(dbAction), nil
+}
+
+// QueryActionViewByID retrieves a single action view by its ID (with template info).
+func (s *Store) QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (workflow.RuleActionView, error) {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: actionID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, automation_rules_id, name, description, action_config,
+		is_active, template_id, template_name,
+		template_action_type, template_default_config
+	FROM workflow.rule_actions_view
+	WHERE id = :id`
+
+	var dbActionView ruleActionView
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbActionView); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.RuleActionView{}, workflow.ErrNotFound
+		}
+		return workflow.RuleActionView{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreRuleActionView(dbActionView), nil
+}
+
+// =============================================================================
+// Execution Paginated Queries
+
+// QueryExecutionsPaginated retrieves executions with pagination, filtering, and ordering.
+func (s *Store) QueryExecutionsPaginated(
+	ctx context.Context,
+	filter workflow.ExecutionFilter,
+	orderBy order.By,
+	pg page.Page,
+) ([]workflow.AutomationExecution, error) {
+	data := map[string]any{
+		"offset":        (pg.Number() - 1) * pg.RowsPerPage(),
+		"rows_per_page": pg.RowsPerPage(),
+	}
+
+	const baseQuery = `
+	SELECT
+		ae.id,
+		ae.automation_rules_id,
+		ar.name AS rule_name,
+		ae.entity_type,
+		ae.trigger_data,
+		ae.actions_executed,
+		ae.status,
+		ae.error_message,
+		ae.execution_time_ms,
+		ae.executed_at,
+		ae.trigger_source,
+		ae.executed_by,
+		ae.action_type
+	FROM
+		workflow.automation_executions ae
+	LEFT JOIN
+		workflow.automation_rules ar ON ae.automation_rules_id = ar.id`
+
+	buf := bytes.NewBufferString(baseQuery)
+
+	applyExecutionFilter(filter, data, buf)
+
+	orderByClause, err := orderByClauseExecution(orderBy)
+	if err != nil {
+		return nil, fmt.Errorf("orderby: %w", err)
+	}
+	buf.WriteString(orderByClause)
+
+	buf.WriteString(" LIMIT :rows_per_page OFFSET :offset")
+
+	var dbExecutions []automationExecution
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbExecutions); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreAutomationExecutionSlice(dbExecutions), nil
+}
+
+// CountExecutions counts executions matching the filter.
+func (s *Store) CountExecutions(
+	ctx context.Context,
+	filter workflow.ExecutionFilter,
+) (int, error) {
+	data := map[string]any{}
+
+	const baseQuery = `
+	SELECT COUNT(ae.id) AS count
+	FROM workflow.automation_executions ae`
+
+	buf := bytes.NewBufferString(baseQuery)
+
+	applyExecutionFilter(filter, data, buf)
+
+	var result struct {
+		Count int `db:"count"`
+	}
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &result); err != nil {
+		return 0, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return result.Count, nil
+}
+
+// QueryExecutionByID retrieves a single execution by its ID.
+func (s *Store) QueryExecutionByID(ctx context.Context, id uuid.UUID) (workflow.AutomationExecution, error) {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: id.String(),
+	}
+
+	const q = `
+	SELECT
+		ae.id,
+		ae.automation_rules_id,
+		ar.name AS rule_name,
+		ae.entity_type,
+		ae.trigger_data,
+		ae.actions_executed,
+		ae.status,
+		ae.error_message,
+		ae.execution_time_ms,
+		ae.executed_at,
+		ae.trigger_source,
+		ae.executed_by,
+		ae.action_type
+	FROM workflow.automation_executions ae
+	LEFT JOIN workflow.automation_rules ar ON ae.automation_rules_id = ar.id
+	WHERE ae.id = :id`
+
+	var dbExecution automationExecution
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbExecution); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.AutomationExecution{}, workflow.ErrNotFound
+		}
+		return workflow.AutomationExecution{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreAutomationExecution(dbExecution), nil
+}
+
+// =============================================================================
+// Action Edges (for workflow branching/condition nodes)
+
+// CreateActionEdge inserts a new action edge into the database.
+func (s *Store) CreateActionEdge(ctx context.Context, edge workflow.NewActionEdge) (workflow.ActionEdge, error) {
+	dbEdge := toDBNewActionEdge(edge)
+
+	const q = `
+	INSERT INTO workflow.action_edges (
+		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+	) VALUES (
+		:id, :rule_id, :source_action_id, :target_action_id, :edge_type, :edge_order, :created_date
+	)`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, dbEdge); err != nil {
+		return workflow.ActionEdge{}, fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return toCoreActionEdge(dbEdge), nil
+}
+
+// QueryEdgesByRuleID returns all edges for a rule, ordered by edge_order.
+func (s *Store) QueryEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) ([]workflow.ActionEdge, error) {
+	data := struct {
+		RuleID string `db:"rule_id"`
+	}{
+		RuleID: ruleID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+	FROM workflow.action_edges
+	WHERE rule_id = :rule_id
+	ORDER BY edge_order ASC`
+
+	var dbEdges []actionEdge
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbEdges); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toCoreActionEdgeSlice(dbEdges), nil
+}
+
+// QueryEdgeByID retrieves a single edge by its ID.
+func (s *Store) QueryEdgeByID(ctx context.Context, edgeID uuid.UUID) (workflow.ActionEdge, error) {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: edgeID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+	FROM workflow.action_edges
+	WHERE id = :id`
+
+	var dbEdge actionEdge
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbEdge); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.ActionEdge{}, workflow.ErrNotFound
+		}
+		return workflow.ActionEdge{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toCoreActionEdge(dbEdge), nil
+}
+
+// DeleteActionEdge deletes an edge by ID.
+func (s *Store) DeleteActionEdge(ctx context.Context, edgeID uuid.UUID) error {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: edgeID.String(),
+	}
+
+	const q = `DELETE FROM workflow.action_edges WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteEdgesByRuleID deletes all edges for a rule.
+func (s *Store) DeleteEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) error {
+	data := struct {
+		RuleID string `db:"rule_id"`
+	}{
+		RuleID: ruleID.String(),
+	}
+
+	const q = `DELETE FROM workflow.action_edges WHERE rule_id = :rule_id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
 }

@@ -89,7 +89,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				FulfillmentStatusID: dbtest.StringPointer("invalid-id"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"fulfillment_status_id\",\"error\":\"fulfillment_status_id must be a valid version 4 UUID\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"order_fulfillment_status_id\",\"error\":\"order_fulfillment_status_id must be a valid version 4 UUID\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*errs.Error)
 				if !exists {

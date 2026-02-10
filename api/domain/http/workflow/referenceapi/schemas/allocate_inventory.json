@@ -1,0 +1,49 @@
+{
+    "type": "object",
+    "required": ["allocation_mode"],
+    "properties": {
+        "inventory_items": {
+            "type": "array",
+            "description": "Items to allocate",
+            "items": {
+                "type": "object",
+                "required": ["product_id", "quantity"],
+                "properties": {
+                    "product_id": {"type": "string", "format": "uuid"},
+                    "quantity": {"type": "number", "minimum": 1},
+                    "warehouse_id": {"type": "string", "format": "uuid"},
+                    "location_id": {"type": "string", "format": "uuid"}
+                }
+            }
+        },
+        "source_from_line_item": {
+            "type": "boolean",
+            "description": "Whether to source items from line items on triggered entity"
+        },
+        "allocation_mode": {
+            "type": "string",
+            "enum": ["reserve", "allocate"],
+            "description": "Reserve (soft hold) or allocate (hard commitment)"
+        },
+        "allocation_strategy": {
+            "type": "string",
+            "enum": ["fifo", "lifo", "nearest_expiry", "lowest_cost"],
+            "description": "Strategy for selecting which inventory to use"
+        },
+        "allow_partial": {
+            "type": "boolean",
+            "description": "Whether to allow partial allocation"
+        },
+        "reservation_hours": {
+            "type": "number",
+            "description": "How long to hold reservation (reserve mode only)"
+        },
+        "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+        },
+        "timeout_ms": {"type": "integer"},
+        "reference_id": {"type": "string"},
+        "reference_type": {"type": "string"}
+    }
+}

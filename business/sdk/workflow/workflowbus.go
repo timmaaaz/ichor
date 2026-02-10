@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
@@ -57,6 +60,8 @@ type Storer interface {
 	DeactivateActionTemplate(ctx context.Context, templateID uuid.UUID, deactivatedBy uuid.UUID) error
 	ActivateActionTemplate(ctx context.Context, templateID uuid.UUID, activatedBy uuid.UUID) error
 	QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (ActionTemplate, error)
+	QueryAllTemplates(ctx context.Context) ([]ActionTemplate, error)
+	QueryActiveTemplates(ctx context.Context) ([]ActionTemplate, error)
 
 	CreateEntity(ctx context.Context, entity Entity) error
 	UpdateEntity(ctx context.Context, entity Entity) error
@@ -79,6 +84,26 @@ type Storer interface {
 
 	QueryAutomationRulesView(ctx context.Context) ([]AutomationRuleView, error)
 	QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid.UUID) ([]RuleActionView, error)
+
+	// Paginated query methods
+	QueryAutomationRulesViewPaginated(ctx context.Context, filter AutomationRuleFilter, orderBy order.By, page page.Page) ([]AutomationRuleView, error)
+	CountAutomationRulesView(ctx context.Context, filter AutomationRuleFilter) (int, error)
+
+	// Single action query methods
+	QueryActionByID(ctx context.Context, actionID uuid.UUID) (RuleAction, error)
+	QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (RuleActionView, error)
+
+	// Action edge methods (for workflow branching/condition nodes)
+	CreateActionEdge(ctx context.Context, edge NewActionEdge) (ActionEdge, error)
+	QueryEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) ([]ActionEdge, error)
+	QueryEdgeByID(ctx context.Context, edgeID uuid.UUID) (ActionEdge, error)
+	DeleteActionEdge(ctx context.Context, edgeID uuid.UUID) error
+	DeleteEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) error
+
+	// Execution paginated query methods
+	QueryExecutionsPaginated(ctx context.Context, filter ExecutionFilter, orderBy order.By, page page.Page) ([]AutomationExecution, error)
+	CountExecutions(ctx context.Context, filter ExecutionFilter) (int, error)
+	QueryExecutionByID(ctx context.Context, id uuid.UUID) (AutomationExecution, error)
 }
 
 // Set of error variables for CRUD operations.
@@ -88,6 +113,7 @@ var (
 	ErrInvalidDependency     = errors.New("invalid rule dependency")
 	ErrCircularDependency    = errors.New("circular dependency detected")
 	ErrIdempotencyFailure    = errors.New("idempotency failure")
+	ErrActionNotInRule       = errors.New("action does not belong to specified rule")
 )
 
 type IdempotencyResult int
@@ -99,15 +125,17 @@ const (
 
 // Business manages the set of APIs for workflow automation access.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log      *logger.Logger
+	storer   Storer
+	delegate *delegate.Delegate
 }
 
 // NewBusiness constructs a workflow business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:      log,
+		storer:   storer,
+		delegate: del,
 	}
 }
 
@@ -120,8 +148,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}
 
 	bus := Business{
-		log:    b.log,
-		storer: storer,
+		log:      b.log,
+		storer:   storer,
+		delegate: b.delegate,
 	}
 
 	return &bus, nil
@@ -438,6 +467,7 @@ func (b *Business) CreateRule(ctx context.Context, nar NewAutomationRule) (Autom
 		EntityTypeID:      nar.EntityTypeID,
 		TriggerTypeID:     nar.TriggerTypeID,
 		TriggerConditions: nar.TriggerConditions,
+		CanvasLayout:      nar.CanvasLayout,
 		IsActive:          nar.IsActive,
 		CreatedDate:       now,
 		UpdatedDate:       now,
@@ -447,6 +477,17 @@ func (b *Business) CreateRule(ctx context.Context, nar NewAutomationRule) (Autom
 
 	if err := b.storer.CreateRule(ctx, rule); err != nil {
 		return AutomationRule{}, fmt.Errorf("create: %w", err)
+	}
+
+	// Fire delegate event for rule cache invalidation.
+	// NOTE: When called within a transaction, this event fires but the cache refresh
+	// will not see the new rule (not yet committed). Transactional callers (e.g.,
+	// workflowsaveapp) should fire the delegate again after commit to ensure the
+	// cache is properly refreshed.
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleCreated, rule.ID)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleCreated, "err", err)
+		}
 	}
 
 	return rule, nil
@@ -475,6 +516,9 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 	if uar.TriggerConditions != nil {
 		rule.TriggerConditions = uar.TriggerConditions
 	}
+	if uar.CanvasLayout != nil {
+		rule.CanvasLayout = *uar.CanvasLayout
+	}
 	if uar.IsActive != nil {
 		rule.IsActive = *uar.IsActive
 	}
@@ -486,6 +530,17 @@ func (b *Business) UpdateRule(ctx context.Context, rule AutomationRule, uar Upda
 
 	if err := b.storer.UpdateRule(ctx, rule); err != nil {
 		return AutomationRule{}, fmt.Errorf("update: %w", err)
+	}
+
+	// Fire delegate event for rule cache invalidation.
+	// NOTE: When called within a transaction, this event fires but the cache refresh
+	// will not see the updated rule (not yet committed). Transactional callers (e.g.,
+	// workflowsaveapp) should fire the delegate again after commit to ensure the
+	// cache is properly refreshed.
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleUpdated, rule.ID)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleUpdated, "err", err)
+		}
 	}
 
 	return rule, nil
@@ -500,6 +555,13 @@ func (b *Business) DeactivateRule(ctx context.Context, rule AutomationRule) erro
 		return fmt.Errorf("deactivate: %w", err)
 	}
 
+	// Fire delegate event for rule cache invalidation
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleDeactivated, rule.ID)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleDeactivated, "err", err)
+		}
+	}
+
 	return nil
 }
 
@@ -510,6 +572,13 @@ func (b *Business) ActivateRule(ctx context.Context, rule AutomationRule) error 
 
 	if err := b.storer.ActivateRule(ctx, rule); err != nil {
 		return fmt.Errorf("activate: %w", err)
+	}
+
+	// Fire delegate event for rule cache invalidation
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionRuleChangedData(ActionRuleActivated, rule.ID)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionRuleActivated, "err", err)
+		}
 	}
 
 	return nil
@@ -566,7 +635,6 @@ func (b *Business) CreateRuleAction(ctx context.Context, nra NewRuleAction) (Rul
 		Name:             nra.Name,
 		Description:      nra.Description,
 		ActionConfig:     nra.ActionConfig,
-		ExecutionOrder:   nra.ExecutionOrder,
 		IsActive:         nra.IsActive,
 		TemplateID:       nra.TemplateID,
 	}
@@ -591,9 +659,6 @@ func (b *Business) UpdateRuleAction(ctx context.Context, action RuleAction, ura 
 	}
 	if ura.ActionConfig != nil {
 		action.ActionConfig = *ura.ActionConfig
-	}
-	if ura.ExecutionOrder != nil {
-		action.ExecutionOrder = *ura.ExecutionOrder
 	}
 	if ura.IsActive != nil {
 		action.IsActive = *ura.IsActive
@@ -715,6 +780,7 @@ func (b *Business) CreateActionTemplate(ctx context.Context, nat NewActionTempla
 		Name:          nat.Name,
 		Description:   nat.Description,
 		ActionType:    nat.ActionType,
+		Icon:          nat.Icon,
 		DefaultConfig: nat.DefaultConfig,
 		CreatedDate:   now,
 		CreatedBy:     nat.CreatedBy,
@@ -740,6 +806,9 @@ func (b *Business) UpdateActionTemplate(ctx context.Context, template ActionTemp
 	}
 	if uat.ActionType != nil {
 		template.ActionType = *uat.ActionType
+	}
+	if uat.Icon != nil {
+		template.Icon = *uat.Icon
 	}
 	if uat.DefaultConfig != nil {
 		template.DefaultConfig = *uat.DefaultConfig
@@ -787,6 +856,32 @@ func (b *Business) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) 
 	}
 
 	return template, nil
+}
+
+// QueryAllTemplates retrieves all action templates from the system.
+func (b *Business) QueryAllTemplates(ctx context.Context) ([]ActionTemplate, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryalltemplates")
+	defer span.End()
+
+	templates, err := b.storer.QueryAllTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return templates, nil
+}
+
+// QueryActiveTemplates retrieves only active action templates from the system.
+func (b *Business) QueryActiveTemplates(ctx context.Context) ([]ActionTemplate, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryactivetemplates")
+	defer span.End()
+
+	templates, err := b.storer.QueryActiveTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return templates, nil
 }
 
 // CreateNotificationDelivery creates a new notification delivery record.
@@ -911,6 +1006,9 @@ func (b *Business) CreateExecution(ctx context.Context, nae NewAutomationExecuti
 		ErrorMessage:     nae.ErrorMessage,
 		ExecutionTimeMs:  nae.ExecutionTimeMs,
 		ExecutedAt:       now,
+		TriggerSource:    nae.TriggerSource,
+		ExecutedBy:       nae.ExecutedBy,
+		ActionType:       nae.ActionType,
 	}
 
 	if err := b.storer.CreateExecution(ctx, execution); err != nil {
@@ -991,4 +1089,174 @@ func (b *Business) QueryRoleActionsViewByRuleID(ctx context.Context, ruleID uuid
 	}
 
 	return actionsView, nil
+}
+
+// QueryAutomationRulesViewPaginated retrieves a paginated view of automation rules.
+func (b *Business) QueryAutomationRulesViewPaginated(
+	ctx context.Context,
+	filter AutomationRuleFilter,
+	orderBy order.By,
+	pg page.Page,
+) ([]AutomationRuleView, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryautomationrulesviewpaginated")
+	defer span.End()
+
+	rulesView, err := b.storer.QueryAutomationRulesViewPaginated(ctx, filter, orderBy, pg)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return rulesView, nil
+}
+
+// CountAutomationRulesView returns the total count of rules matching the filter.
+func (b *Business) CountAutomationRulesView(ctx context.Context, filter AutomationRuleFilter) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.countautomationrulesview")
+	defer span.End()
+
+	count, err := b.storer.CountAutomationRulesView(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("count: %w", err)
+	}
+
+	return count, nil
+}
+
+// QueryActionByID retrieves a single rule action by ID.
+func (b *Business) QueryActionByID(ctx context.Context, actionID uuid.UUID) (RuleAction, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryactionbyid")
+	defer span.End()
+
+	action, err := b.storer.QueryActionByID(ctx, actionID)
+	if err != nil {
+		return RuleAction{}, fmt.Errorf("query: actionID[%s]: %w", actionID, err)
+	}
+
+	return action, nil
+}
+
+// QueryActionViewByID retrieves a single rule action view by ID (with template info).
+func (b *Business) QueryActionViewByID(ctx context.Context, actionID uuid.UUID) (RuleActionView, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryactionviewbyid")
+	defer span.End()
+
+	actionView, err := b.storer.QueryActionViewByID(ctx, actionID)
+	if err != nil {
+		return RuleActionView{}, fmt.Errorf("query: actionID[%s]: %w", actionID, err)
+	}
+
+	return actionView, nil
+}
+
+// =============================================================================
+// Execution Paginated Queries
+
+// QueryExecutionsPaginated returns paginated execution history.
+func (b *Business) QueryExecutionsPaginated(
+	ctx context.Context,
+	filter ExecutionFilter,
+	orderBy order.By,
+	pg page.Page,
+) ([]AutomationExecution, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryexecutionspaginated")
+	defer span.End()
+
+	executions, err := b.storer.QueryExecutionsPaginated(ctx, filter, orderBy, pg)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return executions, nil
+}
+
+// CountExecutions returns total count for pagination.
+func (b *Business) CountExecutions(ctx context.Context, filter ExecutionFilter) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.countexecutions")
+	defer span.End()
+
+	count, err := b.storer.CountExecutions(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("count: %w", err)
+	}
+
+	return count, nil
+}
+
+// QueryExecutionByID returns a single execution by its ID.
+func (b *Business) QueryExecutionByID(ctx context.Context, id uuid.UUID) (AutomationExecution, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryexecutionbyid")
+	defer span.End()
+
+	execution, err := b.storer.QueryExecutionByID(ctx, id)
+	if err != nil {
+		return AutomationExecution{}, fmt.Errorf("query: id[%s]: %w", id, err)
+	}
+
+	return execution, nil
+}
+
+// =============================================================================
+// Action Edges (for workflow branching/condition nodes)
+
+// CreateActionEdge creates a new action edge in the workflow graph.
+func (b *Business) CreateActionEdge(ctx context.Context, nae NewActionEdge) (ActionEdge, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createactionedge")
+	defer span.End()
+
+	edge, err := b.storer.CreateActionEdge(ctx, nae)
+	if err != nil {
+		return ActionEdge{}, fmt.Errorf("create: %w", err)
+	}
+
+	return edge, nil
+}
+
+// QueryEdgesByRuleID retrieves all action edges for a specific rule.
+func (b *Business) QueryEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) ([]ActionEdge, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryedgesbyruleid")
+	defer span.End()
+
+	edges, err := b.storer.QueryEdgesByRuleID(ctx, ruleID)
+	if err != nil {
+		return nil, fmt.Errorf("query: ruleID[%s]: %w", ruleID, err)
+	}
+
+	return edges, nil
+}
+
+// QueryEdgeByID retrieves a single action edge by its ID.
+func (b *Business) QueryEdgeByID(ctx context.Context, edgeID uuid.UUID) (ActionEdge, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryedgebyid")
+	defer span.End()
+
+	edge, err := b.storer.QueryEdgeByID(ctx, edgeID)
+	if err != nil {
+		return ActionEdge{}, fmt.Errorf("query: edgeID[%s]: %w", edgeID, err)
+	}
+
+	return edge, nil
+}
+
+// DeleteActionEdge removes an action edge from the workflow graph.
+func (b *Business) DeleteActionEdge(ctx context.Context, edgeID uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deleteactionedge")
+	defer span.End()
+
+	if err := b.storer.DeleteActionEdge(ctx, edgeID); err != nil {
+		return fmt.Errorf("delete: edgeID[%s]: %w", edgeID, err)
+	}
+
+	return nil
+}
+
+// DeleteEdgesByRuleID removes all action edges for a specific rule.
+func (b *Business) DeleteEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.deleteedgesbyruleid")
+	defer span.End()
+
+	if err := b.storer.DeleteEdgesByRuleID(ctx, ruleID); err != nil {
+		return fmt.Errorf("delete: ruleID[%s]: %w", ruleID, err)
+	}
+
+	return nil
 }
