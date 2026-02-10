@@ -3866,7 +3866,45 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 					if err != nil {
 						log.Error(ctx, "Failed to create edge for update line items action", "error", err)
 					}
-					log.Info(ctx, "✅ Created 'Allocation Success - Update Line Items' rule")
+
+					// Add success alert action after the update
+					successAlertConfig := map[string]interface{}{
+						"alert_type": "inventory_allocation_success",
+						"severity":   "critical",
+						"title":      "Inventory Allocation Success",
+						"message":    "success",
+						"recipients": map[string]interface{}{
+							"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+							"roles": []string{},
+						},
+					}
+					successAlertConfigJSON, _ := json.Marshal(successAlertConfig)
+
+					successAlertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+						AutomationRuleID: allocationSuccessRule.ID,
+						Name:             "Alert Admin - Allocation Success",
+						Description:      "Send critical alert to admin on successful allocation",
+						ActionConfig:     json.RawMessage(successAlertConfigJSON),
+						IsActive:         true,
+						TemplateID:       &createAlertTemplate.ID,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create success alert action", "error", err)
+					} else {
+						// Chain: updateAction -> successAlertAction
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         allocationSuccessRule.ID,
+							SourceActionID: &updateAction.ID,
+							TargetActionID: successAlertAction.ID,
+							EdgeType:       "sequence",
+							EdgeOrder:      1,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create edge for success alert action", "error", err)
+						}
+					}
+
+					log.Info(ctx, "✅ Created 'Allocation Success - Update Line Items' rule with alert")
 				}
 			}
 
@@ -3885,17 +3923,12 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 
 			alertConfig := map[string]interface{}{
 				"alert_type": "inventory_allocation_failed",
-				"severity":   "high",
+				"severity":   "critical",
 				"title":      "Inventory Allocation Failed",
-				"message":    "Inventory allocation failed for order {{reference_id}}: insufficient inventory",
+				"message":    "failed",
 				"recipients": map[string]interface{}{
 					"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher from seed.sql
 					"roles": []string{},
-				},
-				"context": map[string]interface{}{
-					"reference_id":   "{{reference_id}}",
-					"reference_type": "{{reference_type}}",
-					"failed_items":   "{{failed_items}}",
 				},
 			}
 			alertConfigJSON, _ := json.Marshal(alertConfig)
