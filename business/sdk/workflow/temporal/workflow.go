@@ -12,9 +12,16 @@ import (
 
 // Package-level action type classification maps.
 // Defined at package scope to avoid per-call allocation.
+//
+// All actions run through ExecuteActionActivity (synchronous Temporal activity).
+// Temporal handles retries, timeouts, and failure recovery natively.
+// These maps only affect timeout configuration, not routing.
 var (
-	asyncActionTypes = map[string]bool{
+	// longRunningActionTypes get extended timeouts (30 min) for external operations.
+	// Examples: API calls, email delivery, inventory allocation.
+	longRunningActionTypes = map[string]bool{
 		"allocate_inventory":   true,
+		"reserve_inventory":    true,
 		"send_email":           true,
 		"credit_check":         true,
 		"fraud_detection":      true,
@@ -22,6 +29,8 @@ var (
 		"reserve_shipping":     true,
 	}
 
+	// humanActionTypes require human interaction and get multi-day timeouts.
+	// Examples: manager approvals, manual reviews.
 	humanActionTypes = map[string]bool{
 		"manager_approval":   true,
 		"manual_review":      true,
@@ -459,12 +468,12 @@ func activityOptions(actionType string) workflow.ActivityOptions {
 		},
 	}
 
-	// Async actions (external APIs, email, inventory) get longer timeouts.
-	// MaximumAttempts=1 prevents duplicate publishes to RabbitMQ on retry.
-	if isAsyncAction(actionType) {
+	// Long-running actions (external APIs, email, inventory) get longer timeouts.
+	// Temporal handles retries natively - no need for RabbitMQ.
+	if isLongRunningAction(actionType) {
 		ao.StartToCloseTimeout = 30 * time.Minute
 		ao.HeartbeatTimeout = time.Minute
-		ao.RetryPolicy.MaximumAttempts = 1
+		ao.RetryPolicy.MaximumAttempts = 3 // Temporal retries are safe
 	}
 
 	// Human-in-the-loop actions (approvals, manual review) can take days.
@@ -481,20 +490,22 @@ func activityOptions(actionType string) workflow.ActivityOptions {
 // selectActivityFunc returns the activity method name based on action type.
 // Temporal resolves struct method names by string when Activities is registered
 // via worker.RegisterActivity(&Activities{...}).
-// Async and human actions route to ExecuteAsyncActionActivity (which uses
-// ErrResultPending and external completion via AsyncCompleter).
-// All other actions route to ExecuteActionActivity (synchronous execution).
+//
+// All actions route to ExecuteActionActivity (synchronous execution).
+// Temporal handles retries and timeouts natively - no need for async completion pattern.
 func selectActivityFunc(actionType string) string {
-	if isAsyncAction(actionType) || isHumanAction(actionType) {
-		return "ExecuteAsyncActionActivity"
-	}
+	// All actions use the synchronous activity. Temporal handles:
+	// - Retries with backoff (configured in activityOptions)
+	// - Timeouts (30min for long-running, 7 days for human)
+	// - Durable execution and failure recovery
+	_ = actionType // unused but kept for signature consistency
 	return "ExecuteActionActivity"
 }
 
-// isAsyncAction returns true for actions that involve external async operations.
-// These get longer timeouts (30min), heartbeat requirements, and no retries.
-func isAsyncAction(actionType string) bool {
-	return asyncActionTypes[actionType]
+// isLongRunningAction returns true for actions that involve external operations.
+// These get longer timeouts (30min), heartbeat requirements, and limited retries.
+func isLongRunningAction(actionType string) bool {
+	return longRunningActionTypes[actionType]
 }
 
 // isHumanAction returns true for actions that require human interaction.

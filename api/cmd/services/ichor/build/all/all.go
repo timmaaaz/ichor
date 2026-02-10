@@ -292,6 +292,7 @@ import (
 	temporalpkg "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 	foundationws "github.com/timmaaaz/ichor/foundation/websocket"
 )
@@ -1015,6 +1016,22 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus: permissionsBus,
 	})
 
+	// =========================================================================
+	// RabbitMQ WorkflowQueue (for WebSocket notification delivery)
+	// Temporal handles workflow orchestration - RabbitMQ only broadcasts to UIs
+	// =========================================================================
+
+	var workflowQueue *rabbitmq.WorkflowQueue
+	if cfg.RabbitClient != nil {
+		workflowQueue = rabbitmq.NewWorkflowQueue(cfg.RabbitClient, cfg.Log)
+		if err := workflowQueue.Initialize(context.Background()); err != nil {
+			cfg.Log.Error(context.Background(), "failed to initialize workflow queue", "error", err)
+			workflowQueue = nil // Disable if initialization fails
+		} else {
+			cfg.Log.Info(context.Background(), "workflow queue initialized for WebSocket notifications")
+		}
+	}
+
 	// workflow
 	alertapi.Routes(app, alertapi.Config{
 		Log:            cfg.Log,
@@ -1022,7 +1039,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		UserRoleBus:    userRoleBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
-		WorkflowQueue:  nil,
+		WorkflowQueue:  workflowQueue,
 	})
 
 	referenceapi.Routes(app, referenceapi.Config{
@@ -1083,10 +1100,22 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	alertHubDelegate := alertws.NewAlertHubDelegateHandler(alertHub, cfg.Log)
 	alertHubDelegate.RegisterRoleChanges(delegate)
 
-	// NOTE: Real-time WebSocket alert delivery via RabbitMQ was removed in the
-	// Temporal migration (Phase 13). Alerts are still written to DB by the
-	// create_alert action handler. REST API polling works. Real-time push
-	// will be re-implemented in a future phase.
+	// =========================================================================
+	// RabbitMQ Alert Consumer (for WebSocket notification delivery)
+	// Temporal handles workflow orchestration - RabbitMQ only broadcasts to UIs
+	// =========================================================================
+
+	if workflowQueue != nil {
+		// Start AlertConsumer - bridges RabbitMQ notifications to WebSocket clients
+		// This is NOT workflow orchestration - just UI notification delivery
+		alertConsumer := alertws.NewAlertConsumer(alertHub, workflowQueue, cfg.Log)
+		go func() {
+			if err := alertConsumer.Start(context.Background()); err != nil && err != context.Canceled {
+				cfg.Log.Error(context.Background(), "alert consumer error", "error", err)
+			}
+		}()
+		cfg.Log.Info(context.Background(), "alert consumer started for real-time WebSocket delivery")
+	}
 
 	// Register WebSocket routes for real-time alerts
 	wsAuth := mid.BearerQueryParam(cfg.Auth)

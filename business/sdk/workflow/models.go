@@ -213,6 +213,7 @@ type ActionTemplate struct {
 	Name          string
 	Description   string
 	ActionType    string
+	Icon          string
 	DefaultConfig json.RawMessage
 	CreatedDate   time.Time
 	CreatedBy     uuid.UUID
@@ -225,6 +226,7 @@ type NewActionTemplate struct {
 	Name          string
 	Description   string
 	ActionType    string
+	Icon          string
 	DefaultConfig json.RawMessage
 	CreatedBy     uuid.UUID
 }
@@ -234,6 +236,7 @@ type UpdateActionTemplate struct {
 	Name          *string
 	Description   *string
 	ActionType    *string
+	Icon          *string
 	DefaultConfig *json.RawMessage
 }
 

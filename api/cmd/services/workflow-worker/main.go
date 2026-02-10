@@ -10,16 +10,30 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/ardanlabs/conf/v3"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus/stores/inventoryitemdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
 
 var build = "develop"
@@ -52,6 +66,12 @@ func run(log *logger.Logger) error {
 			Host       string `conf:"default:database-service.ichor-system.svc.cluster.local"`
 			Name       string `conf:"default:postgres"`
 			DisableTLS bool   `conf:"default:true"`
+		}
+		RabbitMQ struct {
+			URL           string        `conf:"default:amqp://guest:guest@rabbitmq-service:5672/"`
+			MaxRetries    int           `conf:"default:5"`
+			RetryDelay    time.Duration `conf:"default:5s"`
+			PrefetchCount int           `conf:"default:10"`
 		}
 	}{
 		Version: conf.Version{
@@ -89,6 +109,35 @@ func run(log *logger.Logger) error {
 	defer db.Close()
 
 	// =========================================================================
+	// RabbitMQ (for WebSocket notification fan-out ONLY - not workflow orchestration)
+	// Temporal handles all workflow logic. RabbitMQ just broadcasts to browser UIs.
+	// =========================================================================
+
+	rabbitConfig := rabbitmq.Config{
+		URL:                cfg.RabbitMQ.URL,
+		MaxRetries:         cfg.RabbitMQ.MaxRetries,
+		RetryDelay:         cfg.RabbitMQ.RetryDelay,
+		PrefetchCount:      cfg.RabbitMQ.PrefetchCount,
+		PrefetchSize:       0,
+		PublisherConfirms:  true,
+		ExchangeName:       "workflow",
+		ExchangeType:       "topic",
+		DeadLetterExchange: "workflow.dlx",
+	}
+	rabbitClient := rabbitmq.NewClient(log, rabbitConfig)
+	if err := rabbitClient.WaitForConnection(30 * time.Second); err != nil {
+		return fmt.Errorf("connecting to RabbitMQ: %w", err)
+	}
+	defer rabbitClient.Close()
+
+	workflowQueue := rabbitmq.NewWorkflowQueue(rabbitClient, log)
+	if err := workflowQueue.Initialize(context.Background()); err != nil {
+		return fmt.Errorf("initializing workflow queue: %w", err)
+	}
+
+	log.Info(context.Background(), "RabbitMQ connected for WebSocket notifications")
+
+	// =========================================================================
 	// Temporal Client
 	// =========================================================================
 
@@ -103,20 +152,47 @@ func run(log *logger.Logger) error {
 	defer tc.Close()
 
 	// =========================================================================
-	// Action Registries
+	// Business Layer Dependencies
 	// =========================================================================
 
-	// Sync action registry — RegisterCoreActions provides 5 handlers:
-	// evaluate_condition, update_field, seek_approval, send_email, send_notification.
-	// Full RegisterAll (with inventory/alert handlers) deferred until worker
-	// gains RabbitMQ + bus dependencies.
-	actionRegistry := workflow.NewActionRegistry()
-	workflowactions.RegisterCoreActions(actionRegistry, log, db)
+	// Delegate for UUID generation and timestamps (testing seams).
+	del := delegate.New(log)
 
-	// Async action registry — empty for now. Async handler adapters
-	// (SendEmailHandler, AllocateInventoryHandler) will be registered
-	// when the full async completion flow is implemented.
-	asyncRegistry := temporal.NewAsyncRegistry()
+	// Inventory domain buses - required for allocate_inventory action.
+	inventoryItemBus := inventoryitembus.NewBusiness(log, del, inventoryitemdb.NewStore(log, db))
+	inventoryLocationBus := inventorylocationbus.NewBusiness(log, del, inventorylocationdb.NewStore(log, db))
+	inventoryTransactionBus := inventorytransactionbus.NewBusiness(log, del, inventorytransactiondb.NewStore(log, db))
+
+	// Product bus - required for allocation validation.
+	productBus := productbus.NewBusiness(log, del, productdb.NewStore(log, db))
+
+	// Workflow bus - for idempotency tracking.
+	workflowBus := workflow.NewBusiness(log, del, workflowdb.NewStore(log, db))
+
+	// Alert bus - required for create_alert action.
+	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
+
+	// =========================================================================
+	// Action Registry
+	// =========================================================================
+
+	// All actions now run through the sync activity (ExecuteActionActivity).
+	// Temporal handles retries, timeouts, and failure recovery natively.
+	// RabbitMQ is used ONLY for real-time WebSocket notifications to browser UIs.
+	actionRegistry := workflow.NewActionRegistry()
+	workflowactions.RegisterAll(actionRegistry, workflowactions.ActionConfig{
+		Log:         log,
+		DB:          db,
+		QueueClient: workflowQueue, // Enables real-time WebSocket notifications
+		Buses: workflowactions.BusDependencies{
+			InventoryItem:        inventoryItemBus,
+			InventoryLocation:    inventoryLocationBus,
+			InventoryTransaction: inventoryTransactionBus,
+			Product:              productBus,
+			Workflow:             workflowBus,
+			Alert:                alertBus,
+		},
+	})
 
 	// =========================================================================
 	// Temporal Worker
@@ -135,12 +211,10 @@ func run(log *logger.Logger) error {
 	w.RegisterWorkflow(temporal.ExecuteBranchUntilConvergence)
 
 	// Register activities via Activities struct.
-	// Temporal resolves struct method names by string: "ExecuteActionActivity",
-	// "ExecuteAsyncActionActivity". Both registries are passed to the struct
-	// so the activity methods can dispatch to the correct handler.
+	// Temporal resolves struct method names by string: "ExecuteActionActivity".
+	// All actions now route through the sync activity - no async registry needed.
 	w.RegisterActivity(&temporal.Activities{
-		Registry:      actionRegistry,
-		AsyncRegistry: asyncRegistry,
+		Registry: actionRegistry,
 	})
 
 	log.Info(context.Background(), "starting workflow worker",

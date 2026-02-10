@@ -279,6 +279,7 @@ type actionTemplate struct {
 	Name          string          `db:"name"`
 	Description   string          `db:"description"`
 	ActionType    string          `db:"action_type"`
+	Icon          string          `db:"icon"`
 	DefaultConfig json.RawMessage `db:"default_config"`
 	CreatedDate   time.Time       `db:"created_date"`
 	CreatedBy     string          `db:"created_by"`
@@ -298,6 +299,7 @@ func toCoreActionTemplate(dbTemplate actionTemplate) workflow.ActionTemplate {
 		Name:          dbTemplate.Name,
 		Description:   dbTemplate.Description,
 		ActionType:    dbTemplate.ActionType,
+		Icon:          dbTemplate.Icon,
 		DefaultConfig: dbTemplate.DefaultConfig,
 		CreatedDate:   dbTemplate.CreatedDate,
 		CreatedBy:     uuid.MustParse(dbTemplate.CreatedBy),
@@ -319,6 +321,7 @@ func toDBActionTemplate(at workflow.ActionTemplate) actionTemplate {
 		Name:          at.Name,
 		Description:   at.Description,
 		ActionType:    at.ActionType,
+		Icon:          at.Icon,
 		DefaultConfig: at.DefaultConfig,
 		CreatedDate:   time.Now(),
 		CreatedBy:     at.CreatedBy.String(),

@@ -295,10 +295,11 @@ func TestError_RetryPolicy_RegularAction_Config(t *testing.T) {
 }
 
 func TestError_RetryPolicy_AsyncAction_Config(t *testing.T) {
-	// Async actions: MaximumAttempts=1 (no retries), longer timeouts.
+	// Long-running actions: 3 retries allowed (Temporal handles safely), longer timeouts.
+	// Previously MaximumAttempts=1 to avoid RabbitMQ duplicates, but now Temporal-only.
 	opts := activityOptions("send_email")
-	require.Equal(t, int32(1), opts.RetryPolicy.MaximumAttempts,
-		"async action should NOT retry (MaximumAttempts=1)")
+	require.Equal(t, int32(3), opts.RetryPolicy.MaximumAttempts,
+		"long-running action should retry (Temporal handles safely)")
 	require.Equal(t, 30*time.Minute, opts.StartToCloseTimeout)
 	require.Equal(t, time.Minute, opts.HeartbeatTimeout)
 }
@@ -312,16 +313,17 @@ func TestError_RetryPolicy_HumanAction_Config(t *testing.T) {
 	require.Equal(t, time.Hour, opts.HeartbeatTimeout)
 }
 
-func TestError_RetryPolicy_AllAsyncTypes(t *testing.T) {
-	// Verify all known async action types get MaximumAttempts=1.
-	asyncTypes := []string{
+func TestError_RetryPolicy_AllLongRunningTypes(t *testing.T) {
+	// Verify all long-running action types get retries (Temporal handles safely).
+	// Previously MaximumAttempts=1 to avoid RabbitMQ duplicates, but now Temporal-only.
+	longRunningTypes := []string{
 		"allocate_inventory", "send_email", "credit_check",
 		"fraud_detection", "third_party_api_call", "reserve_shipping",
 	}
-	for _, at := range asyncTypes {
+	for _, at := range longRunningTypes {
 		opts := activityOptions(at)
-		require.Equal(t, int32(1), opts.RetryPolicy.MaximumAttempts,
-			"async type %s should have MaximumAttempts=1", at)
+		require.Equal(t, int32(3), opts.RetryPolicy.MaximumAttempts,
+			"long-running type %s should have MaximumAttempts=3", at)
 	}
 }
 

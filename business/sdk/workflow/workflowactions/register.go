@@ -69,6 +69,9 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 		config.Buses.Product,
 		config.Buses.Workflow,
 	))
+
+	// Granular inventory actions
+	RegisterGranularInventoryActions(registry, config)
 }
 
 // RegisterInventoryActions registers only inventory-related actions
@@ -82,6 +85,16 @@ func RegisterInventoryActions(registry *workflow.ActionRegistry, config ActionCo
 		config.Buses.Product,
 		config.Buses.Workflow,
 	))
+}
+
+// RegisterGranularInventoryActions registers the composable inventory actions.
+// These are focused, single-purpose actions that can be chained in workflows.
+func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config ActionConfig) {
+	registry.Register(inventory.NewCheckInventoryHandler(config.Log, config.Buses.InventoryItem))
+	registry.Register(inventory.NewCheckReorderPointHandler(config.Log, config.Buses.InventoryItem))
+	registry.Register(inventory.NewReleaseReservationHandler(config.Log, config.DB, config.Buses.InventoryItem))
+	registry.Register(inventory.NewCommitAllocationHandler(config.Log, config.DB, config.Buses.InventoryItem))
+	registry.Register(inventory.NewReserveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.Workflow))
 }
 
 // RegisterCoreActions registers action handlers that don't require RabbitMQ or heavy dependencies.

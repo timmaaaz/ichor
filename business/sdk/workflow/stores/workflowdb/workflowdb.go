@@ -808,10 +808,10 @@ func (s *Store) QueryDependencies(ctx context.Context) ([]workflow.RuleDependenc
 func (s *Store) CreateActionTemplate(ctx context.Context, template workflow.ActionTemplate) error {
 	const q = `
 	INSERT INTO workflow.action_templates (
-		id, name, description, action_type, default_config,
+		id, name, description, action_type, icon, default_config,
 		created_date, created_by
 	) VALUES (
-		:id, :name, :description, :action_type, :default_config,
+		:id, :name, :description, :action_type, :icon, :default_config,
 		:created_date, :created_by
 	)`
 
@@ -827,10 +827,11 @@ func (s *Store) UpdateActionTemplate(ctx context.Context, template workflow.Acti
 	const q = `
 	UPDATE
 		workflow.action_templates
-	SET 
+	SET
 		name = :name,
 		description = :description,
 		action_type = :action_type,
+		icon = :icon,
 		default_config = :default_config
 	WHERE
 		id = :id`
@@ -880,11 +881,9 @@ func (s *Store) ActivateActionTemplate(ctx context.Context, templateID uuid.UUID
 		id = :id`
 
 	data := struct {
-		ID          string `db:"id"`
-		ActivatedBy string `db:"activated_by"`
+		ID string `db:"id"`
 	}{
-		ID:          templateID.String(),
-		ActivatedBy: activatedBy.String(),
+		ID: templateID.String(),
 	}
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
@@ -904,11 +903,11 @@ func (s *Store) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (wo
 
 	const q = `
 	SELECT
-		id, name, description, action_type, default_config,
-		created_date, created_by
+		id, name, description, action_type, icon, default_config,
+		created_date, created_by, is_active, deactivated_by
 	FROM
 		workflow.action_templates
-	WHERE 
+	WHERE
 		id = :id`
 
 	var dbTemplate actionTemplate
@@ -920,6 +919,52 @@ func (s *Store) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (wo
 	}
 
 	return toCoreActionTemplate(dbTemplate), nil
+}
+
+// QueryAllTemplates retrieves all action templates from the database.
+func (s *Store) QueryAllTemplates(ctx context.Context) ([]workflow.ActionTemplate, error) {
+	const q = `
+	SELECT
+		id, name, description, action_type, icon, default_config,
+		created_date, created_by, is_active, deactivated_by
+	FROM
+		workflow.action_templates`
+
+	var dbTemplates []actionTemplate
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbTemplates); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	templates := make([]workflow.ActionTemplate, len(dbTemplates))
+	for i, dbt := range dbTemplates {
+		templates[i] = toCoreActionTemplate(dbt)
+	}
+
+	return templates, nil
+}
+
+// QueryActiveTemplates retrieves only active action templates from the database.
+func (s *Store) QueryActiveTemplates(ctx context.Context) ([]workflow.ActionTemplate, error) {
+	const q = `
+	SELECT
+		id, name, description, action_type, icon, default_config,
+		created_date, created_by, is_active, deactivated_by
+	FROM
+		workflow.action_templates
+	WHERE
+		is_active = true`
+
+	var dbTemplates []actionTemplate
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, struct{}{}, &dbTemplates); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	templates := make([]workflow.ActionTemplate, len(dbTemplates))
+	for i, dbt := range dbTemplates {
+		templates[i] = toCoreActionTemplate(dbt)
+	}
+
+	return templates, nil
 }
 
 // =============================================================================

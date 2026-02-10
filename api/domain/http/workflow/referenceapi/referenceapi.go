@@ -85,6 +85,24 @@ func (a *api) queryActionTypes(ctx context.Context, r *http.Request) web.Encoder
 	return ActionTypes(GetActionTypes())
 }
 
+// queryTemplates handles GET /v1/workflow/templates
+func (a *api) queryTemplates(ctx context.Context, r *http.Request) web.Encoder {
+	templates, err := a.workflowBus.QueryAllTemplates(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "query templates: %s", err)
+	}
+	return toActionTemplates(templates)
+}
+
+// queryActiveTemplates handles GET /v1/workflow/templates/active
+func (a *api) queryActiveTemplates(ctx context.Context, r *http.Request) web.Encoder {
+	templates, err := a.workflowBus.QueryActiveTemplates(ctx)
+	if err != nil {
+		return errs.Newf(errs.Internal, "query active templates: %s", err)
+	}
+	return toActionTemplates(templates)
+}
+
 // queryActionTypeSchema handles GET /v1/workflow/action-types/{type}/schema
 func (a *api) queryActionTypeSchema(ctx context.Context, r *http.Request) web.Encoder {
 	actionType := web.Param(r, "type")

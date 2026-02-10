@@ -71,6 +71,7 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 		Name:        "Order Event Notification",
 		Description: "Template for order event notifications",
 		ActionType:  "send_email",
+		Icon:        "material-symbols:mail",
 		DefaultConfig: json.RawMessage(`{
 			"recipients": ["orders@example.com"],
 			"subject": "Order Event"

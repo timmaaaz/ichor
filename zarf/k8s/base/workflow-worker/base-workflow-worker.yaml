@@ -77,6 +77,12 @@ spec:
                   name: workflow-worker-config
                   key: temporal_namespace
                   optional: true
+            - name: ICHOR_RABBIT_MQ_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: workflow-worker-config
+                  key: rabbitmq_url
+                  optional: true
             - name: KUBERNETES_NAMESPACE
               valueFrom:
                 fieldRef:

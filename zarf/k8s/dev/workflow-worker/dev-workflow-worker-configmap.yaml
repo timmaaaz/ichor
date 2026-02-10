@@ -6,3 +6,4 @@ metadata:
 data:
   temporal_host: "temporal-service:7233"
   temporal_namespace: "default"
+  rabbitmq_url: "amqp://guest:guest@rabbitmq-service:5672/"

@@ -3719,9 +3719,10 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 
 		// Create action templates for workflow actions
 		allocateTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
-			Name:          "Allocate Inventory Template",
-			Description:   "Template for allocating inventory",
+			Name:          "Allocate Inventory",
+			Description:   "Allocates inventory for an order or request",
 			ActionType:    "allocate_inventory",
+			Icon:          "material-symbols:inventory-2",
 			DefaultConfig: json.RawMessage(`{}`),
 			CreatedBy:     admins[0].ID,
 		})
@@ -3730,9 +3731,10 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		}
 
 		updateFieldTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
-			Name:          "Update Field Template",
-			Description:   "Template for updating entity fields",
+			Name:          "Update Field",
+			Description:   "Updates a field on the target entity",
 			ActionType:    "update_field",
+			Icon:          "material-symbols:edit-note",
 			DefaultConfig: json.RawMessage(`{}`),
 			CreatedBy:     admins[0].ID,
 		})
@@ -3741,14 +3743,76 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		}
 
 		createAlertTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
-			Name:          "Create Alert Template",
-			Description:   "Template for creating alerts",
+			Name:          "Create Alert",
+			Description:   "Creates an alert notification",
 			ActionType:    "create_alert",
+			Icon:          "material-symbols:notification-important",
 			DefaultConfig: json.RawMessage(`{}`),
 			CreatedBy:     admins[0].ID,
 		})
 		if err != nil {
 			log.Error(ctx, "Failed to create create_alert template", "error", err)
+		}
+
+		// Granular inventory action templates
+		checkInventoryTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Check Inventory",
+			Description:   "Checks inventory availability against a threshold",
+			ActionType:    "check_inventory",
+			Icon:          "material-symbols:fact-check",
+			DefaultConfig: json.RawMessage(`{"threshold": 1}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create check_inventory template", "error", err)
+		}
+
+		reserveInventoryTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Reserve Inventory",
+			Description:   "Reserves inventory with idempotency support",
+			ActionType:    "reserve_inventory",
+			Icon:          "material-symbols:bookmark-added",
+			DefaultConfig: json.RawMessage(`{"allocation_strategy":"fifo","reservation_duration_hours":24,"allow_partial":false}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create reserve_inventory template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Release Reservation",
+			Description:   "Releases reserved inventory back to available stock",
+			ActionType:    "release_reservation",
+			Icon:          "material-symbols:remove-shopping-cart",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create release_reservation template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Commit Allocation",
+			Description:   "Commits reserved inventory to allocated status",
+			ActionType:    "commit_allocation",
+			Icon:          "material-symbols:check-circle",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create commit_allocation template", "error", err)
+		}
+
+		checkReorderPointTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Check Reorder Point",
+			Description:   "Checks if inventory is below reorder point",
+			ActionType:    "check_reorder_point",
+			Icon:          "material-symbols:trending-down",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create check_reorder_point template", "error", err)
 		}
 
 		// Create automation rules if we have all the required references
@@ -3771,7 +3835,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				EntityID:      orderLineItemsEntity.ID,
 				EntityTypeID:  wfEntityType.ID,
 				TriggerTypeID: onCreateTrigger.ID,
-				IsActive:      true,
+				IsActive:      false,
 				CreatedBy:     admins[0].ID,
 			})
 			if err != nil {
@@ -3839,7 +3903,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				EntityTypeID:      wfEntityType.ID,
 				TriggerTypeID:     onCreateTrigger.ID,
 				TriggerConditions: &successConditionRaw,
-				IsActive:          true,
+				IsActive:          false,
 				CreatedBy:         admins[0].ID,
 			})
 			if err != nil {
@@ -3940,7 +4004,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				EntityTypeID:      wfEntityType.ID,
 				TriggerTypeID:     onCreateTrigger.ID,
 				TriggerConditions: &failedConditionRaw,
-				IsActive:          true,
+				IsActive:          false,
 				CreatedBy:         admins[0].ID,
 			})
 			if err != nil {
@@ -3971,9 +4035,328 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				}
 			}
 		}
+
+		// Rule 4: Line Item -> Check -> Reserve Pipeline
+		// Demonstrates composable granular inventory actions: check_inventory -> (true_branch) -> reserve_inventory
+		if orderLineItemsEntity.ID != uuid.Nil && wfEntityType.ID != uuid.Nil && onCreateTrigger.ID != uuid.Nil {
+			checkReserveRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Line Item Created - Check and Reserve Pipeline",
+				Description:   "When a line item is created, check inventory availability then reserve if sufficient",
+				EntityID:      orderLineItemsEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      false,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Check-Reserve pipeline rule", "error", err)
+			} else {
+				// Action 1: check_inventory (branch action)
+				checkConfig := map[string]interface{}{
+					"source_from_line_item": true,
+					"threshold":             1,
+				}
+				checkConfigJSON, _ := json.Marshal(checkConfig)
+
+				checkAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: checkReserveRule.ID,
+					Name:             "Check Inventory Availability",
+					Description:      "Check if inventory is available for the line item product",
+					ActionConfig:     json.RawMessage(checkConfigJSON),
+					IsActive:         true,
+					TemplateID:       &checkInventoryTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create check_inventory action", "error", err)
+				} else {
+					// Action 2: reserve_inventory (on true_branch)
+					reserveConfig := map[string]interface{}{
+						"source_from_line_item":      true,
+						"allocation_strategy":        "fifo",
+						"reservation_duration_hours": 24,
+						"allow_partial":              false,
+					}
+					reserveConfigJSON, _ := json.Marshal(reserveConfig)
+
+					reserveAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+						AutomationRuleID: checkReserveRule.ID,
+						Name:             "Reserve Inventory",
+						Description:      "Reserve inventory for the line item product",
+						ActionConfig:     json.RawMessage(reserveConfigJSON),
+						IsActive:         true,
+						TemplateID:       &reserveInventoryTemplate.ID,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create reserve_inventory action", "error", err)
+					} else {
+						// Edges: start -> check, check --(true_branch)--> reserve
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         checkReserveRule.ID,
+							SourceActionID: nil,
+							TargetActionID: checkAction.ID,
+							EdgeType:       "start",
+							EdgeOrder:      0,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create start edge for check action", "error", err)
+						}
+
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         checkReserveRule.ID,
+							SourceActionID: &checkAction.ID,
+							TargetActionID: reserveAction.ID,
+							EdgeType:       "true_branch",
+							EdgeOrder:      0,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create true_branch edge for reserve action", "error", err)
+						}
+
+						log.Info(ctx, "Created 'Line Item Created - Check and Reserve Pipeline' rule")
+					}
+				}
+			}
+		}
+
+		// Rule 5: Granular Inventory Pipeline (active replacement for Rules 1-4)
+		// Graph: start -> check_inventory
+		//          ├── true_branch  -> reserve_inventory -> success_alert -> check_reorder_point
+		//          │                                                          ├── true_branch -> low_stock_alert
+		//          │                                                          └── false_branch -> (end)
+		//          └── false_branch -> insufficient_stock_alert
+		if checkInventoryTemplate.ID != uuid.Nil && reserveInventoryTemplate.ID != uuid.Nil &&
+			createAlertTemplate.ID != uuid.Nil && checkReorderPointTemplate.ID != uuid.Nil {
+
+			granularRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Line Item Created - Granular Inventory Pipeline",
+				Description:   "When an order line item is created, check inventory, reserve if available, alert on success/failure, and check reorder point",
+				EntityID:      orderLineItemsEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Granular Inventory Pipeline rule", "error", err)
+			} else {
+				// Action 1: check_inventory (branch action - entry point)
+				checkConfig := map[string]interface{}{
+					"source_from_line_item": true,
+					"threshold":             1,
+				}
+				checkConfigJSON, _ := json.Marshal(checkConfig)
+
+				checkAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Check Inventory Availability",
+					Description:      "Check if sufficient inventory exists for the line item product",
+					ActionConfig:     json.RawMessage(checkConfigJSON),
+					IsActive:         true,
+					TemplateID:       &checkInventoryTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create check_inventory action for granular pipeline", "error", err)
+				}
+
+				// Action 2: reserve_inventory (on true_branch from check)
+				reserveConfig := map[string]interface{}{
+					"source_from_line_item":      true,
+					"allocation_strategy":        "fifo",
+					"reservation_duration_hours": 24,
+					"allow_partial":              false,
+					"reference_type":             "order",
+				}
+				reserveConfigJSON, _ := json.Marshal(reserveConfig)
+
+				reserveAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Reserve Inventory",
+					Description:      "Reserve inventory for the line item product using FIFO strategy",
+					ActionConfig:     json.RawMessage(reserveConfigJSON),
+					IsActive:         true,
+					TemplateID:       &reserveInventoryTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create reserve_inventory action for granular pipeline", "error", err)
+				}
+
+				// Action 3: success alert (sequence after reserve)
+				successAlertCfg := map[string]interface{}{
+					"alert_type": "inventory_reservation_success",
+					"severity":   "critical",
+					"title":      "Inventory Reservation Success",
+					"message":    "Inventory has been successfully reserved for the order line item",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+						"roles": []string{},
+					},
+				}
+				successAlertCfgJSON, _ := json.Marshal(successAlertCfg)
+
+				successAlertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Alert - Reservation Success",
+					Description:      "Send critical alert to admin on successful inventory reservation",
+					ActionConfig:     json.RawMessage(successAlertCfgJSON),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create success alert action for granular pipeline", "error", err)
+				}
+
+				// Action 4: check_reorder_point (sequence after success alert)
+				reorderCheckConfig := map[string]interface{}{
+					"source_from_line_item": true,
+				}
+				reorderCheckConfigJSON, _ := json.Marshal(reorderCheckConfig)
+
+				reorderCheckAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Check Reorder Point",
+					Description:      "Check if inventory has fallen below the reorder point after reservation",
+					ActionConfig:     json.RawMessage(reorderCheckConfigJSON),
+					IsActive:         true,
+					TemplateID:       &checkReorderPointTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create check_reorder_point action for granular pipeline", "error", err)
+				}
+
+				// Action 5: low stock alert (true_branch from reorder check)
+				lowStockAlertCfg := map[string]interface{}{
+					"alert_type": "inventory_low_stock_warning",
+					"severity":   "critical",
+					"title":      "Low Stock Warning",
+					"message":    "Inventory has fallen below the reorder point after reservation",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+						"roles": []string{},
+					},
+				}
+				lowStockAlertCfgJSON, _ := json.Marshal(lowStockAlertCfg)
+
+				lowStockAlertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Alert - Low Stock Warning",
+					Description:      "Alert operations that inventory is below reorder point",
+					ActionConfig:     json.RawMessage(lowStockAlertCfgJSON),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create low stock alert action for granular pipeline", "error", err)
+				}
+
+				// Action 6: insufficient stock alert (false_branch from check)
+				insufficientAlertCfg := map[string]interface{}{
+					"alert_type": "inventory_insufficient_stock",
+					"severity":   "critical",
+					"title":      "Insufficient Stock - Reservation Failed",
+					"message":    "Inventory check failed - insufficient stock available for the order line item",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+						"roles": []string{},
+					},
+				}
+				insufficientAlertCfgJSON, _ := json.Marshal(insufficientAlertCfg)
+
+				insufficientAlertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Alert - Insufficient Stock",
+					Description:      "Alert operations that inventory is insufficient for the order",
+					ActionConfig:     json.RawMessage(insufficientAlertCfgJSON),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create insufficient stock alert action for granular pipeline", "error", err)
+				}
+
+				// Create edges for the workflow graph
+				if checkAction.ID != uuid.Nil && reserveAction.ID != uuid.Nil &&
+					successAlertAction.ID != uuid.Nil && reorderCheckAction.ID != uuid.Nil &&
+					lowStockAlertAction.ID != uuid.Nil && insufficientAlertAction.ID != uuid.Nil {
+
+					// Edge 1: start -> check_inventory
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         granularRule.ID,
+						SourceActionID: nil,
+						TargetActionID: checkAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create start edge for granular pipeline", "error", err)
+					}
+
+					// Edge 2: check_inventory --true_branch--> reserve_inventory
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         granularRule.ID,
+						SourceActionID: &checkAction.ID,
+						TargetActionID: reserveAction.ID,
+						EdgeType:       "true_branch",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create true_branch edge for granular pipeline", "error", err)
+					}
+
+					// Edge 3: check_inventory --false_branch--> insufficient_stock_alert
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         granularRule.ID,
+						SourceActionID: &checkAction.ID,
+						TargetActionID: insufficientAlertAction.ID,
+						EdgeType:       "false_branch",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create false_branch edge for granular pipeline", "error", err)
+					}
+
+					// Edge 4: reserve_inventory --sequence--> success_alert
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         granularRule.ID,
+						SourceActionID: &reserveAction.ID,
+						TargetActionID: successAlertAction.ID,
+						EdgeType:       "sequence",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create sequence edge for success alert", "error", err)
+					}
+
+					// Edge 5: success_alert --sequence--> check_reorder_point
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         granularRule.ID,
+						SourceActionID: &successAlertAction.ID,
+						TargetActionID: reorderCheckAction.ID,
+						EdgeType:       "sequence",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create sequence edge for reorder check", "error", err)
+					}
+
+					// Edge 6: check_reorder_point --true_branch--> low_stock_alert
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         granularRule.ID,
+						SourceActionID: &reorderCheckAction.ID,
+						TargetActionID: lowStockAlertAction.ID,
+						EdgeType:       "true_branch",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create true_branch edge for low stock alert", "error", err)
+					}
+
+					log.Info(ctx, "Created 'Line Item Created - Granular Inventory Pipeline' rule with 6 actions and 6 edges")
+				}
+			}
+		}
 	}
 
-	log.Info(ctx, "✅ Workflow automation rules seeding complete")
+	log.Info(ctx, "Workflow automation rules seeding complete")
 
 	return nil
 }

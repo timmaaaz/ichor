@@ -74,6 +74,29 @@ func (at ActionTypes) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
+// ActionTemplate represents an action template in API responses.
+type ActionTemplate struct {
+	ID            uuid.UUID       `json:"id"`
+	Name          string          `json:"name"`
+	Description   string          `json:"description"`
+	ActionType    string          `json:"actionType"`
+	Icon          string          `json:"icon"`
+	DefaultConfig json.RawMessage `json:"defaultConfig"`
+	CreatedDate   string          `json:"createdDate"`
+	CreatedBy     uuid.UUID       `json:"createdBy"`
+	IsActive      bool            `json:"isActive"`
+	DeactivatedBy uuid.UUID       `json:"deactivatedBy"`
+}
+
+// ActionTemplates is a slice of ActionTemplate for API responses.
+type ActionTemplates []ActionTemplate
+
+// Encode implements web.Encoder.
+func (at ActionTemplates) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(at)
+	return data, "application/json", err
+}
+
 // =============================================================================
 // Converter Functions
 
@@ -131,6 +154,31 @@ func toEntities(entities []workflow.Entity) Entities {
 	resp := make(Entities, len(entities))
 	for i, e := range entities {
 		resp[i] = toEntity(e)
+	}
+	return resp
+}
+
+// toActionTemplate converts a business action template to an API response.
+func toActionTemplate(at workflow.ActionTemplate) ActionTemplate {
+	return ActionTemplate{
+		ID:            at.ID,
+		Name:          at.Name,
+		Description:   at.Description,
+		ActionType:    at.ActionType,
+		Icon:          at.Icon,
+		DefaultConfig: at.DefaultConfig,
+		CreatedDate:   at.CreatedDate.Format("2006-01-02T15:04:05Z"),
+		CreatedBy:     at.CreatedBy,
+		IsActive:      at.IsActive,
+		DeactivatedBy: at.DeactivatedBy,
+	}
+}
+
+// toActionTemplates converts a slice of business action templates to API responses.
+func toActionTemplates(templates []workflow.ActionTemplate) ActionTemplates {
+	resp := make(ActionTemplates, len(templates))
+	for i, at := range templates {
+		resp[i] = toActionTemplate(at)
 	}
 	return resp
 }

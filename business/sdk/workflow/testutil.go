@@ -152,6 +152,7 @@ func TestNewActionTemplates(n int, createdBy uuid.UUID) []NewActionTemplate {
 			Name:          fmt.Sprintf("Template%d", idx),
 			Description:   fmt.Sprintf("Description for template %d", idx),
 			ActionType:    fmt.Sprintf("ActionType%d", idx),
+			Icon:          "material-symbols:bolt",
 			DefaultConfig: configJSON,
 			CreatedBy:     createdBy,
 		}

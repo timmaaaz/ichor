@@ -941,6 +941,8 @@ func actionTemplateTests(busDomain dbtest.BusDomain, sd workflowSeedData) []unit
 	return []unitest.Table{
 		createActionTemplate(busDomain, sd),
 		queryActionTemplateByID(busDomain, sd),
+		queryAllTemplates(busDomain, sd),
+		queryActiveTemplates(busDomain, sd),
 		updateActionTemplate(busDomain, sd),
 		deactivateActionTemplate(busDomain, sd),
 		activateActionTemplate(busDomain, sd),
@@ -1018,9 +1020,92 @@ func queryActionTemplateByID(busDomain dbtest.BusDomain, sd workflowSeedData) un
 				expResp.CreatedDate = gotResp.CreatedDate
 			}
 
+			// CreateActionTemplate doesn't set IsActive (defaults to false in
+			// memory) but the DB column defaults to true. Use DB truth.
+			expResp.IsActive = gotResp.IsActive
+
 			dbtest.NormalizeJSONFields(gotResp, &expResp)
 
 			return cmp.Diff(gotResp, expResp)
+		},
+	}
+}
+
+func queryAllTemplates(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+	return unitest.Table{
+		Name:    "queryAll",
+		ExpResp: len(sd.ActionTemplates),
+		ExcFunc: func(ctx context.Context) any {
+			resp, err := busDomain.Workflow.QueryAllTemplates(ctx)
+			if err != nil {
+				return err
+			}
+
+			// Filter to only seeded template IDs.
+			seedIDs := make(map[uuid.UUID]workflow.ActionTemplate, len(sd.ActionTemplates))
+			for _, t := range sd.ActionTemplates {
+				seedIDs[t.ID] = t
+			}
+
+			var matched int
+			for _, got := range resp {
+				seed, ok := seedIDs[got.ID]
+				if !ok {
+					continue
+				}
+				matched++
+
+				// Verify key fields match seed data.
+				if got.Name != seed.Name {
+					return fmt.Errorf("name mismatch for %s: got %q, exp %q", got.ID, got.Name, seed.Name)
+				}
+				if got.Description != seed.Description {
+					return fmt.Errorf("description mismatch for %s: got %q, exp %q", got.ID, got.Description, seed.Description)
+				}
+				if got.ActionType != seed.ActionType {
+					return fmt.Errorf("action_type mismatch for %s: got %q, exp %q", got.ID, got.ActionType, seed.ActionType)
+				}
+			}
+
+			return matched
+		},
+		CmpFunc: func(got any, exp any) string {
+			return cmp.Diff(got, exp)
+		},
+	}
+}
+
+func queryActiveTemplates(busDomain dbtest.BusDomain, sd workflowSeedData) unitest.Table {
+	// All seeded templates default to is_active = true in the DB.
+	return unitest.Table{
+		Name:    "queryActive",
+		ExpResp: len(sd.ActionTemplates),
+		ExcFunc: func(ctx context.Context) any {
+			resp, err := busDomain.Workflow.QueryActiveTemplates(ctx)
+			if err != nil {
+				return err
+			}
+
+			// Count how many seeded templates appear in active results.
+			seedIDs := make(map[uuid.UUID]bool, len(sd.ActionTemplates))
+			for _, t := range sd.ActionTemplates {
+				seedIDs[t.ID] = true
+			}
+
+			var matched int
+			for _, got := range resp {
+				if seedIDs[got.ID] {
+					matched++
+					if !got.IsActive {
+						return fmt.Errorf("template %s returned by QueryActiveTemplates but IsActive=false", got.ID)
+					}
+				}
+			}
+
+			return matched
+		},
+		CmpFunc: func(got any, exp any) string {
+			return cmp.Diff(got, exp)
 		},
 	}
 }
@@ -1040,6 +1125,7 @@ func updateActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 			Name:          "updated_template",
 			Description:   "Updated template description",
 			ActionType:    "api_call",
+			Icon:          sd.ActionTemplates[0].Icon,
 			DefaultConfig: newConfigJSON,
 			CreatedDate:   sd.ActionTemplates[0].CreatedDate,
 			CreatedBy:     sd.ActionTemplates[0].CreatedBy,
@@ -1065,7 +1151,16 @@ func updateActionTemplate(busDomain dbtest.BusDomain, sd workflowSeedData) unite
 				return "error occurred"
 			}
 
-			return cmp.Diff(gotResp, exp)
+			expResp := exp.(workflow.ActionTemplate)
+
+			// Normalize timestamp precision
+			if gotResp.CreatedDate.Format(time.RFC3339) == expResp.CreatedDate.Format(time.RFC3339) {
+				expResp.CreatedDate = gotResp.CreatedDate
+			}
+
+			dbtest.NormalizeJSONFields(gotResp, &expResp)
+
+			return cmp.Diff(gotResp, expResp)
 		},
 	}
 }

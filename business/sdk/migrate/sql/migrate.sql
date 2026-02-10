@@ -1011,6 +1011,7 @@ CREATE TABLE workflow.action_templates (
    name VARCHAR(100) NOT NULL UNIQUE,
    description TEXT,
    action_type VARCHAR(50) NOT NULL,
+   icon VARCHAR(100) NULL,
    default_config JSONB NOT NULL,
    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
    created_by UUID NOT NULL REFERENCES core.users(id),
@@ -1526,6 +1527,7 @@ CREATE OR REPLACE VIEW workflow.rule_actions_view AS
       ra.template_id,
       at.name as template_name,
       at.action_type as template_action_type,
+      at.icon as template_icon,
       at.default_config as template_default_config
    FROM workflow.rule_actions ra
    LEFT JOIN workflow.action_templates at ON ra.template_id = at.id;

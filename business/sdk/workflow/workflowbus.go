@@ -60,6 +60,8 @@ type Storer interface {
 	DeactivateActionTemplate(ctx context.Context, templateID uuid.UUID, deactivatedBy uuid.UUID) error
 	ActivateActionTemplate(ctx context.Context, templateID uuid.UUID, activatedBy uuid.UUID) error
 	QueryTemplateByID(ctx context.Context, templateID uuid.UUID) (ActionTemplate, error)
+	QueryAllTemplates(ctx context.Context) ([]ActionTemplate, error)
+	QueryActiveTemplates(ctx context.Context) ([]ActionTemplate, error)
 
 	CreateEntity(ctx context.Context, entity Entity) error
 	UpdateEntity(ctx context.Context, entity Entity) error
@@ -778,6 +780,7 @@ func (b *Business) CreateActionTemplate(ctx context.Context, nat NewActionTempla
 		Name:          nat.Name,
 		Description:   nat.Description,
 		ActionType:    nat.ActionType,
+		Icon:          nat.Icon,
 		DefaultConfig: nat.DefaultConfig,
 		CreatedDate:   now,
 		CreatedBy:     nat.CreatedBy,
@@ -803,6 +806,9 @@ func (b *Business) UpdateActionTemplate(ctx context.Context, template ActionTemp
 	}
 	if uat.ActionType != nil {
 		template.ActionType = *uat.ActionType
+	}
+	if uat.Icon != nil {
+		template.Icon = *uat.Icon
 	}
 	if uat.DefaultConfig != nil {
 		template.DefaultConfig = *uat.DefaultConfig
@@ -850,6 +856,32 @@ func (b *Business) QueryTemplateByID(ctx context.Context, templateID uuid.UUID) 
 	}
 
 	return template, nil
+}
+
+// QueryAllTemplates retrieves all action templates from the system.
+func (b *Business) QueryAllTemplates(ctx context.Context) ([]ActionTemplate, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryalltemplates")
+	defer span.End()
+
+	templates, err := b.storer.QueryAllTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return templates, nil
+}
+
+// QueryActiveTemplates retrieves only active action templates from the system.
+func (b *Business) QueryActiveTemplates(ctx context.Context) ([]ActionTemplate, error) {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.queryactivetemplates")
+	defer span.End()
+
+	templates, err := b.storer.QueryActiveTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+
+	return templates, nil
 }
 
 // CreateNotificationDelivery creates a new notification delivery record.
