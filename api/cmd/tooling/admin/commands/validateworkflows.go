@@ -81,7 +81,7 @@ func createValidationRegistry() *workflow.ActionRegistry {
 	registry.Register(communication.NewSendEmailHandler(nil, nil))
 	registry.Register(communication.NewSendNotificationHandler(nil, nil))
 	registry.Register(communication.NewCreateAlertHandler(nil, nil, nil))
-	registry.Register(inventory.NewAllocateInventoryHandler(nil, nil, nil, nil, nil, nil, nil, nil))
+	registry.Register(inventory.NewAllocateInventoryHandler(nil, nil, nil, nil, nil, nil, nil))
 
 	return registry
 }

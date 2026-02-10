@@ -1,3 +1,8 @@
+//go:build ignore
+// +build ignore
+
+// Phase 13: Excluded until Phase 15 rewrites for Temporal.
+
 package workflowsaveapi_test
 
 import (

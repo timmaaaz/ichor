@@ -13,7 +13,10 @@ The Ichor workflow engine provides event-driven automation for business processe
 | [Cascade Visualization](cascade-visualization.md) | Downstream workflow detection |
 | [Database Schema](database-schema.md) | Workflow tables and relationships |
 | [API Reference](api-reference.md) | REST endpoints for alerts |
-| [Event Infrastructure](event-infrastructure.md) | EventPublisher and delegate pattern |
+| [Event Infrastructure](event-infrastructure.md) | Delegate pattern and workflow dispatch |
+| [Temporal Integration](temporal.md) | Temporal architecture, GraphExecutor, activities |
+| [Worker Deployment](worker-deployment.md) | Workflow-worker service operations |
+| [Migration from RabbitMQ](migration-from-rabbitmq.md) | What changed and why |
 | [Testing](testing.md) | Testing patterns and examples |
 | [Adding Domains](adding-domains.md) | How to add workflow events to new domains |
 
@@ -23,7 +26,7 @@ The Ichor workflow engine provides event-driven automation for business processe
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           WORKFLOW ENGINE                                    │
 │                                                                             │
-│  EventPublisher ──► RabbitMQ ──► QueueManager ──► Engine ──► ActionExecutor │
+│  DelegateHandler ──► WorkflowTrigger ──► Temporal ──► Worker ──► Activities │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -55,11 +58,11 @@ The Ichor workflow engine provides event-driven automation for business processe
 
 1. An entity is created/updated/deleted via API or formdata
 2. The business layer fires a delegate event
-3. `DelegateHandler` converts it to a `TriggerEvent`
-4. `EventPublisher` queues the event to RabbitMQ
-5. `QueueManager` consumer picks up the event
-6. `Engine` evaluates matching automation rules
-7. Matched rules' actions are executed by `ActionExecutor`
+3. `TemporalDelegateHandler` converts it to a `TriggerEvent`
+4. `WorkflowTrigger` evaluates matching automation rules
+5. For each matched rule, loads graph definition from DB
+6. Dispatches workflow to Temporal (`workflow-worker` picks up)
+7. `GraphExecutor` traverses action graph, executing each action as an activity
 
 ### 2. Creating an Automation Rule
 
@@ -140,13 +143,16 @@ See [Templates](configuration/templates.md) for all available variables and filt
 | Purpose | Location |
 |---------|----------|
 | Core models | `business/sdk/workflow/models.go` |
-| Engine | `business/sdk/workflow/engine.go` |
 | Trigger processing | `business/sdk/workflow/trigger.go` |
 | Template processing | `business/sdk/workflow/template.go` |
-| Queue management | `business/sdk/workflow/queue.go` |
-| Event publisher | `business/sdk/workflow/eventpublisher.go` |
-| Delegate handler | `business/sdk/workflow/delegatehandler.go` |
+| Temporal delegate handler | `business/sdk/workflow/temporal/delegatehandler.go` |
+| Workflow trigger | `business/sdk/workflow/temporal/trigger.go` |
+| Graph executor | `business/sdk/workflow/temporal/graph_executor.go` |
+| Workflow implementation | `business/sdk/workflow/temporal/workflow.go` |
+| Activities | `business/sdk/workflow/temporal/activities.go` |
+| Edge store adapter | `business/sdk/workflow/temporal/stores/edgedb/edgedb.go` |
 | Action handlers | `business/sdk/workflow/workflowactions/` |
+| Worker service | `api/cmd/services/workflow-worker/main.go` |
 | Alert business layer | `business/domain/workflow/alertbus/` |
 | Alert API | `api/domain/http/workflow/alertapi/` |
 

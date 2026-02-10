@@ -53,7 +53,7 @@ spec:
           readinessProbe:
             tcpSocket:
               port: grpc
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
 

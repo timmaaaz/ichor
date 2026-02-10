@@ -41,13 +41,14 @@ func WithFileServer(static embed.FS, dir string) func(opts *Options) {
 
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
-	Build        string
-	Log          *logger.Logger
-	Auth         *auth.Auth
-	AuthClient   *authclient.Client
-	DB           *sqlx.DB
-	Tracer       trace.Tracer
-	RabbitClient *rabbitmq.Client
+	Build            string
+	Log              *logger.Logger
+	Auth             *auth.Auth
+	AuthClient       *authclient.Client
+	DB               *sqlx.DB
+	Tracer           trace.Tracer
+	RabbitClient     *rabbitmq.Client
+	TemporalHostPort string // Empty means Temporal disabled
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance

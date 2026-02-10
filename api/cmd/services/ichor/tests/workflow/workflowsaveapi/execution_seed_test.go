@@ -15,11 +15,11 @@ import (
 // ExecutionTestData extends SaveSeedData with workflow execution infrastructure.
 type ExecutionTestData struct {
 	SaveSeedData
-	WF *apitest.WorkflowInfra // Engine, QueueManager, WorkflowBus, Client
+	WF *apitest.WorkflowInfra
 
 	// Action templates for different action types
-	CreateAlertTemplate      workflow.ActionTemplate
-	SendEmailTemplate        workflow.ActionTemplate
+	CreateAlertTemplate       workflow.ActionTemplate
+	SendEmailTemplate         workflow.ActionTemplate
 	EvaluateConditionTemplate workflow.ActionTemplate
 
 	// Created workflows for testing (via Save API)
@@ -34,19 +34,10 @@ func insertExecutionSeedData(t *testing.T, test *apitest.Test, sd SaveSeedData) 
 	t.Helper()
 	ctx := context.Background()
 
-	// 2. Use existing workflow infrastructure helper
+	// Initialize Temporal-based workflow infrastructure.
 	wf := apitest.InitWorkflowInfra(t, test.DB)
 
-	// 3. Reset for clean test state
-	workflow.ResetEngineForTesting()
-	wf.QueueManager.ResetMetrics()
-
-	// 4. Re-initialize engine after reset
-	if err := wf.Engine.Initialize(ctx, wf.WorkflowBus); err != nil {
-		t.Fatalf("initializing workflow engine: %v", err)
-	}
-
-	// 5. Create action templates for different action types
+	// Create action templates for different action types.
 	createAlertTemplate, err := wf.WorkflowBus.CreateActionTemplate(ctx, workflow.NewActionTemplate{
 		Name:        "Create Alert Template",
 		Description: "Template for create_alert actions",
@@ -91,15 +82,14 @@ func insertExecutionSeedData(t *testing.T, test *apitest.Test, sd SaveSeedData) 
 		t.Fatalf("creating evaluate_condition template: %v", err)
 	}
 
-	// 6. Create test workflows via direct business layer
-	// We create these directly rather than via HTTP to avoid test interdependencies
+	// Create test workflows via direct business layer.
 	simpleWorkflow := createSimpleWorkflowDirect(t, wf.WorkflowBus, sd, createAlertTemplate.ID)
 	sequenceWorkflow := createSequenceWorkflowDirect(t, wf.WorkflowBus, sd, createAlertTemplate.ID)
 	branchingWorkflow := createBranchingWorkflowDirect(t, wf.WorkflowBus, sd, createAlertTemplate.ID, evaluateConditionTemplate.ID)
 
-	// 7. Re-initialize engine after creating workflows to pick up new rules
-	if err := wf.Engine.Initialize(ctx, wf.WorkflowBus); err != nil {
-		t.Fatalf("re-initializing workflow engine: %v", err)
+	// Refresh trigger processor cache to pick up new rules.
+	if err := wf.TriggerProcessor.RefreshRules(ctx); err != nil {
+		t.Fatalf("refreshing trigger processor rules: %v", err)
 	}
 
 	return ExecutionTestData{
@@ -171,12 +161,12 @@ func createSimpleWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd SaveS
 		TriggerTypeID: rule.TriggerTypeID.String(),
 		Actions: []workflowsaveapp.SaveActionResponse{
 			{
-				ID:             action.ID.String(),
-				Name:           action.Name,
-				Description:    action.Description,
-				ActionType:     "create_alert",
-				ActionConfig:   action.ActionConfig,
-				IsActive:       action.IsActive,
+				ID:           action.ID.String(),
+				Name:         action.Name,
+				Description:  action.Description,
+				ActionType:   "create_alert",
+				ActionConfig: action.ActionConfig,
+				IsActive:     action.IsActive,
 			},
 		},
 		Edges: []workflowsaveapp.SaveEdgeResponse{
@@ -275,12 +265,12 @@ func createSequenceWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sav
 	actionResponses := make([]workflowsaveapp.SaveActionResponse, len(actions))
 	for i, a := range actions {
 		actionResponses[i] = workflowsaveapp.SaveActionResponse{
-			ID:             a.ID.String(),
-			Name:           a.Name,
-			Description:    a.Description,
-			ActionType:     "create_alert",
-			ActionConfig:   a.ActionConfig,
-			IsActive:       a.IsActive,
+			ID:           a.ID.String(),
+			Name:         a.Name,
+			Description:  a.Description,
+			ActionType:   "create_alert",
+			ActionConfig: a.ActionConfig,
+			IsActive:     a.IsActive,
 		}
 	}
 
@@ -421,28 +411,28 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 		TriggerTypeID: rule.TriggerTypeID.String(),
 		Actions: []workflowsaveapp.SaveActionResponse{
 			{
-				ID:             conditionAction.ID.String(),
-				Name:           conditionAction.Name,
-				Description:    conditionAction.Description,
-				ActionType:     "evaluate_condition",
-				ActionConfig:   conditionAction.ActionConfig,
-				IsActive:       conditionAction.IsActive,
+				ID:           conditionAction.ID.String(),
+				Name:         conditionAction.Name,
+				Description:  conditionAction.Description,
+				ActionType:   "evaluate_condition",
+				ActionConfig: conditionAction.ActionConfig,
+				IsActive:     conditionAction.IsActive,
 			},
 			{
-				ID:             trueBranchAction.ID.String(),
-				Name:           trueBranchAction.Name,
-				Description:    trueBranchAction.Description,
-				ActionType:     "create_alert",
-				ActionConfig:   trueBranchAction.ActionConfig,
-				IsActive:       trueBranchAction.IsActive,
+				ID:           trueBranchAction.ID.String(),
+				Name:         trueBranchAction.Name,
+				Description:  trueBranchAction.Description,
+				ActionType:   "create_alert",
+				ActionConfig: trueBranchAction.ActionConfig,
+				IsActive:     trueBranchAction.IsActive,
 			},
 			{
-				ID:             falseBranchAction.ID.String(),
-				Name:           falseBranchAction.Name,
-				Description:    falseBranchAction.Description,
-				ActionType:     "create_alert",
-				ActionConfig:   falseBranchAction.ActionConfig,
-				IsActive:       falseBranchAction.IsActive,
+				ID:           falseBranchAction.ID.String(),
+				Name:         falseBranchAction.Name,
+				Description:  falseBranchAction.Description,
+				ActionType:   "create_alert",
+				ActionConfig: falseBranchAction.ActionConfig,
+				IsActive:     falseBranchAction.IsActive,
 			},
 		},
 		Edges: []workflowsaveapp.SaveEdgeResponse{
@@ -468,31 +458,6 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 				EdgeOrder:      falseBranchEdge.EdgeOrder,
 			},
 		},
-	}
-}
-
-// waitForProcessing waits for at least one event to be processed by the queue manager.
-func waitForProcessing(t *testing.T, qm *workflow.QueueManager, initial workflow.QueueMetrics, timeout time.Duration) bool {
-	t.Helper()
-
-	deadline := time.After(timeout)
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-deadline:
-			metrics := qm.GetMetrics()
-			t.Logf("Timeout waiting for processing - Enqueued: %d, Processed: %d, Failed: %d",
-				metrics.TotalEnqueued, metrics.TotalProcessed, metrics.TotalFailed)
-			return false
-		case <-ticker.C:
-			metrics := qm.GetMetrics()
-			if metrics.TotalProcessed > initial.TotalProcessed ||
-				metrics.TotalFailed > initial.TotalFailed {
-				return true
-			}
-		}
 	}
 }
 

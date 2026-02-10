@@ -92,44 +92,6 @@ func (ar *ActionRegistry) GetAll() []string {
 }
 
 // =============================================================================
-// Async Action Handler Interface
-// =============================================================================
-
-// AsyncActionHandler extends ActionHandler for actions that queue work asynchronously.
-// Execute() queues the work and returns immediately with tracking info.
-// ProcessQueued() performs the actual async processing when dequeued.
-//
-// The handler is responsible for:
-// - Deserializing the payload into its action-specific request type
-// - Performing the async work
-// - Firing result events via the publisher
-type AsyncActionHandler interface {
-	ActionHandler
-
-	// ProcessQueued processes a queued message asynchronously.
-	// payload contains the serialized QueuedPayload (use json.Unmarshal)
-	// publisher is used to fire result events for downstream workflow rules
-	ProcessQueued(ctx context.Context, payload json.RawMessage, publisher *EventPublisher) error
-}
-
-// QueuedPayload is a standard wrapper for async action payloads.
-// All async handlers serialize their requests into this format when calling Execute(),
-// and the queue manager passes this back to ProcessQueued().
-type QueuedPayload struct {
-	// RequestType identifies which handler should process this (e.g., "allocate_inventory")
-	RequestType string `json:"request_type"`
-
-	// RequestData contains the serialized action-specific request data
-	RequestData json.RawMessage `json:"request_data"`
-
-	// ExecutionContext contains workflow execution metadata
-	ExecutionContext ActionExecutionContext `json:"execution_context"`
-
-	// IdempotencyKey for deduplication
-	IdempotencyKey string `json:"idempotency_key,omitempty"`
-}
-
-// =============================================================================
 // Entity Modifier Interface (for Cascade Visualization)
 // =============================================================================
 

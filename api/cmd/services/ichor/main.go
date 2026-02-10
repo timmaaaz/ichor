@@ -132,6 +132,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 			RetryDelay    time.Duration `conf:"default:5s"`
 			PrefetchCount int           `conf:"default:10"`
 		}
+		Temporal struct {
+			HostPort string `conf:"default:temporal-service.ichor-system.svc.cluster.local:7233"`
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -310,13 +313,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	cfgMux := mux.Config{
-		Build:        build,
-		Log:          log,
-		Auth:         oauthAuth,
-		AuthClient:   authClient,
-		DB:           db,
-		Tracer:       tracer,
-		RabbitClient: rabbitClient,
+		Build:            build,
+		Log:              log,
+		Auth:             oauthAuth,
+		AuthClient:       authClient,
+		DB:               db,
+		Tracer:           tracer,
+		RabbitClient:     rabbitClient,
+		TemporalHostPort: cfg.Temporal.HostPort,
 	}
 
 	routes, userBus := buildRoutes(cfgMux)

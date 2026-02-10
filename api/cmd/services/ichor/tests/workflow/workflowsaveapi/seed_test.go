@@ -99,10 +99,10 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (SaveSeedData, error) {
 		return SaveSeedData{}, fmt.Errorf("seeding existing actions: %w", err)
 	}
 
-	// Seed edges for the existing rule
-	existingEdges, err := seedEdgesForRule(ctx, busDomain.Workflow, existingRule.ID, existingActions)
+	// Query edges already created by TestSeedRuleActions
+	existingEdges, err := busDomain.Workflow.QueryEdgesByRuleID(ctx, existingRule.ID)
 	if err != nil {
-		return SaveSeedData{}, fmt.Errorf("seeding existing edges: %w", err)
+		return SaveSeedData{}, fmt.Errorf("querying existing edges: %w", err)
 	}
 
 	// =========================================================================
@@ -148,44 +148,3 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (SaveSeedData, error) {
 	}, nil
 }
 
-// seedEdgesForRule creates edges for an existing rule with actions.
-// Creates: start -> action[0] -> action[1] -> action[2]
-func seedEdgesForRule(ctx context.Context, wfBus *workflow.Business, ruleID uuid.UUID, actions []workflow.RuleAction) ([]workflow.ActionEdge, error) {
-	if len(actions) == 0 {
-		return nil, nil
-	}
-
-	var edges []workflow.ActionEdge
-
-	// Create start edge to first action
-	startEdge, err := wfBus.CreateActionEdge(ctx, workflow.NewActionEdge{
-		RuleID:         ruleID,
-		SourceActionID: nil,
-		TargetActionID: actions[0].ID,
-		EdgeType:       "start",
-		EdgeOrder:      0,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("creating start edge: %w", err)
-	}
-	edges = append(edges, startEdge)
-
-	// Create sequence edges between actions
-	for i := 0; i < len(actions)-1; i++ {
-		sourceID := actions[i].ID
-		targetID := actions[i+1].ID
-		edge, err := wfBus.CreateActionEdge(ctx, workflow.NewActionEdge{
-			RuleID:         ruleID,
-			SourceActionID: &sourceID,
-			TargetActionID: targetID,
-			EdgeType:       "sequence",
-			EdgeOrder:      i + 1,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("creating sequence edge %d: %w", i, err)
-		}
-		edges = append(edges, edge)
-	}
-
-	return edges, nil
-}

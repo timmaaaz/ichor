@@ -50,39 +50,7 @@ func Test_WorkflowSaveAPI(t *testing.T) {
 	test.Run(t, validationGraph(sd), "validation-graph")
 	test.Run(t, validationEdgeRequirement(sd), "validation-edge-requirement")
 
-	// ============================================================
-	// Phase 7: Workflow Execution Integration Tests
-	// ============================================================
-	// Note: These tests require workflow infrastructure (RabbitMQ, Engine, etc.)
-	// They test that workflows created via the Save API execute correctly.
-	// These are NOT HTTP tests - they test the workflow engine directly.
-
-	esd := insertExecutionSeedData(t, test, sd)
-	runExecutionTests(t, esd)
-
-	// ============================================================
-	// Phase 8: End-to-End Trigger Integration Tests
-	// ============================================================
-	// Note: These tests verify that real entity CRUD operations trigger
-	// workflow execution through the delegate/event system.
-
-	tsd := insertTriggerSeedData(t, test, esd)
-	runTriggerTests(t, tsd)
-
-	// ============================================================
-	// Phase 9: Action-Specific Integration Tests
-	// ============================================================
-	// Note: These tests verify that each action type executes correctly
-	// with proper configuration and produces expected side effects.
-
-	runActionTests(t, esd)
-
-	// ============================================================
-	// Phase 10: Error Handling & Edge Case Tests
-	// ============================================================
-	// Note: These tests verify proper error handling, rollback behavior,
-	// and edge cases including action failures, condition errors,
-	// concurrency, and queue failures.
-
-	runErrorTests(t, esd)
+	// Phase 13: Execution, trigger, action, and error tests excluded.
+	// These tests depend on the old workflow.Engine which was removed.
+	// Phase 15 will rewrite them for Temporal.
 }

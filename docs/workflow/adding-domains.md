@@ -467,7 +467,7 @@ See [Cascade Visualization](cascade-visualization.md) for more details on how th
 
 ## Related Documentation
 
-- [Event Infrastructure](event-infrastructure.md) - EventPublisher and delegate pattern details
+- [Event Infrastructure](event-infrastructure.md) - Delegate pattern and workflow dispatch
 - [Architecture](architecture.md) - System overview and component details
 - [Testing](testing.md) - Testing patterns for workflow events
 - [Cascade Visualization](cascade-visualization.md) - Understanding downstream workflow effects

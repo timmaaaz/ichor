@@ -20,6 +20,23 @@ const (
 	ActionRuleDeactivated = "rule_deactivated"
 )
 
+// Standard action names matching what domain event.go files use.
+// Used by DelegateHandler implementations to register for CRUD events.
+const (
+	ActionCreated = "created"
+	ActionUpdated = "updated"
+	ActionDeleted = "deleted"
+)
+
+// DelegateEventParams is the standard structure for delegate event parameters.
+// Domain event.go files use this structure (or compatible layouts) for their
+// ActionXxxParms types. The UserID field identifies who triggered the action.
+type DelegateEventParams struct {
+	EntityID uuid.UUID `json:"entityID"`
+	UserID   uuid.UUID `json:"userID"`
+	Entity   any       `json:"entity,omitempty"`
+}
+
 // ActionRuleChangedParms represents the parameters for rule change events.
 type ActionRuleChangedParms struct {
 	RuleID uuid.UUID `json:"ruleID"`

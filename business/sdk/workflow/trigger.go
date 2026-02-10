@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -497,6 +498,26 @@ func (tp *TriggerProcessor) RefreshRules(ctx context.Context) error {
 	tp.mu.Unlock()
 
 	return tp.loadMetadata(ctx)
+}
+
+// RegisterCacheInvalidation registers delegate handlers for automation rule
+// lifecycle events that invalidate the trigger processor's rule cache.
+func (tp *TriggerProcessor) RegisterCacheInvalidation(del *delegate.Delegate) {
+	handler := func(ctx context.Context, data delegate.Data) error {
+		tp.log.Info(ctx, "trigger processor: refreshing rules", "action", data.Action)
+		if err := tp.RefreshRules(ctx); err != nil {
+			tp.log.Error(ctx, "trigger processor: refresh failed", "error", err)
+		}
+		return nil // Don't fail the delegate chain
+	}
+
+	del.Register(DomainName, ActionRuleCreated, handler)
+	del.Register(DomainName, ActionRuleUpdated, handler)
+	del.Register(DomainName, ActionRuleDeleted, handler)
+	del.Register(DomainName, ActionRuleActivated, handler)
+	del.Register(DomainName, ActionRuleDeactivated, handler)
+
+	tp.log.Info(context.Background(), "trigger processor: cache invalidation registered")
 }
 
 // GetActiveRuleCount returns the number of cached active rules.

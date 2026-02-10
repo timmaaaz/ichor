@@ -29,14 +29,9 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
-	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
 
-var testContainer rabbitmq.Container
-
 func Test_AllocateInventory(t *testing.T) {
-	// Note: t.Parallel() removed - this test uses shared RabbitMQ infrastructure
-	// and cannot run concurrently with other workflow tests
 
 	db := dbtest.NewDatabase(t, "Test_AllocateInventory")
 
@@ -51,23 +46,9 @@ func Test_AllocateInventory(t *testing.T) {
 		return otel.GetTraceID(context.Background())
 	})
 
-	container := rabbitmq.GetTestContainer(t)
-	client := rabbitmq.NewTestClient(container.URL)
-	if err := client.Connect(); err != nil {
-		t.Fatalf("connecting to rabbitmq: %s", err)
-	}
-	defer client.Close()
-
-	// Initialize workflow queue
-	queue := rabbitmq.NewTestWorkflowQueue(client, log)
-	if err := queue.Initialize(context.Background()); err != nil {
-		t.Fatalf("initializing workflow queue: %s", err)
-	}
-
 	sd.Handler = inventory.NewAllocateInventoryHandler(
 		log,
 		db.DB,
-		queue,
 		db.BusDomain.InventoryItem,
 		db.BusDomain.InventoryLocation,
 		db.BusDomain.InventoryTransaction,
@@ -78,12 +59,6 @@ func Test_AllocateInventory(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	unitest.Run(t, allocateInventoryTests(db.BusDomain, db.DB, sd), "allocateInventory")
-
-	// Cleanup
-
-	if err := rabbitmq.StopRabbitMQ(testContainer); err != nil {
-		fmt.Printf("Failed to stop RabbitMQ container: %v\n", err)
-	}
 }
 
 // =============================================================================
@@ -351,7 +326,7 @@ func executeBasicAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocate
 	return unitest.Table{
 		Name: "execute_basic_allocation",
 		ExpResp: map[string]any{
-			"status": "queued",
+			"status": "success",
 		},
 		ExcFunc: func(ctx context.Context) any {
 			// Use first product with known inventory
@@ -680,7 +655,7 @@ func testSourceFromLineItem(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocate
 
 	return unitest.Table{
 		Name:    "test_source_from_line_item",
-		ExpResp: "queued",
+		ExpResp: "success",
 		ExcFunc: func(ctx context.Context) any {
 			orderID := uuid.New()
 			lineItemID := uuid.New()
@@ -772,6 +747,8 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 			var allocations []allocationRecord
 
 			// Simulate Order A's line items (3 items) - should all be grouped
+			// Use products 2, 3, 4 to avoid interference from earlier tests that consumed products 0 and 1
+			orderAProductIndices := []int{2, 3, 4}
 			for i := 0; i < 3; i++ {
 				groupedRuleID := uuid.New()
 				execCtx := workflow.ActionExecutionContext{
@@ -785,7 +762,7 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 					Timestamp:     time.Now().UTC(),
 					TriggerSource: workflow.TriggerSourceAutomation,
 					RawData: map[string]interface{}{
-						"product_id": sd.Products[i].ProductID.String(),
+						"product_id": sd.Products[orderAProductIndices[i]].ProductID.String(),
 						"quantity":   float64(2),
 						"order_id":   orderA.String(),
 					},
@@ -809,6 +786,8 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 			}
 
 			// Simulate Order B's line items (2 items) - should be grouped separately
+			// Use products 2 and 3 (same as Order A uses, but different order_id proves grouping works)
+			orderBProductIndices := []int{2, 3}
 			for i := 0; i < 2; i++ {
 				orderBRuleID := uuid.New()
 				execCtx := workflow.ActionExecutionContext{
@@ -822,7 +801,7 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 					Timestamp:     time.Now().UTC(),
 					TriggerSource: workflow.TriggerSourceAutomation,
 					RawData: map[string]interface{}{
-						"product_id": sd.Products[i].ProductID.String(),
+						"product_id": sd.Products[orderBProductIndices[i]].ProductID.String(),
 						"quantity":   float64(2),
 						"order_id":   orderB.String(),
 					},
@@ -890,276 +869,3 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 	}
 }
 
-// =============================================================================
-// ProcessQueued Unit Tests
-//
-// These tests verify the ProcessQueued method's error handling for malformed payloads.
-// Integration tests for the full async processing flow are in queue_test.go.
-// =============================================================================
-
-func Test_ProcessQueued(t *testing.T) {
-	db := dbtest.NewDatabase(t, "Test_ProcessQueued")
-
-	sd, err := insertAllocateSeedData(db.BusDomain)
-	if err != nil {
-		t.Fatalf("Seeding error: %s", err)
-	}
-
-	// Create the handler with all dependencies
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string {
-		return otel.GetTraceID(context.Background())
-	})
-
-	container := rabbitmq.GetTestContainer(t)
-	client := rabbitmq.NewTestClient(container.URL)
-	if err := client.Connect(); err != nil {
-		t.Fatalf("connecting to rabbitmq: %s", err)
-	}
-	defer client.Close()
-
-	queue := rabbitmq.NewTestWorkflowQueue(client, log)
-	if err := queue.Initialize(context.Background()); err != nil {
-		t.Fatalf("initializing workflow queue: %s", err)
-	}
-
-	handler := inventory.NewAllocateInventoryHandler(
-		log,
-		db.DB,
-		queue,
-		db.BusDomain.InventoryItem,
-		db.BusDomain.InventoryLocation,
-		db.BusDomain.InventoryTransaction,
-		db.BusDomain.Product,
-		db.BusDomain.Workflow,
-	)
-
-	// -------------------------------------------------------------------------
-
-	unitest.Run(t, processQueuedTests(handler, sd), "processQueued")
-}
-
-func processQueuedTests(handler *inventory.AllocateInventoryHandler, sd allocateSeedData) []unitest.Table {
-	// Note: Most ProcessQueued paths are tested via integration tests in queue_test.go
-	// which uses the full async flow with real EventPublisher.
-	//
-	// These unit tests focus on the early error path that fails before
-	// reaching the EventPublisher (invalid JSON payload).
-	//
-	// The "invalid request data" case cannot be meaningfully tested here because:
-	// 1. Go's JSON unmarshalling is lenient - it ignores unknown fields and uses zero values
-	// 2. If unmarshal succeeds, ProcessAllocation runs and tries to use the publisher
-	// 3. We can't pass a nil publisher without causing a panic
-	// 4. The user prefers not to use mocks
-	//
-	// The full processing flow including publisher is covered by queue_test.go
-	return []unitest.Table{
-		processQueuedInvalidPayload(handler),
-	}
-}
-
-func processQueuedInvalidPayload(handler *inventory.AllocateInventoryHandler) unitest.Table {
-	return unitest.Table{
-		Name:    "process_queued_invalid_payload",
-		ExpResp: "failed to unmarshal queued payload",
-		ExcFunc: func(ctx context.Context) any {
-			// Invalid JSON payload - should fail to unmarshal QueuedPayload
-			invalidPayload := json.RawMessage(`{not valid json}`)
-
-			err := handler.ProcessQueued(ctx, invalidPayload, nil)
-			if err == nil {
-				return "expected error, got nil"
-			}
-			// Check that error message contains expected text
-			if !contains(err.Error(), "failed to unmarshal queued payload") {
-				return fmt.Sprintf("unexpected error: %s", err.Error())
-			}
-			return "failed to unmarshal queued payload"
-		},
-		CmpFunc: func(got any, exp any) string {
-			if got != exp {
-				return fmt.Sprintf("got %v, want %v", got, exp)
-			}
-			return ""
-		},
-	}
-}
-
-// contains checks if substr is in s
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
-// =============================================================================
-// ProcessQueued Failure Event Test
-//
-// This test verifies that when allocation fails (e.g., no inventory available),
-// the ProcessQueued method still fires a workflow event with status="failed"
-// so downstream rules (like alerts) can trigger.
-// =============================================================================
-
-func Test_ProcessQueued_FiresEventOnFailure(t *testing.T) {
-	db := dbtest.NewDatabase(t, "Test_ProcessQueued_FiresEventOnFailure")
-
-	// Create minimal seed data - specifically WITHOUT inventory for the product we'll test
-	ctx := context.Background()
-
-	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, db.BusDomain.User)
-	if err != nil {
-		t.Fatalf("Seeding admin: %s", err)
-	}
-
-	// Seed a product but DON'T seed any inventory for it
-	regions, _ := db.BusDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "1"))
-	regionIDs := []uuid.UUID{regions[0].ID}
-
-	cities, _ := citybus.TestSeedCities(ctx, 1, regionIDs, db.BusDomain.City)
-	cityIDs := []uuid.UUID{cities[0].ID}
-
-	streets, _ := streetbus.TestSeedStreets(ctx, 1, cityIDs, db.BusDomain.Street)
-	streetIDs := []uuid.UUID{streets[0].ID}
-
-	tzs, _ := db.BusDomain.Timezone.QueryAll(ctx)
-	tzIDs := []uuid.UUID{tzs[0].ID}
-
-	contactInfos, _ := contactinfosbus.TestSeedContactInfos(ctx, 1, streetIDs, tzIDs, db.BusDomain.ContactInfos)
-	contactIDs := uuid.UUIDs{contactInfos[0].ID}
-
-	brands, _ := brandbus.TestSeedBrands(ctx, 1, contactIDs, db.BusDomain.Brand)
-	brandIDs := uuid.UUIDs{brands[0].BrandID}
-
-	productCategories, _ := productcategorybus.TestSeedProductCategories(ctx, 1, db.BusDomain.ProductCategory)
-	productCategoryIDs := uuid.UUIDs{productCategories[0].ProductCategoryID}
-
-	products, _ := productbus.TestSeedProducts(ctx, 1, brandIDs, productCategoryIDs, db.BusDomain.Product)
-	productWithNoInventory := products[0]
-
-	// Create handler
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string {
-		return otel.GetTraceID(context.Background())
-	})
-
-	container := rabbitmq.GetTestContainer(t)
-	client := rabbitmq.NewTestClient(container.URL)
-	if err := client.Connect(); err != nil {
-		t.Fatalf("connecting to rabbitmq: %s", err)
-	}
-	defer client.Close()
-
-	queue := rabbitmq.NewTestWorkflowQueue(client, log)
-	if err := queue.Initialize(ctx); err != nil {
-		t.Fatalf("initializing workflow queue: %s", err)
-	}
-
-	handler := inventory.NewAllocateInventoryHandler(
-		log,
-		db.DB,
-		queue,
-		db.BusDomain.InventoryItem,
-		db.BusDomain.InventoryLocation,
-		db.BusDomain.InventoryTransaction,
-		db.BusDomain.Product,
-		db.BusDomain.Workflow,
-	)
-
-	// Build a valid QueuedPayload that will trigger allocation failure
-	failureRuleID := uuid.New()
-	execContext := workflow.ActionExecutionContext{
-		EntityID:      uuid.New(),
-		EntityName:    "order_line_items",
-		EventType:     "on_create",
-		UserID:        admins[0].ID,
-		RuleID:        &failureRuleID,
-		RuleName:      "Test Failure Alert",
-		ExecutionID:   uuid.New(),
-		Timestamp:     time.Now().UTC(),
-		TriggerSource: workflow.TriggerSourceAutomation,
-	}
-
-	allocConfig := inventory.AllocateInventoryConfig{
-		InventoryItems: []inventory.AllocationItem{{
-			ProductID: productWithNoInventory.ProductID,
-			Quantity:  10, // Request inventory that doesn't exist
-		}},
-		AllocationMode:     "allocate",
-		AllocationStrategy: "fifo",
-		AllowPartial:       false, // Must fail if not enough
-		Priority:           "high",
-		ReferenceID:        "TEST-ORDER-123",
-		ReferenceType:      "order",
-	}
-
-	request := inventory.AllocationRequest{
-		ID:          uuid.New(),
-		ExecutionID: execContext.ExecutionID,
-		Config:      allocConfig,
-		Context:     execContext,
-		Status:      "queued",
-		Priority:    10,
-		CreatedAt:   time.Now(),
-		MaxRetries:  3,
-	}
-
-	requestData, _ := json.Marshal(request)
-
-	queuedPayload := workflow.QueuedPayload{
-		RequestType:      "allocate_inventory",
-		RequestData:      requestData,
-		ExecutionContext: execContext,
-		IdempotencyKey:   fmt.Sprintf("%s_%s_allocate_inventory", execContext.ExecutionID, execContext.RuleID.String()),
-	}
-
-	payloadJSON, _ := json.Marshal(queuedPayload)
-
-	// Create a real QueueManager and EventPublisher
-	queueManager, err := workflow.NewQueueManager(log, db.DB, nil, client, queue)
-	if err != nil {
-		t.Fatalf("creating queue manager: %s", err)
-	}
-	if err := queueManager.Initialize(ctx); err != nil {
-		t.Fatalf("initializing queue manager: %s", err)
-	}
-
-	eventPublisher := workflow.NewEventPublisher(log, queueManager)
-
-	// Execute ProcessQueued - this should fail but still fire an event
-	err = handler.ProcessQueued(ctx, payloadJSON, eventPublisher)
-
-	// We expect an error because allocation failed
-	if err == nil {
-		t.Fatal("expected allocation to fail, but it succeeded")
-	}
-
-	if !contains(err.Error(), "allocation processing failed") {
-		t.Fatalf("unexpected error: %s", err.Error())
-	}
-
-	// Give the async event publisher goroutine time to complete
-	time.Sleep(100 * time.Millisecond)
-
-	// Check logs for evidence that the event was fired
-	logOutput := buf.String()
-	if !contains(logOutput, "Allocation processing failed, event fired for alerting") {
-		t.Errorf("expected log message about event being fired on failure, got:\n%s", logOutput)
-	}
-
-	// The key verification: the log message confirms fireAllocationResultEvent was called
-	// before returning the error, which is the fix we implemented
-
-	t.Log("SUCCESS: ProcessQueued fires workflow event even when allocation fails")
-
-	// Cleanup with timeout to prevent blocking
-	stopCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	queueManager.Stop(stopCtx)
-}

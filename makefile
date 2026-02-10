@@ -272,7 +272,7 @@ dev-apply:
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
 	kustomize build zarf/k8s/dev/temporal | kubectl apply -f -
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/temporal
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/temporal
 
 	kustomize build zarf/k8s/dev/rabbitmq | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s deployment/rabbitmq

@@ -230,7 +230,7 @@ Integration tests: `business/sdk/workflow/eventpublisher_integration_test.go`
 go test -v ./business/sdk/workflow/workflowactions/communication/... -run Alert
 
 # Run integration tests
-go test -v ./business/sdk/workflow/... -run TestEventPublisher_CreateAlert
+go test -v ./business/sdk/workflow/temporal/... -run Alert
 ```
 
 ## Related Documentation

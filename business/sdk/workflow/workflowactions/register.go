@@ -63,7 +63,6 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 	registry.Register(inventory.NewAllocateInventoryHandler(
 		config.Log,
 		config.DB,
-		config.QueueClient,
 		config.Buses.InventoryItem,
 		config.Buses.InventoryLocation,
 		config.Buses.InventoryTransaction,
@@ -77,7 +76,6 @@ func RegisterInventoryActions(registry *workflow.ActionRegistry, config ActionCo
 	registry.Register(inventory.NewAllocateInventoryHandler(
 		config.Log,
 		config.DB,
-		config.QueueClient,
 		config.Buses.InventoryItem,
 		config.Buses.InventoryLocation,
 		config.Buses.InventoryTransaction,

@@ -2,7 +2,7 @@
 
 **Project**: Ichor ERP System
 **Goal**: Implement Temporal-based workflow engine that interprets visual workflow graphs with full durability, parallel branch support, and async continuation
-**Timeline**: 13 phases
+**Timeline**: 15 phases
 **Status**: Planning Complete - Ready for Phase Execution
 
 ---
@@ -213,8 +213,20 @@ Build incrementally with clear phase boundaries:
                                      │
                               ┌──────▼──────┐
                               │  Phase 13   │
-                              │ K8s Deploy  │
-                              │(validates 1)│
+                              │ Dead Code   │
+                              │ Removal &   │
+                              │Temporal Wire│
+                              └──────┬──────┘
+                                     │
+                              ┌──────▼──────┐
+                              │  Phase 14   │
+                              │    Docs     │
+                              └──────┬──────┘
+                                     │
+                              ┌──────▼──────┐
+                              │  Phase 15   │
+                              │Integration  │
+                              │Verification │
                               └─────────────┘
 ```
 
@@ -236,7 +248,9 @@ Build incrementally with clear phase boundaries:
 | 10 | Graph Executor Unit Tests | testing | Determinism tests, convergence consistency | Test files for graph executor |
 | 11 | Workflow Integration Tests | testing | End-to-end workflow tests, replay testing | Integration test suite |
 | 12 | Edge Case & Limit Tests | testing | Continue-As-New, context truncation, mock RabbitMQ | Edge case test coverage |
-| 13 | Kubernetes Deployment | deployment | K8s manifests for workflow-worker | `zarf/k8s/dev/workflow-worker/*.yaml` |
+| 13 | Dead Code Removal & Temporal Rewiring | backend | Remove old engine, wire Temporal as sole path | TemporalDelegateHandler, rewired `all.go`, ~4600 lines removed |
+| 14 | Documentation Updates | backend | Update workflow docs, create Temporal docs | Updated + new docs in `docs/workflow/` |
+| 15 | Integration Verification | testing | Rewrite test infra, verify end-to-end | Rewritten `apitest/workflow.go`, health checks |
 
 ---
 
@@ -342,7 +356,9 @@ Track progress in [PROGRESS.yaml](./PROGRESS.yaml):
 10. [Phase 10: Graph Executor Unit Tests](./phases/PHASE_10_UNIT_TESTS.md)
 11. [Phase 11: Workflow Integration Tests](./phases/PHASE_11_INTEGRATION_TESTS.md)
 12. [Phase 12: Edge Case & Limit Tests](./phases/PHASE_12_EDGE_CASE_TESTS.md)
-13. [Phase 13: Kubernetes Deployment](./phases/PHASE_13_K8S_DEPLOYMENT.md)
+13. [Phase 13: Dead Code Removal & Temporal Rewiring](./phases/PHASE_13_DEAD_CODE_REMOVAL.md)
+14. [Phase 14: Documentation Updates](./phases/PHASE_14_DOCUMENTATION_UPDATES.md)
+15. [Phase 15: Integration Verification](./phases/PHASE_15_INTEGRATION_VERIFICATION.md)
 
 ---
 
@@ -392,6 +408,6 @@ See `foundation/rabbitmq/rabbitmq.go` for the reference implementation pattern.
 
 ---
 
-**Last Updated**: 2026-02-07
+**Last Updated**: 2026-02-09
 **Created By**: Claude Code
 **Status**: Planning Complete
