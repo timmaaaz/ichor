@@ -48,6 +48,6 @@ func Routes(app *web.App, cfg Config) {
 	// Action type discovery - returns all registered action types with output ports
 	if cfg.ActionRegistry != nil {
 		discovery := newDiscoveryAPI(cfg.ActionRegistry)
-		app.HandlerFunc(http.MethodGet, version, "/workflow/action-types", discovery.queryActionTypes, authen)
+		app.HandlerFunc(http.MethodGet, version, "/workflow/action-registry", discovery.queryActionTypes, authen)
 	}
 }
