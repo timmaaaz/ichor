@@ -44,7 +44,7 @@ type SaveActionRequest struct {
 	ID             *string         `json:"id"`
 	Name           string          `json:"name" validate:"required,min=1,max=255"`
 	Description    string          `json:"description" validate:"max=1000"`
-	ActionType     string          `json:"action_type" validate:"required,oneof=create_alert send_email send_notification update_field seek_approval allocate_inventory evaluate_condition"`
+	ActionType     string          `json:"action_type" validate:"required,oneof=create_alert send_email send_notification update_field seek_approval allocate_inventory evaluate_condition check_inventory reserve_inventory check_reorder_point commit_allocation release_reservation"`
 	ActionConfig   json.RawMessage `json:"action_config" validate:"required"`
 	IsActive       bool            `json:"is_active"`
 }
