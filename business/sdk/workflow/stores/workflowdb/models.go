@@ -818,6 +818,7 @@ type actionEdge struct {
 	SourceActionID sql.NullString `db:"source_action_id"` // NULL for start edges
 	TargetActionID string         `db:"target_action_id"`
 	EdgeType       string         `db:"edge_type"`
+	SourceOutput   sql.NullString `db:"source_output"` // NULL for start/always edges
 	EdgeOrder      int            `db:"edge_order"`
 	CreatedDate    time.Time      `db:"created_date"`
 }
@@ -836,6 +837,11 @@ func toCoreActionEdge(dbEdge actionEdge) workflow.ActionEdge {
 	if dbEdge.SourceActionID.Valid {
 		sourceID := uuid.MustParse(dbEdge.SourceActionID.String)
 		edge.SourceActionID = &sourceID
+	}
+
+	if dbEdge.SourceOutput.Valid {
+		s := dbEdge.SourceOutput.String
+		edge.SourceOutput = &s
 	}
 
 	return edge
@@ -868,6 +874,13 @@ func toDBActionEdge(edge workflow.ActionEdge) actionEdge {
 		}
 	}
 
+	if edge.SourceOutput != nil {
+		dbEdge.SourceOutput = sql.NullString{
+			String: *edge.SourceOutput,
+			Valid:  true,
+		}
+	}
+
 	return dbEdge
 }
 
@@ -885,6 +898,13 @@ func toDBNewActionEdge(edge workflow.NewActionEdge) actionEdge {
 	if edge.SourceActionID != nil {
 		dbEdge.SourceActionID = sql.NullString{
 			String: edge.SourceActionID.String(),
+			Valid:  true,
+		}
+	}
+
+	if edge.SourceOutput != nil {
+		dbEdge.SourceOutput = sql.NullString{
+			String: *edge.SourceOutput,
 			Valid:  true,
 		}
 	}

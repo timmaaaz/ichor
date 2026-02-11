@@ -6,15 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
-// GraphExecutor traverses the workflow graph respecting edge types.
+// GraphExecutor traverses the workflow graph respecting edge types and output ports.
 // All operations are deterministic for Temporal replay safety.
 //
-// Edge traversal rules (matching business/sdk/workflow/executor.go ShouldFollowEdge):
-//   - EdgeTypeSequence:    Always follow
-//   - EdgeTypeAlways:      Always follow
-//   - EdgeTypeTrueBranch:  Follow if result["branch_taken"] == "true_branch"
-//   - EdgeTypeFalseBranch: Follow if result["branch_taken"] == "false_branch"
-//   - EdgeTypeStart:       Skip (only used for initial dispatch via GetStartActions)
+// Edge traversal rules:
+//   - EdgeTypeStart:    Skip (only used for initial dispatch via GetStartActions)
+//   - SourceOutput=nil: Always follow (always edges, start edges)
+//   - SourceOutput=X:   Follow if result["output"] == X
 type GraphExecutor struct {
 	graph         GraphDefinition
 	actionsByID   map[uuid.UUID]ActionNode
@@ -84,15 +82,14 @@ func (e *GraphExecutor) GetStartActions() []ActionNode {
 	return actions
 }
 
-// GetNextActions returns the next actions to execute based on edge types and action result.
+// GetNextActions returns the next actions to execute based on output ports.
 //
-// Edge type behavior (mirrors ShouldFollowEdge in business/sdk/workflow/executor.go):
-//   - EdgeTypeSequence:    Always follow
-//   - EdgeTypeAlways:      Always follow (runs regardless of condition result)
-//   - EdgeTypeTrueBranch:  Follow if result["branch_taken"] == "true_branch"
-//   - EdgeTypeFalseBranch: Follow if result["branch_taken"] == "false_branch"
-//   - EdgeTypeStart:       Skip (start edges are only for initial dispatch)
+// Routing rules:
+//   - EdgeTypeStart:    Skip (start edges are only for initial dispatch)
+//   - SourceOutput=nil: Always follow (always edges, sequence edges with no output constraint)
+//   - SourceOutput=X:   Follow if result["output"] == X
 //
+// If the action result has no "output" key, it defaults to "success".
 // Returns nil if no outgoing edges exist (end of path) or if edges exist
 // but none match (e.g., condition with no matching branch). Callers should
 // treat nil as "nothing more to execute on this path."
@@ -103,31 +100,29 @@ func (e *GraphExecutor) GetNextActions(sourceActionID uuid.UUID, result map[stri
 		return nil
 	}
 
+	// Extract which output port the action chose.
+	actionOutput, _ := result["output"].(string)
+	if actionOutput == "" {
+		actionOutput = "success" // Default for actions that don't set output
+	}
+
 	var nextActions []ActionNode
 
 	for _, edge := range edges {
 		shouldFollow := false
 
-		switch edge.EdgeType {
-		case EdgeTypeSequence:
-			shouldFollow = true
-
-		case EdgeTypeAlways:
-			shouldFollow = true
-
-		case EdgeTypeTrueBranch:
-			if branch, ok := result["branch_taken"].(string); ok && branch == EdgeTypeTrueBranch {
-				shouldFollow = true
-			}
-
-		case EdgeTypeFalseBranch:
-			if branch, ok := result["branch_taken"].(string); ok && branch == EdgeTypeFalseBranch {
-				shouldFollow = true
-			}
-
-		case EdgeTypeStart:
+		switch {
+		case edge.EdgeType == EdgeTypeStart:
 			// Start edges are only used for initial dispatch via GetStartActions.
 			continue
+
+		case edge.SourceOutput == nil:
+			// NULL source_output = always follow (always edges, unconstrained sequence)
+			shouldFollow = true
+
+		case *edge.SourceOutput == actionOutput:
+			// Output port matches the action's chosen output
+			shouldFollow = true
 		}
 
 		if shouldFollow {

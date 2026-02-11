@@ -191,10 +191,11 @@ func transitionValid(sd transitionSeedData) unitest.Table {
 func transitionInvalidRejected(sd transitionSeedData) unitest.Table {
 	return unitest.Table{
 		Name:    "transition_invalid_rejected",
-		ExpResp: "error",
+		ExpResp: "invalid_transition",
 		ExcFunc: func(ctx context.Context) any {
 			// Customer name is now "Premium Customer" from previous test,
-			// but we only allow transition from "NonExistentStatus"
+			// but we only allow transition from "NonExistentStatus".
+			// Handler returns output="invalid_transition" (no error) for routing.
 			config := json.RawMessage(fmt.Sprintf(`{
 				"target_entity": "sales.customers",
 				"target_id": "%s",
@@ -212,15 +213,20 @@ func transitionInvalidRejected(sd transitionSeedData) unitest.Table {
 				Timestamp:   time.Now().UTC(),
 			}
 
-			_, err := sd.TransitionHandler.Execute(ctx, config, execContext)
-			if err == nil {
-				return "expected transition error, got nil"
+			result, err := sd.TransitionHandler.Execute(ctx, config, execContext)
+			if err != nil {
+				return fmt.Errorf("unexpected error: %w", err)
 			}
 
-			return "error"
+			resultMap, ok := result.(map[string]any)
+			if !ok {
+				return fmt.Errorf("expected map[string]any, got %T", result)
+			}
+
+			return resultMap["output"].(string)
 		},
 		CmpFunc: func(got any, exp any) string {
-			if got != "error" {
+			if got != exp {
 				return fmt.Sprintf("expected transition error: %v", got)
 			}
 			return ""

@@ -3,7 +3,65 @@ package workflowsaveapp
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 )
+
+// =============================================================================
+// Output Port Validation
+// =============================================================================
+
+// validateOutputPorts validates that edges reference valid output ports for their
+// source action's type. Start and always edges must not have source_output.
+// Sequence edges with source_output are validated against the handler's declared ports.
+func validateOutputPorts(actions []SaveActionRequest, edges []SaveEdgeRequest, registry *workflow.ActionRegistry) error {
+	// Build map: action ref -> action_type
+	actionTypeByRef := make(map[string]string)
+	for i, a := range actions {
+		actionTypeByRef[fmt.Sprintf("temp:%d", i)] = a.ActionType
+		if a.ID != nil && *a.ID != "" {
+			actionTypeByRef[*a.ID] = a.ActionType
+		}
+	}
+
+	for i, edge := range edges {
+		if edge.EdgeType == "start" || edge.EdgeType == "always" {
+			if edge.SourceOutput != "" {
+				return fmt.Errorf("edge[%d]: %s edges must not have source_output", i, edge.EdgeType)
+			}
+			continue
+		}
+		if edge.SourceOutput == "" {
+			continue // Default to "success" at runtime
+		}
+
+		actionType, ok := actionTypeByRef[edge.SourceActionID]
+		if !ok {
+			continue // Graph validation catches missing refs
+		}
+
+		validOutputs := registry.GetOutputPorts(actionType)
+		found := false
+		for _, port := range validOutputs {
+			if port.Name == edge.SourceOutput {
+				found = true
+				break
+			}
+		}
+		if !found {
+			names := make([]string, len(validOutputs))
+			for j, p := range validOutputs {
+				names[j] = p.Name
+			}
+			return fmt.Errorf("edge[%d]: source_output %q is not valid for %q (valid: %v)", i, edge.SourceOutput, actionType, names)
+		}
+	}
+	return nil
+}
+
+// =============================================================================
+// Action Config Validation
+// =============================================================================
 
 // Action type constants
 const (

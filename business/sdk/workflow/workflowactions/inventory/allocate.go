@@ -186,6 +186,16 @@ func (h *AllocateInventoryHandler) GetDescription() string {
 	return "Allocate inventory items from warehouse locations"
 }
 
+// GetOutputPorts implements workflow.OutputPortProvider.
+func (h *AllocateInventoryHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "success", Description: "All items allocated successfully", IsDefault: true},
+		{Name: "partial", Description: "Some items allocated, others failed"},
+		{Name: "insufficient_stock", Description: "Insufficient inventory to fulfill request"},
+		{Name: "failure", Description: "Allocation failed due to error"},
+	}
+}
+
 // Validate validates the allocation configuration
 func (h *AllocateInventoryHandler) Validate(config json.RawMessage) error {
 	var cfg AllocateInventoryConfig
@@ -351,14 +361,28 @@ func (h *AllocateInventoryHandler) Execute(ctx context.Context, config json.RawM
 		return QueuedAllocationResponse{}, fmt.Errorf("allocation failed: %w", err)
 	}
 
-	return QueuedAllocationResponse{
-		AllocationID:   result.AllocationID,
-		Status:         result.Status,
-		IdempotencyKey: result.IdempotencyKey,
-		Priority:       request.Priority,
-		Message:        fmt.Sprintf("Allocation completed: %s", result.Status),
-		ReferenceID:    cfg.ReferenceID,
-		ReferenceType:  cfg.ReferenceType,
+	// Map allocation status to output port name.
+	output := "failure"
+	switch result.Status {
+	case "success":
+		output = "success"
+	case "partial":
+		output = "partial"
+	case "failed":
+		if len(result.FailedItems) > 0 && result.FailedItems[0].Reason == "insufficient_inventory" {
+			output = "insufficient_stock"
+		}
+	}
+
+	return map[string]any{
+		"allocation_id":   result.AllocationID,
+		"status":          result.Status,
+		"idempotency_key": result.IdempotencyKey,
+		"priority":        request.Priority,
+		"message":         fmt.Sprintf("Allocation completed: %s", result.Status),
+		"reference_id":    cfg.ReferenceID,
+		"reference_type":  cfg.ReferenceType,
+		"output":          output,
 	}, nil
 }
 

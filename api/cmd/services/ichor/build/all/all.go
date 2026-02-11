@@ -1077,6 +1077,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Delegate:       delegate,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+		ActionRegistry: actionRegistry,
 	})
 
 	// =========================================================================

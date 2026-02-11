@@ -73,6 +73,14 @@ func ParseDuration(durationStr string) (time.Duration, error) {
 	return d, nil
 }
 
+// GetOutputPorts implements workflow.OutputPortProvider.
+// Delay only has a single output; it always continues after the timer.
+func (h *DelayHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "success", Description: "Delay completed", IsDefault: true},
+	}
+}
+
 // Validate validates the delay configuration.
 func (h *DelayHandler) Validate(config json.RawMessage) error {
 	var cfg DelayConfig

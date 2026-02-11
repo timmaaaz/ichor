@@ -71,6 +71,12 @@ func (a *Activities) ExecuteActionActivity(ctx context.Context, input ActionActi
 
 	resultMap := toResultMap(result)
 
+	// Inject default output if the handler didn't set one.
+	// This ensures every action result has an "output" key for the graph executor.
+	if _, hasOutput := resultMap["output"]; !hasOutput {
+		resultMap["output"] = "success"
+	}
+
 	logger.Info("Action execution succeeded",
 		"action_id", input.ActionID,
 		"action_name", input.ActionName,

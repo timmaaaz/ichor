@@ -21,7 +21,7 @@ WHAT THIS TESTS:
 - Validation of condition configurations
 - All supported operators (equals, not_equals, greater_than, less_than, contains, in, is_null, is_not_null, changed_from, changed_to)
 - Logic combinations (AND/OR)
-- Branch result generation (true_branch/false_branch)
+- Branch result generation (true/false output ports)
 - Edge cases (nil data, missing fields, type mismatches, json.Number handling)
 - Handler metadata (GetType, GetDescription, SupportsManualExecution, IsAsync)
 
@@ -236,16 +236,16 @@ func TestOperator_Equals_Match(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult, ok := result.(workflow.ConditionResult)
+	condResult, ok := result.(map[string]any)
 	if !ok {
-		t.Fatalf("Execute() result is not ConditionResult, got %T", result)
+		t.Fatalf("Execute() result is not map[string]any, got %T", result)
 	}
 
-	if !condResult.Result {
+	if !condResult["result"].(bool) {
 		t.Error("equals operator should match 'active' == 'active'")
 	}
-	if condResult.BranchTaken != workflow.EdgeTypeTrueBranch {
-		t.Errorf("BranchTaken = %s, want %s", condResult.BranchTaken, workflow.EdgeTypeTrueBranch)
+	if condResult["output"].(string) != "true" {
+		t.Errorf("output = %s, want %s", condResult["output"].(string), "true")
 	}
 }
 
@@ -268,12 +268,12 @@ func TestOperator_Equals_NoMatch(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("equals operator should not match 'inactive' == 'active'")
 	}
-	if condResult.BranchTaken != workflow.EdgeTypeFalseBranch {
-		t.Errorf("BranchTaken = %s, want %s", condResult.BranchTaken, workflow.EdgeTypeFalseBranch)
+	if condResult["output"].(string) != "false" {
+		t.Errorf("output = %s, want %s", condResult["output"].(string), "false")
 	}
 }
 
@@ -296,8 +296,8 @@ func TestOperator_NotEquals_Match(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("not_equals operator should match 'active' != 'inactive'")
 	}
 }
@@ -321,8 +321,8 @@ func TestOperator_NotEquals_NoMatch(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("not_equals operator should not match 'active' != 'active'")
 	}
 }
@@ -360,9 +360,9 @@ func TestOperator_GreaterThan_Numeric(t *testing.T) {
 				t.Fatalf("Execute() error = %v", err)
 			}
 
-			condResult := result.(workflow.ConditionResult)
-			if condResult.Result != tt.expect {
-				t.Errorf("greater_than result = %v, want %v", condResult.Result, tt.expect)
+			condResult := result.(map[string]any)
+			if condResult["result"].(bool) != tt.expect {
+				t.Errorf("greater_than result = %v, want %v", condResult["result"].(bool), tt.expect)
 			}
 		})
 	}
@@ -387,8 +387,8 @@ func TestOperator_GreaterThan_String(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("greater_than operator should match 'b' > 'a' (string comparison)")
 	}
 }
@@ -425,9 +425,9 @@ func TestOperator_LessThan_Numeric(t *testing.T) {
 				t.Fatalf("Execute() error = %v", err)
 			}
 
-			condResult := result.(workflow.ConditionResult)
-			if condResult.Result != tt.expect {
-				t.Errorf("less_than result = %v, want %v", condResult.Result, tt.expect)
+			condResult := result.(map[string]any)
+			if condResult["result"].(bool) != tt.expect {
+				t.Errorf("less_than result = %v, want %v", condResult["result"].(bool), tt.expect)
 			}
 		})
 	}
@@ -452,8 +452,8 @@ func TestOperator_Contains_Match(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("contains operator should match 'hello world' contains 'world'")
 	}
 }
@@ -477,8 +477,8 @@ func TestOperator_Contains_NoMatch(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("contains operator should not match 'hello there' contains 'world'")
 	}
 }
@@ -502,8 +502,8 @@ func TestOperator_In_Match(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("in operator should match 'red' in ['red', 'green', 'blue']")
 	}
 }
@@ -527,8 +527,8 @@ func TestOperator_In_NoMatch(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("in operator should not match 'yellow' in ['red', 'green', 'blue']")
 	}
 }
@@ -552,8 +552,8 @@ func TestOperator_IsNull_True(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("is_null operator should match nil value")
 	}
 }
@@ -577,8 +577,8 @@ func TestOperator_IsNull_False(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("is_null operator should not match non-nil value")
 	}
 }
@@ -602,8 +602,8 @@ func TestOperator_IsNotNull_True(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("is_not_null operator should match non-nil value")
 	}
 }
@@ -627,8 +627,8 @@ func TestOperator_IsNotNull_False(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("is_not_null operator should not match nil value")
 	}
 }
@@ -655,8 +655,8 @@ func TestOperator_ChangedFrom_Match(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("changed_from operator should match when old value was 'draft'")
 	}
 }
@@ -681,8 +681,8 @@ func TestOperator_ChangedFrom_NoUpdate(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("changed_from operator should return false on on_create event")
 	}
 }
@@ -709,8 +709,8 @@ func TestOperator_ChangedTo_Match(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("changed_to operator should match when new value is 'shipped'")
 	}
 }
@@ -738,8 +738,8 @@ func TestOperator_ChangedTo_SameValue(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("changed_to operator should return false when old value equals new value")
 	}
 }
@@ -774,8 +774,8 @@ func TestLogic_And_AllTrue(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("AND logic: all conditions true should return true")
 	}
 }
@@ -806,8 +806,8 @@ func TestLogic_And_OneFalse(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("AND logic: one false condition should return false")
 	}
 }
@@ -838,8 +838,8 @@ func TestLogic_Or_AllFalse(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("OR logic: all false conditions should return false")
 	}
 }
@@ -870,8 +870,8 @@ func TestLogic_Or_OneTrue(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("OR logic: one true condition should return true")
 	}
 }
@@ -903,8 +903,8 @@ func TestLogic_DefaultIsAnd(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.Result {
+	condResult := result.(map[string]any)
+	if condResult["result"].(bool) {
 		t.Error("Default logic should be AND: one false condition should return false")
 	}
 }
@@ -932,13 +932,13 @@ func TestExecute_ReturnsConditionResult(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult, ok := result.(workflow.ConditionResult)
+	condResult, ok := result.(map[string]any)
 	if !ok {
-		t.Fatalf("Execute() should return ConditionResult, got %T", result)
+		t.Fatalf("Execute() should return map[string]any, got %T", result)
 	}
 
-	if !condResult.Evaluated {
-		t.Error("ConditionResult.Evaluated should be true")
+	if !condResult["evaluated"].(bool) {
+		t.Error("evaluated should be true")
 	}
 }
 
@@ -961,12 +961,12 @@ func TestExecute_TrueBranch(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.BranchTaken != workflow.EdgeTypeTrueBranch {
-		t.Errorf("BranchTaken = %s, want %s", condResult.BranchTaken, workflow.EdgeTypeTrueBranch)
+	condResult := result.(map[string]any)
+	if condResult["output"].(string) != "true" {
+		t.Errorf("output = %s, want %s", condResult["output"].(string), "true")
 	}
-	if !condResult.Result {
-		t.Error("Result should be true when branch is true_branch")
+	if !condResult["result"].(bool) {
+		t.Error("result should be true when output is true")
 	}
 }
 
@@ -989,12 +989,12 @@ func TestExecute_FalseBranch(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if condResult.BranchTaken != workflow.EdgeTypeFalseBranch {
-		t.Errorf("BranchTaken = %s, want %s", condResult.BranchTaken, workflow.EdgeTypeFalseBranch)
+	condResult := result.(map[string]any)
+	if condResult["output"].(string) != "false" {
+		t.Errorf("output = %s, want %s", condResult["output"].(string), "false")
 	}
-	if condResult.Result {
-		t.Error("Result should be false when branch is false_branch")
+	if condResult["result"].(bool) {
+		t.Error("result should be false when output is false")
 	}
 }
 
@@ -1021,9 +1021,9 @@ func TestEdgeCase_NilData(t *testing.T) {
 		t.Fatalf("Execute() should handle nil data gracefully, got error: %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
+	condResult := result.(map[string]any)
 	// With nil data, the field value will be nil, which won't equal "active"
-	if condResult.Result {
+	if condResult["result"].(bool) {
 		t.Error("With nil data, condition should evaluate to false")
 	}
 }
@@ -1047,9 +1047,9 @@ func TestEdgeCase_MissingField(t *testing.T) {
 		t.Fatalf("Execute() should handle missing field gracefully, got error: %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
+	condResult := result.(map[string]any)
 	// Missing field should be treated as nil, which won't equal "test"
-	if condResult.Result {
+	if condResult["result"].(bool) {
 		t.Error("With missing field, condition should evaluate to false")
 	}
 }
@@ -1074,9 +1074,9 @@ func TestEdgeCase_TypeMismatch(t *testing.T) {
 		t.Fatalf("Execute() should handle type mismatch gracefully, got error: %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
+	condResult := result.(map[string]any)
 	// The comparison uses fmt.Sprintf to convert both to strings, so "100" == "100" should match
-	if !condResult.Result {
+	if !condResult["result"].(bool) {
 		t.Error("Type mismatch should still match when string representations are equal")
 	}
 }
@@ -1109,8 +1109,8 @@ func TestEdgeCase_JsonNumber(t *testing.T) {
 		t.Fatalf("Execute() should handle json.Number, got error: %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("json.Number comparison should work correctly")
 	}
 }
@@ -1134,8 +1134,8 @@ func TestEdgeCase_EmptyString(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
-	if !condResult.Result {
+	condResult := result.(map[string]any)
+	if !condResult["result"].(bool) {
 		t.Error("Empty string should equal empty string")
 	}
 }
@@ -1159,9 +1159,9 @@ func TestEdgeCase_ContainsEmptyString(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
+	condResult := result.(map[string]any)
 	// Any string contains the empty string
-	if !condResult.Result {
+	if !condResult["result"].(bool) {
 		t.Error("Any string should contain the empty string")
 	}
 }
@@ -1186,9 +1186,9 @@ func TestEdgeCase_ContainsNonString(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
+	condResult := result.(map[string]any)
 	// Non-string values should return false for contains
-	if condResult.Result {
+	if condResult["result"].(bool) {
 		t.Error("Contains with non-string field value should return false")
 	}
 }
@@ -1212,9 +1212,9 @@ func TestEdgeCase_InWithEmptyArray(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
+	condResult := result.(map[string]any)
 	// Nothing is "in" an empty array
-	if condResult.Result {
+	if condResult["result"].(bool) {
 		t.Error("In with empty array should return false")
 	}
 }
@@ -1238,9 +1238,9 @@ func TestEdgeCase_IsNullMissingField(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	condResult := result.(workflow.ConditionResult)
+	condResult := result.(map[string]any)
 	// Missing field should be treated as nil
-	if !condResult.Result {
+	if !condResult["result"].(bool) {
 		t.Error("is_null should return true for missing field")
 	}
 }

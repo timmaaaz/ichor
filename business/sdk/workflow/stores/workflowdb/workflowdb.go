@@ -1482,9 +1482,9 @@ func (s *Store) CreateActionEdge(ctx context.Context, edge workflow.NewActionEdg
 
 	const q = `
 	INSERT INTO workflow.action_edges (
-		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+		id, rule_id, source_action_id, target_action_id, edge_type, source_output, edge_order, created_date
 	) VALUES (
-		:id, :rule_id, :source_action_id, :target_action_id, :edge_type, :edge_order, :created_date
+		:id, :rule_id, :source_action_id, :target_action_id, :edge_type, :source_output, :edge_order, :created_date
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, dbEdge); err != nil {
@@ -1504,7 +1504,7 @@ func (s *Store) QueryEdgesByRuleID(ctx context.Context, ruleID uuid.UUID) ([]wor
 
 	const q = `
 	SELECT
-		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+		id, rule_id, source_action_id, target_action_id, edge_type, source_output, edge_order, created_date
 	FROM workflow.action_edges
 	WHERE rule_id = :rule_id
 	ORDER BY edge_order ASC`
@@ -1527,7 +1527,7 @@ func (s *Store) QueryEdgeByID(ctx context.Context, edgeID uuid.UUID) (workflow.A
 
 	const q = `
 	SELECT
-		id, rule_id, source_action_id, target_action_id, edge_type, edge_order, created_date
+		id, rule_id, source_action_id, target_action_id, edge_type, source_output, edge_order, created_date
 	FROM workflow.action_edges
 	WHERE id = :id`
 

@@ -274,12 +274,12 @@ func executeCheckInventorySufficient(sd checkInventorySeedData) unitest.Table {
 				return err
 			}
 
-			condResult, ok := result.(workflow.ConditionResult)
+			resultMap, ok := result.(map[string]any)
 			if !ok {
-				return fmt.Errorf("expected ConditionResult, got %T", result)
+				return fmt.Errorf("expected map[string]any, got %T", result)
 			}
 
-			return condResult.Result
+			return resultMap["sufficient"].(bool)
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {
@@ -316,12 +316,12 @@ func executeCheckInventoryInsufficient(sd checkInventorySeedData) unitest.Table 
 				return err
 			}
 
-			condResult, ok := result.(workflow.ConditionResult)
+			resultMap, ok := result.(map[string]any)
 			if !ok {
-				return fmt.Errorf("expected ConditionResult, got %T", result)
+				return fmt.Errorf("expected map[string]any, got %T", result)
 			}
 
-			return condResult.Result
+			return resultMap["sufficient"].(bool)
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {
@@ -344,7 +344,7 @@ func executeCheckInventorySourceFromLineItem(sd checkInventorySeedData) unitest.
 
 	return unitest.Table{
 		Name:    "execute_source_from_line_item",
-		ExpResp: "true_branch",
+		ExpResp: "sufficient",
 		ExcFunc: func(ctx context.Context) any {
 			config := inventory.CheckInventoryConfig{
 				SourceFromLineItem: true,
@@ -374,12 +374,12 @@ func executeCheckInventorySourceFromLineItem(sd checkInventorySeedData) unitest.
 				return err
 			}
 
-			condResult, ok := result.(workflow.ConditionResult)
+			resultMap, ok := result.(map[string]any)
 			if !ok {
-				return fmt.Errorf("expected ConditionResult, got %T", result)
+				return fmt.Errorf("expected map[string]any, got %T", result)
 			}
 
-			return condResult.BranchTaken
+			return resultMap["output"].(string)
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {
@@ -407,13 +407,13 @@ func executeCheckInventoryNoInventory(sd checkInventorySeedData) unitest.Table {
 				return err
 			}
 
-			condResult, ok := result.(workflow.ConditionResult)
+			resultMap, ok := result.(map[string]any)
 			if !ok {
-				return fmt.Errorf("expected ConditionResult, got %T", result)
+				return fmt.Errorf("expected map[string]any, got %T", result)
 			}
 
-			// available=0 < threshold=1 -> false_branch -> Result=false
-			return condResult.Result
+			// available=0 < threshold=1 -> insufficient -> result=false
+			return resultMap["sufficient"].(bool)
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {

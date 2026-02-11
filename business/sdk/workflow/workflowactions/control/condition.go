@@ -102,6 +102,14 @@ func (h *EvaluateConditionHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
+// GetOutputPorts implements workflow.OutputPortProvider.
+func (h *EvaluateConditionHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "true", Description: "Condition evaluated to true", IsDefault: true},
+		{Name: "false", Description: "Condition evaluated to false"},
+	}
+}
+
 // Execute evaluates conditions against the execution context and returns the branch direction.
 func (h *EvaluateConditionHandler) Execute(ctx context.Context, config json.RawMessage, execCtx workflow.ActionExecutionContext) (interface{}, error) {
 	var cfg ConditionConfig
@@ -118,23 +126,23 @@ func (h *EvaluateConditionHandler) Execute(ctx context.Context, config json.RawM
 	// Evaluate conditions against RawData and FieldChanges
 	result := h.evaluateConditions(cfg.Conditions, execCtx.RawData, execCtx.FieldChanges, execCtx.EventType, logicType)
 
-	branchTaken := workflow.EdgeTypeFalseBranch
+	output := "false"
 	if result {
-		branchTaken = workflow.EdgeTypeTrueBranch
+		output = "true"
 	}
 
 	h.log.Info(ctx, "evaluate_condition action executed",
 		"conditions_count", len(cfg.Conditions),
 		"logic_type", logicType,
 		"result", result,
-		"branch_taken", branchTaken,
+		"output", output,
 		"entity_name", execCtx.EntityName,
 		"entity_id", execCtx.EntityID)
 
-	return workflow.ConditionResult{
-		Evaluated:   true,
-		Result:      result,
-		BranchTaken: branchTaken,
+	return map[string]any{
+		"evaluated": true,
+		"result":    result,
+		"output":    output,
 	}, nil
 }
 

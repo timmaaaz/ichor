@@ -88,6 +88,15 @@ func (h *TransitionStatusHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
+// GetOutputPorts implements workflow.OutputPortProvider.
+func (h *TransitionStatusHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "success", Description: "Status transition completed", IsDefault: true},
+		{Name: "invalid_transition", Description: "Current status not in allowed from-statuses"},
+		{Name: "failure", Description: "Transition failed due to error"},
+	}
+}
+
 // Execute executes the status transition.
 func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMessage, execContext workflow.ActionExecutionContext) (any, error) {
 	var cfg TransitionStatusConfig
@@ -122,7 +131,12 @@ func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMe
 	}
 
 	if !validFrom {
-		return nil, fmt.Errorf("invalid transition: current status '%s' not in allowed statuses %v", currentStatus, cfg.ValidFromStatuses)
+		return map[string]any{
+			"transitioned": false,
+			"from_status":  currentStatus,
+			"to_status":    toStatus,
+			"output":       "invalid_transition",
+		}, nil
 	}
 
 	// Execute update
@@ -141,19 +155,18 @@ func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMe
 		return nil, fmt.Errorf("no rows updated for %s with id %v", cfg.TargetEntity, targetID)
 	}
 
-	result := map[string]any{
-		"transitioned": true,
-		"from_status":  currentStatus,
-		"to_status":    toStatus,
-	}
-
 	h.log.Info(ctx, "transition_status completed",
 		"entity", cfg.TargetEntity,
 		"target_id", targetID,
 		"from", currentStatus,
 		"to", toStatus)
 
-	return result, nil
+	return map[string]any{
+		"transitioned": true,
+		"from_status":  currentStatus,
+		"to_status":    toStatus,
+		"output":       "success",
+	}, nil
 }
 
 // GetEntityModifications implements workflow.EntityModifier for cascade visualization.

@@ -194,8 +194,8 @@ func create200WithBranch(sd SaveSeedData) []apitest.Table {
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
 					{TargetActionID: "temp:0", EdgeType: "start", EdgeOrder: 0},
-					{SourceActionID: "temp:0", TargetActionID: "temp:1", EdgeType: "true_branch", EdgeOrder: 1},
-					{SourceActionID: "temp:0", TargetActionID: "temp:2", EdgeType: "false_branch", EdgeOrder: 2},
+					{SourceActionID: "temp:0", TargetActionID: "temp:1", EdgeType: "sequence", SourceOutput: "true", EdgeOrder: 1},
+					{SourceActionID: "temp:0", TargetActionID: "temp:2", EdgeType: "sequence", SourceOutput: "false", EdgeOrder: 2},
 				},
 			},
 			GotResp: &workflowsaveapp.SaveWorkflowResponse{},
@@ -211,22 +211,22 @@ func create200WithBranch(sd SaveSeedData) []apitest.Table {
 					return fmt.Sprintf("expected 3 actions, got %d", len(gotResp.Actions))
 				}
 
-				// Verify branching edges exist
-				hasTrueBranch := false
-				hasFalseBranch := false
+				// Verify branching edges exist (sequence edges with source_output)
+				hasTrueOutput := false
+				hasFalseOutput := false
 				for _, edge := range gotResp.Edges {
-					if edge.EdgeType == "true_branch" {
-						hasTrueBranch = true
+					if edge.SourceOutput == "true" {
+						hasTrueOutput = true
 					}
-					if edge.EdgeType == "false_branch" {
-						hasFalseBranch = true
+					if edge.SourceOutput == "false" {
+						hasFalseOutput = true
 					}
 				}
-				if !hasTrueBranch {
-					return "expected true_branch edge"
+				if !hasTrueOutput {
+					return "expected edge with source_output=true"
 				}
-				if !hasFalseBranch {
-					return "expected false_branch edge"
+				if !hasFalseOutput {
+					return "expected edge with source_output=false"
 				}
 
 				return ""
