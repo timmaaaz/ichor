@@ -12,20 +12,18 @@ import (
 )
 
 // Config holds the dependencies for the reference API routes.
-// NOTE: AuthClient and PermissionsBus are included for consistency with other API packages,
-// even though Phase 4A only uses authentication (no permission checks).
 type Config struct {
 	Log            *logger.Logger
 	WorkflowBus    *workflow.Business
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
+	ActionRegistry *workflow.ActionRegistry
 }
 
 // RouteTable is the table name used for permission checks (consistency with other packages).
 const RouteTable = "workflow.reference_data"
 
 // Routes registers the reference data API routes.
-// NOTE: Signature matches alertapi pattern - authClient is in cfg.AuthClient, not a separate param.
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 

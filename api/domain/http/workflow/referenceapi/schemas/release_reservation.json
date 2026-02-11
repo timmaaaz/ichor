@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "required": ["product_id", "location_id", "quantity"],
+    "properties": {
+        "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Product to release reservation for"
+        },
+        "location_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Inventory location to release from"
+        },
+        "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Quantity to release back to available stock"
+        }
+    }
+}

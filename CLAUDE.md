@@ -523,11 +523,38 @@ registry.Register(formdataregistry.EntityRegistration{
 
 ### Workflow Engine (Automation System)
 
-Event-driven automation for business processes. **All workflow documentation lives in `docs/workflow/`**.
+Event-driven automation for business processes using **Temporal** for durable execution. **All workflow documentation lives in `docs/workflow/`**.
 
-**When to read workflow docs**: automation rules, triggers, alerts, notifications, email actions, approval workflows, inventory allocation, delegate events, EventPublisher, QueueManager, RabbitMQ integration, workflow tables (automation_rules, rule_actions, alerts, etc.)
+**When to read workflow docs**: automation rules, triggers, alerts, notifications, email actions, approval workflows, inventory allocation, delegate events, Temporal workflows, workflow tables (automation_rules, rule_actions, alerts, etc.)
 
 **Entry point**: `docs/workflow/README.md` - Start here for overview and navigation to specific topics.
+
+**Pipeline**: `TemporalDelegateHandler → WorkflowTrigger → Temporal → Worker → Activities`
+
+### MCP Server (Agent Integration)
+
+Standalone Go module (`mcp/`) providing an MCP (Model Context Protocol) server that wraps the Ichor REST API for LLM agents (Claude Desktop, Ollama, etc.).
+
+**When to read MCP docs**: adding MCP tools, resources, or prompts; modifying the agent-facing API surface; understanding what LLM agents can do with Ichor.
+
+**Entry point**: `mcp/README.md`
+
+**Key packages**: `mcp/internal/tools/` (33 tools), `mcp/internal/resources/` (5 resources + 2 templates), `mcp/internal/prompts/` (3 prompts), `mcp/internal/client/` (HTTP client wrapping Ichor API)
+
+### Agent Infrastructure (Discovery & Schemas)
+
+API endpoints that make Ichor self-describing for agents and tooling.
+
+**When to read agent infra docs**: config surface catalog, JSONB schema endpoints, form field type discovery, dry-run validation, action type discovery.
+
+**Entry point**: `docs/agent-infrastructure.md`
+
+**Key packages**:
+- `api/domain/http/agentapi/catalogapi/` — `GET /v1/agent/catalog` (config surface discovery)
+- `api/domain/http/config/configschemaapi/` — table config, layout, and content type JSON schemas
+- `api/domain/http/config/formfieldschemaapi/` — form field type discovery with config schemas
+- `api/domain/http/workflow/referenceapi/` — action type discovery with output ports and config schemas
+- `api/domain/http/introspectionapi/` — database schema introspection (8 endpoints)
 
 ### Authentication & Authorization
 
@@ -1239,4 +1266,8 @@ Calculation helpers live in `business/sdk/calculations/` because:
 
 - **Ardan Labs Course**: https://github.com/ardanlabs/service/wiki
 - **FormData System**: `FORMDATA_IMPLEMENTATION.md` in this repo
+- **Workflow Docs**: `docs/workflow/README.md` — automation, Temporal, actions, triggers
+- **MCP Server**: `mcp/README.md` — LLM agent integration via Model Context Protocol
+- **MCP Architecture**: `docs/mcp-architecture.md` — how MCP fits into the Ichor system, request flow, endpoint mapping
+- **Agent Infrastructure**: `docs/agent-infrastructure.md` — catalog, schemas, discovery endpoints
 - **Makefile Help**: `make help` for all available commands

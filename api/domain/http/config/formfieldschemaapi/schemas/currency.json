@@ -1,0 +1,11 @@
+{
+    "type": "object",
+    "properties": {
+        "default_value": { "type": "string" },
+        "hidden": { "type": "boolean" },
+        "precision": { "type": "integer", "description": "Decimal precision (default 2)" },
+        "step": { "type": "number", "description": "Step increment (e.g., 0.01)" },
+        "min": { "type": "integer", "description": "Minimum value" },
+        "max": { "type": "integer", "description": "Maximum value" }
+    }
+}

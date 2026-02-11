@@ -1,0 +1,579 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Table Config",
+  "description": "Configuration schema for table/widget configs stored in config.table_configs.config JSONB column.",
+  "type": "object",
+  "required": ["title", "data_source", "visual_settings"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Display title for the table/widget."
+    },
+    "widget_type": {
+      "type": "string",
+      "description": "Widget rendering mode.",
+      "enum": ["table", "chart"]
+    },
+    "visualization": {
+      "type": "string",
+      "description": "Visualization type hint (e.g. 'table', 'chart')."
+    },
+    "position_x": {
+      "type": "integer",
+      "description": "Horizontal position on the dashboard grid."
+    },
+    "position_y": {
+      "type": "integer",
+      "description": "Vertical position on the dashboard grid."
+    },
+    "width": {
+      "type": "integer",
+      "description": "Width in grid units."
+    },
+    "height": {
+      "type": "integer",
+      "description": "Height in grid units."
+    },
+    "refresh_interval": {
+      "type": "integer",
+      "description": "Auto-refresh interval in seconds. 0 disables auto-refresh."
+    },
+    "refresh_mode": {
+      "type": "string",
+      "description": "How data is refreshed.",
+      "enum": ["poll", "manual"]
+    },
+    "data_source": {
+      "type": "array",
+      "description": "Data sources for the widget. Typically one entry for tables, may have multiple for charts.",
+      "items": { "$ref": "#/$defs/DataSource" }
+    },
+    "visual_settings": { "$ref": "#/$defs/VisualSettings" },
+    "permissions": { "$ref": "#/$defs/Permissions" }
+  },
+  "$defs": {
+    "DataSource": {
+      "type": "object",
+      "required": ["source", "select"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Data source type.",
+          "enum": ["query", "view", "viewcount", "rpc"]
+        },
+        "source": {
+          "type": "string",
+          "description": "Table, view, or function name."
+        },
+        "schema": {
+          "type": "string",
+          "description": "PostgreSQL schema (e.g. 'core', 'inventory'). Defaults to public."
+        },
+        "select": { "$ref": "#/$defs/SelectConfig" },
+        "args": {
+          "type": "object",
+          "description": "Arguments passed to RPC data sources.",
+          "additionalProperties": true
+        },
+        "select_by": {
+          "type": "string",
+          "description": "Column to use for single-row selection."
+        },
+        "parent_source": {
+          "type": "string",
+          "description": "Parent data source name for dependent queries."
+        },
+        "joins": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Join" }
+        },
+        "filters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Filter" }
+        },
+        "sort": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Sort" }
+        },
+        "rows": {
+          "type": "integer",
+          "description": "Page size (number of rows per page).",
+          "minimum": 1
+        },
+        "metrics": {
+          "type": "array",
+          "description": "Aggregation metrics for chart data sources.",
+          "items": { "$ref": "#/$defs/MetricConfig" }
+        },
+        "group_by": {
+          "type": "array",
+          "description": "Group-by configuration for chart aggregation.",
+          "items": { "$ref": "#/$defs/GroupByConfig" }
+        }
+      }
+    },
+    "SelectConfig": {
+      "type": "object",
+      "required": ["columns"],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ColumnDefinition" }
+        },
+        "foreign_tables": {
+          "type": "array",
+          "description": "Related tables to join.",
+          "items": { "$ref": "#/$defs/ForeignTable" }
+        },
+        "client_computed_columns": {
+          "type": "array",
+          "description": "Client-side computed columns (JavaScript expressions).",
+          "items": { "$ref": "#/$defs/ComputedColumn" }
+        }
+      }
+    },
+    "ColumnDefinition": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Column name in the database."
+        },
+        "alias": {
+          "type": "string",
+          "description": "Optional alias for the column in query results."
+        },
+        "table_column": {
+          "type": "string",
+          "description": "Fully qualified column reference (e.g. 'table.column')."
+        }
+      }
+    },
+    "ForeignTable": {
+      "type": "object",
+      "required": ["table", "relationship_from", "relationship_to", "columns"],
+      "properties": {
+        "table": {
+          "type": "string",
+          "description": "Foreign table name."
+        },
+        "alias": {
+          "type": "string",
+          "description": "Table alias (required when joining the same table multiple times)."
+        },
+        "schema": {
+          "type": "string",
+          "description": "PostgreSQL schema. Defaults to public."
+        },
+        "relationship_from": {
+          "type": "string",
+          "description": "Column on the source table for the join."
+        },
+        "relationship_to": {
+          "type": "string",
+          "description": "Column on the foreign table for the join."
+        },
+        "join_type": {
+          "type": "string",
+          "description": "SQL join type.",
+          "enum": ["inner", "left", "right", "full"]
+        },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ColumnDefinition" }
+        },
+        "foreign_tables": {
+          "type": "array",
+          "description": "Nested foreign tables (recursive joins).",
+          "items": { "$ref": "#/$defs/ForeignTable" }
+        },
+        "relationship_direction": {
+          "type": "string",
+          "description": "Direction of the relationship.",
+          "enum": ["parent_to_child", "child_to_parent"]
+        }
+      }
+    },
+    "ComputedColumn": {
+      "type": "object",
+      "required": ["name", "expression"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Output column name."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Client-side JavaScript expression."
+        }
+      }
+    },
+    "Join": {
+      "type": "object",
+      "required": ["table", "type", "on"],
+      "properties": {
+        "table": { "type": "string" },
+        "schema": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["inner", "left", "right", "full"]
+        },
+        "on": {
+          "type": "string",
+          "description": "Join condition (e.g. 'a.id = b.a_id')."
+        }
+      }
+    },
+    "Filter": {
+      "type": "object",
+      "required": ["column", "operator"],
+      "properties": {
+        "column": { "type": "string" },
+        "operator": {
+          "type": "string",
+          "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "in", "like", "ilike"]
+        },
+        "value": {
+          "description": "Filter value. Type depends on the column and operator."
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "If true, value is resolved at runtime from query parameters."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label for the filter (shown in UI)."
+        },
+        "control_type": {
+          "type": "string",
+          "description": "UI control type for dynamic filters (e.g. 'text', 'date', 'select')."
+        }
+      }
+    },
+    "Sort": {
+      "type": "object",
+      "required": ["column", "direction"],
+      "properties": {
+        "column": { "type": "string" },
+        "direction": {
+          "type": "string",
+          "enum": ["asc", "desc"]
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Sort priority (lower = higher priority)."
+        },
+        "custom_order": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Custom sort order for enum/status columns."
+        }
+      }
+    },
+    "MetricConfig": {
+      "type": "object",
+      "required": ["name", "function"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Output alias for the metric (e.g. 'total_revenue')."
+        },
+        "function": {
+          "type": "string",
+          "description": "Aggregate function.",
+          "enum": ["sum", "count", "count_distinct", "avg", "min", "max"]
+        },
+        "column": {
+          "type": "string",
+          "description": "Column to aggregate (simple column reference)."
+        },
+        "expression": { "$ref": "#/$defs/ExpressionConfig" }
+      }
+    },
+    "ExpressionConfig": {
+      "type": "object",
+      "required": ["operator", "columns"],
+      "properties": {
+        "operator": {
+          "type": "string",
+          "description": "Arithmetic operator for multi-column math.",
+          "enum": ["multiply", "add", "subtract", "divide"]
+        },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Column references for the expression (e.g. ['order_line_items.quantity', 'product_costs.selling_price'])."
+        }
+      }
+    },
+    "GroupByConfig": {
+      "type": "object",
+      "required": ["column"],
+      "properties": {
+        "column": {
+          "type": "string",
+          "description": "Column or SQL expression to group by."
+        },
+        "interval": {
+          "type": "string",
+          "description": "Time interval for date grouping.",
+          "enum": ["day", "week", "month", "quarter", "year"]
+        },
+        "alias": {
+          "type": "string",
+          "description": "Output name for the grouped column."
+        },
+        "expression": {
+          "type": "boolean",
+          "description": "If true, column is treated as a raw SQL expression."
+        }
+      }
+    },
+    "VisualSettings": {
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "object",
+          "description": "Map of column key to visual configuration.",
+          "additionalProperties": { "$ref": "#/$defs/ColumnConfig" }
+        },
+        "conditional_formatting": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ConditionalFormat" }
+        },
+        "row_actions": {
+          "type": "object",
+          "description": "Actions available per row.",
+          "additionalProperties": { "$ref": "#/$defs/Action" }
+        },
+        "table_actions": {
+          "type": "object",
+          "description": "Table-level actions (e.g. export, print).",
+          "additionalProperties": { "$ref": "#/$defs/Action" }
+        },
+        "pagination": { "$ref": "#/$defs/PaginationConfig" },
+        "theme": {
+          "type": "string",
+          "description": "Visual theme name."
+        }
+      }
+    },
+    "ColumnConfig": {
+      "type": "object",
+      "required": ["name", "header"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Internal column name."
+        },
+        "header": {
+          "type": "string",
+          "description": "Display header text."
+        },
+        "width": {
+          "type": "integer",
+          "description": "Column width in pixels.",
+          "minimum": 0
+        },
+        "align": {
+          "type": "string",
+          "enum": ["left", "center", "right"]
+        },
+        "type": {
+          "type": "string",
+          "description": "Column data type for rendering and filtering.",
+          "enum": ["string", "number", "datetime", "boolean", "uuid", "status", "computed", "lookup"]
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "If true, column is selected but not displayed (e.g. for lookup labels)."
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display order (lower = earlier, 0 = implicit order)."
+        },
+        "sortable": { "type": "boolean" },
+        "filterable": { "type": "boolean" },
+        "cell_template": {
+          "type": "string",
+          "description": "Custom cell template name."
+        },
+        "format": { "$ref": "#/$defs/FormatConfig" },
+        "editable": { "$ref": "#/$defs/EditableConfig" },
+        "link": { "$ref": "#/$defs/LinkConfig" },
+        "lookup": { "$ref": "#/$defs/LookupConfig" }
+      }
+    },
+    "FormatConfig": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Format type.",
+          "enum": ["number", "currency", "date", "datetime", "boolean", "percent"]
+        },
+        "precision": {
+          "type": "integer",
+          "description": "Decimal precision.",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code (e.g. 'USD')."
+        },
+        "format": {
+          "type": "string",
+          "description": "Date/time format string."
+        }
+      }
+    },
+    "EditableConfig": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Editor input type.",
+          "enum": ["text", "number", "checkbox", "select", "date", "textarea"]
+        },
+        "placeholder": { "type": "string" }
+      }
+    },
+    "LinkConfig": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Link URL (supports template variables like {id})."
+        },
+        "label": {
+          "type": "string",
+          "description": "Static label text."
+        },
+        "label_column": {
+          "type": "string",
+          "description": "Column name to use as dynamic label (takes precedence over label)."
+        }
+      }
+    },
+    "LookupConfig": {
+      "type": "object",
+      "required": ["entity", "label_column", "value_column"],
+      "properties": {
+        "entity": {
+          "type": "string",
+          "description": "Entity reference in 'schema.table' format (e.g. 'core.users')."
+        },
+        "label_column": {
+          "type": "string",
+          "description": "Column to display as option label."
+        },
+        "value_column": {
+          "type": "string",
+          "description": "Column to use as option value (usually 'id')."
+        },
+        "display_columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional columns to show in the dropdown."
+        }
+      }
+    },
+    "ConditionalFormat": {
+      "type": "object",
+      "required": ["column", "condition"],
+      "properties": {
+        "column": { "type": "string" },
+        "condition": {
+          "type": "string",
+          "enum": ["eq", "neq", "gt", "gte", "lt", "lte"]
+        },
+        "value": {
+          "description": "Value to compare against."
+        },
+        "condition2": {
+          "type": "string",
+          "description": "Second condition for range checks.",
+          "enum": ["eq", "neq", "gt", "gte", "lt", "lte"]
+        },
+        "value2": {
+          "description": "Second value for range checks."
+        },
+        "color": {
+          "type": "string",
+          "description": "Text color (CSS value)."
+        },
+        "background": {
+          "type": "string",
+          "description": "Background color (CSS value)."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon to display."
+        }
+      }
+    },
+    "Action": {
+      "type": "object",
+      "required": ["name", "label", "action_type"],
+      "properties": {
+        "name": { "type": "string" },
+        "label": { "type": "string" },
+        "icon": { "type": "string" },
+        "action_type": {
+          "type": "string",
+          "enum": ["link", "modal", "export", "print", "custom"]
+        },
+        "url": { "type": "string" },
+        "component": {
+          "type": "string",
+          "description": "Component name for modal actions."
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional parameters for the action."
+        },
+        "format": {
+          "type": "string",
+          "description": "Export format (e.g. 'csv', 'xlsx')."
+        }
+      }
+    },
+    "PaginationConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "page_sizes": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "default_page_size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "Permissions": {
+      "type": "object",
+      "properties": {
+        "roles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Roles that can access this config."
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["view", "edit", "delete", "export"]
+          },
+          "description": "Allowed actions."
+        }
+      }
+    }
+  }
+}

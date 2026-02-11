@@ -136,9 +136,13 @@ Alerts created by `CreateAlertHandler` are still written to the database. Howeve
 
 ### Integration Tests
 
-Several integration test files are temporarily excluded with `//go:build ignore` tags. These will be rewritten in Phase 15 to use Temporal test infrastructure instead of RabbitMQ:
-- `execution_seed_test.go`, `execution_test.go`, `trigger_test.go`
-- `actions_test.go`, `errors_test.go`
+Most integration tests have been restored using Temporal test infrastructure. Three test files remain excluded with `//go:build ignore` because they deeply use the deleted `Engine.ExecuteWorkflow()` synchronous API:
+- `actions_test.go` — action handler integration tests
+- `errors_test.go` — error propagation tests
+- `execution_test.go` — synchronous execution tests
+
+The following were restored in Phase 15:
+- `execution_seed_test.go`, `trigger_test.go`
 - `formdataapi/workflow_test.go`, `ordersapi/workflow_test.go`
 
 ## Mapping Table

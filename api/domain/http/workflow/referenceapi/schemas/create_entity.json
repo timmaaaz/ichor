@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "required": ["target_entity", "fields"],
+    "properties": {
+        "target_entity": {
+            "type": "string",
+            "description": "Entity to create in schema.table format (e.g., 'core.users')"
+        },
+        "fields": {
+            "type": "object",
+            "description": "Column-value pairs for the new entity (values support template variables). If 'id' is omitted, a UUID is auto-generated.",
+            "additionalProperties": true
+        }
+    }
+}

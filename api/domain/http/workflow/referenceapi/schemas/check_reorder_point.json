@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Product to check reorder point for (required unless source_from_line_item is true)"
+        },
+        "source_from_line_item": {
+            "type": "boolean",
+            "description": "Whether to source product_id from the triggered entity's line items"
+        },
+        "custom_threshold": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Custom reorder threshold (overrides product's default reorder point)"
+        },
+        "warehouse_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional warehouse to scope the check"
+        },
+        "location_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional location to scope the check"
+        }
+    }
+}

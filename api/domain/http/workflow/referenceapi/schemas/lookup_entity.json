@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "required": ["entity", "filter", "fields", "output_key"],
+    "properties": {
+        "entity": {
+            "type": "string",
+            "description": "Entity to look up in schema.table format (e.g., 'core.users')"
+        },
+        "filter": {
+            "type": "object",
+            "description": "Column-value filter pairs (values support template variables)",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "fields": {
+            "type": "array",
+            "description": "Columns to select from the entity",
+            "minItems": 1,
+            "items": {
+                "type": "string"
+            }
+        },
+        "output_key": {
+            "type": "string",
+            "description": "Key name for storing the lookup result in workflow context"
+        }
+    }
+}

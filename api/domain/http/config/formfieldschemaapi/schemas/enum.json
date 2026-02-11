@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "required": ["enum_name"],
+    "properties": {
+        "enum_name": {
+            "type": "string",
+            "description": "PostgreSQL ENUM type name (e.g., 'order_status')"
+        },
+        "default_value": { "type": "string" },
+        "hidden": { "type": "boolean" }
+    }
+}

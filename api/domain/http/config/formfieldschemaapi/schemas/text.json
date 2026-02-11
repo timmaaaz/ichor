@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "default_value": {
+            "type": "string",
+            "description": "Default value for the field (supports {{$me}}, {{$now}} variables)"
+        },
+        "default_value_create": {
+            "type": "string",
+            "description": "Default value used only on create operations"
+        },
+        "default_value_update": {
+            "type": "string",
+            "description": "Default value used only on update operations"
+        },
+        "hidden": {
+            "type": "boolean",
+            "description": "If true, field is not rendered in the UI"
+        },
+        "min": {
+            "type": "integer",
+            "description": "Minimum string length"
+        },
+        "max": {
+            "type": "integer",
+            "description": "Maximum string length"
+        },
+        "depends_on": {
+            "$ref": "#/$defs/depends_on"
+        }
+    },
+    "$defs": {
+        "depends_on": {
+            "type": "object",
+            "properties": {
+                "field": { "type": "string", "description": "Field name to watch for changes" },
+                "value_mappings": {
+                    "type": "object",
+                    "description": "Map of field values to override configurations",
+                    "additionalProperties": {
+                        "$ref": "#/$defs/field_override"
+                    }
+                },
+                "default": { "$ref": "#/$defs/field_override" }
+            },
+            "required": ["field"]
+        },
+        "field_override": {
+            "type": "object",
+            "properties": {
+                "type": { "type": "string" },
+                "label": { "type": "string" },
+                "validation": { "type": "object" }
+            }
+        }
+    }
+}

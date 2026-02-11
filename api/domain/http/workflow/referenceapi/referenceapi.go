@@ -4,14 +4,11 @@
 //   - Trigger types (on_create, on_update, on_delete, scheduled)
 //   - Entity types (tables, views that can be monitored)
 //   - Entities (specific monitored tables/views)
-//   - Action types (create_alert, send_email, etc.) with config schemas
+//   - Action types (all registered types with config schemas and output ports)
 //
 // All endpoints require authentication but no special permissions beyond basic access.
 // These endpoints are critical for the visual workflow editor UI, providing dropdown
 // options and configuration schemas for building automation rules.
-//
-// Schema Alignment: Action type schemas MUST match TypeScript types in src/types/workflow.ts.
-// See GetActionTypes() for the exported function used in schema alignment tests.
 package referenceapi
 
 import (
@@ -26,14 +23,16 @@ import (
 )
 
 type api struct {
-	log         *logger.Logger
-	workflowBus *workflow.Business
+	log            *logger.Logger
+	workflowBus    *workflow.Business
+	actionRegistry *workflow.ActionRegistry
 }
 
 func newAPI(cfg Config) *api {
 	return &api{
-		log:         cfg.Log,
-		workflowBus: cfg.WorkflowBus,
+		log:            cfg.Log,
+		workflowBus:    cfg.WorkflowBus,
+		actionRegistry: cfg.ActionRegistry,
 	}
 }
 
@@ -81,8 +80,9 @@ func (a *api) queryEntities(ctx context.Context, r *http.Request) web.Encoder {
 }
 
 // queryActionTypes handles GET /v1/workflow/action-types
+// Returns all 17 registered action types with config schemas and output ports.
 func (a *api) queryActionTypes(ctx context.Context, r *http.Request) web.Encoder {
-	return ActionTypes(GetActionTypes())
+	return ActionTypes(GetActionTypes(a.actionRegistry))
 }
 
 // queryTemplates handles GET /v1/workflow/templates
@@ -107,7 +107,7 @@ func (a *api) queryActiveTemplates(ctx context.Context, r *http.Request) web.Enc
 func (a *api) queryActionTypeSchema(ctx context.Context, r *http.Request) web.Encoder {
 	actionType := web.Param(r, "type")
 
-	schema, found := getActionTypeSchema(actionType)
+	schema, found := getActionTypeSchema(actionType, a.actionRegistry)
 	if !found {
 		return errs.Newf(errs.NotFound, "action type %q not found", actionType)
 	}

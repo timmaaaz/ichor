@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "required": ["entity_name", "action", "message"],
+    "properties": {
+        "entity_name": {
+            "type": "string",
+            "description": "Name of the entity being audited"
+        },
+        "entity_id": {
+            "type": "string",
+            "description": "UUID of the entity being audited (supports template variables, defaults to triggered entity ID)"
+        },
+        "action": {
+            "type": "string",
+            "description": "Audit action label (e.g., 'status_changed', 'approved')"
+        },
+        "message": {
+            "type": "string",
+            "description": "Audit log message (supports template variables)"
+        },
+        "metadata": {
+            "type": "object",
+            "description": "Additional metadata to store with the audit entry (values support template variables)",
+            "additionalProperties": true
+        }
+    }
+}

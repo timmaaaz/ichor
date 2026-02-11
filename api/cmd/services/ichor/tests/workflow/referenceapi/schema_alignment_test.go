@@ -13,19 +13,30 @@ import (
 func Test_ActionTypeSchemas_MatchExpectedStructure(t *testing.T) {
 	t.Parallel()
 
-	actionTypes := referenceapi.GetActionTypes()
+	actionTypes := referenceapi.GetActionTypes(nil)
 
 	if len(actionTypes) == 0 {
 		t.Fatal("Expected action types to be returned, got empty slice")
 	}
 
-	// Verify we have all 6 expected action types in alphabetical order
+	// Verify we have all 17 expected action types in alphabetical order
 	expectedTypes := []string{
 		"allocate_inventory",
+		"check_inventory",
+		"check_reorder_point",
+		"commit_allocation",
 		"create_alert",
+		"create_entity",
+		"delay",
+		"evaluate_condition",
+		"log_audit_entry",
+		"lookup_entity",
+		"release_reservation",
+		"reserve_inventory",
 		"seek_approval",
 		"send_email",
 		"send_notification",
+		"transition_status",
 		"update_field",
 	}
 
@@ -65,8 +76,26 @@ func Test_ActionTypeSchemas_MatchExpectedStructure(t *testing.T) {
 			continue
 		}
 
-		t.Logf("✓ Action type %q schema validated (%d bytes, category: %s)",
-			actionType.Type, len(actionType.ConfigSchema), actionType.Category)
+		// Verify output ports are present
+		if len(actionType.OutputPorts) == 0 {
+			t.Errorf("Action type %q has no output ports", actionType.Type)
+			continue
+		}
+
+		// Verify at least one port is marked as default
+		hasDefault := false
+		for _, port := range actionType.OutputPorts {
+			if port.IsDefault {
+				hasDefault = true
+				break
+			}
+		}
+		if !hasDefault {
+			t.Errorf("Action type %q has no default output port", actionType.Type)
+		}
+
+		t.Logf("Action type %q schema validated (%d bytes, category: %s, ports: %d)",
+			actionType.Type, len(actionType.ConfigSchema), actionType.Category, len(actionType.OutputPorts))
 	}
 }
 
@@ -75,7 +104,7 @@ func Test_ActionTypeSchemas_MatchExpectedStructure(t *testing.T) {
 func Test_ActionTypeSchemas_ValidJSON(t *testing.T) {
 	t.Parallel()
 
-	actionTypes := referenceapi.GetActionTypes()
+	actionTypes := referenceapi.GetActionTypes(nil)
 
 	for _, actionType := range actionTypes {
 		t.Run(actionType.Type, func(t *testing.T) {
@@ -102,13 +131,14 @@ func Test_ActionTypeSchemas_ValidJSON(t *testing.T) {
 func Test_ActionTypeSchemas_CategoryConsistency(t *testing.T) {
 	t.Parallel()
 
-	actionTypes := referenceapi.GetActionTypes()
+	actionTypes := referenceapi.GetActionTypes(nil)
 
 	expectedCategories := map[string][]string{
 		"communication": {"create_alert", "send_email", "send_notification"},
-		"inventory":     {"allocate_inventory"},
+		"inventory":     {"allocate_inventory", "check_inventory", "check_reorder_point", "commit_allocation", "release_reservation", "reserve_inventory"},
 		"approval":      {"seek_approval"},
-		"data":          {"update_field"},
+		"data":          {"create_entity", "log_audit_entry", "lookup_entity", "transition_status", "update_field"},
+		"control":       {"delay", "evaluate_condition"},
 	}
 
 	for category, expectedTypes := range expectedCategories {
@@ -120,7 +150,7 @@ func Test_ActionTypeSchemas_CategoryConsistency(t *testing.T) {
 		}
 
 		if len(foundTypes) != len(expectedTypes) {
-			t.Errorf("Category %q: expected %d types, got %d", category, len(expectedTypes), len(foundTypes))
+			t.Errorf("Category %q: expected %d types, got %d (found: %v)", category, len(expectedTypes), len(foundTypes), foundTypes)
 		}
 
 		for _, expectedType := range expectedTypes {
@@ -142,16 +172,27 @@ func Test_ActionTypeSchemas_CategoryConsistency(t *testing.T) {
 func Test_ActionTypeSchemas_AsyncFlags(t *testing.T) {
 	t.Parallel()
 
-	actionTypes := referenceapi.GetActionTypes()
+	actionTypes := referenceapi.GetActionTypes(nil)
 
 	// Map of action types to their expected async status
 	expectedAsync := map[string]bool{
-		"allocate_inventory": true,  // Async - inventory operations can be slow
-		"create_alert":       false, // Sync - quick database insert
-		"seek_approval":      true,  // Async - requires external approval
-		"send_email":         true,  // Async - external email service
-		"send_notification":  false, // Sync - in-app notification
-		"update_field":       false, // Sync - direct database update
+		"allocate_inventory": true,
+		"check_inventory":    false,
+		"check_reorder_point": false,
+		"commit_allocation":  false,
+		"create_alert":       false,
+		"create_entity":      false,
+		"delay":              false,
+		"evaluate_condition": false,
+		"log_audit_entry":    false,
+		"lookup_entity":      false,
+		"release_reservation": false,
+		"reserve_inventory":  false,
+		"seek_approval":      true,
+		"send_email":         true,
+		"send_notification":  false,
+		"transition_status":  false,
+		"update_field":       false,
 	}
 
 	for _, actionType := range actionTypes {

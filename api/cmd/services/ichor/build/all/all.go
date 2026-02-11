@@ -7,6 +7,7 @@ import (
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/approvalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/agentapi/catalogapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assetconditionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assettagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assettypeapi"
@@ -15,6 +16,8 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/formapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/formfieldapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/configschemaapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/formfieldschemaapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/pageactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/pageconfigapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/pagecontentapi"
@@ -994,6 +997,18 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus: permissionsBus,
 	})
 
+	formfieldschemaapi.Routes(app, formfieldschemaapi.Config{
+		AuthClient: cfg.AuthClient,
+	})
+
+	configschemaapi.Routes(app, configschemaapi.Config{
+		AuthClient: cfg.AuthClient,
+	})
+
+	catalogapi.Routes(app, catalogapi.Config{
+		AuthClient: cfg.AuthClient,
+	})
+
 	pageactionapi.Routes(app, pageactionapi.Config{
 		Log:            cfg.Log,
 		PageActionBus:  pageActionBus,
@@ -1047,6 +1062,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		WorkflowBus:    workflowBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+		ActionRegistry: actionRegistry,
 	})
 
 	ruleapi.Routes(app, ruleapi.Config{

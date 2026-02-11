@@ -164,29 +164,30 @@ This extracts product and quantity from the triggering order line item.
 
 ## Asynchronous Processing
 
-The allocation system uses a two-phase approach:
+The allocation system uses Temporal's async activity completion pattern:
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
-│   Execute() │────▶│   RabbitMQ   │────▶│ProcessAllocation│
-└─────────────┘     └──────────────┘     └─────────────────┘
-       │                    │                    │
-   Returns                Queued            Background
-   Tracking ID          Processing          Processing
+┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   Execute() │────▶│ Temporal Activity │────▶│ProcessAllocation│
+└─────────────┘     └──────────────────┘     └─────────────────┘
+       │                      │                       │
+   Returns              Returns pending           Completes via
+   ErrResultPending     (activity paused)       AsyncCompleter
 ```
 
 ### Phase 1: Execute()
 
 - Validates configuration
 - Checks idempotency
-- Queues request to RabbitMQ
-- Returns immediately with tracking ID
+- Returns `ErrResultPending` to signal async completion
+- Temporal pauses the activity (does not retry)
 
 ### Phase 2: ProcessAllocation()
 
-- Background worker processes asynchronously
+- Runs synchronously within the activity
 - Performs actual inventory allocation
 - Updates database with results
+- Completes the paused activity via `AsyncCompleter`
 
 ## Idempotency
 
