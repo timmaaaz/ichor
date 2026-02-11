@@ -24,22 +24,24 @@ type App struct {
 	db          *sqlx.DB
 	workflowBus *workflow.Business
 	delegate    *delegate.Delegate
+	registry    *workflow.ActionRegistry
 }
 
 // NewApp constructs a workflow save app API for use.
-func NewApp(log *logger.Logger, db *sqlx.DB, workflowBus *workflow.Business, del *delegate.Delegate) *App {
+func NewApp(log *logger.Logger, db *sqlx.DB, workflowBus *workflow.Business, del *delegate.Delegate, registry *workflow.ActionRegistry) *App {
 	return &App{
 		log:         log,
 		db:          db,
 		workflowBus: workflowBus,
 		delegate:    del,
+		registry:    registry,
 	}
 }
 
 // prepareRequest validates the request and prepares it for saving. When actions
 // are present, action configs and graph structure are validated. When no actions
 // are present, IsActive is forced to false (draft workflow).
-func prepareRequest(req *SaveWorkflowRequest) error {
+func (a *App) prepareRequest(req *SaveWorkflowRequest) error {
 	if err := req.Validate(); err != nil {
 		return err
 	}
@@ -52,6 +54,12 @@ func prepareRequest(req *SaveWorkflowRequest) error {
 		if err := ValidateGraph(req.Actions, req.Edges); err != nil {
 			return errs.Newf(errs.InvalidArgument, "graph: %s", err)
 		}
+
+		if a.registry != nil {
+			if err := validateOutputPorts(req.Actions, req.Edges, a.registry); err != nil {
+				return errs.Newf(errs.InvalidArgument, "output port: %s", err)
+			}
+		}
 	} else {
 		req.IsActive = false
 	}
@@ -62,7 +70,7 @@ func prepareRequest(req *SaveWorkflowRequest) error {
 // SaveWorkflow updates an existing workflow atomically (rule + actions + edges).
 // This performs all operations within a single database transaction.
 func (a *App) SaveWorkflow(ctx context.Context, ruleID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error) {
-	if err := prepareRequest(&req); err != nil {
+	if err := a.prepareRequest(&req); err != nil {
 		return SaveWorkflowResponse{}, err
 	}
 
@@ -122,7 +130,7 @@ func (a *App) SaveWorkflow(ctx context.Context, ruleID uuid.UUID, req SaveWorkfl
 // CreateWorkflow creates a new workflow atomically (rule + actions + edges).
 // This performs all operations within a single database transaction.
 func (a *App) CreateWorkflow(ctx context.Context, userID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error) {
-	if err := prepareRequest(&req); err != nil {
+	if err := a.prepareRequest(&req); err != nil {
 		return SaveWorkflowResponse{}, err
 	}
 
@@ -440,11 +448,18 @@ func (a *App) createEdges(ctx context.Context, bus *workflow.Business, ruleID uu
 			sourceID = &resolved
 		}
 
+		var sourceOutput *string
+		if reqEdge.SourceOutput != "" {
+			s := reqEdge.SourceOutput
+			sourceOutput = &s
+		}
+
 		newEdge := workflow.NewActionEdge{
 			RuleID:         ruleID,
 			SourceActionID: sourceID,
 			TargetActionID: targetID,
 			EdgeType:       reqEdge.EdgeType,
+			SourceOutput:   sourceOutput,
 			EdgeOrder:      reqEdge.EdgeOrder,
 		}
 
@@ -546,11 +561,17 @@ func buildResponse(rule workflow.AutomationRule, actions []workflow.RuleAction, 
 			sourceID = edge.SourceActionID.String()
 		}
 
+		sourceOutput := ""
+		if edge.SourceOutput != nil {
+			sourceOutput = *edge.SourceOutput
+		}
+
 		edgeResponses[i] = SaveEdgeResponse{
 			ID:             edge.ID.String(),
 			SourceActionID: sourceID,
 			TargetActionID: edge.TargetActionID.String(),
 			EdgeType:       edge.EdgeType,
+			SourceOutput:   sourceOutput,
 			EdgeOrder:      edge.EdgeOrder,
 		}
 	}

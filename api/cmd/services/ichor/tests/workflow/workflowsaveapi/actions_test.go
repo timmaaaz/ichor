@@ -710,7 +710,8 @@ func testConditionEqualsTrue(t *testing.T, sd ExecutionTestData) {
 		RuleID:         rule.ID,
 		SourceActionID: &condID,
 		TargetActionID: trueBranchAction.ID,
-		EdgeType:       "true_branch",
+		EdgeType:       "sequence",
+		SourceOutput:   strPtr("true"),
 		EdgeOrder:      1,
 	})
 	if err != nil {
@@ -746,8 +747,8 @@ func testConditionEqualsTrue(t *testing.T, sd ExecutionTestData) {
 					if actionResult.ActionID == conditionAction.ID {
 						foundCondition = true
 						// Check branch taken (stored directly on ActionResult)
-						if actionResult.BranchTaken != "true_branch" {
-							t.Errorf("expected true_branch, got %s", actionResult.BranchTaken)
+						if actionResult.BranchTaken != "true" {
+							t.Errorf("expected true, got %s", actionResult.BranchTaken)
 						}
 					}
 					if actionResult.ActionID == trueBranchAction.ID && actionResult.Status == "success" {
@@ -837,7 +838,8 @@ func testConditionEqualsFalse(t *testing.T, sd ExecutionTestData) {
 		RuleID:         rule.ID,
 		SourceActionID: &condID,
 		TargetActionID: falseBranchAction.ID,
-		EdgeType:       "false_branch",
+		EdgeType:       "sequence",
+		SourceOutput:   strPtr("false"),
 		EdgeOrder:      1,
 	})
 	if err != nil {
@@ -873,8 +875,8 @@ func testConditionEqualsFalse(t *testing.T, sd ExecutionTestData) {
 					if actionResult.ActionID == conditionAction.ID {
 						foundCondition = true
 						// Check branch taken (stored directly on ActionResult)
-						if actionResult.BranchTaken != "false_branch" {
-							t.Errorf("expected false_branch, got %s", actionResult.BranchTaken)
+						if actionResult.BranchTaken != "false" {
+							t.Errorf("expected false, got %s", actionResult.BranchTaken)
 						}
 					}
 					if actionResult.ActionID == falseBranchAction.ID && actionResult.Status == "success" {
@@ -964,7 +966,8 @@ func testConditionGreaterThan(t *testing.T, sd ExecutionTestData) {
 		RuleID:         rule.ID,
 		SourceActionID: &condID,
 		TargetActionID: trueBranchAction.ID,
-		EdgeType:       "true_branch",
+		EdgeType:       "sequence",
+		SourceOutput:   strPtr("true"),
 		EdgeOrder:      1,
 	})
 	if err != nil {
@@ -1085,7 +1088,8 @@ func testConditionMultipleAnd(t *testing.T, sd ExecutionTestData) {
 		RuleID:         rule.ID,
 		SourceActionID: &condID,
 		TargetActionID: trueBranchAction.ID,
-		EdgeType:       "true_branch",
+		EdgeType:       "sequence",
+		SourceOutput:   strPtr("true"),
 		EdgeOrder:      1,
 	})
 	if err != nil {

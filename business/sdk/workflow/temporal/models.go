@@ -39,12 +39,6 @@ const (
 	// EdgeTypeSequence connects actions in a linear chain.
 	EdgeTypeSequence = "sequence"
 
-	// EdgeTypeTrueBranch follows when a condition evaluates to true.
-	EdgeTypeTrueBranch = "true_branch"
-
-	// EdgeTypeFalseBranch follows when a condition evaluates to false.
-	EdgeTypeFalseBranch = "false_branch"
-
 	// EdgeTypeAlways follows regardless of the source action's result.
 	EdgeTypeAlways = "always"
 )
@@ -135,9 +129,10 @@ type ActionNode struct {
 // SourceActionID is nil for start edges (entry points into the graph).
 type ActionEdge struct {
 	ID             uuid.UUID  `json:"id"`
-	SourceActionID *uuid.UUID `json:"source_action_id"` // nil for start edges
+	SourceActionID *uuid.UUID `json:"source_action_id"`          // nil for start edges
 	TargetActionID uuid.UUID  `json:"target_action_id"`
-	EdgeType       string     `json:"edge_type"` // start, sequence, true_branch, false_branch, always
+	EdgeType       string     `json:"edge_type"`                 // start, sequence, always
+	SourceOutput   *string    `json:"source_output,omitempty"`   // Output port name. nil for start/always.
 	SortOrder      int        `json:"sort_order"`
 }
 

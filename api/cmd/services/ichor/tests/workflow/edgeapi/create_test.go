@@ -134,7 +134,8 @@ func createEdgeBranch200(sd EdgeSeedData) []apitest.Table {
 			Input: edgeapi.CreateEdgeRequest{
 				SourceActionID: &sourceActionID,
 				TargetActionID: targetActionID,
-				EdgeType:       workflow.EdgeTypeTrueBranch,
+				EdgeType:       workflow.EdgeTypeSequence,
+				SourceOutput:   "true",
 				EdgeOrder:      30,
 			},
 			GotResp: &edgeapi.EdgeResponse{},
@@ -142,7 +143,8 @@ func createEdgeBranch200(sd EdgeSeedData) []apitest.Table {
 				RuleID:         ruleID,
 				SourceActionID: &sourceActionID,
 				TargetActionID: targetActionID,
-				EdgeType:       workflow.EdgeTypeTrueBranch,
+				EdgeType:       workflow.EdgeTypeSequence,
+				SourceOutput:   "true",
 				EdgeOrder:      30,
 			},
 			CmpFunc: func(got, exp any) string {
@@ -167,7 +169,8 @@ func createEdgeBranch200(sd EdgeSeedData) []apitest.Table {
 			Input: edgeapi.CreateEdgeRequest{
 				SourceActionID: &sourceActionID,
 				TargetActionID: targetActionID,
-				EdgeType:       workflow.EdgeTypeFalseBranch,
+				EdgeType:       workflow.EdgeTypeSequence,
+				SourceOutput:   "false",
 				EdgeOrder:      31,
 			},
 			GotResp: &edgeapi.EdgeResponse{},
@@ -175,7 +178,8 @@ func createEdgeBranch200(sd EdgeSeedData) []apitest.Table {
 				RuleID:         ruleID,
 				SourceActionID: &sourceActionID,
 				TargetActionID: targetActionID,
-				EdgeType:       workflow.EdgeTypeFalseBranch,
+				EdgeType:       workflow.EdgeTypeSequence,
+				SourceOutput:   "false",
 				EdgeOrder:      31,
 			},
 			CmpFunc: func(got, exp any) string {

@@ -106,12 +106,20 @@ func (h *CheckInventoryHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
-// Execute checks inventory availability and returns a ConditionResult for branching.
-// true_branch = sufficient inventory, false_branch = insufficient inventory.
+// GetOutputPorts implements workflow.OutputPortProvider.
+func (h *CheckInventoryHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "sufficient", Description: "Inventory meets or exceeds threshold", IsDefault: true},
+		{Name: "insufficient", Description: "Inventory is below threshold"},
+	}
+}
+
+// Execute checks inventory availability and returns the result with an output port.
+// output=sufficient when inventory meets threshold, output=insufficient otherwise.
 func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMessage, execContext workflow.ActionExecutionContext) (any, error) {
 	var cfg CheckInventoryConfig
 	if err := json.Unmarshal(config, &cfg); err != nil {
-		return workflow.ConditionResult{}, fmt.Errorf("failed to parse config: %w", err)
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	// Extract product_id from RawData if sourcing from line item.
@@ -119,14 +127,14 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 	if cfg.SourceFromLineItem {
 		raw, _ := execContext.RawData["product_id"].(string)
 		if raw == "" {
-			return workflow.ConditionResult{}, errors.New("product_id not found in line item RawData")
+			return nil, errors.New("product_id not found in line item RawData")
 		}
 		productIDStr = raw
 	}
 
 	productID, err := uuid.Parse(productIDStr)
 	if err != nil {
-		return workflow.ConditionResult{}, fmt.Errorf("invalid product_id: %w", err)
+		return nil, fmt.Errorf("invalid product_id: %w", err)
 	}
 
 	// Build filter for querying inventory items.
@@ -137,7 +145,7 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 	if cfg.LocationID != "" {
 		locID, err := uuid.Parse(cfg.LocationID)
 		if err != nil {
-			return workflow.ConditionResult{}, fmt.Errorf("invalid location_id: %w", err)
+			return nil, fmt.Errorf("invalid location_id: %w", err)
 		}
 		filter.LocationID = &locID
 	}
@@ -145,7 +153,7 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 	// Query inventory items (read-only, no locks needed).
 	items, err := h.inventoryItemBus.Query(ctx, filter, order.NewBy("id", order.ASC), page.MustParse("1", "100"))
 	if err != nil {
-		return workflow.ConditionResult{}, fmt.Errorf("query inventory items: %w", err)
+		return nil, fmt.Errorf("query inventory items: %w", err)
 	}
 
 	// Sum available quantities across all matching items.
@@ -159,9 +167,9 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 
 	sufficient := available >= cfg.Threshold
 
-	branchTaken := workflow.EdgeTypeFalseBranch
+	output := "insufficient"
 	if sufficient {
-		branchTaken = workflow.EdgeTypeTrueBranch
+		output = "sufficient"
 	}
 
 	h.log.Info(ctx, "check_inventory completed",
@@ -169,12 +177,16 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 		"available", available,
 		"threshold", cfg.Threshold,
 		"sufficient", sufficient,
-		"branch", branchTaken)
+		"output", output)
 
-	return workflow.ConditionResult{
-		Evaluated:   true,
-		Result:      sufficient,
-		BranchTaken: branchTaken,
+	return map[string]any{
+		"available":    available,
+		"threshold":    cfg.Threshold,
+		"sufficient":   sufficient,
+		"total_on_hand": totalOnHand,
+		"reserved":     totalReserved,
+		"allocated":    totalAllocated,
+		"output":       output,
 	}, nil
 }
 

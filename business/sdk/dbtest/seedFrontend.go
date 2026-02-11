@@ -4101,15 +4101,17 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 							log.Error(ctx, "Failed to create start edge for check action", "error", err)
 						}
 
+						sufficientOutput := "sufficient"
 						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
 							RuleID:         checkReserveRule.ID,
 							SourceActionID: &checkAction.ID,
 							TargetActionID: reserveAction.ID,
-							EdgeType:       "true_branch",
+							EdgeType:       "sequence",
+							SourceOutput:   &sufficientOutput,
 							EdgeOrder:      0,
 						})
 						if err != nil {
-							log.Error(ctx, "Failed to create true_branch edge for reserve action", "error", err)
+							log.Error(ctx, "Failed to create sufficient output edge for reserve action", "error", err)
 						}
 
 						log.Info(ctx, "Created 'Line Item Created - Check and Reserve Pipeline' rule")
@@ -4120,10 +4122,10 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 
 		// Rule 5: Granular Inventory Pipeline (active replacement for Rules 1-4)
 		// Graph: start -> check_inventory
-		//          ├── true_branch  -> reserve_inventory -> success_alert -> check_reorder_point
-		//          │                                                          ├── true_branch -> low_stock_alert
-		//          │                                                          └── false_branch -> (end)
-		//          └── false_branch -> insufficient_stock_alert
+		//          ├── [sufficient]    -> reserve_inventory -> success_alert -> check_reorder_point
+		//          │                                                             ├── [needs_reorder] -> low_stock_alert
+		//          │                                                             └── [ok] -> (end)
+		//          └── [insufficient]  -> insufficient_stock_alert
 		if checkInventoryTemplate.ID != uuid.Nil && reserveInventoryTemplate.ID != uuid.Nil &&
 			createAlertTemplate.ID != uuid.Nil && checkReorderPointTemplate.ID != uuid.Nil {
 
@@ -4290,28 +4292,32 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 						log.Error(ctx, "Failed to create start edge for granular pipeline", "error", err)
 					}
 
-					// Edge 2: check_inventory --true_branch--> reserve_inventory
+					// Edge 2: check_inventory --[sufficient]--> reserve_inventory
+					sufficientOutput := "sufficient"
 					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
 						RuleID:         granularRule.ID,
 						SourceActionID: &checkAction.ID,
 						TargetActionID: reserveAction.ID,
-						EdgeType:       "true_branch",
+						EdgeType:       "sequence",
+						SourceOutput:   &sufficientOutput,
 						EdgeOrder:      0,
 					})
 					if err != nil {
-						log.Error(ctx, "Failed to create true_branch edge for granular pipeline", "error", err)
+						log.Error(ctx, "Failed to create sufficient output edge for granular pipeline", "error", err)
 					}
 
-					// Edge 3: check_inventory --false_branch--> insufficient_stock_alert
+					// Edge 3: check_inventory --[insufficient]--> insufficient_stock_alert
+					insufficientOutput := "insufficient"
 					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
 						RuleID:         granularRule.ID,
 						SourceActionID: &checkAction.ID,
 						TargetActionID: insufficientAlertAction.ID,
-						EdgeType:       "false_branch",
+						EdgeType:       "sequence",
+						SourceOutput:   &insufficientOutput,
 						EdgeOrder:      0,
 					})
 					if err != nil {
-						log.Error(ctx, "Failed to create false_branch edge for granular pipeline", "error", err)
+						log.Error(ctx, "Failed to create insufficient output edge for granular pipeline", "error", err)
 					}
 
 					// Edge 4: reserve_inventory --sequence--> success_alert
@@ -4338,16 +4344,18 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 						log.Error(ctx, "Failed to create sequence edge for reorder check", "error", err)
 					}
 
-					// Edge 6: check_reorder_point --true_branch--> low_stock_alert
+					// Edge 6: check_reorder_point --[needs_reorder]--> low_stock_alert
+					needsReorderOutput := "needs_reorder"
 					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
 						RuleID:         granularRule.ID,
 						SourceActionID: &reorderCheckAction.ID,
 						TargetActionID: lowStockAlertAction.ID,
-						EdgeType:       "true_branch",
+						EdgeType:       "sequence",
+						SourceOutput:   &needsReorderOutput,
 						EdgeOrder:      0,
 					})
 					if err != nil {
-						log.Error(ctx, "Failed to create true_branch edge for low stock alert", "error", err)
+						log.Error(ctx, "Failed to create needs_reorder output edge for low stock alert", "error", err)
 					}
 
 					log.Info(ctx, "Created 'Line Item Created - Granular Inventory Pipeline' rule with 6 actions and 6 edges")

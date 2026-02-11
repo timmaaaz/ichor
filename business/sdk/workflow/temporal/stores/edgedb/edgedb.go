@@ -63,6 +63,7 @@ type dbEdge struct {
 	SourceActionID sql.NullString `db:"source_action_id"`
 	TargetActionID string         `db:"target_action_id"`
 	EdgeType       string         `db:"edge_type"`
+	SourceOutput   sql.NullString `db:"source_output"`
 	EdgeOrder      int            `db:"edge_order"`
 }
 
@@ -131,6 +132,7 @@ func (s *Store) QueryEdgesByRule(ctx context.Context, ruleID uuid.UUID) ([]tempo
 		source_action_id,
 		target_action_id,
 		edge_type,
+		source_output,
 		edge_order
 	FROM
 		workflow.action_edges
@@ -195,6 +197,12 @@ func toActionEdge(dbe dbEdge) temporal.ActionEdge {
 	if dbe.SourceActionID.Valid {
 		id := uuid.MustParse(dbe.SourceActionID.String)
 		edge.SourceActionID = &id
+	}
+
+	// source_output is NULL for start/always edges.
+	if dbe.SourceOutput.Valid {
+		s := dbe.SourceOutput.String
+		edge.SourceOutput = &s
 	}
 
 	return edge

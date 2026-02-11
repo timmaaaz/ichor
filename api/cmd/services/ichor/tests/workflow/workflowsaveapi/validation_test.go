@@ -206,8 +206,8 @@ func validationActionConfig(sd SaveSeedData) []apitest.Table {
 				},
 				Edges: []workflowsaveapp.SaveEdgeRequest{
 					{TargetActionID: "temp:0", EdgeType: "start"},
-					{SourceActionID: "temp:0", TargetActionID: "temp:1", EdgeType: "true_branch"},
-					{SourceActionID: "temp:0", TargetActionID: "temp:2", EdgeType: "false_branch"},
+					{SourceActionID: "temp:0", TargetActionID: "temp:1", EdgeType: "sequence", SourceOutput: "true"},
+					{SourceActionID: "temp:0", TargetActionID: "temp:2", EdgeType: "sequence", SourceOutput: "false"},
 				},
 			},
 			GotResp: &workflowsaveapp.SaveWorkflowResponse{},

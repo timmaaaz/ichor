@@ -118,8 +118,8 @@ func buildMixedEdgeTypeGraph() (GraphDefinition, uuid.UUID) {
 		Edges: []ActionEdge{
 			{ID: deterministicUUID("me-start"), SourceActionID: nil, TargetActionID: start, EdgeType: EdgeTypeStart, SortOrder: 0},
 			{ID: deterministicUUID("me-seq"), SourceActionID: &start, TargetActionID: condition, EdgeType: EdgeTypeSequence, SortOrder: 1},
-			{ID: deterministicUUID("me-true"), SourceActionID: &condRef, TargetActionID: trueAction, EdgeType: EdgeTypeTrueBranch, SortOrder: 2},
-			{ID: deterministicUUID("me-false"), SourceActionID: &condRef, TargetActionID: falseAction, EdgeType: EdgeTypeFalseBranch, SortOrder: 3},
+			{ID: deterministicUUID("me-true"), SourceActionID: &condRef, TargetActionID: trueAction, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 2},
+			{ID: deterministicUUID("me-false"), SourceActionID: &condRef, TargetActionID: falseAction, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("false"), SortOrder: 3},
 			{ID: deterministicUUID("me-always"), SourceActionID: &condRef, TargetActionID: alwaysAction, EdgeType: EdgeTypeAlways, SortOrder: 4},
 			{ID: deterministicUUID("me-true-merge"), SourceActionID: &trueRef, TargetActionID: merge, EdgeType: EdgeTypeSequence, SortOrder: 5},
 			{ID: deterministicUUID("me-false-merge"), SourceActionID: &falseRef, TargetActionID: merge, EdgeType: EdgeTypeSequence, SortOrder: 6},
@@ -228,12 +228,12 @@ func TestDeterminism_GetNextActions_AllEdgeTypes(t *testing.T) {
 	graph, conditionID := buildMixedEdgeTypeGraph()
 	exec := NewGraphExecutor(graph)
 
-	// Test with true_branch result.
-	trueResult := map[string]any{"branch_taken": "true_branch"}
+	// Test with true output result.
+	trueResult := map[string]any{"output": "true"}
 	baselineTrueIDs := extractIDs(exec.GetNextActions(conditionID, trueResult))
 
-	// Test with false_branch result.
-	falseResult := map[string]any{"branch_taken": "false_branch"}
+	// Test with false output result.
+	falseResult := map[string]any{"output": "false"}
 	baselineFalseIDs := extractIDs(exec.GetNextActions(conditionID, falseResult))
 
 	for i := 0; i < iterations; i++ {

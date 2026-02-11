@@ -29,14 +29,14 @@ func TestGetNextActions_MultipleAlwaysEdges(t *testing.T) {
 		},
 		Edges: []ActionEdge{
 			{ID: deterministicUUID("ma-start"), SourceActionID: nil, TargetActionID: source, EdgeType: EdgeTypeStart, SortOrder: 0},
-			{ID: deterministicUUID("ma-true"), SourceActionID: &srcRef, TargetActionID: a, EdgeType: EdgeTypeTrueBranch, SortOrder: 1},
+			{ID: deterministicUUID("ma-true"), SourceActionID: &srcRef, TargetActionID: a, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 1},
 			{ID: deterministicUUID("ma-always1"), SourceActionID: &srcRef, TargetActionID: b, EdgeType: EdgeTypeAlways, SortOrder: 2},
 			{ID: deterministicUUID("ma-always2"), SourceActionID: &srcRef, TargetActionID: c, EdgeType: EdgeTypeAlways, SortOrder: 3},
 		},
 	}
 
 	exec := NewGraphExecutor(graph)
-	trueResult := map[string]any{"branch_taken": "true_branch"}
+	trueResult := map[string]any{"output": "true"}
 	next := exec.GetNextActions(source, trueResult)
 
 	if len(next) != 3 {
@@ -114,22 +114,23 @@ func TestGetNextActions_ConditionChain(t *testing.T) {
 		},
 		Edges: []ActionEdge{
 			{ID: deterministicUUID("cc-start"), SourceActionID: nil, TargetActionID: cond1, EdgeType: EdgeTypeStart, SortOrder: 0},
-			{ID: deterministicUUID("cc-c1-c2"), SourceActionID: &cond1Ref, TargetActionID: cond2, EdgeType: EdgeTypeTrueBranch, SortOrder: 1},
-			{ID: deterministicUUID("cc-c2-act"), SourceActionID: &cond2Ref, TargetActionID: action, EdgeType: EdgeTypeTrueBranch, SortOrder: 2},
+			{ID: deterministicUUID("cc-c1-c2"), SourceActionID: &cond1Ref, TargetActionID: cond2, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 1},
+			{ID: deterministicUUID("cc-c2-act"), SourceActionID: &cond2Ref, TargetActionID: action, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 2},
 		},
 	}
 
 	exec := NewGraphExecutor(graph)
 
 	// First condition: true -> goes to condition2.
-	trueResult := map[string]any{"branch_taken": "true_branch"}
+	trueResult := map[string]any{"output": "true"}
 	next1 := exec.GetNextActions(cond1, trueResult)
 	if len(next1) != 1 || next1[0].ID != cond2 {
 		t.Fatalf("expected condition2 after cond1 true, got %v", next1)
 	}
 
 	// Second condition: true -> goes to action.
-	next2 := exec.GetNextActions(cond2, trueResult)
+	trueResult2 := map[string]any{"output": "true"}
+	next2 := exec.GetNextActions(cond2, trueResult2)
 	if len(next2) != 1 || next2[0].ID != action {
 		t.Fatalf("expected final_action after cond2 true, got %v", next2)
 	}
@@ -138,8 +139,8 @@ func TestGetNextActions_ConditionChain(t *testing.T) {
 func TestGetNextActions_ConditionToCondition_FalseTrue(t *testing.T) {
 	t.Parallel()
 
-	// Condition1 --(false_branch)--> Condition2
-	// Condition2 --(true_branch)--> Action
+	// Condition1 --(false output)--> Condition2
+	// Condition2 --(true output)--> Action
 	cond1 := deterministicUUID("ft-cond1")
 	cond2 := deterministicUUID("ft-cond2")
 	action := deterministicUUID("ft-action")
@@ -155,22 +156,22 @@ func TestGetNextActions_ConditionToCondition_FalseTrue(t *testing.T) {
 		},
 		Edges: []ActionEdge{
 			{ID: deterministicUUID("ft-start"), SourceActionID: nil, TargetActionID: cond1, EdgeType: EdgeTypeStart, SortOrder: 0},
-			{ID: deterministicUUID("ft-c1-c2"), SourceActionID: &cond1Ref, TargetActionID: cond2, EdgeType: EdgeTypeFalseBranch, SortOrder: 1},
-			{ID: deterministicUUID("ft-c2-act"), SourceActionID: &cond2Ref, TargetActionID: action, EdgeType: EdgeTypeTrueBranch, SortOrder: 2},
+			{ID: deterministicUUID("ft-c1-c2"), SourceActionID: &cond1Ref, TargetActionID: cond2, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("false"), SortOrder: 1},
+			{ID: deterministicUUID("ft-c2-act"), SourceActionID: &cond2Ref, TargetActionID: action, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 2},
 		},
 	}
 
 	exec := NewGraphExecutor(graph)
 
 	// First condition: false -> goes to condition2.
-	falseResult := map[string]any{"branch_taken": "false_branch"}
+	falseResult := map[string]any{"output": "false"}
 	next1 := exec.GetNextActions(cond1, falseResult)
 	if len(next1) != 1 || next1[0].ID != cond2 {
 		t.Fatalf("expected condition2 after cond1 false, got %v", next1)
 	}
 
 	// Second condition: true -> goes to action.
-	trueResult := map[string]any{"branch_taken": "true_branch"}
+	trueResult := map[string]any{"output": "true"}
 	next2 := exec.GetNextActions(cond2, trueResult)
 	if len(next2) != 1 || next2[0].ID != action {
 		t.Fatalf("expected final_action after cond2 true, got %v", next2)
@@ -205,8 +206,8 @@ func TestGetNextActions_ConditionDiamond(t *testing.T) {
 		},
 		Edges: []ActionEdge{
 			{ID: deterministicUUID("cd-start"), SourceActionID: nil, TargetActionID: condition, EdgeType: EdgeTypeStart, SortOrder: 0},
-			{ID: deterministicUUID("cd-true-edge"), SourceActionID: &condRef, TargetActionID: a, EdgeType: EdgeTypeTrueBranch, SortOrder: 1},
-			{ID: deterministicUUID("cd-false-edge"), SourceActionID: &condRef, TargetActionID: b, EdgeType: EdgeTypeFalseBranch, SortOrder: 2},
+			{ID: deterministicUUID("cd-true-edge"), SourceActionID: &condRef, TargetActionID: a, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 1},
+			{ID: deterministicUUID("cd-false-edge"), SourceActionID: &condRef, TargetActionID: b, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("false"), SortOrder: 2},
 			{ID: deterministicUUID("cd-a-merge"), SourceActionID: &aRef, TargetActionID: merge, EdgeType: EdgeTypeSequence, SortOrder: 3},
 			{ID: deterministicUUID("cd-b-merge"), SourceActionID: &bRef, TargetActionID: merge, EdgeType: EdgeTypeSequence, SortOrder: 4},
 		},
@@ -215,7 +216,7 @@ func TestGetNextActions_ConditionDiamond(t *testing.T) {
 	exec := NewGraphExecutor(graph)
 
 	// True branch: condition -> A -> merge.
-	trueResult := map[string]any{"branch_taken": "true_branch"}
+	trueResult := map[string]any{"output": "true"}
 	next := exec.GetNextActions(condition, trueResult)
 	if len(next) != 1 || next[0].ID != a {
 		t.Fatalf("expected true_path, got %v", next)
@@ -226,7 +227,7 @@ func TestGetNextActions_ConditionDiamond(t *testing.T) {
 	}
 
 	// False branch: condition -> B -> merge.
-	falseResult := map[string]any{"branch_taken": "false_branch"}
+	falseResult := map[string]any{"output": "false"}
 	next = exec.GetNextActions(condition, falseResult)
 	if len(next) != 1 || next[0].ID != b {
 		t.Fatalf("expected false_path, got %v", next)
@@ -264,8 +265,8 @@ func TestGetNextActions_ResultMapEdgeCases(t *testing.T) {
 		},
 		Edges: []ActionEdge{
 			{ID: deterministicUUID("rme-start"), SourceActionID: nil, TargetActionID: conditionID, EdgeType: EdgeTypeStart, SortOrder: 0},
-			{ID: deterministicUUID("rme-true"), SourceActionID: &condRef, TargetActionID: actionA, EdgeType: EdgeTypeTrueBranch, SortOrder: 1},
-			{ID: deterministicUUID("rme-false"), SourceActionID: &condRef, TargetActionID: actionB, EdgeType: EdgeTypeFalseBranch, SortOrder: 2},
+			{ID: deterministicUUID("rme-true"), SourceActionID: &condRef, TargetActionID: actionA, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 1},
+			{ID: deterministicUUID("rme-false"), SourceActionID: &condRef, TargetActionID: actionB, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("false"), SortOrder: 2},
 			{ID: deterministicUUID("rme-always"), SourceActionID: &condRef, TargetActionID: actionC, EdgeType: EdgeTypeAlways, SortOrder: 3},
 		},
 	}
@@ -277,13 +278,13 @@ func TestGetNextActions_ResultMapEdgeCases(t *testing.T) {
 	}{
 		{"nil result", nil, []uuid.UUID{actionC}},
 		{"empty map", map[string]any{}, []uuid.UUID{actionC}},
-		{"empty branch_taken", map[string]any{"branch_taken": ""}, []uuid.UUID{actionC}},
-		{"missing branch_taken key", map[string]any{"other": "val"}, []uuid.UUID{actionC}},
-		{"unknown branch value", map[string]any{"branch_taken": "unknown"}, []uuid.UUID{actionC}},
-		{"wrong type int", map[string]any{"branch_taken": 123}, []uuid.UUID{actionC}},
-		{"wrong type bool", map[string]any{"branch_taken": true}, []uuid.UUID{actionC}},
-		{"valid true_branch", map[string]any{"branch_taken": "true_branch"}, []uuid.UUID{actionA, actionC}},
-		{"valid false_branch", map[string]any{"branch_taken": "false_branch"}, []uuid.UUID{actionB, actionC}},
+		{"empty output", map[string]any{"output": ""}, []uuid.UUID{actionC}},
+		{"missing output key", map[string]any{"other": "val"}, []uuid.UUID{actionC}},
+		{"unknown output value", map[string]any{"output": "unknown"}, []uuid.UUID{actionC}},
+		{"wrong type int", map[string]any{"output": 123}, []uuid.UUID{actionC}},
+		{"wrong type bool", map[string]any{"output": true}, []uuid.UUID{actionC}},
+		{"valid true output", map[string]any{"output": "true"}, []uuid.UUID{actionA, actionC}},
+		{"valid false output", map[string]any{"output": "false"}, []uuid.UUID{actionB, actionC}},
 	}
 
 	exec := NewGraphExecutor(graph)
@@ -368,7 +369,7 @@ func TestGetNextActions_ConditionNoMatchButAlways(t *testing.T) {
 		},
 		Edges: []ActionEdge{
 			{ID: deterministicUUID("nm-start"), SourceActionID: nil, TargetActionID: condition, EdgeType: EdgeTypeStart, SortOrder: 0},
-			{ID: deterministicUUID("nm-true"), SourceActionID: &condRef, TargetActionID: a, EdgeType: EdgeTypeTrueBranch, SortOrder: 1},
+			{ID: deterministicUUID("nm-true"), SourceActionID: &condRef, TargetActionID: a, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 1},
 			{ID: deterministicUUID("nm-always"), SourceActionID: &condRef, TargetActionID: b, EdgeType: EdgeTypeAlways, SortOrder: 2},
 		},
 	}

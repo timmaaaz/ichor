@@ -66,6 +66,15 @@ func (h *SeekApprovalHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
+// GetOutputPorts implements workflow.OutputPortProvider.
+func (h *SeekApprovalHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "approved", Description: "Approval was granted", IsDefault: true},
+		{Name: "rejected", Description: "Approval was denied"},
+		{Name: "timed_out", Description: "Approval request timed out"},
+	}
+}
+
 func (h *SeekApprovalHandler) Execute(ctx context.Context, config json.RawMessage, context workflow.ActionExecutionContext) (interface{}, error) {
 	h.log.Info(ctx, "Executing seek_approval action",
 		"entityID", context.EntityID,
@@ -74,6 +83,7 @@ func (h *SeekApprovalHandler) Execute(ctx context.Context, config json.RawMessag
 	result := map[string]interface{}{
 		"approval_id":    fmt.Sprintf("approval_%d", time.Now().Unix()),
 		"status":         "pending",
+		"output":         "approved", // Default; async completion will override
 		"requested_at":   time.Now().Format(time.RFC3339),
 		"reference_id":   context.EntityID,
 		"reference_type": fmt.Sprintf("%s_%s", context.EntityName, context.EventType),

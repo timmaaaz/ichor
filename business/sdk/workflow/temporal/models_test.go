@@ -73,21 +73,21 @@ func TestMergeResultMultipleActions(t *testing.T) {
 	}
 }
 
-func TestMergeResultBranchTaken(t *testing.T) {
-	// Condition actions store branch_taken in their result.
+func TestMergeResultOutputPort(t *testing.T) {
+	// Condition actions store output in their result.
 	// This is how the graph executor determines which edge to follow.
 	ctx := NewMergedContext(nil)
 
 	conditionResult := map[string]any{
-		"evaluated":    true,
-		"result":       true,
-		"branch_taken": "true_branch",
+		"evaluated": true,
+		"result":    true,
+		"output":    "true",
 	}
 	ctx.MergeResult("check_status", conditionResult)
 
-	// Graph executor reads this to decide true_branch vs false_branch edges
-	if ctx.ActionResults["check_status"]["branch_taken"] != "true_branch" {
-		t.Error("expected branch_taken in ActionResults")
+	// Graph executor reads this to decide which output port edge to follow
+	if ctx.ActionResults["check_status"]["output"] != "true" {
+		t.Error("expected output in ActionResults")
 	}
 }
 

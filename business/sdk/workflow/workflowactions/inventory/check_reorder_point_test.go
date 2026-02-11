@@ -282,13 +282,13 @@ func executeReorderPointBelowThreshold(busDomain dbtest.BusDomain, sd checkReord
 				return err
 			}
 
-			condResult, ok := result.(workflow.ConditionResult)
+			resultMap, ok := result.(map[string]any)
 			if !ok {
-				return fmt.Errorf("expected ConditionResult, got %T", result)
+				return fmt.Errorf("expected map[string]any, got %T", result)
 			}
 
 			// Result=true means needs reorder (below threshold).
-			return condResult.Result
+			return resultMap["needs_reorder"].(bool)
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {
@@ -325,13 +325,13 @@ func executeReorderPointAboveThreshold(sd checkReorderPointSeedData) unitest.Tab
 				return err
 			}
 
-			condResult, ok := result.(workflow.ConditionResult)
+			resultMap, ok := result.(map[string]any)
 			if !ok {
-				return fmt.Errorf("expected ConditionResult, got %T", result)
+				return fmt.Errorf("expected map[string]any, got %T", result)
 			}
 
 			// Result=false means does NOT need reorder (above threshold).
-			return condResult.Result
+			return resultMap["needs_reorder"].(bool)
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {
@@ -370,12 +370,12 @@ func executeReorderPointCustomThreshold(sd checkReorderPointSeedData) unitest.Ta
 				return err
 			}
 
-			condResult, ok := result.(workflow.ConditionResult)
+			resultMap, ok := result.(map[string]any)
 			if !ok {
-				return fmt.Errorf("expected ConditionResult, got %T", result)
+				return fmt.Errorf("expected map[string]any, got %T", result)
 			}
 
-			return condResult.Result
+			return resultMap["needs_reorder"].(bool)
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {

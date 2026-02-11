@@ -55,7 +55,8 @@ type SaveActionRequest struct {
 type SaveEdgeRequest struct {
 	SourceActionID string `json:"source_action_id"`
 	TargetActionID string `json:"target_action_id" validate:"required"`
-	EdgeType       string `json:"edge_type" validate:"required,oneof=start sequence true_branch false_branch always"`
+	EdgeType       string `json:"edge_type" validate:"required,oneof=start sequence always"`
+	SourceOutput   string `json:"source_output,omitempty"`
 	EdgeOrder      int    `json:"edge_order" validate:"min=0"`
 }
 
@@ -97,5 +98,6 @@ type SaveEdgeResponse struct {
 	SourceActionID string `json:"source_action_id"`
 	TargetActionID string `json:"target_action_id"`
 	EdgeType       string `json:"edge_type"`
+	SourceOutput   string `json:"source_output,omitempty"`
 	EdgeOrder      int    `json:"edge_order"`
 }

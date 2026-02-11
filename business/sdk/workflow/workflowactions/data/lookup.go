@@ -86,6 +86,15 @@ func (h *LookupEntityHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
+// GetOutputPorts implements workflow.OutputPortProvider.
+func (h *LookupEntityHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "found", Description: "Entity found matching filter criteria", IsDefault: true},
+		{Name: "not_found", Description: "No entity found matching filter criteria"},
+		{Name: "failure", Description: "Lookup query failed"},
+	}
+}
+
 // Execute executes the entity lookup.
 func (h *LookupEntityHandler) Execute(ctx context.Context, config json.RawMessage, execContext workflow.ActionExecutionContext) (any, error) {
 	var cfg LookupEntityConfig
@@ -146,13 +155,16 @@ func (h *LookupEntityHandler) Execute(ctx context.Context, config json.RawMessag
 	case 0:
 		result["found"] = false
 		result[cfg.OutputKey] = nil
+		result["output"] = "not_found"
 	case 1:
 		result["found"] = true
 		result[cfg.OutputKey] = results[0]
+		result["output"] = "found"
 	default:
 		result["found"] = true
 		result[cfg.OutputKey] = results
 		result[cfg.OutputKey+"_count"] = len(results)
+		result["output"] = "found"
 	}
 
 	h.log.Info(ctx, "lookup_entity completed",

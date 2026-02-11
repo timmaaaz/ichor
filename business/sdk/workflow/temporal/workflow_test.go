@@ -145,8 +145,8 @@ func wfConditionDiamond(trueArmType, falseArmType string) (GraphDefinition, wfDi
 
 	edges := []ActionEdge{
 		{ID: uuid.New(), SourceActionID: nil, TargetActionID: condID, EdgeType: EdgeTypeStart, SortOrder: 1},
-		{ID: uuid.New(), SourceActionID: &condID, TargetActionID: trueID, EdgeType: EdgeTypeTrueBranch, SortOrder: 1},
-		{ID: uuid.New(), SourceActionID: &condID, TargetActionID: falseID, EdgeType: EdgeTypeFalseBranch, SortOrder: 2},
+		{ID: uuid.New(), SourceActionID: &condID, TargetActionID: trueID, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 1},
+		{ID: uuid.New(), SourceActionID: &condID, TargetActionID: falseID, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("false"), SortOrder: 2},
 		{ID: uuid.New(), SourceActionID: &trueID, TargetActionID: mergeID, EdgeType: EdgeTypeSequence, SortOrder: 1},
 		{ID: uuid.New(), SourceActionID: &falseID, TargetActionID: mergeID, EdgeType: EdgeTypeSequence, SortOrder: 1},
 	}
@@ -297,7 +297,7 @@ func TestWorkflow_SequentialChain(t *testing.T) {
 func TestWorkflow_ConditionBranch_True(t *testing.T) {
 	condHandler := &testActionHandler{
 		actionType: "evaluate_condition",
-		result:     map[string]any{"branch_taken": "true_branch"},
+		result:     map[string]any{"output": "true"},
 	}
 	trueHandler := &testActionHandler{actionType: "true_action", result: map[string]any{"path": "true"}}
 	falseHandler := &testActionHandler{actionType: "false_action", result: map[string]any{"path": "false"}}
@@ -327,7 +327,7 @@ func TestWorkflow_ConditionBranch_True(t *testing.T) {
 func TestWorkflow_ConditionBranch_False(t *testing.T) {
 	condHandler := &testActionHandler{
 		actionType: "evaluate_condition",
-		result:     map[string]any{"branch_taken": "false_branch"},
+		result:     map[string]any{"output": "false"},
 	}
 	trueHandler := &testActionHandler{actionType: "true_action", result: map[string]any{"path": "true"}}
 	falseHandler := &testActionHandler{actionType: "false_action", result: map[string]any{"path": "false"}}
@@ -534,11 +534,7 @@ func TestWorkflow_DelayInBranch(t *testing.T) {
 	//                            \--(false_branch)--> false_action --(sequence)--> merge
 	condHandler := &testActionHandler{
 		actionType: "evaluate_condition",
-		result: workflow.ConditionResult{
-			Evaluated:   true,
-			Result:      true,
-			BranchTaken: EdgeTypeTrueBranch,
-		},
+		result:     map[string]any{"evaluated": true, "result": true, "output": "true"},
 	}
 	trueHandler := &testActionHandler{
 		actionType: "true_action",
@@ -571,9 +567,9 @@ func TestWorkflow_DelayInBranch(t *testing.T) {
 		},
 		Edges: []ActionEdge{
 			{ID: uuid.New(), SourceActionID: nil, TargetActionID: condID, EdgeType: EdgeTypeStart, SortOrder: 1},
-			{ID: uuid.New(), SourceActionID: &condID, TargetActionID: delayID, EdgeType: EdgeTypeTrueBranch, SortOrder: 1},
+			{ID: uuid.New(), SourceActionID: &condID, TargetActionID: delayID, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("true"), SortOrder: 1},
 			{ID: uuid.New(), SourceActionID: &delayID, TargetActionID: trueID, EdgeType: EdgeTypeSequence, SortOrder: 1},
-			{ID: uuid.New(), SourceActionID: &condID, TargetActionID: falseID, EdgeType: EdgeTypeFalseBranch, SortOrder: 2},
+			{ID: uuid.New(), SourceActionID: &condID, TargetActionID: falseID, EdgeType: EdgeTypeSequence, SourceOutput: strPtr("false"), SortOrder: 2},
 			{ID: uuid.New(), SourceActionID: &trueID, TargetActionID: mergeID, EdgeType: EdgeTypeSequence, SortOrder: 1},
 			{ID: uuid.New(), SourceActionID: &falseID, TargetActionID: mergeID, EdgeType: EdgeTypeSequence, SortOrder: 1},
 		},

@@ -23,6 +23,7 @@ type Config struct {
 	Delegate       *delegate.Delegate
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
+	ActionRegistry *workflow.ActionRegistry
 }
 
 // RouteTable is the table name used for permission checks.
@@ -32,7 +33,7 @@ const RouteTable = "workflow.automation_rules"
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
-	workflowApp := workflowsaveapp.NewApp(cfg.Log, cfg.DB, cfg.WorkflowBus, cfg.Delegate)
+	workflowApp := workflowsaveapp.NewApp(cfg.Log, cfg.DB, cfg.WorkflowBus, cfg.Delegate, cfg.ActionRegistry)
 	api := newAPI(workflowApp)
 	authen := mid.Authenticate(cfg.AuthClient)
 
@@ -43,4 +44,10 @@ func Routes(app *web.App, cfg Config) {
 	// Create workflow (full save) - requires create permission
 	app.HandlerFunc(http.MethodPost, version, "/workflow/rules/full", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
+
+	// Action type discovery - returns all registered action types with output ports
+	if cfg.ActionRegistry != nil {
+		discovery := newDiscoveryAPI(cfg.ActionRegistry)
+		app.HandlerFunc(http.MethodGet, version, "/workflow/action-types", discovery.queryActionTypes, authen)
+	}
 }

@@ -383,7 +383,8 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 		RuleID:         rule.ID,
 		SourceActionID: &conditionID,
 		TargetActionID: trueBranchAction.ID,
-		EdgeType:       "true_branch",
+		EdgeType:       "sequence",
+		SourceOutput:   strPtr("true"),
 		EdgeOrder:      1,
 	})
 	if err != nil {
@@ -395,7 +396,8 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 		RuleID:         rule.ID,
 		SourceActionID: &conditionID,
 		TargetActionID: falseBranchAction.ID,
-		EdgeType:       "false_branch",
+		EdgeType:       "sequence",
+		SourceOutput:   strPtr("false"),
 		EdgeOrder:      2,
 	})
 	if err != nil {

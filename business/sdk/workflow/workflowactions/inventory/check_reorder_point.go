@@ -106,12 +106,20 @@ func (h *CheckReorderPointHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
-// Execute checks if inventory is below the reorder point and returns a ConditionResult.
-// true_branch = below reorder point (needs reorder), false_branch = sufficient.
+// GetOutputPorts implements workflow.OutputPortProvider.
+func (h *CheckReorderPointHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "ok", Description: "Inventory is above reorder point", IsDefault: true},
+		{Name: "needs_reorder", Description: "Inventory is below reorder point"},
+	}
+}
+
+// Execute checks if inventory is below the reorder point and returns the result with an output port.
+// output=needs_reorder when below reorder point, output=ok otherwise.
 func (h *CheckReorderPointHandler) Execute(ctx context.Context, config json.RawMessage, execContext workflow.ActionExecutionContext) (any, error) {
 	var cfg CheckReorderPointConfig
 	if err := json.Unmarshal(config, &cfg); err != nil {
-		return workflow.ConditionResult{}, fmt.Errorf("failed to parse config: %w", err)
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	// Extract product_id from RawData if sourcing from line item.
@@ -119,14 +127,14 @@ func (h *CheckReorderPointHandler) Execute(ctx context.Context, config json.RawM
 	if cfg.SourceFromLineItem {
 		raw, _ := execContext.RawData["product_id"].(string)
 		if raw == "" {
-			return workflow.ConditionResult{}, errors.New("product_id not found in line item RawData")
+			return nil, errors.New("product_id not found in line item RawData")
 		}
 		productIDStr = raw
 	}
 
 	productID, err := uuid.Parse(productIDStr)
 	if err != nil {
-		return workflow.ConditionResult{}, fmt.Errorf("invalid product_id: %w", err)
+		return nil, fmt.Errorf("invalid product_id: %w", err)
 	}
 
 	// Build filter for querying inventory items.
@@ -137,7 +145,7 @@ func (h *CheckReorderPointHandler) Execute(ctx context.Context, config json.RawM
 	if cfg.LocationID != "" {
 		locID, err := uuid.Parse(cfg.LocationID)
 		if err != nil {
-			return workflow.ConditionResult{}, fmt.Errorf("invalid location_id: %w", err)
+			return nil, fmt.Errorf("invalid location_id: %w", err)
 		}
 		filter.LocationID = &locID
 	}
@@ -145,7 +153,7 @@ func (h *CheckReorderPointHandler) Execute(ctx context.Context, config json.RawM
 	// Query inventory items (read-only, no locks needed).
 	items, err := h.inventoryItemBus.Query(ctx, filter, order.NewBy("id", order.ASC), page.MustParse("1", "100"))
 	if err != nil {
-		return workflow.ConditionResult{}, fmt.Errorf("query inventory items: %w", err)
+		return nil, fmt.Errorf("query inventory items: %w", err)
 	}
 
 	// Sum available quantities and determine the reorder point.
@@ -169,9 +177,9 @@ func (h *CheckReorderPointHandler) Execute(ctx context.Context, config json.RawM
 
 	needsReorder := available < reorderPoint
 
-	branchTaken := workflow.EdgeTypeFalseBranch
+	output := "ok"
 	if needsReorder {
-		branchTaken = workflow.EdgeTypeTrueBranch
+		output = "needs_reorder"
 	}
 
 	h.log.Info(ctx, "check_reorder_point completed",
@@ -179,12 +187,16 @@ func (h *CheckReorderPointHandler) Execute(ctx context.Context, config json.RawM
 		"available", available,
 		"reorder_point", reorderPoint,
 		"needs_reorder", needsReorder,
-		"branch", branchTaken)
+		"output", output)
 
-	return workflow.ConditionResult{
-		Evaluated:   true,
-		Result:      needsReorder,
-		BranchTaken: branchTaken,
+	return map[string]any{
+		"available":     available,
+		"reorder_point": reorderPoint,
+		"needs_reorder": needsReorder,
+		"total_on_hand": totalOnHand,
+		"reserved":      totalReserved,
+		"allocated":     totalAllocated,
+		"output":        output,
 	}, nil
 }
 

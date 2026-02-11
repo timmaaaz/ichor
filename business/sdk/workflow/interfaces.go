@@ -92,6 +92,46 @@ func (ar *ActionRegistry) GetAll() []string {
 }
 
 // =============================================================================
+// Output Port Types (for hybrid output-based routing)
+// =============================================================================
+
+// OutputPort describes a named output from an action.
+type OutputPort struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IsDefault   bool   `json:"is_default"` // True for the "happy path" output
+}
+
+// OutputPortProvider is implemented by action handlers that declare
+// specific output ports beyond the default success/failure.
+type OutputPortProvider interface {
+	GetOutputPorts() []OutputPort
+}
+
+// DefaultOutputPorts returns the standard success/failure ports used by
+// actions that don't implement OutputPortProvider.
+func DefaultOutputPorts() []OutputPort {
+	return []OutputPort{
+		{Name: "success", Description: "Action completed successfully", IsDefault: true},
+		{Name: "failure", Description: "Action failed"},
+	}
+}
+
+// GetOutputPorts returns the output ports for the given action type.
+// If the handler implements OutputPortProvider, its ports are returned.
+// Otherwise, the default success/failure ports are returned.
+func (ar *ActionRegistry) GetOutputPorts(actionType string) []OutputPort {
+	handler, exists := ar.handlers[actionType]
+	if !exists {
+		return DefaultOutputPorts()
+	}
+	if provider, ok := handler.(OutputPortProvider); ok {
+		return provider.GetOutputPorts()
+	}
+	return DefaultOutputPorts()
+}
+
+// =============================================================================
 // Entity Modifier Interface (for Cascade Visualization)
 // =============================================================================
 

@@ -1982,3 +1982,24 @@ CROSS JOIN (VALUES
     ('log_audit_entry')
 ) AS actions(action_type)
 WHERE r.name = 'admin';
+
+-- Version: 1.995
+-- Description: Add source_output column to action_edges for output port routing
+ALTER TABLE workflow.action_edges ADD COLUMN source_output VARCHAR(50);
+
+COMMENT ON COLUMN workflow.action_edges.source_output IS
+  'Output port name this edge connects from. NULL for start and always edges.';
+
+-- Backfill existing edges:
+UPDATE workflow.action_edges SET source_output = 'true' WHERE edge_type = 'true_branch';
+UPDATE workflow.action_edges SET source_output = 'false' WHERE edge_type = 'false_branch';
+UPDATE workflow.action_edges SET source_output = 'success' WHERE edge_type = 'sequence';
+-- start and always edges: source_output stays NULL
+
+-- Normalize edge_type: true_branch/false_branch -> sequence (output port handles routing now)
+UPDATE workflow.action_edges SET edge_type = 'sequence' WHERE edge_type IN ('true_branch', 'false_branch');
+
+-- Update unique constraint to include source_output instead of edge_type
+ALTER TABLE workflow.action_edges DROP CONSTRAINT unique_edge;
+ALTER TABLE workflow.action_edges ADD CONSTRAINT unique_edge
+  UNIQUE(source_action_id, target_action_id, source_output);

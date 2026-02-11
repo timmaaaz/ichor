@@ -30,6 +30,9 @@ func buildLinearGraph() GraphDefinition {
 	}
 }
 
+// strPtr returns a pointer to the given string value.
+func strPtr(s string) *string { return &s }
+
 // buildConditionGraph creates:
 //
 //	    A (condition)
@@ -49,8 +52,8 @@ func buildConditionGraph() (GraphDefinition, uuid.UUID, uuid.UUID, uuid.UUID) {
 		},
 		Edges: []ActionEdge{
 			{ID: uuid.New(), SourceActionID: nil, TargetActionID: a, EdgeType: "start", SortOrder: 0},
-			{ID: uuid.New(), SourceActionID: &a, TargetActionID: b, EdgeType: "true_branch", SortOrder: 1},
-			{ID: uuid.New(), SourceActionID: &a, TargetActionID: c, EdgeType: "false_branch", SortOrder: 2},
+			{ID: uuid.New(), SourceActionID: &a, TargetActionID: b, EdgeType: "sequence", SourceOutput: strPtr("true"), SortOrder: 1},
+			{ID: uuid.New(), SourceActionID: &a, TargetActionID: c, EdgeType: "sequence", SourceOutput: strPtr("false"), SortOrder: 2},
 		},
 	}
 
@@ -142,8 +145,8 @@ func buildAlwaysEdgeGraph() (GraphDefinition, uuid.UUID, uuid.UUID, uuid.UUID, u
 		},
 		Edges: []ActionEdge{
 			{ID: uuid.New(), SourceActionID: nil, TargetActionID: a, EdgeType: "start", SortOrder: 0},
-			{ID: uuid.New(), SourceActionID: &a, TargetActionID: b, EdgeType: "true_branch", SortOrder: 1},
-			{ID: uuid.New(), SourceActionID: &a, TargetActionID: c, EdgeType: "false_branch", SortOrder: 2},
+			{ID: uuid.New(), SourceActionID: &a, TargetActionID: b, EdgeType: "sequence", SourceOutput: strPtr("true"), SortOrder: 1},
+			{ID: uuid.New(), SourceActionID: &a, TargetActionID: c, EdgeType: "sequence", SourceOutput: strPtr("false"), SortOrder: 2},
 			{ID: uuid.New(), SourceActionID: &a, TargetActionID: d, EdgeType: "always", SortOrder: 3},
 		},
 	}
@@ -265,11 +268,11 @@ func TestGetNextActions_TrueBranch(t *testing.T) {
 	graph, a, b, _ := buildConditionGraph()
 	exec := NewGraphExecutor(graph)
 
-	trueResult := map[string]any{"branch_taken": "true_branch"}
+	trueResult := map[string]any{"output": "true"}
 	next := exec.GetNextActions(a, trueResult)
 
 	if len(next) != 1 {
-		t.Fatalf("expected 1 action for true_branch, got %d", len(next))
+		t.Fatalf("expected 1 action for true output, got %d", len(next))
 	}
 	if next[0].ID != b {
 		t.Error("expected true_action to be followed")
@@ -280,11 +283,11 @@ func TestGetNextActions_FalseBranch(t *testing.T) {
 	graph, a, _, c := buildConditionGraph()
 	exec := NewGraphExecutor(graph)
 
-	falseResult := map[string]any{"branch_taken": "false_branch"}
+	falseResult := map[string]any{"output": "false"}
 	next := exec.GetNextActions(a, falseResult)
 
 	if len(next) != 1 {
-		t.Fatalf("expected 1 action for false_branch, got %d", len(next))
+		t.Fatalf("expected 1 action for false output, got %d", len(next))
 	}
 	if next[0].ID != c {
 		t.Error("expected false_action to be followed")
@@ -295,8 +298,8 @@ func TestGetNextActions_AlwaysEdge(t *testing.T) {
 	graph, a, _, _, d := buildAlwaysEdgeGraph()
 	exec := NewGraphExecutor(graph)
 
-	// With true result: should follow true_branch AND always.
-	trueResult := map[string]any{"branch_taken": "true_branch"}
+	// With true result: should follow true output AND always.
+	trueResult := map[string]any{"output": "true"}
 	next := exec.GetNextActions(a, trueResult)
 
 	if len(next) != 2 {
@@ -319,8 +322,8 @@ func TestGetNextActions_AlwaysEdge_WithFalseBranch(t *testing.T) {
 	graph, a, _, _, d := buildAlwaysEdgeGraph()
 	exec := NewGraphExecutor(graph)
 
-	// With false result: should follow false_branch AND always.
-	falseResult := map[string]any{"branch_taken": "false_branch"}
+	// With false result: should follow false output AND always.
+	falseResult := map[string]any{"output": "false"}
 	next := exec.GetNextActions(a, falseResult)
 
 	if len(next) != 2 {
@@ -434,13 +437,13 @@ func TestGetNextActions_ConditionWithNoBranch(t *testing.T) {
 	graph, a, _, _ := buildConditionGraph()
 	exec := NewGraphExecutor(graph)
 
-	// Result has no branch_taken key.
+	// Result has no output key (defaults to "success", which doesn't match "true"/"false").
 	next := exec.GetNextActions(a, map[string]any{})
 	if len(next) != 0 {
-		t.Errorf("expected 0 actions when no branch matches, got %d", len(next))
+		t.Errorf("expected 0 actions when no output matches, got %d", len(next))
 	}
 
-	// Result is nil.
+	// Result is nil (defaults to "success", which doesn't match "true"/"false").
 	next = exec.GetNextActions(a, nil)
 	if len(next) != 0 {
 		t.Errorf("expected 0 actions when result is nil for condition, got %d", len(next))
