@@ -48,8 +48,15 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 	// Control flow actions - only need log
 	registry.Register(control.NewEvaluateConditionHandler(config.Log))
 
+	// Control flow - delay
+	registry.Register(control.NewDelayHandler(config.Log))
+
 	// Data actions - only need log and db
 	registry.Register(data.NewUpdateFieldHandler(config.Log, config.DB))
+	registry.Register(data.NewLookupEntityHandler(config.Log, config.DB))
+	registry.Register(data.NewCreateEntityHandler(config.Log, config.DB))
+	registry.Register(data.NewTransitionStatusHandler(config.Log, config.DB))
+	registry.Register(data.NewAuditLogHandler(config.Log, config.DB))
 
 	// Approval actions
 	registry.Register(approval.NewSeekApprovalHandler(config.Log, config.DB))
@@ -103,9 +110,14 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, db *sqlx.DB) {
 	// Control flow actions - only need log
 	registry.Register(control.NewEvaluateConditionHandler(log))
+	registry.Register(control.NewDelayHandler(log))
 
 	// Data actions - only need log and db, implements EntityModifier for cascade
 	registry.Register(data.NewUpdateFieldHandler(log, db))
+	registry.Register(data.NewLookupEntityHandler(log, db))
+	registry.Register(data.NewCreateEntityHandler(log, db))
+	registry.Register(data.NewTransitionStatusHandler(log, db))
+	registry.Register(data.NewAuditLogHandler(log, db))
 
 	// Approval actions - only need log and db
 	registry.Register(approval.NewSeekApprovalHandler(log, db))

@@ -1,6 +1,7 @@
 package temporal
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -159,6 +160,11 @@ func executeSingleAction(ctx workflow.Context, executor *GraphExecutor, action A
 		"action_name", action.Name,
 		"action_type", action.ActionType,
 	)
+
+	// Intercept delay actions - use Temporal's durable timer instead of an activity.
+	if action.ActionType == "delay" {
+		return executeDelay(ctx, executor, action, mergedCtx, input)
+	}
 
 	// Prepare activity input.
 	activityInput := ActionActivityInput{
@@ -398,6 +404,45 @@ func ExecuteBranchUntilConvergence(ctx workflow.Context, input BranchInput) (Bra
 			break
 		}
 
+		// Intercept delay actions in branches.
+		if currentAction.ActionType == "delay" {
+			duration, err := parseDelayConfig(currentAction.Config)
+			if err != nil {
+				return BranchOutput{}, fmt.Errorf("delay action %s: %w", currentAction.Name, err)
+			}
+
+			logger.Info("Branch delay action - sleeping",
+				"action_name", currentAction.Name,
+				"duration", duration.String(),
+			)
+
+			if err := workflow.Sleep(ctx, duration); err != nil {
+				return BranchOutput{}, fmt.Errorf("delay sleep %s: %w", currentAction.Name, err)
+			}
+
+			delayResult := map[string]any{"delayed": true, "duration": duration.String()}
+			mergedCtx.MergeResult(currentAction.Name, delayResult)
+
+			nextActions := executor.GetNextActions(currentAction.ID, delayResult)
+			if len(nextActions) == 0 {
+				if input.ConvergencePoint != uuid.Nil {
+					logger.Warn("Branch ended before reaching convergence point",
+						"last_action", currentAction.Name,
+						"convergence_point", input.ConvergencePoint,
+					)
+				}
+				break
+			}
+			if len(nextActions) > 1 {
+				logger.Warn("Multiple next actions in branch - following first only",
+					"action", currentAction.Name,
+					"next_count", len(nextActions),
+				)
+			}
+			currentAction = nextActions[0]
+			continue
+		}
+
 		// Execute action.
 		activityInput := ActionActivityInput{
 			ActionID:    currentAction.ID,
@@ -448,6 +493,79 @@ func ExecuteBranchUntilConvergence(ctx workflow.Context, input BranchInput) (Bra
 	return BranchOutput{
 		ActionResults: mergedCtx.ActionResults,
 	}, nil
+}
+
+// =============================================================================
+// Delay Action Support
+// =============================================================================
+
+// delayConfig is used to parse delay action configuration.
+type delayConfig struct {
+	Duration string `json:"duration"`
+}
+
+// parseDelayConfig parses a delay action's config to extract the duration.
+func parseDelayConfig(config json.RawMessage) (time.Duration, error) {
+	var cfg delayConfig
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return 0, fmt.Errorf("invalid delay config: %w", err)
+	}
+
+	if cfg.Duration == "" {
+		return 0, fmt.Errorf("delay duration is required")
+	}
+
+	d, err := time.ParseDuration(cfg.Duration)
+	if err != nil {
+		return 0, fmt.Errorf("invalid delay duration %q: %w", cfg.Duration, err)
+	}
+
+	if d <= 0 {
+		return 0, fmt.Errorf("delay duration must be positive, got %s", d)
+	}
+
+	return d, nil
+}
+
+// executeDelay handles a delay action by using Temporal's durable timer.
+// This is intercepted before activity dispatch because workflow.Sleep is a
+// Temporal primitive that survives worker restarts and costs zero resources.
+func executeDelay(ctx workflow.Context, executor *GraphExecutor, action ActionNode, mergedCtx *MergedContext, input WorkflowInput) error {
+	logger := workflow.GetLogger(ctx)
+
+	duration, err := parseDelayConfig(action.Config)
+	if err != nil {
+		return fmt.Errorf("delay action %s: %w", action.Name, err)
+	}
+
+	logger.Info("Delay action - sleeping",
+		"action_name", action.Name,
+		"duration", duration.String(),
+	)
+
+	if err := workflow.Sleep(ctx, duration); err != nil {
+		return fmt.Errorf("delay sleep %s: %w", action.Name, err)
+	}
+
+	// Merge delay result into context.
+	delayResult := map[string]any{
+		"delayed":  true,
+		"duration": duration.String(),
+	}
+	mergedCtx.MergeResult(action.Name, delayResult)
+
+	logger.Info("Delay completed",
+		"action_name", action.Name,
+		"duration", duration.String(),
+	)
+
+	// Continue to next actions.
+	nextActions := executor.GetNextActions(action.ID, delayResult)
+	if len(nextActions) == 0 {
+		return nil
+	}
+
+	return executeActions(ctx, executor, nextActions, mergedCtx, input)
 }
 
 // =============================================================================

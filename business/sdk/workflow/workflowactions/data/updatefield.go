@@ -93,7 +93,7 @@ func (h *UpdateFieldHandler) Validate(config json.RawMessage) error {
 	}
 
 	// Validate table name against whitelist
-	if !h.isValidTableName(cfg.TargetEntity) {
+	if !IsValidTableName(cfg.TargetEntity) {
 		return fmt.Errorf("invalid target_entity: %s", cfg.TargetEntity)
 	}
 
@@ -108,7 +108,7 @@ func (h *UpdateFieldHandler) Validate(config json.RawMessage) error {
 		if cfg.ForeignKeyConfig.LookupField == "" {
 			return errors.New("foreign_key_config.lookup_field is required")
 		}
-		if !h.isValidTableName(cfg.ForeignKeyConfig.ReferenceTable) {
+		if !IsValidTableName(cfg.ForeignKeyConfig.ReferenceTable) {
 			return fmt.Errorf("invalid reference_table: %s", cfg.ForeignKeyConfig.ReferenceTable)
 		}
 	}
@@ -121,7 +121,7 @@ func (h *UpdateFieldHandler) Validate(config json.RawMessage) error {
 		if condition.Operator == "" {
 			return fmt.Errorf("condition %d: operator is required", i)
 		}
-		if !h.isValidOperator(condition.Operator) {
+		if !IsValidOperator(condition.Operator) {
 			return fmt.Errorf("condition %d: invalid operator %s", i, condition.Operator)
 		}
 	}
@@ -153,8 +153,8 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 	}
 
 	// Process template variables
-	templateContext := h.buildTemplateContext(execContext)
-	processedValue := h.processTemplateValue(ctx, cfg.NewValue, templateContext)
+	templateContext := buildTemplateContext(execContext)
+	processedValue := processTemplateValue(h.templateProc, ctx, h.log, cfg.NewValue, templateContext)
 	resolvedValue := processedValue
 
 	// Handle foreign key resolution
@@ -216,7 +216,7 @@ func (h *UpdateFieldHandler) executeUpdate(ctx context.Context, execer sqlx.ExtC
 	if len(cfg.Conditions) > 0 {
 		whereClauses := make([]string, 0, len(cfg.Conditions))
 		for i, condition := range cfg.Conditions {
-			processedValue := h.processTemplateValue(ctx, condition.Value, templateContext)
+			processedValue := processTemplateValue(h.templateProc, ctx, h.log, condition.Value, templateContext)
 			whereClause, argName := h.buildWhereClause(condition, processedValue, i)
 			whereClauses = append(whereClauses, whereClause)
 			if condition.Operator != "is_null" && condition.Operator != "is_not_null" {
@@ -340,109 +340,7 @@ func (h *UpdateFieldHandler) resolveForeignKey(ctx context.Context, value any, f
 	return nil, fmt.Errorf("referenced record not found: %v in %s.%s", value, fkConfig.ReferenceTable, fkConfig.LookupField)
 }
 
-// processTemplateValue processes template variables in a value
-func (h *UpdateFieldHandler) processTemplateValue(ctx context.Context, value any, templateContext workflow.TemplateContext) any {
-	strVal, ok := value.(string)
-	if !ok {
-		return value
-	}
 
-	result := h.templateProc.ProcessTemplate(strVal, templateContext)
-	if len(result.Errors) > 0 {
-		h.log.Error(ctx, "Template processing errors", "errors", result.Errors)
-		return value
-	}
-
-	return result.Processed
-}
-
-// buildTemplateContext creates template context from execution context
-func (h *UpdateFieldHandler) buildTemplateContext(execContext workflow.ActionExecutionContext) workflow.TemplateContext {
-	context := make(workflow.TemplateContext)
-
-	context["entity_id"] = execContext.EntityID
-	context["entity_name"] = execContext.EntityName
-	context["event_type"] = execContext.EventType
-	context["timestamp"] = execContext.Timestamp
-	context["user_id"] = execContext.UserID
-	// Handle pointer-based RuleID (nil for manual executions)
-	if execContext.RuleID != nil {
-		context["rule_id"] = *execContext.RuleID
-	}
-	context["rule_name"] = execContext.RuleName
-	context["execution_id"] = execContext.ExecutionID
-
-	if execContext.RawData != nil {
-		for k, v := range execContext.RawData {
-			context[k] = v
-		}
-	}
-
-	if execContext.FieldChanges != nil {
-		for fieldName, change := range execContext.FieldChanges {
-			context["old_"+fieldName] = change.OldValue
-			context["new_"+fieldName] = change.NewValue
-		}
-	}
-
-	return context
-}
-
-// isValidTableName validates table names against whitelist
-func (h *UpdateFieldHandler) isValidTableName(tableName string) bool {
-	validTables := []string{
-		// sales schema
-		"sales.customers", "sales.orders", "sales.order_line_items",
-		"sales.order_fulfillment_statuses", "sales.line_item_fulfillment_statuses",
-		// products schema
-		"products.products", "products.brands", "products.product_categories",
-		"products.physical_attributes", "products.product_costs", "products.cost_history",
-		"products.quality_metrics",
-		// inventory schema
-		"inventory.inventory_items", "inventory.inventory_locations", "inventory.inventory_transactions",
-		"inventory.warehouses", "inventory.zones", "inventory.lot_trackings",
-		"inventory.serial_numbers", "inventory.inspections", "inventory.inventory_adjustments",
-		"inventory.transfer_orders",
-		// procurement schema
-		"procurement.suppliers", "procurement.supplier_products",
-		// core schema
-		"core.users", "core.roles", "core.user_roles", "core.contact_infos", "core.table_access",
-		// hr schema
-		"hr.offices",
-		// geography schema
-		"geography.countries", "geography.regions", "geography.cities", "geography.streets",
-		// assets schema
-		"assets.assets", "assets.valid_assets",
-		// config schema
-		"config.table_configs",
-		// workflow schema
-		"workflow.automation_rules", "workflow.rule_actions", "workflow.action_templates",
-		"workflow.rule_dependencies", "workflow.trigger_types", "workflow.entity_types",
-		"workflow.entities", "workflow.automation_executions", "workflow.notification_deliveries",
-	}
-
-	for _, valid := range validTables {
-		if tableName == valid {
-			return true
-		}
-	}
-	return false
-}
-
-// isValidOperator validates condition operators
-func (h *UpdateFieldHandler) isValidOperator(operator string) bool {
-	validOperators := []string{
-		"equals", "not_equals", "greater_than", "less_than",
-		"contains", "is_null", "is_not_null", "in", "not_in",
-	}
-
-	for _, valid := range validOperators {
-		if operator == valid {
-			return true
-		}
-	}
-	return false
-}
 
 // GetEntityModifications implements workflow.EntityModifier for cascade visualization.
 // Returns the entity and field that this action will modify based on its configuration.
@@ -459,8 +357,3 @@ func (h *UpdateFieldHandler) GetEntityModifications(config json.RawMessage) []wo
 		Fields:     []string{cfg.TargetField},
 	}}
 }
-
-// // Context returns a context for template processing
-// func (tc workflow.TemplateContext) Context() context.Context {
-// 	return context.Background()
-// }

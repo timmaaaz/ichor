@@ -486,3 +486,143 @@ func TestWorkflow_DeactivatedAction_StillExecutes(t *testing.T) {
 	require.NoError(t, env.GetWorkflowError())
 	require.Equal(t, 1, handler.called)
 }
+
+// =============================================================================
+// Delay Action Tests
+// =============================================================================
+
+func TestWorkflow_DelayAction(t *testing.T) {
+	// Graph: start -> delay(5s) -> test_action
+	// The Temporal test env auto-skips timers, so the test completes instantly.
+	handler := &testActionHandler{
+		actionType: "test_action",
+		result:     map[string]any{"status": "after_delay"},
+	}
+	env := setupTestEnv(t, newTestRegistry(handler))
+
+	delayID := uuid.New()
+	actionID := uuid.New()
+
+	graph := GraphDefinition{
+		Actions: []ActionNode{
+			{ID: delayID, Name: "wait", ActionType: "delay", Config: json.RawMessage(`{"duration": "5s"}`), IsActive: true},
+			{ID: actionID, Name: "after_wait", ActionType: "test_action", Config: json.RawMessage(`{}`), IsActive: true},
+		},
+		Edges: []ActionEdge{
+			{ID: uuid.New(), SourceActionID: nil, TargetActionID: delayID, EdgeType: EdgeTypeStart, SortOrder: 1},
+			{ID: uuid.New(), SourceActionID: &delayID, TargetActionID: actionID, EdgeType: EdgeTypeSequence, SortOrder: 1},
+		},
+	}
+
+	input := WorkflowInput{
+		RuleID:      uuid.New(),
+		RuleName:    "delay-test",
+		ExecutionID: uuid.New(),
+		Graph:       graph,
+		TriggerData: map[string]any{"entity_id": "123"},
+	}
+
+	env.ExecuteWorkflow(ExecuteGraphWorkflow, input)
+	require.True(t, env.IsWorkflowCompleted())
+	require.NoError(t, env.GetWorkflowError())
+	// The test_action after the delay should have been called
+	require.Equal(t, 1, handler.called)
+}
+
+func TestWorkflow_DelayInBranch(t *testing.T) {
+	// Graph: start -> condition --(true_branch)--> delay(5s) -> true_action --(sequence)--> merge
+	//                            \--(false_branch)--> false_action --(sequence)--> merge
+	condHandler := &testActionHandler{
+		actionType: "evaluate_condition",
+		result: workflow.ConditionResult{
+			Evaluated:   true,
+			Result:      true,
+			BranchTaken: EdgeTypeTrueBranch,
+		},
+	}
+	trueHandler := &testActionHandler{
+		actionType: "true_action",
+		result:     map[string]any{"branch": "true"},
+	}
+	falseHandler := &testActionHandler{
+		actionType: "false_action",
+		result:     map[string]any{"branch": "false"},
+	}
+	mergeHandler := &testActionHandler{
+		actionType: "merge_action",
+		result:     map[string]any{"merged": true},
+	}
+
+	env := setupTestEnv(t, newTestRegistry(condHandler, trueHandler, falseHandler, mergeHandler))
+
+	condID := uuid.New()
+	delayID := uuid.New()
+	trueID := uuid.New()
+	falseID := uuid.New()
+	mergeID := uuid.New()
+
+	graph := GraphDefinition{
+		Actions: []ActionNode{
+			{ID: condID, Name: "condition", ActionType: "evaluate_condition", Config: json.RawMessage(`{}`), IsActive: true},
+			{ID: delayID, Name: "wait", ActionType: "delay", Config: json.RawMessage(`{"duration": "5s"}`), IsActive: true},
+			{ID: trueID, Name: "true_arm", ActionType: "true_action", Config: json.RawMessage(`{}`), IsActive: true},
+			{ID: falseID, Name: "false_arm", ActionType: "false_action", Config: json.RawMessage(`{}`), IsActive: true},
+			{ID: mergeID, Name: "merge", ActionType: "merge_action", Config: json.RawMessage(`{}`), IsActive: true},
+		},
+		Edges: []ActionEdge{
+			{ID: uuid.New(), SourceActionID: nil, TargetActionID: condID, EdgeType: EdgeTypeStart, SortOrder: 1},
+			{ID: uuid.New(), SourceActionID: &condID, TargetActionID: delayID, EdgeType: EdgeTypeTrueBranch, SortOrder: 1},
+			{ID: uuid.New(), SourceActionID: &delayID, TargetActionID: trueID, EdgeType: EdgeTypeSequence, SortOrder: 1},
+			{ID: uuid.New(), SourceActionID: &condID, TargetActionID: falseID, EdgeType: EdgeTypeFalseBranch, SortOrder: 2},
+			{ID: uuid.New(), SourceActionID: &trueID, TargetActionID: mergeID, EdgeType: EdgeTypeSequence, SortOrder: 1},
+			{ID: uuid.New(), SourceActionID: &falseID, TargetActionID: mergeID, EdgeType: EdgeTypeSequence, SortOrder: 1},
+		},
+	}
+
+	input := WorkflowInput{
+		RuleID:      uuid.New(),
+		RuleName:    "delay-branch-test",
+		ExecutionID: uuid.New(),
+		Graph:       graph,
+		TriggerData: map[string]any{"entity_id": "456"},
+	}
+
+	env.ExecuteWorkflow(ExecuteGraphWorkflow, input)
+	require.True(t, env.IsWorkflowCompleted())
+	require.NoError(t, env.GetWorkflowError())
+
+	// Condition was evaluated
+	require.Equal(t, 1, condHandler.called)
+	// True branch was taken (after delay)
+	require.Equal(t, 1, trueHandler.called)
+	// False branch was not taken
+	require.Equal(t, 0, falseHandler.called)
+	// Merge was called
+	require.Equal(t, 1, mergeHandler.called)
+}
+
+func TestParseDelayConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  json.RawMessage
+		wantErr bool
+	}{
+		{"valid_5s", json.RawMessage(`{"duration":"5s"}`), false},
+		{"valid_24h", json.RawMessage(`{"duration":"24h"}`), false},
+		{"empty_duration", json.RawMessage(`{"duration":""}`), true},
+		{"missing_duration", json.RawMessage(`{}`), true},
+		{"negative", json.RawMessage(`{"duration":"-1h"}`), true},
+		{"invalid_json", json.RawMessage(`{bad}`), true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseDelayConfig(tt.config)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

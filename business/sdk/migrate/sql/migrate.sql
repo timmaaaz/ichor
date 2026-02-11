@@ -1938,3 +1938,47 @@ COMMENT ON COLUMN workflow.action_edges.source_action_id IS 'Source action (NULL
 COMMENT ON COLUMN workflow.action_edges.target_action_id IS 'Target action to execute';
 COMMENT ON COLUMN workflow.action_edges.edge_type IS 'Type: start, sequence, true_branch, false_branch, always';
 COMMENT ON COLUMN workflow.action_edges.edge_order IS 'Order when multiple edges have same source (for deterministic traversal)';
+
+-- Version: 1.993
+-- Description: Create partitioned audit log table for workflow audit trail entries
+CREATE TABLE workflow.audit_log (
+    id              UUID DEFAULT gen_random_uuid(),
+    entity_name     TEXT NOT NULL,
+    entity_id       UUID NOT NULL,
+    action          TEXT NOT NULL,
+    message         TEXT NOT NULL,
+    metadata        JSONB,
+    rule_id         UUID,
+    execution_id    UUID,
+    user_id         UUID,
+    created_date    TIMESTAMP NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, created_date)
+) PARTITION BY RANGE (created_date);
+
+CREATE TABLE workflow.audit_log_2026_02 PARTITION OF workflow.audit_log
+    FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+CREATE TABLE workflow.audit_log_2026_03 PARTITION OF workflow.audit_log
+    FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
+CREATE TABLE workflow.audit_log_2026_04 PARTITION OF workflow.audit_log
+    FOR VALUES FROM ('2026-04-01') TO ('2026-05-01');
+CREATE TABLE workflow.audit_log_2026_05 PARTITION OF workflow.audit_log
+    FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
+
+CREATE TABLE workflow.audit_log_default PARTITION OF workflow.audit_log DEFAULT;
+
+CREATE INDEX idx_audit_log_created ON workflow.audit_log USING BRIN (created_date);
+CREATE INDEX idx_audit_log_entity ON workflow.audit_log(entity_name, entity_id);
+CREATE INDEX idx_audit_log_rule ON workflow.audit_log(rule_id);
+
+-- Version: 1.994
+-- Description: Add action permissions for new workflow action types
+INSERT INTO workflow.action_permissions (role_id, action_type, is_allowed)
+SELECT r.id, action_type, true
+FROM core.roles r
+CROSS JOIN (VALUES
+    ('create_entity'),
+    ('lookup_entity'),
+    ('transition_status'),
+    ('log_audit_entry')
+) AS actions(action_type)
+WHERE r.name = 'admin';
