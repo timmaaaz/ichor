@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/timmaaaz/ichor/mcp/internal/client"
 )
@@ -12,11 +13,18 @@ import (
 func RegisterValidationTools(s *mcp.Server, c *client.Client) {
 	// validate_table_config — validate a table config without saving.
 	type ValidateTableConfigArgs struct {
-		Config json.RawMessage `json:"config" jsonschema:"Table config JSONB payload to validate,required"`
+		Config json.RawMessage `json:"config"`
 	}
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "validate_table_config",
 		Description: "Validate a table/widget configuration without saving it. Returns validation errors if the config is invalid (missing column types, invalid data source, etc.).",
+		InputSchema: &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"config": {Type: "object", Description: "Table config JSONB payload to validate"},
+			},
+			Required: []string{"config"},
+		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args ValidateTableConfigArgs) (*mcp.CallToolResult, any, error) {
 		data, err := c.ValidateTableConfig(ctx, args.Config)
 		if err != nil {

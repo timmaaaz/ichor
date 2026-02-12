@@ -322,6 +322,9 @@ type ColumnMetadata struct {
 	Format     *FormatConfig   `json:"format,omitempty"`
 	Editable   *EditableConfig `json:"editable,omitempty"`
 	Link       *LinkConfig     `json:"link,omitempty"`
+
+	// Conditional formatting rules filtered for this column
+	ConditionalFormatting []ConditionalFormat `json:"conditional_formatting,omitempty"`
 }
 
 type RelationshipInfo struct {

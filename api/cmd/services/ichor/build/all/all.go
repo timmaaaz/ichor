@@ -433,6 +433,17 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// This enables cascade visualization to work in all environments including tests.
 	workflowactions.RegisterCoreActions(actionRegistry, cfg.Log, cfg.DB)
 
+	// Register granular inventory actions for output port metadata.
+	// These don't need RabbitMQ but need inventory business dependencies.
+	workflowactions.RegisterGranularInventoryActions(actionRegistry, workflowactions.ActionConfig{
+		Log: cfg.Log,
+		DB:  cfg.DB,
+		Buses: workflowactions.BusDependencies{
+			InventoryItem: inventoryItemBus,
+			Workflow:      workflowBus,
+		},
+	})
+
 	// =========================================================================
 	// Initialize Temporal Workflow Infrastructure
 	// =========================================================================

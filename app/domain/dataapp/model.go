@@ -365,6 +365,21 @@ type ColumnMetadata struct {
 	Format     *FormatConfig   `json:"format,omitempty"`
 	Editable   *EditableConfig `json:"editable,omitempty"`
 	Link       *LinkConfig     `json:"link,omitempty"`
+
+	// Conditional formatting rules for this column
+	ConditionalFormatting []ConditionalFormat `json:"conditional_formatting,omitempty"`
+}
+
+// ConditionalFormat - MATCHES business layer exactly
+type ConditionalFormat struct {
+	Column     string `json:"column"`
+	Condition  string `json:"condition"`
+	Value      any    `json:"value"`
+	Condition2 string `json:"condition2,omitempty"`
+	Value2     any    `json:"value2,omitempty"`
+	Color      string `json:"color,omitempty"`
+	Background string `json:"background,omitempty"`
+	Icon       string `json:"icon,omitempty"`
 }
 
 // FormatConfig - MATCHES business layer exactly
@@ -483,25 +498,26 @@ func toAppColumnMetadata(busColumns []tablebuilder.ColumnMetadata) []ColumnMetad
 	appColumns := make([]ColumnMetadata, len(busColumns))
 	for i, col := range busColumns {
 		appColumns[i] = ColumnMetadata{
-			Field:        col.Field,
-			DisplayName:  col.DisplayName,
-			DatabaseName: col.DatabaseName,
-			Type:         col.Type,
-			SourceTable:  col.SourceTable,
-			SourceColumn: col.SourceColumn,
-			SourceSchema: col.SourceSchema,
-			Hidden:       col.Hidden,
-			IsPrimaryKey: col.IsPrimaryKey,
-			IsForeignKey: col.IsForeignKey,
-			RelatedTable: col.RelatedTable,
-			Header:       col.Header,
-			Width:        col.Width,
-			Align:        col.Align,
-			Sortable:     col.Sortable,
-			Filterable:   col.Filterable,
-			Format:       toAppFormatConfig(col.Format),
-			Editable:     toAppEditableConfig(col.Editable),
-			Link:         toAppLinkConfig(col.Link),
+			Field:                 col.Field,
+			DisplayName:           col.DisplayName,
+			DatabaseName:          col.DatabaseName,
+			Type:                  col.Type,
+			SourceTable:           col.SourceTable,
+			SourceColumn:          col.SourceColumn,
+			SourceSchema:          col.SourceSchema,
+			Hidden:                col.Hidden,
+			IsPrimaryKey:          col.IsPrimaryKey,
+			IsForeignKey:          col.IsForeignKey,
+			RelatedTable:          col.RelatedTable,
+			Header:                col.Header,
+			Width:                 col.Width,
+			Align:                 col.Align,
+			Sortable:              col.Sortable,
+			Filterable:            col.Filterable,
+			Format:                toAppFormatConfig(col.Format),
+			Editable:              toAppEditableConfig(col.Editable),
+			Link:                  toAppLinkConfig(col.Link),
+			ConditionalFormatting: toAppConditionalFormatting(col.ConditionalFormatting),
 		}
 	}
 	return appColumns
@@ -541,6 +557,28 @@ func toAppLinkConfig(bus *tablebuilder.LinkConfig) *LinkConfig {
 		Label:       bus.Label,
 		LabelColumn: bus.LabelColumn,
 	}
+}
+
+// toAppConditionalFormatting - Direct 1:1 field mapping
+func toAppConditionalFormatting(busRules []tablebuilder.ConditionalFormat) []ConditionalFormat {
+	if len(busRules) == 0 {
+		return nil
+	}
+
+	appRules := make([]ConditionalFormat, len(busRules))
+	for i, rule := range busRules {
+		appRules[i] = ConditionalFormat{
+			Column:     rule.Column,
+			Condition:  rule.Condition,
+			Value:      rule.Value,
+			Condition2: rule.Condition2,
+			Value2:     rule.Value2,
+			Color:      rule.Color,
+			Background: rule.Background,
+			Icon:       rule.Icon,
+		}
+	}
+	return appRules
 }
 
 // toAppRelationships - Direct 1:1 field mapping
