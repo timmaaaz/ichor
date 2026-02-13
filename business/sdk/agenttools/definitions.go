@@ -14,6 +14,134 @@ func schema(v any) json.RawMessage {
 	return b
 }
 
+// actionTypeEnum lists every valid action_type value for workflow actions.
+// Source of truth: workflowsaveapp.SaveActionRequest validate:"oneof=..."
+var actionTypeEnum = []string{
+	"allocate_inventory",
+	"check_inventory",
+	"check_reorder_point",
+	"commit_allocation",
+	"create_alert",
+	"create_entity",
+	"delay",
+	"evaluate_condition",
+	"log_audit_entry",
+	"lookup_entity",
+	"release_reservation",
+	"reserve_inventory",
+	"seek_approval",
+	"send_email",
+	"send_notification",
+	"transition_status",
+	"update_field",
+}
+
+// edgeTypeEnum lists every valid edge_type value for workflow edges.
+// Source of truth: workflowsaveapp.SaveEdgeRequest validate:"oneof=..."
+var edgeTypeEnum = []string{"start", "sequence", "always"}
+
+// workflowPayloadSchema is the structured JSON Schema for the workflow object
+// accepted by create_workflow, update_workflow, validate_workflow, and
+// preview_workflow. It mirrors workflowsaveapp.SaveWorkflowRequest.
+var workflowPayloadSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"name": map[string]any{
+			"type":        "string",
+			"description": "Rule name (1-255 chars).",
+		},
+		"description": map[string]any{
+			"type":        "string",
+			"description": "Rule description (max 1000 chars).",
+		},
+		"is_active": map[string]any{
+			"type": "boolean",
+		},
+		"entity_id": map[string]any{
+			"type":        "string",
+			"format":      "uuid",
+			"description": "UUID of the target entity.",
+		},
+		"trigger_type_id": map[string]any{
+			"type":        "string",
+			"format":      "uuid",
+			"description": "UUID of the trigger type.",
+		},
+		"trigger_conditions": map[string]any{
+			"type":        "object",
+			"description": "Optional trigger filter conditions.",
+		},
+		"actions": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id": map[string]any{
+						"type":        "string",
+						"description": "UUID for existing actions, omit for new.",
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Action name (1-255 chars).",
+					},
+					"description": map[string]any{
+						"type": "string",
+					},
+					"action_type": map[string]any{
+						"type":        "string",
+						"enum":        actionTypeEnum,
+						"description": "The action type.",
+					},
+					"action_config": map[string]any{
+						"type":        "object",
+						"description": "Config matching the action type's schema (see discover_action_types).",
+					},
+					"is_active": map[string]any{
+						"type": "boolean",
+					},
+				},
+				"required": []string{"name", "action_type", "action_config", "is_active"},
+			},
+		},
+		"edges": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"source_action_id": map[string]any{
+						"type":        "string",
+						"description": "Source action ID or empty for start edges.",
+					},
+					"target_action_id": map[string]any{
+						"type":        "string",
+						"description": "Target action ID. Use 'temp:N' for new actions by array index.",
+					},
+					"edge_type": map[string]any{
+						"type":        "string",
+						"enum":        edgeTypeEnum,
+						"description": "Edge type.",
+					},
+					"source_output": map[string]any{
+						"type":        "string",
+						"description": "Output port name (e.g. 'success', 'output-true').",
+					},
+					"edge_order": map[string]any{
+						"type":        "integer",
+						"minimum":     0,
+						"description": "Execution order for edges sharing the same source.",
+					},
+				},
+				"required": []string{"target_action_id", "edge_type"},
+			},
+		},
+		"canvas_layout": map[string]any{
+			"type":        "object",
+			"description": "Optional canvas layout for the UI.",
+		},
+	},
+	"required": []string{"name", "is_active", "entity_id", "trigger_type_id", "actions", "edges"},
+}
+
 // ToolDefinitions returns the fixed set of tools exposed to the LLM.
 func ToolDefinitions() []llm.ToolDef {
 	return []llm.ToolDef{
@@ -102,10 +230,7 @@ func ToolDefinitions() []llm.ToolDef {
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"workflow": map[string]any{
-						"type":        "object",
-						"description": "The full workflow payload matching POST /v1/workflow/rules/full.",
-					},
+					"workflow": workflowPayloadSchema,
 				},
 				"required": []string{"workflow"},
 			}),
@@ -122,10 +247,7 @@ func ToolDefinitions() []llm.ToolDef {
 						"description": "Full UUID of the rule (36 characters with hyphens, e.g. 35da6628-a96b-4bc4-a90f-8fa874ae48cc).",
 						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
 					},
-					"workflow": map[string]any{
-						"type":        "object",
-						"description": "The full workflow payload matching PUT /v1/workflow/rules/{id}/full.",
-					},
+					"workflow": workflowPayloadSchema,
 				},
 				"required": []string{"rule_id", "workflow"},
 			}),
@@ -136,10 +258,7 @@ func ToolDefinitions() []llm.ToolDef {
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"workflow": map[string]any{
-						"type":        "object",
-						"description": "The full workflow payload to validate.",
-					},
+					"workflow": workflowPayloadSchema,
 				},
 				"required": []string{"workflow"},
 			}),
@@ -156,11 +275,14 @@ func ToolDefinitions() []llm.ToolDef {
 				"properties": map[string]any{
 					"status": map[string]any{
 						"type":        "string",
-						"description": "Filter by status: active, acknowledged, dismissed, resolved. Default: active.",
+						"description": "Filter by status.",
+						"enum":        []string{"active", "acknowledged", "dismissed", "resolved"},
+						"default":     "active",
 					},
 					"severity": map[string]any{
 						"type":        "string",
-						"description": "Filter by severity (comma-separated): low, medium, high, critical.",
+						"description": "Filter by severity.",
+						"enum":        []string{"low", "medium", "high", "critical"},
 					},
 					"page": map[string]any{
 						"type":        "string",
@@ -203,10 +325,7 @@ func ToolDefinitions() []llm.ToolDef {
 						"type":        "string",
 						"description": "UUID of the rule to update. Omit when creating a new workflow.",
 					},
-					"workflow": map[string]any{
-						"type":        "object",
-						"description": "The full workflow payload matching POST /v1/workflow/rules/full.",
-					},
+					"workflow": workflowPayloadSchema,
 					"description": map[string]any{
 						"type":        "string",
 						"description": "Brief human-readable description of what changes are being made.",
