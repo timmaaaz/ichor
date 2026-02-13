@@ -356,8 +356,10 @@ w.RegisterWorkflow(temporal.ExecuteGraphWorkflow)
 w.RegisterWorkflow(temporal.ExecuteBranchUntilConvergence)
 w.RegisterActivity(&temporal.Activities{Registry: registry, AsyncRegistry: temporal.NewAsyncRegistry()})
 
-// 4. Start worker
-w.Run(worker.InterruptCh())
+// 4. Start worker (w.Start() + signal wait + w.Stop() for health check support)
+w.Start()
+// ... signal handling ...
+w.Stop()
 ```
 
 ## Error Handling

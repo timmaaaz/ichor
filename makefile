@@ -121,6 +121,7 @@ PROMTAIL        := grafana/promtail:3.1.0
 RABBITMQ       := rabbitmq:3-management
 TEMPORAL        := temporalio/auto-setup:1.26.2
 TEMPORAL_UI     := temporalio/ui:2.34.0
+OLLAMA          := ollama/ollama:latest
 
 KIND_CLUSTER    := superior-starter-cluster
 NAMESPACE       := ichor-system
@@ -158,6 +159,7 @@ dev-brew:
 	brew list kustomize || brew install kustomize
 	brew list pgcli || brew install pgcli
 	brew list watch || brew install watch
+	brew list ollama || brew install ollama
 
 dev-docker:
 	docker pull $(GOLANG) & \
@@ -172,6 +174,7 @@ dev-docker:
 	docker pull $(RABBITMQ) & \
 	docker pull $(TEMPORAL) & \
 	docker pull $(TEMPORAL_UI) & \
+	docker pull $(OLLAMA) & \
 	wait;
 
 # ==============================================================================
@@ -248,6 +251,7 @@ dev-status:
 dev-bounce:
 	make dev-down
 	make dev-up
+	make dev-ollama
 	make dev-update-apply
 	make migrate
 	make seed-frontend
@@ -331,6 +335,16 @@ temporal-ui:
 	@echo "Temporal UI available at http://localhost:8280"
 	@echo "Press Ctrl+C to stop port forwarding"
 	kubectl port-forward --namespace=$(NAMESPACE) svc/temporal-service 8280:8080
+
+dev-ollama:
+	@which ollama > /dev/null 2>&1 || (echo "Installing ollama via brew..." && brew install ollama)
+	@pgrep -x ollama > /dev/null || (echo "Starting ollama..." && ollama serve &  sleep 2)
+	ollama pull qwen3:8b
+	@echo "Ollama ready at http://localhost:11434"
+
+ollama-pull-model:
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=300s deployment/ollama
+	kubectl exec -n $(NAMESPACE) deploy/ollama -- ollama pull qwen3:8b
 
 dev-describe-database:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=database
@@ -512,6 +526,13 @@ otel-test:
 	--user "admin@example.com:gophers" http://localhost:8080/v1/core/users/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
 
 # ==============================================================================
+# MCP Server
+
+mcp:
+	$(eval TOKEN_RAW := $(shell curl -s --user "admin@example.com:gophers" http://localhost:6000/v1/auth/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1 | jq -r '.token'))
+	cd mcp && go run ./cmd/ichor-mcp/ --token $(TOKEN_RAW)
+
+# ==============================================================================
 # Modules support
 
 deps-reset:
@@ -597,7 +618,7 @@ talk-load:
 	hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
 
 talk-logs:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/cmd/tooling/logfmt/main.go -service=$(ICHOR_APP)
 
 talk-logs-cpu:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | grep SCHED
@@ -717,6 +738,8 @@ help:
 	@echo "  dev-describe-auth       Show the auth pod details"
 	@echo "  dev-describe-workflow-worker Show the workflow-worker pod details"
 	@echo "  temporal-ui             Port-forward Temporal Web UI to localhost:8280"
+	@echo "  dev-ollama              Install Ollama, start it, and pull AI models"
+	@echo "  ollama-pull-model       Pull AI models inside the KIND cluster"
 	@echo "  dev-describe-database   Show the database pod details"
 	@echo "  dev-describe-grafana    Show the grafana pod details"
 	@echo "  dev-logs-db             Show the logs for the database service"

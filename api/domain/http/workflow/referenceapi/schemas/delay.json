@@ -1,0 +1,10 @@
+{
+    "type": "object",
+    "required": ["duration"],
+    "properties": {
+        "duration": {
+            "type": "string",
+            "description": "Delay duration in Go duration format (e.g., '1h30m', '2s'). Must be positive and not exceed 720h (30 days)."
+        }
+    }
+}

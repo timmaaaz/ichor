@@ -1,0 +1,49 @@
+{
+    "type": "object",
+    "properties": {
+        "entity": {
+            "type": "string",
+            "description": "Data source entity in schema.table format (e.g., 'core.users')"
+        },
+        "table_config_name": {
+            "type": "string",
+            "description": "Table config name for joined queries (preferred over entity)"
+        },
+        "label_column": {
+            "type": "string",
+            "description": "Column to display as the dropdown label"
+        },
+        "value_column": {
+            "type": "string",
+            "description": "Column to use as the selected value"
+        },
+        "display_columns": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Additional columns to show in dropdown"
+        },
+        "auto_populate": {
+            "type": "array",
+            "description": "Auto-populate other fields when a value is selected",
+            "items": {
+                "type": "object",
+                "required": ["source_column", "target_field"],
+                "properties": {
+                    "source_column": { "type": "string", "description": "Column from selected record" },
+                    "target_field": { "type": "string", "description": "Form field to populate" }
+                }
+            }
+        },
+        "inline_create": {
+            "type": "object",
+            "description": "Enable inline entity creation from dropdown",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "form_name": { "type": "string", "description": "Form to use for creation" },
+                "button_text": { "type": "string", "description": "Custom button label" }
+            }
+        },
+        "default_value": { "type": "string" },
+        "hidden": { "type": "boolean" }
+    }
+}

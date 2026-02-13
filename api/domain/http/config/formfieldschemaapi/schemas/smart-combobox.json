@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "entity": {
+            "type": "string",
+            "description": "Data source entity in schema.table format"
+        },
+        "table_config_name": {
+            "type": "string",
+            "description": "Table config name for joined queries (preferred over entity)"
+        },
+        "label_column": { "type": "string", "description": "Column to display as the label" },
+        "value_column": { "type": "string", "description": "Column to use as the value" },
+        "display_columns": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Additional columns to show"
+        },
+        "auto_populate": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["source_column", "target_field"],
+                "properties": {
+                    "source_column": { "type": "string" },
+                    "target_field": { "type": "string" }
+                }
+            }
+        },
+        "inline_create": {
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "form_name": { "type": "string" },
+                "button_text": { "type": "string" }
+            }
+        },
+        "default_value": { "type": "string" },
+        "hidden": { "type": "boolean" }
+    }
+}

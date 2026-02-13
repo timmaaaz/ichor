@@ -50,6 +50,13 @@ func Test_WorkflowSaveAPI(t *testing.T) {
 	test.Run(t, validationGraph(sd), "validation-graph")
 	test.Run(t, validationEdgeRequirement(sd), "validation-edge-requirement")
 
+	// ============================================================
+	// Dry-Run Validation Tests (POST /v1/workflow/rules/full?dry_run=true)
+	// ============================================================
+
+	test.Run(t, dryRunValid200(sd), "dryrun-valid-200")
+	test.Run(t, dryRunInvalid200(sd), "dryrun-invalid-200")
+
 	// Phase 13: Execution, trigger, action, and error tests excluded.
 	// These tests depend on the old workflow.Engine which was removed.
 	// Phase 15 will rewrite them for Temporal.

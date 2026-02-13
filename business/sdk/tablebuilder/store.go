@@ -428,6 +428,12 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			}
 		}
 
+		// Attach conditional formatting rules for this column
+		meta.ConditionalFormatting = filterConditionalFormattingForColumn(
+			config.VisualSettings.ConditionalFormatting,
+			meta.Field,
+		)
+
 		metadata = append(metadata, meta)
 	}
 
@@ -452,6 +458,12 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			meta.Align = vs.Align
 			meta.Format = vs.Format
 		}
+
+		// Attach conditional formatting rules for this column
+		meta.ConditionalFormatting = filterConditionalFormattingForColumn(
+			config.VisualSettings.ConditionalFormatting,
+			meta.Field,
+		)
 
 		metadata = append(metadata, meta)
 	}
@@ -553,6 +565,12 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 				}
 			}
 
+			// Attach conditional formatting rules for this column
+			meta.ConditionalFormatting = filterConditionalFormattingForColumn(
+				config.VisualSettings.ConditionalFormatting,
+				meta.Field,
+			)
+
 			metadata = append(metadata, meta)
 		}
 
@@ -561,6 +579,23 @@ func (s *Store) buildForeignColumnMetadata(foreignTables []ForeignTable, config 
 	}
 
 	return metadata
+}
+
+// filterConditionalFormattingForColumn returns the conditional formatting rules
+// that apply to a specific column, filtering from the global rules array.
+func filterConditionalFormattingForColumn(rules []ConditionalFormat, columnName string) []ConditionalFormat {
+	if len(rules) == 0 {
+		return nil
+	}
+
+	var filtered []ConditionalFormat
+	for _, rule := range rules {
+		if rule.Column == columnName {
+			filtered = append(filtered, rule)
+		}
+	}
+
+	return filtered
 }
 
 // NEW: Build relationship metadata

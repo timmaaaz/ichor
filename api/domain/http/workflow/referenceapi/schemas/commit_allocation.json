@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "required": ["product_id", "location_id", "quantity"],
+    "properties": {
+        "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Product to commit allocation for"
+        },
+        "location_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Inventory location to commit from"
+        },
+        "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Quantity to commit from reserved to allocated"
+        }
+    }
+}

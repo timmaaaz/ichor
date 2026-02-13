@@ -1,0 +1,19 @@
+{
+    "type": "object",
+    "properties": {
+        "default_value": { "type": "string" },
+        "hidden": { "type": "boolean" },
+        "min_date": {
+            "type": "string",
+            "description": "Minimum date: 'today', '{{field_name}}', or ISO date string"
+        },
+        "max_date": {
+            "type": "string",
+            "description": "Maximum date: 'today', '{{field_name}}', or ISO date string"
+        },
+        "must_be_future": {
+            "type": "boolean",
+            "description": "Shorthand for min_date: 'today'"
+        }
+    }
+}

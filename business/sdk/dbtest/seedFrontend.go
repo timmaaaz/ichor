@@ -3815,6 +3815,114 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			log.Error(ctx, "Failed to create check_reorder_point template", "error", err)
 		}
 
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Log Audit Entry",
+			Description:   "Write an audit trail entry to the workflow audit log",
+			ActionType:    "log_audit_entry",
+			Icon:          "material-symbols:history-edu",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create log_audit_entry template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Create Entity",
+			Description:   "Create a new entity record in the database",
+			ActionType:    "create_entity",
+			Icon:          "material-symbols:note-add",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create create_entity template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Delay",
+			Description:   "Pause workflow execution for a specified duration",
+			ActionType:    "delay",
+			Icon:          "material-symbols:timer",
+			DefaultConfig: json.RawMessage(`{"duration": "5m"}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create delay template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Evaluate Condition",
+			Description:   "Evaluates conditions and determines branch direction",
+			ActionType:    "evaluate_condition",
+			Icon:          "material-symbols:fork-right",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create evaluate_condition template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Lookup Entity",
+			Description:   "Look up entity data by filter criteria",
+			ActionType:    "lookup_entity",
+			Icon:          "material-symbols:manage-search",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create lookup_entity template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Seek Approval",
+			Description:   "Creates an approval request for specified users",
+			ActionType:    "seek_approval",
+			Icon:          "material-symbols:approval",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create seek_approval template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Send Email",
+			Description:   "Sends an email to specified recipients",
+			ActionType:    "send_email",
+			Icon:          "material-symbols:forward-to-inbox",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create send_email template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Send Notification",
+			Description:   "Sends in-app notifications through various channels",
+			ActionType:    "send_notification",
+			Icon:          "material-symbols:campaign",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create send_notification template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Transition Status",
+			Description:   "Transition an entity field from one status to another",
+			ActionType:    "transition_status",
+			Icon:          "material-symbols:swap-horiz",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create transition_status template", "error", err)
+		}
+
 		// Create automation rules if we have all the required references
 		if orderLineItemsEntity.ID != uuid.Nil && wfEntityType.ID != uuid.Nil && onCreateTrigger.ID != uuid.Nil {
 			// Rule 1: Line Item Created -> Allocate Inventory

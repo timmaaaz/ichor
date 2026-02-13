@@ -136,6 +136,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Temporal struct {
 			HostPort string `conf:"default:temporal-service.ichor-system.svc.cluster.local:7233"`
 		}
+		LLM struct {
+			Provider  string `conf:"default:ollama"`
+			APIKey    string `conf:"mask"`
+			Model     string `conf:"default:qwen3:8b"`
+			MaxTokens int    `conf:"default:4096"`
+			BaseURL   string `conf:"default:http://localhost:8080"`
+			Host      string `conf:"default:http://host.docker.internal:11434"`
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -339,6 +347,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Tracer:         tracer,
 		RabbitClient:   rabbitClient,
 		TemporalClient: temporalClient,
+		LLMProvider:    cfg.LLM.Provider,
+		LLMAPIKey:      cfg.LLM.APIKey,
+		LLMModel:       cfg.LLM.Model,
+		LLMMaxTokens:   cfg.LLM.MaxTokens,
+		LLMBaseURL:     cfg.LLM.BaseURL,
+		LLMHost:        cfg.LLM.Host,
 	}
 
 	routes, userBus := buildRoutes(cfgMux)

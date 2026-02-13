@@ -50,6 +50,14 @@ type Config struct {
 	Tracer         trace.Tracer
 	RabbitClient   *rabbitmq.Client
 	TemporalClient client.Client // nil means Temporal disabled
+
+	// LLM provider configuration for agent chat.
+	LLMProvider  string
+	LLMAPIKey    string
+	LLMModel     string
+	LLMMaxTokens int
+	LLMBaseURL   string
+	LLMHost      string
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance

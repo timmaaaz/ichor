@@ -1,0 +1,37 @@
+{
+    "type": "object",
+    "required": ["conditions"],
+    "properties": {
+        "conditions": {
+            "type": "array",
+            "description": "List of conditions to evaluate against entity data",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": ["field_name", "operator"],
+                "properties": {
+                    "field_name": {
+                        "type": "string",
+                        "description": "Entity field to evaluate"
+                    },
+                    "operator": {
+                        "type": "string",
+                        "enum": ["equals", "not_equals", "changed_from", "changed_to", "greater_than", "less_than", "contains", "in", "is_null", "is_not_null"],
+                        "description": "Comparison operator"
+                    },
+                    "value": {
+                        "description": "Value to compare against (not required for is_null/is_not_null)"
+                    },
+                    "previous_value": {
+                        "description": "Previous value for changed_from/changed_to operators"
+                    }
+                }
+            }
+        },
+        "logic_type": {
+            "type": "string",
+            "enum": ["and", "or"],
+            "description": "How to combine multiple conditions (defaults to 'and')"
+        }
+    }
+}

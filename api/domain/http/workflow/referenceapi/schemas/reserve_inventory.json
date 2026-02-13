@@ -1,0 +1,52 @@
+{
+    "type": "object",
+    "required": ["quantity"],
+    "properties": {
+        "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Product to reserve (required unless source_from_line_item is true)"
+        },
+        "source_from_line_item": {
+            "type": "boolean",
+            "description": "Whether to source product_id from the triggered entity's line items"
+        },
+        "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Quantity to reserve"
+        },
+        "allocation_strategy": {
+            "type": "string",
+            "enum": ["fifo", "lifo", "nearest_expiry", "lowest_cost"],
+            "description": "Strategy for selecting which inventory to reserve (defaults to 'fifo')"
+        },
+        "allow_partial": {
+            "type": "boolean",
+            "description": "Whether to allow partial reservation if full quantity unavailable"
+        },
+        "reservation_duration_hours": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "How long to hold reservation in hours (defaults to 24)"
+        },
+        "warehouse_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional warehouse to scope the reservation"
+        },
+        "location_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional location to scope the reservation"
+        },
+        "reference_id": {
+            "type": "string",
+            "description": "Optional reference ID for tracking (e.g., order ID)"
+        },
+        "reference_type": {
+            "type": "string",
+            "description": "Optional reference type (e.g., 'sales_order')"
+        }
+    }
+}

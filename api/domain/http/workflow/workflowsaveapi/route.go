@@ -45,9 +45,4 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodPost, version, "/workflow/rules/full", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
 
-	// Action type discovery - returns all registered action types with output ports
-	if cfg.ActionRegistry != nil {
-		discovery := newDiscoveryAPI(cfg.ActionRegistry)
-		app.HandlerFunc(http.MethodGet, version, "/workflow/action-registry", discovery.queryActionTypes, authen)
-	}
 }

@@ -1,0 +1,11 @@
+{
+    "type": "object",
+    "properties": {
+        "default_value": {
+            "type": "string",
+            "description": "Default value (supports {{$me}}, {{$now}} variables)"
+        },
+        "default_value_create": { "type": "string" },
+        "default_value_update": { "type": "string" }
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "type": "object",
+    "properties": {
+        "default_value": {
+            "type": "string",
+            "enum": ["true", "false"],
+            "description": "Default boolean value"
+        },
+        "hidden": { "type": "boolean" }
+    }
+}

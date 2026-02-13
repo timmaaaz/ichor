@@ -111,6 +111,24 @@ func toDBAlertRecipient(ar alertbus.AlertRecipient) dbAlertRecipient {
 	}
 }
 
+func toBusAlertRecipient(db dbAlertRecipient) alertbus.AlertRecipient {
+	return alertbus.AlertRecipient{
+		ID:            db.ID,
+		AlertID:       db.AlertID,
+		RecipientType: db.RecipientType,
+		RecipientID:   db.RecipientID,
+		CreatedDate:   db.CreatedDate,
+	}
+}
+
+func toBusAlertRecipients(dbs []dbAlertRecipient) []alertbus.AlertRecipient {
+	recipients := make([]alertbus.AlertRecipient, len(dbs))
+	for i, db := range dbs {
+		recipients[i] = toBusAlertRecipient(db)
+	}
+	return recipients
+}
+
 // dbAlertAcknowledgment represents the database structure for an alert acknowledgment.
 type dbAlertAcknowledgment struct {
 	ID               uuid.UUID      `db:"id"`

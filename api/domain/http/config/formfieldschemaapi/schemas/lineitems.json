@@ -1,0 +1,46 @@
+{
+    "type": "object",
+    "required": ["entity", "parent_field", "fields"],
+    "properties": {
+        "entity": {
+            "type": "string",
+            "description": "Child entity in schema.table format"
+        },
+        "parent_field": {
+            "type": "string",
+            "description": "Foreign key column referencing the parent entity"
+        },
+        "fields": {
+            "type": "array",
+            "description": "Field definitions for each line item",
+            "items": {
+                "type": "object",
+                "required": ["name", "label", "type"],
+                "properties": {
+                    "name": { "type": "string" },
+                    "label": { "type": "string" },
+                    "type": {
+                        "type": "string",
+                        "enum": ["text", "textarea", "number", "currency", "percent", "dropdown", "enum", "hidden", "date"]
+                    },
+                    "required": { "type": "boolean" },
+                    "hidden": { "type": "boolean" },
+                    "default_value": { "type": "string" },
+                    "default_value_create": { "type": "string" },
+                    "default_value_update": { "type": "string" },
+                    "enum_name": { "type": "string" },
+                    "dropdown_config": { "type": "object" },
+                    "validation": { "type": "object" },
+                    "depends_on": { "type": "object" }
+                }
+            }
+        },
+        "item_label": { "type": "string", "description": "Plural label (e.g., 'Line Items')" },
+        "singular_item_label": { "type": "string", "description": "Singular label (e.g., 'Line Item')" },
+        "min_items": { "type": "integer", "minimum": 0 },
+        "max_items": { "type": "integer", "minimum": 1 },
+        "full_width": { "type": "boolean" },
+        "columns": { "type": "integer", "minimum": 1, "maximum": 6, "description": "Grid columns (default 2)" },
+        "execution_order": { "type": "integer", "description": "Order in multi-entity form execution" }
+    }
+}

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Layout Config",
+  "description": "Configuration schema for page content layout stored in config.page_content.layout JSONB column. Controls responsive positioning and container behavior using Tailwind CSS conventions.",
+  "type": "object",
+  "properties": {
+    "colSpan": {
+      "$ref": "#/$defs/ResponsiveValue",
+      "description": "Responsive column span (maps to Tailwind col-span-* classes)."
+    },
+    "rowSpan": {
+      "type": "integer",
+      "description": "Number of grid rows this content spans.",
+      "minimum": 1
+    },
+    "colStart": {
+      "type": "integer",
+      "description": "Explicit grid column start position.",
+      "minimum": 1
+    },
+    "rowStart": {
+      "type": "integer",
+      "description": "Explicit grid row start position.",
+      "minimum": 1
+    },
+    "gridCols": {
+      "$ref": "#/$defs/ResponsiveValue",
+      "description": "For containers: number of grid columns for child layout (maps to Tailwind grid-cols-* classes)."
+    },
+    "gap": {
+      "type": "string",
+      "description": "Tailwind gap class for container spacing (e.g. 'gap-4', 'gap-x-4 gap-y-6')."
+    },
+    "className": {
+      "type": "string",
+      "description": "Additional Tailwind CSS classes."
+    },
+    "containerType": {
+      "type": "string",
+      "description": "Container layout mode. Layout types control physical arrangement; semantic types control UI behavior.",
+      "enum": ["grid-12", "flex", "stack", "tab", "accordion", "section", "grid"]
+    },
+    "collapsible": {
+      "type": "boolean",
+      "description": "If true, the container can be collapsed/expanded by the user."
+    }
+  },
+  "$defs": {
+    "ResponsiveValue": {
+      "type": "object",
+      "description": "Mobile-first responsive values following Tailwind breakpoints (sm: 640px, md: 768px, lg: 1024px, xl: 1280px, 2xl: 1536px).",
+      "required": ["default"],
+      "properties": {
+        "default": {
+          "type": "integer",
+          "description": "Default value (mobile-first, applies to all breakpoints unless overridden).",
+          "minimum": 1
+        },
+        "sm": {
+          "type": "integer",
+          "description": "Value at sm breakpoint (>= 640px).",
+          "minimum": 1
+        },
+        "md": {
+          "type": "integer",
+          "description": "Value at md breakpoint (>= 768px).",
+          "minimum": 1
+        },
+        "lg": {
+          "type": "integer",
+          "description": "Value at lg breakpoint (>= 1024px).",
+          "minimum": 1
+        },
+        "xl": {
+          "type": "integer",
+          "description": "Value at xl breakpoint (>= 1280px).",
+          "minimum": 1
+        },
+        "2xl": {
+          "type": "integer",
+          "description": "Value at 2xl breakpoint (>= 1536px).",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

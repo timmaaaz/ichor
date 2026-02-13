@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Content Types",
+  "description": "Valid content types for page content blocks (config.page_content.content_type column).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["type", "name", "description"],
+    "properties": {
+      "type": {
+        "type": "string",
+        "description": "Content type identifier stored in the database."
+      },
+      "name": {
+        "type": "string",
+        "description": "Human-readable display name."
+      },
+      "description": {
+        "type": "string",
+        "description": "What this content type does."
+      },
+      "requires_table_config": {
+        "type": "boolean",
+        "description": "Whether this content type needs a table_config_id reference."
+      },
+      "requires_form": {
+        "type": "boolean",
+        "description": "Whether this content type needs a form_id reference."
+      },
+      "supports_children": {
+        "type": "boolean",
+        "description": "Whether this content type can contain nested child content blocks."
+      }
+    }
+  },
+  "default": [
+    {
+      "type": "table",
+      "name": "Table",
+      "description": "Data table widget powered by a table config. Displays paginated, sortable, filterable rows with column formatting.",
+      "requires_table_config": true,
+      "requires_form": false,
+      "supports_children": false
+    },
+    {
+      "type": "form",
+      "name": "Form",
+      "description": "Data entry form for creating or editing entity records.",
+      "requires_table_config": false,
+      "requires_form": true,
+      "supports_children": false
+    },
+    {
+      "type": "chart",
+      "name": "Chart",
+      "description": "Data visualization widget (line, bar, pie, KPI, etc.) powered by a table config with metrics and group_by aggregation.",
+      "requires_table_config": true,
+      "requires_form": false,
+      "supports_children": false
+    },
+    {
+      "type": "tabs",
+      "name": "Tabs",
+      "description": "Tabbed container that organizes child content blocks into switchable tab panes.",
+      "requires_table_config": false,
+      "requires_form": false,
+      "supports_children": true
+    },
+    {
+      "type": "container",
+      "name": "Container",
+      "description": "Layout container for grouping child content blocks in a grid, flex, stack, accordion, or section layout.",
+      "requires_table_config": false,
+      "requires_form": false,
+      "supports_children": true
+    },
+    {
+      "type": "text",
+      "name": "Text",
+      "description": "Static text or markdown content block for labels, instructions, or section headers.",
+      "requires_table_config": false,
+      "requires_form": false,
+      "supports_children": false
+    }
+  ]
+}

@@ -66,7 +66,7 @@ The executor uses **Breadth-First Search (BFS)** traversal:
 7. After each action, determine which outgoing edges to follow based on `ShouldFollowEdge()`
 8. Track executed actions to prevent cycles
 
-**Source**: `business/sdk/workflow/executor.go:211-402`
+**Source**: `business/sdk/workflow/temporal/graph_executor.go`
 
 ### Edge Following Logic
 
@@ -87,7 +87,7 @@ func ShouldFollowEdge(edge ActionEdge, result ActionResult) bool {
 }
 ```
 
-**Source**: `business/sdk/workflow/executor.go:404-427`
+**Source**: `business/sdk/workflow/temporal/graph_executor.go` (inlined in `resolveNextActions`)
 
 ### Edge Requirement
 
@@ -424,18 +424,16 @@ This example implements a tiered approval system:
 
 ## Testing Graph Workflows
 
-The test file `business/sdk/workflow/executor_graph_test.go` demonstrates all patterns:
+The Temporal graph executor tests in `business/sdk/workflow/temporal/` demonstrate all patterns:
 
-- `TestGraphExec_SingleStartEdge` / `MultipleStartEdges` - Entry points
-- `TestGraphExec_TrueBranch_WhenConditionTrue` - Branch following
-- `TestGraphExec_DiamondPattern` - Converging branches
-- `TestGraphExec_NestedConditions` - Multi-level conditions
-- `TestGraphExec_NoCycleInfiniteLoop` - Cycle prevention
-- `TestGraphExec_EdgeOrderRespected` - Ordering guarantees
+- `graph_executor_test.go` — Core execution patterns, start edges, linear chains
+- `graph_executor_edges_test.go` — Edge types, branching, convergence, diamond patterns
+- `graph_executor_convergence_test.go` — Convergence point detection, result merging
+- `graph_executor_determinism_test.go` — Deterministic execution ordering
 
 Run tests with:
 ```bash
-go test -v ./business/sdk/workflow/... -run TestGraphExec
+go test -v ./business/sdk/workflow/temporal/... -run TestGraph
 ```
 
 ## Related Documentation

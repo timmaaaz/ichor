@@ -67,6 +67,39 @@ func (a *App) prepareRequest(req *SaveWorkflowRequest) error {
 	return nil
 }
 
+// DryRunValidate runs full validation on the workflow request without committing
+// to the database. Returns a ValidationResult indicating success or errors.
+func (a *App) DryRunValidate(req SaveWorkflowRequest) ValidationResult {
+	var validationErrors []string
+
+	if err := req.Validate(); err != nil {
+		validationErrors = append(validationErrors, err.Error())
+	}
+
+	if len(req.Actions) > 0 {
+		if err := ValidateActionConfigs(req.Actions); err != nil {
+			validationErrors = append(validationErrors, fmt.Sprintf("action config: %s", err))
+		}
+
+		if err := ValidateGraph(req.Actions, req.Edges); err != nil {
+			validationErrors = append(validationErrors, fmt.Sprintf("graph: %s", err))
+		}
+
+		if a.registry != nil {
+			if err := validateOutputPorts(req.Actions, req.Edges, a.registry); err != nil {
+				validationErrors = append(validationErrors, fmt.Sprintf("output port: %s", err))
+			}
+		}
+	}
+
+	return ValidationResult{
+		Valid:       len(validationErrors) == 0,
+		Errors:      validationErrors,
+		ActionCount: len(req.Actions),
+		EdgeCount:   len(req.Edges),
+	}
+}
+
 // SaveWorkflow updates an existing workflow atomically (rule + actions + edges).
 // This performs all operations within a single database transaction.
 func (a *App) SaveWorkflow(ctx context.Context, ruleID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error) {

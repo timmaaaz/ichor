@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "default_value": { "type": "string" },
+        "hidden": { "type": "boolean" },
+        "min": { "type": "integer", "description": "Minimum string length" },
+        "max": { "type": "integer", "description": "Maximum string length" }
+    }
+}

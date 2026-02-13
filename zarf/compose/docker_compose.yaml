@@ -59,6 +59,23 @@ services:
       ichor-system-network:
         ipv4_address: 10.5.0.6
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      ichor-system-network:
+        ipv4_address: 10.5.0.25
+
   auth:
     image: localhost/superior/auth:0.0.1
     pull_policy: never
@@ -111,6 +128,9 @@ services:
       - ICHOR_DB_DISABLE_TLS=true
       - ICHOR_AUTH_HOST=http://auth:6000
       - ICHOR_RABBIT_MQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ICHOR_LLM_PROVIDER=ollama
+      - ICHOR_LLM_MODEL=qwen3:8b
+      - ICHOR_LLM_HOST=http://ollama:11434
       - KUBERNETES_NAMESPACE
       - KUBERNETES_NAME
       - KUBERNETES_POD_IP
@@ -149,6 +169,7 @@ services:
 
 volumes:
   database: {}
+  ollama-models: {}
 
 networks:
   ichor-system-network:

@@ -1,6 +1,7 @@
 package reference_test
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/referenceapi"
@@ -11,10 +12,21 @@ import (
 // Defined as a package constant to avoid typos and improve maintainability.
 var expectedActionTypes = []string{
 	"allocate_inventory",
+	"check_inventory",
+	"check_reorder_point",
+	"commit_allocation",
 	"create_alert",
+	"create_entity",
+	"delay",
+	"evaluate_condition",
+	"log_audit_entry",
+	"lookup_entity",
+	"release_reservation",
+	"reserve_inventory",
 	"seek_approval",
 	"send_email",
 	"send_notification",
+	"transition_status",
 	"update_field",
 }
 
@@ -228,24 +240,53 @@ func queryActionTypes200(sd ReferenceSeedData) []apitest.Table {
 					return "error getting action types response"
 				}
 
-				// Should have the predefined action types
-				expectedTypes := map[string]bool{
-					"allocate_inventory": true,
-					"create_alert":       true,
-					"seek_approval":      true,
-					"send_email":         true,
-					"send_notification":  true,
-					"update_field":       true,
+				// Should have all 17 predefined action types
+				expectedTypes := make(map[string]bool)
+				for _, t := range expectedActionTypes {
+					expectedTypes[t] = true
 				}
 
 				for _, at := range *gotResp {
-					if _, exists := expectedTypes[at.Type]; exists {
-						delete(expectedTypes, at.Type)
+					delete(expectedTypes, at.Type)
+
+					// Every type must have output ports
+					if len(at.OutputPorts) == 0 {
+						return fmt.Sprintf("action type %q has no output ports", at.Type)
+					}
+
+					// At least one port must be the default
+					hasDefault := false
+					for _, port := range at.OutputPorts {
+						if port.IsDefault {
+							hasDefault = true
+							break
+						}
+					}
+					if !hasDefault {
+						return fmt.Sprintf("action type %q has no default output port", at.Type)
+					}
+
+					// Must have a config schema
+					if len(at.ConfigSchema) == 0 {
+						return fmt.Sprintf("action type %q has no config schema", at.Type)
+					}
+
+					// Category must be valid
+					validCategories := map[string]bool{
+						"communication": true, "inventory": true, "control": true,
+						"data": true, "approval": true,
+					}
+					if !validCategories[at.Category] {
+						return fmt.Sprintf("action type %q has invalid category %q", at.Type, at.Category)
 					}
 				}
 
 				if len(expectedTypes) > 0 {
-					return "missing expected action types"
+					missing := make([]string, 0, len(expectedTypes))
+					for t := range expectedTypes {
+						missing = append(missing, t)
+					}
+					return fmt.Sprintf("missing expected action types: %v", missing)
 				}
 
 				return ""

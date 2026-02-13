@@ -65,18 +65,23 @@ func validateOutputPorts(actions []SaveActionRequest, edges []SaveEdgeRequest, r
 
 // Action type constants
 const (
-	ActionTypeCreateAlert         = "create_alert"
-	ActionTypeSendEmail           = "send_email"
-	ActionTypeSendNotification    = "send_notification"
-	ActionTypeUpdateField         = "update_field"
-	ActionTypeSeekApproval        = "seek_approval"
 	ActionTypeAllocateInventory   = "allocate_inventory"
-	ActionTypeEvaluateCondition   = "evaluate_condition"
 	ActionTypeCheckInventory      = "check_inventory"
-	ActionTypeReserveInventory    = "reserve_inventory"
 	ActionTypeCheckReorderPoint   = "check_reorder_point"
 	ActionTypeCommitAllocation    = "commit_allocation"
+	ActionTypeCreateAlert         = "create_alert"
+	ActionTypeCreateEntity        = "create_entity"
+	ActionTypeDelay               = "delay"
+	ActionTypeEvaluateCondition   = "evaluate_condition"
+	ActionTypeLogAuditEntry       = "log_audit_entry"
+	ActionTypeLookupEntity        = "lookup_entity"
 	ActionTypeReleaseReservation  = "release_reservation"
+	ActionTypeReserveInventory    = "reserve_inventory"
+	ActionTypeSeekApproval        = "seek_approval"
+	ActionTypeSendEmail           = "send_email"
+	ActionTypeSendNotification    = "send_notification"
+	ActionTypeTransitionStatus    = "transition_status"
+	ActionTypeUpdateField         = "update_field"
 )
 
 // ValidateActionConfigs validates the action configuration for each action
@@ -111,11 +116,18 @@ func validateActionConfig(actionType string, config json.RawMessage) error {
 	case ActionTypeEvaluateCondition:
 		return validateEvaluateConditionConfig(config)
 	case ActionTypeCheckInventory,
-		ActionTypeReserveInventory,
 		ActionTypeCheckReorderPoint,
 		ActionTypeCommitAllocation,
-		ActionTypeReleaseReservation:
+		ActionTypeReleaseReservation,
+		ActionTypeReserveInventory:
 		// Inventory action configs are validated at runtime by their handlers
+		return nil
+	case ActionTypeDelay,
+		ActionTypeLookupEntity,
+		ActionTypeCreateEntity,
+		ActionTypeTransitionStatus,
+		ActionTypeLogAuditEntry:
+		// These action configs are validated at runtime by their handlers
 		return nil
 	default:
 		return fmt.Errorf("unknown action type: %s", actionType)

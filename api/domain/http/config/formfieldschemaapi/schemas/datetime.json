@@ -1,0 +1,10 @@
+{
+    "type": "object",
+    "properties": {
+        "default_value": { "type": "string" },
+        "hidden": { "type": "boolean" },
+        "min_date": { "type": "string" },
+        "max_date": { "type": "string" },
+        "must_be_future": { "type": "boolean" }
+    }
+}

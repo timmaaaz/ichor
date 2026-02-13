@@ -44,7 +44,7 @@ type SaveActionRequest struct {
 	ID             *string         `json:"id"`
 	Name           string          `json:"name" validate:"required,min=1,max=255"`
 	Description    string          `json:"description" validate:"max=1000"`
-	ActionType     string          `json:"action_type" validate:"required,oneof=create_alert send_email send_notification update_field seek_approval allocate_inventory evaluate_condition check_inventory reserve_inventory check_reorder_point commit_allocation release_reservation"`
+	ActionType     string          `json:"action_type" validate:"required,oneof=allocate_inventory check_inventory check_reorder_point commit_allocation create_alert create_entity delay evaluate_condition log_audit_entry lookup_entity release_reservation reserve_inventory seek_approval send_email send_notification transition_status update_field"`
 	ActionConfig   json.RawMessage `json:"action_config" validate:"required"`
 	IsActive       bool            `json:"is_active"`
 }
@@ -100,4 +100,19 @@ type SaveEdgeResponse struct {
 	EdgeType       string `json:"edge_type"`
 	SourceOutput   string `json:"source_output,omitempty"`
 	EdgeOrder      int    `json:"edge_order"`
+}
+
+// ValidationResult is returned for dry-run requests. It contains the
+// validation outcome without committing any changes to the database.
+type ValidationResult struct {
+	Valid       bool     `json:"valid"`
+	Errors      []string `json:"errors,omitempty"`
+	ActionCount int      `json:"action_count"`
+	EdgeCount   int      `json:"edge_count"`
+}
+
+// Encode implements the Encoder interface.
+func (r ValidationResult) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(r)
+	return data, "application/json", err
 }

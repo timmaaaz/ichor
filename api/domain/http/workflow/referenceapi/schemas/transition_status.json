@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "required": ["target_entity", "status_field", "to_status", "valid_from_statuses"],
+    "properties": {
+        "target_entity": {
+            "type": "string",
+            "description": "Entity to transition in schema.table format (e.g., 'sales.orders')"
+        },
+        "target_id": {
+            "type": "string",
+            "description": "UUID of the entity to transition (supports template variables, defaults to triggered entity ID)"
+        },
+        "status_field": {
+            "type": "string",
+            "description": "Column name containing the status value"
+        },
+        "to_status": {
+            "type": "string",
+            "description": "Target status value (supports template variables)"
+        },
+        "valid_from_statuses": {
+            "type": "array",
+            "description": "List of statuses from which the transition is allowed",
+            "minItems": 1,
+            "items": {
+                "type": "string"
+            }
+        }
+    }
+}
