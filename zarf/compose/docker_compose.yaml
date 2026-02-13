@@ -129,7 +129,7 @@ services:
       - ICHOR_AUTH_HOST=http://auth:6000
       - ICHOR_RABBIT_MQ_URL=amqp://guest:guest@rabbitmq:5672/
       - ICHOR_LLM_PROVIDER=ollama
-      - ICHOR_LLM_MODEL=qwen2.5:latest
+      - ICHOR_LLM_MODEL=qwen3:8b
       - ICHOR_LLM_HOST=http://ollama:11434
       - KUBERNETES_NAMESPACE
       - KUBERNETES_NAME

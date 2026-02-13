@@ -14,6 +14,8 @@ func buildSystemPrompt(workflowCtx json.RawMessage) string {
 	b.WriteString(roleBlock)
 	b.WriteString("\n\n")
 	b.WriteString(toolGuidance)
+	b.WriteString("\n\n")
+	b.WriteString(responseGuidance)
 
 	if len(workflowCtx) > 0 && string(workflowCtx) != "null" {
 		b.WriteString("\n\n")
@@ -45,10 +47,19 @@ const roleBlock = `You are a workflow automation assistant for the Ichor ERP pla
 You have access to real tools that read from and write to the Ichor system:
 - **Discover** available action types, trigger types, and entity types.
 - **Read** existing workflow rules (with their actions and edges).
+- **Alerts** — list the user's alerts or get alert details (with enriched recipient names/emails).
 - **Preview** proposed workflow changes for user approval before persisting.
 - **Validate** workflow definitions (dry-run).
 
 All tool calls execute with the user's permissions—if they lack access, the tool will return an error.
+
+## How to Respond
+
+Before answering, think through these steps:
+1. What is the user asking?
+2. What tool(s) do I need, if any?
+3. What key facts did the tool return?
+4. How do I explain this clearly in plain language?
 
 ## Preview-First Workflow
 
@@ -84,6 +95,25 @@ When creating new workflows, use temporary IDs for actions (e.g. "temp:0", "temp
 
 Always explain what you're doing before making tool calls. If a tool call fails, explain the error to the user and suggest corrections.`,
 	"`", "`", "`", "`", "`", "`")
+
+const responseGuidance = `## Response Formatting
+
+When you receive tool results, INTERPRET the data and explain it in plain language. Do not dump raw tool JSON into your response—extract the key information and present it clearly.
+
+### Example
+
+If a tool returns: {"rule_name": "Low Stock Alert", "trigger_type": "on_update", "entity_name": "inventory_items", "is_active": true}
+
+BAD: "Here's what I found: {"rule_name": "Low Stock Alert", "trigger_type": "on_update"...}"
+GOOD: "The **Low Stock Alert** rule triggers when inventory items are updated and is currently active."
+
+### Rules:
+- Extract key facts from tool results and explain them in natural language
+- Use bullet points or numbered lists to organize information
+- Small JSON snippets are fine when showing exact syntax (e.g., a config field value)
+- If a tool call fails, explain the error clearly and suggest next steps
+- For alerts, always mention the recipient names (not UUIDs) when describing who receives an alert
+- Alert recipients include "recipients" with "name" and optionally "email" fields — use these instead of raw IDs`
 
 const contextPreamble = `## Current Workflow Context
 

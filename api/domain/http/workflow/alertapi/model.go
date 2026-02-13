@@ -10,19 +10,28 @@ import (
 
 // Alert represents the API response model for an alert.
 type Alert struct {
-	ID               string          `json:"id"`
-	AlertType        string          `json:"alertType"`
-	Severity         string          `json:"severity"`
-	Title            string          `json:"title"`
-	Message          string          `json:"message"`
-	Context          json.RawMessage `json:"context,omitempty"`
-	SourceEntityName string          `json:"sourceEntityName,omitempty"`
-	SourceEntityID   string          `json:"sourceEntityId,omitempty"`
-	SourceRuleID     string          `json:"sourceRuleId,omitempty"`
-	Status           string          `json:"status"`
-	ExpiresDate      *string         `json:"expiresDate,omitempty"`
-	CreatedDate      string          `json:"createdDate"`
-	UpdatedDate      string          `json:"updatedDate"`
+	ID               string             `json:"id"`
+	AlertType        string             `json:"alertType"`
+	Severity         string             `json:"severity"`
+	Title            string             `json:"title"`
+	Message          string             `json:"message"`
+	Context          json.RawMessage    `json:"context,omitempty"`
+	SourceEntityName string             `json:"sourceEntityName,omitempty"`
+	SourceEntityID   string             `json:"sourceEntityId,omitempty"`
+	SourceRuleID     string             `json:"sourceRuleId,omitempty"`
+	Status           string             `json:"status"`
+	ExpiresDate      *string            `json:"expiresDate,omitempty"`
+	CreatedDate      string             `json:"createdDate"`
+	UpdatedDate      string             `json:"updatedDate"`
+	Recipients       []AlertRecipientVM `json:"recipients,omitempty"`
+}
+
+// AlertRecipientVM represents an enriched alert recipient with human-readable names.
+type AlertRecipientVM struct {
+	RecipientType string `json:"recipientType"`
+	RecipientID   string `json:"recipientId"`
+	Name          string `json:"name"`
+	Email         string `json:"email,omitempty"`
 }
 
 // Encode implements the web.Encoder interface.

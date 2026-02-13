@@ -69,6 +69,21 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 	case "discover_entities":
 		return e.get(ctx, "/v1/workflow/entities", token)
 
+	// Alerts
+	case "list_my_alerts":
+		return e.listMyAlerts(ctx, tc, token)
+	case "get_alert_detail":
+		var p struct {
+			AlertID string `json:"alert_id"`
+		}
+		if err := json.Unmarshal(tc.Input, &p); err != nil {
+			return nil, fmt.Errorf("bad params: %w", err)
+		}
+		if err := requireUUID(p.AlertID, "alert_id"); err != nil {
+			return nil, err
+		}
+		return e.get(ctx, "/v1/workflow/alerts/"+p.AlertID, token)
+
 	// Read
 	case "get_workflow_rule":
 		var p struct {
@@ -80,7 +95,22 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		if err := requireUUID(p.RuleID, "rule_id"); err != nil {
 			return nil, err
 		}
-		return e.getWorkflowFull(ctx, p.RuleID, token)
+		return e.getWorkflowSummary(ctx, p.RuleID, token)
+	case "explain_workflow_node":
+		var p struct {
+			RuleID     string `json:"rule_id"`
+			Identifier string `json:"identifier"`
+		}
+		if err := json.Unmarshal(tc.Input, &p); err != nil {
+			return nil, fmt.Errorf("bad params: %w", err)
+		}
+		if err := requireUUID(p.RuleID, "rule_id"); err != nil {
+			return nil, err
+		}
+		if p.Identifier == "" {
+			return nil, fmt.Errorf("identifier is required")
+		}
+		return e.explainWorkflowNode(ctx, p.RuleID, p.Identifier, token)
 	case "list_workflow_rules":
 		return e.get(ctx, "/v1/workflow/rules", token)
 
@@ -119,9 +149,10 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 	}
 }
 
-// getWorkflowFull merges rule + actions + edges into one response,
-// mirroring what the MCP get_workflow tool does.
-func (e *Executor) getWorkflowFull(ctx context.Context, ruleID string, token string) (json.RawMessage, error) {
+// getWorkflowSummary fetches rule + actions + edges, then returns a compact
+// summary with flow outline instead of raw JSON. This is much easier for
+// smaller LLMs to interpret than the full action/edge payloads.
+func (e *Executor) getWorkflowSummary(ctx context.Context, ruleID string, token string) (json.RawMessage, error) {
 	rule, err := e.get(ctx, "/v1/workflow/rules/"+ruleID, token)
 	if err != nil {
 		return nil, fmt.Errorf("get rule: %w", err)
@@ -135,14 +166,63 @@ func (e *Executor) getWorkflowFull(ctx context.Context, ruleID string, token str
 		return nil, fmt.Errorf("get edges: %w", err)
 	}
 
-	merged := map[string]json.RawMessage{
-		"rule":    rule,
-		"actions": actions,
-		"edges":   edges,
+	result := map[string]any{
+		"rule": json.RawMessage(rule),
 	}
-	b, err := json.Marshal(merged)
+
+	// Parse graph and compute a compact summary with flow outline.
+	graph, graphErr := parseWorkflowGraph(actions, edges)
+	if graphErr == nil {
+		result["summary"] = graph.computeSummary()
+	}
+
+	// NOTE: Raw actions/edges are omitted to keep the response compact for
+	// smaller LLMs. If a larger model is in use and needs full detail, the
+	// following lines can be uncommented:
+	//
+	// result["actions"] = json.RawMessage(actions)
+	// result["edges"] = json.RawMessage(edges)
+
+	b, err := json.Marshal(result)
 	if err != nil {
-		return nil, fmt.Errorf("marshal merged workflow: %w", err)
+		return nil, fmt.Errorf("marshal workflow summary: %w", err)
+	}
+	return b, nil
+}
+
+// explainWorkflowNode fetches actions + edges for a rule, then returns
+// detailed information about a specific action node identified by name or UUID.
+func (e *Executor) explainWorkflowNode(ctx context.Context, ruleID, identifier, token string) (json.RawMessage, error) {
+	actions, err := e.get(ctx, "/v1/workflow/rules/"+ruleID+"/actions", token)
+	if err != nil {
+		return nil, fmt.Errorf("get actions: %w", err)
+	}
+	edges, err := e.get(ctx, "/v1/workflow/rules/"+ruleID+"/edges", token)
+	if err != nil {
+		return nil, fmt.Errorf("get edges: %w", err)
+	}
+
+	graph, err := parseWorkflowGraph(actions, edges)
+	if err != nil {
+		return nil, fmt.Errorf("parse workflow graph: %w", err)
+	}
+
+	action := graph.findAction(identifier)
+	if action == nil {
+		return nil, fmt.Errorf("action not found: %s", identifier)
+	}
+
+	// For create_alert actions, enrich the config with human-readable
+	// recipient names/emails so the LLM can describe them to the user.
+	if action.ActionType == "create_alert" && len(action.Config) > 0 {
+		action.Config = e.enrichCreateAlertConfig(ctx, action.Config, token)
+	}
+
+	explanation := graph.explainNode(action)
+
+	b, err := json.Marshal(explanation)
+	if err != nil {
+		return nil, fmt.Errorf("marshal node explanation: %w", err)
 	}
 	return b, nil
 }
@@ -198,6 +278,121 @@ func (e *Executor) do(ctx context.Context, method, path string, body json.RawMes
 	}
 
 	return json.RawMessage(respBody), nil
+}
+
+// listMyAlerts fetches the current user's alerts with optional filters.
+func (e *Executor) listMyAlerts(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		Status   string `json:"status"`
+		Severity string `json:"severity"`
+		Page     string `json:"page"`
+		Rows     string `json:"rows"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+
+	path := "/v1/workflow/alerts/mine?"
+	if p.Status != "" {
+		path += "status=" + p.Status + "&"
+	}
+	if p.Severity != "" {
+		path += "severity=" + p.Severity + "&"
+	}
+	if p.Page != "" {
+		path += "page=" + p.Page + "&"
+	}
+	if p.Rows != "" {
+		path += "rows=" + p.Rows + "&"
+	}
+
+	return e.get(ctx, path, token)
+}
+
+// enrichCreateAlertConfig parses a create_alert action config and resolves
+// recipient UUIDs to human-readable names/emails via the REST API.
+func (e *Executor) enrichCreateAlertConfig(ctx context.Context, config json.RawMessage, token string) json.RawMessage {
+	var cfg struct {
+		AlertType  string `json:"alert_type"`
+		Severity   string `json:"severity"`
+		Title      string `json:"title"`
+		Message    string `json:"message"`
+		Recipients struct {
+			Users []string `json:"users"`
+			Roles []string `json:"roles"`
+		} `json:"recipients"`
+		Context      json.RawMessage `json:"context"`
+		ResolvePrior bool            `json:"resolve_prior"`
+	}
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return config
+	}
+
+	type enrichedRecipient struct {
+		ID    string `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email,omitempty"`
+	}
+
+	var enrichedUsers []enrichedRecipient
+	for _, userID := range cfg.Recipients.Users {
+		r := enrichedRecipient{ID: userID}
+		userData, err := e.get(ctx, "/v1/core/users/"+userID, token)
+		if err == nil {
+			var user struct {
+				FirstName string `json:"firstName"`
+				LastName  string `json:"lastName"`
+				Email     string `json:"email"`
+			}
+			if json.Unmarshal(userData, &user) == nil {
+				r.Name = user.FirstName + " " + user.LastName
+				r.Email = user.Email
+			}
+		}
+		if r.Name == "" {
+			r.Name = "Unknown User"
+		}
+		enrichedUsers = append(enrichedUsers, r)
+	}
+
+	var enrichedRoles []enrichedRecipient
+	for _, roleID := range cfg.Recipients.Roles {
+		r := enrichedRecipient{ID: roleID}
+		roleData, err := e.get(ctx, "/v1/core/roles/"+roleID, token)
+		if err == nil {
+			var role struct {
+				Name string `json:"name"`
+			}
+			if json.Unmarshal(roleData, &role) == nil {
+				r.Name = role.Name
+			}
+		}
+		if r.Name == "" {
+			r.Name = "Unknown Role"
+		}
+		enrichedRoles = append(enrichedRoles, r)
+	}
+
+	enriched := map[string]any{
+		"alert_type": cfg.AlertType,
+		"severity":   cfg.Severity,
+		"title":      cfg.Title,
+		"message":    cfg.Message,
+		"recipients": map[string]any{
+			"users": enrichedUsers,
+			"roles": enrichedRoles,
+		},
+		"resolve_prior": cfg.ResolvePrior,
+	}
+	if len(cfg.Context) > 0 {
+		enriched["context"] = cfg.Context
+	}
+
+	b, err := json.Marshal(enriched)
+	if err != nil {
+		return config
+	}
+	return b
 }
 
 // requireUUID validates that s is a well-formed UUID string (36 chars with

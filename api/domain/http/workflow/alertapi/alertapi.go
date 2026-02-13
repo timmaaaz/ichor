@@ -12,6 +12,8 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/app/sdk/query"
+	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
@@ -35,20 +37,24 @@ var orderByFields = map[string]string{
 type api struct {
 	log           *logger.Logger
 	alertBus      *alertbus.Business
+	userBus       *userbus.Business
+	roleBus       *rolebus.Business
 	userRoleBus   *userrolebus.Business
 	workflowQueue *rabbitmq.WorkflowQueue
 }
 
-func newAPI(log *logger.Logger, alertBus *alertbus.Business, userRoleBus *userrolebus.Business, workflowQueue *rabbitmq.WorkflowQueue) *api {
+func newAPI(log *logger.Logger, alertBus *alertbus.Business, userBus *userbus.Business, roleBus *rolebus.Business, userRoleBus *userrolebus.Business, workflowQueue *rabbitmq.WorkflowQueue) *api {
 	return &api{
 		log:           log,
 		alertBus:      alertBus,
+		userBus:       userBus,
+		roleBus:       roleBus,
 		userRoleBus:   userRoleBus,
 		workflowQueue: workflowQueue,
 	}
 }
 
-// query returns all alerts (admin only).
+// query returns all alerts (admin only) with enriched recipient data.
 func (a *api) query(ctx context.Context, r *http.Request) web.Encoder {
 	qp := parseQueryParams(r)
 
@@ -77,10 +83,13 @@ func (a *api) query(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(toAppAlerts(alerts), total, pg)
+	appAlerts := toAppAlerts(alerts)
+	a.enrichAlertRecipients(ctx, alerts, appAlerts)
+
+	return query.NewResult(appAlerts, total, pg)
 }
 
-// queryMine returns alerts for the authenticated user.
+// queryMine returns alerts for the authenticated user with enriched recipient data.
 func (a *api) queryMine(ctx context.Context, r *http.Request) web.Encoder {
 	userID, err := mid.GetUserID(ctx)
 	if err != nil {
@@ -119,10 +128,13 @@ func (a *api) queryMine(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "count mine: %s", err)
 	}
 
-	return query.NewResult(toAppAlerts(alerts), total, pg)
+	appAlerts := toAppAlerts(alerts)
+	a.enrichAlertRecipients(ctx, alerts, appAlerts)
+
+	return query.NewResult(appAlerts, total, pg)
 }
 
-// queryByID returns a single alert by ID.
+// queryByID returns a single alert by ID with enriched recipient data.
 func (a *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 	id, err := uuid.Parse(web.Param(r, "id"))
 	if err != nil {
@@ -143,7 +155,20 @@ func (a *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "query by id: %s", err)
 	}
 
-	return toAppAlert(alert)
+	appAlert := toAppAlert(alert)
+
+	recipients, err := a.alertBus.QueryRecipientsByAlertID(ctx, id)
+	if err != nil {
+		a.log.Error(ctx, "failed to fetch recipients", "alert_id", id, "error", err)
+		return appAlert
+	}
+
+	appAlert.Recipients, err = a.enrichRecipients(ctx, recipients)
+	if err != nil {
+		a.log.Error(ctx, "failed to enrich recipients", "alert_id", id, "error", err)
+	}
+
+	return appAlert
 }
 
 // acknowledge marks an alert as acknowledged by the user.
@@ -422,4 +447,138 @@ func parseUUIDs(ids []string) ([]uuid.UUID, error) {
 		result[i] = parsed
 	}
 	return result, nil
+}
+
+// =========================================================================
+// Recipient enrichment
+// =========================================================================
+
+// enrichAlertRecipients batch-enriches recipients for a list of alerts.
+func (a *api) enrichAlertRecipients(ctx context.Context, busAlerts []alertbus.Alert, appAlerts []Alert) {
+	if len(busAlerts) == 0 {
+		return
+	}
+
+	alertIDs := make([]uuid.UUID, len(busAlerts))
+	for i, alert := range busAlerts {
+		alertIDs[i] = alert.ID
+	}
+
+	recipientMap, err := a.alertBus.QueryRecipientsByAlertIDs(ctx, alertIDs)
+	if err != nil {
+		a.log.Error(ctx, "failed to fetch recipients for alerts", "error", err)
+		return
+	}
+
+	// Collect all unique user and role IDs across all alerts.
+	userIDSet := make(map[uuid.UUID]bool)
+	roleIDSet := make(map[uuid.UUID]bool)
+	for _, recipients := range recipientMap {
+		for _, r := range recipients {
+			switch r.RecipientType {
+			case "user":
+				userIDSet[r.RecipientID] = true
+			case "role":
+				roleIDSet[r.RecipientID] = true
+			}
+		}
+	}
+
+	userMap, roleMap := a.resolveUsersAndRoles(ctx, userIDSet, roleIDSet)
+
+	// Attach enriched recipients to each app alert.
+	for i, busAlert := range busAlerts {
+		recipients := recipientMap[busAlert.ID]
+		appAlerts[i].Recipients = buildEnrichedRecipients(recipients, userMap, roleMap)
+	}
+}
+
+// enrichRecipients resolves a single alert's recipients to enriched view models.
+func (a *api) enrichRecipients(ctx context.Context, recipients []alertbus.AlertRecipient) ([]AlertRecipientVM, error) {
+	if len(recipients) == 0 {
+		return nil, nil
+	}
+
+	userIDSet := make(map[uuid.UUID]bool)
+	roleIDSet := make(map[uuid.UUID]bool)
+	for _, r := range recipients {
+		switch r.RecipientType {
+		case "user":
+			userIDSet[r.RecipientID] = true
+		case "role":
+			roleIDSet[r.RecipientID] = true
+		}
+	}
+
+	userMap, roleMap := a.resolveUsersAndRoles(ctx, userIDSet, roleIDSet)
+	return buildEnrichedRecipients(recipients, userMap, roleMap), nil
+}
+
+// resolveUsersAndRoles fetches user and role details for the given ID sets.
+func (a *api) resolveUsersAndRoles(ctx context.Context, userIDs map[uuid.UUID]bool, roleIDs map[uuid.UUID]bool) (map[uuid.UUID]userbus.User, map[uuid.UUID]rolebus.Role) {
+	userMap := make(map[uuid.UUID]userbus.User, len(userIDs))
+	roleMap := make(map[uuid.UUID]rolebus.Role, len(roleIDs))
+
+	// Fetch users individually (no batch method available).
+	for id := range userIDs {
+		user, err := a.userBus.QueryByID(ctx, id)
+		if err != nil {
+			a.log.Error(ctx, "failed to resolve user", "user_id", id, "error", err)
+			continue
+		}
+		userMap[id] = user
+	}
+
+	// Fetch roles in batch.
+	if len(roleIDs) > 0 {
+		ids := make([]uuid.UUID, 0, len(roleIDs))
+		for id := range roleIDs {
+			ids = append(ids, id)
+		}
+		roles, err := a.roleBus.QueryByIDs(ctx, ids)
+		if err != nil {
+			a.log.Error(ctx, "failed to resolve roles", "error", err)
+		} else {
+			for _, role := range roles {
+				roleMap[role.ID] = role
+			}
+		}
+	}
+
+	return userMap, roleMap
+}
+
+// buildEnrichedRecipients constructs enriched recipient view models from raw recipients.
+func buildEnrichedRecipients(recipients []alertbus.AlertRecipient, userMap map[uuid.UUID]userbus.User, roleMap map[uuid.UUID]rolebus.Role) []AlertRecipientVM {
+	if len(recipients) == 0 {
+		return nil
+	}
+
+	result := make([]AlertRecipientVM, len(recipients))
+	for i, r := range recipients {
+		vm := AlertRecipientVM{
+			RecipientType: r.RecipientType,
+			RecipientID:   r.RecipientID.String(),
+		}
+
+		switch r.RecipientType {
+		case "user":
+			if user, ok := userMap[r.RecipientID]; ok {
+				vm.Name = fmt.Sprintf("%s %s", user.FirstName, user.LastName)
+				vm.Email = user.Email.Address
+			} else {
+				vm.Name = "Unknown User"
+			}
+		case "role":
+			if role, ok := roleMap[r.RecipientID]; ok {
+				vm.Name = role.Name
+			} else {
+				vm.Name = "Unknown Role"
+			}
+		}
+
+		result[i] = vm
+	}
+
+	return result
 }

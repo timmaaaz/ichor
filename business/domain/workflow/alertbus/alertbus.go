@@ -32,6 +32,8 @@ type Storer interface {
 	QueryByID(ctx context.Context, alertID uuid.UUID) (Alert, error)
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, pg page.Page) ([]Alert, error)
 	QueryByUserID(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, filter QueryFilter, orderBy order.By, pg page.Page) ([]Alert, error)
+	QueryRecipientsByAlertID(ctx context.Context, alertID uuid.UUID) ([]AlertRecipient, error)
+	QueryRecipientsByAlertIDs(ctx context.Context, alertIDs []uuid.UUID) (map[uuid.UUID][]AlertRecipient, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	CountByUserID(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, filter QueryFilter) (int, error)
 	UpdateStatus(ctx context.Context, alertID uuid.UUID, status string, now time.Time) error
@@ -112,6 +114,32 @@ func (b *Business) QueryByID(ctx context.Context, alertID uuid.UUID) (Alert, err
 	}
 
 	return alert, nil
+}
+
+// QueryRecipientsByAlertID returns all recipients for a given alert.
+func (b *Business) QueryRecipientsByAlertID(ctx context.Context, alertID uuid.UUID) ([]AlertRecipient, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.queryrecipientsbyalertid")
+	defer span.End()
+
+	recipients, err := b.storer.QueryRecipientsByAlertID(ctx, alertID)
+	if err != nil {
+		return nil, fmt.Errorf("query recipients: alertID[%s]: %w", alertID, err)
+	}
+
+	return recipients, nil
+}
+
+// QueryRecipientsByAlertIDs returns recipients for multiple alerts, keyed by alert ID.
+func (b *Business) QueryRecipientsByAlertIDs(ctx context.Context, alertIDs []uuid.UUID) (map[uuid.UUID][]AlertRecipient, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.queryrecipientsbyalertids")
+	defer span.End()
+
+	result, err := b.storer.QueryRecipientsByAlertIDs(ctx, alertIDs)
+	if err != nil {
+		return nil, fmt.Errorf("query recipients: %w", err)
+	}
+
+	return result, nil
 }
 
 // Query returns all alerts (admin only - no recipient filtering).

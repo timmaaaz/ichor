@@ -543,7 +543,7 @@ Standalone Go module (`mcp/`) providing an MCP (Model Context Protocol) server t
 
 ### Agent Chat (Conversational AI)
 
-The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Ollama** with the **qwen2.5:latest** model. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Qwen 2.5's strengths and limitations (e.g., concise tool schemas, explicit instructions, structured output formatting).
+The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Ollama** with the **qwen3:8b** model. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Qwen 3's strengths and limitations (e.g., concise tool schemas, explicit instructions, structured output formatting).
 
 ### Agent Infrastructure (Discovery & Schemas)
 

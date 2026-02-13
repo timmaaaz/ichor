@@ -9,5 +9,5 @@ data:
   db_password: "postgres"
   db_disabletls: "true"
   llm_provider: "ollama"
-  llm_model: "qwen2.5:latest"
+  llm_model: "qwen3:8b"
   llm_host: "http://host.docker.internal:11434"

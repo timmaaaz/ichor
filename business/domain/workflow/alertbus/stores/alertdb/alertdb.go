@@ -133,6 +133,73 @@ func (s *Store) CreateAcknowledgment(ctx context.Context, ack alertbus.AlertAckn
 	return nil
 }
 
+// QueryRecipientsByAlertID returns all recipients for a given alert.
+func (s *Store) QueryRecipientsByAlertID(ctx context.Context, alertID uuid.UUID) ([]alertbus.AlertRecipient, error) {
+	data := struct {
+		AlertID string `db:"alert_id"`
+	}{
+		AlertID: alertID.String(),
+	}
+
+	const q = `
+	SELECT
+		id, alert_id, recipient_type, recipient_id, created_date
+	FROM
+		workflow.alert_recipients
+	WHERE
+		alert_id = :alert_id
+	ORDER BY
+		created_date`
+
+	var dbRecipients []dbAlertRecipient
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbRecipients); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusAlertRecipients(dbRecipients), nil
+}
+
+// QueryRecipientsByAlertIDs returns recipients for multiple alerts, keyed by alert ID.
+func (s *Store) QueryRecipientsByAlertIDs(ctx context.Context, alertIDs []uuid.UUID) (map[uuid.UUID][]alertbus.AlertRecipient, error) {
+	if len(alertIDs) == 0 {
+		return make(map[uuid.UUID][]alertbus.AlertRecipient), nil
+	}
+
+	idStrings := make([]string, len(alertIDs))
+	for i, id := range alertIDs {
+		idStrings[i] = id.String()
+	}
+
+	data := struct {
+		AlertIDs []string `db:"alert_ids"`
+	}{
+		AlertIDs: idStrings,
+	}
+
+	const q = `
+	SELECT
+		id, alert_id, recipient_type, recipient_id, created_date
+	FROM
+		workflow.alert_recipients
+	WHERE
+		alert_id IN (:alert_ids)
+	ORDER BY
+		alert_id, created_date`
+
+	var dbRecipients []dbAlertRecipient
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &dbRecipients); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	result := make(map[uuid.UUID][]alertbus.AlertRecipient, len(alertIDs))
+	for _, dbr := range dbRecipients {
+		r := toBusAlertRecipient(dbr)
+		result[r.AlertID] = append(result[r.AlertID], r)
+	}
+
+	return result, nil
+}
+
 // QueryByID retrieves a single alert from the system by its ID.
 func (s *Store) QueryByID(ctx context.Context, alertID uuid.UUID) (alertbus.Alert, error) {
 	data := struct {

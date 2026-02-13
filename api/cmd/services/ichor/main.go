@@ -139,7 +139,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		LLM struct {
 			Provider  string `conf:"default:ollama"`
 			APIKey    string `conf:"mask"`
-			Model     string `conf:"default:qwen2.5:latest"`
+			Model     string `conf:"default:qwen3:8b"`
 			MaxTokens int    `conf:"default:4096"`
 			BaseURL   string `conf:"default:http://localhost:8080"`
 			Host      string `conf:"default:http://host.docker.internal:11434"`

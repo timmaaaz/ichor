@@ -50,7 +50,7 @@ func ToolDefinitions() []llm.ToolDef {
 		// =================================================================
 		{
 			Name:        "get_workflow_rule",
-			Description: "Fetch a single automation rule by ID, including its actions and edges.",
+			Description: "Fetch a single automation rule by ID. Returns a compact summary: rule metadata (name, description, trigger, entity), node/edge/branch counts, action types used, and a human-readable flow outline showing the execution path. Does NOT return raw action configs — use explain_workflow_node for detail on a specific action.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -62,6 +62,26 @@ func ToolDefinitions() []llm.ToolDef {
 					},
 				},
 				"required": []string{"rule_id"},
+			}),
+		},
+		{
+			Name:        "explain_workflow_node",
+			Description: "Get details about a specific action in a workflow by name or UUID. Returns the action's config, incoming edges (what feeds into it), outgoing edges (where it goes with output port labels), and depth from the start node. Use after get_workflow_rule to drill into a specific action.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"rule_id": map[string]any{
+						"type":        "string",
+						"format":      "uuid",
+						"description": "Full UUID of the rule (36 characters with hyphens).",
+						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					},
+					"identifier": map[string]any{
+						"type":        "string",
+						"description": "Action name or UUID to look up within the workflow.",
+					},
+				},
+				"required": []string{"rule_id", "identifier"},
 			}),
 		},
 		{
@@ -122,6 +142,51 @@ func ToolDefinitions() []llm.ToolDef {
 					},
 				},
 				"required": []string{"workflow"},
+			}),
+		},
+
+		// =================================================================
+		// Alerts
+		// =================================================================
+		{
+			Name:        "list_my_alerts",
+			Description: "List active alerts for the current user. Returns alerts with enriched recipient data (names, emails, role names instead of UUIDs). Supports filtering by status and severity.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"status": map[string]any{
+						"type":        "string",
+						"description": "Filter by status: active, acknowledged, dismissed, resolved. Default: active.",
+					},
+					"severity": map[string]any{
+						"type":        "string",
+						"description": "Filter by severity (comma-separated): low, medium, high, critical.",
+					},
+					"page": map[string]any{
+						"type":        "string",
+						"description": "Page number (default: 1).",
+					},
+					"rows": map[string]any{
+						"type":        "string",
+						"description": "Results per page (default: 10).",
+					},
+				},
+			}),
+		},
+		{
+			Name:        "get_alert_detail",
+			Description: "Get detailed information about a specific alert including enriched recipient data (user names, emails, role names).",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"alert_id": map[string]any{
+						"type":        "string",
+						"format":      "uuid",
+						"description": "Full UUID of the alert (36 characters with hyphens).",
+						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					},
+				},
+				"required": []string{"alert_id"},
 			}),
 		},
 

@@ -7,6 +7,8 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -18,6 +20,8 @@ import (
 type Config struct {
 	Log            *logger.Logger
 	AlertBus       *alertbus.Business
+	UserBus        *userbus.Business
+	RoleBus        *rolebus.Business
 	UserRoleBus    *userrolebus.Business
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
@@ -31,7 +35,7 @@ const RouteTable = "workflow.alerts"
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
-	api := newAPI(cfg.Log, cfg.AlertBus, cfg.UserRoleBus, cfg.WorkflowQueue)
+	api := newAPI(cfg.Log, cfg.AlertBus, cfg.UserBus, cfg.RoleBus, cfg.UserRoleBus, cfg.WorkflowQueue)
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	// User endpoints - authentication only, business layer handles recipient filtering

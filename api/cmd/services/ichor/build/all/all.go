@@ -1099,6 +1099,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	alertapi.Routes(app, alertapi.Config{
 		Log:            cfg.Log,
 		AlertBus:       alertBus,
+		UserBus:        a.UserBus,
+		RoleBus:        roleBus,
 		UserRoleBus:    userRoleBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
