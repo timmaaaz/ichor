@@ -248,6 +248,7 @@ dev-status:
 dev-bounce:
 	make dev-down
 	make dev-up
+	make dev-ollama
 	make dev-update-apply
 	make migrate
 	make seed-frontend
@@ -331,6 +332,16 @@ temporal-ui:
 	@echo "Temporal UI available at http://localhost:8280"
 	@echo "Press Ctrl+C to stop port forwarding"
 	kubectl port-forward --namespace=$(NAMESPACE) svc/temporal-service 8280:8080
+
+dev-ollama:
+	@which ollama > /dev/null 2>&1 || (echo "Installing ollama via brew..." && brew install ollama)
+	@pgrep -x ollama > /dev/null || (echo "Starting ollama..." && ollama serve &  sleep 2)
+	ollama pull qwen2.5:latest
+	@echo "Ollama ready at http://localhost:11434"
+
+ollama-pull-model:
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=300s deployment/ollama
+	kubectl exec -n $(NAMESPACE) deploy/ollama -- ollama pull qwen2.5:latest
 
 dev-describe-database:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=database
@@ -604,7 +615,7 @@ talk-load:
 	hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
 
 talk-logs:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/cmd/tooling/logfmt/main.go -service=$(ICHOR_APP)
 
 talk-logs-cpu:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | grep SCHED

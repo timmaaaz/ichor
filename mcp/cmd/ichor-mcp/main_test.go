@@ -141,6 +141,8 @@ func TestMCPServer_ToolsAndResources(t *testing.T) {
 		"list_table_configs",
 		// Workflow read tools
 		"get_workflow",
+		"explain_workflow_node",
+		"explain_workflow_path",
 		"list_workflows",
 		"list_action_templates",
 		// Search tools

@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/approvalstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/agentapi/catalogapi"
+	"github.com/timmaaaz/ichor/api/domain/http/agentapi/chatapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assetconditionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assettagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/assettypeapi"
@@ -288,7 +289,11 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
+	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/llm"
+	"github.com/timmaaaz/ichor/business/sdk/llm/claude"
+	"github.com/timmaaaz/ichor/business/sdk/llm/ollama"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
@@ -1019,6 +1024,38 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	catalogapi.Routes(app, catalogapi.Config{
 		AuthClient: cfg.AuthClient,
 	})
+
+	// =========================================================================
+	// Agent Chat (LLM-powered SSE endpoint)
+	// =========================================================================
+
+	var llmProvider llm.Provider
+
+	switch cfg.LLMProvider {
+	case "ollama":
+		llmProvider = ollama.NewProvider(cfg.LLMHost, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
+	case "claude":
+		if cfg.LLMAPIKey != "" {
+			llmProvider = claude.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
+		}
+	}
+
+	if llmProvider != nil {
+		toolExecutor := agenttools.NewExecutor(cfg.Log, cfg.LLMBaseURL)
+
+		chatapi.Routes(app, chatapi.Config{
+			Log:                cfg.Log,
+			LLMProvider:        llmProvider,
+			ToolExecutor:       toolExecutor,
+			AuthClient:         cfg.AuthClient,
+			CORSAllowedOrigins: []string{"*"}, // TODO: Configure from environment (matches WebSocket)
+		})
+		cfg.Log.Info(context.Background(), "AGENT-CHAT: routes initialized",
+			"provider", cfg.LLMProvider,
+			"model", cfg.LLMModel)
+	} else {
+		cfg.Log.Info(context.Background(), "AGENT-CHAT: disabled")
+	}
 
 	pageactionapi.Routes(app, pageactionapi.Config{
 		Log:            cfg.Log,

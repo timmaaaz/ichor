@@ -59,6 +59,7 @@ func toActionResponse(action workflow.RuleActionView) ActionResponse {
 		ID:                 action.ID,
 		Name:               action.Name,
 		Description:        action.Description,
+		ActionType:         resolveActionType(action),
 		ActionConfig:       action.ActionConfig,
 		IsActive:           action.IsActive,
 		TemplateID:         action.TemplateID,
@@ -72,6 +73,25 @@ func toActionResponse(action workflow.RuleActionView) ActionResponse {
 	}
 
 	return resp
+}
+
+// resolveActionType returns the action type from the template if available,
+// otherwise extracts it from the action_config JSON blob.
+func resolveActionType(action workflow.RuleActionView) string {
+	if action.TemplateActionType != "" {
+		return action.TemplateActionType
+	}
+
+	var configMap map[string]any
+	if err := json.Unmarshal(action.ActionConfig, &configMap); err != nil {
+		return ""
+	}
+
+	if actionType, ok := configMap["action_type"].(string); ok {
+		return actionType
+	}
+
+	return ""
 }
 
 // toActionResponses converts a slice of workflow.RuleActionView to []ActionResponse.

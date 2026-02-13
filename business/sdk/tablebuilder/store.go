@@ -459,6 +459,12 @@ func (s *Store) buildColumnMetadata(config *Config) []ColumnMetadata {
 			meta.Format = vs.Format
 		}
 
+		// Attach conditional formatting rules for this column
+		meta.ConditionalFormatting = filterConditionalFormattingForColumn(
+			config.VisualSettings.ConditionalFormatting,
+			meta.Field,
+		)
+
 		metadata = append(metadata, meta)
 	}
 

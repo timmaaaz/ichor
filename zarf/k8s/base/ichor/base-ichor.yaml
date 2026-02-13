@@ -137,6 +137,25 @@ spec:
                   key: db_disabletls
                   optional: true
 
+            - name: ICHOR_LLM_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: llm_provider
+                  optional: true
+            - name: ICHOR_LLM_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: llm_model
+                  optional: true
+            - name: ICHOR_LLM_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: llm_host
+                  optional: true
+
             - name: KUBERNETES_NAMESPACE
               valueFrom:
                 fieldRef:

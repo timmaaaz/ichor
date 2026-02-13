@@ -541,6 +541,10 @@ Standalone Go module (`mcp/`) providing an MCP (Model Context Protocol) server t
 
 **Key packages**: `mcp/internal/tools/` (33 tools), `mcp/internal/resources/` (5 resources + 2 templates), `mcp/internal/prompts/` (3 prompts), `mcp/internal/client/` (HTTP client wrapping Ichor API)
 
+### Agent Chat (Conversational AI)
+
+The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Ollama** with the **qwen2.5:latest** model. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Qwen 2.5's strengths and limitations (e.g., concise tool schemas, explicit instructions, structured output formatting).
+
 ### Agent Infrastructure (Discovery & Schemas)
 
 API endpoints that make Ichor self-describing for agents and tooling.

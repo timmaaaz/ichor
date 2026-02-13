@@ -118,6 +118,7 @@ type ActionResponse struct {
 	RuleID             uuid.UUID       `json:"rule_id"`
 	Name               string          `json:"name"`
 	Description        string          `json:"description"`
+	ActionType         string          `json:"action_type"`
 	ActionConfig       json.RawMessage `json:"action_config"`
 	IsActive           bool            `json:"is_active"`
 	TemplateID         *uuid.UUID      `json:"template_id,omitempty"`
