@@ -22,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
+	"github.com/timmaaaz/ichor/business/sdk/toolcatalog"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -103,11 +104,6 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ContextType != "workflow" {
-		http.Error(w, "Bad Request: context_type must be \"workflow\"", http.StatusBadRequest)
-		return
-	}
-
 	// Authorization header is forwarded to tool calls verbatim.
 	authToken := r.Header.Get("Authorization")
 
@@ -123,13 +119,16 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Filter tools by context type.
+	filteredTools := filterToolsByContext(a.tools, req.ContextType)
+
 	// Build initial LLM request.
 	llmReq := llm.ChatRequest{
-		SystemPrompt: buildSystemPrompt(req.Context),
+		SystemPrompt: buildSystemPrompt(req.ContextType, req.Context),
 		Messages: []llm.Message{
 			{Role: "user", Content: req.Message},
 		},
-		Tools:     a.tools,
+		Tools:     filteredTools,
 		MaxTokens: 4096,
 	}
 
@@ -264,6 +263,28 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 	// Safety: max loops reached.
 	a.log.Warn(ctx, "AGENT-CHAT: max loops reached", "user_id", userID)
 	sse.sendError("Maximum tool-call rounds exceeded")
+}
+
+// filterToolsByContext returns the subset of tools that belong to the given
+// context type. An empty or unrecognised context type returns all tools.
+func filterToolsByContext(tools []llm.ToolDef, contextType string) []llm.ToolDef {
+	var group toolcatalog.ToolGroup
+	switch contextType {
+	case "workflow":
+		group = toolcatalog.GroupWorkflow
+	case "tables":
+		group = toolcatalog.GroupTables
+	default:
+		return tools
+	}
+
+	filtered := make([]llm.ToolDef, 0, len(tools))
+	for _, t := range tools {
+		if toolcatalog.InGroup(t.Name, group) {
+			filtered = append(filtered, t)
+		}
+	}
+	return filtered
 }
 
 // buildPreviewEvent constructs the workflow_preview SSE event payload from a

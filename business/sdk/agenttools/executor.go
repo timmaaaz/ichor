@@ -173,6 +173,13 @@ func (e *Executor) getWorkflowSummary(ctx context.Context, ruleID string, token 
 	// Parse graph and compute a compact summary with flow outline.
 	graph, graphErr := parseWorkflowGraph(actions, edges)
 	if graphErr == nil {
+		// Enrich create_alert configs with human-readable recipient names
+		// so the summary flow outline can include them inline.
+		for i := range graph.actions {
+			if graph.actions[i].ActionType == "create_alert" && len(graph.actions[i].Config) > 0 {
+				graph.actions[i].Config = e.enrichCreateAlertConfig(ctx, graph.actions[i].Config, token)
+			}
+		}
 		result["summary"] = graph.computeSummary()
 	}
 

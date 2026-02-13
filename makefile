@@ -530,7 +530,7 @@ otel-test:
 
 mcp:
 	$(eval TOKEN_RAW := $(shell curl -s --user "admin@example.com:gophers" http://localhost:6000/v1/auth/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1 | jq -r '.token'))
-	cd mcp && go run ./cmd/ichor-mcp/ --token $(TOKEN_RAW)
+	go run ./mcp/cmd/ichor-mcp/ --token $(TOKEN_RAW)
 
 # ==============================================================================
 # Modules support

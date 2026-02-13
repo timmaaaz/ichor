@@ -7,32 +7,40 @@ import (
 )
 
 // buildSystemPrompt assembles the system prompt sent to the LLM.
-// workflowCtx is the optional context JSON from the request body.
-func buildSystemPrompt(workflowCtx json.RawMessage) string {
+// contextType is "workflow" or "tables". rawCtx is the optional context JSON
+// from the request body.
+func buildSystemPrompt(contextType string, rawCtx json.RawMessage) string {
 	var b strings.Builder
 
-	b.WriteString(roleBlock)
-	b.WriteString("\n\n")
-	b.WriteString(toolGuidance)
-	b.WriteString("\n\n")
-	b.WriteString(responseGuidance)
+	switch contextType {
+	case "tables":
+		b.WriteString(tablesRoleBlock)
+		b.WriteString("\n\n")
+		b.WriteString(responseGuidance)
+	default: // "workflow"
+		b.WriteString(roleBlock)
+		b.WriteString("\n\n")
+		b.WriteString(toolGuidance)
+		b.WriteString("\n\n")
+		b.WriteString(responseGuidance)
+	}
 
-	if len(workflowCtx) > 0 && string(workflowCtx) != "null" {
+	if len(rawCtx) > 0 && string(rawCtx) != "null" {
 		b.WriteString("\n\n")
 		b.WriteString(contextPreamble)
 		b.WriteString("\n```json\n")
 
 		// Pretty-print the context for readability.
 		var pretty json.RawMessage
-		if err := json.Unmarshal(workflowCtx, &pretty); err == nil {
+		if err := json.Unmarshal(rawCtx, &pretty); err == nil {
 			formatted, err := json.MarshalIndent(pretty, "", "  ")
 			if err == nil {
 				b.Write(formatted)
 			} else {
-				b.Write(workflowCtx)
+				b.Write(rawCtx)
 			}
 		} else {
-			b.Write(workflowCtx)
+			b.Write(rawCtx)
 		}
 		b.WriteString("\n```\n")
 	}
@@ -93,8 +101,29 @@ When creating new workflows, use temporary IDs for actions (e.g. "temp:0", "temp
 - start edge: source_action_id is empty string "", edge_type is "start"
 - sequence edges: source_action_id references an action, source_output is the port name, edge_type is "sequence"
 
+### Answering detail questions:
+When the user asks about specifics of an action (recipients, email templates, field names, conditions, config values), use %sexplain_workflow_node%s with the action's name to get its full configuration. The summary from %sget_workflow_rule%s shows the flow structure but not individual action configs.
+
 Always explain what you're doing before making tool calls. If a tool call fails, explain the error to the user and suggest corrections.`,
-	"`", "`", "`", "`", "`", "`")
+	"`", "`", "`", "`", "`", "`", "`", "`", "`", "`")
+
+const tablesRoleBlock = `You are a UI configuration assistant for the Ichor ERP platform. You help users set up and modify pages, forms, table configs, and content layouts.
+
+## What You Can Do
+
+You have access to tools that interact with the Ichor configuration system:
+- **Search** the database schema to understand available tables, columns, and enums.
+- Additional table-configuration tools may be added in the future.
+
+All tool calls execute with the user's permissions—if they lack access, the tool will return an error.
+
+## How to Respond
+
+Before answering, think through these steps:
+1. What is the user asking?
+2. What tool(s) do I need, if any?
+3. What key facts did the tool return?
+4. How do I explain this clearly in plain language?`
 
 const responseGuidance = `## Response Formatting
 

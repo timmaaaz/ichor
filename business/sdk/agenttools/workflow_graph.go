@@ -222,6 +222,11 @@ func (g *workflowGraph) walkNode(nodeID string, depth int, edgeLabel string, vis
 	if action.ActionType != "" {
 		label += " (" + action.ActionType + ")"
 	}
+	if action.ActionType == "create_alert" {
+		if rs := formatAlertRecipients(action.Config); rs != "" {
+			label += " — alerts: " + rs
+		}
+	}
 	if edgeLabel != "" {
 		label = "[" + edgeLabel + "] " + label
 	}
@@ -257,6 +262,45 @@ func formatEdgeLabel(edge graphEdge) string {
 		return "always"
 	}
 	return ""
+}
+
+// formatAlertRecipients extracts a human-readable recipient summary from an
+// enriched create_alert config. Returns empty string if parsing fails or there
+// are no recipients.
+func formatAlertRecipients(config json.RawMessage) string {
+	var cfg struct {
+		Recipients struct {
+			Users []struct {
+				Name  string `json:"name"`
+				Email string `json:"email"`
+			} `json:"users"`
+			Roles []struct {
+				Name string `json:"name"`
+			} `json:"roles"`
+		} `json:"recipients"`
+	}
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return ""
+	}
+
+	var parts []string
+	for _, u := range cfg.Recipients.Users {
+		if u.Name == "" {
+			continue
+		}
+		if u.Email != "" {
+			parts = append(parts, u.Name+" ("+u.Email+")")
+		} else {
+			parts = append(parts, u.Name)
+		}
+	}
+	for _, r := range cfg.Recipients.Roles {
+		if r.Name != "" {
+			parts = append(parts, r.Name+" (role)")
+		}
+	}
+
+	return strings.Join(parts, ", ")
 }
 
 // =============================================================================
