@@ -16,142 +16,75 @@ Ichor is a production-grade ERP system built using the **Ardan Labs Service Star
 
 ### Development Setup
 ```bash
-# Install Go tooling
-make dev-gotooling
-
-# Install Homebrew dependencies (kind, kubectl, kustomize, pgcli, watch)
-make dev-brew
-
-# Pull Docker images
-make dev-docker
+make dev-gotooling    # Install Go tooling
+make dev-brew         # Install Homebrew dependencies (kind, kubectl, kustomize, pgcli, watch)
+make dev-docker       # Pull Docker images
 ```
 
 ### Testing
 ```bash
-# Run all tests with linting and vulnerability checks
-make test
-
-# Run tests with race detector
-make test-race
-
-# Run only tests (no linting)
-make test-only
-
-# Lint code
-make lint
-
-# Check for vulnerabilities
-make vuln-check
-
-# Shutdown test containers
-make test-down
+make test             # Run all tests with linting and vulnerability checks
+make test-race        # Run tests with race detector
+make test-only        # Run only tests (no linting)
+make lint             # Lint code
+make vuln-check       # Check for vulnerabilities
+make test-down        # Shutdown test containers
 ```
 
 ### Local Kubernetes Development
 ```bash
-# Start KIND cluster with all services
-make dev-up
-
-# Build containers and deploy to KIND
-make dev-update-apply
-
-# View logs (formatted)
-make dev-logs
-
-# View auth service logs
-make dev-logs-auth
-
-# View init container logs
-make dev-logs-init
-
-# Restart deployments (after code changes)
-make dev-update
-
-# Check pod status
-make dev-status
-
-# Shutdown cluster
-make dev-down
+make dev-up           # Start KIND cluster with all services
+make dev-update-apply # Build containers and deploy to KIND
+make dev-logs         # View logs (formatted)
+make dev-logs-auth    # View auth service logs
+make dev-logs-init    # View init container logs
+make dev-update       # Restart deployments (after code changes)
+make dev-status       # Check pod status
+make dev-down         # Shutdown cluster
 ```
 
 ### Database Operations
 ```bash
-# Run migrations
-make migrate
-
-# Seed database with test data
-make seed
-
-# Seed frontend configuration
-make seed-frontend
-
-# Access PostgreSQL CLI
-make pgcli
-
-# Recreate database (deletes all data!)
-make dev-database-recreate
+make migrate          # Run migrations
+make seed             # Seed database with test data
+make seed-frontend    # Seed frontend configuration
+make pgcli            # Access PostgreSQL CLI
+make dev-database-recreate  # Recreate database (deletes all data!)
 ```
 
 ### Docker Compose (Alternative to Kubernetes)
 ```bash
-# Start with existing images
-make compose-up
-
-# Build and start
-make compose-build-up
-
-# View logs
-make compose-logs
-
-# Shutdown
-make compose-down
+make compose-up       # Start with existing images
+make compose-build-up # Build and start
+make compose-logs     # View logs
+make compose-down     # Shutdown
 ```
 
 ### Running Locally (Without Containers)
 ```bash
-# Run main service locally
-make run
-
-# Run with help output
-make run-help
-
-# Run admin tooling
-make admin
+make run              # Run main service locally
+make run-help         # Run with help output
+make admin            # Run admin tooling
 ```
 
 ### Authentication & API Testing
 ```bash
-# Get authentication token
-make token
-
-# Export token for subsequent requests
-export TOKEN=<COPY_TOKEN_STRING>
-
-# Test users endpoint
-make users
-
-# Create new user
-make curl-create
-
-# Test liveness probe
-make live
-
-# Test readiness probe
-make ready
-```
-
-### Load Testing
-```bash
-# Run load test (100 concurrent, 1000 requests)
-make load
+make token            # Get authentication token
+export TOKEN=<TOKEN>  # Export token for subsequent requests
+make users            # Test users endpoint
+make curl-create      # Create new user
+make live             # Test liveness probe
+make ready            # Test readiness probe
+make load             # Run load test (100 concurrent, 1000 requests)
 ```
 
 ## Architecture
 
-### Layer Structure (Ardan Labs Pattern)
+### Ardan Labs Layer Architecture
 
-The codebase follows strict layering from top to bottom:
+This codebase follows the **Ardan Labs Service Starter Kit** architecture (Domain-Driven, Data-Oriented Design).
 
+**Layer rules** (higher imports lower, NEVER reverse):
 ```
 ┌─────────────────────────────────────────────────────┐
 │  api/             HTTP handlers, routes, tests      │
@@ -183,6 +116,10 @@ The codebase follows strict layering from top to bottom:
 - Business layer contains ALL domain logic
 - App layer validates and transforms between API ↔ Business models
 - API layer handles HTTP concerns only (routing, middleware, serialization)
+
+**Package naming**: `*bus` (business), `*app` (application), `*api` (api layer)
+
+For detailed patterns (Encoder/Decoder interfaces, Storer pattern, model conversion), see [Layer Patterns](docs/layer-patterns.md).
 
 ### Domain Organization
 
@@ -238,238 +175,13 @@ Domains are organized by business area using PostgreSQL schemas:
 - `crud/crud.go` - CRUD-only routes
 - `reporting/reporting.go` - Reporting-only routes
 
-### Key Patterns
-
-#### Business Layer (`*bus` packages)
-
-```go
-// Core structure
-type Business struct {
-    log      *logger.Logger
-    delegate *delegate.Delegate  // Handles UUID generation, time
-    storer   Storer              // Interface to database
-}
-
-// Always expose interface for storage
-type Storer interface {
-    Create(ctx context.Context, entity Entity) error
-    QueryByID(ctx context.Context, id uuid.UUID) (Entity, error)
-    // ... other methods
-}
-```
-
-#### Application Layer (`*app` packages)
-
-```go
-// Converts between API and Business models
-// Validates business rules at API boundary
-
-type App struct {
-    business *entitybus.Business
-}
-
-func (a *App) Create(ctx context.Context, app NewEntity) (Entity, error) {
-    // 1. Validate app model
-    if err := app.Validate(); err != nil {
-        return Entity{}, err
-    }
-
-    // 2. Convert app → bus
-    bus := toBusNewEntity(app)
-
-    // 3. Call business layer
-    busEntity, err := a.business.Create(ctx, bus)
-    if err != nil {
-        return Entity{}, err
-    }
-
-    // 4. Convert bus → app
-    return toAppEntity(busEntity), nil
-}
-```
-
-**Important: Encoder Interface for Response Types**
-
-All response types in the app layer must implement the `Encoder` interface:
-
-```go
-type Encoder interface {
-    Encode() ([]byte, string, error)
-}
-```
-
-**Single Entity Response:**
-```go
-type Entity struct {
-    ID   string `json:"id"`
-    Name string `json:"name"`
-}
-
-func (app Entity) Encode() ([]byte, string, error) {
-    data, err := json.Marshal(app)
-    return data, "application/json", err
-}
-```
-
-**Paginated Query Response:**
-For standard paginated queries, use `query.Result[T]` which already implements `Encode()`:
-```go
-func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Entity], error) {
-    // ... filter, order, page parsing ...
-    entities, err := a.business.Query(ctx, filter, orderBy, pg)
-    total, err := a.business.Count(ctx, filter)
-    return query.NewResult(ToAppEntities(entities), total, pg), nil
-}
-```
-
-**Slice Response (QueryAll, QueryByIDs, etc.):**
-For methods returning plain slices, create a wrapper type that implements `Encode()`:
-```go
-// Entities is a collection wrapper that implements the Encoder interface.
-type Entities []Entity
-
-func (app Entities) Encode() ([]byte, string, error) {
-    data, err := json.Marshal(app)
-    return data, "application/json", err
-}
-
-// Then use it in app methods:
-func (a *App) QueryAll(ctx context.Context) (Entities, error) {
-    entities, err := a.business.QueryAll(ctx)
-    if err != nil {
-        return nil, errs.Newf(errs.Internal, "queryall: %s", err)
-    }
-    return Entities(ToAppEntities(entities)), nil
-}
-```
-
-**API Layer Returns:**
-The API layer simply returns the encodable type - no need for `web.NewSliceResponse()`:
-```go
-func (api *api) queryAll(ctx context.Context, r *http.Request) web.Encoder {
-    entities, err := api.entityApp.QueryAll(ctx)
-    if err != nil {
-        return errs.NewError(err)
-    }
-    return entities  // Already implements Encoder
-}
-```
-
-**Decoder Interface for Request Types**
-
-All request types in the app layer must implement the `Decoder` interface:
-
-```go
-type Decoder interface {
-    Decode(data []byte) error
-}
-```
-
-**Standard Request Models:**
-All `New*` and `Update*` types already implement `Decode()` and `Validate()`:
-```go
-type NewEntity struct {
-    Name string `json:"name" validate:"required"`
-}
-
-func (app *NewEntity) Decode(data []byte) error {
-    return json.Unmarshal(data, &app)
-}
-
-func (app NewEntity) Validate() error {
-    if err := errs.Check(app); err != nil {
-        return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-    }
-    return nil
-}
-```
-
-**Custom Request Models (e.g., Batch Operations):**
-For special endpoints like batch queries, create dedicated request types:
-```go
-// QueryByIDsRequest represents a batch query by IDs.
-type QueryByIDsRequest struct {
-    IDs []string `json:"ids" validate:"required,min=1"`
-}
-
-func (app *QueryByIDsRequest) Decode(data []byte) error {
-    return json.Unmarshal(data, &app)
-}
-
-func (app QueryByIDsRequest) Validate() error {
-    if err := errs.Check(app); err != nil {
-        return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-    }
-    return nil
-}
-```
-
-**API Layer Usage:**
-ALWAYS decode directly into app layer models - NEVER create local request structs in the API layer:
-```go
-// CORRECT - Decode into app layer model
-func (api *api) queryByIDs(ctx context.Context, r *http.Request) web.Encoder {
-    var app entityapp.QueryByIDsRequest
-    if err := web.Decode(r, &app); err != nil {
-        return errs.New(errs.InvalidArgument, err)
-    }
-
-    entities, err := api.entityApp.QueryByIDs(ctx, app.IDs)
-    if err != nil {
-        return errs.NewError(err)
-    }
-    return entities
-}
-
-// WRONG - Don't create local request structs
-func (api *api) queryByIDs(ctx context.Context, r *http.Request) web.Encoder {
-    type request struct {  // ❌ NEVER DO THIS
-        IDs []string `json:"ids"`
-    }
-    var req request  // ❌ WRONG
-    // ...
-}
-```
-
-#### API Layer (`*api` packages)
-
-```go
-// HTTP handlers ONLY
-func (api *api) create(ctx context.Context, r *http.Request) web.Encoder {
-    var app appModel.NewEntity
-    if err := web.Decode(r, &app); err != nil {
-        return errs.NewError(errs.InvalidArgument, err)
-    }
-
-    entity, err := api.entityApp.Create(ctx, app)
-    if err != nil {
-        return errs.NewError(errs.Internal, err)
-    }
-
-    return entity
-}
-```
+## Quick References
 
 ### Testing
 
 **Integration Tests** are located at:
 ```
 api/cmd/services/ichor/tests/{domain}/{entityapi}/
-```
-
-Example test structure:
-```go
-func Test_{Entity}API(t *testing.T) {
-    test := apitest.StartTest(t, "{entityapi_test}")
-
-    // Seed test data
-    sd := test.SeedData()
-
-    // Run test tables
-    test.Run(t, query200(sd), "query-200")
-    test.Run(t, create200(sd), "create-200")
-    test.Run(t, update200(sd), "update-200")
-}
 ```
 
 **Test Helpers**:
@@ -496,70 +208,6 @@ CREATE TABLE schema.table_name (
 - Version 1.xx - Core tables
 - Version 2.xx - Configuration tables
 
-**Apply migrations**: Use `make migrate` or admin tooling
-
-### FormData Dynamic System
-
-A powerful feature for multi-entity transactional operations. See `FORMDATA_IMPLEMENTATION.md` for complete details.
-
-**Key Points**:
-- Registry-based entity registration in `api/cmd/services/ichor/build/all/formdata_registry.go`
-- Supports CREATE and UPDATE operations with template variables
-- Automatic form validation via reflection on `validate:"required"` tags
-- All operations run in a single database transaction
-
-**Adding New Entity** (2 lines per entity):
-```go
-registry.Register(formdataregistry.EntityRegistration{
-    Name: "products",
-    CreateModel: productapp.NewProduct{},  // For validation
-    UpdateModel: productapp.UpdateProduct{}, // For validation
-    DecodeNew: func(data json.RawMessage) (interface{}, error) { /*...*/ },
-    CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) { /*...*/ },
-    DecodeUpdate: func(data json.RawMessage) (interface{}, error) { /*...*/ },
-    UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) { /*...*/ },
-})
-```
-
-### Workflow Engine (Automation System)
-
-Event-driven automation for business processes using **Temporal** for durable execution. **All workflow documentation lives in `docs/workflow/`**.
-
-**When to read workflow docs**: automation rules, triggers, alerts, notifications, email actions, approval workflows, inventory allocation, delegate events, Temporal workflows, workflow tables (automation_rules, rule_actions, alerts, etc.)
-
-**Entry point**: `docs/workflow/README.md` - Start here for overview and navigation to specific topics.
-
-**Pipeline**: `TemporalDelegateHandler → WorkflowTrigger → Temporal → Worker → Activities`
-
-### MCP Server (Agent Integration)
-
-Standalone Go module (`mcp/`) providing an MCP (Model Context Protocol) server that wraps the Ichor REST API for LLM agents (Claude Desktop, Ollama, etc.).
-
-**When to read MCP docs**: adding MCP tools, resources, or prompts; modifying the agent-facing API surface; understanding what LLM agents can do with Ichor.
-
-**Entry point**: `mcp/README.md`
-
-**Key packages**: `mcp/internal/tools/` (33 tools), `mcp/internal/resources/` (5 resources + 2 templates), `mcp/internal/prompts/` (3 prompts), `mcp/internal/client/` (HTTP client wrapping Ichor API)
-
-### Agent Chat (Conversational AI)
-
-The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Ollama** with the **qwen3:8b** model. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Qwen 3's strengths and limitations (e.g., concise tool schemas, explicit instructions, structured output formatting).
-
-### Agent Infrastructure (Discovery & Schemas)
-
-API endpoints that make Ichor self-describing for agents and tooling.
-
-**When to read agent infra docs**: config surface catalog, JSONB schema endpoints, form field type discovery, dry-run validation, action type discovery.
-
-**Entry point**: `docs/agent-infrastructure.md`
-
-**Key packages**:
-- `api/domain/http/agentapi/catalogapi/` — `GET /v1/agent/catalog` (config surface discovery)
-- `api/domain/http/config/configschemaapi/` — table config, layout, and content type JSON schemas
-- `api/domain/http/config/formfieldschemaapi/` — form field type discovery with config schemas
-- `api/domain/http/workflow/referenceapi/` — action type discovery with output ports and config schemas
-- `api/domain/http/introspectionapi/` — database schema introspection (8 endpoints)
-
 ### Authentication & Authorization
 
 **JWT-based** with RSA keys:
@@ -584,13 +232,6 @@ API endpoints that make Ichor self-describing for agents and tooling.
 - Table access cache: 60 minutes TTL
 - Permissions cache: 60 minutes TTL
 
-**Pattern**:
-```go
-cache := entitycache.NewStore(log,
-    entitydb.NewStore(log, db),
-    60*time.Minute)
-```
-
 ### Configuration
 
 **Environment Variables** (prefixed with `ICHOR_`):
@@ -601,8 +242,6 @@ cache := entitycache.NewStore(log,
 - `ICHOR_WEB_API_HOST` - API listen address
 
 **Config Parsing**: Uses `github.com/ardanlabs/conf/v3`
-
-See `api/cmd/services/ichor/main.go` for complete configuration structure.
 
 ### Observability
 
@@ -631,7 +270,6 @@ See `api/cmd/services/ichor/main.go` for complete configuration structure.
    - Define `{entity}bus.go` with Business struct and methods
    - Define `stores/{entity}db/{entity}db.go` for database operations
    - Define models: `Entity`, `NewEntity`, `UpdateEntity`
-   - Write unit tests if needed
 
 2. **Create Application Layer** (`app/domain/{area}/{entity}app/`)
    - Define `{entity}app.go` with App struct
@@ -645,616 +283,39 @@ See `api/cmd/services/ichor/main.go` for complete configuration structure.
 
 4. **Wire Dependencies** (`api/cmd/services/ichor/build/all/all.go`)
    - Instantiate business layer: `entityBus := entitybus.NewBusiness(...)`
-   - Instantiate app layer if needed
    - Call `entityapi.Routes(app, entityapi.Config{...})`
 
 5. **Add Tests** (`api/cmd/services/ichor/tests/{area}/{entity}api/`)
-   - Create `{entity}_test.go`, `query_test.go`, `create_test.go`, etc.
+   - Create test files using `apitest.Table` pattern
    - Seed test data in `seed_test.go`
-   - Use `apitest.Table` pattern
 
 6. **Create Migration** (`business/sdk/migrate/sql/migrate.sql`)
    - Add table creation with appropriate schema
    - Follow version numbering convention
 
-### Adding a Domain from SQL Schema (Step-by-Step)
+### Adding Domain from SQL Schema
 
-When you have SQL table definitions and need to implement a complete domain, follow this comprehensive checklist. This example uses a hypothetical `pages` table in the `core` schema.
-
-#### Prerequisites
-
-**Given SQL**:
-```sql
-CREATE TABLE core.pages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    path TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    module TEXT NOT NULL,
-    icon TEXT,
-    sort_order INTEGER DEFAULT 1000,
-    is_active BOOLEAN DEFAULT TRUE
-);
-```
-
-#### Step 1: Add Database Migration
-
-**File**: `business/sdk/migrate/sql/migrate.sql`
-
-1. Find the last version number in the file
-2. Add your tables with incremented version numbers
-3. Include descriptive comments
-
-```sql
--- Version: 1.28
--- Description: Create table pages
-CREATE TABLE core.pages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    path TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    module TEXT NOT NULL,
-    icon TEXT,
-    sort_order INTEGER DEFAULT 1000,
-    is_active BOOLEAN DEFAULT TRUE
-);
-```
-
-**Important**: If inserting between existing versions, renumber all subsequent migrations.
-
-#### Step 2: Business Layer (Core Logic)
-
-**Directory**: `business/domain/core/pagebus/`
-
-##### 2a. Create `model.go`
-```go
-package pagebus
-
-import "github.com/google/uuid"
-
-type Page struct {
-    ID        uuid.UUID
-    Path      string
-    Name      string
-    Module    string
-    Icon      string
-    SortOrder int
-    IsActive  bool
-}
-
-type NewPage struct {
-    Path      string
-    Name      string
-    Module    string
-    Icon      string
-    SortOrder int
-    IsActive  bool
-}
-
-type UpdatePage struct {
-    Path      *string
-    Name      *string
-    Module    *string
-    Icon      *string
-    SortOrder *int
-    IsActive  *bool
-}
-```
-
-##### 2b. Create `filter.go`
-```go
-package pagebus
-
-import "github.com/google/uuid"
-
-type QueryFilter struct {
-    ID       *uuid.UUID
-    Path     *string
-    Name     *string
-    Module   *string
-    IsActive *bool
-}
-```
-
-##### 2c. Create `order.go`
-```go
-package pagebus
-
-import "github.com/timmaaaz/ichor/business/sdk/order"
-
-var DefaultOrderBy = order.NewBy(OrderBySortOrder, order.ASC)
-
-const (
-    OrderByID        = "id"
-    OrderByPath      = "path"
-    OrderByName      = "name"
-    OrderByModule    = "module"
-    OrderBySortOrder = "sort_order"
-    OrderByIsActive  = "is_active"
-)
-```
-
-##### 2d. Create `event.go`
-```go
-package pagebus
-
-import (
-    "encoding/json"
-    "fmt"
-    "github.com/google/uuid"
-    "github.com/timmaaaz/ichor/business/sdk/delegate"
-)
-
-const DomainName = "page"
-
-const (
-    ActionCreated   = "created"
-    ActionUpdated   = "updated"
-    ActionDeleted   = "deleted"
-)
-
-// Create similar event structures for all actions
-// See existing domains for full implementation
-```
-
-##### 2e. Create `pagebus.go` (Main business file)
-```go
-package pagebus
-
-import (
-    "context"
-    "errors"
-    "fmt"
-    "github.com/google/uuid"
-    "github.com/timmaaaz/ichor/business/sdk/convert"
-    "github.com/timmaaaz/ichor/business/sdk/delegate"
-    "github.com/timmaaaz/ichor/business/sdk/order"
-    "github.com/timmaaaz/ichor/business/sdk/page"
-    "github.com/timmaaaz/ichor/business/sdk/sqldb"
-    "github.com/timmaaaz/ichor/foundation/logger"
-    "github.com/timmaaaz/ichor/foundation/otel"
-)
-
-var (
-    ErrNotFound = errors.New("page not found")
-    ErrUnique   = errors.New("not unique")
-)
-
-type Storer interface {
-    NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
-    Create(ctx context.Context, page Page) error
-    Update(ctx context.Context, page Page) error
-    Delete(ctx context.Context, page Page) error
-    Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Page, error)
-    Count(ctx context.Context, filter QueryFilter) (int, error)
-    QueryByID(ctx context.Context, pageID uuid.UUID) (Page, error)
-}
-
-type Business struct {
-    log    *logger.Logger
-    storer Storer
-    del    *delegate.Delegate
-}
-
-func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Business {
-    return &Business{log: log, del: del, storer: storer}
-}
-
-// Implement CRUD methods: Create, Update, Delete, Query, Count, QueryByID
-// Follow pattern from rolebus or other existing domains
-```
-
-##### 2f. Create Database Store Files
-
-**Directory**: `business/domain/core/pagebus/stores/pagedb/`
-
-**IMPORTANT**: Avoid naming conflicts with `business/sdk/page`. Use `dbPage` instead of `page` for structs.
-
-**`model.go`**:
-```go
-package pagedb
-
-import (
-    "github.com/google/uuid"
-    "github.com/timmaaaz/ichor/business/domain/core/pagebus"
-)
-
-type dbPage struct {  // Use dbPage to avoid conflict with page package
-    ID        uuid.UUID `db:"id"`
-    Path      string    `db:"path"`
-    Name      string    `db:"name"`
-    Module    string    `db:"module"`
-    Icon      string    `db:"icon"`
-    SortOrder int       `db:"sort_order"`
-    IsActive  bool      `db:"is_active"`
-}
-
-func toDBPage(bus pagebus.Page) dbPage {
-    return dbPage{/* map fields */}
-}
-
-func toBusPage(db dbPage) pagebus.Page {
-    return pagebus.Page{/* map fields */}
-}
-
-func toBusPages(dbs []dbPage) []pagebus.Page {
-    pages := make([]pagebus.Page, len(dbs))
-    for i, db := range dbs {
-        pages[i] = toBusPage(db)
-    }
-    return pages
-}
-```
-
-**`filter.go`**, **`order.go`**, **`pagedb.go`**: Follow patterns from `roledb`
-
-#### Step 3: Application Layer (Validation & Conversion)
-
-**Directory**: `app/domain/core/pageapp/`
-
-##### 3a. Create `model.go`
-```go
-package pageapp
-
-import (
-    "encoding/json"
-    "github.com/timmaaaz/ichor/app/sdk/errs"
-    "github.com/timmaaaz/ichor/business/domain/core/pagebus"
-    "github.com/timmaaaz/ichor/business/sdk/convert"
-)
-
-type QueryParams struct {
-    Page     string
-    Rows     string
-    OrderBy  string
-    ID       string
-    Path     string
-    Name     string
-    Module   string
-    IsActive string
-}
-
-type Page struct {
-    ID        string `json:"id"`
-    Path      string `json:"path"`
-    Name      string `json:"name"`
-    Module    string `json:"module"`
-    Icon      string `json:"icon"`
-    SortOrder int    `json:"sortOrder"`
-    IsActive  bool   `json:"isActive"`
-}
-
-func (app Page) Encode() ([]byte, string, error) {
-    data, err := json.Marshal(app)
-    return data, "application/json", err
-}
-
-type NewPage struct {
-    Path      string `json:"path" validate:"required"`
-    Name      string `json:"name" validate:"required"`
-    Module    string `json:"module" validate:"required"`
-    Icon      string `json:"icon"`
-    SortOrder int    `json:"sortOrder"`
-    IsActive  bool   `json:"isActive"`
-}
-
-func (app *NewPage) Decode(data []byte) error {
-    return json.Unmarshal(data, &app)
-}
-
-func (app NewPage) Validate() error {
-    if err := errs.Check(app); err != nil {
-        return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-    }
-    return nil
-}
-
-// Conversion functions: ToAppPage(), toBusNewPage(), etc.
-```
-
-##### 3b. Create `filter.go`, `order.go`, `pageapp.go`
-
-Follow patterns from `roleapp` for parsing and business layer calls.
-
-#### Step 4: API Layer (HTTP Handlers)
-
-**Directory**: `api/domain/http/core/pageapi/`
-
-##### 4a. Create `pageapi.go`
-```go
-package pageapi
-
-import (
-    "context"
-    "net/http"
-    "github.com/google/uuid"
-    "github.com/timmaaaz/ichor/app/domain/core/pageapp"
-    "github.com/timmaaaz/ichor/app/sdk/errs"
-    "github.com/timmaaaz/ichor/foundation/web"
-)
-
-type api struct {
-    pageapp *pageapp.App
-}
-
-func newAPI(pageapp *pageapp.App) *api {
-    return &api{pageapp: pageapp}
-}
-
-// Implement handlers: create, update, delete, query, queryByID
-```
-
-##### 4b. Create `route.go`
-```go
-package pageapi
-
-import (
-    "net/http"
-    "github.com/timmaaaz/ichor/api/sdk/http/mid"
-    "github.com/timmaaaz/ichor/app/domain/core/pageapp"
-    "github.com/timmaaaz/ichor/app/sdk/auth"
-    "github.com/timmaaaz/ichor/app/sdk/authclient"
-    "github.com/timmaaaz/ichor/business/domain/core/pagebus"
-    "github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
-    "github.com/timmaaaz/ichor/foundation/logger"
-    "github.com/timmaaaz/ichor/foundation/web"
-)
-
-type Config struct {
-    Log            *logger.Logger
-    PageBus        *pagebus.Business
-    AuthClient     *authclient.Client
-    PermissionsBus *permissionsbus.Business
-}
-
-const RouteTable = "pages"
-
-func Routes(app *web.App, cfg Config) {
-    const version = "v1"
-    api := newAPI(pageapp.NewApp(cfg.PageBus))
-    authen := mid.Authenticate(cfg.AuthClient)
-
-    // Use auth.RuleAdminOnly for admin-only endpoints
-    app.HandlerFunc(http.MethodGet, version, "/core/pages", api.query, authen,
-        mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAdminOnly))
-    app.HandlerFunc(http.MethodPost, version, "/core/pages", api.create, authen,
-        mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
-    // Add other routes...
-}
-```
-
-##### 4c. Create `filter.go`
-
-#### Step 5: Wire Everything Together
-
-**File**: `api/cmd/services/ichor/build/all/all.go`
-
-##### 5a. Add imports
-```go
-import (
-    "github.com/timmaaaz/ichor/api/domain/http/core/pageapi"
-    "github.com/timmaaaz/ichor/app/domain/core/pageapp"
-    "github.com/timmaaaz/ichor/business/domain/core/pagebus"
-    "github.com/timmaaaz/ichor/business/domain/core/pagebus/stores/pagedb"
-)
-```
-
-##### 5b. Instantiate business layer (around line 320)
-```go
-pageBus := pagebus.NewBusiness(cfg.Log, delegate, pagedb.NewStore(cfg.Log, cfg.DB))
-```
-
-##### 5c. Register routes (around line 520)
-```go
-pageapi.Routes(app, pageapi.Config{
-    Log:            cfg.Log,
-    PageBus:        pageBus,
-    AuthClient:     cfg.AuthClient,
-    PermissionsBus: permissionsBus,
-})
-```
-
-#### Step 6: Add Permissions for Tests
-
-**File**: `business/domain/core/tableaccessbus/testutil.go`
-
-Add entries for your new tables:
-```go
-{RoleID: uuid.Nil, TableName: "pages", CanCreate: true, CanRead: true, CanUpdate: true, CanDelete: true},
-```
-
-#### Step 7: Register in FormData System (Optional)
-
-If you want your entity to work with multi-entity transactions:
-
-**File**: `api/cmd/services/ichor/build/all/formdata_registry.go`
-
-##### 7a. Add parameter to function signature
-```go
-func buildFormDataRegistry(
-    // ... existing params
-    pageApp *pageapp.App,
-    // ... remaining params
-) (*formdataregistry.Registry, error) {
-```
-
-##### 7b. Register entity
-```go
-if err := registry.Register(formdataregistry.EntityRegistration{
-    Name: "pages",
-    DecodeNew: func(data json.RawMessage) (interface{}, error) {
-        var app pageapp.NewPage
-        if err := json.Unmarshal(data, &app); err != nil {
-            return nil, err
-        }
-        if err := app.Validate(); err != nil {
-            return nil, err
-        }
-        return app, nil
-    },
-    CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-        return pageApp.Create(ctx, model.(pageapp.NewPage))
-    },
-    CreateModel: pageapp.NewPage{},
-    DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
-        var app pageapp.UpdatePage
-        if err := json.Unmarshal(data, &app); err != nil {
-            return nil, err
-        }
-        if err := app.Validate(); err != nil {
-            return nil, err
-        }
-        return app, nil
-    },
-    UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-        return pageApp.Update(ctx, model.(pageapp.UpdatePage), id)
-    },
-    UpdateModel: pageapp.UpdatePage{},
-}); err != nil {
-    return nil, fmt.Errorf("register pages: %w", err)
-}
-```
-
-##### 7c. Update call site in `all.go` (around line 730)
-```go
-formDataRegistry, err := buildFormDataRegistry(
-    // ... existing params
-    pageapp.NewApp(pageBus),
-    // ... remaining params
-)
-```
-
-#### Step 8: Run Tests
-
-```bash
-# Build to check for compilation errors
-go build ./api/cmd/services/ichor/...
-
-# Run migrations
-make migrate
-
-# Run all tests
-make test
-
-# Run tests for your specific domain
-go test -v ./api/cmd/services/ichor/tests/core/pageapi
-```
-
-#### Common Pitfalls
-
-1. **Naming Conflicts**: Avoid naming database structs the same as SDK packages (e.g., use `dbPage` instead of `page` to avoid conflict with `business/sdk/page`)
-2. **Version Numbers**: Always increment and never skip migration version numbers
-3. **Import Paths**: Use the full module path: `github.com/timmaaaz/ichor/...`
-4. **Auth Rules**: For admin-only endpoints, use `auth.RuleAdminOnly`; for any authenticated user, use `auth.RuleAny`
-5. **Pointer Fields**: Use pointers in `Update` structs to distinguish between "not provided" and "provided as zero value"
-6. **Validation Tags**: Use `validate:"required"` for required fields in `New` structs
-7. **JSON Tags**: Use camelCase in JSON tags to match frontend conventions
-
-### Running a Single Test
-
-```bash
-# Run specific test function
-go test -v ./api/cmd/services/ichor/tests/{area}/{entity}api -run TestFunctionName
-
-# Run all tests in a package
-go test -v ./api/cmd/services/ichor/tests/{area}/{entity}api
-
-# Run with race detector
-go test -race -v ./api/cmd/services/ichor/tests/{area}/{entity}api
-```
+Run `/add-domain <sql-schema>` for interactive guided implementation, or see [Domain Implementation Guide](docs/domain-implementation-guide.md) for the full step-by-step walkthrough.
 
 ### Debugging
 
-**View database directly**:
-```bash
-make pgcli
-# Then: SELECT * FROM schema.table_name;
-```
+See [Debugging Guide](docs/debugging.md) for troubleshooting common issues.
 
-**View logs**:
-```bash
-# Service logs (formatted)
-make dev-logs
+## Specialized Topics
 
-# Raw logs
-kubectl logs -n ichor-system -l app=ichor --all-containers=true -f
-```
+These systems have their own detailed documentation:
 
-**Describe resources**:
-```bash
-make dev-describe-ichor     # Ichor pods
-make dev-describe-database  # Database pod
-make dev-describe-node      # Cluster nodes
-```
+- **FormData System** → [FORMDATA_IMPLEMENTATION.md](FORMDATA_IMPLEMENTATION.md) — Multi-entity transactional operations
+- **Workflow Engine** → [docs/workflow/README.md](docs/workflow/README.md) — Automation, Temporal, actions, triggers
+- **MCP Server** → [mcp/README.md](mcp/README.md) — LLM agent integration via Model Context Protocol
+- **MCP Architecture** → [docs/mcp-architecture.md](docs/mcp-architecture.md) — How MCP fits into the Ichor system
+- **Agent Infrastructure** → [docs/agent-infrastructure.md](docs/agent-infrastructure.md) — Catalog, schemas, discovery endpoints
+- **Financial Calculations** → [docs/financial-calculations.md](docs/financial-calculations.md) — Decimal arithmetic for money
+- **Layer Patterns** → [docs/layer-patterns.md](docs/layer-patterns.md) — Encoder/Decoder interfaces, Storer pattern
 
-### Common Issues
+### Agent Chat (Conversational AI)
 
-**"No keys exist"**: Set `ICHOR_KEYS` or add keys to `zarf/keys/`
-
-**Database connection fails**:
-- Check `ICHOR_DB_HOST` matches service name
-- Verify database pod is running: `make dev-status`
-
-**Tests failing**:
-- Ensure test database is clean: `make test-down` then `make test`
-- Check migrations are current: `make migrate`
-
-**Build fails**:
-- Verify Go version: `go version` (must be 1.23+)
-- Clean and rebuild: `go clean -modcache && go mod download && make build`
-
-## Decimal Arithmetic for Financial Calculations
-
-**Library**: `github.com/shopspring/decimal`
-
-**Why**: Go's `float64` has precision issues that cause errors in financial calculations:
-```go
-0.1 + 0.2 = 0.30000000000000004  // float64 - WRONG
-0.1 + 0.2 = 0.3                   // decimal - CORRECT
-```
-
-In financial systems, these tiny errors accumulate and cause real problems:
-- Orders might be off by pennies
-- Tax calculations become inconsistent
-- Audit trails become unreliable
-
-### Separation of Concerns
-
-| Layer | Type | Purpose |
-|-------|------|---------|
-| API/Storage | `types.Money` (string-based) | Safe storage, validation, serialization |
-| Calculations | `decimal.Decimal` | Arithmetic operations, precision math |
-
-### Why NOT Add Arithmetic to types.Money?
-
-The `types.Money` type (e.g., in `ordersbus/types/money.go`) is a **value object** designed for:
-- API boundaries (JSON serialization)
-- Database storage (VARCHAR)
-- Validation (format checking)
-
-It intentionally does **NOT** support arithmetic operations because:
-1. **Separation of concerns**: Money represents values, calculations package computes them
-2. **Domain purity**: The domain layer (ordersbus) stays focused on business rules
-3. **Flexibility**: Calculations can be used across different domains
-4. **Dependency isolation**: Only the calculation package needs the decimal library
-
-### Usage Pattern
-
-```go
-// Convert string/Money to decimal for calculations
-unitPrice, _ := decimal.NewFromString(order.UnitPrice.Value())
-
-// Perform calculations with precision
-total := quantity.Mul(unitPrice).Round(2)
-
-// Convert back to string for storage
-order.Total = total.String()
-```
-
-### Package Location
-
-Calculation helpers live in `business/sdk/calculations/` because:
-- Pure business logic (no HTTP, no context, no transactions)
-- Reusable across domains
-- Follows existing pattern: `business/sdk/page`, `business/sdk/order`
+The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Ollama** with the **qwen3:8b** model. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Qwen 3's strengths and limitations.
 
 ## Important Notes
 
@@ -1269,9 +330,4 @@ Calculation helpers live in `business/sdk/calculations/` because:
 ## Additional Resources
 
 - **Ardan Labs Course**: https://github.com/ardanlabs/service/wiki
-- **FormData System**: `FORMDATA_IMPLEMENTATION.md` in this repo
-- **Workflow Docs**: `docs/workflow/README.md` — automation, Temporal, actions, triggers
-- **MCP Server**: `mcp/README.md` — LLM agent integration via Model Context Protocol
-- **MCP Architecture**: `docs/mcp-architecture.md` — how MCP fits into the Ichor system, request flow, endpoint mapping
-- **Agent Infrastructure**: `docs/agent-infrastructure.md` — catalog, schemas, discovery endpoints
 - **Makefile Help**: `make help` for all available commands
