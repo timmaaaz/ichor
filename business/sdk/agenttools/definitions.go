@@ -194,7 +194,7 @@ func ToolDefinitions() []llm.ToolDef {
 		},
 		{
 			Name:        "explain_workflow_node",
-			Description: "Get details about a specific action in a workflow by name or UUID. Returns the action's config, incoming edges (what feeds into it), outgoing edges (where it goes with output port labels), and depth from the start node. Use after get_workflow_rule to drill into a specific action.",
+			Description: "Get details about a specific action in a workflow by name or UUID. Returns the action's full config (including alert recipients, email templates, conditions, etc.), incoming edges, outgoing edges, and depth from the start node. Use this to answer questions about action specifics like 'who receives alerts?' or 'what does this condition check?'. Use after get_workflow_rule to drill into a specific action.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -269,7 +269,7 @@ func ToolDefinitions() []llm.ToolDef {
 		// =================================================================
 		{
 			Name:        "list_my_alerts",
-			Description: "List active alerts for the current user. Returns alerts with enriched recipient data (names, emails, role names instead of UUIDs). Supports filtering by status and severity.",
+			Description: "List alerts in YOUR inbox (alerts where you are a recipient, either directly or via a role). This does NOT search all alerts in the system — only ones addressed to you. Returns enriched recipient data (names, emails, role names). To see who a workflow is configured to alert, use explain_workflow_node instead.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -297,7 +297,7 @@ func ToolDefinitions() []llm.ToolDef {
 		},
 		{
 			Name:        "get_alert_detail",
-			Description: "Get detailed information about a specific alert including enriched recipient data (user names, emails, role names).",
+			Description: "Get detailed information about a specific fired alert by its UUID, including enriched recipient data (user names, emails, role names). Use this for alerts you already know the ID of. To see the configured recipients of a workflow's alert action, use explain_workflow_node instead.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -309,6 +309,35 @@ func ToolDefinitions() []llm.ToolDef {
 					},
 				},
 				"required": []string{"alert_id"},
+			}),
+		},
+		{
+			Name:        "list_alerts_for_rule",
+			Description: "List alerts that were fired by a specific workflow rule. Shows all alerts created by the rule (not just yours). Returns enriched recipient data. Use this to check if a workflow has actually triggered alerts and who received them.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"rule_id": map[string]any{
+						"type":        "string",
+						"format":      "uuid",
+						"description": "Full UUID of the workflow rule.",
+						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+					},
+					"status": map[string]any{
+						"type":        "string",
+						"description": "Filter by alert status.",
+						"enum":        []string{"active", "acknowledged", "dismissed", "resolved"},
+					},
+					"page": map[string]any{
+						"type":        "string",
+						"description": "Page number (default: 1).",
+					},
+					"rows": map[string]any{
+						"type":        "string",
+						"description": "Results per page (default: 10).",
+					},
+				},
+				"required": []string{"rule_id"},
 			}),
 		},
 

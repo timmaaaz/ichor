@@ -83,6 +83,8 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 			return nil, err
 		}
 		return e.get(ctx, "/v1/workflow/alerts/"+p.AlertID, token)
+	case "list_alerts_for_rule":
+		return e.listAlertsForRule(ctx, tc, token)
 
 	// Read
 	case "get_workflow_rule":
@@ -311,6 +313,35 @@ func (e *Executor) listMyAlerts(ctx context.Context, tc llm.ToolCall, token stri
 	}
 	if p.Rows != "" {
 		path += "rows=" + p.Rows + "&"
+	}
+
+	return e.get(ctx, path, token)
+}
+
+// listAlertsForRule fetches alerts fired by a specific workflow rule.
+func (e *Executor) listAlertsForRule(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		RuleID string `json:"rule_id"`
+		Status string `json:"status"`
+		Page   string `json:"page"`
+		Rows   string `json:"rows"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if err := requireUUID(p.RuleID, "rule_id"); err != nil {
+		return nil, err
+	}
+
+	path := "/v1/workflow/alerts?sourceRuleId=" + p.RuleID
+	if p.Status != "" {
+		path += "&status=" + p.Status
+	}
+	if p.Page != "" {
+		path += "&page=" + p.Page
+	}
+	if p.Rows != "" {
+		path += "&rows=" + p.Rows
 	}
 
 	return e.get(ctx, path, token)

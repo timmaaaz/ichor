@@ -48,8 +48,9 @@ const (
 	ShowCascade      = "show_cascade"
 
 	// Alerts (workflow)
-	ListMyAlerts   = "list_my_alerts"
-	GetAlertDetail = "get_alert_detail"
+	ListMyAlerts      = "list_my_alerts"
+	GetAlertDetail    = "get_alert_detail"
+	ListAlertsForRule = "list_alerts_for_rule"
 
 	// Search (shared)
 	SearchDatabaseSchema = "search_database_schema"
@@ -103,6 +104,7 @@ var groupMembers = map[string][]ToolGroup{
 	ShowCascade:          {GroupWorkflow},
 	ListMyAlerts:         {GroupWorkflow},
 	GetAlertDetail:       {GroupWorkflow},
+	ListAlertsForRule:    {GroupWorkflow},
 
 	// Tables-only
 	DiscoverConfigSurfaces: {GroupTables},
