@@ -258,10 +258,10 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 				"elapsed", time.Since(toolStart),
 				"is_error", result.IsError)
 
-			// Intercept preview_workflow: if validation passed, emit a
-			// workflow_preview SSE event so the frontend can show the
+			// Intercept preview_workflow / preview_draft: if validation passed,
+			// emit a workflow_preview SSE event so the frontend can show the
 			// proposed state for user approval.
-			if tc.Name == "preview_workflow" && !result.IsError {
+			if (tc.Name == "preview_workflow" || tc.Name == "preview_draft") && !result.IsError {
 				if preview := buildPreviewEvent(tc, result); preview != nil {
 					sse.send("workflow_preview", preview)
 					result.Content = `{"status":"preview_sent","message":"Preview sent to user for approval. Do not call create_workflow or update_workflow. The user will accept or reject the preview directly."}`
@@ -312,22 +312,22 @@ func filterToolsByContext(tools []llm.ToolDef, contextType string) []llm.ToolDef
 }
 
 // buildPreviewEvent constructs the workflow_preview SSE event payload from a
-// successful preview_workflow tool call. Returns nil if the validation failed
-// (the LLM should see the errors and retry).
+// successful preview_workflow or preview_draft tool call. Returns nil if the
+// validation failed (the LLM should see the errors and retry).
 func buildPreviewEvent(tc llm.ToolCall, result llm.ToolResult) map[string]any {
 	// Only emit preview when validation passed.
 	var validation struct {
-		Valid bool `json:"valid"`
+		Valid    bool            `json:"valid"`
+		Workflow json.RawMessage `json:"workflow"` // present in preview_draft responses
 	}
 	if err := json.Unmarshal([]byte(result.Content), &validation); err != nil || !validation.Valid {
 		return nil
 	}
 
-	// Extract the proposed workflow and metadata from the tool input.
-	// rule_id is only used for the SSE event (is_update flag); dry-run
-	// validation is stateless and does not need it.
+	// Extract metadata from the tool input.
 	var input struct {
 		RuleID      string          `json:"rule_id"`
+		DraftID     string          `json:"draft_id"`
 		Workflow    json.RawMessage `json:"workflow"`
 		Description string          `json:"description"`
 	}
@@ -335,14 +335,22 @@ func buildPreviewEvent(tc llm.ToolCall, result llm.ToolResult) map[string]any {
 		return nil
 	}
 
+	// For preview_draft, the assembled workflow comes from the validation
+	// response (the executor embeds it after transforming the draft).
+	// For preview_workflow, the workflow comes from the tool input.
+	workflow := input.Workflow
+	if input.DraftID != "" && len(validation.Workflow) > 0 {
+		workflow = validation.Workflow
+	}
+
 	// Guard against malformed workflow JSON reaching the frontend.
-	if !json.Valid(input.Workflow) {
+	if !json.Valid(workflow) {
 		return nil
 	}
 
 	event := map[string]any{
 		"description": input.Description,
-		"workflow":    json.RawMessage(input.Workflow),
+		"workflow":    json.RawMessage(workflow),
 		"is_update":  input.RuleID != "",
 	}
 	if input.RuleID != "" {

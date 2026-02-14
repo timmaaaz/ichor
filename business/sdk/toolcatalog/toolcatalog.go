@@ -47,6 +47,12 @@ const (
 	SuggestTemplates = "suggest_templates"
 	ShowCascade      = "show_cascade"
 
+	// Draft builder — workflow
+	StartDraft        = "start_draft"
+	AddDraftAction    = "add_draft_action"
+	RemoveDraftAction = "remove_draft_action"
+	PreviewDraft      = "preview_draft"
+
 	// Alerts (workflow)
 	ListMyAlerts      = "list_my_alerts"
 	GetAlertDetail    = "get_alert_detail"
@@ -105,6 +111,10 @@ var groupMembers = map[string][]ToolGroup{
 	ListMyAlerts:         {GroupWorkflow},
 	GetAlertDetail:       {GroupWorkflow},
 	ListAlertsForRule:    {GroupWorkflow},
+	StartDraft:           {GroupWorkflow},
+	AddDraftAction:       {GroupWorkflow},
+	RemoveDraftAction:    {GroupWorkflow},
+	PreviewDraft:         {GroupWorkflow},
 
 	// Tables-only
 	DiscoverConfigSurfaces: {GroupTables},

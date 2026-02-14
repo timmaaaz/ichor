@@ -60,12 +60,20 @@ var workflowPayloadSchema = map[string]any{
 		"entity_id": map[string]any{
 			"type":        "string",
 			"format":      "uuid",
-			"description": "UUID of the target entity.",
+			"description": "UUID of the target entity. Use this OR 'entity' (name), not both.",
+		},
+		"entity": map[string]any{
+			"type":        "string",
+			"description": "Entity name in 'schema.table' format (e.g. 'inventory.inventory_items'). Resolved to entity_id automatically. Use this OR 'entity_id' (UUID), not both.",
 		},
 		"trigger_type_id": map[string]any{
 			"type":        "string",
 			"format":      "uuid",
-			"description": "UUID of the trigger type.",
+			"description": "UUID of the trigger type. Use this OR 'trigger_type' (name), not both.",
+		},
+		"trigger_type": map[string]any{
+			"type":        "string",
+			"description": "Trigger type name (e.g. 'on_update', 'on_create', 'on_delete', 'manual'). Resolved to trigger_type_id automatically. Use this OR 'trigger_type_id' (UUID), not both.",
 		},
 		"trigger_conditions": map[string]any{
 			"type":        "object",
@@ -98,6 +106,10 @@ var workflowPayloadSchema = map[string]any{
 					},
 					"is_active": map[string]any{
 						"type": "boolean",
+					},
+					"after": map[string]any{
+						"type":        "string",
+						"description": "Predecessor action. Format: 'ActionName:port' or 'ActionName' (uses default port). Omit for the first action. When actions use 'after', the edges array can be omitted.",
 					},
 				},
 				"required": []string{"name", "action_type", "action_config", "is_active"},
@@ -139,7 +151,7 @@ var workflowPayloadSchema = map[string]any{
 			"description": "Optional canvas layout for the UI.",
 		},
 	},
-	"required": []string{"name", "is_active", "entity_id", "trigger_type_id", "actions", "edges"},
+	"required": []string{"name", "is_active", "actions"},
 }
 
 // ToolDefinitions returns the fixed set of tools exposed to the LLM.
@@ -361,6 +373,111 @@ func ToolDefinitions() []llm.ToolDef {
 					},
 				},
 				"required": []string{"workflow", "description"},
+			}),
+		},
+
+		// =================================================================
+		// Draft builder (incremental workflow creation)
+		// =================================================================
+		{
+			Name:        "start_draft",
+			Description: "Start building a new workflow incrementally. Returns a draft_id to use with add_draft_action and preview_draft. Accepts entity/trigger names (no UUID lookup needed).",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Workflow rule name (1-255 chars).",
+					},
+					"entity": map[string]any{
+						"type":        "string",
+						"description": "Entity in 'schema.table' format (e.g. 'inventory.inventory_items') or UUID.",
+					},
+					"trigger_type": map[string]any{
+						"type":        "string",
+						"description": "Trigger type name (e.g. 'on_update') or UUID.",
+					},
+					"description": map[string]any{
+						"type":        "string",
+						"description": "Optional workflow description.",
+					},
+					"trigger_conditions": map[string]any{
+						"type":        "object",
+						"description": "Optional trigger filter conditions.",
+					},
+				},
+				"required": []string{"name", "entity", "trigger_type"},
+			}),
+		},
+		{
+			Name:        "add_draft_action",
+			Description: "Add an action to a draft workflow. Use 'after' to declare which action precedes this one. Omit 'after' for the first action (it becomes the start node). Returns the action's available output ports.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"draft_id": map[string]any{
+						"type":        "string",
+						"description": "Draft ID from start_draft.",
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Action name (1-255 chars).",
+					},
+					"action_type": map[string]any{
+						"type":        "string",
+						"enum":        actionTypeEnum,
+						"description": "The action type.",
+					},
+					"action_config": map[string]any{
+						"type":        "object",
+						"description": "Config matching the action type's schema (see discover_action_types).",
+					},
+					"after": map[string]any{
+						"type":        "string",
+						"description": "Predecessor: 'ActionName:port' or 'ActionName' (uses default port). Omit for first action.",
+					},
+					"is_active": map[string]any{
+						"type":    "boolean",
+						"default": true,
+					},
+				},
+				"required": []string{"draft_id", "name", "action_type", "action_config"},
+			}),
+		},
+		{
+			Name:        "remove_draft_action",
+			Description: "Remove an action from a draft workflow by name. Also removes any 'after' references to this action from other actions.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"draft_id": map[string]any{
+						"type":        "string",
+						"description": "Draft ID from start_draft.",
+					},
+					"action_name": map[string]any{
+						"type":        "string",
+						"description": "Name of the action to remove.",
+					},
+				},
+				"required": []string{"draft_id", "action_name"},
+			}),
+		},
+		{
+			Name:        "preview_draft",
+			Description: "Assemble the draft into a complete workflow, validate it, and send a visual preview to the user for approval. The user will accept or reject the preview directly.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"draft_id": map[string]any{
+						"type":        "string",
+						"description": "Draft ID from start_draft.",
+					},
+					"description": map[string]any{
+						"type":        "string",
+						"description": "Brief human-readable description of the workflow for user review.",
+					},
+				},
+				"required": []string{"draft_id", "description"},
 			}),
 		},
 	}

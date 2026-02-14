@@ -12,7 +12,8 @@ func TestInGroup_WorkflowTools(t *testing.T) {
 		ListWorkflows, ListWorkflowRules, ListActionTemplates,
 		ValidateWorkflow, CreateWorkflow, UpdateWorkflow, PreviewWorkflow,
 		AnalyzeWorkflow, SuggestTemplates, ShowCascade,
-		ListMyAlerts, GetAlertDetail,
+		ListMyAlerts, GetAlertDetail, ListAlertsForRule,
+		StartDraft, AddDraftAction, RemoveDraftAction, PreviewDraft,
 	}
 	for _, name := range workflowOnly {
 		if !InGroup(name, GroupWorkflow) {
@@ -109,12 +110,12 @@ func TestToolsForGroup_Tables(t *testing.T) {
 
 func TestAllTools_Count(t *testing.T) {
 	all := AllTools()
-	// 21 workflow-only + 19 tables-only + 2 shared = 42
-	if len(all) != 42 {
+	// 25 workflow-only + 19 tables-only + 2 shared = 46
+	if len(all) != 46 {
 		names := make([]string, len(all))
 		copy(names, all)
 		sort.Strings(names)
-		t.Errorf("expected 42 tools, got %d: %v", len(all), names)
+		t.Errorf("expected 46 tools, got %d: %v", len(all), names)
 	}
 }
 

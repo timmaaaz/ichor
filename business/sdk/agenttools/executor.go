@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,13 +16,54 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
+// draftWorkflow holds the in-memory state for an incrementally built workflow.
+type draftWorkflow struct {
+	lastAccess time.Time
+	name       string
+	entity     string // "schema.table" or UUID
+	triggerType string // name or UUID
+	description string
+	triggerCond json.RawMessage // optional trigger_conditions
+	actions     []draftAction
+}
+
+// draftAction is a single action within a draft, preserving the "after" field.
+type draftAction struct {
+	Name       string          `json:"name"`
+	ActionType string          `json:"action_type"`
+	Config     json.RawMessage `json:"action_config"`
+	Desc       string          `json:"description,omitempty"`
+	IsActive   bool            `json:"is_active"`
+	After      string          `json:"after,omitempty"`
+}
+
 // Executor runs tool calls by forwarding them to Ichor's own REST API,
 // using the caller's JWT token so all requests honour existing auth/perms.
 type Executor struct {
 	log     *logger.Logger
 	baseURL string
 	http    *http.Client
+
+	// Caches for name→UUID resolution (populated lazily per token).
+	entityCache      map[string]string // "schema.table" → entity UUID
+	triggerTypeCache map[string]string // trigger name → trigger UUID
+	actionTypeCache  map[string]actionTypeInfo // action type → info with ports
+	cacheMu          sync.Mutex
+
+	// Draft state for incremental workflow building.
+	drafts  map[string]*draftWorkflow
+	draftMu sync.Mutex
 }
+
+// actionTypeInfo holds cached action type metadata for default port resolution.
+type actionTypeInfo struct {
+	DefaultPort string
+}
+
+const (
+	draftTTL   = 10 * time.Minute
+	maxDrafts  = 100 // per executor instance
+)
 
 // NewExecutor creates a tool executor. baseURL is the Ichor API root
 // (e.g. "http://localhost:8080").
@@ -29,6 +72,7 @@ func NewExecutor(log *logger.Logger, baseURL string) *Executor {
 		log:     log,
 		baseURL: baseURL,
 		http:    &http.Client{Timeout: 30 * time.Second},
+		drafts:  make(map[string]*draftWorkflow),
 	}
 }
 
@@ -116,7 +160,7 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 	case "list_workflow_rules":
 		return e.get(ctx, "/v1/workflow/rules", token)
 
-	// Write
+	// Write (with name resolution + edge shorthand)
 	case "create_workflow":
 		var p struct {
 			Workflow json.RawMessage `json:"workflow"`
@@ -124,7 +168,11 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		if err := json.Unmarshal(tc.Input, &p); err != nil {
 			return nil, fmt.Errorf("bad params: %w", err)
 		}
-		return e.post(ctx, "/v1/workflow/rules/full", p.Workflow, token)
+		transformed, err := e.transformWorkflowPayload(ctx, p.Workflow, token)
+		if err != nil {
+			return nil, fmt.Errorf("transform workflow: %w", err)
+		}
+		return e.post(ctx, "/v1/workflow/rules/full", transformed, token)
 	case "update_workflow":
 		var p struct {
 			RuleID   string          `json:"rule_id"`
@@ -136,7 +184,11 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		if err := requireUUID(p.RuleID, "rule_id"); err != nil {
 			return nil, err
 		}
-		return e.put(ctx, "/v1/workflow/rules/"+p.RuleID+"/full", p.Workflow, token)
+		transformed, err := e.transformWorkflowPayload(ctx, p.Workflow, token)
+		if err != nil {
+			return nil, fmt.Errorf("transform workflow: %w", err)
+		}
+		return e.put(ctx, "/v1/workflow/rules/"+p.RuleID+"/full", transformed, token)
 	case "validate_workflow", "preview_workflow":
 		var p struct {
 			Workflow json.RawMessage `json:"workflow"`
@@ -144,12 +196,723 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		if err := json.Unmarshal(tc.Input, &p); err != nil {
 			return nil, fmt.Errorf("bad params: %w", err)
 		}
-		return e.post(ctx, "/v1/workflow/rules/full?dry_run=true", p.Workflow, token)
+		transformed, err := e.transformWorkflowPayload(ctx, p.Workflow, token)
+		if err != nil {
+			return nil, fmt.Errorf("transform workflow: %w", err)
+		}
+		return e.post(ctx, "/v1/workflow/rules/full?dry_run=true", transformed, token)
+
+	// Draft builder
+	case "start_draft":
+		return e.handleStartDraft(ctx, tc, token)
+	case "add_draft_action":
+		return e.handleAddDraftAction(ctx, tc, token)
+	case "remove_draft_action":
+		return e.handleRemoveDraftAction(ctx, tc)
+	case "preview_draft":
+		return e.handlePreviewDraft(ctx, tc, token)
 
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", tc.Name)
 	}
 }
+
+// =========================================================================
+// Workflow payload transformation (name resolution + edge shorthand)
+// =========================================================================
+
+// transformWorkflowPayload resolves name-based entity/trigger references to
+// UUIDs and generates edges from "after" fields when no edges are provided.
+func (e *Executor) transformWorkflowPayload(ctx context.Context, workflow json.RawMessage, token string) (json.RawMessage, error) {
+	var w map[string]json.RawMessage
+	if err := json.Unmarshal(workflow, &w); err != nil {
+		return nil, fmt.Errorf("invalid workflow JSON: %w", err)
+	}
+
+	// --- Name-to-UUID resolution ---
+
+	// Resolve "entity" → "entity_id"
+	if raw, ok := w["entity"]; ok {
+		var entity string
+		if err := json.Unmarshal(raw, &entity); err == nil && entity != "" {
+			resolved, err := e.resolveEntityID(ctx, entity, token)
+			if err != nil {
+				return nil, err
+			}
+			w["entity_id"] = mustMarshal(resolved)
+			delete(w, "entity")
+		}
+	}
+
+	// Resolve "trigger_type" → "trigger_type_id"
+	if raw, ok := w["trigger_type"]; ok {
+		var tt string
+		if err := json.Unmarshal(raw, &tt); err == nil && tt != "" {
+			resolved, err := e.resolveTriggerTypeID(ctx, tt, token)
+			if err != nil {
+				return nil, err
+			}
+			w["trigger_type_id"] = mustMarshal(resolved)
+			delete(w, "trigger_type")
+		}
+	}
+
+	// --- Edge shorthand ("after" field) ---
+
+	actionsRaw, hasActions := w["actions"]
+	edgesRaw, hasEdges := w["edges"]
+
+	// Check if edges is empty/missing
+	edgesEmpty := !hasEdges
+	if hasEdges {
+		var edges []json.RawMessage
+		if json.Unmarshal(edgesRaw, &edges) == nil && len(edges) == 0 {
+			edgesEmpty = true
+		}
+	}
+
+	if hasActions && edgesEmpty {
+		var actions []map[string]json.RawMessage
+		if err := json.Unmarshal(actionsRaw, &actions); err != nil {
+			return nil, fmt.Errorf("invalid actions array: %w", err)
+		}
+
+		// Check if any action has an "after" field.
+		hasAfter := false
+		for _, a := range actions {
+			if _, ok := a["after"]; ok {
+				hasAfter = true
+				break
+			}
+		}
+
+		if hasAfter {
+			edges, err := e.generateEdgesFromAfter(ctx, actions, token)
+			if err != nil {
+				return nil, fmt.Errorf("generate edges from 'after': %w", err)
+			}
+			w["edges"] = mustMarshal(edges)
+
+			// Strip "after" from actions before forwarding.
+			for i := range actions {
+				delete(actions[i], "after")
+			}
+			w["actions"] = mustMarshal(actions)
+		}
+	}
+
+	return json.Marshal(w)
+}
+
+// generateEdgesFromAfter builds an edges array from action "after" fields.
+// The first action without an "after" field gets a start edge.
+func (e *Executor) generateEdgesFromAfter(ctx context.Context, actions []map[string]json.RawMessage, token string) ([]map[string]any, error) {
+	// Build name→index map for temp ID resolution.
+	nameToIdx := make(map[string]int, len(actions))
+	for i, a := range actions {
+		var name string
+		if raw, ok := a["name"]; ok {
+			if err := json.Unmarshal(raw, &name); err != nil {
+				return nil, fmt.Errorf("action at index %d has invalid name: %w", i, err)
+			}
+		}
+		if name == "" {
+			return nil, fmt.Errorf("action at index %d has no name", i)
+		}
+		nameToIdx[name] = i
+	}
+
+	var edges []map[string]any
+	startCount := 0
+	edgeOrder := 0
+
+	for i, a := range actions {
+		afterRaw, hasAfter := a["after"]
+
+		var afterStr string
+		if hasAfter {
+			if err := json.Unmarshal(afterRaw, &afterStr); err != nil {
+				return nil, fmt.Errorf("action at index %d has invalid 'after' field: %w", i, err)
+			}
+		}
+
+		if afterStr == "" {
+			// This action has no predecessor — it's the start node.
+			startCount++
+			if startCount > 1 {
+				return nil, fmt.Errorf("multiple actions without 'after' — only one start action is allowed")
+			}
+			edges = append(edges, map[string]any{
+				"target_action_id": fmt.Sprintf("temp:%d", i),
+				"edge_type":        "start",
+				"edge_order":       edgeOrder,
+			})
+			edgeOrder++
+			continue
+		}
+
+		// Parse "ActionName:port" or "ActionName"
+		sourceName, port, err := parseAfterField(afterStr)
+		if err != nil {
+			return nil, err
+		}
+
+		sourceIdx, ok := nameToIdx[sourceName]
+		if !ok {
+			return nil, fmt.Errorf("action %q referenced in 'after' not found in actions list", sourceName)
+		}
+
+		// If no port specified, look up default port for the source action type.
+		if port == "" {
+			var actionType string
+			if raw, ok := actions[sourceIdx]["action_type"]; ok {
+				if err := json.Unmarshal(raw, &actionType); err != nil {
+					return nil, fmt.Errorf("action %q has invalid action_type: %w", sourceName, err)
+				}
+			}
+			if actionType == "" {
+				return nil, fmt.Errorf("cannot determine default port: source action %q has no action_type", sourceName)
+			}
+			defaultPort, err := e.getDefaultOutputPort(ctx, actionType, token)
+			if err != nil {
+				return nil, fmt.Errorf("resolve default port for %q (%s): %w", sourceName, actionType, err)
+			}
+			port = defaultPort
+		}
+
+		edges = append(edges, map[string]any{
+			"source_action_id": fmt.Sprintf("temp:%d", sourceIdx),
+			"target_action_id": fmt.Sprintf("temp:%d", i),
+			"edge_type":        "sequence",
+			"source_output":    port,
+			"edge_order":       edgeOrder,
+		})
+		edgeOrder++
+	}
+
+	if startCount == 0 {
+		return nil, fmt.Errorf("no start action found — at least one action must omit the 'after' field")
+	}
+
+	return edges, nil
+}
+
+// parseAfterField splits "ActionName:port" into name and port.
+// If no colon, port is empty string.
+func parseAfterField(after string) (name, port string, err error) {
+	after = strings.TrimSpace(after)
+	if after == "" {
+		return "", "", fmt.Errorf("empty 'after' value")
+	}
+
+	// Split on last colon to support action names with colons (unlikely but safe).
+	idx := strings.LastIndex(after, ":")
+	if idx == -1 {
+		return after, "", nil
+	}
+
+	name = strings.TrimSpace(after[:idx])
+	port = strings.TrimSpace(after[idx+1:])
+	if name == "" {
+		return "", "", fmt.Errorf("invalid 'after' format %q: action name is empty", after)
+	}
+	return name, port, nil
+}
+
+// =========================================================================
+// Name-to-UUID resolution with caching
+// =========================================================================
+
+// resolveEntityID resolves a "schema.table" string or UUID to an entity UUID.
+func (e *Executor) resolveEntityID(ctx context.Context, entity, token string) (string, error) {
+	// If it's already a UUID, return as-is.
+	if _, err := uuid.Parse(entity); err == nil {
+		return entity, nil
+	}
+
+	// Validate format: must be "schema.table"
+	if !strings.Contains(entity, ".") {
+		return "", fmt.Errorf("entity must be in 'schema.table' format (e.g. 'inventory.inventory_items') or a UUID, got %q", entity)
+	}
+
+	e.cacheMu.Lock()
+	defer e.cacheMu.Unlock()
+
+	// Check cache.
+	if e.entityCache != nil {
+		if id, ok := e.entityCache[entity]; ok {
+			return id, nil
+		}
+	}
+
+	// Fetch all entities and populate cache.
+	data, err := e.get(ctx, "/v1/workflow/entities", token)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch entities for name resolution: %w", err)
+	}
+
+	var entities []struct {
+		ID         string `json:"id"`
+		Name       string `json:"name"`
+		SchemaName string `json:"schema_name"`
+	}
+	if err := json.Unmarshal(data, &entities); err != nil {
+		return "", fmt.Errorf("failed to parse entities response: %w", err)
+	}
+
+	e.entityCache = make(map[string]string, len(entities))
+	for _, ent := range entities {
+		key := ent.SchemaName + "." + ent.Name
+		e.entityCache[key] = ent.ID
+	}
+
+	if id, ok := e.entityCache[entity]; ok {
+		return id, nil
+	}
+	return "", fmt.Errorf("entity %q not found — use discover_entities to list available entities", entity)
+}
+
+// resolveTriggerTypeID resolves a trigger type name or UUID to a trigger type UUID.
+func (e *Executor) resolveTriggerTypeID(ctx context.Context, triggerType, token string) (string, error) {
+	// If it's already a UUID, return as-is.
+	if _, err := uuid.Parse(triggerType); err == nil {
+		return triggerType, nil
+	}
+
+	e.cacheMu.Lock()
+	defer e.cacheMu.Unlock()
+
+	// Check cache.
+	if e.triggerTypeCache != nil {
+		if id, ok := e.triggerTypeCache[triggerType]; ok {
+			return id, nil
+		}
+	}
+
+	// Fetch all trigger types and populate cache.
+	data, err := e.get(ctx, "/v1/workflow/trigger-types", token)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch trigger types for name resolution: %w", err)
+	}
+
+	var types []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(data, &types); err != nil {
+		return "", fmt.Errorf("failed to parse trigger types response: %w", err)
+	}
+
+	e.triggerTypeCache = make(map[string]string, len(types))
+	for _, t := range types {
+		e.triggerTypeCache[t.Name] = t.ID
+	}
+
+	if id, ok := e.triggerTypeCache[triggerType]; ok {
+		return id, nil
+	}
+	return "", fmt.Errorf("trigger type %q not found — use discover_trigger_types to list available types", triggerType)
+}
+
+// getDefaultOutputPort returns the default output port name for an action type.
+func (e *Executor) getDefaultOutputPort(ctx context.Context, actionType, token string) (string, error) {
+	e.cacheMu.Lock()
+	defer e.cacheMu.Unlock()
+
+	// Check cache.
+	if e.actionTypeCache != nil {
+		if info, ok := e.actionTypeCache[actionType]; ok {
+			return info.DefaultPort, nil
+		}
+	}
+
+	// Fetch all action types and populate cache.
+	data, err := e.get(ctx, "/v1/workflow/action-types", token)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch action types for port resolution: %w", err)
+	}
+
+	var types []struct {
+		Type        string `json:"type"`
+		OutputPorts []struct {
+			Name      string `json:"name"`
+			IsDefault bool   `json:"is_default"`
+		} `json:"output_ports"`
+	}
+	if err := json.Unmarshal(data, &types); err != nil {
+		return "", fmt.Errorf("failed to parse action types response: %w", err)
+	}
+
+	e.actionTypeCache = make(map[string]actionTypeInfo, len(types))
+	for _, t := range types {
+		defaultPort := "success" // fallback
+		for _, p := range t.OutputPorts {
+			if p.IsDefault {
+				defaultPort = p.Name
+				break
+			}
+		}
+		e.actionTypeCache[t.Type] = actionTypeInfo{DefaultPort: defaultPort}
+	}
+
+	if info, ok := e.actionTypeCache[actionType]; ok {
+		return info.DefaultPort, nil
+	}
+	return "success", nil // safe fallback for unknown types
+}
+
+// =========================================================================
+// Draft builder handlers
+// =========================================================================
+
+// handleStartDraft creates a new in-memory draft workflow.
+func (e *Executor) handleStartDraft(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		Name        string          `json:"name"`
+		Entity      string          `json:"entity"`
+		TriggerType string          `json:"trigger_type"`
+		Description string          `json:"description"`
+		TriggerCond json.RawMessage `json:"trigger_conditions"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if p.Name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	if p.Entity == "" {
+		return nil, fmt.Errorf("entity is required")
+	}
+	if p.TriggerType == "" {
+		return nil, fmt.Errorf("trigger_type is required")
+	}
+
+	// Validate entity and trigger_type can be resolved (fail fast).
+	if _, err := e.resolveEntityID(ctx, p.Entity, token); err != nil {
+		return nil, err
+	}
+	if _, err := e.resolveTriggerTypeID(ctx, p.TriggerType, token); err != nil {
+		return nil, err
+	}
+
+	draftID := uuid.New().String()
+
+	e.draftMu.Lock()
+	e.cleanExpiredDraftsLocked()
+	if len(e.drafts) >= maxDrafts {
+		e.draftMu.Unlock()
+		return nil, fmt.Errorf("maximum draft limit reached (%d) — please preview or abandon existing drafts", maxDrafts)
+	}
+	e.drafts[draftID] = &draftWorkflow{
+		lastAccess:  time.Now(),
+		name:        p.Name,
+		entity:      p.Entity,
+		triggerType: p.TriggerType,
+		description: p.Description,
+		triggerCond: p.TriggerCond,
+	}
+	e.draftMu.Unlock()
+
+	e.log.Info(ctx, "AGENT-CHAT: draft created", "draft_id", draftID, "name", p.Name)
+
+	return json.Marshal(map[string]string{
+		"draft_id": draftID,
+		"status":   "draft_created",
+		"message":  fmt.Sprintf("Draft %q created. Use add_draft_action to add actions, then preview_draft to validate and preview.", p.Name),
+	})
+}
+
+// handleAddDraftAction appends an action to a draft workflow.
+func (e *Executor) handleAddDraftAction(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		DraftID    string          `json:"draft_id"`
+		Name       string          `json:"name"`
+		ActionType string          `json:"action_type"`
+		Config     json.RawMessage `json:"action_config"`
+		Desc       string          `json:"description"`
+		IsActive   *bool           `json:"is_active"`
+		After      string          `json:"after"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if p.DraftID == "" {
+		return nil, fmt.Errorf("draft_id is required")
+	}
+	if p.Name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	if p.ActionType == "" {
+		return nil, fmt.Errorf("action_type is required")
+	}
+
+	isActive := true
+	if p.IsActive != nil {
+		isActive = *p.IsActive
+	}
+
+	e.draftMu.Lock()
+	e.cleanExpiredDraftsLocked()
+	draft, ok := e.drafts[p.DraftID]
+	if !ok {
+		e.draftMu.Unlock()
+		return nil, fmt.Errorf("draft %q not found or expired", p.DraftID)
+	}
+
+	// Check for duplicate action name.
+	for _, a := range draft.actions {
+		if a.Name == p.Name {
+			e.draftMu.Unlock()
+			return nil, fmt.Errorf("action %q already exists in draft — use a different name or remove_draft_action first", p.Name)
+		}
+	}
+
+	// Validate "after" reference if provided.
+	if p.After != "" {
+		refName, _, err := parseAfterField(p.After)
+		if err != nil {
+			e.draftMu.Unlock()
+			return nil, fmt.Errorf("invalid 'after' format: %w", err)
+		}
+		found := false
+		for _, existing := range draft.actions {
+			if existing.Name == refName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			e.draftMu.Unlock()
+			return nil, fmt.Errorf("'after' references unknown action %q — add that action first or omit 'after' for the start action", refName)
+		}
+	}
+
+	draft.actions = append(draft.actions, draftAction{
+		Name:       p.Name,
+		ActionType: p.ActionType,
+		Config:     p.Config,
+		Desc:       p.Desc,
+		IsActive:   isActive,
+		After:      p.After,
+	})
+	draft.lastAccess = time.Now()
+	e.draftMu.Unlock()
+
+	// Look up output ports for this action type so the LLM knows what's available.
+	ports := e.getOutputPortNames(ctx, p.ActionType, token)
+
+	return json.Marshal(map[string]any{
+		"status":       "action_added",
+		"action_name":  p.Name,
+		"action_index": len(draft.actions) - 1,
+		"output_ports": ports,
+		"message":      fmt.Sprintf("Action %q (%s) added to draft. Available output ports: %s", p.Name, p.ActionType, strings.Join(ports, ", ")),
+	})
+}
+
+// handleRemoveDraftAction removes an action from a draft by name.
+func (e *Executor) handleRemoveDraftAction(_ context.Context, tc llm.ToolCall) (json.RawMessage, error) {
+	var p struct {
+		DraftID    string `json:"draft_id"`
+		ActionName string `json:"action_name"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if p.DraftID == "" {
+		return nil, fmt.Errorf("draft_id is required")
+	}
+	if p.ActionName == "" {
+		return nil, fmt.Errorf("action_name is required")
+	}
+
+	e.draftMu.Lock()
+	e.cleanExpiredDraftsLocked()
+	draft, ok := e.drafts[p.DraftID]
+	if !ok {
+		e.draftMu.Unlock()
+		return nil, fmt.Errorf("draft %q not found or expired", p.DraftID)
+	}
+
+	found := false
+	filtered := make([]draftAction, 0, len(draft.actions))
+	for _, a := range draft.actions {
+		if a.Name == p.ActionName {
+			found = true
+			continue
+		}
+		// Clear "after" references to the removed action.
+		if a.After != "" {
+			refName, _, _ := parseAfterField(a.After)
+			if refName == p.ActionName {
+				a.After = ""
+			}
+		}
+		filtered = append(filtered, a)
+	}
+	if !found {
+		e.draftMu.Unlock()
+		return nil, fmt.Errorf("action %q not found in draft", p.ActionName)
+	}
+
+	draft.actions = filtered
+	draft.lastAccess = time.Now()
+	e.draftMu.Unlock()
+
+	return json.Marshal(map[string]string{
+		"status":  "action_removed",
+		"message": fmt.Sprintf("Action %q removed from draft. %d actions remaining.", p.ActionName, len(filtered)),
+	})
+}
+
+// handlePreviewDraft assembles a draft into a complete workflow payload,
+// transforms it (name resolution + edge generation), validates via dry-run,
+// and returns the result. chatapi.go intercepts this to emit a preview SSE event.
+func (e *Executor) handlePreviewDraft(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		DraftID     string `json:"draft_id"`
+		Description string `json:"description"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if p.DraftID == "" {
+		return nil, fmt.Errorf("draft_id is required")
+	}
+	if p.Description == "" {
+		return nil, fmt.Errorf("description is required")
+	}
+
+	e.draftMu.Lock()
+	e.cleanExpiredDraftsLocked()
+	draft, ok := e.drafts[p.DraftID]
+	if !ok {
+		e.draftMu.Unlock()
+		return nil, fmt.Errorf("draft %q not found or expired", p.DraftID)
+	}
+	if len(draft.actions) == 0 {
+		e.draftMu.Unlock()
+		return nil, fmt.Errorf("draft has no actions — use add_draft_action first")
+	}
+	// Copy draft data under lock, then release.
+	draftCopy := *draft
+	actionsCopy := make([]draftAction, len(draft.actions))
+	copy(actionsCopy, draft.actions)
+	draftCopy.actions = actionsCopy
+	draft.lastAccess = time.Now()
+	e.draftMu.Unlock()
+
+	// Assemble into a full workflow payload.
+	workflow := e.assembleDraftWorkflow(&draftCopy)
+
+	// Transform: resolve names → UUIDs, generate edges from "after".
+	transformed, err := e.transformWorkflowPayload(ctx, workflow, token)
+	if err != nil {
+		return nil, fmt.Errorf("transform draft: %w", err)
+	}
+
+	// Validate via dry-run.
+	validationResult, err := e.post(ctx, "/v1/workflow/rules/full?dry_run=true", transformed, token)
+	if err != nil {
+		return nil, fmt.Errorf("validate draft: %w", err)
+	}
+
+	// Wrap result with the assembled workflow so chatapi can build the preview event.
+	var validationMap map[string]json.RawMessage
+	if err := json.Unmarshal(validationResult, &validationMap); err != nil {
+		// If we can't parse, just return the raw validation result.
+		return validationResult, nil
+	}
+	validationMap["workflow"] = transformed
+
+	return json.Marshal(validationMap)
+}
+
+// assembleDraftWorkflow builds a workflow JSON payload from draft state.
+func (e *Executor) assembleDraftWorkflow(draft *draftWorkflow) json.RawMessage {
+	actions := make([]map[string]any, len(draft.actions))
+	for i, a := range draft.actions {
+		action := map[string]any{
+			"name":          a.Name,
+			"action_type":   a.ActionType,
+			"action_config": a.Config,
+			"is_active":     a.IsActive,
+		}
+		if a.Desc != "" {
+			action["description"] = a.Desc
+		}
+		if a.After != "" {
+			action["after"] = a.After
+		}
+		actions[i] = action
+	}
+
+	w := map[string]any{
+		"name":      draft.name,
+		"is_active": true,
+		"entity":    draft.entity,
+		"trigger_type": draft.triggerType,
+		"actions":   actions,
+		"edges":     []any{}, // Will be generated from "after" by transformWorkflowPayload
+	}
+	if draft.description != "" {
+		w["description"] = draft.description
+	}
+	if len(draft.triggerCond) > 0 {
+		w["trigger_conditions"] = draft.triggerCond
+	}
+
+	b, _ := json.Marshal(w)
+	return b
+}
+
+// getOutputPortNames returns the port names for an action type (for LLM feedback).
+func (e *Executor) getOutputPortNames(ctx context.Context, actionType, token string) []string {
+	// Try to get from cached action type data.
+	data, err := e.get(ctx, "/v1/workflow/action-types", token)
+	if err != nil {
+		return []string{"success", "failure"}
+	}
+
+	var types []struct {
+		Type        string `json:"type"`
+		OutputPorts []struct {
+			Name string `json:"name"`
+		} `json:"output_ports"`
+	}
+	if err := json.Unmarshal(data, &types); err != nil {
+		return []string{"success", "failure"}
+	}
+
+	for _, t := range types {
+		if t.Type == actionType {
+			ports := make([]string, len(t.OutputPorts))
+			for i, p := range t.OutputPorts {
+				ports[i] = p.Name
+			}
+			if len(ports) > 0 {
+				return ports
+			}
+			break
+		}
+	}
+	return []string{"success", "failure"}
+}
+
+// cleanExpiredDraftsLocked removes drafts older than draftTTL.
+// Must be called with draftMu held.
+func (e *Executor) cleanExpiredDraftsLocked() {
+	now := time.Now()
+	for id, d := range e.drafts {
+		if now.Sub(d.lastAccess) > draftTTL {
+			delete(e.drafts, id)
+		}
+	}
+}
+
+// =========================================================================
+// Workflow summary and node explanation
+// =========================================================================
 
 // getWorkflowSummary fetches rule + actions + edges, then returns a compact
 // summary with flow outline instead of raw JSON. This is much easier for
@@ -288,6 +1051,10 @@ func (e *Executor) do(ctx context.Context, method, path string, body json.RawMes
 
 	return json.RawMessage(respBody), nil
 }
+
+// =========================================================================
+// Alert helpers
+// =========================================================================
 
 // listMyAlerts fetches the current user's alerts with optional filters.
 func (e *Executor) listMyAlerts(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
@@ -433,6 +1200,10 @@ func (e *Executor) enrichCreateAlertConfig(ctx context.Context, config json.RawM
 	return b
 }
 
+// =========================================================================
+// Utilities
+// =========================================================================
+
 // requireUUID validates that s is a well-formed UUID string (36 chars with
 // hyphens). This catches truncated values from small LLMs before they hit
 // the REST API, returning a descriptive error the LLM can self-correct from.
@@ -441,4 +1212,14 @@ func requireUUID(s, field string) error {
 		return fmt.Errorf("%s must be a full 36-character UUID (e.g. 35da6628-a96b-4bc4-a90f-8fa874ae48cc), got %q (length %d): check the workflow context for the correct value", field, s, len(s))
 	}
 	return nil
+}
+
+// mustMarshal marshals v to JSON, panicking on error (should never fail for
+// simple types like strings).
+func mustMarshal(v any) json.RawMessage {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic("mustMarshal: " + err.Error())
+	}
+	return b
 }
