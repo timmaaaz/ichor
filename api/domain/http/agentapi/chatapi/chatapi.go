@@ -202,8 +202,32 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// If the LLM didn't request tools, the conversation is done.
+		// If the LLM didn't request tools, check for Chinese and possibly retry.
 		if !stopForTools || len(toolCalls) == 0 {
+			// If the response contains Chinese, inject a correction message
+			// and continue the loop so the LLM can retry in English.
+			if containsChinese(assistantText) {
+				a.log.Warn(ctx, "AGENT-CHAT: detected Chinese in response, requesting English retry",
+					"turn", turn)
+
+				// Build assistant message with the Chinese response.
+				llmReq.Messages = append(llmReq.Messages, llm.Message{
+					Role:    "assistant",
+					Content: assistantText,
+				})
+
+				// Inject a user message asking for English.
+				llmReq.Messages = append(llmReq.Messages, llm.Message{
+					Role:    "user",
+					Content: "Please respond in English, not Chinese. Repeat your previous response in English.",
+				})
+
+				sse.send("content_chunk", map[string]string{
+					"chunk": "\n\n[Retrying in English...]\n\n",
+				})
+				continue
+			}
+
 			sse.send("message_complete", nil)
 			a.log.Info(ctx, "AGENT-CHAT: session complete",
 				"user_id", userID,
@@ -326,4 +350,17 @@ func buildPreviewEvent(tc llm.ToolCall, result llm.ToolResult) map[string]any {
 	}
 
 	return event
+}
+
+// containsChinese returns true if the string contains any CJK Unified
+// Ideographs (Chinese characters). Used to detect when the LLM responds in
+// Chinese so we can request a retry in English.
+func containsChinese(s string) bool {
+	for _, r := range s {
+		// CJK Unified Ideographs: U+4E00 to U+9FFF
+		if r >= 0x4E00 && r <= 0x9FFF {
+			return true
+		}
+	}
+	return false
 }
