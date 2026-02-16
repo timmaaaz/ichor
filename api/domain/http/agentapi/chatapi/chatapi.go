@@ -16,6 +16,7 @@ package chatapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -122,6 +123,10 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 	// Filter tools by context type.
 	filteredTools := filterToolsByContext(a.tools, req.ContextType)
 
+	// Extract the workflow_id from the context (if present) so we can inject
+	// it into tool calls where the LLM omits it.
+	contextWorkflowID := extractContextWorkflowID(req.Context)
+
 	// Build initial LLM request.
 	llmReq := llm.ChatRequest{
 		SystemPrompt: buildSystemPrompt(req.ContextType, req.Context),
@@ -147,6 +152,7 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		// Accumulate assistant text + tool calls from this turn.
 		var (
 			assistantText  string
+			thinkingText   string
 			toolCalls      []llm.ToolCall
 			currentToolID  string
 			currentToolName string
@@ -164,6 +170,10 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 				sse.send("message_start", map[string]any{
 					"turn": turn,
 				})
+
+			case llm.EventThinkingDelta:
+				thinkingText += ev.ThinkingText
+				// Thinking content is logged server-side only, not sent to client.
 
 			case llm.EventContentDelta:
 				assistantText += ev.Text
@@ -200,6 +210,21 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 				sse.sendError(ev.Err.Error())
 				return
 			}
+		}
+
+		// Log thinking content (server-side only).
+		if thinkingText != "" {
+			a.log.Info(ctx, "AGENT-CHAT: thinking",
+				"turn", turn,
+				"content", truncateLog(thinkingText, 2000))
+		}
+
+		// Log assistant response.
+		if assistantText != "" {
+			a.log.Info(ctx, "AGENT-CHAT: assistant response",
+				"turn", turn,
+				"length", len(assistantText),
+				"text", truncateLog(assistantText, 2000))
 		}
 
 		// If the LLM didn't request tools, check for Chinese and possibly retry.
@@ -250,13 +275,22 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 
 		toolResults := make([]llm.ToolResult, 0, len(toolCalls))
 		for _, tc := range toolCalls {
+			// Inject the context workflow_id into tool calls that accept it
+			// but where the LLM omitted it.
+			tc.Input = injectWorkflowID(tc, contextWorkflowID)
+			a.log.Info(ctx, "AGENT-CHAT: tool input",
+				"name", tc.Name,
+				"tool_use_id", tc.ID,
+				"input", truncateLog(string(tc.Input), 2000))
+
 			toolStart := time.Now()
 			result := a.executor.Execute(ctx, tc, authToken)
 			a.log.Info(ctx, "AGENT-CHAT: tool executed",
 				"name", tc.Name,
 				"tool_use_id", tc.ID,
 				"elapsed", time.Since(toolStart),
-				"is_error", result.IsError)
+				"is_error", result.IsError,
+				"result", truncateLog(result.Content, 2000))
 
 			// Intercept preview_workflow / preview_draft: if validation passed,
 			// emit a workflow_preview SSE event so the frontend can show the
@@ -326,7 +360,7 @@ func buildPreviewEvent(tc llm.ToolCall, result llm.ToolResult) map[string]any {
 
 	// Extract metadata from the tool input.
 	var input struct {
-		RuleID      string          `json:"rule_id"`
+		RuleID      string          `json:"workflow_id"`
 		DraftID     string          `json:"draft_id"`
 		Workflow    json.RawMessage `json:"workflow"`
 		Description string          `json:"description"`
@@ -354,10 +388,91 @@ func buildPreviewEvent(tc llm.ToolCall, result llm.ToolResult) map[string]any {
 		"is_update":  input.RuleID != "",
 	}
 	if input.RuleID != "" {
-		event["rule_id"] = input.RuleID
+		event["workflow_id"] = input.RuleID
 	}
 
 	return event
+}
+
+// truncateLog returns s truncated to maxLen characters with a suffix
+// indicating the original length. Used for debug logging large payloads.
+func truncateLog(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + fmt.Sprintf("... [truncated, total %d chars]", len(s))
+}
+
+// extractContextWorkflowID parses the request context JSON and returns the
+// workflow_id field, or empty string if not present.
+func extractContextWorkflowID(rawCtx json.RawMessage) string {
+	if len(rawCtx) == 0 {
+		return ""
+	}
+	var ctx struct {
+		WorkflowID string `json:"workflow_id"`
+	}
+	if err := json.Unmarshal(rawCtx, &ctx); err != nil {
+		return ""
+	}
+	return ctx.WorkflowID
+}
+
+// toolsNeedingWorkflowID lists tools where workflow_id can be auto-filled
+// from the current workflow context.
+var toolsNeedingWorkflowID = map[string]bool{
+	"explain_workflow_node": true,
+	"get_workflow_rule":     true,
+	"list_alerts_for_rule":  true,
+}
+
+// injectWorkflowID adds or overrides workflow_id in the tool call input when
+// we have a context value. If the LLM provided a valid UUID, we trust it
+// (it might be referencing a different workflow). Otherwise we inject the
+// context workflow_id — this catches both missing values and fabricated names
+// like "Granular_Inventory_Pipeline" that won't resolve.
+func injectWorkflowID(tc llm.ToolCall, contextID string) json.RawMessage {
+	if contextID == "" || !toolsNeedingWorkflowID[tc.Name] {
+		return tc.Input
+	}
+
+	var input map[string]json.RawMessage
+	if err := json.Unmarshal(tc.Input, &input); err != nil {
+		return tc.Input
+	}
+
+	// If the LLM provided a valid UUID, keep it (might be a different workflow).
+	if raw, ok := input["workflow_id"]; ok {
+		var val string
+		if json.Unmarshal(raw, &val) == nil && isUUID(val) {
+			return tc.Input
+		}
+	}
+
+	// Missing, empty, or non-UUID → inject the context workflow_id.
+	input["workflow_id"] = json.RawMessage(`"` + contextID + `"`)
+	patched, err := json.Marshal(input)
+	if err != nil {
+		return tc.Input
+	}
+	return patched
+}
+
+// isUUID checks if a string looks like a valid UUID (8-4-4-4-12 hex format).
+func isUUID(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i, c := range s {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if c != '-' {
+				return false
+			}
+		} else if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 // containsChinese returns true if the string contains any CJK Unified

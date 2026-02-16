@@ -53,6 +53,10 @@ Thumbs.db
 .history
 .vscode
 
+# Environment files (API keys, secrets)
+.env
+.env.*
+
 # OAuth test files
 .oauth-cookies.txt
 .oauth-response.txt

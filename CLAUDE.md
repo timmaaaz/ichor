@@ -315,7 +315,7 @@ These systems have their own detailed documentation:
 
 ### Agent Chat (Conversational AI)
 
-The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Ollama** with the **qwen3:8b** model. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Qwen 3's strengths and limitations.
+The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Ollama** with the **qwen3:14b** model. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Qwen 3's strengths and limitations.
 
 ## Important Notes
 

@@ -8,6 +8,11 @@ data:
   db_user: "postgres"
   db_password: "postgres"
   db_disabletls: "true"
-  llm_provider: "ollama"
-  llm_model: "qwen3:8b"
-  llm_host: "http://host.docker.internal:11434"
+  llm_provider: "gemini"
+  llm_model: "gemini-2.5-flash"
+  # llm_apikey is set via K8s secret "llm-api-key" (see base-ichor.yaml)
+  # To use Ollama instead of Gemini:
+  # llm_provider: "ollama"
+  # llm_model: "qwen3:14b"
+  # llm_host: "http://host.docker.internal:11434"
+  # llm_thinking_effort: "high"

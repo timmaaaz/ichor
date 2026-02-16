@@ -293,6 +293,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
 	"github.com/timmaaaz/ichor/business/sdk/llm/claude"
+	"github.com/timmaaaz/ichor/business/sdk/llm/gemini"
 	"github.com/timmaaaz/ichor/business/sdk/llm/ollama"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -1033,10 +1034,18 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	switch cfg.LLMProvider {
 	case "ollama":
-		llmProvider = ollama.NewProvider(cfg.LLMHost, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
+		llmProvider = ollama.NewProvider(cfg.LLMHost, cfg.LLMModel, cfg.LLMMaxTokens, cfg.LLMThinkingEffort, cfg.Log)
 	case "claude":
-		if cfg.LLMAPIKey != "" {
+		if cfg.LLMAPIKey == "" {
+			cfg.Log.Info(context.Background(), "AGENT-CHAT: claude provider selected but ICHOR_LLM_APIKEY is not set — agent chat will be disabled")
+		} else {
 			llmProvider = claude.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
+		}
+	case "gemini":
+		if cfg.LLMAPIKey == "" {
+			cfg.Log.Info(context.Background(), "AGENT-CHAT: gemini provider selected but ICHOR_LLM_APIKEY is not set — agent chat will be disabled")
+		} else {
+			llmProvider = gemini.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
 		}
 	}
 
@@ -1052,7 +1061,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		})
 		cfg.Log.Info(context.Background(), "AGENT-CHAT: routes initialized",
 			"provider", cfg.LLMProvider,
-			"model", cfg.LLMModel)
+			"model", cfg.LLMModel,
+			"thinking_effort", cfg.LLMThinkingEffort)
 	} else {
 		cfg.Log.Info(context.Background(), "AGENT-CHAT: disabled")
 	}

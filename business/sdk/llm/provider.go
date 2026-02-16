@@ -63,6 +63,7 @@ type EventType string
 const (
 	EventMessageStart    EventType = "message_start"
 	EventContentDelta    EventType = "content_delta"
+	EventThinkingDelta   EventType = "thinking_delta"
 	EventToolUseStart    EventType = "tool_use_start"
 	EventToolUseInput    EventType = "tool_use_input"
 	EventMessageComplete EventType = "message_complete"
@@ -75,6 +76,11 @@ type StreamEvent struct {
 
 	// Text delta (EventContentDelta).
 	Text string
+
+	// ThinkingText delta (EventThinkingDelta). Separate from Text so
+	// callers can handle reasoning content differently (e.g. log but not
+	// stream to the client).
+	ThinkingText string
 
 	// Tool use metadata (EventToolUseStart).
 	ToolCallID   string

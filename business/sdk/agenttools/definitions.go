@@ -59,8 +59,7 @@ var workflowPayloadSchema = map[string]any{
 		},
 		"entity_id": map[string]any{
 			"type":        "string",
-			"format":      "uuid",
-			"description": "UUID of the target entity. Use this OR 'entity' (name), not both.",
+			"description": "UUID of the target entity (e.g. '550e8400-e29b-41d4-a716-446655440000'). Use this OR 'entity' (name), not both.",
 		},
 		"entity": map[string]any{
 			"type":        "string",
@@ -68,7 +67,6 @@ var workflowPayloadSchema = map[string]any{
 		},
 		"trigger_type_id": map[string]any{
 			"type":        "string",
-			"format":      "uuid",
 			"description": "UUID of the trigger type. Use this OR 'trigger_type' (name), not both.",
 		},
 		"trigger_type": map[string]any{
@@ -80,17 +78,18 @@ var workflowPayloadSchema = map[string]any{
 			"description": "Optional trigger filter conditions.",
 		},
 		"actions": map[string]any{
-			"type": "array",
+			"type":        "array",
+			"description": "Nodes in the workflow graph. Each action is a step that executes when reached via an edge.",
 			"items": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"id": map[string]any{
 						"type":        "string",
-						"description": "UUID for existing actions, omit for new.",
+						"description": "UUID for existing actions (when updating). Omit for new actions.",
 					},
 					"name": map[string]any{
 						"type":        "string",
-						"description": "Action name (1-255 chars).",
+						"description": "Action name (1-255 chars). Used as the node label in the graph.",
 					},
 					"description": map[string]any{
 						"type": "string",
@@ -98,49 +97,49 @@ var workflowPayloadSchema = map[string]any{
 					"action_type": map[string]any{
 						"type":        "string",
 						"enum":        actionTypeEnum,
-						"description": "The action type.",
+						"description": "Determines the action's behavior and available output ports (e.g. evaluate_condition has 'output-true'/'output-false').",
 					},
 					"action_config": map[string]any{
 						"type":        "object",
-						"description": "Config matching the action type's schema (see discover_action_types).",
+						"description": "Config matching the action type's schema (see discover_action_types for schemas and output ports).",
 					},
 					"is_active": map[string]any{
 						"type": "boolean",
 					},
 					"after": map[string]any{
 						"type":        "string",
-						"description": "Predecessor action. Format: 'ActionName:port' or 'ActionName' (uses default port). Omit for the first action. When actions use 'after', the edges array can be omitted.",
+						"description": "Shorthand to declare the predecessor edge. Format: 'ActionName:port' (e.g. 'Check Stock:output-true') or 'ActionName' (uses default port). Omit for the first action — it becomes the start node. When actions use 'after', the edges array can be omitted.",
 					},
 				},
 				"required": []string{"name", "action_type", "action_config", "is_active"},
 			},
 		},
 		"edges": map[string]any{
-			"type": "array",
+			"type":        "array",
+			"description": "Directed connections between action nodes. Defines the execution flow of the graph. Can be omitted when actions use the 'after' shorthand.",
 			"items": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"source_action_id": map[string]any{
 						"type":        "string",
-						"description": "Source action ID or empty for start edges.",
+						"description": "ID of the upstream action node. Leave empty for the start edge (the entry point of the graph).",
 					},
 					"target_action_id": map[string]any{
 						"type":        "string",
-						"description": "Target action ID. Use 'temp:N' for new actions by array index.",
+						"description": "ID of the downstream action node. Use 'temp:N' to reference new actions by their array index (e.g. 'temp:0' for the first action).",
 					},
 					"edge_type": map[string]any{
 						"type":        "string",
 						"enum":        edgeTypeEnum,
-						"description": "Edge type.",
+						"description": "Edge type: 'start' = entry point to the first action, 'sequence' = conditional connection via an output port, 'always' = unconditional connection that always fires.",
 					},
 					"source_output": map[string]any{
 						"type":        "string",
-						"description": "Output port name (e.g. 'success', 'output-true').",
+						"description": "The output port on the source action this edge connects from. Creates branching — e.g. 'output-true'/'output-false' for conditions, 'success'/'failure' for operations.",
 					},
 					"edge_order": map[string]any{
 						"type":        "integer",
-						"minimum":     0,
-						"description": "Execution order for edges sharing the same source.",
+						"description": "Priority when multiple edges leave the same source port. Lower numbers execute first (0, 1, 2...). Controls branch execution order.",
 					},
 				},
 				"required": []string{"target_action_id", "edge_type"},
@@ -190,18 +189,16 @@ func ToolDefinitions() []llm.ToolDef {
 		// =================================================================
 		{
 			Name:        "get_workflow_rule",
-			Description: "Fetch a single automation rule by ID. Returns a compact summary: rule metadata (name, description, trigger, entity), node/edge/branch counts, action types used, and a human-readable flow outline showing the execution path. Does NOT return raw action configs — use explain_workflow_node for detail on a specific action.",
+			Description: "Fetch a single automation rule by name or ID. Returns a compact summary: rule metadata (name, description, trigger, entity), node/edge/branch counts, action types used, and a human-readable flow outline showing the execution path. Does NOT return raw action configs — use explain_workflow_node for detail on a specific action.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"rule_id": map[string]any{
+					"workflow_id": map[string]any{
 						"type":        "string",
-						"format":      "uuid",
-						"description": "Full UUID of the rule (36 characters with hyphens, e.g. 35da6628-a96b-4bc4-a90f-8fa874ae48cc).",
-						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+						"description": "Workflow UUID or name. Names are resolved automatically.",
 					},
 				},
-				"required": []string{"rule_id"},
+				"required": []string{"workflow_id"},
 			}),
 		},
 		{
@@ -210,23 +207,21 @@ func ToolDefinitions() []llm.ToolDef {
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"rule_id": map[string]any{
+					"workflow_id": map[string]any{
 						"type":        "string",
-						"format":      "uuid",
-						"description": "Full UUID of the rule (36 characters with hyphens).",
-						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+						"description": "Workflow UUID or name. Omit to use the current workflow from context.",
 					},
-					"identifier": map[string]any{
+					"node_name": map[string]any{
 						"type":        "string",
-						"description": "Action name or UUID to look up within the workflow.",
+						"description": "The action's name (e.g. 'Alert - Reservation Success') or UUID.",
 					},
 				},
-				"required": []string{"rule_id", "identifier"},
+				"required": []string{"node_name"},
 			}),
 		},
 		{
 			Name:        "list_workflow_rules",
-			Description: "List all automation rules. Returns rule metadata (id, name, entity, trigger type, active status).",
+			Description: "List all automation rules. Returns up to 500 rules. Returns rule metadata (id, name, entity, trigger type, active status). Response includes total count and has_more flag.",
 			InputSchema: schema(map[string]any{
 				"type":       "object",
 				"properties": map[string]any{},
@@ -253,15 +248,13 @@ func ToolDefinitions() []llm.ToolDef {
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"rule_id": map[string]any{
+					"workflow_id": map[string]any{
 						"type":        "string",
-						"format":      "uuid",
-						"description": "Full UUID of the rule (36 characters with hyphens, e.g. 35da6628-a96b-4bc4-a90f-8fa874ae48cc).",
-						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+						"description": "Workflow UUID or name. Names are resolved automatically.",
 					},
 					"workflow": workflowPayloadSchema,
 				},
-				"required": []string{"rule_id", "workflow"},
+				"required": []string{"workflow_id", "workflow"},
 			}),
 		},
 		{
@@ -281,15 +274,14 @@ func ToolDefinitions() []llm.ToolDef {
 		// =================================================================
 		{
 			Name:        "list_my_alerts",
-			Description: "List alerts in YOUR inbox (alerts where you are a recipient, either directly or via a role). This does NOT search all alerts in the system — only ones addressed to you. Returns enriched recipient data (names, emails, role names). To see who a workflow is configured to alert, use explain_workflow_node instead.",
+			Description: "List alerts in YOUR inbox (alerts where you are a recipient, either directly or via a role). This does NOT search all alerts in the system — only ones addressed to you. Returns up to 50 alerts per request (default). Response includes total count — if has_more is true, increment page to load more. Returns enriched recipient data (names, emails, role names). To see who a workflow is configured to alert, use explain_workflow_node instead.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"status": map[string]any{
 						"type":        "string",
-						"description": "Filter by status.",
+						"description": "Filter by status (defaults to 'active' if omitted).",
 						"enum":        []string{"active", "acknowledged", "dismissed", "resolved"},
-						"default":     "active",
 					},
 					"severity": map[string]any{
 						"type":        "string",
@@ -302,7 +294,7 @@ func ToolDefinitions() []llm.ToolDef {
 					},
 					"rows": map[string]any{
 						"type":        "string",
-						"description": "Results per page (default: 10).",
+						"description": "Results per page (default: 50).",
 					},
 				},
 			}),
@@ -315,9 +307,7 @@ func ToolDefinitions() []llm.ToolDef {
 				"properties": map[string]any{
 					"alert_id": map[string]any{
 						"type":        "string",
-						"format":      "uuid",
-						"description": "Full UUID of the alert (36 characters with hyphens).",
-						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+						"description": "UUID of the alert (e.g. '550e8400-e29b-41d4-a716-446655440000').",
 					},
 				},
 				"required": []string{"alert_id"},
@@ -325,15 +315,13 @@ func ToolDefinitions() []llm.ToolDef {
 		},
 		{
 			Name:        "list_alerts_for_rule",
-			Description: "List alerts that were fired by a specific workflow rule. Shows all alerts created by the rule (not just yours). Returns enriched recipient data. Use this to check if a workflow has actually triggered alerts and who received them.",
+			Description: "List alerts that were fired by a specific workflow rule. Shows all alerts created by the rule (not just yours). Returns up to 50 alerts per request (default). Response includes total count — if has_more is true, increment page to load more. Returns enriched recipient data. Use this to check if a workflow has actually triggered alerts and who received them.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"rule_id": map[string]any{
+					"workflow_id": map[string]any{
 						"type":        "string",
-						"format":      "uuid",
-						"description": "Full UUID of the workflow rule.",
-						"pattern":     "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+						"description": "Workflow UUID or name. Names are resolved automatically.",
 					},
 					"status": map[string]any{
 						"type":        "string",
@@ -346,10 +334,10 @@ func ToolDefinitions() []llm.ToolDef {
 					},
 					"rows": map[string]any{
 						"type":        "string",
-						"description": "Results per page (default: 10).",
+						"description": "Results per page (default: 50).",
 					},
 				},
-				"required": []string{"rule_id"},
+				"required": []string{"workflow_id"},
 			}),
 		},
 
@@ -362,9 +350,9 @@ func ToolDefinitions() []llm.ToolDef {
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"rule_id": map[string]any{
+					"workflow_id": map[string]any{
 						"type":        "string",
-						"description": "UUID of the rule to update. Omit when creating a new workflow.",
+						"description": "UUID of the workflow to update. Omit when creating a new workflow.",
 					},
 					"workflow": workflowPayloadSchema,
 					"description": map[string]any{
@@ -437,8 +425,8 @@ func ToolDefinitions() []llm.ToolDef {
 						"description": "Predecessor: 'ActionName:port' or 'ActionName' (uses default port). Omit for first action.",
 					},
 					"is_active": map[string]any{
-						"type":    "boolean",
-						"default": true,
+						"type":        "boolean",
+						"description": "Whether the action is active (defaults to true if omitted).",
 					},
 				},
 				"required": []string{"draft_id", "name", "action_type", "action_config"},

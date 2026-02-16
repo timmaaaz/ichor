@@ -251,7 +251,10 @@ dev-status:
 dev-bounce:
 	make dev-down
 	make dev-up
-	make dev-ollama
+	# make dev-ollama
+	@kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
+	@if [ -f .env ]; then . ./.env; fi && \
+		if [ -n "$$GEMINI_API_KEY" ]; then make dev-gemini-secret GEMINI_API_KEY=$$GEMINI_API_KEY; fi
 	make dev-update-apply
 	make migrate
 	make seed-frontend
@@ -339,12 +342,21 @@ temporal-ui:
 dev-ollama:
 	@which ollama > /dev/null 2>&1 || (echo "Installing ollama via brew..." && brew install ollama)
 	@pgrep -x ollama > /dev/null || (echo "Starting ollama..." && ollama serve &  sleep 2)
-	ollama pull qwen3:8b
+	ollama pull qwen3:14b
 	@echo "Ollama ready at http://localhost:11434"
+
+dev-gemini-secret:
+	@if [ -z "$(GEMINI_API_KEY)" ]; then echo "Error: GEMINI_API_KEY is not set"; exit 1; fi
+	kubectl create secret generic llm-api-key \
+		--namespace=$(NAMESPACE) \
+		--from-literal=api_key=$(GEMINI_API_KEY) \
+		--dry-run=client -o yaml | kubectl apply -f -
+	@echo "Secret llm-api-key created/updated in $(NAMESPACE)"
+	@echo "Pods will pick up the key on next restart (dev-bounce does this automatically)"
 
 ollama-pull-model:
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=300s deployment/ollama
-	kubectl exec -n $(NAMESPACE) deploy/ollama -- ollama pull qwen3:8b
+	kubectl exec -n $(NAMESPACE) deploy/ollama -- ollama pull qwen3:14b
 
 dev-describe-database:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=database
@@ -739,6 +751,7 @@ help:
 	@echo "  dev-describe-workflow-worker Show the workflow-worker pod details"
 	@echo "  temporal-ui             Port-forward Temporal Web UI to localhost:8280"
 	@echo "  dev-ollama              Install Ollama, start it, and pull AI models"
+	@echo "  dev-gemini-secret       Create K8s secret for Gemini API key"
 	@echo "  ollama-pull-model       Pull AI models inside the KIND cluster"
 	@echo "  dev-describe-database   Show the database pod details"
 	@echo "  dev-describe-grafana    Show the grafana pod details"

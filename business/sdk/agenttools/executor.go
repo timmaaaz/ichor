@@ -48,6 +48,7 @@ type Executor struct {
 	entityCache      map[string]string // "schema.table" → entity UUID
 	triggerTypeCache map[string]string // trigger name → trigger UUID
 	actionTypeCache  map[string]actionTypeInfo // action type → info with ports
+	ruleCache        map[string]string // rule name → rule UUID
 	cacheMu          sync.Mutex
 
 	// Draft state for incremental workflow building.
@@ -133,32 +134,41 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 	// Read
 	case "get_workflow_rule":
 		var p struct {
-			RuleID string `json:"rule_id"`
+			RuleID string `json:"workflow_id"`
 		}
 		if err := json.Unmarshal(tc.Input, &p); err != nil {
 			return nil, fmt.Errorf("bad params: %w", err)
 		}
-		if err := requireUUID(p.RuleID, "rule_id"); err != nil {
+		ruleID, err := e.resolveRuleID(ctx, p.RuleID, token)
+		if err != nil {
 			return nil, err
 		}
-		return e.getWorkflowSummary(ctx, p.RuleID, token)
+		return e.getWorkflowSummary(ctx, ruleID, token)
 	case "explain_workflow_node":
 		var p struct {
-			RuleID     string `json:"rule_id"`
-			Identifier string `json:"identifier"`
+			RuleID   string `json:"workflow_id"`
+			NodeName string `json:"node_name"`
 		}
 		if err := json.Unmarshal(tc.Input, &p); err != nil {
 			return nil, fmt.Errorf("bad params: %w", err)
 		}
-		if err := requireUUID(p.RuleID, "rule_id"); err != nil {
+		if p.RuleID == "" {
+			return nil, fmt.Errorf("workflow_id is required — provide it or ensure the workflow context is set")
+		}
+		ruleID, err := e.resolveRuleID(ctx, p.RuleID, token)
+		if err != nil {
 			return nil, err
 		}
-		if p.Identifier == "" {
-			return nil, fmt.Errorf("identifier is required")
+		if p.NodeName == "" {
+			return nil, fmt.Errorf("node_name is required")
 		}
-		return e.explainWorkflowNode(ctx, p.RuleID, p.Identifier, token)
+		return e.explainWorkflowNode(ctx, ruleID, p.NodeName, token)
 	case "list_workflow_rules":
-		return e.get(ctx, "/v1/workflow/rules", token)
+		data, err := e.get(ctx, "/v1/workflow/rules?rows=500", token)
+		if err != nil {
+			return nil, err
+		}
+		return formatPaginatedResponse(data), nil
 
 	// Write (with name resolution + edge shorthand)
 	case "create_workflow":
@@ -175,20 +185,21 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		return e.post(ctx, "/v1/workflow/rules/full", transformed, token)
 	case "update_workflow":
 		var p struct {
-			RuleID   string          `json:"rule_id"`
+			RuleID   string          `json:"workflow_id"`
 			Workflow json.RawMessage `json:"workflow"`
 		}
 		if err := json.Unmarshal(tc.Input, &p); err != nil {
 			return nil, fmt.Errorf("bad params: %w", err)
 		}
-		if err := requireUUID(p.RuleID, "rule_id"); err != nil {
+		ruleID, err := e.resolveRuleID(ctx, p.RuleID, token)
+		if err != nil {
 			return nil, err
 		}
 		transformed, err := e.transformWorkflowPayload(ctx, p.Workflow, token)
 		if err != nil {
 			return nil, fmt.Errorf("transform workflow: %w", err)
 		}
-		return e.put(ctx, "/v1/workflow/rules/"+p.RuleID+"/full", transformed, token)
+		return e.put(ctx, "/v1/workflow/rules/"+ruleID+"/full", transformed, token)
 	case "validate_workflow", "preview_workflow":
 		var p struct {
 			Workflow json.RawMessage `json:"workflow"`
@@ -512,6 +523,56 @@ func (e *Executor) resolveTriggerTypeID(ctx context.Context, triggerType, token 
 		return id, nil
 	}
 	return "", fmt.Errorf("trigger type %q not found — use discover_trigger_types to list available types", triggerType)
+}
+
+// resolveRuleID resolves a rule name or UUID to a rule UUID.
+func (e *Executor) resolveRuleID(ctx context.Context, ruleRef, token string) (string, error) {
+	// If it's already a UUID, return as-is.
+	if _, err := uuid.Parse(ruleRef); err == nil {
+		return ruleRef, nil
+	}
+
+	e.cacheMu.Lock()
+	defer e.cacheMu.Unlock()
+
+	// Normalize: replace underscores/hyphens with spaces for flexible matching.
+	normalized := strings.NewReplacer("_", " ", "-", " ").Replace(ruleRef)
+
+	// Check cache.
+	if e.ruleCache != nil {
+		if id, ok := e.ruleCache[normalized]; ok {
+			return id, nil
+		}
+	}
+
+	// Fetch all rules and populate cache. The rules endpoint returns a
+	// paginated response which unwrapPaginated strips to a bare array.
+	data, err := e.get(ctx, "/v1/workflow/rules?rows=500", token)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch rules for name resolution: %w", err)
+	}
+
+	var rules []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(unwrapPaginated(data), &rules); err != nil {
+		return "", fmt.Errorf("failed to parse rules response: %w", err)
+	}
+
+	e.ruleCache = make(map[string]string, len(rules))
+	for _, r := range rules {
+		e.ruleCache[r.Name] = r.ID
+	}
+
+	if id, ok := e.ruleCache[normalized]; ok {
+		return id, nil
+	}
+	// Also try exact match against original input (in case the name has underscores).
+	if id, ok := e.ruleCache[ruleRef]; ok {
+		return id, nil
+	}
+	return "", fmt.Errorf("rule %q not found — use list_workflow_rules to see available rules", ruleRef)
 }
 
 // getDefaultOutputPort returns the default output port name for an action type.
@@ -932,7 +993,8 @@ func (e *Executor) getWorkflowSummary(ctx context.Context, ruleID string, token 
 	}
 
 	result := map[string]any{
-		"rule": json.RawMessage(rule),
+		"workflow_id": ruleID,
+		"rule":    json.RawMessage(rule),
 	}
 
 	// Parse graph and compute a compact summary with flow outline.
@@ -979,9 +1041,39 @@ func (e *Executor) explainWorkflowNode(ctx context.Context, ruleID, identifier, 
 		return nil, fmt.Errorf("parse workflow graph: %w", err)
 	}
 
+	// Check if the identifier matches multiple nodes by action_type
+	// (e.g. "create_alert" matches 3 alert actions). If so, return all.
+	typeMatches := graph.findActionsByType(identifier)
+	if len(typeMatches) > 1 {
+		explanations := make([]any, 0, len(typeMatches))
+		for _, action := range typeMatches {
+			if action.ActionType == "create_alert" && len(action.Config) > 0 {
+				action.Config = e.enrichCreateAlertConfig(ctx, action.Config, token)
+			}
+			explanations = append(explanations, graph.explainNode(action))
+		}
+		result := map[string]any{
+			"matched_by":   "action_type",
+			"match_count":  len(typeMatches),
+			"message":      fmt.Sprintf("Found %d actions of type %q in this workflow", len(typeMatches), identifier),
+			"explanations": explanations,
+		}
+		b, err := json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("marshal multi-node explanation: %w", err)
+		}
+		return b, nil
+	}
+
+	// Single match (by name, ID, or single action_type match).
 	action := graph.findAction(identifier)
 	if action == nil {
-		return nil, fmt.Errorf("action not found: %s", identifier)
+		// Build helpful error listing available action names.
+		names := make([]string, len(graph.actions))
+		for i, a := range graph.actions {
+			names[i] = a.Name
+		}
+		return nil, fmt.Errorf("action %q not found in this workflow — available actions: %s", identifier, strings.Join(names, ", "))
 	}
 
 	// For create_alert actions, enrich the config with human-readable
@@ -1068,6 +1160,10 @@ func (e *Executor) listMyAlerts(ctx context.Context, tc llm.ToolCall, token stri
 		return nil, fmt.Errorf("bad params: %w", err)
 	}
 
+	if p.Rows == "" {
+		p.Rows = "50"
+	}
+
 	path := "/v1/workflow/alerts/mine?"
 	if p.Status != "" {
 		path += "status=" + p.Status + "&"
@@ -1078,17 +1174,19 @@ func (e *Executor) listMyAlerts(ctx context.Context, tc llm.ToolCall, token stri
 	if p.Page != "" {
 		path += "page=" + p.Page + "&"
 	}
-	if p.Rows != "" {
-		path += "rows=" + p.Rows + "&"
-	}
+	path += "rows=" + p.Rows + "&"
 
-	return e.get(ctx, path, token)
+	data, err := e.get(ctx, path, token)
+	if err != nil {
+		return nil, err
+	}
+	return formatPaginatedResponse(data), nil
 }
 
 // listAlertsForRule fetches alerts fired by a specific workflow rule.
 func (e *Executor) listAlertsForRule(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
 	var p struct {
-		RuleID string `json:"rule_id"`
+		RuleID string `json:"workflow_id"`
 		Status string `json:"status"`
 		Page   string `json:"page"`
 		Rows   string `json:"rows"`
@@ -1096,22 +1194,29 @@ func (e *Executor) listAlertsForRule(ctx context.Context, tc llm.ToolCall, token
 	if err := json.Unmarshal(tc.Input, &p); err != nil {
 		return nil, fmt.Errorf("bad params: %w", err)
 	}
-	if err := requireUUID(p.RuleID, "rule_id"); err != nil {
+	ruleID, err := e.resolveRuleID(ctx, p.RuleID, token)
+	if err != nil {
 		return nil, err
 	}
 
-	path := "/v1/workflow/alerts?sourceRuleId=" + p.RuleID
+	if p.Rows == "" {
+		p.Rows = "50"
+	}
+
+	path := "/v1/workflow/alerts?sourceRuleId=" + ruleID
 	if p.Status != "" {
 		path += "&status=" + p.Status
 	}
 	if p.Page != "" {
 		path += "&page=" + p.Page
 	}
-	if p.Rows != "" {
-		path += "&rows=" + p.Rows
-	}
+	path += "&rows=" + p.Rows
 
-	return e.get(ctx, path, token)
+	data, err := e.get(ctx, path, token)
+	if err != nil {
+		return nil, err
+	}
+	return formatPaginatedResponse(data), nil
 }
 
 // enrichCreateAlertConfig parses a create_alert action config and resolves
@@ -1203,6 +1308,70 @@ func (e *Executor) enrichCreateAlertConfig(ctx context.Context, config json.RawM
 // =========================================================================
 // Utilities
 // =========================================================================
+
+// unwrapPaginated extracts the "items" array from a paginated API response
+// of the form {"items": [...], "total": N, "page": N, "rows_per_page": N}.
+// If the response is already a bare array or doesn't have an "items" key,
+// the original data is returned unchanged.
+// Used internally (e.g. resolveRuleID) where a bare array is needed.
+func unwrapPaginated(data json.RawMessage) json.RawMessage {
+	// Quick check: if it starts with '[', it's already a bare array.
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		return data
+	}
+
+	var wrapper struct {
+		Items json.RawMessage `json:"items"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err != nil || wrapper.Items == nil {
+		return data
+	}
+	return wrapper.Items
+}
+
+// formatPaginatedResponse transforms a paginated API response into an
+// LLM-friendly format that preserves pagination metadata. Returns:
+//
+//	{"results": [...], "total": N, "showing": N, "has_more": bool}
+//
+// If the response is already a bare array or non-paginated, returns it unchanged.
+func formatPaginatedResponse(data json.RawMessage) json.RawMessage {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		return data
+	}
+
+	var wrapper struct {
+		Items       json.RawMessage `json:"items"`
+		Total       int             `json:"total"`
+		Page        int             `json:"page"`
+		RowsPerPage int             `json:"rowsPerPage"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err != nil || wrapper.Items == nil {
+		return data
+	}
+
+	// Count items in the array.
+	var items []json.RawMessage
+	if err := json.Unmarshal(wrapper.Items, &items); err != nil {
+		return data
+	}
+
+	showing := len(items)
+	hasMore := showing < wrapper.Total
+
+	result, err := json.Marshal(map[string]any{
+		"results":  wrapper.Items,
+		"total":    wrapper.Total,
+		"showing":  showing,
+		"has_more": hasMore,
+	})
+	if err != nil {
+		return data
+	}
+	return result
+}
 
 // requireUUID validates that s is a well-formed UUID string (36 chars with
 // hyphens). This catches truncated values from small LLMs before they hit

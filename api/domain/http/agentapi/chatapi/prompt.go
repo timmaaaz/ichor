@@ -27,6 +27,25 @@ func buildSystemPrompt(contextType string, rawCtx json.RawMessage) string {
 	if len(rawCtx) > 0 && string(rawCtx) != "null" {
 		b.WriteString("\n\n")
 		b.WriteString(contextPreamble)
+
+		// Surface workflow_id as plain text before the JSON blob so
+		// smaller LLMs can locate it easily.
+		var ctxObj struct {
+			WorkflowID string `json:"workflow_id"`
+			RuleName   string `json:"rule_name"`
+		}
+		if json.Unmarshal(rawCtx, &ctxObj) == nil && ctxObj.WorkflowID != "" {
+			b.WriteString("\n**Current workflow ID: `")
+			b.WriteString(ctxObj.WorkflowID)
+			b.WriteString("`**")
+			if ctxObj.RuleName != "" {
+				b.WriteString(" (")
+				b.WriteString(ctxObj.RuleName)
+				b.WriteString(")")
+			}
+			b.WriteString("\n")
+		}
+
 		b.WriteString("\n```json\n")
 
 		// Pretty-print the context for readability.
@@ -106,20 +125,20 @@ Example draft flow:
 - When "after" omits the port (e.g. "after": "Check Stock"), the default output port for that action type is used.
 
 ### Updating existing workflows:
-For updates to existing workflows, use ` + "`preview_workflow`" + ` with the full workflow payload and a rule_id. The shorthand features (entity names, trigger type names, "after") also work here.
+For updates to existing workflows, use ` + "`preview_workflow`" + ` with the full workflow payload and a workflow_id. The shorthand features (entity names, trigger type names, "after") also work here.
 
 ### Action references (full payload mode):
 When building the full edges array manually, use temporary IDs for actions (e.g. "temp:0", "temp:1") and reference them in edges. The system will assign real UUIDs.
 
 ### Answering detail questions:
-When the user asks about specifics of an action (recipients, email templates, field names, conditions, config values), use ` + "`explain_workflow_node`" + ` with the action's name to get its full configuration. The summary from ` + "`get_workflow_rule`" + ` shows the flow structure but not individual action configs.
+When the user asks about specifics of an action (recipients, email templates, field names, conditions, config values), use ` + "`explain_workflow_node`" + ` with the action's node_name to get its full configuration. You do NOT need to provide a workflow_id — it defaults to the current workflow. The summary from ` + "`get_workflow_rule`" + ` shows the flow structure but not individual action configs.
 
 ### Tool selection guide:
 - "Create a workflow" / "Build an automation" → use the draft builder (start_draft → add_draft_action → preview_draft)
-- "Who receives alerts from this workflow?" → use ` + "`explain_workflow_node`" + ` on the alert action
+- "Who receives alerts from this workflow?" → use ` + "`explain_workflow_node`" + ` with node_name set to the alert action's name (no workflow_id needed)
 - "What alerts do I have?" / "Show my alerts" → use ` + "`list_my_alerts`" + ` (your personal inbox)
 - "Has this alert fired?" / "Show alerts from this rule" → use ` + "`list_alerts_for_rule`" + ` with the rule's ID
-- "What does this action do?" → use ` + "`explain_workflow_node`" + ` with the action name
+- "What does this action do?" → use ` + "`explain_workflow_node`" + ` with node_name (no workflow_id needed)
 - "Show me the workflow structure" → use ` + "`get_workflow_rule`" + `
 
 IMPORTANT: ` + "`list_my_alerts`" + ` only shows alerts in the current user's inbox. It does NOT show all alerts in the system. To find out who a workflow is configured to alert, use ` + "`explain_workflow_node`" + ` on the create_alert action within the workflow.
@@ -169,13 +188,16 @@ const contextPreamble = `## Current Workflow Context
 
 **IMPORTANT**: The complete workflow state is provided below. Use this context directly to answer questions about the current workflow. Do NOT call get_workflow_rule to re-fetch a workflow that is already provided here.
 
+**CRITICAL — Recipient / config questions**: When the user asks "who receives alerts?", "what are the recipients?", or anything about action configuration details, call ` + "`explain_workflow_node`" + ` with node_name set to the action's name. You do NOT need to provide workflow_id — it defaults to the current workflow automatically. Do NOT call list_my_alerts or list_alerts_for_rule — those list *fired* alerts, not configured recipients. The context below may show raw UUIDs for recipients; ` + "`explain_workflow_node`" + ` resolves them to names and emails.
+
 Only use tools when the user asks you to:
 - **Modify** the workflow (use preview_workflow)
 - **Discover** available action types, entities, or triggers
 - **Read** a DIFFERENT workflow not shown below
+- **Resolve details** like recipient names or emails — use ` + "`explain_workflow_node`" + ` with just the node_name
 
 ### Context field mapping:
-- "workflow_id" = the rule's UUID (same as rule_id in tools)
+- "workflow_id" = the workflow's UUID (use this as the workflow_id parameter in tools)
 - "rule_name" = the rule's display name
 - "entity_schema" / "entity_name" = the entity this rule triggers on
 - "trigger_type" = when this rule fires (on_create, on_update, on_delete, manual)

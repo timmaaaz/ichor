@@ -101,7 +101,25 @@ func (g *workflowGraph) findAction(identifier string) *graphAction {
 	if a, ok := g.byID[identifier]; ok {
 		return a
 	}
+	// Fallback: match by action_type (e.g. "create_alert" instead of the action name).
+	// If multiple match, return the first one.
+	for i := range g.actions {
+		if g.actions[i].ActionType == identifier {
+			return &g.actions[i]
+		}
+	}
 	return nil
+}
+
+// findActionsByType returns all actions matching the given action_type.
+func (g *workflowGraph) findActionsByType(actionType string) []*graphAction {
+	var matches []*graphAction
+	for i := range g.actions {
+		if g.actions[i].ActionType == actionType {
+			matches = append(matches, &g.actions[i])
+		}
+	}
+	return matches
 }
 
 // calculateDepth returns the minimum edge count from any start node to the target.

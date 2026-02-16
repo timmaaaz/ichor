@@ -52,12 +52,13 @@ type Config struct {
 	TemporalClient client.Client // nil means Temporal disabled
 
 	// LLM provider configuration for agent chat.
-	LLMProvider  string
-	LLMAPIKey    string
-	LLMModel     string
-	LLMMaxTokens int
-	LLMBaseURL   string
-	LLMHost      string
+	LLMProvider       string
+	LLMAPIKey         string
+	LLMModel          string
+	LLMMaxTokens      int
+	LLMBaseURL        string
+	LLMHost           string
+	LLMThinkingEffort string
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance
