@@ -18,8 +18,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
@@ -34,6 +36,7 @@ const maxAgentLoops = 20
 
 type api struct {
 	log      *logger.Logger
+	talkLog  *logger.Logger
 	provider llm.Provider
 	tools    []llm.ToolDef
 	executor *agenttools.Executor
@@ -42,6 +45,7 @@ type api struct {
 func newAPI(cfg Config) *api {
 	return &api{
 		log:      cfg.Log,
+		talkLog:  cfg.TalkLog,
 		provider: cfg.LLMProvider,
 		tools:    agenttools.ToolDefinitions(),
 		executor: cfg.ToolExecutor,
@@ -89,6 +93,11 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 
 	ctx = sseCtx
 
+	// Generate a session ID for talk-log correlation and inject it into the
+	// context so providers can include it in their log entries.
+	sessionID := uuid.New().String()
+	ctx = llm.WithSessionID(ctx, sessionID)
+
 	// Extract user ID (set by mid.Authenticate).
 	userID, err := mid.GetUserID(ctx)
 	if err != nil {
@@ -120,21 +129,44 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Filter tools by context type.
-	filteredTools := filterToolsByContext(a.tools, req.ContextType)
+	// Filter tools by context type, then by intent.
+	contextFiltered := filterToolsByContext(a.tools, req.ContextType)
 
 	// Extract the workflow_id from the context (if present) so we can inject
 	// it into tool calls where the LLM omits it.
 	contextWorkflowID := extractContextWorkflowID(req.Context)
 
+	intents := classifyIntent(req.Message)
+	hasCtx := contextWorkflowID != ""
+	filteredTools := filterToolsByIntent(contextFiltered, intents, hasCtx)
+
 	// Build initial LLM request.
+	systemPrompt := buildSystemPrompt(req.ContextType, req.Context, intents)
 	llmReq := llm.ChatRequest{
-		SystemPrompt: buildSystemPrompt(req.ContextType, req.Context),
+		SystemPrompt: systemPrompt,
 		Messages: []llm.Message{
 			{Role: "user", Content: req.Message},
 		},
 		Tools:     filteredTools,
 		MaxTokens: 4096,
+	}
+
+	// Stage 1: Log the full prompt (untruncated).
+	if a.talkLog != nil {
+		toolNames := make([]string, len(filteredTools))
+		for i, t := range filteredTools {
+			toolNames[i] = t.Name
+		}
+		a.talkLog.Info(ctx, "TALK-LOG: prompt",
+			"stage", "prompt",
+			"session_id", sessionID,
+			"user_message", req.Message,
+			"system_prompt", systemPrompt,
+			"context_type", req.ContextType,
+			"context_json", string(req.Context),
+			"intents", intents,
+			"tool_count", len(filteredTools),
+			"tools", toolNames)
 	}
 
 	// =====================================================================
@@ -151,13 +183,13 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 
 		// Accumulate assistant text + tool calls from this turn.
 		var (
-			assistantText  string
-			thinkingText   string
-			toolCalls      []llm.ToolCall
-			currentToolID  string
+			assistantText   string
+			thinkingText    string
+			toolCalls       []llm.ToolCall
+			currentToolID   string
 			currentToolName string
 			currentToolJSON string
-			stopForTools   bool
+			stopForTools    bool
 		)
 
 		for ev := range eventCh {
@@ -227,30 +259,15 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 				"text", truncateLog(assistantText, 2000))
 		}
 
-		// If the LLM didn't request tools, check for Chinese and possibly retry.
+		// If the LLM didn't request tools, we're done.
 		if !stopForTools || len(toolCalls) == 0 {
-			// If the response contains Chinese, inject a correction message
-			// and continue the loop so the LLM can retry in English.
-			if containsChinese(assistantText) {
-				a.log.Warn(ctx, "AGENT-CHAT: detected Chinese in response, requesting English retry",
-					"turn", turn)
-
-				// Build assistant message with the Chinese response.
-				llmReq.Messages = append(llmReq.Messages, llm.Message{
-					Role:    "assistant",
-					Content: assistantText,
-				})
-
-				// Inject a user message asking for English.
-				llmReq.Messages = append(llmReq.Messages, llm.Message{
-					Role:    "user",
-					Content: "Please respond in English, not Chinese. Repeat your previous response in English.",
-				})
-
-				sse.send("content_chunk", map[string]string{
-					"chunk": "\n\n[Retrying in English...]\n\n",
-				})
-				continue
+			// Stage 5: Log the final response (untruncated).
+			if a.talkLog != nil {
+				a.talkLog.Info(ctx, "TALK-LOG: response",
+					"stage", "response",
+					"session_id", sessionID,
+					"final_text", assistantText,
+					"total_turns", turn+1)
 			}
 
 			sse.send("message_complete", nil)
@@ -274,6 +291,17 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 			"turn", turn)
 
 		toolResults := make([]llm.ToolResult, 0, len(toolCalls))
+
+		// Collect tool execution details for talk-log stage 2.
+		type toolLogEntry struct {
+			Name      string `json:"name"`
+			Input     string `json:"input"`
+			Result    string `json:"result"`
+			IsError   bool   `json:"is_error"`
+			ElapsedMs int64  `json:"elapsed_ms"`
+		}
+		var toolLogEntries []toolLogEntry
+
 		for _, tc := range toolCalls {
 			// Inject the context workflow_id into tool calls that accept it
 			// but where the LLM omitted it.
@@ -285,12 +313,23 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 
 			toolStart := time.Now()
 			result := a.executor.Execute(ctx, tc, authToken)
+			elapsed := time.Since(toolStart)
 			a.log.Info(ctx, "AGENT-CHAT: tool executed",
 				"name", tc.Name,
 				"tool_use_id", tc.ID,
-				"elapsed", time.Since(toolStart),
+				"elapsed", elapsed,
 				"is_error", result.IsError,
 				"result", truncateLog(result.Content, 2000))
+
+			if a.talkLog != nil {
+				toolLogEntries = append(toolLogEntries, toolLogEntry{
+					Name:      tc.Name,
+					Input:     string(tc.Input),
+					Result:    result.Content,
+					IsError:   result.IsError,
+					ElapsedMs: elapsed.Milliseconds(),
+				})
+			}
 
 			// Intercept preview_workflow / preview_draft: if validation passed,
 			// emit a workflow_preview SSE event so the frontend can show the
@@ -298,7 +337,7 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 			if (tc.Name == "preview_workflow" || tc.Name == "preview_draft") && !result.IsError {
 				if preview := buildPreviewEvent(tc, result); preview != nil {
 					sse.send("workflow_preview", preview)
-					result.Content = `{"status":"preview_sent","message":"Preview sent to user for approval. Do not call create_workflow or update_workflow. The user will accept or reject the preview directly."}`
+					result.Content = `{"status":"preview_sent","message":"Preview sent to user for approval. The user will accept or reject the preview directly."}`
 				}
 			}
 
@@ -311,6 +350,15 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
+		// Stage 2: Log the tool execution loop (untruncated).
+		if a.talkLog != nil {
+			a.talkLog.Info(ctx, "TALK-LOG: loop",
+				"stage", "loop",
+				"session_id", sessionID,
+				"turn", turn,
+				"tools", toolLogEntries)
+		}
+
 		// Append tool results as a user message.
 		llmReq.Messages = append(llmReq.Messages, llm.Message{
 			Role:        "user",
@@ -321,6 +369,86 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 	// Safety: max loops reached.
 	a.log.Warn(ctx, "AGENT-CHAT: max loops reached", "user_id", userID)
 	sse.sendError("Maximum tool-call rounds exceeded")
+}
+
+// =========================================================================
+// Intent-based tool routing
+// =========================================================================
+
+// intentType classifies what the user wants to do.
+type intentType string
+
+const (
+	intentRead   intentType = "read"
+	intentAlert  intentType = "alert"
+	intentBuild  intentType = "build"
+	intentModify intentType = "modify"
+)
+
+// intentKeywords maps each intent to the keywords that signal it.
+var intentKeywords = map[intentType][]string{
+	intentRead:   {"explain", "describe", "what", "how", "show", "tell", "walk through"},
+	intentAlert:  {"alert", "notification", "inbox", "recipient", "who receives", "who gets"},
+	intentBuild:  {"create", "build", "make", "new workflow", "set up"},
+	intentModify: {"change", "update", "modify", "edit", "add step", "remove step", "add action", "remove action"},
+}
+
+// intentTools maps each intent to the tool names it should include.
+var intentTools = map[intentType][]string{
+	intentRead:   {"get_workflow_rule", "explain_workflow_node", "list_workflow_rules"},
+	intentAlert:  {"list_my_alerts", "get_alert_detail", "list_alerts_for_rule", "explain_workflow_node"},
+	intentBuild:  {"discover", "start_draft", "add_draft_action", "remove_draft_action", "preview_draft"},
+	intentModify: {"discover", "explain_workflow_node", "preview_workflow"},
+}
+
+// classifyIntent returns the intents that match the user's message based on
+// keyword matching. Returns [intentRead] if no keywords match.
+func classifyIntent(message string) []intentType {
+	lower := strings.ToLower(message)
+
+	var matched []intentType
+	seen := make(map[intentType]bool)
+
+	for intent, keywords := range intentKeywords {
+		for _, kw := range keywords {
+			if strings.Contains(lower, kw) && !seen[intent] {
+				matched = append(matched, intent)
+				seen[intent] = true
+				break
+			}
+		}
+	}
+
+	if len(matched) == 0 {
+		return []intentType{intentRead}
+	}
+	return matched
+}
+
+// filterToolsByIntent returns the subset of tools that match the classified
+// intents. When hasWorkflowContext is true and the only intent is read,
+// list_workflow_rules is excluded (the context already provides the workflow).
+func filterToolsByIntent(tools []llm.ToolDef, intents []intentType, hasWorkflowContext bool) []llm.ToolDef {
+	// Build the set of allowed tool names from the union of all intents.
+	allowed := make(map[string]bool)
+	for _, intent := range intents {
+		for _, name := range intentTools[intent] {
+			allowed[name] = true
+		}
+	}
+
+	// If only intent is read and we have context, drop list_workflow_rules.
+	if len(intents) == 1 && intents[0] == intentRead && hasWorkflowContext {
+		delete(allowed, "list_workflow_rules")
+	}
+
+	filtered := make([]llm.ToolDef, 0, len(allowed))
+	for _, t := range tools {
+		if allowed[t.Name] {
+			filtered = append(filtered, t)
+		}
+	}
+	return filtered
 }
 
 // filterToolsByContext returns the subset of tools that belong to the given
@@ -475,15 +603,3 @@ func isUUID(s string) bool {
 	return true
 }
 
-// containsChinese returns true if the string contains any CJK Unified
-// Ideographs (Chinese characters). Used to detect when the LLM responds in
-// Chinese so we can request a retry in English.
-func containsChinese(s string) bool {
-	for _, r := range s {
-		// CJK Unified Ideographs: U+4E00 to U+9FFF
-		if r >= 0x4E00 && r <= 0x9FFF {
-			return true
-		}
-	}
-	return false
-}

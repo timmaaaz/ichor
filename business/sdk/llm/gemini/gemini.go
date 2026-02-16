@@ -31,12 +31,13 @@ type Provider struct {
 	model     string
 	maxTokens int
 	log       *logger.Logger
+	talkLog   *logger.Logger
 	client    *http.Client
 }
 
 // NewProvider builds a Gemini provider from an API key, model name, and token
 // limit. If model is empty, DefaultModel is used.
-func NewProvider(apiKey, model string, maxTokens int, log *logger.Logger) *Provider {
+func NewProvider(apiKey, model string, maxTokens int, log, talkLog *logger.Logger) *Provider {
 	if model == "" {
 		model = DefaultModel
 	}
@@ -45,6 +46,7 @@ func NewProvider(apiKey, model string, maxTokens int, log *logger.Logger) *Provi
 		model:     model,
 		maxTokens: maxTokens,
 		log:       log,
+		talkLog:   talkLog,
 		client:    &http.Client{Timeout: 60 * time.Second},
 	}
 }
@@ -81,6 +83,16 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 		"messages", len(msgs),
 		"tools", len(tools),
 		"max_tokens", maxTokens)
+
+	// Stage 3: Log the full sent packet (untruncated).
+	if p.talkLog != nil {
+		p.talkLog.Info(ctx, "TALK-LOG: sent_packet",
+			"stage", "sent_packet",
+			"session_id", llm.SessionID(ctx),
+			"provider", "gemini",
+			"model", p.model,
+			"payload", json.RawMessage(payload))
+	}
 
 	start := time.Now()
 
@@ -137,6 +149,16 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 		stopForTools := false
 		var toolNames []string
 
+		// Accumulators for talk-log stage 4.
+		var accText string
+		type talkToolCall struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Input string `json:"input"`
+		}
+		var accToolCalls []talkToolCall
+		var currentInput string
+
 		for scanner.Scan() {
 			line := scanner.Text()
 
@@ -163,6 +185,7 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 
 			// Text content delta.
 			if delta.Content != "" {
+				accText += delta.Content
 				if !sent(llm.StreamEvent{Type: llm.EventContentDelta, Text: delta.Content}) {
 					return
 				}
@@ -176,6 +199,13 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 						"tool_call_id", tc.ID)
 					toolNames = append(toolNames, tc.Function.Name)
 
+					// Finalize any previous tool call accumulation.
+					if len(accToolCalls) > 0 {
+						accToolCalls[len(accToolCalls)-1].Input = currentInput
+					}
+					accToolCalls = append(accToolCalls, talkToolCall{ID: tc.ID, Name: tc.Function.Name})
+					currentInput = ""
+
 					if !sent(llm.StreamEvent{
 						Type:         llm.EventToolUseStart,
 						ToolCallID:   tc.ID,
@@ -185,6 +215,7 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 					}
 				}
 				if tc.Function.Arguments != "" {
+					currentInput += tc.Function.Arguments
 					if !sent(llm.StreamEvent{
 						Type:         llm.EventToolUseInput,
 						PartialInput: tc.Function.Arguments,
@@ -199,6 +230,11 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 			}
 		}
 
+		// Finalize the last tool call input.
+		if len(accToolCalls) > 0 {
+			accToolCalls[len(accToolCalls)-1].Input = currentInput
+		}
+
 		if err := scanner.Err(); err != nil {
 			p.log.Error(ctx, "AGENT-CHAT: gemini scan error", "elapsed", time.Since(start), "error", err)
 			sent(llm.StreamEvent{Type: llm.EventError, Err: fmt.Errorf("gemini: scan: %w", err)})
@@ -209,6 +245,18 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 			"elapsed", time.Since(start),
 			"stop_for_tools", stopForTools,
 			"tool_calls", toolNames)
+
+		// Stage 4: Log the full LLM return (untruncated).
+		if p.talkLog != nil {
+			p.talkLog.Info(ctx, "TALK-LOG: llm_return",
+				"stage", "llm_return",
+				"session_id", llm.SessionID(ctx),
+				"provider", "gemini",
+				"assistant_text", accText,
+				"tool_calls", accToolCalls,
+				"stop_for_tools", stopForTools,
+				"elapsed", time.Since(start))
+		}
 
 		sent(llm.StreamEvent{
 			Type:           llm.EventMessageComplete,

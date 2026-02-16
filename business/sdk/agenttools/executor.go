@@ -106,13 +106,28 @@ func (e *Executor) Execute(ctx context.Context, tc llm.ToolCall, authToken strin
 
 func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
 	switch tc.Name {
-	// Discovery
-	case "discover_action_types":
-		return e.get(ctx, "/v1/workflow/action-types", token)
-	case "discover_trigger_types":
-		return e.get(ctx, "/v1/workflow/trigger-types", token)
-	case "discover_entities":
-		return e.get(ctx, "/v1/workflow/entities", token)
+	// Discovery (consolidated)
+	case "discover":
+		var p struct {
+			Category string `json:"category"`
+		}
+		if err := json.Unmarshal(tc.Input, &p); err != nil {
+			return nil, fmt.Errorf("bad params: %w", err)
+		}
+		switch p.Category {
+		case "action_types":
+			data, err := e.get(ctx, "/v1/workflow/action-types", token)
+			if err != nil {
+				return nil, err
+			}
+			return summarizeActionTypes(data), nil
+		case "trigger_types":
+			return e.get(ctx, "/v1/workflow/trigger-types", token)
+		case "entities":
+			return e.get(ctx, "/v1/workflow/entities", token)
+		default:
+			return nil, fmt.Errorf("unknown discover category %q — use action_types, trigger_types, or entities", p.Category)
+		}
 
 	// Alerts
 	case "list_my_alerts":
@@ -168,39 +183,10 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		if err != nil {
 			return nil, err
 		}
-		return formatPaginatedResponse(data), nil
+		return summarizeRuleList(formatPaginatedResponse(data)), nil
 
-	// Write (with name resolution + edge shorthand)
-	case "create_workflow":
-		var p struct {
-			Workflow json.RawMessage `json:"workflow"`
-		}
-		if err := json.Unmarshal(tc.Input, &p); err != nil {
-			return nil, fmt.Errorf("bad params: %w", err)
-		}
-		transformed, err := e.transformWorkflowPayload(ctx, p.Workflow, token)
-		if err != nil {
-			return nil, fmt.Errorf("transform workflow: %w", err)
-		}
-		return e.post(ctx, "/v1/workflow/rules/full", transformed, token)
-	case "update_workflow":
-		var p struct {
-			RuleID   string          `json:"workflow_id"`
-			Workflow json.RawMessage `json:"workflow"`
-		}
-		if err := json.Unmarshal(tc.Input, &p); err != nil {
-			return nil, fmt.Errorf("bad params: %w", err)
-		}
-		ruleID, err := e.resolveRuleID(ctx, p.RuleID, token)
-		if err != nil {
-			return nil, err
-		}
-		transformed, err := e.transformWorkflowPayload(ctx, p.Workflow, token)
-		if err != nil {
-			return nil, fmt.Errorf("transform workflow: %w", err)
-		}
-		return e.put(ctx, "/v1/workflow/rules/"+ruleID+"/full", transformed, token)
-	case "validate_workflow", "preview_workflow":
+	// Preview (validate + send to user for approval)
+	case "preview_workflow":
 		var p struct {
 			Workflow json.RawMessage `json:"workflow"`
 		}
@@ -1103,10 +1089,6 @@ func (e *Executor) post(ctx context.Context, path string, body json.RawMessage, 
 	return e.do(ctx, http.MethodPost, path, body, token)
 }
 
-func (e *Executor) put(ctx context.Context, path string, body json.RawMessage, token string) (json.RawMessage, error) {
-	return e.do(ctx, http.MethodPut, path, body, token)
-}
-
 func (e *Executor) do(ctx context.Context, method, path string, body json.RawMessage, token string) (json.RawMessage, error) {
 	url := e.baseURL + path
 
@@ -1180,7 +1162,7 @@ func (e *Executor) listMyAlerts(ctx context.Context, tc llm.ToolCall, token stri
 	if err != nil {
 		return nil, err
 	}
-	return formatPaginatedResponse(data), nil
+	return summarizeAlertList(formatPaginatedResponse(data)), nil
 }
 
 // listAlertsForRule fetches alerts fired by a specific workflow rule.
@@ -1216,7 +1198,7 @@ func (e *Executor) listAlertsForRule(ctx context.Context, tc llm.ToolCall, token
 	if err != nil {
 		return nil, err
 	}
-	return formatPaginatedResponse(data), nil
+	return summarizeAlertList(formatPaginatedResponse(data)), nil
 }
 
 // enrichCreateAlertConfig parses a create_alert action config and resolves
@@ -1366,6 +1348,206 @@ func formatPaginatedResponse(data json.RawMessage) json.RawMessage {
 		"total":    wrapper.Total,
 		"showing":  showing,
 		"has_more": hasMore,
+	})
+	if err != nil {
+		return data
+	}
+	return result
+}
+
+// =========================================================================
+// Result summarization (reduce token usage)
+// =========================================================================
+
+// summarizeActionTypes strips full config schemas from action type results,
+// keeping only the type name, description (first sentence), output port names,
+// and config field names.
+func summarizeActionTypes(data json.RawMessage) json.RawMessage {
+	var types []struct {
+		Type        string `json:"type"`
+		Description string `json:"description"`
+		OutputPorts []struct {
+			Name      string `json:"name"`
+			IsDefault bool   `json:"is_default"`
+		} `json:"output_ports"`
+		ConfigSchema json.RawMessage `json:"config_schema"`
+	}
+	if err := json.Unmarshal(data, &types); err != nil {
+		return data
+	}
+
+	summaries := make([]map[string]any, len(types))
+	for i, t := range types {
+		// Truncate description to first sentence.
+		desc := t.Description
+		if idx := strings.Index(desc, ". "); idx > 0 {
+			desc = desc[:idx+1]
+		} else if len(desc) > 120 {
+			desc = desc[:120] + "…"
+		}
+
+		// Extract just port names.
+		ports := make([]string, len(t.OutputPorts))
+		for j, p := range t.OutputPorts {
+			label := p.Name
+			if p.IsDefault {
+				label += " (default)"
+			}
+			ports[j] = label
+		}
+
+		// Extract just config field names from JSON Schema.
+		var configFields []string
+		if len(t.ConfigSchema) > 0 {
+			var s struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			}
+			if json.Unmarshal(t.ConfigSchema, &s) == nil {
+				configFields = make([]string, 0, len(s.Properties))
+				for k := range s.Properties {
+					configFields = append(configFields, k)
+				}
+			}
+		}
+
+		entry := map[string]any{
+			"type":         t.Type,
+			"description":  desc,
+			"output_ports": ports,
+		}
+		if len(configFields) > 0 {
+			entry["config_fields"] = configFields
+		}
+		summaries[i] = entry
+	}
+
+	b, err := json.Marshal(summaries)
+	if err != nil {
+		return data
+	}
+	return b
+}
+
+// summarizeRuleList strips rule objects to essential fields: id, name, entity,
+// trigger_type, is_active. Preserves pagination metadata.
+func summarizeRuleList(data json.RawMessage) json.RawMessage {
+	var envelope struct {
+		Results json.RawMessage `json:"results"`
+		Total   int             `json:"total"`
+		Showing int             `json:"showing"`
+		HasMore bool            `json:"has_more"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil || envelope.Results == nil {
+		return data
+	}
+
+	var rules []struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		EntityName  string `json:"entity_name"`
+		TriggerType string `json:"trigger_type"`
+		IsActive    bool   `json:"is_active"`
+	}
+	if err := json.Unmarshal(envelope.Results, &rules); err != nil {
+		return data
+	}
+
+	summaries := make([]map[string]any, len(rules))
+	for i, r := range rules {
+		summaries[i] = map[string]any{
+			"id":           r.ID,
+			"name":         r.Name,
+			"entity_name":  r.EntityName,
+			"trigger_type": r.TriggerType,
+			"is_active":    r.IsActive,
+		}
+	}
+
+	result, err := json.Marshal(map[string]any{
+		"results":  summaries,
+		"total":    envelope.Total,
+		"showing":  envelope.Showing,
+		"has_more": envelope.HasMore,
+	})
+	if err != nil {
+		return data
+	}
+	return result
+}
+
+// summarizeAlertList strips alert objects to essential fields: id, message,
+// severity, status, created_at, and recipient names. Preserves pagination.
+func summarizeAlertList(data json.RawMessage) json.RawMessage {
+	var envelope struct {
+		Results json.RawMessage `json:"results"`
+		Total   int             `json:"total"`
+		Showing int             `json:"showing"`
+		HasMore bool            `json:"has_more"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil || envelope.Results == nil {
+		return data
+	}
+
+	var alerts []struct {
+		ID        string `json:"id"`
+		Title     string `json:"title"`
+		Message   string `json:"message"`
+		Severity  string `json:"severity"`
+		Status    string `json:"status"`
+		CreatedAt string `json:"created_at"`
+		Recipients struct {
+			Users []struct {
+				Name string `json:"name"`
+			} `json:"users"`
+			Roles []struct {
+				Name string `json:"name"`
+			} `json:"roles"`
+		} `json:"recipients"`
+	}
+	if err := json.Unmarshal(envelope.Results, &alerts); err != nil {
+		return data
+	}
+
+	summaries := make([]map[string]any, len(alerts))
+	for i, a := range alerts {
+		// Collect recipient names.
+		var recipientNames []string
+		for _, u := range a.Recipients.Users {
+			if u.Name != "" {
+				recipientNames = append(recipientNames, u.Name)
+			}
+		}
+		for _, r := range a.Recipients.Roles {
+			if r.Name != "" {
+				recipientNames = append(recipientNames, "role:"+r.Name)
+			}
+		}
+
+		entry := map[string]any{
+			"id":       a.ID,
+			"severity": a.Severity,
+			"status":   a.Status,
+		}
+		if a.Title != "" {
+			entry["title"] = a.Title
+		}
+		if a.Message != "" {
+			entry["message"] = a.Message
+		}
+		if a.CreatedAt != "" {
+			entry["created_at"] = a.CreatedAt
+		}
+		if len(recipientNames) > 0 {
+			entry["recipients"] = recipientNames
+		}
+		summaries[i] = entry
+	}
+
+	result, err := json.Marshal(map[string]any{
+		"results":  summaries,
+		"total":    envelope.Total,
+		"showing":  envelope.Showing,
+		"has_more": envelope.HasMore,
 	})
 	if err != nil {
 		return data

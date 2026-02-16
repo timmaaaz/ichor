@@ -3,6 +3,7 @@ package all
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/approvalstatusapi"
@@ -301,6 +302,7 @@ import (
 	temporalpkg "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
+	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 	foundationws "github.com/timmaaaz/ichor/foundation/websocket"
@@ -1030,22 +1032,26 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// Agent Chat (LLM-powered SSE endpoint)
 	// =========================================================================
 
+	// Talk-log: dedicated untruncated lifecycle logger for agent chat debugging.
+	// Filter with: jq 'select(.service == "talk-log")'
+	talkLog := logger.New(os.Stdout, logger.LevelInfo, "talk-log", nil)
+
 	var llmProvider llm.Provider
 
 	switch cfg.LLMProvider {
 	case "ollama":
-		llmProvider = ollama.NewProvider(cfg.LLMHost, cfg.LLMModel, cfg.LLMMaxTokens, cfg.LLMThinkingEffort, cfg.Log)
+		llmProvider = ollama.NewProvider(cfg.LLMHost, cfg.LLMModel, cfg.LLMMaxTokens, cfg.LLMThinkingEffort, cfg.Log, talkLog)
 	case "claude":
 		if cfg.LLMAPIKey == "" {
 			cfg.Log.Info(context.Background(), "AGENT-CHAT: claude provider selected but ICHOR_LLM_APIKEY is not set — agent chat will be disabled")
 		} else {
-			llmProvider = claude.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
+			llmProvider = claude.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log, talkLog)
 		}
 	case "gemini":
 		if cfg.LLMAPIKey == "" {
 			cfg.Log.Info(context.Background(), "AGENT-CHAT: gemini provider selected but ICHOR_LLM_APIKEY is not set — agent chat will be disabled")
 		} else {
-			llmProvider = gemini.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
+			llmProvider = gemini.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log, talkLog)
 		}
 	}
 
@@ -1054,6 +1060,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 		chatapi.Routes(app, chatapi.Config{
 			Log:                cfg.Log,
+			TalkLog:            talkLog,
 			LLMProvider:        llmProvider,
 			ToolExecutor:       toolExecutor,
 			AuthClient:         cfg.AuthClient,

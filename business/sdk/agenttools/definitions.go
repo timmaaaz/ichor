@@ -157,30 +157,21 @@ var workflowPayloadSchema = map[string]any{
 func ToolDefinitions() []llm.ToolDef {
 	return []llm.ToolDef{
 		// =================================================================
-		// Discovery (read-only, zero-arg)
+		// Discovery (read-only)
 		// =================================================================
 		{
-			Name:        "discover_action_types",
-			Description: "List every available workflow action type with its config schema and output ports.",
+			Name:        "discover",
+			Description: "Discover available workflow building blocks: action types (with config schemas and output ports), trigger types (on_create, on_update, on_delete, manual), or entity types (schema.table pairs that can trigger workflows).",
 			InputSchema: schema(map[string]any{
-				"type":       "object",
-				"properties": map[string]any{},
-			}),
-		},
-		{
-			Name:        "discover_trigger_types",
-			Description: "List available trigger types for automation rules (on_create, on_update, on_delete, manual).",
-			InputSchema: schema(map[string]any{
-				"type":       "object",
-				"properties": map[string]any{},
-			}),
-		},
-		{
-			Name:        "discover_entities",
-			Description: "List entity types that can be used as workflow triggers (schema.table pairs).",
-			InputSchema: schema(map[string]any{
-				"type":       "object",
-				"properties": map[string]any{},
+				"type": "object",
+				"properties": map[string]any{
+					"category": map[string]any{
+						"type":        "string",
+						"enum":        []string{"action_types", "trigger_types", "entities"},
+						"description": "What to discover: action_types (config schemas + output ports), trigger_types (when rules fire), or entities (what rules can trigger on).",
+					},
+				},
+				"required": []string{"category"},
 			}),
 		},
 
@@ -225,47 +216,6 @@ func ToolDefinitions() []llm.ToolDef {
 			InputSchema: schema(map[string]any{
 				"type":       "object",
 				"properties": map[string]any{},
-			}),
-		},
-
-		// =================================================================
-		// Workflow write
-		// =================================================================
-		{
-			Name:        "create_workflow",
-			Description: "Create a new automation rule with its actions and edges. The rule, actions, and edges are saved in a single transaction.",
-			InputSchema: schema(map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"workflow": workflowPayloadSchema,
-				},
-				"required": []string{"workflow"},
-			}),
-		},
-		{
-			Name:        "update_workflow",
-			Description: "Update an existing automation rule (actions, edges, metadata). Uses PUT /v1/workflow/rules/{id}/full.",
-			InputSchema: schema(map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"workflow_id": map[string]any{
-						"type":        "string",
-						"description": "Workflow UUID or name. Names are resolved automatically.",
-					},
-					"workflow": workflowPayloadSchema,
-				},
-				"required": []string{"workflow_id", "workflow"},
-			}),
-		},
-		{
-			Name:        "validate_workflow",
-			Description: "Dry-run validate a workflow without saving. Returns validation errors or success. Uses POST /v1/workflow/rules/full?dry_run=true.",
-			InputSchema: schema(map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"workflow": workflowPayloadSchema,
-				},
-				"required": []string{"workflow"},
 			}),
 		},
 

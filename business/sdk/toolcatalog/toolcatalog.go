@@ -17,6 +17,7 @@ const (
 // Agent Chat system should have an entry here.
 const (
 	// Discovery — workflow
+	Discover             = "discover"
 	DiscoverActionTypes  = "discover_action_types"
 	DiscoverTriggerTypes = "discover_trigger_types"
 	DiscoverEntityTypes  = "discover_entity_types"
@@ -90,6 +91,7 @@ const (
 // all groups.
 var groupMembers = map[string][]ToolGroup{
 	// Workflow-only
+	Discover:             {GroupWorkflow},
 	DiscoverActionTypes:  {GroupWorkflow},
 	DiscoverTriggerTypes: {GroupWorkflow},
 	DiscoverEntityTypes:  {GroupWorkflow},
@@ -102,8 +104,6 @@ var groupMembers = map[string][]ToolGroup{
 	ListWorkflowRules:    {GroupWorkflow},
 	ListActionTemplates:  {GroupWorkflow},
 	ValidateWorkflow:     {GroupWorkflow},
-	CreateWorkflow:       {GroupWorkflow},
-	UpdateWorkflow:       {GroupWorkflow},
 	PreviewWorkflow:      {GroupWorkflow},
 	AnalyzeWorkflow:      {GroupWorkflow},
 	SuggestTemplates:     {GroupWorkflow},

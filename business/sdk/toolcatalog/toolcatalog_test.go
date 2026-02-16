@@ -7,10 +7,10 @@ import (
 
 func TestInGroup_WorkflowTools(t *testing.T) {
 	workflowOnly := []string{
-		DiscoverActionTypes, DiscoverTriggerTypes, DiscoverEntityTypes, DiscoverEntities,
+		Discover, DiscoverActionTypes, DiscoverTriggerTypes, DiscoverEntityTypes, DiscoverEntities,
 		GetWorkflow, GetWorkflowRule, ExplainWorkflowNode, ExplainWorkflowPath,
 		ListWorkflows, ListWorkflowRules, ListActionTemplates,
-		ValidateWorkflow, CreateWorkflow, UpdateWorkflow, PreviewWorkflow,
+		ValidateWorkflow, PreviewWorkflow,
 		AnalyzeWorkflow, SuggestTemplates, ShowCascade,
 		ListMyAlerts, GetAlertDetail, ListAlertsForRule,
 		StartDraft, AddDraftAction, RemoveDraftAction, PreviewDraft,
@@ -103,19 +103,19 @@ func TestToolsForGroup_Tables(t *testing.T) {
 	if !set[SearchEnums] {
 		t.Error("tables group should include shared tool search_enums")
 	}
-	if set[CreateWorkflow] {
-		t.Error("tables group should NOT include workflow-only tool create_workflow")
+	if set[Discover] {
+		t.Error("tables group should NOT include workflow-only tool discover")
 	}
 }
 
 func TestAllTools_Count(t *testing.T) {
 	all := AllTools()
-	// 25 workflow-only + 19 tables-only + 2 shared = 46
-	if len(all) != 46 {
+	// 24 workflow-only + 19 tables-only + 2 shared = 45
+	if len(all) != 45 {
 		names := make([]string, len(all))
 		copy(names, all)
 		sort.Strings(names)
-		t.Errorf("expected 46 tools, got %d: %v", len(all), names)
+		t.Errorf("expected 45 tools, got %d: %v", len(all), names)
 	}
 }
 

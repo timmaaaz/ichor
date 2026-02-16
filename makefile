@@ -311,6 +311,9 @@ dev-logs-auth:
 dev-logs-websocket:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/cmd/tooling/logfmt/main.go -service=$(ICHOR_APP) | grep -i websocket
 
+dev-logs-talk:
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/cmd/tooling/logfmt/main.go -service=talk-log
+
 # ------------------------------------------------------------------------------
 
 dev-logs-init:
@@ -575,6 +578,9 @@ list:
 
 run:
 	go run api/cmd/services/ichor/main.go | go run api/cmd/tooling/logfmt/main.go
+
+run-talk-log:
+	go run api/cmd/services/ichor/main.go | go run api/cmd/tooling/logfmt/main.go -service=talk-log
 
 run-help:
 	go run api/cmd/services/ichor/main.go --help | go run api/cmd/tooling/logfmt/main.go

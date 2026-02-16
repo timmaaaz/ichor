@@ -15,6 +15,7 @@ import (
 // Config holds the dependencies for the agent chat API routes.
 type Config struct {
 	Log                *logger.Logger
+	TalkLog            *logger.Logger
 	LLMProvider        llm.Provider
 	ToolExecutor       *agenttools.Executor
 	AuthClient         *authclient.Client

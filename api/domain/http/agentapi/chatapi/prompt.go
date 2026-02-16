@@ -2,13 +2,14 @@ package chatapi
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 )
 
 // buildSystemPrompt assembles the system prompt sent to the LLM.
 // contextType is "workflow" or "tables". rawCtx is the optional context JSON
-// from the request body.
-func buildSystemPrompt(contextType string, rawCtx json.RawMessage) string {
+// from the request body. intents controls which guidance sections are included.
+func buildSystemPrompt(contextType string, rawCtx json.RawMessage, intents []intentType) string {
 	var b strings.Builder
 
 	switch contextType {
@@ -19,7 +20,12 @@ func buildSystemPrompt(contextType string, rawCtx json.RawMessage) string {
 	default: // "workflow"
 		b.WriteString(roleBlock)
 		b.WriteString("\n\n")
-		b.WriteString(toolGuidance)
+		// Only include draft builder guidance when the user wants to build.
+		if slices.Contains(intents, intentBuild) {
+			b.WriteString(draftBuilderGuidance)
+			b.WriteString("\n\n")
+		}
+		b.WriteString(workflowConceptsGuidance)
 		b.WriteString("\n\n")
 		b.WriteString(responseGuidance)
 	}
@@ -48,10 +54,10 @@ func buildSystemPrompt(contextType string, rawCtx json.RawMessage) string {
 
 		b.WriteString("\n```json\n")
 
-		// Pretty-print the context for readability.
-		var pretty json.RawMessage
-		if err := json.Unmarshal(rawCtx, &pretty); err == nil {
-			formatted, err := json.MarshalIndent(pretty, "", "  ")
+		// Use compact JSON — LLMs parse it fine without whitespace.
+		var compact json.RawMessage
+		if err := json.Unmarshal(rawCtx, &compact); err == nil {
+			formatted, err := json.Marshal(compact)
 			if err == nil {
 				b.Write(formatted)
 			} else {
@@ -68,8 +74,6 @@ func buildSystemPrompt(contextType string, rawCtx json.RawMessage) string {
 
 const roleBlock = `You are a workflow automation assistant for the Ichor ERP platform. You help users build and modify workflow automation rules.
 
-**IMPORTANT: Always respond in English. Never respond in Chinese or any other language.**
-
 ## What You Can Do
 
 You have access to real tools that read from and write to the Ichor system:
@@ -77,7 +81,6 @@ You have access to real tools that read from and write to the Ichor system:
 - **Read** existing workflow rules (with their actions and edges).
 - **Alerts** — list the user's alerts or get alert details (with enriched recipient names/emails).
 - **Preview** proposed workflow changes for user approval before persisting.
-- **Validate** workflow definitions (dry-run).
 
 All tool calls execute with the user's permissions—if they lack access, the tool will return an error.
 
@@ -91,63 +94,38 @@ Before answering, think through these steps:
 
 ## Preview-First Workflow
 
-ALWAYS use preview_workflow instead of create_workflow or update_workflow. The preview tool validates your changes and sends a visual preview to the user for review. The user will accept or reject the preview directly in the UI—you do not need to persist changes yourself.
+ALWAYS use ` + "`preview_workflow`" + ` (or ` + "`preview_draft`" + ` for incremental builds). The preview tool validates your changes and sends a visual preview to the user for review. The user will accept or reject the preview directly in the UI—you do not need to persist changes yourself.
 
-After calling preview_workflow with a valid workflow, you will receive a confirmation that the preview was sent. Simply inform the user that the preview is ready for their review. Do NOT follow up with create_workflow or update_workflow.`
+After calling preview_workflow or preview_draft with a valid workflow, you will receive a confirmation that the preview was sent. Simply inform the user that the preview is ready for their review.`
 
-const toolGuidance = `## How Workflow Rules Work
+const workflowConceptsGuidance = `## Workflow Concepts
 
-A workflow rule is a directed acyclic graph (DAG) of actions connected by edges.
+A workflow rule is a DAG: actions (nodes) connected by edges via output ports.
+- **Rule**: name + trigger (on_create/on_update/on_delete/manual) + entity (schema.table).
+- **Actions**: typed nodes (e.g. send_email, evaluate_condition) with config.
+- **Edges**: connect source action's output port → target action. One start edge (no source) per rule.
+- **Output ports**: named outputs like "success"/"failure" or "output-true"/"output-false".
 
-### Key concepts:
-- **Rule**: Has a name, trigger type (on_create, on_update, on_delete, manual), and target entity (schema.table).
-- **Actions**: Nodes in the graph. Each has a type (e.g. send_email, evaluate_condition) and config.
-- **Edges**: Directed connections between actions. Each edge has a source action, output port, and target action.
-- **Output ports**: Actions have named outputs (e.g. "success"/"failure", "output-true"/"output-false"). Edges connect from a port to the next action.
-- **Start edge**: Every rule has exactly one start edge (source_action_id is empty) pointing to the first action.
+Tool selection is automatic — use the tools available to you.
 
-### Creating new workflows (PREFERRED: use the draft builder):
-1. Use ` + "`discover_action_types`" + ` to learn available action types, their config schemas, and output ports.
-2. Use ` + "`start_draft`" + ` with the rule name, entity (e.g. "inventory.inventory_items"), and trigger type (e.g. "on_update"). No UUID lookup needed.
-3. Use ` + "`add_draft_action`" + ` for each action. Use "after" to declare which action precedes it (e.g. "after": "Check Stock:low"). Omit "after" for the first action.
-4. Use ` + "`preview_draft`" + ` to validate and show the user a visual preview for approval.
+**Note**: ` + "`list_my_alerts`" + ` shows YOUR inbox only. For configured recipients, use ` + "`explain_workflow_node`" + ` on the alert action.
 
-Example draft flow:
-- start_draft: name="Low Stock Alert", entity="inventory.inventory_items", trigger_type="on_update"
-- add_draft_action: name="Check Stock", action_type="evaluate_condition", config={...} (no "after" = first action)
-- add_draft_action: name="Send Alert", action_type="create_alert", after="Check Stock:output-true", config={...}
-- preview_draft: description="Alert when inventory falls below threshold"
+Always explain what you're doing before making tool calls. If a tool call fails, explain the error and suggest corrections.`
 
-### Shorthand features (work in both draft and full workflow tools):
-- **Entity names**: Use "entity": "schema.table" instead of looking up a UUID (e.g. "inventory.inventory_items")
-- **Trigger type names**: Use "trigger_type": "on_update" instead of a UUID
-- **"after" field on actions**: Declare predecessors inline (e.g. "after": "Check Stock:output-true"). The system generates edges automatically. Omit "after" on the first action — it becomes the start node.
-- When "after" omits the port (e.g. "after": "Check Stock"), the default output port for that action type is used.
+const draftBuilderGuidance = `## Creating Workflows (Draft Builder)
 
-### Updating existing workflows:
-For updates to existing workflows, use ` + "`preview_workflow`" + ` with the full workflow payload and a workflow_id. The shorthand features (entity names, trigger type names, "after") also work here.
+1. ` + "`discover`" + ` with category "action_types" — learn config schemas and output ports.
+2. ` + "`start_draft`" + ` — name, entity ("schema.table"), trigger_type ("on_update"). No UUID lookup needed.
+3. ` + "`add_draft_action`" + ` — for each action. Use "after": "PrevAction:port" to chain. Omit "after" for first action.
+4. ` + "`preview_draft`" + ` — validate and show visual preview for user approval.
 
-### Action references (full payload mode):
-When building the full edges array manually, use temporary IDs for actions (e.g. "temp:0", "temp:1") and reference them in edges. The system will assign real UUIDs.
-
-### Answering detail questions:
-When the user asks about specifics of an action (recipients, email templates, field names, conditions, config values), use ` + "`explain_workflow_node`" + ` with the action's node_name to get its full configuration. You do NOT need to provide a workflow_id — it defaults to the current workflow. The summary from ` + "`get_workflow_rule`" + ` shows the flow structure but not individual action configs.
-
-### Tool selection guide:
-- "Create a workflow" / "Build an automation" → use the draft builder (start_draft → add_draft_action → preview_draft)
-- "Who receives alerts from this workflow?" → use ` + "`explain_workflow_node`" + ` with node_name set to the alert action's name (no workflow_id needed)
-- "What alerts do I have?" / "Show my alerts" → use ` + "`list_my_alerts`" + ` (your personal inbox)
-- "Has this alert fired?" / "Show alerts from this rule" → use ` + "`list_alerts_for_rule`" + ` with the rule's ID
-- "What does this action do?" → use ` + "`explain_workflow_node`" + ` with node_name (no workflow_id needed)
-- "Show me the workflow structure" → use ` + "`get_workflow_rule`" + `
-
-IMPORTANT: ` + "`list_my_alerts`" + ` only shows alerts in the current user's inbox. It does NOT show all alerts in the system. To find out who a workflow is configured to alert, use ` + "`explain_workflow_node`" + ` on the create_alert action within the workflow.
-
-Always explain what you're doing before making tool calls. If a tool call fails, explain the error to the user and suggest corrections.`
+### Shorthand (draft + full payload):
+- Entity/trigger names resolve to UUIDs automatically.
+- "after" field generates edges. Omit port for default (e.g. "after": "Check Stock" uses default port).
+- Full payload mode: use "temp:0", "temp:1" as action IDs in edges.
+- Updates: use ` + "`preview_workflow`" + ` with workflow_id. Same shorthands work.`
 
 const tablesRoleBlock = `You are a UI configuration assistant for the Ichor ERP platform. You help users set up and modify pages, forms, table configs, and content layouts.
-
-**IMPORTANT: Always respond in English. Never respond in Chinese or any other language.**
 
 ## What You Can Do
 

@@ -26,6 +26,7 @@ type Provider struct {
 	maxTokens       int
 	thinkingEnabled bool // whether to allow model thinking (qwen3 thinks by default)
 	log             *logger.Logger
+	talkLog         *logger.Logger
 	client          *http.Client
 }
 
@@ -34,13 +35,14 @@ type Provider struct {
 // thinking effort level ("high", "medium", "low", "none", or "" to disable).
 // It starts a background goroutine to pre-load the model so the first
 // user request doesn't block on model loading.
-func NewProvider(host, model string, maxTokens int, thinkingEffort string, log *logger.Logger) *Provider {
+func NewProvider(host, model string, maxTokens int, thinkingEffort string, log, talkLog *logger.Logger) *Provider {
 	p := &Provider{
 		host:            strings.TrimRight(host, "/"),
 		model:           model,
 		maxTokens:       maxTokens,
 		thinkingEnabled: thinkingEffort != "" && thinkingEffort != "none",
 		log:             log,
+		talkLog:         talkLog,
 		client:          &http.Client{},
 	}
 
@@ -115,6 +117,16 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 		"max_tokens", maxTokens,
 		"thinking", p.thinkingEnabled)
 
+	// Stage 3: Log the full sent packet (untruncated).
+	if p.talkLog != nil {
+		p.talkLog.Info(ctx, "TALK-LOG: sent_packet",
+			"stage", "sent_packet",
+			"session_id", llm.SessionID(ctx),
+			"provider", "ollama",
+			"model", p.model,
+			"payload", json.RawMessage(payload))
+	}
+
 	start := time.Now()
 
 	// Use a context without the parent's deadline so model loading on
@@ -175,6 +187,16 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 		// Qwen3 outputs thinking by default inside the content field.
 		tf := &thinkFilter{enabled: p.thinkingEnabled}
 
+		// Accumulators for talk-log stage 4.
+		var accText string
+		type talkToolCall struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Input string `json:"input"`
+		}
+		var accToolCalls []talkToolCall
+		var currentInput string
+
 		for scanner.Scan() {
 			line := scanner.Text()
 
@@ -215,6 +237,7 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 					}
 				}
 				if content != "" {
+					accText += content
 					if !sent(llm.StreamEvent{Type: llm.EventContentDelta, Text: content}) {
 						return
 					}
@@ -229,6 +252,13 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 						"tool_call_id", tc.ID)
 					toolNames = append(toolNames, tc.Function.Name)
 
+					// Finalize any previous tool call accumulation.
+					if len(accToolCalls) > 0 {
+						accToolCalls[len(accToolCalls)-1].Input = currentInput
+					}
+					accToolCalls = append(accToolCalls, talkToolCall{ID: tc.ID, Name: tc.Function.Name})
+					currentInput = ""
+
 					if !sent(llm.StreamEvent{
 						Type:         llm.EventToolUseStart,
 						ToolCallID:   tc.ID,
@@ -238,6 +268,7 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 					}
 				}
 				if tc.Function.Arguments != "" {
+					currentInput += tc.Function.Arguments
 					if !sent(llm.StreamEvent{
 						Type:         llm.EventToolUseInput,
 						PartialInput: tc.Function.Arguments,
@@ -257,7 +288,13 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 
 		// Flush any buffered content from the think filter.
 		if remaining := tf.flush(); remaining != "" {
+			accText += remaining
 			sent(llm.StreamEvent{Type: llm.EventContentDelta, Text: remaining})
+		}
+
+		// Finalize the last tool call input.
+		if len(accToolCalls) > 0 {
+			accToolCalls[len(accToolCalls)-1].Input = currentInput
 		}
 
 		if err := scanner.Err(); err != nil {
@@ -270,6 +307,18 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 			"elapsed", time.Since(start),
 			"stop_for_tools", stopForTools,
 			"tool_calls", toolNames)
+
+		// Stage 4: Log the full LLM return (untruncated).
+		if p.talkLog != nil {
+			p.talkLog.Info(ctx, "TALK-LOG: llm_return",
+				"stage", "llm_return",
+				"session_id", llm.SessionID(ctx),
+				"provider", "ollama",
+				"assistant_text", accText,
+				"tool_calls", accToolCalls,
+				"stop_for_tools", stopForTools,
+				"elapsed", time.Since(start))
+		}
 
 		sent(llm.StreamEvent{
 			Type:           llm.EventMessageComplete,
