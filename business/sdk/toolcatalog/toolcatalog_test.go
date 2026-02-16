@@ -110,12 +110,12 @@ func TestToolsForGroup_Tables(t *testing.T) {
 
 func TestAllTools_Count(t *testing.T) {
 	all := AllTools()
-	// 24 workflow-only + 19 tables-only + 2 shared = 45
-	if len(all) != 45 {
+	// 24 workflow-only + 20 tables-only + 2 shared = 46
+	if len(all) != 46 {
 		names := make([]string, len(all))
 		copy(names, all)
 		sort.Strings(names)
-		t.Errorf("expected 45 tools, got %d: %v", len(all), names)
+		t.Errorf("expected 46 tools, got %d: %v", len(all), names)
 	}
 }
 

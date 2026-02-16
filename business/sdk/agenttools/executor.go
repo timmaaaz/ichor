@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
+	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -208,6 +209,22 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		return e.handleRemoveDraftAction(ctx, tc)
 	case "preview_draft":
 		return e.handlePreviewDraft(ctx, tc, token)
+
+	// Table config tools
+	case "discover_table_reference":
+		return discoverTableReference()
+	case "search_database_schema":
+		return e.handleSearchDatabaseSchema(ctx, tc, token)
+	case "get_table_config":
+		return e.handleGetTableConfig(ctx, tc, token)
+	case "list_table_configs":
+		return e.get(ctx, "/v1/data/configs/all", token)
+	case "validate_table_config":
+		return e.handleValidateTableConfig(ctx, tc, token)
+	case "create_table_config":
+		return e.handleCreateTableConfig(ctx, tc, token)
+	case "update_table_config":
+		return e.handleUpdateTableConfig(ctx, tc, token)
 
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", tc.Name)
@@ -1089,6 +1106,10 @@ func (e *Executor) post(ctx context.Context, path string, body json.RawMessage, 
 	return e.do(ctx, http.MethodPost, path, body, token)
 }
 
+func (e *Executor) put(ctx context.Context, path string, body json.RawMessage, token string) (json.RawMessage, error) {
+	return e.do(ctx, http.MethodPut, path, body, token)
+}
+
 func (e *Executor) do(ctx context.Context, method, path string, body json.RawMessage, token string) (json.RawMessage, error) {
 	url := e.baseURL + path
 
@@ -1285,6 +1306,205 @@ func (e *Executor) enrichCreateAlertConfig(ctx context.Context, config json.RawM
 		return config
 	}
 	return b
+}
+
+// =========================================================================
+// Table config handlers
+// =========================================================================
+
+// discoverTableReference returns a static reference of all valid column types,
+// format options, editable types, filter operators, join types, and date
+// format tokens. Pure computation — no API call needed.
+func discoverTableReference() (json.RawMessage, error) {
+	// Build column type descriptions with PG type mappings.
+	columnTypes := map[string]any{
+		"string":   map[string]any{"description": "Text, varchar, char, json types", "pg_types": []string{"character varying", "varchar", "character", "char", "text", "citext", "json", "jsonb"}},
+		"number":   map[string]any{"description": "Integer, decimal, numeric types", "pg_types": []string{"integer", "bigint", "smallint", "numeric", "decimal", "real", "double precision", "serial", "bigserial", "smallserial", "money"}},
+		"datetime": map[string]any{"description": "Date, time, timestamp types", "pg_types": []string{"timestamp", "timestamp without time zone", "timestamp with time zone", "date", "time", "interval"}, "requires_format": true, "default_format": "yyyy-MM-dd"},
+		"boolean":  map[string]any{"description": "Boolean type", "pg_types": []string{"boolean"}},
+		"uuid":     map[string]any{"description": "UUID type", "pg_types": []string{"uuid"}},
+		"status":   map[string]any{"description": "Enum/status fields (renders as dropdown)"},
+		"computed": map[string]any{"description": "Client-computed columns (no DB column)"},
+		"lookup":   map[string]any{"description": "Lookup dropdown fields (FK references with searchable dropdown)"},
+	}
+
+	ref := map[string]any{
+		"column_types":     columnTypes,
+		"format_types":     keysFromMap(tablebuilder.AllowedFormatTypes),
+		"editable_types":   keysFromMap(tablebuilder.AllowedEditableTypes),
+		"filter_operators": describeFilterOperators(),
+		"join_types":       keysFromMap(tablebuilder.AllowedJoinTypes),
+		"sort_directions":  keysFromMap(tablebuilder.AllowedSortDirections),
+		"alignments":       keysFromMap(tablebuilder.AllowedAlignments),
+		"date_format_examples": map[string]string{
+			"date":     "yyyy-MM-dd",
+			"datetime": "yyyy-MM-dd HH:mm:ss",
+			"us_date":  "MM/dd/yyyy",
+			"us_datetime": "MM/dd/yyyy hh:mm a",
+			"eu_date":  "dd.MM.yyyy",
+		},
+		"validation_rules": []string{
+			"Every visible column needs a type in visual_settings.columns",
+			"datetime columns MUST have format config using date-fns tokens (yyyy-MM-dd), NOT Go format (2006-01-02)",
+			"Column ordering: either ALL visible columns have order or NONE do",
+			"Hidden columns are exempt from type validation",
+			"Filter operators must match the column type (e.g. 'like' only for string columns)",
+		},
+	}
+
+	return json.Marshal(ref)
+}
+
+// describeFilterOperators returns a map of filter operator to description.
+func describeFilterOperators() map[string]string {
+	return map[string]string{
+		"eq":          "equals",
+		"neq":         "not equals",
+		"gt":          "greater than",
+		"gte":         "greater than or equal",
+		"lt":          "less than",
+		"lte":         "less than or equal",
+		"in":          "in array",
+		"like":        "pattern match (case-sensitive)",
+		"ilike":       "pattern match (case-insensitive)",
+		"is_null":     "IS NULL check",
+		"is_not_null": "IS NOT NULL check",
+	}
+}
+
+// keysFromMap returns the sorted keys from a map[string]bool.
+func keysFromMap(m map[string]bool) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// handleSearchDatabaseSchema implements progressive schema browsing.
+func (e *Executor) handleSearchDatabaseSchema(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		Schema string `json:"schema"`
+		Table  string `json:"table"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+
+	switch {
+	case p.Schema == "":
+		return e.get(ctx, "/v1/introspection/schemas", token)
+	case p.Table == "":
+		return e.get(ctx, "/v1/introspection/schemas/"+p.Schema+"/tables", token)
+	default:
+		columns, err := e.get(ctx, "/v1/introspection/tables/"+p.Schema+"/"+p.Table+"/columns", token)
+		if err != nil {
+			return nil, fmt.Errorf("get columns: %w", err)
+		}
+		rels, err := e.get(ctx, "/v1/introspection/tables/"+p.Schema+"/"+p.Table+"/relationships", token)
+		if err != nil {
+			// Relationships are optional — return columns only.
+			return columns, nil
+		}
+		result, err := json.Marshal(map[string]json.RawMessage{
+			"columns":       columns,
+			"relationships": rels,
+		})
+		if err != nil {
+			return columns, nil
+		}
+		return result, nil
+	}
+}
+
+// handleGetTableConfig fetches a table config by ID or name.
+func (e *Executor) handleGetTableConfig(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+
+	switch {
+	case p.ID != "":
+		if err := requireUUID(p.ID, "id"); err != nil {
+			return nil, err
+		}
+		return e.get(ctx, "/v1/data/id/"+p.ID, token)
+	case p.Name != "":
+		return e.get(ctx, "/v1/data/name/"+p.Name, token)
+	default:
+		return nil, fmt.Errorf("either 'id' or 'name' is required")
+	}
+}
+
+// handleValidateTableConfig validates a table config without saving.
+func (e *Executor) handleValidateTableConfig(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		Config json.RawMessage `json:"config"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if len(p.Config) == 0 {
+		return nil, fmt.Errorf("config is required")
+	}
+	return e.post(ctx, "/v1/data/validate", p.Config, token)
+}
+
+// handleCreateTableConfig creates a new table config.
+func (e *Executor) handleCreateTableConfig(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		Name        string          `json:"name"`
+		Description string          `json:"description"`
+		Config      json.RawMessage `json:"config"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if p.Name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	if len(p.Config) == 0 {
+		return nil, fmt.Errorf("config is required")
+	}
+
+	// Wrap into the expected payload format.
+	payload := map[string]any{
+		"name":   p.Name,
+		"config": p.Config,
+	}
+	if p.Description != "" {
+		payload["description"] = p.Description
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshal payload: %w", err)
+	}
+	return e.post(ctx, "/v1/data", body, token)
+}
+
+// handleUpdateTableConfig updates an existing table config.
+func (e *Executor) handleUpdateTableConfig(ctx context.Context, tc llm.ToolCall, token string) (json.RawMessage, error) {
+	var p struct {
+		ID     string          `json:"id"`
+		Config json.RawMessage `json:"config"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if p.ID == "" {
+		return nil, fmt.Errorf("id is required")
+	}
+	if err := requireUUID(p.ID, "id"); err != nil {
+		return nil, err
+	}
+	if len(p.Config) == 0 {
+		return nil, fmt.Errorf("config is required")
+	}
+	return e.put(ctx, "/v1/data/"+p.ID, p.Config, token)
 }
 
 // =========================================================================

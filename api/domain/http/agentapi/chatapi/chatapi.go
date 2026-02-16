@@ -43,11 +43,14 @@ type api struct {
 }
 
 func newAPI(cfg Config) *api {
+	// Combine workflow and table tool definitions into a single pool.
+	// filterToolsByContext selects the right subset at runtime.
+	allTools := append(agenttools.ToolDefinitions(), agenttools.TableToolDefinitions()...)
 	return &api{
 		log:      cfg.Log,
 		talkLog:  cfg.TalkLog,
 		provider: cfg.LLMProvider,
-		tools:    agenttools.ToolDefinitions(),
+		tools:    allTools,
 		executor: cfg.ToolExecutor,
 	}
 }
@@ -136,7 +139,7 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 	// it into tool calls where the LLM omits it.
 	contextWorkflowID := extractContextWorkflowID(req.Context)
 
-	intents := classifyIntent(req.Message)
+	intents := classifyIntent(req.Message, req.ContextType)
 	hasCtx := contextWorkflowID != ""
 	filteredTools := filterToolsByIntent(contextFiltered, intents, hasCtx)
 
@@ -379,10 +382,16 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 type intentType string
 
 const (
+	// Workflow intents
 	intentRead   intentType = "read"
 	intentAlert  intentType = "alert"
 	intentBuild  intentType = "build"
 	intentModify intentType = "modify"
+
+	// Table intents
+	intentTableRead     intentType = "table_read"
+	intentTableDiscover intentType = "table_discover"
+	intentTableWrite    intentType = "table_write"
 )
 
 // intentKeywords maps each intent to the keywords that signal it.
@@ -393,24 +402,43 @@ var intentKeywords = map[intentType][]string{
 	intentModify: {"change", "update", "modify", "edit", "add step", "remove step", "add action", "remove action"},
 }
 
+// tableIntentKeywords maps table-specific intents to keywords.
+var tableIntentKeywords = map[intentType][]string{
+	intentTableRead:     {"show", "get", "list", "what", "columns", "config", "describe", "fetch"},
+	intentTableDiscover: {"type", "format", "reference", "column type", "options", "valid", "allowed"},
+	intentTableWrite:    {"create", "build", "add", "update", "modify", "change", "remove", "new table", "new config", "edit"},
+}
+
 // intentTools maps each intent to the tool names it should include.
 var intentTools = map[intentType][]string{
 	intentRead:   {"get_workflow_rule", "explain_workflow_node", "list_workflow_rules"},
 	intentAlert:  {"list_my_alerts", "get_alert_detail", "list_alerts_for_rule", "explain_workflow_node"},
 	intentBuild:  {"discover", "start_draft", "add_draft_action", "remove_draft_action", "preview_draft"},
 	intentModify: {"discover", "explain_workflow_node", "preview_workflow"},
+
+	intentTableRead:     {"get_table_config", "list_table_configs", "search_database_schema"},
+	intentTableDiscover: {"discover_table_reference", "search_database_schema", "validate_table_config"},
+	intentTableWrite:    {"discover_table_reference", "get_table_config", "search_database_schema", "validate_table_config", "create_table_config", "update_table_config"},
 }
 
 // classifyIntent returns the intents that match the user's message based on
-// keyword matching. Returns [intentRead] if no keywords match.
-func classifyIntent(message string) []intentType {
+// keyword matching. Uses different keyword sets for workflow vs table contexts.
+// Returns [intentRead] or [intentTableRead] if no keywords match.
+func classifyIntent(message, contextType string) []intentType {
 	lower := strings.ToLower(message)
 
 	var matched []intentType
 	seen := make(map[intentType]bool)
 
-	for intent, keywords := range intentKeywords {
-		for _, kw := range keywords {
+	keywords := intentKeywords
+	fallback := intentRead
+	if contextType == "tables" {
+		keywords = tableIntentKeywords
+		fallback = intentTableRead
+	}
+
+	for intent, kws := range keywords {
+		for _, kw := range kws {
 			if strings.Contains(lower, kw) && !seen[intent] {
 				matched = append(matched, intent)
 				seen[intent] = true
@@ -420,7 +448,7 @@ func classifyIntent(message string) []intentType {
 	}
 
 	if len(matched) == 0 {
-		return []intentType{intentRead}
+		return []intentType{fallback}
 	}
 	return matched
 }
@@ -437,9 +465,14 @@ func filterToolsByIntent(tools []llm.ToolDef, intents []intentType, hasWorkflowC
 		}
 	}
 
-	// If only intent is read and we have context, drop list_workflow_rules.
+	// If only intent is read and we have workflow context, drop list_workflow_rules.
 	if len(intents) == 1 && intents[0] == intentRead && hasWorkflowContext {
 		delete(allowed, "list_workflow_rules")
+	}
+
+	// If only intent is table_read and we have context, drop list_table_configs.
+	if len(intents) == 1 && intents[0] == intentTableRead && hasWorkflowContext {
+		delete(allowed, "list_table_configs")
 	}
 
 	filtered := make([]llm.ToolDef, 0, len(allowed))

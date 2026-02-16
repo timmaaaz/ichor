@@ -153,6 +153,136 @@ var workflowPayloadSchema = map[string]any{
 	"required": []string{"name", "is_active", "actions"},
 }
 
+// TableToolDefinitions returns the tools exposed to the LLM for table
+// configuration operations.
+func TableToolDefinitions() []llm.ToolDef {
+	return []llm.ToolDef{
+		// =================================================================
+		// Discovery (local computation, no API call)
+		// =================================================================
+		{
+			Name:        "discover_table_reference",
+			Description: "Get all valid column types, format options, editable types, filter operators, join types, and date format tokens for building table configs. Returns everything needed to construct valid configurations in a single call — no API round-trip required.",
+			InputSchema: schema(map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
+			}),
+		},
+
+		// =================================================================
+		// Schema search (shared with workflow)
+		// =================================================================
+		{
+			Name:        "search_database_schema",
+			Description: "Browse the database schema. Call with no args to list schemas, with schema to list tables, or with schema+table to get columns and relationships. Use this to verify column names and types before building table configs.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"schema": map[string]any{
+						"type":        "string",
+						"description": "PostgreSQL schema name (e.g. 'core', 'inventory'). If omitted, lists all schemas.",
+					},
+					"table": map[string]any{
+						"type":        "string",
+						"description": "Table name. If provided with schema, returns columns and relationships.",
+					},
+				},
+			}),
+		},
+
+		// =================================================================
+		// Table config read
+		// =================================================================
+		{
+			Name:        "get_table_config",
+			Description: "Fetch a single table configuration by UUID or name. Returns the full config including data_source and visual_settings.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the table config. Use this OR 'name', not both.",
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Name of the table config. Use this OR 'id', not both.",
+					},
+				},
+			}),
+		},
+		{
+			Name:        "list_table_configs",
+			Description: "List all table configurations. Returns config metadata (id, name, description) for every table config in the system.",
+			InputSchema: schema(map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
+			}),
+		},
+
+		// =================================================================
+		// Table config validation
+		// =================================================================
+		{
+			Name:        "validate_table_config",
+			Description: "Validate a table configuration without saving it. Returns validation errors if the config is invalid. Use this as a dry-run before creating or updating.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"config": map[string]any{
+						"type":        "object",
+						"description": "The full table config JSON to validate.",
+					},
+				},
+				"required": []string{"config"},
+			}),
+		},
+
+		// =================================================================
+		// Table config write
+		// =================================================================
+		{
+			Name:        "create_table_config",
+			Description: "Create a new table configuration. Always validate first with validate_table_config, then show the user what will be created before calling this.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Display name for the table config.",
+					},
+					"description": map[string]any{
+						"type":        "string",
+						"description": "Optional description of the table config.",
+					},
+					"config": map[string]any{
+						"type":        "object",
+						"description": "The full table config JSON (data_source + visual_settings).",
+					},
+				},
+				"required": []string{"name", "config"},
+			}),
+		},
+		{
+			Name:        "update_table_config",
+			Description: "Update an existing table configuration by UUID. Always fetch the current config first with get_table_config, then validate changes with validate_table_config before updating.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the table config to update.",
+					},
+					"config": map[string]any{
+						"type":        "object",
+						"description": "The updated table config JSON.",
+					},
+				},
+				"required": []string{"id", "config"},
+			}),
+		},
+	}
+}
+
 // ToolDefinitions returns the fixed set of tools exposed to the LLM.
 func ToolDefinitions() []llm.ToolDef {
 	return []llm.ToolDef{

@@ -24,9 +24,10 @@ const (
 	DiscoverEntities     = "discover_entities"
 
 	// Discovery — tables
-	DiscoverConfigSurfaces = "discover_config_surfaces"
-	DiscoverFieldTypes     = "discover_field_types"
-	DiscoverContentTypes   = "discover_content_types"
+	DiscoverConfigSurfaces  = "discover_config_surfaces"
+	DiscoverFieldTypes      = "discover_field_types"
+	DiscoverContentTypes    = "discover_content_types"
+	DiscoverTableReference  = "discover_table_reference"
 
 	// Workflow read
 	GetWorkflow         = "get_workflow"
@@ -117,9 +118,10 @@ var groupMembers = map[string][]ToolGroup{
 	PreviewDraft:         {GroupWorkflow},
 
 	// Tables-only
-	DiscoverConfigSurfaces: {GroupTables},
-	DiscoverFieldTypes:     {GroupTables},
-	DiscoverContentTypes:   {GroupTables},
+	DiscoverConfigSurfaces:  {GroupTables},
+	DiscoverFieldTypes:      {GroupTables},
+	DiscoverContentTypes:    {GroupTables},
+	DiscoverTableReference:  {GroupTables},
 	GetPageConfig:          {GroupTables},
 	GetPageContent:         {GroupTables},
 	GetTableConfig:         {GroupTables},
