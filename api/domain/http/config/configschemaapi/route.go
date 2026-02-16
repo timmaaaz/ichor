@@ -23,4 +23,5 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/config/schemas/table-config", api.queryTableConfigSchema, authen)
 	app.HandlerFunc(http.MethodGet, version, "/config/schemas/layout", api.queryLayoutSchema, authen)
 	app.HandlerFunc(http.MethodGet, version, "/config/schemas/content-types", api.queryContentTypes, authen)
+	app.HandlerFunc(http.MethodGet, version, "/config/schemas/page-action-types", api.queryPageActionTypes, authen)
 }

@@ -126,12 +126,16 @@ func TestMCPServer_ToolsAndResources(t *testing.T) {
 		"discover_entity_types",
 		"discover_entities",
 		"discover_content_types",
-		// UI read tools
+		"discover_page_action_types",
+		// UI read tools — pages
 		"get_page_config",
 		"get_page_content",
+		"get_page_actions",
+		"get_page_action",
+		"list_pages",
+		// UI read tools — content blocks
 		"get_table_config",
 		"get_form_definition",
-		"list_pages",
 		"list_forms",
 		"list_table_configs",
 		// Workflow read tools

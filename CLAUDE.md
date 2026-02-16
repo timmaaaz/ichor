@@ -315,7 +315,24 @@ These systems have their own detailed documentation:
 
 ### Agent Chat (Conversational AI)
 
-The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Ollama** with the **qwen3:14b** model. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Qwen 3's strengths and limitations.
+The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Gemini Flash 2.5**. When writing or modifying system prompts, tool descriptions, or chat logic, optimize for Gemini Flash 2.5's strengths and limitations.
+
+**Agent Tool Design Principles** (apply when adding/modifying tools):
+- **Minimize tool count per call** — 3-6 tools per LLM call, not 15+. Use intent-based routing to send only relevant tools.
+- **Eliminate tools the LLM should never call** — if preview-first means `create_workflow` is a trap, don't send it.
+- **Consolidate identical-signature tools** — 3 discovery tools with no params → 1 tool with a category enum.
+- **Treat tool descriptions like onboarding docs** — explain to the LLM as if it's a new team member. Make implicit knowledge explicit.
+- **Control response size** — add `response_format` params or server-side summarization to prevent tools from flooding context.
+- **Tool count directly degrades selection accuracy in non-frontier models** — every extra tool is decision surface the model can get wrong.
+
+**Reference Sources for Agent Tool Best Practices**:
+- [Anthropic: Writing Tools for Agents](https://www.anthropic.com/engineering/writing-tools-for-agents) — consolidation, descriptions, thoughtful design over quantity
+- [Anthropic: Advanced Tool Use](https://www.anthropic.com/engineering/advanced-tool-use) — tool search tool pattern for large tool sets
+- [Anthropic: Tool Use Docs](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview) — implementation patterns, parallel execution
+- [Google: Gemini Function Calling](https://ai.google.dev/gemini-api/docs/function-calling) — enum params, description quality, tool count guidance (10-20 max)
+- [Tool RAG: Scalable AI Agents (Red Hat)](https://next.redhat.com/2025/11/26/tool-rag-the-next-breakthrough-in-scalable-ai-agents/) — dynamic tool retrieval triples accuracy, halves prompt length
+- [LangGraph: Handling Many Tools](https://langchain-ai.github.io/langgraph/how-tos/many-tools/) — routing patterns, tool subsets
+- [Optimizing Tool Calling (Paragon)](https://www.useparagon.com/learn/rag-best-practices-optimizing-tool-calling/) — tool selection impact by model tier
 
 ## Important Notes
 

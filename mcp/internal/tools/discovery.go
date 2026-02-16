@@ -62,8 +62,10 @@ func RegisterWorkflowDiscoveryTools(s *mcp.Server, c *client.Client) {
 	})
 }
 
-// RegisterTablesDiscoveryTools adds tables/UI-related discovery tools.
+// RegisterTablesDiscoveryTools adds tables/UI-related discovery tools,
+// including page action type discovery.
 func RegisterTablesDiscoveryTools(s *mcp.Server, c *client.Client) {
+	RegisterPageActionDiscoveryTools(s, c)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "discover_config_surfaces",
 		Description: "List all configurable surfaces in Ichor (pages, forms, tables, workflows, alerts, permissions, etc.) with their CRUD endpoint URLs, discovery links, and constraints.",

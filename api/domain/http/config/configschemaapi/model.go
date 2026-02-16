@@ -35,3 +35,29 @@ func (ct ContentTypes) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(ct)
 	return data, "application/json", err
 }
+
+// PageActionTypeField describes a field on a page action type.
+type PageActionTypeField struct {
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Required    bool     `json:"required"`
+	Description string   `json:"description"`
+	Enum        []string `json:"enum,omitempty"`
+}
+
+// PageActionTypeInfo describes a valid page action type.
+type PageActionTypeInfo struct {
+	Type        string                `json:"type"`
+	Name        string                `json:"name"`
+	Description string                `json:"description"`
+	Fields      []PageActionTypeField `json:"fields"`
+}
+
+// PageActionTypes is a slice of PageActionTypeInfo for API responses.
+type PageActionTypes []PageActionTypeInfo
+
+// Encode implements web.Encoder.
+func (pat PageActionTypes) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(pat)
+	return data, "application/json", err
+}

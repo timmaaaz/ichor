@@ -38,3 +38,8 @@ func (a *api) queryLayoutSchema(_ context.Context, _ *http.Request) web.Encoder 
 func (a *api) queryContentTypes(_ context.Context, _ *http.Request) web.Encoder {
 	return ContentTypes(contentTypes)
 }
+
+// queryPageActionTypes handles GET /v1/config/schemas/page-action-types
+func (a *api) queryPageActionTypes(_ context.Context, _ *http.Request) web.Encoder {
+	return PageActionTypes(pageActionTypes)
+}

@@ -237,6 +237,21 @@ func (c *Client) GetEnumOptions(ctx context.Context, schema, name string) (json.
 	return c.get(ctx, "/v1/config/enums/"+schema+"/"+name+"/options")
 }
 
+// GetPageActionTypes calls GET /v1/config/schemas/page-action-types.
+func (c *Client) GetPageActionTypes(ctx context.Context) (json.RawMessage, error) {
+	return c.get(ctx, "/v1/config/schemas/page-action-types")
+}
+
+// GetPageActions calls GET /v1/config/page-configs/actions/{page_config_id}.
+func (c *Client) GetPageActions(ctx context.Context, pageConfigID string) (json.RawMessage, error) {
+	return c.get(ctx, "/v1/config/page-configs/actions/"+pageConfigID)
+}
+
+// GetPageAction calls GET /v1/config/page-actions/{action_id}.
+func (c *Client) GetPageAction(ctx context.Context, actionID string) (json.RawMessage, error) {
+	return c.get(ctx, "/v1/config/page-actions/"+actionID)
+}
+
 // GetTemplates calls GET /v1/workflow/templates.
 func (c *Client) GetTemplates(ctx context.Context) (json.RawMessage, error) {
 	return c.get(ctx, "/v1/workflow/templates")

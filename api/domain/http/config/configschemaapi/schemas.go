@@ -15,6 +15,9 @@ var configSchemas map[string]json.RawMessage
 // contentTypes holds the static content type definitions.
 var contentTypes []ContentTypeInfo
 
+// pageActionTypes holds the static page action type definitions.
+var pageActionTypes []PageActionTypeInfo
+
 func init() {
 	// Load table_config and layout schemas.
 	schemaNames := []string{"table_config", "layout"}
@@ -49,4 +52,19 @@ func init() {
 	}
 
 	contentTypes = ctSchema.Default
+
+	// Load page action types from the embedded JSON file.
+	patBytes, err := schemaFS.ReadFile("schemas/page_action_types.json")
+	if err != nil {
+		panic(fmt.Sprintf("failed to load page_action_types.json: %v", err))
+	}
+
+	var patSchema struct {
+		Default []PageActionTypeInfo `json:"default"`
+	}
+	if err := json.Unmarshal(patBytes, &patSchema); err != nil {
+		panic(fmt.Sprintf("invalid page_action_types.json: %v", err))
+	}
+
+	pageActionTypes = patSchema.Default
 }
