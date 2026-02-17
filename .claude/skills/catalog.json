@@ -16,6 +16,11 @@
       "name": "create-plan",
       "description": "Generate a new build plan with complete structure, documentation, and commands",
       "path": ".claude/skills/create-plan.md"
+    },
+    {
+      "name": "ship",
+      "description": "Ship the current Go changes: build, targeted test, lint, commit, and push.",
+      "path": ".claude/skills/ship/SKILL.md"
     }
   ]
 }
