@@ -869,7 +869,7 @@ CREATE TABLE sales.customers (
 -- Description: Create table orders
 CREATE TABLE sales.orders (
    id UUID NOT NULL,
-   number VARCHAR(100) NOT NULL,
+   number VARCHAR(100) NOT NULL UNIQUE,
    customer_id UUID NOT NULL,
    due_date TIMESTAMP NOT NULL,
    order_fulfillment_status_id UUID NOT NULL,
