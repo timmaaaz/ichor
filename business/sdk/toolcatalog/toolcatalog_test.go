@@ -32,7 +32,7 @@ func TestInGroup_TablesTools(t *testing.T) {
 		ListPages, ListForms, ListTableCfgs,
 		CreatePageConfig, UpdatePageConfig, CreatePageContent, UpdatePageContent,
 		CreateForm, AddFormField, CreateTableConfig, UpdateTableConfig,
-		ValidateTableConfig,
+		ValidateTableConfig, PreviewTableConfig,
 	}
 	for _, name := range tablesOnly {
 		if !InGroup(name, GroupTables) {
@@ -110,12 +110,12 @@ func TestToolsForGroup_Tables(t *testing.T) {
 
 func TestAllTools_Count(t *testing.T) {
 	all := AllTools()
-	// 24 workflow-only + 20 tables-only + 2 shared = 46
-	if len(all) != 46 {
+	// 24 workflow-only + 21 tables-only + 2 shared = 47
+	if len(all) != 47 {
 		names := make([]string, len(all))
 		copy(names, all)
 		sort.Strings(names)
-		t.Errorf("expected 46 tools, got %d: %v", len(all), names)
+		t.Errorf("expected 47 tools, got %d: %v", len(all), names)
 	}
 }
 

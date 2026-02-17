@@ -83,8 +83,9 @@ const (
 	CreateTableConfig = "create_table_config"
 	UpdateTableConfig = "update_table_config"
 
-	// Tables — validation
-	ValidateTableConfig = "validate_table_config"
+	// Tables — validation / preview
+	ValidateTableConfig  = "validate_table_config"
+	PreviewTableConfig   = "preview_table_config"
 )
 
 // groupMembers maps each tool to the groups it belongs to. A tool can belong
@@ -138,6 +139,7 @@ var groupMembers = map[string][]ToolGroup{
 	CreateTableConfig:      {GroupTables},
 	UpdateTableConfig:      {GroupTables},
 	ValidateTableConfig:    {GroupTables},
+	PreviewTableConfig:     {GroupTables},
 
 	// Both groups
 	SearchDatabaseSchema: {GroupWorkflow, GroupTables},

@@ -221,6 +221,8 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		return e.get(ctx, "/v1/data/configs/all", token)
 	case "validate_table_config":
 		return e.handleValidateTableConfig(ctx, tc, token)
+	case "preview_table_config":
+		return e.handlePreviewTableConfig(ctx, tc, token)
 	case "create_table_config":
 		return e.handleCreateTableConfig(ctx, tc, token)
 	case "update_table_config":
@@ -1452,6 +1454,46 @@ func (e *Executor) handleValidateTableConfig(ctx context.Context, tc llm.ToolCal
 		return nil, fmt.Errorf("config is required")
 	}
 	return e.post(ctx, "/v1/data/validate", p.Config, token)
+}
+
+// handlePreviewTableConfig validates a table config using the comprehensive
+// tablebuilder.ValidateConfig() and returns a structured result that the SSE
+// interception in chatapi.go can emit as a table_config_preview event.
+func (e *Executor) handlePreviewTableConfig(_ context.Context, tc llm.ToolCall, _ string) (json.RawMessage, error) {
+	var p struct {
+		ID                   string          `json:"id"`
+		Name                 string          `json:"name"`
+		Description          string          `json:"description"`
+		Config               json.RawMessage `json:"config"`
+		DescriptionOfChanges string          `json:"description_of_changes"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if len(p.Config) == 0 {
+		return nil, fmt.Errorf("config is required")
+	}
+
+	// Parse into the tablebuilder Config struct for comprehensive validation.
+	var cfg tablebuilder.Config
+	if err := json.Unmarshal(p.Config, &cfg); err != nil {
+		return nil, fmt.Errorf("invalid config JSON: %w", err)
+	}
+
+	result := cfg.ValidateConfig()
+
+	// Build response with the validation result and the original config
+	// so the SSE interception can extract it for the preview event.
+	resp := map[string]any{
+		"valid":    !result.HasErrors(),
+		"errors":   result.Errors,
+		"warnings": result.Warnings,
+	}
+	if !result.HasErrors() {
+		resp["config"] = p.Config
+	}
+
+	return json.Marshal(resp)
 }
 
 // handleCreateTableConfig creates a new table config.

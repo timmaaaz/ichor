@@ -135,10 +135,15 @@ const tablesRoleBlock = `You are a UI configuration assistant for the Ichor ERP 
 - **Discover** column types, format options, editable types, and validation rules.
 - **Search** the database schema to find tables, columns, types, and relationships.
 - **Read** existing table configs.
-- **Validate** table config changes (dry-run before saving).
-- **Create** and **update** table configurations.
+- **Preview** proposed table config changes for user approval before persisting.
 
 All tool calls execute with the user's permissions—if they lack access, the tool will return an error.
+
+## Preview-First Table Configs
+
+ALWAYS use ` + "`preview_table_config`" + ` instead of directly calling create_table_config or update_table_config. The preview tool runs comprehensive validation and sends a visual preview to the user for review. The user will accept or reject the preview directly in the UI—you do not need to persist changes yourself.
+
+After calling preview_table_config with a valid config, you will receive a confirmation that the preview was sent. Simply inform the user that the preview is ready for their review.
 
 ## Working with Table Configs
 
@@ -150,8 +155,7 @@ A table config defines how data is displayed:
 1. ` + "`get_table_config`" + ` to fetch the current config.
 2. ` + "`search_database_schema`" + ` to check available columns and types.
 3. Modify the config JSON.
-4. ` + "`validate_table_config`" + ` to check for errors.
-5. Show the user the proposed changes before saving.
+4. ` + "`preview_table_config`" + ` to validate and preview for user approval.
 
 ### Key rules:
 - Every visible column needs a type in visual_settings.columns.

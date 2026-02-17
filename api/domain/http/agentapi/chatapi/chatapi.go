@@ -141,9 +141,10 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract the workflow_id from the context (if present) so we can inject
-	// it into tool calls where the LLM omits it.
-	contextWorkflowID := extractContextWorkflowID(req.Context)
+	// Extract IDs from the context (if present) so we can inject them into
+	// tool calls where the LLM omits or hallucinates them.
+	contextWorkflowID := extractContextString(req.Context, "workflow_id")
+	contextConfigID := extractContextString(req.Context, "config_id")
 
 	// =====================================================================
 	// Tool selection pipeline: context filter → RAG search → core merge
@@ -313,9 +314,9 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		var toolLogEntries []toolLogEntry
 
 		for _, tc := range toolCalls {
-			// Inject the context workflow_id into tool calls that accept it
-			// but where the LLM omitted it.
-			tc.Input = injectWorkflowID(tc, contextWorkflowID)
+			// Inject context IDs into tool calls where the LLM omitted them.
+			tc.Input = injectContextID(tc, contextWorkflowID, "workflow_id", toolsNeedingWorkflowID)
+			tc.Input = injectContextID(tc, contextConfigID, "id", toolsNeedingConfigID)
 			a.log.Info(ctx, "AGENT-CHAT: tool input",
 				"name", tc.Name,
 				"tool_use_id", tc.ID,
@@ -341,13 +342,14 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 
-			// Intercept preview_workflow / preview_draft: if validation passed,
-			// emit a workflow_preview SSE event so the frontend can show the
-			// proposed state for user approval.
-			if (tc.Name == "preview_workflow" || tc.Name == "preview_draft") && !result.IsError {
-				if preview := buildPreviewEvent(tc, result); preview != nil {
-					sse.send("workflow_preview", preview)
-					result.Content = `{"status":"preview_sent","message":"Preview sent to user for approval. The user will accept or reject the preview directly."}`
+			// Intercept preview tools: if validation passed, emit an SSE event
+			// so the frontend can show the proposed state for user approval.
+			if !result.IsError {
+				if intercept, ok := previewInterceptors[tc.Name]; ok {
+					if preview := intercept.build(tc, result); preview != nil {
+						sse.send(intercept.eventName, preview)
+						result.Content = `{"status":"preview_sent","message":"Preview sent to user for approval. The user will accept or reject the preview directly."}`
+					}
 				}
 			}
 
@@ -384,6 +386,21 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 // =========================================================================
 // Tool selection pipeline: context filter → RAG search → core merge
 // =========================================================================
+
+// previewInterceptor maps a preview tool name to its SSE event name and
+// builder function. When a preview tool succeeds validation, the interceptor
+// emits an SSE event to the frontend and replaces the tool result so the LLM
+// knows the user will decide.
+type previewInterceptor struct {
+	eventName string
+	build     func(llm.ToolCall, llm.ToolResult) map[string]any
+}
+
+var previewInterceptors = map[string]previewInterceptor{
+	"preview_workflow":     {"workflow_preview", buildPreviewEvent},
+	"preview_draft":        {"workflow_preview", buildPreviewEvent},
+	"preview_table_config": {"table_config_preview", buildTablePreviewEvent},
+}
 
 // coreToolsByContext maps each context type to baseline tool names that
 // always bypass RAG and get included. These orient the LLM with "what
@@ -598,6 +615,50 @@ func buildPreviewEvent(tc llm.ToolCall, result llm.ToolResult) map[string]any {
 	return event
 }
 
+// buildTablePreviewEvent constructs the table_config_preview SSE event payload
+// from a successful preview_table_config tool call. Returns nil if validation
+// failed (the LLM should see the errors and retry).
+func buildTablePreviewEvent(tc llm.ToolCall, result llm.ToolResult) map[string]any {
+	// Only emit preview when validation passed.
+	var validation struct {
+		Valid  bool            `json:"valid"`
+		Config json.RawMessage `json:"config"`
+	}
+	if err := json.Unmarshal([]byte(result.Content), &validation); err != nil || !validation.Valid {
+		return nil
+	}
+
+	// Extract metadata from the tool input.
+	var input struct {
+		ID                   string `json:"id"`
+		Name                 string `json:"name"`
+		Description          string `json:"description"`
+		DescriptionOfChanges string `json:"description_of_changes"`
+	}
+	if err := json.Unmarshal(tc.Input, &input); err != nil {
+		return nil
+	}
+
+	// Guard against malformed config JSON reaching the frontend.
+	if !json.Valid(validation.Config) {
+		return nil
+	}
+
+	event := map[string]any{
+		"description": input.DescriptionOfChanges,
+		"config":      json.RawMessage(validation.Config),
+		"is_update":   input.ID != "",
+	}
+	if input.ID != "" {
+		event["config_id"] = input.ID
+	}
+	if input.Name != "" {
+		event["name"] = input.Name
+	}
+
+	return event
+}
+
 // truncateLog returns s truncated to maxLen characters with a suffix
 // indicating the original length. Used for debug logging large payloads.
 func truncateLog(s string, maxLen int) string {
@@ -607,19 +668,25 @@ func truncateLog(s string, maxLen int) string {
 	return s[:maxLen] + fmt.Sprintf("... [truncated, total %d chars]", len(s))
 }
 
-// extractContextWorkflowID parses the request context JSON and returns the
-// workflow_id field, or empty string if not present.
-func extractContextWorkflowID(rawCtx json.RawMessage) string {
+// extractContextString parses the request context JSON and returns the value
+// for the given key, or empty string if not present.
+func extractContextString(rawCtx json.RawMessage, key string) string {
 	if len(rawCtx) == 0 {
 		return ""
 	}
-	var ctx struct {
-		WorkflowID string `json:"workflow_id"`
-	}
-	if err := json.Unmarshal(rawCtx, &ctx); err != nil {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(rawCtx, &m); err != nil {
 		return ""
 	}
-	return ctx.WorkflowID
+	raw, ok := m[key]
+	if !ok {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return ""
+	}
+	return s
 }
 
 // toolsNeedingWorkflowID lists tools where workflow_id can be auto-filled
@@ -630,13 +697,13 @@ var toolsNeedingWorkflowID = map[string]bool{
 	"list_alerts_for_rule":  true,
 }
 
-// injectWorkflowID adds or overrides workflow_id in the tool call input when
-// we have a context value. If the LLM provided a valid UUID, we trust it
-// (it might be referencing a different workflow). Otherwise we inject the
-// context workflow_id — this catches both missing values and fabricated names
-// like "Granular_Inventory_Pipeline" that won't resolve.
-func injectWorkflowID(tc llm.ToolCall, contextID string) json.RawMessage {
-	if contextID == "" || !toolsNeedingWorkflowID[tc.Name] {
+// injectContextID adds or overrides a field in the tool call input when we
+// have a context value and the tool is in the needsInjection set. If the LLM
+// provided a valid UUID for the field, we trust it (it might be referencing a
+// different entity). Otherwise we inject the context ID — this catches both
+// missing values and fabricated names that won't resolve.
+func injectContextID(tc llm.ToolCall, contextID, fieldName string, needsInjection map[string]bool) json.RawMessage {
+	if contextID == "" || !needsInjection[tc.Name] {
 		return tc.Input
 	}
 
@@ -645,16 +712,16 @@ func injectWorkflowID(tc llm.ToolCall, contextID string) json.RawMessage {
 		return tc.Input
 	}
 
-	// If the LLM provided a valid UUID, keep it (might be a different workflow).
-	if raw, ok := input["workflow_id"]; ok {
+	// If the LLM provided a valid UUID, keep it.
+	if raw, ok := input[fieldName]; ok {
 		var val string
 		if json.Unmarshal(raw, &val) == nil && isUUID(val) {
 			return tc.Input
 		}
 	}
 
-	// Missing, empty, or non-UUID → inject the context workflow_id.
-	input["workflow_id"] = json.RawMessage(`"` + contextID + `"`)
+	// Missing, empty, or non-UUID → inject the context ID.
+	input[fieldName] = json.RawMessage(`"` + contextID + `"`)
 	patched, err := json.Marshal(input)
 	if err != nil {
 		return tc.Input
@@ -678,3 +745,12 @@ func isUUID(s string) bool {
 	}
 	return true
 }
+
+// toolsNeedingConfigID lists tools where the id field can be auto-filled
+// from the current table config context.
+var toolsNeedingConfigID = map[string]bool{
+	"preview_table_config": true,
+	"get_table_config":     true,
+	"update_table_config":  true,
+}
+

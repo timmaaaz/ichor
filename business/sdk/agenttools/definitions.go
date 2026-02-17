@@ -265,6 +265,50 @@ func TableToolDefinitions() []llm.ToolDef {
 		},
 
 		// =================================================================
+		// Table config preview (validate + send to user for approval)
+		// =================================================================
+		{
+			Name: "preview_table_config",
+			ExampleQueries: []string{
+				"preview the table config changes",
+				"show me a preview of the updated table",
+				"validate and preview the table configuration",
+				"send the table config for review",
+			},
+			Description: "Validate a table configuration using comprehensive checks and send a visual preview to the user for approval. " +
+				"ALWAYS use this instead of directly calling create_table_config or update_table_config. " +
+				"The preview validates without persisting and lets the user accept or reject the changes. " +
+				"Include 'id' only when updating an existing config. " +
+				"Include 'name' when creating a new config.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the existing table config (for updates only). Omit for new configs.",
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Display name for the table config (required for new configs).",
+					},
+					"description": map[string]any{
+						"type":        "string",
+						"description": "Optional description of the table config.",
+					},
+					"config": map[string]any{
+						"type":        "object",
+						"description": "The full table config JSON (data_source + visual_settings).",
+					},
+					"description_of_changes": map[string]any{
+						"type":        "string",
+						"description": "Human-readable summary of what changed (e.g. 'Added filter for active users only').",
+					},
+				},
+				"required": []string{"config", "description_of_changes"},
+			}),
+		},
+
+		// =================================================================
 		// Table config write
 		// =================================================================
 		{
@@ -274,7 +318,7 @@ func TableToolDefinitions() []llm.ToolDef {
 				"set up a table for the orders data",
 				"build a table configuration",
 			},
-			Description: "Create a new table configuration. Always validate first with validate_table_config, then show the user what will be created before calling this.",
+			Description: "Create a new table configuration. Always use preview_table_config first to validate and get user approval before calling this.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -301,7 +345,7 @@ func TableToolDefinitions() []llm.ToolDef {
 				"change the column settings for this table",
 				"modify the table configuration",
 			},
-			Description: "Update an existing table configuration by UUID. Always fetch the current config first with get_table_config, then validate changes with validate_table_config before updating.",
+			Description: "Update an existing table configuration by UUID. Always use preview_table_config first to validate and get user approval before calling this.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
 				"properties": map[string]any{
