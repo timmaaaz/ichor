@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Page Action Types",
+  "description": "Valid action types for page actions (config.page_actions.action_type column).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["type", "name", "description"],
+    "properties": {
+      "type": {
+        "type": "string",
+        "description": "Action type identifier stored in the database."
+      },
+      "name": {
+        "type": "string",
+        "description": "Human-readable display name."
+      },
+      "description": {
+        "type": "string",
+        "description": "What this action type does."
+      },
+      "fields": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "type": { "type": "string" },
+            "required": { "type": "boolean" },
+            "description": { "type": "string" },
+            "enum": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "description": "Fields specific to this action type."
+      }
+    }
+  },
+  "default": [
+    {
+      "type": "button",
+      "name": "Button",
+      "description": "Clickable button that navigates to a target path. Supports variants for visual styling and an optional confirmation prompt.",
+      "fields": [
+        { "name": "label", "type": "string", "required": true, "description": "Button display text." },
+        { "name": "icon", "type": "string", "required": false, "description": "Icon identifier." },
+        { "name": "action_url", "type": "string", "required": true, "description": "Navigation target path or URL." },
+        { "name": "variant", "type": "string", "required": true, "description": "Visual style variant.", "enum": ["default", "secondary", "outline", "ghost", "destructive"] },
+        { "name": "alignment", "type": "string", "required": true, "description": "Button alignment in the action bar.", "enum": ["left", "right"] },
+        { "name": "confirmation_prompt", "type": "string", "required": false, "description": "Optional confirmation dialog text shown before action." }
+      ]
+    },
+    {
+      "type": "dropdown",
+      "name": "Dropdown Menu",
+      "description": "Dropdown menu with one or more selectable items, each navigating to a target path.",
+      "fields": [
+        { "name": "label", "type": "string", "required": true, "description": "Dropdown trigger text." },
+        { "name": "icon", "type": "string", "required": false, "description": "Icon identifier." },
+        {
+          "name": "items",
+          "type": "array",
+          "required": true,
+          "description": "Menu items (min 1). Each item is an object with the following fields.",
+          "items_schema": {
+            "label": { "type": "string", "required": true, "description": "Menu item display text." },
+            "target_path": { "type": "string", "required": true, "description": "Navigation path for this item." },
+            "item_order": { "type": "integer", "required": true, "description": "Display order (ascending)." }
+          }
+        }
+      ]
+    },
+    {
+      "type": "separator",
+      "name": "Separator",
+      "description": "Visual divider between action groups. Has no additional fields beyond action_order and is_active.",
+      "fields": []
+    }
+  ]
+}

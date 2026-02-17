@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -18,17 +19,19 @@ type Provider struct {
 	model     anthropic.Model
 	maxTokens int64
 	log       *logger.Logger
+	talkLog   *logger.Logger
 }
 
 // NewProvider builds a Claude provider from an API key, model name, and
 // token limit.
-func NewProvider(apiKey string, model string, maxTokens int, log *logger.Logger) *Provider {
+func NewProvider(apiKey string, model string, maxTokens int, log, talkLog *logger.Logger) *Provider {
 	client := anthropic.NewClient(option.WithAPIKey(apiKey))
 	return &Provider{
 		client:    client,
 		model:     anthropic.Model(model),
 		maxTokens: int64(maxTokens),
 		log:       log,
+		talkLog:   talkLog,
 	}
 }
 
@@ -49,6 +52,19 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 		}
 	}
 
+	// Stage 3: Log the full sent packet (untruncated).
+	if p.talkLog != nil {
+		if paramsJSON, err := json.Marshal(params); err == nil {
+			p.talkLog.Info(ctx, "TALK-LOG: sent_packet",
+				"stage", "sent_packet",
+				"session_id", llm.SessionID(ctx),
+				"provider", "claude",
+				"model", string(p.model),
+				"payload", json.RawMessage(paramsJSON))
+		}
+	}
+
+	start := time.Now()
 	stream := p.client.Messages.NewStreaming(ctx, params)
 
 	ch := make(chan llm.StreamEvent, 64)
@@ -109,6 +125,40 @@ func (p *Provider) StreamChat(ctx context.Context, req llm.ChatRequest) (<-chan 
 
 		// Determine whether the LLM stopped to invoke tools.
 		stopForTools := msg.StopReason == anthropic.StopReasonToolUse
+
+		// Stage 4: Log the full LLM return (untruncated).
+		if p.talkLog != nil {
+			// Extract text and tool calls from accumulated message.
+			var assistantText string
+			type talkToolCall struct {
+				ID    string `json:"id"`
+				Name  string `json:"name"`
+				Input string `json:"input"`
+			}
+			var toolCalls []talkToolCall
+
+			for _, block := range msg.Content {
+				switch v := block.AsAny().(type) {
+				case anthropic.TextBlock:
+					assistantText += v.Text
+				case anthropic.ToolUseBlock:
+					toolCalls = append(toolCalls, talkToolCall{
+						ID:    block.ID,
+						Name:  block.Name,
+						Input: v.JSON.Input.Raw(),
+					})
+				}
+			}
+
+			p.talkLog.Info(ctx, "TALK-LOG: llm_return",
+				"stage", "llm_return",
+				"session_id", llm.SessionID(ctx),
+				"provider", "claude",
+				"assistant_text", assistantText,
+				"tool_calls", toolCalls,
+				"stop_for_tools", stopForTools,
+				"elapsed", time.Since(start))
+		}
 
 		sent(llm.StreamEvent{
 			Type:           llm.EventMessageComplete,

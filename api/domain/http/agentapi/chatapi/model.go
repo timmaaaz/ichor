@@ -9,7 +9,7 @@ import (
 // ChatRequest is the POST body for /v1/agent/chat.
 type ChatRequest struct {
 	Message        string          `json:"message" validate:"required"`
-	ContextType    string          `json:"context_type" validate:"required"`
+	ContextType    string          `json:"context_type" validate:"required,oneof=workflow tables"`
 	Context        json.RawMessage `json:"context,omitempty"`
 	ConversationID string          `json:"conversation_id,omitempty"`
 }

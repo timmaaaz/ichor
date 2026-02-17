@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "updated": "2026-02-17",
+  "project": [
+    {
+      "name": "add-domain",
+      "description": "Guided implementation of a new domain from SQL schema. This skill parses your...",
+      "path": ".claude/skills/add-domain.md"
+    },
+    {
+      "name": "build-domain",
+      "description": "Auto-generate a self-validating domain implementation from SQL CREATE TABLE",
+      "path": ".claude/skills/build-domain.md"
+    },
+    {
+      "name": "create-plan",
+      "description": "Generate a new build plan with complete structure, documentation, and commands",
+      "path": ".claude/skills/create-plan.md"
+    }
+  ]
+}

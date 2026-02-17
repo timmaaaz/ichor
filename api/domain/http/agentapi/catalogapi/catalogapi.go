@@ -71,6 +71,7 @@ var catalog = []ConfigSurface{
 			Update: "PUT /v1/config/page-actions/buttons/{action_id}",
 			Delete: "DELETE /v1/config/page-actions/{action_id}",
 		},
+		DiscoveryURL: "GET /v1/config/schemas/page-action-types",
 		Constraints: []string{
 			"three action kinds: buttons (POST /buttons), dropdowns (POST /dropdowns), separators (POST /separators)",
 			"update uses kind-specific routes: PUT /buttons/{id}, PUT /dropdowns/{id}, PUT /separators/{id}",

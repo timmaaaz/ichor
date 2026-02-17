@@ -26,6 +26,7 @@ import (
 func main() {
 	apiURL := flag.String("api-url", "http://localhost:8080", "Ichor API base URL")
 	token := flag.String("token", "", "Bearer token for Ichor API authentication")
+	contextMode := flag.String("context", "all", "Tool context filter: all, workflow, or tables")
 	flag.Parse()
 
 	if *token == "" {
@@ -33,6 +34,13 @@ func main() {
 	}
 	if *token == "" {
 		fmt.Fprintln(os.Stderr, "error: --token flag or ICHOR_TOKEN environment variable required")
+		os.Exit(1)
+	}
+
+	switch *contextMode {
+	case "all", "workflow", "tables":
+	default:
+		fmt.Fprintf(os.Stderr, "error: --context must be all, workflow, or tables (got %q)\n", *contextMode)
 		os.Exit(1)
 	}
 
@@ -45,19 +53,8 @@ func main() {
 		Version: "0.1.0",
 	}, nil)
 
-	// Register read-only tools.
-	tools.RegisterDiscoveryTools(server, ichorClient)
-	tools.RegisterUIReadTools(server, ichorClient)
-	tools.RegisterWorkflowReadTools(server, ichorClient)
-	tools.RegisterSearchTools(server, ichorClient)
-
-	// Register write tools.
-	tools.RegisterWorkflowWriteTools(server, ichorClient)
-	tools.RegisterUIWriteTools(server, ichorClient)
-	tools.RegisterValidationTools(server, ichorClient)
-
-	// Register analysis tools.
-	tools.RegisterAnalysisTools(server, ichorClient)
+	// Register tools filtered by context mode.
+	tools.RegisterToolsForContext(server, ichorClient, *contextMode)
 
 	// Register prompts.
 	prompts.RegisterPrompts(server, ichorClient)

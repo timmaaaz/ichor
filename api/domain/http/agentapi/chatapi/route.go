@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
+	"github.com/timmaaaz/ichor/business/sdk/toolindex"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -15,8 +16,10 @@ import (
 // Config holds the dependencies for the agent chat API routes.
 type Config struct {
 	Log                *logger.Logger
+	TalkLog            *logger.Logger
 	LLMProvider        llm.Provider
 	ToolExecutor       *agenttools.Executor
+	ToolIndex          *toolindex.ToolIndex // nil = skip RAG, use all context tools
 	AuthClient         *authclient.Client
 	CORSAllowedOrigins []string
 }

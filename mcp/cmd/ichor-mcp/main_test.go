@@ -17,7 +17,16 @@ import (
 
 // setupIntegrationTest creates a full MCP server with all tools, resources, and prompts
 // registered against a mock HTTP backend. Returns a connected client session.
+// setupIntegrationTest creates a full MCP server (all tools) with a mock HTTP
+// backend. Returns a connected client session.
 func setupIntegrationTest(t *testing.T, handler http.Handler) (*mcp.ClientSession, context.Context) {
+	return setupIntegrationTestWithContext(t, handler, "all")
+}
+
+// setupIntegrationTestWithContext is like setupIntegrationTest but accepts a
+// context mode ("all", "workflow", "tables") to filter which tools are
+// registered.
+func setupIntegrationTestWithContext(t *testing.T, handler http.Handler, contextMode string) (*mcp.ClientSession, context.Context) {
 	t.Helper()
 
 	mock := httptest.NewServer(handler)
@@ -30,14 +39,7 @@ func setupIntegrationTest(t *testing.T, handler http.Handler) (*mcp.ClientSessio
 		Version: "0.0.1",
 	}, nil)
 
-	tools.RegisterDiscoveryTools(server, ichorClient)
-	tools.RegisterUIReadTools(server, ichorClient)
-	tools.RegisterWorkflowReadTools(server, ichorClient)
-	tools.RegisterSearchTools(server, ichorClient)
-	tools.RegisterWorkflowWriteTools(server, ichorClient)
-	tools.RegisterUIWriteTools(server, ichorClient)
-	tools.RegisterValidationTools(server, ichorClient)
-	tools.RegisterAnalysisTools(server, ichorClient)
+	tools.RegisterToolsForContext(server, ichorClient, contextMode)
 	prompts.RegisterPrompts(server, ichorClient)
 	resources.RegisterResources(server, ichorClient)
 
@@ -80,14 +82,7 @@ func TestMCPServer_ToolsAndResources(t *testing.T) {
 		Version: "0.0.1",
 	}, nil)
 
-	tools.RegisterDiscoveryTools(server, ichorClient)
-	tools.RegisterUIReadTools(server, ichorClient)
-	tools.RegisterWorkflowReadTools(server, ichorClient)
-	tools.RegisterSearchTools(server, ichorClient)
-	tools.RegisterWorkflowWriteTools(server, ichorClient)
-	tools.RegisterUIWriteTools(server, ichorClient)
-	tools.RegisterValidationTools(server, ichorClient)
-	tools.RegisterAnalysisTools(server, ichorClient)
+	tools.RegisterAllTools(server, ichorClient)
 	prompts.RegisterPrompts(server, ichorClient)
 	resources.RegisterResources(server, ichorClient)
 
@@ -131,12 +126,16 @@ func TestMCPServer_ToolsAndResources(t *testing.T) {
 		"discover_entity_types",
 		"discover_entities",
 		"discover_content_types",
-		// UI read tools
+		"discover_page_action_types",
+		// UI read tools — pages
 		"get_page_config",
 		"get_page_content",
+		"get_page_actions",
+		"get_page_action",
+		"list_pages",
+		// UI read tools — content blocks
 		"get_table_config",
 		"get_form_definition",
-		"list_pages",
 		"list_forms",
 		"list_table_configs",
 		// Workflow read tools
@@ -561,4 +560,97 @@ func TestMCPServer_ToolContent_IsJSON(t *testing.T) {
 	if !json.Valid([]byte(tc.Text)) {
 		t.Errorf("tool response is not valid JSON: %s", tc.Text)
 	}
+}
+
+// TestMCPServer_ContextFiltering verifies that the --context flag controls
+// which tools are registered.
+func TestMCPServer_ContextFiltering(t *testing.T) {
+	emptyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{}`))
+	})
+
+	// listToolNames returns the set of tool names registered on a session.
+	listToolNames := func(t *testing.T, session *mcp.ClientSession, ctx context.Context) map[string]bool {
+		t.Helper()
+		result, err := session.ListTools(ctx, nil)
+		if err != nil {
+			t.Fatalf("ListTools: %v", err)
+		}
+		names := make(map[string]bool, len(result.Tools))
+		for _, tool := range result.Tools {
+			names[tool.Name] = true
+		}
+		return names
+	}
+
+	t.Run("workflow", func(t *testing.T) {
+		session, ctx := setupIntegrationTestWithContext(t, emptyHandler, "workflow")
+		names := listToolNames(t, session, ctx)
+
+		// Workflow tools should be present.
+		for _, expected := range []string{
+			"discover_action_types", "discover_trigger_types",
+			"get_workflow", "list_workflows", "create_workflow",
+			"analyze_workflow", "search_database_schema",
+		} {
+			if !names[expected] {
+				t.Errorf("workflow context: expected tool %q", expected)
+			}
+		}
+
+		// Tables-only tools should be absent.
+		for _, absent := range []string{
+			"discover_config_surfaces", "discover_field_types",
+			"get_page_config", "list_pages", "create_form",
+			"validate_table_config",
+		} {
+			if names[absent] {
+				t.Errorf("workflow context: tool %q should NOT be registered", absent)
+			}
+		}
+	})
+
+	t.Run("tables", func(t *testing.T) {
+		session, ctx := setupIntegrationTestWithContext(t, emptyHandler, "tables")
+		names := listToolNames(t, session, ctx)
+
+		// Tables tools should be present.
+		for _, expected := range []string{
+			"discover_config_surfaces", "discover_field_types",
+			"get_page_config", "list_pages", "create_form",
+			"validate_table_config", "search_enums",
+		} {
+			if !names[expected] {
+				t.Errorf("tables context: expected tool %q", expected)
+			}
+		}
+
+		// Workflow-only tools should be absent.
+		for _, absent := range []string{
+			"discover_action_types", "discover_trigger_types",
+			"get_workflow", "list_workflows", "create_workflow",
+			"analyze_workflow",
+		} {
+			if names[absent] {
+				t.Errorf("tables context: tool %q should NOT be registered", absent)
+			}
+		}
+	})
+
+	t.Run("all", func(t *testing.T) {
+		session, ctx := setupIntegrationTestWithContext(t, emptyHandler, "all")
+		names := listToolNames(t, session, ctx)
+
+		// Both workflow and tables tools should be present.
+		for _, expected := range []string{
+			"discover_action_types", "discover_config_surfaces",
+			"get_workflow", "get_page_config",
+			"search_database_schema", "search_enums",
+		} {
+			if !names[expected] {
+				t.Errorf("all context: expected tool %q", expected)
+			}
+		}
+	})
 }

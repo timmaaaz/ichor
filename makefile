@@ -251,7 +251,10 @@ dev-status:
 dev-bounce:
 	make dev-down
 	make dev-up
-	make dev-ollama
+	# make dev-ollama
+	@kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
+	@if [ -f .env ]; then . ./.env; fi && \
+		if [ -n "$$GEMINI_API_KEY" ]; then make dev-gemini-secret GEMINI_API_KEY=$$GEMINI_API_KEY; fi
 	make dev-update-apply
 	make migrate
 	make seed-frontend
@@ -308,6 +311,9 @@ dev-logs-auth:
 dev-logs-websocket:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/cmd/tooling/logfmt/main.go -service=$(ICHOR_APP) | grep -i websocket
 
+dev-logs-talk:
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/cmd/tooling/logfmt/main.go -service=talk-log
+
 # ------------------------------------------------------------------------------
 
 dev-logs-init:
@@ -339,12 +345,21 @@ temporal-ui:
 dev-ollama:
 	@which ollama > /dev/null 2>&1 || (echo "Installing ollama via brew..." && brew install ollama)
 	@pgrep -x ollama > /dev/null || (echo "Starting ollama..." && ollama serve &  sleep 2)
-	ollama pull qwen3:8b
+	ollama pull qwen3:14b
 	@echo "Ollama ready at http://localhost:11434"
+
+dev-gemini-secret:
+	@if [ -z "$(GEMINI_API_KEY)" ]; then echo "Error: GEMINI_API_KEY is not set"; exit 1; fi
+	kubectl create secret generic llm-api-key \
+		--namespace=$(NAMESPACE) \
+		--from-literal=api_key=$(GEMINI_API_KEY) \
+		--dry-run=client -o yaml | kubectl apply -f -
+	@echo "Secret llm-api-key created/updated in $(NAMESPACE)"
+	@echo "Pods will pick up the key on next restart (dev-bounce does this automatically)"
 
 ollama-pull-model:
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=300s deployment/ollama
-	kubectl exec -n $(NAMESPACE) deploy/ollama -- ollama pull qwen3:8b
+	kubectl exec -n $(NAMESPACE) deploy/ollama -- ollama pull qwen3:14b
 
 dev-describe-database:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=database
@@ -499,6 +514,71 @@ test: test-only lint vuln-check
 test-race: test-r lint vuln-check
 
 # ==============================================================================
+# AI-assisted code review (headless Claude)
+#
+# Works in any worktree — just run from whichever worktree you want reviewed.
+
+# Review staged changes (pre-commit style)
+ai-review:
+	@if git diff --cached --quiet; then \
+		echo "No staged changes to review. Stage files with 'git add' first."; \
+		exit 1; \
+	fi
+	@echo "Reviewing staged changes..."
+	@git diff --cached > /tmp/ichor-staged.diff
+	@claude -p "You are reviewing staged changes for the Ichor ERP project. \
+This codebase follows Ardan Labs Service architecture (Domain-Driven, Data-Oriented Design). \
+Key conventions: layers are api→app→business→foundation (higher imports lower, NEVER reverse), \
+packages end in bus/app/api, models are Entity/NewEntity/UpdateEntity, \
+business layer is source of truth for validation. Use decimal for money math. \
+\
+Review the following staged diff. Report ONLY issues — do not edit files. Check for: \
+1) Layer violations (importing higher layer from lower) \
+2) Hardcoded test counts that may need updating \
+3) Missing error handling or swallowed errors \
+4) ICHOR_ env var naming consistency \
+5) Security issues (SQL injection, unvalidated input at boundaries) \
+6) Business logic leaking into api/app layers \
+\
+Diff: \
+$$(cat /tmp/ichor-staged.diff)" \
+		--allowedTools "Read,Grep,Glob" \
+		--output-format text
+	@rm -f /tmp/ichor-staged.diff
+
+# Review all changes on current branch vs master (pre-push / PR style)
+ai-review-branch:
+	@BASE=$$(git merge-base HEAD origin/master 2>/dev/null || git merge-base HEAD master); \
+	if [ "$$(git rev-parse HEAD)" = "$$BASE" ]; then \
+		echo "No branch changes to review — HEAD is at merge-base with master."; \
+		exit 1; \
+	fi; \
+	echo "Reviewing branch changes (vs master)..."; \
+	git diff $$BASE..HEAD > /tmp/ichor-branch.diff; \
+	claude -p "You are reviewing a feature branch for the Ichor ERP project. \
+This codebase follows Ardan Labs Service architecture (Domain-Driven, Data-Oriented Design). \
+Key conventions: layers are api→app→business→foundation (higher imports lower, NEVER reverse), \
+packages end in bus/app/api, models are Entity/NewEntity/UpdateEntity, \
+business layer is source of truth for validation. Use decimal for money math. \
+\
+Review the full branch diff (all commits since diverging from master). Report ONLY issues — do not edit files. Check for: \
+1) Layer violations (importing higher layer from lower) \
+2) Hardcoded test counts that may need updating \
+3) Missing error handling or swallowed errors \
+4) ICHOR_ env var naming consistency \
+5) Security issues (SQL injection, unvalidated input at boundaries) \
+6) Business logic leaking into api/app layers \
+7) Architectural coherence across all commits \
+\
+Use Read, Grep, and Glob tools to examine surrounding code for context when needed. \
+\
+Diff: \
+$$(cat /tmp/ichor-branch.diff)" \
+		--allowedTools "Read,Grep,Glob" \
+		--output-format text; \
+	rm -f /tmp/ichor-branch.diff
+
+# ==============================================================================
 # Hitting endpoints
 
 token:
@@ -530,7 +610,7 @@ otel-test:
 
 mcp:
 	$(eval TOKEN_RAW := $(shell curl -s --user "admin@example.com:gophers" http://localhost:6000/v1/auth/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1 | jq -r '.token'))
-	cd mcp && go run ./cmd/ichor-mcp/ --token $(TOKEN_RAW)
+	go run ./mcp/cmd/ichor-mcp/ --token $(TOKEN_RAW)
 
 # ==============================================================================
 # Modules support
@@ -563,6 +643,9 @@ list:
 
 run:
 	go run api/cmd/services/ichor/main.go | go run api/cmd/tooling/logfmt/main.go
+
+run-talk-log:
+	go run api/cmd/services/ichor/main.go | go run api/cmd/tooling/logfmt/main.go -service=talk-log
 
 run-help:
 	go run api/cmd/services/ichor/main.go --help | go run api/cmd/tooling/logfmt/main.go
@@ -739,6 +822,7 @@ help:
 	@echo "  dev-describe-workflow-worker Show the workflow-worker pod details"
 	@echo "  temporal-ui             Port-forward Temporal Web UI to localhost:8280"
 	@echo "  dev-ollama              Install Ollama, start it, and pull AI models"
+	@echo "  dev-gemini-secret       Create K8s secret for Gemini API key"
 	@echo "  ollama-pull-model       Pull AI models inside the KIND cluster"
 	@echo "  dev-describe-database   Show the database pod details"
 	@echo "  dev-describe-grafana    Show the grafana pod details"
@@ -747,4 +831,6 @@ help:
 	@echo "  dev-logs-tempo          Show the logs for the tempo service"
 	@echo "  dev-logs-loki           Show the logs for the loki service"
 	@echo "  dev-logs-promtail       Show the logs for the promtail service"
+	@echo "  ai-review               Review staged changes with Claude (headless)"
+	@echo "  ai-review-branch        Review branch diff vs master with Claude (headless)"
 	@echo "  dev-services-delete     Delete all"

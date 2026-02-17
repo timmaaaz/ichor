@@ -3,6 +3,7 @@ package all
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/approvalstatusapi"
@@ -293,13 +294,16 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
 	"github.com/timmaaaz/ichor/business/sdk/llm/claude"
+	"github.com/timmaaaz/ichor/business/sdk/llm/gemini"
 	"github.com/timmaaaz/ichor/business/sdk/llm/ollama"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
+	"github.com/timmaaaz/ichor/business/sdk/toolindex"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	temporalpkg "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
+	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 	foundationws "github.com/timmaaaz/ichor/foundation/websocket"
@@ -1029,30 +1033,73 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// Agent Chat (LLM-powered SSE endpoint)
 	// =========================================================================
 
+	// Talk-log: dedicated untruncated lifecycle logger for agent chat debugging.
+	// Filter with: jq 'select(.service == "talk-log")'
+	talkLog := logger.New(os.Stdout, logger.LevelInfo, "talk-log", nil)
+
 	var llmProvider llm.Provider
 
 	switch cfg.LLMProvider {
 	case "ollama":
-		llmProvider = ollama.NewProvider(cfg.LLMHost, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
+		llmProvider = ollama.NewProvider(cfg.LLMHost, cfg.LLMModel, cfg.LLMMaxTokens, cfg.LLMThinkingEffort, cfg.Log, talkLog)
 	case "claude":
-		if cfg.LLMAPIKey != "" {
-			llmProvider = claude.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log)
+		if cfg.LLMAPIKey == "" {
+			cfg.Log.Info(context.Background(), "AGENT-CHAT: claude provider selected but ICHOR_LLM_APIKEY is not set — agent chat will be disabled")
+		} else {
+			llmProvider = claude.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log, talkLog)
+		}
+	case "gemini":
+		if cfg.LLMAPIKey == "" {
+			cfg.Log.Info(context.Background(), "AGENT-CHAT: gemini provider selected but ICHOR_LLM_APIKEY is not set — agent chat will be disabled")
+		} else {
+			llmProvider = gemini.NewProvider(cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMMaxTokens, cfg.Log, talkLog)
 		}
 	}
 
 	if llmProvider != nil {
 		toolExecutor := agenttools.NewExecutor(cfg.Log, cfg.LLMBaseURL)
 
+		// Build the Tool RAG index using the best available embedder.
+		var ragIndex *toolindex.ToolIndex
+
+		var embedder toolindex.Embedder
+		switch {
+		case cfg.LLMAPIKey != "" && (cfg.LLMProvider == "gemini" || cfg.LLMProvider == ""):
+			embedder = toolindex.NewGeminiEmbedder(cfg.LLMAPIKey, "gemini-embedding-001")
+		case cfg.LLMHost != "":
+			embedder = toolindex.NewOllamaEmbedder(cfg.LLMHost, "nomic-embed-text")
+		}
+
+		if embedder != nil {
+			allToolDefs := agenttools.AllToolDefinitions()
+			idx, err := toolindex.New(context.Background(), toolindex.Config{
+				Embedder: embedder,
+				Log:      cfg.Log,
+			}, allToolDefs)
+			if err != nil {
+				cfg.Log.Error(context.Background(), "AGENT-CHAT: tool RAG index failed, using context-only filtering",
+					"error", err)
+			} else {
+				ragIndex = idx
+				cfg.Log.Info(context.Background(), "AGENT-CHAT: tool RAG index initialized",
+					"tools_indexed", len(allToolDefs),
+					"tools_with_embeddings", idx.EmbeddedCount())
+			}
+		}
+
 		chatapi.Routes(app, chatapi.Config{
 			Log:                cfg.Log,
+			TalkLog:            talkLog,
 			LLMProvider:        llmProvider,
 			ToolExecutor:       toolExecutor,
+			ToolIndex:          ragIndex,
 			AuthClient:         cfg.AuthClient,
 			CORSAllowedOrigins: []string{"*"}, // TODO: Configure from environment (matches WebSocket)
 		})
 		cfg.Log.Info(context.Background(), "AGENT-CHAT: routes initialized",
 			"provider", cfg.LLMProvider,
-			"model", cfg.LLMModel)
+			"model", cfg.LLMModel,
+			"thinking_effort", cfg.LLMThinkingEffort)
 	} else {
 		cfg.Log.Info(context.Background(), "AGENT-CHAT: disabled")
 	}

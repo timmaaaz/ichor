@@ -41,6 +41,10 @@ type ToolDef struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
 	InputSchema json.RawMessage `json:"input_schema"` // JSON Schema
+
+	// ExampleQueries are sample user messages this tool is relevant for.
+	// Used by toolindex for embedding-based retrieval; never sent to the LLM.
+	ExampleQueries []string `json:"-"`
 }
 
 // ToolCall represents the LLM requesting a tool invocation.
@@ -63,6 +67,7 @@ type EventType string
 const (
 	EventMessageStart    EventType = "message_start"
 	EventContentDelta    EventType = "content_delta"
+	EventThinkingDelta   EventType = "thinking_delta"
 	EventToolUseStart    EventType = "tool_use_start"
 	EventToolUseInput    EventType = "tool_use_input"
 	EventMessageComplete EventType = "message_complete"
@@ -75,6 +80,11 @@ type StreamEvent struct {
 
 	// Text delta (EventContentDelta).
 	Text string
+
+	// ThinkingText delta (EventThinkingDelta). Separate from Text so
+	// callers can handle reasoning content differently (e.g. log but not
+	// stream to the client).
+	ThinkingText string
 
 	// Tool use metadata (EventToolUseStart).
 	ToolCallID   string
