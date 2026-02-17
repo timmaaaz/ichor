@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -104,7 +103,7 @@ func (s *Store) Update(ctx context.Context, status ordersbus.Order) error {
 			return fmt.Errorf("namedexeccontext %w", ordersbus.ErrForeignKeyViolation)
 		}
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext %w", transferorderbus.ErrUniqueEntry)
+			return fmt.Errorf("namedexeccontext %w", ordersbus.ErrUniqueEntry)
 		}
 		return fmt.Errorf("namedexeccontext %w", err)
 	}
