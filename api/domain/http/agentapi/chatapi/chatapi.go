@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,6 +25,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
 	"github.com/timmaaaz/ichor/business/sdk/toolcatalog"
+	"github.com/timmaaaz/ichor/business/sdk/toolindex"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -34,12 +34,20 @@ import (
 // to prevent runaway loops.
 const maxAgentLoops = 20
 
+// ragTopK is the number of tools to retrieve from the embedding index.
+const ragTopK = 6
+
+// ragMinScore is the minimum cosine similarity for a RAG match to survive.
+// Set to 0 to observe real score distributions before tuning.
+const ragMinScore = float32(0)
+
 type api struct {
-	log      *logger.Logger
-	talkLog  *logger.Logger
-	provider llm.Provider
-	tools    []llm.ToolDef
-	executor *agenttools.Executor
+	log       *logger.Logger
+	talkLog   *logger.Logger
+	provider  llm.Provider
+	tools     []llm.ToolDef
+	toolIndex *toolindex.ToolIndex // nil = skip RAG, use all context tools
+	executor  *agenttools.Executor
 }
 
 func newAPI(cfg Config) *api {
@@ -47,11 +55,12 @@ func newAPI(cfg Config) *api {
 	// filterToolsByContext selects the right subset at runtime.
 	allTools := append(agenttools.ToolDefinitions(), agenttools.TableToolDefinitions()...)
 	return &api{
-		log:      cfg.Log,
-		talkLog:  cfg.TalkLog,
-		provider: cfg.LLMProvider,
-		tools:    allTools,
-		executor: cfg.ToolExecutor,
+		log:       cfg.Log,
+		talkLog:   cfg.TalkLog,
+		provider:  cfg.LLMProvider,
+		tools:     allTools,
+		toolIndex: cfg.ToolIndex,
+		executor:  cfg.ToolExecutor,
 	}
 }
 
@@ -132,19 +141,18 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Filter tools by context type, then by intent.
-	contextFiltered := filterToolsByContext(a.tools, req.ContextType)
-
 	// Extract the workflow_id from the context (if present) so we can inject
 	// it into tool calls where the LLM omits it.
 	contextWorkflowID := extractContextWorkflowID(req.Context)
 
-	intents := classifyIntent(req.Message, req.ContextType)
-	hasCtx := contextWorkflowID != ""
-	filteredTools := filterToolsByIntent(contextFiltered, intents, hasCtx)
+	// =====================================================================
+	// Tool selection pipeline: context filter → RAG search → core merge
+	// =====================================================================
+
+	filteredTools := a.selectTools(ctx, sessionID, req.ContextType, req.Message, req.Context)
 
 	// Build initial LLM request.
-	systemPrompt := buildSystemPrompt(req.ContextType, req.Context, intents)
+	systemPrompt := buildSystemPrompt(req.ContextType, req.Context)
 	llmReq := llm.ChatRequest{
 		SystemPrompt: systemPrompt,
 		Messages: []llm.Message{
@@ -154,7 +162,7 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		MaxTokens: 4096,
 	}
 
-	// Stage 1: Log the full prompt (untruncated).
+	// Stage: prompt — log the full prompt (untruncated).
 	if a.talkLog != nil {
 		toolNames := make([]string, len(filteredTools))
 		for i, t := range filteredTools {
@@ -167,7 +175,6 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 			"system_prompt", systemPrompt,
 			"context_type", req.ContextType,
 			"context_json", string(req.Context),
-			"intents", intents,
 			"tool_count", len(filteredTools),
 			"tools", toolNames)
 	}
@@ -264,7 +271,7 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 
 		// If the LLM didn't request tools, we're done.
 		if !stopForTools || len(toolCalls) == 0 {
-			// Stage 5: Log the final response (untruncated).
+			// Stage: response — log the final response (untruncated).
 			if a.talkLog != nil {
 				a.talkLog.Info(ctx, "TALK-LOG: response",
 					"stage", "response",
@@ -295,7 +302,7 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 
 		toolResults := make([]llm.ToolResult, 0, len(toolCalls))
 
-		// Collect tool execution details for talk-log stage 2.
+		// Collect tool execution details for talk-log stage.
 		type toolLogEntry struct {
 			Name      string `json:"name"`
 			Input     string `json:"input"`
@@ -353,7 +360,7 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
-		// Stage 2: Log the tool execution loop (untruncated).
+		// Stage: loop — log tool execution details (untruncated).
 		if a.talkLog != nil {
 			a.talkLog.Info(ctx, "TALK-LOG: loop",
 				"stage", "loop",
@@ -375,113 +382,145 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 }
 
 // =========================================================================
-// Intent-based tool routing
+// Tool selection pipeline: context filter → RAG search → core merge
 // =========================================================================
 
-// intentType classifies what the user wants to do.
-type intentType string
-
-const (
-	// Workflow intents
-	intentRead   intentType = "read"
-	intentAlert  intentType = "alert"
-	intentBuild  intentType = "build"
-	intentModify intentType = "modify"
-
-	// Table intents
-	intentTableRead     intentType = "table_read"
-	intentTableDiscover intentType = "table_discover"
-	intentTableWrite    intentType = "table_write"
-)
-
-// intentKeywords maps each intent to the keywords that signal it.
-var intentKeywords = map[intentType][]string{
-	intentRead:   {"explain", "describe", "what", "how", "show", "tell", "walk through"},
-	intentAlert:  {"alert", "notification", "inbox", "recipient", "who receives", "who gets"},
-	intentBuild:  {"create", "build", "make", "new workflow", "set up"},
-	intentModify: {"change", "update", "modify", "edit", "add step", "remove step", "add action", "remove action"},
+// coreToolsByContext maps each context type to baseline tool names that
+// always bypass RAG and get included. These orient the LLM with "what
+// exists" and "what can I build with" tools.
+var coreToolsByContext = map[string][]string{
+	"workflow": {"list_workflow_rules", "discover"},
+	"tables":   {"list_table_configs", "discover_table_reference"},
+	// "pages" will be added when page tools exist.
 }
 
-// tableIntentKeywords maps table-specific intents to keywords.
-var tableIntentKeywords = map[intentType][]string{
-	intentTableRead:     {"show", "get", "list", "what", "columns", "config", "describe", "fetch"},
-	intentTableDiscover: {"type", "format", "reference", "column type", "options", "valid", "allowed"},
-	intentTableWrite:    {"create", "build", "add", "update", "modify", "change", "remove", "new table", "new config", "edit"},
+// coreToolsNewWorkflow overrides coreToolsByContext when the user is on a
+// blank workflow canvas, ensuring the draft builder tools are always available.
+var coreToolsNewWorkflow = []string{
+	"discover",
+	"start_draft",
+	"add_draft_action",
+	"preview_draft",
 }
 
-// intentTools maps each intent to the tool names it should include.
-var intentTools = map[intentType][]string{
-	intentRead:   {"get_workflow_rule", "explain_workflow_node", "list_workflow_rules"},
-	intentAlert:  {"list_my_alerts", "get_alert_detail", "list_alerts_for_rule", "explain_workflow_node"},
-	intentBuild:  {"discover", "start_draft", "add_draft_action", "remove_draft_action", "preview_draft"},
-	intentModify: {"discover", "explain_workflow_node", "preview_workflow"},
+// selectTools runs the tool selection pipeline and logs each stage.
+// Pipeline: all tools → context filter → RAG search → core merge.
+func (a *api) selectTools(ctx context.Context, sessionID, contextType, message string, rawCtx json.RawMessage) []llm.ToolDef {
+	// Step 1: Context filter — coarse cut by context type.
+	contextFiltered := filterToolsByContext(a.tools, contextType)
 
-	intentTableRead:     {"get_table_config", "list_table_configs", "search_database_schema"},
-	intentTableDiscover: {"discover_table_reference", "search_database_schema", "validate_table_config"},
-	intentTableWrite:    {"discover_table_reference", "get_table_config", "search_database_schema", "validate_table_config", "create_table_config", "update_table_config"},
-}
-
-// classifyIntent returns the intents that match the user's message based on
-// keyword matching. Uses different keyword sets for workflow vs table contexts.
-// Returns [intentRead] or [intentTableRead] if no keywords match.
-func classifyIntent(message, contextType string) []intentType {
-	lower := strings.ToLower(message)
-
-	var matched []intentType
-	seen := make(map[intentType]bool)
-
-	keywords := intentKeywords
-	fallback := intentRead
-	if contextType == "tables" {
-		keywords = tableIntentKeywords
-		fallback = intentTableRead
+	if a.talkLog != nil {
+		a.talkLog.Info(ctx, "TALK-LOG: context filter",
+			"stage", "context_filter",
+			"session_id", sessionID,
+			"context_type", contextType,
+			"tools_before", len(a.tools),
+			"tools_after", len(contextFiltered))
 	}
 
-	for intent, kws := range keywords {
-		for _, kw := range kws {
-			if strings.Contains(lower, kw) && !seen[intent] {
-				matched = append(matched, intent)
-				seen[intent] = true
-				break
+	// Step 2: RAG search — semantic similarity within the context group.
+	var ragToolNames []string
+	var ragScores []float32
+	var ragElapsedMs int64
+
+	if a.toolIndex != nil {
+		// Build allowlist from context-filtered tools so Search only scores
+		// tools in the current context group (no wasted top-K slots).
+		allowlist := make(map[string]bool, len(contextFiltered))
+		for _, t := range contextFiltered {
+			allowlist[t.Name] = true
+		}
+
+		matches, elapsed, err := a.toolIndex.Search(ctx, message, ragTopK, toolindex.SearchOptions{
+			Allowlist: allowlist,
+			MinScore:  ragMinScore,
+		})
+		ragElapsedMs = elapsed.Milliseconds()
+
+		if err != nil {
+			a.log.Error(ctx, "AGENT-CHAT: RAG search failed, using all context tools",
+				"error", err)
+			// Fallback: skip RAG, use all context-filtered tools.
+		} else {
+			for _, m := range matches {
+				ragToolNames = append(ragToolNames, m.Tool.Name)
+				ragScores = append(ragScores, m.Score)
 			}
 		}
+
+		if a.talkLog != nil {
+			a.talkLog.Info(ctx, "TALK-LOG: RAG search",
+				"stage", "rag_search",
+				"session_id", sessionID,
+				"query_length", len(message),
+				"top_k", ragTopK,
+				"min_score", ragMinScore,
+				"allowlist_size", len(allowlist),
+				"matched_tools", ragToolNames,
+				"scores", ragScores,
+				"elapsed_ms", ragElapsedMs)
+		}
 	}
 
-	if len(matched) == 0 {
-		return []intentType{fallback}
+	// Step 3: Merge core tools + RAG results.
+	// When the user is on a blank workflow, force-include draft builder tools.
+	coreNames := coreToolsByContext[contextType]
+	if contextType == "workflow" && isNewWorkflow(rawCtx) {
+		coreNames = coreToolsNewWorkflow
 	}
-	return matched
+	filteredTools := mergeTools(contextFiltered, coreNames, ragToolNames, a.toolIndex != nil)
+
+	if a.talkLog != nil {
+		finalNames := make([]string, len(filteredTools))
+		for i, t := range filteredTools {
+			finalNames[i] = t.Name
+		}
+		a.talkLog.Info(ctx, "TALK-LOG: tool selection",
+			"stage", "tool_selection",
+			"session_id", sessionID,
+			"core_tools", coreNames,
+			"rag_tools", ragToolNames,
+			"final_count", len(filteredTools),
+			"final_tools", finalNames)
+	}
+
+	return filteredTools
 }
 
-// filterToolsByIntent returns the subset of tools that match the classified
-// intents. When hasWorkflowContext is true and the only intent is read,
-// list_workflow_rules is excluded (the context already provides the workflow).
-func filterToolsByIntent(tools []llm.ToolDef, intents []intentType, hasWorkflowContext bool) []llm.ToolDef {
-	// Build the set of allowed tool names from the union of all intents.
-	allowed := make(map[string]bool)
-	for _, intent := range intents {
-		for _, name := range intentTools[intent] {
-			allowed[name] = true
+// mergeTools combines core tools and RAG results into a deduplicated tool set.
+// If ragEnabled is false (no ToolIndex), returns all contextFiltered tools.
+func mergeTools(contextFiltered []llm.ToolDef, coreNames, ragNames []string, ragEnabled bool) []llm.ToolDef {
+	if !ragEnabled {
+		// No RAG — return everything from the context filter.
+		return contextFiltered
+	}
+
+	// Build lookup from context-filtered tools.
+	byName := make(map[string]llm.ToolDef, len(contextFiltered))
+	for _, t := range contextFiltered {
+		byName[t.Name] = t
+	}
+
+	seen := make(map[string]bool)
+	result := make([]llm.ToolDef, 0, len(coreNames)+len(ragNames))
+
+	// Core tools first.
+	for _, name := range coreNames {
+		if t, ok := byName[name]; ok && !seen[name] {
+			result = append(result, t)
+			seen[name] = true
 		}
 	}
 
-	// If only intent is read and we have workflow context, drop list_workflow_rules.
-	if len(intents) == 1 && intents[0] == intentRead && hasWorkflowContext {
-		delete(allowed, "list_workflow_rules")
-	}
-
-	// If only intent is table_read and we have context, drop list_table_configs.
-	if len(intents) == 1 && intents[0] == intentTableRead && hasWorkflowContext {
-		delete(allowed, "list_table_configs")
-	}
-
-	filtered := make([]llm.ToolDef, 0, len(allowed))
-	for _, t := range tools {
-		if allowed[t.Name] {
-			filtered = append(filtered, t)
+	// RAG tools second (skip duplicates).
+	for _, name := range ragNames {
+		if t, ok := byName[name]; ok && !seen[name] {
+			result = append(result, t)
+			seen[name] = true
 		}
 	}
-	return filtered
+
+	return result
 }
 
 // filterToolsByContext returns the subset of tools that belong to the given
@@ -505,6 +544,10 @@ func filterToolsByContext(tools []llm.ToolDef, contextType string) []llm.ToolDef
 	}
 	return filtered
 }
+
+// =========================================================================
+// Helpers
+// =========================================================================
 
 // buildPreviewEvent constructs the workflow_preview SSE event payload from a
 // successful preview_workflow or preview_draft tool call. Returns nil if the
@@ -635,4 +678,3 @@ func isUUID(s string) bool {
 	}
 	return true
 }
-

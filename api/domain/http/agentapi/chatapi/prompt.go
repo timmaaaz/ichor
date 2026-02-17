@@ -2,39 +2,38 @@ package chatapi
 
 import (
 	"encoding/json"
-	"slices"
 	"strings"
 )
 
 // buildSystemPrompt assembles the system prompt sent to the LLM.
 // contextType is "workflow" or "tables". rawCtx is the optional context JSON
-// from the request body. intents controls which guidance sections are included.
-func buildSystemPrompt(contextType string, rawCtx json.RawMessage, intents []intentType) string {
+// from the request body. All relevant guidance sections are always included
+// since Tool RAG handles tool selection independently.
+func buildSystemPrompt(contextType string, rawCtx json.RawMessage) string {
 	var b strings.Builder
 
 	switch contextType {
 	case "tables":
 		b.WriteString(tablesRoleBlock)
 		b.WriteString("\n\n")
-		if slices.Contains(intents, intentTableDiscover) {
-			b.WriteString(tablesToolGuidance)
-			b.WriteString("\n\n")
-		}
+		b.WriteString(tablesToolGuidance)
+		b.WriteString("\n\n")
 		b.WriteString(responseGuidance)
 	default: // "workflow"
-		b.WriteString(roleBlock)
-		b.WriteString("\n\n")
-		// Only include draft builder guidance when the user wants to build.
-		if slices.Contains(intents, intentBuild) {
-			b.WriteString(draftBuilderGuidance)
+		if isNewWorkflow(rawCtx) {
+			b.WriteString(guidedCreationPrompt)
 			b.WriteString("\n\n")
 		}
+		b.WriteString(roleBlock)
+		b.WriteString("\n\n")
+		b.WriteString(draftBuilderGuidance)
+		b.WriteString("\n\n")
 		b.WriteString(workflowConceptsGuidance)
 		b.WriteString("\n\n")
 		b.WriteString(responseGuidance)
 	}
 
-	if len(rawCtx) > 0 && string(rawCtx) != "null" {
+	if len(rawCtx) > 0 && string(rawCtx) != "null" && !isNewWorkflow(rawCtx) {
 		b.WriteString("\n\n")
 		b.WriteString(contextPreamble)
 
@@ -198,6 +197,56 @@ GOOD: "The **Low Stock Alert** rule triggers when inventory items are updated an
 - If a tool call fails, explain the error clearly and suggest next steps
 - For alerts, always mention the recipient names (not UUIDs) when describing who receives an alert
 - Alert recipients include "recipients" with "name" and optionally "email" fields — use these instead of raw IDs`
+
+// isNewWorkflow returns true when the context represents a blank/new workflow.
+// It checks for the explicit is_new flag from the frontend first (either true
+// or false wins), then falls back to inferring from empty workflow_id + empty
+// nodes when the flag is absent.
+func isNewWorkflow(rawCtx json.RawMessage) bool {
+	if len(rawCtx) == 0 || string(rawCtx) == "null" {
+		return true
+	}
+	var ctx struct {
+		IsNew      *bool             `json:"is_new"`
+		WorkflowID string            `json:"workflow_id"`
+		Nodes      []json.RawMessage `json:"nodes"`
+	}
+	if err := json.Unmarshal(rawCtx, &ctx); err != nil {
+		return false
+	}
+	if ctx.IsNew != nil {
+		return *ctx.IsNew
+	}
+	return ctx.WorkflowID == "" && len(ctx.Nodes) == 0
+}
+
+const guidedCreationPrompt = `## Guided Workflow Creation
+
+The user is on a **blank workflow canvas**. Your job is to guide them step-by-step through building their first automation. Be conversational and concise.
+
+### How to guide the conversation:
+
+1. **Ask what they want to automate.** Suggest common patterns:
+   - "When a new order is created, send a notification"
+   - "When inventory drops below a threshold, create an alert"
+   - "When a user is updated, log the change"
+   Help them pick an **entity** (e.g. sales.orders, inventory.items) and a **trigger** (on_create, on_update, on_delete).
+
+2. **Start the draft.** Once they've chosen, use ` + "`start_draft`" + ` with their entity and trigger. Confirm it was created.
+
+3. **Build actions one at a time.** Propose the next action in plain language:
+   - "Next, I'll add an action that sends an email when this triggers. Sound good?"
+   - Use ` + "`add_draft_action`" + ` for each one. After adding, briefly summarize what's been built so far.
+   - If you need to know what action types are available, use ` + "`discover`" + ` with category "action_types".
+
+4. **Preview when ready.** When the user is satisfied (or after 2-3 actions), use ` + "`preview_draft`" + ` to show the final result for their approval.
+
+### Tone:
+- Keep it simple — don't dump config JSON at the user.
+- One step at a time. Don't propose the entire workflow in one message.
+- If the user seems unsure, offer 2-3 concrete suggestions they can pick from.
+- After each action is added, give a quick summary like: "So far we have: trigger on new orders → send email notification."
+`
 
 const contextPreamble = `## Current Workflow Context
 
