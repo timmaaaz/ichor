@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
+	"github.com/timmaaaz/ichor/business/sdk/toolindex"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -18,6 +19,7 @@ type Config struct {
 	TalkLog            *logger.Logger
 	LLMProvider        llm.Provider
 	ToolExecutor       *agenttools.Executor
+	ToolIndex          *toolindex.ToolIndex // nil = skip RAG, use all context tools
 	AuthClient         *authclient.Client
 	CORSAllowedOrigins []string
 }

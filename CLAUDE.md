@@ -2,6 +2,34 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Core Rules
+
+Do NOT make code changes unless explicitly asked. When the user says 'explore', 'analyze', 'investigate', or 'plan', only read and report — never edit files.
+
+## Code Changes
+
+Prefer targeted, minimal changes over broad refactors. When fixing a bug or making a change, scope it as narrowly as possible unless the user explicitly requests a larger refactor.
+
+## Build & Verification
+
+This is primarily a Go codebase with YAML (K8s/config) and TypeScript (Vue3 frontend). When making changes, always run `go build ./...` and `go test ./...` before reporting completion. For frontend changes, run the appropriate build/lint command.
+
+## Testing
+
+When implementing a plan that adds or removes tools/endpoints, update test assertions (especially tool counts) as part of the same change. Check for hardcoded counts in test files.
+
+## Planning & Implementation
+
+Before proposing an implementation plan, thoroughly explore the existing codebase structure first. Do not assume architecture — check for existing routing systems, naming conventions, and patterns already in use.
+
+## Git Workflow
+
+When the user asks to commit and push, use a descriptive conventional commit message and include all relevant changed files. Do not ask for confirmation unless the diff is unusually large.
+
+## Infrastructure / K8s
+
+Environment variables in this project follow the pattern `ICHOR_LLM_*`. K8s secrets must be created before deployments that reference them. Always verify env var naming matches between code, K8s manifests, and Makefile targets.
+
 ## Project Overview
 
 Ichor is a production-grade ERP system built using the **Ardan Labs Service Starter Kit** architecture. It implements Domain Driven, Data Oriented Design patterns with full Kubernetes deployment support. The project is a fork/adaptation of the Ardan Labs service architecture specifically for ERP use cases covering HR, Assets, Inventory, Products, Procurement, Sales, and Workflow automation.
@@ -343,6 +371,10 @@ The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Gemini Flash 
 - **Cache carefully** - Only cache read-heavy, infrequently changing data
 - **Test everything** - Integration tests are primary test strategy
 - **Use decimal for money math** - Never use float64 for financial calculations
+
+## Bug Fix Protocol
+
+When the user describes a bug, error, or unexpected behavior, **recommend `/investigate` before making any code changes**. Look for signals: error messages, "broken", "failing", "wrong", "not working", stack traces, test failures, or unexpected output. A quick suggestion is sufficient — don't block if they decline. Example: *"This sounds like a bug — want me to run `/investigate` first to diagnose the root cause before making changes?"*
 
 ## Additional Resources
 

@@ -297,6 +297,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/llm/gemini"
 	"github.com/timmaaaz/ichor/business/sdk/llm/ollama"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
+	"github.com/timmaaaz/ichor/business/sdk/toolindex"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	temporalpkg "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
@@ -1058,11 +1059,40 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	if llmProvider != nil {
 		toolExecutor := agenttools.NewExecutor(cfg.Log, cfg.LLMBaseURL)
 
+		// Build the Tool RAG index using the best available embedder.
+		var ragIndex *toolindex.ToolIndex
+
+		var embedder toolindex.Embedder
+		switch {
+		case cfg.LLMAPIKey != "" && (cfg.LLMProvider == "gemini" || cfg.LLMProvider == ""):
+			embedder = toolindex.NewGeminiEmbedder(cfg.LLMAPIKey, "gemini-embedding-001")
+		case cfg.LLMHost != "":
+			embedder = toolindex.NewOllamaEmbedder(cfg.LLMHost, "nomic-embed-text")
+		}
+
+		if embedder != nil {
+			allToolDefs := agenttools.AllToolDefinitions()
+			idx, err := toolindex.New(context.Background(), toolindex.Config{
+				Embedder: embedder,
+				Log:      cfg.Log,
+			}, allToolDefs)
+			if err != nil {
+				cfg.Log.Error(context.Background(), "AGENT-CHAT: tool RAG index failed, using context-only filtering",
+					"error", err)
+			} else {
+				ragIndex = idx
+				cfg.Log.Info(context.Background(), "AGENT-CHAT: tool RAG index initialized",
+					"tools_indexed", len(allToolDefs),
+					"tools_with_embeddings", idx.EmbeddedCount())
+			}
+		}
+
 		chatapi.Routes(app, chatapi.Config{
 			Log:                cfg.Log,
 			TalkLog:            talkLog,
 			LLMProvider:        llmProvider,
 			ToolExecutor:       toolExecutor,
+			ToolIndex:          ragIndex,
 			AuthClient:         cfg.AuthClient,
 			CORSAllowedOrigins: []string{"*"}, // TODO: Configure from environment (matches WebSocket)
 		})

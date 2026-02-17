@@ -41,6 +41,10 @@ type ToolDef struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
 	InputSchema json.RawMessage `json:"input_schema"` // JSON Schema
+
+	// ExampleQueries are sample user messages this tool is relevant for.
+	// Used by toolindex for embedding-based retrieval; never sent to the LLM.
+	ExampleQueries []string `json:"-"`
 }
 
 // ToolCall represents the LLM requesting a tool invocation.

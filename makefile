@@ -514,6 +514,71 @@ test: test-only lint vuln-check
 test-race: test-r lint vuln-check
 
 # ==============================================================================
+# AI-assisted code review (headless Claude)
+#
+# Works in any worktree — just run from whichever worktree you want reviewed.
+
+# Review staged changes (pre-commit style)
+ai-review:
+	@if git diff --cached --quiet; then \
+		echo "No staged changes to review. Stage files with 'git add' first."; \
+		exit 1; \
+	fi
+	@echo "Reviewing staged changes..."
+	@git diff --cached > /tmp/ichor-staged.diff
+	@claude -p "You are reviewing staged changes for the Ichor ERP project. \
+This codebase follows Ardan Labs Service architecture (Domain-Driven, Data-Oriented Design). \
+Key conventions: layers are api→app→business→foundation (higher imports lower, NEVER reverse), \
+packages end in bus/app/api, models are Entity/NewEntity/UpdateEntity, \
+business layer is source of truth for validation. Use decimal for money math. \
+\
+Review the following staged diff. Report ONLY issues — do not edit files. Check for: \
+1) Layer violations (importing higher layer from lower) \
+2) Hardcoded test counts that may need updating \
+3) Missing error handling or swallowed errors \
+4) ICHOR_ env var naming consistency \
+5) Security issues (SQL injection, unvalidated input at boundaries) \
+6) Business logic leaking into api/app layers \
+\
+Diff: \
+$$(cat /tmp/ichor-staged.diff)" \
+		--allowedTools "Read,Grep,Glob" \
+		--output-format text
+	@rm -f /tmp/ichor-staged.diff
+
+# Review all changes on current branch vs master (pre-push / PR style)
+ai-review-branch:
+	@BASE=$$(git merge-base HEAD origin/master 2>/dev/null || git merge-base HEAD master); \
+	if [ "$$(git rev-parse HEAD)" = "$$BASE" ]; then \
+		echo "No branch changes to review — HEAD is at merge-base with master."; \
+		exit 1; \
+	fi; \
+	echo "Reviewing branch changes (vs master)..."; \
+	git diff $$BASE..HEAD > /tmp/ichor-branch.diff; \
+	claude -p "You are reviewing a feature branch for the Ichor ERP project. \
+This codebase follows Ardan Labs Service architecture (Domain-Driven, Data-Oriented Design). \
+Key conventions: layers are api→app→business→foundation (higher imports lower, NEVER reverse), \
+packages end in bus/app/api, models are Entity/NewEntity/UpdateEntity, \
+business layer is source of truth for validation. Use decimal for money math. \
+\
+Review the full branch diff (all commits since diverging from master). Report ONLY issues — do not edit files. Check for: \
+1) Layer violations (importing higher layer from lower) \
+2) Hardcoded test counts that may need updating \
+3) Missing error handling or swallowed errors \
+4) ICHOR_ env var naming consistency \
+5) Security issues (SQL injection, unvalidated input at boundaries) \
+6) Business logic leaking into api/app layers \
+7) Architectural coherence across all commits \
+\
+Use Read, Grep, and Glob tools to examine surrounding code for context when needed. \
+\
+Diff: \
+$$(cat /tmp/ichor-branch.diff)" \
+		--allowedTools "Read,Grep,Glob" \
+		--output-format text; \
+	rm -f /tmp/ichor-branch.diff
+
+# ==============================================================================
 # Hitting endpoints
 
 token:
@@ -766,4 +831,6 @@ help:
 	@echo "  dev-logs-tempo          Show the logs for the tempo service"
 	@echo "  dev-logs-loki           Show the logs for the loki service"
 	@echo "  dev-logs-promtail       Show the logs for the promtail service"
+	@echo "  ai-review               Review staged changes with Claude (headless)"
+	@echo "  ai-review-branch        Review branch diff vs master with Claude (headless)"
 	@echo "  dev-services-delete     Delete all"

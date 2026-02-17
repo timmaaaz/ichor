@@ -167,6 +167,12 @@ func TableToolDefinitions() []llm.ToolDef {
 				"type":       "object",
 				"properties": map[string]any{},
 			}),
+			ExampleQueries: []string{
+				"what column types are available",
+				"show me the valid format options for tables",
+				"what filter operators can I use",
+				"list the editable field types",
+			},
 		},
 
 		// =================================================================
@@ -188,13 +194,24 @@ func TableToolDefinitions() []llm.ToolDef {
 					},
 				},
 			}),
+			ExampleQueries: []string{
+				"what schemas are in the database",
+				"show me the columns for the users table",
+				"what tables are in the inventory schema",
+				"describe the products table structure",
+			},
 		},
 
 		// =================================================================
 		// Table config read
 		// =================================================================
 		{
-			Name:        "get_table_config",
+			Name: "get_table_config",
+			ExampleQueries: []string{
+				"show me the users table config",
+				"get the configuration for the inventory table",
+				"what does the products table config look like",
+			},
 			Description: "Fetch a single table configuration by UUID or name. Returns the full config including data_source and visual_settings.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -217,13 +234,23 @@ func TableToolDefinitions() []llm.ToolDef {
 				"type":       "object",
 				"properties": map[string]any{},
 			}),
+			ExampleQueries: []string{
+				"show me all table configs",
+				"what table configurations exist",
+				"list the tables that have been configured",
+			},
 		},
 
 		// =================================================================
 		// Table config validation
 		// =================================================================
 		{
-			Name:        "validate_table_config",
+			Name: "validate_table_config",
+			ExampleQueries: []string{
+				"check if this table config is valid",
+				"validate my table configuration",
+				"dry run the table config",
+			},
 			Description: "Validate a table configuration without saving it. Returns validation errors if the config is invalid. Use this as a dry-run before creating or updating.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -241,7 +268,12 @@ func TableToolDefinitions() []llm.ToolDef {
 		// Table config write
 		// =================================================================
 		{
-			Name:        "create_table_config",
+			Name: "create_table_config",
+			ExampleQueries: []string{
+				"create a new table config",
+				"set up a table for the orders data",
+				"build a table configuration",
+			},
 			Description: "Create a new table configuration. Always validate first with validate_table_config, then show the user what will be created before calling this.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -263,7 +295,12 @@ func TableToolDefinitions() []llm.ToolDef {
 			}),
 		},
 		{
-			Name:        "update_table_config",
+			Name: "update_table_config",
+			ExampleQueries: []string{
+				"update the users table config",
+				"change the column settings for this table",
+				"modify the table configuration",
+			},
 			Description: "Update an existing table configuration by UUID. Always fetch the current config first with get_table_config, then validate changes with validate_table_config before updating.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -281,6 +318,15 @@ func TableToolDefinitions() []llm.ToolDef {
 			}),
 		},
 	}
+}
+
+// AllToolDefinitions returns every tool across all contexts (workflow + tables).
+// Used by the ToolIndex to build the embedding index at startup.
+func AllToolDefinitions() []llm.ToolDef {
+	all := make([]llm.ToolDef, 0, 30)
+	all = append(all, ToolDefinitions()...)
+	all = append(all, TableToolDefinitions()...)
+	return all
 }
 
 // ToolDefinitions returns the fixed set of tools exposed to the LLM.
@@ -303,13 +349,27 @@ func ToolDefinitions() []llm.ToolDef {
 				},
 				"required": []string{"category"},
 			}),
+			ExampleQueries: []string{
+				"what action types are available",
+				"show me the trigger types",
+				"what entities can I use in workflows",
+				"what config fields does send_email need",
+				"what output ports does evaluate_condition have",
+			},
 		},
 
 		// =================================================================
 		// Workflow read
 		// =================================================================
 		{
-			Name:        "get_workflow_rule",
+			Name: "get_workflow_rule",
+			ExampleQueries: []string{
+				"show me the Low Stock Alert workflow",
+				"describe the inventory reorder rule",
+				"what does this workflow do",
+				"explain the automation rule",
+				"get the workflow details",
+			},
 			Description: "Fetch a single automation rule by name or ID. Returns a compact summary: rule metadata (name, description, trigger, entity), node/edge/branch counts, action types used, and a human-readable flow outline showing the execution path. Does NOT return raw action configs — use explain_workflow_node for detail on a specific action.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -323,7 +383,14 @@ func ToolDefinitions() []llm.ToolDef {
 			}),
 		},
 		{
-			Name:        "explain_workflow_node",
+			Name: "explain_workflow_node",
+			ExampleQueries: []string{
+				"who receives alerts from this workflow",
+				"what does the condition check",
+				"explain the send email action",
+				"show me the config for this action",
+				"what are the alert recipients",
+			},
 			Description: "Get details about a specific action in a workflow by name or UUID. Returns the action's full config (including alert recipients, email templates, conditions, etc.), incoming edges, outgoing edges, and depth from the start node. Use this to answer questions about action specifics like 'who receives alerts?' or 'what does this condition check?'. Use after get_workflow_rule to drill into a specific action.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -347,13 +414,25 @@ func ToolDefinitions() []llm.ToolDef {
 				"type":       "object",
 				"properties": map[string]any{},
 			}),
+			ExampleQueries: []string{
+				"show me all workflows",
+				"list the automation rules",
+				"what workflow rules exist",
+				"how many workflows are there",
+			},
 		},
 
 		// =================================================================
 		// Alerts
 		// =================================================================
 		{
-			Name:        "list_my_alerts",
+			Name: "list_my_alerts",
+			ExampleQueries: []string{
+				"show me my alerts",
+				"do I have any notifications",
+				"check my inbox",
+				"what alerts have I received",
+			},
 			Description: "List alerts in YOUR inbox (alerts where you are a recipient, either directly or via a role). This does NOT search all alerts in the system — only ones addressed to you. Returns up to 50 alerts per request (default). Response includes total count — if has_more is true, increment page to load more. Returns enriched recipient data (names, emails, role names). To see who a workflow is configured to alert, use explain_workflow_node instead.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -380,7 +459,12 @@ func ToolDefinitions() []llm.ToolDef {
 			}),
 		},
 		{
-			Name:        "get_alert_detail",
+			Name: "get_alert_detail",
+			ExampleQueries: []string{
+				"show me the details of that alert",
+				"get info on this specific alert",
+				"what happened with alert X",
+			},
 			Description: "Get detailed information about a specific fired alert by its UUID, including enriched recipient data (user names, emails, role names). Use this for alerts you already know the ID of. To see the configured recipients of a workflow's alert action, use explain_workflow_node instead.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -394,7 +478,13 @@ func ToolDefinitions() []llm.ToolDef {
 			}),
 		},
 		{
-			Name:        "list_alerts_for_rule",
+			Name: "list_alerts_for_rule",
+			ExampleQueries: []string{
+				"has this workflow triggered any alerts",
+				"show alerts fired by the Low Stock rule",
+				"what alerts has this rule created",
+				"check if the workflow is actually firing",
+			},
 			Description: "List alerts that were fired by a specific workflow rule. Shows all alerts created by the rule (not just yours). Returns up to 50 alerts per request (default). Response includes total count — if has_more is true, increment page to load more. Returns enriched recipient data. Use this to check if a workflow has actually triggered alerts and who received them.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -425,7 +515,14 @@ func ToolDefinitions() []llm.ToolDef {
 		// Preview (validate + send to user for approval)
 		// =================================================================
 		{
-			Name:        "preview_workflow",
+			Name: "preview_workflow",
+			ExampleQueries: []string{
+				"preview the changes I made",
+				"show me what the workflow will look like",
+				"validate and preview this workflow",
+				"update the workflow and let me review it",
+				"change the condition and preview",
+			},
 			Description: "Validate a workflow and send a visual preview to the user for approval. ALWAYS use this instead of create_workflow or update_workflow. The user will see the proposed changes and can accept or reject them directly.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -448,7 +545,13 @@ func ToolDefinitions() []llm.ToolDef {
 		// Draft builder (incremental workflow creation)
 		// =================================================================
 		{
-			Name:        "start_draft",
+			Name: "start_draft",
+			ExampleQueries: []string{
+				"create a new workflow",
+				"build an automation rule",
+				"set up a new workflow for inventory",
+				"I want to make a new rule",
+			},
 			Description: "Start building a new workflow incrementally. Returns a draft_id to use with add_draft_action and preview_draft. Accepts entity/trigger names (no UUID lookup needed).",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -478,7 +581,13 @@ func ToolDefinitions() []llm.ToolDef {
 			}),
 		},
 		{
-			Name:        "add_draft_action",
+			Name: "add_draft_action",
+			ExampleQueries: []string{
+				"add a step to the workflow",
+				"add a send email action",
+				"add a condition check after the lookup",
+				"insert an alert action",
+			},
 			Description: "Add an action to a draft workflow. Use 'after' to declare which action precedes this one. Omit 'after' for the first action (it becomes the start node). Returns the action's available output ports.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -513,7 +622,12 @@ func ToolDefinitions() []llm.ToolDef {
 			}),
 		},
 		{
-			Name:        "remove_draft_action",
+			Name: "remove_draft_action",
+			ExampleQueries: []string{
+				"remove the email step",
+				"delete that action from the draft",
+				"take out the condition check",
+			},
 			Description: "Remove an action from a draft workflow by name. Also removes any 'after' references to this action from other actions.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
@@ -531,7 +645,13 @@ func ToolDefinitions() []llm.ToolDef {
 			}),
 		},
 		{
-			Name:        "preview_draft",
+			Name: "preview_draft",
+			ExampleQueries: []string{
+				"preview the draft workflow",
+				"show me what the draft looks like",
+				"validate and preview the draft",
+				"I'm done adding actions, preview it",
+			},
 			Description: "Assemble the draft into a complete workflow, validate it, and send a visual preview to the user for approval. The user will accept or reject the preview directly.",
 			InputSchema: schema(map[string]any{
 				"type": "object",
