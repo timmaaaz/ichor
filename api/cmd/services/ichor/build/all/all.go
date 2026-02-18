@@ -448,8 +448,10 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Log: cfg.Log,
 		DB:  cfg.DB,
 		Buses: workflowactions.BusDependencies{
-			InventoryItem: inventoryItemBus,
-			Workflow:      workflowBus,
+			InventoryItem:        inventoryItemBus,
+			InventoryTransaction: inventoryTransactionBus,
+			SupplierProduct:      supplierProductBus,
+			Workflow:             workflowBus,
 		},
 	})
 

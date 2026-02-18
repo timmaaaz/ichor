@@ -6,6 +6,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -38,6 +39,9 @@ type BusDependencies struct {
 	InventoryTransaction *inventorytransactionbus.Business
 	Product              *productbus.Business
 	Workflow             *workflow.Business
+
+	// Procurement domain
+	SupplierProduct *supplierproductbus.Business
 
 	// Workflow domain
 	Alert *alertbus.Business
@@ -102,6 +106,7 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 	registry.Register(inventory.NewReleaseReservationHandler(config.Log, config.DB, config.Buses.InventoryItem))
 	registry.Register(inventory.NewCommitAllocationHandler(config.Log, config.DB, config.Buses.InventoryItem))
 	registry.Register(inventory.NewReserveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.Workflow))
+	registry.Register(inventory.NewReceiveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.InventoryTransaction, config.Buses.SupplierProduct))
 }
 
 // RegisterCoreActions registers action handlers that don't require RabbitMQ or heavy dependencies.

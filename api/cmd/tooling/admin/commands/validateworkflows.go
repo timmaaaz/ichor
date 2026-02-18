@@ -82,6 +82,7 @@ func createValidationRegistry() *workflow.ActionRegistry {
 	registry.Register(communication.NewSendNotificationHandler(nil, nil))
 	registry.Register(communication.NewCreateAlertHandler(nil, nil, nil))
 	registry.Register(inventory.NewAllocateInventoryHandler(nil, nil, nil, nil, nil, nil, nil))
+	registry.Register(inventory.NewReceiveInventoryHandler(nil, nil, nil, nil, nil))
 
 	return registry
 }
@@ -285,6 +286,28 @@ func collectWorkflowConfigs() []workflowEntry {
 				"allocation_mode": "allocate",
 				"allocation_strategy": "lifo",
 				"priority": "critical"
+			}`),
+		},
+
+		// =====================================================================
+		// receive_inventory action configs
+		// =====================================================================
+		{
+			name:       "ReceiveInventoryExplicit",
+			actionType: "receive_inventory",
+			config: json.RawMessage(`{
+				"product_id": "00000000-0000-0000-0000-000000000001",
+				"quantity": 100,
+				"location_id": "00000000-0000-0000-0000-000000000001",
+				"reference_number": "PO-2026-001"
+			}`),
+		},
+		{
+			name:       "ReceiveInventoryFromPO",
+			actionType: "receive_inventory",
+			config: json.RawMessage(`{
+				"source_from_po": true,
+				"location_id": "00000000-0000-0000-0000-000000000001"
 			}`),
 		},
 	}

@@ -10,11 +10,11 @@ project:
   description: "Close all identified gaps in the workflow action system: stubs, missing tables, broken FieldChanges, and missing action handlers"
   started: "2026-02-18"
   status: "in_progress"  # planning | in_progress | completed | blocked
-  current_phase: 5
+  current_phase: 7
 
   summary:
     phases_total: 9
-    phases_completed: 4
+    phases_completed: 5
     phases_in_progress: 0
     phases_pending: 5
     files_created: 3
@@ -350,49 +350,60 @@ phases:
   - phase: 6
     name: "Add receive_inventory Action"
     description: "New action handler that processes incoming inventory from a PO receipt: increases item quantity and creates an inbound transaction record"
-    status: "pending"
+    status: "completed"
+    completed_date: "2026-02-18"
     category: "backend"
     workflow: "feature-dev"
     plan_reviewed: false
     plan_review_grade: null
-    reviewed: false
+    reviewed: true
     review_grade: null
     tasks:
       - task: "Create ReceiveInventoryHandler"
-        status: "pending"
+        status: "completed"
         notes:
           - "New file: business/sdk/workflow/workflowactions/inventory/receive.go"
-          - "Config: {product_id, quantity, warehouse_id, location_id, source_from_po?, po_line_item_id?, lot_number?, notes?}"
-          - "source_from_po: true = extract product_id/quantity from trigger event RawData (PO line item created/updated)"
-          - "Update inventory_items.quantity (available stock) via inventoryitembus"
-          - "Create inventory_transaction record (transaction_type='inbound') via inventorytransactionbus"
-          - "Output ports: received (default), failure"
-          - "EntityModifier: fires on_update for inventory.inventory_items, on_create for inventory.inventory_transactions"
-          - "SupportsManualExecution: true"
-          - "IsAsync: false"
+          - "Config: {product_id, quantity, location_id, source_from_po?, po_line_item_id?, reference_number?, notes?}"
+          - "Dropped warehouse_id — inventory items are identified by (product_id, location_id)"
+          - "source_from_po resolves supplier_product_id → product_id via supplierproductbus.QueryByID"
+          - "Extracts quantity_received (fallback quantity_ordered) from PO line item RawData"
+          - "DB transaction wraps both Query + Update + Create (fixes TOCTOU race)"
+          - "Output ports: received (default), item_not_found, failure"
+          - "Data validation errors route to failure output port (not hard errors)"
+          - "EntityModifier: on_update inventory.inventory_items, on_create inventory.inventory_transactions"
         files:
           - path: "business/sdk/workflow/workflowactions/inventory/receive.go"
-            status: "pending"
-      - task: "Register handler in register.go"
-        status: "pending"
+            status: "completed"
+      - task: "Register handler and add SupplierProduct bus dependency"
+        status: "completed"
         notes:
-          - "Add to RegisterGranularInventoryActions and RegisterAll"
-          - "Uses existing BusDependencies.InventoryItem and InventoryTransaction"
+          - "Added SupplierProduct *supplierproductbus.Business to BusDependencies"
+          - "Registered in RegisterGranularInventoryActions"
+          - "Wired inventoryTransactionBus + supplierProductBus in all.go"
+          - "Added handler + sample configs to validateworkflows.go"
         files:
           - path: "business/sdk/workflow/workflowactions/register.go"
-            status: "pending"
+            status: "completed"
+          - path: "api/cmd/services/ichor/build/all/all.go"
+            status: "completed"
+          - path: "api/cmd/tooling/admin/commands/validateworkflows.go"
+            status: "completed"
     validation:
       - check: "go build ./... passes"
-        status: "pending"
+        status: "completed"
+      - check: "go vet ./... passes"
+        status: "completed"
       - check: "receive_inventory increases inventory_item.quantity in DB"
-        status: "pending"
+        status: "completed"
       - check: "receive_inventory creates inbound inventory_transaction record"
-        status: "pending"
+        status: "completed"
       - check: "source_from_po mode extracts fields from trigger event RawData"
-        status: "pending"
+        status: "completed"
     deliverables:
       - "ReceiveInventoryHandler in inventory/ subpackage"
-      - "PO receipt workflow chain works end-to-end"
+      - "SupplierProduct bus dependency added for source_from_po resolution"
+      - "DB transaction wraps inventory Query + Update + transaction Create atomically"
+      - "Validation and sample configs in validateworkflows.go"
     blockers: []
 
   - phase: 7
@@ -602,7 +613,7 @@ phases:
     blockers: []
 
 context:
-  current_focus: "Phases 1, 2, 3, 4 complete — ready for Phase 5 (send_email SMTP)"
+  current_focus: "Phases 1, 2, 3, 4, 6 complete — ready for Phase 5 (send_email) or Phase 7 (call_webhook)"
   next_task: "Phase 5: implement send_email with real SMTP delivery"
   recent_changes:
     - "Initial plan structure created with 9 phases"
