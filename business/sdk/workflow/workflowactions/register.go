@@ -16,6 +16,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/integration"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/procurement"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -91,6 +92,9 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 
 	// Procurement actions
 	RegisterProcurementActions(registry, config)
+
+	// Integration actions
+	registry.Register(integration.NewCallWebhookHandler(config.Log))
 }
 
 // RegisterInventoryActions registers only inventory-related actions
@@ -152,4 +156,7 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 	// Communication actions that don't need queue
 	registry.Register(communication.NewSendEmailHandler(log, db))
 	registry.Register(communication.NewSendNotificationHandler(log, nil))
+
+	// Integration actions - no bus/DB/queue dependencies
+	registry.Register(integration.NewCallWebhookHandler(log))
 }

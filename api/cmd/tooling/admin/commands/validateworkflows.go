@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/integration"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/procurement"
 )
@@ -85,6 +86,7 @@ func createValidationRegistry() *workflow.ActionRegistry {
 	registry.Register(inventory.NewAllocateInventoryHandler(nil, nil, nil, nil, nil, nil, nil))
 	registry.Register(inventory.NewReceiveInventoryHandler(nil, nil, nil, nil, nil))
 	registry.Register(procurement.NewCreatePurchaseOrderHandler(nil, nil, nil, nil, nil))
+	registry.Register(integration.NewCallWebhookHandler(nil))
 
 	return registry
 }
@@ -365,6 +367,39 @@ func collectWorkflowConfigs() []workflowEntry {
 				"delivery_location_id": "00000000-0000-0000-0000-000000000001",
 				"currency_id": "00000000-0000-0000-0000-000000000001",
 				"default_line_item_status_id": "00000000-0000-0000-0000-000000000001"
+			}`),
+		},
+
+		// =====================================================================
+		// call_webhook action configs
+		// =====================================================================
+		{
+			name:       "WebhookPostJSON",
+			actionType: "call_webhook",
+			config: json.RawMessage(`{
+				"url": "https://api.example.com/webhooks/orders",
+				"method": "POST",
+				"headers": {"Authorization": "Bearer {{api_token}}"},
+				"body": "{\"order_id\": \"{{entity_id}}\", \"status\": \"shipped\"}"
+			}`),
+		},
+		{
+			name:       "WebhookGetWithTimeout",
+			actionType: "call_webhook",
+			config: json.RawMessage(`{
+				"url": "https://api.example.com/status/{{entity_id}}",
+				"method": "GET",
+				"timeout_seconds": 10,
+				"expected_status_codes": [200]
+			}`),
+		},
+		{
+			name:       "WebhookLocalhost",
+			actionType: "call_webhook",
+			config: json.RawMessage(`{
+				"url": "http://localhost:9090/internal/hook",
+				"method": "PUT",
+				"body": "{\"event\": \"inventory_received\"}"
 			}`),
 		},
 	}
