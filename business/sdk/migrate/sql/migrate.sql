@@ -2006,3 +2006,56 @@ UPDATE workflow.action_edges SET edge_type = 'sequence' WHERE edge_type IN ('tru
 ALTER TABLE workflow.action_edges DROP CONSTRAINT unique_edge;
 ALTER TABLE workflow.action_edges ADD CONSTRAINT unique_edge
   UNIQUE(source_action_id, target_action_id, source_output);
+
+-- Version: 1.996
+-- Description: Add is_default flag to automation_rules; update automation_rules_view
+ALTER TABLE workflow.automation_rules ADD COLUMN is_default BOOLEAN NOT NULL DEFAULT FALSE;
+
+COMMENT ON COLUMN workflow.automation_rules.is_default IS
+  'True for system-seeded default workflows. Immutable after creation — cannot be modified via UpdateRule.';
+
+CREATE OR REPLACE VIEW workflow.automation_rules_view AS
+SELECT
+    ar.id,
+    ar.name,
+    ar.description,
+    ar.trigger_conditions,
+    ar.canvas_layout,
+    ar.is_active,
+    ar.created_date,
+    ar.updated_date,
+    ar.created_by,
+    ar.updated_by,
+    ar.deactivated_by,
+
+    -- Trigger type fields
+    tt.id as trigger_type_id,
+    tt.name as trigger_type_name,
+    tt.description as trigger_type_description,
+
+    -- Entity type fields (from automation_rules.entity_type_id)
+    et.id as entity_type_id,
+    et.name as entity_type_name,
+    et.description as entity_type_description,
+
+    -- Entity fields (from automation_rules.entity_id)
+    e.id as entity_id,
+    e.name as entity_name,
+    e.schema_name as entity_schema_name,
+
+    -- User fields for better context
+    cu.username as created_by_username,
+    uu.username as updated_by_username,
+    du.username as deactivated_by_username,
+
+    -- Added in 1.996
+    ar.is_default
+
+FROM workflow.automation_rules ar
+LEFT JOIN workflow.trigger_types tt ON ar.trigger_type_id = tt.id
+LEFT JOIN workflow.entity_types et ON ar.entity_type_id = et.id
+LEFT JOIN workflow.entities e ON ar.entity_id = e.id
+LEFT JOIN core.users cu ON ar.created_by = cu.id
+LEFT JOIN core.users uu ON ar.updated_by = uu.id
+LEFT JOIN core.users du ON ar.deactivated_by = du.id
+WHERE ar.is_active = true;

@@ -18,6 +18,7 @@ func toRuleResponse(rule workflow.AutomationRuleView) RuleResponse {
 		TriggerTypeName:  rule.TriggerTypeName,
 		CanvasLayout:     rule.CanvasLayout,
 		IsActive:         rule.IsActive,
+		IsDefault:        rule.IsDefault,
 		CreatedBy:        rule.CreatedBy,
 		UpdatedBy:        rule.UpdatedBy,
 		CreatedDate:      rule.CreatedDate,

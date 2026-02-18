@@ -185,6 +185,7 @@ type automationRule struct {
 	TriggerConditions sql.NullString `db:"trigger_conditions"`
 	CanvasLayout      sql.NullString `db:"canvas_layout"`
 	IsActive          bool           `db:"is_active"`
+	IsDefault         bool           `db:"is_default"`
 	CreatedDate       time.Time      `db:"created_date"`
 	UpdatedDate       time.Time      `db:"updated_date"`
 	CreatedBy         string         `db:"created_by"`
@@ -207,6 +208,7 @@ func toCoreAutomationRule(dbRule automationRule) workflow.AutomationRule {
 		EntityTypeID:  uuid.MustParse(dbRule.EntityTypeID),
 		TriggerTypeID: uuid.MustParse(dbRule.TriggerTypeID),
 		IsActive:      dbRule.IsActive,
+		IsDefault:     dbRule.IsDefault,
 		CreatedDate:   dbRule.CreatedDate,
 		UpdatedDate:   dbRule.UpdatedDate,
 		CreatedBy:     uuid.MustParse(dbRule.CreatedBy),
@@ -251,6 +253,7 @@ func toDBAutomationRule(ar workflow.AutomationRule) (automationRule, error) {
 		EntityTypeID:  ar.EntityTypeID.String(),
 		TriggerTypeID: ar.TriggerTypeID.String(),
 		IsActive:      ar.IsActive,
+		IsDefault:     ar.IsDefault,
 		CreatedDate:   ar.CreatedDate,
 		UpdatedDate:   ar.UpdatedDate,
 		CreatedBy:     ar.CreatedBy.String(),
@@ -532,6 +535,7 @@ type automationRulesView struct {
 	CanvasLayout      sql.NullString  `db:"canvas_layout"`
 	Actions           json.RawMessage `db:"actions"`
 	IsActive          bool            `db:"is_active"`
+	IsDefault         bool            `db:"is_default"`
 	CreatedDate       time.Time       `db:"created_date"`
 	UpdatedDate       time.Time       `db:"updated_date"`
 	CreatedBy         string          `db:"created_by"`
@@ -557,6 +561,7 @@ func toCoreAutomationRuleView(dbView automationRulesView) workflow.AutomationRul
 		Description: nulltypes.StringPtr(dbView.Description),
 		Actions:     dbView.Actions,
 		IsActive:    dbView.IsActive,
+		IsDefault:   dbView.IsDefault,
 		CreatedDate: dbView.CreatedDate,
 		UpdatedDate: dbView.UpdatedDate,
 		CreatedBy:   uuid.MustParse(dbView.CreatedBy),

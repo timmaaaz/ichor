@@ -224,6 +224,11 @@ func (a *App) updateRule(ctx context.Context, bus *workflow.Business, ruleID uui
 		return workflow.AutomationRule{}, errs.Newf(errs.NotFound, "rule not found: %s", err)
 	}
 
+	// Default workflows cannot be modified via save — use duplicate instead.
+	if rule.IsDefault {
+		return workflow.AutomationRule{}, errs.Newf(errs.PermissionDenied, "cannot modify default workflow: use POST /v1/workflow/rules/{id}/duplicate to create an editable copy")
+	}
+
 	// Parse entity ID
 	entityID, err := uuid.Parse(req.EntityID)
 	if err != nil {
@@ -569,6 +574,145 @@ func getActionTypeFromConfig(config json.RawMessage) string {
 	}
 
 	return ""
+}
+
+// DuplicateWorkflow deep-copies an existing workflow (rule + active actions + edges).
+// The duplicate gets name "{original}-DUPLICATE", is_active=false, is_default=false,
+// and is owned by the requesting user.
+func (a *App) DuplicateWorkflow(ctx context.Context, ruleID uuid.UUID, userID uuid.UUID) (SaveWorkflowResponse, error) {
+	// 1. Fetch source rule
+	sourceRule, err := a.workflowBus.QueryRuleByID(ctx, ruleID)
+	if err != nil {
+		return SaveWorkflowResponse{}, errs.Newf(errs.NotFound, "rule not found: %s", err)
+	}
+
+	// 2. Fetch active actions only
+	allActions, err := a.workflowBus.QueryActionsByRule(ctx, ruleID)
+	if err != nil {
+		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "query actions: %s", err)
+	}
+
+	var activeActions []workflow.RuleAction
+	for _, action := range allActions {
+		if action.IsActive {
+			activeActions = append(activeActions, action)
+		}
+	}
+
+	// 3. Fetch edges
+	edges, err := a.workflowBus.QueryEdgesByRuleID(ctx, ruleID)
+	if err != nil {
+		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "query edges: %s", err)
+	}
+
+	// 4. Begin transaction
+	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "begin tx: %s", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	txBus, err := a.workflowBus.NewWithTx(tx)
+	if err != nil {
+		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "new with tx: %s", err)
+	}
+
+	// 5. Create duplicate rule
+	newRule := workflow.NewAutomationRule{
+		Name:              sourceRule.Name + "-DUPLICATE",
+		Description:       sourceRule.Description,
+		EntityID:          sourceRule.EntityID,
+		EntityTypeID:      sourceRule.EntityTypeID,
+		TriggerTypeID:     sourceRule.TriggerTypeID,
+		TriggerConditions: sourceRule.TriggerConditions,
+		CanvasLayout:      sourceRule.CanvasLayout,
+		IsActive:          false,
+		IsDefault:         false,
+		CreatedBy:         userID,
+	}
+
+	rule, err := txBus.CreateRule(ctx, newRule)
+	if err != nil {
+		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "create rule: %s", err)
+	}
+
+	// 6. Create actions and build oldID→newID map
+	oldToNewID := make(map[uuid.UUID]uuid.UUID)
+	var savedActions []workflow.RuleAction
+
+	for _, srcAction := range activeActions {
+		newAction := workflow.NewRuleAction{
+			AutomationRuleID: rule.ID,
+			Name:             srcAction.Name,
+			Description:      srcAction.Description,
+			ActionConfig:     srcAction.ActionConfig,
+			IsActive:         srcAction.IsActive,
+			TemplateID:       srcAction.TemplateID,
+		}
+
+		created, err := txBus.CreateRuleAction(ctx, newAction)
+		if err != nil {
+			return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "create action: %s", err)
+		}
+
+		oldToNewID[srcAction.ID] = created.ID
+		savedActions = append(savedActions, created)
+	}
+
+	// 7. Create edges, remapping IDs; skip edges whose source or target was inactive
+	var savedEdges []workflow.ActionEdge
+
+	for _, edge := range edges {
+		// Remap target — skip if target action was inactive
+		newTargetID, ok := oldToNewID[edge.TargetActionID]
+		if !ok {
+			continue
+		}
+
+		// Remap source (nil for start edges)
+		var newSourceID *uuid.UUID
+		if edge.SourceActionID != nil {
+			mapped, ok := oldToNewID[*edge.SourceActionID]
+			if !ok {
+				continue // source action was inactive
+			}
+			newSourceID = &mapped
+		}
+
+		newEdge := workflow.NewActionEdge{
+			RuleID:         rule.ID,
+			SourceActionID: newSourceID,
+			TargetActionID: newTargetID,
+			EdgeType:       edge.EdgeType,
+			SourceOutput:   edge.SourceOutput,
+			EdgeOrder:      edge.EdgeOrder,
+		}
+
+		created, err := txBus.CreateActionEdge(ctx, newEdge)
+		if err != nil {
+			return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "create edge: %s", err)
+		}
+
+		savedEdges = append(savedEdges, created)
+	}
+
+	// 8. Commit transaction
+	if err := tx.Commit(); err != nil {
+		return SaveWorkflowResponse{}, errs.Newf(errs.Internal, "commit: %s", err)
+	}
+
+	// 9. Fire delegate event AFTER commit
+	if a.delegate != nil {
+		a.log.Info(ctx, "workflowsaveapp: duplicate committed, firing delegate event", "ruleID", rule.ID, "action", "created")
+		if err := a.delegate.Call(ctx, workflow.ActionRuleChangedData(workflow.ActionRuleCreated, rule.ID)); err != nil {
+			a.log.Error(ctx, "workflowsaveapp: delegate call failed", "action", workflow.ActionRuleCreated, "err", err)
+		}
+	}
+
+	// 10. Return response
+	return buildResponse(rule, savedActions, savedEdges, sourceRule.CanvasLayout), nil
 }
 
 // buildResponse constructs the SaveWorkflowResponse from business layer objects.

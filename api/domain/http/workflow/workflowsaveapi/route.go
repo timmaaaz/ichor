@@ -45,4 +45,8 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodPost, version, "/workflow/rules/full", api.create, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
 
+	// Duplicate workflow - requires create permission
+	app.HandlerFunc(http.MethodPost, version, "/workflow/rules/{id}/duplicate", api.duplicate, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
+
 }

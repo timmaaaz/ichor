@@ -171,6 +171,7 @@ type AutomationRule struct {
 	TriggerConditions *json.RawMessage
 	CanvasLayout      json.RawMessage
 	IsActive          bool
+	IsDefault         bool
 	CreatedDate       time.Time
 	UpdatedDate       time.Time
 	CreatedBy         uuid.UUID
@@ -188,6 +189,7 @@ type NewAutomationRule struct {
 	TriggerConditions *json.RawMessage
 	CanvasLayout      json.RawMessage
 	IsActive          bool
+	IsDefault         bool
 	CreatedBy         uuid.UUID
 }
 
@@ -481,6 +483,7 @@ type AutomationRuleView struct {
 	CanvasLayout      json.RawMessage
 	Actions           json.RawMessage
 	IsActive          bool
+	IsDefault         bool
 	CreatedDate       time.Time
 	UpdatedDate       time.Time
 	CreatedBy         uuid.UUID

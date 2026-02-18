@@ -475,11 +475,11 @@ func (s *Store) CreateRule(ctx context.Context, rule workflow.AutomationRule) er
 	const q = `
 	INSERT INTO workflow.automation_rules (
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
-		trigger_conditions, canvas_layout, is_active, created_date, updated_date,
+		trigger_conditions, canvas_layout, is_active, is_default, created_date, updated_date,
 		created_by, updated_by
 	) VALUES (
 		:id, :name, :description, :entity_id, :entity_type_id, :trigger_type_id,
-		:trigger_conditions, :canvas_layout, :is_active, :created_date, :updated_date,
+		:trigger_conditions, :canvas_layout, :is_active, :is_default, :created_date, :updated_date,
 		:created_by, :updated_by
 	)`
 
@@ -583,7 +583,7 @@ func (s *Store) QueryRuleByID(ctx context.Context, userID uuid.UUID) (workflow.A
 	const q = `
 	SELECT
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
-		trigger_conditions, canvas_layout, is_active, created_date, updated_date,
+		trigger_conditions, canvas_layout, is_active, is_default, created_date, updated_date,
 		created_by, updated_by
 	FROM
 		workflow.automation_rules
@@ -612,7 +612,7 @@ func (s *Store) QueryRulesByEntity(ctx context.Context, entityID uuid.UUID) ([]w
 	const q = `
 	SELECT
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
-		trigger_conditions, canvas_layout, is_active, created_date, updated_date,
+		trigger_conditions, canvas_layout, is_active, is_default, created_date, updated_date,
 		created_by, updated_by
 	FROM
 		workflow.automation_rules
@@ -632,7 +632,7 @@ func (s *Store) QueryActiveRules(ctx context.Context) ([]workflow.AutomationRule
 	const q = `
 	SELECT
 		id, name, description, entity_id, entity_type_id, trigger_type_id,
-		trigger_conditions, canvas_layout, is_active, created_date, updated_date,
+		trigger_conditions, canvas_layout, is_active, is_default, created_date, updated_date,
 		created_by, updated_by
 	FROM
 		workflow.automation_rules
@@ -1161,7 +1161,7 @@ func (s *Store) QueryAllocationResultByIdempotencyKey(ctx context.Context, idemp
 func (s *Store) QueryAutomationRulesView(ctx context.Context) ([]workflow.AutomationRuleView, error) {
 	const q = `
 	SELECT
-		id, name, description, trigger_conditions, canvas_layout, is_active, created_date, updated_date,
+		id, name, description, trigger_conditions, canvas_layout, is_active, is_default, created_date, updated_date,
 		created_by, updated_by, trigger_type_id, trigger_type_name, trigger_type_description,
 		entity_type_id, entity_type_name, entity_type_description, entity_name, entity_id
 	FROM
@@ -1223,6 +1223,7 @@ func (s *Store) QueryAutomationRulesViewPaginated(
 		ar.trigger_conditions,
 		ar.canvas_layout,
 		ar.is_active,
+		ar.is_default,
 		ar.created_date,
 		ar.updated_date,
 		ar.created_by,

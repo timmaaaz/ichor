@@ -3815,7 +3815,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			log.Error(ctx, "Failed to create check_reorder_point template", "error", err)
 		}
 
-		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+		logAuditEntryTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
 			Name:          "Log Audit Entry",
 			Description:   "Write an audit trail entry to the workflow audit log",
 			ActionType:    "log_audit_entry",
@@ -3899,7 +3899,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			log.Error(ctx, "Failed to create send_email template", "error", err)
 		}
 
-		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+		sendNotificationTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
 			Name:          "Send Notification",
 			Description:   "Sends in-app notifications through various channels",
 			ActionType:    "send_notification",
@@ -3944,6 +3944,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				EntityTypeID:  wfEntityType.ID,
 				TriggerTypeID: onCreateTrigger.ID,
 				IsActive:      false,
+				IsDefault:     true,
 				CreatedBy:     admins[0].ID,
 			})
 			if err != nil {
@@ -4012,6 +4013,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				TriggerTypeID:     onCreateTrigger.ID,
 				TriggerConditions: &successConditionRaw,
 				IsActive:          false,
+				IsDefault:     true,
 				CreatedBy:         admins[0].ID,
 			})
 			if err != nil {
@@ -4113,6 +4115,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				TriggerTypeID:     onCreateTrigger.ID,
 				TriggerConditions: &failedConditionRaw,
 				IsActive:          false,
+				IsDefault:     true,
 				CreatedBy:         admins[0].ID,
 			})
 			if err != nil {
@@ -4154,6 +4157,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				EntityTypeID:  wfEntityType.ID,
 				TriggerTypeID: onCreateTrigger.ID,
 				IsActive:      false,
+				IsDefault:     true,
 				CreatedBy:     admins[0].ID,
 			})
 			if err != nil {
@@ -4244,6 +4248,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 				EntityTypeID:  wfEntityType.ID,
 				TriggerTypeID: onCreateTrigger.ID,
 				IsActive:      true,
+				IsDefault:     true,
 				CreatedBy:     admins[0].ID,
 			})
 			if err != nil {
@@ -4467,6 +4472,470 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 					}
 
 					log.Info(ctx, "Created 'Line Item Created - Granular Inventory Pipeline' rule with 6 actions and 6 edges")
+				}
+			}
+		}
+
+		// =============================================================================
+		// NEW DEFAULT WORKFLOWS ACROSS DOMAINS
+		// =============================================================================
+
+		// Query on_update trigger type (on_create already queried above)
+		onUpdateTrigger, err := busDomain.Workflow.QueryTriggerTypeByName(ctx, "on_update")
+		if err != nil {
+			log.Error(ctx, "Failed to query on_update trigger type", "error", err)
+		}
+
+		// Query entities needed for new default workflows
+		dwInventoryItemsEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "inventory_items")
+		if err != nil {
+			log.Error(ctx, "Failed to query inventory_items entity for default workflows", "error", err)
+		}
+
+		dwOrdersEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "orders")
+		if err != nil {
+			log.Error(ctx, "Failed to query orders entity for default workflows", "error", err)
+		}
+
+		dwUsersEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "users")
+		if err != nil {
+			log.Error(ctx, "Failed to query users entity for default workflows", "error", err)
+		}
+
+		dwSuppliersEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "suppliers")
+		if err != nil {
+			log.Error(ctx, "Failed to query suppliers entity for default workflows", "error", err)
+		}
+
+		dwSupplierProductsEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "supplier_products")
+		if err != nil {
+			log.Error(ctx, "Failed to query supplier_products entity for default workflows", "error", err)
+		}
+
+		dwUserAssetsEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "user_assets")
+		if err != nil {
+			log.Error(ctx, "Failed to query user_assets entity for default workflows", "error", err)
+		}
+
+		// --- Default Workflow 1: Low Stock Alert Pipeline (inventory_items, on_update) ---
+		if dwInventoryItemsEntity.ID != uuid.Nil && onUpdateTrigger.ID != uuid.Nil &&
+			checkReorderPointTemplate.ID != uuid.Nil && createAlertTemplate.ID != uuid.Nil {
+
+			lowStockRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Low Stock Alert Pipeline",
+				Description:   "When an inventory item is updated, check if stock is below reorder point and alert operations",
+				EntityID:      dwInventoryItemsEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onUpdateTrigger.ID,
+				IsActive:      false,
+				IsDefault:     true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Low Stock Alert Pipeline rule", "error", err)
+			} else {
+				reorderCheckCfg, _ := json.Marshal(map[string]interface{}{
+					"source_from_entity": true,
+				})
+				checkAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: lowStockRule.ID,
+					Name:             "Check Reorder Point",
+					Description:      "Check if inventory is below reorder point",
+					ActionConfig:     json.RawMessage(reorderCheckCfg),
+					IsActive:         true,
+					TemplateID:       &checkReorderPointTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create check_reorder_point action for low stock pipeline", "error", err)
+				} else {
+					alertCfg, _ := json.Marshal(map[string]interface{}{
+						"alert_type": "low_stock_warning",
+						"severity":   "warning",
+						"title":      "Low Stock Alert",
+						"message":    "Inventory item has fallen below the reorder point",
+						"recipients": map[string]interface{}{
+							"users": []string{"5cf37266-3473-4006-984f-9325122678b7"},
+							"roles": []string{},
+						},
+					})
+					alertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+						AutomationRuleID: lowStockRule.ID,
+						Name:             "Create Low Stock Alert",
+						Description:      "Alert operations about low stock levels",
+						ActionConfig:     json.RawMessage(alertCfg),
+						IsActive:         true,
+						TemplateID:       &createAlertTemplate.ID,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create alert action for low stock pipeline", "error", err)
+					} else {
+						// start -> check_reorder_point
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         lowStockRule.ID,
+							SourceActionID: nil,
+							TargetActionID: checkAction.ID,
+							EdgeType:       "start",
+							EdgeOrder:      0,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create start edge for low stock pipeline", "error", err)
+						}
+						// check_reorder_point --[needs_reorder]--> create_alert
+						needsReorder := "needs_reorder"
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         lowStockRule.ID,
+							SourceActionID: &checkAction.ID,
+							TargetActionID: alertAction.ID,
+							EdgeType:       "sequence",
+							SourceOutput:   &needsReorder,
+							EdgeOrder:      0,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create sequence edge for low stock pipeline", "error", err)
+						}
+						log.Info(ctx, "Created 'Low Stock Alert Pipeline' default workflow")
+					}
+				}
+			}
+		}
+
+		// --- Default Workflow 2: Item Created - Log Audit Entry (inventory_items, on_create) ---
+		if dwInventoryItemsEntity.ID != uuid.Nil && logAuditEntryTemplate.ID != uuid.Nil {
+			auditRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Item Created - Log Audit Entry",
+				Description:   "When an inventory item is created, log an audit trail entry",
+				EntityID:      dwInventoryItemsEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      false,
+				IsDefault:     true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Item Created - Log Audit Entry rule", "error", err)
+			} else {
+				auditCfg, _ := json.Marshal(map[string]interface{}{
+					"log_level": "info",
+					"message":   "New inventory item created",
+				})
+				auditAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: auditRule.ID,
+					Name:             "Log Audit Entry",
+					Description:      "Write audit trail for new inventory item",
+					ActionConfig:     json.RawMessage(auditCfg),
+					IsActive:         true,
+					TemplateID:       &logAuditEntryTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create audit action for item created rule", "error", err)
+				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         auditRule.ID,
+						SourceActionID: nil,
+						TargetActionID: auditAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create start edge for item created audit rule", "error", err)
+					}
+					log.Info(ctx, "Created 'Item Created - Log Audit Entry' default workflow")
+				}
+			}
+		}
+
+		// --- Default Workflow 3: Order Created - Confirmation Alert (orders, on_create) ---
+		if dwOrdersEntity.ID != uuid.Nil && createAlertTemplate.ID != uuid.Nil {
+			orderAlertRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Order Created - Confirmation Alert",
+				Description:   "When a sales order is created, send a confirmation alert",
+				EntityID:      dwOrdersEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      false,
+				IsDefault:     true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Order Created - Confirmation Alert rule", "error", err)
+			} else {
+				alertCfg, _ := json.Marshal(map[string]interface{}{
+					"alert_type": "order_confirmation",
+					"severity":   "info",
+					"title":      "New Order Created",
+					"message":    "A new sales order has been created",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"},
+						"roles": []string{},
+					},
+				})
+				alertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: orderAlertRule.ID,
+					Name:             "Create Order Confirmation Alert",
+					Description:      "Send confirmation alert for new order",
+					ActionConfig:     json.RawMessage(alertCfg),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create alert action for order confirmation rule", "error", err)
+				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         orderAlertRule.ID,
+						SourceActionID: nil,
+						TargetActionID: alertAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create start edge for order confirmation rule", "error", err)
+					}
+					log.Info(ctx, "Created 'Order Created - Confirmation Alert' default workflow")
+				}
+			}
+		}
+
+		// --- Default Workflow 4: Order Updated - Notify Operations (orders, on_update) ---
+		if dwOrdersEntity.ID != uuid.Nil && onUpdateTrigger.ID != uuid.Nil && createAlertTemplate.ID != uuid.Nil {
+			orderUpdateRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Order Updated - Notify Operations",
+				Description:   "When a sales order is updated, notify the operations team",
+				EntityID:      dwOrdersEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onUpdateTrigger.ID,
+				IsActive:      false,
+				IsDefault:     true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Order Updated - Notify Operations rule", "error", err)
+			} else {
+				alertCfg, _ := json.Marshal(map[string]interface{}{
+					"alert_type": "order_updated",
+					"severity":   "info",
+					"title":      "Order Updated",
+					"message":    "A sales order has been updated",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"},
+						"roles": []string{},
+					},
+				})
+				alertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: orderUpdateRule.ID,
+					Name:             "Create Order Update Alert",
+					Description:      "Notify operations about order update",
+					ActionConfig:     json.RawMessage(alertCfg),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create alert action for order update rule", "error", err)
+				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         orderUpdateRule.ID,
+						SourceActionID: nil,
+						TargetActionID: alertAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create start edge for order update rule", "error", err)
+					}
+					log.Info(ctx, "Created 'Order Updated - Notify Operations' default workflow")
+				}
+			}
+		}
+
+		// --- Default Workflow 5: New User Created - Welcome Alert (users, on_create) ---
+		if dwUsersEntity.ID != uuid.Nil && createAlertTemplate.ID != uuid.Nil {
+			welcomeRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "New User Created - Welcome Alert",
+				Description:   "When a new user is created, send a welcome alert to the team",
+				EntityID:      dwUsersEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      false,
+				IsDefault:     true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create New User Created - Welcome Alert rule", "error", err)
+			} else {
+				alertCfg, _ := json.Marshal(map[string]interface{}{
+					"alert_type": "new_user_welcome",
+					"severity":   "info",
+					"title":      "New User Created",
+					"message":    "A new user has been added to the system",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"},
+						"roles": []string{},
+					},
+				})
+				alertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: welcomeRule.ID,
+					Name:             "Create Welcome Alert",
+					Description:      "Send welcome alert for new user",
+					ActionConfig:     json.RawMessage(alertCfg),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create alert action for welcome rule", "error", err)
+				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         welcomeRule.ID,
+						SourceActionID: nil,
+						TargetActionID: alertAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create start edge for welcome rule", "error", err)
+					}
+					log.Info(ctx, "Created 'New User Created - Welcome Alert' default workflow")
+				}
+			}
+		}
+
+		// --- Default Workflow 6: Supplier Added - Alert Team (suppliers, on_create) ---
+		if dwSuppliersEntity.ID != uuid.Nil && createAlertTemplate.ID != uuid.Nil {
+			supplierRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Supplier Added - Alert Team",
+				Description:   "When a new supplier is added, alert the procurement team",
+				EntityID:      dwSuppliersEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      false,
+				IsDefault:     true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Supplier Added - Alert Team rule", "error", err)
+			} else {
+				alertCfg, _ := json.Marshal(map[string]interface{}{
+					"alert_type": "new_supplier",
+					"severity":   "info",
+					"title":      "New Supplier Added",
+					"message":    "A new supplier has been added to the system",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"},
+						"roles": []string{},
+					},
+				})
+				alertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: supplierRule.ID,
+					Name:             "Create Supplier Alert",
+					Description:      "Alert procurement team about new supplier",
+					ActionConfig:     json.RawMessage(alertCfg),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create alert action for supplier rule", "error", err)
+				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         supplierRule.ID,
+						SourceActionID: nil,
+						TargetActionID: alertAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create start edge for supplier rule", "error", err)
+					}
+					log.Info(ctx, "Created 'Supplier Added - Alert Team' default workflow")
+				}
+			}
+		}
+
+		// --- Default Workflow 7: Supplier Product Added - Log Audit (supplier_products, on_create) ---
+		if dwSupplierProductsEntity.ID != uuid.Nil && logAuditEntryTemplate.ID != uuid.Nil {
+			spAuditRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Supplier Product Added - Log Audit",
+				Description:   "When a supplier product is added, log an audit trail entry",
+				EntityID:      dwSupplierProductsEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      false,
+				IsDefault:     true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Supplier Product Added - Log Audit rule", "error", err)
+			} else {
+				auditCfg, _ := json.Marshal(map[string]interface{}{
+					"log_level": "info",
+					"message":   "New supplier product added",
+				})
+				auditAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: spAuditRule.ID,
+					Name:             "Log Audit Entry",
+					Description:      "Write audit trail for new supplier product",
+					ActionConfig:     json.RawMessage(auditCfg),
+					IsActive:         true,
+					TemplateID:       &logAuditEntryTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create audit action for supplier product rule", "error", err)
+				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         spAuditRule.ID,
+						SourceActionID: nil,
+						TargetActionID: auditAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create start edge for supplier product audit rule", "error", err)
+					}
+					log.Info(ctx, "Created 'Supplier Product Added - Log Audit' default workflow")
+				}
+			}
+		}
+
+		// --- Default Workflow 8: Asset Assigned - Send Notification (user_assets, on_create) ---
+		if dwUserAssetsEntity.ID != uuid.Nil && sendNotificationTemplate.ID != uuid.Nil {
+			assetRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Asset Assigned - Send Notification",
+				Description:   "When an asset is assigned to a user, send a notification",
+				EntityID:      dwUserAssetsEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: onCreateTrigger.ID,
+				IsActive:      false,
+				IsDefault:     true,
+				CreatedBy:     admins[0].ID,
+			})
+			if err != nil {
+				log.Error(ctx, "Failed to create Asset Assigned - Send Notification rule", "error", err)
+			} else {
+				notifCfg, _ := json.Marshal(map[string]interface{}{
+					"channel":  "in_app",
+					"title":    "Asset Assigned",
+					"message":  "An asset has been assigned to you",
+					"priority": "normal",
+				})
+				notifAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: assetRule.ID,
+					Name:             "Send Asset Assignment Notification",
+					Description:      "Notify user about asset assignment",
+					ActionConfig:     json.RawMessage(notifCfg),
+					IsActive:         true,
+					TemplateID:       &sendNotificationTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create notification action for asset assignment rule", "error", err)
+				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         assetRule.ID,
+						SourceActionID: nil,
+						TargetActionID: notifAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create start edge for asset assignment rule", "error", err)
+					}
+					log.Info(ctx, "Created 'Asset Assigned - Send Notification' default workflow")
 				}
 			}
 		}

@@ -98,6 +98,7 @@ type RuleResponse struct {
 	TriggerConditions json.RawMessage  `json:"trigger_conditions"`
 	CanvasLayout      json.RawMessage  `json:"canvas_layout,omitempty"`
 	IsActive          bool             `json:"is_active"`
+	IsDefault         bool             `json:"is_default"`
 	CreatedBy         uuid.UUID        `json:"created_by"`
 	UpdatedBy         uuid.UUID        `json:"updated_by"`
 	CreatedDate       time.Time        `json:"created_date"`

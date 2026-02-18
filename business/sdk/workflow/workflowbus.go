@@ -114,6 +114,7 @@ var (
 	ErrCircularDependency    = errors.New("circular dependency detected")
 	ErrIdempotencyFailure    = errors.New("idempotency failure")
 	ErrActionNotInRule       = errors.New("action does not belong to specified rule")
+	ErrDefaultWorkflow       = errors.New("cannot modify default workflow")
 )
 
 type IdempotencyResult int
@@ -469,6 +470,7 @@ func (b *Business) CreateRule(ctx context.Context, nar NewAutomationRule) (Autom
 		TriggerConditions: nar.TriggerConditions,
 		CanvasLayout:      nar.CanvasLayout,
 		IsActive:          nar.IsActive,
+		IsDefault:         nar.IsDefault,
 		CreatedDate:       now,
 		UpdatedDate:       now,
 		CreatedBy:         nar.CreatedBy,
