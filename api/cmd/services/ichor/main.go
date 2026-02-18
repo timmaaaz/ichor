@@ -145,6 +145,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 			Host           string `conf:"default:http://host.docker.internal:11434"` // Ollama only
 			ThinkingEffort string `conf:"default:high"`                              // Ollama only
 		}
+		Resend struct {
+			APIKey string `conf:"default:,mask"` // ICHOR_RESEND_APIKEY — mask prevents logging
+			From   string `conf:"default:"`      // ICHOR_RESEND_FROM e.g. "Ichor ERP <noreply@yourco.com>"
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -355,6 +359,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 		LLMBaseURL:        cfg.LLM.BaseURL,
 		LLMHost:           cfg.LLM.Host,
 		LLMThinkingEffort: cfg.LLM.ThinkingEffort,
+		ResendAPIKey:      cfg.Resend.APIKey,
+		ResendFrom:        cfg.Resend.From,
 	}
 
 	routes, userBus := buildRoutes(cfgMux)
