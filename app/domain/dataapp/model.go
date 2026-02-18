@@ -39,6 +39,7 @@ type TableConfig struct {
 	UpdatedBy   string          `json:"updated_by"`
 	CreatedDate string          `json:"created_date"`
 	UpdatedDate string          `json:"updated_date"`
+	IsSystem    bool            `json:"is_system"`
 }
 
 type TableConfigList struct {
@@ -67,6 +68,7 @@ func ToAppTableConfig(bus tablebuilder.StoredConfig) TableConfig {
 		UpdatedBy:   bus.UpdatedBy.String(),
 		CreatedDate: bus.CreatedDate.Format(time.RFC3339),
 		UpdatedDate: bus.UpdatedDate.Format(time.RFC3339),
+		IsSystem:    bus.IsSystem,
 	}
 }
 

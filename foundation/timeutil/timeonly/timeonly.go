@@ -6,6 +6,7 @@ import (
 )
 
 const timeFmt = "15:04:05"
+const timeFmtShort = "15:04"
 
 // TimeOnly represents a time with no date value.
 type TimeOnly struct {
@@ -13,9 +14,25 @@ type TimeOnly struct {
 }
 
 // ValidateTimeOnlyFmt validates the format of a time string.
+// Accepts both "HH:MM:SS" and "HH:MM" formats.
 func ValidateTimeOnlyFmt(val string) bool {
 	_, err := time.Parse(timeFmt, val)
+	if err != nil {
+		_, err = time.Parse(timeFmtShort, val)
+	}
 	return err == nil
+}
+
+// NormalizeTimeOnly validates and normalizes a time string to "HH:MM:SS" format.
+// Accepts both "HH:MM:SS" and "HH:MM" formats, always returns "HH:MM:SS".
+func NormalizeTimeOnly(val string) (string, error) {
+	if t, err := time.Parse(timeFmt, val); err == nil {
+		return t.Format(timeFmt), nil
+	}
+	if t, err := time.Parse(timeFmtShort, val); err == nil {
+		return t.Format(timeFmt), nil
+	}
+	return "", fmt.Errorf("invalid time format: %q, expected HH:MM:SS or HH:MM", val)
 }
 
 // GetTimeFmt returns the time format.

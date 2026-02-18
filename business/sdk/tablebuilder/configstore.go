@@ -168,6 +168,15 @@ func (s *ConfigStore) UpdatePageConfig(ctx context.Context, pc PageConfig) (*Pag
 
 // Delete removes a table configuration
 func (s *ConfigStore) Delete(ctx context.Context, id uuid.UUID) error {
+	stored, err := s.QueryByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if stored.IsSystem {
+		return ErrSystemConfigProtected
+	}
+
 	data := struct {
 		ID uuid.UUID `db:"id"`
 	}{
@@ -211,7 +220,7 @@ func (s *ConfigStore) QueryByID(ctx context.Context, id uuid.UUID) (*StoredConfi
 	const q = `
 		SELECT
 			id, name, description, config,
-			created_by, updated_by, created_date, updated_date
+			created_by, updated_by, created_date, updated_date, is_system
 		FROM
 			config.table_configs
 		WHERE
@@ -239,7 +248,7 @@ func (s *ConfigStore) QueryByName(ctx context.Context, name string) (*StoredConf
 	const q = `
 		SELECT
 			id, name, description, config,
-			created_by, updated_by, created_date, updated_date
+			created_by, updated_by, created_date, updated_date, is_system
 		FROM
 			config.table_configs
 		WHERE
@@ -267,7 +276,7 @@ func (s *ConfigStore) QueryByUser(ctx context.Context, userID uuid.UUID) ([]Stor
 	const q = `
 		SELECT
 			id, name, description, config,
-			created_by, updated_by, created_date, updated_date
+			created_by, updated_by, created_date, updated_date, is_system
 		FROM
 			config.table_configs
 		WHERE
@@ -290,7 +299,7 @@ func (s *ConfigStore) QueryAll(ctx context.Context) ([]StoredConfig, error) {
 	const q = `
 		SELECT
 			id, name, description, config,
-			created_by, updated_by, created_date, updated_date
+			created_by, updated_by, created_date, updated_date, is_system
 		FROM
 			config.table_configs
 		ORDER BY

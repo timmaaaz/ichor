@@ -1102,7 +1102,8 @@ CREATE TABLE IF NOT EXISTS config.table_configs (
     updated_by UUID NOT NULL,
     created_date TIMESTAMP NOT NULL,
     updated_date TIMESTAMP NOT NULL,
-    
+    is_system BOOLEAN NOT NULL DEFAULT FALSE,
+
     -- Foreign keys
     CONSTRAINT fk_table_configs_created_by FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE CASCADE,
     CONSTRAINT fk_table_configs_updated_by FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE CASCADE
@@ -1124,6 +1125,7 @@ COMMENT ON COLUMN config.table_configs.description IS 'Optional description of w
 COMMENT ON COLUMN config.table_configs.config IS 'JSON configuration matching the TableConfig structure';
 COMMENT ON COLUMN config.table_configs.created_by IS 'User who created this configuration';
 COMMENT ON COLUMN config.table_configs.updated_by IS 'User who last updated this configuration';
+COMMENT ON COLUMN config.table_configs.is_system IS 'When true, this configuration is system-defined and cannot be deleted via the API';
 
 
 -- Migration: Create page_configs for storing page configurations
@@ -1237,6 +1239,7 @@ SELECT
     tc.updated_by,
     tc.created_date,
     tc.updated_date,
+    tc.is_system,
     u1.username as created_by_username,
     u2.username as updated_by_username
 FROM config.table_configs tc

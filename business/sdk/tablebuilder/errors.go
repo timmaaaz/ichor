@@ -38,8 +38,9 @@ var (
 	ErrConversionFailed = errors.New("type conversion failed")
 
 	// Database errors
-	ErrNotFound      = errors.New("record not found")
-	ErrDatabaseError = errors.New("database error")
+	ErrNotFound               = errors.New("record not found")
+	ErrDatabaseError          = errors.New("database error")
+	ErrSystemConfigProtected  = errors.New("system configurations cannot be deleted")
 
 	// Permission errors
 	ErrUnauthorized     = errors.New("unauthorized access")

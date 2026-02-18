@@ -140,6 +140,9 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 		if errors.Is(err, tablebuilder.ErrNotFound) {
 			return errs.New(errs.NotFound, err)
 		}
+		if errors.Is(err, tablebuilder.ErrSystemConfigProtected) {
+			return errs.New(errs.FailedPrecondition, err)
+		}
 		return errs.Newf(errs.Internal, "delete: configID[%s]: %s", id, err)
 	}
 

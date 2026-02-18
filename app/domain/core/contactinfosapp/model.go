@@ -105,11 +105,13 @@ func (app NewContactInfos) Validate() error {
 }
 
 func toBusNewContactInfos(app NewContactInfos) (contactinfosbus.NewContactInfos, error) {
-	if !timeonly.ValidateTimeOnlyFmt(app.AvailableHoursEnd) {
+	normalizedEnd, err := timeonly.NormalizeTimeOnly(app.AvailableHoursEnd)
+	if err != nil {
 		return contactinfosbus.NewContactInfos{}, fmt.Errorf("invalid time format for ending hours: %q", app.AvailableHoursEnd)
 	}
 
-	if !timeonly.ValidateTimeOnlyFmt(app.AvailableHoursStart) {
+	normalizedStart, err := timeonly.NormalizeTimeOnly(app.AvailableHoursStart)
+	if err != nil {
 		return contactinfosbus.NewContactInfos{}, fmt.Errorf("invalid time format for starting hours: %q", app.AvailableHoursStart)
 	}
 
@@ -118,9 +120,12 @@ func toBusNewContactInfos(app NewContactInfos) (contactinfosbus.NewContactInfos,
 		return contactinfosbus.NewContactInfos{}, errs.Newf(errs.InvalidArgument, "parse street_id: %s", err)
 	}
 
-	deliveryAddressID, err := uuid.Parse(app.DeliveryAddressID)
-	if err != nil {
-		return contactinfosbus.NewContactInfos{}, errs.Newf(errs.InvalidArgument, "parse delivery_address_id: %s", err)
+	var deliveryAddressID uuid.UUID
+	if app.DeliveryAddressID != "" {
+		deliveryAddressID, err = uuid.Parse(app.DeliveryAddressID)
+		if err != nil {
+			return contactinfosbus.NewContactInfos{}, errs.Newf(errs.InvalidArgument, "parse delivery_address_id: %s", err)
+		}
 	}
 
 	timezoneID, err := uuid.Parse(app.TimezoneID)
@@ -136,8 +141,8 @@ func toBusNewContactInfos(app NewContactInfos) (contactinfosbus.NewContactInfos,
 		SecondaryPhone:       app.SecondaryPhone,
 		StreetID:             streetID,
 		DeliveryAddressID:    deliveryAddressID,
-		AvailableHoursStart:  app.AvailableHoursStart,
-		AvailableHoursEnd:    app.AvailableHoursEnd,
+		AvailableHoursStart:  normalizedStart,
+		AvailableHoursEnd:    normalizedEnd,
 		TimezoneID:           timezoneID,
 		PreferredContactType: app.PreferredContactType,
 		Notes:                app.Notes,
@@ -176,12 +181,22 @@ func (app UpdateContactInfos) Validate() error {
 }
 
 func toBusUpdateContactInfos(app UpdateContactInfos) (contactinfosbus.UpdateContactInfos, error) {
-	if app.AvailableHoursEnd != nil && !timeonly.ValidateTimeOnlyFmt(*app.AvailableHoursEnd) {
-		return contactinfosbus.UpdateContactInfos{}, fmt.Errorf("invalid time format for ending hours: %q", *app.AvailableHoursEnd)
+	var normalizedEnd, normalizedStart *string
+
+	if app.AvailableHoursEnd != nil {
+		n, err := timeonly.NormalizeTimeOnly(*app.AvailableHoursEnd)
+		if err != nil {
+			return contactinfosbus.UpdateContactInfos{}, fmt.Errorf("invalid time format for ending hours: %q", *app.AvailableHoursEnd)
+		}
+		normalizedEnd = &n
 	}
 
-	if app.AvailableHoursStart != nil && !timeonly.ValidateTimeOnlyFmt(*app.AvailableHoursStart) {
-		return contactinfosbus.UpdateContactInfos{}, fmt.Errorf("invalid time format for starting hours: %q", *app.AvailableHoursStart)
+	if app.AvailableHoursStart != nil {
+		n, err := timeonly.NormalizeTimeOnly(*app.AvailableHoursStart)
+		if err != nil {
+			return contactinfosbus.UpdateContactInfos{}, fmt.Errorf("invalid time format for starting hours: %q", *app.AvailableHoursStart)
+		}
+		normalizedStart = &n
 	}
 
 	bus := contactinfosbus.UpdateContactInfos{}
@@ -215,8 +230,8 @@ func toBusUpdateContactInfos(app UpdateContactInfos) (contactinfosbus.UpdateCont
 	bus.EmailAddress = app.EmailAddress
 	bus.PrimaryPhone = app.PrimaryPhone
 	bus.SecondaryPhone = app.SecondaryPhone
-	bus.AvailableHoursStart = app.AvailableHoursStart
-	bus.AvailableHoursEnd = app.AvailableHoursEnd
+	bus.AvailableHoursStart = normalizedStart
+	bus.AvailableHoursEnd = normalizedEnd
 	bus.PreferredContactType = app.PreferredContactType
 	bus.Notes = app.Notes
 

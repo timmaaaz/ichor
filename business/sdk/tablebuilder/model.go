@@ -362,6 +362,7 @@ type StoredConfig struct {
 	UpdatedBy   uuid.UUID       `db:"updated_by" json:"updated_by"`
 	CreatedDate time.Time       `db:"created_date" json:"created_date"`
 	UpdatedDate time.Time       `db:"updated_date" json:"updated_date"`
+	IsSystem    bool            `db:"is_system" json:"is_system"`
 }
 
 // =============================================================================

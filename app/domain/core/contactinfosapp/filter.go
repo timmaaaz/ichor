@@ -57,19 +57,19 @@ func parseFilter(qp QueryParams) (contactinfosbus.QueryFilter, error) {
 	}
 
 	if qp.AvailableHoursStart != "" {
-		valid := timeonly.ValidateTimeOnlyFmt(qp.AvailableHoursStart)
-		if !valid {
+		normalized, err := timeonly.NormalizeTimeOnly(qp.AvailableHoursStart)
+		if err != nil {
 			return contactinfosbus.QueryFilter{}, errs.NewFieldsError("available_hours_start", errors.New("not valid"))
 		}
-		filter.AvailableHoursStart = &qp.AvailableHoursStart
+		filter.AvailableHoursStart = &normalized
 	}
 
 	if qp.AvailableHoursEnd != "" {
-		valid := timeonly.ValidateTimeOnlyFmt(qp.AvailableHoursEnd)
-		if !valid {
+		normalized, err := timeonly.NormalizeTimeOnly(qp.AvailableHoursEnd)
+		if err != nil {
 			return contactinfosbus.QueryFilter{}, errs.NewFieldsError("available_hours_end", errors.New("not valid"))
 		}
-		filter.AvailableHoursEnd = &qp.AvailableHoursEnd
+		filter.AvailableHoursEnd = &normalized
 	}
 
 	if qp.TimezoneID != "" {
