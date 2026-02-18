@@ -131,6 +131,8 @@ func (b *Business) Update(ctx context.Context, uc UpdatePageConfig, configID uui
 		return PageConfig{}, fmt.Errorf("query: %w", err)
 	}
 
+	before := config
+
 	// Apply updates
 	if uc.Name != nil {
 		config.Name = *uc.Name
@@ -152,7 +154,7 @@ func (b *Business) Update(ctx context.Context, uc UpdatePageConfig, configID uui
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(config)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, config)); err != nil {
 		b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

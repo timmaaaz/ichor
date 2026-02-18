@@ -96,6 +96,8 @@ func (b *Business) Update(ctx context.Context, str Street, us UpdateStreet) (Str
 	ctx, span := otel.AddSpan(ctx, "business.streetbus.Update")
 	defer span.End()
 
+	before := str
+
 	if us.CityID != nil {
 		str.CityID = *us.CityID
 	}
@@ -117,7 +119,7 @@ func (b *Business) Update(ctx context.Context, str Street, us UpdateStreet) (Str
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(str)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, str)); err != nil {
 		b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

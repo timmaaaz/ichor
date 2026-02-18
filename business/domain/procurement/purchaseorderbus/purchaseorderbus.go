@@ -118,6 +118,8 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.update")
 	defer span.End()
 
+	before := po
+
 	if upo.OrderNumber != nil {
 		po.OrderNumber = *upo.OrderNumber
 	}
@@ -183,7 +185,7 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(po)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
 		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
@@ -259,6 +261,8 @@ func (b *Business) Approve(ctx context.Context, po PurchaseOrder, approvedBy uui
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.approve")
 	defer span.End()
 
+	before := po
+
 	now := time.Now().UTC()
 	po.ApprovedBy = approvedBy
 	po.ApprovedDate = now
@@ -270,7 +274,7 @@ func (b *Business) Approve(ctx context.Context, po PurchaseOrder, approvedBy uui
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(po)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
 		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

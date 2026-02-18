@@ -94,6 +94,8 @@ func (b *Business) Update(ctx context.Context, cty City, uc UpdateCity) (City, e
 	ctx, span := otel.AddSpan(ctx, "business.citybus.Update")
 	defer span.End()
 
+	before := cty
+
 	if uc.RegionID != nil {
 		cty.RegionID = *uc.RegionID
 	}
@@ -107,7 +109,7 @@ func (b *Business) Update(ctx context.Context, cty City, uc UpdateCity) (City, e
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(cty)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, cty)); err != nil {
 		b.log.Error(ctx, "citybus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

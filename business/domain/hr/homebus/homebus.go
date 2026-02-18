@@ -129,6 +129,8 @@ func (b *Business) Update(ctx context.Context, hme Home, uh UpdateHome) (Home, e
 	ctx, span := otel.AddSpan(ctx, "business.homebus.update")
 	defer span.End()
 
+	before := hme
+
 	if uh.Type != nil {
 		hme.Type = *uh.Type
 	}
@@ -166,7 +168,7 @@ func (b *Business) Update(ctx context.Context, hme Home, uh UpdateHome) (Home, e
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(hme)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, hme)); err != nil {
 		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

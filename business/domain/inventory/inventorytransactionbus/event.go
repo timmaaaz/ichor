@@ -65,9 +65,10 @@ func ActionCreatedData(it InventoryTransaction) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID            `json:"entityID"`
-	UserID   uuid.UUID            `json:"userID"`
-	Entity   InventoryTransaction `json:"entity"`
+	EntityID     uuid.UUID            `json:"entityID"`
+	UserID       uuid.UUID            `json:"userID"`
+	Entity       InventoryTransaction `json:"entity"`
+	BeforeEntity InventoryTransaction `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -76,11 +77,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for inventory transaction update events.
-func ActionUpdatedData(it InventoryTransaction) delegate.Data {
+func ActionUpdatedData(before, after InventoryTransaction) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: it.InventoryTransactionID,
-		UserID:   it.UserID, // UserID tracks who performed the transaction
-		Entity:   it,
+		EntityID:     after.InventoryTransactionID,
+		UserID:       after.UserID, // UserID tracks who performed the transaction
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

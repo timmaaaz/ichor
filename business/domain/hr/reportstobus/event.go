@@ -66,9 +66,10 @@ func ActionCreatedData(reportsTo ReportsTo) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   ReportsTo `json:"entity"`
+	EntityID     uuid.UUID `json:"entityID"`
+	UserID       uuid.UUID `json:"userID"`
+	Entity       ReportsTo `json:"entity"`
+	BeforeEntity ReportsTo `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -77,11 +78,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for reports to update events.
-func ActionUpdatedData(reportsTo ReportsTo) delegate.Data {
+func ActionUpdatedData(before, after ReportsTo) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: reportsTo.ID,
-		UserID:   reportsTo.ReporterID, // Use ReporterID as the user context
-		Entity:   reportsTo,
+		EntityID:     after.ID,
+		UserID:       after.ReporterID, // Use ReporterID as the user context
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

@@ -66,9 +66,10 @@ func ActionCreatedData(paymentTerm PaymentTerm) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID   `json:"entityID"`
-	UserID   uuid.UUID   `json:"userID"`
-	Entity   PaymentTerm `json:"entity"`
+	EntityID     uuid.UUID   `json:"entityID"`
+	UserID       uuid.UUID   `json:"userID"`
+	Entity       PaymentTerm `json:"entity"`
+	BeforeEntity PaymentTerm `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -77,11 +78,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for payment term update events.
-func ActionUpdatedData(paymentTerm PaymentTerm) delegate.Data {
+func ActionUpdatedData(before, after PaymentTerm) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: paymentTerm.ID,
-		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   paymentTerm,
+		EntityID:     after.ID,
+		UserID:       uuid.Nil, // Reference table - no user tracking
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

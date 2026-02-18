@@ -122,6 +122,8 @@ func (b *Business) Update(ctx context.Context, uc UpdatePageContent, contentID u
 		return PageContent{}, fmt.Errorf("query: %w", err)
 	}
 
+	before := content
+
 	// Apply updates
 	if uc.Label != nil {
 		content.Label = *uc.Label
@@ -144,7 +146,7 @@ func (b *Business) Update(ctx context.Context, uc UpdatePageContent, contentID u
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(content)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, content)); err != nil {
 		b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

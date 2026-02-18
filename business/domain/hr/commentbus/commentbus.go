@@ -110,6 +110,8 @@ func (b *Business) Update(ctx context.Context, uac UserApprovalComment, uuac Upd
 	ctx, span := otel.AddSpan(ctx, "business.user.status.comment.Update")
 	defer span.End()
 
+	before := uac
+
 	if uuac.Comment != nil {
 		uac.Comment = *uuac.Comment
 	}
@@ -119,7 +121,7 @@ func (b *Business) Update(ctx context.Context, uac UserApprovalComment, uuac Upd
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(uac)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, uac)); err != nil {
 		b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

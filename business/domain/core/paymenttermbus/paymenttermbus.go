@@ -97,6 +97,8 @@ func (b *Business) Update(ctx context.Context, pt PaymentTerm, upt UpdatePayment
 	ctx, span := otel.AddSpan(ctx, "business.paymenttermbus.Update")
 	defer span.End()
 
+	before := pt
+
 	if upt.Name != nil {
 		pt.Name = *upt.Name
 	}
@@ -113,7 +115,7 @@ func (b *Business) Update(ctx context.Context, pt PaymentTerm, upt UpdatePayment
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(pt)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, pt)); err != nil {
 		b.log.Error(ctx, "paymenttermbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

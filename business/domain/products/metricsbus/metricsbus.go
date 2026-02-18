@@ -101,6 +101,8 @@ func (b *Business) Update(ctx context.Context, metric Metric, um UpdateMetric) (
 	ctx, span := otel.AddSpan(ctx, "business.metricsbus.update")
 	defer span.End()
 
+	before := metric
+
 	if um.ProductID != nil {
 		metric.ProductID = *um.ProductID
 	}
@@ -121,7 +123,7 @@ func (b *Business) Update(ctx context.Context, metric Metric, um UpdateMetric) (
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(metric)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, metric)); err != nil {
 		b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

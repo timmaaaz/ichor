@@ -68,9 +68,10 @@ func ActionCreatedData(ch CostHistory) delegate.Data {
 // Note: This is a reference/lookup table without user tracking fields.
 // UserID is set to uuid.Nil for system-level operations.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID   `json:"entityID"`
-	UserID   uuid.UUID   `json:"userID"`
-	Entity   CostHistory `json:"entity"`
+	EntityID     uuid.UUID   `json:"entityID"`
+	UserID       uuid.UUID   `json:"userID"`
+	Entity       CostHistory `json:"entity"`
+	BeforeEntity CostHistory `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -79,11 +80,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for cost history update events.
-func ActionUpdatedData(ch CostHistory) delegate.Data {
+func ActionUpdatedData(before, after CostHistory) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: ch.CostHistoryID,
-		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   ch,
+		EntityID:     after.CostHistoryID,
+		UserID:       uuid.Nil, // Reference table - no user tracking
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

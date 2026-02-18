@@ -64,9 +64,10 @@ func ActionCreatedData(order Order) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   Order     `json:"entity"`
+	EntityID     uuid.UUID `json:"entityID"`
+	UserID       uuid.UUID `json:"userID"`
+	Entity       Order     `json:"entity"`
+	BeforeEntity Order     `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -75,11 +76,13 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for order update events.
-func ActionUpdatedData(order Order) delegate.Data {
+// before is the entity state before the update (used for FieldChanges diff).
+func ActionUpdatedData(before, after Order) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: order.ID,
-		UserID:   order.UpdatedBy,
-		Entity:   order,
+		EntityID:     after.ID,
+		UserID:       after.UpdatedBy,
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

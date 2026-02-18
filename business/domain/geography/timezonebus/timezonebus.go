@@ -97,6 +97,8 @@ func (b *Business) Update(ctx context.Context, tz Timezone, utz UpdateTimezone) 
 	ctx, span := otel.AddSpan(ctx, "business.timezonebus.Update")
 	defer span.End()
 
+	before := tz
+
 	if utz.Name != nil {
 		tz.Name = *utz.Name
 	}
@@ -118,7 +120,7 @@ func (b *Business) Update(ctx context.Context, tz Timezone, utz UpdateTimezone) 
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(tz)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, tz)); err != nil {
 		b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

@@ -68,9 +68,10 @@ func ActionCreatedData(pc ProductCategory) delegate.Data {
 // Note: This is a reference/lookup table without user tracking fields.
 // UserID is set to uuid.Nil for system-level operations.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID       `json:"entityID"`
-	UserID   uuid.UUID       `json:"userID"`
-	Entity   ProductCategory `json:"entity"`
+	EntityID     uuid.UUID       `json:"entityID"`
+	UserID       uuid.UUID       `json:"userID"`
+	Entity       ProductCategory `json:"entity"`
+	BeforeEntity ProductCategory `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -79,11 +80,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for product category update events.
-func ActionUpdatedData(pc ProductCategory) delegate.Data {
+func ActionUpdatedData(before, after ProductCategory) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: pc.ProductCategoryID,
-		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   pc,
+		EntityID:     after.ProductCategoryID,
+		UserID:       uuid.Nil, // Reference table - no user tracking
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

@@ -103,6 +103,8 @@ func (b *Business) Update(ctx context.Context, field FormField, uff UpdateFormFi
 	ctx, span := otel.AddSpan(ctx, "business.formfieldbus.update")
 	defer span.End()
 
+	before := field
+
 	if uff.FormID != nil {
 		field.FormID = *uff.FormID
 	}
@@ -140,7 +142,7 @@ func (b *Business) Update(ctx context.Context, field FormField, uff UpdateFormFi
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(field)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, field)); err != nil {
 		b.log.Error(ctx, "formfieldbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

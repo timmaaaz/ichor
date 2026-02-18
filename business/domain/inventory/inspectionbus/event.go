@@ -65,9 +65,10 @@ func ActionCreatedData(inspection Inspection) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID  `json:"entityID"`
-	UserID   uuid.UUID  `json:"userID"`
-	Entity   Inspection `json:"entity"`
+	EntityID     uuid.UUID  `json:"entityID"`
+	UserID       uuid.UUID  `json:"userID"`
+	Entity       Inspection `json:"entity"`
+	BeforeEntity Inspection `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -76,11 +77,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for inspection update events.
-func ActionUpdatedData(inspection Inspection) delegate.Data {
+func ActionUpdatedData(before, after Inspection) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: inspection.InspectionID,
-		UserID:   inspection.InspectorID, // InspectorID tracks who performed the inspection
-		Entity:   inspection,
+		EntityID:     after.InspectionID,
+		UserID:       after.InspectorID, // InspectorID tracks who performed the inspection
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

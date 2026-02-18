@@ -141,6 +141,8 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
+	before := usr
+
 	if uu.ApprovedBy != nil {
 		usr.ApprovedBy = *uu.ApprovedBy
 	}
@@ -205,7 +207,7 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(usr)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, usr)); err != nil {
 		b.log.Error(ctx, "userbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

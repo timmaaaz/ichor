@@ -98,6 +98,8 @@ func (b *Business) Update(ctx context.Context, as UserApprovalStatus, uas Update
 	ctx, span := otel.AddSpan(ctx, "business.userapprovalstatusbus.Update")
 	defer span.End()
 
+	before := as
+
 	if uas.Name != nil {
 		as.Name = *uas.Name
 	}
@@ -119,7 +121,7 @@ func (b *Business) Update(ctx context.Context, as UserApprovalStatus, uas Update
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(as)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, as)); err != nil {
 		b.log.Error(ctx, "approvalbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

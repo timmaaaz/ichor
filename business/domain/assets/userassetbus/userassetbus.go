@@ -97,6 +97,8 @@ func (b *Business) Update(ctx context.Context, ass UserAsset, uua UpdateUserAsse
 	ctx, span := otel.AddSpan(ctx, "business.userassetbus.update")
 	defer span.End()
 
+	before := ass
+
 	if uua.UserID != nil {
 		ass.UserID = *uua.UserID
 	}
@@ -124,7 +126,7 @@ func (b *Business) Update(ctx context.Context, ass UserAsset, uua UpdateUserAsse
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(ass)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ass)); err != nil {
 		b.log.Error(ctx, "userassetbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

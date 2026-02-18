@@ -95,6 +95,8 @@ func (b *Business) Update(ctx context.Context, role Role, ur UpdateRole) (Role, 
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
+	before := role
+
 	if ur.Name != nil {
 		role.Name = *ur.Name
 	}
@@ -107,7 +109,7 @@ func (b *Business) Update(ctx context.Context, role Role, ur UpdateRole) (Role, 
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(role)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, role)); err != nil {
 		b.log.Error(ctx, "rolebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

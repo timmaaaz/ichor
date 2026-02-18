@@ -107,6 +107,8 @@ func (b *Business) Update(ctx context.Context, invLocation InventoryLocation, u 
 	ctx, span := otel.AddSpan(ctx, "business.inventorylocationbus.update")
 	defer span.End()
 
+	before := invLocation
+
 	now := time.Now()
 
 	if u.WarehouseID != nil {
@@ -147,7 +149,7 @@ func (b *Business) Update(ctx context.Context, invLocation InventoryLocation, u 
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(invLocation)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, invLocation)); err != nil {
 		b.log.Error(ctx, "inventorylocationbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

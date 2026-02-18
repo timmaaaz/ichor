@@ -99,6 +99,8 @@ func (b *Business) Update(ctx context.Context, page Page, up UpdatePage) (Page, 
 	ctx, span := otel.AddSpan(ctx, "business.pagebus.update")
 	defer span.End()
 
+	before := page
+
 	if up.Path != nil {
 		page.Path = *up.Path
 	}
@@ -126,7 +128,7 @@ func (b *Business) Update(ctx context.Context, page Page, up UpdatePage) (Page, 
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(page)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, page)); err != nil {
 		b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

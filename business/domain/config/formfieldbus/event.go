@@ -66,9 +66,10 @@ func ActionCreatedData(field FormField) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   FormField `json:"entity"`
+	EntityID     uuid.UUID `json:"entityID"`
+	UserID       uuid.UUID `json:"userID"`
+	Entity       FormField `json:"entity"`
+	BeforeEntity FormField `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -77,11 +78,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for form field update events.
-func ActionUpdatedData(field FormField) delegate.Data {
+func ActionUpdatedData(before, after FormField) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: field.ID,
-		UserID:   uuid.Nil, // Config table - no user tracking
-		Entity:   field,
+		EntityID:     after.ID,
+		UserID:       uuid.Nil, // Config table - no user tracking
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

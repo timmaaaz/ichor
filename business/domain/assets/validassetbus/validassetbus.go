@@ -108,6 +108,8 @@ func (b *Business) Update(ctx context.Context, ass ValidAsset, ua UpdateValidAss
 	ctx, span := otel.AddSpan(ctx, "business.validassetbus.update")
 	defer span.End()
 
+	before := ass
+
 	now := time.Now()
 
 	if ua.TypeID != nil {
@@ -148,7 +150,7 @@ func (b *Business) Update(ctx context.Context, ass ValidAsset, ua UpdateValidAss
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(ass)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ass)); err != nil {
 		b.log.Error(ctx, "validassetbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

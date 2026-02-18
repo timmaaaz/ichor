@@ -107,6 +107,8 @@ func (b *Business) Update(ctx context.Context, ta TableAccess, uta UpdateTableAc
 	ctx, span := otel.AddSpan(ctx, "business.tableaccess.update")
 	defer span.End()
 
+	before := ta
+
 	if uta.RoleID != nil {
 		ta.RoleID = *uta.RoleID
 	}
@@ -131,7 +133,7 @@ func (b *Business) Update(ctx context.Context, ta TableAccess, uta UpdateTableAc
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(ta)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, ta)); err != nil {
 		b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

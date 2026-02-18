@@ -69,9 +69,10 @@ func ActionCreatedData(currency Currency) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   Currency  `json:"entity"`
+	EntityID     uuid.UUID `json:"entityID"`
+	UserID       uuid.UUID `json:"userID"`
+	Entity       Currency  `json:"entity"`
+	BeforeEntity Currency  `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -80,16 +81,17 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for currency update events.
-func ActionUpdatedData(currency Currency) delegate.Data {
+func ActionUpdatedData(before, after Currency) delegate.Data {
 	userID := uuid.Nil
-	if currency.UpdatedBy != nil {
-		userID = *currency.UpdatedBy
+	if after.UpdatedBy != nil {
+		userID = *after.UpdatedBy
 	}
 
 	params := ActionUpdatedParms{
-		EntityID: currency.ID,
-		UserID:   userID,
-		Entity:   currency,
+		EntityID:     after.ID,
+		UserID:       userID,
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

@@ -105,6 +105,8 @@ func (b *Business) Update(ctx context.Context, ia InventoryAdjustment, u UpdateI
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.update")
 	defer span.End()
 
+	before := ia
+
 	if u.ProductID != nil {
 		ia.ProductID = *u.ProductID
 	}
@@ -137,7 +139,7 @@ func (b *Business) Update(ctx context.Context, ia InventoryAdjustment, u UpdateI
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(ia)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
 		b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

@@ -191,6 +191,8 @@ func (b *Business) UpdateButton(ctx context.Context, action PageAction, uba Upda
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.updatebutton")
 	defer span.End()
 
+	before := action
+
 	if action.Button == nil {
 		return PageAction{}, fmt.Errorf("action is not a button")
 	}
@@ -240,7 +242,7 @@ func (b *Business) UpdateButton(ctx context.Context, action PageAction, uba Upda
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(action)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, action)); err != nil {
 		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
@@ -251,6 +253,8 @@ func (b *Business) UpdateButton(ctx context.Context, action PageAction, uba Upda
 func (b *Business) UpdateDropdown(ctx context.Context, action PageAction, uda UpdateDropdownAction) (PageAction, error) {
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.updatedropdown")
 	defer span.End()
+
+	before := action
 
 	if action.Dropdown == nil {
 		return PageAction{}, fmt.Errorf("action is not a dropdown")
@@ -315,7 +319,7 @@ func (b *Business) UpdateDropdown(ctx context.Context, action PageAction, uda Up
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(updatedAction)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, updatedAction)); err != nil {
 		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
@@ -326,6 +330,8 @@ func (b *Business) UpdateDropdown(ctx context.Context, action PageAction, uda Up
 func (b *Business) UpdateSeparator(ctx context.Context, action PageAction, usa UpdateSeparatorAction) (PageAction, error) {
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.updateseparator")
 	defer span.End()
+
+	before := action
 
 	if action.ActionType != ActionTypeSeparator {
 		return PageAction{}, fmt.Errorf("action is not a separator")
@@ -348,7 +354,7 @@ func (b *Business) UpdateSeparator(ctx context.Context, action PageAction, usa U
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(action)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, action)); err != nil {
 		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

@@ -100,6 +100,8 @@ func (b *Business) Update(ctx context.Context, sn SerialNumber, usn UpdateSerial
 	ctx, span := otel.AddSpan(ctx, "business.serialnumberbus.update")
 	defer span.End()
 
+	before := sn
+
 	if usn.LotID != nil {
 		sn.LotID = *usn.LotID
 	}
@@ -123,7 +125,7 @@ func (b *Business) Update(ctx context.Context, sn SerialNumber, usn UpdateSerial
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(sn)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, sn)); err != nil {
 		b.log.Error(ctx, "serialnumberbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

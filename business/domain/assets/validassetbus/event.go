@@ -64,9 +64,10 @@ func ActionCreatedData(validAsset ValidAsset) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID  `json:"entityID"`
-	UserID   uuid.UUID  `json:"userID"`
-	Entity   ValidAsset `json:"entity"`
+	EntityID     uuid.UUID  `json:"entityID"`
+	UserID       uuid.UUID  `json:"userID"`
+	Entity       ValidAsset `json:"entity"`
+	BeforeEntity ValidAsset `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -75,11 +76,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for valid asset update events.
-func ActionUpdatedData(validAsset ValidAsset) delegate.Data {
+func ActionUpdatedData(before, after ValidAsset) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: validAsset.ID,
-		UserID:   validAsset.UpdatedBy,
-		Entity:   validAsset,
+		EntityID:     after.ID,
+		UserID:       after.UpdatedBy,
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

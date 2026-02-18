@@ -97,6 +97,8 @@ func (b *Business) Update(ctx context.Context, o Office, uo UpdateOffice) (Offic
 	ctx, span := otel.AddSpan(ctx, "business.officebus.Update")
 	defer span.End()
 
+	before := o
+
 	if uo.Name != nil {
 		o.Name = *uo.Name
 	}
@@ -113,7 +115,7 @@ func (b *Business) Update(ctx context.Context, o Office, uo UpdateOffice) (Offic
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(o)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, o)); err != nil {
 		b.log.Error(ctx, "officebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

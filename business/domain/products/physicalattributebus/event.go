@@ -68,9 +68,10 @@ func ActionCreatedData(pa PhysicalAttribute) delegate.Data {
 // Note: This is a reference/lookup table without user tracking fields.
 // UserID is set to uuid.Nil for system-level operations.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID         `json:"entityID"`
-	UserID   uuid.UUID         `json:"userID"`
-	Entity   PhysicalAttribute `json:"entity"`
+	EntityID     uuid.UUID         `json:"entityID"`
+	UserID       uuid.UUID         `json:"userID"`
+	Entity       PhysicalAttribute `json:"entity"`
+	BeforeEntity PhysicalAttribute `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -79,11 +80,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for physical attribute update events.
-func ActionUpdatedData(pa PhysicalAttribute) delegate.Data {
+func ActionUpdatedData(before, after PhysicalAttribute) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: pa.AttributeID,
-		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   pa,
+		EntityID:     after.AttributeID,
+		UserID:       uuid.Nil, // Reference table - no user tracking
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

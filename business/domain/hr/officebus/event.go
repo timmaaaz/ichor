@@ -66,9 +66,10 @@ func ActionCreatedData(office Office) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   Office    `json:"entity"`
+	EntityID     uuid.UUID `json:"entityID"`
+	UserID       uuid.UUID `json:"userID"`
+	Entity       Office    `json:"entity"`
+	BeforeEntity Office    `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -77,11 +78,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for office update events.
-func ActionUpdatedData(office Office) delegate.Data {
+func ActionUpdatedData(before, after Office) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: office.ID,
-		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   office,
+		EntityID:     after.ID,
+		UserID:       uuid.Nil, // Reference table - no user tracking
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

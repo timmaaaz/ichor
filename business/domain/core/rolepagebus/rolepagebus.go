@@ -94,6 +94,8 @@ func (b *Business) Update(ctx context.Context, rolePage RolePage, urp UpdateRole
 	ctx, span := otel.AddSpan(ctx, "business.rolepagebus.update")
 	defer span.End()
 
+	before := rolePage
+
 	if urp.CanAccess != nil {
 		rolePage.CanAccess = *urp.CanAccess
 	}
@@ -103,7 +105,7 @@ func (b *Business) Update(ctx context.Context, rolePage RolePage, urp UpdateRole
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(rolePage)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, rolePage)); err != nil {
 		b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

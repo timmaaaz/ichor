@@ -66,9 +66,10 @@ func ActionCreatedData(tz Timezone) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   Timezone  `json:"entity"`
+	EntityID     uuid.UUID `json:"entityID"`
+	UserID       uuid.UUID `json:"userID"`
+	Entity       Timezone  `json:"entity"`
+	BeforeEntity Timezone  `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -77,11 +78,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for timezone update events.
-func ActionUpdatedData(tz Timezone) delegate.Data {
+func ActionUpdatedData(before, after Timezone) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: tz.ID,
-		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   tz,
+		EntityID:     after.ID,
+		UserID:       uuid.Nil, // Reference table - no user tracking
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

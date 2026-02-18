@@ -65,9 +65,10 @@ func ActionCreatedData(to TransferOrder) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID     `json:"entityID"`
-	UserID   uuid.UUID     `json:"userID"`
-	Entity   TransferOrder `json:"entity"`
+	EntityID     uuid.UUID     `json:"entityID"`
+	UserID       uuid.UUID     `json:"userID"`
+	Entity       TransferOrder `json:"entity"`
+	BeforeEntity TransferOrder `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -76,11 +77,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for transfer order update events.
-func ActionUpdatedData(to TransferOrder) delegate.Data {
+func ActionUpdatedData(before, after TransferOrder) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: to.TransferID,
-		UserID:   to.RequestedByID, // RequestedByID tracks who requested the transfer
-		Entity:   to,
+		EntityID:     after.TransferID,
+		UserID:       after.RequestedByID, // RequestedByID tracks who requested the transfer
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

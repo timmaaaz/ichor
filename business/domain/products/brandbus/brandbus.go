@@ -98,6 +98,8 @@ func (b *Business) Update(ctx context.Context, brand Brand, ub UpdateBrand) (Bra
 	ctx, span := otel.AddSpan(ctx, "business.brandbus.update")
 	defer span.End()
 
+	before := brand
+
 	if ub.ContactInfosID != nil {
 		brand.ContactInfosID = *ub.ContactInfosID
 	}
@@ -113,7 +115,7 @@ func (b *Business) Update(ctx context.Context, brand Brand, ub UpdateBrand) (Bra
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(brand)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, brand)); err != nil {
 		b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

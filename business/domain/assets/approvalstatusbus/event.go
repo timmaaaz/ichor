@@ -66,9 +66,10 @@ func ActionCreatedData(approvalStatus ApprovalStatus) delegate.Data {
 
 // ActionUpdatedParms represents the parameters for the updated action.
 type ActionUpdatedParms struct {
-	EntityID uuid.UUID      `json:"entityID"`
-	UserID   uuid.UUID      `json:"userID"`
-	Entity   ApprovalStatus `json:"entity"`
+	EntityID     uuid.UUID      `json:"entityID"`
+	UserID       uuid.UUID      `json:"userID"`
+	Entity       ApprovalStatus `json:"entity"`
+	BeforeEntity ApprovalStatus `json:"beforeEntity,omitempty"`
 }
 
 // Marshal returns the event parameters encoded as JSON.
@@ -77,11 +78,12 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 }
 
 // ActionUpdatedData constructs delegate data for approval status update events.
-func ActionUpdatedData(approvalStatus ApprovalStatus) delegate.Data {
+func ActionUpdatedData(before, after ApprovalStatus) delegate.Data {
 	params := ActionUpdatedParms{
-		EntityID: approvalStatus.ID,
-		UserID:   uuid.Nil, // Reference table - no user tracking
-		Entity:   approvalStatus,
+		EntityID:     after.ID,
+		UserID:       uuid.Nil, // Reference table - no user tracking
+		Entity:       after,
+		BeforeEntity: before,
 	}
 
 	rawParams, err := params.Marshal()

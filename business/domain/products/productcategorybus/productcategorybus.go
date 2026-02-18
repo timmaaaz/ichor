@@ -98,6 +98,8 @@ func (b *Business) Update(ctx context.Context, pc ProductCategory, upc UpdatePro
 	ctx, span := otel.AddSpan(ctx, "business.productcategory.update")
 	defer span.End()
 
+	before := pc
+
 	if upc.Description != nil {
 		pc.Description = *upc.Description
 	}
@@ -113,7 +115,7 @@ func (b *Business) Update(ctx context.Context, pc ProductCategory, upc UpdatePro
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(pc)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, pc)); err != nil {
 		b.log.Error(ctx, "productcategorybus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

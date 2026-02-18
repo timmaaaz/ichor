@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+// exprPattern matches {{expr: <arithmetic expression>}} blocks, including optional pipe filters.
+// Example: {{expr: quantity * unit_price}} or {{expr: subtotal + tax | currency:USD}}
+var exprPattern = regexp.MustCompile(`\{\{expr:([^}]+)\}\}`)
+
 // BuiltinContext holds system-provided values for magic variables like $me and $now
 type BuiltinContext struct {
 	UserID    string    // For $me - the current user's ID
@@ -96,12 +100,21 @@ func (tp *TemplateProcessor) ProcessTemplate(template string, context TemplateCo
 		Errors:        make([]string, 0),
 	}
 
-	processed := template
-	matches := tp.variableRegex.FindAllStringSubmatch(template, -1)
+	// Pre-process {{expr: ...}} arithmetic blocks before regular variable substitution.
+	// This must run first so that expr blocks (which contain characters like * / + that
+	// fail variable validation) are resolved before the main loop sees them.
+	processed := tp.processExprBlocks(template, context, &result)
+	matches := tp.variableRegex.FindAllStringSubmatch(processed, -1)
 
 	for _, match := range matches {
 		fullMatch := match[0]                             // "{{variable_name}}"
 		variablePath := strings.TrimLeft(match[1], " \t") // "variable_name"
+
+		// Skip {{expr: ...}} blocks that were preserved by processExprBlocks (eval failed).
+		// These contain characters that fail variable validation; they are intentionally left as-is.
+		if strings.HasPrefix(variablePath, "expr:") {
+			continue
+		}
 
 		// Validate syntax
 		if err := tp.validateVariable(variablePath); err != nil {
@@ -150,6 +163,48 @@ func (tp *TemplateProcessor) ProcessTemplateObject(obj interface{}, context Temp
 	processed := tp.processValue(obj, context, &result)
 	result.Processed = processed
 	return result
+}
+
+// processExprBlocks evaluates all {{expr: <expression>}} blocks in the template string.
+// Expressions support arithmetic (+, -, *, /, %) with variables resolved from context.
+// Pipe filters (e.g. {{expr: qty * price | currency:USD}}) are applied after evaluation.
+// On eval error, the original {{expr: ...}} block is preserved (fail-open).
+func (tp *TemplateProcessor) processExprBlocks(template string, context TemplateContext, result *TemplateProcessingResult) string {
+	return exprPattern.ReplaceAllStringFunc(template, func(match string) string {
+		submatches := exprPattern.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+
+		content := strings.TrimSpace(submatches[1])
+
+		// Split on first | to separate the arithmetic expression from any pipe filters.
+		parts := strings.SplitN(content, "|", 2)
+		expression := strings.TrimSpace(parts[0])
+
+		val, err := EvalExpr(expression, map[string]any(context))
+		if err != nil {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("expr eval failed %q: %v", expression, err))
+			return match // fail-open: preserve original {{expr: ...}}
+		}
+
+		// Apply pipe filters if present (e.g. "| currency:USD").
+		if len(parts) > 1 {
+			filterStr := "| " + strings.TrimSpace(parts[1])
+			_, filters := tp.parseVariablePath("x" + filterStr)
+			if filtered, ferr := tp.applyFilters(val, filters); ferr == nil {
+				return tp.valueToString(filtered)
+			}
+		}
+
+		// Format as integer when the result has no fractional part.
+		if val == float64(int64(val)) {
+			return strconv.FormatInt(int64(val), 10)
+		}
+		// Use 10 significant digits with 'g' format to strip floating-point noise
+		// (e.g. 9.200000000000001 → "9.2") while preserving meaningful precision.
+		return strconv.FormatFloat(val, 'g', 10, 64)
+	})
 }
 
 // processValue recursively processes a value

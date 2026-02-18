@@ -32,9 +32,10 @@ const (
 // Domain event.go files use this structure (or compatible layouts) for their
 // ActionXxxParms types. The UserID field identifies who triggered the action.
 type DelegateEventParams struct {
-	EntityID uuid.UUID `json:"entityID"`
-	UserID   uuid.UUID `json:"userID"`
-	Entity   any       `json:"entity,omitempty"`
+	EntityID     uuid.UUID `json:"entityID"`
+	UserID       uuid.UUID `json:"userID"`
+	Entity       any       `json:"entity,omitempty"`
+	BeforeEntity any       `json:"beforeEntity,omitempty"` // Pre-update entity state (for on_update events only)
 }
 
 // ActionRuleChangedParms represents the parameters for rule change events.

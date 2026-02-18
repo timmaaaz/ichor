@@ -111,6 +111,8 @@ func (b *Business) Update(ctx context.Context, poli PurchaseOrderLineItem, upoli
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderlineitembus.update")
 	defer span.End()
 
+	before := poli
+
 	if upoli.SupplierProductID != nil {
 		poli.SupplierProductID = *upoli.SupplierProductID
 	}
@@ -155,7 +157,7 @@ func (b *Business) Update(ctx context.Context, poli PurchaseOrderLineItem, upoli
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(poli)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, poli)); err != nil {
 		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
@@ -244,6 +246,8 @@ func (b *Business) ReceiveQuantity(ctx context.Context, poli PurchaseOrderLineIt
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderlineitembus.receivequantity")
 	defer span.End()
 
+	before := poli
+
 	poli.QuantityReceived += quantity
 	poli.UpdatedBy = receivedBy
 	poli.UpdatedDate = time.Now().UTC()
@@ -253,7 +257,7 @@ func (b *Business) ReceiveQuantity(ctx context.Context, poli PurchaseOrderLineIt
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(poli)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, poli)); err != nil {
 		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

@@ -107,6 +107,8 @@ func (b *Business) Update(ctx context.Context, currency Currency, uc UpdateCurre
 	ctx, span := otel.AddSpan(ctx, "business.currencybus.update")
 	defer span.End()
 
+	before := currency
+
 	if uc.Code != nil {
 		currency.Code = *uc.Code
 	}
@@ -137,7 +139,7 @@ func (b *Business) Update(ctx context.Context, currency Currency, uc UpdateCurre
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.del.Call(ctx, ActionUpdatedData(currency)); err != nil {
+	if err := b.del.Call(ctx, ActionUpdatedData(before, currency)); err != nil {
 		b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

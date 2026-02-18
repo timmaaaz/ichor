@@ -93,6 +93,8 @@ func (b *Business) Update(ctx context.Context, fs Title, ut UpdateTitle) (Title,
 	ctx, span := otel.AddSpan(ctx, "business.titlebus.Update")
 	defer span.End()
 
+	before := fs
+
 	if ut.Description != nil {
 		fs.Description = *ut.Description
 	}
@@ -106,7 +108,7 @@ func (b *Business) Update(ctx context.Context, fs Title, ut UpdateTitle) (Title,
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(fs)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, fs)); err != nil {
 		b.log.Error(ctx, "titlebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

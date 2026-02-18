@@ -74,6 +74,14 @@ func (h *DelegateHandler) handleEvent(ctx context.Context, eventType, entityName
 		}
 	}
 
+	// Compute FieldChanges for on_update events by diffing before and after snapshots.
+	if eventType == "on_update" && params.BeforeEntity != nil && event.RawData != nil {
+		_, beforeData, err := extractEntityData(params.BeforeEntity)
+		if err == nil {
+			event.FieldChanges = computeFieldChanges(beforeData, event.RawData)
+		}
+	}
+
 	// Fire in goroutine to avoid blocking the delegate chain.
 	go func() {
 		if err := h.trigger.OnEntityEvent(context.Background(), event); err != nil {
@@ -83,6 +91,25 @@ func (h *DelegateHandler) handleEvent(ctx context.Context, eventType, entityName
 	}()
 
 	return nil
+}
+
+// computeFieldChanges builds a FieldChange map by diffing before and after snapshots.
+// Both maps are expected to come from extractEntityData (JSON round-tripped).
+func computeFieldChanges(before, after map[string]any) map[string]workflow.FieldChange {
+	changes := make(map[string]workflow.FieldChange)
+	for key, afterVal := range after {
+		beforeVal := before[key]
+		if fmt.Sprintf("%v", beforeVal) != fmt.Sprintf("%v", afterVal) {
+			changes[key] = workflow.FieldChange{
+				OldValue: beforeVal,
+				NewValue: afterVal,
+			}
+		}
+	}
+	if len(changes) == 0 {
+		return nil
+	}
+	return changes
 }
 
 // extractEntityData extracts ID and raw data from an entity result.

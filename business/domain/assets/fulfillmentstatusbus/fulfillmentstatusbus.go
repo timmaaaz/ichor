@@ -98,6 +98,8 @@ func (b *Business) Update(ctx context.Context, fs FulfillmentStatus, ufs UpdateF
 	ctx, span := otel.AddSpan(ctx, "business.fulfillmentstatusbus.Update")
 	defer span.End()
 
+	before := fs
+
 	if ufs.IconID != nil {
 		fs.IconID = *ufs.IconID
 	}
@@ -123,7 +125,7 @@ func (b *Business) Update(ctx context.Context, fs FulfillmentStatus, ufs UpdateF
 	}
 
 	// Fire delegate event for workflow automation
-	if err := b.delegate.Call(ctx, ActionUpdatedData(fs)); err != nil {
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, fs)); err != nil {
 		b.log.Error(ctx, "fulfillmentstatusbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 

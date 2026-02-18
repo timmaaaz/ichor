@@ -179,6 +179,11 @@ type FormFieldConfig struct {
 
 	// CopyFromField copies the value from a sibling field when this field is absent from submitted data.
 	CopyFromField string `json:"copy_from_field,omitempty"`
+
+	// AutoPopulate defines mappings to populate sibling fields when a dropdown option is selected.
+	// This is the top-level equivalent of DropdownConfig.AutoPopulate for line items.
+	// The frontend reads these mappings and applies them when the user selects a combobox option.
+	AutoPopulate []AutoPopulateMapping `json:"auto_populate,omitempty"`
 }
 
 // ToJSON marshals the config to json.RawMessage for use in FormField.Config.
