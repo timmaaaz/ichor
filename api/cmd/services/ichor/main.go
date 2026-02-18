@@ -146,8 +146,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 			ThinkingEffort string `conf:"default:high"`                              // Ollama only
 		}
 		Resend struct {
-			APIKey string `conf:"default:,mask"` // ICHOR_RESEND_APIKEY — mask prevents logging
-			From   string `conf:"default:"`      // ICHOR_RESEND_FROM e.g. "Ichor ERP <noreply@yourco.com>"
+			APIKey string `conf:"mask"` // ICHOR_RESEND_APIKEY — mask prevents logging
+			From   string              // ICHOR_RESEND_FROM e.g. "Ichor ERP <noreply@yourco.com>"
 		}
 	}{
 		Version: conf.Version{
