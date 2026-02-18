@@ -47,7 +47,7 @@ func buildOrderWithLineItemsPayload(sd apitest.SeedData, lineItemCount int) map[
 		"data": map[string]any{
 			"sales.orders": map[string]any{
 				"id":                    orderID.String(),
-				"number":                fmt.Sprintf("TEST-ORDER-%d", time.Now().Unix()),
+				"number":                fmt.Sprintf("TEST-ORDER-%d", time.Now().UnixNano()),
 				"customer_id":           sd.Customers[0].ID,
 				"order_date":            time.Now().Format("2006-01-02"),
 				"due_date":              time.Now().AddDate(0, 0, 30).Format("2006-01-02"),

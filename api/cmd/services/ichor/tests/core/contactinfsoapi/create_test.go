@@ -148,7 +148,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				PreferredContactType: "email",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"primary_phone\",\"error\":\"primary_phone is a required field\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"primary_phone_number\",\"error\":\"primary_phone_number is a required field\"}]"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

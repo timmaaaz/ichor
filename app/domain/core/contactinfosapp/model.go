@@ -34,8 +34,8 @@ type ContactInfos struct {
 	FirstName            string `json:"first_name"`
 	LastName             string `json:"last_name"`
 	EmailAddress         string `json:"email_address"`
-	PrimaryPhone         string `json:"primary_phone"`
-	SecondaryPhone       string `json:"secondary_phone"`
+	PrimaryPhone         string `json:"primary_phone_number"`
+	SecondaryPhone       string `json:"secondary_phone_number"`
 	StreetID             string `json:"street_id"`
 	DeliveryAddressID    string `json:"delivery_address_id"`
 	AvailableHoursStart  string `json:"available_hours_start"`
@@ -81,8 +81,8 @@ type NewContactInfos struct {
 	FirstName            string `json:"first_name" validate:"required"`
 	LastName             string `json:"last_name" validate:"required"`
 	EmailAddress         string `json:"email_address" validate:"required"`
-	PrimaryPhone         string `json:"primary_phone" validate:"required"`
-	SecondaryPhone       string `json:"secondary_phone"`
+	PrimaryPhone         string `json:"primary_phone_number" validate:"required"`
+	SecondaryPhone       string `json:"secondary_phone_number"`
 	StreetID             string `json:"street_id" validate:"required"`
 	DeliveryAddressID    string `json:"delivery_address_id" validate:"omitempty"`
 	AvailableHoursStart  string `json:"available_hours_start" validate:"required"`
@@ -150,8 +150,8 @@ type UpdateContactInfos struct {
 	FirstName            *string `json:"first_name"`
 	LastName             *string `json:"last_name"`
 	EmailAddress         *string `json:"email_address"`
-	PrimaryPhone         *string `json:"primary_phone"`
-	SecondaryPhone       *string `json:"secondary_phone"`
+	PrimaryPhone         *string `json:"primary_phone_number"`
+	SecondaryPhone       *string `json:"secondary_phone_number"`
 	StreetID             *string `json:"street_id"`
 	DeliveryAddressID    *string `json:"delivery_address_id"`
 	AvailableHoursStart  *string `json:"available_hours_start"`
