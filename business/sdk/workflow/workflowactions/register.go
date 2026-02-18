@@ -63,7 +63,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 
 	// Communication actions
 	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB))
-	registry.Register(communication.NewSendNotificationHandler(config.Log, config.DB))
+	registry.Register(communication.NewSendNotificationHandler(config.Log, config.QueueClient))
 	registry.Register(communication.NewCreateAlertHandler(config.Log, config.Buses.Alert, config.QueueClient))
 
 	// Inventory actions - need additional dependencies
@@ -124,5 +124,5 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 
 	// Communication actions that don't need queue
 	registry.Register(communication.NewSendEmailHandler(log, db))
-	registry.Register(communication.NewSendNotificationHandler(log, db))
+	registry.Register(communication.NewSendNotificationHandler(log, nil))
 }

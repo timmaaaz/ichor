@@ -1,0 +1,220 @@
+# Workflow Action Gap Remediation Summary Command
+
+Generate an executive summary of the Workflow Action Gap Remediation implementation progress and accomplishments.
+
+## Your Task
+
+### 1. Read PROGRESS.yaml
+
+Read `.claude/plans/WORKFLOW_GAPS_PLAN/PROGRESS.yaml` to gather:
+- Project status and metadata
+- All completed phases
+- Files created and modified
+- Key decisions made
+- Milestones achieved
+- Any blockers encountered (and resolved)
+
+### 2. Read README.md
+
+Read `.claude/plans/WORKFLOW_GAPS_PLAN/README.md` to understand:
+- Original project goals
+- Success criteria
+- Expected deliverables
+
+### 3. Generate Executive Summary
+
+Create a comprehensive summary report with the following structure:
+
+```markdown
+# Workflow Action Gap Remediation - Executive Summary
+
+**Generated**: [CURRENT_DATE]
+**Project Status**: [PROJECT_STATUS]
+**Completion**: [PHASES_COMPLETED] / 9 phases ([PERCENTAGE]%)
+
+---
+
+## Project Overview
+
+**Goal**: Fix gaps in the workflow action system to enable full ERP automation: procurement triggers, FieldChanges-based rules, notifications, approvals, and new action types.
+
+**Approach**: Phased implementation — quick wins first (whitelist/FieldChanges), then stubs (notification/email), then complex features (seek_approval, create_purchase_order, receive_inventory, call_webhook, template arithmetic).
+
+**Timeline**:
+- Started: [START_DATE]
+- Current Status: [CURRENT_PHASE_STATUS]
+- [IF COMPLETED] Completed: [COMPLETION_DATE]
+
+---
+
+## Accomplishments
+
+### Phases Completed
+
+[FOR EACH COMPLETED PHASE]
+#### Phase N: [PHASE_NAME] ✅
+
+**Category**: backend
+
+**What Was Delivered**:
+- [DELIVERABLE_1]
+- [DELIVERABLE_2]
+- [DELIVERABLE_3]
+
+**Key Outcomes**:
+[SUMMARIZE WHAT WAS ACCOMPLISHED FROM PHASE NOTES]
+
+[/FOR]
+
+### Implementation Statistics
+
+- **Total Phases**: 9
+- **Phases Completed**: [COMPLETED_COUNT]
+- **Files Created**: [FILES_CREATED]
+- **Files Modified**: [FILES_MODIFIED]
+- **Validation Checks Passed**: [VALIDATION_COUNT]
+
+---
+
+## Technical Architecture
+
+### Workflow Action System Changes
+
+**New Handlers Added**:
+- [List any new action handlers]
+
+**Handlers Fixed/Completed**:
+- [List any stub completions]
+
+**Infrastructure Added**:
+- [List any new DB tables, buses, API endpoints]
+
+**Template System**:
+- [List any template processor changes]
+
+---
+
+## Key Decisions
+
+The following architectural and implementation decisions were made during this project:
+
+[FOR EACH DECISION IN context.decisions]
+- **[DECISION]**: [RATIONALE]
+[/FOR]
+
+---
+
+## Success Criteria
+
+Checking original success criteria from README.md:
+
+### Gap Remediation
+- [IF MET] ✅ [ELSE] ⏳ All procurement tables accessible to data actions
+- [IF MET] ✅ [ELSE] ⏳ FieldChanges populated for update events
+- [IF MET] ✅ [ELSE] ⏳ send_notification delivers via RabbitMQ
+- [IF MET] ✅ [ELSE] ⏳ send_email sends via SMTP
+- [IF MET] ✅ [ELSE] ⏳ seek_approval pauses workflow for human decision
+- [IF MET] ✅ [ELSE] ⏳ create_purchase_order creates PO via business layer
+- [IF MET] ✅ [ELSE] ⏳ receive_inventory updates stock and creates transaction
+- [IF MET] ✅ [ELSE] ⏳ call_webhook makes outbound HTTP requests
+- [IF MET] ✅ [ELSE] ⏳ {{expr: ...}} arithmetic in templates
+
+### System Quality
+- Go build: ✅ Passes with no errors
+- Go tests: [TEST_STATUS]
+- Security: HTTPS-only webhooks, SSRF protections
+
+---
+
+## Challenges & Solutions
+
+### Challenges Encountered
+
+[IF BLOCKERS EXISTED IN ANY PHASE]
+[FOR EACH BLOCKER THAT WAS RESOLVED]
+**[BLOCKER_DESCRIPTION]**
+- Impact: [IMPACT]
+- Solution: [SOLUTION]
+- Outcome: [OUTCOME]
+[/FOR]
+[ELSE]
+No significant blockers encountered. Implementation proceeded smoothly.
+[/IF]
+
+---
+
+## Milestones Achieved
+
+[FOR EACH MILESTONE]
+- [IF ACHIEVED] ✅ [ELSE] ⏳ [MILESTONE_NAME] [IF DATE] ([DATE]) [/IF]
+[/FOR]
+
+---
+
+## Current Status
+
+[IF PROJECT COMPLETED]
+### ✅ Project Complete
+
+All 9 phases have been completed successfully. The workflow action system now supports full ERP automation chains including procurement, inventory receipt, external webhooks, and human-in-the-loop approvals.
+
+[ELSE]
+### 🔄 In Progress
+
+**Current Phase**: [CURRENT_PHASE] - [CURRENT_PHASE_NAME]
+
+**Recent Progress**:
+[FOR EACH RECENT CHANGE]
+- [CHANGE]
+[/FOR]
+
+**Next Steps**:
+1. [NEXT_TASK from context]
+2. Complete remaining [PENDING_PHASES] phases
+3. Achieve remaining milestones
+
+**Commands to Continue**:
+- `/workflow-gaps-next` - Continue with current/next phase
+- `/workflow-gaps-status` - View detailed status
+- `/workflow-gaps-validate` - Run validation checks
+
+[/IF]
+
+---
+
+## Related Documentation
+
+- [Full Plan README](.claude/plans/WORKFLOW_GAPS_PLAN/README.md)
+- [Progress Tracking](.claude/plans/WORKFLOW_GAPS_PLAN/PROGRESS.yaml)
+- [Phase Documentation](.claude/plans/WORKFLOW_GAPS_PLAN/phases/)
+- [Workflow Docs](docs/workflow/README.md)
+
+---
+
+**Summary Generated By**: Claude Code
+**Report Version**: 1.0
+**Last Updated**: [CURRENT_DATE]
+```
+
+### 4. Display Summary
+
+Display the summary in the console/chat.
+
+### 5. Optional: Save to File
+
+Ask user if they want to save the summary:
+
+```
+Would you like to save this summary to a file?
+(yes/no)
+```
+
+If yes, save to: `.claude/plans/WORKFLOW_GAPS_PLAN/SUMMARY.md`
+
+## When to Generate Summary
+
+**Good Times**:
+- After completing a major milestone (e.g., all stubs complete)
+- After completing the entire project
+- For status reporting
+- For project retrospectives

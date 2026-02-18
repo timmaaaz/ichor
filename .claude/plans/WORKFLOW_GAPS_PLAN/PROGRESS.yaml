@@ -10,13 +10,13 @@ project:
   description: "Close all identified gaps in the workflow action system: stubs, missing tables, broken FieldChanges, and missing action handlers"
   started: "2026-02-18"
   status: "in_progress"  # planning | in_progress | completed | blocked
-  current_phase: 4
+  current_phase: 5
 
   summary:
     phases_total: 9
-    phases_completed: 3
+    phases_completed: 4
     phases_in_progress: 0
-    phases_pending: 6
+    phases_pending: 5
     files_created: 3
     files_modified: 120
 
@@ -232,49 +232,59 @@ phases:
   - phase: 4
     name: "Implement send_notification"
     description: "Replace the send_notification stub with real RabbitMQ WebSocket delivery (ephemeral, no persistence)"
-    status: "pending"
+    status: "completed"
+    completed_date: "2026-02-18"
     category: "backend"
     workflow: "feature-dev"
     plan_reviewed: false
     plan_review_grade: null
-    reviewed: false
+    reviewed: true
     review_grade: null
     tasks:
       - task: "Add workflowQueue dependency to SendNotificationHandler"
-        status: "pending"
+        status: "completed"
         notes:
-          - "Add *rabbitmq.WorkflowQueue field to SendNotificationHandler struct"
-          - "Update NewSendNotificationHandler constructor to accept it"
-          - "Update register.go to pass config.QueueClient when constructing handler"
+          - "Removed unused db *sqlx.DB field — handler is ephemeral, no DB needed"
+          - "Constructor simplified to (log, workflowQueue) — 2 args not 3"
+          - "Updated 4 call sites: register.go (2), apitest/workflow.go, validateworkflows.go"
         files:
           - path: "business/sdk/workflow/workflowactions/communication/notification.go"
-            status: "pending"
+            status: "completed"
           - path: "business/sdk/workflow/workflowactions/register.go"
-            status: "pending"
+            status: "completed"
+          - path: "api/sdk/http/apitest/workflow.go"
+            status: "completed"
+          - path: "api/cmd/tooling/admin/commands/validateworkflows.go"
+            status: "completed"
       - task: "Implement Execute to publish to RabbitMQ"
-        status: "pending"
+        status: "completed"
         notes:
-          - "Publish to QueueTypeAlert (same path as create_alert) but with type 'notification'"
-          - "No alertbus persistence — ephemeral delivery only"
-          - "Resolve {{template_vars}} in message using execCtx.RawData (reuse resolveTemplateVars from alert.go)"
-          - "Guard with if h.workflowQueue != nil (graceful degradation like create_alert)"
-          - "Return real notification_id (uuid.New().String()) not fake timestamp-based ID"
+          - "Uses QueueTypeNotification (not QueueTypeAlert) — dedicated queue type"
+          - "Set EventType='send' for proper routing key matching (notification.send matches notification.*)"
+          - "Resolves {{template_vars}} in message and title via resolveTemplateVars (from alert.go)"
+          - "Nil guard on workflowQueue for graceful degradation in test environments"
+          - "Returns real UUID notification_id"
+          - "Updated validateworkflows.go sample configs to match new schema (message required, channels removed)"
         files:
           - path: "business/sdk/workflow/workflowactions/communication/notification.go"
-            status: "pending"
+            status: "completed"
+          - path: "api/cmd/tooling/admin/commands/validateworkflows.go"
+            status: "completed"
     validation:
       - check: "go build ./... passes"
-        status: "pending"
+        status: "completed"
       - check: "send_notification publishes to RabbitMQ (manual test or integration test)"
-        status: "pending"
+        status: "completed"
       - check: "send_notification returns real UUID as notification_id"
-        status: "pending"
+        status: "completed"
       - check: "Nil workflowQueue guard does not panic (RegisterCoreActions path)"
-        status: "pending"
+        status: "completed"
     deliverables:
-      - "Updated SendNotificationHandler with RabbitMQ delivery"
-      - "Updated register.go to wire queue into notification handler"
-      - "Consistent ephemeral notification delivery matching create_alert pattern"
+      - "Updated SendNotificationHandler with RabbitMQ delivery (ephemeral)"
+      - "Removed unused db field — simplified constructor to (log, workflowQueue)"
+      - "Updated register.go, apitest/workflow.go, validateworkflows.go call sites"
+      - "Updated validateworkflows.go sample configs to match new Validate() schema"
+      - "Set EventType='send' for proper RabbitMQ routing key matching"
     blockers: []
 
   - phase: 5
@@ -592,8 +602,8 @@ phases:
     blockers: []
 
 context:
-  current_focus: "Phases 1, 2, 3 complete — ready for Phase 4 (send_notification)"
-  next_task: "Phase 4: implement send_notification with RabbitMQ WebSocket delivery"
+  current_focus: "Phases 1, 2, 3, 4 complete — ready for Phase 5 (send_email SMTP)"
+  next_task: "Phase 5: implement send_email with real SMTP delivery"
   recent_changes:
     - "Initial plan structure created with 9 phases"
     - "All 9 phase documents created"

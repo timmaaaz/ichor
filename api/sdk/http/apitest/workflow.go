@@ -48,7 +48,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	// 3. Build action registry (same 4 handlers as before).
 	registry := workflow.NewActionRegistry()
 	registry.Register(communication.NewSendEmailHandler(db.Log, db.DB))
-	registry.Register(communication.NewSendNotificationHandler(db.Log, db.DB))
+	registry.Register(communication.NewSendNotificationHandler(db.Log, nil))
 	alertBus := alertbus.NewBusiness(db.Log, alertdb.NewStore(db.Log, db.DB))
 	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil))
 	registry.Register(control.NewEvaluateConditionHandler(db.Log))

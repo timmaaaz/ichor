@@ -201,24 +201,22 @@ func collectWorkflowConfigs() []workflowEntry {
 		// send_notification action configs
 		// =====================================================================
 		{
-			name:       "NotificationMultiChannel",
+			name:       "NotificationBasic",
 			actionType: "send_notification",
 			config: json.RawMessage(`{
-				"recipients": ["user-123", "user-456"],
-				"channels": [
-					{"type": "email"},
-					{"type": "in_app"}
-				],
-				"priority": "high"
+				"recipients": ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"],
+				"priority": "high",
+				"message": "Your order {{order_id}} requires attention.",
+				"title": "Order Alert"
 			}`),
 		},
 		{
 			name:       "NotificationCritical",
 			actionType: "send_notification",
 			config: json.RawMessage(`{
-				"recipients": ["admin-001"],
-				"channels": [{"type": "sms"}, {"type": "push"}],
-				"priority": "critical"
+				"recipients": ["00000000-0000-0000-0000-000000000001"],
+				"priority": "critical",
+				"message": "Critical system event detected."
 			}`),
 		},
 

@@ -1,0 +1,36 @@
+plan: DEFAULT_WORKFLOWS_PLAN
+created: 2026-02-18
+status: completed
+
+phases:
+  - id: 1
+    name: "Migration + Data Layer"
+    status: completed
+    files:
+      - business/sdk/migrate/sql/migrate.sql
+      - business/sdk/workflow/models.go
+      - business/sdk/workflow/stores/workflowdb/models.go
+      - business/sdk/workflow/stores/workflowdb/workflowdb.go
+
+  - id: 2
+    name: "Business + App Layer (is_default enforcement)"
+    status: completed
+    files:
+      - business/sdk/workflow/workflowbus.go
+      - app/domain/workflow/workflowsaveapp/workflowsaveapp.go
+
+  - id: 3
+    name: "Duplicate Endpoint"
+    status: completed
+    files:
+      - app/domain/workflow/workflowsaveapp/workflowsaveapp.go
+      - api/domain/http/workflow/workflowsaveapi/workflowsaveapi.go
+      - api/domain/http/workflow/workflowsaveapi/route.go
+
+  - id: 4
+    name: "API Response + Seed Data"
+    status: completed
+    files:
+      - api/domain/http/workflow/ruleapi/model.go
+      - api/domain/http/workflow/ruleapi/converters.go
+      - business/sdk/dbtest/seedFrontend.go
