@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "required": ["url", "method"],
+    "properties": {
+        "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The URL to send the webhook request to (supports {{variable}} template substitution)"
+        },
+        "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            "description": "HTTP method for the webhook request"
+        },
+        "headers": {
+            "type": "object",
+            "additionalProperties": {"type": "string"},
+            "description": "HTTP headers to include in the request"
+        },
+        "body": {
+            "type": "string",
+            "description": "Request body template (supports {{variable}} substitution)"
+        },
+        "timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300,
+            "description": "Request timeout in seconds"
+        },
+        "expected_status_codes": {
+            "type": "array",
+            "items": {"type": "integer"},
+            "description": "HTTP status codes considered successful (defaults to 200-299)"
+        }
+    }
+}

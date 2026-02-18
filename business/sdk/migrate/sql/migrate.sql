@@ -2059,3 +2059,28 @@ LEFT JOIN core.users cu ON ar.created_by = cu.id
 LEFT JOIN core.users uu ON ar.updated_by = uu.id
 LEFT JOIN core.users du ON ar.deactivated_by = du.id
 WHERE ar.is_active = true;
+
+-- Version: 1.997
+-- Description: Add workflow approval requests table for seek_approval async activity
+CREATE TABLE workflow.approval_requests (
+    approval_request_id UUID        NOT NULL,
+    execution_id        UUID        NOT NULL REFERENCES workflow.automation_executions(id),
+    rule_id             UUID        NOT NULL REFERENCES workflow.automation_rules(id),
+    action_name         VARCHAR(100) NOT NULL,
+    approvers           UUID[]      NOT NULL,
+    approval_type       VARCHAR(20) NOT NULL DEFAULT 'any' CHECK (approval_type IN ('any', 'all', 'majority')),
+    status              VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'timed_out', 'expired')),
+    timeout_hours       INT         NOT NULL DEFAULT 72,
+    task_token          TEXT        NOT NULL,
+    approval_message    TEXT,
+    resolved_by         UUID        REFERENCES core.users(id),
+    resolution_reason   TEXT,
+    created_date        TIMESTAMP   NOT NULL DEFAULT NOW(),
+    resolved_date       TIMESTAMP,
+
+    PRIMARY KEY (approval_request_id)
+);
+
+CREATE INDEX idx_approval_requests_execution ON workflow.approval_requests(execution_id);
+CREATE INDEX idx_approval_requests_status ON workflow.approval_requests(status) WHERE status = 'pending';
+CREATE INDEX idx_approval_requests_approvers ON workflow.approval_requests USING GIN (approvers);

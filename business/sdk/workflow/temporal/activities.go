@@ -169,6 +169,7 @@ func buildExecContext(input ActionActivityInput) workflow.ActionExecutionContext
 		RawData:       input.Context,
 		ExecutionID:   input.ExecutionID,
 		RuleName:      input.RuleName,
+		ActionName:    input.ActionName,
 		TriggerSource: "automation",
 		Timestamp:     time.Now(),
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
 	foundationtemporal "github.com/timmaaaz/ichor/foundation/temporal"
@@ -58,9 +59,12 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	w := worker.New(tc, taskQueue, worker.Options{})
 	w.RegisterWorkflow(temporal.ExecuteGraphWorkflow)
 	w.RegisterWorkflow(temporal.ExecuteBranchUntilConvergence)
+	asyncRegistry := temporal.NewAsyncRegistry()
+	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(db.Log, db.DB, nil, nil))
+
 	activities := &temporal.Activities{
 		Registry:      registry,
-		AsyncRegistry: temporal.NewAsyncRegistry(),
+		AsyncRegistry: asyncRegistry,
 	}
 	w.RegisterActivity(activities)
 

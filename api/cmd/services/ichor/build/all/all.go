@@ -67,6 +67,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/sales/ordersapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/actionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertapi"
+	workflowapprovalapi "github.com/timmaaaz/ichor/api/domain/http/workflow/approvalapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertws"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/edgeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/executionapi"
@@ -289,6 +290,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus/stores/actionpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus/stores/approvalrequestdb"
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -429,6 +432,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Workflow domain
 	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
+	approvalRequestBus := approvalrequestbus.NewBusiness(cfg.Log, approvalrequestdb.NewStore(cfg.Log, cfg.DB))
 	actionPermBus := actionpermissionsbus.NewBusiness(cfg.Log, actionpermissionsdb.NewStore(cfg.Log, cfg.DB))
 
 	// Create workflowBus outside the RabbitMQ block so it's available for reference API
@@ -1172,6 +1176,21 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 		WorkflowQueue:  workflowQueue,
+	})
+
+	// Create AsyncCompleter from Temporal client for approval resolution.
+	var asyncCompleter *temporalpkg.AsyncCompleter
+	if cfg.TemporalClient != nil {
+		asyncCompleter = temporalpkg.NewAsyncCompleter(cfg.TemporalClient)
+	}
+
+	workflowapprovalapi.Routes(app, workflowapprovalapi.Config{
+		Log:            cfg.Log,
+		ApprovalBus:    approvalRequestBus,
+		UserRoleBus:    userRoleBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+		AsyncCompleter: asyncCompleter,
 	})
 
 	referenceapi.Routes(app, referenceapi.Config{

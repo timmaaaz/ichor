@@ -26,12 +26,15 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus/stores/approvalrequestdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
@@ -172,6 +175,9 @@ func run(log *logger.Logger) error {
 	// Alert bus - required for create_alert action.
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
 
+	// Approval request bus - required for seek_approval action.
+	approvalRequestBus := approvalrequestbus.NewBusiness(log, approvalrequestdb.NewStore(log, db))
+
 	// =========================================================================
 	// Action Registry
 	// =========================================================================
@@ -191,8 +197,13 @@ func run(log *logger.Logger) error {
 			Product:              productBus,
 			Workflow:             workflowBus,
 			Alert:                alertBus,
+			ApprovalRequest:      approvalRequestBus,
 		},
 	})
+
+	// Create async registry for human-in-the-loop actions.
+	asyncRegistry := temporal.NewAsyncRegistry()
+	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(log, db, approvalRequestBus, alertBus))
 
 	// =========================================================================
 	// Temporal Worker
@@ -211,10 +222,10 @@ func run(log *logger.Logger) error {
 	w.RegisterWorkflow(temporal.ExecuteBranchUntilConvergence)
 
 	// Register activities via Activities struct.
-	// Temporal resolves struct method names by string: "ExecuteActionActivity".
-	// All actions now route through the sync activity - no async registry needed.
+	// Temporal resolves struct method names by string: "ExecuteActionActivity" / "ExecuteAsyncActionActivity".
 	w.RegisterActivity(&temporal.Activities{
-		Registry: actionRegistry,
+		Registry:      actionRegistry,
+		AsyncRegistry: asyncRegistry,
 	})
 
 	log.Info(context.Background(), "starting workflow worker",

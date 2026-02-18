@@ -32,11 +32,13 @@ var (
 
 	// humanActionTypes require human interaction and get multi-day timeouts.
 	// Examples: manager approvals, manual reviews.
+	// These types also route through ExecuteAsyncActionActivity (not sync).
 	humanActionTypes = map[string]bool{
 		"manager_approval":   true,
 		"manual_review":      true,
 		"human_verification": true,
 		"approval_request":   true,
+		"seek_approval":      true,
 	}
 )
 
@@ -609,14 +611,13 @@ func activityOptions(actionType string) workflow.ActivityOptions {
 // Temporal resolves struct method names by string when Activities is registered
 // via worker.RegisterActivity(&Activities{...}).
 //
-// All actions route to ExecuteActionActivity (synchronous execution).
-// Temporal handles retries and timeouts natively - no need for async completion pattern.
+// Human action types (seek_approval, etc.) route to ExecuteAsyncActionActivity
+// which uses Temporal's async completion pattern (task token + ErrResultPending).
+// All other actions route to ExecuteActionActivity (synchronous execution).
 func selectActivityFunc(actionType string) string {
-	// All actions use the synchronous activity. Temporal handles:
-	// - Retries with backoff (configured in activityOptions)
-	// - Timeouts (30min for long-running, 7 days for human)
-	// - Durable execution and failure recovery
-	_ = actionType // unused but kept for signature consistency
+	if humanActionTypes[actionType] {
+		return "ExecuteAsyncActionActivity"
+	}
 	return "ExecuteActionActivity"
 }
 

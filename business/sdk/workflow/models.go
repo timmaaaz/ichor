@@ -64,6 +64,7 @@ type ActionExecutionContext struct {
 	UserID        uuid.UUID              `json:"user_id,omitempty"`
 	RuleID        *uuid.UUID             `json:"rule_id,omitempty"`      // Pointer: nil for manual executions
 	RuleName      string                 `json:"rule_name"`
+	ActionName    string                 `json:"action_name"`
 	ExecutionID   uuid.UUID              `json:"execution_id,omitempty"`
 	TriggerSource string                 `json:"trigger_source"` // "automation" or "manual"
 }

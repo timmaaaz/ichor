@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
@@ -55,7 +56,8 @@ type BusDependencies struct {
 	SupplierProduct       *supplierproductbus.Business
 
 	// Workflow domain
-	Alert *alertbus.Business
+	Alert           *alertbus.Business
+	ApprovalRequest *approvalrequestbus.Business
 }
 
 // RegisterAll registers all standard workflow actions using the config
@@ -74,7 +76,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 	registry.Register(data.NewAuditLogHandler(config.Log, config.DB))
 
 	// Approval actions
-	registry.Register(approval.NewSeekApprovalHandler(config.Log, config.DB))
+	registry.Register(approval.NewSeekApprovalHandler(config.Log, config.DB, config.Buses.ApprovalRequest, config.Buses.Alert))
 
 	// Communication actions
 	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB, config.EmailClient, config.EmailFrom))
@@ -155,8 +157,8 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 	registry.Register(data.NewTransitionStatusHandler(log, db))
 	registry.Register(data.NewAuditLogHandler(log, db))
 
-	// Approval actions - only need log and db
-	registry.Register(approval.NewSeekApprovalHandler(log, db))
+	// Approval actions - nil buses for core path (graceful degradation)
+	registry.Register(approval.NewSeekApprovalHandler(log, db, nil, nil))
 
 	// Communication actions that don't need queue or email client (nil = graceful degradation)
 	registry.Register(communication.NewSendEmailHandler(log, db, nil, ""))

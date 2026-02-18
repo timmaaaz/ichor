@@ -16,7 +16,7 @@ import (
 //
 // This replaced the previous async completion pattern that used RabbitMQ.
 // Temporal handles retries, timeouts, and failure recovery natively.
-func TestAllActionsRouteThroughSyncActivity(t *testing.T) {
+func TestNonHumanActionsRouteThroughSyncActivity(t *testing.T) {
 	actionTypes := []string{
 		"allocate_inventory",
 		"send_email",
@@ -26,7 +26,6 @@ func TestAllActionsRouteThroughSyncActivity(t *testing.T) {
 		"reserve_shipping",
 		"evaluate_condition",
 		"update_field",
-		"seek_approval",
 	}
 
 	for _, actionType := range actionTypes {
@@ -34,6 +33,24 @@ func TestAllActionsRouteThroughSyncActivity(t *testing.T) {
 			activityFunc := selectActivityFunc(actionType)
 			require.Equal(t, "ExecuteActionActivity", activityFunc,
 				"%s should route to ExecuteActionActivity (sync)", actionType)
+		})
+	}
+}
+
+func TestHumanActionsRouteThroughAsyncActivity(t *testing.T) {
+	humanTypes := []string{
+		"seek_approval",
+		"manager_approval",
+		"manual_review",
+		"human_verification",
+		"approval_request",
+	}
+
+	for _, actionType := range humanTypes {
+		t.Run(actionType, func(t *testing.T) {
+			activityFunc := selectActivityFunc(actionType)
+			require.Equal(t, "ExecuteAsyncActionActivity", activityFunc,
+				"%s should route to ExecuteAsyncActionActivity (async)", actionType)
 		})
 	}
 }
@@ -104,6 +121,7 @@ func TestHumanActionsGetMultiDayTimeouts(t *testing.T) {
 		"manual_review",
 		"human_verification",
 		"approval_request",
+		"seek_approval",
 	}
 
 	for _, actionType := range humanTypes {

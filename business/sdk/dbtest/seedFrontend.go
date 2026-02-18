@@ -3923,6 +3923,42 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 			log.Error(ctx, "Failed to create transition_status template", "error", err)
 		}
 
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Call Webhook",
+			Description:   "Makes an outbound HTTP request to an external URL",
+			ActionType:    "call_webhook",
+			Icon:          "material-symbols:webhook",
+			DefaultConfig: json.RawMessage(`{"method": "POST", "timeout_seconds": 30}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create call_webhook template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Receive Inventory",
+			Description:   "Receives inventory into a warehouse location from a purchase order",
+			ActionType:    "receive_inventory",
+			Icon:          "material-symbols:local-shipping",
+			DefaultConfig: json.RawMessage(`{"source_from_po": true}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create receive_inventory template", "error", err)
+		}
+
+		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+			Name:          "Create Purchase Order",
+			Description:   "Creates a purchase order with line items for supplier procurement",
+			ActionType:    "create_purchase_order",
+			Icon:          "material-symbols:receipt-long",
+			DefaultConfig: json.RawMessage(`{}`),
+			CreatedBy:     admins[0].ID,
+		})
+		if err != nil {
+			log.Error(ctx, "Failed to create create_purchase_order template", "error", err)
+		}
+
 		// Create automation rules if we have all the required references
 		if orderLineItemsEntity.ID != uuid.Nil && wfEntityType.ID != uuid.Nil && onCreateTrigger.ID != uuid.Nil {
 			// Rule 1: Line Item Created -> Allocate Inventory

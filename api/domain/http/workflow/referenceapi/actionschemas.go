@@ -161,6 +161,27 @@ var actionTypeMetadata = map[string]actionTypeMeta{
 		SupportsManual: true,
 		IsAsync:        false,
 	},
+	"call_webhook": {
+		Name:           "Call Webhook",
+		Description:    "Makes an outbound HTTP request to an external URL with template variable support",
+		Category:       "integration",
+		SupportsManual: true,
+		IsAsync:        false,
+	},
+	"receive_inventory": {
+		Name:           "Receive Inventory",
+		Description:    "Receives inventory into a warehouse location, updating stock levels and creating transaction records",
+		Category:       "inventory",
+		SupportsManual: true,
+		IsAsync:        false,
+	},
+	"create_purchase_order": {
+		Name:           "Create Purchase Order",
+		Description:    "Creates a purchase order with line items for procurement from suppliers",
+		Category:       "procurement",
+		SupportsManual: true,
+		IsAsync:        false,
+	},
 }
 
 // actionTypeSchemas holds the loaded JSON schemas keyed by action type.
