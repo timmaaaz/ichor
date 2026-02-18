@@ -14,6 +14,10 @@
         "must_be_future": {
             "type": "boolean",
             "description": "Shorthand for min_date: 'today'"
+        },
+        "copy_from_field": {
+            "type": "string",
+            "description": "Copy value from this sibling field when this field is absent from submitted data"
         }
     }
 }

@@ -31,7 +31,11 @@
                     "enum_name": { "type": "string" },
                     "dropdown_config": { "type": "object" },
                     "validation": { "type": "object" },
-                    "depends_on": { "type": "object" }
+                    "depends_on": { "type": "object" },
+                    "copy_from_field": {
+                        "type": "string",
+                        "description": "Copy value from another field in this line item when this field is absent"
+                    }
                 }
             }
         },

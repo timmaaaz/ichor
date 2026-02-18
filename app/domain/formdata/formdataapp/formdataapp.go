@@ -563,6 +563,26 @@ func (a *App) mergeFieldDefaults(
 		}
 	}
 
+	// Second pass: handle copy_from_field. Runs after default_value injection so
+	// that if the source field was itself defaulted, the copy sees the resolved value.
+	for _, field := range fieldConfigs {
+		var cfg formfieldbus.FieldDefaultConfig
+		if err := json.Unmarshal(field.Config, &cfg); err != nil {
+			continue
+		}
+
+		if cfg.CopyFromField == "" {
+			continue
+		}
+
+		if _, exists := dataMap[field.Name]; !exists {
+			if sourceVal, sourceExists := dataMap[cfg.CopyFromField]; sourceExists {
+				dataMap[field.Name] = sourceVal
+				injected.InjectedFields[field.Name] = fmt.Sprintf("copied from %s", cfg.CopyFromField)
+			}
+		}
+	}
+
 	result, err := json.Marshal(dataMap)
 	return result, injected, err
 }
@@ -645,6 +665,19 @@ func (a *App) mergeLineItemFieldDefaults(
 			}
 
 			dataMap[field.Name] = defaultVal
+		}
+	}
+
+	// Second pass: handle copy_from_field for line item fields.
+	for _, field := range lineItemFields {
+		if field.CopyFromField == "" {
+			continue
+		}
+
+		if _, exists := dataMap[field.Name]; !exists {
+			if sourceVal, sourceExists := dataMap[field.CopyFromField]; sourceExists {
+				dataMap[field.Name] = sourceVal
+			}
 		}
 	}
 

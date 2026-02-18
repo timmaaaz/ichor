@@ -6,6 +6,10 @@
         "min": { "type": "integer", "description": "Minimum numeric value" },
         "max": { "type": "integer", "description": "Maximum numeric value" },
         "step": { "type": "number", "description": "Step increment for the input" },
-        "precision": { "type": "integer", "description": "Decimal precision" }
+        "precision": { "type": "integer", "description": "Decimal precision" },
+        "copy_from_field": {
+            "type": "string",
+            "description": "Copy value from this sibling field when this field is absent from submitted data"
+        }
     }
 }

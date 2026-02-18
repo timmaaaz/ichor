@@ -36,6 +36,10 @@
             }
         },
         "default_value": { "type": "string" },
-        "hidden": { "type": "boolean" }
+        "hidden": { "type": "boolean" },
+        "copy_from_field": {
+            "type": "string",
+            "description": "Copy value from this sibling field when this field is absent from submitted data"
+        }
     }
 }

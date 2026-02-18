@@ -25,6 +25,10 @@
             "type": "integer",
             "description": "Maximum string length"
         },
+        "copy_from_field": {
+            "type": "string",
+            "description": "Copy value from this sibling field when this field is absent from submitted data"
+        },
         "depends_on": {
             "$ref": "#/$defs/depends_on"
         }

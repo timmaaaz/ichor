@@ -41,6 +41,11 @@ func (a *App) Create(ctx context.Context, app NewFormField) (FormField, error) {
 		return FormField{}, errs.New(errs.InvalidArgument, err)
 	}
 
+	if err := validateCopyFromField(ctx, a.formfieldbus, nff.FormID,
+		nff.EntitySchema, nff.EntityTable, nff.Name, nff.FieldType, nff.Config); err != nil {
+		return FormField{}, err
+	}
+
 	field, err := a.formfieldbus.Create(ctx, nff)
 	if err != nil {
 		if errors.Is(err, formfieldbus.ErrUniqueEntry) {
@@ -65,6 +70,31 @@ func (a *App) Update(ctx context.Context, app UpdateFormField, id uuid.UUID) (Fo
 	field, err := a.formfieldbus.QueryByID(ctx, id)
 	if err != nil {
 		return FormField{}, errs.New(errs.NotFound, formfieldbus.ErrNotFound)
+	}
+
+	// Validate copy_from_field if config is being updated.
+	if uff.Config != nil {
+		entitySchema := field.EntitySchema
+		entityTable := field.EntityTable
+		fieldName := field.Name
+		fieldType := field.FieldType
+		if uff.EntitySchema != nil {
+			entitySchema = *uff.EntitySchema
+		}
+		if uff.EntityTable != nil {
+			entityTable = *uff.EntityTable
+		}
+		if uff.Name != nil {
+			fieldName = *uff.Name
+		}
+		if uff.FieldType != nil {
+			fieldType = *uff.FieldType
+		}
+
+		if err := validateCopyFromField(ctx, a.formfieldbus, field.FormID,
+			entitySchema, entityTable, fieldName, fieldType, *uff.Config); err != nil {
+			return FormField{}, err
+		}
 	}
 
 	field, err = a.formfieldbus.Update(ctx, field, uff)

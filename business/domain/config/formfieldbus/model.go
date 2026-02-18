@@ -68,6 +68,7 @@ type FieldDefaultConfig struct {
 	DefaultValueCreate string `json:"default_value_create,omitempty"` // e.g., "{{$me}}" - only for create operations
 	DefaultValueUpdate string `json:"default_value_update,omitempty"` // e.g., "{{$me}}" - only for update operations
 	Hidden             bool   `json:"hidden,omitempty"`               // If true, field is not rendered in UI
+	CopyFromField      string `json:"copy_from_field,omitempty"`      // Copy value from this sibling field when target is absent
 }
 
 // AutoPopulateMapping defines how to populate a target field from a dropdown selection.
@@ -175,6 +176,9 @@ type FormFieldConfig struct {
 
 	// Conditional field behavior
 	DependsOn *DependsOnConfig `json:"depends_on,omitempty"`
+
+	// CopyFromField copies the value from a sibling field when this field is absent from submitted data.
+	CopyFromField string `json:"copy_from_field,omitempty"`
 }
 
 // ToJSON marshals the config to json.RawMessage for use in FormField.Config.
@@ -210,6 +214,8 @@ type LineItemField struct {
 	// When set, the field's type/label/validation can change at runtime based on the
 	// value of another field in the same line item.
 	DependsOn *DependsOnConfig `json:"depends_on,omitempty"`
+	// CopyFromField copies the value from another field in the same line item when this field is absent.
+	CopyFromField string `json:"copy_from_field,omitempty"`
 }
 
 // LineItemsFieldConfig defines the configuration for a lineitems field type.

@@ -5,6 +5,10 @@
         "hidden": { "type": "boolean" },
         "precision": { "type": "integer", "description": "Decimal precision" },
         "min": { "type": "integer", "description": "Minimum value (e.g., 0)" },
-        "max": { "type": "integer", "description": "Maximum value (e.g., 100)" }
+        "max": { "type": "integer", "description": "Maximum value (e.g., 100)" },
+        "copy_from_field": {
+            "type": "string",
+            "description": "Copy value from this sibling field when this field is absent from submitted data"
+        }
     }
 }
