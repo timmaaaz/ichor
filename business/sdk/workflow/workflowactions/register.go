@@ -6,6 +6,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
@@ -15,6 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/procurement"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
@@ -41,7 +44,9 @@ type BusDependencies struct {
 	Workflow             *workflow.Business
 
 	// Procurement domain
-	SupplierProduct *supplierproductbus.Business
+	PurchaseOrder         *purchaseorderbus.Business
+	PurchaseOrderLineItem *purchaseorderlineitembus.Business
+	SupplierProduct       *supplierproductbus.Business
 
 	// Workflow domain
 	Alert *alertbus.Business
@@ -83,6 +88,9 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 
 	// Granular inventory actions
 	RegisterGranularInventoryActions(registry, config)
+
+	// Procurement actions
+	RegisterProcurementActions(registry, config)
 }
 
 // RegisterInventoryActions registers only inventory-related actions
@@ -107,6 +115,20 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 	registry.Register(inventory.NewCommitAllocationHandler(config.Log, config.DB, config.Buses.InventoryItem))
 	registry.Register(inventory.NewReserveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.Workflow))
 	registry.Register(inventory.NewReceiveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.InventoryTransaction, config.Buses.SupplierProduct))
+}
+
+// RegisterProcurementActions registers procurement-domain action handlers.
+// These require procurement bus dependencies and are not included in RegisterCoreActions.
+func RegisterProcurementActions(registry *workflow.ActionRegistry, config ActionConfig) {
+	if config.Buses.PurchaseOrder != nil {
+		registry.Register(procurement.NewCreatePurchaseOrderHandler(
+			config.Log,
+			config.DB,
+			config.Buses.PurchaseOrder,
+			config.Buses.PurchaseOrderLineItem,
+			config.Buses.SupplierProduct,
+		))
+	}
 }
 
 // RegisterCoreActions registers action handlers that don't require RabbitMQ or heavy dependencies.

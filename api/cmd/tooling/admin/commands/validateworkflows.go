@@ -9,6 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/procurement"
 )
 
 // workflowEntry pairs a workflow action config with its metadata for validation reporting
@@ -83,6 +84,7 @@ func createValidationRegistry() *workflow.ActionRegistry {
 	registry.Register(communication.NewCreateAlertHandler(nil, nil, nil))
 	registry.Register(inventory.NewAllocateInventoryHandler(nil, nil, nil, nil, nil, nil, nil))
 	registry.Register(inventory.NewReceiveInventoryHandler(nil, nil, nil, nil, nil))
+	registry.Register(procurement.NewCreatePurchaseOrderHandler(nil, nil, nil, nil, nil))
 
 	return registry
 }
@@ -308,6 +310,61 @@ func collectWorkflowConfigs() []workflowEntry {
 			config: json.RawMessage(`{
 				"source_from_po": true,
 				"location_id": "00000000-0000-0000-0000-000000000001"
+			}`),
+		},
+
+		// =====================================================================
+		// create_purchase_order action configs
+		// =====================================================================
+		{
+			name:       "CreatePOExplicit",
+			actionType: "create_purchase_order",
+			config: json.RawMessage(`{
+				"supplier_id": "00000000-0000-0000-0000-000000000001",
+				"purchase_order_status_id": "00000000-0000-0000-0000-000000000001",
+				"delivery_warehouse_id": "00000000-0000-0000-0000-000000000001",
+				"delivery_location_id": "00000000-0000-0000-0000-000000000001",
+				"currency_id": "00000000-0000-0000-0000-000000000001",
+				"line_items": [
+					{
+						"product_id": "00000000-0000-0000-0000-000000000001",
+						"supplier_product_id": "00000000-0000-0000-0000-000000000001",
+						"quantity_ordered": 100,
+						"unit_cost": 25.50,
+						"line_item_status_id": "00000000-0000-0000-0000-000000000001"
+					}
+				]
+			}`),
+		},
+		{
+			name:       "CreatePOAutoSupplier",
+			actionType: "create_purchase_order",
+			config: json.RawMessage(`{
+				"purchase_order_status_id": "00000000-0000-0000-0000-000000000001",
+				"delivery_warehouse_id": "00000000-0000-0000-0000-000000000001",
+				"delivery_location_id": "00000000-0000-0000-0000-000000000001",
+				"currency_id": "00000000-0000-0000-0000-000000000001",
+				"expected_delivery_days": 14,
+				"notes": "Auto-generated reorder PO",
+				"line_items": [
+					{
+						"product_id": "00000000-0000-0000-0000-000000000001",
+						"quantity_ordered": 50,
+						"line_item_status_id": "00000000-0000-0000-0000-000000000001"
+					}
+				]
+			}`),
+		},
+		{
+			name:       "CreatePOFromEvent",
+			actionType: "create_purchase_order",
+			config: json.RawMessage(`{
+				"source_from_event": true,
+				"purchase_order_status_id": "00000000-0000-0000-0000-000000000001",
+				"delivery_warehouse_id": "00000000-0000-0000-0000-000000000001",
+				"delivery_location_id": "00000000-0000-0000-0000-000000000001",
+				"currency_id": "00000000-0000-0000-0000-000000000001",
+				"default_line_item_status_id": "00000000-0000-0000-0000-000000000001"
 			}`),
 		},
 	}
