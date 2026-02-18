@@ -444,16 +444,22 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Register granular inventory actions for output port metadata.
 	// These don't need RabbitMQ but need inventory business dependencies.
-	workflowactions.RegisterGranularInventoryActions(actionRegistry, workflowactions.ActionConfig{
+	inventoryAndProcurementConfig := workflowactions.ActionConfig{
 		Log: cfg.Log,
 		DB:  cfg.DB,
 		Buses: workflowactions.BusDependencies{
-			InventoryItem:        inventoryItemBus,
-			InventoryTransaction: inventoryTransactionBus,
-			SupplierProduct:      supplierProductBus,
-			Workflow:             workflowBus,
+			InventoryItem:         inventoryItemBus,
+			InventoryTransaction:  inventoryTransactionBus,
+			SupplierProduct:       supplierProductBus,
+			PurchaseOrder:         purchaseOrderBus,
+			PurchaseOrderLineItem: purchaseOrderLineItemBus,
+			Workflow:              workflowBus,
 		},
-	})
+	}
+	workflowactions.RegisterGranularInventoryActions(actionRegistry, inventoryAndProcurementConfig)
+
+	// Register procurement actions (create_purchase_order).
+	workflowactions.RegisterProcurementActions(actionRegistry, inventoryAndProcurementConfig)
 
 	// =========================================================================
 	// Initialize Temporal Workflow Infrastructure

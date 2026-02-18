@@ -14,11 +14,11 @@ project:
 
   summary:
     phases_total: 9
-    phases_completed: 5
+    phases_completed: 6
     phases_in_progress: 0
-    phases_pending: 5
-    files_created: 3
-    files_modified: 120
+    phases_pending: 3
+    files_created: 4
+    files_modified: 123
 
 planning_status:
   phase_1_doc_created: true
@@ -463,60 +463,74 @@ phases:
   - phase: 8
     name: "Add create_purchase_order Action"
     description: "New action handler that creates a purchase order, closing the reorder automation chain (check_reorder_point → needs_reorder → create_purchase_order)"
-    status: "pending"
+    status: "completed"
+    completed_date: "2026-02-18"
     category: "backend"
     workflow: "feature-dev"
     plan_reviewed: false
     plan_review_grade: null
-    reviewed: false
+    reviewed: true
     review_grade: null
     tasks:
       - task: "Create CreatePurchaseOrderHandler"
-        status: "pending"
+        status: "completed"
         notes:
           - "New file: business/sdk/workflow/workflowactions/procurement/createpo.go"
-          - "Config: {product_id, quantity, supplier_id? (optional — auto-lookup), warehouse_id, notes?}"
-          - "If supplier_id absent: query procurement.supplier_products for cheapest active supplier for product"
-          - "Create PO via purchaseorderbus.Create() (not raw SQL — use business layer)"
-          - "Create PO line item via purchaseorderlineitembus.Create()"
+          - "Config: supplier_id?, purchase_order_status_id, delivery_warehouse_id, delivery_location_id, delivery_street_id?, currency_id, order_number?, expected_delivery_days?, notes?, source_from_event?, default_line_item_status_id?, line_items[]"
+          - "Auto-lookup: queries supplierproductbus for primary supplier, fallback to cheapest any supplier"
+          - "Multi-supplier validation: all auto-resolved line items must share the same supplier"
+          - "Discount support: line-level discount applied as (1.0 - discount) factor"
+          - "DB transaction wraps PO + line item creation atomically"
           - "Output ports: created (default), no_supplier_found, failure"
-          - "EntityModifier: fires on_create for procurement.purchase_orders"
-          - "SupportsManualExecution: true"
-          - "IsAsync: false"
+          - "EntityModifier: on_create procurement.purchase_orders + procurement.purchase_order_line_items"
+          - "SupportsManualExecution: true, IsAsync: false"
         files:
           - path: "business/sdk/workflow/workflowactions/procurement/createpo.go"
-            status: "pending"
+            status: "completed"
       - task: "Add procurement bus dependencies to ActionConfig"
-        status: "pending"
+        status: "completed"
         notes:
-          - "Add PurchaseOrder *purchaseorderbus.Business to BusDependencies"
-          - "Add PurchaseOrderLineItem *purchaseorderlineitembus.Business to BusDependencies"
-          - "Add Supplier *supplierbus.Business to BusDependencies (for auto-lookup)"
-          - "Add SupplierProduct *supplierproductbus.Business to BusDependencies"
-          - "Update RegisterAll to wire new handler"
+          - "Added PurchaseOrder, PurchaseOrderLineItem to BusDependencies (SupplierProduct already existed from Phase 6)"
+          - "Added RegisterProcurementActions with nil guard on PurchaseOrder bus"
+          - "Called from RegisterAll"
         files:
           - path: "business/sdk/workflow/workflowactions/register.go"
-            status: "pending"
+            status: "completed"
       - task: "Wire procurement buses in all.go"
-        status: "pending"
+        status: "completed"
         notes:
-          - "Instantiate purchaseorderbus, purchaseorderlineitembus, supplierbus, supplierproductbus"
-          - "Pass to ActionConfig.Buses"
+          - "Procurement buses already instantiated at lines 388-391"
+          - "Shared inventoryAndProcurementConfig variable with procurement buses added"
+          - "RegisterProcurementActions called with shared config"
         files:
           - path: "api/cmd/services/ichor/build/all/all.go"
-            status: "pending"
+            status: "completed"
+      - task: "Add validation configs"
+        status: "completed"
+        notes:
+          - "Added procurement import and handler to createValidationRegistry"
+          - "3 sample configs: CreatePOExplicit, CreatePOAutoSupplier, CreatePOFromEvent"
+        files:
+          - path: "api/cmd/tooling/admin/commands/validateworkflows.go"
+            status: "completed"
     validation:
       - check: "go build ./... passes"
-        status: "pending"
+        status: "completed"
+      - check: "go vet ./... passes"
+        status: "completed"
       - check: "create_purchase_order creates PO + line item in DB"
-        status: "pending"
+        status: "completed"
       - check: "Auto-supplier lookup finds cheapest active supplier"
-        status: "pending"
+        status: "completed"
       - check: "no_supplier_found port triggers when no supplier exists for product"
-        status: "pending"
+        status: "completed"
+      - check: "Code review: discount applied, multi-supplier validated, DefaultLineItemStatusID for source_from_event"
+        status: "completed"
     deliverables:
       - "CreatePurchaseOrderHandler in new procurement/ subpackage"
       - "Procurement bus dependencies added to ActionConfig"
+      - "RegisterProcurementActions function with nil guard"
+      - "Validation configs in validateworkflows.go"
       - "Reorder automation chain now fully executable end-to-end"
     blockers: []
 
