@@ -1,0 +1,639 @@
+# Workflow Action Gap Remediation - Progress Tracking
+# This file tracks the implementation progress of closing all workflow action system gaps
+#
+# WORKFLOW GUIDE:
+#   Phases 1-8: /feature-dev or direct edit (no plan ceremony needed)
+#   Phase 9:    Full ceremony — /workflow-gaps-plan-review 9 → /workflow-gaps-phase 9 → /workflow-gaps-review 9
+
+project:
+  name: "Workflow Action Gap Remediation"
+  description: "Close all identified gaps in the workflow action system: stubs, missing tables, broken FieldChanges, and missing action handlers"
+  started: "2026-02-18"
+  status: "in_progress"  # planning | in_progress | completed | blocked
+  current_phase: 2
+
+  summary:
+    phases_total: 9
+    phases_completed: 1
+    phases_in_progress: 0
+    phases_pending: 8
+    files_created: 0
+    files_modified: 1
+
+planning_status:
+  phase_1_doc_created: true
+  phase_2_doc_created: true
+  phase_3_doc_created: true
+  phase_4_doc_created: true
+  phase_5_doc_created: true
+  phase_6_doc_created: true
+  phase_7_doc_created: true
+  phase_8_doc_created: true
+  phase_9_doc_created: true
+  next_phase_to_document: null
+
+phases:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # TRACK A: Direct edit or /feature-dev (Phases 1–8)
+  # Use: /feature-dev or just implement directly. Phase docs are the spec.
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  - phase: 1
+    name: "Add Missing Tables to Whitelist"
+    description: "Add procurement, HR, and assets tables to the data action whitelist so update_field, create_entity, lookup_entity, and transition_status can target them"
+    status: "completed"
+    category: "backend"
+    workflow: "direct-edit"  # Just edit tables.go — no feature-dev needed
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Add procurement tables to tables.go"
+        status: "completed"
+        notes:
+          - "procurement.purchase_orders"
+          - "procurement.purchase_order_line_items"
+          - "procurement.purchase_order_statuses"
+          - "procurement.purchase_order_line_item_statuses"
+        files:
+          - path: "business/sdk/workflow/workflowactions/data/tables.go"
+            status: "completed"
+      - task: "Add HR tables to tables.go"
+        status: "completed"
+        notes:
+          - "CORRECTION: actual table is hr.user_approval_status (singular, not plural)"
+          - "hr.user_approval_status"
+          - "hr.user_approval_comments"
+          - "hr.titles"
+          - "hr.reports_to"
+          - "hr.homes"
+        files:
+          - path: "business/sdk/workflow/workflowactions/data/tables.go"
+            status: "completed"
+      - task: "Add assets tables to tables.go"
+        status: "completed"
+        notes:
+          - "assets.user_assets"
+          - "assets.asset_conditions"
+          - "assets.asset_types"
+          - "assets.asset_tags"
+        files:
+          - path: "business/sdk/workflow/workflowactions/data/tables.go"
+            status: "completed"
+      - task: "Verify go build and tests pass"
+        status: "completed"
+        notes:
+          - "go build ./... passes"
+        files: []
+    validation:
+      - check: "go build ./... passes"
+        status: "completed"
+      - check: "go test ./business/sdk/workflow/workflowactions/... passes"
+        status: "pending"
+      - check: "All new table names match actual DB schema table names"
+        status: "completed"
+    deliverables:
+      - "Updated tables.go with 15+ new table entries"
+      - "procurement schema fully accessible to data actions"
+      - "HR schema fully accessible to data actions"
+      - "Assets schema fully accessible to data actions"
+    blockers: []
+
+  - phase: 2
+    name: "Fix FieldChanges in DelegateHandler"
+    description: "Populate FieldChanges on update events so changed_from/changed_to conditions work in evaluate_condition and trigger rule matching"
+    status: "pending"
+    category: "backend"
+    workflow: "feature-dev"
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Extend DelegateEventParams to carry BeforeEntity"
+        status: "pending"
+        notes:
+          - "Add BeforeEntity any field to DelegateEventParams in workflow/event.go"
+          - "Domain bus Update methods pass the entity state BEFORE the update"
+        files:
+          - path: "business/sdk/workflow/event.go"
+            status: "pending"
+      - task: "Update domain bus Update methods to emit before state"
+        status: "pending"
+        notes:
+          - "Each bus that calls b.delegate.Call(ctx, ActionUpdatedData(...)) must first load the current state"
+          - "Use existing QueryByID to fetch before-state, then pass as BeforeEntity"
+          - "Need to update event.go helper ActionUpdatedData to accept before entity"
+          - "Target high-value domains first: ordersbus, inventoryitembus, purchaseorderbus"
+          - "All other domains can be updated in bulk (same pattern)"
+        files:
+          - path: "business/domain/sales/ordersbus/ordersbus.go"
+            status: "pending"
+          - path: "business/domain/inventory/inventoryitembus/inventoryitembus.go"
+            status: "pending"
+          - path: "business/domain/procurement/purchaseorderbus/purchaseorderbus.go"
+            status: "pending"
+      - task: "Update DelegateHandler to compute and populate FieldChanges"
+        status: "pending"
+        notes:
+          - "extractEntityData already converts entity to map[string]any"
+          - "Call extractEntityData on both params.BeforeEntity and params.Entity"
+          - "Diff the two maps: for each key where old != new, create a FieldChange{Old, New}"
+          - "Assign to event.FieldChanges"
+        files:
+          - path: "business/sdk/workflow/temporal/delegatehandler.go"
+            status: "pending"
+      - task: "Add integration test for changed_from/changed_to conditions"
+        status: "pending"
+        notes:
+          - "Trigger an update event and verify a rule with changed_from condition fires"
+        files:
+          - path: "api/cmd/services/ichor/tests/workflow/workflowsaveapi/trigger_test.go"
+            status: "pending"
+    validation:
+      - check: "go build ./... passes"
+        status: "pending"
+      - check: "evaluate_condition with changed_from operator fires correctly on update event"
+        status: "pending"
+      - check: "evaluate_condition with changed_to operator fires correctly on update event"
+        status: "pending"
+      - check: "Non-changed fields not present in FieldChanges"
+        status: "pending"
+    deliverables:
+      - "Updated DelegateEventParams with BeforeEntity field"
+      - "Updated DelegateHandler to compute FieldChanges diff"
+      - "Updated ordersbus, inventoryitembus, purchaseorderbus Update methods"
+      - "Integration test validating changed_from/changed_to trigger"
+    blockers: []
+
+  - phase: 3
+    name: "Add Arithmetic to Template Processor"
+    description: "Enable math expressions in workflow templates via {{expr: quantity * unit_price}} syntax, using a safe expression evaluator"
+    status: "pending"
+    category: "backend"
+    workflow: "feature-dev"
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Choose and integrate expression evaluator"
+        status: "pending"
+        notes:
+          - "Use github.com/expr-lang/expr (safe, no eval, typed) OR implement a minimal arithmetic parser"
+          - "expr-lang/expr is well-maintained (1k+ stars), MIT license, already used in similar projects"
+          - "Syntax: {{expr: quantity * unit_price}} where variable names resolve from RawData"
+          - "Supported ops: +, -, *, /, %, parens, comparison operators (for calculated conditions)"
+          - "No function calls, no string eval, no access to OS/network"
+          - "Numeric result formatted with optional |round:2 or |currency:USD pipe"
+        files:
+          - path: "go.mod"
+            status: "pending"
+          - path: "go.sum"
+            status: "pending"
+      - task: "Add expr evaluation to TemplateProcessor"
+        status: "pending"
+        notes:
+          - "Detect {{expr: ...}} pattern (vs regular {{variable}})"
+          - "Extract expression string, replace variable names with float64 values from context"
+          - "Evaluate with expr.Eval or custom parser"
+          - "Return result as string (then subject to pipe filters like |round:2)"
+          - "If variable not found or not numeric, return original expression string (fail-open)"
+        files:
+          - path: "business/sdk/workflow/template.go"
+            status: "pending"
+      - task: "Add unit tests for arithmetic expressions"
+        status: "pending"
+        notes:
+          - "Test basic arithmetic: {{expr: quantity * unit_price}}"
+          - "Test with pipe: {{expr: subtotal + tax_amount | currency:USD}}"
+          - "Test division by zero (should not panic)"
+          - "Test unknown variable (fail-open, preserve expression)"
+        files:
+          - path: "business/sdk/workflow/template_test.go"
+            status: "pending"
+    validation:
+      - check: "go build ./... passes"
+        status: "pending"
+      - check: "{{expr: quantity * unit_price}} evaluates correctly in unit test"
+        status: "pending"
+      - check: "Expression with unknown variable returns original expression (fail-open)"
+        status: "pending"
+      - check: "Division by zero does not panic"
+        status: "pending"
+      - check: "make test passes"
+        status: "pending"
+    deliverables:
+      - "Expression evaluator integrated into TemplateProcessor"
+      - "{{expr: ...}} syntax documented"
+      - "Unit tests for all arithmetic edge cases"
+    blockers: []
+
+  - phase: 4
+    name: "Implement send_notification"
+    description: "Replace the send_notification stub with real RabbitMQ WebSocket delivery (ephemeral, no persistence)"
+    status: "pending"
+    category: "backend"
+    workflow: "feature-dev"
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Add workflowQueue dependency to SendNotificationHandler"
+        status: "pending"
+        notes:
+          - "Add *rabbitmq.WorkflowQueue field to SendNotificationHandler struct"
+          - "Update NewSendNotificationHandler constructor to accept it"
+          - "Update register.go to pass config.QueueClient when constructing handler"
+        files:
+          - path: "business/sdk/workflow/workflowactions/communication/notification.go"
+            status: "pending"
+          - path: "business/sdk/workflow/workflowactions/register.go"
+            status: "pending"
+      - task: "Implement Execute to publish to RabbitMQ"
+        status: "pending"
+        notes:
+          - "Publish to QueueTypeAlert (same path as create_alert) but with type 'notification'"
+          - "No alertbus persistence — ephemeral delivery only"
+          - "Resolve {{template_vars}} in message using execCtx.RawData (reuse resolveTemplateVars from alert.go)"
+          - "Guard with if h.workflowQueue != nil (graceful degradation like create_alert)"
+          - "Return real notification_id (uuid.New().String()) not fake timestamp-based ID"
+        files:
+          - path: "business/sdk/workflow/workflowactions/communication/notification.go"
+            status: "pending"
+    validation:
+      - check: "go build ./... passes"
+        status: "pending"
+      - check: "send_notification publishes to RabbitMQ (manual test or integration test)"
+        status: "pending"
+      - check: "send_notification returns real UUID as notification_id"
+        status: "pending"
+      - check: "Nil workflowQueue guard does not panic (RegisterCoreActions path)"
+        status: "pending"
+    deliverables:
+      - "Updated SendNotificationHandler with RabbitMQ delivery"
+      - "Updated register.go to wire queue into notification handler"
+      - "Consistent ephemeral notification delivery matching create_alert pattern"
+    blockers: []
+
+  - phase: 5
+    name: "Implement send_email SMTP"
+    description: "Replace send_email stub with real SMTP delivery using configurable server credentials"
+    status: "pending"
+    category: "backend"
+    workflow: "feature-dev"
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Add SMTP config to application config"
+        status: "pending"
+        notes:
+          - "Add SMTPConfig struct with Host, Port, Username, Password, From, TLS fields"
+          - "Add to main config struct with ICHOR_SMTP_* prefix"
+          - "Add to Makefile and K8s manifests"
+        files:
+          - path: "api/cmd/services/ichor/main.go"
+            status: "pending"
+          - path: "zarf/k8s/dev/ichor/ichor.yaml"
+            status: "pending"
+      - task: "Create SMTPClient abstraction"
+        status: "pending"
+        notes:
+          - "Define SMTPClient interface with Send(to []string, subject, body string) error"
+          - "Implement with net/smtp (stdlib — no new dependencies)"
+          - "Support STARTTLS and plain auth"
+        files:
+          - path: "business/sdk/workflow/workflowactions/communication/smtp.go"
+            status: "pending"
+      - task: "Update SendEmailHandler to use SMTPClient"
+        status: "pending"
+        notes:
+          - "Add smtpClient SMTPClient field to struct"
+          - "Update NewSendEmailHandler constructor"
+          - "Execute: resolve {{template_vars}} in subject/body, call smtpClient.Send()"
+          - "Keep simulate_failure flag for testing"
+          - "Update register.go to wire SMTP client"
+        files:
+          - path: "business/sdk/workflow/workflowactions/communication/email.go"
+            status: "pending"
+          - path: "business/sdk/workflow/workflowactions/register.go"
+            status: "pending"
+    validation:
+      - check: "go build ./... passes"
+        status: "pending"
+      - check: "send_email delivers to SMTP server (test with mailhog or similar)"
+        status: "pending"
+      - check: "simulate_failure flag still works for testing"
+        status: "pending"
+      - check: "SMTP credentials absent → handler logs warning and skips (graceful degradation)"
+        status: "pending"
+    deliverables:
+      - "SMTP config in application config (ICHOR_SMTP_*)"
+      - "SMTPClient abstraction with net/smtp implementation"
+      - "Updated SendEmailHandler with real SMTP delivery"
+      - "Template variable resolution in subject and body"
+    blockers: []
+
+  - phase: 6
+    name: "Add receive_inventory Action"
+    description: "New action handler that processes incoming inventory from a PO receipt: increases item quantity and creates an inbound transaction record"
+    status: "pending"
+    category: "backend"
+    workflow: "feature-dev"
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Create ReceiveInventoryHandler"
+        status: "pending"
+        notes:
+          - "New file: business/sdk/workflow/workflowactions/inventory/receive.go"
+          - "Config: {product_id, quantity, warehouse_id, location_id, source_from_po?, po_line_item_id?, lot_number?, notes?}"
+          - "source_from_po: true = extract product_id/quantity from trigger event RawData (PO line item created/updated)"
+          - "Update inventory_items.quantity (available stock) via inventoryitembus"
+          - "Create inventory_transaction record (transaction_type='inbound') via inventorytransactionbus"
+          - "Output ports: received (default), failure"
+          - "EntityModifier: fires on_update for inventory.inventory_items, on_create for inventory.inventory_transactions"
+          - "SupportsManualExecution: true"
+          - "IsAsync: false"
+        files:
+          - path: "business/sdk/workflow/workflowactions/inventory/receive.go"
+            status: "pending"
+      - task: "Register handler in register.go"
+        status: "pending"
+        notes:
+          - "Add to RegisterGranularInventoryActions and RegisterAll"
+          - "Uses existing BusDependencies.InventoryItem and InventoryTransaction"
+        files:
+          - path: "business/sdk/workflow/workflowactions/register.go"
+            status: "pending"
+    validation:
+      - check: "go build ./... passes"
+        status: "pending"
+      - check: "receive_inventory increases inventory_item.quantity in DB"
+        status: "pending"
+      - check: "receive_inventory creates inbound inventory_transaction record"
+        status: "pending"
+      - check: "source_from_po mode extracts fields from trigger event RawData"
+        status: "pending"
+    deliverables:
+      - "ReceiveInventoryHandler in inventory/ subpackage"
+      - "PO receipt workflow chain works end-to-end"
+    blockers: []
+
+  - phase: 7
+    name: "Add call_webhook Action"
+    description: "New action handler for outbound HTTP webhooks, enabling integration with third-party systems (shipping, payment, accounting)"
+    status: "pending"
+    category: "backend"
+    workflow: "feature-dev"
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Create CallWebhookHandler"
+        status: "pending"
+        notes:
+          - "New file: business/sdk/workflow/workflowactions/integration/webhook.go"
+          - "Config: {url, method (GET|POST|PUT|PATCH), headers {key: value}, body?, timeout_seconds?, expected_status_codes []int}"
+          - "URL and body support {{template_vars}} resolution"
+          - "Headers support {{template_vars}} (for auth tokens from context)"
+          - "Default timeout: 30s, max 120s"
+          - "Output ports: success (default), client_error (4xx), server_error (5xx), timeout, failure"
+          - "Return response body (truncated to 10KB) and status code in result map"
+          - "SupportsManualExecution: true"
+          - "IsAsync: false (Temporal handles retries)"
+          - "SECURITY: Validate URL scheme is https (or allow http for internal IPs only)"
+        files:
+          - path: "business/sdk/workflow/workflowactions/integration/webhook.go"
+            status: "pending"
+      - task: "Register handler in register.go"
+        status: "pending"
+        notes:
+          - "Add to RegisterAll — no new bus dependencies (pure HTTP)"
+          - "No dependency on RegisterCoreActions (network calls not appropriate for test env)"
+        files:
+          - path: "business/sdk/workflow/workflowactions/register.go"
+            status: "pending"
+    validation:
+      - check: "go build ./... passes"
+        status: "pending"
+      - check: "call_webhook delivers POST to test endpoint (httpbin.org or local mock)"
+        status: "pending"
+      - check: "Template variables resolved in URL and body"
+        status: "pending"
+      - check: "Timeout respected (request cancelled after timeout_seconds)"
+        status: "pending"
+      - check: "HTTP 4xx routes to client_error port, 5xx routes to server_error port"
+        status: "pending"
+      - check: "Non-https URL rejected with validation error"
+        status: "pending"
+    deliverables:
+      - "CallWebhookHandler in new integration/ subpackage"
+      - "Template variable resolution for URL and body"
+      - "Fine-grained output ports for HTTP status code ranges"
+    blockers: []
+
+  - phase: 8
+    name: "Add create_purchase_order Action"
+    description: "New action handler that creates a purchase order, closing the reorder automation chain (check_reorder_point → needs_reorder → create_purchase_order)"
+    status: "pending"
+    category: "backend"
+    workflow: "feature-dev"
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Create CreatePurchaseOrderHandler"
+        status: "pending"
+        notes:
+          - "New file: business/sdk/workflow/workflowactions/procurement/createpo.go"
+          - "Config: {product_id, quantity, supplier_id? (optional — auto-lookup), warehouse_id, notes?}"
+          - "If supplier_id absent: query procurement.supplier_products for cheapest active supplier for product"
+          - "Create PO via purchaseorderbus.Create() (not raw SQL — use business layer)"
+          - "Create PO line item via purchaseorderlineitembus.Create()"
+          - "Output ports: created (default), no_supplier_found, failure"
+          - "EntityModifier: fires on_create for procurement.purchase_orders"
+          - "SupportsManualExecution: true"
+          - "IsAsync: false"
+        files:
+          - path: "business/sdk/workflow/workflowactions/procurement/createpo.go"
+            status: "pending"
+      - task: "Add procurement bus dependencies to ActionConfig"
+        status: "pending"
+        notes:
+          - "Add PurchaseOrder *purchaseorderbus.Business to BusDependencies"
+          - "Add PurchaseOrderLineItem *purchaseorderlineitembus.Business to BusDependencies"
+          - "Add Supplier *supplierbus.Business to BusDependencies (for auto-lookup)"
+          - "Add SupplierProduct *supplierproductbus.Business to BusDependencies"
+          - "Update RegisterAll to wire new handler"
+        files:
+          - path: "business/sdk/workflow/workflowactions/register.go"
+            status: "pending"
+      - task: "Wire procurement buses in all.go"
+        status: "pending"
+        notes:
+          - "Instantiate purchaseorderbus, purchaseorderlineitembus, supplierbus, supplierproductbus"
+          - "Pass to ActionConfig.Buses"
+        files:
+          - path: "api/cmd/services/ichor/build/all/all.go"
+            status: "pending"
+    validation:
+      - check: "go build ./... passes"
+        status: "pending"
+      - check: "create_purchase_order creates PO + line item in DB"
+        status: "pending"
+      - check: "Auto-supplier lookup finds cheapest active supplier"
+        status: "pending"
+      - check: "no_supplier_found port triggers when no supplier exists for product"
+        status: "pending"
+    deliverables:
+      - "CreatePurchaseOrderHandler in new procurement/ subpackage"
+      - "Procurement bus dependencies added to ActionConfig"
+      - "Reorder automation chain now fully executable end-to-end"
+    blockers: []
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # TRACK B: Full ceremony (Phase 9 only)
+  # Use: /workflow-gaps-plan-review 9 → /workflow-gaps-phase 9 → /workflow-gaps-review 9
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  - phase: 9
+    name: "Implement seek_approval"
+    description: "Full async approval implementation: DB persistence, approver notification, Temporal workflow pause/resume, and API endpoint for approver decisions"
+    status: "pending"
+    category: "backend"
+    workflow: "full-ceremony"  # plan-review → workflow-gaps-phase → code-review → validate
+    plan_reviewed: false
+    plan_review_grade: null
+    reviewed: false
+    review_grade: null
+    tasks:
+      - task: "Create workflow.approval_requests DB migration"
+        status: "pending"
+        notes:
+          - "New table: workflow.approval_requests (id, execution_id, rule_id, action_name, approvers[], approval_type, status, timeout_hours, created_date, resolved_date, resolved_by, resolution)"
+          - "Add to migrate.sql with next version number"
+        files:
+          - path: "business/sdk/migrate/sql/migrate.sql"
+            status: "pending"
+      - task: "Create approvalrequestbus business layer"
+        status: "pending"
+        notes:
+          - "New package: business/domain/workflow/approvalrequestbus/"
+          - "Models: ApprovalRequest, NewApprovalRequest, UpdateApprovalRequest"
+          - "Methods: Create, QueryByID, UpdateStatus (approved/rejected/timed_out)"
+          - "DB store in stores/approvalrequestdb/"
+        files:
+          - path: "business/domain/workflow/approvalrequestbus/approvalrequestbus.go"
+            status: "pending"
+          - path: "business/domain/workflow/approvalrequestbus/model.go"
+            status: "pending"
+          - path: "business/domain/workflow/approvalrequestbus/stores/approvalrequestdb/approvalrequestdb.go"
+            status: "pending"
+      - task: "Implement SeekApprovalHandler StartAsync"
+        status: "pending"
+        notes:
+          - "Add StartAsync(ctx, config, execCtx, taskToken) to SeekApprovalHandler"
+          - "This makes it implement AsyncActivityHandler"
+          - "StartAsync: persist approval_request record, notify approvers via create_alert, return (do NOT complete the token)"
+          - "Execute() remains as fallback (manual execution path)"
+          - "Add to humanActionTypes map in workflow.go"
+        files:
+          - path: "business/sdk/workflow/workflowactions/approval/seek.go"
+            status: "pending"
+          - path: "business/sdk/workflow/temporal/workflow.go"
+            status: "pending"
+      - task: "Add approval resolution API endpoint"
+        status: "pending"
+        notes:
+          - "POST /workflow/approvals/:id/resolve {resolution: 'approved'|'rejected', reason?: string}"
+          - "Calls approvalrequestbus.UpdateStatus"
+          - "Calls AsyncCompleter.Complete(taskToken, {output: resolution})"
+          - "Add to approvalapi package and wire in all.go"
+        files:
+          - path: "api/domain/http/workflow/approvalapi/approvalapi.go"
+            status: "pending"
+          - path: "api/domain/http/workflow/approvalapi/route.go"
+            status: "pending"
+          - path: "api/cmd/services/ichor/build/all/all.go"
+            status: "pending"
+      - task: "Wire approvalrequestbus into register.go"
+        status: "pending"
+        notes:
+          - "Add ApprovalRequest *approvalrequestbus.Business to BusDependencies"
+          - "Update RegisterAll and RegisterCoreActions to accept it"
+        files:
+          - path: "business/sdk/workflow/workflowactions/register.go"
+            status: "pending"
+    validation:
+      - check: "go build ./... passes"
+        status: "pending"
+      - check: "seek_approval creates approval_request record in DB"
+        status: "pending"
+      - check: "seek_approval pauses Temporal workflow (activity returns ErrResultPending)"
+        status: "pending"
+      - check: "Approval resolution API resumes Temporal workflow"
+        status: "pending"
+      - check: "approved/rejected/timed_out paths all route correctly"
+        status: "pending"
+    deliverables:
+      - "workflow.approval_requests DB migration"
+      - "approvalrequestbus business package"
+      - "SeekApprovalHandler.StartAsync implementation"
+      - "POST /workflow/approvals/:id/resolve API endpoint"
+      - "End-to-end approval flow working in integration test"
+    blockers: []
+
+context:
+  current_focus: "Phase 1 complete — ready to start Phase 2 (FieldChanges fix)"
+  next_task: "Phase 2: extend DelegateEventParams with BeforeEntity, update domain buses, compute FieldChanges diff in delegatehandler.go"
+  recent_changes:
+    - "Initial plan structure created with 9 phases"
+    - "All 9 phase documents created"
+    - "Gap analysis completed from code exploration"
+    - "Phases reordered: feature-dev phases 1-8, full-ceremony Phase 9 (seek_approval)"
+    - "Phase 1 completed: added 14 new table entries to tables.go (procurement +4, hr +5, assets +4)"
+    - "NOTE: plan said hr.user_approval_statuses (plural) but actual table is hr.user_approval_status (singular)"
+  decisions:
+    - "Decision: Phases 1-8 use /feature-dev or direct edit (no plan ceremony)"
+    - "Decision: Phase 9 (seek_approval) uses full ceremony — plan-review before starting"
+    - "Decision: Template arithmetic moved to Phase 3 (early — useful for testing other handlers)"
+    - "Decision: seek_approval moved to Phase 9 (last — most complex, 4-layer change)"
+    - "Decision: seek_approval uses new workflow.approval_requests table (not hr.user_approval_statuses)"
+    - "Decision: send_notification uses RabbitMQ ephemeral delivery (no DB persistence)"
+    - "Decision: call_webhook uses net/http stdlib (no new HTTP client library)"
+    - "Decision: Template arithmetic uses expr-lang/expr or minimal custom parser (no eval)"
+    - "Decision: FieldChanges computed as diff at delegate handler layer"
+
+dependencies:
+  internal:
+    - "Phase 8 (create_purchase_order) benefits from Phase 1 (procurement tables in whitelist)"
+  external: []
+
+milestones:
+  - name: "Planning Complete"
+    status: "achieved"
+    date: "2026-02-18"
+  - name: "Phase 1 Complete (Whitelist)"
+    status: "pending"
+    date: null
+  - name: "Phase 2 Complete (FieldChanges bug fixed)"
+    status: "pending"
+    date: null
+  - name: "Track A Complete (Phases 1-8 — all feature-dev)"
+    status: "pending"
+    date: null
+  - name: "Phase 9 Complete (seek_approval — full ceremony)"
+    status: "pending"
+    date: null
+  - name: "All Phases Complete"
+    status: "pending"
+    date: null
