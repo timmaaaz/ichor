@@ -31,6 +31,11 @@ type ActionConfig struct {
 	DB          *sqlx.DB
 	QueueClient *rabbitmq.WorkflowQueue
 
+	// EmailClient delivers outbound emails (e.g. via Resend). Nil = graceful degradation.
+	EmailClient communication.EmailClient
+	// EmailFrom is the sender address used when EmailClient is set.
+	EmailFrom string
+
 	// Business layer dependencies
 	Buses BusDependencies
 }
@@ -72,7 +77,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 	registry.Register(approval.NewSeekApprovalHandler(config.Log, config.DB))
 
 	// Communication actions
-	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB))
+	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB, config.EmailClient, config.EmailFrom))
 	registry.Register(communication.NewSendNotificationHandler(config.Log, config.QueueClient))
 	registry.Register(communication.NewCreateAlertHandler(config.Log, config.Buses.Alert, config.QueueClient))
 
@@ -153,8 +158,8 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 	// Approval actions - only need log and db
 	registry.Register(approval.NewSeekApprovalHandler(log, db))
 
-	// Communication actions that don't need queue
-	registry.Register(communication.NewSendEmailHandler(log, db))
+	// Communication actions that don't need queue or email client (nil = graceful degradation)
+	registry.Register(communication.NewSendEmailHandler(log, db, nil, ""))
 	registry.Register(communication.NewSendNotificationHandler(log, nil))
 
 	// Integration actions - no bus/DB/queue dependencies

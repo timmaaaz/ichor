@@ -59,6 +59,11 @@ type Config struct {
 	LLMBaseURL        string
 	LLMHost           string
 	LLMThinkingEffort string
+
+	// Resend email delivery configuration.
+	// ResendAPIKey empty means email delivery is disabled (graceful degradation).
+	ResendAPIKey  string
+	ResendFrom    string
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance

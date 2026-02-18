@@ -303,6 +303,7 @@ import (
 	temporalpkg "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -460,6 +461,17 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Register procurement actions (create_purchase_order).
 	workflowactions.RegisterProcurementActions(actionRegistry, inventoryAndProcurementConfig)
+
+	// Upgrade send_email handler with real Resend client if credentials are configured.
+	// If ResendAPIKey is empty, the nil-client version from RegisterCoreActions stays,
+	// which logs a warning and skips delivery (graceful degradation).
+	if emailClient := communication.NewResendEmailClient(communication.ResendConfig{
+		APIKey: cfg.ResendAPIKey,
+		From:   cfg.ResendFrom,
+	}); emailClient != nil {
+		actionRegistry.Register(communication.NewSendEmailHandler(cfg.Log, cfg.DB, emailClient, cfg.ResendFrom))
+		cfg.Log.Info(context.Background(), "send_email: Resend client configured", "from", cfg.ResendFrom)
+	}
 
 	// =========================================================================
 	// Initialize Temporal Workflow Infrastructure

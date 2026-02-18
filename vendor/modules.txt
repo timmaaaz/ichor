@@ -349,6 +349,7 @@ github.com/rabbitmq/amqp091-go
 github.com/rcrowley/go-metrics
 # github.com/resend/resend-go/v2 v2.28.0
 ## explicit; go 1.23
+github.com/resend/resend-go/v2
 # github.com/robfig/cron v1.2.0
 ## explicit
 github.com/robfig/cron

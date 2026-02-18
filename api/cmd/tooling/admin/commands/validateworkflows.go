@@ -80,7 +80,7 @@ func createValidationRegistry() *workflow.ActionRegistry {
 	// Register handlers with nil dependencies - Validate() doesn't use them
 	registry.Register(data.NewUpdateFieldHandler(nil, nil))
 	registry.Register(approval.NewSeekApprovalHandler(nil, nil))
-	registry.Register(communication.NewSendEmailHandler(nil, nil))
+	registry.Register(communication.NewSendEmailHandler(nil, nil, nil, ""))
 	registry.Register(communication.NewSendNotificationHandler(nil, nil))
 	registry.Register(communication.NewCreateAlertHandler(nil, nil, nil))
 	registry.Register(inventory.NewAllocateInventoryHandler(nil, nil, nil, nil, nil, nil, nil))
