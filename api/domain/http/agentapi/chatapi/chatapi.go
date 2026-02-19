@@ -407,7 +407,7 @@ var previewInterceptors = map[string]previewInterceptor{
 // exists" and "what can I build with" tools.
 var coreToolsByContext = map[string][]string{
 	"workflow": {"list_workflow_rules", "discover"},
-	"tables":   {"list_table_configs", "discover_table_reference"},
+	"tables":   {"get_table_config", "discover_table_reference", "apply_column_change", "apply_filter_change", "preview_table_config"},
 	// "pages" will be added when page tools exist.
 }
 

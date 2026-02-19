@@ -1,0 +1,78 @@
+plan: TABLE_BUILDER_AI_ASSISTANT
+last_updated: 2026-02-19
+branch: feature/guided-table-creation
+
+phases:
+  - id: 1
+    name: Current State Documentation + Initial Prompts
+    status: done
+    files_modified:
+      - api/domain/http/agentapi/chatapi/prompt.go
+      - api/domain/http/agentapi/chatapi/chatapi.go
+    notes: >
+      tablesRoleBlock explains context format + modification workflow.
+      tablesConstraintsGuidance covers wire format mapping + 6 key rules.
+      coreToolsByContext["tables"] fixed to [get_table_config, discover_table_reference, preview_table_config].
+      Removed incorrect tablesCreationPrompt (create path not implemented in applyMutations).
+
+  - id: 2
+    name: Operation-Specific Backend Tools
+    status: done
+    files_modified:
+      - business/sdk/agenttools/executor.go
+      - business/sdk/agenttools/definitions.go
+      - business/sdk/toolcatalog/toolcatalog.go
+    notes: >
+      All 4 operation tools implemented: apply_column_change, apply_filter_change,
+      apply_join_change, apply_sort_change. Each takes Config JSON + params,
+      applies the operation, calls ValidateConfig(), returns {valid, errors, warnings, config}.
+
+  - id: 3
+    name: System Prompt Operation Playbooks
+    status: done
+    depends_on: [2]
+    files_modified:
+      - api/domain/http/agentapi/chatapi/prompt.go
+    notes: >
+      Replaced tablesConstraintsGuidance with tablesOperationsGuidance.
+      tablesRoleBlock Modification Workflow updated to reference operation tools.
+      Per-operation playbooks: adding/removing columns, filters, joins, sort.
+      Validate-before-preview pattern explicit. Complex request decomposition.
+      Tone: one operation at a time, wait for accept before continuing.
+
+  - id: 4
+    name: Core Tools Update
+    status: done
+    depends_on: [2]
+    files_modified:
+      - api/domain/http/agentapi/chatapi/chatapi.go
+    notes: >
+      Added apply_column_change and apply_filter_change to coreToolsByContext["tables"].
+      apply_join_change and apply_sort_change stay RAG-discoverable.
+
+  - id: 5
+    name: Frontend Live Preview in Builder UI
+    status: pending
+    repo: vue (separate PR)
+    files_to_modify:
+      - vue/.../QuickTableBuilder.vue
+      - vue/.../useTableBuilderMutations.ts
+      - vue/.../ConfigPreview.vue
+      - vue/.../SimpleColumnSelector.vue
+      - vue/.../SimpleFilterBuilder.vue
+    notes: >
+      When table_config_preview fires: update previewConfig ref in builder.
+      Show proposed columns/filters with "pending" indicator.
+      ConfigPreview.vue rerenders with proposed config.
+      Accept: save + make previewConfig the new base.
+      Reject: discard previewConfig, revert UI.
+
+  - id: 6
+    name: Validation Error UX
+    status: pending
+    priority: low
+    repo: vue (separate PR)
+    notes: >
+      When operation tool returns valid: false, show structured error card in chat.
+      List each ValidationError field + message.
+      Currently LLM just describes errors in text — no structured display.

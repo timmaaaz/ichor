@@ -437,7 +437,7 @@ func Test_MapPostgreSQLType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mapPostgreSQLType(tt.pgType)
+			result := MapPostgreSQLType(tt.pgType)
 			if result != tt.expected {
 				t.Errorf("mapPostgreSQLType(%q) = %q, want %q",
 					tt.pgType, result, tt.expected)

@@ -131,7 +131,7 @@ func TestBuildSystemPrompt_GuidedCreation(t *testing.T) {
 		if strings.Contains(prompt, "Guided Workflow Creation") {
 			t.Error("did not expect guided creation prompt for tables context")
 		}
-		if !strings.Contains(prompt, "UI configuration assistant") {
+		if !strings.Contains(prompt, "table configuration assistant") {
 			t.Error("expected tables role block")
 		}
 	})
