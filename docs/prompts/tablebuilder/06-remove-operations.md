@@ -1,6 +1,6 @@
 # Step 06: Remove Columns, Filters, and Joins
 
-**Goal**: Test removal operations. Each remove uses the same `apply_*_change` tool but with `operation="remove"`.
+**What this tests**: Removing things you've already added — columns, filters, and joined tables.
 
 ---
 
@@ -12,15 +12,16 @@
 Remove the description column from this table.
 ```
 
-**Expected agent behavior:**
-1. Calls `get_table_config`
-2. Calls `apply_column_change` with `operation="remove"`, `columns=["description"]`
-3. Calls `preview_table_config`
+**What the AI will do:**
+1. Load the current config
+2. Remove `description` from the column list
+3. Show you a preview
 
-**What to verify:**
-- `description` removed from `select.columns`
-- `description` removed from `visual_settings.columns`
-- If `description` was being used in a filter, the agent should warn you
+**What you should see:**
+- "Description" column is gone from the preview
+- No validation errors
+
+> **Important**: If the column you're removing is used in a filter, the AI should warn you (see Prompt 6C below).
 
 ---
 
@@ -30,9 +31,9 @@ Remove the description column from this table.
 Remove item_number and notes from this table.
 ```
 
-**What to verify:**
-- Both columns gone from `select.columns`
-- Both gone from `visual_settings.columns`
+**What you should see:**
+- Both columns gone from the preview
+- Remaining columns are unaffected
 
 ---
 
@@ -42,11 +43,15 @@ Remove item_number and notes from this table.
 Remove the is_active column.
 ```
 
-**Expected behavior:** The agent should warn you that `is_active` is used in an active filter and ask how to proceed. You can respond:
+**Expected behavior**: The AI should warn you that `is_active` is currently used in an active filter and ask how to proceed. When it does, respond with:
 
 ```
 Yes, remove the filter too and then remove the column.
 ```
+
+**What you should see:**
+- Both the filter and the column are removed in the preview
+- No orphaned filter left behind
 
 ---
 
@@ -58,10 +63,9 @@ Yes, remove the filter too and then remove the column.
 Remove the filter on quantity.
 ```
 
-**Expected agent behavior:**
-1. Calls `get_table_config`
-2. Calls `apply_filter_change` with `operation="remove"`, `filter={column: "quantity"}`
-3. Calls `preview_table_config`
+**What you should see:**
+- The quantity filter is gone
+- Other filters (if any) are unaffected
 
 ---
 
@@ -71,7 +75,8 @@ Remove the filter on quantity.
 Remove all filters from this table.
 ```
 
-**What to verify:** `filters: []`
+**What you should see:**
+- No filters in the preview (the "Filters" section is empty or absent)
 
 ---
 
@@ -83,30 +88,27 @@ Remove all filters from this table.
 Remove the join to the warehouses table.
 ```
 
-**Expected agent behavior:**
-1. Calls `get_table_config`
-2. Calls `apply_join_change` with `operation="remove"` targeting the warehouses join
-3. Calls `preview_table_config`
-
-**What to verify:**
-- `foreign_tables` no longer contains the warehouses entry
-- Any columns that came from warehouses (e.g., `warehouse_name`) are removed from `visual_settings.columns`
+**What you should see:**
+- Warehouse-related columns (e.g., "Warehouse Name") are gone from the preview
+- No validation errors from orphaned columns
 
 ---
 
 ## Edge Cases to Test
 
-### Prompt 6G — Remove a hidden column (auto-added by filter)
+### Prompt 6G — Remove a filter that auto-added a hidden column
 
-After adding a filter on `is_active` (which auto-added it as hidden):
+After adding a filter on `is_active` (which caused `is_active` to be added as a hidden column):
 
 ```
 Remove the filter on is_active.
 ```
 
 **Expected behavior:**
-- Filter removed from `filters[]`
-- Since `is_active` was added implicitly (hidden, not user-selected), it should also be removed from `select.columns`
+- The filter is removed
+- Since `is_active` was only added for filtering (hidden, not user-selected), it should also be removed from the columns automatically
+
+**What you should see:** The AI removes both the filter and the hidden column.
 
 ---
 
@@ -116,14 +118,14 @@ Remove the filter on is_active.
 Remove the foobar_column from this table.
 ```
 
-**Expected behavior:** Agent reports the column doesn't exist and does nothing (no preview sent).
+**Expected behavior:** The AI should tell you the column doesn't exist and not make any changes. No preview is sent.
 
 ---
 
-## Common Errors to Watch For
+## Common Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| Column removed from select but still in visual_settings | Partial removal | Config will fail validation; ask agent to also remove from visual_settings |
-| Filter removed but hidden column stays selected | Tool didn't clean up auto-added columns | Ask agent to also remove the hidden column |
-| Remove affects wrong column | Ambiguous column name in join | Specify table prefix: "remove the warehouses.name column" |
+| What you see | What caused it | What to try |
+|---|---|---|
+| Validation error after removing a column | Column was removed from the select list but its display settings weren't cleaned up | Ask: "Check for and fix any validation errors in the current config" |
+| Hidden filter column wasn't removed after removing a filter | The AI didn't clean up the auto-added column | Ask: "Also remove the hidden is_active column since we removed the filter that needed it" |
+| Wrong column removed when join table has a column with the same name | Ambiguous column name | Specify which table: "Remove the warehouses.name column" |

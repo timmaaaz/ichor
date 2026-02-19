@@ -1,36 +1,8 @@
 # Step 02: Add Columns to an Existing Table
 
-**Goal**: Add one or more columns to an already-saved table config. This exercises `get_table_config` → `apply_column_change` → `preview_table_config`.
+**What this tests**: Adding one or more columns to a table that's already been saved.
 
-**Prerequisite**: Complete Step 01 first and note the `config_id` of the saved config.
-
----
-
-## Context Setup
-
-Pass the `config_id` from the saved config:
-
-```json
-{
-  "message": "<prompt>",
-  "context_type": "tables",
-  "context": {
-    "config_id": "<uuid-from-step-01>",
-    "state": {
-      "baseTable": "inventory.inventory_items",
-      "columns": [
-        { "source": "inventory_items", "column": "item_number", "alias": "item_number", "data_type": "varchar", "column_type": "string" },
-        { "source": "inventory_items", "column": "quantity",    "alias": "quantity",    "data_type": "integer", "column_type": "number" }
-      ],
-      "joins": [],
-      "filters": [],
-      "sortBy": []
-    }
-  }
-}
-```
-
-> **Tip**: In the UI, the `context.state` is sent automatically from the editor state — you don't construct it manually. These prompts show the shape for reference when testing via curl.
+**Prerequisite**: Complete Step 01 first so you have a saved table to modify.
 
 ---
 
@@ -40,15 +12,15 @@ Pass the `config_id` from the saved config:
 Add the description column to this table.
 ```
 
-**Expected agent behavior:**
-1. Calls `get_table_config` to get wire-format config
-2. Calls `search_database_schema` if description's pg_type is unknown
-3. Calls `apply_column_change` with `operation="add"` for `description`
-4. Calls `preview_table_config`
+**What the AI will do:**
+1. Load the current table configuration
+2. Look up the `description` column's type if needed
+3. Add it to the table
+4. Show you a preview
 
-**What to verify:**
-- `description` appears in `select.columns`
-- `description` appears in `visual_settings.columns` with type `string`
+**What you should see in the preview:**
+- A new "Description" column added to the table
+- The column shows as text (string type)
 
 ---
 
@@ -59,78 +31,77 @@ Add the unit_cost, reorder_point, and last_counted_date columns.
 Format last_counted_date as MM/dd/yyyy.
 ```
 
-**Expected agent behavior:**
-1. Calls `get_table_config`
-2. Calls `search_database_schema` to find pg_types for all three
-3. Calls `apply_column_change` once with all three columns (or once per column — both are valid)
-4. Calls `preview_table_config` once with a summary description
-
-**What to verify:**
-- All three columns added to `select.columns`
-- `unit_cost` has type `number`
-- `last_counted_date` has type `datetime` with format `MM/dd/yyyy`
-- `reorder_point` has type `number`
+**What you should see in the preview:**
+- Three new columns added
+- `unit_cost` shows as a number
+- `last_counted_date` shows formatted dates like `01/15/2024`
+- `reorder_point` shows as a number
 
 ---
 
-## Prompt 2C — Add a UUID column (ID column)
+## Prompt 2C — Add a hidden ID column
+
+Sometimes you need a column for filtering purposes but don't want to display it to users:
 
 ```
 Add the warehouse_id column. I want to use it for filtering but not display it to users.
 ```
 
-**Expected agent behavior:**
-1. Adds `warehouse_id` with type `uuid` in visual settings
-2. Sets `hidden: true` on the column config (it will be selected but not displayed)
+**What you should see in the preview:**
+- The AI confirms `warehouse_id` was added as a hidden column
+- You won't see it as a visible column in the preview table — that's intentional
 
-**What to verify:**
-- `warehouse_id` in `select.columns`
-- `visual_settings.columns.warehouse_id.hidden: true`
-- `visual_settings.columns.warehouse_id.type: "uuid"`
+<details>
+<summary>Network tab verification (optional)</summary>
+
+Look for `visual_settings.columns.warehouse_id.hidden: true` in the preview JSON.
+
+</details>
 
 ---
 
-## Prompt 2D — Add a boolean column
+## Prompt 2D — Add a yes/no column
 
 ```
 Add the is_active column.
 ```
 
-**What to verify:**
-- `is_active` has type `boolean` in visual settings
+**What you should see in the preview:**
+- `is_active` shows as a boolean (true/false) column
 
 ---
 
-## Prompt 2E — Rename a column with an alias
+## Prompt 2E — Rename a column header
 
 ```
 Add the notes column, but display it with the header "Internal Notes".
 ```
 
-**What to verify:**
-- `visual_settings.columns.notes.header: "Internal Notes"`
-- Column `name` is still `notes` (the DB column name)
+**What you should see in the preview:**
+- Column header reads "Internal Notes" in the table
+- The underlying column name is still `notes`
 
 ---
 
-## Ordering Constraint
+## Prompt 2F — Set display order
 
-If you want explicit column ordering, all visible columns must have `order` values:
+Use this if you want to control the left-to-right column order in the table:
 
 ```
 Add the sku column and set the display order to: item_number(1), sku(2), quantity(3), reorder_point(4).
 ```
 
-**What to verify:**
-- ALL visible columns in `visual_settings.columns` have non-zero `order` values
-- The validation rule: "if any column has an explicit order, ALL visible columns must have an order"
+**What you should see in the preview:**
+- Columns appear in the specified order in the preview table
+
+> **Note**: If you set an order for one column, you need to set it for all visible columns. The AI handles this automatically when you specify the full order.
 
 ---
 
-## Common Errors to Watch For
+## Common Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `missing column type: new_col` | Agent forgot to add type to visual_settings | Re-run with explicit type request |
-| `ordering constraint: all or none must have order` | Some columns have order, some don't | Ask agent to set order on ALL columns |
-| `invalid type "text"` | Wrong visual type (should be "string") | Remind agent: pg_type "text" → visual type "string" |
+| What you see | What caused it | What to try |
+|---|---|---|
+| Validation error about "ordering constraint" | Some columns have an order set but others don't | Ask: "Set the display order for all columns" and list them numbered |
+| New column appears with the wrong type | The AI mapped the database type incorrectly | Ask: "Update the [column] column to be type [string/number/date/boolean]" |
+| Column added but not visible in preview | Column may have been added as hidden | Ask: "Make [column] visible" |

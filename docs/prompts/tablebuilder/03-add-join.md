@@ -1,75 +1,44 @@
-# Step 03: Add a Join (Foreign Table)
+# Step 03: Add a Join (Pull In Data from a Related Table)
 
-**Goal**: Join a related table and pull columns from it. This exercises `search_database_schema` → `apply_join_change` → `preview_table_config`.
+**What this tests**: Adding data from a related table — for example, showing the warehouse name next to each inventory item, when the items table only stores a `warehouse_id`.
 
-**Prerequisite**: Complete Step 01 (have a table config with at least an ID column from the base table).
+**Prerequisite**: Complete Step 01 first (have a saved table with at least a few columns).
 
----
-
-## Context Setup
-
-```json
-{
-  "message": "<prompt>",
-  "context_type": "tables",
-  "context": {
-    "config_id": "<uuid-from-step-01>",
-    "state": {
-      "baseTable": "inventory.inventory_items",
-      "columns": [...],
-      "joins": [],
-      "filters": [],
-      "sortBy": []
-    }
-  }
-}
-```
+> **What is a join?** A join links two tables together using a shared ID. For example, `inventory_items` has a `warehouse_id` column that points to the `warehouses` table. A join lets you show the warehouse's name (from the warehouses table) alongside each inventory item.
 
 ---
 
-## Prompt 3A — Simple left join
+## Prompt 3A — Simple join (show a related name)
 
 ```
 Join the inventory.warehouses table to show the warehouse name alongside each inventory item.
 Use a left join on warehouse_id.
 ```
 
-**Expected agent behavior:**
-1. Calls `get_table_config`
-2. Calls `search_database_schema` on `inventory.warehouses` to discover columns and relationships
-3. Calls `apply_join_change` with:
-   - `operation: "add"`
-   - `join.table: "warehouses"`, `join.schema: "inventory"`
-   - `join.join_type: "left"`
-   - `join.relationship_from: "warehouse_id"` (from inventory_items)
-   - `join.relationship_to: "id"` (on warehouses)
-   - `columns_to_add: ["name"]` (the warehouse name column)
-4. Calls `preview_table_config`
+**What the AI will do:**
+1. Load the current config
+2. Look up the `inventory.warehouses` table to find its columns
+3. Add the join configuration
+4. Add the warehouse `name` column to the table
+5. Show you a preview
 
-**What to verify in the config:**
-```json
-"select": {
-  "foreign_tables": [{
-    "table": "warehouses",
-    "schema": "inventory",
-    "join_type": "left",
-    "relationship_from": "warehouse_id",
-    "relationship_to": "id",
-    "columns": [
-      { "name": "name", "alias": "warehouse_name" }
-    ]
-  }]
-}
-```
+**What you should see in the preview:**
+- A new "Warehouse Name" (or similar) column in the table
+- Each row shows the warehouse name instead of just a raw ID
 
-And in `visual_settings.columns`:
-```json
-"warehouse_name": { "name": "warehouse_name", "header": "Warehouse", "type": "string" }
-```
+<details>
+<summary>Network tab verification (optional)</summary>
+
+Look for a `foreign_tables` entry with:
+- `table: "warehouses"`, `schema: "inventory"`, `join_type: "left"`
+- `relationship_from: "warehouse_id"`, `relationship_to: "id"`
+- A `name` column inside that join's columns array
+
+</details>
 
 ---
 
-## Prompt 3B — Join and bring in multiple columns
+## Prompt 3B — Join and show multiple related columns
 
 ```
 Join the products table (products schema) to show the product name and SKU.
@@ -77,56 +46,41 @@ The inventory_items table has a product_id foreign key that links to products.id
 Use a left join.
 ```
 
-**What to verify:**
-- `foreign_tables` has one entry for `products.products`
-- Both `name` and `sku` columns appear in the join's `columns` array
-- Both appear in `visual_settings.columns` with type `string`
+**What you should see in the preview:**
+- Two new columns from the products table: Name and SKU
+- Both appear as text columns
 
 ---
 
-## Prompt 3C — Join with column aliasing
+## Prompt 3C — Join with a custom column header
 
 ```
 Join inventory.warehouses on warehouse_id. I want the warehouse name column,
 but call it "Storage Location" in the header.
 ```
 
-**What to verify:**
-- `columns: [{ "name": "name", "alias": "storage_location" }]` in the foreign table
-- `visual_settings.columns.storage_location.header: "Storage Location"`
+**What you should see in the preview:**
+- A column with the header "Storage Location" (not "Warehouse Name")
+- It displays the warehouse name from the related table
 
 ---
 
 ## Prompt 3D — Nested join (join from a joined table)
+
+This is an advanced scenario: joining a table that's already joined to another table.
 
 ```
 Join inventory.warehouses on warehouse_id to get the warehouse name.
 Then also join geography.cities through the warehouse's city_id to show the city name.
 ```
 
-**Expected structure:**
-```json
-"foreign_tables": [{
-  "table": "warehouses",
-  "schema": "inventory",
-  "join_type": "left",
-  "relationship_from": "warehouse_id",
-  "relationship_to": "id",
-  "columns": [{ "name": "name", "alias": "warehouse_name" }],
-  "foreign_tables": [{
-    "table": "cities",
-    "schema": "geography",
-    "join_type": "left",
-    "relationship_from": "city_id",
-    "relationship_to": "id",
-    "columns": [{ "name": "name", "alias": "city_name" }]
-  }]
-}]
-```
+**What you should see in the preview:**
+- A "Warehouse Name" column
+- A "City Name" column (coming from the city linked to each warehouse)
 
 ---
 
-## Prompt 3E — Multiple joins to the same table (aliased)
+## Prompt 3E — Two joins to the same table (different purposes)
 
 ```
 This table has both a created_by and updated_by column, both pointing to core.users.
@@ -134,10 +88,9 @@ Add both joins so I can show the creator's and updater's names.
 Use aliases "creator" and "updater" for the two joins.
 ```
 
-**What to verify:**
-- Two entries in `foreign_tables` with distinct `alias` values
-- `alias: "creator"` on the first join, `alias: "updater"` on the second
-- Columns aliased to avoid collision: e.g., `creator_name`, `updater_name`
+**What you should see in the preview:**
+- Two user name columns: one for the creator, one for the updater
+- They're named distinctly to avoid confusion (e.g., "Creator Name", "Updater Name")
 
 ---
 
@@ -147,21 +100,16 @@ Use aliases "creator" and "updater" for the two joins.
 Remove the join to the warehouses table.
 ```
 
-**Expected agent behavior:**
-1. Calls `get_table_config`
-2. Calls `apply_join_change` with `operation: "remove"` and the join identifier
-3. Calls `preview_table_config`
-
-**What to verify:**
-- `foreign_tables` no longer contains the warehouses join
-- Any columns that came from warehouses are removed from `select.columns` and `visual_settings.columns`
+**What you should see:**
+- The warehouse name column disappears from the preview
+- No validation errors remain
 
 ---
 
-## Common Errors to Watch For
+## Common Errors
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `missing column type: warehouse_name` | Joined column not added to visual_settings | Agent must add all joined columns to visual_settings |
-| Join added but column not visible | Agent added to foreign_tables but forgot visual_settings | Ask agent to confirm visual_settings was updated |
-| Wrong join direction | relationship_from/to reversed | Correct: `relationship_from` is on the SOURCE table, `relationship_to` is on the TARGET table |
+| What you see | What caused it | What to try |
+|---|---|---|
+| Validation error about "missing column type" for the joined column | The AI added the join but forgot to configure the column's display type | Ask: "Make sure the warehouse_name column has a display type set" |
+| Joined column doesn't appear in the preview | The AI set up the join but didn't add the column to display | Ask: "Also show the [column] column from the [table] join" |
+| Wrong table linked (join direction reversed) | The AI linked the wrong column | Clarify: "The [source table] has a [fk_column] that links to [target table].[id]" |

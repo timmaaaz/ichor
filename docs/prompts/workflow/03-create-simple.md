@@ -1,185 +1,114 @@
-# Step 03: Create a Simple Workflow (Draft Builder)
+# 03 — Create a Simple Workflow
 
-**Goal**: Create a new workflow with a single action using the draft builder. This exercises `discover`, `start_draft`, `add_draft_action`, and `preview_draft`.
+**Goal**: Build a new workflow using the chatbot. This covers the guided creation flow: the chatbot asks questions or follows your instructions, builds the workflow step by step, and sends a preview for you to review.
 
 ---
 
-## Context Setup
+## Setup
 
-For a new workflow (blank canvas), send `is_new: true` or omit context:
+For a new workflow, tell the chatbot it's a blank canvas:
 
 ```json
 {
-  "message": "<prompt>",
+  "message": "your prompt here",
   "context_type": "workflow",
-  "context": {
-    "is_new": true
-  }
+  "context": { "is_new": true }
 }
 ```
 
 ---
 
-## Prompt 3A — Create a Single-Action Alert Workflow
+## Prompts to Try
 
-Use this to test the simplest possible new workflow:
+### 3A — Single alert on inventory update
 
 ```
 Create a new workflow called "Low Stock Alert" that triggers when inventory items are updated.
 When it fires, create an alert with severity "high", title "Low Stock Warning",
 and message "An inventory item has been updated — check stock levels."
-Send the alert to admin users.
 ```
 
-**Expected agent behavior:**
-1. Calls `discover` with `category: "action_types"` to learn the `create_alert` config schema
-2. Calls `start_draft` with `name: "Low Stock Alert"`, `entity: "inventory.inventory_items"`, `trigger_type: "on_update"`
-3. Calls `add_draft_action` with:
-   - `name: "Alert - Low Stock"`
-   - `action_type: "create_alert"`
-   - `action_config` with severity, title, message, recipients
-   - No `after` field (first action = start node)
-4. Calls `preview_draft` → server emits `workflow_preview` SSE event
-5. Tells user "Preview is ready for your review"
-
-**What to verify in the preview:**
-- Rule name: "Low Stock Alert"
-- Entity: `inventory.inventory_items`
-- Trigger: `on_update`
-- 1 action of type `create_alert`
-- 1 start edge: nil → action
-- Alert severity: `high`
-- Alert title: "Low Stock Warning"
+**What to check:**
+- Chatbot calls a few tools behind the scenes (you may see "checking action types", "starting draft", etc.)
+- Chatbot summarizes what it's building before the preview
+- A **workflow preview card** appears in the UI
+- The preview shows: name "Low Stock Alert", triggers on inventory item updates, 1 action
 
 ---
 
-## Prompt 3B — Agent-Guided Creation (Conversational)
-
-Use this to test the agent's guided creation conversation:
+### 3B — Let the chatbot guide you (conversational)
 
 ```
 I want to set up an automation for when new orders come in.
 ```
 
-**Expected agent behavior (multi-turn):**
-1. Asks clarifying questions: what entity? what should happen?
-2. Suggests a plan: "Trigger on `sales.orders` on_create, send a notification?"
-3. After user confirms, calls `discover` → `start_draft` → `add_draft_action` → `preview_draft`
+**What to check:**
+- Chatbot should **ask clarifying questions** rather than immediately building something
+- It should ask or suggest: what entity? what should happen when an order is created?
+- After you answer, it builds step by step
 
-**Follow-up prompt (after agent responds with a plan):**
-
+**Follow-up prompt:**
 ```
-Yes, that sounds right. When a new order is created, send an email to the orders team.
+Yes — when a new order is created, send an email to the orders team at orders@company.com
+with subject "New Order Received".
 ```
 
-**What to verify:**
-- Agent does NOT immediately call tools on first message — it asks first
-- Agent proposes entity (`sales.orders`) and trigger (`on_create`) based on context
-- Final preview has `send_email` action type with reasonable config
-- Agent describes what was built after preview is sent
+**What to check after follow-up:**
+- Chatbot builds the workflow and sends a preview
+- Preview shows: sales.orders, on_create trigger, send_email action
 
 ---
 
-## Prompt 3C — Email Notification on Create
-
-Use this to test `send_email` action type:
+### 3C — Email notification on new record
 
 ```
-Build a workflow called "New Order Email" on sales.orders triggered when an order is created.
-Add a send_email action that sends to "orders@company.com" with subject "New Order Received"
+Build a workflow called "New Order Email" that fires when an order is created in sales.orders.
+Send an email to orders@company.com with subject "New Order Received"
 and body "A new order has been placed in the system."
 ```
 
-**Expected agent behavior:**
-1. Calls `discover` with `category: "action_types"` for the `send_email` schema
-2. Calls `start_draft` for `sales.orders` / `on_create`
-3. Calls `add_draft_action` with:
-   - `action_type: "send_email"`
-   - `action_config` with recipients array, subject, body
-4. Calls `preview_draft`
-
-**What to verify in the preview:**
-- Entity: `sales.orders`
-- Trigger: `on_create`
-- Action type: `send_email`
-- Recipients include "orders@company.com"
-- Subject and body match the prompt
+**What to check:**
+- Preview appears with the right trigger (on_create on orders)
+- Action type is send_email
+- Email goes to the right address
 
 ---
 
-## Prompt 3D — Workflow with a Delay Action
-
-Use this to test the `delay` action type:
+### 3D — Workflow with a delay
 
 ```
-Create a workflow "Order Follow-Up" on sales.orders on_create.
-First add a delay of 24 hours, then send an alert with title "Follow-Up Needed"
+Create a workflow "Order Follow-Up" on sales.orders triggered on_create.
+Wait 24 hours, then create an alert with title "Follow-Up Needed"
 and message "This order was placed 24 hours ago and may need follow-up."
 ```
 
-**Expected agent behavior:**
-1. `discover` → `start_draft`
-2. `add_draft_action` for delay (no `after` — first action)
-3. `add_draft_action` for create_alert with `after: "Delay 24h"` (or whatever the delay was named)
-4. `preview_draft`
-
-**What to verify in the preview:**
-- 2 actions: delay → create_alert
-- 2 edges: start edge to delay, sequence edge from delay to alert
-- `after` correctly chains the actions
+**What to check:**
+- Preview shows 2 steps: a delay action, then a create_alert action
+- Steps are chained in order (delay fires first, alert fires after)
 
 ---
 
-## Validation Checkpoints
+## What a Good Response Looks Like
 
-After accepting the preview, the workflow should have this structure:
+After you submit a prompt, the chatbot should:
 
-```json
-{
-  "name": "Low Stock Alert",
-  "is_active": true,
-  "entity": "inventory.inventory_items",
-  "trigger_type": "on_update",
-  "actions": [
-    {
-      "name": "Alert - Low Stock",
-      "action_type": "create_alert",
-      "action_config": {
-        "alert_type": "low_stock",
-        "severity": "high",
-        "title": "Low Stock Warning",
-        "message": "An inventory item has been updated — check stock levels.",
-        "recipients": { "users": [...], "roles": [] }
-      },
-      "is_active": true
-    }
-  ],
-  "edges": [
-    {
-      "edge_type": "start",
-      "target_action_id": "<action-id>"
-    }
-  ]
-}
-```
+1. Briefly explain what it's going to build (or ask if requirements are unclear)
+2. Make a few tool calls in the background
+3. Send a preview card to the UI
+4. Say something like "The preview is ready — please accept or reject it"
+
+It should **not**:
+- Immediately save anything without showing a preview first
+- Ask a dozen clarifying questions for a clearly-specified request
+- Dump raw JSON as a response
 
 ---
 
-## Common Errors to Watch For
+## Common Issues
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| Agent skips `discover` and invents config | Missing discovery step | Agent should always `discover action_types` before creating actions |
-| `start_draft` fails with entity not found | Wrong entity name format | Entity must be `schema.table` format (e.g., `inventory.inventory_items`) |
-| No `after` field on first action | Correct — first action should omit `after` | This is correct behavior; start edge is auto-generated |
-| Agent calls `preview_workflow` instead of `preview_draft` | Using wrong preview tool | For draft-based creation, use `preview_draft` |
-| `action_config` missing required fields | Wrong config for action type | Use `discover action_types` result to get the correct schema |
-
----
-
-## Notes
-
-- **Draft TTL is 10 minutes.** If the conversation takes too long, the draft may expire. Start over with `start_draft`.
-- The `after` field uses the **action name** (e.g., `"after": "Evaluate Stock"`), not an ID. Names must match exactly.
-- Entity names resolve automatically — you can use `"inventory.inventory_items"` or the UUID. Names are preferred for readability.
-- After `preview_draft` fires, the agent should tell the user "the preview is ready" — it should NOT call any other tools.
+| Problem | What to look for |
+|---------|-----------------|
+| No preview card appears | Chatbot may have hit a validation error — check if it explains the issue |
+| Chatbot asks too many questions | For detailed prompts like 3A and 3C, it should just build without interrogating |
+| Preview shows wrong entity or trigger | Chatbot may have misunderstood — try being more explicit (e.g., "inventory.inventory_items") |
+| Draft expires mid-conversation | Chatbot will say "draft not found" — start fresh with a new message |

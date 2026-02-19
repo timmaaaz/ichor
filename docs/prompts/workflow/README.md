@@ -1,141 +1,91 @@
 # Workflow Chat Prompts
 
-This directory contains reusable prompts for testing the workflow automation AI assistant via chat.
+This directory contains test prompts for the workflow automation AI assistant. Use these to verify the chatbot is working correctly.
 
-## How the Workflow Chat Works
+## How It Works
 
-The workflow assistant is accessed via `POST /v1/agent/chat` with `context_type: "workflow"`. The agent uses a set of tools to discover, read, create, and modify workflow automation rules. It **never writes to the database directly** — it always sends a **preview** for the user to accept or reject in the UI.
+The workflow assistant lives at `POST /v1/agent/chat` with `context_type: "workflow"`. You type a message, it calls tools behind the scenes, and responds in plain language. For any create or update operation, it always sends a **preview** first — you accept or reject it in the UI without the chatbot saving anything directly.
 
-### API Request Format
+### Basic Request Format
 
 ```json
 {
-  "message": "<your prompt here>",
+  "message": "your message here",
+  "context_type": "workflow"
+}
+```
+
+To open a specific existing workflow for editing:
+
+```json
+{
+  "message": "your message here",
   "context_type": "workflow",
   "context": {
     "workflow_id": "<uuid>",
-    "rule_name": "Optional Rule Name",
-    "is_new": false
+    "rule_name": "Simple Test Workflow"
   }
 }
 ```
 
-- For a **new workflow** (blank canvas): omit `context` or set `is_new: true`.
-- For an **existing workflow**: include `workflow_id` UUID and optionally `rule_name`.
-- The `context` can also include `nodes` and `edges` arrays from the frontend canvas state.
+To start building a brand new workflow:
 
-### Two Creation Modes
+```json
+{
+  "message": "your message here",
+  "context_type": "workflow",
+  "context": { "is_new": true }
+}
+```
 
-| Mode | When | Tools Used |
-|------|------|-----------|
-| **Draft Builder** (guided, incremental) | New workflows | `start_draft` → `add_draft_action` → `preview_draft` |
-| **Full Payload** (direct) | Updates to existing workflows | `preview_workflow` with full workflow JSON |
+### What You Should See
 
-### Agent Tool Flow
-
-**Creating a new workflow (Draft Builder):**
-1. `discover` (category: `action_types`) — learn config schemas and output ports
-2. `start_draft` — create in-memory draft with name, entity, trigger
-3. `add_draft_action` — add actions one at a time, chained with `after`
-4. `preview_draft` — validate and send SSE preview to frontend
-5. User accepts → frontend persists the workflow
-
-**Modifying an existing workflow:**
-1. `get_workflow_rule` — fetch current workflow summary
-2. (optionally) `explain_workflow_node` — drill into specific action config
-3. `preview_workflow` — send updated full workflow payload for user approval
-4. User accepts → frontend persists the changes
-
-**Reading workflows:**
-- `list_workflow_rules` — list all automation rules
-- `get_workflow_rule` — get summary of one rule (flow outline, action types)
-- `explain_workflow_node` — deep detail on a single action (config, recipients, ports)
-
-### SSE Events Emitted
-
-| Event | Meaning |
-|-------|---------|
-| `message_start` | Start of an LLM turn |
-| `content_chunk` | Streamed text from LLM |
-| `tool_call_start` | LLM is invoking a tool |
-| `tool_call_result` | Tool call completed |
-| `workflow_preview` | Workflow validated, preview sent to user |
-| `message_complete` | Agent done responding |
-| `error` | Any failure |
+When you send a message, the UI shows events in real time:
+- **Tool calls** — the chatbot explains what it's looking up (e.g., "I'll check the available action types…")
+- **Streamed response** — the chatbot explains what it found or did
+- **Preview card** — appears when a workflow is ready for your review (create/update operations only)
 
 ---
 
-## Prompt Files
+## Test Files
 
-| File | Purpose |
-|------|---------|
-| [01-discover.md](01-discover.md) | Discover action types, trigger types, and entities |
-| [02-list-and-read.md](02-list-and-read.md) | List workflows, read summaries, explain nodes |
-| [03-create-simple.md](03-create-simple.md) | Create a new workflow with a single action |
-| [04-create-branching.md](04-create-branching.md) | Create a workflow with conditional branching |
-| [05-modify-existing.md](05-modify-existing.md) | Modify an existing workflow |
-| [06-alerts.md](06-alerts.md) | Work with workflow alerts (inbox, details, rule history) |
-| [07-complex-workflow.md](07-complex-workflow.md) | Complex multi-step real-world workflows |
-| [complete-walkthrough.md](complete-walkthrough.md) | End-to-end walkthrough covering all operations |
-
----
-
-## Seed Workflows Available for Testing
-
-After running `make seed` or in test environments, these workflows exist:
-
-| Workflow Name | Trigger | Entity | Description |
-|---------------|---------|--------|-------------|
-| `Simple Test Workflow` | on_create | (varies by seed) | 1 action: `create_alert` with start edge |
-| `Sequence Test Workflow` | on_update | (varies by seed) | 3 sequential `create_alert` actions chained |
-| `Branching Test Workflow` | on_create | (varies by seed) | `evaluate_condition` → high value alert OR normal value alert |
-
-Use `list_workflow_rules` in the chat to discover all available rules in your environment.
+| File | What it tests |
+|------|--------------|
+| [01-discover.md](01-discover.md) | Asking what action types, triggers, and entities are available |
+| [02-list-and-read.md](02-list-and-read.md) | Listing workflows, reading summaries, asking about specific actions |
+| [03-create-simple.md](03-create-simple.md) | Building a new workflow step by step |
+| [04-create-branching.md](04-create-branching.md) | Workflows with "if this, do that / if not, do this" logic |
+| [05-modify-existing.md](05-modify-existing.md) | Changing an existing workflow |
+| [06-alerts.md](06-alerts.md) | Checking your alert inbox and workflow alert history |
+| [07-complex-workflow.md](07-complex-workflow.md) | Multi-step real-world automation scenarios |
+| [complete-walkthrough.md](complete-walkthrough.md) | Full end-to-end test covering everything |
 
 ---
 
-## Available Entities (Use `discover` to get current list)
+## Seeded Workflows for Testing
 
-Common entities workflows can trigger on:
+After `make seed`, these three workflows exist and can be used in tests:
 
-| Entity | Schema.Table | Good for |
-|--------|-------------|---------|
-| Orders | `sales.orders` | Order processing automation |
-| Inventory Items | `inventory.inventory_items` | Stock level alerts |
-| Users | `core.users` | User lifecycle events |
-| Purchase Orders | `procurement.purchase_orders` | Procurement workflows |
+| Name | Trigger | What it does |
+|------|---------|-------------|
+| **Simple Test Workflow** | on_create | 1 step: creates an alert |
+| **Sequence Test Workflow** | on_update | 3 steps in a row: each creates an alert |
+| **Branching Test Workflow** | on_create | Evaluates a condition, then takes one of two paths |
 
----
-
-## Available Action Types (Use `discover` to get schemas)
-
-| Action Type | Purpose |
-|------------|---------|
-| `create_alert` | Send an in-app alert to users/roles |
-| `send_email` | Send an email via Resend API |
-| `send_notification` | Push notification |
-| `evaluate_condition` | Branch workflow on true/false condition |
-| `check_inventory` | Check current inventory level |
-| `check_reorder_point` | Check if stock is below reorder threshold |
-| `allocate_inventory` | Reserve inventory |
-| `reserve_inventory` | Reserve inventory items |
-| `commit_allocation` | Commit a reservation |
-| `release_reservation` | Release a previously reserved allocation |
-| `seek_approval` | Pause workflow and request human approval |
-| `delay` | Wait for a time period |
-| `lookup_entity` | Fetch related entity data |
-| `create_entity` | Create a new entity record |
-| `update_field` | Update a field on an entity |
-| `transition_status` | Change entity status |
-| `log_audit_entry` | Write an audit log entry |
+Use these by name in prompts — the chatbot resolves names to IDs automatically.
 
 ---
 
-## Available Trigger Types
+## Quick Reference: Things You Can Ask
 
-| Trigger | When It Fires |
-|---------|--------------|
-| `on_create` | When a new entity record is created |
-| `on_update` | When an existing entity record is updated |
-| `on_delete` | When an entity record is deleted |
-| `scheduled` | On a time-based schedule |
+| Goal | Example prompt |
+|------|---------------|
+| Discover what's available | "What action types are there?" |
+| List all workflows | "Show me all the workflow rules" |
+| Understand a workflow | "Explain the Branching Test Workflow" |
+| Drill into one action | "What does the Evaluate Amount action do?" |
+| Check alert recipients | "Who gets alerts from the High Value Alert action?" |
+| Check your inbox | "Do I have any alerts?" |
+| Check if a rule fired | "Has the Simple Test Workflow sent any alerts?" |
+| Create new workflow | "Build a new workflow called X on Y triggered when Z" |
+| Edit existing workflow | "Change the alert severity to critical" |

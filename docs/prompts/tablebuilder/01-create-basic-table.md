@@ -1,34 +1,14 @@
-# Step 01: Create a Basic Table Config
+# Step 01: Create a Basic Table
 
-**Goal**: Start a brand-new table config from scratch using the inventory items table. This exercises `search_database_schema`, `apply_column_change`, and `preview_table_config`.
+**What this tests**: Starting a brand-new table configuration from scratch. The AI will look up the available columns in the database and then build the config based on your request.
 
----
-
-## Context Setup
-
-For a new table, omit `config_id` (the agent will create a new config, not update an existing one):
-
-```json
-{
-  "message": "<prompt>",
-  "context_type": "tables",
-  "context": {
-    "state": {
-      "baseTable": "",
-      "columns": [],
-      "joins": [],
-      "filters": [],
-      "sortBy": []
-    }
-  }
-}
-```
+**Prerequisite**: No existing table needed — this creates a new one.
 
 ---
 
-## Prompt 1A — Simple table, specific columns
+## Prompt 1A — Specific columns you already know
 
-Use this when you know exactly what you want:
+Use this when you know exactly what columns you want:
 
 ```
 Create a new table called "Inventory Items" showing the inventory.inventory_items table.
@@ -36,36 +16,49 @@ Include these columns: item_number, quantity, reorder_point, and created_date.
 Format created_date as yyyy-MM-dd.
 ```
 
-**Expected agent behavior:**
-1. Calls `search_database_schema` on `inventory.inventory_items` to find pg_types
-2. Calls `apply_column_change` with `operation="add"` for each column
-3. Calls `preview_table_config` with a description of the added columns
-4. You accept the preview → table config is created
+**What the AI will do:**
+1. Look up the `inventory.inventory_items` table in the database to check column types
+2. Add each column to the configuration
+3. Show you a preview
 
-**What to verify:**
-- Preview shows 4 columns in visual settings
-- `created_date` has type `datetime` with format `yyyy-MM-dd`
-- `quantity` and `reorder_point` have type `number`
-- `item_number` has type `string`
+**What you should see in the preview:**
+- Table title: "Inventory Items"
+- 4 columns: Item Number, Quantity, Reorder Point, Created Date
+- `created_date` shows formatted dates like `2024-01-15` (not a raw timestamp)
+- `quantity` and `reorder_point` appear as numbers
+- `item_number` appears as text
+
+<details>
+<summary>Network tab verification (optional)</summary>
+
+In the `table_config_preview` event, look for:
+- `visual_settings.columns.item_number.type: "string"`
+- `visual_settings.columns.quantity.type: "number"`
+- `visual_settings.columns.created_date.type: "datetime"` with `format.format: "yyyy-MM-dd"`
+
+</details>
 
 ---
 
-## Prompt 1B — Let the agent discover columns
+## Prompt 1B — Let the AI suggest columns
 
-Use this when you want the agent to suggest useful columns:
+Use this when you're not sure what columns are available:
 
 ```
 I want to create a new inventory items table using inventory.inventory_items.
 What columns are available? Show me the most useful ones for a stock management view.
 ```
 
-**Expected agent behavior:**
-1. Calls `search_database_schema` on `inventory.inventory_items`
-2. Reports back available columns with their types
-3. Suggests a set of useful columns
-4. Waits for your approval before building
+**What the AI will do:**
+1. Look up the table schema and list available columns
+2. Suggest a set of useful columns
+3. Wait for your approval before building anything
 
-**Follow-up after the agent responds:**
+**What you should see:**
+- A text response listing columns with descriptions
+- No preview yet — the AI is asking for your input first
+
+**Follow-up prompt** (send this after the AI lists its suggestions):
 
 ```
 Yes, add those columns. Also include created_date formatted as MM/dd/yyyy.
@@ -73,69 +66,34 @@ Yes, add those columns. Also include created_date formatted as MM/dd/yyyy.
 
 ---
 
-## Prompt 1C — Minimal table (just an ID column to start)
+## Prompt 1C — Minimal table (one column)
 
-Use this to test the minimum valid config:
+Use this to test the smallest valid configuration:
 
 ```
 Create a minimal table config called "Test Inventory" for inventory.inventory_items.
 Just add the item_number column for now.
 ```
 
-**What to verify:**
-- Config is valid with a single column
-- `item_number` has type `string` in visual settings
-- Title is "Test Inventory"
+**What you should see in the preview:**
+- Table title: "Test Inventory"
+- 1 column: Item Number
+- Preview is valid (no errors shown)
 
 ---
 
-## Validation Checkpoints
+## Common Errors
 
-After accepting the preview, the config should have:
-
-```json
-{
-  "title": "Inventory Items",
-  "widget_type": "table",
-  "visualization": "table",
-  "data_source": [{
-    "type": "query",
-    "source": "inventory_items",
-    "schema": "inventory",
-    "select": {
-      "columns": [
-        { "name": "item_number" },
-        { "name": "quantity" },
-        { "name": "reorder_point" },
-        { "name": "created_date" }
-      ]
-    }
-  }],
-  "visual_settings": {
-    "columns": {
-      "item_number":    { "name": "item_number",    "header": "Item Number",    "type": "string" },
-      "quantity":       { "name": "quantity",       "header": "Quantity",       "type": "number" },
-      "reorder_point":  { "name": "reorder_point",  "header": "Reorder Point",  "type": "number" },
-      "created_date":   { "name": "created_date",   "header": "Created Date",   "type": "datetime", "format": { "type": "date", "format": "yyyy-MM-dd" } }
-    }
-  }
-}
-```
-
----
-
-## Common Errors to Watch For
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `missing column type: created_date` | datetime column missing format config | Add `format: { type: "date", format: "yyyy-MM-dd" }` |
-| `invalid type "timestamp"` | pg_type passed as visual type | Agent should map pg_type → visual type via typemapper |
-| Preview not received | Agent called `update_table_config` directly | Agent should only use `preview_table_config` |
+| What you see | What caused it | What to try |
+|---|---|---|
+| Preview shows a validation error mentioning "missing column type" | The AI forgot to assign a type to a date column | Re-send the prompt and explicitly ask to "format created_date as a date" |
+| Preview not shown at all | The AI may have skipped the preview step | Ask: "Can you send me a preview of the current config?" |
+| Date column shows raw timestamps like `2024-01-15T00:00:00Z` | Date format wasn't set correctly | Ask: "Update created_date to display as MM/dd/yyyy" |
 
 ---
 
 ## Notes
 
-- The agent auto-fills `config_id` into tool calls from the context — for a new table, there is no ID yet, so `create_table_config` is what the frontend calls after accepting the preview.
-- Column `type` in `visual_settings` must be one of: `string`, `number`, `datetime`, `boolean`, `uuid`, `status`, `computed`, `lookup`.
-- `datetime` columns **must** have a `format` config using date-fns tokens (not Go format `2006-01-02`).
+- Column types are automatically inferred from the database — you shouldn't need to specify them unless you want something specific
+- Date formatting uses display tokens: `yyyy-MM-dd`, `MM/dd/yyyy`, `MM/dd/yyyy HH:mm:ss` — not technical formats
+- After you Accept the preview, the table is saved and assigned a config ID you can use in later steps

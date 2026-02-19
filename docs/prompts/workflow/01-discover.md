@@ -1,134 +1,92 @@
-# Step 01: Discover Workflow Building Blocks
+# 01 — Discover What's Available
 
-**Goal**: Use the `discover` tool to learn what action types, trigger types, and entities are available in the system. This is the first step before building any workflow.
+**Goal**: Ask the chatbot what it knows about workflow building blocks. These are read-only — nothing gets created.
 
 ---
 
-## Context Setup
+## Setup
 
-For discovery, no workflow context is needed. Omit `context` or send a blank one:
+No context needed. Just send:
 
 ```json
 {
-  "message": "<prompt>",
+  "message": "your prompt here",
   "context_type": "workflow"
 }
 ```
 
 ---
 
-## Prompt 1A — Discover All Action Types
+## Prompts to Try
 
-Use this to learn what action types exist and what config each requires:
+### 1A — What action types exist?
 
 ```
-What workflow action types are available? I want to understand what each one does.
+What workflow action types are available? Give me a quick overview of what each one does.
 ```
 
-**Expected agent behavior:**
-1. Calls `discover` with `category: "action_types"`
-2. Returns a list of all 17 action types with their config schemas and output ports
-3. Explains each action in plain language
-
-**What to verify:**
-- Agent calls `discover`, not some other tool
-- Response lists multiple action types (create_alert, evaluate_condition, send_email, etc.)
-- Each action type shows its required config fields
-- Actions with branching show their output ports (e.g., `evaluate_condition` → `output-true` / `output-false`)
+**What to check:**
+- The chatbot calls `discover` behind the scenes (you may see this in the tool call events)
+- The response lists action types in plain language — things like create_alert, send_email, evaluate_condition, delay, etc.
+- The chatbot explains what each one does without dumping a wall of technical data
 
 ---
 
-## Prompt 1B — Discover Trigger Types
-
-Use this to learn when workflows can fire:
+### 1B — What triggers are available?
 
 ```
-What trigger types are available for workflows? When does each one fire?
+What triggers can I use for a workflow? When does each one fire?
 ```
 
-**Expected agent behavior:**
-1. Calls `discover` with `category: "trigger_types"`
-2. Returns trigger types: on_create, on_update, on_delete, scheduled
-3. Explains when each fires
-
-**What to verify:**
-- Response includes at least: `on_create`, `on_update`, `on_delete`, `scheduled`
-- Agent explains the difference between them in plain language
+**What to check:**
+- Response mentions: on_create, on_update, on_delete, and scheduled
+- Chatbot explains when each fires in plain terms (e.g., "on_create fires whenever a new record is added")
 
 ---
 
-## Prompt 1C — Discover Available Entities
-
-Use this to find what tables/entities workflows can trigger on:
+### 1C — What entities can I watch?
 
 ```
-What entities can workflows be triggered on? Show me all the available tables.
+What tables or entities can a workflow be triggered on?
 ```
 
-**Expected agent behavior:**
-1. Calls `discover` with `category: "entities"`
-2. Returns a list of schema.table pairs (e.g., `sales.orders`, `inventory.inventory_items`)
-3. Groups them by schema if possible
-
-**What to verify:**
-- Response includes entities across multiple schemas (inventory, sales, core, etc.)
-- Each entity is listed in `schema.table` format
-- Agent can identify which entities are available for a given domain
+**What to check:**
+- Response lists entities across different areas of the system (inventory, sales, core, etc.)
+- Entities are shown in a readable format (not raw UUIDs)
+- If there are many, the chatbot should group or summarize rather than listing hundreds
 
 ---
 
-## Prompt 1D — Targeted Action Type Discovery
-
-Use this when you need to know the specific config schema for one action:
+### 1D — How does a specific action work?
 
 ```
-What config does the send_email action type require? What fields are needed?
+What fields does a send_email action need? What's required?
 ```
 
-**Expected agent behavior:**
-1. Calls `discover` with `category: "action_types"`
-2. Finds and explains the `send_email` action's config schema
-3. Lists required fields and their types
-
-**What to verify:**
-- Agent explains the required config for send_email (recipients, subject, body, template)
-- Does NOT hallucinate fields — shows only what the schema defines
+**What to check:**
+- Chatbot explains the required config for send_email (recipients, subject, body/template)
+- Does not make up fields — sticks to what's actually defined
+- Explains it conversationally, not as a JSON schema dump
 
 ---
 
-## Prompt 1E — Discover Output Ports (for branching)
-
-Use this to understand how conditional branching works:
+### 1E — How does branching work?
 
 ```
-What output ports does evaluate_condition have? How do I use them to branch a workflow?
+I want to have a workflow do different things based on a condition. How does that work?
 ```
 
-**Expected agent behavior:**
-1. Calls `discover` with `category: "action_types"`
-2. Finds the `evaluate_condition` action and explains its output ports
-3. Explains how `output-true` and `output-false` ports are used in edges
-
-**What to verify:**
-- Response mentions `output-true` and `output-false` as the output ports
-- Agent explains that the `after: "ActionName:output-true"` shorthand connects to one branch
-- Does NOT mention ports that don't exist for this action type
+**What to check:**
+- Chatbot explains the `evaluate_condition` action type
+- Mentions that it has two output paths: one if the condition is true, one if false
+- Explains in plain language without heavy jargon
 
 ---
 
-## Common Errors to Watch For
+## Common Issues
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| Agent calls `list_workflow_rules` instead of `discover` | Wrong tool for discovery | Agent should use `discover` with category param |
-| Agent makes up action type names | No `discover` call | Verify agent always calls `discover` before listing options |
-| Missing output ports in response | Incomplete discovery | Ensure agent calls `discover` with `action_types` (not just listing names) |
-
----
-
-## Notes
-
-- `discover` is a read-only tool — it queries the live API, so results reflect the current system configuration.
-- `discover` with `action_types` returns the full config schemas including required/optional fields.
-- The `output ports` are listed per action type — only `evaluate_condition` and similar branching actions have multiple ports; linear actions like `create_alert` have a single default port.
-- For new workflow creation, always call `discover` first so the LLM knows the correct config schemas before adding actions.
+| Problem | What to look for |
+|---------|-----------------|
+| Chatbot just says "I don't know" | Should call `discover` — check if tool calls are showing |
+| Response is a wall of raw JSON | Chatbot should summarize in plain language |
+| Chatbot invents action types that don't exist | Check against the real list: create_alert, send_email, evaluate_condition, delay, seek_approval, etc. |

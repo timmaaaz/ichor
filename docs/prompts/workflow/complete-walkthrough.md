@@ -1,22 +1,13 @@
 # Complete Workflow Chat Walkthrough
 
-This is a sequenced end-to-end test that covers all workflow chat operations in order. Follow the phases in sequence — each builds on the previous.
+End-to-end test covering all major workflow chat features in order. Run these phases in sequence — each builds on context from the previous steps.
 
-**Estimated completion**: ~30 minutes
-**Tests**: 11 phases covering all tools and patterns
-
----
-
-## Setup
-
-Use the Ichor development environment with seed data loaded (`make seed`).
-All prompts use `POST /v1/agent/chat` with the listed request body.
+**Time**: ~30 minutes
+**Requires**: Dev environment running with seed data loaded (`make seed`)
 
 ---
 
-## Phase 1: Discovery
-
-**Goal**: Verify the agent can discover all building blocks.
+## Phase 1 — Discover what's available
 
 **Request:**
 ```json
@@ -26,17 +17,14 @@ All prompts use `POST /v1/agent/chat` with the listed request body.
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent calls `discover` with `category: "action_types"`
-- [ ] Response lists all 17+ action types
-- [ ] Agent explains them in plain language (no raw JSON dump)
-- [ ] SSE events include `tool_call_start` and `tool_call_result` for `discover`
+**Pass when:**
+- [ ] Response lists action types (create_alert, send_email, evaluate_condition, delay, seek_approval, etc.)
+- [ ] Each action is described in plain language
+- [ ] No raw JSON dumped as the response
 
 ---
 
-## Phase 2: List Existing Workflows
-
-**Goal**: Verify the agent can enumerate the seeded workflow rules.
+## Phase 2 — List existing workflows
 
 **Request:**
 ```json
@@ -46,17 +34,14 @@ All prompts use `POST /v1/agent/chat` with the listed request body.
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent calls `list_workflow_rules`
-- [ ] Response includes the 3 seeded workflows: "Simple Test Workflow", "Sequence Test Workflow", "Branching Test Workflow"
-- [ ] Each rule shows: name, entity, trigger type, active status
-- [ ] Total count mentioned
+**Pass when:**
+- [ ] Response includes all 3 seeded workflows: Simple Test Workflow, Sequence Test Workflow, Branching Test Workflow
+- [ ] Each rule shows its trigger type and active status
+- [ ] **Save the UUID of "Branching Test Workflow"** — you'll need it in phases 4 and 5
 
 ---
 
-## Phase 3: Read a Workflow Summary
-
-**Goal**: Verify the agent can explain a specific workflow's structure.
+## Phase 3 — Understand a workflow
 
 **Request:**
 ```json
@@ -66,65 +51,60 @@ All prompts use `POST /v1/agent/chat` with the listed request body.
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent calls `get_workflow_rule` with "Branching Test Workflow" (name resolves to UUID)
-- [ ] Response describes: trigger (on_create), entity, 3 actions
-- [ ] Flow outline shows the branching structure: Evaluate Amount → High Value OR Normal Value
-- [ ] Agent does NOT dump raw JSON
+**Pass when:**
+- [ ] Response describes: what triggers it, what it evaluates, and what happens on each path
+- [ ] Explains the branching logic in plain language (not just "there are 3 nodes")
+- [ ] Does not make up information
 
 ---
 
-## Phase 4: Explain a Node
+## Phase 4 — Drill into an action
 
-**Goal**: Verify the agent can drill into action-level config.
+Use the UUID from Phase 2.
 
 **Request:**
 ```json
 {
-  "message": "In the Branching Test Workflow, what condition does 'Evaluate Amount' check?",
+  "message": "In the Branching Test Workflow, what exactly does the Evaluate Amount action check?",
   "context_type": "workflow",
   "context": {
-    "workflow_id": "<UUID-of-Branching-Test-Workflow>"
+    "workflow_id": "<UUID-of-Branching-Test-Workflow>",
+    "rule_name": "Branching Test Workflow"
   }
 }
 ```
 
-*(Get the UUID from the Phase 2 list response)*
-
-**Pass criteria:**
-- [ ] Agent calls `explain_workflow_node` with `node_name: "Evaluate Amount"` (workflow_id auto-injected)
-- [ ] Response shows the condition: field=amount, operator=greater_than, value=1000
-- [ ] Agent does NOT re-call `get_workflow_rule` (already in context)
-- [ ] Recipients shown as names (not UUIDs)
+**Pass when:**
+- [ ] Chatbot explains the condition: checks if amount is greater than 1000
+- [ ] Describes both outcomes: high-value path vs. normal-value path
+- [ ] Does not re-fetch the whole workflow (it's already in context)
 
 ---
 
-## Phase 5: Check Alert Recipients
+## Phase 5 — Check alert recipients
 
-**Goal**: Verify the agent correctly distinguishes configured recipients from alert history.
+Using the same workflow context as Phase 4.
 
 **Request:**
 ```json
 {
-  "message": "Who is set up to receive alerts from the High Value Alert action?",
+  "message": "Who is set up to receive the alert on the high-value path?",
   "context_type": "workflow",
   "context": {
-    "workflow_id": "<UUID-of-Branching-Test-Workflow>"
+    "workflow_id": "<UUID-of-Branching-Test-Workflow>",
+    "rule_name": "Branching Test Workflow"
   }
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent calls `explain_workflow_node` with `node_name: "High Value Alert"`
-- [ ] Response shows configured recipients (users/roles) — NOT fired alert history
-- [ ] Agent does NOT call `list_my_alerts` or `list_alerts_for_rule`
-- [ ] Recipients resolved to names/emails
+**Pass when:**
+- [ ] Response shows recipient names or emails — not UUID strings
+- [ ] These are the **configured** recipients, not a history of who has been notified
+- [ ] Chatbot does not go off and list alerts from your inbox
 
 ---
 
-## Phase 6: Check Alert Inbox
-
-**Goal**: Verify the agent can access the current user's alert inbox.
+## Phase 6 — Check your alert inbox
 
 **Request:**
 ```json
@@ -134,41 +114,34 @@ All prompts use `POST /v1/agent/chat` with the listed request body.
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent calls `list_my_alerts` with `status: "active"` (or no status, which defaults to active)
-- [ ] Response clearly indicates what's in the inbox
-- [ ] If empty: says "You have no active alerts"
-- [ ] If not empty: shows count, titles, severities
+**Pass when:**
+- [ ] Response clearly states what's in your inbox (or says it's empty)
+- [ ] Alerts show title and severity
+- [ ] Response is about YOUR inbox only (not all system alerts)
 
 ---
 
-## Phase 7: Create a Simple Workflow
-
-**Goal**: Test the full draft builder flow for a single-action workflow.
+## Phase 7 — Create a simple workflow
 
 **Request:**
 ```json
 {
-  "message": "Create a new workflow called 'Low Stock Alert' on inventory.inventory_items triggered when items are updated. Add a single create_alert action with severity high, title 'Low Stock Warning', message 'An item has been updated — check stock levels.'",
+  "message": "Create a new workflow called 'Low Stock Alert' on inventory.inventory_items triggered when items are updated. Add a single alert action with severity high, title 'Low Stock Warning', message 'An item has been updated — check stock levels.'",
   "context_type": "workflow",
   "context": { "is_new": true }
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent calls `discover` with `action_types`
-- [ ] Agent calls `start_draft` with entity `inventory.inventory_items`, trigger `on_update`
-- [ ] Agent calls `add_draft_action` with correct `create_alert` config
-- [ ] Agent calls `preview_draft` with a description
-- [ ] SSE emits `workflow_preview` event
-- [ ] Preview shows: name, entity, trigger, 1 action, 1 start edge
-- [ ] Agent announces "Preview is ready"
+**Pass when:**
+- [ ] Chatbot makes tool calls in the background (you see activity before the response)
+- [ ] **A preview card appears in the UI**
+- [ ] Preview shows: "Low Stock Alert", inventory items, on_update trigger, 1 action
+- [ ] Chatbot says something like "Preview is ready for your review"
+- [ ] Chatbot does NOT say it has saved the workflow (it hasn't — you need to accept first)
 
 ---
 
-## Phase 8: Create a Branching Workflow
-
-**Goal**: Test the draft builder with evaluate_condition branching.
+## Phase 8 — Create a branching workflow
 
 **Request:**
 ```json
@@ -179,26 +152,22 @@ All prompts use `POST /v1/agent/chat` with the listed request body.
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent calls `discover` (learns `output-true`/`output-false` ports)
-- [ ] Agent calls `start_draft`
-- [ ] Agent adds 3 actions: evaluate_condition, high alert, normal alert
-- [ ] `after` fields use correct port syntax: `"Condition:output-true"` and `"Condition:output-false"`
-- [ ] Preview shows 3 actions + 3 edges (start + 2 sequence)
-- [ ] Both branch edges have `source_output` set correctly
+**Pass when:**
+- [ ] **Preview card appears**
+- [ ] Preview shows 3 steps: condition check + two alert actions
+- [ ] The two alert actions are on separate branches (visible in the preview graph)
+- [ ] Both alerts have different titles and severities as specified
 
 ---
 
-## Phase 9: Modify an Existing Workflow
+## Phase 9 — Modify an existing workflow
 
-**Goal**: Test the preview_workflow update path.
-
-First, use the "Simple Test Workflow" UUID from Phase 2.
+Use the UUID of "Simple Test Workflow" from Phase 2.
 
 **Request:**
 ```json
 {
-  "message": "Change the alert severity in the 'Create Alert' action of the Simple Test Workflow to 'critical'.",
+  "message": "Change the alert severity in the 'Create Alert' action to 'critical'.",
   "context_type": "workflow",
   "context": {
     "workflow_id": "<UUID-of-Simple-Test-Workflow>",
@@ -207,21 +176,17 @@ First, use the "Simple Test Workflow" UUID from Phase 2.
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent does NOT call `get_workflow_rule` (already in context)
-- [ ] Agent optionally calls `explain_workflow_node` to confirm current config
-- [ ] Agent calls `preview_workflow` with the full updated payload and `workflow_id`
-- [ ] Preview shows `severity: "critical"` on the alert action
-- [ ] All other fields are unchanged (name, entity, trigger, edges)
-- [ ] `description` field describes what changed
+**Pass when:**
+- [ ] **Preview card appears**
+- [ ] Preview description mentions the severity change
+- [ ] The workflow still has its original name, trigger, and entity
+- [ ] Only the severity changed — nothing else was altered
 
 ---
 
-## Phase 10: Remove a Draft Action
+## Phase 10 — Remove a draft action mid-build
 
-**Goal**: Test `remove_draft_action` mid-conversation.
-
-Start a new draft conversation:
+This is a two-turn test.
 
 **Turn 1:**
 ```json
@@ -232,84 +197,69 @@ Start a new draft conversation:
 }
 ```
 
-**Turn 2 (same conversation):**
+Wait for the chatbot to confirm it added both actions.
+
+**Turn 2** (continue the same conversation):
 ```
-Actually, remove the delay action. Just do the alert directly.
+Actually, remove the delay action. Just do the alert directly without the wait.
 ```
 
-**Pass criteria:**
-- [ ] Turn 1: agent calls `start_draft`, then `add_draft_action` twice (delay + alert)
-- [ ] Turn 2: agent calls `remove_draft_action` with the delay action's name
-- [ ] Turn 2: agent calls `preview_draft` with just 1 action remaining
-- [ ] Preview shows only the alert action (no delay)
-- [ ] The start edge correctly points to the alert action now
+**Pass when:**
+- [ ] Chatbot confirms the delay was removed
+- [ ] Preview shows only 1 action (the alert)
+- [ ] The alert is now the first (and only) step
 
 ---
 
-## Phase 11: Final Validation
-
-**Goal**: Verify all previous phases succeeded and nothing was accidentally persisted.
+## Phase 11 — Check if a workflow has fired
 
 **Request:**
 ```json
 {
-  "message": "List all workflow rules again. How many exist now?",
+  "message": "Has the Simple Test Workflow triggered any alerts? How many?",
   "context_type": "workflow"
 }
 ```
 
-**Pass criteria:**
-- [ ] Agent calls `list_workflow_rules`
-- [ ] Count includes original 3 seeded rules + the previewed ones (if accepted by user)
-- [ ] No rules accidentally persisted from preview-only operations
-- [ ] Agent gives an accurate count
+**Pass when:**
+- [ ] Chatbot searches rule alert history (not your personal inbox)
+- [ ] Reports a count — even if zero, says "No alerts have been fired by this rule"
+- [ ] Does not confuse rule alert history with your personal inbox
 
 ---
 
-## Final Checklist
+## Overall Pass Checklist
 
-After completing all phases, verify these overall behaviors:
+### Behavior
+- [ ] Chatbot never claims to save something — always sends a preview first
+- [ ] Chatbot explains what it's doing before making tool calls (or summarizes after)
+- [ ] Responses are in plain language — no raw JSON walls
+- [ ] When workflow context is provided, chatbot doesn't re-fetch it unnecessarily
 
-### Tool Usage
-- [ ] `discover` called before any draft creation
-- [ ] `list_workflow_rules` used for listing (not `get_workflow_rule`)
-- [ ] `get_workflow_rule` used for summaries (not `explain_workflow_node`)
-- [ ] `explain_workflow_node` used for action-level details and recipient resolution
-- [ ] `list_my_alerts` for personal inbox only
-- [ ] `list_alerts_for_rule` for checking if a rule has fired
-- [ ] `preview_draft` for new workflows (not `preview_workflow`)
-- [ ] `preview_workflow` for existing workflow updates (not `preview_draft`)
+### Previews
+- [ ] Preview card appeared for every create/update operation (phases 7, 8, 9, 10)
+- [ ] Each preview had a meaningful description of what changed
+- [ ] Preview content matched what was asked for
 
-### Response Quality
-- [ ] Agent never dumps raw JSON as the final response
-- [ ] Agent uses plain language to explain tool results
-- [ ] Agent announces "Preview is ready" after emitting workflow_preview
-- [ ] Agent does NOT try to persist changes itself
-
-### Context Handling
-- [ ] When `workflow_id` is in context, agent doesn't re-fetch the workflow
-- [ ] `workflow_id` is correctly auto-injected into tools that need it
-
-### Error Handling
-- [ ] If `discover` returns unexpected output, agent asks for clarification
-- [ ] If a draft expires, agent explains and suggests starting over
+### Accuracy
+- [ ] Names, trigger types, and entities matched what was specified in prompts
+- [ ] Recipients shown as names/emails, never raw UUIDs
+- [ ] Alert inbox (yours) vs. rule alert history (everyone's) correctly distinguished
 
 ---
 
-## Quick Prompt Cheat Sheet
+## Quick Reference
 
-| What you want | Prompt pattern |
-|--------------|----------------|
-| Discover action types | `"What action types are available?"` |
-| Discover triggers | `"What trigger types can I use?"` |
-| Discover entities | `"What entities can workflows trigger on?"` |
-| List all rules | `"Show me all workflow rules"` |
-| Get one rule summary | `"Explain the [Rule Name] workflow"` |
-| Explain one action | `"What does the [Action Name] action do?"` |
-| Who receives alerts | `"Who gets alerts from [Action Name]?"` |
-| My alert inbox | `"Do I have any alerts?"` |
-| Check if rule fired | `"Has [Rule Name] triggered any alerts?"` |
-| Create new workflow | `"Create a new workflow called... on [entity] triggered on_create..."` |
-| Add a branching step | `"If [condition], do X. If not, do Y."` |
-| Modify existing | `"Change [field] in the [Action Name] action to [value]"` |
-| Deactivate rule | `"Pause the [Rule Name] workflow"` |
+| What you want | Prompt |
+|--------------|--------|
+| See available building blocks | "What action types are available?" |
+| List all rules | "Show me all workflow rules" |
+| Understand a rule | "Explain the [Name] workflow" |
+| See action details | "What does the [Action Name] action do?" |
+| See configured recipients | "Who receives the alert from [Action Name]?" |
+| Your inbox | "Do I have any active alerts?" |
+| Rule fire history | "Has [Rule Name] sent any alerts?" |
+| New workflow | "Create a workflow called X on Y triggered when Z" |
+| Add branching | "If [condition], do A. Otherwise do B." |
+| Edit existing | "Change [thing] in the [Action Name] action" |
+| Pause a rule | "Deactivate the [Rule Name] workflow" |
