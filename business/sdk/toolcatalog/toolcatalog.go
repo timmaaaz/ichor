@@ -86,6 +86,12 @@ const (
 	// Tables — validation / preview
 	ValidateTableConfig  = "validate_table_config"
 	PreviewTableConfig   = "preview_table_config"
+
+	// Tables — atomic operation tools (Phase 2)
+	ApplyColumnChange = "apply_column_change"
+	ApplyFilterChange = "apply_filter_change"
+	ApplyJoinChange   = "apply_join_change"
+	ApplySortChange   = "apply_sort_change"
 )
 
 // groupMembers maps each tool to the groups it belongs to. A tool can belong
@@ -140,6 +146,10 @@ var groupMembers = map[string][]ToolGroup{
 	UpdateTableConfig:      {GroupTables},
 	ValidateTableConfig:    {GroupTables},
 	PreviewTableConfig:     {GroupTables},
+	ApplyColumnChange:      {GroupTables},
+	ApplyFilterChange:      {GroupTables},
+	ApplyJoinChange:        {GroupTables},
+	ApplySortChange:        {GroupTables},
 
 	// Both groups
 	SearchDatabaseSchema: {GroupWorkflow, GroupTables},

@@ -361,6 +361,242 @@ func TableToolDefinitions() []llm.ToolDef {
 				"required": []string{"id", "config"},
 			}),
 		},
+
+		// =================================================================
+		// Table config operation tools (atomic, validated changes)
+		// =================================================================
+		{
+			Name: "apply_column_change",
+			ExampleQueries: []string{
+				"add the created_date column to this table",
+				"remove the status column",
+				"add first_name and last_name columns",
+				"hide the id column",
+			},
+			Description: "Add or remove columns from a table config. Handles everything automatically: " +
+				"maps PostgreSQL types to visual types, adds the column to both select.columns and " +
+				"visual_settings.columns, injects datetime format for date/time columns, and " +
+				"assigns the next order value if other columns already have explicit ordering. " +
+				"On remove: cleans up both select.columns and visual_settings.columns. " +
+				"Returns {valid, config, warnings, applied} — if valid, pass the returned config to preview_table_config.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"config": map[string]any{
+						"type":        "object",
+						"description": "The current full table config JSON (data_source + visual_settings).",
+					},
+					"operation": map[string]any{
+						"type":        "string",
+						"enum":        []string{"add", "remove"},
+						"description": "'add' to include a column, 'remove' to exclude it.",
+					},
+					"columns": map[string]any{
+						"type":        "array",
+						"description": "Columns to add or remove.",
+						"items": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"name": map[string]any{
+									"type":        "string",
+									"description": "Database column name (as it appears in the table).",
+								},
+								"alias": map[string]any{
+									"type":        "string",
+									"description": "Optional display alias. Use this when the column needs a human-readable name different from the DB column name (e.g. 'created_at' → alias 'Created Date'). The alias becomes the key in visual_settings.",
+								},
+								"pg_type": map[string]any{
+									"type":        "string",
+									"description": "PostgreSQL column type from search_database_schema (e.g. 'timestamp without time zone', 'character varying', 'integer', 'uuid'). Used to auto-select the correct visual type.",
+								},
+								"source_table": map[string]any{
+									"type":        "string",
+									"description": "Source table name (informational; not required for the operation).",
+								},
+								"source_schema": map[string]any{
+									"type":        "string",
+									"description": "Source schema name (informational; not required for the operation).",
+								},
+								"hidden": map[string]any{
+									"type":        "boolean",
+									"description": "If true, column is selected for data (e.g. for filter use) but not shown in the table UI. Hidden columns are exempt from type validation.",
+								},
+							},
+							"required": []string{"name"},
+						},
+					},
+				},
+				"required": []string{"config", "operation", "columns"},
+			}),
+		},
+		{
+			Name: "apply_filter_change",
+			ExampleQueries: []string{
+				"filter this table to show only active records",
+				"add a filter for status equals active",
+				"remove the status filter",
+				"show only items created after 2024",
+			},
+			Description: "Add or remove a filter from a table config. On add: automatically " +
+				"inserts the filter column as a hidden column if it is not already selected " +
+				"(so the filter can reference it without displaying it). On remove: drops the " +
+				"first filter matching the given column. " +
+				"Returns {valid, config, warnings, applied} — if valid, pass the returned config to preview_table_config.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"config": map[string]any{
+						"type":        "object",
+						"description": "The current full table config JSON.",
+					},
+					"operation": map[string]any{
+						"type":        "string",
+						"enum":        []string{"add", "remove"},
+						"description": "'add' to add a filter, 'remove' to remove the first filter on the given column.",
+					},
+					"filter": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"column": map[string]any{
+								"type":        "string",
+								"description": "Column name to filter on (e.g. 'status', 'is_active'). Must match the column name or alias in the config.",
+							},
+							"operator": map[string]any{
+								"type":        "string",
+								"enum":        []string{"eq", "neq", "gt", "gte", "lt", "lte", "in", "like", "ilike", "is_null", "is_not_null"},
+								"description": "Comparison operator. Required for 'add', ignored for 'remove'.",
+							},
+							"value": map[string]any{
+								"description": "Filter value. Can be a string, number, boolean, or array (for 'in' operator). Omit for is_null/is_not_null.",
+							},
+							"label": map[string]any{
+								"type":        "string",
+								"description": "Optional human-readable label for the filter in the UI.",
+							},
+							"control_type": map[string]any{
+								"type":        "string",
+								"description": "Optional UI control type for dynamic filters.",
+							},
+						},
+						"required": []string{"column"},
+					},
+				},
+				"required": []string{"config", "operation", "filter"},
+			}),
+		},
+		{
+			Name: "apply_join_change",
+			ExampleQueries: []string{
+				"join the users table to get the creator's name",
+				"add a join to the products table",
+				"remove the join to the suppliers table",
+				"join core.users on created_by to get first_name and last_name",
+			},
+			Description: "Add or remove a foreign table join from a table config. On add: builds " +
+				"the ForeignTable entry with relationship fields, auto-assigns a disambiguation " +
+				"alias if the same table is joined more than once, and adds specified columns to " +
+				"both the join definition and visual_settings (defaulting to type 'string'). " +
+				"On remove: drops the matching join and removes its columns from visual_settings. " +
+				"Returns {valid, config, warnings, applied} — if valid, pass the returned config to preview_table_config.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"config": map[string]any{
+						"type":        "object",
+						"description": "The current full table config JSON.",
+					},
+					"operation": map[string]any{
+						"type":        "string",
+						"enum":        []string{"add", "remove"},
+						"description": "'add' to add a join, 'remove' to remove the first join matching table+schema.",
+					},
+					"join": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"table": map[string]any{
+								"type":        "string",
+								"description": "Name of the table to join (e.g. 'users').",
+							},
+							"schema": map[string]any{
+								"type":        "string",
+								"description": "Schema of the table to join (e.g. 'core'). Defaults to public if omitted.",
+							},
+							"join_type": map[string]any{
+								"type":        "string",
+								"enum":        []string{"inner", "left", "right", "full"},
+								"description": "SQL join type. Defaults to 'left' if omitted.",
+							},
+							"relationship_from": map[string]any{
+								"type":        "string",
+								"description": "Column reference on the base table side of the join (e.g. 'orders.created_by'). Required for 'add'.",
+							},
+							"relationship_to": map[string]any{
+								"type":        "string",
+								"description": "Column reference on the joined table side (e.g. 'users.id'). Required for 'add'.",
+							},
+							"columns_to_add": map[string]any{
+								"type":        "array",
+								"items":       map[string]any{"type": "string"},
+								"description": "Column names from the joined table to surface in the result (e.g. ['first_name', 'last_name']). Each column is added to visual_settings with type 'string' — use apply_column_change afterwards to set a more specific type if needed.",
+							},
+						},
+						"required": []string{"table"},
+					},
+				},
+				"required": []string{"config", "operation", "join"},
+			}),
+		},
+		{
+			Name: "apply_sort_change",
+			ExampleQueries: []string{
+				"sort this table by created date descending",
+				"remove the sort on status",
+				"change the sort order to name ascending",
+				"set sort to created_date desc then name asc",
+			},
+			Description: "Add, remove, or replace sort entries in a table config. " +
+				"'add' appends to the existing sort. 'remove' drops the named columns from the sort. " +
+				"'set' replaces the entire sort array. " +
+				"Returns {valid, config, warnings, applied} — if valid, pass the returned config to preview_table_config.",
+			InputSchema: schema(map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"config": map[string]any{
+						"type":        "object",
+						"description": "The current full table config JSON.",
+					},
+					"operation": map[string]any{
+						"type":        "string",
+						"enum":        []string{"add", "remove", "set"},
+						"description": "'add' appends sort entries. 'remove' drops named columns from sort. 'set' replaces the entire sort.",
+					},
+					"sort": map[string]any{
+						"type":        "array",
+						"description": "Sort entries to add, remove, or set.",
+						"items": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"column": map[string]any{
+									"type":        "string",
+									"description": "Column name to sort by.",
+								},
+								"direction": map[string]any{
+									"type":        "string",
+									"enum":        []string{"asc", "desc"},
+									"description": "Sort direction. Defaults to 'asc' if omitted.",
+								},
+								"priority": map[string]any{
+									"type":        "integer",
+									"description": "Optional sort priority (lower = higher priority). Used when sorting by multiple columns.",
+								},
+							},
+							"required": []string{"column"},
+						},
+					},
+				},
+				"required": []string{"config", "operation", "sort"},
+			}),
+		},
 	}
 }
 

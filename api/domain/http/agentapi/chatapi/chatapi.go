@@ -342,13 +342,17 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 
-			// Intercept preview tools: if validation passed, emit an SSE event
-			// so the frontend can show the proposed state for user approval.
+			// Intercept preview tools: emit an SSE event so the frontend can
+			// show the proposed state (valid) or the validation errors (invalid).
 			if !result.IsError {
 				if intercept, ok := previewInterceptors[tc.Name]; ok {
 					if preview := intercept.build(tc, result); preview != nil {
 						sse.send(intercept.eventName, preview)
 						result.Content = `{"status":"preview_sent","message":"Preview sent to user for approval. The user will accept or reject the preview directly."}`
+					} else if intercept.buildError != nil {
+						if errPayload := intercept.buildError(tc, result); errPayload != nil {
+							sse.send(intercept.errorEventName, errPayload)
+						}
 					}
 				}
 			}
@@ -391,15 +395,31 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 // builder function. When a preview tool succeeds validation, the interceptor
 // emits an SSE event to the frontend and replaces the tool result so the LLM
 // knows the user will decide.
+//
+// If buildError and errorEventName are set, they are used when build returns nil
+// (i.e. validation failed) to emit a structured validation-error event.
 type previewInterceptor struct {
-	eventName string
-	build     func(llm.ToolCall, llm.ToolResult) map[string]any
+	eventName      string
+	build          func(llm.ToolCall, llm.ToolResult) map[string]any
+	errorEventName string
+	buildError     func(llm.ToolCall, llm.ToolResult) map[string]any
 }
 
 var previewInterceptors = map[string]previewInterceptor{
-	"preview_workflow":     {"workflow_preview", buildPreviewEvent},
-	"preview_draft":        {"workflow_preview", buildPreviewEvent},
-	"preview_table_config": {"table_config_preview", buildTablePreviewEvent},
+	"preview_workflow": {
+		eventName: "workflow_preview",
+		build:     buildPreviewEvent,
+	},
+	"preview_draft": {
+		eventName: "workflow_preview",
+		build:     buildPreviewEvent,
+	},
+	"preview_table_config": {
+		eventName:      "table_config_preview",
+		build:          buildTablePreviewEvent,
+		errorEventName: "table_config_validation_error",
+		buildError:     buildTableValidationErrorEvent,
+	},
 }
 
 // coreToolsByContext maps each context type to baseline tool names that
@@ -407,7 +427,7 @@ var previewInterceptors = map[string]previewInterceptor{
 // exists" and "what can I build with" tools.
 var coreToolsByContext = map[string][]string{
 	"workflow": {"list_workflow_rules", "discover"},
-	"tables":   {"list_table_configs", "discover_table_reference"},
+	"tables":   {"get_table_config", "discover_table_reference", "apply_column_change", "apply_filter_change", "preview_table_config"},
 	// "pages" will be added when page tools exist.
 }
 
@@ -657,6 +677,26 @@ func buildTablePreviewEvent(tc llm.ToolCall, result llm.ToolResult) map[string]a
 	}
 
 	return event
+}
+
+// buildTableValidationErrorEvent constructs the table_config_validation_error
+// SSE event payload when preview_table_config validation fails. Returns nil if
+// there are no errors to report (e.g. JSON parse failure).
+func buildTableValidationErrorEvent(_ llm.ToolCall, result llm.ToolResult) map[string]any {
+	var validation struct {
+		Valid   bool     `json:"valid"`
+		Errors  []string `json:"errors"`
+	}
+	if err := json.Unmarshal([]byte(result.Content), &validation); err != nil {
+		return nil
+	}
+	// Only emit when validation explicitly failed with errors.
+	if validation.Valid || len(validation.Errors) == 0 {
+		return nil
+	}
+	return map[string]any{
+		"errors": validation.Errors,
+	}
 }
 
 // truncateLog returns s truncated to maxLen characters with a suffix

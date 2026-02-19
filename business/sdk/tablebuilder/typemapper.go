@@ -74,7 +74,7 @@ var pgTypeMappings = map[string]string{
 	"jsonb": "string",
 }
 
-// mapPostgreSQLType converts PostgreSQL data types from pg_catalog
+// MapPostgreSQLType converts PostgreSQL data types from pg_catalog
 // to frontend filter types used by the Table Builder.
 //
 // The function handles:
@@ -83,7 +83,7 @@ var pgTypeMappings = map[string]string{
 //   - Array types (e.g., "integer[]" → "string")
 //
 // Returns "string" as safe default for unknown types.
-func mapPostgreSQLType(pgType string) string {
+func MapPostgreSQLType(pgType string) string {
 	lower := strings.ToLower(pgType)
 
 	// Direct lookup for exact matches

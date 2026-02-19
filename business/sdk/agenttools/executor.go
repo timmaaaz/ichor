@@ -227,6 +227,14 @@ func (e *Executor) dispatch(ctx context.Context, tc llm.ToolCall, token string) 
 		return e.handleCreateTableConfig(ctx, tc, token)
 	case "update_table_config":
 		return e.handleUpdateTableConfig(ctx, tc, token)
+	case "apply_column_change":
+		return e.handleApplyColumnChange(ctx, tc, token)
+	case "apply_filter_change":
+		return e.handleApplyFilterChange(ctx, tc, token)
+	case "apply_join_change":
+		return e.handleApplyJoinChange(ctx, tc, token)
+	case "apply_sort_change":
+		return e.handleApplySortChange(ctx, tc, token)
 
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", tc.Name)
@@ -1835,4 +1843,552 @@ func mustMarshal(v any) json.RawMessage {
 		panic("mustMarshal: " + err.Error())
 	}
 	return b
+}
+
+// =========================================================================
+// Table config operation handlers (Phase 2: operation-specific tools)
+// =========================================================================
+
+// handleApplyColumnChange adds or removes columns from a Config in sync
+// across both select.columns and visual_settings.columns. Handles PG type
+// mapping, ordering constraint enforcement, and datetime format injection.
+func (e *Executor) handleApplyColumnChange(_ context.Context, tc llm.ToolCall, _ string) (json.RawMessage, error) {
+	var p struct {
+		Config    json.RawMessage `json:"config"`
+		Operation string          `json:"operation"`
+		Columns   []struct {
+			Name         string `json:"name"`
+			SourceTable  string `json:"source_table"`
+			SourceSchema string `json:"source_schema"`
+			PgType       string `json:"pg_type"`
+			Alias        string `json:"alias"`
+			Hidden       bool   `json:"hidden"`
+		} `json:"columns"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if len(p.Config) == 0 {
+		return nil, fmt.Errorf("config is required")
+	}
+	if p.Operation != "add" && p.Operation != "remove" {
+		return nil, fmt.Errorf("operation must be 'add' or 'remove'")
+	}
+	if len(p.Columns) == 0 {
+		return nil, fmt.Errorf("columns must not be empty")
+	}
+
+	var cfg tablebuilder.Config
+	if err := json.Unmarshal(p.Config, &cfg); err != nil {
+		return nil, fmt.Errorf("invalid config JSON: %w", err)
+	}
+	if len(cfg.DataSource) == 0 {
+		return nil, fmt.Errorf("config has no data_source")
+	}
+	if cfg.VisualSettings.Columns == nil {
+		cfg.VisualSettings.Columns = make(map[string]tablebuilder.ColumnConfig)
+	}
+
+	var applied []string
+
+	switch p.Operation {
+	case "add":
+		for _, col := range p.Columns {
+			if col.Name == "" {
+				return nil, fmt.Errorf("each column must have a name")
+			}
+			fieldName := col.Name
+			if col.Alias != "" {
+				fieldName = col.Alias
+			}
+
+			// Skip if already selected.
+			if columnIsSelected(cfg.DataSource[0].Select.Columns, col.Name, col.Alias) {
+				applied = append(applied, fmt.Sprintf("%s already exists, skipped", fieldName))
+				continue
+			}
+
+			// Add to select.columns.
+			colDef := tablebuilder.ColumnDefinition{Name: col.Name}
+			if col.Alias != "" {
+				colDef.Alias = col.Alias
+			}
+			cfg.DataSource[0].Select.Columns = append(cfg.DataSource[0].Select.Columns, colDef)
+
+			// Map PG type to visual type.
+			visualType := "string"
+			if col.PgType != "" {
+				visualType = tablebuilder.MapPostgreSQLType(col.PgType)
+			}
+
+			// Build visual settings entry.
+			colConfig := tablebuilder.ColumnConfig{
+				Name:   fieldName,
+				Header: fieldName,
+				Hidden: col.Hidden,
+			}
+			if !col.Hidden {
+				colConfig.Type = visualType
+			}
+
+			// Inject datetime format for datetime columns.
+			if visualType == "datetime" {
+				formatType := "datetime"
+				if strings.ToLower(col.PgType) == "date" {
+					formatType = "date"
+				}
+				colConfig.Format = &tablebuilder.FormatConfig{
+					Type:   formatType,
+					Format: "yyyy-MM-dd",
+				}
+			}
+
+			// Enforce ordering constraint: if any visible column already has an
+			// explicit Order value, assign the next order to keep all-or-nothing rule.
+			if !col.Hidden {
+				maxOrder := 0
+				anyHasOrder := false
+				for _, vc := range cfg.VisualSettings.Columns {
+					if !vc.Hidden && vc.Order != 0 {
+						anyHasOrder = true
+						if vc.Order > maxOrder {
+							maxOrder = vc.Order
+						}
+					}
+				}
+				if anyHasOrder {
+					colConfig.Order = maxOrder + 10
+				}
+			}
+
+			cfg.VisualSettings.Columns[fieldName] = colConfig
+			applied = append(applied, fmt.Sprintf("%s added to select.columns and visual_settings.columns", fieldName))
+		}
+
+	case "remove":
+		for _, col := range p.Columns {
+			fieldName := col.Name
+			if col.Alias != "" {
+				fieldName = col.Alias
+			}
+
+			// Filter out from select.columns.
+			original := cfg.DataSource[0].Select.Columns
+			newCols := make([]tablebuilder.ColumnDefinition, 0, len(original))
+			found := false
+			for _, existing := range original {
+				if matchesColumnRef(existing, col.Name, col.Alias) {
+					found = true
+					continue
+				}
+				newCols = append(newCols, existing)
+			}
+			cfg.DataSource[0].Select.Columns = newCols
+
+			// Remove from visual_settings.columns.
+			delete(cfg.VisualSettings.Columns, fieldName)
+			if col.Alias != "" {
+				delete(cfg.VisualSettings.Columns, col.Name)
+			}
+
+			if found {
+				applied = append(applied, fmt.Sprintf("%s removed from select.columns and visual_settings.columns", fieldName))
+			} else {
+				applied = append(applied, fmt.Sprintf("%s not found in select.columns", fieldName))
+			}
+		}
+	}
+
+	return marshalOperationResult(cfg, applied)
+}
+
+// handleApplyFilterChange adds or removes a filter from a Config.
+// On add: auto-inserts the filter column as a hidden column if not already selected.
+// On remove: removes the first filter matching the given column.
+func (e *Executor) handleApplyFilterChange(_ context.Context, tc llm.ToolCall, _ string) (json.RawMessage, error) {
+	var p struct {
+		Config    json.RawMessage `json:"config"`
+		Operation string          `json:"operation"`
+		Filter    struct {
+			Column      string `json:"column"`
+			Operator    string `json:"operator"`
+			Value       any    `json:"value"`
+			Label       string `json:"label"`
+			ControlType string `json:"control_type"`
+		} `json:"filter"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if len(p.Config) == 0 {
+		return nil, fmt.Errorf("config is required")
+	}
+	if p.Operation != "add" && p.Operation != "remove" {
+		return nil, fmt.Errorf("operation must be 'add' or 'remove'")
+	}
+	if p.Filter.Column == "" {
+		return nil, fmt.Errorf("filter.column is required")
+	}
+
+	var cfg tablebuilder.Config
+	if err := json.Unmarshal(p.Config, &cfg); err != nil {
+		return nil, fmt.Errorf("invalid config JSON: %w", err)
+	}
+	if len(cfg.DataSource) == 0 {
+		return nil, fmt.Errorf("config has no data_source")
+	}
+	if cfg.VisualSettings.Columns == nil {
+		cfg.VisualSettings.Columns = make(map[string]tablebuilder.ColumnConfig)
+	}
+
+	var applied []string
+
+	switch p.Operation {
+	case "add":
+		if p.Filter.Operator == "" {
+			return nil, fmt.Errorf("filter.operator is required for 'add' operation")
+		}
+
+		// Check whether the column is already selected (in select.columns or
+		// already present in visual_settings, which covers foreign table columns).
+		colSelected := false
+		for _, col := range cfg.DataSource[0].Select.Columns {
+			fieldName := col.Name
+			if col.Alias != "" {
+				fieldName = col.Alias
+			}
+			if fieldName == p.Filter.Column || col.Name == p.Filter.Column {
+				colSelected = true
+				break
+			}
+		}
+		if !colSelected {
+			if _, ok := cfg.VisualSettings.Columns[p.Filter.Column]; ok {
+				colSelected = true
+			}
+		}
+
+		// Auto-add as hidden column if not already selected.
+		if !colSelected {
+			cfg.DataSource[0].Select.Columns = append(cfg.DataSource[0].Select.Columns,
+				tablebuilder.ColumnDefinition{Name: p.Filter.Column})
+			cfg.VisualSettings.Columns[p.Filter.Column] = tablebuilder.ColumnConfig{
+				Name:   p.Filter.Column,
+				Header: p.Filter.Column,
+				Hidden: true,
+			}
+			applied = append(applied, fmt.Sprintf("auto-added %s as hidden column for filter", p.Filter.Column))
+		}
+
+		// Append the filter.
+		f := tablebuilder.Filter{
+			Column:   p.Filter.Column,
+			Operator: p.Filter.Operator,
+			Value:    p.Filter.Value,
+		}
+		if p.Filter.Label != "" {
+			f.Label = p.Filter.Label
+		}
+		if p.Filter.ControlType != "" {
+			f.ControlType = p.Filter.ControlType
+		}
+		cfg.DataSource[0].Filters = append(cfg.DataSource[0].Filters, f)
+		applied = append(applied, fmt.Sprintf("filter on %s (%s) added", p.Filter.Column, p.Filter.Operator))
+
+	case "remove":
+		original := cfg.DataSource[0].Filters
+		newFilters := make([]tablebuilder.Filter, 0, len(original))
+		removed := false
+		for _, f := range original {
+			if !removed && f.Column == p.Filter.Column {
+				removed = true
+				continue // remove first match only
+			}
+			newFilters = append(newFilters, f)
+		}
+		cfg.DataSource[0].Filters = newFilters
+		if removed {
+			applied = append(applied, fmt.Sprintf("filter on %s removed", p.Filter.Column))
+		} else {
+			applied = append(applied, fmt.Sprintf("no filter on %s found", p.Filter.Column))
+		}
+	}
+
+	return marshalOperationResult(cfg, applied)
+}
+
+// handleApplyJoinChange adds or removes a foreign table join from a Config.
+// On add: builds a ForeignTable entry, handles disambiguation aliases for
+// repeated joins to the same table, and adds specified columns to both
+// foreign_tables and visual_settings.
+// On remove: drops the matching foreign table and removes all its columns
+// from visual_settings.
+func (e *Executor) handleApplyJoinChange(_ context.Context, tc llm.ToolCall, _ string) (json.RawMessage, error) {
+	var p struct {
+		Config    json.RawMessage `json:"config"`
+		Operation string          `json:"operation"`
+		Join      struct {
+			Table            string   `json:"table"`
+			Schema           string   `json:"schema"`
+			JoinType         string   `json:"join_type"`
+			RelationshipFrom string   `json:"relationship_from"`
+			RelationshipTo   string   `json:"relationship_to"`
+			ColumnsToAdd     []string `json:"columns_to_add"`
+		} `json:"join"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if len(p.Config) == 0 {
+		return nil, fmt.Errorf("config is required")
+	}
+	if p.Operation != "add" && p.Operation != "remove" {
+		return nil, fmt.Errorf("operation must be 'add' or 'remove'")
+	}
+	if p.Join.Table == "" {
+		return nil, fmt.Errorf("join.table is required")
+	}
+
+	var cfg tablebuilder.Config
+	if err := json.Unmarshal(p.Config, &cfg); err != nil {
+		return nil, fmt.Errorf("invalid config JSON: %w", err)
+	}
+	if len(cfg.DataSource) == 0 {
+		return nil, fmt.Errorf("config has no data_source")
+	}
+	if cfg.VisualSettings.Columns == nil {
+		cfg.VisualSettings.Columns = make(map[string]tablebuilder.ColumnConfig)
+	}
+
+	var applied []string
+
+	switch p.Operation {
+	case "add":
+		if p.Join.RelationshipFrom == "" {
+			return nil, fmt.Errorf("join.relationship_from is required")
+		}
+		if p.Join.RelationshipTo == "" {
+			return nil, fmt.Errorf("join.relationship_to is required")
+		}
+		joinType := strings.ToLower(p.Join.JoinType)
+		if joinType == "" {
+			joinType = "left"
+		}
+
+		// Count existing joins to the same table for disambiguation.
+		sameTableCount := 0
+		for _, ft := range cfg.DataSource[0].Select.ForeignTables {
+			if strings.EqualFold(ft.Table, p.Join.Table) && strings.EqualFold(ft.Schema, p.Join.Schema) {
+				sameTableCount++
+			}
+		}
+
+		ft := tablebuilder.ForeignTable{
+			Table:            p.Join.Table,
+			Schema:           p.Join.Schema,
+			JoinType:         joinType,
+			RelationshipFrom: p.Join.RelationshipFrom,
+			RelationshipTo:   p.Join.RelationshipTo,
+		}
+		if sameTableCount > 0 {
+			ft.Alias = fmt.Sprintf("%s_%d", p.Join.Table, sameTableCount+1)
+			applied = append(applied, fmt.Sprintf("disambiguation alias assigned: %s", ft.Alias))
+		}
+
+		// Add requested columns to the foreign table definition.
+		for _, colName := range p.Join.ColumnsToAdd {
+			ft.Columns = append(ft.Columns, tablebuilder.ColumnDefinition{Name: colName})
+		}
+		cfg.DataSource[0].Select.ForeignTables = append(cfg.DataSource[0].Select.ForeignTables, ft)
+
+		// Add columns to visual_settings (default type "string"; LLM can refine via apply_column_change).
+		for _, colName := range p.Join.ColumnsToAdd {
+			if _, exists := cfg.VisualSettings.Columns[colName]; !exists {
+				cfg.VisualSettings.Columns[colName] = tablebuilder.ColumnConfig{
+					Name:   colName,
+					Header: colName,
+					Type:   "string",
+				}
+			}
+		}
+		applied = append(applied, fmt.Sprintf("joined %s.%s (%s) with %d columns", p.Join.Schema, p.Join.Table, joinType, len(p.Join.ColumnsToAdd)))
+
+	case "remove":
+		original := cfg.DataSource[0].Select.ForeignTables
+		newFTs := make([]tablebuilder.ForeignTable, 0, len(original))
+		var removedCols []string
+		found := false
+		for _, ft := range original {
+			if !found &&
+				strings.EqualFold(ft.Table, p.Join.Table) &&
+				(p.Join.Schema == "" || strings.EqualFold(ft.Schema, p.Join.Schema)) {
+				found = true
+				collectForeignTableColumnNames(ft, &removedCols)
+				continue
+			}
+			newFTs = append(newFTs, ft)
+		}
+		cfg.DataSource[0].Select.ForeignTables = newFTs
+
+		// Remove associated columns from visual_settings.
+		for _, colName := range removedCols {
+			delete(cfg.VisualSettings.Columns, colName)
+		}
+
+		if found {
+			applied = append(applied, fmt.Sprintf("removed join to %s.%s and %d associated columns", p.Join.Schema, p.Join.Table, len(removedCols)))
+		} else {
+			applied = append(applied, fmt.Sprintf("no join to %s.%s found", p.Join.Schema, p.Join.Table))
+		}
+	}
+
+	return marshalOperationResult(cfg, applied)
+}
+
+// handleApplySortChange adds, removes, or replaces sort entries in a Config.
+func (e *Executor) handleApplySortChange(_ context.Context, tc llm.ToolCall, _ string) (json.RawMessage, error) {
+	var p struct {
+		Config    json.RawMessage `json:"config"`
+		Operation string          `json:"operation"` // "add", "remove", or "set"
+		Sort      []struct {
+			Column    string `json:"column"`
+			Direction string `json:"direction"`
+			Priority  int    `json:"priority"`
+		} `json:"sort"`
+	}
+	if err := json.Unmarshal(tc.Input, &p); err != nil {
+		return nil, fmt.Errorf("bad params: %w", err)
+	}
+	if len(p.Config) == 0 {
+		return nil, fmt.Errorf("config is required")
+	}
+	if p.Operation != "add" && p.Operation != "remove" && p.Operation != "set" {
+		return nil, fmt.Errorf("operation must be 'add', 'remove', or 'set'")
+	}
+
+	var cfg tablebuilder.Config
+	if err := json.Unmarshal(p.Config, &cfg); err != nil {
+		return nil, fmt.Errorf("invalid config JSON: %w", err)
+	}
+	if len(cfg.DataSource) == 0 {
+		return nil, fmt.Errorf("config has no data_source")
+	}
+
+	var applied []string
+
+	switch p.Operation {
+	case "set":
+		newSort := make([]tablebuilder.Sort, 0, len(p.Sort))
+		for _, s := range p.Sort {
+			if s.Column == "" {
+				return nil, fmt.Errorf("each sort item must have a column")
+			}
+			dir := strings.ToLower(s.Direction)
+			if dir == "" {
+				dir = "asc"
+			}
+			newSort = append(newSort, tablebuilder.Sort{Column: s.Column, Direction: dir, Priority: s.Priority})
+		}
+		cfg.DataSource[0].Sort = newSort
+		applied = append(applied, fmt.Sprintf("sort replaced with %d entries", len(newSort)))
+
+	case "add":
+		for _, s := range p.Sort {
+			if s.Column == "" {
+				return nil, fmt.Errorf("each sort item must have a column")
+			}
+			dir := strings.ToLower(s.Direction)
+			if dir == "" {
+				dir = "asc"
+			}
+			cfg.DataSource[0].Sort = append(cfg.DataSource[0].Sort,
+				tablebuilder.Sort{Column: s.Column, Direction: dir, Priority: s.Priority})
+			applied = append(applied, fmt.Sprintf("sort by %s %s added", s.Column, dir))
+		}
+
+	case "remove":
+		toRemove := make(map[string]bool, len(p.Sort))
+		for _, s := range p.Sort {
+			toRemove[s.Column] = true
+		}
+		original := cfg.DataSource[0].Sort
+		newSort := make([]tablebuilder.Sort, 0, len(original))
+		for _, s := range original {
+			if toRemove[s.Column] {
+				applied = append(applied, fmt.Sprintf("sort by %s removed", s.Column))
+				continue
+			}
+			newSort = append(newSort, s)
+		}
+		cfg.DataSource[0].Sort = newSort
+	}
+
+	return marshalOperationResult(cfg, applied)
+}
+
+// =========================================================================
+// Operation result helpers
+// =========================================================================
+
+// marshalOperationResult validates a modified Config and returns the standard
+// operation result shape: {valid, config, warnings, applied} or {valid, errors}.
+func marshalOperationResult(cfg tablebuilder.Config, applied []string) (json.RawMessage, error) {
+	validResult := cfg.ValidateConfig()
+
+	updatedConfig, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("marshal updated config: %w", err)
+	}
+
+	warnings := validResult.Warnings
+	if warnings == nil {
+		warnings = []tablebuilder.ValidationWarning{}
+	}
+
+	resp := map[string]any{
+		"valid":    !validResult.HasErrors(),
+		"warnings": warnings,
+		"applied":  applied,
+	}
+	if !validResult.HasErrors() {
+		resp["config"] = json.RawMessage(updatedConfig)
+	} else {
+		resp["errors"] = validResult.Errors
+		resp["config"] = nil
+	}
+
+	return json.Marshal(resp)
+}
+
+// columnIsSelected returns true if a column (by name or alias) is already in the list.
+func columnIsSelected(cols []tablebuilder.ColumnDefinition, name, alias string) bool {
+	for _, c := range cols {
+		if matchesColumnRef(c, name, alias) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesColumnRef returns true if the ColumnDefinition matches the given name/alias pair.
+func matchesColumnRef(col tablebuilder.ColumnDefinition, name, alias string) bool {
+	if alias != "" && (col.Alias == alias || col.Name == alias) {
+		return true
+	}
+	return col.Name == name || (col.Alias != "" && col.Alias == name)
+}
+
+// collectForeignTableColumnNames recursively collects all resolved column names
+// from a ForeignTable and its nested foreign tables.
+func collectForeignTableColumnNames(ft tablebuilder.ForeignTable, names *[]string) {
+	for _, col := range ft.Columns {
+		fieldName := col.Name
+		if col.Alias != "" {
+			fieldName = col.Alias
+		}
+		*names = append(*names, fieldName)
+	}
+	for _, nested := range ft.ForeignTables {
+		collectForeignTableColumnNames(nested, names)
+	}
 }
