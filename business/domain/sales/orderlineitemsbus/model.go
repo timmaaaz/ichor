@@ -23,6 +23,9 @@ type OrderLineItem struct {
 	DiscountType                  string      `json:"discount_type"`
 	LineTotal                     types.Money `json:"line_total"`
 	LineItemFulfillmentStatusesID uuid.UUID   `json:"line_item_fulfillment_statuses_id"`
+	PickedQuantity                int         `json:"picked_quantity"`
+	BackorderedQuantity           int         `json:"backordered_quantity"`
+	ShortPickReason               *string     `json:"short_pick_reason,omitempty"`
 	CreatedBy                     uuid.UUID   `json:"created_by"`
 	CreatedDate                   time.Time   `json:"created_date"`
 	UpdatedBy                     uuid.UUID   `json:"updated_by"`
@@ -53,5 +56,8 @@ type UpdateOrderLineItem struct {
 	DiscountType                  *string       `json:"discount_type,omitempty"`
 	LineTotal                     *types.Money  `json:"line_total,omitempty"`
 	LineItemFulfillmentStatusesID *uuid.UUID    `json:"line_item_fulfillment_statuses_id,omitempty"`
+	PickedQuantity                *int          `json:"picked_quantity,omitempty"`
+	BackorderedQuantity           *int          `json:"backordered_quantity,omitempty"`
+	ShortPickReason               *string       `json:"short_pick_reason,omitempty"`
 	UpdatedBy                     *uuid.UUID    `json:"updated_by,omitempty"`
 }

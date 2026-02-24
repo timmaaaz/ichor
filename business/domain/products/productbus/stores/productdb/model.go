@@ -21,6 +21,7 @@ type product struct {
 	IsPerishable         bool      `db:"is_perishable"`
 	HandlingInstructions string    `db:"handling_instructions"`
 	UnitsPerCase         int       `db:"units_per_case"`
+	TrackingType         string    `db:"tracking_type"`
 	CreatedDate          time.Time `db:"created_date"`
 	UpdatedDate          time.Time `db:"updated_date"`
 }
@@ -40,6 +41,7 @@ func toDBProduct(bus productbus.Product) product {
 		IsPerishable:         bus.IsPerishable,
 		HandlingInstructions: bus.HandlingInstructions,
 		UnitsPerCase:         bus.UnitsPerCase,
+		TrackingType:         bus.TrackingType,
 		CreatedDate:          bus.CreatedDate,
 		UpdatedDate:          bus.UpdatedDate,
 	}
@@ -60,6 +62,7 @@ func toBusProduct(db product) productbus.Product {
 		IsPerishable:         db.IsPerishable,
 		HandlingInstructions: db.HandlingInstructions,
 		UnitsPerCase:         db.UnitsPerCase,
+		TrackingType:         db.TrackingType,
 		CreatedDate:          db.CreatedDate.Local(),
 		UpdatedDate:          db.UpdatedDate.Local(),
 	}

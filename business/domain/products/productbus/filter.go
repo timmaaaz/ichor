@@ -20,6 +20,7 @@ type QueryFilter struct {
 	IsPerishable         *bool
 	HandlingInstructions *string
 	UnitsPerCase         *int
+	TrackingType         *string
 	CreatedDate          *time.Time
 	UpdatedDate          *time.Time
 }

@@ -6,17 +6,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/pickingapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 type api struct {
-	ordersapp *ordersapp.App
+	ordersapp  *ordersapp.App
+	pickingApp *pickingapp.App
 }
 
-func newAPI(ordersapp *ordersapp.App) *api {
+func newAPI(ordersapp *ordersapp.App, pickingApp *pickingapp.App) *api {
 	return &api{
-		ordersapp: ordersapp,
+		ordersapp:  ordersapp,
+		pickingApp: pickingApp,
 	}
 }
 
@@ -98,4 +101,23 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return status
+}
+
+func (api *api) completePacking(ctx context.Context, r *http.Request) web.Encoder {
+	var req pickingapp.CompletePackingRequest
+	if err := web.Decode(r, &req); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	orderID, err := uuid.Parse(web.Param(r, "orders_id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	result, err := api.pickingApp.CompletePacking(ctx, orderID, req)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return result
 }

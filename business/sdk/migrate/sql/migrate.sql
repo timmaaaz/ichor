@@ -498,6 +498,7 @@ CREATE TABLE products.products (
    is_perishable BOOLEAN NOT NULL,
    handling_instructions TEXT NULL,
    units_per_case INT NOT NULL,
+   tracking_type VARCHAR(20) NOT NULL DEFAULT 'none' CHECK (tracking_type IN ('none', 'lot', 'serial')),
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
@@ -764,12 +765,14 @@ CREATE TABLE inventory.inventory_transactions (
    quantity INT NOT NULL,
    reference_number varchar(100) NOT NULL,
    transaction_date TIMESTAMP NOT NULL,
+   lot_id UUID NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
    FOREIGN KEY (product_id) REFERENCES products.products(id),
    FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id),
-   FOREIGN KEY (user_id) REFERENCES core.users(id)
+   FOREIGN KEY (user_id) REFERENCES core.users(id),
+   FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id)
 );
 
 -- Version: 1.57
@@ -916,6 +919,9 @@ CREATE TABLE sales.order_line_items (
    discount_type sales.discount_type DEFAULT 'flat',
    line_total DECIMAL(12,2) DEFAULT 0,             -- Calculated total
    line_item_fulfillment_statuses_id UUID NOT NULL,
+   picked_quantity      INTEGER      NOT NULL DEFAULT 0,
+   backordered_quantity INTEGER      NOT NULL DEFAULT 0,
+   short_pick_reason    VARCHAR(100) NULL,
    -- Audit columns
    created_by UUID NOT NULL,
    created_date TIMESTAMP NOT NULL,

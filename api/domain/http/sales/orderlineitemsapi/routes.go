@@ -5,6 +5,7 @@ import (
 
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/app/domain/sales/orderlineitemsapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/pickingapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
@@ -16,6 +17,7 @@ import (
 type Config struct {
 	Log               *logger.Logger
 	OrderLineItemsBus *orderlineitemsbus.Business
+	PickingApp        *pickingapp.App
 	AuthClient        *authclient.Client
 	PermissionsBus    *permissionsbus.Business
 }
@@ -29,7 +31,7 @@ func Routes(app *web.App, cfg Config) {
 
 	authen := mid.Authenticate(cfg.AuthClient)
 
-	api := newAPI(orderlineitemsapp.NewApp(cfg.OrderLineItemsBus))
+	api := newAPI(orderlineitemsapp.NewApp(cfg.OrderLineItemsBus), cfg.PickingApp)
 	app.HandlerFunc(http.MethodGet, version, "/sales/order-line-items", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 	app.HandlerFunc(http.MethodGet, version, "/sales/order-line-items/{order_line_items_id}", api.queryByID, authen,
@@ -40,4 +42,8 @@ func Routes(app *web.App, cfg Config) {
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 	app.HandlerFunc(http.MethodDelete, version, "/sales/order-line-items/{order_line_items_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
+	app.HandlerFunc(http.MethodPost, version, "/sales/order-line-items/{order_line_items_id}/pick-quantity", api.pickQuantity, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+	app.HandlerFunc(http.MethodPost, version, "/sales/order-line-items/{order_line_items_id}/short-pick", api.shortPick, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 }

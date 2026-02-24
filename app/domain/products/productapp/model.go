@@ -29,6 +29,7 @@ type QueryParams struct {
 	IsPerishable         string
 	HandlingInstructions string
 	UnitsPerCase         string
+	TrackingType         string
 	CreatedDate          string
 	UpdatedDate          string
 }
@@ -47,6 +48,7 @@ type Product struct {
 	IsPerishable         string `json:"is_perishable"`
 	HandlingInstructions string `json:"handling_instructions"`
 	UnitsPerCase         string `json:"units_per_case"`
+	TrackingType         string `json:"tracking_type"`
 	CreatedDate          string `json:"created_date"`
 	UpdatedDate          string `json:"updated_date"`
 }
@@ -71,6 +73,7 @@ func ToAppProduct(bus productbus.Product) Product {
 		IsPerishable:         fmt.Sprintf("%v", bus.IsPerishable),
 		HandlingInstructions: bus.HandlingInstructions,
 		UnitsPerCase:         fmt.Sprintf("%d", bus.UnitsPerCase),
+		TrackingType:         bus.TrackingType,
 		CreatedDate:          bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:          bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
@@ -97,6 +100,7 @@ type NewProduct struct {
 	IsPerishable         string  `json:"is_perishable" validate:"required"`
 	HandlingInstructions string  `json:"handling_instructions"`
 	UnitsPerCase         string  `json:"units_per_case" validate:"required"`
+	TrackingType         string  `json:"tracking_type" validate:"omitempty,oneof=none lot serial"`
 	CreatedDate          *string `json:"created_date"` // Optional: for seeding/import
 }
 
@@ -138,6 +142,11 @@ func toBusNewProduct(app NewProduct) (productbus.NewProduct, error) {
 		return productbus.NewProduct{}, errs.Newf(errs.InvalidArgument, "parse unitsPerCase: %s", err)
 	}
 
+	trackingType := app.TrackingType
+	if trackingType == "" {
+		trackingType = "none"
+	}
+
 	bus := productbus.NewProduct{
 		SKU:                  app.SKU,
 		BrandID:              brandID,
@@ -151,6 +160,7 @@ func toBusNewProduct(app NewProduct) (productbus.NewProduct, error) {
 		IsPerishable:         isPerishable,
 		HandlingInstructions: app.HandlingInstructions,
 		UnitsPerCase:         unitsPerCase,
+		TrackingType:         trackingType,
 		// CreatedDate: nil by default - API always uses server time
 	}
 
@@ -179,6 +189,7 @@ type UpdateProduct struct {
 	IsPerishable         *string `json:"is_perishable" validate:"omitempty"`
 	HandlingInstructions *string `json:"handling_instructions"`
 	UnitsPerCase         *string `json:"units_per_case" validate:"omitempty"`
+	TrackingType         *string `json:"tracking_type" validate:"omitempty,oneof=none lot serial"`
 }
 
 // Decode implements the decoder interface.
@@ -254,6 +265,7 @@ func toBusUpdateProduct(app UpdateProduct) (productbus.UpdateProduct, error) {
 		IsPerishable:         isPerishable,
 		HandlingInstructions: app.HandlingInstructions,
 		UnitsPerCase:         unitsPerCase,
+		TrackingType:         app.TrackingType,
 	}
 	return bus, nil
 }

@@ -43,9 +43,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (orderlineitemsbus.Storer, 
 func (s *Store) Create(ctx context.Context, status orderlineitemsbus.OrderLineItem) error {
 	const q = `
 	INSERT INTO sales.order_line_items (
-	  id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, created_by, created_date, updated_by, updated_date
+	  id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date
     ) VALUES (
-        :id, :order_id, :product_id, :description, :quantity, :unit_price, :discount, :discount_type, :line_total, :line_item_fulfillment_statuses_id, :created_by, :created_date, :updated_by, :updated_date
+        :id, :order_id, :product_id, :description, :quantity, :unit_price, :discount, :discount_type, :line_total, :line_item_fulfillment_statuses_id, :picked_quantity, :backordered_quantity, :short_pick_reason, :created_by, :created_date, :updated_by, :updated_date
     )
 	`
 
@@ -77,6 +77,9 @@ func (s *Store) Update(ctx context.Context, status orderlineitemsbus.OrderLineIt
        discount_type = :discount_type,
        line_total = :line_total,
        line_item_fulfillment_statuses_id = :line_item_fulfillment_statuses_id,
+       picked_quantity = :picked_quantity,
+       backordered_quantity = :backordered_quantity,
+       short_pick_reason = :short_pick_reason,
        created_by = :created_by,
        created_date = :created_date,
        updated_by = :updated_by,
@@ -119,7 +122,7 @@ func (s *Store) Query(ctx context.Context, filter orderlineitemsbus.QueryFilter,
 
 	const q = `
 	SELECT
-		id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, created_by, created_date, updated_by, updated_date
+		id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date
     FROM
 	    sales.order_line_items
 		`
@@ -177,7 +180,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (orderlineite
 
 	const q = `
     SELECT
-        id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, created_by, created_date, updated_by, updated_date
+        id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date
     FROM
         sales.order_line_items
     WHERE

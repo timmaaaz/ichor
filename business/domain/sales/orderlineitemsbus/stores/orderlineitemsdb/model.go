@@ -21,6 +21,9 @@ type orderLineItem struct {
 	DiscountType                  string         `db:"discount_type"`
 	LineTotal                     sql.NullString `db:"line_total"`
 	LineItemFulfillmentStatusesID uuid.UUID      `db:"line_item_fulfillment_statuses_id"`
+	PickedQuantity                int            `db:"picked_quantity"`
+	BackorderedQuantity           int            `db:"backordered_quantity"`
+	ShortPickReason               sql.NullString `db:"short_pick_reason"`
 	CreatedBy                     uuid.UUID      `db:"created_by"`
 	CreatedDate                   time.Time      `db:"created_date"`
 	UpdatedBy                     uuid.UUID      `db:"updated_by"`
@@ -43,6 +46,11 @@ func toBusOrderLineItem(db orderLineItem) (orderlineitemsbus.OrderLineItem, erro
 		return orderlineitemsbus.OrderLineItem{}, fmt.Errorf("tobusorderlineitem: line_total: %w", err)
 	}
 
+	var shortPickReason *string
+	if db.ShortPickReason.Valid {
+		shortPickReason = &db.ShortPickReason.String
+	}
+
 	return orderlineitemsbus.OrderLineItem{
 		ID:                            db.ID,
 		OrderID:                       db.OrderID,
@@ -54,6 +62,9 @@ func toBusOrderLineItem(db orderLineItem) (orderlineitemsbus.OrderLineItem, erro
 		DiscountType:                  db.DiscountType,
 		LineTotal:                     lineTotal,
 		LineItemFulfillmentStatusesID: db.LineItemFulfillmentStatusesID,
+		PickedQuantity:                db.PickedQuantity,
+		BackorderedQuantity:           db.BackorderedQuantity,
+		ShortPickReason:               shortPickReason,
 		CreatedBy:                     db.CreatedBy,
 		CreatedDate:                   db.CreatedDate.In(time.Local),
 		UpdatedBy:                     db.UpdatedBy,
@@ -74,6 +85,11 @@ func toBusOrderLineItems(dbs []orderLineItem) ([]orderlineitemsbus.OrderLineItem
 }
 
 func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderLineItem {
+	var shortPickReason sql.NullString
+	if app.ShortPickReason != nil {
+		shortPickReason = sql.NullString{String: *app.ShortPickReason, Valid: true}
+	}
+
 	return orderLineItem{
 		ID:                            app.ID,
 		OrderID:                       app.OrderID,
@@ -85,6 +101,9 @@ func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderLineItem {
 		DiscountType:                  app.DiscountType,
 		LineTotal:                     app.LineTotal.DBValue(),
 		LineItemFulfillmentStatusesID: app.LineItemFulfillmentStatusesID,
+		PickedQuantity:                app.PickedQuantity,
+		BackorderedQuantity:           app.BackorderedQuantity,
+		ShortPickReason:               shortPickReason,
 		CreatedBy:                     app.CreatedBy,
 		CreatedDate:                   app.CreatedDate.UTC(),
 		UpdatedBy:                     app.UpdatedBy,

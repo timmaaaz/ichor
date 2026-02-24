@@ -25,6 +25,7 @@ type Product struct {
 	IsPerishable         bool      `json:"is_perishable"`
 	HandlingInstructions string    `json:"handling_instructions"`
 	UnitsPerCase         int       `json:"units_per_case"`
+	TrackingType         string    `json:"tracking_type"`
 	CreatedDate          time.Time `json:"created_date"`
 	UpdatedDate          time.Time `json:"updated_date"`
 }
@@ -42,6 +43,7 @@ type NewProduct struct {
 	IsPerishable         bool       `json:"is_perishable"`
 	HandlingInstructions string     `json:"handling_instructions"`
 	UnitsPerCase         int        `json:"units_per_case"`
+	TrackingType         string     `json:"tracking_type"`
 	CreatedDate          *time.Time `json:"created_date,omitempty"` // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
 
@@ -58,4 +60,5 @@ type UpdateProduct struct {
 	IsPerishable         *bool      `json:"is_perishable,omitempty"`
 	HandlingInstructions *string    `json:"handling_instructions,omitempty"`
 	UnitsPerCase         *int       `json:"units_per_case,omitempty"`
+	TrackingType         *string    `json:"tracking_type,omitempty"`
 }

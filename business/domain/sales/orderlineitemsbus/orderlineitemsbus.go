@@ -144,6 +144,15 @@ func (b *Business) Update(ctx context.Context, status OrderLineItem, uStatus Upd
 	if uStatus.LineItemFulfillmentStatusesID != nil {
 		status.LineItemFulfillmentStatusesID = *uStatus.LineItemFulfillmentStatusesID
 	}
+	if uStatus.PickedQuantity != nil {
+		status.PickedQuantity = *uStatus.PickedQuantity
+	}
+	if uStatus.BackorderedQuantity != nil {
+		status.BackorderedQuantity = *uStatus.BackorderedQuantity
+	}
+	if uStatus.ShortPickReason != nil {
+		status.ShortPickReason = uStatus.ShortPickReason
+	}
 	if uStatus.UpdatedBy != nil {
 		status.UpdatedBy = *uStatus.UpdatedBy
 	}

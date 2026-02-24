@@ -12,7 +12,12 @@ Prefer targeted, minimal changes over broad refactors. When fixing a bug or maki
 
 ## Build & Verification
 
-This is primarily a Go codebase with YAML (K8s/config) and TypeScript (Vue3 frontend). When making changes, always run `go build ./...` and `go test ./...` before reporting completion. For frontend changes, run the appropriate build/lint command.
+This is primarily a Go codebase with YAML (K8s/config) and TypeScript (Vue3 frontend). When making changes, always run `go build` on the affected packages before reporting completion. For frontend changes, run the appropriate build/lint command.
+
+**NEVER run `go test ./...`** — the repo has hundreds of tests and many require a live database. Always run only the tests for the packages you actually changed. Example:
+```bash
+go test ./business/domain/sales/orderlineitemsbus/... ./app/domain/sales/pickingapp/...
+```
 
 ## Testing
 
