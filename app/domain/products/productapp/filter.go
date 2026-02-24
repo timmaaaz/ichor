@@ -95,5 +95,9 @@ func parseFilter(qp QueryParams) (productbus.QueryFilter, error) {
 		filter.UpcCode = &qp.UpcCode
 	}
 
+	if qp.TrackingType != "" {
+		filter.TrackingType = &qp.TrackingType
+	}
+
 	return filter, nil
 }

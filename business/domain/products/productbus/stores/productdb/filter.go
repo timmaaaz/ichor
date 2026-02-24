@@ -75,6 +75,11 @@ func applyFilter(filter productbus.QueryFilter, data map[string]any, buf *bytes.
 		wc = append(wc, "units_per_case = :units_per_case")
 	}
 
+	if filter.TrackingType != nil {
+		data["tracking_type"] = *filter.TrackingType
+		wc = append(wc, "tracking_type = :tracking_type")
+	}
+
 	if filter.CreatedDate != nil {
 		data["created_date"] = *filter.CreatedDate
 		wc = append(wc, "created_date = :created_date")

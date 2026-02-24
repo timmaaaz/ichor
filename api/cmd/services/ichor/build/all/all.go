@@ -151,6 +151,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/orderlineitemsapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/pickingapp"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
@@ -425,6 +426,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, lineitemfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
 	ordersBus := ordersbus.NewBusiness(cfg.Log, delegate, ordersdb.NewStore(cfg.Log, cfg.DB))
 	orderLineItemsBus := orderlineitemsbus.NewBusiness(cfg.Log, delegate, orderlineitemsdb.NewStore(cfg.Log, cfg.DB))
+
+	pickingApp := pickingapp.NewApp(cfg.Log, cfg.DB, ordersBus, orderLineItemsBus, inventoryItemBus, inventoryTransactionBus, orderFulfillmentStatusBus, lineItemFulfillmentStatusBus)
 
 	configStore := tablebuilder.NewConfigStore(cfg.Log, cfg.DB)
 	tableStore := tablebuilder.NewStore(cfg.Log, cfg.DB)
@@ -1019,6 +1022,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	ordersapi.Routes(app, ordersapi.Config{
 		Log:            cfg.Log,
 		OrderBus:       ordersBus,
+		PickingApp:     pickingApp,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
@@ -1026,6 +1030,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	orderlineitemsapi.Routes(app, orderlineitemsapi.Config{
 		Log:               cfg.Log,
 		OrderLineItemsBus: orderLineItemsBus,
+		PickingApp:        pickingApp,
 		AuthClient:        cfg.AuthClient,
 		PermissionsBus:    permissionsBus,
 	})

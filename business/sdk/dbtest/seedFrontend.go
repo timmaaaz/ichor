@@ -287,6 +287,9 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}{
 		{"PENDING", "Order is pending"},
 		{"PROCESSING", "Order is being processed"},
+		{"PICKING", "Order is being picked from warehouse"},
+		{"PACKING", "Order is being packed"},
+		{"READY_TO_SHIP", "Order is packed and ready for shipment"},
 		{"SHIPPED", "Order has been shipped"},
 		{"DELIVERED", "Order has been delivered"},
 		{"CANCELLED", "Order has been cancelled"},
@@ -406,6 +409,9 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		{"PACKED", "Line item has been packed"},
 		{"PENDING", "Line item is pending"},
 		{"PICKED", "Line item has been picked"},
+		{"PARTIALLY_PICKED", "Line item has been partially picked"},
+		{"BACKORDERED", "Line item quantity is on backorder"},
+		{"PENDING_REVIEW", "Line item requires supervisor review before proceeding"},
 		{"SHIPPED", "Line item has been shipped"},
 	}
 	olStatuses := make([]lineitemfulfillmentstatusbus.LineItemFulfillmentStatus, 0, len(lineItemFulfillmentStatusData))

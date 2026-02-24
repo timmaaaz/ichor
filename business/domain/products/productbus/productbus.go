@@ -76,6 +76,11 @@ func (b *Business) Create(ctx context.Context, np NewProduct) (Product, error) {
 		now = *np.CreatedDate
 	}
 
+	trackingType := np.TrackingType
+	if trackingType == "" {
+		trackingType = "none"
+	}
+
 	product := Product{
 		ProductID:            uuid.New(),
 		Name:                 np.Name,
@@ -90,6 +95,7 @@ func (b *Business) Create(ctx context.Context, np NewProduct) (Product, error) {
 		IsPerishable:         np.IsPerishable,
 		HandlingInstructions: np.HandlingInstructions,
 		UnitsPerCase:         np.UnitsPerCase,
+		TrackingType:         trackingType,
 		CreatedDate:          now,
 		UpdatedDate:          now,
 	}
@@ -149,6 +155,9 @@ func (b *Business) Update(ctx context.Context, product Product, ub UpdateProduct
 	}
 	if ub.UnitsPerCase != nil {
 		product.UnitsPerCase = *ub.UnitsPerCase
+	}
+	if ub.TrackingType != nil {
+		product.TrackingType = *ub.TrackingType
 	}
 
 	product.UpdatedDate = time.Now()

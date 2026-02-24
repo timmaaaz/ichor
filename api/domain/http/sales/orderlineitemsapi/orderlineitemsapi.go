@@ -6,17 +6,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/sales/orderlineitemsapp"
+	"github.com/timmaaaz/ichor/app/domain/sales/pickingapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 type api struct {
 	orderlineitemsapp *orderlineitemsapp.App
+	pickingApp        *pickingapp.App
 }
 
-func newAPI(orderlineitemsapp *orderlineitemsapp.App) *api {
+func newAPI(orderlineitemsapp *orderlineitemsapp.App, pickingApp *pickingapp.App) *api {
 	return &api{
 		orderlineitemsapp: orderlineitemsapp,
+		pickingApp:        pickingApp,
 	}
 }
 
@@ -98,4 +101,42 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return status
+}
+
+func (api *api) pickQuantity(ctx context.Context, r *http.Request) web.Encoder {
+	var req pickingapp.PickQuantityRequest
+	if err := web.Decode(r, &req); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	lineItemID, err := uuid.Parse(web.Param(r, "order_line_items_id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	result, err := api.pickingApp.PickQuantity(ctx, lineItemID, req)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return result
+}
+
+func (api *api) shortPick(ctx context.Context, r *http.Request) web.Encoder {
+	var req pickingapp.ShortPickRequest
+	if err := web.Decode(r, &req); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	lineItemID, err := uuid.Parse(web.Param(r, "order_line_items_id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	result, err := api.pickingApp.ShortPick(ctx, lineItemID, req)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return result
 }

@@ -35,20 +35,23 @@ type QueryParams struct {
 }
 
 type OrderLineItem struct {
-	ID                            string `json:"id"`
-	OrderID                       string `json:"order_id"`
-	ProductID                     string `json:"product_id"`
-	Description                   string `json:"description"`
-	Quantity                      string `json:"quantity"`
-	UnitPrice                     string `json:"unit_price"`
-	Discount                      string `json:"discount"`
-	DiscountType                  string `json:"discount_type"`
-	LineTotal                     string `json:"line_total"`
-	LineItemFulfillmentStatusesID string `json:"line_item_fulfillment_statuses_id"`
-	CreatedBy                     string `json:"created_by"`
-	CreatedDate                   string `json:"created_date"`
-	UpdatedBy                     string `json:"updated_by"`
-	UpdatedDate                   string `json:"updated_date"`
+	ID                            string  `json:"id"`
+	OrderID                       string  `json:"order_id"`
+	ProductID                     string  `json:"product_id"`
+	Description                   string  `json:"description"`
+	Quantity                      string  `json:"quantity"`
+	UnitPrice                     string  `json:"unit_price"`
+	Discount                      string  `json:"discount"`
+	DiscountType                  string  `json:"discount_type"`
+	LineTotal                     string  `json:"line_total"`
+	LineItemFulfillmentStatusesID string  `json:"line_item_fulfillment_statuses_id"`
+	PickedQuantity                string  `json:"picked_quantity"`
+	BackorderedQuantity           string  `json:"backordered_quantity"`
+	ShortPickReason               *string `json:"short_pick_reason,omitempty"`
+	CreatedBy                     string  `json:"created_by"`
+	CreatedDate                   string  `json:"created_date"`
+	UpdatedBy                     string  `json:"updated_by"`
+	UpdatedDate                   string  `json:"updated_date"`
 }
 
 func (app OrderLineItem) Encode() ([]byte, string, error) {
@@ -68,6 +71,9 @@ func ToAppOrderLineItem(bus orderlineitemsbus.OrderLineItem) OrderLineItem {
 		DiscountType:                  bus.DiscountType,
 		LineTotal:                     bus.LineTotal.Value(),
 		LineItemFulfillmentStatusesID: bus.LineItemFulfillmentStatusesID.String(),
+		PickedQuantity:                strconv.Itoa(bus.PickedQuantity),
+		BackorderedQuantity:           strconv.Itoa(bus.BackorderedQuantity),
+		ShortPickReason:               bus.ShortPickReason,
 		CreatedBy:                     bus.CreatedBy.String(),
 		CreatedDate:                   bus.CreatedDate.Format(time.RFC3339),
 		UpdatedBy:                     bus.UpdatedBy.String(),
@@ -191,6 +197,9 @@ type UpdateOrderLineItem struct {
 	DiscountType                  *string `json:"discount_type" validate:"omitempty,oneof=flat percent itemized"`
 	LineTotal                     *string `json:"line_total" validate:"omitempty"`
 	LineItemFulfillmentStatusesID *string `json:"line_item_fulfillment_statuses_id" validate:"omitempty,uuid4"`
+	PickedQuantity                *string `json:"picked_quantity" validate:"omitempty,numeric"`
+	BackorderedQuantity           *string `json:"backordered_quantity" validate:"omitempty,numeric"`
+	ShortPickReason               *string `json:"short_pick_reason" validate:"omitempty"`
 	UpdatedBy                     *string `json:"updated_by" validate:"omitempty,uuid4"`
 }
 
@@ -277,6 +286,24 @@ func toBusUpdateOrderLineItem(app UpdateOrderLineItem) (orderlineitemsbus.Update
 		lineItemFulfillmentStatusesID = &id
 	}
 
+	var pickedQuantity *int
+	if app.PickedQuantity != nil {
+		q, err := strconv.Atoi(*app.PickedQuantity)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse picked_quantity: %s", err)
+		}
+		pickedQuantity = &q
+	}
+
+	var backorderedQuantity *int
+	if app.BackorderedQuantity != nil {
+		q, err := strconv.Atoi(*app.BackorderedQuantity)
+		if err != nil {
+			return orderlineitemsbus.UpdateOrderLineItem{}, errs.Newf(errs.InvalidArgument, "parse backordered_quantity: %s", err)
+		}
+		backorderedQuantity = &q
+	}
+
 	var updatedBy *uuid.UUID
 	if app.UpdatedBy != nil {
 		id, err := uuid.Parse(*app.UpdatedBy)
@@ -296,6 +323,9 @@ func toBusUpdateOrderLineItem(app UpdateOrderLineItem) (orderlineitemsbus.Update
 		DiscountType:                  discountType,
 		LineTotal:                     lineTotal,
 		LineItemFulfillmentStatusesID: lineItemFulfillmentStatusesID,
+		PickedQuantity:                pickedQuantity,
+		BackorderedQuantity:           backorderedQuantity,
+		ShortPickReason:               app.ShortPickReason,
 		UpdatedBy:                     updatedBy,
 	}
 	return bus, nil
