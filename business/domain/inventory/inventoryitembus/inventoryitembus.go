@@ -31,6 +31,7 @@ type Storer interface {
 	QueryAvailableForAllocation(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID, warehouseID *uuid.UUID, strategy string, limit int) ([]InventoryItem, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, inventoryID uuid.UUID) (InventoryItem, error)
+	UpsertQuantity(ctx context.Context, productID, locationID uuid.UUID, quantityDelta int) error
 }
 
 type Business struct {
@@ -179,6 +180,24 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 	}
 
 	return inventoryItems, nil
+}
+
+// UpsertQuantity creates or updates the inventory item for (productID, locationID),
+// adding quantityDelta to the existing quantity atomically.
+// quantityDelta must be positive; zero or negative values are rejected.
+func (b *Business) UpsertQuantity(ctx context.Context, productID, locationID uuid.UUID, quantityDelta int) error {
+	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.upsertquantity")
+	defer span.End()
+
+	if quantityDelta <= 0 {
+		return fmt.Errorf("upsert quantity: quantityDelta must be positive, got %d", quantityDelta)
+	}
+
+	if err := b.storer.UpsertQuantity(ctx, productID, locationID, quantityDelta); err != nil {
+		return fmt.Errorf("upsert quantity: %w", err)
+	}
+
+	return nil
 }
 
 // QueryAvailableForAllocation retrieves inventory items that have available quantity for allocation.

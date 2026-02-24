@@ -220,8 +220,8 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: inventoryitembus.InventoryItem{
-				LocationID:            sd.InventoryLocations[0].LocationID,
-				ProductID:             sd.Products[0].ProductID,
+				LocationID:            sd.InventoryLocations[5].LocationID,
+				ProductID:             sd.Products[1].ProductID,
 				Quantity:              10,
 				ReservedQuantity:      15,
 				AllocatedQuantity:     20,
@@ -234,8 +234,8 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.InventoryItem.Create(ctx, inventoryitembus.NewInventoryItem{
-					LocationID:            sd.InventoryLocations[0].LocationID,
-					ProductID:             sd.Products[0].ProductID,
+					LocationID:            sd.InventoryLocations[5].LocationID,
+					ProductID:             sd.Products[1].ProductID,
 					Quantity:              10,
 					ReservedQuantity:      15,
 					AllocatedQuantity:     20,
@@ -274,8 +274,8 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "Update",
 			ExpResp: inventoryitembus.InventoryItem{
 				ID:                    sd.InventoryItems[0].ID,
-				LocationID:            sd.InventoryLocations[0].LocationID,
-				ProductID:             sd.Products[0].ProductID,
+				LocationID:            sd.InventoryLocations[6].LocationID,
+				ProductID:             sd.Products[1].ProductID,
 				Quantity:              20,
 				ReservedQuantity:      25,
 				AllocatedQuantity:     30,
@@ -289,8 +289,8 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.InventoryItem.Update(ctx, sd.InventoryItems[0], inventoryitembus.UpdateInventoryItem{
-					LocationID:            &sd.InventoryLocations[0].LocationID,
-					ProductID:             &sd.Products[0].ProductID,
+					LocationID:            &sd.InventoryLocations[6].LocationID,
+					ProductID:             &sd.Products[1].ProductID,
 					Quantity:              dbtest.IntPointer(20),
 					ReservedQuantity:      dbtest.IntPointer(25),
 					AllocatedQuantity:     dbtest.IntPointer(30),

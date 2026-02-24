@@ -304,3 +304,44 @@ func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (inventoryitemb
 
 	return toBusInventoryItem(ip), nil
 }
+
+// UpsertQuantity atomically creates or updates the inventory item for the given
+// (product_id, location_id) pair, adding quantityDelta to the existing quantity.
+// On insert (no existing record), all stock threshold fields default to 0.
+// Relies on the unique_product_location constraint added in migration v1.998.
+func (s *Store) UpsertQuantity(ctx context.Context, productID, locationID uuid.UUID, quantityDelta int) error {
+	data := struct {
+		ID          uuid.UUID `db:"id"`
+		ProductID   uuid.UUID `db:"product_id"`
+		LocationID  uuid.UUID `db:"location_id"`
+		Quantity    int       `db:"quantity"`
+	}{
+		ID:         uuid.New(),
+		ProductID:  productID,
+		LocationID: locationID,
+		Quantity:   quantityDelta,
+	}
+
+	const q = `
+	INSERT INTO inventory.inventory_items
+		(id, product_id, location_id, quantity,
+		 reserved_quantity, allocated_quantity,
+		 minimum_stock, maximum_stock, reorder_point,
+		 economic_order_quantity, safety_stock, avg_daily_usage,
+		 created_date, updated_date)
+	VALUES
+		(:id, :product_id, :location_id, :quantity,
+		 0, 0, 0, 0, 0, 0, 0, 0,
+		 NOW(), NOW())
+	ON CONFLICT (product_id, location_id)
+	DO UPDATE SET
+		quantity     = inventory.inventory_items.quantity + EXCLUDED.quantity,
+		updated_date = NOW()
+	`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
