@@ -2084,3 +2084,38 @@ CREATE TABLE workflow.approval_requests (
 CREATE INDEX idx_approval_requests_execution ON workflow.approval_requests(execution_id);
 CREATE INDEX idx_approval_requests_status ON workflow.approval_requests(status) WHERE status = 'pending';
 CREATE INDEX idx_approval_requests_approvers ON workflow.approval_requests USING GIN (approvers);
+
+-- Version: 1.998
+-- Description: Add unique constraint on inventory_items (product_id, location_id).
+-- One stock position per product per location. Future lot tracking belongs in a
+-- separate inventory_lots table, not in inventory_items.
+ALTER TABLE inventory.inventory_items
+    ADD CONSTRAINT unique_product_location UNIQUE (product_id, location_id);
+
+-- Version: 1.999
+-- Description: Add inventory put_away_tasks table. A put-away task is a single
+-- directed work instruction for a floor worker: take N units of a product to a
+-- specific warehouse location. Created from PO receipts or manually by supervisors.
+CREATE TABLE inventory.put_away_tasks (
+    id               UUID          NOT NULL,
+    product_id       UUID          NOT NULL REFERENCES products.products(id),
+    location_id      UUID          NOT NULL REFERENCES inventory.inventory_locations(id),
+    quantity         INT           NOT NULL CHECK (quantity > 0),
+    reference_number VARCHAR(100)  NOT NULL DEFAULT '',
+    status           VARCHAR(20)   NOT NULL DEFAULT 'pending'
+                         CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+    assigned_to      UUID          REFERENCES core.users(id),
+    assigned_at      TIMESTAMP,
+    completed_by     UUID          REFERENCES core.users(id),
+    completed_at     TIMESTAMP,
+    created_by       UUID          NOT NULL REFERENCES core.users(id),
+    created_date     TIMESTAMP     NOT NULL,
+    updated_date     TIMESTAMP     NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_put_away_tasks_status   ON inventory.put_away_tasks(status);
+CREATE INDEX idx_put_away_tasks_product  ON inventory.put_away_tasks(product_id);
+CREATE INDEX idx_put_away_tasks_location ON inventory.put_away_tasks(location_id);
+CREATE INDEX idx_put_away_tasks_assigned ON inventory.put_away_tasks(assigned_to)
+    WHERE assigned_to IS NOT NULL;

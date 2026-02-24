@@ -2,7 +2,6 @@ package inventoryitembus
 
 import (
 	"context"
-	"math/rand"
 	"sort"
 
 	"github.com/google/uuid"
@@ -11,15 +10,16 @@ import (
 func TestNewInventoryProducts(n int, locationIDs, productIDs uuid.UUIDs) []NewInventoryItem {
 	newInventoryProducts := make([]NewInventoryItem, n)
 
-	idx := rand.Intn(10000)
-	for i := 0; i < n; i++ {
-		idx++
-		// Set quantity to a base value with reserved/allocated as small fractions
-		// This ensures (quantity - reserved - allocated) > 0 for allocation availability
-		baseQty := 100 + idx
+	// Use separate indices for location and product to guarantee unique (product_id, location_id) pairs.
+	// Pairing locationIDs[i%nL] with productIDs[(i/nL)%nP] walks an nL×nP grid one cell at a time.
+	nL := len(locationIDs)
+	nP := len(productIDs)
+
+	for i := range n {
+		baseQty := 100 + i
 		newInventoryProducts[i] = NewInventoryItem{
-			LocationID:            locationIDs[idx%len(locationIDs)],
-			ProductID:             productIDs[idx%len(productIDs)],
+			LocationID:            locationIDs[i%nL],
+			ProductID:             productIDs[(i/nL)%nP],
 			Quantity:              baseQty,
 			ReservedQuantity:      0, // No reserved quantity - all available
 			AllocatedQuantity:     0, // No allocated quantity - all available
