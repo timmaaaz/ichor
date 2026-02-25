@@ -31,6 +31,30 @@ func query200(sd apitest.SeedData) []apitest.Table {
 	return table
 }
 
+func queryByLocationCode200(sd apitest.SeedData) []apitest.Table {
+	// seed_test sets location_code = "TESTLOC-001" on inventoryLocations[0].
+	table := []apitest.Table{
+		{
+			Name:       "by-location-code",
+			URL:        "/v1/inventory/inventory-locations?page=1&rows=10&location_code=TESTLOC-001",
+			Token:      sd.Users[0].Token,
+			StatusCode: 200,
+			Method:     "GET",
+			GotResp:    &query.Result[inventorylocationapp.InventoryLocation]{},
+			ExpResp: &query.Result[inventorylocationapp.InventoryLocation]{
+				Page:        1,
+				RowsPerPage: 10,
+				Total:       1,
+				Items:       []inventorylocationapp.InventoryLocation{sd.InventoryLocations[0]},
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+	return table
+}
+
 func queryByID200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{

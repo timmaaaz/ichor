@@ -108,6 +108,16 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding inventory locations : %w", err)
 	}
 
+	// Set a known location_code on the first location so we can filter by it.
+	locCode := "TESTLOC-001"
+	updatedLoc, err := busDomain.InventoryLocation.Update(ctx, inventoryLocations[0], inventorylocationbus.UpdateInventoryLocation{
+		LocationCode: &locCode,
+	})
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("updating inventory location code : %w", err)
+	}
+	inventoryLocations[0] = updatedLoc
+
 	// =========================================================================
 	// Permissions stuff
 	// =========================================================================

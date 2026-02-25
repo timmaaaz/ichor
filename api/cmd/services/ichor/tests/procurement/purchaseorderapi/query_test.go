@@ -65,6 +65,7 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 }
 
 func queryIsUndelivered200(sd apitest.SeedData) []apitest.Table {
+	// seed_test marks POs[8] and POs[9] as delivered — 8 are undelivered, 2 are delivered.
 	table := []apitest.Table{
 		{
 			Name:       "is-undelivered-true",
@@ -76,8 +77,8 @@ func queryIsUndelivered200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &query.Result[purchaseorderapp.PurchaseOrder]{
 				Page:        1,
 				RowsPerPage: 10,
-				Total:       10,
-				Items:       sd.PurchaseOrders[:10],
+				Total:       8,
+				Items:       sd.PurchaseOrders[:8],
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp := got.(*query.Result[purchaseorderapp.PurchaseOrder])
@@ -98,6 +99,71 @@ func queryIsUndelivered200(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "is-undelivered-false",
 			URL:        "/v1/procurement/purchase-orders?page=1&rows=10&orderBy=orderNumber,ASC&isUndelivered=false",
+			Token:      sd.Users[0].Token,
+			StatusCode: 200,
+			Method:     "GET",
+			GotResp:    &query.Result[purchaseorderapp.PurchaseOrder]{},
+			ExpResp: &query.Result[purchaseorderapp.PurchaseOrder]{
+				Page:        1,
+				RowsPerPage: 10,
+				Total:       2,
+				Items:       sd.PurchaseOrders[8:],
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp := got.(*query.Result[purchaseorderapp.PurchaseOrder])
+				expResp := exp.(*query.Result[purchaseorderapp.PurchaseOrder])
+
+				dbtest.NormalizeJSONFields(gotResp, &expResp)
+
+				sort.Slice(gotResp.Items, func(i, j int) bool {
+					return gotResp.Items[i].OrderNumber < gotResp.Items[j].OrderNumber
+				})
+				sort.Slice(expResp.Items, func(i, j int) bool {
+					return expResp.Items[i].OrderNumber < expResp.Items[j].OrderNumber
+				})
+
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+	return table
+}
+
+func queryByDeliveryDateRange200(sd apitest.SeedData) []apitest.Table {
+	// POs[8] and POs[9] have actual_delivery_date = 2024-06-01.
+	table := []apitest.Table{
+		{
+			Name:       "within-range",
+			URL:        "/v1/procurement/purchase-orders?page=1&rows=10&orderBy=orderNumber,ASC&startActualDeliveryDate=2024-01-01+00%3A00%3A00+%2B0000+UTC&endActualDeliveryDate=2024-12-31+00%3A00%3A00+%2B0000+UTC",
+			Token:      sd.Users[0].Token,
+			StatusCode: 200,
+			Method:     "GET",
+			GotResp:    &query.Result[purchaseorderapp.PurchaseOrder]{},
+			ExpResp: &query.Result[purchaseorderapp.PurchaseOrder]{
+				Page:        1,
+				RowsPerPage: 10,
+				Total:       2,
+				Items:       sd.PurchaseOrders[8:],
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp := got.(*query.Result[purchaseorderapp.PurchaseOrder])
+				expResp := exp.(*query.Result[purchaseorderapp.PurchaseOrder])
+
+				dbtest.NormalizeJSONFields(gotResp, &expResp)
+
+				sort.Slice(gotResp.Items, func(i, j int) bool {
+					return gotResp.Items[i].OrderNumber < gotResp.Items[j].OrderNumber
+				})
+				sort.Slice(expResp.Items, func(i, j int) bool {
+					return expResp.Items[i].OrderNumber < expResp.Items[j].OrderNumber
+				})
+
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "after-range",
+			URL:        "/v1/procurement/purchase-orders?page=1&rows=10&orderBy=orderNumber,ASC&startActualDeliveryDate=2030-01-01+00%3A00%3A00+%2B0000+UTC",
 			Token:      sd.Users[0].Token,
 			StatusCode: 200,
 			Method:     "GET",

@@ -3,6 +3,7 @@ package purchaseorderapi_test
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderapi"
@@ -177,6 +178,18 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	purchaseOrders, err := purchaseorderbus.TestSeedPurchaseOrders(ctx, 10, supplierIDs, statusIDs, warehouseIDs, streetIDs, userIDs, currencyIDs, busDomain.PurchaseOrder)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding purchase orders: %w", err)
+	}
+
+	// Mark the last 2 purchase orders as delivered so we can test date range filters.
+	deliveryDate := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	for i := 8; i < 10; i++ {
+		updated, err := busDomain.PurchaseOrder.Update(ctx, purchaseOrders[i], purchaseorderbus.UpdatePurchaseOrder{
+			ActualDeliveryDate: &deliveryDate,
+		})
+		if err != nil {
+			return apitest.SeedData{}, fmt.Errorf("updating purchase order delivery date: %w", err)
+		}
+		purchaseOrders[i] = updated
 	}
 
 	// Seed permissions
