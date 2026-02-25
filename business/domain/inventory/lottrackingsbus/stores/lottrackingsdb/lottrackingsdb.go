@@ -172,6 +172,36 @@ func (s *Store) Count(ctx context.Context, filter lottrackingsbus.QueryFilter) (
 	return count.Count, nil
 }
 
+func (s *Store) QueryLocationsByLotID(ctx context.Context, lotID uuid.UUID) ([]lottrackingsbus.LotLocation, error) {
+	data := struct {
+		LotID string `db:"lot_id"`
+	}{
+		LotID: lotID.String(),
+	}
+
+	const q = `
+	SELECT
+	    ll.location_id,
+	    CONCAT(il.aisle, '-', il.rack, '-', il.shelf, '-', il.bin) AS location_code,
+	    il.aisle,
+	    il.rack,
+	    il.shelf,
+	    il.bin,
+	    ll.quantity::int AS quantity
+	FROM inventory.lot_locations ll
+	JOIN inventory.inventory_locations il ON il.id = ll.location_id
+	WHERE ll.lot_id = :lot_id
+	`
+
+	var dbLocs []lotLocation
+
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbLocs); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusLotLocations(dbLocs), nil
+}
+
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lottrackingsbus.LotTrackings, error) {
 	data := struct {
 		ID string `db:"id"`

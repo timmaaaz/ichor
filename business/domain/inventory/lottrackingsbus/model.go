@@ -43,3 +43,15 @@ type UpdateLotTrackings struct {
 	Quantity          *int       `json:"quantity,omitempty"`
 	QualityStatus     *string    `json:"quality_status,omitempty"`
 }
+
+// LotLocation represents a storage location where serial numbers for a lot are stored,
+// along with an aggregated count.
+type LotLocation struct {
+	LocationID   uuid.UUID `json:"location_id"`
+	LocationCode string    `json:"location_code"`
+	Aisle        string    `json:"aisle"`
+	Rack         string    `json:"rack"`
+	Shelf        string    `json:"shelf"`
+	Bin          string    `json:"bin"`
+	Quantity     int       `json:"quantity"`
+}

@@ -137,3 +137,19 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (LotTrackings, error)
 
 	return ToAppLotTracking(lt), nil
 }
+
+func (a *App) QueryLocationsByLotID(ctx context.Context, id uuid.UUID) ([]LotLocation, error) {
+	if _, err := a.lottrackingsbus.QueryByID(ctx, id); err != nil {
+		if errors.Is(err, lottrackingsbus.ErrNotFound) {
+			return nil, errs.New(errs.NotFound, lottrackingsbus.ErrNotFound)
+		}
+		return nil, err
+	}
+
+	locations, err := a.lottrackingsbus.QueryLocationsByLotID(ctx, id)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "query locations by lot id: %v", err)
+	}
+
+	return toAppLotLocations(locations), nil
+}

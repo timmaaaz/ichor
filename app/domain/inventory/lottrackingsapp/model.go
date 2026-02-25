@@ -12,6 +12,42 @@ import (
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
+// LotLocation is the app-layer representation of a lot storage location.
+type LotLocation struct {
+	LocationID   string `json:"location_id"`
+	LocationCode string `json:"location_code"`
+	Aisle        string `json:"aisle"`
+	Rack         string `json:"rack"`
+	Shelf        string `json:"shelf"`
+	Bin          string `json:"bin"`
+	Quantity     int    `json:"quantity"`
+}
+
+func (ll LotLocation) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(ll)
+	return data, "application/json", err
+}
+
+func toAppLotLocation(bus lottrackingsbus.LotLocation) LotLocation {
+	return LotLocation{
+		LocationID:   bus.LocationID.String(),
+		LocationCode: bus.LocationCode,
+		Aisle:        bus.Aisle,
+		Rack:         bus.Rack,
+		Shelf:        bus.Shelf,
+		Bin:          bus.Bin,
+		Quantity:     bus.Quantity,
+	}
+}
+
+func toAppLotLocations(bus []lottrackingsbus.LotLocation) []LotLocation {
+	app := make([]LotLocation, len(bus))
+	for i, v := range bus {
+		app[i] = toAppLotLocation(v)
+	}
+	return app
+}
+
 type QueryParams struct {
 	Page    string
 	Rows    string

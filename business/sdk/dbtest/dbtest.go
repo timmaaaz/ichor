@@ -57,6 +57,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus/stores/lotlocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus/stores/lottrackingsdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
@@ -247,6 +249,7 @@ type BusDomain struct {
 	// Lots
 	LotTrackings *lottrackingsbus.Business
 	SerialNumber *serialnumberbus.Business
+	LotLocation  *lotlocationbus.Business
 
 	// Movement
 	InventoryTransaction *inventorytransactionbus.Business
@@ -356,6 +359,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// Lots
 	lotTrackingsBus := lottrackingsbus.NewBusiness(log, delegate, lottrackingsdb.NewStore(log, db))
 	serialNumberBus := serialnumberbus.NewBusiness(log, delegate, serialnumberdb.NewStore(log, db))
+	lotLocationBus := lotlocationbus.NewBusiness(log, delegate, lotlocationdb.NewStore(log, db))
 
 	// Movement
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(log, delegate, inventorytransactiondb.NewStore(log, db))
@@ -433,6 +437,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		PurchaseOrderLineItem:       purchaseOrderLineItemBus,
 		Metrics:                     metricsBus,
 		LotTrackings:                lotTrackingsBus,
+		LotLocation:                 lotLocationBus,
 		Zones:                       zoneBus,
 		InventoryLocation:           inventoryLocationBus,
 		InventoryItem:               inventoryItemBus,

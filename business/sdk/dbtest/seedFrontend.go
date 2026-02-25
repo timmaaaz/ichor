@@ -38,6 +38,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
@@ -589,6 +590,11 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	lotTrackingsIDs := make(uuid.UUIDs, len(lotTrackings))
 	for i, lt := range lotTrackings {
 		lotTrackingsIDs[i] = lt.LotID
+	}
+
+	_, err = lotlocationbus.TestSeedLotLocations(ctx, 15, lotTrackingsIDs, inventoryLocationsIDs, busDomain.LotLocation)
+	if err != nil {
+		return fmt.Errorf("seeding lot locations : %w", err)
 	}
 
 	_, err = inspectionbus.TestSeedInspections(ctx, 10, productIDs, userIDs, lotTrackingsIDs, busDomain.Inspection)

@@ -33,6 +33,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]LotTrackings, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, lotTrackingsID uuid.UUID) (LotTrackings, error)
+	QueryLocationsByLotID(ctx context.Context, lotID uuid.UUID) ([]LotLocation, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -197,4 +198,18 @@ func (b *Business) QueryByID(ctx context.Context, lotTrackingsID uuid.UUID) (Lot
 	}
 
 	return lt, nil
+}
+
+// QueryLocationsByLotID aggregates storage locations for a lot by joining serial_numbers
+// to inventory_locations, returning one row per location with a serial count.
+func (b *Business) QueryLocationsByLotID(ctx context.Context, lotID uuid.UUID) ([]LotLocation, error) {
+	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.querylocationsbylotid")
+	defer span.End()
+
+	locations, err := b.storer.QueryLocationsByLotID(ctx, lotID)
+	if err != nil {
+		return nil, fmt.Errorf("query locations by lot id: %w", err)
+	}
+
+	return locations, nil
 }

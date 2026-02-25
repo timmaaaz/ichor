@@ -40,6 +40,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryitemapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorylocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorytransactionapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/lotlocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/serialnumberapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
@@ -155,6 +156,7 @@ func buildFormDataRegistry(
 	zoneApp *zoneapp.App,
 	inventoryItemApp *inventoryitemapp.App,
 	lotTrackingsApp *lottrackingsapp.App,
+	lotLocationApp *lotlocationapp.App,
 	purchaseOrderLineItemStatusApp *purchaseorderlineitemstatusapp.App,
 	purchaseOrderStatusApp *purchaseorderstatusapp.App,
 	purchaseOrderApp *purchaseorderapp.App,
@@ -1501,6 +1503,41 @@ func buildFormDataRegistry(
 		UpdateModel: lottrackingsapp.UpdateLotTrackings{},
 	}); err != nil {
 		return nil, fmt.Errorf("register inventory.lot_trackings: %w", err)
+	}
+
+	// Register lot_locations entity
+	if err := registry.Register(formdataregistry.EntityRegistration{
+		Name: "inventory.lot_locations",
+		DecodeNew: func(data json.RawMessage) (interface{}, error) {
+			var app lotlocationapp.NewLotLocation
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
+			return lotLocationApp.Create(ctx, model.(lotlocationapp.NewLotLocation))
+		},
+		CreateModel: lotlocationapp.NewLotLocation{},
+		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
+			var app lotlocationapp.UpdateLotLocation
+			if err := json.Unmarshal(data, &app); err != nil {
+				return nil, err
+			}
+			if err := app.Validate(); err != nil {
+				return nil, err
+			}
+			return app, nil
+		},
+		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
+			return lotLocationApp.Update(ctx, model.(lotlocationapp.UpdateLotLocation), id)
+		},
+		UpdateModel: lotlocationapp.UpdateLotLocation{},
+	}); err != nil {
+		return nil, fmt.Errorf("register inventory.lot_locations: %w", err)
 	}
 
 	// =========================================================================

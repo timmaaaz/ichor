@@ -2157,3 +2157,21 @@ INSERT INTO config.settings (key, value, description, created_date, updated_date
 INSERT INTO config.settings (key, value, description, created_date, updated_date) VALUES
     ('inventory.lot_rotation_method', '"fefo"',           'Lot rotation method for picking: fefo | fifo', NOW(), NOW()),
     ('inventory.quarantine_access',   '"supervisor_only"', 'Who can quarantine lots: floor_worker | supervisor_only', NOW(), NOW());
+
+-- Version: 2.03
+-- Description: Add inventory.lot_locations junction table for tracking lot quantity per storage location.
+CREATE TABLE inventory.lot_locations (
+    id           UUID        NOT NULL,
+    lot_id       UUID        NOT NULL,
+    location_id  UUID        NOT NULL,
+    quantity     numeric     NOT NULL DEFAULT 0,
+    created_date TIMESTAMP   NOT NULL,
+    updated_date TIMESTAMP   NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (lot_id) REFERENCES inventory.lot_trackings(id),
+    FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id),
+    UNIQUE (lot_id, location_id)
+);
+
+INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
+SELECT gen_random_uuid(), id, 'inventory.lot_locations', true, true, true, true FROM core.roles;

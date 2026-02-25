@@ -24,6 +24,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventoryitemapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventorylocationapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventorytransactionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/lotlocationapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/lottrackingsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/serialnumberapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/transferorderapi"
@@ -93,6 +94,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus/stores/lotlocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus/stores/lottrackingsdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
@@ -251,6 +254,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	lotTrackingsBus := lottrackingsbus.NewBusiness(cfg.Log, delegate, lottrackingsdb.NewStore(cfg.Log, cfg.DB))
 	serialNumberBus := serialnumberbus.NewBusiness(cfg.Log, delegate, serialnumberdb.NewStore(cfg.Log, cfg.DB))
+	lotLocationBus := lotlocationbus.NewBusiness(cfg.Log, delegate, lotlocationdb.NewStore(cfg.Log, cfg.DB))
 	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingsdb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
@@ -502,6 +506,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Log:             cfg.Log,
 		PermissionsBus:  permissionsBus,
 		SettingsBus:     settingsBus,
+	})
+
+	lotlocationapi.Routes(app, lotlocationapi.Config{
+		LotLocationBus: lotLocationBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
 	})
 
 	zoneapi.Routes(app, zoneapi.Config{

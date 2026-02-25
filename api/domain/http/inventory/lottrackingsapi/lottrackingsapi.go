@@ -20,6 +20,13 @@ func (qs qualityStatuses) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
+type lotLocations []lottrackingsapp.LotLocation
+
+func (ll lotLocations) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(ll)
+	return data, "application/json", err
+}
+
 type api struct {
 	lottrackingsapp *lottrackingsapp.App
 	settingsBus     *settingsbus.Business
@@ -137,4 +144,19 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 
 func (api *api) queryQualityStatuses(ctx context.Context, r *http.Request) web.Encoder {
 	return qualityStatuses{"good", "on_hold", "quarantined", "released", "expired"}
+}
+
+func (api *api) queryLocationsByLotID(ctx context.Context, r *http.Request) web.Encoder {
+	lotID := web.Param(r, "lot_id")
+	parsed, err := uuid.Parse(lotID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	locations, err := api.lottrackingsapp.QueryLocationsByLotID(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return lotLocations(locations)
 }

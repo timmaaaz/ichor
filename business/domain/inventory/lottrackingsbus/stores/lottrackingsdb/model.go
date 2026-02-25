@@ -7,6 +7,36 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 )
 
+type lotLocation struct {
+	LocationID   uuid.UUID `db:"location_id"`
+	LocationCode string    `db:"location_code"`
+	Aisle        string    `db:"aisle"`
+	Rack         string    `db:"rack"`
+	Shelf        string    `db:"shelf"`
+	Bin          string    `db:"bin"`
+	Quantity     int       `db:"quantity"`
+}
+
+func toBusLotLocation(db lotLocation) lottrackingsbus.LotLocation {
+	return lottrackingsbus.LotLocation{
+		LocationID:   db.LocationID,
+		LocationCode: db.LocationCode,
+		Aisle:        db.Aisle,
+		Rack:         db.Rack,
+		Shelf:        db.Shelf,
+		Bin:          db.Bin,
+		Quantity:     db.Quantity,
+	}
+}
+
+func toBusLotLocations(dbs []lotLocation) []lottrackingsbus.LotLocation {
+	bus := make([]lottrackingsbus.LotLocation, len(dbs))
+	for i, db := range dbs {
+		bus[i] = toBusLotLocation(db)
+	}
+	return bus
+}
+
 type lotTrackings struct {
 	LotID             uuid.UUID `db:"id"`
 	SupplierProductID uuid.UUID `db:"supplier_product_id"`

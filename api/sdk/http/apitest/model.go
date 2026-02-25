@@ -36,6 +36,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryitemapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorylocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorytransactionapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/lotlocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/serialnumberapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
@@ -123,6 +124,7 @@ type SeedData struct {
 	SupplierProducts            []supplierproductapp.SupplierProduct
 	Metrics                     []metricsapp.Metric
 	LotTrackings                []lottrackingsapp.LotTrackings
+	LotLocations                []lotlocationapp.LotLocation
 	Zones                       []zoneapp.Zone
 	InventoryLocations          []inventorylocationapp.InventoryLocation
 	InventoryItems              []inventoryitemapp.InventoryItem
