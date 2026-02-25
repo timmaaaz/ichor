@@ -7,6 +7,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -18,6 +19,7 @@ type Config struct {
 	LotTrackingsBus *lottrackingsbus.Business
 	AuthClient      *authclient.Client
 	PermissionsBus  *permissionsbus.Business
+	SettingsBus     *settingsbus.Business
 }
 
 const (
@@ -28,9 +30,12 @@ func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	authen := mid.Authenticate(cfg.AuthClient)
-	api := newAPI(lottrackingsapp.NewApp(cfg.LotTrackingsBus))
+	api := newAPI(lottrackingsapp.NewApp(cfg.LotTrackingsBus), cfg.SettingsBus)
 
 	app.HandlerFunc(http.MethodGet, version, "/inventory/lot-trackings", api.query, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodGet, version, "/inventory/lot-trackings/quality-statuses", api.queryQualityStatuses, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
 	app.HandlerFunc(http.MethodGet, version, "/inventory/lot-trackings/{lot_id}", api.queryByID, authen,

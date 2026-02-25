@@ -655,7 +655,7 @@ CREATE TABLE inventory.lot_trackings (
    expiration_date TIMESTAMP NOT NULL,
    received_date TIMESTAMP NOT NULL,
    quantity INT NOT NULL,
-   quality_status varchar(20) NOT NULL,
+   quality_status varchar(20) NOT NULL CHECK (quality_status IN ('good', 'on_hold', 'quarantined', 'released', 'expired')),
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
@@ -2151,3 +2151,9 @@ INSERT INTO config.settings (key, value, description, created_date, updated_date
     ('inventory.variance_threshold_units', '5',      'Unit variance threshold (used when approval_mode=threshold)', NOW(), NOW()),
     ('inventory.variance_threshold_pct',   '0.10',   'Percent variance threshold (used when approval_mode=threshold)', NOW(), NOW()),
     ('inventory.dollar_impact_threshold',  '50',     'Dollar impact threshold in USD (used when approval_mode=dollar_impact)', NOW(), NOW());
+
+-- Version: 2.02
+-- Description: Add inventory lot rotation method and quarantine access control settings.
+INSERT INTO config.settings (key, value, description, created_date, updated_date) VALUES
+    ('inventory.lot_rotation_method', '"fefo"',           'Lot rotation method for picking: fefo | fifo', NOW(), NOW()),
+    ('inventory.quarantine_access',   '"supervisor_only"', 'Who can quarantine lots: floor_worker | supervisor_only', NOW(), NOW());

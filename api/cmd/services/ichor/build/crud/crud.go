@@ -251,6 +251,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	lotTrackingsBus := lottrackingsbus.NewBusiness(cfg.Log, delegate, lottrackingsdb.NewStore(cfg.Log, cfg.DB))
 	serialNumberBus := serialnumberbus.NewBusiness(cfg.Log, delegate, serialnumberdb.NewStore(cfg.Log, cfg.DB))
+	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingsdb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
 	costHistoryBus := costhistorybus.NewBusiness(cfg.Log, delegate, costhistorydb.NewStore(cfg.Log, cfg.DB))
@@ -500,6 +501,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:      cfg.AuthClient,
 		Log:             cfg.Log,
 		PermissionsBus:  permissionsBus,
+		SettingsBus:     settingsBus,
 	})
 
 	zoneapi.Routes(app, zoneapi.Config{
@@ -584,7 +586,6 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus:    permissionsBus,
 	})
 
-	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingsdb.NewStore(cfg.Log, cfg.DB))
 	settingsapi.Routes(app, settingsapi.Config{
 		Log:            cfg.Log,
 		SettingsBus:    settingsBus,

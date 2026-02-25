@@ -941,6 +941,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AuthClient:      cfg.AuthClient,
 		Log:             cfg.Log,
 		PermissionsBus:  permissionsBus,
+		SettingsBus:     settingsBus,
 	})
 
 	zoneapi.Routes(app, zoneapi.Config{
