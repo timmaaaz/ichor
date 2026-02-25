@@ -20,6 +20,7 @@ type InventoryLocation struct {
 	Rack               string             `json:"rack"`
 	Shelf              string             `json:"shelf"`
 	Bin                string             `json:"bin"`
+	LocationCode       *string            `json:"location_code"`
 	IsPickLocation     bool               `json:"is_pick_location"` // DO we need both of these? seems like if its not pick location then its reserve location
 	IsReserveLocation  bool               `json:"is_reserve_location"`
 	MaxCapacity        int                `json:"max_capacity"`
@@ -35,6 +36,7 @@ type NewInventoryLocation struct {
 	Rack               string             `json:"rack"`
 	Shelf              string             `json:"shelf"`
 	Bin                string             `json:"bin"`
+	LocationCode       *string            `json:"location_code"`
 	IsPickLocation     bool               `json:"is_pick_location"`
 	IsReserveLocation  bool               `json:"is_reserve_location"`
 	MaxCapacity        int                `json:"max_capacity"`
@@ -48,6 +50,7 @@ type UpdateInventoryLocation struct {
 	Rack               *string             `json:"rack,omitempty"`
 	Shelf              *string             `json:"shelf,omitempty"`
 	Bin                *string             `json:"bin,omitempty"`
+	LocationCode       *string             `json:"location_code,omitempty"`
 	IsPickLocation     *bool               `json:"is_pick_location,omitempty"`
 	IsReserveLocation  *bool               `json:"is_reserve_location,omitempty"`
 	MaxCapacity        *int                `json:"max_capacity,omitempty"`

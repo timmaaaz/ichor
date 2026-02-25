@@ -23,6 +23,7 @@ type QueryParams struct {
 	FulfillmentStatusID string
 	BillingAddressID    string
 	ShippingAddressID   string
+	AssignedTo          string
 	CurrencyID          string
 	PaymentTermID       string
 	CreatedBy           string
@@ -55,6 +56,7 @@ type Order struct {
 	OrderDate           string `json:"order_date"`
 	BillingAddressID    string `json:"billing_address_id,omitempty"`
 	ShippingAddressID   string `json:"shipping_address_id,omitempty"`
+	AssignedTo          string `json:"assigned_to,omitempty"`
 	Subtotal            string `json:"subtotal"`
 	TaxRate             string `json:"tax_rate"`
 	TaxAmount           string `json:"tax_amount"`
@@ -102,6 +104,9 @@ func ToAppOrder(bus ordersbus.Order) Order {
 	if bus.ShippingAddressID != nil {
 		app.ShippingAddressID = bus.ShippingAddressID.String()
 	}
+	if bus.AssignedTo != nil {
+		app.AssignedTo = bus.AssignedTo.String()
+	}
 	if bus.PaymentTermID != nil {
 		app.PaymentTermID = bus.PaymentTermID.String()
 	}
@@ -125,6 +130,7 @@ type NewOrder struct {
 	OrderDate           string  `json:"order_date" validate:"required"`
 	BillingAddressID    string  `json:"billing_address_id" validate:"omitempty,uuid4"`
 	ShippingAddressID   string  `json:"shipping_address_id" validate:"omitempty,uuid4"`
+	AssignedTo          string  `json:"assigned_to" validate:"omitempty,uuid4"`
 	Subtotal            string  `json:"subtotal"`
 	TaxRate             string  `json:"tax_rate"`
 	TaxAmount           string  `json:"tax_amount"`
@@ -243,6 +249,15 @@ func toBusNewOrder(app NewOrder) (ordersbus.NewOrder, error) {
 		// CreatedDate: nil by default - API always uses server time
 	}
 
+	// Parse optional AssignedTo
+	if app.AssignedTo != "" {
+		id, err := uuid.Parse(app.AssignedTo)
+		if err != nil {
+			return ordersbus.NewOrder{}, errs.Newf(errs.InvalidArgument, "parse assignedTo: %s", err)
+		}
+		bus.AssignedTo = &id
+	}
+
 	// Parse optional PaymentTermID
 	if app.PaymentTermID != "" {
 		id, err := uuid.Parse(app.PaymentTermID)
@@ -272,6 +287,7 @@ type UpdateOrder struct {
 	OrderDate           *string `json:"order_date" validate:"omitempty"`
 	BillingAddressID    *string `json:"billing_address_id" validate:"omitempty,uuid4"`
 	ShippingAddressID   *string `json:"shipping_address_id" validate:"omitempty,uuid4"`
+	AssignedTo          *string `json:"assigned_to" validate:"omitempty,uuid4"`
 	Subtotal            *string `json:"subtotal" validate:"omitempty"`
 	TaxRate             *string `json:"tax_rate" validate:"omitempty"`
 	TaxAmount           *string `json:"tax_amount" validate:"omitempty"`
@@ -404,6 +420,15 @@ func toBusUpdateOrder(app UpdateOrder) (ordersbus.UpdateOrder, error) {
 		updatedBy = &id
 	}
 
+	var assignedTo *uuid.UUID
+	if app.AssignedTo != nil && *app.AssignedTo != "" {
+		id, err := uuid.Parse(*app.AssignedTo)
+		if err != nil {
+			return ordersbus.UpdateOrder{}, errs.Newf(errs.InvalidArgument, "parse assignedTo: %s", err)
+		}
+		assignedTo = &id
+	}
+
 	var paymentTermID *uuid.UUID
 	if app.PaymentTermID != nil && *app.PaymentTermID != "" {
 		id, err := uuid.Parse(*app.PaymentTermID)
@@ -430,6 +455,7 @@ func toBusUpdateOrder(app UpdateOrder) (ordersbus.UpdateOrder, error) {
 		OrderDate:           orderDate,
 		BillingAddressID:    billingAddrID,
 		ShippingAddressID:   shippingAddrID,
+		AssignedTo:          assignedTo,
 		Subtotal:            subtotal,
 		TaxRate:             taxRate,
 		TaxAmount:           taxAmount,

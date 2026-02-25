@@ -45,6 +45,32 @@ func query200(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name:       "filter by assigned_to",
+			URL:        "/v1/sales/orders?page=1&rows=10&assigned_to=" + sd.Admins[0].ID.String(),
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &query.Result[ordersapp.Order]{},
+			ExpResp: &query.Result[ordersapp.Order]{
+				Page:        1,
+				RowsPerPage: 10,
+				Total:       5,
+				Items:       []ordersapp.Order{sd.Orders[0]},
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, ok := got.(*query.Result[ordersapp.Order])
+				if !ok {
+					return "error occurred"
+				}
+				expResp, ok := exp.(*query.Result[ordersapp.Order])
+				if !ok {
+					return "error occurred"
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
 	}
 }
 

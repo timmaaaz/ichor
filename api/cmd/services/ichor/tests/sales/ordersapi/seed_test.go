@@ -132,6 +132,14 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding Orders: %w", err)
 	}
 
+	// Assign orders[0] to the admin user so we can test the assigned_to filter.
+	assignedTo := admin[0].ID
+	updatedOrder, err := busDomain.Order.Update(ctx, orders[0], ordersbus.UpdateOrder{AssignedTo: &assignedTo})
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("updating order assigned_to: %w", err)
+	}
+	orders[0] = updatedOrder
+
 	// =========================================================================
 	// Permissions stuff
 	// =========================================================================

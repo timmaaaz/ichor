@@ -18,6 +18,7 @@ type inventoryLocation struct {
 	Rack               string         `db:"rack"`
 	Shelf              string         `db:"shelf"`
 	Bin                string         `db:"bin"`
+	LocationCode       sql.NullString `db:"location_code"`
 	IsPickLocation     bool           `db:"is_pick_location"`
 	IsReserveLocation  bool           `db:"is_reserve_location"`
 	MaxCapacity        int            `db:"max_capacity"`
@@ -27,6 +28,11 @@ type inventoryLocation struct {
 }
 
 func toDBInvLocation(bus inventorylocationbus.InventoryLocation) inventoryLocation {
+	var locationCode sql.NullString
+	if bus.LocationCode != nil {
+		locationCode = sql.NullString{String: *bus.LocationCode, Valid: true}
+	}
+
 	return inventoryLocation{
 		LocationID:         bus.LocationID,
 		WarehouseID:        bus.WarehouseID,
@@ -35,6 +41,7 @@ func toDBInvLocation(bus inventorylocationbus.InventoryLocation) inventoryLocati
 		Rack:               bus.Rack,
 		Shelf:              bus.Shelf,
 		Bin:                bus.Bin,
+		LocationCode:       locationCode,
 		IsPickLocation:     bus.IsPickLocation,
 		IsReserveLocation:  bus.IsReserveLocation,
 		MaxCapacity:        bus.MaxCapacity,
@@ -50,6 +57,11 @@ func toBusInvLocation(db inventoryLocation) (inventorylocationbus.InventoryLocat
 		return inventorylocationbus.InventoryLocation{}, fmt.Errorf("toBusInvLocation: failed to parse float from db %w", err)
 	}
 
+	var locationCode *string
+	if db.LocationCode.Valid {
+		locationCode = &db.LocationCode.String
+	}
+
 	return inventorylocationbus.InventoryLocation{
 		LocationID:         db.LocationID,
 		WarehouseID:        db.WarehouseID,
@@ -58,6 +70,7 @@ func toBusInvLocation(db inventoryLocation) (inventorylocationbus.InventoryLocat
 		Rack:               db.Rack,
 		Shelf:              db.Shelf,
 		Bin:                db.Bin,
+		LocationCode:       locationCode,
 		IsPickLocation:     db.IsPickLocation,
 		IsReserveLocation:  db.IsReserveLocation,
 		MaxCapacity:        db.MaxCapacity,

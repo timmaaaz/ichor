@@ -120,7 +120,7 @@ func (b *Business) Update(ctx context.Context, to TransferOrder, ut UpdateTransf
 		to.RequestedByID = *ut.RequestedByID
 	}
 	if ut.ApprovedByID != nil {
-		to.ApprovedByID = *ut.ApprovedByID
+		to.ApprovedByID = ut.ApprovedByID
 	}
 	if ut.Quantity != nil {
 		to.Quantity = *ut.Quantity
@@ -195,4 +195,27 @@ func (b *Business) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (Tr
 	}
 
 	return transferOrder, nil
+}
+
+// Approve sets the approver and marks the transfer order as approved.
+func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uuid.UUID) (TransferOrder, error) {
+	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.approve")
+	defer span.End()
+
+	before := to
+
+	now := time.Now()
+	to.ApprovedByID = &approvedBy
+	to.Status = "approved"
+	to.UpdatedDate = now
+
+	if err := b.storer.Update(ctx, to); err != nil {
+		return TransferOrder{}, fmt.Errorf("approve: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return to, nil
 }

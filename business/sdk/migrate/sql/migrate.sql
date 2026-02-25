@@ -2175,3 +2175,18 @@ CREATE TABLE inventory.lot_locations (
 
 INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
 SELECT gen_random_uuid(), id, 'inventory.lot_locations', true, true, true, true FROM core.roles;
+
+-- Version: 2.04
+-- Description: Add location_code column to inventory_locations for human-readable location identifiers.
+ALTER TABLE inventory.inventory_locations
+    ADD COLUMN location_code VARCHAR(100) NULL;
+
+-- Version: 2.05
+-- Description: Make transfer_orders.approved_by nullable to support pending-approval workflow.
+ALTER TABLE inventory.transfer_orders
+    ALTER COLUMN approved_by DROP NOT NULL;
+
+-- Version: 2.06
+-- Description: Add assigned_to column to sales.orders for picker/floor worker assignment.
+ALTER TABLE sales.orders
+    ADD COLUMN assigned_to UUID NULL REFERENCES core.users(id);

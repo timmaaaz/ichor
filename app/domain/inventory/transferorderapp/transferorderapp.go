@@ -137,3 +137,20 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (TransferOrder, error
 
 	return ToAppTransferOrder(to), nil
 }
+
+func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (TransferOrder, error) {
+	to, err := a.transferorderbus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, transferorderbus.ErrNotFound) {
+			return TransferOrder{}, errs.New(errs.NotFound, err)
+		}
+		return TransferOrder{}, fmt.Errorf("approve [querybyid]: %w", err)
+	}
+
+	approved, err := a.transferorderbus.Approve(ctx, to, approvedBy)
+	if err != nil {
+		return TransferOrder{}, fmt.Errorf("approve: %w", err)
+	}
+
+	return ToAppTransferOrder(approved), nil
+}

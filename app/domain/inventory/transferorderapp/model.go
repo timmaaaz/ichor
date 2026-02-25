@@ -50,13 +50,18 @@ func (app TransferOrder) Encode() ([]byte, string, error) {
 }
 
 func ToAppTransferOrder(bus transferorderbus.TransferOrder) TransferOrder {
+	approvedByID := ""
+	if bus.ApprovedByID != nil {
+		approvedByID = bus.ApprovedByID.String()
+	}
+
 	return TransferOrder{
 		TransferID:     bus.TransferID.String(),
 		ProductID:      bus.ProductID.String(),
 		FromLocationID: bus.FromLocationID.String(),
 		ToLocationID:   bus.ToLocationID.String(),
 		RequestedByID:  bus.RequestedByID.String(),
-		ApprovedByID:   bus.ApprovedByID.String(),
+		ApprovedByID:   approvedByID,
 		Quantity:       fmt.Sprintf("%d", bus.Quantity),
 		Status:         bus.Status,
 		TransferDate:   bus.TransferDate.Format(timeutil.FORMAT),
@@ -74,14 +79,14 @@ func ToAppTransferOrders(bus []transferorderbus.TransferOrder) []TransferOrder {
 }
 
 type NewTransferOrder struct {
-	ProductID      string `json:"product_id" validate:"required,min=36,max=36"`
-	FromLocationID string `json:"from_location_id" validate:"required,min=36,max=36"`
-	ToLocationID   string `json:"to_location_id" validate:"required,min=36,max=36"`
-	RequestedByID  string `json:"requested_by" validate:"required,min=36,max=36"`
-	ApprovedByID   string `json:"approved_by" validate:"required,min=36,max=36"`
-	Quantity       string `json:"quantity" validate:"required"`
-	Status         string `json:"status" validate:"required"`
-	TransferDate   string `json:"transfer_date" validate:"required"`
+	ProductID      string  `json:"product_id" validate:"required,min=36,max=36"`
+	FromLocationID string  `json:"from_location_id" validate:"required,min=36,max=36"`
+	ToLocationID   string  `json:"to_location_id" validate:"required,min=36,max=36"`
+	RequestedByID  string  `json:"requested_by" validate:"required,min=36,max=36"`
+	ApprovedByID   *string `json:"approved_by" validate:"omitempty,min=36,max=36"`
+	Quantity       string  `json:"quantity" validate:"required"`
+	Status         string  `json:"status" validate:"required"`
+	TransferDate   string  `json:"transfer_date" validate:"required"`
 }
 
 func (app *NewTransferOrder) Decode(data []byte) error {
@@ -116,9 +121,13 @@ func toBusNewTransferOrder(app NewTransferOrder) (transferorderbus.NewTransferOr
 		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse requestedByID: %s", err)
 	}
 
-	approvedByID, err := uuid.Parse(app.ApprovedByID)
-	if err != nil {
-		return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse approvedByID: %s", err)
+	var approvedByID *uuid.UUID
+	if app.ApprovedByID != nil {
+		parsed, err := uuid.Parse(*app.ApprovedByID)
+		if err != nil {
+			return transferorderbus.NewTransferOrder{}, errs.Newf(errs.InvalidArgument, "parse approvedByID: %s", err)
+		}
+		approvedByID = &parsed
 	}
 
 	quantity, err := strconv.Atoi(app.Quantity)
@@ -142,6 +151,22 @@ func toBusNewTransferOrder(app NewTransferOrder) (transferorderbus.NewTransferOr
 		TransferDate:   transferDate,
 	}
 	return bus, nil
+}
+
+// ApproveRequest contains information needed to approve a transfer order.
+type ApproveRequest struct {
+	ApprovedBy string `json:"approved_by" validate:"required,min=36,max=36"`
+}
+
+func (app *ApproveRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+func (app ApproveRequest) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
 }
 
 type UpdateTransferOrder struct {

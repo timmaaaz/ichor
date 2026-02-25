@@ -25,6 +25,7 @@ type QueryParams struct {
 	Rack               string
 	Shelf              string
 	Bin                string
+	LocationCode       string
 	IsPickLocation     string
 	IsReserveLocation  string
 	MaxCapacity        string
@@ -41,6 +42,7 @@ type InventoryLocation struct {
 	Rack               string `json:"rack"`
 	Shelf              string `json:"shelf"`
 	Bin                string `json:"bin"`
+	LocationCode       string `json:"location_code"`
 	IsPickLocation     string `json:"is_pick_location"`
 	IsReserveLocation  string `json:"is_reserve_location"`
 	MaxCapacity        string `json:"max_capacity"`
@@ -55,6 +57,11 @@ func (app InventoryLocation) Encode() ([]byte, string, error) {
 }
 
 func ToAppInventoryLocation(bus inventorylocationbus.InventoryLocation) InventoryLocation {
+	locationCode := ""
+	if bus.LocationCode != nil {
+		locationCode = *bus.LocationCode
+	}
+
 	return InventoryLocation{
 		LocationID:         bus.LocationID.String(),
 		WarehouseID:        bus.WarehouseID.String(),
@@ -63,6 +70,7 @@ func ToAppInventoryLocation(bus inventorylocationbus.InventoryLocation) Inventor
 		Rack:               bus.Rack,
 		Shelf:              bus.Shelf,
 		Bin:                bus.Bin,
+		LocationCode:       locationCode,
 		IsPickLocation:     fmt.Sprintf("%t", bus.IsPickLocation),
 		IsReserveLocation:  fmt.Sprintf("%t", bus.IsReserveLocation),
 		MaxCapacity:        fmt.Sprintf("%d", bus.MaxCapacity),
@@ -87,6 +95,7 @@ type NewInventoryLocation struct {
 	Rack               string `json:"rack" validate:"required"`
 	Shelf              string `json:"shelf" validate:"required"`
 	Bin                string `json:"bin" validate:"required"`
+	LocationCode       string `json:"location_code" validate:"omitempty,max=100"`
 	IsPickLocation     string `json:"is_pick_location" validate:"required"`
 	IsReserveLocation  string `json:"is_reserve_location" validate:"required"`
 	MaxCapacity        string `json:"max_capacity" validate:"required"`
@@ -136,6 +145,11 @@ func toBusNewInventoryLocation(app NewInventoryLocation) (inventorylocationbus.N
 		return inventorylocationbus.NewInventoryLocation{}, err
 	}
 
+	var locationCode *string
+	if app.LocationCode != "" {
+		locationCode = &app.LocationCode
+	}
+
 	return inventorylocationbus.NewInventoryLocation{
 		WarehouseID:        warehouseID,
 		ZoneID:             zoneID,
@@ -143,6 +157,7 @@ func toBusNewInventoryLocation(app NewInventoryLocation) (inventorylocationbus.N
 		Rack:               app.Rack,
 		Shelf:              app.Shelf,
 		Bin:                app.Bin,
+		LocationCode:       locationCode,
 		IsPickLocation:     isPL,
 		IsReserveLocation:  isRL,
 		MaxCapacity:        maxCapacity,
@@ -157,6 +172,7 @@ type UpdateInventoryLocation struct {
 	Rack               *string `json:"rack" validate:"omitempty"`
 	Shelf              *string `json:"shelf" validate:"omitempty"`
 	Bin                *string `json:"bin" validate:"omitempty"`
+	LocationCode       *string `json:"location_code" validate:"omitempty,max=100"`
 	IsPickLocation     *string `json:"is_pick_location" validate:"omitempty"`
 	IsReserveLocation  *string `json:"is_reserve_location" validate:"omitempty"`
 	MaxCapacity        *string `json:"max_capacity" validate:"omitempty"`
@@ -176,10 +192,11 @@ func (app UpdateInventoryLocation) Validate() error {
 
 func toBusUpdateInventoryLocation(app UpdateInventoryLocation) (inventorylocationbus.UpdateInventoryLocation, error) {
 	bus := inventorylocationbus.UpdateInventoryLocation{
-		Aisle: app.Aisle,
-		Rack:  app.Rack,
-		Shelf: app.Shelf,
-		Bin:   app.Bin,
+		Aisle:        app.Aisle,
+		Rack:         app.Rack,
+		Shelf:        app.Shelf,
+		Bin:          app.Bin,
+		LocationCode: app.LocationCode,
 	}
 
 	if app.WarehouseID != nil {

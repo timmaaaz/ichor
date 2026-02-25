@@ -43,13 +43,13 @@ func (s *Store) Create(ctx context.Context, status ordersbus.Order) error {
 	const q = `
 	INSERT INTO sales.orders (
 	  id, number, customer_id, due_date, order_fulfillment_status_id,
-	  order_date, billing_address_id, shipping_address_id,
+	  order_date, billing_address_id, shipping_address_id, assigned_to,
 	  subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
 	  currency_id, payment_term_id, notes,
 	  created_by, updated_by, created_date, updated_date
     ) VALUES (
         :id, :number, :customer_id, :due_date, :order_fulfillment_status_id,
-        :order_date, :billing_address_id, :shipping_address_id,
+        :order_date, :billing_address_id, :shipping_address_id, :assigned_to,
         :subtotal, :tax_rate, :tax_amount, :shipping_cost, :total_amount,
         :currency_id, :payment_term_id, :notes,
         :created_by, :updated_by, :created_date, :updated_date
@@ -82,6 +82,7 @@ func (s *Store) Update(ctx context.Context, status ordersbus.Order) error {
         order_date = :order_date,
         billing_address_id = :billing_address_id,
         shipping_address_id = :shipping_address_id,
+        assigned_to = :assigned_to,
         subtotal = :subtotal,
         tax_rate = :tax_rate,
         tax_amount = :tax_amount,
@@ -133,7 +134,7 @@ func (s *Store) Query(ctx context.Context, filter ordersbus.QueryFilter, orderBy
 	const q = `
 	SELECT
 		id, number, customer_id, due_date, order_fulfillment_status_id,
-		order_date, billing_address_id, shipping_address_id,
+		order_date, billing_address_id, shipping_address_id, assigned_to,
 		subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
 		currency_id, payment_term_id, notes,
 		created_by, updated_by, created_date, updated_date
@@ -195,7 +196,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (ordersbus.Or
 	const q = `
     SELECT
         id, number, customer_id, due_date, order_fulfillment_status_id,
-        order_date, billing_address_id, shipping_address_id,
+        order_date, billing_address_id, shipping_address_id, assigned_to,
         subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
         currency_id, payment_term_id, notes,
         created_by, updated_by, created_date, updated_date

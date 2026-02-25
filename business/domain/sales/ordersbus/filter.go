@@ -13,6 +13,7 @@ type QueryFilter struct {
 	FulfillmentStatusID *uuid.UUID
 	BillingAddressID    *uuid.UUID
 	ShippingAddressID   *uuid.UUID
+	AssignedTo          *uuid.UUID
 	CurrencyID          *uuid.UUID
 	PaymentTermID       *uuid.UUID
 	CreatedBy           *uuid.UUID

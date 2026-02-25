@@ -83,14 +83,24 @@ func ToAppPurchaseOrder(bus purchaseorderbus.PurchaseOrder) PurchaseOrder {
 		approvedBy = bus.ApprovedBy.String()
 	}
 
+	deliveryLocationID := ""
+	if bus.DeliveryLocationID != uuid.Nil {
+		deliveryLocationID = bus.DeliveryLocationID.String()
+	}
+
+	deliveryStreetID := ""
+	if bus.DeliveryStreetID != uuid.Nil {
+		deliveryStreetID = bus.DeliveryStreetID.String()
+	}
+
 	return PurchaseOrder{
 		ID:                      bus.ID.String(),
 		OrderNumber:             bus.OrderNumber,
 		SupplierID:              bus.SupplierID.String(),
 		PurchaseOrderStatusID:   bus.PurchaseOrderStatusID.String(),
 		DeliveryWarehouseID:     bus.DeliveryWarehouseID.String(),
-		DeliveryLocationID:      bus.DeliveryLocationID.String(),
-		DeliveryStreetID:        bus.DeliveryStreetID.String(),
+		DeliveryLocationID:      deliveryLocationID,
+		DeliveryStreetID:        deliveryStreetID,
 		OrderDate:               bus.OrderDate.Format(timeutil.FORMAT),
 		ExpectedDeliveryDate:    bus.ExpectedDeliveryDate.Format(timeutil.FORMAT),
 		ActualDeliveryDate:      actualDeliveryDate,

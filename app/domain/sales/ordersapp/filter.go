@@ -55,6 +55,14 @@ func parseFilter(qp QueryParams) (ordersbus.QueryFilter, error) {
 		filter.ShippingAddressID = &id
 	}
 
+	if qp.AssignedTo != "" {
+		id, err := uuid.Parse(qp.AssignedTo)
+		if err != nil {
+			return ordersbus.QueryFilter{}, errs.NewFieldsError("assigned_to", err)
+		}
+		filter.AssignedTo = &id
+	}
+
 	if qp.CurrencyID != "" {
 		id, err := uuid.Parse(qp.CurrencyID)
 		if err != nil {

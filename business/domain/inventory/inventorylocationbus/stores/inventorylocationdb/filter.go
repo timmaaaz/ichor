@@ -45,6 +45,11 @@ func applyFilter(filter inventorylocationbus.QueryFilter, data map[string]any, b
 		wc = append(wc, "bin = :bin")
 	}
 
+	if filter.LocationCode != nil {
+		data["location_code"] = "%" + *filter.LocationCode + "%"
+		wc = append(wc, "location_code ILIKE :location_code")
+	}
+
 	if filter.IsPickLocation != nil {
 		data["is_pick_location"] = *filter.IsPickLocation
 		wc = append(wc, "is_pick_location = :is_pick_location")

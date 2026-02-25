@@ -48,10 +48,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventorylocationbus.Store
 func (s *Store) Create(ctx context.Context, il inventorylocationbus.InventoryLocation) error {
 	const q = `
 	INSERT INTO inventory.inventory_locations (
-		id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
+		id, zone_id, warehouse_id, aisle, rack, shelf, bin, location_code, is_pick_location,
 		is_reserve_location, max_capacity, current_utilization, created_date, updated_date
 	) VALUES (
-		:id, :zone_id, :warehouse_id, :aisle, :rack, :shelf, :bin, :is_pick_location, 
+		:id, :zone_id, :warehouse_id, :aisle, :rack, :shelf, :bin, :location_code, :is_pick_location,
         :is_reserve_location, :max_capacity, :current_utilization, :created_date, :updated_date
     )
 	`
@@ -75,20 +75,21 @@ func (s *Store) Update(ctx context.Context, il inventorylocationbus.InventoryLoc
     UPDATE
         inventory.inventory_locations
     SET
-		id = :id, 
-		zone_id = :zone_id, 
-		warehouse_id = :warehouse_id, 
-		aisle = :aisle, 
-		rack = :rack, 
-		shelf = :shelf, 
-		bin = :bin, 
-		is_pick_location = :is_pick_location, 
-		is_reserve_location = :is_reserve_location, 
-		max_capacity = :max_capacity, 
-		current_utilization = :current_utilization, 
-		created_date = :created_date, 
+		id = :id,
+		zone_id = :zone_id,
+		warehouse_id = :warehouse_id,
+		aisle = :aisle,
+		rack = :rack,
+		shelf = :shelf,
+		bin = :bin,
+		location_code = :location_code,
+		is_pick_location = :is_pick_location,
+		is_reserve_location = :is_reserve_location,
+		max_capacity = :max_capacity,
+		current_utilization = :current_utilization,
+		created_date = :created_date,
 		updated_date = :updated_date
-	WHERE 
+	WHERE
 		id = :id
     `
 
@@ -128,9 +129,9 @@ func (s *Store) Query(ctx context.Context, filter inventorylocationbus.QueryFilt
 
 	const q = `
 	SELECT
-		id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
+		id, zone_id, warehouse_id, aisle, rack, shelf, bin, location_code, is_pick_location,
 		is_reserve_location, max_capacity, current_utilization, created_date, updated_date
-	FROM 
+	FROM
 		inventory.inventory_locations
 	`
 
@@ -186,9 +187,9 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (inventorylocationb
 
 	const q = `
     SELECT
-        id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, 
+        id, zone_id, warehouse_id, aisle, rack, shelf, bin, location_code, is_pick_location,
         is_reserve_location, max_capacity, current_utilization, created_date, updated_date
-    FROM 
+    FROM
         inventory.inventory_locations
     WHERE
         id = :id

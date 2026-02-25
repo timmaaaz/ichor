@@ -138,6 +138,9 @@ func (b *Business) Update(ctx context.Context, order Order, uo UpdateOrder) (Ord
 	if uo.ShippingAddressID != nil {
 		order.ShippingAddressID = uo.ShippingAddressID
 	}
+	if uo.AssignedTo != nil {
+		order.AssignedTo = uo.AssignedTo
+	}
 	if uo.Subtotal != nil {
 		order.Subtotal = *uo.Subtotal
 	}

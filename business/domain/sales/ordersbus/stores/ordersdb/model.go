@@ -19,6 +19,7 @@ type dbOrder struct {
 	OrderDate           time.Time      `db:"order_date"`
 	BillingAddressID    *uuid.UUID     `db:"billing_address_id"`
 	ShippingAddressID   *uuid.UUID     `db:"shipping_address_id"`
+	AssignedTo          *uuid.UUID     `db:"assigned_to"`
 	Subtotal            sql.NullString `db:"subtotal"`
 	TaxRate             sql.NullString `db:"tax_rate"`
 	TaxAmount           sql.NullString `db:"tax_amount"`
@@ -68,12 +69,13 @@ func toBusOrder(db dbOrder) (ordersbus.Order, error) {
 		OrderDate:           db.OrderDate.In(time.Local),
 		BillingAddressID:    db.BillingAddressID,
 		ShippingAddressID:   db.ShippingAddressID,
+		AssignedTo:          db.AssignedTo,
 		Subtotal:            subtotal,
 		TaxRate:             taxRate,
 		TaxAmount:           taxAmount,
 		ShippingCost:        shippingCost,
 		TotalAmount:         totalAmount,
-		CurrencyID:            db.CurrencyID,
+		CurrencyID:          db.CurrencyID,
 		PaymentTermID:       db.PaymentTermID,
 		Notes:               db.Notes,
 		CreatedBy:           db.CreatedBy,
@@ -105,12 +107,13 @@ func toDBOrder(bus ordersbus.Order) dbOrder {
 		OrderDate:           bus.OrderDate.UTC(),
 		BillingAddressID:    bus.BillingAddressID,
 		ShippingAddressID:   bus.ShippingAddressID,
+		AssignedTo:          bus.AssignedTo,
 		Subtotal:            bus.Subtotal.DBValue(),
 		TaxRate:             bus.TaxRate.DBValue(),
 		TaxAmount:           bus.TaxAmount.DBValue(),
 		ShippingCost:        bus.ShippingCost.DBValue(),
 		TotalAmount:         bus.TotalAmount.DBValue(),
-		CurrencyID:            bus.CurrencyID,
+		CurrencyID:          bus.CurrencyID,
 		PaymentTermID:       bus.PaymentTermID,
 		Notes:               bus.Notes,
 		CreatedBy:           bus.CreatedBy,

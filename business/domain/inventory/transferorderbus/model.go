@@ -12,28 +12,28 @@ import (
 // expect snake_case keys to match API conventions.
 
 type TransferOrder struct {
-	TransferID     uuid.UUID `json:"transfer_id"` // TODO: these should be id
-	ProductID      uuid.UUID `json:"product_id"`
-	FromLocationID uuid.UUID `json:"from_location_id"`
-	ToLocationID   uuid.UUID `json:"to_location_id"`
-	RequestedByID  uuid.UUID `json:"requested_by_id"`
-	ApprovedByID   uuid.UUID `json:"approved_by_id"`
-	Quantity       int       `json:"quantity"`
-	Status         string    `json:"status"`
-	TransferDate   time.Time `json:"transfer_date"`
-	CreatedDate    time.Time `json:"created_date"`
-	UpdatedDate    time.Time `json:"updated_date"`
+	TransferID     uuid.UUID  `json:"transfer_id"` // TODO: these should be id
+	ProductID      uuid.UUID  `json:"product_id"`
+	FromLocationID uuid.UUID  `json:"from_location_id"`
+	ToLocationID   uuid.UUID  `json:"to_location_id"`
+	RequestedByID  uuid.UUID  `json:"requested_by_id"`
+	ApprovedByID   *uuid.UUID `json:"approved_by_id"`
+	Quantity       int        `json:"quantity"`
+	Status         string     `json:"status"`
+	TransferDate   time.Time  `json:"transfer_date"`
+	CreatedDate    time.Time  `json:"created_date"`
+	UpdatedDate    time.Time  `json:"updated_date"`
 }
 
 type NewTransferOrder struct {
-	ProductID      uuid.UUID `json:"product_id"`
-	FromLocationID uuid.UUID `json:"from_location_id"`
-	ToLocationID   uuid.UUID `json:"to_location_id"`
-	RequestedByID  uuid.UUID `json:"requested_by_id"`
-	ApprovedByID   uuid.UUID `json:"approved_by_id"`
-	Quantity       int       `json:"quantity"`
-	Status         string    `json:"status"`
-	TransferDate   time.Time `json:"transfer_date"`
+	ProductID      uuid.UUID  `json:"product_id"`
+	FromLocationID uuid.UUID  `json:"from_location_id"`
+	ToLocationID   uuid.UUID  `json:"to_location_id"`
+	RequestedByID  uuid.UUID  `json:"requested_by_id"`
+	ApprovedByID   *uuid.UUID `json:"approved_by_id"`
+	Quantity       int        `json:"quantity"`
+	Status         string     `json:"status"`
+	TransferDate   time.Time  `json:"transfer_date"`
 }
 
 type UpdateTransferOrder struct {

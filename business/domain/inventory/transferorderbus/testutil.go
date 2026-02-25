@@ -21,7 +21,7 @@ func TestNewTransferOrders(n int, productIDs, fromLocationIDs, toLocationIDs, re
 			FromLocationID: fromLocationIDs[idx%len(fromLocationIDs)],
 			ToLocationID:   toLocationIDs[idx%len(toLocationIDs)],
 			RequestedByID:  requestedBy[idx%len(requestedBy)],
-			ApprovedByID:   approvedBy[idx%len(approvedBy)],
+			ApprovedByID:   func() *uuid.UUID { v := approvedBy[idx%len(approvedBy)]; return &v }(),
 			Quantity:       idx,
 			Status:         fmt.Sprintf("status%d", idx%5),
 			TransferDate:   time.Now(),

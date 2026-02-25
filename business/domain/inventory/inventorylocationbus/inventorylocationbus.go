@@ -80,6 +80,7 @@ func (b *Business) Create(ctx context.Context, newInvLocation NewInventoryLocati
 		Bin:                newInvLocation.Bin,
 		Rack:               newInvLocation.Rack,
 		Shelf:              newInvLocation.Shelf,
+		LocationCode:       newInvLocation.LocationCode,
 		IsPickLocation:     newInvLocation.IsPickLocation,
 		IsReserveLocation:  newInvLocation.IsReserveLocation,
 		MaxCapacity:        newInvLocation.MaxCapacity,
@@ -128,6 +129,9 @@ func (b *Business) Update(ctx context.Context, invLocation InventoryLocation, u 
 	}
 	if u.Bin != nil {
 		invLocation.Bin = *u.Bin
+	}
+	if u.LocationCode != nil {
+		invLocation.LocationCode = u.LocationCode
 	}
 	if u.IsPickLocation != nil {
 		invLocation.IsPickLocation = *u.IsPickLocation
