@@ -117,32 +117,32 @@ func toBusNewInventoryLocation(app NewInventoryLocation) (inventorylocationbus.N
 
 	warehouseID, err := uuid.Parse(app.WarehouseID)
 	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, err
+		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse warehouseID: %s", err)
 	}
 
 	zoneID, err := uuid.Parse(app.ZoneID)
 	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, err
+		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse zoneID: %s", err)
 	}
 
 	maxCapacity, err := strconv.Atoi(app.MaxCapacity)
 	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, err
+		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse maxCapacity: %s", err)
 	}
 
 	cu, err := types.ParseRoundedFloat(app.CurrentUtilization)
 	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, err
+		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse currentUtilization: %s", err)
 	}
 
 	isPL, err := strconv.ParseBool(app.IsPickLocation)
 	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, err
+		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse isPickLocation: %s", err)
 	}
 
 	isRL, err := strconv.ParseBool(app.IsReserveLocation)
 	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, err
+		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse isReserveLocation: %s", err)
 	}
 
 	var locationCode *string

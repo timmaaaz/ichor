@@ -179,6 +179,10 @@ func (s *Store) Count(ctx context.Context, filter productbus.QueryFilter) (int, 
 
 // QueryByIDs retrieves a list of products from the database by their IDs.
 func (s *Store) QueryByIDs(ctx context.Context, productIDs []uuid.UUID) ([]productbus.Product, error) {
+	if len(productIDs) == 0 {
+		return nil, nil
+	}
+
 	uuidStrings := make([]string, len(productIDs))
 	for i, id := range productIDs {
 		uuidStrings[i] = id.String()

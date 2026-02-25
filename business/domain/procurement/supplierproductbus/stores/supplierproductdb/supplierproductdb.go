@@ -73,7 +73,6 @@ func (s *Store) Update(ctx context.Context, ch supplierproductbus.SupplierProduc
     UPDATE
         procurement.supplier_products
     SET
-		id = :id,
 		supplier_id = :supplier_id,
 		product_id = :product_id,
 		supplier_part_number = :supplier_part_number,
@@ -82,7 +81,6 @@ func (s *Store) Update(ctx context.Context, ch supplierproductbus.SupplierProduc
 		lead_time_days = :lead_time_days,
 		unit_cost = :unit_cost,
 		is_primary_supplier = :is_primary_supplier,
-		created_date = :created_date,
 		updated_date = :updated_date
     WHERE
         id = :id`
@@ -170,6 +168,10 @@ func (s *Store) Count(ctx context.Context, filter supplierproductbus.QueryFilter
 
 // QueryByIDs retrieves a list of supplier products from the database by their IDs.
 func (s *Store) QueryByIDs(ctx context.Context, supplierProductIDs []uuid.UUID) ([]supplierproductbus.SupplierProduct, error) {
+	if len(supplierProductIDs) == 0 {
+		return nil, nil
+	}
+
 	uuidStrings := make([]string, len(supplierProductIDs))
 	for i, id := range supplierProductIDs {
 		uuidStrings[i] = id.String()

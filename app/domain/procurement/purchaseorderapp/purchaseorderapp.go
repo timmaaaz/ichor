@@ -140,7 +140,7 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (PurchaseOrder, error
 
 // QueryByIDs retrieves purchase orders by their ids.
 func (a *App) QueryByIDs(ctx context.Context, ids []string) (PurchaseOrders, error) {
-	uuids, err := toBusIDs(ids)
+	uuids, err := query.ParseIDs(ids)
 	if err != nil {
 		return nil, errs.NewFieldsError("ids", err)
 	}

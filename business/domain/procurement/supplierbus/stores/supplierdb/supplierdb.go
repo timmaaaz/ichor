@@ -73,7 +73,6 @@ func (s *Store) Update(ctx context.Context, supplier supplierbus.Supplier) error
 	UPDATE
 		procurement.suppliers
 	SET
-	    id = :id,
         contact_infos_id = :contact_infos_id,
         name = :name,
         payment_term_id = :payment_term_id,
@@ -170,6 +169,10 @@ func (s *Store) Count(ctx context.Context, filter supplierbus.QueryFilter) (int,
 
 // QueryByIDs retrieves a list of suppliers from the database by their IDs.
 func (s *Store) QueryByIDs(ctx context.Context, supplierIDs []uuid.UUID) ([]supplierbus.Supplier, error) {
+	if len(supplierIDs) == 0 {
+		return nil, nil
+	}
+
 	uuidStrings := make([]string, len(supplierIDs))
 	for i, id := range supplierIDs {
 		uuidStrings[i] = id.String()

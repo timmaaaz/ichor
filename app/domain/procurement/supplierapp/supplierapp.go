@@ -129,7 +129,7 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Supplier]
 
 // QueryByIDs retrieves multiple suppliers by their IDs.
 func (a *App) QueryByIDs(ctx context.Context, ids []string) (Suppliers, error) {
-	uuids, err := toBusIDs(ids)
+	uuids, err := query.ParseIDs(ids)
 	if err != nil {
 		return nil, errs.New(errs.InvalidArgument, err)
 	}

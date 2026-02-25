@@ -1,4 +1,4 @@
-package supplierapi_test
+package supplierproductapi_test
 
 import (
 	"github.com/google/go-cmp/cmp"

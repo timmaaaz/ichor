@@ -52,9 +52,13 @@ func toDBInvLocation(bus inventorylocationbus.InventoryLocation) inventoryLocati
 }
 
 func toBusInvLocation(db inventoryLocation) (inventorylocationbus.InventoryLocation, error) {
-	utilization, err := types.ParseRoundedFloat(db.CurrentUtilization.String)
-	if err != nil {
-		return inventorylocationbus.InventoryLocation{}, fmt.Errorf("toBusInvLocation: failed to parse float from db %w", err)
+	var utilization types.RoundedFloat
+	if db.CurrentUtilization.Valid && db.CurrentUtilization.String != "" {
+		var err error
+		utilization, err = types.ParseRoundedFloat(db.CurrentUtilization.String)
+		if err != nil {
+			return inventorylocationbus.InventoryLocation{}, fmt.Errorf("toBusInvLocation: failed to parse float from db %w", err)
+		}
 	}
 
 	var locationCode *string

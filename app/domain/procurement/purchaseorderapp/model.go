@@ -504,15 +504,4 @@ func (app ApproveRequest) Validate() error {
 	return nil
 }
 
-// toBusIDs converts a slice of string IDs to a slice of UUIDs.
-func toBusIDs(ids []string) ([]uuid.UUID, error) {
-	uuids := make([]uuid.UUID, len(ids))
-	for i, id := range ids {
-		uid, err := uuid.Parse(id)
-		if err != nil {
-			return nil, fmt.Errorf("parse id[%d]: %w", i, err)
-		}
-		uuids[i] = uid
-	}
-	return uuids, nil
-}
+

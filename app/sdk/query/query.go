@@ -3,7 +3,9 @@ package query
 
 import (
 	"encoding/json"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
@@ -29,4 +31,18 @@ func NewResult[T any](items []T, total int, page page.Page) Result[T] {
 func (r Result[T]) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(r)
 	return data, "application/json", err
+}
+
+// ParseIDs converts a slice of string UUIDs into a slice of uuid.UUID values.
+// Used by batch query endpoints to parse IDs from request bodies.
+func ParseIDs(ids []string) ([]uuid.UUID, error) {
+	uuids := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return nil, fmt.Errorf("parse id[%d]: %w", i, err)
+		}
+		uuids[i] = uid
+	}
+	return uuids, nil
 }

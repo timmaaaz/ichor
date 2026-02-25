@@ -1,4 +1,4 @@
-package supplierapi_test
+package supplierproductapi_test
 
 import (
 	"context"
