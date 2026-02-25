@@ -20,4 +20,7 @@ type QueryFilter struct {
 	EndOrderDate            *time.Time
 	StartExpectedDelivery   *time.Time
 	EndExpectedDelivery     *time.Time
+	StartActualDeliveryDate *time.Time
+	EndActualDeliveryDate   *time.Time
+	IsUndelivered           *bool
 }

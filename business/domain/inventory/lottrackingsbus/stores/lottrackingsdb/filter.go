@@ -60,6 +60,11 @@ func applyFilter(filter lottrackingsbus.QueryFilter, data map[string]any, buf *b
 		wc = append(wc, "quality_status = :quality_status")
 	}
 
+	if filter.ProductID != nil {
+		data["products_product_id"] = *filter.ProductID
+		wc = append(wc, "product_id IN (SELECT id FROM procurement.supplier_products WHERE product_id = :products_product_id)")
+	}
+
 	if filter.CreatedDate != nil {
 		data["created_date"] = *filter.CreatedDate
 		wc = append(wc, "created_date = :created_date")

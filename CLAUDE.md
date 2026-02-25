@@ -27,6 +27,18 @@ When implementing a plan that adds or removes tools/endpoints, update test asser
 
 Before proposing an implementation plan, thoroughly explore the existing codebase structure first. Do not assume architecture — check for existing routing systems, naming conventions, and patterns already in use.
 
+When planning or implementing any domain change, all layers must be accounted for — no layer is optional:
+
+1. **Business layer** — model, filter, storer interface, business methods
+2. **DB layer** — db model (null types), SQL queries, filter WHERE clauses, store implementation
+3. **App layer** — app model, QueryParams, parseFilter, conversion functions (toBus*/toApp*)
+4. **API layer** — HTTP handlers, route registration
+5. **Migration** — any schema changes (new column, new table, index)
+6. **Unit tests** — business layer tests for new methods/filters
+7. **Integration tests** — `api/cmd/services/ichor/tests/` for new endpoints or query params
+
+Do not mark a domain change complete unless all 7 layers have been addressed or explicitly confirmed as not applicable.
+
 ## Git Workflow
 
 When the user asks to commit and push, use a descriptive conventional commit message and include all relevant changed files. Do not ask for confirmation unless the diff is unusually large.

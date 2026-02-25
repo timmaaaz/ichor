@@ -64,6 +64,58 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	return table
 }
 
+func queryIsUndelivered200(sd apitest.SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "is-undelivered-true",
+			URL:        "/v1/procurement/purchase-orders?page=1&rows=10&orderBy=orderNumber,ASC&isUndelivered=true",
+			Token:      sd.Users[0].Token,
+			StatusCode: 200,
+			Method:     "GET",
+			GotResp:    &query.Result[purchaseorderapp.PurchaseOrder]{},
+			ExpResp: &query.Result[purchaseorderapp.PurchaseOrder]{
+				Page:        1,
+				RowsPerPage: 10,
+				Total:       10,
+				Items:       sd.PurchaseOrders[:10],
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp := got.(*query.Result[purchaseorderapp.PurchaseOrder])
+				expResp := exp.(*query.Result[purchaseorderapp.PurchaseOrder])
+
+				dbtest.NormalizeJSONFields(gotResp, &expResp)
+
+				sort.Slice(gotResp.Items, func(i, j int) bool {
+					return gotResp.Items[i].OrderNumber < gotResp.Items[j].OrderNumber
+				})
+				sort.Slice(expResp.Items, func(i, j int) bool {
+					return expResp.Items[i].OrderNumber < expResp.Items[j].OrderNumber
+				})
+
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "is-undelivered-false",
+			URL:        "/v1/procurement/purchase-orders?page=1&rows=10&orderBy=orderNumber,ASC&isUndelivered=false",
+			Token:      sd.Users[0].Token,
+			StatusCode: 200,
+			Method:     "GET",
+			GotResp:    &query.Result[purchaseorderapp.PurchaseOrder]{},
+			ExpResp: &query.Result[purchaseorderapp.PurchaseOrder]{
+				Page:        1,
+				RowsPerPage: 10,
+				Total:       0,
+				Items:       []purchaseorderapp.PurchaseOrder{},
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+	return table
+}
+
 func queryByIDs200(sd apitest.SeedData) []apitest.Table {
 	ids := []string{sd.PurchaseOrders[0].ID, sd.PurchaseOrders[1].ID}
 	expected := purchaseorderapp.PurchaseOrders{sd.PurchaseOrders[0], sd.PurchaseOrders[1]}

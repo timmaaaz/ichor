@@ -18,6 +18,7 @@ func Test_ProductCost(t *testing.T) {
 
 	test.Run(t, queryByID200(sd), "query-by-id-200")
 	test.Run(t, query200(sd), "query-200")
+	test.Run(t, queryByProductID200(sd), "query-by-product-id-200")
 
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, create400(sd), "create-400")

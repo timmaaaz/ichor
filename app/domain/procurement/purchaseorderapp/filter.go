@@ -1,6 +1,7 @@
 package purchaseorderapp
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -94,6 +95,30 @@ func parseFilter(qp QueryParams) (purchaseorderbus.QueryFilter, error) {
 			return purchaseorderbus.QueryFilter{}, errs.NewFieldsError("endExpectedDelivery", err)
 		}
 		filter.EndExpectedDelivery = &t
+	}
+
+	if qp.StartActualDeliveryDate != "" {
+		t, err := time.Parse(timeutil.FORMAT, qp.StartActualDeliveryDate)
+		if err != nil {
+			return purchaseorderbus.QueryFilter{}, errs.NewFieldsError("startActualDeliveryDate", err)
+		}
+		filter.StartActualDeliveryDate = &t
+	}
+
+	if qp.EndActualDeliveryDate != "" {
+		t, err := time.Parse(timeutil.FORMAT, qp.EndActualDeliveryDate)
+		if err != nil {
+			return purchaseorderbus.QueryFilter{}, errs.NewFieldsError("endActualDeliveryDate", err)
+		}
+		filter.EndActualDeliveryDate = &t
+	}
+
+	if qp.IsUndelivered != "" {
+		b, err := strconv.ParseBool(qp.IsUndelivered)
+		if err != nil {
+			return purchaseorderbus.QueryFilter{}, errs.NewFieldsError("isUndelivered", err)
+		}
+		filter.IsUndelivered = &b
 	}
 
 	return filter, nil

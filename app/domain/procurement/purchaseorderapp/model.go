@@ -23,10 +23,13 @@ type QueryParams struct {
 	DeliveryWarehouseID   string
 	RequestedBy           string
 	ApprovedBy            string
-	StartOrderDate        string
-	EndOrderDate          string
-	StartExpectedDelivery string
-	EndExpectedDelivery   string
+	StartOrderDate          string
+	EndOrderDate            string
+	StartExpectedDelivery   string
+	EndExpectedDelivery     string
+	StartActualDeliveryDate string
+	EndActualDeliveryDate   string
+	IsUndelivered           string
 }
 
 // PurchaseOrder represents a purchase order response.

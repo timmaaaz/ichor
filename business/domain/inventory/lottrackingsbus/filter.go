@@ -17,6 +17,7 @@ type QueryFilter struct {
 	RecievedDate      *time.Time
 	Quantity          *int
 	QualityStatus     *string
+	ProductID         *uuid.UUID
 	CreatedDate       *time.Time
 	UpdatedDate       *time.Time
 }

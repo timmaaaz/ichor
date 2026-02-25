@@ -23,6 +23,7 @@ func parseQueryParams(r *http.Request) (lottrackingsapp.QueryParams, error) {
 		RecievedDate:      values.Get("recieved_date"),
 		Quantity:          values.Get("quantity"),
 		QualityStatus:     values.Get("quality_status"),
+		ProductID:         values.Get("product_id"),
 		CreatedDate:       values.Get("created_date"),
 		UpdatedDate:       values.Get("updated_date"),
 	}

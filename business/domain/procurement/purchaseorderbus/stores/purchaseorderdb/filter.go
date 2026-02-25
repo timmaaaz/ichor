@@ -65,6 +65,24 @@ func applyFilter(filter purchaseorderbus.QueryFilter, data map[string]any, buf *
 		wc = append(wc, "expected_delivery_date <= :end_expected_delivery")
 	}
 
+	if filter.StartActualDeliveryDate != nil {
+		data["start_actual_delivery_date"] = *filter.StartActualDeliveryDate
+		wc = append(wc, "actual_delivery_date >= :start_actual_delivery_date")
+	}
+
+	if filter.EndActualDeliveryDate != nil {
+		data["end_actual_delivery_date"] = *filter.EndActualDeliveryDate
+		wc = append(wc, "actual_delivery_date <= :end_actual_delivery_date")
+	}
+
+	if filter.IsUndelivered != nil {
+		if *filter.IsUndelivered {
+			wc = append(wc, "actual_delivery_date IS NULL")
+		} else {
+			wc = append(wc, "actual_delivery_date IS NOT NULL")
+		}
+	}
+
 	if len(wc) > 0 {
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wc, " AND "))

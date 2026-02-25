@@ -85,6 +85,14 @@ func parseFilter(qp QueryParams) (lottrackingsbus.QueryFilter, error) {
 		filter.QualityStatus = &qp.QualityStatus
 	}
 
+	if qp.ProductID != "" {
+		id, err := uuid.Parse(qp.ProductID)
+		if err != nil {
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("product_id", err)
+		}
+		filter.ProductID = &id
+	}
+
 	if qp.CreatedDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.CreatedDate)
 		if err != nil {

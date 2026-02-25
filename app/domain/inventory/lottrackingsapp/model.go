@@ -63,6 +63,7 @@ type QueryParams struct {
 	RecievedDate      string
 	Quantity          string
 	QualityStatus     string
+	ProductID         string
 	CreatedDate       string
 	UpdatedDate       string
 }

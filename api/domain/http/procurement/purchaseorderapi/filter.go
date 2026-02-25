@@ -20,10 +20,13 @@ func parseQueryParams(r *http.Request) (purchaseorderapp.QueryParams, error) {
 		DeliveryWarehouseID:   values.Get("deliveryWarehouseId"),
 		RequestedBy:           values.Get("requestedBy"),
 		ApprovedBy:            values.Get("approvedBy"),
-		StartOrderDate:        values.Get("startOrderDate"),
-		EndOrderDate:          values.Get("endOrderDate"),
-		StartExpectedDelivery: values.Get("startExpectedDelivery"),
-		EndExpectedDelivery:   values.Get("endExpectedDelivery"),
+		StartOrderDate:          values.Get("startOrderDate"),
+		EndOrderDate:            values.Get("endOrderDate"),
+		StartExpectedDelivery:   values.Get("startExpectedDelivery"),
+		EndExpectedDelivery:     values.Get("endExpectedDelivery"),
+		StartActualDeliveryDate: values.Get("startActualDeliveryDate"),
+		EndActualDeliveryDate:   values.Get("endActualDeliveryDate"),
+		IsUndelivered:           values.Get("isUndelivered"),
 	}
 
 	return qp, nil
