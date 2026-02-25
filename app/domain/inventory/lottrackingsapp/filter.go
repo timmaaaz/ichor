@@ -49,6 +49,22 @@ func parseFilter(qp QueryParams) (lottrackingsbus.QueryFilter, error) {
 		filter.ExpirationDate = &date
 	}
 
+	if qp.ExpiryBefore != "" {
+		date, err := time.Parse(timeutil.FORMAT, qp.ExpiryBefore)
+		if err != nil {
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("expiry_before", err)
+		}
+		filter.ExpirationDateBefore = &date
+	}
+
+	if qp.ExpiryAfter != "" {
+		date, err := time.Parse(timeutil.FORMAT, qp.ExpiryAfter)
+		if err != nil {
+			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("expiry_after", err)
+		}
+		filter.ExpirationDateAfter = &date
+	}
+
 	if qp.RecievedDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.RecievedDate)
 		if err != nil {

@@ -8,17 +8,18 @@ import (
 )
 
 type inventoryAdjustment struct {
-	InventoryAdjustmentID uuid.UUID `db:"id"`
-	ProductID             uuid.UUID `db:"product_id"`
-	LocationID            uuid.UUID `db:"location_id"`
-	AdjustedBy            uuid.UUID `db:"adjusted_by"`
-	ApprovedBy            uuid.UUID `db:"approved_by"`
-	QuantityChange        int       `db:"quantity_change"`
-	ReasonCode            string    `db:"reason_code"`
-	Notes                 string    `db:"notes"`
-	AdjustmentDate        time.Time `db:"adjustment_date"`
-	CreatedDate           time.Time `db:"created_date"`
-	UpdatedDate           time.Time `db:"updated_date"`
+	InventoryAdjustmentID uuid.UUID  `db:"id"`
+	ProductID             uuid.UUID  `db:"product_id"`
+	LocationID            uuid.UUID  `db:"location_id"`
+	AdjustedBy            uuid.UUID  `db:"adjusted_by"`
+	ApprovedBy            *uuid.UUID `db:"approved_by"`
+	ApprovalStatus        string     `db:"approval_status"`
+	QuantityChange        int        `db:"quantity_change"`
+	ReasonCode            string     `db:"reason_code"`
+	Notes                 string     `db:"notes"`
+	AdjustmentDate        time.Time  `db:"adjustment_date"`
+	CreatedDate           time.Time  `db:"created_date"`
+	UpdatedDate           time.Time  `db:"updated_date"`
 }
 
 func toBusInventoryAdjustment(ia inventoryAdjustment) inventoryadjustmentbus.InventoryAdjustment {
@@ -28,6 +29,7 @@ func toBusInventoryAdjustment(ia inventoryAdjustment) inventoryadjustmentbus.Inv
 		LocationID:            ia.LocationID,
 		AdjustedBy:            ia.AdjustedBy,
 		ApprovedBy:            ia.ApprovedBy,
+		ApprovalStatus:        ia.ApprovalStatus,
 		QuantityChange:        ia.QuantityChange,
 		ReasonCode:            ia.ReasonCode,
 		Notes:                 ia.Notes,
@@ -52,6 +54,7 @@ func toDBInventoryAdjustment(ia inventoryadjustmentbus.InventoryAdjustment) inve
 		LocationID:            ia.LocationID,
 		AdjustedBy:            ia.AdjustedBy,
 		ApprovedBy:            ia.ApprovedBy,
+		ApprovalStatus:        ia.ApprovalStatus,
 		QuantityChange:        ia.QuantityChange,
 		ReasonCode:            ia.ReasonCode,
 		Notes:                 ia.Notes,

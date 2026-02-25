@@ -54,6 +54,10 @@ func parseFilter(qp QueryParams) (inventoryadjustmentbus.QueryFilter, error) {
 		filter.ApprovedBy = &id
 	}
 
+	if qp.ApprovalStatus != "" {
+		filter.ApprovalStatus = &qp.ApprovalStatus
+	}
+
 	if qp.QuantityChange != "" {
 		change, err := strconv.Atoi(qp.QuantityChange)
 		if err != nil {

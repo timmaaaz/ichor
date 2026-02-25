@@ -172,7 +172,7 @@ ichor_api
 ```
 
 ### SEQUENCE STEPS
-
+1
 ```
 1. frontend → chatapi: POST /v1/agent/chat\n{message, context_type, context, history}
 2. chatapi → prompt_builder: build system prompt

@@ -22,6 +22,8 @@ type QueryParams struct {
 	LotNumber         string
 	ManufactureDate   string
 	ExpirationDate    string
+	ExpiryBefore      string
+	ExpiryAfter       string
 	RecievedDate      string
 	Quantity          string
 	QualityStatus     string

@@ -940,7 +940,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding inventory transactions : %w", err)
 	}
 
-	inventoryAdjustments, err := inventoryadjustmentbus.TestSeedInventoryAdjustments(ctx, 20, productIDs, inventoryLocationsIDs, reporterIDs[:2], reporterIDs[2:], busDomain.InventoryAdjustment)
+	inventoryAdjustments, err := inventoryadjustmentbus.TestSeedInventoryAdjustments(ctx, 20, productIDs, inventoryLocationsIDs, reporterIDs[:2], busDomain.InventoryAdjustment)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding inventory adjustments : %w", err)
 	}

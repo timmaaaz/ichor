@@ -21,6 +21,7 @@ type QueryParams struct {
 	LocationID            string
 	AdjustedBy            string
 	ApprovedBy            string
+	ApprovalStatus        string
 	QuantityChange        string
 	ReasonCode            string
 	Notes                 string
@@ -35,6 +36,7 @@ type InventoryAdjustment struct {
 	LocationID            string `json:"location_id"`
 	AdjustedBy            string `json:"adjusted_by"`
 	ApprovedBy            string `json:"approved_by"`
+	ApprovalStatus        string `json:"approval_status"`
 	QuantityChange        string `json:"quantity_change"`
 	ReasonCode            string `json:"reason_code"`
 	Notes                 string `json:"notes"`
@@ -49,12 +51,18 @@ func (app InventoryAdjustment) Encode() ([]byte, string, error) {
 }
 
 func ToAppInventoryAdjustment(bus inventoryadjustmentbus.InventoryAdjustment) InventoryAdjustment {
+	approvedBy := ""
+	if bus.ApprovedBy != nil {
+		approvedBy = bus.ApprovedBy.String()
+	}
+
 	return InventoryAdjustment{
 		InventoryAdjustmentID: bus.InventoryAdjustmentID.String(),
 		ProductID:             bus.ProductID.String(),
 		LocationID:            bus.LocationID.String(),
 		AdjustedBy:            bus.AdjustedBy.String(),
-		ApprovedBy:            bus.ApprovedBy.String(),
+		ApprovedBy:            approvedBy,
+		ApprovalStatus:        bus.ApprovalStatus,
 		QuantityChange:        strconv.Itoa(bus.QuantityChange),
 		ReasonCode:            bus.ReasonCode,
 		Notes:                 bus.Notes,
@@ -76,7 +84,7 @@ type NewInventoryAdjustment struct {
 	ProductID      string `json:"product_id" validate:"required,min=36,max=36"`
 	LocationID     string `json:"location_id" validate:"required,min=36,max=36"`
 	AdjustedBy     string `json:"adjusted_by" validate:"required,min=36,max=36"`
-	ApprovedBy     string `json:"approved_by" validate:"required,min=36,max=36"`
+	ApprovedBy     string `json:"approved_by" validate:"omitempty,min=36,max=36"`
 	QuantityChange string `json:"quantity_change" validate:"required"`
 	ReasonCode     string `json:"reason_code" validate:"required"`
 	Notes          string `json:"notes" validate:"required"`
@@ -110,9 +118,13 @@ func toBusNewInventoryAdjustment(app NewInventoryAdjustment) (inventoryadjustmen
 		return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse adjustedBy: %s", err)
 	}
 
-	approvedBy, err := uuid.Parse(app.ApprovedBy)
-	if err != nil {
-		return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse approvedBy: %s", err)
+	var approvedBy *uuid.UUID
+	if app.ApprovedBy != "" {
+		id, err := uuid.Parse(app.ApprovedBy)
+		if err != nil {
+			return inventoryadjustmentbus.NewInventoryAdjustment{}, errs.Newf(errs.InvalidArgument, "parse approvedBy: %s", err)
+		}
+		approvedBy = &id
 	}
 
 	quantityChange, err := strconv.Atoi(app.QuantityChange)
@@ -143,6 +155,7 @@ type UpdateInventoryAdjustment struct {
 	LocationID     *string `json:"location_id" validate:"omitempty,min=36,max=36"`
 	AdjustedBy     *string `json:"adjusted_by" validate:"omitempty,min=36,max=36"`
 	ApprovedBy     *string `json:"approved_by" validate:"omitempty,min=36,max=36"`
+	ApprovalStatus *string `json:"approval_status" validate:"omitempty,oneof=pending approved rejected"`
 	QuantityChange *string `json:"quantity_change" validate:"omitempty"`
 	ReasonCode     *string `json:"reason_code" validate:"omitempty"`
 	Notes          *string `json:"notes" validate:"omitempty"`
@@ -162,8 +175,9 @@ func (app UpdateInventoryAdjustment) Validate() error {
 
 func toBusUpdateInventoryAdjustment(app UpdateInventoryAdjustment) (inventoryadjustmentbus.UpdateInventoryAdjustment, error) {
 	bus := inventoryadjustmentbus.UpdateInventoryAdjustment{
-		ReasonCode: app.ReasonCode,
-		Notes:      app.Notes,
+		ReasonCode:     app.ReasonCode,
+		Notes:          app.Notes,
+		ApprovalStatus: app.ApprovalStatus,
 	}
 
 	if app.ProductID != nil {

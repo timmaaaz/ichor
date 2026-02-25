@@ -35,6 +35,11 @@ func applyFilter(filter inventoryadjustmentbus.QueryFilter, data map[string]any,
 		wc = append(wc, "approved_by = :approved_by")
 	}
 
+	if filter.ApprovalStatus != nil {
+		data["approval_status"] = *filter.ApprovalStatus
+		wc = append(wc, "approval_status = :approval_status")
+	}
+
 	if filter.QuantityChange != nil {
 		data["quantity_change"] = *filter.QuantityChange
 		wc = append(wc, "quantity_change = :quantity_change")
@@ -69,5 +74,4 @@ func applyFilter(filter inventoryadjustmentbus.QueryFilter, data map[string]any,
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wc, " AND "))
 	}
-
 }

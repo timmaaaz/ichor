@@ -42,10 +42,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventoryadjustmentbus.Sto
 func (s *Store) Create(ctx context.Context, ia inventoryadjustmentbus.InventoryAdjustment) error {
 	const q = `
     INSERT INTO inventory.inventory_adjustments (
-        id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
+        id, product_id, location_id, adjusted_by, approved_by, approval_status, quantity_change, reason_code, 
 		notes, adjustment_date, created_date, updated_date
     ) VALUES (
-        :id, :product_id, :location_id, :adjusted_by, :approved_by, :quantity_change, :reason_code, 
+        :id, :product_id, :location_id, :adjusted_by, :approved_by, :approval_status, :quantity_change, :reason_code, 
 		:notes, :adjustment_date, :created_date, :updated_date
     )
     `
@@ -73,6 +73,7 @@ func (s *Store) Update(ctx context.Context, ia inventoryadjustmentbus.InventoryA
         location_id = :location_id,
         adjusted_by = :adjusted_by,
         approved_by = :approved_by,
+        approval_status = :approval_status,
         quantity_change = :quantity_change,
         reason_code = :reason_code,
         notes = :notes,
@@ -117,7 +118,7 @@ func (s *Store) Query(ctx context.Context, filter inventoryadjustmentbus.QueryFi
 
 	const q = `
 	SELECT
-	    id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
+	    id, product_id, location_id, adjusted_by, approved_by, approval_status, quantity_change, reason_code, 
         notes, adjustment_date, created_date, updated_date
 	FROM
 		inventory.inventory_adjustments`
@@ -173,7 +174,7 @@ func (s *Store) QueryByID(ctx context.Context, adjustmentID uuid.UUID) (inventor
 
 	const q = `
 	SELECT
-	    id, product_id, location_id, adjusted_by, approved_by, quantity_change, reason_code, 
+	    id, product_id, location_id, adjusted_by, approved_by, approval_status, quantity_change, reason_code, 
         notes, adjustment_date, created_date, updated_date
 	FROM 
 		inventory.inventory_adjustments

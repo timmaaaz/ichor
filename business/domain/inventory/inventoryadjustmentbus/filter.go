@@ -12,6 +12,7 @@ type QueryFilter struct {
 	LocationID            *uuid.UUID
 	AdjustedBy            *uuid.UUID
 	ApprovedBy            *uuid.UUID
+	ApprovalStatus        *string
 	QuantityChange        *int
 	ReasonCode            *string
 	Notes                 *string

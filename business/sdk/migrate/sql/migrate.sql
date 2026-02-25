@@ -2125,3 +2125,29 @@ CREATE INDEX idx_put_away_tasks_product  ON inventory.put_away_tasks(product_id)
 CREATE INDEX idx_put_away_tasks_location ON inventory.put_away_tasks(location_id);
 CREATE INDEX idx_put_away_tasks_assigned ON inventory.put_away_tasks(assigned_to)
     WHERE assigned_to IS NOT NULL;
+
+-- Version: 2.0
+-- Description: Add approval_status to inventory_adjustments and make approved_by nullable.
+-- Workers submit adjustments in "pending" state; supervisors approve/reject via PUT.
+ALTER TABLE inventory.inventory_adjustments
+    ADD COLUMN approval_status varchar(20) NOT NULL DEFAULT 'pending'
+        CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+    ALTER COLUMN approved_by DROP NOT NULL;
+
+-- Version: 2.01
+-- Description: Add config.settings table for operator-configurable system settings.
+-- Stores key-value pairs as JSONB. Seeded with inventory adjustment approval defaults.
+CREATE TABLE config.settings (
+    key          varchar(100) NOT NULL,
+    value        jsonb        NOT NULL,
+    description  text         NOT NULL DEFAULT '',
+    created_date TIMESTAMP    NOT NULL,
+    updated_date TIMESTAMP    NOT NULL,
+    PRIMARY KEY (key)
+);
+
+INSERT INTO config.settings (key, value, description, created_date, updated_date) VALUES
+    ('inventory.approval_mode',            '"all"',  'Approval mode for inventory adjustments: all | threshold | dollar_impact', NOW(), NOW()),
+    ('inventory.variance_threshold_units', '5',      'Unit variance threshold (used when approval_mode=threshold)', NOW(), NOW()),
+    ('inventory.variance_threshold_pct',   '0.10',   'Percent variance threshold (used when approval_mode=threshold)', NOW(), NOW()),
+    ('inventory.dollar_impact_threshold',  '50',     'Dollar impact threshold in USD (used when approval_mode=dollar_impact)', NOW(), NOW());

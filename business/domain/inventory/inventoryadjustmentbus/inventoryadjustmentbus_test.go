@@ -177,7 +177,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		userIDs[i] = u.ID
 	}
 
-	inventoryAdjustments, err := inventoryadjustmentbus.TestSeedInventoryAdjustments(ctx, 20, productIDs, inventoryLocationIDs, userIDs[:2], userIDs[2:], busDomain.InventoryAdjustment)
+	inventoryAdjustments, err := inventoryadjustmentbus.TestSeedInventoryAdjustments(ctx, 20, productIDs, inventoryLocationIDs, userIDs[:2], busDomain.InventoryAdjustment)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding inventory adjustments : %w", err)
 	}
@@ -289,7 +289,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					ProductID:      &sd.Products[0].ProductID,
 					LocationID:     &sd.InventoryLocations[0].LocationID,
 					AdjustedBy:     &sd.InventoryAdjustments[0].AdjustedBy,
-					ApprovedBy:     &sd.InventoryAdjustments[0].ApprovedBy,
+					ApprovedBy:     sd.InventoryAdjustments[0].ApprovedBy,
 					QuantityChange: dbtest.IntPointer(20),
 					ReasonCode:     dbtest.StringPointer("Adjustment"),
 					Notes:          dbtest.StringPointer("Updated adjustment"),

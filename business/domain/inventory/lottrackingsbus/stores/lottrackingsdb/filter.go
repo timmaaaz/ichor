@@ -25,6 +25,16 @@ func applyFilter(filter lottrackingsbus.QueryFilter, data map[string]any, buf *b
 		wc = append(wc, "expiration_date = :expiration_date")
 	}
 
+	if filter.ExpirationDateBefore != nil {
+		data["expiration_date_before"] = *filter.ExpirationDateBefore
+		wc = append(wc, "expiration_date < :expiration_date_before")
+	}
+
+	if filter.ExpirationDateAfter != nil {
+		data["expiration_date_after"] = *filter.ExpirationDateAfter
+		wc = append(wc, "expiration_date > :expiration_date_after")
+	}
+
 	if filter.Quantity != nil {
 		data["quantity"] = *filter.Quantity
 		wc = append(wc, "quantity = :quantity")

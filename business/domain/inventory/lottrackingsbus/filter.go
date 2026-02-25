@@ -11,7 +11,9 @@ type QueryFilter struct {
 	SupplierProductID *uuid.UUID
 	LotNumber         *string
 	ManufactureDate   *time.Time
-	ExpirationDate    *time.Time
+	ExpirationDate       *time.Time
+	ExpirationDateBefore *time.Time
+	ExpirationDateAfter  *time.Time
 	RecievedDate      *time.Time
 	Quantity          *int
 	QualityStatus     *string

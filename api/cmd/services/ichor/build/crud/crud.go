@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/core/roleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/userroleapi"
+	"github.com/timmaaaz/ichor/api/domain/http/config/settingsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/dataapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/reportstoapi"
@@ -166,6 +167,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/stores/settingsdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -579,6 +582,14 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		OrderLineItemsBus: orderLineItemsBus,
 		AuthClient:        cfg.AuthClient,
 		PermissionsBus:    permissionsBus,
+	})
+
+	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingsdb.NewStore(cfg.Log, cfg.DB))
+	settingsapi.Routes(app, settingsapi.Config{
+		Log:            cfg.Log,
+		SettingsBus:    settingsBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	// data

@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestNewInventoryAdjustment(n int, productIDs, locationIDs, adjustedByIDs, approvedByIDs uuid.UUIDs) []NewInventoryAdjustment {
+func TestNewInventoryAdjustment(n int, productIDs, locationIDs, adjustedByIDs uuid.UUIDs) []NewInventoryAdjustment {
 	newInventoryAdjustments := make([]NewInventoryAdjustment, n)
 
 	idx := rand.Intn(10000)
@@ -19,7 +19,7 @@ func TestNewInventoryAdjustment(n int, productIDs, locationIDs, adjustedByIDs, a
 			ProductID:      productIDs[idx%len(productIDs)],
 			LocationID:     locationIDs[idx%len(locationIDs)],
 			AdjustedBy:     adjustedByIDs[idx%len(adjustedByIDs)],
-			ApprovedBy:     approvedByIDs[idx%len(approvedByIDs)],
+			ApprovedBy:     nil,
 			QuantityChange: rand.Intn(100) - 50,
 			ReasonCode:     "Test Reason",
 			Notes:          "Test Notes",
@@ -30,8 +30,8 @@ func TestNewInventoryAdjustment(n int, productIDs, locationIDs, adjustedByIDs, a
 	return newInventoryAdjustments
 }
 
-func TestSeedInventoryAdjustments(ctx context.Context, n int, productIDs, locationIDs, adjustedByIDs, approvedByIDs uuid.UUIDs, api *Business) ([]InventoryAdjustment, error) {
-	newInventoryAdjustments := TestNewInventoryAdjustment(n, productIDs, locationIDs, adjustedByIDs, approvedByIDs)
+func TestSeedInventoryAdjustments(ctx context.Context, n int, productIDs, locationIDs, adjustedByIDs uuid.UUIDs, api *Business) ([]InventoryAdjustment, error) {
+	newInventoryAdjustments := TestNewInventoryAdjustment(n, productIDs, locationIDs, adjustedByIDs)
 
 	inventoryAdjustments := make([]InventoryAdjustment, len(newInventoryAdjustments))
 	for i, nia := range newInventoryAdjustments {

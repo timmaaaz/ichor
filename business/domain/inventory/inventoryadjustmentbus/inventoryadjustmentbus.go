@@ -79,6 +79,7 @@ func (b *Business) Create(ctx context.Context, nia NewInventoryAdjustment) (Inve
 		LocationID:            nia.LocationID,
 		AdjustedBy:            nia.AdjustedBy,
 		ApprovedBy:            nia.ApprovedBy,
+		ApprovalStatus:        "pending",
 		QuantityChange:        nia.QuantityChange,
 		ReasonCode:            nia.ReasonCode,
 		Notes:                 nia.Notes,
@@ -117,7 +118,10 @@ func (b *Business) Update(ctx context.Context, ia InventoryAdjustment, u UpdateI
 		ia.AdjustedBy = *u.AdjustedBy
 	}
 	if u.ApprovedBy != nil {
-		ia.ApprovedBy = *u.ApprovedBy
+		ia.ApprovedBy = u.ApprovedBy
+	}
+	if u.ApprovalStatus != nil {
+		ia.ApprovalStatus = *u.ApprovalStatus
 	}
 	if u.QuantityChange != nil {
 		ia.QuantityChange = *u.QuantityChange
