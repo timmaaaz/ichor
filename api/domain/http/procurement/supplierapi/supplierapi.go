@@ -99,3 +99,17 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 
 	return supplier
 }
+
+func (api *api) queryByIDs(ctx context.Context, r *http.Request) web.Encoder {
+	var app supplierapp.QueryByIDsRequest
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	suppliers, err := api.supplierapp.QueryByIDs(ctx, app.IDs)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return suppliers
+}

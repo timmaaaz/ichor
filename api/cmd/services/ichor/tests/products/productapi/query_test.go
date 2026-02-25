@@ -47,3 +47,27 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 	}
 	return table
 }
+
+func queryByIDs200(sd apitest.SeedData) []apitest.Table {
+	ids := []string{sd.Products[0].ProductID, sd.Products[1].ProductID}
+	expected := productapp.Products{sd.Products[0], sd.Products[1]}
+
+	table := []apitest.Table{
+		{
+			Name:       "basic",
+			URL:        "/v1/products/products/batch",
+			Token:      sd.Users[0].Token,
+			StatusCode: 200,
+			Method:     "POST",
+			Input: &productapp.QueryByIDsRequest{
+				IDs: ids,
+			},
+			GotResp: &productapp.Products{},
+			ExpResp: &expected,
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+	return table
+}

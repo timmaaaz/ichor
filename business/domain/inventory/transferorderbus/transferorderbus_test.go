@@ -286,7 +286,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				FromLocationID: &sd.InventoryLocations[0].LocationID,
 				ToLocationID:   &sd.InventoryLocations[3].LocationID,
 				RequestedByID:  &sd.TransferOrders[2].RequestedByID,
-				ApprovedByID:   &sd.TransferOrders[4].ApprovedByID,
+				ApprovedByID:   sd.TransferOrders[4].ApprovedByID,
 				Quantity:       dbtest.IntPointer(15),
 				Status:         dbtest.StringPointer("pending"),
 				TransferDate:   &now,

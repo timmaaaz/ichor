@@ -136,3 +136,18 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (Product, error) {
 
 	return ToAppProduct(product), nil
 }
+
+// QueryByIDs retrieves multiple products by their IDs.
+func (a *App) QueryByIDs(ctx context.Context, ids []string) (Products, error) {
+	uuids, err := toBusIDs(ids)
+	if err != nil {
+		return nil, errs.New(errs.InvalidArgument, err)
+	}
+
+	products, err := a.productbus.QueryByIDs(ctx, uuids)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "querybyids: %s", err)
+	}
+
+	return ToAppProducts(products), nil
+}

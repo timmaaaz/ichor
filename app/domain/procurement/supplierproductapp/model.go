@@ -2,6 +2,7 @@ package supplierproductapp
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -232,4 +233,44 @@ func toBusUpdateSupplierProduct(app UpdateSupplierProduct) (supplierproductbus.U
 	bus.SupplierPartNumber = app.SupplierPartNumber
 
 	return bus, nil
+}
+
+// SupplierProducts is a collection wrapper that implements the Encoder interface.
+type SupplierProducts []SupplierProduct
+
+// Encode implements the Encoder interface.
+func (app SupplierProducts) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// QueryByIDsRequest represents a request to query multiple supplier products by their IDs.
+type QueryByIDsRequest struct {
+	IDs []string `json:"ids" validate:"required,min=1"`
+}
+
+// Decode implements the Decoder interface.
+func (app *QueryByIDsRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate validates the QueryByIDsRequest fields.
+func (app QueryByIDsRequest) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+// toBusIDs converts a slice of string IDs to a slice of UUIDs.
+func toBusIDs(ids []string) ([]uuid.UUID, error) {
+	uuids := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return nil, fmt.Errorf("parse id[%d]: %w", i, err)
+		}
+		uuids[i] = uid
+	}
+	return uuids, nil
 }

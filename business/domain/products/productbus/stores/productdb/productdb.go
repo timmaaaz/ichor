@@ -177,6 +177,36 @@ func (s *Store) Count(ctx context.Context, filter productbus.QueryFilter) (int, 
 	return count.Count, nil
 }
 
+// QueryByIDs retrieves a list of products from the database by their IDs.
+func (s *Store) QueryByIDs(ctx context.Context, productIDs []uuid.UUID) ([]productbus.Product, error) {
+	uuidStrings := make([]string, len(productIDs))
+	for i, id := range productIDs {
+		uuidStrings[i] = id.String()
+	}
+
+	data := struct {
+		ProductIDs []string `db:"product_ids"`
+	}{
+		ProductIDs: uuidStrings,
+	}
+
+	const q = `
+    SELECT
+		id, sku, brand_id, category_id, name, description, model_number, upc_code, status,
+		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, created_date, updated_date
+    FROM
+        products.products
+    WHERE
+        id IN (:product_ids)`
+
+	var prod []product
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &prod); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusProducts(prod), nil
+}
+
 // QueryByID retrieves a single asset from the database by its ID.
 func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (productbus.Product, error) {
 	data := struct {

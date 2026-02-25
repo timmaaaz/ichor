@@ -152,6 +152,46 @@ func (app UpdateSupplier) Validate() error {
 	return nil
 }
 
+// Suppliers is a collection wrapper that implements the Encoder interface.
+type Suppliers []Supplier
+
+// Encode implements the Encoder interface.
+func (app Suppliers) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// QueryByIDsRequest represents a request to query multiple suppliers by their IDs.
+type QueryByIDsRequest struct {
+	IDs []string `json:"ids" validate:"required,min=1"`
+}
+
+// Decode implements the Decoder interface.
+func (app *QueryByIDsRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate validates the QueryByIDsRequest fields.
+func (app QueryByIDsRequest) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+// toBusIDs converts a slice of string IDs to a slice of UUIDs.
+func toBusIDs(ids []string) ([]uuid.UUID, error) {
+	uuids := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			return nil, fmt.Errorf("parse id[%d]: %w", i, err)
+		}
+		uuids[i] = uid
+	}
+	return uuids, nil
+}
+
 func toBusUpdateSupplier(app UpdateSupplier) (supplierbus.UpdateSupplier, error) {
 
 	dest := supplierbus.UpdateSupplier{}

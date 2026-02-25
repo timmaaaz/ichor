@@ -33,6 +33,9 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/procurement/supplier-products", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 
+	app.HandlerFunc(http.MethodPost, version, "/procurement/supplier-products/batch", api.queryByIDs, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+
 	app.HandlerFunc(http.MethodGet, version, "/procurement/supplier-products/{supplier_product_id}", api.queryByID, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 

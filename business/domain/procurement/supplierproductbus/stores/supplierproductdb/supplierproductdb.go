@@ -168,6 +168,36 @@ func (s *Store) Count(ctx context.Context, filter supplierproductbus.QueryFilter
 	return count.Count, nil
 }
 
+// QueryByIDs retrieves a list of supplier products from the database by their IDs.
+func (s *Store) QueryByIDs(ctx context.Context, supplierProductIDs []uuid.UUID) ([]supplierproductbus.SupplierProduct, error) {
+	uuidStrings := make([]string, len(supplierProductIDs))
+	for i, id := range supplierProductIDs {
+		uuidStrings[i] = id.String()
+	}
+
+	data := struct {
+		SupplierProductIDs []string `db:"supplier_product_ids"`
+	}{
+		SupplierProductIDs: uuidStrings,
+	}
+
+	const q = `
+	SELECT
+		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity,
+		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
+	FROM
+		procurement.supplier_products
+	WHERE
+	    id IN (:supplier_product_ids)`
+
+	var sp []supplierProduct
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &sp); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusSupplierProducts(sp)
+}
+
 func (s *Store) QueryByID(ctx context.Context, supplierProductID uuid.UUID) (supplierproductbus.SupplierProduct, error) {
 	data := struct {
 		ID string `db:"id"`

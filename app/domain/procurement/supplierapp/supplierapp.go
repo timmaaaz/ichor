@@ -127,6 +127,21 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Supplier]
 	return query.NewResult(ToAppSuppliers(suppliers), total, page), nil
 }
 
+// QueryByIDs retrieves multiple suppliers by their IDs.
+func (a *App) QueryByIDs(ctx context.Context, ids []string) (Suppliers, error) {
+	uuids, err := toBusIDs(ids)
+	if err != nil {
+		return nil, errs.New(errs.InvalidArgument, err)
+	}
+
+	suppliers, err := a.supplierbus.QueryByIDs(ctx, uuids)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "querybyids: %s", err)
+	}
+
+	return ToAppSuppliers(suppliers), nil
+}
+
 // QueryByID retrieves a single supplier by its id.
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (Supplier, error) {
 	supplier, err := a.supplierbus.QueryByID(ctx, id)

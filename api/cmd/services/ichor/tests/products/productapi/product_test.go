@@ -22,6 +22,7 @@ func Test_InventoryProduct(t *testing.T) {
 
 	test.Run(t, queryByID200(sd), "query-by-id-200")
 	test.Run(t, query200(sd), "query-200")
+	test.Run(t, queryByIDs200(sd), "query-by-ids-200")
 
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, create400(sd), "create-400")

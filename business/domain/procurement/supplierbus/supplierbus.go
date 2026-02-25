@@ -33,6 +33,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Supplier, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, supplierID uuid.UUID) (Supplier, error)
+	QueryByIDs(ctx context.Context, supplierIDs []uuid.UUID) ([]Supplier, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -173,6 +174,19 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 	defer span.End()
 
 	return b.storer.Count(ctx, filter)
+}
+
+// QueryByIDs finds the suppliers by the specified IDs.
+func (b *Business) QueryByIDs(ctx context.Context, supplierIDs []uuid.UUID) ([]Supplier, error) {
+	ctx, span := otel.AddSpan(ctx, "business.supplierbus.querybyids")
+	defer span.End()
+
+	suppliers, err := b.storer.QueryByIDs(ctx, supplierIDs)
+	if err != nil {
+		return nil, fmt.Errorf("querybyids: %w", err)
+	}
+
+	return suppliers, nil
 }
 
 // QueryByID finds the product cost by the specified ID.
