@@ -359,8 +359,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 		LLMBaseURL:        cfg.LLM.BaseURL,
 		LLMHost:           cfg.LLM.Host,
 		LLMThinkingEffort: cfg.LLM.ThinkingEffort,
-		ResendAPIKey:      cfg.Resend.APIKey,
-		ResendFrom:        cfg.Resend.From,
+		ResendAPIKey:       cfg.Resend.APIKey,
+		ResendFrom:         cfg.Resend.From,
+		CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 	}
 
 	routes, userBus := buildRoutes(cfgMux)

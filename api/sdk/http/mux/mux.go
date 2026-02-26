@@ -64,6 +64,10 @@ type Config struct {
 	// ResendAPIKey empty means email delivery is disabled (graceful degradation).
 	ResendAPIKey  string
 	ResendFrom    string
+
+	// CORSAllowedOrigins for WebSocket and SSE upgrade routes.
+	// Defaults to "*" if empty (open — set from ICHOR_WEB_CORS_ALLOWED_ORIGINS).
+	CORSAllowedOrigins []string
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance
