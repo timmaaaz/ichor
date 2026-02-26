@@ -153,22 +153,6 @@ func toBusNewTransferOrder(app NewTransferOrder) (transferorderbus.NewTransferOr
 	return bus, nil
 }
 
-// ApproveRequest contains information needed to approve a transfer order.
-type ApproveRequest struct {
-	ApprovedBy string `json:"approved_by" validate:"required,min=36,max=36"`
-}
-
-func (app *ApproveRequest) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-func (app ApproveRequest) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
 type UpdateTransferOrder struct {
 	ProductID      *string `json:"product_id" validate:"omitempty,min=36,max=36"`
 	FromLocationID *string `json:"from_location_id" validate:"omitempty,min=36,max=36"`

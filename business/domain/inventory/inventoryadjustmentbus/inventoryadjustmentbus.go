@@ -21,6 +21,7 @@ var (
 	ErrAuthenticationFailure = errors.New("authentication failed")
 	ErrUniqueEntry           = errors.New("inventoryAdjustment entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
+	ErrInvalidApprovalStatus = errors.New("inventory adjustment is not in pending status")
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -173,6 +174,10 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.approve")
 	defer span.End()
 
+	if ia.ApprovalStatus != "pending" {
+		return InventoryAdjustment{}, fmt.Errorf("approve: %w", ErrInvalidApprovalStatus)
+	}
+
 	before := ia
 
 	now := time.Now()
@@ -195,6 +200,10 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment) (InventoryAdjustment, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.reject")
 	defer span.End()
+
+	if ia.ApprovalStatus != "pending" {
+		return InventoryAdjustment{}, fmt.Errorf("reject: %w", ErrInvalidApprovalStatus)
+	}
 
 	before := ia
 

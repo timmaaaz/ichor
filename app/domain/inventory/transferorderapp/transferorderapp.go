@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
@@ -138,7 +139,12 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (TransferOrder, error
 	return ToAppTransferOrder(to), nil
 }
 
-func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (TransferOrder, error) {
+func (a *App) Approve(ctx context.Context, id uuid.UUID) (TransferOrder, error) {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return TransferOrder{}, errs.New(errs.Unauthenticated, err)
+	}
+
 	to, err := a.transferorderbus.QueryByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, transferorderbus.ErrNotFound) {
@@ -147,7 +153,7 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (
 		return TransferOrder{}, fmt.Errorf("approve [querybyid]: %w", err)
 	}
 
-	approved, err := a.transferorderbus.Approve(ctx, to, approvedBy)
+	approved, err := a.transferorderbus.Approve(ctx, to, userID)
 	if err != nil {
 		return TransferOrder{}, fmt.Errorf("approve: %w", err)
 	}

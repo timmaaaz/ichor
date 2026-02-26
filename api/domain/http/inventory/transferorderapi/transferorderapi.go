@@ -98,23 +98,13 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 }
 
 func (api *api) approve(ctx context.Context, r *http.Request) web.Encoder {
-	var app transferorderapp.ApproveRequest
-	if err := web.Decode(r, &app); err != nil {
-		return errs.New(errs.InvalidArgument, err)
-	}
-
 	toID := web.Param(r, "transfer_id")
 	parsed, err := uuid.Parse(toID)
 	if err != nil {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	approvedBy, err := uuid.Parse(app.ApprovedBy)
-	if err != nil {
-		return errs.New(errs.InvalidArgument, err)
-	}
-
-	to, err := api.transferorderapp.Approve(ctx, parsed, approvedBy)
+	to, err := api.transferorderapp.Approve(ctx, parsed)
 	if err != nil {
 		return errs.NewError(err)
 	}

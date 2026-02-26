@@ -25,5 +25,7 @@ func Routes(app *web.App, cfg Config) {
 	authen := mid.Authenticate(cfg.AuthClient)
 	a := newAPI(cfg.AlertHub)
 
+	// activeWorkers is intentionally open to all authenticated roles —
+	// floor supervisors, managers, and ops staff all need presence visibility.
 	app.HandlerFunc(http.MethodGet, version, "/floor/active-workers", a.activeWorkers, authen)
 }

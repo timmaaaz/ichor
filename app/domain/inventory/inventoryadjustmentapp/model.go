@@ -154,33 +154,6 @@ func toBusNewInventoryAdjustment(app NewInventoryAdjustment) (inventoryadjustmen
 	return bus, nil
 }
 
-// ApproveRequest contains information needed to approve an inventory adjustment.
-type ApproveRequest struct {
-	ApprovedBy string `json:"approved_by" validate:"required,min=36,max=36"`
-}
-
-func (app *ApproveRequest) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-func (app ApproveRequest) Validate() error {
-	if err := errs.Check(app); err != nil {
-		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
-	}
-	return nil
-}
-
-// RejectRequest is the body for rejecting an inventory adjustment (no fields required).
-type RejectRequest struct{}
-
-func (app *RejectRequest) Decode(data []byte) error {
-	return json.Unmarshal(data, &app)
-}
-
-func (app RejectRequest) Validate() error {
-	return nil
-}
-
 type UpdateInventoryAdjustment struct {
 	ProductID      *string `json:"product_id" validate:"omitempty,min=36,max=36"`
 	LocationID     *string `json:"location_id" validate:"omitempty,min=36,max=36"`

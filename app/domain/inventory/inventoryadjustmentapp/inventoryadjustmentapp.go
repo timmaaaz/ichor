@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
@@ -130,7 +131,12 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Inventory
 	return query.NewResult(ToAppInventoryAdjustments(results), total, page), nil
 }
 
-func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (InventoryAdjustment, error) {
+func (a *App) Approve(ctx context.Context, id uuid.UUID) (InventoryAdjustment, error) {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return InventoryAdjustment{}, errs.New(errs.Unauthenticated, err)
+	}
+
 	ia, err := a.inventoryadjustmentbus.QueryByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, inventoryadjustmentbus.ErrNotFound) {
@@ -139,8 +145,11 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (
 		return InventoryAdjustment{}, fmt.Errorf("approve [querybyid]: %w", err)
 	}
 
-	ia, err = a.inventoryadjustmentbus.Approve(ctx, ia, approvedBy)
+	ia, err = a.inventoryadjustmentbus.Approve(ctx, ia, userID)
 	if err != nil {
+		if errors.Is(err, inventoryadjustmentbus.ErrInvalidApprovalStatus) {
+			return InventoryAdjustment{}, errs.New(errs.InvalidArgument, err)
+		}
 		return InventoryAdjustment{}, fmt.Errorf("approve: %w", err)
 	}
 
@@ -158,6 +167,9 @@ func (a *App) Reject(ctx context.Context, id uuid.UUID) (InventoryAdjustment, er
 
 	ia, err = a.inventoryadjustmentbus.Reject(ctx, ia)
 	if err != nil {
+		if errors.Is(err, inventoryadjustmentbus.ErrInvalidApprovalStatus) {
+			return InventoryAdjustment{}, errs.New(errs.InvalidArgument, err)
+		}
 		return InventoryAdjustment{}, fmt.Errorf("reject: %w", err)
 	}
 

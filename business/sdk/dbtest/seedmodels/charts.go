@@ -1029,9 +1029,9 @@ var SeedKPIFloorOpenTasks = &tablebuilder.Config{
 	},
 }
 
-// SeedKPIFloorReceivedToday - KPI showing count of put-away tasks completed today
-var SeedKPIFloorReceivedToday = &tablebuilder.Config{
-	Title:         "Received Today",
+// SeedKPIFloorReceived - KPI showing count of completed put-away tasks
+var SeedKPIFloorReceived = &tablebuilder.Config{
+	Title:         "Received (Completed)",
 	WidgetType:    "chart",
 	Visualization: "kpi",
 	DataSource: []tablebuilder.DataSource{
@@ -1041,7 +1041,7 @@ var SeedKPIFloorReceivedToday = &tablebuilder.Config{
 			Schema: "inventory",
 			Metrics: []tablebuilder.MetricConfig{
 				{
-					Name:     "received_today_count",
+					Name:     "received_count",
 					Function: "count",
 					Column:   "put_away_tasks.id",
 				},
@@ -1056,9 +1056,9 @@ var SeedKPIFloorReceivedToday = &tablebuilder.Config{
 			"_chart": {
 				CellTemplate: createChartSettings(tablebuilder.ChartVisualSettings{
 					ChartType:    "kpi",
-					ValueColumns: []string{"received_today_count"},
+					ValueColumns: []string{"received_count"},
 					KPI: &tablebuilder.KPIConfig{
-						Label:  "Received Today",
+						Label:  "Received (Completed)",
 						Format: "number",
 					},
 				}),
@@ -1067,9 +1067,9 @@ var SeedKPIFloorReceivedToday = &tablebuilder.Config{
 	},
 }
 
-// SeedKPIFloorTransferredToday - KPI showing count of transfer orders completed today
-var SeedKPIFloorTransferredToday = &tablebuilder.Config{
-	Title:         "Transferred Today",
+// SeedKPIFloorTransferred - KPI showing count of completed transfer orders
+var SeedKPIFloorTransferred = &tablebuilder.Config{
+	Title:         "Transferred (Completed)",
 	WidgetType:    "chart",
 	Visualization: "kpi",
 	DataSource: []tablebuilder.DataSource{
@@ -1079,7 +1079,7 @@ var SeedKPIFloorTransferredToday = &tablebuilder.Config{
 			Schema: "inventory",
 			Metrics: []tablebuilder.MetricConfig{
 				{
-					Name:     "transferred_today_count",
+					Name:     "transferred_count",
 					Function: "count",
 					Column:   "transfer_orders.id",
 				},
@@ -1094,9 +1094,9 @@ var SeedKPIFloorTransferredToday = &tablebuilder.Config{
 			"_chart": {
 				CellTemplate: createChartSettings(tablebuilder.ChartVisualSettings{
 					ChartType:    "kpi",
-					ValueColumns: []string{"transferred_today_count"},
+					ValueColumns: []string{"transferred_count"},
 					KPI: &tablebuilder.KPIConfig{
-						Label:  "Transferred Today",
+						Label:  "Transferred (Completed)",
 						Format: "number",
 					},
 				}),
@@ -1105,9 +1105,9 @@ var SeedKPIFloorTransferredToday = &tablebuilder.Config{
 	},
 }
 
-// SeedKPIFloorPickedToday - KPI showing sum of quantity picked in inventory transactions today
-var SeedKPIFloorPickedToday = &tablebuilder.Config{
-	Title:         "Picked Today",
+// SeedKPIFloorPicked - KPI showing total quantity picked in inventory transactions
+var SeedKPIFloorPicked = &tablebuilder.Config{
+	Title:         "Total Picks",
 	WidgetType:    "chart",
 	Visualization: "kpi",
 	DataSource: []tablebuilder.DataSource{
@@ -1117,7 +1117,7 @@ var SeedKPIFloorPickedToday = &tablebuilder.Config{
 			Schema: "inventory",
 			Metrics: []tablebuilder.MetricConfig{
 				{
-					Name:     "picked_today_quantity",
+					Name:     "picked_quantity",
 					Function: "sum",
 					Column:   "inventory_transactions.quantity",
 				},
@@ -1132,9 +1132,9 @@ var SeedKPIFloorPickedToday = &tablebuilder.Config{
 			"_chart": {
 				CellTemplate: createChartSettings(tablebuilder.ChartVisualSettings{
 					ChartType:    "kpi",
-					ValueColumns: []string{"picked_today_quantity"},
+					ValueColumns: []string{"picked_quantity"},
 					KPI: &tablebuilder.KPIConfig{
-						Label:  "Picked Today",
+						Label:  "Total Picks",
 						Format: "number",
 					},
 				}),
@@ -1158,9 +1158,9 @@ var ChartConfigs = []struct {
 	{Name: "seed_kpi_order_count", Description: "KPI showing total order count", Config: SeedKPIOrderCount},
 	// Floor Worker KPIs
 	{Name: "seed_kpi_floor_open_tasks", Description: "KPI showing count of open put-away tasks", Config: SeedKPIFloorOpenTasks},
-	{Name: "seed_kpi_floor_received_today", Description: "KPI showing put-away tasks completed today", Config: SeedKPIFloorReceivedToday},
-	{Name: "seed_kpi_floor_transferred_today", Description: "KPI showing transfer orders completed today", Config: SeedKPIFloorTransferredToday},
-	{Name: "seed_kpi_floor_picked_today", Description: "KPI showing quantity picked today", Config: SeedKPIFloorPickedToday},
+	{Name: "seed_kpi_floor_received", Description: "KPI showing completed put-away tasks", Config: SeedKPIFloorReceived},
+	{Name: "seed_kpi_floor_transferred", Description: "KPI showing completed transfer orders", Config: SeedKPIFloorTransferred},
+	{Name: "seed_kpi_floor_picked", Description: "KPI showing total quantity picked", Config: SeedKPIFloorPicked},
 
 	// Gauges
 	{Name: "seed_gauge_revenue_target", Description: "Gauge showing revenue progress toward target", Config: SeedGaugeRevenueTarget},
