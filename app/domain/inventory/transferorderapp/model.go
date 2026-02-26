@@ -85,7 +85,7 @@ type NewTransferOrder struct {
 	RequestedByID  string  `json:"requested_by" validate:"required,min=36,max=36"`
 	ApprovedByID   *string `json:"approved_by" validate:"omitempty,min=36,max=36"`
 	Quantity       string  `json:"quantity" validate:"required"`
-	Status         string  `json:"status" validate:"required"`
+	Status         string  `json:"status" validate:"required,oneof=pending approved in_progress completed cancelled"`
 	TransferDate   string  `json:"transfer_date" validate:"required"`
 }
 
@@ -176,7 +176,7 @@ type UpdateTransferOrder struct {
 	RequestedByID  *string `json:"requested_by" validate:"omitempty,min=36,max=36"`
 	ApprovedByID   *string `json:"approved_by" validate:"omitempty,min=36,max=36"`
 	Quantity       *string `json:"quantity" validate:"omitempty"`
-	Status         *string `json:"status" validate:"omitempty"`
+	Status         *string `json:"status" validate:"omitempty,oneof=pending approved in_progress completed cancelled"`
 	TransferDate   *string `json:"transfer_date" validate:"omitempty"`
 }
 
