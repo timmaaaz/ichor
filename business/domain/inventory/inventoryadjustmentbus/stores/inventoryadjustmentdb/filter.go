@@ -60,9 +60,29 @@ func applyFilter(filter inventoryadjustmentbus.QueryFilter, data map[string]any,
 		wc = append(wc, "adjustment_date = :adjustment_date")
 	}
 
+	if filter.StartAdjustmentDate != nil {
+		data["start_adjustment_date"] = *filter.StartAdjustmentDate
+		wc = append(wc, "adjustment_date >= :start_adjustment_date")
+	}
+
+	if filter.EndAdjustmentDate != nil {
+		data["end_adjustment_date"] = *filter.EndAdjustmentDate
+		wc = append(wc, "adjustment_date <= :end_adjustment_date")
+	}
+
 	if filter.CreatedDate != nil {
 		data["created_date"] = *filter.CreatedDate
 		wc = append(wc, "created_date = :created_date")
+	}
+
+	if filter.StartCreatedDate != nil {
+		data["start_created_date"] = *filter.StartCreatedDate
+		wc = append(wc, "created_date >= :start_created_date")
+	}
+
+	if filter.EndCreatedDate != nil {
+		data["end_created_date"] = *filter.EndCreatedDate
+		wc = append(wc, "created_date <= :end_created_date")
 	}
 
 	if filter.UpdatedDate != nil {

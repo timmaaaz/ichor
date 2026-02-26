@@ -17,6 +17,10 @@ type QueryFilter struct {
 	ReasonCode            *string
 	Notes                 *string
 	AdjustmentDate        *time.Time
+	StartAdjustmentDate   *time.Time
+	EndAdjustmentDate     *time.Time
 	CreatedDate           *time.Time
+	StartCreatedDate      *time.Time
+	EndCreatedDate        *time.Time
 	UpdatedDate           *time.Time
 }

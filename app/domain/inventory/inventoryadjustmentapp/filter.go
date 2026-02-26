@@ -83,12 +83,44 @@ func parseFilter(qp QueryParams) (inventoryadjustmentbus.QueryFilter, error) {
 		filter.AdjustmentDate = &date
 	}
 
+	if qp.StartAdjustmentDate != "" {
+		date, err := time.Parse(timeutil.FORMAT, qp.StartAdjustmentDate)
+		if err != nil {
+			return inventoryadjustmentbus.QueryFilter{}, errs.NewFieldsError("startAdjustmentDate", err)
+		}
+		filter.StartAdjustmentDate = &date
+	}
+
+	if qp.EndAdjustmentDate != "" {
+		date, err := time.Parse(timeutil.FORMAT, qp.EndAdjustmentDate)
+		if err != nil {
+			return inventoryadjustmentbus.QueryFilter{}, errs.NewFieldsError("endAdjustmentDate", err)
+		}
+		filter.EndAdjustmentDate = &date
+	}
+
 	if qp.CreatedDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.CreatedDate)
 		if err != nil {
 			return inventoryadjustmentbus.QueryFilter{}, errs.NewFieldsError("created_date", err)
 		}
 		filter.CreatedDate = &date
+	}
+
+	if qp.StartCreatedDate != "" {
+		date, err := time.Parse(timeutil.FORMAT, qp.StartCreatedDate)
+		if err != nil {
+			return inventoryadjustmentbus.QueryFilter{}, errs.NewFieldsError("startCreatedDate", err)
+		}
+		filter.StartCreatedDate = &date
+	}
+
+	if qp.EndCreatedDate != "" {
+		date, err := time.Parse(timeutil.FORMAT, qp.EndCreatedDate)
+		if err != nil {
+			return inventoryadjustmentbus.QueryFilter{}, errs.NewFieldsError("endCreatedDate", err)
+		}
+		filter.EndCreatedDate = &date
 	}
 
 	if qp.UpdatedDate != "" {

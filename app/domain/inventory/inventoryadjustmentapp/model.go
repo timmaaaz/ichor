@@ -26,7 +26,11 @@ type QueryParams struct {
 	ReasonCode            string
 	Notes                 string
 	AdjustmentDate        string
+	StartAdjustmentDate   string
+	EndAdjustmentDate     string
 	CreatedDate           string
+	StartCreatedDate      string
+	EndCreatedDate        string
 	UpdatedDate           string
 }
 
@@ -148,6 +152,33 @@ func toBusNewInventoryAdjustment(app NewInventoryAdjustment) (inventoryadjustmen
 		AdjustmentDate: adjustmentDate,
 	}
 	return bus, nil
+}
+
+// ApproveRequest contains information needed to approve an inventory adjustment.
+type ApproveRequest struct {
+	ApprovedBy string `json:"approved_by" validate:"required,min=36,max=36"`
+}
+
+func (app *ApproveRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+func (app ApproveRequest) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+// RejectRequest is the body for rejecting an inventory adjustment (no fields required).
+type RejectRequest struct{}
+
+func (app *RejectRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+func (app RejectRequest) Validate() error {
+	return nil
 }
 
 type UpdateInventoryAdjustment struct {
