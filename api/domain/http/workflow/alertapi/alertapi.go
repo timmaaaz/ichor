@@ -141,10 +141,22 @@ func (a *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	// Verify user is authenticated
-	_, err = mid.GetUserID(ctx)
+	userID, err := mid.GetUserID(ctx)
 	if err != nil {
 		return errs.New(errs.Unauthenticated, err)
+	}
+
+	roleIDs, err := a.getUserRoleIDs(ctx, userID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "get user roles: %s", err)
+	}
+
+	isRecipient, err := a.alertBus.IsRecipient(ctx, id, userID, roleIDs)
+	if err != nil {
+		return errs.Newf(errs.Internal, "check recipient: %s", err)
+	}
+	if !isRecipient {
+		return errs.New(errs.PermissionDenied, alertbus.ErrNotRecipient)
 	}
 
 	alert, err := a.alertBus.QueryByID(ctx, id)
@@ -166,6 +178,13 @@ func (a *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 	appAlert.Recipients, err = a.enrichRecipients(ctx, recipients)
 	if err != nil {
 		a.log.Error(ctx, "failed to enrich recipients", "alert_id", id, "error", err)
+	}
+
+	acks, err := a.alertBus.QueryAcknowledgmentsByAlertID(ctx, id)
+	if err != nil {
+		a.log.Error(ctx, "failed to fetch acknowledgments", "alert_id", id, "error", err)
+	} else {
+		appAlert.Acknowledgments = toAppAcknowledgments(acks)
 	}
 
 	return appAlert
@@ -207,6 +226,8 @@ func (a *api) acknowledge(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "acknowledge: %s", err)
 	}
 
+	a.publishAlertStatusChange(ctx, alert, userID)
+
 	return toAppAlert(alert)
 }
 
@@ -237,6 +258,8 @@ func (a *api) dismiss(ctx context.Context, r *http.Request) web.Encoder {
 		}
 		return errs.Newf(errs.Internal, "dismiss: %s", err)
 	}
+
+	a.publishAlertStatusChange(ctx, alert, userID)
 
 	return toAppAlert(alert)
 }
@@ -434,6 +457,34 @@ func (a *api) dismissAll(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return BulkActionResult{Count: count, Skipped: 0}
+}
+
+// publishAlertStatusChange publishes an alert_updated event to RabbitMQ for WebSocket delivery.
+// The event signals that an existing alert's status has changed (not a new alert).
+func (a *api) publishAlertStatusChange(ctx context.Context, alert alertbus.Alert, userID uuid.UUID) {
+	if a.workflowQueue == nil {
+		return
+	}
+
+	payload := map[string]any{
+		"alertUpdate": map[string]any{
+			"id":          alert.ID.String(),
+			"status":      alert.Status,
+			"updatedDate": alert.UpdatedDate.Format(time.RFC3339),
+		},
+	}
+
+	msg := &rabbitmq.Message{
+		Type:       "alert_updated",
+		EntityName: "workflow.alerts",
+		EntityID:   alert.ID,
+		UserID:     userID,
+		Payload:    payload,
+	}
+
+	if err := a.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg); err != nil {
+		a.log.Error(ctx, "failed to publish alert status change", "alert_id", alert.ID, "error", err)
+	}
 }
 
 // parseUUIDs converts a slice of string IDs to UUIDs.

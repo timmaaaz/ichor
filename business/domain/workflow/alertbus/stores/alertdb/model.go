@@ -20,6 +20,7 @@ type dbAlert struct {
 	SourceEntityName sql.NullString  `db:"source_entity_name"`
 	SourceEntityID   sql.NullString  `db:"source_entity_id"`
 	SourceRuleID     sql.NullString  `db:"source_rule_id"`
+	SourceRuleName   sql.NullString  `db:"source_rule_name"`
 	Status           string          `db:"status"`
 	ExpiresDate      sql.NullTime    `db:"expires_date"`
 	CreatedDate      time.Time       `db:"created_date"`
@@ -76,6 +77,9 @@ func toBusAlert(db dbAlert) alertbus.Alert {
 	}
 	if db.SourceRuleID.Valid {
 		a.SourceRuleID, _ = uuid.Parse(db.SourceRuleID.String)
+	}
+	if db.SourceRuleName.Valid {
+		a.SourceRuleName = db.SourceRuleName.String
 	}
 	if db.ExpiresDate.Valid {
 		a.ExpiresDate = &db.ExpiresDate.Time
@@ -134,6 +138,7 @@ type dbAlertAcknowledgment struct {
 	ID               uuid.UUID      `db:"id"`
 	AlertID          uuid.UUID      `db:"alert_id"`
 	AcknowledgedBy   uuid.UUID      `db:"acknowledged_by"`
+	AcknowledgerName sql.NullString `db:"acknowledger_name"`
 	AcknowledgedDate time.Time      `db:"acknowledged_date"`
 	Notes            sql.NullString `db:"notes"`
 }
@@ -149,4 +154,28 @@ func toDBAlertAcknowledgment(ack alertbus.AlertAcknowledgment) dbAlertAcknowledg
 		db.Notes = sql.NullString{String: ack.Notes, Valid: true}
 	}
 	return db
+}
+
+func toBusAlertAcknowledgment(db dbAlertAcknowledgment) alertbus.AlertAcknowledgment {
+	ack := alertbus.AlertAcknowledgment{
+		ID:               db.ID,
+		AlertID:          db.AlertID,
+		AcknowledgedBy:   db.AcknowledgedBy,
+		AcknowledgedDate: db.AcknowledgedDate,
+	}
+	if db.AcknowledgerName.Valid {
+		ack.AcknowledgerName = db.AcknowledgerName.String
+	}
+	if db.Notes.Valid {
+		ack.Notes = db.Notes.String
+	}
+	return ack
+}
+
+func toBusAlertAcknowledgments(dbs []dbAlertAcknowledgment) []alertbus.AlertAcknowledgment {
+	acks := make([]alertbus.AlertAcknowledgment, len(dbs))
+	for i, db := range dbs {
+		acks[i] = toBusAlertAcknowledgment(db)
+	}
+	return acks
 }

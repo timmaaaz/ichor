@@ -10,20 +10,22 @@ import (
 
 // Alert represents the API response model for an alert.
 type Alert struct {
-	ID               string             `json:"id"`
-	AlertType        string             `json:"alertType"`
-	Severity         string             `json:"severity"`
-	Title            string             `json:"title"`
-	Message          string             `json:"message"`
-	Context          json.RawMessage    `json:"context,omitempty"`
-	SourceEntityName string             `json:"sourceEntityName,omitempty"`
-	SourceEntityID   string             `json:"sourceEntityId,omitempty"`
-	SourceRuleID     string             `json:"sourceRuleId,omitempty"`
-	Status           string             `json:"status"`
-	ExpiresDate      *string            `json:"expiresDate,omitempty"`
-	CreatedDate      string             `json:"createdDate"`
-	UpdatedDate      string             `json:"updatedDate"`
-	Recipients       []AlertRecipientVM `json:"recipients,omitempty"`
+	ID                  string                    `json:"id"`
+	AlertType           string                    `json:"alertType"`
+	Severity            string                    `json:"severity"`
+	Title               string                    `json:"title"`
+	Message             string                    `json:"message"`
+	Context             json.RawMessage           `json:"context,omitempty"`
+	SourceEntityName    string                    `json:"sourceEntityName,omitempty"`
+	SourceEntityID      string                    `json:"sourceEntityId,omitempty"`
+	SourceRuleID        string                    `json:"sourceRuleId,omitempty"`
+	SourceRuleName      string                    `json:"sourceRuleName,omitempty"`
+	Status              string                    `json:"status"`
+	ExpiresDate         *string                   `json:"expiresDate,omitempty"`
+	CreatedDate         string                    `json:"createdDate"`
+	UpdatedDate         string                    `json:"updatedDate"`
+	Recipients          []AlertRecipientVM        `json:"recipients,omitempty"`
+	Acknowledgments     []AlertAcknowledgmentVM   `json:"acknowledgments,omitempty"`
 }
 
 // AlertRecipientVM represents an enriched alert recipient with human-readable names.
@@ -32,6 +34,15 @@ type AlertRecipientVM struct {
 	RecipientID   string `json:"recipientId"`
 	Name          string `json:"name"`
 	Email         string `json:"email,omitempty"`
+}
+
+// AlertAcknowledgmentVM represents an acknowledgment record with acknowledger details.
+type AlertAcknowledgmentVM struct {
+	ID               string `json:"id"`
+	AcknowledgedBy   string `json:"acknowledgedBy"`
+	AcknowledgerName string `json:"acknowledgerName,omitempty"`
+	AcknowledgedDate string `json:"acknowledgedDate"`
+	Notes            string `json:"notes,omitempty"`
 }
 
 // Encode implements the web.Encoder interface.
@@ -63,12 +74,40 @@ func toAppAlert(bus alertbus.Alert) Alert {
 	if bus.SourceRuleID.String() != "00000000-0000-0000-0000-000000000000" {
 		app.SourceRuleID = bus.SourceRuleID.String()
 	}
+	if bus.SourceRuleName != "" {
+		app.SourceRuleName = bus.SourceRuleName
+	}
 	if bus.ExpiresDate != nil {
 		exp := bus.ExpiresDate.Format(time.RFC3339)
 		app.ExpiresDate = &exp
 	}
 
 	return app
+}
+
+// toAppAcknowledgment converts a business acknowledgment to an API view model.
+func toAppAcknowledgment(bus alertbus.AlertAcknowledgment) AlertAcknowledgmentVM {
+	vm := AlertAcknowledgmentVM{
+		ID:               bus.ID.String(),
+		AcknowledgedBy:   bus.AcknowledgedBy.String(),
+		AcknowledgedDate: bus.AcknowledgedDate.Format(time.RFC3339),
+	}
+	if bus.AcknowledgerName != "" {
+		vm.AcknowledgerName = bus.AcknowledgerName
+	}
+	if bus.Notes != "" {
+		vm.Notes = bus.Notes
+	}
+	return vm
+}
+
+// toAppAcknowledgments converts a slice of business acknowledgments to API view models.
+func toAppAcknowledgments(bus []alertbus.AlertAcknowledgment) []AlertAcknowledgmentVM {
+	vms := make([]AlertAcknowledgmentVM, len(bus))
+	for i, a := range bus {
+		vms[i] = toAppAcknowledgment(a)
+	}
+	return vms
 }
 
 // toAppAlerts converts a slice of business alerts to API alerts.
@@ -111,6 +150,8 @@ type QueryParams struct {
 	SourceEntityName string
 	SourceEntityID   string
 	SourceRuleID     string
+	CreatedAfter     string
+	CreatedBefore    string
 }
 
 // BulkSelectedRequest represents the request body for bulk operations by IDs.

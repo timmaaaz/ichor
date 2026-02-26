@@ -34,8 +34,10 @@ type Storer interface {
 	QueryByUserID(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, filter QueryFilter, orderBy order.By, pg page.Page) ([]Alert, error)
 	QueryRecipientsByAlertID(ctx context.Context, alertID uuid.UUID) ([]AlertRecipient, error)
 	QueryRecipientsByAlertIDs(ctx context.Context, alertIDs []uuid.UUID) (map[uuid.UUID][]AlertRecipient, error)
+	QueryAcknowledgmentsByAlertID(ctx context.Context, alertID uuid.UUID) ([]AlertAcknowledgment, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	CountByUserID(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, filter QueryFilter) (int, error)
+	CountByUserIDGroupedBySeverity(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, status string) (map[string]int, error)
 	UpdateStatus(ctx context.Context, alertID uuid.UUID, status string, now time.Time) error
 	IsRecipient(ctx context.Context, alertID, userID uuid.UUID, roleIDs []uuid.UUID) (bool, error)
 	FilterRecipientAlerts(ctx context.Context, alertIDs []uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) ([]uuid.UUID, error)
@@ -174,6 +176,14 @@ func (b *Business) QueryMine(ctx context.Context, userID uuid.UUID, roleIDs []uu
 	}
 
 	return alerts, nil
+}
+
+// IsRecipient checks whether a user (by user ID or role membership) is a recipient of an alert.
+func (b *Business) IsRecipient(ctx context.Context, alertID, userID uuid.UUID, roleIDs []uuid.UUID) (bool, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.isrecipient")
+	defer span.End()
+
+	return b.storer.IsRecipient(ctx, alertID, userID, roleIDs)
 }
 
 // CountMine returns count of alerts for a user.
@@ -344,6 +354,27 @@ func (b *Business) DismissAll(ctx context.Context, userID uuid.UUID, roleIDs []u
 	}
 
 	return count, nil
+}
+
+// QueryAcknowledgmentsByAlertID returns all acknowledgments for an alert, enriched with acknowledger names.
+func (b *Business) QueryAcknowledgmentsByAlertID(ctx context.Context, alertID uuid.UUID) ([]AlertAcknowledgment, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.queryacknowledgmentsbyalertid")
+	defer span.End()
+
+	acks, err := b.storer.QueryAcknowledgmentsByAlertID(ctx, alertID)
+	if err != nil {
+		return nil, fmt.Errorf("query acknowledgments: alertID[%s]: %w", alertID, err)
+	}
+
+	return acks, nil
+}
+
+// CountMineBySeverity returns a map of severity → count for the user's active (non-expired) alerts.
+func (b *Business) CountMineBySeverity(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, status string) (map[string]int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.countminebyseverity")
+	defer span.End()
+
+	return b.storer.CountByUserIDGroupedBySeverity(ctx, userID, roleIDs, status)
 }
 
 // ResolveRelatedAlerts marks prior active/acknowledged alerts as resolved when a new

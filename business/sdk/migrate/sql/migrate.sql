@@ -2190,3 +2190,12 @@ ALTER TABLE inventory.transfer_orders
 -- Description: Add assigned_to column to sales.orders for picker/floor worker assignment.
 ALTER TABLE sales.orders
     ADD COLUMN assigned_to UUID NULL REFERENCES core.users(id);
+
+-- Version: 2.07
+-- Description: Add composite index on alerts (status, created_date) for notification queries.
+CREATE INDEX idx_alerts_status_created ON workflow.alerts(status, created_date DESC);
+
+-- Version: 2.08
+-- Description: Add frontend_route column to workflow.entity_types for frontend navigation.
+ALTER TABLE workflow.entity_types
+    ADD COLUMN frontend_route TEXT NULL;

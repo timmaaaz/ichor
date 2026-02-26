@@ -133,6 +133,30 @@ func (s *Store) CreateAcknowledgment(ctx context.Context, ack alertbus.AlertAckn
 	return nil
 }
 
+// QueryAcknowledgmentsByAlertID returns all acknowledgments for a given alert, enriched with acknowledger names.
+func (s *Store) QueryAcknowledgmentsByAlertID(ctx context.Context, alertID uuid.UUID) ([]alertbus.AlertAcknowledgment, error) {
+	data := struct {
+		AlertID string `db:"alert_id"`
+	}{
+		AlertID: alertID.String(),
+	}
+
+	const q = `
+	SELECT aa.id, aa.alert_id, aa.acknowledged_by, aa.acknowledged_date, aa.notes,
+	       u.first_name || ' ' || u.last_name AS acknowledger_name
+	FROM workflow.alert_acknowledgments aa
+	LEFT JOIN core.users u ON aa.acknowledged_by = u.id
+	WHERE aa.alert_id = :alert_id
+	ORDER BY aa.acknowledged_date`
+
+	var dbAcks []dbAlertAcknowledgment
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbAcks); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusAlertAcknowledgments(dbAcks), nil
+}
+
 // QueryRecipientsByAlertID returns all recipients for a given alert.
 func (s *Store) QueryRecipientsByAlertID(ctx context.Context, alertID uuid.UUID) ([]alertbus.AlertRecipient, error) {
 	data := struct {
@@ -210,13 +234,15 @@ func (s *Store) QueryByID(ctx context.Context, alertID uuid.UUID) (alertbus.Aler
 
 	const q = `
 	SELECT
-		id, alert_type, severity, title, message, context,
-		source_entity_name, source_entity_id, source_rule_id,
-		status, expires_date, created_date, updated_date
+		a.id, a.alert_type, a.severity, a.title, a.message, a.context,
+		a.source_entity_name, a.source_entity_id, a.source_rule_id,
+		a.status, a.expires_date, a.created_date, a.updated_date,
+		rule.name AS source_rule_name
 	FROM
-		workflow.alerts
+		workflow.alerts a
+	LEFT JOIN workflow.automation_rules rule ON a.source_rule_id = rule.id
 	WHERE
-		id = :id`
+		a.id = :id`
 
 	var dbAl dbAlert
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbAl); err != nil {
@@ -238,21 +264,24 @@ func (s *Store) Query(ctx context.Context, filter alertbus.QueryFilter, orderBy 
 
 	const q = `
 	SELECT
-		id, alert_type, severity, title, message, context,
-		source_entity_name, source_entity_id, source_rule_id,
-		status, expires_date, created_date, updated_date
+		a.id, a.alert_type, a.severity, a.title, a.message, a.context,
+		a.source_entity_name, a.source_entity_id, a.source_rule_id,
+		a.status, a.expires_date, a.created_date, a.updated_date,
+		rule.name AS source_rule_name
 	FROM
-		workflow.alerts`
+		workflow.alerts a
+	LEFT JOIN workflow.automation_rules rule ON a.source_rule_id = rule.id
+	WHERE TRUE`
 
 	buf := bytes.NewBufferString(q)
-	applyFilter(filter, data, buf)
+	applyFilterWithJoin(filter, data, buf)
 
-	orderByClause, err := orderByClause(orderBy)
+	orderByClauseStr, err := orderByClause(orderBy)
 	if err != nil {
 		return nil, err
 	}
 
-	buf.WriteString(orderByClause)
+	buf.WriteString(orderByClauseStr)
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
 
 	var dbAlerts []dbAlert
@@ -290,25 +319,29 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 		SELECT DISTINCT
 			a.id, a.alert_type, a.severity, a.title, a.message, a.context,
 			a.source_entity_name, a.source_entity_id, a.source_rule_id,
-			a.status, a.expires_date, a.created_date, a.updated_date
+			a.status, a.expires_date, a.created_date, a.updated_date,
+			rule.name AS source_rule_name
 		FROM
 			workflow.alerts a
-		INNER JOIN workflow.alert_recipients ar ON a.id = ar.alert_id
+		INNER JOIN workflow.alert_recipients rec ON a.id = rec.alert_id
+		LEFT JOIN workflow.automation_rules rule ON a.source_rule_id = rule.id
 		WHERE (
-			(ar.recipient_type = 'user' AND ar.recipient_id = :user_id)
-			OR (ar.recipient_type = 'role' AND ar.recipient_id IN (:role_ids))
+			(rec.recipient_type = 'user' AND rec.recipient_id = :user_id)
+			OR (rec.recipient_type = 'role' AND rec.recipient_id IN (:role_ids))
 		)`
 	} else {
 		q = `
 		SELECT DISTINCT
 			a.id, a.alert_type, a.severity, a.title, a.message, a.context,
 			a.source_entity_name, a.source_entity_id, a.source_rule_id,
-			a.status, a.expires_date, a.created_date, a.updated_date
+			a.status, a.expires_date, a.created_date, a.updated_date,
+			rule.name AS source_rule_name
 		FROM
 			workflow.alerts a
-		INNER JOIN workflow.alert_recipients ar ON a.id = ar.alert_id
+		INNER JOIN workflow.alert_recipients rec ON a.id = rec.alert_id
+		LEFT JOIN workflow.automation_rules rule ON a.source_rule_id = rule.id
 		WHERE
-			(ar.recipient_type = 'user' AND ar.recipient_id = :user_id)`
+			(rec.recipient_type = 'user' AND rec.recipient_id = :user_id)`
 	}
 
 	buf := bytes.NewBufferString(q)
@@ -422,6 +455,63 @@ func (s *Store) CountByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 	}
 
 	return count.Count, nil
+}
+
+// CountByUserIDGroupedBySeverity returns a map of severity → count for the user's active alerts.
+func (s *Store) CountByUserIDGroupedBySeverity(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, status string) (map[string]int, error) {
+	roleIDStrings := make([]string, len(roleIDs))
+	for i, id := range roleIDs {
+		roleIDStrings[i] = id.String()
+	}
+
+	data := map[string]any{
+		"user_id":  userID.String(),
+		"role_ids": roleIDStrings,
+		"status":   status,
+	}
+
+	var q string
+	if len(roleIDs) > 0 {
+		q = `
+		SELECT a.severity, COUNT(DISTINCT a.id) AS count
+		FROM workflow.alerts a
+		INNER JOIN workflow.alert_recipients r ON a.id = r.alert_id
+		WHERE a.status = :status
+		  AND (a.expires_date IS NULL OR a.expires_date > NOW())
+		  AND ((r.recipient_type = 'user' AND r.recipient_id = :user_id)
+		       OR (r.recipient_type = 'role' AND r.recipient_id IN (:role_ids)))
+		GROUP BY a.severity`
+	} else {
+		q = `
+		SELECT a.severity, COUNT(DISTINCT a.id) AS count
+		FROM workflow.alerts a
+		INNER JOIN workflow.alert_recipients r ON a.id = r.alert_id
+		WHERE a.status = :status
+		  AND (a.expires_date IS NULL OR a.expires_date > NOW())
+		  AND r.recipient_type = 'user' AND r.recipient_id = :user_id
+		GROUP BY a.severity`
+	}
+
+	var results []struct {
+		Severity string `db:"severity"`
+		Count    int    `db:"count"`
+	}
+
+	if len(roleIDs) > 0 {
+		if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &results); err != nil {
+			return nil, fmt.Errorf("namedqueryslice: %w", err)
+		}
+	} else {
+		if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &results); err != nil {
+			return nil, fmt.Errorf("namedqueryslice: %w", err)
+		}
+	}
+
+	counts := make(map[string]int, len(results))
+	for _, r := range results {
+		counts[r.Severity] = r.Count
+	}
+	return counts, nil
 }
 
 // UpdateStatus updates the status of an alert.
@@ -715,10 +805,10 @@ func (s *Store) DismissMultiple(ctx context.Context, alertIDs []uuid.UUID, now t
 	}
 
 	data := map[string]any{
-		"alert_ids":     alertIDStrings,
-		"status":        alertbus.StatusDismissed,
-		"active_status": alertbus.StatusActive,
-		"updated_date":  now,
+		"alert_ids":        alertIDStrings,
+		"status":           alertbus.StatusDismissed,
+		"allowed_statuses": []string{alertbus.StatusActive, alertbus.StatusAcknowledged},
+		"updated_date":     now,
 	}
 
 	const q = `
@@ -729,13 +819,31 @@ func (s *Store) DismissMultiple(ctx context.Context, alertIDs []uuid.UUID, now t
 		updated_date = :updated_date
 	WHERE
 		id IN (:alert_ids)
-		AND status = :active_status`
+		AND status IN (:allowed_statuses)`
 
-	if err := namedExecContextUsingIn(ctx, s.log, s.db, q, data); err != nil {
-		return 0, fmt.Errorf("namedexeccontext: %w", err)
+	named, args, err := sqlx.Named(q, data)
+	if err != nil {
+		return 0, fmt.Errorf("sqlx.Named: %w", err)
 	}
 
-	return len(alertIDs), nil
+	query, args, err := sqlx.In(named, args...)
+	if err != nil {
+		return 0, fmt.Errorf("sqlx.In: %w", err)
+	}
+
+	query = s.db.Rebind(query)
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("execcontext: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("rows affected: %w", err)
+	}
+
+	return int(rowsAffected), nil
 }
 
 // ResolveRelatedAlerts updates the status of prior active/acknowledged alerts

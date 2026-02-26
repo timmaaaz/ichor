@@ -14,6 +14,7 @@ type dbApprovalRequest struct {
 	ID               uuid.UUID      `db:"approval_request_id"`
 	ExecutionID      uuid.UUID      `db:"execution_id"`
 	RuleID           uuid.UUID      `db:"rule_id"`
+	RuleName         sql.NullString `db:"rule_name"`
 	ActionName       string         `db:"action_name"`
 	Approvers        dbarray.String `db:"approvers"`
 	ApprovalType     string         `db:"approval_type"`
@@ -83,6 +84,10 @@ func toBusApprovalRequest(db dbApprovalRequest) (approvalrequestbus.ApprovalRequ
 		TimeoutHours: db.TimeoutHours,
 		TaskToken:    db.TaskToken,
 		CreatedDate:  db.CreatedDate,
+	}
+
+	if db.RuleName.Valid {
+		req.RuleName = db.RuleName.String
 	}
 
 	if db.ApprovalMessage.Valid {

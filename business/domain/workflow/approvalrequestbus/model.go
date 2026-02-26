@@ -28,6 +28,7 @@ type ApprovalRequest struct {
 	ID               uuid.UUID
 	ExecutionID      uuid.UUID
 	RuleID           uuid.UUID
+	RuleName         string
 	ActionName       string
 	Approvers        []uuid.UUID
 	ApprovalType     string

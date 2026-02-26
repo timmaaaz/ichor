@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
@@ -31,6 +32,8 @@ func parseQueryParams(r *http.Request) QueryParams {
 		SourceEntityName: values.Get("sourceEntityName"),
 		SourceEntityID:   values.Get("sourceEntityId"),
 		SourceRuleID:     values.Get("sourceRuleId"),
+		CreatedAfter:     values.Get("createdAfter"),
+		CreatedBefore:    values.Get("createdBefore"),
 	}
 }
 
@@ -82,6 +85,22 @@ func parseFilter(qp QueryParams) (alertbus.QueryFilter, error) {
 			return alertbus.QueryFilter{}, err
 		}
 		filter.SourceRuleID = &id
+	}
+
+	if qp.CreatedAfter != "" {
+		t, err := time.Parse(time.RFC3339, qp.CreatedAfter)
+		if err != nil {
+			return alertbus.QueryFilter{}, fmt.Errorf("invalid createdAfter: %w", err)
+		}
+		filter.CreatedAfter = &t
+	}
+
+	if qp.CreatedBefore != "" {
+		t, err := time.Parse(time.RFC3339, qp.CreatedBefore)
+		if err != nil {
+			return alertbus.QueryFilter{}, fmt.Errorf("invalid createdBefore: %w", err)
+		}
+		filter.CreatedBefore = &t
 	}
 
 	return filter, nil

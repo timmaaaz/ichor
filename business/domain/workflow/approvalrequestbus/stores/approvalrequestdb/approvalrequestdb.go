@@ -74,7 +74,11 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (approvalrequestbus
 		ID: id.String(),
 	}
 
-	const q = `SELECT * FROM workflow.approval_requests WHERE approval_request_id = :id`
+	const q = `
+	SELECT ar.*, r.name AS rule_name
+	FROM workflow.approval_requests ar
+	LEFT JOIN workflow.automation_rules r ON ar.rule_id = r.id
+	WHERE ar.approval_request_id = :id`
 
 	var dbReq dbApprovalRequest
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbReq); err != nil {
@@ -127,10 +131,14 @@ func (s *Store) Query(ctx context.Context, filter approvalrequestbus.QueryFilter
 		"rows_per_page": pg.RowsPerPage(),
 	}
 
-	const q = `SELECT * FROM workflow.approval_requests`
+	const q = `
+	SELECT ar.*, r.name AS rule_name
+	FROM workflow.approval_requests ar
+	LEFT JOIN workflow.automation_rules r ON ar.rule_id = r.id
+	WHERE TRUE`
 
 	buf := bytes.NewBufferString(q)
-	applyFilter(filter, data, buf)
+	applyFilterWithJoin(filter, data, buf)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -152,7 +160,7 @@ func (s *Store) Query(ctx context.Context, filter approvalrequestbus.QueryFilter
 func (s *Store) Count(ctx context.Context, filter approvalrequestbus.QueryFilter) (int, error) {
 	data := map[string]any{}
 
-	const q = `SELECT COUNT(*) FROM workflow.approval_requests`
+	const q = `SELECT COUNT(1) AS count FROM workflow.approval_requests`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)

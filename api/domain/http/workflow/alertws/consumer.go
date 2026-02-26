@@ -95,9 +95,15 @@ func (ac *AlertConsumer) handleAlert(ctx context.Context, msg *rabbitmq.Message)
 		alertPayload = data
 	}
 
+	// Choose the message type: alert_updated for status changes, alert for new alerts.
+	msgType := websocket.MessageTypeAlert
+	if msg.Type == "alert_updated" {
+		msgType = websocket.MessageTypeAlertUpdated
+	}
+
 	// Build WebSocket message envelope
 	wsMsg := websocket.Message{
-		Type:      websocket.MessageTypeAlert,
+		Type:      msgType,
 		Payload:   alertPayload,
 		Timestamp: time.Now(),
 	}
