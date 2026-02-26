@@ -25,7 +25,11 @@ type QueryParams struct {
 	TransactionType        string
 	ReferenceNumber        string
 	TransactionDate        string
+	StartTransactionDate   string
+	EndTransactionDate     string
 	CreatedDate            string
+	StartCreatedDate       string
+	EndCreatedDate         string
 	UpdatedDate            string
 }
 
@@ -34,6 +38,7 @@ type InventoryTransaction struct {
 	ProductID              string `json:"product_id"`
 	LocationID             string `json:"location_id"`
 	UserID                 string `json:"user_id"`
+	LotID                  string `json:"lot_id"`
 	Quantity               string `json:"quantity"`
 	TransactionType        string `json:"transaction_type"`
 	ReferenceNumber        string `json:"reference_number"`
@@ -48,11 +53,17 @@ func (app InventoryTransaction) Encode() ([]byte, string, error) {
 }
 
 func ToAppInventoryTransaction(bus inventorytransactionbus.InventoryTransaction) InventoryTransaction {
+	lotID := ""
+	if bus.LotID != nil {
+		lotID = bus.LotID.String()
+	}
+
 	return InventoryTransaction{
 		InventoryTransactionID: bus.InventoryTransactionID.String(),
 		ProductID:              bus.ProductID.String(),
 		LocationID:             bus.LocationID.String(),
 		UserID:                 bus.UserID.String(),
+		LotID:                  lotID,
 		Quantity:               fmt.Sprintf("%d", bus.Quantity),
 		TransactionType:        bus.TransactionType,
 		ReferenceNumber:        bus.ReferenceNumber,

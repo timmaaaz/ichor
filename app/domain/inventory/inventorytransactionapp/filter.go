@@ -72,12 +72,44 @@ func parseFilter(qp QueryParams) (inventorytransactionbus.QueryFilter, error) {
 		filter.TransactionDate = &t
 	}
 
+	if qp.StartTransactionDate != "" {
+		t, err := time.Parse(timeutil.FORMAT, qp.StartTransactionDate)
+		if err != nil {
+			return inventorytransactionbus.QueryFilter{}, errs.NewFieldsError("startTransactionDate", err)
+		}
+		filter.StartTransactionDate = &t
+	}
+
+	if qp.EndTransactionDate != "" {
+		t, err := time.Parse(timeutil.FORMAT, qp.EndTransactionDate)
+		if err != nil {
+			return inventorytransactionbus.QueryFilter{}, errs.NewFieldsError("endTransactionDate", err)
+		}
+		filter.EndTransactionDate = &t
+	}
+
 	if qp.CreatedDate != "" {
 		t, err := time.Parse(timeutil.FORMAT, qp.CreatedDate)
 		if err != nil {
 			return inventorytransactionbus.QueryFilter{}, errs.NewFieldsError("created_date", err)
 		}
 		filter.CreatedDate = &t
+	}
+
+	if qp.StartCreatedDate != "" {
+		t, err := time.Parse(timeutil.FORMAT, qp.StartCreatedDate)
+		if err != nil {
+			return inventorytransactionbus.QueryFilter{}, errs.NewFieldsError("startCreatedDate", err)
+		}
+		filter.StartCreatedDate = &t
+	}
+
+	if qp.EndCreatedDate != "" {
+		t, err := time.Parse(timeutil.FORMAT, qp.EndCreatedDate)
+		if err != nil {
+			return inventorytransactionbus.QueryFilter{}, errs.NewFieldsError("endCreatedDate", err)
+		}
+		filter.EndCreatedDate = &t
 	}
 
 	if qp.UpdatedDate != "" {

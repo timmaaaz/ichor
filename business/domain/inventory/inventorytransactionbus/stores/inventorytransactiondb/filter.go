@@ -45,6 +45,16 @@ func applyFilter(filter inventorytransactionbus.QueryFilter, data map[string]any
 		wc = append(wc, "transaction_date = :transaction_date")
 	}
 
+	if filter.StartTransactionDate != nil {
+		data["start_transaction_date"] = *filter.StartTransactionDate
+		wc = append(wc, "transaction_date >= :start_transaction_date")
+	}
+
+	if filter.EndTransactionDate != nil {
+		data["end_transaction_date"] = *filter.EndTransactionDate
+		wc = append(wc, "transaction_date <= :end_transaction_date")
+	}
+
 	if filter.UserID != nil {
 		data["user_id"] = *filter.UserID
 		wc = append(wc, "user_id = :user_id")
@@ -53,6 +63,16 @@ func applyFilter(filter inventorytransactionbus.QueryFilter, data map[string]any
 	if filter.CreatedDate != nil {
 		data["created_date"] = *filter.CreatedDate
 		wc = append(wc, "created_date = :created_date")
+	}
+
+	if filter.StartCreatedDate != nil {
+		data["start_created_date"] = *filter.StartCreatedDate
+		wc = append(wc, "created_date >= :start_created_date")
+	}
+
+	if filter.EndCreatedDate != nil {
+		data["end_created_date"] = *filter.EndCreatedDate
+		wc = append(wc, "created_date <= :end_created_date")
 	}
 
 	if filter.UpdatedDate != nil {

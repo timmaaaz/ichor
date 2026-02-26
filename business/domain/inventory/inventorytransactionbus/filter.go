@@ -15,6 +15,10 @@ type QueryFilter struct {
 	TransactionType        *string
 	ReferenceNumber        *string
 	TransactionDate        *time.Time
+	StartTransactionDate   *time.Time
+	EndTransactionDate     *time.Time
 	CreatedDate            *time.Time
+	StartCreatedDate       *time.Time
+	EndCreatedDate         *time.Time
 	UpdatedDate            *time.Time
 }

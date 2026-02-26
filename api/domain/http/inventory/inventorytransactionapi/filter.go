@@ -21,7 +21,11 @@ func parseQueryParams(r *http.Request) (inventorytransactionapp.QueryParams, err
 		TransactionType:        values.Get("transaction_type"),
 		ReferenceNumber:        values.Get("reference_number"),
 		TransactionDate:        values.Get("transaction_date"),
+		StartTransactionDate:   values.Get("startTransactionDate"),
+		EndTransactionDate:     values.Get("endTransactionDate"),
 		CreatedDate:            values.Get("created_date"),
+		StartCreatedDate:       values.Get("startCreatedDate"),
+		EndCreatedDate:         values.Get("endCreatedDate"),
 		UpdatedDate:            values.Get("updated_date"),
 	}
 
