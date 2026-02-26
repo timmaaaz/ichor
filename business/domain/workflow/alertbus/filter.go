@@ -1,6 +1,10 @@
 package alertbus
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // QueryFilter holds the available fields a query can be filtered on.
 // We are using pointer semantics because the With API mutates the value.
@@ -12,4 +16,6 @@ type QueryFilter struct {
 	SourceEntityName *string
 	SourceEntityID   *uuid.UUID
 	SourceRuleID     *uuid.UUID
+	CreatedAfter     *time.Time
+	CreatedBefore    *time.Time
 }

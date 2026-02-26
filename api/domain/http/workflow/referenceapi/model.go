@@ -20,10 +20,11 @@ type TriggerType struct {
 
 // EntityType represents an entity type in API responses.
 type EntityType struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	IsActive    bool      `json:"is_active"`
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	IsActive      bool      `json:"is_active"`
+	FrontendRoute string    `json:"frontendRoute,omitempty"`
 }
 
 // Entity represents an entity in API responses.
@@ -122,10 +123,11 @@ func toTriggerTypes(types []workflow.TriggerType) TriggerTypes {
 // toEntityType converts a business entity type to an API response.
 func toEntityType(et workflow.EntityType) EntityType {
 	return EntityType{
-		ID:          et.ID,
-		Name:        et.Name,
-		Description: et.Description,
-		IsActive:    et.IsActive,
+		ID:            et.ID,
+		Name:          et.Name,
+		Description:   et.Description,
+		IsActive:      et.IsActive,
+		FrontendRoute: et.FrontendRoute,
 	}
 }
 

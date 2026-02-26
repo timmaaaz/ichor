@@ -7,21 +7,30 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 )
 
+// ApproverVM represents an approver with their name resolved.
+type ApproverVM struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Approval represents the API response model for an approval request.
 type Approval struct {
-	ID               string   `json:"id"`
-	ExecutionID      string   `json:"executionId"`
-	RuleID           string   `json:"ruleId"`
-	ActionName       string   `json:"actionName"`
-	Approvers        []string `json:"approvers"`
-	ApprovalType     string   `json:"approvalType"`
-	Status           string   `json:"status"`
-	TimeoutHours     int      `json:"timeoutHours"`
-	ApprovalMessage  string   `json:"approvalMessage,omitempty"`
-	ResolvedBy       string   `json:"resolvedBy,omitempty"`
-	ResolutionReason string   `json:"resolutionReason,omitempty"`
-	CreatedDate      string   `json:"createdDate"`
-	ResolvedDate     string   `json:"resolvedDate,omitempty"`
+	ID               string       `json:"id"`
+	ExecutionID      string       `json:"executionId"`
+	RuleID           string       `json:"ruleId"`
+	RuleName         string       `json:"ruleName,omitempty"`
+	ActionName       string       `json:"actionName"`
+	Approvers        []string     `json:"approvers"`
+	ApproverDetails  []ApproverVM `json:"approverDetails,omitempty"`
+	ApprovalType     string       `json:"approvalType"`
+	Status           string       `json:"status"`
+	TimeoutHours     int          `json:"timeoutHours"`
+	ApprovalMessage  string       `json:"approvalMessage,omitempty"`
+	ResolvedBy       string       `json:"resolvedBy,omitempty"`
+	ResolvedByName   string       `json:"resolvedByName,omitempty"`
+	ResolutionReason string       `json:"resolutionReason,omitempty"`
+	CreatedDate      string       `json:"createdDate"`
+	ResolvedDate     string       `json:"resolvedDate,omitempty"`
 }
 
 // Encode implements the web.Encoder interface.
@@ -49,6 +58,9 @@ func toAppApproval(bus approvalrequestbus.ApprovalRequest) Approval {
 		CreatedDate:  bus.CreatedDate.Format(time.RFC3339),
 	}
 
+	if bus.RuleName != "" {
+		app.RuleName = bus.RuleName
+	}
 	if bus.ApprovalMessage != "" {
 		app.ApprovalMessage = bus.ApprovalMessage
 	}

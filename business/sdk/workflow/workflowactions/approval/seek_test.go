@@ -702,6 +702,12 @@ func (s *noopAlertStorer) DismissMultiple(_ context.Context, _ []uuid.UUID, _ ti
 func (s *noopAlertStorer) ResolveRelatedAlerts(_ context.Context, _ uuid.UUID, _ string, _ uuid.UUID, _ time.Time) (int, error) {
 	return 0, nil
 }
+func (s *noopAlertStorer) QueryAcknowledgmentsByAlertID(_ context.Context, _ uuid.UUID) ([]alertbus.AlertAcknowledgment, error) {
+	return nil, nil
+}
+func (s *noopAlertStorer) CountByUserIDGroupedBySeverity(_ context.Context, _ uuid.UUID, _ []uuid.UUID, _ string) (map[string]int, error) {
+	return nil, nil
+}
 
 // newApprovalRequestStore creates a real approvalrequestbus.Business using the test DB.
 func newApprovalRequestStore(db *dbtest.Database) *approvalrequestdb.Store {

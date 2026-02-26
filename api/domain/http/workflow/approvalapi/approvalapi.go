@@ -5,17 +5,21 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/app/sdk/query"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
@@ -28,14 +32,18 @@ var orderByFields = map[string]string{
 type api struct {
 	log            *logger.Logger
 	approvalBus    *approvalrequestbus.Business
+	userBus        *userbus.Business
 	asyncCompleter *temporal.AsyncCompleter
+	workflowQueue  *rabbitmq.WorkflowQueue
 }
 
 func newAPI(cfg Config) *api {
 	return &api{
 		log:            cfg.Log,
 		approvalBus:    cfg.ApprovalBus,
+		userBus:        cfg.UserBus,
 		asyncCompleter: cfg.AsyncCompleter,
+		workflowQueue:  cfg.WorkflowQueue,
 	}
 }
 
@@ -65,7 +73,10 @@ func (a *api) query(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(toAppApprovals(items), total, pg)
+	appItems := toAppApprovals(items)
+	a.enrichApproversSlice(ctx, items, appItems)
+
+	return query.NewResult(appItems, total, pg)
 }
 
 // queryMine returns approval requests where the authenticated user is an approver.
@@ -100,7 +111,10 @@ func (a *api) queryMine(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(toAppApprovals(items), total, pg)
+	appItems := toAppApprovals(items)
+	a.enrichApproversSlice(ctx, items, appItems)
+
+	return query.NewResult(appItems, total, pg)
 }
 
 // queryByID returns a single approval request by ID.
@@ -123,7 +137,10 @@ func (a *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "query by id: %s", err)
 	}
 
-	return toAppApproval(req)
+	app := toAppApproval(req)
+	a.enrichSingleApproval(ctx, req, &app)
+
+	return app
 }
 
 // resolve handles the approval/rejection of a pending approval request.
@@ -197,6 +214,8 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 		}
 	}
 
+	a.publishApprovalResolved(ctx, approval, userID)
+
 	return toAppApproval(approval)
 }
 
@@ -208,6 +227,125 @@ func hasAdminRole(roles []string) bool {
 		}
 	}
 	return false
+}
+
+// =============================================================================
+// Approver enrichment
+// =============================================================================
+
+// enrichApproversSlice batch-enriches approver names for a list of approval requests.
+func (a *api) enrichApproversSlice(ctx context.Context, busItems []approvalrequestbus.ApprovalRequest, appItems []Approval) {
+	if a.userBus == nil || len(busItems) == 0 {
+		return
+	}
+
+	// Collect unique approver + resolvedBy UUIDs.
+	idSet := make(map[uuid.UUID]bool)
+	for _, item := range busItems {
+		for _, id := range item.Approvers {
+			idSet[id] = true
+		}
+		if item.ResolvedBy != nil {
+			idSet[*item.ResolvedBy] = true
+		}
+	}
+
+	nameMap := a.resolveUserNames(ctx, idSet)
+
+	for i, item := range busItems {
+		details := make([]ApproverVM, 0, len(item.Approvers))
+		for _, id := range item.Approvers {
+			vm := ApproverVM{ID: id.String()}
+			if name, ok := nameMap[id]; ok {
+				vm.Name = name
+			}
+			details = append(details, vm)
+		}
+		appItems[i].ApproverDetails = details
+
+		if item.ResolvedBy != nil {
+			if name, ok := nameMap[*item.ResolvedBy]; ok {
+				appItems[i].ResolvedByName = name
+			}
+		}
+	}
+}
+
+// enrichSingleApproval enriches a single approval response with resolved names.
+func (a *api) enrichSingleApproval(ctx context.Context, bus approvalrequestbus.ApprovalRequest, app *Approval) {
+	if a.userBus == nil {
+		return
+	}
+
+	idSet := make(map[uuid.UUID]bool)
+	for _, id := range bus.Approvers {
+		idSet[id] = true
+	}
+	if bus.ResolvedBy != nil {
+		idSet[*bus.ResolvedBy] = true
+	}
+
+	nameMap := a.resolveUserNames(ctx, idSet)
+
+	details := make([]ApproverVM, 0, len(bus.Approvers))
+	for _, id := range bus.Approvers {
+		vm := ApproverVM{ID: id.String()}
+		if name, ok := nameMap[id]; ok {
+			vm.Name = name
+		}
+		details = append(details, vm)
+	}
+	app.ApproverDetails = details
+
+	if bus.ResolvedBy != nil {
+		if name, ok := nameMap[*bus.ResolvedBy]; ok {
+			app.ResolvedByName = name
+		}
+	}
+}
+
+// resolveUserNames fetches display names for a set of user UUIDs.
+func (a *api) resolveUserNames(ctx context.Context, ids map[uuid.UUID]bool) map[uuid.UUID]string {
+	nameMap := make(map[uuid.UUID]string, len(ids))
+	for id := range ids {
+		user, err := a.userBus.QueryByID(ctx, id)
+		if err != nil {
+			a.log.Error(ctx, "failed to resolve approver name", "user_id", id, "error", err)
+			continue
+		}
+		nameMap[id] = fmt.Sprintf("%s %s", user.FirstName, user.LastName)
+	}
+	return nameMap
+}
+
+// publishApprovalResolved publishes a resolved approval event to RabbitMQ for WebSocket delivery.
+func (a *api) publishApprovalResolved(ctx context.Context, approval approvalrequestbus.ApprovalRequest, resolvedBy uuid.UUID) {
+	if a.workflowQueue == nil {
+		return
+	}
+
+	payload := map[string]any{
+		"approvalId": approval.ID.String(),
+		"status":     approval.Status,
+		"resolvedBy": resolvedBy.String(),
+		"ruleId":     approval.RuleID.String(),
+		"actionName": approval.ActionName,
+	}
+	if approval.ResolvedDate != nil {
+		payload["resolvedDate"] = approval.ResolvedDate.Format(time.RFC3339)
+	}
+
+	msg := &rabbitmq.Message{
+		Type:       "approval_resolved",
+		EntityName: "workflow.approval_requests",
+		EntityID:   approval.ID,
+		UserID:     resolvedBy,
+		Payload:    payload,
+	}
+
+	if err := a.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg); err != nil {
+		a.log.Error(ctx, "failed to publish approval resolved event", "approval_id", approval.ID, "error", err)
+	}
 }
 
 // parseQueryParams extracts query parameters from the request.

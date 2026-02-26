@@ -74,6 +74,7 @@ type entityType struct {
 	Description   string         `db:"description"`
 	IsActive      bool           `db:"is_active"` // Indicates if the entity type is active
 	DeactivatedBy sql.NullString `db:"deactivated_by"`
+	FrontendRoute sql.NullString `db:"frontend_route"`
 }
 
 // toCoreEntityType converts a store entityType to core EntityType
@@ -89,6 +90,7 @@ func toCoreEntityType(dbEntityType entityType) workflow.EntityType {
 		Description:   dbEntityType.Description,
 		IsActive:      dbEntityType.IsActive,
 		DeactivatedBy: deactivatedBy,
+		FrontendRoute: dbEntityType.FrontendRoute.String,
 	}
 	return et
 }
@@ -116,6 +118,10 @@ func toDBEntityType(et workflow.EntityType) entityType {
 		DeactivatedBy: sql.NullString{
 			String: et.DeactivatedBy.String(),
 			Valid:  valid,
+		},
+		FrontendRoute: sql.NullString{
+			String: et.FrontendRoute,
+			Valid:  et.FrontendRoute != "",
 		},
 	}
 }

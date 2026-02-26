@@ -9,8 +9,12 @@ import (
 type MessageType string
 
 const (
-	// MessageTypeAlert is an alert notification message.
+	// MessageTypeAlert is a new alert notification message.
 	MessageTypeAlert MessageType = "alert"
+	// MessageTypeAlertUpdated signals that an existing alert's status changed.
+	MessageTypeAlertUpdated MessageType = "alert_updated"
+	// MessageTypeApprovalUpdated signals that an approval request was resolved.
+	MessageTypeApprovalUpdated MessageType = "approval_updated"
 	// MessageTypePing is a heartbeat ping message.
 	MessageTypePing MessageType = "ping"
 	// MessageTypePong is a heartbeat pong response message.

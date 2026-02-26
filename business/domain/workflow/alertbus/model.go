@@ -40,6 +40,7 @@ type Alert struct {
 	SourceEntityName string          `json:"source_entity_name"`
 	SourceEntityID   uuid.UUID       `json:"source_entity_id"`
 	SourceRuleID     uuid.UUID       `json:"source_rule_id"`
+	SourceRuleName   string          `json:"source_rule_name,omitempty"`
 	Status           string          `json:"status"`
 	ExpiresDate      *time.Time      `json:"expires_date,omitempty"`
 	CreatedDate      time.Time       `json:"created_date"`
@@ -60,6 +61,7 @@ type AlertAcknowledgment struct {
 	ID               uuid.UUID `json:"id"`
 	AlertID          uuid.UUID `json:"alert_id"`
 	AcknowledgedBy   uuid.UUID `json:"acknowledged_by"`
+	AcknowledgerName string    `json:"acknowledger_name,omitempty"`
 	AcknowledgedDate time.Time `json:"acknowledged_date"`
 	Notes            string    `json:"notes"`
 }

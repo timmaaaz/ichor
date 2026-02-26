@@ -50,6 +50,20 @@ func applyFilter(filter alertbus.QueryFilter, data map[string]any, buf *bytes.Bu
 		wc = append(wc, "source_rule_id = :source_rule_id")
 	}
 
+	if filter.CreatedAfter != nil {
+		data["created_after"] = *filter.CreatedAfter
+		wc = append(wc, "created_date >= :created_after")
+	}
+
+	if filter.CreatedBefore != nil {
+		data["created_before"] = *filter.CreatedBefore
+		wc = append(wc, "created_date <= :created_before")
+	}
+
+	if filter.Status != nil && *filter.Status == alertbus.StatusActive {
+		wc = append(wc, "(expires_date IS NULL OR expires_date > NOW())")
+	}
+
 	if len(wc) > 0 {
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wc, " AND "))
@@ -92,6 +106,20 @@ func applyFilterWithJoin(filter alertbus.QueryFilter, data map[string]any, buf *
 	if filter.SourceRuleID != nil {
 		data["source_rule_id"] = filter.SourceRuleID.String()
 		wc = append(wc, "a.source_rule_id = :source_rule_id")
+	}
+
+	if filter.CreatedAfter != nil {
+		data["created_after"] = *filter.CreatedAfter
+		wc = append(wc, "a.created_date >= :created_after")
+	}
+
+	if filter.CreatedBefore != nil {
+		data["created_before"] = *filter.CreatedBefore
+		wc = append(wc, "a.created_date <= :created_before")
+	}
+
+	if filter.Status != nil && *filter.Status == alertbus.StatusActive {
+		wc = append(wc, "(a.expires_date IS NULL OR a.expires_date > NOW())")
 	}
 
 	if len(wc) > 0 {

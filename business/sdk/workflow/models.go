@@ -111,6 +111,7 @@ type EntityType struct {
 	Description   string
 	IsActive      bool
 	DeactivatedBy uuid.UUID
+	FrontendRoute string
 }
 
 // NewEntityType contains information needed to create a new entity type

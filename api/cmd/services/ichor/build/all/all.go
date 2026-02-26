@@ -74,6 +74,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertws"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/edgeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/executionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/notificationsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/referenceapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/ruleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/workflowsaveapi"
@@ -1233,10 +1234,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	workflowapprovalapi.Routes(app, workflowapprovalapi.Config{
 		Log:            cfg.Log,
 		ApprovalBus:    approvalRequestBus,
+		UserBus:        userBus,
 		UserRoleBus:    userRoleBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 		AsyncCompleter: asyncCompleter,
+		WorkflowQueue:  workflowQueue,
+	})
+
+	notificationsapi.Routes(app, notificationsapi.Config{
+		Log:         cfg.Log,
+		AlertBus:    alertBus,
+		ApprovalBus: approvalRequestBus,
+		UserRoleBus: userRoleBus,
+		AuthClient:  cfg.AuthClient,
 	})
 
 	referenceapi.Routes(app, referenceapi.Config{
