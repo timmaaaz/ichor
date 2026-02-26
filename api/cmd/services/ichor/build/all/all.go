@@ -46,6 +46,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventorytransactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/lotlocationapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/lottrackingsapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/scanapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/serialnumberapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/putawaytaskapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/transferorderapi"
@@ -80,6 +81,7 @@ import (
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
+	"github.com/timmaaaz/ichor/api/domain/http/floor/presenceapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/cityapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/countryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/regionapi"
@@ -129,6 +131,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryadjustmentapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryitemapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorylocationapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/scanapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorytransactionapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/lotlocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/lottrackingsapp"
@@ -978,6 +981,19 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus:   permissionsBus,
 	})
 
+	scanapi.Routes(app, scanapi.Config{
+		Log:            cfg.Log,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+		ScanApp: scanapp.NewApp(
+			productBus,
+			inventoryItemBus,
+			inventoryLocationBus,
+			lotTrackingsBus,
+			serialNumberBus,
+		),
+	})
+
 	inspectionapi.Routes(app, inspectionapi.Config{
 		InspectionBus:  inspectionBus,
 		AuthClient:     cfg.AuthClient,
@@ -1157,7 +1173,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			ToolExecutor:       toolExecutor,
 			ToolIndex:          ragIndex,
 			AuthClient:         cfg.AuthClient,
-			CORSAllowedOrigins: []string{"*"}, // TODO: Configure from environment (matches WebSocket)
+			CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 		})
 		cfg.Log.Info(context.Background(), "AGENT-CHAT: routes initialized",
 			"provider", cfg.LLMProvider,
@@ -1321,10 +1337,18 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	alertws.Routes(app, alertws.RouteConfig{
 		Log:                cfg.Log,
 		AlertHub:           alertHub,
-		CORSAllowedOrigins: []string{"*"}, // TODO: Configure from environment
+		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 	}, wsAuth)
 
 	cfg.Log.Info(context.Background(), "websocket alert routes initialized")
+
+	// Floor supervisor presence endpoint
+	presenceapi.Routes(app, presenceapi.Config{
+		Log:            cfg.Log,
+		AlertHub:       alertHub,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
 
 	// formdata - dynamic multi-entity operations
 	// Build registry with entity registrations

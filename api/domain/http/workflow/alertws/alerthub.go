@@ -3,6 +3,7 @@ package alertws
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
@@ -75,6 +76,24 @@ func (ah *AlertHub) BroadcastToRole(roleID uuid.UUID, message []byte) int {
 // BroadcastAll sends a message to all connected clients.
 func (ah *AlertHub) BroadcastAll(message []byte) int {
 	return ah.hub.BroadcastAll(message)
+}
+
+// ConnectedUserIDs returns the UUIDs of all users currently connected via WebSocket.
+func (ah *AlertHub) ConnectedUserIDs() []uuid.UUID {
+	ids := ah.hub.ConnectedIDs()
+	userIDs := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if !strings.HasPrefix(id, userIDPrefix) {
+			continue
+		}
+		raw := strings.TrimPrefix(id, userIDPrefix)
+		uid, err := uuid.Parse(raw)
+		if err != nil {
+			continue
+		}
+		userIDs = append(userIDs, uid)
+	}
+	return userIDs
 }
 
 // RefreshUserRoles updates the role mappings for all connections of a user.

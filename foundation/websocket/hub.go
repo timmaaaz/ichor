@@ -220,6 +220,18 @@ func (h *Hub) ConnectionCount() int {
 	return len(h.clientIDs)
 }
 
+// ConnectedIDs returns all unique IDs currently registered in the hub.
+func (h *Hub) ConnectedIDs() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	ids := make([]string, 0, len(h.clients))
+	for id := range h.clients {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
 // ClientsForID returns the number of clients registered under the given ID.
 func (h *Hub) ClientsForID(id string) int {
 	h.mu.RLock()
