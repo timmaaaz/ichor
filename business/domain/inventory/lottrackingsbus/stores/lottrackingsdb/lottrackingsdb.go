@@ -123,10 +123,15 @@ func (s *Store) Query(ctx context.Context, filter lottrackingsbus.QueryFilter, o
 
 	const q = `
 	SELECT
-	    id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
-        quantity, quality_status, created_date, updated_date
-	FROM 
-		inventory.lot_trackings
+	    lt.id, lt.supplier_product_id, lt.lot_number, lt.manufacture_date, lt.expiration_date, lt.received_date,
+        lt.quantity, lt.quality_status, lt.created_date, lt.updated_date,
+        COALESCE(p.id, CAST('00000000-0000-0000-0000-000000000000' AS uuid)) AS product_id,
+        COALESCE(p.name, '') AS product_name,
+        COALESCE(p.sku, '') AS product_sku
+	FROM
+		inventory.lot_trackings lt
+	LEFT JOIN procurement.supplier_products sp ON sp.id = lt.supplier_product_id
+	LEFT JOIN products.products p ON p.id = sp.product_id
 	`
 
 	buf := bytes.NewBufferString(q)
@@ -155,8 +160,8 @@ func (s *Store) Count(ctx context.Context, filter lottrackingsbus.QueryFilter) (
 	const q = `
     SELECT
         COUNT(1) AS count
-    FROM 
-        inventory.lot_trackings
+    FROM
+        inventory.lot_trackings lt
     `
 
 	buf := bytes.NewBufferString(q)
@@ -182,11 +187,11 @@ func (s *Store) QueryLocationsByLotID(ctx context.Context, lotID uuid.UUID) ([]l
 	const q = `
 	SELECT
 	    ll.location_id,
-	    CONCAT(il.aisle, '-', il.rack, '-', il.shelf, '-', il.bin) AS location_code,
-	    il.aisle,
-	    il.rack,
-	    il.shelf,
-	    il.bin,
+	    COALESCE(il.location_code, CONCAT(COALESCE(il.aisle,''), '-', COALESCE(il.rack,''), '-', COALESCE(il.shelf,''), '-', COALESCE(il.bin,''))) AS location_code,
+	    COALESCE(il.aisle, '') AS aisle,
+	    COALESCE(il.rack, '') AS rack,
+	    COALESCE(il.shelf, '') AS shelf,
+	    COALESCE(il.bin, '') AS bin,
 	    ll.quantity::int AS quantity
 	FROM inventory.lot_locations ll
 	JOIN inventory.inventory_locations il ON il.id = ll.location_id
@@ -211,12 +216,17 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lottrackingsbus.Lo
 
 	const q = `
     SELECT
-        id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
-        quantity, quality_status, created_date, updated_date
-    FROM 
-        inventory.lot_trackings
+        lt.id, lt.supplier_product_id, lt.lot_number, lt.manufacture_date, lt.expiration_date, lt.received_date,
+        lt.quantity, lt.quality_status, lt.created_date, lt.updated_date,
+        COALESCE(p.id, CAST('00000000-0000-0000-0000-000000000000' AS uuid)) AS product_id,
+        COALESCE(p.name, '') AS product_name,
+        COALESCE(p.sku, '') AS product_sku
+    FROM
+        inventory.lot_trackings lt
+    LEFT JOIN procurement.supplier_products sp ON sp.id = lt.supplier_product_id
+    LEFT JOIN products.products p ON p.id = sp.product_id
     WHERE
-        id = :id
+        lt.id = :id
     `
 
 	var dbLot lotTrackings

@@ -21,6 +21,7 @@ func parseQueryParams(r *http.Request) (inventorylocationapp.QueryParams, error)
 		Shelf:              values.Get("shelf"),
 		Bin:                values.Get("bin"),
 		LocationCode:       values.Get("location_code"),
+		LocationCodeExact:  values.Get("location_code_exact"),
 		IsPickLocation:     values.Get("is_pick_location"),
 		IsReserveLocation:  values.Get("is_reserve_location"),
 		MaxCapacity:        values.Get("max_capacity"),

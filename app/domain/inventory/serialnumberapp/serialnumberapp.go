@@ -138,3 +138,15 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (SerialNumber, error)
 
 	return ToAppSerialNumber(sn), nil
 }
+
+func (a *App) QueryLocationBySerialID(ctx context.Context, serialID uuid.UUID) (SerialLocation, error) {
+	loc, err := a.serialnumberbus.QueryLocationBySerialID(ctx, serialID)
+	if err != nil {
+		if errors.Is(err, serialnumberbus.ErrNotFound) {
+			return SerialLocation{}, errs.New(errs.NotFound, err)
+		}
+		return SerialLocation{}, fmt.Errorf("querylocationbyserialid: %w", err)
+	}
+
+	return toAppSerialLocation(loc), nil
+}

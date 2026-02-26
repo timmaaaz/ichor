@@ -28,10 +28,12 @@ type Storer interface {
 	Update(ctx context.Context, inventoryItem InventoryItem) error
 	Delete(ctx context.Context, inventoryItem InventoryItem) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]InventoryItem, error)
+	QueryWithLocationDetails(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]InventoryItemWithLocation, error)
+	QueryItemsWithProductAtLocation(ctx context.Context, locationID uuid.UUID) ([]ItemWithProduct, error)
 	QueryAvailableForAllocation(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID, warehouseID *uuid.UUID, strategy string, limit int) ([]InventoryItem, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, inventoryID uuid.UUID) (InventoryItem, error)
-	UpsertQuantity(ctx context.Context, productID, locationID uuid.UUID, quantityDelta int) error
+	UpsertQuantity(ctx context.Context, newID, productID, locationID uuid.UUID, quantityDelta int) error
 }
 
 type Business struct {
@@ -169,6 +171,32 @@ func (b *Business) Delete(ctx context.Context, ip InventoryItem) error {
 	return nil
 }
 
+// QueryItemsWithProductAtLocation retrieves inventory items at a location with product name/sku/tracking joined.
+func (b *Business) QueryItemsWithProductAtLocation(ctx context.Context, locationID uuid.UUID) ([]ItemWithProduct, error) {
+	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.queryitemswithproductat")
+	defer span.End()
+
+	items, err := b.storer.QueryItemsWithProductAtLocation(ctx, locationID)
+	if err != nil {
+		return nil, fmt.Errorf("query items with product at location: %w", err)
+	}
+
+	return items, nil
+}
+
+// QueryWithLocationDetails retrieves inventory items with location context fields joined.
+func (b *Business) QueryWithLocationDetails(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]InventoryItemWithLocation, error) {
+	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.querywithdetails")
+	defer span.End()
+
+	items, err := b.storer.QueryWithLocationDetails(ctx, filter, orderBy, page)
+	if err != nil {
+		return nil, fmt.Errorf("query with location details: %w", err)
+	}
+
+	return items, nil
+}
+
 // Query retrieves inventoryItems based on the provided filter and pagination settings.
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]InventoryItem, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.query")
@@ -193,7 +221,7 @@ func (b *Business) UpsertQuantity(ctx context.Context, productID, locationID uui
 		return fmt.Errorf("upsert quantity: quantityDelta must be positive, got %d", quantityDelta)
 	}
 
-	if err := b.storer.UpsertQuantity(ctx, productID, locationID, quantityDelta); err != nil {
+	if err := b.storer.UpsertQuantity(ctx, uuid.New(), productID, locationID, quantityDelta); err != nil {
 		return fmt.Errorf("upsert quantity: %w", err)
 	}
 

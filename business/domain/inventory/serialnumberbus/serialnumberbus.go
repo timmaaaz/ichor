@@ -33,6 +33,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]SerialNumber, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, snID uuid.UUID) (SerialNumber, error)
+	QueryLocationBySerialID(ctx context.Context, serialID uuid.UUID) (SerialLocation, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -183,4 +184,16 @@ func (b *Business) QueryByID(ctx context.Context, snID uuid.UUID) (SerialNumber,
 	}
 
 	return sn, nil
+}
+
+func (b *Business) QueryLocationBySerialID(ctx context.Context, serialID uuid.UUID) (SerialLocation, error) {
+	ctx, span := otel.AddSpan(ctx, "business.serialnumberbus.querylocationbyserialid")
+	defer span.End()
+
+	loc, err := b.storer.QueryLocationBySerialID(ctx, serialID)
+	if err != nil {
+		return SerialLocation{}, fmt.Errorf("querying location by serial ID: %w", err)
+	}
+
+	return loc, nil
 }

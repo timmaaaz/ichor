@@ -1,6 +1,8 @@
 package serialnumber_test
 
 import (
+	"net/http"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 
@@ -47,4 +49,28 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 		},
 	}
 	return table
+}
+
+// serialLocationIDOnly captures just location_id for assertions; warehouse_name
+// and zone_name are random seed values we cannot predict deterministically.
+type serialLocationIDOnly struct {
+	LocationID string `json:"location_id"`
+}
+
+func queryLocation200(sd apitest.SeedData) []apitest.Table {
+	sn := sd.SerialNumbers[0]
+	return []apitest.Table{
+		{
+			Name:       "basic",
+			URL:        "/v1/inventory/serial-numbers/" + sn.SerialID + "/location",
+			Token:      sd.Users[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &serialLocationIDOnly{},
+			ExpResp:    &serialLocationIDOnly{LocationID: sn.LocationID},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got.(*serialLocationIDOnly).LocationID, exp.(*serialLocationIDOnly).LocationID)
+			},
+		},
+	}
 }

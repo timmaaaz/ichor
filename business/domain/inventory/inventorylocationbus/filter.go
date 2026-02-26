@@ -16,6 +16,7 @@ type QueryFilter struct {
 	Shelf              *string
 	Bin                *string
 	LocationCode       *string
+	LocationCodeExact  *string
 	IsPickLocation     *bool
 	IsReserveLocation  *bool
 	MaxCapacity        *int

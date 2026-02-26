@@ -59,6 +59,10 @@ func parseFilter(qp QueryParams) (inventorylocationbus.QueryFilter, error) {
 		filter.LocationCode = &qp.LocationCode
 	}
 
+	if qp.LocationCodeExact != "" {
+		filter.LocationCodeExact = &qp.LocationCodeExact
+	}
+
 	if qp.IsPickLocation != "" {
 		b, err := strconv.ParseBool(qp.IsPickLocation)
 		if err != nil {

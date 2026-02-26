@@ -37,3 +37,15 @@ type UpdateSerialNumber struct {
 	SerialNumber *string    `json:"serial_number,omitempty"`
 	Status       *string    `json:"status,omitempty"`
 }
+
+// SerialLocation represents the storage location of a serial number.
+type SerialLocation struct {
+	LocationID    uuid.UUID `json:"location_id"`
+	LocationCode  string    `json:"location_code"`
+	Aisle         string    `json:"aisle"`
+	Rack          string    `json:"rack"`
+	Shelf         string    `json:"shelf"`
+	Bin           string    `json:"bin"`
+	WarehouseName string    `json:"warehouse_name"`
+	ZoneName      string    `json:"zone_name"`
+}

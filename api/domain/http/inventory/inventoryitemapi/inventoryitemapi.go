@@ -74,6 +74,14 @@ func (api *api) query(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
+	if qp.IncludeLocationDetails == "true" {
+		inventoryItems, err := api.inventoryitemapp.QueryWithLocationDetails(ctx, qp)
+		if err != nil {
+			return errs.NewError(err)
+		}
+		return inventoryItems
+	}
+
 	inventoryItems, err := api.inventoryitemapp.Query(ctx, qp)
 	if err != nil {
 		return errs.NewError(err)

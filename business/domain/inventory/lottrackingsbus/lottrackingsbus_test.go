@@ -298,6 +298,10 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp.LotID = gotResp.LotID
 				expResp.CreatedDate = gotResp.CreatedDate
 				expResp.UpdatedDate = gotResp.UpdatedDate
+				// ProductID/Name/SKU come from JOIN enrichment on the seeded record.
+				expResp.ProductID = gotResp.ProductID
+				expResp.ProductName = gotResp.ProductName
+				expResp.ProductSKU = gotResp.ProductSKU
 
 				return cmp.Diff(gotResp, expResp)
 			},

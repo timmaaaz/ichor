@@ -166,6 +166,42 @@ func (s *Store) Count(ctx context.Context, filter serialnumberbus.QueryFilter) (
 	return count.Count, nil
 }
 
+// QueryLocationBySerialID retrieves the location of the specified serial number.
+func (s *Store) QueryLocationBySerialID(ctx context.Context, serialID uuid.UUID) (serialnumberbus.SerialLocation, error) {
+	data := struct {
+		SerialID string `db:"serial_id"`
+	}{
+		SerialID: serialID.String(),
+	}
+
+	const q = `
+	SELECT
+	    il.id AS location_id,
+	    COALESCE(il.location_code, CONCAT(il.aisle, '-', il.rack, '-', il.shelf, '-', il.bin)) AS location_code,
+	    il.aisle,
+	    il.rack,
+	    il.shelf,
+	    il.bin,
+	    w.name AS warehouse_name,
+	    z.name AS zone_name
+	FROM inventory.serial_numbers sn
+	JOIN inventory.inventory_locations il ON il.id = sn.location_id
+	JOIN inventory.zones z ON z.id = il.zone_id
+	JOIN inventory.warehouses w ON w.id = z.warehouse_id
+	WHERE sn.id = :serial_id
+	`
+
+	var loc serialLocation
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &loc); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return serialnumberbus.SerialLocation{}, fmt.Errorf("namedquerystruct: %w", serialnumberbus.ErrNotFound)
+		}
+		return serialnumberbus.SerialLocation{}, fmt.Errorf("namedquerystruct: %w", err)
+	}
+
+	return toBusSerialLocation(loc), nil
+}
+
 // QueryByID gets the specified serial number from the database.
 func (s *Store) QueryByID(ctx context.Context, serialID uuid.UUID) (serialnumberbus.SerialNumber, error) {
 	data := struct {

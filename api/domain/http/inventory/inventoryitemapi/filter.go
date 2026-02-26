@@ -25,8 +25,9 @@ func parseQueryParams(r *http.Request) (inventoryitemapp.QueryParams, error) {
 		EconomicOrderQuantity: values.Get("economic_order_quantity"),
 		SafetyStock:           values.Get("safety_stock"),
 		AvgDailyUsage:         values.Get("avg_daily_usage"),
-		CreatedDate:           values.Get("created_date"),
-		UpdatedDate:           values.Get("updated_date"),
+		CreatedDate:            values.Get("created_date"),
+		UpdatedDate:            values.Get("updated_date"),
+		IncludeLocationDetails: values.Get("include_location_details"),
 	}
 
 	return filter, nil

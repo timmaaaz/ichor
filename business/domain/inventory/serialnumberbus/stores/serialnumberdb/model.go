@@ -52,3 +52,27 @@ func toDBSerialNumber(bus serialnumberbus.SerialNumber) serialNumber {
 		UpdatedDate:  bus.UpdatedDate,
 	}
 }
+
+type serialLocation struct {
+	LocationID    uuid.UUID `db:"location_id"`
+	LocationCode  string    `db:"location_code"`
+	Aisle         string    `db:"aisle"`
+	Rack          string    `db:"rack"`
+	Shelf         string    `db:"shelf"`
+	Bin           string    `db:"bin"`
+	WarehouseName string    `db:"warehouse_name"`
+	ZoneName      string    `db:"zone_name"`
+}
+
+func toBusSerialLocation(db serialLocation) serialnumberbus.SerialLocation {
+	return serialnumberbus.SerialLocation{
+		LocationID:    db.LocationID,
+		LocationCode:  db.LocationCode,
+		Aisle:         db.Aisle,
+		Rack:          db.Rack,
+		Shelf:         db.Shelf,
+		Bin:           db.Bin,
+		WarehouseName: db.WarehouseName,
+		ZoneName:      db.ZoneName,
+	}
+}

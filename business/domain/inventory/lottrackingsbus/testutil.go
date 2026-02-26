@@ -18,6 +18,9 @@ func RandomDate() time.Time {
 	return start.Add(time.Duration(randomDays) * 24 * time.Hour)
 }
 
+// validQualityStatuses are the values allowed by the lot_trackings_quality_status_check constraint.
+var validQualityStatuses = []string{"good", "on_hold", "quarantined", "released", "expired"}
+
 func TestNewLotTrackings(n int, supplierProductIDs uuid.UUIDs) []NewLotTrackings {
 	newLotTrackingss := make([]NewLotTrackings, n)
 
@@ -30,7 +33,7 @@ func TestNewLotTrackings(n int, supplierProductIDs uuid.UUIDs) []NewLotTrackings
 			ManufactureDate:   RandomDate(),
 			ExpirationDate:    RandomDate(),
 			RecievedDate:      RandomDate(),
-			QualityStatus:     fmt.Sprintf("QualityStatus%d", idx),
+			QualityStatus:     validQualityStatuses[idx%len(validQualityStatuses)],
 			Quantity:          rand.Intn(1000),
 		}
 	}
@@ -49,7 +52,12 @@ func TestSeedLotTrackings(ctx context.Context, n int, supplierProductIDs uuid.UU
 		if err != nil {
 			return nil, fmt.Errorf("seeding error: %v", err)
 		}
-		lotTrackingss[i] = lt
+		// Re-fetch via QueryByID to pick up JOIN-enriched fields (ProductID, ProductName, ProductSKU).
+		enriched, err := api.QueryByID(ctx, lt.LotID)
+		if err != nil {
+			return nil, fmt.Errorf("seeding re-fetch error: %v", err)
+		}
+		lotTrackingss[i] = enriched
 	}
 
 	sort.Slice(lotTrackingss, func(i, j int) bool {

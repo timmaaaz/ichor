@@ -159,6 +159,80 @@ func (s *Store) Query(ctx context.Context, filter inventoryitembus.QueryFilter, 
 	return toBusInventoryItems(ips), nil
 }
 
+// QueryItemsWithProductAtLocation retrieves all inventory items at a location joined with product details.
+func (s *Store) QueryItemsWithProductAtLocation(ctx context.Context, locationID uuid.UUID) ([]inventoryitembus.ItemWithProduct, error) {
+	data := struct {
+		LocationID uuid.UUID `db:"location_id"`
+	}{
+		LocationID: locationID,
+	}
+
+	const q = `
+	SELECT
+	    ii.product_id,
+	    p.name AS product_name,
+	    p.sku AS product_sku,
+	    p.tracking_type,
+	    ii.quantity
+	FROM inventory.inventory_items ii
+	JOIN products.products p ON p.id = ii.product_id
+	WHERE ii.location_id = :location_id
+	ORDER BY p.name
+	`
+
+	var items []itemWithProduct
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &items); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusItemsWithProduct(items), nil
+}
+
+// QueryWithLocationDetails retrieves inventory items with location context JOIN applied.
+func (s *Store) QueryWithLocationDetails(ctx context.Context, filter inventoryitembus.QueryFilter, orderBy order.By, page page.Page) ([]inventoryitembus.InventoryItemWithLocation, error) {
+	data := map[string]any{
+		"offset":        (page.Number() - 1) * page.RowsPerPage(),
+		"rows_per_page": page.RowsPerPage(),
+	}
+
+	const q = `
+    SELECT
+        ii.id, ii.product_id, ii.location_id, ii.quantity, ii.reserved_quantity, ii.allocated_quantity,
+        ii.minimum_stock, ii.maximum_stock, ii.reorder_point, ii.economic_order_quantity, ii.safety_stock,
+        ii.avg_daily_usage, ii.created_date, ii.updated_date,
+        COALESCE(il.location_code, CONCAT(il.aisle, '-', il.rack, '-', il.shelf, '-', il.bin)) AS location_code,
+        COALESCE(il.aisle, '') AS aisle,
+        COALESCE(il.rack, '') AS rack,
+        COALESCE(il.shelf, '') AS shelf,
+        COALESCE(il.bin, '') AS bin,
+        COALESCE(z.name, '') AS zone_name,
+        COALESCE(w.name, '') AS warehouse_name
+    FROM
+        inventory.inventory_items ii
+    LEFT JOIN inventory.inventory_locations il ON il.id = ii.location_id
+    LEFT JOIN inventory.zones z ON z.id = il.zone_id
+    LEFT JOIN inventory.warehouses w ON w.id = z.warehouse_id
+    `
+
+	buf := bytes.NewBufferString(q)
+	applyFilterAliased(filter, data, buf)
+
+	orderByClause, err := orderByClause(orderBy)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.WriteString(orderByClause)
+	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
+
+	var ips []inventoryItemWithLocation
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &ips); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusInventoryItemsWithLocation(ips), nil
+}
+
 // QueryAvailableForAllocation queries inventory items that have available quantity for allocation
 // with row-level locking for transaction safety
 func (s *Store) QueryAvailableForAllocation(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID, warehouseID *uuid.UUID, strategy string, limit int) ([]inventoryitembus.InventoryItem, error) {
@@ -185,21 +259,9 @@ func (s *Store) QueryAvailableForAllocation(ctx context.Context, productID uuid.
 		args["location_id"] = locationID.String()
 	}
 
-	// Add warehouse filtering if specified
+	// Add warehouse filtering if specified — append subquery to preserve any prior locationID filter
 	if warehouseID != nil {
-		q = `
-        SELECT
-            ii.id, ii.product_id, ii.location_id, ii.quantity, ii.reserved_quantity, 
-            ii.allocated_quantity, ii.minimum_stock, ii.maximum_stock, ii.reorder_point, 
-            ii.economic_order_quantity, ii.safety_stock, ii.avg_daily_usage, 
-            ii.created_date, ii.updated_date
-        FROM
-            inventory.inventory_items ii
-            INNER JOIN inventory.inventory_locations il ON ii.location_id = il.id
-        WHERE
-            ii.product_id = :product_id
-            AND il.warehouse_id = :warehouse_id
-            AND (ii.quantity - ii.reserved_quantity - ii.allocated_quantity) > 0`
+		q += ` AND ii.location_id IN (SELECT id FROM inventory.inventory_locations WHERE warehouse_id = :warehouse_id)`
 		args["warehouse_id"] = warehouseID.String()
 	}
 
@@ -309,14 +371,15 @@ func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (inventoryitemb
 // (product_id, location_id) pair, adding quantityDelta to the existing quantity.
 // On insert (no existing record), all stock threshold fields default to 0.
 // Relies on the unique_product_location constraint added in migration v1.998.
-func (s *Store) UpsertQuantity(ctx context.Context, productID, locationID uuid.UUID, quantityDelta int) error {
+// newID is used only on the INSERT path; it is ignored when the record already exists.
+func (s *Store) UpsertQuantity(ctx context.Context, newID, productID, locationID uuid.UUID, quantityDelta int) error {
 	data := struct {
-		ID          uuid.UUID `db:"id"`
-		ProductID   uuid.UUID `db:"product_id"`
-		LocationID  uuid.UUID `db:"location_id"`
-		Quantity    int       `db:"quantity"`
+		ID         uuid.UUID `db:"id"`
+		ProductID  uuid.UUID `db:"product_id"`
+		LocationID uuid.UUID `db:"location_id"`
+		Quantity   int       `db:"quantity"`
 	}{
-		ID:         uuid.New(),
+		ID:         newID,
 		ProductID:  productID,
 		LocationID: locationID,
 		Quantity:   quantityDelta,

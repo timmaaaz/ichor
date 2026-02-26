@@ -42,6 +42,27 @@ type NewInventoryItem struct {
 	AvgDailyUsage         int       `json:"avg_daily_usage"`
 }
 
+// ItemWithProduct represents an inventory item at a location with product details.
+type ItemWithProduct struct {
+	ProductID    uuid.UUID `json:"product_id"`
+	ProductName  string    `json:"product_name"`
+	ProductSKU   string    `json:"product_sku"`
+	TrackingType string    `json:"tracking_type"`
+	Quantity     int       `json:"quantity"`
+}
+
+// InventoryItemWithLocation embeds InventoryItem with location context fields.
+type InventoryItemWithLocation struct {
+	InventoryItem
+	LocationCode  string `json:"location_code"`
+	Aisle         string `json:"aisle"`
+	Rack          string `json:"rack"`
+	Shelf         string `json:"shelf"`
+	Bin           string `json:"bin"`
+	ZoneName      string `json:"zone_name"`
+	WarehouseName string `json:"warehouse_name"`
+}
+
 type UpdateInventoryItem struct {
 	ProductID             *uuid.UUID `json:"product_id,omitempty"`
 	LocationID            *uuid.UUID `json:"location_id,omitempty"`

@@ -103,6 +103,36 @@ func (a *App) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// QueryWithLocationDetails returns inventory items enriched with location context fields.
+func (a *App) QueryWithLocationDetails(ctx context.Context, qp QueryParams) (query.Result[InventoryItemWithLocation], error) {
+	page, err := page.Parse(qp.Page, qp.Rows)
+	if err != nil {
+		return query.Result[InventoryItemWithLocation]{}, errs.NewFieldsError("page", err)
+	}
+
+	filter, err := parseFilter(qp)
+	if err != nil {
+		return query.Result[InventoryItemWithLocation]{}, errs.NewFieldsError("filter", err)
+	}
+
+	orderBy, err := order.Parse(orderByFields, qp.OrderBy, defaultOrderBy)
+	if err != nil {
+		return query.Result[InventoryItemWithLocation]{}, errs.NewFieldsError("orderBy", err)
+	}
+
+	items, err := a.inventoryitembus.QueryWithLocationDetails(ctx, filter, orderBy, page)
+	if err != nil {
+		return query.Result[InventoryItemWithLocation]{}, errs.Newf(errs.Internal, "query with location details: %s", err)
+	}
+
+	total, err := a.inventoryitembus.Count(ctx, filter)
+	if err != nil {
+		return query.Result[InventoryItemWithLocation]{}, errs.Newf(errs.Internal, "count: %s", err)
+	}
+
+	return query.NewResult(toAppInventoryItemsWithLocation(items), total, page), nil
+}
+
 // Query returns a list of inventory items based on the filter, order and page.
 func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[InventoryItem], error) {
 	page, err := page.Parse(qp.Page, qp.Rows)

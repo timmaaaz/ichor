@@ -97,3 +97,18 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 
 	return sn
 }
+
+func (api *api) queryLocation(ctx context.Context, r *http.Request) web.Encoder {
+	snID := web.Param(r, "serial_id")
+	parsed, err := uuid.Parse(snID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	loc, err := api.serialnumberapp.QueryLocationBySerialID(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return loc
+}

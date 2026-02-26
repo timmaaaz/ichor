@@ -48,6 +48,9 @@ type lotTrackings struct {
 	QualityStatus     string    `db:"quality_status"`
 	CreatedDate       time.Time `db:"created_date"`
 	UpdatedDate       time.Time `db:"updated_date"`
+	ProductID         uuid.UUID `db:"product_id"`
+	ProductName       string    `db:"product_name"`
+	ProductSKU        string    `db:"product_sku"`
 }
 
 func toDBLotTrackings(bus lottrackingsbus.LotTrackings) lotTrackings {
@@ -77,6 +80,9 @@ func toBusLotTrackings(db lotTrackings) lottrackingsbus.LotTrackings {
 		QualityStatus:     db.QualityStatus,
 		CreatedDate:       db.CreatedDate.Local(),
 		UpdatedDate:       db.UpdatedDate.Local(),
+		ProductID:         db.ProductID,
+		ProductName:       db.ProductName,
+		ProductSKU:        db.ProductSKU,
 	}
 }
 

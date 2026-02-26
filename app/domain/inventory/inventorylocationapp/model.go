@@ -26,6 +26,7 @@ type QueryParams struct {
 	Shelf              string
 	Bin                string
 	LocationCode       string
+	LocationCodeExact  string
 	IsPickLocation     string
 	IsReserveLocation  string
 	MaxCapacity        string

@@ -22,6 +22,9 @@ type LotTrackings struct {
 	QualityStatus     string    `json:"quality_status"`
 	CreatedDate       time.Time `json:"created_date"`
 	UpdatedDate       time.Time `json:"updated_date"`
+	ProductID         uuid.UUID `json:"product_id"`
+	ProductName       string    `json:"product_name"`
+	ProductSKU        string    `json:"product_sku"`
 }
 
 type NewLotTrackings struct {

@@ -9,6 +9,36 @@ import (
 	"github.com/timmaaaz/ichor/foundation/timeutil"
 )
 
+// SerialLocation is the app-layer representation of a serial number's storage location.
+type SerialLocation struct {
+	LocationID    string `json:"location_id"`
+	LocationCode  string `json:"location_code"`
+	Aisle         string `json:"aisle"`
+	Rack          string `json:"rack"`
+	Shelf         string `json:"shelf"`
+	Bin           string `json:"bin"`
+	WarehouseName string `json:"warehouse_name"`
+	ZoneName      string `json:"zone_name"`
+}
+
+func (sl SerialLocation) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(sl)
+	return data, "application/json", err
+}
+
+func toAppSerialLocation(bus serialnumberbus.SerialLocation) SerialLocation {
+	return SerialLocation{
+		LocationID:    bus.LocationID.String(),
+		LocationCode:  bus.LocationCode,
+		Aisle:         bus.Aisle,
+		Rack:          bus.Rack,
+		Shelf:         bus.Shelf,
+		Bin:           bus.Bin,
+		WarehouseName: bus.WarehouseName,
+		ZoneName:      bus.ZoneName,
+	}
+}
+
 type QueryParams struct {
 	Page    string
 	Rows    string

@@ -44,4 +44,7 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodDelete, version, "/inventory/serial-numbers/{serial_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodGet, version, "/inventory/serial-numbers/{serial_id}/location", api.queryLocation, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
 }

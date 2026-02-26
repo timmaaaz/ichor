@@ -20,7 +20,7 @@ func parseQueryParams(r *http.Request) (lottrackingsapp.QueryParams, error) {
 		ExpirationDate:    values.Get("expiration_date"),
 		ExpiryBefore:      values.Get("expiry_before"),
 		ExpiryAfter:       values.Get("expiry_after"),
-		RecievedDate:      values.Get("recieved_date"),
+		RecievedDate:      values.Get("received_date"),
 		Quantity:          values.Get("quantity"),
 		QualityStatus:     values.Get("quality_status"),
 		ProductID:         values.Get("product_id"),

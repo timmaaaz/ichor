@@ -79,6 +79,9 @@ type LotTrackings struct {
 	QualityStatus     string `json:"quality_status"`
 	CreatedDate       string `json:"created_date"`
 	UpdatedDate       string `json:"updated_date"`
+	ProductID         string `json:"product_id"`
+	ProductName       string `json:"product_name"`
+	ProductSKU        string `json:"product_sku"`
 }
 
 func (app LotTrackings) Encode() ([]byte, string, error) {
@@ -98,6 +101,9 @@ func ToAppLotTracking(bus lottrackingsbus.LotTrackings) LotTrackings {
 		QualityStatus:     bus.QualityStatus,
 		CreatedDate:       bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:       bus.UpdatedDate.Format(timeutil.FORMAT),
+		ProductID:         bus.ProductID.String(),
+		ProductName:       bus.ProductName,
+		ProductSKU:        bus.ProductSKU,
 	}
 }
 

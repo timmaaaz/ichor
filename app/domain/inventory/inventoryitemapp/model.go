@@ -30,6 +30,7 @@ type QueryParams struct {
 	AvgDailyUsage         string
 	CreatedDate           string
 	UpdatedDate           string
+	IncludeLocationDetails string
 }
 
 type InventoryItem struct {
@@ -77,6 +78,44 @@ func ToAppInventoryItems(bus []inventoryitembus.InventoryItem) []InventoryItem {
 	app := make([]InventoryItem, len(bus))
 	for i, v := range bus {
 		app[i] = ToAppInventoryItem(v)
+	}
+	return app
+}
+
+// InventoryItemWithLocation adds location context fields to InventoryItem.
+type InventoryItemWithLocation struct {
+	InventoryItem
+	LocationCode  string `json:"location_code"`
+	Aisle         string `json:"aisle"`
+	Rack          string `json:"rack"`
+	Shelf         string `json:"shelf"`
+	Bin           string `json:"bin"`
+	ZoneName      string `json:"zone_name"`
+	WarehouseName string `json:"warehouse_name"`
+}
+
+func (app InventoryItemWithLocation) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+func toAppInventoryItemWithLocation(bus inventoryitembus.InventoryItemWithLocation) InventoryItemWithLocation {
+	return InventoryItemWithLocation{
+		InventoryItem: ToAppInventoryItem(bus.InventoryItem),
+		LocationCode:  bus.LocationCode,
+		Aisle:         bus.Aisle,
+		Rack:          bus.Rack,
+		Shelf:         bus.Shelf,
+		Bin:           bus.Bin,
+		ZoneName:      bus.ZoneName,
+		WarehouseName: bus.WarehouseName,
+	}
+}
+
+func toAppInventoryItemsWithLocation(bus []inventoryitembus.InventoryItemWithLocation) []InventoryItemWithLocation {
+	app := make([]InventoryItemWithLocation, len(bus))
+	for i, v := range bus {
+		app[i] = toAppInventoryItemWithLocation(v)
 	}
 	return app
 }

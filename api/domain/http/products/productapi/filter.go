@@ -28,6 +28,7 @@ func parseQueryParams(r *http.Request) (productapp.QueryParams, error) {
 		IsPerishable:         values.Get("is_perishable"),
 		HandlingInstructions: values.Get("handling_instructions"),
 		UnitsPerCase:         values.Get("units_per_case"),
+		TrackingType:         values.Get("tracking_type"),
 	}
 
 	return filter, nil
