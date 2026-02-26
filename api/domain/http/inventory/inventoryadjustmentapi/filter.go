@@ -18,11 +18,16 @@ func parseQueryParams(r *http.Request) (inventoryadjustmentapp.QueryParams, erro
 		LocationID:            values.Get("location_id"),
 		AdjustedBy:            values.Get("adjusted_by"),
 		ApprovedBy:            values.Get("approved_by"),
+		ApprovalStatus:        values.Get("approval_status"),
 		QuantityChange:        values.Get("quantity_change"),
 		ReasonCode:            values.Get("reason_code"),
 		Notes:                 values.Get("notes"),
 		AdjustmentDate:        values.Get("adjustment_date"),
+		StartAdjustmentDate:   values.Get("startAdjustmentDate"),
+		EndAdjustmentDate:     values.Get("endAdjustmentDate"),
 		CreatedDate:           values.Get("created_date"),
+		StartCreatedDate:      values.Get("startCreatedDate"),
+		EndCreatedDate:        values.Get("endCreatedDate"),
 		UpdatedDate:           values.Get("updated_date"),
 	}
 
