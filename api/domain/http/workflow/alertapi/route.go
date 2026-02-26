@@ -49,7 +49,9 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/dismiss-all", api.dismissAll, authen)
 
 	// Test endpoint - creates a test alert for the authenticated user (for E2E WebSocket testing)
-	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/test", api.testAlert, authen)
+	// Admin-only to prevent arbitrary alert creation in production.
+	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/test", api.testAlert, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
 
 	// Single alert endpoints
 	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts/{id}", api.queryByID, authen)

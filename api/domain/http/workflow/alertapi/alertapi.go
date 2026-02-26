@@ -141,10 +141,22 @@ func (a *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	// Verify user is authenticated
-	_, err = mid.GetUserID(ctx)
+	userID, err := mid.GetUserID(ctx)
 	if err != nil {
 		return errs.New(errs.Unauthenticated, err)
+	}
+
+	roleIDs, err := a.getUserRoleIDs(ctx, userID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "get user roles: %s", err)
+	}
+
+	isRecipient, err := a.alertBus.IsRecipient(ctx, id, userID, roleIDs)
+	if err != nil {
+		return errs.Newf(errs.Internal, "check recipient: %s", err)
+	}
+	if !isRecipient {
+		return errs.New(errs.PermissionDenied, alertbus.ErrNotRecipient)
 	}
 
 	alert, err := a.alertBus.QueryByID(ctx, id)

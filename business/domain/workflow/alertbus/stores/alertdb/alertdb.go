@@ -821,11 +821,29 @@ func (s *Store) DismissMultiple(ctx context.Context, alertIDs []uuid.UUID, now t
 		id IN (:alert_ids)
 		AND status IN (:allowed_statuses)`
 
-	if err := namedExecContextUsingIn(ctx, s.log, s.db, q, data); err != nil {
-		return 0, fmt.Errorf("namedexeccontext: %w", err)
+	named, args, err := sqlx.Named(q, data)
+	if err != nil {
+		return 0, fmt.Errorf("sqlx.Named: %w", err)
 	}
 
-	return len(alertIDs), nil
+	query, args, err := sqlx.In(named, args...)
+	if err != nil {
+		return 0, fmt.Errorf("sqlx.In: %w", err)
+	}
+
+	query = s.db.Rebind(query)
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("execcontext: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("rows affected: %w", err)
+	}
+
+	return int(rowsAffected), nil
 }
 
 // ResolveRelatedAlerts updates the status of prior active/acknowledged alerts

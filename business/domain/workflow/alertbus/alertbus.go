@@ -178,6 +178,14 @@ func (b *Business) QueryMine(ctx context.Context, userID uuid.UUID, roleIDs []uu
 	return alerts, nil
 }
 
+// IsRecipient checks whether a user (by user ID or role membership) is a recipient of an alert.
+func (b *Business) IsRecipient(ctx context.Context, alertID, userID uuid.UUID, roleIDs []uuid.UUID) (bool, error) {
+	ctx, span := otel.AddSpan(ctx, "business.alertbus.isrecipient")
+	defer span.End()
+
+	return b.storer.IsRecipient(ctx, alertID, userID, roleIDs)
+}
+
 // CountMine returns count of alerts for a user.
 func (b *Business) CountMine(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, filter QueryFilter) (int, error) {
 	ctx, span := otel.AddSpan(ctx, "business.alertbus.countmine")

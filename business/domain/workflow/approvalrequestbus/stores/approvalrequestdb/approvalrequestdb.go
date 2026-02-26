@@ -160,7 +160,7 @@ func (s *Store) Query(ctx context.Context, filter approvalrequestbus.QueryFilter
 func (s *Store) Count(ctx context.Context, filter approvalrequestbus.QueryFilter) (int, error) {
 	data := map[string]any{}
 
-	const q = `SELECT COUNT(*) FROM workflow.approval_requests`
+	const q = `SELECT COUNT(1) AS count FROM workflow.approval_requests`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
