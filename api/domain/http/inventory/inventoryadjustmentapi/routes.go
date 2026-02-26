@@ -44,4 +44,10 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodDelete, version, "/inventory/inventory-adjustments/{adjustment_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/inventory/inventory-adjustments/{adjustment_id}/approve", api.approve, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/inventory/inventory-adjustments/{adjustment_id}/reject", api.reject, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 }

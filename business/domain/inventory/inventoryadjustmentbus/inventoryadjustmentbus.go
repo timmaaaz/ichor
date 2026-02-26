@@ -168,6 +168,50 @@ func (b *Business) Delete(ctx context.Context, ia InventoryAdjustment) error {
 	return nil
 }
 
+// Approve sets the approver and marks the inventory adjustment as approved.
+func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approvedBy uuid.UUID) (InventoryAdjustment, error) {
+	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.approve")
+	defer span.End()
+
+	before := ia
+
+	now := time.Now()
+	ia.ApprovedBy = &approvedBy
+	ia.ApprovalStatus = "approved"
+	ia.UpdatedDate = now
+
+	if err := b.storer.Update(ctx, ia); err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("approve: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
+		b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return ia, nil
+}
+
+// Reject marks the inventory adjustment as rejected.
+func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment) (InventoryAdjustment, error) {
+	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.reject")
+	defer span.End()
+
+	before := ia
+
+	ia.ApprovalStatus = "rejected"
+	ia.UpdatedDate = time.Now()
+
+	if err := b.storer.Update(ctx, ia); err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("reject: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
+		b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return ia, nil
+}
+
 // Query retrieves inventoryAdjustments based on the provided filter, order, and page.
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]InventoryAdjustment, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.query")

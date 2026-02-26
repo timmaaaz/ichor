@@ -83,6 +83,46 @@ func (api *api) query(ctx context.Context, r *http.Request) web.Encoder {
 	return adjustments
 }
 
+func (api *api) approve(ctx context.Context, r *http.Request) web.Encoder {
+	var app inventoryadjustmentapp.ApproveRequest
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	adjustmentID := web.Param(r, "adjustment_id")
+	parsed, err := uuid.Parse(adjustmentID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	approvedBy, err := uuid.Parse(app.ApprovedBy)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	adjustment, err := api.inventoryadjustmentapp.Approve(ctx, parsed, approvedBy)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return adjustment
+}
+
+func (api *api) reject(ctx context.Context, r *http.Request) web.Encoder {
+	adjustmentID := web.Param(r, "adjustment_id")
+	parsed, err := uuid.Parse(adjustmentID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	adjustment, err := api.inventoryadjustmentapp.Reject(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return adjustment
+}
+
 func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 	adjustmentID := web.Param(r, "adjustment_id")
 	parsed, err := uuid.Parse(adjustmentID)

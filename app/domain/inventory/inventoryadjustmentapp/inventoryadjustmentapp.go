@@ -130,6 +130,40 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Inventory
 	return query.NewResult(ToAppInventoryAdjustments(results), total, page), nil
 }
 
+func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (InventoryAdjustment, error) {
+	ia, err := a.inventoryadjustmentbus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, inventoryadjustmentbus.ErrNotFound) {
+			return InventoryAdjustment{}, errs.New(errs.NotFound, err)
+		}
+		return InventoryAdjustment{}, fmt.Errorf("approve [querybyid]: %w", err)
+	}
+
+	ia, err = a.inventoryadjustmentbus.Approve(ctx, ia, approvedBy)
+	if err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("approve: %w", err)
+	}
+
+	return ToAppInventoryAdjustment(ia), nil
+}
+
+func (a *App) Reject(ctx context.Context, id uuid.UUID) (InventoryAdjustment, error) {
+	ia, err := a.inventoryadjustmentbus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, inventoryadjustmentbus.ErrNotFound) {
+			return InventoryAdjustment{}, errs.New(errs.NotFound, err)
+		}
+		return InventoryAdjustment{}, fmt.Errorf("reject [querybyid]: %w", err)
+	}
+
+	ia, err = a.inventoryadjustmentbus.Reject(ctx, ia)
+	if err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("reject: %w", err)
+	}
+
+	return ToAppInventoryAdjustment(ia), nil
+}
+
 func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (InventoryAdjustment, error) {
 	adjustment, err := a.inventoryadjustmentbus.QueryByID(ctx, id)
 	if err != nil {
