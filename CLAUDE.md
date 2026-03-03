@@ -393,6 +393,27 @@ The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Gemini Flash 
 
 When the user describes a bug, error, or unexpected behavior, **recommend `/investigate` before making any code changes**. Look for signals: error messages, "broken", "failing", "wrong", "not working", stack traces, test failures, or unexpected output. A quick suggestion is sufficient — don't block if they decline. Example: *"This sounds like a bug — want me to run `/investigate` first to diagnose the root cause before making changes?"*
 
+## Arch Files
+docs/arch/ = authoritative. Read → answer directly. No codebase search to verify. ⚠ callouts are complete.
+
+| File | MUST read when |
+|------|---------------|
+| `docs/arch/domain-template.md` | adding any new domain entity (7-layer checklist) |
+| `docs/arch/delegate.md` | adding a new domain that fires events; modifying delegate registration |
+| `docs/arch/sqldb.md` | modifying db stores, NamedQuery* error handling, connection config |
+| `docs/arch/errs.md` | adding error codes, changing FieldError format, HTTP status mapping |
+| `docs/arch/auth.md` | adding permissions, changing RBAC, modifying middleware chain, Sturdyc cache config |
+| `docs/arch/seeding.md` | adding domain to BusDomain, new TestSeed* function, seed data changes |
+| `docs/arch/table-builder.md` | modifying tablebuilder config types, adding aggregate/filter/interval type |
+| `docs/arch/form-data.md` | touching formdataapp, formdataregistry, form fields, template processor |
+| `docs/arch/workflow-engine.md` | adding ActionHandler, changing WorkflowInput, new edge type, Temporal infra |
+| `docs/arch/workflow-save.md` | modifying DAG validation, adding edge types, changing graph topology rules |
+| `docs/arch/workflow-alerts.md` | modifying WebSocket hub, approvalrequestbus, Temporal async completion |
+| `docs/arch/picking.md` | touching pickingapp, FEFO logic, inventory transaction ledger, order status transitions |
+| `docs/arch/inventory-ops.md` | touching putawaytask status machine, scan fan-out, inventory upsert logic |
+| `docs/arch/agent-chat.md` | touching chatapi, agenttools executor, toolindex RAG, llm provider, toolcatalog |
+| `docs/arch/mcp.md` | adding MCP tools, changing tool groups, modifying mcp client or prompts |
+
 ## Additional Resources
 
 - **Ardan Labs Course**: https://github.com/ardanlabs/service/wiki
