@@ -165,6 +165,22 @@ func (app NewPurchaseOrder) Validate() error {
 	return nil
 }
 
+// parseFlexibleDate tries multiple date formats to support both legacy and modern date strings.
+// Accepts: timeutil.FORMAT, time.RFC3339, and YYYY-MM-DD (from datepicker and {{$now}} template).
+func parseFlexibleDate(s string) (time.Time, error) {
+	formats := []string{
+		timeutil.FORMAT,
+		time.RFC3339,
+		"2006-01-02",
+	}
+	for _, f := range formats {
+		if t, err := time.Parse(f, s); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("cannot parse %q as a date (tried formats: %v)", s, formats)
+}
+
 // toBusNewPurchaseOrder converts an app NewPurchaseOrder to a business NewPurchaseOrder.
 func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOrder, error) {
 	supplierID, err := uuid.Parse(app.SupplierID)
@@ -198,12 +214,12 @@ func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOr
 		}
 	}
 
-	orderDate, err := time.Parse(timeutil.FORMAT, app.OrderDate)
+	orderDate, err := parseFlexibleDate(app.OrderDate)
 	if err != nil {
 		return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("orderDate", err)
 	}
 
-	expectedDeliveryDate, err := time.Parse(timeutil.FORMAT, app.ExpectedDeliveryDate)
+	expectedDeliveryDate, err := parseFlexibleDate(app.ExpectedDeliveryDate)
 	if err != nil {
 		return purchaseorderbus.NewPurchaseOrder{}, errs.NewFieldsError("expectedDeliveryDate", err)
 	}
@@ -361,7 +377,7 @@ func toBusUpdatePurchaseOrder(app UpdatePurchaseOrder) (purchaseorderbus.UpdateP
 	}
 
 	if app.OrderDate != nil {
-		orderDate, err := time.Parse(timeutil.FORMAT, *app.OrderDate)
+		orderDate, err := parseFlexibleDate(*app.OrderDate)
 		if err != nil {
 			return purchaseorderbus.UpdatePurchaseOrder{}, errs.NewFieldsError("orderDate", err)
 		}
@@ -369,7 +385,7 @@ func toBusUpdatePurchaseOrder(app UpdatePurchaseOrder) (purchaseorderbus.UpdateP
 	}
 
 	if app.ExpectedDeliveryDate != nil {
-		expectedDeliveryDate, err := time.Parse(timeutil.FORMAT, *app.ExpectedDeliveryDate)
+		expectedDeliveryDate, err := parseFlexibleDate(*app.ExpectedDeliveryDate)
 		if err != nil {
 			return purchaseorderbus.UpdatePurchaseOrder{}, errs.NewFieldsError("expectedDeliveryDate", err)
 		}
@@ -377,7 +393,7 @@ func toBusUpdatePurchaseOrder(app UpdatePurchaseOrder) (purchaseorderbus.UpdateP
 	}
 
 	if app.ActualDeliveryDate != nil {
-		actualDeliveryDate, err := time.Parse(timeutil.FORMAT, *app.ActualDeliveryDate)
+		actualDeliveryDate, err := parseFlexibleDate(*app.ActualDeliveryDate)
 		if err != nil {
 			return purchaseorderbus.UpdatePurchaseOrder{}, errs.NewFieldsError("actualDeliveryDate", err)
 		}
@@ -433,7 +449,7 @@ func toBusUpdatePurchaseOrder(app UpdatePurchaseOrder) (purchaseorderbus.UpdateP
 	}
 
 	if app.ApprovedDate != nil {
-		approvedDate, err := time.Parse(timeutil.FORMAT, *app.ApprovedDate)
+		approvedDate, err := parseFlexibleDate(*app.ApprovedDate)
 		if err != nil {
 			return purchaseorderbus.UpdatePurchaseOrder{}, errs.NewFieldsError("approvedDate", err)
 		}

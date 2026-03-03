@@ -3,6 +3,7 @@ package alertapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -294,6 +295,7 @@ func (a *api) testAlert(ctx context.Context, r *http.Request) web.Encoder {
 		Severity:    alertbus.SeverityMedium,
 		Title:       "Test Alert",
 		Message:     "This is a test alert for E2E testing",
+		Context:     json.RawMessage(`{}`),
 		Status:      alertbus.StatusActive,
 		CreatedDate: now,
 		UpdatedDate: now,

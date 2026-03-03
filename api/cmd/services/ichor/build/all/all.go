@@ -1250,7 +1250,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	workflowapprovalapi.Routes(app, workflowapprovalapi.Config{
 		Log:            cfg.Log,
 		ApprovalBus:    approvalRequestBus,
-		UserBus:        userBus,
+		UserBus:        a.UserBus,
 		UserRoleBus:    userRoleBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,

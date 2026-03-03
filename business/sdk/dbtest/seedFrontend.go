@@ -480,11 +480,6 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding inventory products : %w", err)
 	}
 
-	_, err = inventoryitembus.TestSeedInventoryItems(ctx, 30, inventoryLocationsIDs, productIDs, busDomain.InventoryItem)
-	if err != nil {
-		return fmt.Errorf("seeding inventory products : %w", err)
-	}
-
 	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 25, contactIDs, busDomain.Supplier)
 	if err != nil {
 		return fmt.Errorf("seeding suppliers : %w", err)
