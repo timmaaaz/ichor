@@ -1,7 +1,7 @@
 # workflow-engine
 
-[bus]=business layer [sdk]=SDK [app]=app layer
-→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
@@ -61,7 +61,7 @@ key facts:
 
 ---
 
-## Temporal Workflow [sdk]
+## TemporalWorkflow [sdk]
 
 file: business/sdk/workflow/temporal/workflow.go
 imports: GraphExecutor[sdk], temporal.workflow SDK
@@ -222,7 +222,7 @@ key facts:
 
 ---
 
-## DB Schema
+## DBSchema
 
 workflow.automation_rules       — rule definitions (entity_id, trigger_type, conditions)
 workflow.rule_actions           — action nodes attached to rules

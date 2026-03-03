@@ -403,7 +403,7 @@ docs/arch/ = authoritative. Read → answer directly. No codebase search to veri
 | `docs/arch/sqldb.md` | modifying db stores, NamedQuery* error handling, connection config |
 | `docs/arch/errs.md` | adding error codes, changing FieldError format, HTTP status mapping |
 | `docs/arch/auth.md` | adding permissions, changing RBAC, modifying middleware chain, Sturdyc cache config |
-| `docs/arch/seeding.md` | adding domain to BusDomain, new TestSeed* function, seed data changes |
+| `docs/arch/seeding.md` | adding domain to BusDomain, new TestSeed* function, seed data changes, writing frontend or integration tests that assert against seeded data, understanding what users/products/orders/inventory exist in test DB |
 | `docs/arch/table-builder.md` | modifying tablebuilder config types, adding aggregate/filter/interval type |
 | `docs/arch/form-data.md` | touching formdataapp, formdataregistry, form fields, template processor |
 | `docs/arch/workflow-engine.md` | adding ActionHandler, changing WorkflowInput, new edge type, Temporal infra |

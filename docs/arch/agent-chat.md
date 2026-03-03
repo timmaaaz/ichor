@@ -1,52 +1,12 @@
 # agent-chat
 
-[api]=API layer [sdk]=SDK/shared layer
-→=depends on ⊕=writes ⊗=reads [rag]=vector search
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared [rag]=vector-search
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
-## Overview
+## StateMachine
 
-Conversational AI endpoint backed by Gemini Flash 2.5. Streams responses via SSE.
-Agent loop: LLM ↔ tool execution, up to 20 rounds per request.
-Tool selection uses RAG (embedding cosine similarity, top-6) to avoid sending all 55
-tool definitions to the LLM.
-
----
-
-## ChatAPI [api]
-
-file: api/domain/http/agentapi/chatapi/
-
-route:
-  POST /v1/agent/chat
-  registered as RawHandlerFunc (bypasses OTEL middleware and HTTP server timeouts)
-  middleware: CORS → Authentication
-
-Why RawHandlerFunc:
-  - SSE streams exceed the HTTP server's 10s WriteTimeout
-  - OTEL wrapper writes 200 OK after handler return, conflicting with long-lived connection
-  - Same pattern used by WebSocket routes
-
-SSE lifecycle:
-  1. Detach from request context via context.WithoutCancel() — preserves user/trace values,
-     drops HTTP deadline
-  2. Clear read/write deadlines via http.ResponseController before streaming
-  3. newSSEWriter sets headers: Content-Type: text/event-stream, Cache-Control: no-cache,
-     Connection: keep-alive, X-Accel-Buffering: no
-  4. sseWriter.send(event, data) JSON-marshals payload, writes "event: {e}\ndata: {json}\n\n",
-     flushes after each event
-
-loop constants:
-  maxAgentLoops = 20    // max LLM ↔ tool round-trips per request
-  ragTopK       = 6     // tools retrieved from embedding index per message
-  ragMinScore   = 0.0   // cosine similarity threshold (no filter)
-
----
-
-## Agent Loop (StateMachine)
-
-```
 Request
   │
   ▼
@@ -72,7 +32,30 @@ StopForToolUse = true?
            loop++ < maxAgentLoops?
              ├─ YES → ToolIndex.Search(lastMsg, topK=6) → Provider.StreamChat(...)
              └─ NO  → send error "max iterations reached"
-```
+
+---
+
+## ChatAPI [api]
+
+file: api/domain/http/agentapi/chatapi/
+key facts:
+  - route: POST /v1/agent/chat
+  - registered as RawHandlerFunc (bypasses OTEL middleware and HTTP server timeouts)
+  - middleware: CORS → Authentication
+  - SSE streams exceed the HTTP server's 10s WriteTimeout — must remain RawHandlerFunc
+  - OTEL wrapper writes 200 OK after handler return, conflicting with long-lived connection
+
+loop constants:
+  maxAgentLoops = 20    // max LLM ↔ tool round-trips per request
+  ragTopK       = 6     // tools retrieved from embedding index per message
+  ragMinScore   = 0.0   // cosine similarity threshold (no filter)
+
+SSE lifecycle:
+  1. Detach from request context via context.WithoutCancel() — preserves user/trace values, drops HTTP deadline
+  2. Clear read/write deadlines via http.ResponseController before streaming
+  3. newSSEWriter sets headers: Content-Type: text/event-stream, Cache-Control: no-cache,
+     Connection: keep-alive, X-Accel-Buffering: no
+  4. sseWriter.send(event, data) JSON-marshals payload, writes "event: {e}\ndata: {json}\n\n", flushes after each event
 
 ---
 
@@ -109,10 +92,11 @@ type draftWorkflow struct {
 }
 ```
 
-All 55 tool handlers live in executor.go — one method per tool name constant.
-Calls Ichor REST API via http.Client with Bearer token from request context.
-Draft builder tools (StartDraft, AddDraftAction, RemoveDraftAction, PreviewDraft)
-maintain in-memory state per session; state is lost on server restart.
+key facts:
+  - All 55 tool handlers live in executor.go — one method per tool name constant
+  - Calls Ichor REST API via http.Client with Bearer token from request context
+  - Draft builder tools (StartDraft, AddDraftAction, RemoveDraftAction, PreviewDraft) maintain in-memory state per session
+  - Draft state is lost on server restart
 
 ---
 
@@ -138,18 +122,18 @@ type BatchEmbedder interface {
 }
 ```
 
-api:
   New(ctx, cfg Config, tools []llm.ToolDef) (*ToolIndex, error)
   Search(ctx, message string, topK int, opts SearchOptions) ([]ToolMatch, time.Duration, error)
 
-SearchOptions.Allowlist restricts candidates to a named subset before scoring.
-ToolMatch.Score is cosine similarity in [-1, 1].
-Embedding source per tool: Name + Description + ExampleQueries (ExampleQueries are
-never sent to the LLM; they only improve retrieval accuracy).
+key facts:
+  - SearchOptions.Allowlist restricts candidates to a named subset before scoring
+  - ToolMatch.Score is cosine similarity in [-1, 1]
+  - Embedding source per tool: Name + Description + ExampleQueries
+  - ExampleQueries are never sent to the LLM; they only improve retrieval accuracy
 
 ---
 
-## LLM Provider [sdk]
+## LLMProvider [sdk]
 
 file: business/sdk/llm/
 
@@ -185,16 +169,17 @@ type StreamEvent struct {
 }
 ```
 
-Active provider: Gemini Flash 2.5 (not Claude).
-Provider is injected at startup; swapping requires only a new Provider implementation.
+key facts:
+  - Active provider: Gemini Flash 2.5 (not Claude)
+  - Provider is injected at startup; swapping requires only a new Provider implementation
 
 ---
 
 ## ToolCatalog [sdk]
 
 file: business/sdk/toolcatalog/toolcatalog.go
-
-55 tool name constants organized in two groups:
+key facts:
+  - 55 tool name constants organized in two groups
 
 GroupWorkflow tools (workflow discovery, read, write, draft, alerts):
   Discover, DiscoverActionTypes, DiscoverTriggerTypes, DiscoverEntityTypes, DiscoverEntities
@@ -215,7 +200,6 @@ GroupTables tools (UI config, page content, forms, table configs):
   ValidateTableConfig, PreviewTableConfig
   ApplyColumnChange, ApplyFilterChange, ApplyJoinChange, ApplySortChange
 
-api:
   InGroup(toolName string, group ToolGroup) bool
   ToolsForGroup(group ToolGroup) []string
   AllTools() []string

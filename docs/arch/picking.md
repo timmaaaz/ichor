@@ -1,15 +1,16 @@
 # picking
 
-[app]=application layer [bus]=business layer
-→=depends on ⊕=writes ⊗=reads [tx]=transaction
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
-## Overview
+## StateMachine
 
-Multi-bus orchestration layer for order fulfillment. Three operations:
-PickQuantity (normal), ShortPick (exception paths), CompletePacking (order advance).
-PickQuantity and ShortPick run inside ReadCommitted transactions; CompletePacking does not.
+PICKING → PACKING        auto: triggered by PickQuantity/ShortPick when all items terminal
+PACKING → READY_TO_SHIP  manual: CompletePacking
+
+terminal states: PICKED, PARTIALLY_PICKED, BACKORDERED, CANCELLED
 
 ---
 
@@ -29,15 +30,19 @@ type App struct {
 }
 ```
 
-api:
   NewApp(log, db, ordersBus, orderLineItemsBus, inventoryItemBus, inventoryTransactionBus, orderFulfillmentStatusBus, lineItemFulfillmentStatusBus) *App
   PickQuantity(ctx, lineItemID uuid.UUID, req PickQuantityRequest) (orderlineitemsapp.OrderLineItem, error)
   ShortPick(ctx, lineItemID uuid.UUID, req ShortPickRequest) (orderlineitemsapp.OrderLineItem, error)
   CompletePacking(ctx, orderID uuid.UUID, req CompletePackingRequest) (ordersapp.Order, error)
 
+key facts:
+  - Multi-bus orchestration layer for order fulfillment
+  - Three operations: PickQuantity (normal), ShortPick (exception paths), CompletePacking (order advance)
+  - PickQuantity and ShortPick run inside ReadCommitted transactions; CompletePacking does not
+
 ---
 
-## PickQuantity (normal pick)
+## PickQuantity
 
 TX isolation: sql.LevelReadCommitted
 
@@ -53,7 +58,7 @@ inventory operation: FEFO allocation with FOR UPDATE pessimistic lock
 
 ---
 
-## ShortPick (exception paths)
+## ShortPick
 
 TX isolation: sql.LevelReadCommitted
 
@@ -66,9 +71,9 @@ four pick types:
 | substitute | yes (pickedQty) | original→BACKORDERED | yes (new→PICKED) |
 | skip       | no             | PENDING_REVIEW      | no               |
 
-- substitute: creates new line item for substitute product; original line → BACKORDERED
-- order advances PICKING → PACKING only when ALL line items reach terminal state
-- terminal states: PICKED, PARTIALLY_PICKED, BACKORDERED, CANCELLED
+key facts:
+  - substitute: creates new line item for substitute product; original line → BACKORDERED
+  - order advances PICKING → PACKING only when ALL line items reach terminal state
 
 ---
 
@@ -78,13 +83,6 @@ TX: none
 steps:
   1. Validate order is in PACKING state
   2. UPDATE order FulfillmentStatusID: PACKING → READY_TO_SHIP
-
----
-
-## Order Status Machine
-
-PICKING → PACKING        auto: triggered by PickQuantity/ShortPick when all items terminal
-PACKING → READY_TO_SHIP  manual: CompletePacking
 
 ---
 

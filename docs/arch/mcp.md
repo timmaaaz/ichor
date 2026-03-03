@@ -1,23 +1,11 @@
 # mcp
 
-[mcp]=MCP server (separate module) [api]=Ichor API layer
-→=depends on ⊕=writes ⊗=reads
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared [mcp]=MCP-server
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
-## Overview
-
-Standalone MCP (Model Context Protocol) server that exposes Ichor capabilities
-to LLM agents (Claude Desktop, Cursor, etc.). Separate Go module (`mcp/go.mod`)
-with zero imports of Ichor packages — communicates exclusively via Ichor REST API.
-
-Transport: stdio (JSON-RPC over stdin/stdout).
-Auth: Bearer JWT token set once at startup, forwarded on every HTTP call.
-39 tools available; context modes select subsets.
-
----
-
-## Module Boundary
+## ModuleBoundary [mcp]
 
 ```
 mcp/ (separate Go module)
@@ -29,9 +17,15 @@ mcp/ (separate Go module)
   └── prompts/             3 guided prompts (build-workflow, configure-page, design-form)
 ```
 
-Imports only: MCP SDK (`github.com/mark3labs/mcp-go`). NOT the Ichor Go module.
-New API fields are automatically exposed: all client methods return `json.RawMessage`
-(passthrough, no deserialization).
+key facts:
+  - Standalone MCP server exposing Ichor capabilities to LLM agents (Claude Desktop, Cursor, etc.)
+  - Separate Go module (`mcp/go.mod`) with zero imports of Ichor packages
+  - Communicates exclusively via Ichor REST API
+  - Transport: stdio (JSON-RPC over stdin/stdout)
+  - Auth: Bearer JWT token set once at startup, forwarded on every HTTP call
+  - 39 tools available; context modes select subsets
+  - Imports only: MCP SDK (`github.com/mark3labs/mcp-go`)
+  - New API fields are automatically exposed: all client methods return `json.RawMessage` (passthrough, no deserialization)
 
 ---
 
@@ -47,14 +41,15 @@ type Client struct {
 }
 ```
 
-auth: `Authorization: Bearer {token}` on every request.
-Token source: `--token` CLI flag or `ICHOR_TOKEN` environment variable.
-Single identity for all tool calls — no per-request auth switching.
-No caching, no state, no streaming.
+key facts:
+  - auth: `Authorization: Bearer {token}` on every request
+  - Token source: `--token` CLI flag or `ICHOR_TOKEN` environment variable
+  - Single identity for all tool calls — no per-request auth switching
+  - No caching, no state, no streaming
 
 ---
 
-## Tool Registration Pattern
+## ToolRegistration [mcp]
 
 ```go
 // Per-domain registration function
@@ -70,13 +65,14 @@ func RegisterXyzTools(s *mcp.Server, c *client.Client) {
 }
 ```
 
-Args struct uses `json:"field" jsonschema:"description,required"` tags.
-MCP SDK auto-generates JSON Schema from struct tags.
-No-arg tools use `_ struct{}` parameter.
+key facts:
+  - Args struct uses `json:"field" jsonschema:"description,required"` tags
+  - MCP SDK auto-generates JSON Schema from struct tags
+  - No-arg tools use `_ struct{}` parameter
 
 ---
 
-## Context Modes
+## ContextModes [mcp]
 
 Selected via `--context` flag at startup:
 
@@ -86,9 +82,7 @@ Selected via `--context` flag at startup:
 | `workflow` | 16    | 5 discovery + 3 read + 3 write + 2 search + 3 analysis |
 | `tables`   | 20    | 2 discovery + 7 read + 2 search + 8 write + 1 validate |
 
----
-
-## Tool Count by Category (39 total)
+Tool Count by Category (39 total):
 
 | Category           | Count | Examples                                          |
 |--------------------|-------|---------------------------------------------------|
@@ -105,7 +99,7 @@ Selected via `--context` flag at startup:
 
 ---
 
-## Resources and Prompts
+## ResourcesAndPrompts [mcp]
 
 resources (config:// URIs):
   5 static: workflow schema, tables schema, DB introspection, catalog, field types
@@ -118,7 +112,7 @@ prompts (3 guided workflows):
 
 ---
 
-## Agent Infrastructure (Ichor-side)
+## AgentInfrastructure [api]
 
 Five dedicated API packages exist in Ichor for agent self-discovery:
   catalogapi          — tool catalog listing
@@ -127,15 +121,9 @@ Five dedicated API packages exist in Ichor for agent self-discovery:
   configschemaapi     — config type schemas
   introspectionapi    — DB schema introspection
 
-These are consumed by MCP resources and by the in-app agent chat (ToolIndex RAG).
-
----
-
-## Validation-First Write Pattern
-
-`create_workflow` and `update_workflow` call the dry-run (validate) endpoint
-before committing. This matches Ichor's workflowsaveapp validation — see
-`docs/arch/workflow-save.md` for DAG validation rules.
+key facts:
+  - Consumed by MCP resources and by the in-app agent chat (ToolIndex RAG)
+  - Validation-first write pattern: create_workflow and update_workflow call dry-run validate endpoint before committing (see docs/arch/workflow-save.md for DAG validation rules)
 
 ---
 

@@ -1,15 +1,7 @@
 # delegate
 
-[sdk]=shared SDK [bus]=business layer
-→=depends on ⚡=event dispatch
-
----
-
-## Overview
-
-Decoupled event bus for domain lifecycle events. Every business domain calls
-delegate.Call() after Create/Update/Delete — the workflow engine subscribes via
-Register() to trigger rules without business layer coupling.
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
@@ -20,8 +12,10 @@ key facts:
   - Delegate struct: log *logger.Logger, funcs map[string]map[string][]Func
   - Thread-safe read after startup registration (no lock on Call path)
   - One Delegate instance shared across all domains (wired in all.go)
+  - ~198 call sites across business/domain/ packages
+  - Subscribers register at startup in all.go via Register()
+  - Current subscriber: workflow DelegateHandler (business/sdk/workflow/temporal/delegatehandler.go)
 
-api:
   Register(domainType string, actionType string, fn Func)
   Call(ctx context.Context, data Data) error
 
@@ -42,7 +36,7 @@ type Func func(context.Context, Data) error
 
 ---
 
-## Standard Action Constants
+## StandardActionConstants [sdk]
 
 Every domain package defines three action constants:
   ActionCreated  = "{entity}.created"
@@ -54,21 +48,10 @@ Payloads (encoded in RawParams):
   ActionUpdated  → { EntityID uuid, UserID uuid, Entity T, BeforeEntity T }
   ActionDeleted  → { EntityID uuid, UserID uuid, Entity T }
 
----
-
-## Usage Pattern
-
 Every [bus] Create/Update/Delete calls:
   delegate.Call(ctx, ActionCreatedData(entity))   // after DB write succeeds
   delegate.Call(ctx, ActionUpdatedData(before, after))
   delegate.Call(ctx, ActionDeletedData(entity))
-
-Import scope: ~198 call sites across business/domain/ packages.
-
-Subscribers register at startup in all.go:
-  delegate.Register(domain, action, handlerFn)
-
-Current subscriber: workflow DelegateHandler (business/sdk/workflow/temporal/delegatehandler.go)
 
 ---
 

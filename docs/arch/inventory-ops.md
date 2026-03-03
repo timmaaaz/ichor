@@ -1,48 +1,11 @@
 # inventory-ops
 
-[app]=application layer [bus]=business layer
-→=depends on ⊕=writes ⊗=reads [tx]=transaction
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
-## Overview
-
-Two inventory operation systems: put-away task lifecycle (state machine + 3-way atomic write)
-and barcode scan resolver (4-goroutine fan-out with type-priority result selection).
-
----
-
-## PutAwayTask — State Machine [app]
-
-file: app/domain/inventory/putawaytaskapp/putawaytaskapp.go
-
-### App struct
-
-```go
-type App struct {
-    putAwayTaskBus       *putawaytaskbus.Business
-    invTransactionBus    *inventorytransactionbus.Business
-    invItemBus           *inventoryitembus.Business
-    db                   *sqlx.DB
-}
-```
-
-api:
-  NewApp(putAwayTaskBus, invTransactionBus, invItemBus, db) *App
-  Create(ctx, app NewPutAwayTask) (PutAwayTask, error)
-  Update(ctx, taskID uuid.UUID, app UpdatePutAwayTask) (PutAwayTask, error)
-  Delete(ctx, taskID uuid.UUID) error
-  Query(ctx, qp QueryParams) (query.Result[PutAwayTask], error)
-  QueryByID(ctx, taskID uuid.UUID) (PutAwayTask, error)
-
-### Status Constants
-
-  Pending    → "pending"
-  InProgress → "in_progress"
-  Completed  → "completed"
-  Cancelled  → "cancelled"
-
-### State Machine
+## PutAwayTask — StateMachine
 
 ```
 Pending → InProgress → Completed
@@ -57,27 +20,47 @@ transition side effects:
   → Completed    triggers 3-way atomic write (see below)
   → Cancelled    plain update, no side effects
 
-### 3-Way Atomic Write (Completed transition)
+---
 
-TX isolation: sql.LevelReadCommitted
-All three writes in one transaction:
+## PutAwayTaskApp [app]
 
+file: app/domain/inventory/putawaytaskapp/putawaytaskapp.go
+
+```go
+type App struct {
+    putAwayTaskBus       *putawaytaskbus.Business
+    invTransactionBus    *inventorytransactionbus.Business
+    invItemBus           *inventoryitembus.Business
+    db                   *sqlx.DB
+}
+```
+
+  NewApp(putAwayTaskBus, invTransactionBus, invItemBus, db) *App
+  Create(ctx, app NewPutAwayTask) (PutAwayTask, error)
+  Update(ctx, taskID uuid.UUID, app UpdatePutAwayTask) (PutAwayTask, error)
+  Delete(ctx, taskID uuid.UUID) error
+  Query(ctx, qp QueryParams) (query.Result[PutAwayTask], error)
+  QueryByID(ctx, taskID uuid.UUID) (PutAwayTask, error)
+
+Status Constants:
+  Pending    → "pending"
+  InProgress → "in_progress"
+  Completed  → "completed"
+  Cancelled  → "cancelled"
+
+3-Way Atomic Write (Completed transition) — TX isolation: sql.LevelReadCommitted:
   1. ⊕ UPDATE inventory.put_away_tasks
        set status=completed, completed_by=userID, completed_at=now()
-
   2. ⊕ INSERT inventory.inventory_transactions
        new PUT_AWAY ledger record: ProductID, LocationID, UserID, Quantity, TransactionDate
-
   3. ⊕ UPSERT inventory.inventory_items
        add Quantity at (ProductID + LocationID) destination — creates row if absent
 
 ---
 
-## Scan — Fan-Out Resolver [app]
+## ScanApp [app]
 
 file: app/domain/inventory/scanapp/scanapp.go
-
-### App struct
 
 ```go
 type App struct {
@@ -89,24 +72,21 @@ type App struct {
 }
 ```
 
-api:
   NewApp(productBus, inventoryItemBus, locationBus, lotTrackingsBus, serialNumberBus) *App
   Scan(ctx, barcode string) (ScanResult, error)
 
-### Fan-Out Pattern
-
-sync.WaitGroup with 4 concurrent goroutines (wg.Add(4)):
+Fan-Out Pattern — sync.WaitGroup with 4 concurrent goroutines (wg.Add(4)):
   goroutine 1 → productBus.QueryByUPC(barcode)
   goroutine 2 → locationBus.QueryByCode(barcode)
   goroutine 3 → lotTrackingsBus.QueryByLotNumber(barcode)
   goroutine 4 → serialNumberBus.QueryBySerialNumber(barcode)
 
-each goroutine: mu sync.Mutex guards write to shared result slice
-fail-open: individual query errors return nil and are skipped — never block other goroutines
-wg.Wait() after all 4 launch; then priority selection on results
+key facts:
+  - each goroutine: mu sync.Mutex guards write to shared result slice
+  - fail-open: individual query errors return nil and are skipped — never block other goroutines
+  - wg.Wait() after all 4 launch; then priority selection on results
 
-### Result Priority (highest first)
-
+Result Priority (highest first):
   1. serial   — serial number match
   2. lot      — lot number match
   3. product  — UPC code match
@@ -115,8 +95,7 @@ wg.Wait() after all 4 launch; then priority selection on results
 
 first matching type in priority order wins; lower-priority results discarded
 
-### Per-Type Enrichment
-
+Per-Type Enrichment:
 ```
 serial →  serialNumberBus.QueryLocationBySerialID(sn.SerialID)
             → LocationID, LocationCode, Aisle, Rack, Shelf, Bin, WarehouseName, ZoneName

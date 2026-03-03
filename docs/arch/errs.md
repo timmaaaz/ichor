@@ -1,23 +1,17 @@
 # errs
 
-[sdk]=shared SDK [app]=application layer
-→=depends on
-
----
-
-## Overview
-
-App-layer error code system mapping gRPC-style status codes to HTTP statuses.
-Used for structured validation errors (FieldErrors) and HTTP response codes.
-496+ importers across app/ and api/ layers.
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
 ## errs [sdk]
 
 file: app/sdk/errs/errs.go
-
-### ErrCode
+key facts:
+  - App-layer error code system mapping gRPC-style status codes to HTTP statuses
+  - 496+ importers across app/ and api/ layers
+  - ~203 files in app/domain/ import errs
 
 ```go
 type ErrCode struct{ value int }
@@ -48,9 +42,17 @@ type ErrCode struct{ value int }
 | TooManyRequests   | 18    | 429         |
 | InternalOnlyLog   | 19    | 500         |
 
+Most common patterns:
+  errs.NewFieldsError("field", err)         — validation failure
+  errs.NotFound                             — ErrCode for 404 responses
+  errs.InvalidArgument                      — ErrCode for 400 responses
+  errs.Unauthenticated                      — ErrCode for 401 responses
+
 ---
 
-## FieldErrors
+## FieldErrors [sdk]
+
+file: app/sdk/errs/errs.go
 
 ```go
 type FieldError struct {
@@ -64,18 +66,7 @@ func NewFieldsError(field string, err error) FieldErrors
 ```
 
 JSON serialization: `[{"field":"name","error":"is required"}]`
-
 Usage: returned from [app] layer validation, encoded in HTTP 400 response body.
-
----
-
-## Usage Scope
-
-~203 files in app/domain/ import errs. Most common patterns:
-  errs.NewFieldsError("field", err)         — validation failure
-  errs.NotFound                             — ErrCode for 404 responses
-  errs.InvalidArgument                      — ErrCode for 400 responses
-  errs.Unauthenticated                      — ErrCode for 401 responses
 
 ---
 

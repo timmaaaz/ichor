@@ -1,22 +1,21 @@
 # auth
 
-[bus]=business layer [app]=application layer [api]=HTTP layer [sdk]=shared [cache]=sturdyc
-→=depends on ⚡=external
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared [cache]=sturdyc
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
-## Overview
+## Pipeline
 
-Two-layer auth: JWT validation (app/sdk/auth) + RBAC permission checks (permissionsbus).
-Middleware chain wires them into every route. permissionsbus does NOT live inside auth.Auth —
-table-level access is checked separately via AuthorizeTable middleware.
+request → Authenticate middleware → Authorize/AuthorizeTable middleware → handler
+                ↓                              ↓
+         auth.Auth.Authenticate()     permissionsbus.QueryUserPermissions()
+                ↓                              ↓
+         Claims → context           UserPermissions (cached via rolecache + tableaccesscache)
 
-Pipeline:
-  request → Authenticate middleware → Authorize/AuthorizeTable middleware → handler
-                    ↓                              ↓
-             auth.Auth.Authenticate()     permissionsbus.QueryUserPermissions()
-                    ↓                              ↓
-             Claims → context           UserPermissions (cached via rolecache + tableaccesscache)
+key facts:
+  - Two-layer auth: JWT validation (app/sdk/auth) + RBAC permission checks (permissionsbus)
+  - permissionsbus does NOT live inside auth.Auth — table-level access checked separately via AuthorizeTable middleware
 
 ---
 
@@ -33,7 +32,6 @@ type Auth struct {
 }
 ```
 
-api:
   Authenticate(ctx context.Context, bearerToken string) (Claims, error)
   Authorize(ctx context.Context, claims Claims, userID uuid.UUID, rule string) error
 
@@ -55,7 +53,6 @@ type Business struct {
 }
 ```
 
-api:
   NewBusiness(log, del, storer, urb *userrolebus.Business, tab *tableaccessbus.Business, rb *rolebus.Business) *Business
   NewWithTx(tx sqldb.CommitRollbacker) (*Business, error)
   QueryUserPermissions(ctx context.Context, userID uuid.UUID) (UserPermissions, error)

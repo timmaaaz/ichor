@@ -1,16 +1,9 @@
 # domain/{area}/{entity}
 
-[bus]=business layer [app]=application layer [api]=HTTP layer [db]=store
-→=depends on ⊕=writes ⊗=reads ⚡=external [cache]=sturdyc [tx]=transaction
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 Reference domain: sales/orders (ordersbus)
-
----
-
-## StateMachine (if entity has lifecycle)
-
-state1 →action→ state2 →action→ state3
-invariant: (e.g. "soft-delete: deleted_date non-null, never hard-deleted")
 
 ---
 
@@ -54,11 +47,8 @@ method → function:
   Update(ctx, entity) error                             → ExecContext
   Delete(ctx, entity) error                             → ExecContext
 
-api:
-  SELECT {schema}.{table}    ⊗{schema}.{table}
-  INSERT {schema}.{table}    ⊕{schema}.{table}
-  UPDATE {schema}.{table}    ⊕{schema}.{table}
-  DELETE {schema}.{table}    ⊕{schema}.{table}
+⊗ {schema}.{table}
+⊕ {schema}.{table}
 
 ---
 

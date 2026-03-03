@@ -1,23 +1,16 @@
 # sqldb
 
-[sdk]=shared SDK [db]=store layer
-→=depends on
-
----
-
-## Overview
-
-Thin wrapper over sqlx providing parameterized query helpers, connection config,
-and sentinel errors used by every [db] store layer. Most imported SDK package:
-185+ importers.
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
 ## sqldb [sdk]
 
 file: business/sdk/sqldb/sqldb.go
-
-### Config
+key facts:
+  - Most imported SDK package: 185+ importers
+  - Thin wrapper over sqlx: parameterized query helpers + connection config + sentinel errors
 
 ```go
 type Config struct {
@@ -30,17 +23,15 @@ type Config struct {
     MaxOpenConns int
     DisableTLS   bool
 }
-```
 
-### Open
-
-```go
 func Open(cfg Config) (*sqlx.DB, error)
 ```
 
 ---
 
-## Query Helpers
+## QueryHelpers [sdk]
+
+file: business/sdk/sqldb/sqldb.go
 
 ```go
 // Returns nil (NOT ErrDBNotFound) when result set is empty.
@@ -55,7 +46,9 @@ func ExecContext(ctx context.Context, log *logger.Logger, db sqlx.ExtContext, qu
 
 ---
 
-## Sentinel Errors
+## SentinelErrors [sdk]
+
+file: business/sdk/sqldb/sqldb.go
 
 ```go
 var ErrDBNotFound        = sql.ErrNoRows          // single-row query found no match

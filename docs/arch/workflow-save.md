@@ -1,15 +1,7 @@
 # workflow-save
 
-[app]=application layer [bus]=business layer [sdk]=shared
-→=depends on ⊕=writes ⊗=reads [tx]=transaction
-
----
-
-## Overview
-
-Validates and persists workflow rule + actions + edges as a single atomic operation.
-Two entry points: DryRunValidate (no DB writes, returns all errors) and SaveWorkflow (DB write).
-Graph validation uses Kahn's algorithm for cycle detection.
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
@@ -26,18 +18,17 @@ type App struct {
 }
 ```
 
-api:
   NewApp(log, db, workflowBus, del, registry) *App
   DryRunValidate(req SaveWorkflowRequest) ValidationResult
   SaveWorkflow(ctx, ruleID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error)
   CreateWorkflow(ctx, userID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error)
   DuplicateWorkflow(ctx, ruleID uuid.UUID, userID uuid.UUID) (SaveWorkflowResponse, error)
 
-path differences:
-  DryRunValidate — full validation only, no DB changes, returns ValidationResult with all errors collected
-  SaveWorkflow   — prepareRequest validates, then ReadCommitted [tx]: update rule + sync actions (create/update/delete) + recreate edges + delegate.Call() after commit
-
-constraints:
+key facts:
+  - Validates and persists workflow rule + actions + edges as single atomic operation
+  - Two entry points: DryRunValidate (no DB writes, returns all errors) and SaveWorkflow (DB write)
+  - DryRunValidate — full validation only, no DB changes, returns ValidationResult with all errors collected
+  - SaveWorkflow — prepareRequest validates, then ReadCommitted [tx]: update rule + sync actions (create/update/delete) + recreate edges + delegate.Call() after commit
   - Default workflows (IsDefault=true) cannot be modified via SaveWorkflow — use DuplicateWorkflow
 
 ---
@@ -95,8 +86,7 @@ type ValidationResult struct {
 }
 ```
 
-### Action config structs (per ActionType)
-
+Action config structs (per ActionType):
 ```go
 CreateAlertConfig       { AlertType, Severity, Title, Message string }
 SendEmailConfig         { Recipients []string, Subject, Body string }
@@ -109,7 +99,7 @@ EvaluateConditionConfig { Conditions []any }
 
 ---
 
-## Graph Validation
+## GraphValidation [app]
 
 file: app/domain/workflow/workflowsaveapp/graph.go
 algorithm: Kahn's topological sort (in-degree tracking)

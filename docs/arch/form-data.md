@@ -1,15 +1,7 @@
 # form-data
 
-[app]=application layer [bus]=business layer [sdk]=shared
-→=depends on ⊕=writes ⊗=reads [tx]=transaction [cache]=sturdyc
-
----
-
-## Overview
-
-Multi-entity transactional form submission. Single HTTP POST → N entity creates/updates
-in FK-safe execution order. Template variables link created IDs across operations.
-max array items per operation: 1000 (DoS protection).
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
@@ -31,11 +23,12 @@ main entry:
   UpsertFormData(ctx context.Context, formID uuid.UUID, req FormDataRequest) (FormDataResponse, error)
 
 key facts:
+  - Single HTTP POST → N entity creates/updates in FK-safe execution order
   - Sorts operations by OperationMeta.Order (FK-safe execution)
   - Runs inside single DB [tx] at isolation level sql.LevelReadCommitted
   - {{entity.id}} templates resolved via workflow.TemplateProcessor after each operation
   - FK values: human-readable names resolved to UUIDs via Registry.Get(name).QueryByNameFunc
-  - maxArrayItems = 1000 per operation (enforced before tx begins)
+  - maxArrayItems = 1000 per operation (DoS protection, enforced before tx begins)
 
 ---
 
@@ -84,7 +77,6 @@ type Registry struct {
 }
 ```
 
-api:
   New() *Registry
   Register(reg EntityRegistration) error
   RegisterWithID(entityID uuid.UUID, reg EntityRegistration) error
@@ -92,8 +84,9 @@ api:
   GetByID(id uuid.UUID) (*EntityRegistration, error)
   ListEntities() []string
 
-Thread-safe: RWMutex guards all reads and writes. Read-only after startup registration.
-Registered at startup in api/cmd/services/ichor/build/all/all.go.
+key facts:
+  - Thread-safe: RWMutex guards all reads and writes; read-only after startup registration
+  - Registered at startup in api/cmd/services/ichor/build/all/all.go
 
 ---
 

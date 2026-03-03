@@ -1,18 +1,161 @@
 # seeding
 
-[dbtest]=test infrastructure [seedmodels]=static seed data
-→=depends on ⊗=reads from
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared [dbtest]=test-infra [seedmodels]=static-seed-data
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
-## Overview
+## TestDataReference [test]
 
-`business/sdk/dbtest/` provides two seeding entry points:
-- `InsertSeedData` — populates a live Kubernetes/Docker database for `make seed-frontend`
-- `NewDatabase` — spins up an isolated test database (random name, 4-letter suffix) for integration tests
+All values are randomized (names, IDs, dates). Only counts and relationships are fixed.
 
-Both use the same `BusDomain` struct and the same seed_*.go chain.
-Static data (table configs, form field definitions, page action buttons, chart configs) lives in `seedmodels/`.
+| Entity | Count | Notes |
+|--------|-------|-------|
+| Admin users | 1 | `foundation.Admins[0]` — used as creator/approver throughout |
+| Regular users (reporters) | 20 | role=User |
+| Regular users (bosses) | 10 | role=User |
+| Titles | 10 | |
+| Currencies | 5 + USD | USD queried from seed.sql; 5 additional test currencies |
+| Cities | 5 | |
+| Streets | 5 | |
+| Contact infos | 5 | |
+| Offices | 10 | |
+| Brands | 5 | |
+| Product categories | 10 | |
+| Products | 20 | historical dates, 180-day window |
+| Product costs | 20 | all USD |
+| Physical attributes | 20 | |
+| Metrics | 40 | |
+| Cost history entries | 40 | historical, 180-day window |
+| Warehouses | 5 | historical, 365-day window |
+| Zones | 12 | |
+| Inventory locations | 25 | |
+| Inventory items | 30 | |
+| Transfer orders | 20 | |
+| Inventory transactions | 40 | |
+| Inventory adjustments | 20 | |
+| Customers | 5 | historical, 180-day window |
+| Orders | 200 | weighted random distribution, 90-day window |
+| Order line items | 5 per order | |
+| Order fulfillment statuses | from seedmodels.OrderFulfillmentStatusData | named statuses |
+| Line item fulfillment statuses | 9 | ALLOCATED, CANCELLED, PACKED, PENDING, PICKED, PARTIALLY_PICKED, BACKORDERED, PENDING_REVIEW, SHIPPED |
+| Suppliers | 25 | |
+| Supplier products | 10 | |
+| Purchase orders | 10 | historical, 120-day window |
+| PO line items | 25 | |
+| Lot trackings | 15 | |
+| Lot locations | 15 | |
+| Inspections | 10 | |
+| Serial numbers | 50 | |
+| Action templates | 15 | workflow |
+| Default automation rules | 8 | workflow |
+
+### Fixed UUIDs (safe to hardcode in tests)
+
+Source: `business/sdk/migrate/sql/seed.sql` — identical on every environment.
+
+Users:
+```
+admin_gopher  id=5cf37266-3473-4006-984f-9325122678b7  roles={ADMIN}  email=admin@example.com
+user_gopher   id=45b5fbd3-755f-4379-8f07-a58d4a30fa2f  roles={USER}   email=user@example.com
+```
+
+Role:
+```
+ZZZADMIN  id=54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+```
+(admin_gopher is linked to this role via user_roles)
+
+HR user approval statuses:
+```
+PENDING      id=89173300-3f4e-4606-872c-f34914bbee19
+APPROVED     id=0394acac-ace4-4e8f-b64e-68625b0af14a
+DENIED       id=7b901e2e-3f33-40c1-9201-b4e8b1718b4b
+UNDER REVIEW id=132a2572-b7a0-4b56-a165-55e1c244c3e2
+```
+
+Payment terms (patterned IDs — both name and ID are stable):
+```
+a0000000-0000-4000-8000-000000000001  Net 30
+a0000000-0000-4000-8000-000000000002  Net 60
+a0000000-0000-4000-8000-000000000003  Due on Receipt
+a0000000-0000-4000-8000-000000000004  Net 15
+a0000000-0000-4000-8000-000000000005  Net 45
+a0000000-0000-4000-8000-000000000006  Net 7
+a0000000-0000-4000-8000-000000000007  Net 10
+a0000000-0000-4000-8000-000000000008  Net 21
+a0000000-0000-4000-8000-000000000009  Net 90
+a0000000-0000-4000-8000-000000000010  Prepaid
+a0000000-0000-4000-8000-000000000011  COD
+a0000000-0000-4000-8000-000000000012  CIA
+a0000000-0000-4000-8000-000000000013  50% Deposit
+a0000000-0000-4000-8000-000000000014  EOM
+a0000000-0000-4000-8000-000000000015  MFI
+a0000000-0000-4000-8000-000000000016  15 MFI
+a0000000-0000-4000-8000-000000000017  Open Account
+a0000000-0000-4000-8000-000000000018  Letter of Credit
+```
+
+### Stable by name/code (query by these — IDs are random per environment)
+
+Currencies (10 total — query by `code`):
+```
+USD, EUR, GBP, CAD, AUD, JPY, CHF, CNY, INR, MXN
+```
+
+Geography — all use `uuid_generate_v4()` so query by code:
+```
+geography.countries  ~250 rows  — query by alpha_2 (e.g. 'US') or alpha_3
+geography.regions    50 US states — query by code (e.g. 'CA', 'NY', 'TX')
+geography.timezones  ~37 rows   — query by name
+```
+
+Asset conditions (query by name):
+```
+PERFECT, GOOD, USED, POOR, END_OF_LIFE
+```
+
+Asset approval/fulfillment statuses (query by name):
+```
+SUCCESS, ERROR, WAITING, REJECTED, IN_PROGRESS
+```
+
+Named users (18 additional users with `gen_random_uuid()` IDs — query by `username`):
+```
+manager1, manager2, finance_admin, hr_admin, employee1–4,
+readonly, temp_admin, sales_east, sales_west,
+it_systems, it_dev, accounting, payroll, recruitment, benefits
+```
+All use password hash for `admin123` except admin_gopher.
+
+### Stable from seedmodels (seeded via InsertSeedData / TestSeed chain)
+
+Order fulfillment statuses (query by name):
+```
+PENDING, PROCESSING, PICKING, PACKING, READY_TO_SHIP, SHIPPED, DELIVERED, CANCELLED
+```
+
+Line item fulfillment statuses (query by name):
+```
+ALLOCATED, CANCELLED, PACKED, PENDING, PICKED, PARTIALLY_PICKED, BACKORDERED, PENDING_REVIEW, SHIPPED
+```
+
+Purchase order statuses (query by name):
+```
+DRAFT, PENDING_APPROVAL, APPROVED, SENT, PARTIALLY_RECEIVED, RECEIVED, CANCELLED, CLOSED
+```
+
+PO line item statuses (query by name):
+```
+PENDING, ORDERED, PARTIALLY_RECEIVED, RECEIVED, BACKORDERED, CANCELLED
+```
+
+### What is random (never hardcode)
+
+- All UUIDs not listed above — always query by stable name/code/status
+- All names, descriptions, addresses, emails from `TestSeed*` functions
+- All dates — historical relative to seed time; assert on ranges, not exact values
+- All monetary amounts
 
 ---
 
@@ -33,18 +176,22 @@ type Database struct {
 }
 ```
 
-- DB name: random 4 lowercase letters (`abcdefghijklmnopqrstuvwxyz`)
-- TimeZone: `SET TIME ZONE 'America/New_York'`
-- Runs migrations + seeds before returning
-- Each test gets its own isolated database instance
+key facts:
+  - DB name: random 4 lowercase letters (`abcdefghijklmnopqrstuvwxyz`)
+  - TimeZone: `SET TIME ZONE 'America/New_York'`
+  - Runs migrations + seeds before returning
+  - Each test gets its own isolated database instance
+  - Two seeding entry points: InsertSeedData (live K8s/Docker DB for `make seed-frontend`) + NewDatabase (isolated test DB)
+  - Both use the same BusDomain struct and same seed_*.go chain
 
 ---
 
 ## BusDomain [dbtest]
 
 file: business/sdk/dbtest/dbtest.go
-
-Central struct holding every instantiated business package. Passed into all seed functions.
+key facts:
+  - Central struct holding every instantiated business package
+  - Passed into all seed functions
 
 ```
 Delegate
@@ -89,7 +236,7 @@ Workflow, Alert
 
 ---
 
-## Seed Orchestrator [dbtest]
+## SeedOrchestrator [dbtest]
 
 file: business/sdk/dbtest/seedFrontend.go (~71 lines)
 
@@ -127,7 +274,7 @@ seedWorkflow(ctx, log, busDomain, adminID)
 
 ---
 
-## Seed Functions + Result Structs
+## SeedFunctions [dbtest]
 
 ### seed_foundation.go
 ```go
@@ -204,9 +351,9 @@ References `seedmodels/pageactions.go` and `seedmodels/pages.go`.
 func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) error
 ```
 Seeds: forms and all form fields.
-Cross-domain note: uses `busDomain.Workflow.QueryEntityByName` (read-only lookup) — must run after
-`seedFoundation` (which sets up `busDomain.Workflow`), but NOT after `seedWorkflow`.
-References `seedmodels/tableforms.go`, `seedmodels/forms.go`, `seedmodels/formregistry.go`.
+key facts:
+  - uses `busDomain.Workflow.QueryEntityByName` (read-only lookup) — must run after `seedFoundation`, NOT after `seedWorkflow`
+  - References `seedmodels/tableforms.go`, `seedmodels/forms.go`, `seedmodels/formregistry.go`
 
 ### seed_workflow.go
 ```go
@@ -217,7 +364,9 @@ Must run LAST — depends on forms and templates already seeded.
 
 ---
 
-## seedmodels/ — Static Data
+## SeedModels [seedmodels]
+
+file: business/sdk/dbtest/seedmodels/
 
 | File | Contents |
 |------|----------|
@@ -238,12 +387,12 @@ Must run LAST — depends on forms and templates already seeded.
 
 ---
 
-## seed_config_pages.go
+## ConfigPages [dbtest]
 
 file: business/sdk/dbtest/seed_config_pages.go
-
-Holds the `allPages` slice used by `seedPages` for navigation page route records.
-Renamed from the original `model.go`.
+key facts:
+  - Holds the `allPages` slice used by `seedPages` for navigation page route records
+  - Renamed from the original `model.go`
 
 ---
 

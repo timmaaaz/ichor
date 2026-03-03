@@ -1,20 +1,19 @@
 # workflow-alerts
 
-[bus]=business layer [api]=HTTP/WebSocket layer [sdk]=shared
-→=depends on ⊕=writes ⊗=reads ⚡=external (RabbitMQ, WebSocket)
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
-## Overview
+## Pipeline
 
-Real-time alert delivery via WebSocket. Alerts are enqueued in RabbitMQ by the
-create_alert ActionHandler, consumed by AlertConsumer, and broadcast to connected
-clients via foundation/websocket Hub. Targeting is user- or role-scoped using
-string ID prefixes ("user:{uuid}" / "role:{uuid}").
+create_alert ActionHandler → RabbitMQ (QueueTypeAlert) → AlertConsumer.handleAlert()
+      → AlertHub.BroadcastToUser/Role/All() → foundation/websocket.Hub → WebSocket clients
 
-Pipeline:
-  create_alert ActionHandler → RabbitMQ (QueueTypeAlert) → AlertConsumer.handleAlert()
-        → AlertHub.BroadcastToUser/Role/All() → foundation/websocket.Hub → WebSocket clients
+key facts:
+  - Real-time alert delivery via WebSocket
+  - Targeting is user- or role-scoped using string ID prefixes ("user:{uuid}" / "role:{uuid}")
+  - Alert consumer still uses RabbitMQ (QueueTypeAlert) — separate from main workflow engine queue
 
 ---
 
@@ -29,7 +28,6 @@ type AlertHub struct {
 }
 ```
 
-api:
   NewAlertHub(hub, userRoleBus, log) *AlertHub
   Hub() *websocket.Hub
   RegisterClient(ctx, client, userID uuid.UUID) error
@@ -39,9 +37,10 @@ api:
   ConnectedUserIDs() []uuid.UUID
   RefreshUserRoles(ctx, userID uuid.UUID) error
 
-registration: RegisterClient fetches user roles via userRoleBus.QueryByUserID, builds
-  ID list: ["user:{userID}", "role:{role0.RoleID}", "role:{role1.RoleID}", ...]
-  then calls hub.Register(ctx, client, ids)
+key facts:
+  - RegisterClient fetches user roles via userRoleBus.QueryByUserID
+  - Builds ID list: ["user:{userID}", "role:{role0.RoleID}", "role:{role1.RoleID}", ...]
+  - Calls hub.Register(ctx, client, ids)
 
 ---
 
@@ -57,8 +56,9 @@ type AlertConsumer struct {
 }
 ```
 
-event mechanism: RabbitMQ pull via wq.Consume(ctx, rabbitmq.QueueTypeAlert, handleAlert)
-activation: Start(ctx) blocks until context cancelled; or QueueManager.HandleMessage(ctx, msg) for direct routing
+key facts:
+  - event mechanism: RabbitMQ pull via wq.Consume(ctx, rabbitmq.QueueTypeAlert, handleAlert)
+  - activation: Start(ctx) blocks until context cancelled; or QueueManager.HandleMessage(ctx, msg) for direct routing
 
 handleAlert routing:
   msg.UserID != uuid.Nil            → BroadcastToUser(msg.UserID, bytes)
@@ -83,9 +83,10 @@ handler: handleRoleChange(ctx, data)
   → alertHub.RefreshUserRoles(ctx, userID)
   → hub.UpdateClientIDsForID(ctx, "user:"+userID, newIDs)
 
-purpose: when a user's role changes, update their WebSocket connection's registered
-  IDs so role-targeted broadcasts reach/exclude them correctly
-failure: role fetch error → log error, return nil (don't fail business operation)
+key facts:
+  - When a user's role changes, update their WebSocket connection's registered IDs
+  - Ensures role-targeted broadcasts reach/exclude them correctly
+  - failure: role fetch error → log error, return nil (don't fail business operation)
 
 ---
 
@@ -99,7 +100,6 @@ type Business struct {
 }
 ```
 
-api:
   NewBusiness(log, storer) *Business
   NewWithTx(tx sqldb.CommitRollbacker) (*Business, error)
   Create(ctx, na NewApprovalRequest) (ApprovalRequest, error)
@@ -117,7 +117,7 @@ sentinel error:
 
 ---
 
-## WebSocket Foundation [sdk]
+## WebSocketFoundation [sdk]
 
 file: foundation/websocket/
 ```go

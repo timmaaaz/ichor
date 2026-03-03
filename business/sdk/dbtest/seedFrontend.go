@@ -8,6 +8,10 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
+// InsertSeedData seeds the database for local development and make seed-frontend.
+// Each domain's seed data lives in its own seed_*.go file in this package.
+// Static config data (table configs, forms, charts, page actions) lives in seedmodels/.
+// Architecture reference: docs/arch/seeding.md
 func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	db, err := sqldb.Open(cfg)
 	if err != nil {

@@ -1,27 +1,18 @@
 # table-builder
 
-[sdk]=shared SDK [bus]=business layer [db]=store
-→=depends on ⊕=writes ⊗=reads
-
----
-
-## Overview
-
-Dynamic SQL query builder + visualization config system driven entirely by JSON config.
-No hand-written queries. Config persisted in config.table_configs and config.page_configs;
-loaded by frontend page builder to drive tables, charts, KPIs, and heatmaps.
-
-Two components:
-  Store       — executes queries from a Config at runtime
-  ConfigStore — CRUD for persisting/loading Config + PageConfig + PageContent
+[bus]=business [app]=application [api]=HTTP [db]=store [sdk]=shared
+→=depends on ⊕=writes ⊗=reads ⚡=external [tx]=transaction [cache]=cached
 
 ---
 
 ## Config [sdk]
 
 file: business/sdk/tablebuilder/model.go
-
-### Core types
+key facts:
+  - Dynamic SQL query builder + visualization config system driven entirely by JSON config
+  - No hand-written queries; config persisted in config.table_configs and config.page_configs
+  - Loaded by frontend page builder to drive tables, charts, KPIs, and heatmaps
+  - Two components: Store (executes queries from Config at runtime) + ConfigStore (CRUD for Config/PageConfig/PageContent)
 
 ```go
 type Config struct {
@@ -81,25 +72,22 @@ type GroupByConfig struct {
 }
 ```
 
-### Security whitelists (model.go)
-
+Security whitelists (model.go):
 ```go
 AllowedAggregateFunctions: { sum, count, count_distinct, avg, min, max }
 AllowedOperators:          { multiply, add, subtract, divide }
 AllowedIntervals:          { day, week, month, quarter, year }
 ```
-
 All values validated against whitelists before SQL generation — injection-safe.
 
-### Supporting types (model.go)
-
-ColumnDefinition, SelectConfig, ExpressionConfig, ComputedColumn, Join, Filter, Sort,
-VisualSettings, ColumnConfig, FormatConfig, EditableConfig, LinkConfig, LookupConfig,
-ConditionalFormat, Action, PaginationConfig, Permissions, TableData, TableRow,
-MetaData, ColumnMetadata, RelationshipInfo, QueryParams, StoredConfig,
-PageConfig, UpdatePageConfig, PageContent, LayoutConfig, ResponsiveValue,
-ChartResponse, SeriesData, KPIData, ChartMeta, HeatmapData, GanttData, TreemapData,
-ChartVisualSettings, SeriesConfig, AxisConfig, LegendConfig, TooltipConfig, KPIConfig
+Supporting types (model.go):
+  ColumnDefinition, SelectConfig, ExpressionConfig, ComputedColumn, Join, Filter, Sort,
+  VisualSettings, ColumnConfig, FormatConfig, EditableConfig, LinkConfig, LookupConfig,
+  ConditionalFormat, Action, PaginationConfig, Permissions, TableData, TableRow,
+  MetaData, ColumnMetadata, RelationshipInfo, QueryParams, StoredConfig,
+  PageConfig, UpdatePageConfig, PageContent, LayoutConfig, ResponsiveValue,
+  ChartResponse, SeriesData, KPIData, ChartMeta, HeatmapData, GanttData, TreemapData,
+  ChartVisualSettings, SeriesConfig, AxisConfig, LegendConfig, TooltipConfig, KPIConfig
 
 ---
 
