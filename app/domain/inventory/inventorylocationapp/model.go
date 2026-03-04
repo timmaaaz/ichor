@@ -90,17 +90,17 @@ func ToAppInventoryLocations(bus []inventorylocationbus.InventoryLocation) []Inv
 }
 
 type NewInventoryLocation struct {
-	WarehouseID        string `json:"warehouse_id" validate:"required,min=36,max=36"`
+	WarehouseID        string `json:"warehouse_id" validate:"omitempty,min=36,max=36"`
 	ZoneID             string `json:"zone_id" validate:"required,min=36,max=36"`
 	Aisle              string `json:"aisle" validate:"required"`
 	Rack               string `json:"rack" validate:"required"`
 	Shelf              string `json:"shelf" validate:"required"`
 	Bin                string `json:"bin" validate:"required"`
 	LocationCode       string `json:"location_code" validate:"omitempty,max=100"`
-	IsPickLocation     string `json:"is_pick_location" validate:"required"`
-	IsReserveLocation  string `json:"is_reserve_location" validate:"required"`
-	MaxCapacity        string `json:"max_capacity" validate:"required"`
-	CurrentUtilization string `json:"current_utilization" validate:"required"`
+	IsPickLocation     string `json:"is_pick_location" validate:"omitempty"`
+	IsReserveLocation  string `json:"is_reserve_location" validate:"omitempty"`
+	MaxCapacity        string `json:"max_capacity" validate:"omitempty"`
+	CurrentUtilization string `json:"current_utilization" validate:"omitempty"`
 }
 
 func (app *NewInventoryLocation) Decode(data []byte) error {
@@ -126,24 +126,36 @@ func toBusNewInventoryLocation(app NewInventoryLocation) (inventorylocationbus.N
 		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse zoneID: %s", err)
 	}
 
-	maxCapacity, err := strconv.Atoi(app.MaxCapacity)
-	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse maxCapacity: %s", err)
+	maxCapacity := 0
+	if app.MaxCapacity != "" {
+		maxCapacity, err = strconv.Atoi(app.MaxCapacity)
+		if err != nil {
+			return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse maxCapacity: %s", err)
+		}
 	}
 
-	cu, err := types.ParseRoundedFloat(app.CurrentUtilization)
-	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse currentUtilization: %s", err)
+	var cu types.RoundedFloat
+	if app.CurrentUtilization != "" {
+		cu, err = types.ParseRoundedFloat(app.CurrentUtilization)
+		if err != nil {
+			return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse currentUtilization: %s", err)
+		}
 	}
 
-	isPL, err := strconv.ParseBool(app.IsPickLocation)
-	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse isPickLocation: %s", err)
+	isPL := false
+	if app.IsPickLocation != "" {
+		isPL, err = strconv.ParseBool(app.IsPickLocation)
+		if err != nil {
+			return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse isPickLocation: %s", err)
+		}
 	}
 
-	isRL, err := strconv.ParseBool(app.IsReserveLocation)
-	if err != nil {
-		return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse isReserveLocation: %s", err)
+	isRL := false
+	if app.IsReserveLocation != "" {
+		isRL, err = strconv.ParseBool(app.IsReserveLocation)
+		if err != nil {
+			return inventorylocationbus.NewInventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse isReserveLocation: %s", err)
+		}
 	}
 
 	var locationCode *string

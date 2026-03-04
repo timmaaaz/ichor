@@ -63,7 +63,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding pages: %w", err)
 	}
 
-	if err := seedForms(ctx, log, busDomain); err != nil {
+	if err := seedForms(ctx, log, busDomain, db); err != nil {
 		return fmt.Errorf("seeding forms: %w", err)
 	}
 

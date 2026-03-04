@@ -667,6 +667,316 @@ var InventoryAdjustmentsTableConfig = &tablebuilder.Config{
 }
 
 
+// Inventory Zones Page Config
+var InventoryZonesTableConfig = &tablebuilder.Config{
+	Title:           "Zone Management",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "zones",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "zones.id"},
+					{Name: "name", TableColumn: "zones.name"},
+					{Name: "description", TableColumn: "zones.description"},
+					{Name: "created_date", TableColumn: "zones.created_date"},
+					{Name: "updated_date", TableColumn: "zones.updated_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "warehouses",
+						Schema:           "inventory",
+						RelationshipFrom: "zones.warehouse_id",
+						RelationshipTo:   "warehouses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
+						},
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "zones.name",
+					Direction: "asc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"zones.name": {
+				Name:       "zones.name",
+				Header:     "Zone Name",
+				Width:      200,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/inventory/zones/{zones.id}",
+					LabelColumn: "zones.name",
+				},
+			},
+			"warehouse_name": {
+				Name:       "warehouse_name",
+				Header:     "Warehouse",
+				Width:      200,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"zones.description": {
+				Name:       "zones.description",
+				Header:     "Description",
+				Width:      300,
+				Type:       "string",
+				Filterable: true,
+			},
+			"zones.created_date": {
+				Name:     "zones.created_date",
+				Header:   "Created",
+				Width:    150,
+				Type:     "datetime",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "datetime",
+					Format: "yyyy-MM-dd HH:mm",
+				},
+			},
+			"zones.updated_date": {
+				Name:   "zones.updated_date",
+				Header: "Updated",
+				Width:  150,
+				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
+			},
+			"zones.id": {
+				Name:   "zones.id",
+				Header: "Zone ID",
+				Type:   "uuid",
+				Hidden: true,
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "inventory_manager"},
+		Actions: []string{"view", "edit", "export"},
+	},
+}
+
+
+// Inventory Locations Page Config
+var InventoryLocationsTableConfig = &tablebuilder.Config{
+	Title:           "Location Management",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "inventory_locations",
+			Schema: "inventory",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "inventory_locations.id"},
+					{Name: "aisle", TableColumn: "inventory_locations.aisle"},
+					{Name: "rack", TableColumn: "inventory_locations.rack"},
+					{Name: "shelf", TableColumn: "inventory_locations.shelf"},
+					{Name: "bin", TableColumn: "inventory_locations.bin"},
+					{Name: "is_pick_location", TableColumn: "inventory_locations.is_pick_location"},
+					{Name: "is_reserve_location", TableColumn: "inventory_locations.is_reserve_location"},
+					{Name: "max_capacity", TableColumn: "inventory_locations.max_capacity"},
+					{Name: "current_utilization", TableColumn: "inventory_locations.current_utilization"},
+					{Name: "created_date", TableColumn: "inventory_locations.created_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "zones",
+						Schema:           "inventory",
+						RelationshipFrom: "inventory_locations.zone_id",
+						RelationshipTo:   "zones.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "zone_name", TableColumn: "zones.name"},
+						},
+					},
+					{
+						Table:            "warehouses",
+						Schema:           "inventory",
+						RelationshipFrom: "inventory_locations.warehouse_id",
+						RelationshipTo:   "warehouses.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "warehouse_name", TableColumn: "warehouses.name"},
+						},
+					},
+				},
+				ClientComputedColumns: []tablebuilder.ComputedColumn{
+					{
+						Name:       "location_code",
+						Expression: "aisle + '-' + rack + '-' + shelf + '-' + bin",
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "inventory_locations.aisle",
+					Direction: "asc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"location_code": {
+				Name:       "location_code",
+				Header:     "Location",
+				Width:      160,
+				Type:       "computed",
+				Sortable:   true,
+				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/inventory/locations/{inventory_locations.id}",
+					LabelColumn: "location_code",
+				},
+			},
+			"warehouse_name": {
+				Name:       "warehouse_name",
+				Header:     "Warehouse",
+				Width:      180,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"zone_name": {
+				Name:       "zone_name",
+				Header:     "Zone",
+				Width:      150,
+				Type:       "string",
+				Filterable: true,
+			},
+			"inventory_locations.is_pick_location": {
+				Name:   "inventory_locations.is_pick_location",
+				Header: "Pick",
+				Width:  70,
+				Type:   "boolean",
+				Align:  "center",
+				Format: &tablebuilder.FormatConfig{
+					Type: "boolean",
+				},
+			},
+			"inventory_locations.is_reserve_location": {
+				Name:   "inventory_locations.is_reserve_location",
+				Header: "Reserve",
+				Width:  80,
+				Type:   "boolean",
+				Align:  "center",
+				Format: &tablebuilder.FormatConfig{
+					Type: "boolean",
+				},
+			},
+			"inventory_locations.max_capacity": {
+				Name:     "inventory_locations.max_capacity",
+				Header:   "Max Capacity",
+				Width:    110,
+				Type:     "number",
+				Align:    "right",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "number",
+					Precision: 0,
+				},
+			},
+			"inventory_locations.current_utilization": {
+				Name:     "inventory_locations.current_utilization",
+				Header:   "Utilization",
+				Width:    100,
+				Type:     "number",
+				Align:    "right",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:      "percent",
+					Precision: 1,
+				},
+			},
+			"inventory_locations.created_date": {
+				Name:   "inventory_locations.created_date",
+				Header: "Created",
+				Width:  150,
+				Type:   "datetime",
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
+			},
+			"inventory_locations.id": {
+				Name:   "inventory_locations.id",
+				Header: "Location ID",
+				Type:   "uuid",
+				Hidden: true,
+			},
+			"inventory_locations.aisle": {
+				Name:   "inventory_locations.aisle",
+				Header: "Aisle",
+				Type:   "string",
+				Hidden: true,
+			},
+			"inventory_locations.rack": {
+				Name:   "inventory_locations.rack",
+				Header: "Rack",
+				Type:   "string",
+				Hidden: true,
+			},
+			"inventory_locations.shelf": {
+				Name:   "inventory_locations.shelf",
+				Header: "Shelf",
+				Type:   "string",
+				Hidden: true,
+			},
+			"inventory_locations.bin": {
+				Name:   "inventory_locations.bin",
+				Header: "Bin",
+				Type:   "string",
+				Hidden: true,
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin", "inventory_manager"},
+		Actions: []string{"view", "edit", "export"},
+	},
+}
+
+
 // Inventory Transfers Page Config
 var InventoryTransfersTableConfig = &tablebuilder.Config{
 	Title:           "Transfer Orders",

@@ -9,6 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -16,6 +17,7 @@ import (
 type Config struct {
 	Log                  *logger.Logger
 	InventoryLocationBus *inventorylocationbus.Business
+	ZoneBus              *zonebus.Business
 	AuthClient           *authclient.Client
 	PermissionsBus       *permissionsbus.Business
 }
@@ -29,7 +31,7 @@ func Routes(app *web.App, cfg Config) {
 
 	authen := mid.Authenticate(cfg.AuthClient)
 
-	api := newAPI(inventorylocationapp.NewApp(cfg.InventoryLocationBus))
+	api := newAPI(inventorylocationapp.NewApp(cfg.InventoryLocationBus, cfg.ZoneBus))
 
 	app.HandlerFunc(http.MethodGet, version, "/inventory/inventory-locations", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))

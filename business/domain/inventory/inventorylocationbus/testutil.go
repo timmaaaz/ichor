@@ -17,13 +17,20 @@ func TestNewInventoryLocation(n int, warehouseIDs, zoneIDs []uuid.UUID) []NewInv
 	for i := 0; i < n; i++ {
 		idx++
 
+		aisle := fmt.Sprintf("Aisle%d", idx)
+		rack := fmt.Sprintf("Rack%d", idx)
+		shelf := fmt.Sprintf("Shelf%d", idx)
+		bin := fmt.Sprintf("Bin%d", idx)
+		locationCode := fmt.Sprintf("%s-%s-%s-%s", aisle, rack, shelf, bin)
+
 		newInventoryLocations[i] = NewInventoryLocation{
 			WarehouseID:        warehouseIDs[idx%len(warehouseIDs)],
 			ZoneID:             zoneIDs[idx%len(zoneIDs)],
-			Aisle:              fmt.Sprintf("Aisle%d", idx),
-			Rack:               fmt.Sprintf("Rack%d", idx),
-			Shelf:              fmt.Sprintf("Shelf%d", idx),
-			Bin:                fmt.Sprintf("Bin%d", idx),
+			Aisle:              aisle,
+			Rack:               rack,
+			Shelf:              shelf,
+			Bin:                bin,
+			LocationCode:       &locationCode,
 			IsPickLocation:     idx%2 == 0,
 			IsReserveLocation:  idx%2 == 0 && idx%5 == 0,
 			MaxCapacity:        idx%100 + 10,

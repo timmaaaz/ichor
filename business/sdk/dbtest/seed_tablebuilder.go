@@ -114,6 +114,21 @@ func seedTableBuilder(ctx context.Context, busDomain BusDomain, adminID uuid.UUI
 		return fmt.Errorf("creating inventory transfers table config: %w", err)
 	}
 
+	_, err = busDomain.ConfigStore.Create(ctx, "inventory_zones_table", "zones", seedmodels.InventoryZonesTableConfig, adminID)
+	if err != nil {
+		return fmt.Errorf("creating inventory zones table config: %w", err)
+	}
+
+	_, err = busDomain.ConfigStore.Create(ctx, "inventory_locations_table", "inventory_locations", seedmodels.InventoryLocationsTableConfig, adminID)
+	if err != nil {
+		return fmt.Errorf("creating inventory locations table config: %w", err)
+	}
+
+	_, err = busDomain.ConfigStore.Create(ctx, "products_table", "products", seedmodels.ProductsListTableConfig, adminID)
+	if err != nil {
+		return fmt.Errorf("creating products table config: %w", err)
+	}
+
 	// Sales Module Configs
 	_, err = busDomain.ConfigStore.Create(ctx, "sales_customers_table", "customers", seedmodels.SalesCustomersTableConfig, adminID)
 	if err != nil {

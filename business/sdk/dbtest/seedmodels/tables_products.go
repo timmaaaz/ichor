@@ -9,6 +9,151 @@ import (
 // =============================================================================
 // TABLE CONFIGS
 // =============================================================================
+// ProductsListTableConfig is used for the /products list page with a link to the detail page.
+var ProductsListTableConfig = &tablebuilder.Config{
+	Title:           "Products",
+	WidgetType:      "table",
+	Visualization:   "table",
+	PositionX:       0,
+	PositionY:       0,
+	Width:           12,
+	Height:          8,
+	RefreshInterval: 300,
+	RefreshMode:     "polling",
+	DataSource: []tablebuilder.DataSource{
+		{
+			Type:   "query",
+			Source: "products",
+			Schema: "products",
+			Select: tablebuilder.SelectConfig{
+				Columns: []tablebuilder.ColumnDefinition{
+					{Name: "id", TableColumn: "products.id"},
+					{Name: "name", TableColumn: "products.name"},
+					{Name: "sku", TableColumn: "products.sku"},
+					{Name: "status", TableColumn: "products.status"},
+					{Name: "is_active", TableColumn: "products.is_active"},
+					{Name: "created_date", TableColumn: "products.created_date"},
+				},
+				ForeignTables: []tablebuilder.ForeignTable{
+					{
+						Table:            "product_categories",
+						Schema:           "products",
+						RelationshipFrom: "products.category_id",
+						RelationshipTo:   "product_categories.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "category_name", TableColumn: "product_categories.name"},
+						},
+					},
+					{
+						Table:            "brands",
+						Schema:           "products",
+						RelationshipFrom: "products.brand_id",
+						RelationshipTo:   "brands.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "name", Alias: "brand_name", TableColumn: "brands.name"},
+						},
+					},
+				},
+			},
+			Sort: []tablebuilder.Sort{
+				{
+					Column:    "products.name",
+					Direction: "asc",
+				},
+			},
+			Rows: 50,
+		},
+	},
+	VisualSettings: tablebuilder.VisualSettings{
+		Columns: map[string]tablebuilder.ColumnConfig{
+			"products.name": {
+				Name:       "products.name",
+				Header:     "Product Name",
+				Width:      250,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/products/{products.id}",
+					LabelColumn: "products.name",
+				},
+			},
+			"products.sku": {
+				Name:       "products.sku",
+				Header:     "SKU",
+				Width:      150,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"category_name": {
+				Name:       "category_name",
+				Header:     "Category",
+				Width:      180,
+				Type:       "string",
+				Sortable:   true,
+				Filterable: true,
+			},
+			"brand_name": {
+				Name:       "brand_name",
+				Header:     "Brand",
+				Width:      150,
+				Type:       "string",
+				Filterable: true,
+			},
+			"products.status": {
+				Name:         "products.status",
+				Header:       "Status",
+				Width:        120,
+				Type:         "status",
+				Sortable:     true,
+				Filterable:   true,
+				CellTemplate: "status",
+			},
+			"products.is_active": {
+				Name:       "products.is_active",
+				Header:     "Active",
+				Width:      80,
+				Type:       "boolean",
+				Align:      "center",
+				Sortable:   true,
+				Filterable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type: "boolean",
+				},
+			},
+			"products.created_date": {
+				Name:     "products.created_date",
+				Header:   "Created",
+				Width:    150,
+				Type:     "datetime",
+				Sortable: true,
+				Format: &tablebuilder.FormatConfig{
+					Type:   "date",
+					Format: "MM-dd-yyyy",
+				},
+			},
+			"products.id": {
+				Name:   "products.id",
+				Header: "Product ID",
+				Type:   "uuid",
+				Hidden: true,
+			},
+		},
+		Pagination: &tablebuilder.PaginationConfig{
+			Enabled:         true,
+			PageSizes:       []int{10, 25, 50, 100},
+			DefaultPageSize: 25,
+		},
+	},
+	Permissions: tablebuilder.Permissions{
+		Roles:   []string{"admin"},
+		Actions: []string{"view", "export"},
+	},
+}
+
 var TableConfig = &tablebuilder.Config{
 	Title:           "Products List",
 	WidgetType:      "table",

@@ -970,6 +970,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	inventorylocationapi.Routes(app, inventorylocationapi.Config{
 		InventoryLocationBus: inventoryLocationBus,
+		ZoneBus:              zoneBus,
 		AuthClient:           cfg.AuthClient,
 		Log:                  cfg.Log,
 		PermissionsBus:       permissionsBus,
@@ -1393,7 +1394,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		titleapp.NewApp(titleBus),
 		inspectionapp.NewApp(inspectionBus),
 		inventoryadjustmentapp.NewApp(inventoryAdjustmentBus),
-		inventorylocationapp.NewApp(inventoryLocationBus),
+		inventorylocationapp.NewApp(inventoryLocationBus, zoneBus),
 		inventorytransactionapp.NewApp(inventoryTransactionBus),
 		serialnumberapp.NewApp(serialNumberBus),
 		transferorderapp.NewApp(transferOrderBus),

@@ -10,29 +10,49 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 type App struct {
 	inventorylocationbus *inventorylocationbus.Business
+	zonebus              *zonebus.Business
 	auth                 *auth.Auth
 }
 
-func NewApp(inventorylocationbus *inventorylocationbus.Business) *App {
+func NewApp(inventorylocationbus *inventorylocationbus.Business, zonebus *zonebus.Business) *App {
 	return &App{
 		inventorylocationbus: inventorylocationbus,
+		zonebus:              zonebus,
 	}
 }
 
-func NewAppWithAuth(inventoryLocationBus *inventorylocationbus.Business, auth *auth.Auth) *App {
+func NewAppWithAuth(inventoryLocationBus *inventorylocationbus.Business, zonebus *zonebus.Business, auth *auth.Auth) *App {
 	return &App{
 		inventorylocationbus: inventoryLocationBus,
+		zonebus:              zonebus,
 		auth:                 auth,
 	}
 }
 
 func (a *App) Create(ctx context.Context, app NewInventoryLocation) (InventoryLocation, error) {
+	// If warehouse_id is not provided, derive it from the selected zone.
+	if app.WarehouseID == "" {
+		zoneID, err := uuid.Parse(app.ZoneID)
+		if err != nil {
+			return InventoryLocation{}, errs.Newf(errs.InvalidArgument, "parse zoneID: %s", err)
+		}
+		zone, err := a.zonebus.QueryByID(ctx, zoneID)
+		if err != nil {
+			if errors.Is(err, zonebus.ErrNotFound) {
+				return InventoryLocation{}, errs.New(errs.NotFound, err)
+			}
+			return InventoryLocation{}, fmt.Errorf("derive warehouse_id from zone: %w", err)
+		}
+		app.WarehouseID = zone.WarehouseID.String()
+	}
+
 	nl, err := toBusNewInventoryLocation(app)
 	if err != nil {
 		return InventoryLocation{}, errs.New(errs.InvalidArgument, err)

@@ -396,6 +396,44 @@ key facts:
 
 ---
 
+## ⚠ Permission seeding — two-layer system
+
+Layer 1: Page access (router → canAccessPage)
+  file: business/sdk/dbtest/seedmodels/pages.go → AllPages slice
+  seedPages() auto-grants can_access=true to ZZZADMIN for every AllPages entry
+  missing → router redirects to /login; page never renders
+
+Layer 2: Table access (API auth middleware → core.table_access)
+  file: business/sdk/migrate/sql/seed.sql → core.table_access INSERT block
+  ZZZADMIN id: 54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+  format: (gen_random_uuid(), '<ZZZADMIN_id>', 'schema.table', true, true, true, true)
+  missing → 401 "user does not have permission READ for table: ..."
+
+Layer 3: Action permissions (workflow.action_permissions)
+  file: business/sdk/migrate/sql/seed.sql → workflow.action_permissions INSERT block
+  missing → 403 "permission_denied" on POST /v1/workflow/actions/{type}/execute
+
+symptom → fix:
+  redirect to /login             → add to AllPages
+  401 "no permission for table"  → add to seed.sql table_access
+  403 "permission_denied"        → add to seed.sql action_permissions
+
+---
+
+## ⚠ Form field seeding
+
+  fields: seedmodels/tableforms.go → Get<Entity>FormFields(formID, entityID)
+  registration: seedmodels/formregistry.go → RegisterForm("Form Name", supportsUpdate, GetFn)
+  name in RegisterForm must match loadFullFormConfigByName("Form Name") in frontend
+  changes require re-seed (make dev-bounce) — not hot-reloaded
+
+  symptom → fix:
+    "X is required" but no input visible  → X missing from Get*FormFields in tableforms.go
+    null columns after submit              → column missing from Get*FormFields
+    inline_create sub-form fails to load   → "form_name" in Config JSON not registered in FormRegistry
+
+---
+
 ## ⚠ Adding a new domain to seeding
 
   business/sdk/dbtest/dbtest.go          (add bus field(s) to BusDomain struct + instantiate in newBusDomains)

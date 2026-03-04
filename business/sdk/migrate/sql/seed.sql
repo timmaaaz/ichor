@@ -478,6 +478,7 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'config.table_configs', true, true, true, true),
     -- core schema
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'core.contact_infos', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'core.currencies', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'core.pages', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'core.payment_terms', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'core.role_pages', true, true, true, true),
@@ -546,11 +547,28 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.entities', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.entity_types', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.notification_deliveries', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.approval_requests', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.rule_actions', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.rule_dependencies', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.trigger_types', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.user_approval_comments', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.user_approval_status', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'workflow.audit_log', true, true, true, true)
 
+ON CONFLICT DO NOTHING;
+
+-- Grant ZZZADMIN all workflow action permissions (mirrors migrate.sql 'admin' grants)
+INSERT INTO workflow.action_permissions (role_id, action_type, is_allowed)
+VALUES
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'allocate_inventory', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'create_alert', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'send_email', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'send_notification', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'seek_approval', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'create_entity', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'lookup_entity', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'transition_status', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'log_audit_entry', true)
 ON CONFLICT DO NOTHING;
 
 -- Seed trigger types for workflow automation

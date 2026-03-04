@@ -238,6 +238,60 @@ var AllPages = []pagebus.NewPage{
 		IsActive:   true,
 		ShowInMenu: true,
 	},
+	{
+		Path:       "/inventory/locations",
+		Name:       "Location Management",
+		Module:     "inventory",
+		Icon:       "material-symbols:location-on",
+		SortOrder:  15,
+		IsActive:   true,
+		ShowInMenu: true,
+	},
+	{
+		Path:       "/inventory/locations/new",
+		Name:       "New Location",
+		Module:     "inventory",
+		Icon:       "material-symbols:add-location",
+		SortOrder:  103,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
+	{
+		Path:       "/inventory/locations/:id",
+		Name:       "Location Details",
+		Module:     "inventory",
+		Icon:       "material-symbols:location-pin",
+		SortOrder:  104,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
+	{
+		Path:       "/inventory/zones",
+		Name:       "Zone Management",
+		Module:     "inventory",
+		Icon:       "material-symbols:grid-view",
+		SortOrder:  16,
+		IsActive:   true,
+		ShowInMenu: true,
+	},
+	{
+		Path:       "/inventory/zones/new",
+		Name:       "New Zone",
+		Module:     "inventory",
+		Icon:       "material-symbols:add-circle",
+		SortOrder:  105,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
+	{
+		Path:       "/inventory/zones/:id",
+		Name:       "Zone Details",
+		Module:     "inventory",
+		Icon:       "material-symbols:area-chart",
+		SortOrder:  106,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
 
 	// PROCUREMENT MODULE
 	{
@@ -311,6 +365,15 @@ var AllPages = []pagebus.NewPage{
 		SortOrder:  18,
 		IsActive:   true,
 		ShowInMenu: true,
+	},
+	{
+		Path:       "/procurement/approvals/:id",
+		Name:       "Procurement Approval Detail",
+		Module:     "procurement",
+		Icon:       "material-symbols:approval",
+		SortOrder:  102,
+		IsActive:   true,
+		ShowInMenu: false,
 	},
 
 	// ASSETS MODULE
@@ -722,6 +785,35 @@ var AllPages = []pagebus.NewPage{
 		SortOrder:  77,
 		IsActive:   true,
 		ShowInMenu: true,
+	},
+
+	// PRODUCTS MODULE
+	{
+		Path:       "/products",
+		Name:       "Products",
+		Module:     "products",
+		Icon:       "material-symbols:inventory",
+		SortOrder:  78,
+		IsActive:   true,
+		ShowInMenu: true,
+	},
+	{
+		Path:       "/products/new",
+		Name:       "New Product",
+		Module:     "products",
+		Icon:       "material-symbols:add-box",
+		SortOrder:  107,
+		IsActive:   true,
+		ShowInMenu: false,
+	},
+	{
+		Path:       "/products/:id",
+		Name:       "Product Details",
+		Module:     "products",
+		Icon:       "material-symbols:package-2",
+		SortOrder:  108,
+		IsActive:   true,
+		ShowInMenu: false,
 	},
 }
 

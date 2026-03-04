@@ -687,9 +687,19 @@ func GetZoneFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewF
 // GetInventoryLocationFormFields returns form fields for inventory locations (inventory.inventory_locations)
 func GetInventoryLocationFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "zone_id", Label: "Zone", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "inventory.zones", "display_field": "name"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "zone_id", Label: "Zone", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "inventory.zones", "display_field": "name", "value_column": "zone_id"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "aisle", Label: "Aisle", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "rack", Label: "Rack", FieldType: "text", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "shelf", Label: "Shelf", FieldType: "text", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "bin", Label: "Bin", FieldType: "text", FieldOrder: 5, Required: true, Config: json.RawMessage(`{}`)},
+		// Auto-populated from zone selection via auto_populate
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "warehouse_id", Label: "Warehouse", FieldType: "hidden", FieldOrder: 7, Required: false, Config: json.RawMessage(`{"hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "is_pick_location", Label: "Is Pick Location", FieldType: "boolean", FieldOrder: 8, Required: true, Config: json.RawMessage(`{"default_value_create": false}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "is_reserve_location", Label: "Is Reserve Location", FieldType: "boolean", FieldOrder: 9, Required: true, Config: json.RawMessage(`{"default_value_create": false}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "max_capacity", Label: "Max Capacity", FieldType: "number", FieldOrder: 10, Required: true, Config: json.RawMessage(`{"min": 0, "max": 1000000, "default_value_create": 0}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "current_utilization", Label: "Current Utilization", FieldType: "number", FieldOrder: 11, Required: true, Config: json.RawMessage(`{"min": 0, "max": 1000000, "default_value_create": 0}`)},
 		// Audit field - auto-populated by backend
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 2, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "created_date", Label: "Created Date", FieldType: "hidden", FieldOrder: 12, Required: false, Config: json.RawMessage(`{"default_value_create": "{{$now}}", "hidden": true}`)},
 	}
 }
 

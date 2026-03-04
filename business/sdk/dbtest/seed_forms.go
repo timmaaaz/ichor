@@ -3,9 +3,11 @@ package dbtest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
@@ -14,15 +16,31 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
-func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) error {
+func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain, db *sqlx.DB) error {
+	// Truncate form fields so re-seeding picks up config changes.
+	// Forms keep their UUIDs (page_content FKs are preserved); only fields are reset.
+	if _, err := db.ExecContext(ctx, "TRUNCATE config.form_fields"); err != nil {
+		return fmt.Errorf("truncating form fields: %w", err)
+	}
+
+	// getOrCreateForm returns an existing form by name or creates a new one.
+	getOrCreateForm := func(ctx context.Context, name string) (formbus.Form, error) {
+		form, err := busDomain.Form.Create(ctx, formbus.NewForm{Name: name})
+		if err != nil {
+			if errors.Is(err, formbus.ErrUniqueEntry) {
+				return busDomain.Form.QueryByName(ctx, name)
+			}
+			return formbus.Form{}, err
+		}
+		return form, nil
+	}
+
 	// =========================================================================
 	// Create Forms
 	// =========================================================================
 
 	// Form 1: Single entity - Users only (using generator)
-	userForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "User Creation Form",
-	})
+	userForm, err := getOrCreateForm(ctx, "User Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating user form : %w", err)
 	}
@@ -41,9 +59,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Form 2: Single entity - Assets only (using generator)
-	assetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Asset Creation Form",
-	})
+	assetForm, err := getOrCreateForm(ctx, "Asset Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating asset form : %w", err)
 	}
@@ -62,9 +78,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Form 3: Multi-entity - User then Asset (with foreign key)
-	multiForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "User and Asset Creation Form",
-	})
+	multiForm, err := getOrCreateForm(ctx, "User and Asset Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating multi-entity form : %w", err)
 	}
@@ -233,9 +247,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// =============================================================================
 
 	// Composite Form 1: Full Customer (Customer + Contact Info + Delivery Address)
-	fullCustomerForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Full Customer Creation Form",
-	})
+	fullCustomerForm, err := getOrCreateForm(ctx, "Full Customer Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating full customer form : %w", err)
 	}
@@ -270,9 +282,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Composite Form 2: Full Supplier (Supplier + Contact Info)
-	fullSupplierForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Full Supplier Creation Form",
-	})
+	fullSupplierForm, err := getOrCreateForm(ctx, "Full Supplier Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating full supplier form : %w", err)
 	}
@@ -296,9 +306,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Composite Form 3: Full Sales Order (Order + Line Items)
-	fullSalesOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Full Sales Order Creation Form",
-	})
+	fullSalesOrderForm, err := getOrCreateForm(ctx, "Full Sales Order Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating full sales order form : %w", err)
 	}
@@ -327,9 +335,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Composite Form 4: Full Purchase Order (PO + Line Items)
-	fullPurchaseOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Full Purchase Order Creation Form",
-	})
+	fullPurchaseOrderForm, err := getOrCreateForm(ctx, "Full Purchase Order Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating full purchase order form : %w", err)
 	}
@@ -362,9 +368,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// =============================================================================
 
 	// Simple Form 1: Role
-	roleForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Role Creation Form",
-	})
+	roleForm, err := getOrCreateForm(ctx, "Role Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating role form : %w", err)
 	}
@@ -383,9 +387,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 2: Customer (dropdown version)
-	simpleCustomerForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Customer Creation Form",
-	})
+	simpleCustomerForm, err := getOrCreateForm(ctx, "Customer Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating simple customer form : %w", err)
 	}
@@ -399,9 +401,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 3: Sales Order (dropdown version)
-	simpleSalesOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Sales Order Creation Form",
-	})
+	simpleSalesOrderForm, err := getOrCreateForm(ctx, "Sales Order Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating simple sales order form : %w", err)
 	}
@@ -415,9 +415,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 4: Supplier (dropdown version)
-	simpleSupplierForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Supplier Creation Form",
-	})
+	simpleSupplierForm, err := getOrCreateForm(ctx, "Supplier Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating simple supplier form : %w", err)
 	}
@@ -431,9 +429,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 5: Purchase Order (dropdown version)
-	simplePurchaseOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Purchase Order Creation Form",
-	})
+	simplePurchaseOrderForm, err := getOrCreateForm(ctx, "Purchase Order Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating simple purchase order form : %w", err)
 	}
@@ -447,9 +443,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 6: Warehouse
-	warehouseForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Warehouse Creation Form",
-	})
+	warehouseForm, err := getOrCreateForm(ctx, "Warehouse Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating warehouse form : %w", err)
 	}
@@ -468,9 +462,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 7: Inventory Adjustment
-	inventoryAdjustmentForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Inventory Adjustment Creation Form",
-	})
+	inventoryAdjustmentForm, err := getOrCreateForm(ctx, "Inventory Adjustment Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating inventory adjustment form : %w", err)
 	}
@@ -489,9 +481,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 8: Transfer Order
-	transferOrderForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Transfer Order Creation Form",
-	})
+	transferOrderForm, err := getOrCreateForm(ctx, "Transfer Order Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating transfer order form : %w", err)
 	}
@@ -510,9 +500,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 9: Inventory Item
-	inventoryItemForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Inventory Item Creation Form",
-	})
+	inventoryItemForm, err := getOrCreateForm(ctx, "Inventory Item Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating inventory item form : %w", err)
 	}
@@ -531,9 +519,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Simple Form 10: Office
-	officeForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Office Creation Form",
-	})
+	officeForm, err := getOrCreateForm(ctx, "Office Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating office form : %w", err)
 	}
@@ -556,9 +542,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// =============================================================================
 
 	// Reference Form 1: Country
-	countryForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Country Creation Form",
-	})
+	countryForm, err := getOrCreateForm(ctx, "Country Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating country form : %w", err)
 	}
@@ -577,9 +561,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 2: Region
-	regionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Region Creation Form",
-	})
+	regionForm, err := getOrCreateForm(ctx, "Region Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating region form : %w", err)
 	}
@@ -598,9 +580,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 3: User Approval Status
-	userApprovalStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "User Approval Status Creation Form",
-	})
+	userApprovalStatusForm, err := getOrCreateForm(ctx, "User Approval Status Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating user approval status form : %w", err)
 	}
@@ -619,9 +599,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 4: Asset Approval Status
-	assetApprovalStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Asset Approval Status Creation Form",
-	})
+	assetApprovalStatusForm, err := getOrCreateForm(ctx, "Asset Approval Status Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating asset approval status form : %w", err)
 	}
@@ -640,9 +618,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 5: Asset Fulfillment Status
-	assetFulfillmentStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Asset Fulfillment Status Creation Form",
-	})
+	assetFulfillmentStatusForm, err := getOrCreateForm(ctx, "Asset Fulfillment Status Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating asset fulfillment status form : %w", err)
 	}
@@ -661,9 +637,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 6: Order Fulfillment Status
-	orderFulfillmentStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Order Fulfillment Status Creation Form",
-	})
+	orderFulfillmentStatusForm, err := getOrCreateForm(ctx, "Order Fulfillment Status Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating order fulfillment status form : %w", err)
 	}
@@ -682,9 +656,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 7: Line Item Fulfillment Status
-	lineItemFulfillmentStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Line Item Fulfillment Status Creation Form",
-	})
+	lineItemFulfillmentStatusForm, err := getOrCreateForm(ctx, "Line Item Fulfillment Status Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating line item fulfillment status form : %w", err)
 	}
@@ -703,9 +675,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 8: Purchase Order Status
-	purchaseOrderStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Purchase Order Status Creation Form",
-	})
+	purchaseOrderStatusForm, err := getOrCreateForm(ctx, "Purchase Order Status Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating purchase order status form : %w", err)
 	}
@@ -724,9 +694,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 9: PO Line Item Status
-	poLineItemStatusForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Purchase Order Line Item Status Creation Form",
-	})
+	poLineItemStatusForm, err := getOrCreateForm(ctx, "Purchase Order Line Item Status Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating po line item status form : %w", err)
 	}
@@ -745,9 +713,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 10: Asset Type
-	assetTypeForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Asset Type Creation Form",
-	})
+	assetTypeForm, err := getOrCreateForm(ctx, "Asset Type Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating asset type form : %w", err)
 	}
@@ -766,9 +732,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 11: Asset Condition
-	assetConditionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Asset Condition Creation Form",
-	})
+	assetConditionForm, err := getOrCreateForm(ctx, "Asset Condition Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating asset condition form : %w", err)
 	}
@@ -787,9 +751,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Reference Form 12: Product Category
-	productCategoryForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Product Category Creation Form",
-	})
+	productCategoryForm, err := getOrCreateForm(ctx, "Product Category Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating product category form : %w", err)
 	}
@@ -812,9 +774,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// =============================================================================
 
 	// High Priority Form 1: City
-	cityForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "City Creation Form",
-	})
+	cityForm, err := getOrCreateForm(ctx, "City Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating city form : %w", err)
 	}
@@ -833,9 +793,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 2: Street (entity already declared)
-	streetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Street Creation Form",
-	})
+	streetForm, err := getOrCreateForm(ctx, "Street Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating street form : %w", err)
 	}
@@ -849,9 +807,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 3: Contact Info (entity already declared)
-	contactInfoForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Contact Info Creation Form",
-	})
+	contactInfoForm, err := getOrCreateForm(ctx, "Contact Info Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating contact info form : %w", err)
 	}
@@ -865,9 +821,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 4: Title
-	titleForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Title Creation Form",
-	})
+	titleForm, err := getOrCreateForm(ctx, "Title Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating title form : %w", err)
 	}
@@ -886,9 +840,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 5: Product
-	productForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Product Creation Form",
-	})
+	productForm, err := getOrCreateForm(ctx, "Product Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating product form : %w", err)
 	}
@@ -907,9 +859,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 6: Inventory Location
-	inventoryLocationForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Inventory Location Creation Form",
-	})
+	inventoryLocationForm, err := getOrCreateForm(ctx, "Inventory Location Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating inventory location form : %w", err)
 	}
@@ -928,9 +878,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 7: Valid Asset
-	validAssetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Valid Asset Creation Form",
-	})
+	validAssetForm, err := getOrCreateForm(ctx, "Valid Asset Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating valid asset form : %w", err)
 	}
@@ -949,9 +897,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 8: Supplier Product
-	supplierProductForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Supplier Product Creation Form",
-	})
+	supplierProductForm, err := getOrCreateForm(ctx, "Supplier Product Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating supplier product form : %w", err)
 	}
@@ -970,9 +916,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 9: Sales Order Line Item (entity already declared)
-	salesOrderLineItemForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Sales Order Line Item Creation Form",
-	})
+	salesOrderLineItemForm, err := getOrCreateForm(ctx, "Sales Order Line Item Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating sales order line item form : %w", err)
 	}
@@ -986,9 +930,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// High Priority Form 10: Purchase Order Line Item (entity already declared)
-	purchaseOrderLineItemForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Purchase Order Line Item Creation Form",
-	})
+	purchaseOrderLineItemForm, err := getOrCreateForm(ctx, "Purchase Order Line Item Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating purchase order line item form : %w", err)
 	}
@@ -1006,9 +948,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// =============================================================================
 
 	// Medium Priority Form 1: Home
-	homeForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Home Creation Form",
-	})
+	homeForm, err := getOrCreateForm(ctx, "Home Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating home form : %w", err)
 	}
@@ -1027,9 +967,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 2: Tag
-	tagForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Tag Creation Form",
-	})
+	tagForm, err := getOrCreateForm(ctx, "Tag Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating tag form : %w", err)
 	}
@@ -1048,9 +986,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 3: User Approval Comment
-	userApprovalCommentForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "User Approval Comment Creation Form",
-	})
+	userApprovalCommentForm, err := getOrCreateForm(ctx, "User Approval Comment Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating user approval comment form : %w", err)
 	}
@@ -1069,9 +1005,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 4: Brand
-	brandForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Brand Creation Form",
-	})
+	brandForm, err := getOrCreateForm(ctx, "Brand Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating brand form : %w", err)
 	}
@@ -1090,9 +1024,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 5: Zone
-	zoneForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Zone Creation Form",
-	})
+	zoneForm, err := getOrCreateForm(ctx, "Zone Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating zone form : %w", err)
 	}
@@ -1111,9 +1043,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 6: User Asset
-	userAssetForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "User Asset Creation Form",
-	})
+	userAssetForm, err := getOrCreateForm(ctx, "User Asset Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating user asset form : %w", err)
 	}
@@ -1132,9 +1062,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 7: Automation Rule
-	automationRuleForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Automation Rule Creation Form",
-	})
+	automationRuleForm, err := getOrCreateForm(ctx, "Automation Rule Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating automation rule form : %w", err)
 	}
@@ -1153,9 +1081,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 8: Rule Action
-	ruleActionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Rule Action Creation Form",
-	})
+	ruleActionForm, err := getOrCreateForm(ctx, "Rule Action Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating rule action form : %w", err)
 	}
@@ -1174,9 +1100,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 9: Entity
-	entityForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Entity Creation Form",
-	})
+	entityForm, err := getOrCreateForm(ctx, "Entity Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating entity form : %w", err)
 	}
@@ -1195,9 +1119,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Medium Priority Form 10: User (using proper generator instead of inline)
-	userFormProp, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "User Creation Form (Proper)",
-	})
+	userFormProp, err := getOrCreateForm(ctx, "User Creation Form (Proper)")
 	if err != nil {
 		return fmt.Errorf("creating user form (proper) : %w", err)
 	}
@@ -1215,9 +1137,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// =============================================================================
 
 	// Lower Priority Form 1: Physical Attribute
-	physicalAttributeForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Physical Attribute Creation Form",
-	})
+	physicalAttributeForm, err := getOrCreateForm(ctx, "Physical Attribute Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating physical attribute form : %w", err)
 	}
@@ -1236,9 +1156,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Lower Priority Form 2: Product Cost
-	productCostForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Product Cost Creation Form",
-	})
+	productCostForm, err := getOrCreateForm(ctx, "Product Cost Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating product cost form : %w", err)
 	}
@@ -1257,9 +1175,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Lower Priority Form 3: Cost History
-	costHistoryForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Cost History Creation Form",
-	})
+	costHistoryForm, err := getOrCreateForm(ctx, "Cost History Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating cost history form : %w", err)
 	}
@@ -1278,9 +1194,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Lower Priority Form 4: Quality Metric
-	qualityMetricForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Quality Metric Creation Form",
-	})
+	qualityMetricForm, err := getOrCreateForm(ctx, "Quality Metric Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating quality metric form : %w", err)
 	}
@@ -1299,9 +1213,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Lower Priority Form 5: Serial Number
-	serialNumberForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Serial Number Creation Form",
-	})
+	serialNumberForm, err := getOrCreateForm(ctx, "Serial Number Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating serial number form : %w", err)
 	}
@@ -1320,9 +1232,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Lower Priority Form 6: Lot Tracking
-	lotTrackingForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Lot Tracking Creation Form",
-	})
+	lotTrackingForm, err := getOrCreateForm(ctx, "Lot Tracking Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating lot tracking form : %w", err)
 	}
@@ -1341,9 +1251,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Lower Priority Form 7: Quality Inspection
-	qualityInspectionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Quality Inspection Creation Form",
-	})
+	qualityInspectionForm, err := getOrCreateForm(ctx, "Quality Inspection Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating quality inspection form : %w", err)
 	}
@@ -1362,9 +1270,7 @@ func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	}
 
 	// Lower Priority Form 8: Inventory Transaction
-	inventoryTransactionForm, err := busDomain.Form.Create(ctx, formbus.NewForm{
-		Name: "Inventory Transaction Creation Form",
-	})
+	inventoryTransactionForm, err := getOrCreateForm(ctx, "Inventory Transaction Creation Form")
 	if err != nil {
 		return fmt.Errorf("creating inventory transaction form : %w", err)
 	}

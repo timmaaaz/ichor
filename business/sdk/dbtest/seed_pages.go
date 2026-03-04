@@ -9,9 +9,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
-	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
-	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -109,6 +108,21 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	inventoryTransfersTableStored, err := busDomain.ConfigStore.QueryByName(ctx, "inventory_transfers_table")
 	if err != nil {
 		return fmt.Errorf("querying inventory transfers table config: %w", err)
+	}
+
+	inventoryZonesTableStored, err := busDomain.ConfigStore.QueryByName(ctx, "inventory_zones_table")
+	if err != nil {
+		return fmt.Errorf("querying inventory zones table config: %w", err)
+	}
+
+	inventoryLocationsTableStored, err := busDomain.ConfigStore.QueryByName(ctx, "inventory_locations_table")
+	if err != nil {
+		return fmt.Errorf("querying inventory locations table config: %w", err)
+	}
+
+	productsTableStored, err := busDomain.ConfigStore.QueryByName(ctx, "products_table")
+	if err != nil {
+		return fmt.Errorf("querying products table config: %w", err)
 	}
 
 	// Query Sales Module Configs
@@ -928,6 +942,81 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 		return fmt.Errorf("creating inventory dashboard transfers tab: %w", err)
 	}
 
+	// Inventory Zones Page
+	inventoryZonesPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
+		Name:      "inventory_zones_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory zones page: %w", err)
+	}
+
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryZonesPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: inventoryZonesTableStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory zones page content: %w", err)
+	}
+
+	// Inventory Locations Page
+	inventoryLocationsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
+		Name:      "inventory_locations_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory locations page: %w", err)
+	}
+
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  inventoryLocationsPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: inventoryLocationsTableStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating inventory locations page content: %w", err)
+	}
+
+	// Products Page
+	productsPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
+		Name:      "products_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating products page: %w", err)
+	}
+
+	_, err = busDomain.PageContent.Create(ctx, pagecontentbus.NewPageContent{
+		PageConfigID:  productsPage.ID,
+		ParentID:      uuid.Nil,
+		ContentType:   pagecontentbus.ContentTypeTable,
+		Label:         "",
+		TableConfigID: productsTableStored.ID,
+		OrderIndex:    1,
+		Layout:        json.RawMessage(`{}`),
+		IsVisible:     true,
+		IsDefault:     true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating products page content: %w", err)
+	}
+
 	// =========================================================================
 	// Create Sales Module Pages
 	// =========================================================================
@@ -1312,6 +1401,9 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 		"inventory_warehouses_page":   inventoryWarehousesPage.ID,
 		"inventory_transfers_page":    inventoryTransfersPage.ID,
 		"inventory_adjustments_page":  inventoryAdjustmentsPage.ID,
+		"inventory_zones_page":        inventoryZonesPage.ID,
+		"inventory_locations_page":    inventoryLocationsPage.ID,
+		"products_page":               productsPage.ID,
 		"suppliers_page":              suppliersPage.ID,
 		"procurement_purchase_orders": procurementPurchaseOrdersPage.ID,
 		"sales_customers_page":        salesCustomersPage.ID,
@@ -1335,15 +1427,9 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 		pageIDs = append(pageIDs, created.ID)
 	}
 
-	// all user roles
-	urs, err := busDomain.UserRole.Query(ctx, userrolebus.QueryFilter{}, userrolebus.DefaultOrderBy, page.MustParse("1", "100"))
+	r, err := busDomain.Role.QueryByID(ctx, rolebus.AdminRoleID)
 	if err != nil {
-		return fmt.Errorf("querying user roles : %w", err)
-	}
-
-	r, err := busDomain.Role.QueryByID(ctx, urs[0].RoleID)
-	if err != nil {
-		return fmt.Errorf("querying role : %w", err)
+		return fmt.Errorf("querying admin role : %w", err)
 	}
 
 	// Add all pages to role
