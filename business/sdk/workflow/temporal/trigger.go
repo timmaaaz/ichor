@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"maps"
 
@@ -15,6 +16,12 @@ import (
 // =============================================================================
 // Interfaces
 // =============================================================================
+
+// ExecutionStore persists workflow execution records.
+// Implemented by stores/workflowdb.Store.
+type ExecutionStore interface {
+	CreateExecution(ctx context.Context, exec workflow.AutomationExecution) error
+}
 
 // EdgeStore loads graph definitions (actions + edges) from the database.
 // Implemented by stores/edgedb.Store in Phase 8.
@@ -50,10 +57,11 @@ type WorkflowStarter interface {
 // Graph loading is delegated to the EdgeStore interface.
 // Workflow execution is delegated to Temporal via WorkflowStarter.ExecuteWorkflow.
 type WorkflowTrigger struct {
-	log         *logger.Logger
-	starter     WorkflowStarter
-	ruleMatcher RuleMatcher
-	edgeStore   EdgeStore
+	log            *logger.Logger
+	starter        WorkflowStarter
+	ruleMatcher    RuleMatcher
+	edgeStore      EdgeStore
+	executionStore ExecutionStore
 }
 
 // NewWorkflowTrigger creates a new trigger handler.
@@ -63,12 +71,14 @@ func NewWorkflowTrigger(
 	starter WorkflowStarter,
 	rm RuleMatcher,
 	es EdgeStore,
+	exs ExecutionStore,
 ) *WorkflowTrigger {
 	return &WorkflowTrigger{
-		log:         log,
-		starter:     starter,
-		ruleMatcher: rm,
-		edgeStore:   es,
+		log:            log,
+		starter:        starter,
+		ruleMatcher:    rm,
+		edgeStore:      es,
+		executionStore: exs,
 	}
 }
 
@@ -155,13 +165,40 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		executionID,
 	)
 
+	// Build trigger data map (reused for both the execution record and workflow input).
+	triggerData := buildTriggerData(event)
+
+	// Persist the execution record before starting the workflow so that
+	// activities which write to approval_requests (FK → automation_executions)
+	// can reference the row immediately.
+	triggerDataJSON, err := json.Marshal(triggerData)
+	if err != nil {
+		return fmt.Errorf("marshal trigger data: %w", err)
+	}
+
+	if err := t.executionStore.CreateExecution(ctx, workflow.AutomationExecution{
+		ID:               executionID,
+		AutomationRuleID: &rm.Rule.ID,
+		EntityType:       event.EntityName,
+		TriggerData:      triggerDataJSON,
+		Status:           workflow.StatusPending,
+		TriggerSource:    workflow.TriggerSourceAutomation,
+	}); err != nil {
+		return fmt.Errorf("creating execution record: %w", err)
+	}
+
+	// TODO: If ExecuteWorkflow fails below, the execution row created above will
+	// remain permanently at StatusPending with no corresponding Temporal workflow.
+	// A future fix should either delete the orphaned row on failure or introduce
+	// an UpdateExecution path so the workflow can transition the status itself.
+
 	// Build workflow input with trigger data from the event.
 	input := WorkflowInput{
 		RuleID:      rm.Rule.ID,
 		RuleName:    rm.Rule.Name,
 		ExecutionID: executionID,
 		Graph:       graph,
-		TriggerData: buildTriggerData(event),
+		TriggerData: triggerData,
 	}
 
 	// Start Temporal workflow.

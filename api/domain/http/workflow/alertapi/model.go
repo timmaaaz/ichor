@@ -183,6 +183,21 @@ func (app *BulkAllRequest) Decode(data []byte) error {
 	return json.Unmarshal(data, &app)
 }
 
+// TestAlertRequest represents the optional request body for the test alert endpoint.
+// All fields are optional — unset fields fall back to default test values.
+type TestAlertRequest struct {
+	Severity         string `json:"severity"`
+	Title            string `json:"title"`
+	Message          string `json:"message"`
+	SourceEntityName string `json:"sourceEntityName"`
+	SourceEntityID   string `json:"sourceEntityId"`
+}
+
+// Decode implements the web.Decoder interface.
+func (app *TestAlertRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
 // BulkActionResult represents the response for bulk operations.
 type BulkActionResult struct {
 	Count   int `json:"count"`

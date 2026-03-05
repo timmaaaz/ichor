@@ -279,26 +279,53 @@ func (a *api) getUserRoleIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID
 }
 
 // testAlert creates a test alert for the authenticated user (for E2E WebSocket testing).
+// Accepts an optional JSON body to control severity, title, message, and source entity.
+// All body fields are optional — omitted fields fall back to default test values.
 func (a *api) testAlert(ctx context.Context, r *http.Request) web.Encoder {
 	userID, err := mid.GetUserID(ctx)
 	if err != nil {
 		return errs.New(errs.Unauthenticated, err)
 	}
 
+	// Optional request body — ignore decode errors (body may be absent)
+	var req TestAlertRequest
+	_ = web.Decode(r, &req)
+
+	severity := req.Severity
+	if severity == "" {
+		severity = alertbus.SeverityMedium
+	}
+	title := req.Title
+	if title == "" {
+		title = "Test Alert"
+	}
+	message := req.Message
+	if message == "" {
+		message = "This is a test alert for E2E testing"
+	}
+
+	var sourceEntityID uuid.UUID
+	if req.SourceEntityID != "" {
+		if parsed, parseErr := uuid.Parse(req.SourceEntityID); parseErr == nil {
+			sourceEntityID = parsed
+		}
+	}
+
 	now := time.Now()
 	alertID := uuid.New()
 
-	// Create alert in database
 	alert := alertbus.Alert{
-		ID:          alertID,
-		AlertType:   "test_alert",
-		Severity:    alertbus.SeverityMedium,
-		Title:       "Test Alert",
-		Message:     "This is a test alert for E2E testing",
-		Context:     json.RawMessage(`{}`),
-		Status:      alertbus.StatusActive,
-		CreatedDate: now,
-		UpdatedDate: now,
+		ID:               alertID,
+		AlertType:        "test_alert",
+		Severity:         severity,
+		Title:            title,
+		Message:          message,
+		Context:          json.RawMessage(`{}`),
+		SourceEntityName: req.SourceEntityName,
+		SourceEntityID:   sourceEntityID,
+		Status:           alertbus.StatusActive,
+		CreatedDate:      now,
+		UpdatedDate:      now,
 	}
 
 	if err := a.alertBus.Create(ctx, alert); err != nil {
@@ -322,14 +349,16 @@ func (a *api) testAlert(ctx context.Context, r *http.Request) web.Encoder {
 	if a.workflowQueue != nil {
 		alertPayload := map[string]interface{}{
 			"alert": map[string]interface{}{
-				"id":          alertID.String(),
-				"alertType":   "test_alert",
-				"severity":    alertbus.SeverityMedium,
-				"title":       "Test Alert",
-				"message":     "This is a test alert for E2E testing",
-				"status":      alertbus.StatusActive,
-				"createdDate": now.Format(time.RFC3339),
-				"updatedDate": now.Format(time.RFC3339),
+				"id":               alertID.String(),
+				"alertType":        "test_alert",
+				"severity":         severity,
+				"title":            title,
+				"message":          message,
+				"sourceEntityName": req.SourceEntityName,
+				"sourceEntityId":   sourceEntityID.String(),
+				"status":           alertbus.StatusActive,
+				"createdDate":      now.Format(time.RFC3339),
+				"updatedDate":      now.Format(time.RFC3339),
 			},
 		}
 
@@ -337,7 +366,7 @@ func (a *api) testAlert(ctx context.Context, r *http.Request) web.Encoder {
 			Type:       "alert",
 			EntityName: "workflow.alerts",
 			EntityID:   alertID,
-			UserID:     userID, // Target this user
+			UserID:     userID,
 			Payload:    alertPayload,
 		}
 
