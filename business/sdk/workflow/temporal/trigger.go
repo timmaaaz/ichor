@@ -181,11 +181,16 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		AutomationRuleID: &rm.Rule.ID,
 		EntityType:       event.EntityName,
 		TriggerData:      triggerDataJSON,
-		Status:           workflow.ExecutionStatus("queued"),
+		Status:           workflow.StatusPending,
 		TriggerSource:    workflow.TriggerSourceAutomation,
 	}); err != nil {
 		return fmt.Errorf("creating execution record: %w", err)
 	}
+
+	// TODO: If ExecuteWorkflow fails below, the execution row created above will
+	// remain permanently at StatusPending with no corresponding Temporal workflow.
+	// A future fix should either delete the orphaned row on failure or introduce
+	// an UpdateExecution path so the workflow can transition the status itself.
 
 	// Build workflow input with trigger data from the event.
 	input := WorkflowInput{

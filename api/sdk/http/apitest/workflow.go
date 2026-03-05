@@ -43,8 +43,9 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 		t.Fatalf("connecting to temporal: %s", err)
 	}
 
-	// 2. Create workflow business layer.
-	workflowBus := workflow.NewBusiness(db.Log, db.BusDomain.Delegate, workflowdb.NewStore(db.Log, db.DB))
+	// 2. Create workflow business layer (share one store instance with the trigger).
+	workflowStore := workflowdb.NewStore(db.Log, db.DB)
+	workflowBus := workflow.NewBusiness(db.Log, db.BusDomain.Delegate, workflowStore)
 
 	// 3. Build action registry (same 4 handlers as before).
 	registry := workflow.NewActionRegistry()
@@ -82,7 +83,6 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 		t.Fatalf("initializing trigger processor: %s", err)
 	}
 
-	workflowStore := workflowdb.NewStore(db.Log, db.DB)
 	workflowTrigger := temporal.NewWorkflowTrigger(
 		db.Log, tc, triggerProcessor, edgeStore, workflowStore,
 	)

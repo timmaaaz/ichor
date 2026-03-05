@@ -3,6 +3,7 @@ package dbtest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -115,8 +116,7 @@ func seedAlerts(ctx context.Context, log *logger.Logger, busDomain BusDomain, ad
 		}
 
 		if err := busDomain.Alert.Create(ctx, alert); err != nil {
-			log.Error(ctx, "Failed to seed alert", "title", s.title, "error", err)
-			continue
+			return fmt.Errorf("create alert %q: %w", s.title, err)
 		}
 
 		recipient := alertbus.AlertRecipient{
@@ -128,7 +128,7 @@ func seedAlerts(ctx context.Context, log *logger.Logger, busDomain BusDomain, ad
 		}
 
 		if err := busDomain.Alert.CreateRecipients(ctx, []alertbus.AlertRecipient{recipient}); err != nil {
-			log.Error(ctx, "Failed to seed alert recipient", "alert_title", s.title, "error", err)
+			return fmt.Errorf("create alert recipient for %q: %w", s.title, err)
 		}
 	}
 

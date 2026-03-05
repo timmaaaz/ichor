@@ -11,9 +11,13 @@ import (
 	"go.temporal.io/sdk/client"
 
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
+
+// Compile-time assertion: workflowdb.Store must satisfy temporal.ExecutionStore.
+var _ temporal.ExecutionStore = (*workflowdb.Store)(nil)
 
 // =============================================================================
 // Mock EdgeStore
@@ -672,6 +676,33 @@ func TestOnEntityEvent_WorkflowInputContents(t *testing.T) {
 	// Verify ContinuationState is nil (first execution).
 	if input.ContinuationState != nil {
 		t.Error("ContinuationState should be nil for initial execution")
+	}
+}
+
+func TestOnEntityEvent_ExecutionStoreError(t *testing.T) {
+	edgeStore := newMockEdgeStore()
+	ruleID := testRuleID()
+	actions, edges := testGraph(ruleID)
+	edgeStore.actions[ruleID] = actions
+	edgeStore.edges[ruleID] = edges
+
+	starter := newMockWorkflowStarter()
+	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
+
+	// ExecutionStore fails — simulating a DB write error before Temporal dispatch.
+	execStore := &mockExecutionStore{createErr: errors.New("db write failed")}
+
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, execStore)
+	err := trigger.OnEntityEvent(context.Background(), testEvent())
+
+	// Fail-open: the event error is logged and skipped, not returned.
+	if err != nil {
+		t.Fatalf("expected no error (fail-open per rule), got: %v", err)
+	}
+
+	// Temporal must NOT be called — no workflow should start when the pre-insert fails.
+	if len(starter.calls) != 0 {
+		t.Errorf("expected 0 workflow starts when ExecutionStore fails, got %d", len(starter.calls))
 	}
 }
 

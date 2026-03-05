@@ -355,7 +355,7 @@ func (a *api) testAlert(ctx context.Context, r *http.Request) web.Encoder {
 				"title":            title,
 				"message":          message,
 				"sourceEntityName": req.SourceEntityName,
-				"sourceEntityId":   req.SourceEntityID,
+				"sourceEntityId":   sourceEntityID.String(),
 				"status":           alertbus.StatusActive,
 				"createdDate":      now.Format(time.RFC3339),
 				"updatedDate":      now.Format(time.RFC3339),
