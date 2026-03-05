@@ -82,8 +82,9 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 		t.Fatalf("initializing trigger processor: %s", err)
 	}
 
+	workflowStore := workflowdb.NewStore(db.Log, db.DB)
 	workflowTrigger := temporal.NewWorkflowTrigger(
-		db.Log, tc, triggerProcessor, edgeStore,
+		db.Log, tc, triggerProcessor, edgeStore, workflowStore,
 	)
 
 	// 6. Create delegate handler.

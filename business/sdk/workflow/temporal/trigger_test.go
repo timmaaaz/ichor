@@ -47,6 +47,18 @@ func (m *mockEdgeStore) QueryEdgesByRule(_ context.Context, ruleID uuid.UUID) ([
 }
 
 // =============================================================================
+// Mock ExecutionStore
+// =============================================================================
+
+type mockExecutionStore struct {
+	createErr error
+}
+
+func (m *mockExecutionStore) CreateExecution(_ context.Context, _ workflow.AutomationExecution) error {
+	return m.createErr
+}
+
+// =============================================================================
 // Mock RuleMatcher
 // =============================================================================
 
@@ -212,7 +224,7 @@ func TestBuildTriggerData_BasicEvent(t *testing.T) {
 	starter := newMockWorkflowStarter()
 	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), event)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -253,7 +265,7 @@ func TestBuildTriggerData_UpdateEventWithFieldChanges(t *testing.T) {
 	starter := newMockWorkflowStarter()
 	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), event)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -312,7 +324,7 @@ func TestBuildTriggerData_EmptyRawData(t *testing.T) {
 	starter := newMockWorkflowStarter()
 	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), event)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -348,7 +360,7 @@ func TestOnEntityEvent_Success(t *testing.T) {
 	starter := newMockWorkflowStarter()
 	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -369,7 +381,7 @@ func TestOnEntityEvent_NoMatches(t *testing.T) {
 		},
 	}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -393,7 +405,7 @@ func TestOnEntityEvent_UnmatchedRulesSkipped(t *testing.T) {
 		},
 	}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -412,7 +424,7 @@ func TestOnEntityEvent_EmptyGraph(t *testing.T) {
 	starter := newMockWorkflowStarter()
 	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "empty-rule")}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -446,7 +458,7 @@ func TestOnEntityEvent_EdgeStoreError(t *testing.T) {
 		},
 	}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err != nil {
 		t.Fatalf("expected no error (fail-open), got: %v", err)
@@ -470,7 +482,7 @@ func TestOnEntityEvent_TemporalError(t *testing.T) {
 
 	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err != nil {
 		t.Fatalf("expected no error (fail-open per rule), got: %v", err)
@@ -489,7 +501,7 @@ func TestOnEntityEvent_ProcessEventError(t *testing.T) {
 		err: errors.New("rule matching failed"),
 	}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err == nil {
 		t.Fatal("expected error when ProcessEvent fails")
@@ -528,7 +540,7 @@ func TestOnEntityEvent_MultipleRules(t *testing.T) {
 		},
 	}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -577,7 +589,7 @@ func TestOnEntityEvent_MultipleRulesPartialFailure(t *testing.T) {
 		},
 	}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), testEvent())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -599,7 +611,7 @@ func TestOnEntityEvent_WorkflowInputContents(t *testing.T) {
 	starter := newMockWorkflowStarter()
 	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
 
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	event := testEvent()
 	err := trigger.OnEntityEvent(context.Background(), event)
 	if err != nil {
@@ -674,7 +686,7 @@ func TestWorkflowIDFormat(t *testing.T) {
 	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
 
 	event := testEvent()
-	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore)
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
 	err := trigger.OnEntityEvent(context.Background(), event)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

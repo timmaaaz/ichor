@@ -512,7 +512,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			)
 		} else {
 			workflowTrigger := temporalpkg.NewWorkflowTrigger(
-				cfg.Log, cfg.TemporalClient, triggerProcessor, edgeStore,
+				cfg.Log, cfg.TemporalClient, triggerProcessor, edgeStore, workflowStore,
 			)
 
 			// Register cache invalidation for rule lifecycle events.

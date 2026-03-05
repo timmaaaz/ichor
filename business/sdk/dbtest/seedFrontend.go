@@ -71,5 +71,9 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding workflow: %w", err)
 	}
 
+	if err := seedAlerts(ctx, log, busDomain, adminID); err != nil {
+		return fmt.Errorf("seeding alerts: %w", err)
+	}
+
 	return nil
 }
