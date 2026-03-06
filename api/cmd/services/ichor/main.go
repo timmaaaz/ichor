@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf/v3"
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/providers/google"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/crud"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/reporting"
@@ -122,7 +120,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			Callback           string        `conf:"default:http://localhost:3000"`
 			StoreKey           string        `conf:"default:dev-session-key-32-bytes-long!!!,mask"`
 			TokenKey           string        `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1,mask"`
-			UIAdminRedirect    string        `conf:"default:http://localhost:3001/admin#token="`
+			UIAdminRedirect    string        `conf:"default:http://localhost:3001/admin?token="`
 			UILoginRedirect    string        `conf:"default:http://localhost:3001/login"`
 			TokenExpiration    time.Duration `conf:"default:20m"`
 			DevTokenExpiration time.Duration `conf:"default:8h"`
@@ -272,31 +270,6 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 
 	// -------------------------------------------------------------------------
-	// Configure OAuth Providers based on environment
-
-	log.Info(ctx, "startup", "status", "configuring OAuth providers")
-
-	if cfg.OAuth.Environment == "production" {
-		// In production: dev provider is never registered (security invariant).
-		// Google is optional — internal deployments may use only basic auth.
-		if cfg.OAuth.GoogleKey != "" && cfg.OAuth.GoogleSecret != "" {
-			goth.UseProviders(
-				google.New(cfg.OAuth.GoogleKey, cfg.OAuth.GoogleSecret, cfg.OAuth.Callback),
-			)
-		}
-	} else {
-		// Development/Staging: add dev provider for local testing.
-		providers := []goth.Provider{
-			oauthapi.NewDevelopmentProvider(cfg.OAuth.Callback),
-		}
-		if cfg.OAuth.GoogleKey != "" && cfg.OAuth.GoogleSecret != "" {
-			providers = append(providers,
-				google.New(cfg.OAuth.GoogleKey, cfg.OAuth.GoogleSecret, cfg.OAuth.Callback))
-		}
-		goth.UseProviders(providers...)
-	}
-
-	// -------------------------------------------------------------------------
 	// Initialize authentication support
 
 	log.Info(ctx, "startup", "status", "initializing authentication support")
@@ -319,11 +292,16 @@ func run(ctx context.Context, log *logger.Logger) error {
 		return fmt.Errorf("no keys exist: %w", err)
 	}
 
+	// Shared JWT blocklist — created before auth.New so Authenticate (called by
+	// Bearer middleware on all protected routes) actually checks the blocklist.
+	jwtBlocklist := auth.NewBlocklist()
+
 	oauthAuth, err := auth.New(auth.Config{
 		Log:       log,
 		DB:        db,
 		KeyLookup: ks,
 		Issuer:    cfg.Auth.Issuer,
+		Blocklist: jwtBlocklist,
 	})
 	if err != nil {
 		return fmt.Errorf("constructing OAuth auth: %w", err)
@@ -401,10 +379,6 @@ func run(ctx context.Context, log *logger.Logger) error {
 		mux.WithFileServer(static, "static"),
 	)
 
-	// Shared JWT blocklist — one instance used by both auth APIs so a logout
-	// from either endpoint revokes the token for all subsequent requests.
-	jwtBlocklist := auth.NewBlocklist()
-
 	// Token expiration varies by environment (shorter in production for security).
 	oauthTokenExp := cfg.OAuth.DevTokenExpiration
 	if cfg.OAuth.Environment == "production" {
@@ -425,8 +399,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 		GoogleSecret:    cfg.OAuth.GoogleSecret,
 		Callback:        cfg.OAuth.Callback,
 		TokenExpiration: oauthTokenExp,
-		UserBus:         userBus,    // Fix 3: DB role lookup
-		Blocklist:       jwtBlocklist, // Fix 7: logout revocation
+		UserBus:           userBus,
+		Blocklist:         jwtBlocklist,
+		TrustedProxyCIDRs: cfg.RateLimit.TrustedProxyCIDRs,
 	}
 
 	basicAuthCfg := basicauthapi.Config{

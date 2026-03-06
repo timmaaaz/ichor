@@ -5,7 +5,6 @@ package basicauthapi
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/mail"
 	"time"
@@ -201,6 +200,11 @@ func (a *api) refresh(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.Internal, err)
 	}
 
+	// Revoke the old token so it cannot be reused after a successful refresh.
+	if a.blocklist != nil && claims.ID != "" {
+		a.blocklist.Add(claims.ID, claims.ExpiresAt.Time)
+	}
+
 	a.log.Info(ctx, "token refreshed", "user_id", user.ID)
 
 	return LoginResponse{
@@ -236,71 +240,4 @@ func (a *api) logout(ctx context.Context, r *http.Request) web.Encoder {
 	return loggedInOutResponse{
 		Message: "logged out",
 	}
-}
-
-// ============================================================================
-// Additional helper for password hashing when creating users
-// ============================================================================
-
-const bcryptCost = 12
-
-// HashPassword generates a bcrypt hash for the given password
-func HashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hash), nil
-}
-
-// ============================================================================
-// Optional: Session management for stateful sessions
-// ============================================================================
-
-// SessionStore interface for session management (optional)
-type SessionStore interface {
-	Create(ctx context.Context, userID string, token string, expiry time.Duration) error
-	Validate(ctx context.Context, token string) (string, error)
-	Delete(ctx context.Context, token string) error
-}
-
-// InMemorySessionStore is a simple in-memory session store (for development)
-type InMemorySessionStore struct {
-	sessions map[string]sessionData
-}
-
-type sessionData struct {
-	UserID    string
-	ExpiresAt time.Time
-}
-
-func NewInMemorySessionStore() *InMemorySessionStore {
-	return &InMemorySessionStore{
-		sessions: make(map[string]sessionData),
-	}
-}
-
-func (s *InMemorySessionStore) Create(ctx context.Context, userID string, token string, expiry time.Duration) error {
-	s.sessions[token] = sessionData{
-		UserID:    userID,
-		ExpiresAt: time.Now().Add(expiry),
-	}
-	return nil
-}
-
-func (s *InMemorySessionStore) Validate(ctx context.Context, token string) (string, error) {
-	session, exists := s.sessions[token]
-	if !exists {
-		return "", errors.New("session not found")
-	}
-	if time.Now().After(session.ExpiresAt) {
-		delete(s.sessions, token)
-		return "", errors.New("session expired")
-	}
-	return session.UserID, nil
-}
-
-func (s *InMemorySessionStore) Delete(ctx context.Context, token string) error {
-	delete(s.sessions, token)
-	return nil
 }

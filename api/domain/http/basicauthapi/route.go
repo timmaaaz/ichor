@@ -8,14 +8,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	httpmid "github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
-	appmid "github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 	"golang.org/x/time/rate"
 )
-
-// TODO: These should take {provider} path arguments like the oauthapi routes do.
 
 // RateLimitConfig holds rate limiting parameters for the basic auth endpoints.
 // All fields are configurable via environment variables (prefix: ICHOR_RATELIMIT_).
@@ -31,7 +28,7 @@ type RateLimitConfig struct {
 	LoginBurst        int
 	RefreshInterval   time.Duration
 	RefreshBurst      int
-	TrustedProxyCIDRs string // see appmid.TrustedProxyExtractor; empty = use RemoteAddr
+	TrustedProxyCIDRs string // see httpmid.TrustedProxyExtractor; empty = use RemoteAddr
 }
 
 // Config contains all the mandatory systems required by handlers.
@@ -51,8 +48,8 @@ func Routes(app *web.App, cfg Config) {
 
 	rl := cfg.RateLimit
 
-	loginLimiter := appmid.NewRateLimiter(rate.Every(rl.LoginInterval), rl.LoginBurst)
-	refreshLimiter := appmid.NewRateLimiter(rate.Every(rl.RefreshInterval), rl.RefreshBurst)
+	loginLimiter := httpmid.NewRateLimiter(rate.Every(rl.LoginInterval), rl.LoginBurst)
+	refreshLimiter := httpmid.NewRateLimiter(rate.Every(rl.RefreshInterval), rl.RefreshBurst)
 
 	// Retry-After is the interval ceiling in seconds — how long until the next
 	// token is available. Derived from config so it stays in sync automatically.
@@ -62,9 +59,9 @@ func Routes(app *web.App, cfg Config) {
 	// IP extractor: RemoteAddrExtractor by default (direct deployment).
 	// Automatically upgrades to XFF-aware extraction when TrustedProxyCIDRs
 	// is set — e.g. when nginx or a cloud load balancer is placed in front.
-	extract := appmid.IPExtractor(appmid.RemoteAddrExtractor)
+	extract := httpmid.IPExtractor(httpmid.RemoteAddrExtractor)
 	if rl.TrustedProxyCIDRs != "" {
-		extract = appmid.TrustedProxyExtractor(appmid.ParseTrustedCIDRs(rl.TrustedProxyCIDRs))
+		extract = httpmid.TrustedProxyExtractor(httpmid.ParseTrustedCIDRs(rl.TrustedProxyCIDRs))
 	}
 
 	app.HandlerFunc(http.MethodPost, "", "/api/auth/basic/login", api.login,

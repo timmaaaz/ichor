@@ -171,18 +171,6 @@ func (a *Auth) Authenticate(ctx context.Context, bearerToken string) (Claims, er
 	return claims, nil
 }
 
-// ParseClaims parses a raw JWT string and returns the embedded claims without
-// performing OPA policy evaluation or blocklist checks. Use this only for
-// non-security-critical operations such as extracting the jti for revocation
-// on logout — never use it to grant access.
-func (a *Auth) ParseClaims(rawToken string) (Claims, error) {
-	var claims Claims
-	if _, _, err := a.parser.ParseUnverified(rawToken, &claims); err != nil {
-		return Claims{}, fmt.Errorf("parsing token: %w", err)
-	}
-	return claims, nil
-}
-
 // Authorize attempts to authorize the user with the provided input roles, if
 // none of the input roles are within the user's claims, we return an error
 // otherwise the user is authorized.

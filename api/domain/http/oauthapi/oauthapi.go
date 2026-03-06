@@ -180,11 +180,12 @@ func (a *api) authCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) logout(w http.ResponseWriter, r *http.Request) {
-	// Fix 7: Revoke the JWT so it cannot be used after logout.
+	// Revoke the JWT so it cannot be used after logout. Use Authenticate (not
+	// ParseClaims) to verify the token signature before blocklisting — this
+	// prevents an attacker from blocklisting arbitrary JTIs with forged tokens.
 	if a.blocklist != nil {
 		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
-			rawToken := strings.TrimPrefix(authHeader, "Bearer ")
-			if claims, err := a.auth.ParseClaims(rawToken); err == nil && claims.ID != "" {
+			if claims, err := a.auth.Authenticate(r.Context(), authHeader); err == nil && claims.ID != "" {
 				a.blocklist.Add(claims.ID, claims.ExpiresAt.Time)
 			}
 		}

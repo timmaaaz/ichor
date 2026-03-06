@@ -43,9 +43,6 @@ type Auth struct {
   Authorize(ctx context.Context, claims Claims, userID uuid.UUID, rule string) error
   GenerateToken(kid string, claims Claims) (string, error)
     ← auto-assigns claims.ID (jti) via uuid.NewString() if empty
-  ParseClaims(rawToken string) (Claims, error)
-    ← parses without OPA/blocklist; use only for extracting jti on logout
-
 imports: userbus, approvalbus
 
 ## Blocklist [sdk]
@@ -55,10 +52,11 @@ key facts:
   - In-memory revoked JTI store (map[jti]expiresAt); safe for concurrent use
   - Background goroutine purges expired entries every 5 minutes
   - Multi-node deployments: replace with shared store (Redis / DB)
-  - NewBlocklist() starts cleanup goroutine
+  - NewBlocklist() starts cleanup goroutine; call Stop() on graceful shutdown
   - Add(jti string, expiresAt time.Time) — records revoked token
   - IsRevoked(jti string) bool — returns true only if jti present AND not yet expired
   - No-op for empty jti in both Add and IsRevoked
+  - Wired into auth.Config.Blocklist before auth.New() so Authenticate() checks it
 
 ---
 
@@ -194,10 +192,9 @@ key facts:
 
 ## ⚠ Revoking a token (logout)
 
-  app/sdk/auth/auth.go            (Auth.ParseClaims — extract jti without security checks)
   app/sdk/auth/blocklist.go       (Blocklist.Add — record jti + expiry)
-  api/cmd/services/ichor/main.go  (Blocklist wired into auth.Config at startup)
-  Note: ParseClaims uses parser.ParseUnverified — only use for extracting jti, never for access control
+  api/cmd/services/ichor/main.go  (Blocklist created before auth.New; passed as auth.Config.Blocklist)
+  Note: logout handlers call auth.Authenticate (not ParseClaims) to verify signature before blocklisting
 
 ## ⚠ Adding a new permission rule/action
 
