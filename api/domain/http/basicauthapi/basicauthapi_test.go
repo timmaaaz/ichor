@@ -548,8 +548,10 @@ func logout(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 			},
 		},
 		{
+			// Logout is idempotent: an invalid or already-revoked token still
+			// returns 200 — the client's intent (be logged out) is already met.
 			Name:    "logout_invalid_token",
-			ExpResp: http.StatusUnauthorized,
+			ExpResp: http.StatusOK,
 			ExcFunc: func(ctx context.Context) any {
 				req := httptest.NewRequest(http.MethodPost, "/api/auth/basic/logout", nil)
 				req.Header.Set("Authorization", "Bearer invalid-token")

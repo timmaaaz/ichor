@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -216,26 +217,22 @@ func (a *api) refresh(ctx context.Context, r *http.Request) web.Encoder {
 	}
 }
 
-// logout handles user logout
+// logout handles user logout. It is idempotent: a missing, expired, or
+// already-revoked token still returns success — the intent (user is logged out)
+// is already achieved. The token is revoked only if signature verification
+// succeeds, to prevent JTI injection via forged tokens.
 func (a *api) logout(ctx context.Context, r *http.Request) web.Encoder {
-	authHeader := r.Header.Get("Authorization")
-	if len(authHeader) <= 7 || authHeader[:7] != "Bearer " {
-		return errs.Newf(errs.Unauthenticated, "invalid token")
+	userID := "unknown"
+	if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+		if claims, err := a.auth.Authenticate(ctx, authHeader); err == nil {
+			if a.blocklist != nil && claims.ID != "" {
+				a.blocklist.Add(claims.ID, claims.ExpiresAt.Time)
+			}
+			userID = claims.Subject
+		}
 	}
 
-	rawToken := authHeader[7:]
-
-	claims, err := a.auth.Authenticate(ctx, "Bearer "+rawToken)
-	if err != nil {
-		return errs.Newf(errs.Unauthenticated, "invalid token")
-	}
-
-	// Fix 7: Revoke the JWT so it cannot be reused after logout.
-	if a.blocklist != nil && claims.ID != "" {
-		a.blocklist.Add(claims.ID, claims.ExpiresAt.Time)
-	}
-
-	a.log.Info(ctx, "user logged out", "user_id", claims.Subject)
+	a.log.Info(ctx, "user logged out", "user_id", userID)
 
 	return loggedInOutResponse{
 		Message: "logged out",
