@@ -19,12 +19,6 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
-// validProviders is the allowlist of known OAuth provider names. Any provider
-// name not in this map is rejected before being passed to Gothic.
-var validProviders = map[string]bool{
-	"google":      true,
-	"development": true,
-}
 
 type api struct {
 	log             *logger.Logger
@@ -79,6 +73,13 @@ func newAPI(cfg Config) *api {
 	gothic.Store = store
 
 	// Fix 9: Provider allowlist — reject unknown provider names before Gothic sees them.
+	// Built per-environment: "development" is excluded in production so the allowlist
+	// enforces the same invariant as provider registration above.
+	validProviders := map[string]bool{"google": true}
+	if cfg.Environment != "production" {
+		validProviders["development"] = true
+	}
+
 	gothic.GetProviderName = func(r *http.Request) (string, error) {
 		segments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 
