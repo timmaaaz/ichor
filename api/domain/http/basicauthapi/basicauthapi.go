@@ -5,7 +5,6 @@ package basicauthapi
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/mail"
 	"time"
@@ -62,6 +61,7 @@ type api struct {
 	tokenKey        string
 	tokenExpiration time.Duration
 	userBus         *userbus.Business
+	blocklist       *auth.Blocklist
 }
 
 type loggedInOutResponse struct {
@@ -82,6 +82,7 @@ func NewAPI(cfg Config) *api {
 		tokenKey:        cfg.TokenKey,
 		tokenExpiration: cfg.TokenExpiration,
 		userBus:         cfg.UserBus,
+		blocklist:       cfg.Blocklist,
 	}
 }
 
@@ -158,8 +159,10 @@ func (a *api) refresh(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Unauthenticated, "invalid token")
 	}
 
+	const refreshWindow = 5 * time.Minute
+
 	timeUntilExpiry := time.Until(claims.ExpiresAt.Time)
-	if timeUntilExpiry > 30*time.Minute {
+	if timeUntilExpiry > refreshWindow {
 		return errs.Newf(errs.FailedPrecondition, "token not eligible for refresh yet")
 	}
 
@@ -197,6 +200,11 @@ func (a *api) refresh(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.Internal, err)
 	}
 
+	// Revoke the old token so it cannot be reused after a successful refresh.
+	if a.blocklist != nil && claims.ID != "" {
+		a.blocklist.Add(claims.ID, claims.ExpiresAt.Time)
+	}
+
 	a.log.Info(ctx, "token refreshed", "user_id", user.ID)
 
 	return LoginResponse{
@@ -208,89 +216,28 @@ func (a *api) refresh(ctx context.Context, r *http.Request) web.Encoder {
 	}
 }
 
-// logout handles user logout (optional - mainly for audit logging)
+// logout handles user logout
 func (a *api) logout(ctx context.Context, r *http.Request) web.Encoder {
-	token := r.Header.Get("Authorization")
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
+	authHeader := r.Header.Get("Authorization")
+	if len(authHeader) <= 7 || authHeader[:7] != "Bearer " {
+		return errs.Newf(errs.Unauthenticated, "invalid token")
 	}
 
-	claims, err := a.auth.Authenticate(ctx, "Bearer "+token)
+	rawToken := authHeader[7:]
+
+	claims, err := a.auth.Authenticate(ctx, "Bearer "+rawToken)
 	if err != nil {
 		return errs.Newf(errs.Unauthenticated, "invalid token")
 	}
 
-	a.log.Info(ctx, "user logged out", "user_id", claims.Subject)
+	// Fix 7: Revoke the JWT so it cannot be reused after logout.
+	if a.blocklist != nil && claims.ID != "" {
+		a.blocklist.Add(claims.ID, claims.ExpiresAt.Time)
+	}
 
-	// In a stateful session system, you would invalidate the token here
-	// For stateless JWT, the client just discards the token
+	a.log.Info(ctx, "user logged out", "user_id", claims.Subject)
 
 	return loggedInOutResponse{
 		Message: "logged out",
 	}
-}
-
-// ============================================================================
-// Additional helper for password hashing when creating users
-// ============================================================================
-
-// HashPassword generates a bcrypt hash for the given password
-func HashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hash), nil
-}
-
-// ============================================================================
-// Optional: Session management for stateful sessions
-// ============================================================================
-
-// SessionStore interface for session management (optional)
-type SessionStore interface {
-	Create(ctx context.Context, userID string, token string, expiry time.Duration) error
-	Validate(ctx context.Context, token string) (string, error)
-	Delete(ctx context.Context, token string) error
-}
-
-// InMemorySessionStore is a simple in-memory session store (for development)
-type InMemorySessionStore struct {
-	sessions map[string]sessionData
-}
-
-type sessionData struct {
-	UserID    string
-	ExpiresAt time.Time
-}
-
-func NewInMemorySessionStore() *InMemorySessionStore {
-	return &InMemorySessionStore{
-		sessions: make(map[string]sessionData),
-	}
-}
-
-func (s *InMemorySessionStore) Create(ctx context.Context, userID string, token string, expiry time.Duration) error {
-	s.sessions[token] = sessionData{
-		UserID:    userID,
-		ExpiresAt: time.Now().Add(expiry),
-	}
-	return nil
-}
-
-func (s *InMemorySessionStore) Validate(ctx context.Context, token string) (string, error) {
-	session, exists := s.sessions[token]
-	if !exists {
-		return "", errors.New("session not found")
-	}
-	if time.Now().After(session.ExpiresAt) {
-		delete(s.sessions, token)
-		return "", errors.New("session expired")
-	}
-	return session.UserID, nil
-}
-
-func (s *InMemorySessionStore) Delete(ctx context.Context, token string) error {
-	delete(s.sessions, token)
-	return nil
 }

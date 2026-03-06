@@ -19,6 +19,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const bcryptCost = 12
+
 // Set of error variables for CRUD operations.
 var (
 	ErrNotFound              = errors.New("user not found")
@@ -79,7 +81,7 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.create")
 	defer span.End()
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(nu.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(nu.Password), bcryptCost)
 	if err != nil {
 		return User{}, fmt.Errorf("generatefrompassword: %w", err)
 	}
@@ -193,7 +195,7 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 	}
 
 	if uu.Password != nil {
-		pw, err := bcrypt.GenerateFromPassword([]byte(*uu.Password), bcrypt.DefaultCost)
+		pw, err := bcrypt.GenerateFromPassword([]byte(*uu.Password), bcryptCost)
 		if err != nil {
 			return User{}, fmt.Errorf("generatefrompassword: %w", err)
 		}

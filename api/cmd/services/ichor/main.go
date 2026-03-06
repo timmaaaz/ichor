@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf/v3"
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/providers/google"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/crud"
 	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/reporting"
@@ -136,6 +134,32 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Temporal struct {
 			HostPort string `conf:"default:temporal-service.ichor-system.svc.cluster.local:7233"`
 		}
+		RateLimit struct {
+			// LoginInterval is the token refill period for the login endpoint.
+			// One login attempt per IP is allowed per interval on average.
+			// For shop-floor deployments where many workers share one NAT IP,
+			// lower this value (e.g. 2s = 30/min) and raise LoginBurst accordingly.
+			// Env: ICHOR_RATELIMIT_LOGININTERVAL
+			LoginInterval time.Duration `conf:"default:12s"`
+			// LoginBurst is the maximum number of simultaneous login attempts
+			// allowed from a single IP before rate limiting kicks in.
+			// Raise this (e.g. 20-30) if a full shift logs in at the same time
+			// through shared WiFi. Env: ICHOR_RATELIMIT_LOGINBURST
+			LoginBurst int `conf:"default:30"`
+			// RefreshInterval is the token refill period for the refresh endpoint.
+			// Env: ICHOR_RATELIMIT_REFRESHINTERVAL
+			RefreshInterval time.Duration `conf:"default:6s"`
+			// RefreshBurst is the burst size for the refresh endpoint.
+			// Env: ICHOR_RATELIMIT_REFRESHBURST
+			RefreshBurst int `conf:"default:20"`
+			// TrustedProxyCIDRs is a comma-separated list of CIDR ranges for
+			// trusted reverse proxies (e.g. "10.0.0.0/8,172.16.0.0/12").
+			// When set, X-Forwarded-For is used instead of RemoteAddr to
+			// identify the real client IP. Leave empty (default) when the
+			// service is accessed directly without a reverse proxy.
+			// Env: ICHOR_RATELIMIT_TRUSTEDPROXYCIDRS
+			TrustedProxyCIDRs string `conf:"default:"`
+		}
 		LLM struct {
 			Provider       string `conf:"default:gemini"`
 			APIKey         string `conf:"mask"`
@@ -246,30 +270,6 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 
 	// -------------------------------------------------------------------------
-	// Configure OAuth Providers based on environment
-
-	log.Info(ctx, "startup", "status", "configuring OAuth providers")
-
-	if cfg.OAuth.Environment == "production" {
-		if cfg.OAuth.GoogleKey == "" || cfg.OAuth.GoogleSecret == "" {
-			return errors.New("Google OAuth credentials required in production")
-		}
-		goth.UseProviders(
-			google.New(cfg.OAuth.GoogleKey, cfg.OAuth.GoogleSecret, cfg.OAuth.Callback),
-		)
-	} else {
-		// Development/Staging - add dev provider
-		providers := []goth.Provider{
-			oauthapi.NewDevelopmentProvider(cfg.OAuth.Callback),
-		}
-		if cfg.OAuth.GoogleKey != "" && cfg.OAuth.GoogleSecret != "" {
-			providers = append(providers,
-				google.New(cfg.OAuth.GoogleKey, cfg.OAuth.GoogleSecret, cfg.OAuth.Callback))
-		}
-		goth.UseProviders(providers...)
-	}
-
-	// -------------------------------------------------------------------------
 	// Initialize authentication support
 
 	log.Info(ctx, "startup", "status", "initializing authentication support")
@@ -292,11 +292,17 @@ func run(ctx context.Context, log *logger.Logger) error {
 		return fmt.Errorf("no keys exist: %w", err)
 	}
 
+	// Shared JWT blocklist — created before auth.New so Authenticate (called by
+	// Bearer middleware on all protected routes) actually checks the blocklist.
+	jwtBlocklist := auth.NewBlocklist()
+	defer jwtBlocklist.Stop()
+
 	oauthAuth, err := auth.New(auth.Config{
 		Log:       log,
 		DB:        db,
 		KeyLookup: ks,
 		Issuer:    cfg.Auth.Issuer,
+		Blocklist: jwtBlocklist,
 	})
 	if err != nil {
 		return fmt.Errorf("constructing OAuth auth: %w", err)
@@ -374,7 +380,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 		mux.WithFileServer(static, "static"),
 	)
 
-	// Add OAuth routes to the webAPI (assuming webAPI is a *web.App)
+	// Token expiration varies by environment (shorter in production for security).
+	oauthTokenExp := cfg.OAuth.DevTokenExpiration
+	if cfg.OAuth.Environment == "production" {
+		oauthTokenExp = cfg.OAuth.TokenExpiration
+	}
+
+	// Fix 1: Environment is now wired so the production guard in oauthapi.newAPI
+	// executes correctly, blocking dev provider registration in production.
 	oauthCfg := oauthapi.Config{
 		Auth:            oauthAuth,
 		Log:             log,
@@ -382,13 +395,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 		StoreKey:        cfg.OAuth.StoreKey,
 		UIAdminRedirect: cfg.OAuth.UIAdminRedirect,
 		UILoginRedirect: cfg.OAuth.UILoginRedirect,
-	}
-
-	// Set token expiration based on environment
-	if cfg.OAuth.Environment == "production" {
-		oauthCfg.TokenExpiration = cfg.OAuth.TokenExpiration // 20m from config
-	} else {
-		oauthCfg.TokenExpiration = cfg.OAuth.DevTokenExpiration // 8h from config
+		Environment:     cfg.OAuth.Environment,
+		GoogleKey:       cfg.OAuth.GoogleKey,
+		GoogleSecret:    cfg.OAuth.GoogleSecret,
+		Callback:        cfg.OAuth.Callback,
+		TokenExpiration: oauthTokenExp,
+		UserBus:           userBus,
+		Blocklist:         jwtBlocklist,
+		TrustedProxyCIDRs: cfg.RateLimit.TrustedProxyCIDRs,
 	}
 
 	basicAuthCfg := basicauthapi.Config{
@@ -396,17 +410,27 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Auth:            oauthAuth,
 		DB:              db,
 		TokenKey:        cfg.OAuth.TokenKey,
-		TokenExpiration: cfg.OAuth.TokenExpiration,
+		TokenExpiration: oauthTokenExp,
 		UserBus:         userBus,
+		Blocklist:       jwtBlocklist, // Fix 7: logout revocation
+		RateLimit: basicauthapi.RateLimitConfig{
+			LoginInterval:     cfg.RateLimit.LoginInterval,
+			LoginBurst:        cfg.RateLimit.LoginBurst,
+			RefreshInterval:   cfg.RateLimit.RefreshInterval,
+			RefreshBurst:      cfg.RateLimit.RefreshBurst,
+			TrustedProxyCIDRs: cfg.RateLimit.TrustedProxyCIDRs,
+		},
 	}
 
 	// Cast webAPI to *web.App to add routes
-	if app, ok := webAPI.(*web.App); ok {
-		oauthapi.Routes(app, oauthCfg)
-		basicauthapi.Routes(app, basicAuthCfg)
-	} else {
+	app, ok := webAPI.(*web.App)
+	if !ok {
 		return errors.New("failed to add OAuth routes: webAPI is not *web.App")
 	}
+	stopOAuth := oauthapi.Routes(app, oauthCfg)
+	stopBasicAuth := basicauthapi.Routes(app, basicAuthCfg)
+	defer stopOAuth()
+	defer stopBasicAuth()
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

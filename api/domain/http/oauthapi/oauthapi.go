@@ -3,7 +3,9 @@ package oauthapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -17,9 +19,18 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
+// validProviders is the allowlist of known OAuth provider names. Any provider
+// name not in this map is rejected before being passed to Gothic.
+var validProviders = map[string]bool{
+	"google":      true,
+	"development": true,
+}
+
 type api struct {
 	log             *logger.Logger
 	auth            *auth.Auth
+	userBus         *userbus.Business
+	blocklist       *auth.Blocklist
 	store           sessions.Store
 	tokenKey        string
 	uiAdminRedirect string
@@ -28,11 +39,20 @@ type api struct {
 }
 
 func newAPI(cfg Config) *api {
-	// Set up providers based on environment
+	// Fix 2: Startup assertion — refuse to start if production config uses dev defaults.
+	if cfg.Environment == "production" && cfg.StoreKey == "dev-session-key-32-bytes-long!!!" {
+		panic("oauthapi: production environment detected with development StoreKey — refusing to start")
+	}
+
+	// Set up providers based on environment. Google is optional in all
+	// environments — internal deployments may rely solely on basic auth.
 	if cfg.Environment == "production" {
-		goth.UseProviders(
-			google.New(cfg.GoogleKey, cfg.GoogleSecret, cfg.Callback),
-		)
+		// Production: dev provider is never registered (security invariant).
+		if cfg.GoogleKey != "" && cfg.GoogleSecret != "" {
+			goth.UseProviders(
+				google.New(cfg.GoogleKey, cfg.GoogleSecret, cfg.Callback),
+			)
+		}
 	} else {
 		// Development/Staging - add dev provider
 		providers := []goth.Provider{
@@ -45,34 +65,31 @@ func newAPI(cfg Config) *api {
 		goth.UseProviders(providers...)
 	}
 
-	// Configure Gothic's session store
+	// Fix 5+6: Session cookie — Secure flag tied to environment, SameSite Lax,
+	// MaxAge 15 minutes (sufficient for OAuth handshake, eliminates 30-day window).
 	store := sessions.NewCookieStore([]byte(cfg.StoreKey))
 	store.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   86400 * 30, // 30 days
+		MaxAge:   900, // 15 minutes
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   cfg.Environment == "production",
+		SameSite: http.SameSiteLaxMode,
 	}
 
 	gothic.Store = store
 
-	// Fix the provider extraction
+	// Fix 9: Provider allowlist — reject unknown provider names before Gothic sees them.
 	gothic.GetProviderName = func(r *http.Request) (string, error) {
-		// Extract provider from path: /api/auth/{provider}
 		segments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 
-		// Should be ["api", "auth", "provider"] or ["api", "auth", "provider", "callback"]
 		if len(segments) >= 3 && segments[0] == "api" && segments[1] == "auth" {
 			provider := segments[2]
-			// Remove "callback" if present
 			if provider == "callback" && len(segments) >= 4 {
 				provider = segments[3]
 			}
-			return provider, nil
-		}
-
-		// Fallback to query parameter
-		if provider := r.URL.Query().Get("provider"); provider != "" {
+			if !validProviders[provider] {
+				return "", fmt.Errorf("unknown oauth provider: %q", provider)
+			}
 			return provider, nil
 		}
 
@@ -82,6 +99,8 @@ func newAPI(cfg Config) *api {
 	return &api{
 		log:             cfg.Log,
 		auth:            cfg.Auth,
+		userBus:         cfg.UserBus,
+		blocklist:       cfg.Blocklist,
 		store:           store,
 		tokenKey:        cfg.TokenKey,
 		uiAdminRedirect: cfg.UIAdminRedirect,
@@ -118,14 +137,36 @@ func (a *api) authCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fix 3: Look up the user in the database to get their actual roles rather
+	// than granting Admin unconditionally.
+	addr, err := mail.ParseAddress(user.Email)
+	if err != nil {
+		a.log.Error(r.Context(), "oauth callback: invalid email from provider", "email", user.Email, "err", err)
+		http.Error(w, "Unauthorized: invalid email", http.StatusForbidden)
+		return
+	}
+
+	dbUser, err := a.userBus.QueryByEmail(r.Context(), *addr)
+	if err != nil {
+		a.log.Error(r.Context(), "oauth callback: user not found", "email", user.Email, "err", err)
+		http.Error(w, "Unauthorized: user not registered", http.StatusForbidden)
+		return
+	}
+
+	if !dbUser.Enabled {
+		a.log.Error(r.Context(), "oauth callback: disabled user attempted login", "email", user.Email)
+		http.Error(w, "Unauthorized: account disabled", http.StatusForbidden)
+		return
+	}
+
 	claims := auth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   user.UserID,
+			Subject:   dbUser.ID.String(),
 			Issuer:    a.auth.Issuer(),
-			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(a.tokenExpiration)), // Use variable
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(a.tokenExpiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		},
-		Roles: []string{userbus.Roles.Admin.String()},
+		Roles: userbus.ParseRolesToString(dbUser.Roles),
 	}
 
 	token, err := a.auth.GenerateToken(a.tokenKey, claims)
@@ -139,6 +180,17 @@ func (a *api) authCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) logout(w http.ResponseWriter, r *http.Request) {
+	// Revoke the JWT so it cannot be used after logout. Use Authenticate (not
+	// ParseClaims) to verify the token signature before blocklisting — this
+	// prevents an attacker from blocklisting arbitrary JTIs with forged tokens.
+	if a.blocklist != nil {
+		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+			if claims, err := a.auth.Authenticate(r.Context(), authHeader); err == nil && claims.ID != "" {
+				a.blocklist.Add(claims.ID, claims.ExpiresAt.Time)
+			}
+		}
+	}
+
 	sess, err := a.store.Get(r, "user-metadata")
 	if err != nil {
 		a.log.Error(r.Context(), "get session: %s", err)

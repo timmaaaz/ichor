@@ -22,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
+
 // ErrForbidden is returned when a auth issue is identified.
 var ErrForbidden = errors.New("attempted action is not allowed")
 
@@ -45,6 +46,7 @@ type Config struct {
 	DB        *sqlx.DB
 	KeyLookup KeyLookup
 	Issuer    string
+	Blocklist *Blocklist // optional; when set, revoked JTIs are rejected in Authenticate
 }
 
 // Auth is used to authenticate clients. It can generate a token for a
@@ -55,6 +57,7 @@ type Auth struct {
 	method    jwt.SigningMethod
 	parser    *jwt.Parser
 	issuer    string
+	blocklist *Blocklist
 }
 
 // New creates an Auth to support authentication/authorization.
@@ -75,6 +78,7 @@ func New(cfg Config) (*Auth, error) {
 		method:    jwt.GetSigningMethod(jwt.SigningMethodRS256.Name),
 		parser:    jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name})),
 		issuer:    cfg.Issuer,
+		blocklist: cfg.Blocklist,
 	}
 
 	return &a, nil
@@ -86,7 +90,13 @@ func (a *Auth) Issuer() string {
 }
 
 // GenerateToken generates a signed JWT token string representing the user Claims.
+// A unique jti (JWT ID) is automatically assigned to every issued token so it
+// can be individually revoked via the Blocklist.
 func (a *Auth) GenerateToken(kid string, claims Claims) (string, error) {
+	if claims.ID == "" {
+		claims.ID = uuid.NewString()
+	}
+
 	token := jwt.NewWithClaims(a.method, claims)
 	token.Header["kid"] = kid
 
@@ -151,6 +161,11 @@ func (a *Auth) Authenticate(ctx context.Context, bearerToken string) (Claims, er
 
 	if err := a.isUserEnabled(ctx, claims); err != nil {
 		return Claims{}, fmt.Errorf("user not enabled : %w", err)
+	}
+
+	// Check if this token has been explicitly revoked (e.g. via logout).
+	if a.blocklist != nil && a.blocklist.IsRevoked(claims.ID) {
+		return Claims{}, fmt.Errorf("token has been revoked")
 	}
 
 	return claims, nil
