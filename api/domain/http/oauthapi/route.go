@@ -33,8 +33,10 @@ type Config struct {
 	TrustedProxyCIDRs string            // see httpmid.TrustedProxyExtractor; empty = use RemoteAddr
 }
 
-// Routes adds the OAuth routes to the web.App.
-func Routes(app *web.App, cfg Config) {
+// Routes adds the OAuth routes to the web.App and returns a cleanup function
+// that stops the background rate limiter goroutines. The caller must call the
+// returned function during graceful shutdown to avoid goroutine leaks.
+func Routes(app *web.App, cfg Config) func() {
 	api := newAPI(cfg)
 
 	// IP extractor: RemoteAddrExtractor by default (direct deployment).
@@ -63,4 +65,9 @@ func Routes(app *web.App, cfg Config) {
 	app.RawHandlerFunc(http.MethodGet, "", "/api/auth/{provider}/callback", api.authCallback,
 		httpmid.RateLimit(callbackLimiter, extract, callbackRetry))
 	app.RawHandlerFunc(http.MethodGet, "", "/api/logout/{provider}", api.logout)
+
+	return func() {
+		initLimiter.Stop()
+		callbackLimiter.Stop()
+	}
 }

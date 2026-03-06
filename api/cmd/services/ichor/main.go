@@ -295,6 +295,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// Shared JWT blocklist — created before auth.New so Authenticate (called by
 	// Bearer middleware on all protected routes) actually checks the blocklist.
 	jwtBlocklist := auth.NewBlocklist()
+	defer jwtBlocklist.Stop()
 
 	oauthAuth, err := auth.New(auth.Config{
 		Log:       log,
@@ -409,7 +410,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		Auth:            oauthAuth,
 		DB:              db,
 		TokenKey:        cfg.OAuth.TokenKey,
-		TokenExpiration: cfg.OAuth.TokenExpiration,
+		TokenExpiration: oauthTokenExp,
 		UserBus:         userBus,
 		Blocklist:       jwtBlocklist, // Fix 7: logout revocation
 		RateLimit: basicauthapi.RateLimitConfig{
@@ -422,12 +423,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 
 	// Cast webAPI to *web.App to add routes
-	if app, ok := webAPI.(*web.App); ok {
-		oauthapi.Routes(app, oauthCfg)
-		basicauthapi.Routes(app, basicAuthCfg)
-	} else {
+	app, ok := webAPI.(*web.App)
+	if !ok {
 		return errors.New("failed to add OAuth routes: webAPI is not *web.App")
 	}
+	stopOAuth := oauthapi.Routes(app, oauthCfg)
+	stopBasicAuth := basicauthapi.Routes(app, basicAuthCfg)
+	defer stopOAuth()
+	defer stopBasicAuth()
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

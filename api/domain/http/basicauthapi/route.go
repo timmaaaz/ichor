@@ -43,7 +43,10 @@ type Config struct {
 	RateLimit       RateLimitConfig
 }
 
-func Routes(app *web.App, cfg Config) {
+// Routes registers the basic auth HTTP routes and returns a cleanup function
+// that stops the background rate limiter goroutines. The caller must call the
+// returned function during graceful shutdown to avoid goroutine leaks.
+func Routes(app *web.App, cfg Config) func() {
 	api := NewAPI(cfg)
 
 	rl := cfg.RateLimit
@@ -69,4 +72,9 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodPost, "", "/api/auth/basic/refresh", api.refresh,
 		httpmid.RateLimit(refreshLimiter, extract, refreshRetry))
 	app.HandlerFunc(http.MethodPost, "", "/api/auth/basic/logout", api.logout)
+
+	return func() {
+		loginLimiter.Stop()
+		refreshLimiter.Stop()
+	}
 }
