@@ -89,10 +89,15 @@ func TrustedProxyExtractor(trustedCIDRs []*net.IPNet) IPExtractor {
 		}
 
 		// Scan right-to-left: each trusted proxy appends to the right, so the
-		// rightmost untrusted IP is the actual client.
+		// rightmost untrusted IP is the actual client. Validate with net.ParseIP
+		// before returning — an injected non-IP string would otherwise become an
+		// arbitrary rate-limit bucket key, bypassing per-IP limiting entirely.
 		for i := len(ips) - 1; i >= 0; i-- {
 			if !isTrustedIP(ips[i], trustedCIDRs) {
-				return ips[i]
+				if net.ParseIP(ips[i]) != nil {
+					return ips[i]
+				}
+				return remoteIP
 			}
 		}
 
@@ -149,13 +154,14 @@ type ipLimiter struct {
 // RateLimiter manages per-IP token bucket rate limiters. It is safe for
 // concurrent use. A background goroutine purges stale entries every 5 minutes
 // to prevent unbounded memory growth. Call Stop to terminate the goroutine on
-// graceful shutdown.
+// graceful shutdown. Stop is safe to call multiple times.
 type RateLimiter struct {
 	mu       sync.Mutex
 	limiters map[string]*ipLimiter
 	r        rate.Limit
 	burst    int
 	done     chan struct{}
+	once     sync.Once
 }
 
 // NewRateLimiter creates a per-IP token bucket rate limiter.
@@ -193,7 +199,7 @@ func (rl *RateLimiter) Allow(ip string) bool {
 // Stop terminates the background cleanup goroutine. Call this during graceful
 // shutdown to avoid goroutine leaks in tests and short-lived processes.
 func (rl *RateLimiter) Stop() {
-	close(rl.done)
+	rl.once.Do(func() { close(rl.done) })
 }
 
 // cleanupLoop removes IPs not seen for 10 minutes, running every 5 minutes.

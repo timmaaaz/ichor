@@ -8,11 +8,13 @@ import (
 // Blocklist is an in-memory store of revoked JWT IDs (jti claims). It is safe
 // for concurrent use. A background goroutine removes expired entries every 5
 // minutes. For multi-node deployments, replace with a shared store (Redis, DB).
-// Call Stop to terminate the goroutine on graceful shutdown.
+// Call Stop to terminate the goroutine on graceful shutdown. Stop is safe to
+// call multiple times.
 type Blocklist struct {
 	mu      sync.RWMutex
 	entries map[string]time.Time // jti → expiry
 	done    chan struct{}
+	once    sync.Once
 }
 
 // NewBlocklist creates a new Blocklist and starts its cleanup goroutine.
@@ -49,7 +51,7 @@ func (bl *Blocklist) IsRevoked(jti string) bool {
 // Stop terminates the background cleanup goroutine. Call this during graceful
 // shutdown to avoid goroutine leaks in tests and short-lived processes.
 func (bl *Blocklist) Stop() {
-	close(bl.done)
+	bl.once.Do(func() { close(bl.done) })
 }
 
 func (bl *Blocklist) cleanupLoop() {
