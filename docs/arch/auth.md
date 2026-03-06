@@ -23,19 +23,40 @@ key facts:
 
 file: app/sdk/auth/auth.go
 ```go
+type Config struct {
+    // ...
+    Blocklist *Blocklist // optional; when set, revoked JTIs are rejected in Authenticate
+}
+
 type Auth struct {
     keyLookup KeyLookup
     userBus   *userbus.Business
     method    jwt.SigningMethod
     parser    *jwt.Parser
     issuer    string
+    blocklist *Blocklist // nil = no revocation check
 }
 ```
 
   Authenticate(ctx context.Context, bearerToken string) (Claims, error)
+    ← validates JWT + user enabled + blocklist check (if configured)
   Authorize(ctx context.Context, claims Claims, userID uuid.UUID, rule string) error
-
+  GenerateToken(kid string, claims Claims) (string, error)
+    ← auto-assigns claims.ID (jti) via uuid.NewString() if empty
 imports: userbus, approvalbus
+
+## Blocklist [sdk]
+
+file: app/sdk/auth/blocklist.go
+key facts:
+  - In-memory revoked JTI store (map[jti]expiresAt); safe for concurrent use
+  - Background goroutine purges expired entries every 5 minutes
+  - Multi-node deployments: replace with shared store (Redis / DB)
+  - NewBlocklist() starts cleanup goroutine; call Stop() on graceful shutdown
+  - Add(jti string, expiresAt time.Time) — records revoked token
+  - IsRevoked(jti string) bool — returns true only if jti present AND not yet expired
+  - No-op for empty jti in both Add and IsRevoked
+  - Wired into auth.Config.Blocklist before auth.New() so Authenticate() checks it
 
 ---
 
@@ -159,6 +180,21 @@ context injection: trKey → sqldb.CommitRollbacker
 failure: Begin() fail → errs.Internal; Commit() fail → errs.Internal; Rollback() errors logged only (sql.ErrTxDone ignored)
 
 ---
+
+## UserBus [bus] — bcrypt cost
+
+file: business/domain/core/userbus/userbus.go
+key facts:
+  - bcryptCost = 12 (constant; higher than bcrypt.DefaultCost=10 for password security)
+  - Applied in both Create and Update when a new password is set
+
+---
+
+## ⚠ Revoking a token (logout)
+
+  app/sdk/auth/blocklist.go       (Blocklist.Add — record jti + expiry)
+  api/cmd/services/ichor/main.go  (Blocklist created before auth.New; passed as auth.Config.Blocklist)
+  Note: logout handlers call auth.Authenticate (not ParseClaims) to verify signature before blocklisting
 
 ## ⚠ Adding a new permission rule/action
 
