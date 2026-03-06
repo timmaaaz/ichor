@@ -144,6 +144,14 @@ func createTestApp(db *dbtest.Database) (*web.App, *auth.Auth) {
 		TokenKey:        tokenKey,
 		TokenExpiration: tokenExpiration,
 		UserBus:         userBus,
+		// Disable rate limiting in tests: high burst, fast refill so no
+		// test request is ever throttled regardless of execution order.
+		RateLimit: basicauthapi.RateLimitConfig{
+			LoginInterval:   time.Millisecond,
+			LoginBurst:      10000,
+			RefreshInterval: time.Millisecond,
+			RefreshBurst:    10000,
+		},
 	}
 	basicauthapi.Routes(app, cfg)
 
@@ -371,7 +379,7 @@ func refresh(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					RegisteredClaims: jwt.RegisteredClaims{
 						Subject:   userID,
 						Issuer:    authSvc.Issuer(),
-						ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(25 * time.Minute)),
+						ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(4 * time.Minute)),
 						IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 					},
 					Roles: []string{"ADMIN"},

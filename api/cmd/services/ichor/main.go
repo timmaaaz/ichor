@@ -122,7 +122,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			Callback           string        `conf:"default:http://localhost:3000"`
 			StoreKey           string        `conf:"default:dev-session-key-32-bytes-long!!!,mask"`
 			TokenKey           string        `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1,mask"`
-			UIAdminRedirect    string        `conf:"default:http://localhost:3001/admin?token="`
+			UIAdminRedirect    string        `conf:"default:http://localhost:3001/admin#token="`
 			UILoginRedirect    string        `conf:"default:http://localhost:3001/login"`
 			TokenExpiration    time.Duration `conf:"default:20m"`
 			DevTokenExpiration time.Duration `conf:"default:8h"`
@@ -135,6 +135,32 @@ func run(ctx context.Context, log *logger.Logger) error {
 		}
 		Temporal struct {
 			HostPort string `conf:"default:temporal-service.ichor-system.svc.cluster.local:7233"`
+		}
+		RateLimit struct {
+			// LoginInterval is the token refill period for the login endpoint.
+			// One login attempt per IP is allowed per interval on average.
+			// For shop-floor deployments where many workers share one NAT IP,
+			// lower this value (e.g. 2s = 30/min) and raise LoginBurst accordingly.
+			// Env: ICHOR_RATELIMIT_LOGININTERVAL
+			LoginInterval time.Duration `conf:"default:12s"`
+			// LoginBurst is the maximum number of simultaneous login attempts
+			// allowed from a single IP before rate limiting kicks in.
+			// Raise this (e.g. 20-30) if a full shift logs in at the same time
+			// through shared WiFi. Env: ICHOR_RATELIMIT_LOGINBURST
+			LoginBurst int `conf:"default:30"`
+			// RefreshInterval is the token refill period for the refresh endpoint.
+			// Env: ICHOR_RATELIMIT_REFRESHINTERVAL
+			RefreshInterval time.Duration `conf:"default:6s"`
+			// RefreshBurst is the burst size for the refresh endpoint.
+			// Env: ICHOR_RATELIMIT_REFRESHBURST
+			RefreshBurst int `conf:"default:20"`
+			// TrustedProxyCIDRs is a comma-separated list of CIDR ranges for
+			// trusted reverse proxies (e.g. "10.0.0.0/8,172.16.0.0/12").
+			// When set, X-Forwarded-For is used instead of RemoteAddr to
+			// identify the real client IP. Leave empty (default) when the
+			// service is accessed directly without a reverse proxy.
+			// Env: ICHOR_RATELIMIT_TRUSTEDPROXYCIDRS
+			TrustedProxyCIDRs string `conf:"default:"`
 		}
 		LLM struct {
 			Provider       string `conf:"default:gemini"`
@@ -251,14 +277,15 @@ func run(ctx context.Context, log *logger.Logger) error {
 	log.Info(ctx, "startup", "status", "configuring OAuth providers")
 
 	if cfg.OAuth.Environment == "production" {
-		if cfg.OAuth.GoogleKey == "" || cfg.OAuth.GoogleSecret == "" {
-			return errors.New("Google OAuth credentials required in production")
+		// In production: dev provider is never registered (security invariant).
+		// Google is optional — internal deployments may use only basic auth.
+		if cfg.OAuth.GoogleKey != "" && cfg.OAuth.GoogleSecret != "" {
+			goth.UseProviders(
+				google.New(cfg.OAuth.GoogleKey, cfg.OAuth.GoogleSecret, cfg.OAuth.Callback),
+			)
 		}
-		goth.UseProviders(
-			google.New(cfg.OAuth.GoogleKey, cfg.OAuth.GoogleSecret, cfg.OAuth.Callback),
-		)
 	} else {
-		// Development/Staging - add dev provider
+		// Development/Staging: add dev provider for local testing.
 		providers := []goth.Provider{
 			oauthapi.NewDevelopmentProvider(cfg.OAuth.Callback),
 		}
@@ -374,7 +401,18 @@ func run(ctx context.Context, log *logger.Logger) error {
 		mux.WithFileServer(static, "static"),
 	)
 
-	// Add OAuth routes to the webAPI (assuming webAPI is a *web.App)
+	// Shared JWT blocklist — one instance used by both auth APIs so a logout
+	// from either endpoint revokes the token for all subsequent requests.
+	jwtBlocklist := auth.NewBlocklist()
+
+	// Token expiration varies by environment (shorter in production for security).
+	oauthTokenExp := cfg.OAuth.DevTokenExpiration
+	if cfg.OAuth.Environment == "production" {
+		oauthTokenExp = cfg.OAuth.TokenExpiration
+	}
+
+	// Fix 1: Environment is now wired so the production guard in oauthapi.newAPI
+	// executes correctly, blocking dev provider registration in production.
 	oauthCfg := oauthapi.Config{
 		Auth:            oauthAuth,
 		Log:             log,
@@ -382,13 +420,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 		StoreKey:        cfg.OAuth.StoreKey,
 		UIAdminRedirect: cfg.OAuth.UIAdminRedirect,
 		UILoginRedirect: cfg.OAuth.UILoginRedirect,
-	}
-
-	// Set token expiration based on environment
-	if cfg.OAuth.Environment == "production" {
-		oauthCfg.TokenExpiration = cfg.OAuth.TokenExpiration // 20m from config
-	} else {
-		oauthCfg.TokenExpiration = cfg.OAuth.DevTokenExpiration // 8h from config
+		Environment:     cfg.OAuth.Environment,
+		GoogleKey:       cfg.OAuth.GoogleKey,
+		GoogleSecret:    cfg.OAuth.GoogleSecret,
+		Callback:        cfg.OAuth.Callback,
+		TokenExpiration: oauthTokenExp,
+		UserBus:         userBus,    // Fix 3: DB role lookup
+		Blocklist:       jwtBlocklist, // Fix 7: logout revocation
 	}
 
 	basicAuthCfg := basicauthapi.Config{
@@ -398,6 +436,14 @@ func run(ctx context.Context, log *logger.Logger) error {
 		TokenKey:        cfg.OAuth.TokenKey,
 		TokenExpiration: cfg.OAuth.TokenExpiration,
 		UserBus:         userBus,
+		Blocklist:       jwtBlocklist, // Fix 7: logout revocation
+		RateLimit: basicauthapi.RateLimitConfig{
+			LoginInterval:     cfg.RateLimit.LoginInterval,
+			LoginBurst:        cfg.RateLimit.LoginBurst,
+			RefreshInterval:   cfg.RateLimit.RefreshInterval,
+			RefreshBurst:      cfg.RateLimit.RefreshBurst,
+			TrustedProxyCIDRs: cfg.RateLimit.TrustedProxyCIDRs,
+		},
 	}
 
 	// Cast webAPI to *web.App to add routes

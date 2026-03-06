@@ -62,6 +62,7 @@ type api struct {
 	tokenKey        string
 	tokenExpiration time.Duration
 	userBus         *userbus.Business
+	blocklist       *auth.Blocklist
 }
 
 type loggedInOutResponse struct {
@@ -82,6 +83,7 @@ func NewAPI(cfg Config) *api {
 		tokenKey:        cfg.TokenKey,
 		tokenExpiration: cfg.TokenExpiration,
 		userBus:         cfg.UserBus,
+		blocklist:       cfg.Blocklist,
 	}
 }
 
@@ -158,8 +160,10 @@ func (a *api) refresh(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Unauthenticated, "invalid token")
 	}
 
+	const refreshWindow = 5 * time.Minute
+
 	timeUntilExpiry := time.Until(claims.ExpiresAt.Time)
-	if timeUntilExpiry > 30*time.Minute {
+	if timeUntilExpiry > refreshWindow {
 		return errs.Newf(errs.FailedPrecondition, "token not eligible for refresh yet")
 	}
 
@@ -208,22 +212,26 @@ func (a *api) refresh(ctx context.Context, r *http.Request) web.Encoder {
 	}
 }
 
-// logout handles user logout (optional - mainly for audit logging)
+// logout handles user logout
 func (a *api) logout(ctx context.Context, r *http.Request) web.Encoder {
-	token := r.Header.Get("Authorization")
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
+	authHeader := r.Header.Get("Authorization")
+	if len(authHeader) <= 7 || authHeader[:7] != "Bearer " {
+		return errs.Newf(errs.Unauthenticated, "invalid token")
 	}
 
-	claims, err := a.auth.Authenticate(ctx, "Bearer "+token)
+	rawToken := authHeader[7:]
+
+	claims, err := a.auth.Authenticate(ctx, "Bearer "+rawToken)
 	if err != nil {
 		return errs.Newf(errs.Unauthenticated, "invalid token")
 	}
 
-	a.log.Info(ctx, "user logged out", "user_id", claims.Subject)
+	// Fix 7: Revoke the JWT so it cannot be reused after logout.
+	if a.blocklist != nil && claims.ID != "" {
+		a.blocklist.Add(claims.ID, claims.ExpiresAt.Time)
+	}
 
-	// In a stateful session system, you would invalidate the token here
-	// For stateless JWT, the client just discards the token
+	a.log.Info(ctx, "user logged out", "user_id", claims.Subject)
 
 	return loggedInOutResponse{
 		Message: "logged out",
@@ -234,9 +242,11 @@ func (a *api) logout(ctx context.Context, r *http.Request) web.Encoder {
 // Additional helper for password hashing when creating users
 // ============================================================================
 
+const bcryptCost = 12
+
 // HashPassword generates a bcrypt hash for the given password
 func HashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
 	if err != nil {
 		return "", err
 	}
