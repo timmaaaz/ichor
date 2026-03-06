@@ -321,6 +321,7 @@ import (
 	temporalpkg "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
@@ -486,6 +487,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Register procurement actions (create_purchase_order).
 	workflowactions.RegisterProcurementActions(actionRegistry, inventoryAndProcurementConfig)
+
+	// Upgrade seek_approval handler with real approval and alert buses.
+	// The core registration uses nil buses (graceful degradation); replace it here
+	// so that manual execution via POST /v1/workflow/actions/seek_approval/execute
+	// creates real approval request records.
+	actionRegistry.Register(approval.NewSeekApprovalHandler(cfg.Log, cfg.DB, approvalRequestBus, alertBus))
 
 	// Upgrade send_email handler with real Resend client if credentials are configured.
 	// If ResendAPIKey is empty, the nil-client version from RegisterCoreActions stays,

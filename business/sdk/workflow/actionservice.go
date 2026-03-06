@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -168,6 +169,23 @@ func (s *ActionService) Execute(ctx context.Context, req ExecuteRequest, trigger
 		execContext.EventType = "" // Will be set by caller
 	}
 
+	// Pre-record the execution with "running" status before calling the handler.
+	// This ensures the execution row exists in the DB so that handler side-effects
+	// (e.g. seek_approval creating an approval_request with a FK on execution_id)
+	// can reference it without a foreign-key violation.
+	preResult := &ExecuteResult{
+		ExecutionID: executionID,
+		ActionType:  req.ActionType,
+		StartedAt:   startTime,
+		Status:      "running",
+	}
+	if recordErr := s.recordExecution(ctx, preResult, req, triggerSource); recordErr != nil {
+		s.log.Error(ctx, "Failed to pre-record execution",
+			"execution_id", executionID,
+			"error", recordErr)
+		// Don't fail the execution if recording fails
+	}
+
 	// Execute the action
 	result, err := handler.Execute(ctx, req.Config, execContext)
 
@@ -198,7 +216,7 @@ func (s *ActionService) Execute(ctx context.Context, req ExecuteRequest, trigger
 		execResult.Result = result
 	}
 
-	// Record the execution
+	// Upsert the final execution record (updates the pre-recorded row).
 	if recordErr := s.recordExecution(ctx, execResult, req, triggerSource); recordErr != nil {
 		s.log.Error(ctx, "Failed to record execution",
 			"execution_id", executionID,
@@ -369,9 +387,27 @@ func (s *ActionService) GetRegistry() *ActionRegistry {
 	return s.registry
 }
 
-// recordExecution records an execution to the database
+// dbAutomationExecution is the DB model for workflow.automation_executions.
+type dbAutomationExecution struct {
+	ID               uuid.UUID        `db:"id"`
+	AutomationRuleID *uuid.UUID       `db:"automation_rules_id"`
+	EntityType       string           `db:"entity_type"`
+	TriggerData      json.RawMessage  `db:"trigger_data"`
+	ActionsExecuted  json.RawMessage  `db:"actions_executed"`
+	Status           ExecutionStatus  `db:"status"`
+	ErrorMessage     string           `db:"error_message"`
+	ExecutionTimeMs  int              `db:"execution_time_ms"`
+	ExecutedAt       time.Time        `db:"executed_at"`
+	TriggerSource    string           `db:"trigger_source"`
+	ExecutedBy       uuid.UUID        `db:"executed_by"`
+	ActionType       string           `db:"action_type"`
+}
+
+// recordExecution upserts an execution row into workflow.automation_executions.
+// It is called twice per manual execution: once before the handler runs (to
+// satisfy FK constraints from handler side-effects) and once after (to update
+// the final status and result).
 func (s *ActionService) recordExecution(ctx context.Context, result *ExecuteResult, req ExecuteRequest, triggerSource string) error {
-	// Serialize the result for storage
 	var actionsExecuted json.RawMessage
 	if result.Result != nil {
 		data, err := json.Marshal(result.Result)
@@ -380,20 +416,17 @@ func (s *ActionService) recordExecution(ctx context.Context, result *ExecuteResu
 		}
 	}
 
-	// Build trigger data
 	triggerData, _ := json.Marshal(map[string]interface{}{
 		"entity_id":   req.EntityID,
 		"entity_name": req.EntityName,
 		"raw_data":    req.RawData,
 	})
 
-	// Calculate execution time
 	var executionTimeMs int
 	if result.CompletedAt != nil {
 		executionTimeMs = int(result.CompletedAt.Sub(result.StartedAt).Milliseconds())
 	}
 
-	// Map result status to ExecutionStatus
 	var status ExecutionStatus
 	switch result.Status {
 	case "completed":
@@ -406,7 +439,7 @@ func (s *ActionService) recordExecution(ctx context.Context, result *ExecuteResu
 		status = StatusPending
 	}
 
-	query := `
+	const q = `
 		INSERT INTO workflow.automation_executions (
 			id,
 			automation_rules_id,
@@ -421,24 +454,39 @@ func (s *ActionService) recordExecution(ctx context.Context, result *ExecuteResu
 			executed_by,
 			action_type
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+			:id,
+			:automation_rules_id,
+			:entity_type,
+			:trigger_data,
+			:actions_executed,
+			:status,
+			:error_message,
+			:execution_time_ms,
+			:executed_at,
+			:trigger_source,
+			:executed_by,
+			:action_type
 		)
+		ON CONFLICT (id) DO UPDATE SET
+			status            = EXCLUDED.status,
+			actions_executed  = EXCLUDED.actions_executed,
+			error_message     = EXCLUDED.error_message,
+			execution_time_ms = EXCLUDED.execution_time_ms
 	`
 
-	_, err := s.db.ExecContext(ctx, query,
-		result.ExecutionID,
-		nil, // automation_rules_id is null for manual executions
-		req.EntityName,
-		triggerData,
-		actionsExecuted,
-		status,
-		result.Error,
-		executionTimeMs,
-		result.StartedAt,
-		triggerSource,
-		req.UserID,
-		req.ActionType,
-	)
+	row := dbAutomationExecution{
+		ID:              result.ExecutionID,
+		EntityType:      req.EntityName,
+		TriggerData:     triggerData,
+		ActionsExecuted: actionsExecuted,
+		Status:          status,
+		ErrorMessage:    result.Error,
+		ExecutionTimeMs: executionTimeMs,
+		ExecutedAt:      result.StartedAt,
+		TriggerSource:   triggerSource,
+		ExecutedBy:      req.UserID,
+		ActionType:      req.ActionType,
+	}
 
-	return err
+	return sqldb.NamedExecContext(ctx, s.log, s.db, q, row)
 }
