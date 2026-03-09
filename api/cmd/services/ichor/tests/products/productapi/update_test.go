@@ -177,6 +177,21 @@ func update404(sd apitest.SeedData) []apitest.Table {
 func update409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
+			Name:       "duplicate-upc-code",
+			URL:        fmt.Sprintf("/v1/products/products/%s", sd.Products[1].ProductID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusConflict,
+			Input: &productapp.UpdateProduct{
+				UpcCode: dbtest.StringPointer(sd.Products[0].UpcCode),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.AlreadyExists, "product entry is not unique"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
 			Name:       "brand-id-dne-as-fk",
 			URL:        fmt.Sprintf("/v1/products/products/%s", sd.Products[0].ProductID),
 			Token:      sd.Admins[0].Token,

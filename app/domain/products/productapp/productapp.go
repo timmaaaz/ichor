@@ -70,6 +70,9 @@ func (a *App) Update(ctx context.Context, app UpdateProduct, id uuid.UUID) (Prod
 
 	product, err := a.productbus.Update(ctx, st, up)
 	if err != nil {
+		if errors.Is(err, productbus.ErrUniqueEntry) {
+			return Product{}, errs.New(errs.AlreadyExists, productbus.ErrUniqueEntry)
+		}
 		if errors.Is(err, productbus.ErrForeignKeyViolation) {
 			return Product{}, errs.New(errs.Aborted, productbus.ErrForeignKeyViolation)
 		}

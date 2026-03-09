@@ -375,6 +375,32 @@ func create400(sd apitest.SeedData) []apitest.Table {
 func create409(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
+			Name:       "duplicate-upc-code",
+			URL:        "/v1/products/products",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusConflict,
+			Input: &productapp.NewProduct{
+				Name:                 "Duplicate UPC Product",
+				SKU:                  "sku-unique-999",
+				BrandID:              sd.Brands[0].ID,
+				ProductCategoryID:    sd.ProductCategories[0].ID,
+				Description:          "test description",
+				ModelNumber:          "test model number",
+				UpcCode:              sd.Products[0].UpcCode,
+				Status:               "test status",
+				IsActive:             "true",
+				IsPerishable:         "false",
+				HandlingInstructions: "test handling instructions",
+				UnitsPerCase:         "20",
+			},
+			ExpResp: errs.Newf(errs.AlreadyExists, "product entry is not unique"),
+			GotResp: &errs.Error{},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
 			Name:       "brand-is-not-valid-fk",
 			URL:        "/v1/products/products",
 			Token:      sd.Admins[0].Token,
