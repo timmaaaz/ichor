@@ -108,6 +108,9 @@ func (h *RejectTransferOrderHandler) Execute(ctx context.Context, config json.Ra
 
 	rejected, err := h.transferOrderBus.Reject(ctx, to, execCtx.UserID, cfg.RejectionReason)
 	if err != nil {
+		if errors.Is(err, transferorderbus.ErrInvalidTransferStatus) {
+			return map[string]any{"output": "failure", "error": "transfer order status changed concurrently"}, nil
+		}
 		return nil, fmt.Errorf("reject transfer order: %w", err)
 	}
 

@@ -105,6 +105,9 @@ func (h *ApproveTransferOrderHandler) Execute(ctx context.Context, config json.R
 
 	approved, err := h.transferOrderBus.Approve(ctx, to, execCtx.UserID, cfg.ApprovalReason)
 	if err != nil {
+		if errors.Is(err, transferorderbus.ErrInvalidTransferStatus) {
+			return map[string]any{"output": "failure", "error": "transfer order status changed concurrently"}, nil
+		}
 		return nil, fmt.Errorf("approve transfer order: %w", err)
 	}
 
