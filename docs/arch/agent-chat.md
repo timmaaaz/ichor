@@ -93,7 +93,7 @@ type draftWorkflow struct {
 ```
 
 key facts:
-  - All 55 tool handlers live in executor.go — one method per tool name constant
+  - All 53 tool handlers live in executor.go — one method per tool name constant (verified 2026-03-09)
   - Calls Ichor REST API via http.Client with Bearer token from request context
   - Draft builder tools (StartDraft, AddDraftAction, RemoveDraftAction, PreviewDraft) maintain in-memory state per session
   - Draft state is lost on server restart
@@ -110,11 +110,18 @@ type ToolIndex struct {
     embedder Embedder
     log      *logger.Logger
 }
+```
 
+<!-- lsp:hover:13:6 -->
+```go
 type Embedder interface {
+    // Embed returns a normalised embedding vector for the given text.
     Embed(ctx context.Context, text string) ([]float32, error)
 }
+```
+<!-- lsp:refs:13:6 --> count=2 (gemini, ollama; excl. test mocks)
 
+```go
 // optional batch extension
 type BatchEmbedder interface {
     Embedder
@@ -137,11 +144,18 @@ key facts:
 
 file: business/sdk/llm/
 
+<!-- lsp:hover:12:6 -->
 ```go
 type Provider interface {
+    // StreamChat sends a request and returns a channel of streaming events.
+    // The channel is closed when the response is complete or an error occurs.
+    // The caller must drain the channel.
     StreamChat(ctx context.Context, req ChatRequest) (<-chan StreamEvent, error)
 }
+```
+<!-- lsp:refs:12:6 --> count=3 (gemini/active, claude, ollama; excl. test mocks)
 
+```go
 type ChatRequest struct {
     SystemPrompt string
     Messages     []Message
@@ -169,6 +183,11 @@ type StreamEvent struct {
 }
 ```
 
+Implementors (verified 2026-03-09):
+  business/sdk/llm/gemini/gemini.go   ← ACTIVE (Gemini Flash 2.5)
+  business/sdk/llm/claude/claude.go   ← available (not active)
+  business/sdk/llm/ollama/ollama.go   ← available (not active)
+
 key facts:
   - Active provider: Gemini Flash 2.5 (not Claude)
   - Provider is injected at startup; swapping requires only a new Provider implementation
@@ -179,7 +198,8 @@ key facts:
 
 file: business/sdk/toolcatalog/toolcatalog.go
 key facts:
-  - 55 tool name constants organized in two groups
+  <!-- lsp:refs:12:1 --> count=53 (exported constants, documentSymbol)
+  - 53 tool name constants organized in two groups (verified 2026-03-09)
 
 GroupWorkflow tools (workflow discovery, read, write, draft, alerts):
   Discover, DiscoverActionTypes, DiscoverTriggerTypes, DiscoverEntityTypes, DiscoverEntities
@@ -213,6 +233,7 @@ GroupTables tools (UI config, page content, forms, table configs):
   business/sdk/llm/                          (ToolDef.ExampleQueries — improve RAG recall)
   mcp/tools/                                 (add corresponding MCP tool if needed — separate module)
   api/cmd/services/ichor/tests/agentapi/     (integration test for new tool call)
+  verify: documentSymbol(business/sdk/toolcatalog/toolcatalog.go) — confirm constant is in correct group (GroupWorkflow vs GroupTables) and total count updated
 
 ## ⚠ Changing the LLM provider
 
@@ -228,3 +249,4 @@ GroupTables tools (UI config, page content, forms, table configs):
     (context.WithoutCancel, http.ResponseController deadline clearing, sseWriter)
   Note: route MUST remain RawHandlerFunc — switching to standard HandlerFunc
   will break streaming (OTEL wrapper + WriteTimeout conflict)
+
