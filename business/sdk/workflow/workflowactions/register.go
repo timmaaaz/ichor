@@ -3,9 +3,11 @@ package workflowactions
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
@@ -47,6 +49,8 @@ type BusDependencies struct {
 	InventoryItem        *inventoryitembus.Business
 	InventoryLocation    *inventorylocationbus.Business
 	InventoryTransaction *inventorytransactionbus.Business
+	InventoryAdjustment  *inventoryadjustmentbus.Business
+	TransferOrder        *transferorderbus.Business
 	Product              *productbus.Business
 	Workflow             *workflow.Business
 
@@ -126,6 +130,16 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 	registry.Register(inventory.NewCommitAllocationHandler(config.Log, config.DB, config.Buses.InventoryItem))
 	registry.Register(inventory.NewReserveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.Workflow))
 	registry.Register(inventory.NewReceiveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.InventoryTransaction, config.Buses.SupplierProduct))
+
+	if config.Buses.InventoryAdjustment != nil {
+		registry.Register(inventory.NewApproveInventoryAdjustmentHandler(config.Log, config.Buses.InventoryAdjustment))
+		registry.Register(inventory.NewRejectInventoryAdjustmentHandler(config.Log, config.Buses.InventoryAdjustment))
+	}
+
+	if config.Buses.TransferOrder != nil {
+		registry.Register(inventory.NewApproveTransferOrderHandler(config.Log, config.Buses.TransferOrder))
+		registry.Register(inventory.NewRejectTransferOrderHandler(config.Log, config.Buses.TransferOrder))
+	}
 }
 
 // RegisterProcurementActions registers procurement-domain action handlers.
@@ -139,6 +153,8 @@ func RegisterProcurementActions(registry *workflow.ActionRegistry, config Action
 			config.Buses.PurchaseOrderLineItem,
 			config.Buses.SupplierProduct,
 		))
+		registry.Register(procurement.NewApprovePurchaseOrderHandler(config.Log, config.Buses.PurchaseOrder))
+		registry.Register(procurement.NewRejectPurchaseOrderHandler(config.Log, config.Buses.PurchaseOrder))
 	}
 }
 

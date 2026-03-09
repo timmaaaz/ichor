@@ -477,6 +477,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Buses: workflowactions.BusDependencies{
 			InventoryItem:         inventoryItemBus,
 			InventoryTransaction:  inventoryTransactionBus,
+			InventoryAdjustment:   inventoryAdjustmentBus,
+			TransferOrder:         transferOrderBus,
 			SupplierProduct:       supplierProductBus,
 			PurchaseOrder:         purchaseOrderBus,
 			PurchaseOrderLineItem: purchaseOrderLineItemBus,
