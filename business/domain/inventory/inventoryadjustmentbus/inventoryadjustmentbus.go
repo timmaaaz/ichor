@@ -24,6 +24,13 @@ var (
 	ErrInvalidApprovalStatus = errors.New("inventory adjustment is not in pending status")
 )
 
+// Inventory adjustment approval status values.
+const (
+	ApprovalStatusPending  = "pending"
+	ApprovalStatusApproved = "approved"
+	ApprovalStatusRejected = "rejected"
+)
+
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
 type Storer interface {
@@ -80,7 +87,7 @@ func (b *Business) Create(ctx context.Context, nia NewInventoryAdjustment) (Inve
 		LocationID:            nia.LocationID,
 		AdjustedBy:            nia.AdjustedBy,
 		ApprovedBy:            nia.ApprovedBy,
-		ApprovalStatus:        "pending",
+		ApprovalStatus:        ApprovalStatusPending,
 		QuantityChange:        nia.QuantityChange,
 		ReasonCode:            nia.ReasonCode,
 		Notes:                 nia.Notes,
@@ -183,7 +190,7 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.approve")
 	defer span.End()
 
-	if ia.ApprovalStatus != "pending" {
+	if ia.ApprovalStatus != ApprovalStatusPending {
 		return InventoryAdjustment{}, fmt.Errorf("approve: %w", ErrInvalidApprovalStatus)
 	}
 
@@ -191,7 +198,7 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 
 	now := time.Now()
 	ia.ApprovedBy = &approvedBy
-	ia.ApprovalStatus = "approved"
+	ia.ApprovalStatus = ApprovalStatusApproved
 	ia.ApprovalReason = reason
 	ia.UpdatedDate = now
 
@@ -211,14 +218,14 @@ func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment, rejectedB
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.reject")
 	defer span.End()
 
-	if ia.ApprovalStatus != "pending" {
+	if ia.ApprovalStatus != ApprovalStatusPending {
 		return InventoryAdjustment{}, fmt.Errorf("reject: %w", ErrInvalidApprovalStatus)
 	}
 
 	before := ia
 
 	ia.RejectedBy = &rejectedBy
-	ia.ApprovalStatus = "rejected"
+	ia.ApprovalStatus = ApprovalStatusRejected
 	ia.RejectionReason = reason
 	ia.UpdatedDate = time.Now()
 

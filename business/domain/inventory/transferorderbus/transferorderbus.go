@@ -24,6 +24,13 @@ var (
 	ErrInvalidTransferStatus = errors.New("transfer order is not in a state that allows approval/rejection")
 )
 
+// Transfer order status values.
+const (
+	StatusPending  = "pending"
+	StatusApproved = "approved"
+	StatusRejected = "rejected"
+)
+
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
 type Storer interface {
@@ -203,7 +210,7 @@ func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uui
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.approve")
 	defer span.End()
 
-	if to.Status == "approved" || to.Status == "rejected" {
+	if to.Status == StatusApproved || to.Status == StatusRejected {
 		return TransferOrder{}, fmt.Errorf("approve: %w", ErrInvalidTransferStatus)
 	}
 
@@ -211,7 +218,7 @@ func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uui
 
 	now := time.Now()
 	to.ApprovedByID = &approvedBy
-	to.Status = "approved"
+	to.Status = StatusApproved
 	to.ApprovalReason = reason
 	to.UpdatedDate = now
 
@@ -231,7 +238,7 @@ func (b *Business) Reject(ctx context.Context, to TransferOrder, rejectedBy uuid
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.reject")
 	defer span.End()
 
-	if to.Status == "approved" || to.Status == "rejected" {
+	if to.Status == StatusApproved || to.Status == StatusRejected {
 		return TransferOrder{}, fmt.Errorf("reject: %w", ErrInvalidTransferStatus)
 	}
 
@@ -239,7 +246,7 @@ func (b *Business) Reject(ctx context.Context, to TransferOrder, rejectedBy uuid
 
 	now := time.Now()
 	to.RejectedByID = &rejectedBy
-	to.Status = "rejected"
+	to.Status = StatusRejected
 	to.RejectionReason = reason
 	to.UpdatedDate = now
 
