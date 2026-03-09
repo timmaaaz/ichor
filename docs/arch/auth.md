@@ -63,6 +63,7 @@ key facts:
 ## PermissionsBus [bus]
 
 file: business/domain/core/permissionsbus/permissionsbus.go
+<!-- lsp:refs:35:6 --> count=88 refs across 81 files (excl. test mocks)
 ```go
 type Business struct {
     log            *logger.Logger
@@ -84,7 +85,7 @@ Storer interface:
   QueryUserPermissions(ctx, userID) (UserPermissions, error)
   ClearCache()
 
-import scope: 89 files in api/ and app/
+import scope: 81 files reference permissionsbus.Business (verified 2026-03-09)
 
 ---
 
@@ -221,3 +222,4 @@ key facts:
   app/sdk/mid/mid.go         (define key type + Set*/Get* helpers)
   The new middleware file     (call setXxx(ctx, value) to inject)
   All callers that read it    (call GetXxx(ctx) to extract — compile error if missing)
+
