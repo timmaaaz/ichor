@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -97,6 +96,10 @@ func (h *UpdateFieldHandler) Validate(config json.RawMessage) error {
 		return fmt.Errorf("invalid target_entity: %s", cfg.TargetEntity)
 	}
 
+	if !IsValidColumnName(cfg.TargetField) {
+		return fmt.Errorf("invalid target_field: %s", cfg.TargetField)
+	}
+
 	// Validate foreign key config if present
 	if cfg.FieldType == "foreign_key" {
 		if cfg.ForeignKeyConfig == nil {
@@ -111,12 +114,21 @@ func (h *UpdateFieldHandler) Validate(config json.RawMessage) error {
 		if !IsValidTableName(cfg.ForeignKeyConfig.ReferenceTable) {
 			return fmt.Errorf("invalid reference_table: %s", cfg.ForeignKeyConfig.ReferenceTable)
 		}
+		if cfg.ForeignKeyConfig.IDField != "" && !IsValidColumnName(cfg.ForeignKeyConfig.IDField) {
+			return fmt.Errorf("invalid foreign_key_config.id_field: %s", cfg.ForeignKeyConfig.IDField)
+		}
+		if !IsValidColumnName(cfg.ForeignKeyConfig.LookupField) {
+			return fmt.Errorf("invalid foreign_key_config.lookup_field: %s", cfg.ForeignKeyConfig.LookupField)
+		}
 	}
 
 	// Validate conditions
 	for i, condition := range cfg.Conditions {
 		if condition.FieldName == "" {
 			return fmt.Errorf("condition %d: field_name is required", i)
+		}
+		if !IsValidColumnName(condition.FieldName) {
+			return fmt.Errorf("condition %d: invalid field_name: %s", i, condition.FieldName)
 		}
 		if condition.Operator == "" {
 			return fmt.Errorf("condition %d: operator is required", i)
@@ -277,13 +289,15 @@ func (h *UpdateFieldHandler) resolveForeignKey(ctx context.Context, value any, f
 				idField = "id"
 			}
 
-			query := fmt.Sprintf("SELECT %s FROM %s WHERE %s = $1", idField, fkConfig.ReferenceTable, idField)
-			var exists uuid.UUID
-			err := h.db.GetContext(ctx, &exists, query, id)
-			if err == nil {
-				return id, nil
+			query := fmt.Sprintf("SELECT %s AS val FROM %s WHERE %s = :id", idField, fkConfig.ReferenceTable, idField)
+			var existsDest struct {
+				Val uuid.UUID `db:"val"`
 			}
-			if !errors.Is(err, sql.ErrNoRows) {
+			err := sqldb.NamedQueryStruct(ctx, h.log, h.db, query, map[string]any{"id": id}, &existsDest)
+			if err == nil {
+				return existsDest.Val, nil
+			}
+			if !errors.Is(err, sqldb.ErrDBNotFound) {
 				return nil, fmt.Errorf("failed to validate foreign key: %w", err)
 			}
 		}
@@ -295,15 +309,17 @@ func (h *UpdateFieldHandler) resolveForeignKey(ctx context.Context, value any, f
 		idField = "id"
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM %s WHERE %s = $1", idField, fkConfig.ReferenceTable, fkConfig.LookupField)
-	var resolvedID uuid.UUID
-	err := h.db.GetContext(ctx, &resolvedID, query, value)
+	query := fmt.Sprintf("SELECT %s AS val FROM %s WHERE %s = :lookup_value", idField, fkConfig.ReferenceTable, fkConfig.LookupField)
+	var resolvedDest struct {
+		Val uuid.UUID `db:"val"`
+	}
+	err := sqldb.NamedQueryStruct(ctx, h.log, h.db, query, map[string]any{"lookup_value": value}, &resolvedDest)
 
 	if err == nil {
-		return resolvedID, nil
+		return resolvedDest.Val, nil
 	}
 
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, sqldb.ErrDBNotFound) {
 		return nil, fmt.Errorf("lookup query failed: %w", err)
 	}
 

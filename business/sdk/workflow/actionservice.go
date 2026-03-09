@@ -310,7 +310,7 @@ func (s *ActionService) GetExecutionStatus(ctx context.Context, executionID uuid
 			error_message,
 			executed_at
 		FROM workflow.automation_executions
-		WHERE id = $1
+		WHERE id = :execution_id
 	`
 
 	var row struct {
@@ -322,8 +322,11 @@ func (s *ActionService) GetExecutionStatus(ctx context.Context, executionID uuid
 		ExecutedAt      time.Time       `db:"executed_at"`
 	}
 
-	if err := s.db.GetContext(ctx, &row, query, executionID); err != nil {
-		return nil, fmt.Errorf("execution not found: %w", err)
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, query, map[string]any{"execution_id": executionID}, &row); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return nil, fmt.Errorf("execution not found: %s", executionID)
+		}
+		return nil, fmt.Errorf("execution query failed: %w", err)
 	}
 
 	statusInfo := &ExecutionStatusInfo{

@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -77,6 +76,10 @@ func (h *TransitionStatusHandler) Validate(config json.RawMessage) error {
 		return errors.New("status_field is required")
 	}
 
+	if !IsValidColumnName(cfg.StatusField) {
+		return fmt.Errorf("invalid status_field: %s", cfg.StatusField)
+	}
+
 	if cfg.ToStatus == "" {
 		return errors.New("to_status is required")
 	}
@@ -111,15 +114,18 @@ func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMe
 	toStatus := processTemplateValue(h.templateProc, ctx, h.log, cfg.ToStatus, templateContext)
 
 	// Read current status
-	selectQuery := fmt.Sprintf("SELECT %s FROM %s WHERE id = $1", cfg.StatusField, cfg.TargetEntity)
-	var currentStatus string
-	err := h.db.GetContext(ctx, &currentStatus, selectQuery, targetID)
+	selectQuery := fmt.Sprintf("SELECT %s AS val FROM %s WHERE id = :target_id", cfg.StatusField, cfg.TargetEntity)
+	var statusDest struct {
+		Val string `db:"val"`
+	}
+	err := sqldb.NamedQueryStruct(ctx, h.log, h.db, selectQuery, map[string]any{"target_id": targetID}, &statusDest)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return nil, fmt.Errorf("entity not found: %s with id %v", cfg.TargetEntity, targetID)
 		}
 		return nil, fmt.Errorf("failed to read current status: %w", err)
 	}
+	currentStatus := statusDest.Val
 
 	// Validate transition
 	validFrom := false

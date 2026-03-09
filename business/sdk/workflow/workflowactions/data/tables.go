@@ -1,5 +1,16 @@
 package data
 
+import "regexp"
+
+// validColumnName matches lowercase PostgreSQL identifiers: letter start,
+// letters/digits/underscores, max 63 chars (NAMEDATALEN limit).
+var validColumnName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
+
+// IsValidColumnName validates a column name against the PostgreSQL identifier rules.
+func IsValidColumnName(name string) bool {
+	return validColumnName.MatchString(name)
+}
+
 // validTables is a map-based whitelist of table names that workflow actions
 // can interact with. Map lookup is O(1) vs O(n) slice iteration.
 var validTables = map[string]bool{
