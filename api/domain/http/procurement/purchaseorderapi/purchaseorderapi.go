@@ -114,6 +114,31 @@ func (api *api) queryByIDs(ctx context.Context, r *http.Request) web.Encoder {
 	return orders
 }
 
+func (api *api) reject(ctx context.Context, r *http.Request) web.Encoder {
+	var app purchaseorderapp.RejectRequest
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	poID := web.Param(r, "purchase_order_id")
+	parsed, err := uuid.Parse(poID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	rejectedBy, err := uuid.Parse(app.RejectedBy)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	po, err := api.purchaseorderapp.Reject(ctx, parsed, rejectedBy, app.RejectionReason)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return po
+}
+
 func (api *api) approve(ctx context.Context, r *http.Request) web.Encoder {
 	var app purchaseorderapp.ApproveRequest
 	if err := web.Decode(r, &app); err != nil {
@@ -131,7 +156,7 @@ func (api *api) approve(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	po, err := api.purchaseorderapp.Approve(ctx, parsed, approvedBy)
+	po, err := api.purchaseorderapp.Approve(ctx, parsed, approvedBy, app.ApprovalReason)
 	if err != nil {
 		return errs.NewError(err)
 	}

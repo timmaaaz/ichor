@@ -52,6 +52,10 @@ type PurchaseOrder struct {
 	RequestedBy             string `json:"requested_by"`
 	ApprovedBy              string `json:"approved_by"`
 	ApprovedDate            string `json:"approved_date"`
+	ApprovalReason          string `json:"approval_reason"`
+	RejectedBy              string `json:"rejected_by"`
+	RejectedDate            string `json:"rejected_date"`
+	RejectionReason         string `json:"rejection_reason"`
 	Notes                   string `json:"notes"`
 	SupplierReferenceNumber string `json:"supplier_reference_number"`
 	CreatedBy               string `json:"created_by"`
@@ -79,8 +83,18 @@ func ToAppPurchaseOrder(bus purchaseorderbus.PurchaseOrder) PurchaseOrder {
 	}
 
 	approvedBy := ""
-	if bus.ApprovedBy != uuid.Nil {
+	if bus.ApprovedBy != nil {
 		approvedBy = bus.ApprovedBy.String()
+	}
+
+	rejectedBy := ""
+	if bus.RejectedBy != nil {
+		rejectedBy = bus.RejectedBy.String()
+	}
+
+	rejectedDate := ""
+	if !bus.RejectedDate.IsZero() {
+		rejectedDate = bus.RejectedDate.Format(timeutil.FORMAT)
 	}
 
 	deliveryLocationID := ""
@@ -112,6 +126,10 @@ func ToAppPurchaseOrder(bus purchaseorderbus.PurchaseOrder) PurchaseOrder {
 		RequestedBy:             bus.RequestedBy.String(),
 		ApprovedBy:              approvedBy,
 		ApprovedDate:            approvedDate,
+		ApprovalReason:          bus.ApprovalReason,
+		RejectedBy:              rejectedBy,
+		RejectedDate:            rejectedDate,
+		RejectionReason:         bus.RejectionReason,
 		Notes:                   bus.Notes,
 		SupplierReferenceNumber: bus.SupplierReferenceNumber,
 		CreatedBy:               bus.CreatedBy.String(),
@@ -504,7 +522,8 @@ func (app QueryByIDsRequest) Validate() error {
 
 // ApproveRequest represents a request to approve a purchase order.
 type ApproveRequest struct {
-	ApprovedBy string `json:"approved_by" validate:"required,uuid"`
+	ApprovedBy     string `json:"approved_by" validate:"required,uuid"`
+	ApprovalReason string `json:"approval_reason"`
 }
 
 // Decode implements the Decoder interface.
@@ -520,4 +539,22 @@ func (app ApproveRequest) Validate() error {
 	return nil
 }
 
+// RejectRequest represents a request to reject a purchase order.
+type RejectRequest struct {
+	RejectedBy      string `json:"rejected_by" validate:"required,uuid"`
+	RejectionReason string `json:"rejection_reason"`
+}
+
+// Decode implements the Decoder interface.
+func (app *RejectRequest) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate validates the RejectRequest fields.
+func (app RejectRequest) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
 

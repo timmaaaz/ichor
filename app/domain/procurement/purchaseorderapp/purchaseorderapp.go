@@ -154,7 +154,7 @@ func (a *App) QueryByIDs(ctx context.Context, ids []string) (PurchaseOrders, err
 }
 
 // Approve approves a purchase order.
-func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (PurchaseOrder, error) {
+func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID, reason string) (PurchaseOrder, error) {
 	po, err := a.purchaseorderbus.QueryByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, purchaseorderbus.ErrNotFound) {
@@ -163,10 +163,34 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (
 		return PurchaseOrder{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
-	approvedPO, err := a.purchaseorderbus.Approve(ctx, po, approvedBy, "")
+	approvedPO, err := a.purchaseorderbus.Approve(ctx, po, approvedBy, reason)
 	if err != nil {
-		return PurchaseOrder{}, errs.Newf(errs.Internal, "approve: purchaseorder[%+v]: %s", approvedPO, err)
+		if errors.Is(err, purchaseorderbus.ErrAlreadyApproved) {
+			return PurchaseOrder{}, errs.New(errs.InvalidArgument, err)
+		}
+		return PurchaseOrder{}, errs.Newf(errs.Internal, "approve: %s", err)
 	}
 
 	return ToAppPurchaseOrder(approvedPO), nil
+}
+
+// Reject rejects a purchase order.
+func (a *App) Reject(ctx context.Context, id uuid.UUID, rejectedBy uuid.UUID, reason string) (PurchaseOrder, error) {
+	po, err := a.purchaseorderbus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, purchaseorderbus.ErrNotFound) {
+			return PurchaseOrder{}, errs.New(errs.NotFound, err)
+		}
+		return PurchaseOrder{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+	}
+
+	rejectedPO, err := a.purchaseorderbus.Reject(ctx, po, rejectedBy, reason)
+	if err != nil {
+		if errors.Is(err, purchaseorderbus.ErrAlreadyApproved) || errors.Is(err, purchaseorderbus.ErrAlreadyRejected) {
+			return PurchaseOrder{}, errs.New(errs.InvalidArgument, err)
+		}
+		return PurchaseOrder{}, errs.Newf(errs.Internal, "reject: %s", err)
+	}
+
+	return ToAppPurchaseOrder(rejectedPO), nil
 }
