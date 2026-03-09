@@ -57,7 +57,7 @@ func insertApprovalSeedData(db *dbtest.Database) (approvalSeedData, error) {
 	}
 
 	store := approvalrequestdb.NewStore(db.Log, db.DB)
-	approvalBus := approvalrequestbus.NewBusiness(db.Log, store)
+	approvalBus := approvalrequestbus.NewBusiness(db.Log, nil, store)
 
 	return approvalSeedData{
 		ApprovalBus: approvalBus,

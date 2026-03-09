@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -35,15 +36,17 @@ type Storer interface {
 
 // Business manages approval request operations.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log      *logger.Logger
+	delegate *delegate.Delegate
+	storer   Storer
 }
 
 // NewBusiness constructs an approval request business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:      log,
+		delegate: del,
+		storer:   storer,
 	}
 }
 
@@ -56,8 +59,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}
 
 	bus := Business{
-		log:    b.log,
-		storer: storer,
+		log:      b.log,
+		delegate: b.delegate,
+		storer:   storer,
 	}
 
 	return &bus, nil

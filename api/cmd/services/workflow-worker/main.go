@@ -176,7 +176,7 @@ func run(log *logger.Logger) error {
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
 
 	// Approval request bus - required for seek_approval action.
-	approvalRequestBus := approvalrequestbus.NewBusiness(log, approvalrequestdb.NewStore(log, db))
+	approvalRequestBus := approvalrequestbus.NewBusiness(log, del, approvalrequestdb.NewStore(log, db))
 
 	// =========================================================================
 	// Action Registry

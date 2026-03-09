@@ -266,7 +266,7 @@ func startAsyncInvalidApproverUUID(_ seekSeedData) unitest.Table {
 			// For this test, we just need to verify UUID parsing fails first.
 			// Use a handler with non-nil bus stubs — but since we can't easily mock,
 			// we use a real handler that will fail on UUID parse before DB call.
-			mockApprovalBus := approvalrequestbus.NewBusiness(log, &noopApprovalStorer{})
+			mockApprovalBus := approvalrequestbus.NewBusiness(log, nil, &noopApprovalStorer{})
 			mockAlertBus := alertbus.NewBusiness(log, &noopAlertStorer{})
 			handler := approval.NewSeekApprovalHandler(log, nil, mockApprovalBus, mockAlertBus)
 
@@ -358,7 +358,7 @@ func executeInvalidApproverUUID(_ seekSeedData) unitest.Table {
 		ExpResp: true,
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			mockApprovalBus := approvalrequestbus.NewBusiness(log, &noopApprovalStorer{})
+			mockApprovalBus := approvalrequestbus.NewBusiness(log, nil, &noopApprovalStorer{})
 			handler := approval.NewSeekApprovalHandler(log, nil, mockApprovalBus, nil)
 
 			config := json.RawMessage(`{
@@ -463,7 +463,7 @@ func Test_SeekApprovalHandler_StartAsync_WithDB(t *testing.T) {
 	approverA := uuid.New()
 	approverB := uuid.New()
 
-	approvalStore := approvalrequestbus.NewBusiness(db.Log, newApprovalRequestStore(db))
+	approvalStore := approvalrequestbus.NewBusiness(db.Log, nil, newApprovalRequestStore(db))
 	handler := approval.NewSeekApprovalHandler(db.Log, db.DB, approvalStore, db.BusDomain.Alert)
 
 	t.Run("creates_approval_request_with_task_token", func(t *testing.T) {
