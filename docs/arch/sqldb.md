@@ -9,7 +9,8 @@
 
 file: business/sdk/sqldb/sqldb.go
 key facts:
-  - Most imported SDK package: 185+ importers
+<!-- lsp:refs:199:6 --> count=129 (excl. test mocks)
+  - Most imported SDK package; NamedQuerySlice alone: 129 call sites across 75 db store files (verified 2026-03-09)
   - Thin wrapper over sqlx: parameterized query helpers + connection config + sentinel errors
 
 ```go
@@ -80,3 +81,6 @@ Affected pattern (every file matching this path):
   api/cmd/services/ichor/main.go                  (config parsing via conf/v3)
   zarf/k8s/ (K8s manifests / secrets)             (env vars must match ICHOR_DB_* pattern)
   Makefile                                         (dev database targets)
+
+---
+
