@@ -572,7 +572,7 @@ func GetProductFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.N
 		},
 		{
 			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
-			Name: "category_id", Label: "Category", FieldType: "smart-combobox", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "products.product_categories", "display_field": "name"}`),
+			Name: "product_category_id", Label: "Category", FieldType: "smart-combobox", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "products.product_categories", "display_field": "name"}`),
 		},
 		{
 			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
