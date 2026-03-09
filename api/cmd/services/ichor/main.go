@@ -158,7 +158,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			// identify the real client IP. Leave empty (default) when the
 			// service is accessed directly without a reverse proxy.
 			// Env: ICHOR_RATELIMIT_TRUSTEDPROXYCIDRS
-			TrustedProxyCIDRs string `conf:"default:"`
+			TrustedProxyCIDRs string
 		}
 		LLM struct {
 			Provider       string `conf:"default:gemini"`
