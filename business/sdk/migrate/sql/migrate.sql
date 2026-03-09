@@ -2071,7 +2071,7 @@ WHERE ar.is_active = true;
 CREATE TABLE workflow.approval_requests (
     approval_request_id UUID        NOT NULL,
     execution_id        UUID        NOT NULL REFERENCES workflow.automation_executions(id),
-    rule_id             UUID        NOT NULL REFERENCES workflow.automation_rules(id),
+    rule_id             UUID        REFERENCES workflow.automation_rules(id),
     action_name         VARCHAR(100) NOT NULL,
     approvers           UUID[]      NOT NULL,
     approval_type       VARCHAR(20) NOT NULL DEFAULT 'any' CHECK (approval_type IN ('any', 'all', 'majority')),

@@ -13,7 +13,7 @@ import (
 type dbApprovalRequest struct {
 	ID               uuid.UUID      `db:"approval_request_id"`
 	ExecutionID      uuid.UUID      `db:"execution_id"`
-	RuleID           uuid.UUID      `db:"rule_id"`
+	RuleID           uuid.NullUUID  `db:"rule_id"`
 	RuleName         sql.NullString `db:"rule_name"`
 	ActionName       string         `db:"action_name"`
 	Approvers        dbarray.String `db:"approvers"`
@@ -37,7 +37,7 @@ func toDBApprovalRequest(req approvalrequestbus.ApprovalRequest) dbApprovalReque
 	db := dbApprovalRequest{
 		ID:           req.ID,
 		ExecutionID:  req.ExecutionID,
-		RuleID:       req.RuleID,
+		RuleID:       uuid.NullUUID{UUID: req.RuleID, Valid: req.RuleID != uuid.Nil},
 		ActionName:   req.ActionName,
 		Approvers:    approvers,
 		ApprovalType: req.ApprovalType,
@@ -76,7 +76,7 @@ func toBusApprovalRequest(db dbApprovalRequest) (approvalrequestbus.ApprovalRequ
 	req := approvalrequestbus.ApprovalRequest{
 		ID:           db.ID,
 		ExecutionID:  db.ExecutionID,
-		RuleID:       db.RuleID,
+		RuleID:       db.RuleID.UUID,
 		ActionName:   db.ActionName,
 		Approvers:    approvers,
 		ApprovalType: db.ApprovalType,
