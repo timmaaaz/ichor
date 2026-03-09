@@ -326,8 +326,6 @@ type UpdatePurchaseOrder struct {
 	ShippingCost            *string `json:"shipping_cost" validate:"omitempty"`
 	TotalAmount             *string `json:"total_amount" validate:"omitempty"`
 	CurrencyID              *string `json:"currency_id" validate:"omitempty,uuid"`
-	ApprovedBy              *string `json:"approved_by" validate:"omitempty,uuid"`
-	ApprovedDate            *string `json:"approved_date" validate:"omitempty"`
 	Notes                   *string `json:"notes" validate:"omitempty"`
 	SupplierReferenceNumber *string `json:"supplier_reference_number" validate:"omitempty"`
 	UpdatedBy               *string `json:"updated_by" validate:"omitempty,uuid"`
@@ -456,22 +454,6 @@ func toBusUpdatePurchaseOrder(app UpdatePurchaseOrder) (purchaseorderbus.UpdateP
 			return purchaseorderbus.UpdatePurchaseOrder{}, errs.NewFieldsError("currencyId", err)
 		}
 		dest.CurrencyID = &currencyID
-	}
-
-	if app.ApprovedBy != nil {
-		approvedBy, err := uuid.Parse(*app.ApprovedBy)
-		if err != nil {
-			return purchaseorderbus.UpdatePurchaseOrder{}, errs.NewFieldsError("approvedBy", err)
-		}
-		dest.ApprovedBy = &approvedBy
-	}
-
-	if app.ApprovedDate != nil {
-		approvedDate, err := parseFlexibleDate(*app.ApprovedDate)
-		if err != nil {
-			return purchaseorderbus.UpdatePurchaseOrder{}, errs.NewFieldsError("approvedDate", err)
-		}
-		dest.ApprovedDate = &approvedDate
 	}
 
 	if app.Notes != nil {
