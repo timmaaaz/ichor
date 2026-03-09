@@ -51,11 +51,15 @@ key facts:
 
 ## TriggerProcessor / RuleMatcher [sdk]
 
-file: business/sdk/workflow/temporal/ (TriggerProcessor)
+file: business/sdk/workflow/trigger.go  (TriggerProcessor — NOT in temporal/)
 imports: workflow.Business[bus]
 key facts:
   - RuleMatcher interface extracted for unit test isolation
-  - Initialize() loads active rules (NOT LoadRules())
+  - <!-- lsp:hover:88:29 -->
+    ```go
+    func (tp *TriggerProcessor) Initialize(ctx context.Context) error
+    ```
+    Initialize loads active rules (NOT LoadRules())
   - ProcessEvent(ctx, TriggerEvent) → MatchResult{MatchedRules[]}
   - Condition evaluation: TriggerConditions JSON matched against TriggerEvent.FieldChanges
 
@@ -118,7 +122,8 @@ type MergedContext struct {
 file: business/sdk/workflow/temporal/graph_executor.go
 key facts:
   - BFS traversal of ActionNode/ActionEdge graph
-  - Edge types: start, sequence, always (only 3 types — no true_branch/false_branch)
+  - <!-- lsp:refs:37:1 --> names=[EdgeTypeStart,EdgeTypeSequence,EdgeTypeAlways] count=3
+    Edge types: start, sequence, always (only 3 types — no true_branch/false_branch)
   - Parallel branches: fire concurrent activities, merge at convergence point
   - BranchInput.ConvergencePoint = uuid.Nil → fire-and-forget (parent close = abandon)
   - activityOptions(): MaxAttempts=3 sync, MaxAttempts=1 async/human (no duplicate queue)
@@ -173,23 +178,61 @@ type ActionActivityOutput struct {
 ## ActionHandler Interface [sdk]
 
 file: business/sdk/workflow/interfaces.go
+<!-- lsp:hover:39:6 -->
 ```go
 type ActionHandler interface {
-    Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (any, error)
-    Validate(config json.RawMessage) error
-    GetType() string
-    IsAsync() bool
-    SupportsManualExecution() bool
-    GetDescription() string
+	// Execute performs the action with the given configuration and context.
+	// Returns the result data (type varies by handler) and any error encountered.
+	Execute(ctx context.Context, config json.RawMessage, context ActionExecutionContext) (any, error)
+
+	// Validate validates the action configuration before execution.
+	Validate(config json.RawMessage) error
+
+	// GetType returns the unique identifier for this action type (e.g., "allocate_inventory").
+	GetType() string
+
+	// SupportsManualExecution returns true if this action can be triggered manually via API.
+	// Returns false for actions like update_field that should only run via automation.
+	SupportsManualExecution() bool
+
+	// IsAsync returns true if this action queues work for async processing.
+	// Async actions return immediately with tracking info; sync actions complete inline.
+	IsAsync() bool
+
+	// GetDescription returns a human-readable description for discovery APIs.
+	GetDescription() string
 }
 ```
+<!-- lsp:refs:39:6 --> count=20 (production, excl. test mocks)
 
-registered action types (20):
+registered action types (20, verified 2026-03-09):
   seek_approval, evaluate_condition, delay, update_field, create_entity,
   lookup_entity, transition_status, log_audit_entry, check_inventory,
   allocate_inventory, reserve_inventory, release_reservation, check_reorder_point,
   receive_inventory, commit_allocation, send_email, send_notification,
   create_alert, create_purchase_order, call_webhook
+
+Implementors (production only — 3 test mocks excluded):
+  business/sdk/workflow/workflowactions/approval/seek.go              (seek_approval)
+  business/sdk/workflow/workflowactions/communication/alert.go        (create_alert)
+  business/sdk/workflow/workflowactions/communication/email.go        (send_email)
+  business/sdk/workflow/workflowactions/communication/notification.go (send_notification)
+  business/sdk/workflow/workflowactions/control/condition.go          (evaluate_condition)
+  business/sdk/workflow/workflowactions/control/delay.go              (delay)
+  business/sdk/workflow/workflowactions/data/audit.go                 (log_audit_entry)
+  business/sdk/workflow/workflowactions/data/create.go                (create_entity)
+  business/sdk/workflow/workflowactions/data/lookup.go                (lookup_entity)
+  business/sdk/workflow/workflowactions/data/transition.go            (transition_status)
+  business/sdk/workflow/workflowactions/data/updatefield.go           (update_field)
+  business/sdk/workflow/workflowactions/integration/webhook.go        (call_webhook)
+  business/sdk/workflow/workflowactions/inventory/allocate.go         (allocate_inventory)
+  business/sdk/workflow/workflowactions/inventory/check_inventory.go  (check_inventory)
+  business/sdk/workflow/workflowactions/inventory/check_reorder_point.go (check_reorder_point)
+  business/sdk/workflow/workflowactions/inventory/commit_allocation.go (commit_allocation)
+  business/sdk/workflow/workflowactions/inventory/receive.go          (receive_inventory)
+  business/sdk/workflow/workflowactions/inventory/release_reservation.go (release_reservation)
+  business/sdk/workflow/workflowactions/inventory/reserve_inventory.go (reserve_inventory)
+  business/sdk/workflow/workflowactions/procurement/createpo.go       (create_purchase_order)
 
 ---
 
@@ -239,6 +282,7 @@ workflow.automation_executions  — execution history
   api/cmd/services/ichor/build/all/all.go                          (Register() call in ActionRegistry setup)
   business/sdk/dbtest/seedmodels/                                   (new test seed if handler needs domain data)
   docs/workflow/README.md                                           (update handler catalog)
+  verify: goToImplementation(business/sdk/workflow/interfaces.go:39:6) — confirm existing 20 implementors; register new handler alongside them in all.go
 
 ## ⚠ Adding a new Edge type
 
@@ -255,3 +299,4 @@ workflow.automation_executions  — execution history
   business/sdk/workflow/temporal/trigger.go                        (populate new fields when dispatching)
   business/sdk/workflow/temporal/graph_executor.go                 (consume new fields if needed)
   apitest/workflow.go                                               (update test infra if WorkflowInfra changes)
+
