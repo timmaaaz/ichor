@@ -57,6 +57,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus/stores/putawaytaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus/stores/lotlocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
@@ -255,6 +257,7 @@ type BusDomain struct {
 	InventoryTransaction *inventorytransactionbus.Business
 	InventoryAdjustment  *inventoryadjustmentbus.Business
 	TransferOrder        *transferorderbus.Business
+	PutAwayTask          *putawaytaskbus.Business
 
 	// Order
 	OrderFulfillmentStatus    *orderfulfillmentstatusbus.Business
@@ -365,6 +368,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(log, delegate, inventorytransactiondb.NewStore(log, db))
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(log, delegate, inventoryadjustmentdb.NewStore(log, db))
 	transferOrderBus := transferorderbus.NewBusiness(log, delegate, transferorderdb.NewStore(log, db))
+	putAwayTaskBus := putawaytaskbus.NewBusiness(log, delegate, putawaytaskdb.NewStore(log, db))
 
 	// Orders
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
@@ -446,6 +450,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		InventoryTransaction:        inventoryTransactionBus,
 		InventoryAdjustment:         inventoryAdjustmentBus,
 		TransferOrder:               transferOrderBus,
+		PutAwayTask:                 putAwayTaskBus,
 		OrderFulfillmentStatus:      orderFulfillmentStatusBus,
 		LineItemFulfillmentStatus:   lineItemFulfillmentStatusBus,
 		Order:                       ordersBus,
