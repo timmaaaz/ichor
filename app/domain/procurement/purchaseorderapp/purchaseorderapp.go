@@ -163,7 +163,7 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID) (
 		return PurchaseOrder{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
-	approvedPO, err := a.purchaseorderbus.Approve(ctx, po, approvedBy)
+	approvedPO, err := a.purchaseorderbus.Approve(ctx, po, approvedBy, "")
 	if err != nil {
 		return PurchaseOrder{}, errs.Newf(errs.Internal, "approve: purchaseorder[%+v]: %s", approvedPO, err)
 	}

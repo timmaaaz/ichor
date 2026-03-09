@@ -17,8 +17,10 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound = errors.New("purchase order not found")
-	ErrUnique   = errors.New("not unique")
+	ErrNotFound        = errors.New("purchase order not found")
+	ErrUnique          = errors.New("not unique")
+	ErrAlreadyApproved = errors.New("purchase order is already approved")
+	ErrAlreadyRejected = errors.New("purchase order is already rejected")
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -257,20 +259,58 @@ func (b *Business) QueryByIDs(ctx context.Context, poIDs []uuid.UUID) ([]Purchas
 }
 
 // Approve approves a purchase order.
-func (b *Business) Approve(ctx context.Context, po PurchaseOrder, approvedBy uuid.UUID) (PurchaseOrder, error) {
+func (b *Business) Approve(ctx context.Context, po PurchaseOrder, approvedBy uuid.UUID, reason string) (PurchaseOrder, error) {
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.approve")
 	defer span.End()
+
+	if po.ApprovedBy != (uuid.UUID{}) {
+		return PurchaseOrder{}, fmt.Errorf("approve: %w", ErrAlreadyApproved)
+	}
 
 	before := po
 
 	now := time.Now().UTC()
 	po.ApprovedBy = approvedBy
 	po.ApprovedDate = now
+	po.ApprovalReason = reason
 	po.UpdatedBy = approvedBy
 	po.UpdatedDate = now
 
 	if err := b.storer.Update(ctx, po); err != nil {
 		return PurchaseOrder{}, fmt.Errorf("approve: %w", err)
+	}
+
+	// Fire delegate event for workflow automation
+	if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
+		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return po, nil
+}
+
+// Reject rejects a purchase order.
+func (b *Business) Reject(ctx context.Context, po PurchaseOrder, rejectedBy uuid.UUID, reason string) (PurchaseOrder, error) {
+	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.reject")
+	defer span.End()
+
+	if po.ApprovedBy != (uuid.UUID{}) {
+		return PurchaseOrder{}, fmt.Errorf("reject: %w", ErrAlreadyApproved)
+	}
+	if po.RejectedBy != (uuid.UUID{}) {
+		return PurchaseOrder{}, fmt.Errorf("reject: %w", ErrAlreadyRejected)
+	}
+
+	before := po
+
+	now := time.Now().UTC()
+	po.RejectedBy = rejectedBy
+	po.RejectedDate = now
+	po.RejectionReason = reason
+	po.UpdatedBy = rejectedBy
+	po.UpdatedDate = now
+
+	if err := b.storer.Update(ctx, po); err != nil {
+		return PurchaseOrder{}, fmt.Errorf("reject: %w", err)
 	}
 
 	// Fire delegate event for workflow automation

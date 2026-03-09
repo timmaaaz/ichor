@@ -31,6 +31,10 @@ type PurchaseOrder struct {
 	RequestedBy             uuid.UUID `json:"requested_by"`
 	ApprovedBy              uuid.UUID `json:"approved_by"`
 	ApprovedDate            time.Time `json:"approved_date"`
+	ApprovalReason          string    `json:"approval_reason"`
+	RejectedBy              uuid.UUID `json:"rejected_by"`
+	RejectedDate            time.Time `json:"rejected_date"`
+	RejectionReason         string    `json:"rejection_reason"`
 	Notes                   string    `json:"notes"`
 	SupplierReferenceNumber string    `json:"supplier_reference_number"`
 	CreatedBy               uuid.UUID `json:"created_by"`
@@ -79,6 +83,10 @@ type UpdatePurchaseOrder struct {
 	CurrencyID              *uuid.UUID `json:"currency_id,omitempty"`
 	ApprovedBy              *uuid.UUID `json:"approved_by,omitempty"`
 	ApprovedDate            *time.Time `json:"approved_date,omitempty"`
+	ApprovalReason          *string    `json:"approval_reason,omitempty"`
+	RejectedBy              *uuid.UUID `json:"rejected_by,omitempty"`
+	RejectedDate            *time.Time `json:"rejected_date,omitempty"`
+	RejectionReason         *string    `json:"rejection_reason,omitempty"`
 	Notes                   *string    `json:"notes,omitempty"`
 	SupplierReferenceNumber *string    `json:"supplier_reference_number,omitempty"`
 	UpdatedBy               *uuid.UUID `json:"updated_by,omitempty"`
