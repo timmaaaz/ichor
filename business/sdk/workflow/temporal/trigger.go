@@ -62,10 +62,13 @@ type WorkflowTrigger struct {
 	ruleMatcher    RuleMatcher
 	edgeStore      EdgeStore
 	executionStore ExecutionStore
+	taskQueue      string
 }
 
 // NewWorkflowTrigger creates a new trigger handler.
 // The starter parameter accepts client.Client (which satisfies WorkflowStarter).
+// Workflows are dispatched to the default TaskQueue constant. Use WithTaskQueue
+// to override (e.g., in tests where each test has a unique worker task queue).
 func NewWorkflowTrigger(
 	log *logger.Logger,
 	starter WorkflowStarter,
@@ -79,7 +82,16 @@ func NewWorkflowTrigger(
 		ruleMatcher:    rm,
 		edgeStore:      es,
 		executionStore: exs,
+		taskQueue:      TaskQueue,
 	}
+}
+
+// WithTaskQueue overrides the Temporal task queue used when dispatching workflows.
+// Returns the trigger for chaining. Primarily used in tests to route workflows
+// to the per-test worker task queue instead of the global production queue.
+func (t *WorkflowTrigger) WithTaskQueue(tq string) *WorkflowTrigger {
+	t.taskQueue = tq
+	return t
 }
 
 // OnEntityEvent processes an entity event by matching automation rules
@@ -204,7 +216,7 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 	// Start Temporal workflow.
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        workflowID,
-		TaskQueue: TaskQueue,
+		TaskQueue: t.taskQueue,
 	}
 
 	we, err := t.starter.ExecuteWorkflow(ctx, workflowOptions,
