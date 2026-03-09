@@ -18,6 +18,9 @@ type InventoryAdjustment struct {
 	AdjustedBy            uuid.UUID  `json:"adjusted_by"`
 	ApprovedBy            *uuid.UUID `json:"approved_by"`
 	ApprovalStatus        string     `json:"approval_status"`
+	ApprovalReason        string     `json:"approval_reason"`
+	RejectedBy            *uuid.UUID `json:"rejected_by"`
+	RejectionReason       string     `json:"rejection_reason"`
 	QuantityChange        int        `json:"quantity_change"`
 	ReasonCode            string     `json:"reason_code"`
 	Notes                 string     `json:"notes"`
@@ -39,13 +42,16 @@ type NewInventoryAdjustment struct {
 }
 
 type UpdateInventoryAdjustment struct {
-	ProductID      *uuid.UUID `json:"product_id,omitempty"`
-	LocationID     *uuid.UUID `json:"location_id,omitempty"`
-	AdjustedBy     *uuid.UUID `json:"adjusted_by,omitempty"`
-	ApprovedBy     *uuid.UUID `json:"approved_by,omitempty"`
-	ApprovalStatus *string    `json:"approval_status,omitempty"`
-	QuantityChange *int       `json:"quantity_change,omitempty"`
-	ReasonCode     *string    `json:"reason_code,omitempty"`
-	Notes          *string    `json:"notes,omitempty"`
-	AdjustmentDate *time.Time `json:"adjustment_date,omitempty"`
+	ProductID       *uuid.UUID `json:"product_id,omitempty"`
+	LocationID      *uuid.UUID `json:"location_id,omitempty"`
+	AdjustedBy      *uuid.UUID `json:"adjusted_by,omitempty"`
+	ApprovedBy      *uuid.UUID `json:"approved_by,omitempty"`
+	ApprovalStatus  *string    `json:"approval_status,omitempty"`
+	ApprovalReason  *string    `json:"approval_reason,omitempty"`
+	RejectedBy      *uuid.UUID `json:"rejected_by,omitempty"`
+	RejectionReason *string    `json:"rejection_reason,omitempty"`
+	QuantityChange  *int       `json:"quantity_change,omitempty"`
+	ReasonCode      *string    `json:"reason_code,omitempty"`
+	Notes           *string    `json:"notes,omitempty"`
+	AdjustmentDate  *time.Time `json:"adjustment_date,omitempty"`
 }

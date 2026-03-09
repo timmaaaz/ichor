@@ -782,7 +782,12 @@ CREATE TABLE inventory.inventory_adjustments (
    product_id UUID NOT NULL,
    location_id UUID NOT NULL,
    adjusted_by UUID NOT NULL,
-   approved_by UUID NOT NULL,
+   approved_by UUID NULL,
+   approval_status varchar(20) NOT NULL DEFAULT 'pending'
+       CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+   approval_reason TEXT NULL,
+   rejected_by UUID NULL,
+   rejection_reason TEXT NULL,
    quantity_change INT NOT NULL,
    reason_code varchar(50) NOT NULL,
    notes TEXT NOT NULL,
@@ -793,7 +798,8 @@ CREATE TABLE inventory.inventory_adjustments (
    FOREIGN KEY (product_id) REFERENCES products.products(id),
    FOREIGN KEY (location_id) REFERENCES inventory.inventory_locations(id),
    FOREIGN KEY (adjusted_by) REFERENCES core.users(id),
-   FOREIGN KEY (approved_by) REFERENCES core.users(id)
+   FOREIGN KEY (approved_by) REFERENCES core.users(id),
+   FOREIGN KEY (rejected_by) REFERENCES core.users(id)
 );
 
 -- Version: 1.58
@@ -804,7 +810,10 @@ CREATE TABLE inventory.transfer_orders (
    from_location_id UUID NOT NULL,
    to_location_id UUID NOT NULL,
    requested_by UUID NOT NULL,
-   approved_by UUID NOT NULL,
+   approved_by UUID NULL,
+   approval_reason TEXT NULL,
+   rejected_by_id UUID NULL,
+   rejection_reason TEXT NULL,
    quantity int NOT NULL,
    status varchar(20) NOT NULL,
    transfer_date TIMESTAMP NOT NULL,
@@ -815,7 +824,8 @@ CREATE TABLE inventory.transfer_orders (
    FOREIGN KEY (from_location_id) REFERENCES inventory.inventory_locations(id),
    FOREIGN KEY (to_location_id) REFERENCES inventory.inventory_locations(id),
    FOREIGN KEY (requested_by) REFERENCES core.users(id),
-   FOREIGN KEY (approved_by) REFERENCES core.users(id)
+   FOREIGN KEY (approved_by) REFERENCES core.users(id),
+   FOREIGN KEY (rejected_by_id) REFERENCES core.users(id)
 );
 
 
@@ -1588,6 +1598,10 @@ CREATE TABLE procurement.purchase_orders (
    requested_by UUID NOT NULL,
    approved_by UUID NULL,
    approved_date TIMESTAMP NULL,
+   approval_reason TEXT NULL,
+   rejected_by UUID NULL,
+   rejected_date TIMESTAMP NULL,
+   rejection_reason TEXT NULL,
 
    -- Notes and reference
    notes TEXT NULL,
@@ -1607,6 +1621,7 @@ CREATE TABLE procurement.purchase_orders (
    FOREIGN KEY (currency_id) REFERENCES core.currencies(id) ON DELETE RESTRICT,
    FOREIGN KEY (requested_by) REFERENCES core.users(id) ON DELETE RESTRICT,
    FOREIGN KEY (approved_by) REFERENCES core.users(id) ON DELETE SET NULL,
+   FOREIGN KEY (rejected_by) REFERENCES core.users(id) ON DELETE SET NULL,
    FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE RESTRICT,
    FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE RESTRICT,
 
@@ -2126,13 +2141,6 @@ CREATE INDEX idx_put_away_tasks_location ON inventory.put_away_tasks(location_id
 CREATE INDEX idx_put_away_tasks_assigned ON inventory.put_away_tasks(assigned_to)
     WHERE assigned_to IS NOT NULL;
 
--- Version: 2.0
--- Description: Add approval_status to inventory_adjustments and make approved_by nullable.
--- Workers submit adjustments in "pending" state; supervisors approve/reject via PUT.
-ALTER TABLE inventory.inventory_adjustments
-    ADD COLUMN approval_status varchar(20) NOT NULL DEFAULT 'pending'
-        CHECK (approval_status IN ('pending', 'approved', 'rejected')),
-    ALTER COLUMN approved_by DROP NOT NULL;
 
 -- Version: 2.01
 -- Description: Add config.settings table for operator-configurable system settings.
@@ -2181,10 +2189,6 @@ SELECT gen_random_uuid(), id, 'inventory.lot_locations', true, true, true, true 
 ALTER TABLE inventory.inventory_locations
     ADD COLUMN location_code VARCHAR(100) NULL;
 
--- Version: 2.05
--- Description: Make transfer_orders.approved_by nullable to support pending-approval workflow.
-ALTER TABLE inventory.transfer_orders
-    ALTER COLUMN approved_by DROP NOT NULL;
 
 -- Version: 2.06
 -- Description: Add assigned_to column to sales.orders for picker/floor worker assignment.

@@ -145,7 +145,7 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID) (InventoryAdjustment, e
 		return InventoryAdjustment{}, fmt.Errorf("approve [querybyid]: %w", err)
 	}
 
-	ia, err = a.inventoryadjustmentbus.Approve(ctx, ia, userID)
+	ia, err = a.inventoryadjustmentbus.Approve(ctx, ia, userID, "")
 	if err != nil {
 		if errors.Is(err, inventoryadjustmentbus.ErrInvalidApprovalStatus) {
 			return InventoryAdjustment{}, errs.New(errs.InvalidArgument, err)
@@ -157,6 +157,11 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID) (InventoryAdjustment, e
 }
 
 func (a *App) Reject(ctx context.Context, id uuid.UUID) (InventoryAdjustment, error) {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return InventoryAdjustment{}, errs.New(errs.Unauthenticated, err)
+	}
+
 	ia, err := a.inventoryadjustmentbus.QueryByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, inventoryadjustmentbus.ErrNotFound) {
@@ -165,7 +170,7 @@ func (a *App) Reject(ctx context.Context, id uuid.UUID) (InventoryAdjustment, er
 		return InventoryAdjustment{}, fmt.Errorf("reject [querybyid]: %w", err)
 	}
 
-	ia, err = a.inventoryadjustmentbus.Reject(ctx, ia)
+	ia, err = a.inventoryadjustmentbus.Reject(ctx, ia, userID, "")
 	if err != nil {
 		if errors.Is(err, inventoryadjustmentbus.ErrInvalidApprovalStatus) {
 			return InventoryAdjustment{}, errs.New(errs.InvalidArgument, err)

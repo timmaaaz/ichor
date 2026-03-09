@@ -124,6 +124,15 @@ func (b *Business) Update(ctx context.Context, ia InventoryAdjustment, u UpdateI
 	if u.ApprovalStatus != nil {
 		ia.ApprovalStatus = *u.ApprovalStatus
 	}
+	if u.ApprovalReason != nil {
+		ia.ApprovalReason = *u.ApprovalReason
+	}
+	if u.RejectedBy != nil {
+		ia.RejectedBy = u.RejectedBy
+	}
+	if u.RejectionReason != nil {
+		ia.RejectionReason = *u.RejectionReason
+	}
 	if u.QuantityChange != nil {
 		ia.QuantityChange = *u.QuantityChange
 	}
@@ -170,7 +179,7 @@ func (b *Business) Delete(ctx context.Context, ia InventoryAdjustment) error {
 }
 
 // Approve sets the approver and marks the inventory adjustment as approved.
-func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approvedBy uuid.UUID) (InventoryAdjustment, error) {
+func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approvedBy uuid.UUID, reason string) (InventoryAdjustment, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.approve")
 	defer span.End()
 
@@ -183,6 +192,7 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 	now := time.Now()
 	ia.ApprovedBy = &approvedBy
 	ia.ApprovalStatus = "approved"
+	ia.ApprovalReason = reason
 	ia.UpdatedDate = now
 
 	if err := b.storer.Update(ctx, ia); err != nil {
@@ -196,8 +206,8 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 	return ia, nil
 }
 
-// Reject marks the inventory adjustment as rejected.
-func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment) (InventoryAdjustment, error) {
+// Reject marks the inventory adjustment as rejected, capturing the rejector and reason.
+func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment, rejectedBy uuid.UUID, reason string) (InventoryAdjustment, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.reject")
 	defer span.End()
 
@@ -207,7 +217,9 @@ func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment) (Inventor
 
 	before := ia
 
+	ia.RejectedBy = &rejectedBy
 	ia.ApprovalStatus = "rejected"
+	ia.RejectionReason = reason
 	ia.UpdatedDate = time.Now()
 
 	if err := b.storer.Update(ctx, ia); err != nil {
