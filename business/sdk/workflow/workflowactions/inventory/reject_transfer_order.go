@@ -100,9 +100,9 @@ func (h *RejectTransferOrderHandler) Execute(ctx context.Context, config json.Ra
 	}
 
 	switch to.Status {
-	case "approved":
+	case transferorderbus.StatusApproved:
 		return map[string]any{"output": "already_approved", "transfer_order_id": cfg.TransferOrderID}, nil
-	case "rejected":
+	case transferorderbus.StatusRejected:
 		return map[string]any{"output": "already_rejected", "transfer_order_id": cfg.TransferOrderID}, nil
 	}
 

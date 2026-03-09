@@ -97,9 +97,9 @@ func (h *ApproveInventoryAdjustmentHandler) Execute(ctx context.Context, config 
 	}
 
 	switch ia.ApprovalStatus {
-	case "approved":
+	case inventoryadjustmentbus.ApprovalStatusApproved:
 		return map[string]any{"output": "already_approved", "adjustment_id": cfg.AdjustmentID}, nil
-	case "rejected":
+	case inventoryadjustmentbus.ApprovalStatusRejected:
 		return map[string]any{"output": "already_rejected", "adjustment_id": cfg.AdjustmentID}, nil
 	}
 
