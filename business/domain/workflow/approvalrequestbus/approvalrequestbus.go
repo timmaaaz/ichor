@@ -119,6 +119,12 @@ func (b *Business) Resolve(ctx context.Context, id, resolvedBy uuid.UUID, status
 		return ApprovalRequest{}, fmt.Errorf("resolve approval request: %w", err)
 	}
 
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionUpdatedData(ApprovalRequest{ID: id}, req)); err != nil {
+			b.log.Error(ctx, "approvalrequestbus: delegate call failed on resolve", "err", err)
+		}
+	}
+
 	return req, nil
 }
 
