@@ -63,7 +63,7 @@ key facts:
 ## PermissionsBus [bus]
 
 file: business/domain/core/permissionsbus/permissionsbus.go
-<!-- lsp:refs:35:6 --> count=88 refs across 81 files (excl. test mocks)
+<!-- lsp:refs:35:6 --> count=88 (excl. test mocks)
 ```go
 type Business struct {
     log            *logger.Logger
@@ -84,8 +84,6 @@ Storer interface:
   NewWithTx(tx) (Storer, error)
   QueryUserPermissions(ctx, userID) (UserPermissions, error)
   ClearCache()
-
-import scope: 81 files reference permissionsbus.Business (verified 2026-03-09)
 
 ---
 
