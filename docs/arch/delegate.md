@@ -23,7 +23,6 @@ key facts:
 func (d *Delegate) Call(ctx context.Context, data Data) error
 ```
 <!-- lsp:refs:48:21 --> count=205 (excl. test mocks)
-  Call(ctx context.Context, data Data) error
 
 ---
 
