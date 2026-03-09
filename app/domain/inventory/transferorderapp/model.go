@@ -31,17 +31,20 @@ type QueryParams struct {
 }
 
 type TransferOrder struct {
-	TransferID     string `json:"transfer_id"`
-	ProductID      string `json:"product_id"`
-	FromLocationID string `json:"from_location_id"`
-	ToLocationID   string `json:"to_location_id"`
-	RequestedByID  string `json:"requested_by"`
-	ApprovedByID   string `json:"approved_by"`
-	Quantity       string `json:"quantity"`
-	Status         string `json:"status"`
-	TransferDate   string `json:"transfer_date"`
-	CreatedDate    string `json:"created_date"`
-	UpdatedDate    string `json:"updated_date"`
+	TransferID      string `json:"transfer_id"`
+	ProductID       string `json:"product_id"`
+	FromLocationID  string `json:"from_location_id"`
+	ToLocationID    string `json:"to_location_id"`
+	RequestedByID   string `json:"requested_by"`
+	ApprovedByID    string `json:"approved_by"`
+	RejectedByID    string `json:"rejected_by_id"`
+	ApprovalReason  string `json:"approval_reason"`
+	RejectionReason string `json:"rejection_reason"`
+	Quantity        string `json:"quantity"`
+	Status          string `json:"status"`
+	TransferDate    string `json:"transfer_date"`
+	CreatedDate     string `json:"created_date"`
+	UpdatedDate     string `json:"updated_date"`
 }
 
 func (app TransferOrder) Encode() ([]byte, string, error) {
@@ -55,18 +58,26 @@ func ToAppTransferOrder(bus transferorderbus.TransferOrder) TransferOrder {
 		approvedByID = bus.ApprovedByID.String()
 	}
 
+	rejectedByID := ""
+	if bus.RejectedByID != nil {
+		rejectedByID = bus.RejectedByID.String()
+	}
+
 	return TransferOrder{
-		TransferID:     bus.TransferID.String(),
-		ProductID:      bus.ProductID.String(),
-		FromLocationID: bus.FromLocationID.String(),
-		ToLocationID:   bus.ToLocationID.String(),
-		RequestedByID:  bus.RequestedByID.String(),
-		ApprovedByID:   approvedByID,
-		Quantity:       fmt.Sprintf("%d", bus.Quantity),
-		Status:         bus.Status,
-		TransferDate:   bus.TransferDate.Format(timeutil.FORMAT),
-		CreatedDate:    bus.CreatedDate.Format(timeutil.FORMAT),
-		UpdatedDate:    bus.UpdatedDate.Format(timeutil.FORMAT),
+		TransferID:      bus.TransferID.String(),
+		ProductID:       bus.ProductID.String(),
+		FromLocationID:  bus.FromLocationID.String(),
+		ToLocationID:    bus.ToLocationID.String(),
+		RequestedByID:   bus.RequestedByID.String(),
+		ApprovedByID:    approvedByID,
+		RejectedByID:    rejectedByID,
+		ApprovalReason:  bus.ApprovalReason,
+		RejectionReason: bus.RejectionReason,
+		Quantity:        fmt.Sprintf("%d", bus.Quantity),
+		Status:          bus.Status,
+		TransferDate:    bus.TransferDate.Format(timeutil.FORMAT),
+		CreatedDate:     bus.CreatedDate.Format(timeutil.FORMAT),
+		UpdatedDate:     bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
 }
 

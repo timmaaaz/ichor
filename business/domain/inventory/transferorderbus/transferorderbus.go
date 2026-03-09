@@ -21,6 +21,7 @@ var (
 	ErrAuthenticationFailure = errors.New("authentication failed")
 	ErrUniqueEntry           = errors.New("transferOrder entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
+	ErrInvalidTransferStatus = errors.New("transfer order is not in a state that allows approval/rejection")
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -198,19 +199,52 @@ func (b *Business) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (Tr
 }
 
 // Approve sets the approver and marks the transfer order as approved.
-func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uuid.UUID) (TransferOrder, error) {
+func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uuid.UUID, reason string) (TransferOrder, error) {
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.approve")
 	defer span.End()
+
+	if to.Status == "approved" || to.Status == "rejected" {
+		return TransferOrder{}, fmt.Errorf("approve: %w", ErrInvalidTransferStatus)
+	}
 
 	before := to
 
 	now := time.Now()
 	to.ApprovedByID = &approvedBy
 	to.Status = "approved"
+	to.ApprovalReason = reason
 	to.UpdatedDate = now
 
 	if err := b.storer.Update(ctx, to); err != nil {
 		return TransferOrder{}, fmt.Errorf("approve: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return to, nil
+}
+
+// Reject sets the rejector and marks the transfer order as rejected.
+func (b *Business) Reject(ctx context.Context, to TransferOrder, rejectedBy uuid.UUID, reason string) (TransferOrder, error) {
+	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.reject")
+	defer span.End()
+
+	if to.Status == "approved" || to.Status == "rejected" {
+		return TransferOrder{}, fmt.Errorf("reject: %w", ErrInvalidTransferStatus)
+	}
+
+	before := to
+
+	now := time.Now()
+	to.RejectedByID = &rejectedBy
+	to.Status = "rejected"
+	to.RejectionReason = reason
+	to.UpdatedDate = now
+
+	if err := b.storer.Update(ctx, to); err != nil {
+		return TransferOrder{}, fmt.Errorf("reject: %w", err)
 	}
 
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {

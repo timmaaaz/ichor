@@ -153,7 +153,7 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID) (TransferOrder, error) 
 		return TransferOrder{}, fmt.Errorf("approve [querybyid]: %w", err)
 	}
 
-	approved, err := a.transferorderbus.Approve(ctx, to, userID)
+	approved, err := a.transferorderbus.Approve(ctx, to, userID, "")
 	if err != nil {
 		return TransferOrder{}, fmt.Errorf("approve: %w", err)
 	}
