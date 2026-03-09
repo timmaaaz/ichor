@@ -81,6 +81,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 
 	// Approval actions
 	registry.Register(approval.NewSeekApprovalHandler(config.Log, config.DB, config.Buses.ApprovalRequest, config.Buses.Alert))
+	registry.Register(approval.NewResolveApprovalHandler(config.Log, config.Buses.ApprovalRequest))
 
 	// Communication actions
 	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB, config.EmailClient, config.EmailFrom))
@@ -175,6 +176,7 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 
 	// Approval actions - nil buses for core path (graceful degradation)
 	registry.Register(approval.NewSeekApprovalHandler(log, db, nil, nil))
+	registry.Register(approval.NewResolveApprovalHandler(log, nil))
 
 	// Communication actions that don't need queue or email client (nil = graceful degradation)
 	registry.Register(communication.NewSendEmailHandler(log, db, nil, ""))
