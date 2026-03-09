@@ -105,6 +105,9 @@ func (h *ApproveInventoryAdjustmentHandler) Execute(ctx context.Context, config 
 
 	approved, err := h.inventoryAdjustmentBus.Approve(ctx, ia, execCtx.UserID, cfg.ApprovalReason)
 	if err != nil {
+		if errors.Is(err, inventoryadjustmentbus.ErrInvalidApprovalStatus) {
+			return map[string]any{"output": "failure", "error": "adjustment status changed concurrently"}, nil
+		}
 		return nil, fmt.Errorf("approve adjustment: %w", err)
 	}
 

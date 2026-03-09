@@ -108,6 +108,9 @@ func (h *RejectInventoryAdjustmentHandler) Execute(ctx context.Context, config j
 
 	rejected, err := h.inventoryAdjustmentBus.Reject(ctx, ia, execCtx.UserID, cfg.RejectionReason)
 	if err != nil {
+		if errors.Is(err, inventoryadjustmentbus.ErrInvalidApprovalStatus) {
+			return map[string]any{"output": "failure", "error": "adjustment status changed concurrently"}, nil
+		}
 		return nil, fmt.Errorf("reject adjustment: %w", err)
 	}
 
