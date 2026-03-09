@@ -100,11 +100,11 @@ func (h *RejectPurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 	}
 
 	// Guard: already approved
-	if po.ApprovedBy != (uuid.UUID{}) {
+	if po.ApprovedBy != nil {
 		return map[string]any{"output": "already_approved", "purchase_order_id": cfg.PurchaseOrderID}, nil
 	}
 	// Guard: already rejected
-	if po.RejectedBy != (uuid.UUID{}) {
+	if po.RejectedBy != nil {
 		return map[string]any{"output": "already_rejected", "purchase_order_id": cfg.PurchaseOrderID}, nil
 	}
 

@@ -155,8 +155,36 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID) (TransferOrder, error) 
 
 	approved, err := a.transferorderbus.Approve(ctx, to, userID, "")
 	if err != nil {
+		if errors.Is(err, transferorderbus.ErrInvalidTransferStatus) {
+			return TransferOrder{}, errs.New(errs.InvalidArgument, err)
+		}
 		return TransferOrder{}, fmt.Errorf("approve: %w", err)
 	}
 
 	return ToAppTransferOrder(approved), nil
+}
+
+func (a *App) Reject(ctx context.Context, id uuid.UUID) (TransferOrder, error) {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return TransferOrder{}, errs.New(errs.Unauthenticated, err)
+	}
+
+	to, err := a.transferorderbus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, transferorderbus.ErrNotFound) {
+			return TransferOrder{}, errs.New(errs.NotFound, err)
+		}
+		return TransferOrder{}, fmt.Errorf("reject [querybyid]: %w", err)
+	}
+
+	rejected, err := a.transferorderbus.Reject(ctx, to, userID, "")
+	if err != nil {
+		if errors.Is(err, transferorderbus.ErrInvalidTransferStatus) {
+			return TransferOrder{}, errs.New(errs.InvalidArgument, err)
+		}
+		return TransferOrder{}, fmt.Errorf("reject: %w", err)
+	}
+
+	return ToAppTransferOrder(rejected), nil
 }

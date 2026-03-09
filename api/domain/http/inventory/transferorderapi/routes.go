@@ -47,4 +47,7 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodPost, version, "/inventory/transfer-orders/{transfer_id}/approve", api.approve, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/inventory/transfer-orders/{transfer_id}/reject", api.reject, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 }

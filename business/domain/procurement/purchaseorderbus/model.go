@@ -28,13 +28,13 @@ type PurchaseOrder struct {
 	ShippingCost            float64   `json:"shipping_cost"`
 	TotalAmount             float64   `json:"total_amount"`
 	CurrencyID              uuid.UUID `json:"currency_id"`
-	RequestedBy             uuid.UUID `json:"requested_by"`
-	ApprovedBy              uuid.UUID `json:"approved_by"`
-	ApprovedDate            time.Time `json:"approved_date"`
-	ApprovalReason          string    `json:"approval_reason"`
-	RejectedBy              uuid.UUID `json:"rejected_by"`
-	RejectedDate            time.Time `json:"rejected_date"`
-	RejectionReason         string    `json:"rejection_reason"`
+	RequestedBy             uuid.UUID  `json:"requested_by"`
+	ApprovedBy              *uuid.UUID `json:"approved_by"`
+	ApprovedDate            time.Time  `json:"approved_date"`
+	ApprovalReason          string     `json:"approval_reason"`
+	RejectedBy              *uuid.UUID `json:"rejected_by"`
+	RejectedDate            time.Time  `json:"rejected_date"`
+	RejectionReason         string     `json:"rejection_reason"`
 	Notes                   string    `json:"notes"`
 	SupplierReferenceNumber string    `json:"supplier_reference_number"`
 	CreatedBy               uuid.UUID `json:"created_by"`

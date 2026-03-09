@@ -72,8 +72,8 @@ func toDBPurchaseOrder(bus purchaseorderbus.PurchaseOrder) purchaseOrder {
 		db.ActualDeliveryDate = sql.NullTime{Time: bus.ActualDeliveryDate, Valid: true}
 	}
 
-	if bus.ApprovedBy != uuid.Nil {
-		db.ApprovedBy = uuid.NullUUID{UUID: bus.ApprovedBy, Valid: true}
+	if bus.ApprovedBy != nil {
+		db.ApprovedBy = uuid.NullUUID{UUID: *bus.ApprovedBy, Valid: true}
 	}
 
 	if !bus.ApprovedDate.IsZero() {
@@ -84,8 +84,8 @@ func toDBPurchaseOrder(bus purchaseorderbus.PurchaseOrder) purchaseOrder {
 		db.ApprovalReason = sql.NullString{String: bus.ApprovalReason, Valid: true}
 	}
 
-	if bus.RejectedBy != uuid.Nil {
-		db.RejectedBy = uuid.NullUUID{UUID: bus.RejectedBy, Valid: true}
+	if bus.RejectedBy != nil {
+		db.RejectedBy = uuid.NullUUID{UUID: *bus.RejectedBy, Valid: true}
 	}
 
 	if !bus.RejectedDate.IsZero() {
@@ -141,7 +141,8 @@ func toBusPurchaseOrder(db purchaseOrder) purchaseorderbus.PurchaseOrder {
 	}
 
 	if db.ApprovedBy.Valid {
-		bus.ApprovedBy = db.ApprovedBy.UUID
+		id := db.ApprovedBy.UUID
+		bus.ApprovedBy = &id
 	}
 
 	if db.ApprovedDate.Valid {
@@ -153,7 +154,8 @@ func toBusPurchaseOrder(db purchaseOrder) purchaseorderbus.PurchaseOrder {
 	}
 
 	if db.RejectedBy.Valid {
-		bus.RejectedBy = db.RejectedBy.UUID
+		id := db.RejectedBy.UUID
+		bus.RejectedBy = &id
 	}
 
 	if db.RejectedDate.Valid {

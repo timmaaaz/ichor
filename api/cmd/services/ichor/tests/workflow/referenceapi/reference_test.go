@@ -37,4 +37,9 @@ func Test_ReferenceAPI(t *testing.T) {
 	test.Run(t, queryActionTypeSchema200(sd), "queryActionTypeSchema-200")
 	test.Run(t, queryActionTypeSchema404(sd), "queryActionTypeSchema-404")
 	test.Run(t, queryActionTypeSchema401(sd), "queryActionTypeSchema-401")
+
+	// Field schema tests
+	test.Run(t, fieldSchema200(sd), "fieldSchema-200")
+	test.Run(t, fieldSchema404(sd), "fieldSchema-404")
+	test.Run(t, fieldSchema401(sd), "fieldSchema-401")
 }
