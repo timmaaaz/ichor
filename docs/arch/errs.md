@@ -10,8 +10,10 @@
 file: app/sdk/errs/errs.go
 key facts:
   - App-layer error code system mapping gRPC-style status codes to HTTP statuses
-  - 496+ importers across app/ and api/ layers
-  - ~203 files in app/domain/ import errs
+<!-- lsp:refs:61:6 --> count=1065 (excl. test mocks)
+  - errs.New: 1,065 usages across 151 files in app/ and api/ (verified 2026-03-09)
+<!-- lsp:refs:129:6 --> count=616 (excl. test mocks)
+  - errs.NewFieldsError: 616 usages across 138 files (verified 2026-03-09)
 
 ```go
 type ErrCode struct{ value int }
@@ -85,5 +87,6 @@ Usage: returned from [app] layer validation, encoded in HTTP 400 response body.
 ## ⚠ Changing FieldError struct shape
 
   app/sdk/errs/errs.go                 (struct definition + JSON tags)
-  ALL ~203 app/domain/ files           (all callers of NewFieldsError — check JSON consumer compatibility)
+  ALL 138 files calling NewFieldsError  (all callers — check JSON consumer compatibility)
   Frontend API client                  (parses `field` + `error` keys in 400 responses)
+  verify: findReferences(app/sdk/errs/errs.go:129:6) — exact caller count before mass edit
