@@ -165,7 +165,7 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 		po.CurrencyID = *upo.CurrencyID
 	}
 	if upo.ApprovedBy != nil {
-		po.ApprovedBy = *upo.ApprovedBy
+		po.ApprovedBy = upo.ApprovedBy
 	}
 	if upo.ApprovedDate != nil {
 		po.ApprovedDate = *upo.ApprovedDate
@@ -263,14 +263,17 @@ func (b *Business) Approve(ctx context.Context, po PurchaseOrder, approvedBy uui
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.approve")
 	defer span.End()
 
-	if po.ApprovedBy != (uuid.UUID{}) {
+	if po.ApprovedBy != nil {
 		return PurchaseOrder{}, fmt.Errorf("approve: %w", ErrAlreadyApproved)
+	}
+	if po.RejectedBy != nil {
+		return PurchaseOrder{}, fmt.Errorf("approve: %w", ErrAlreadyRejected)
 	}
 
 	before := po
 
 	now := time.Now().UTC()
-	po.ApprovedBy = approvedBy
+	po.ApprovedBy = &approvedBy
 	po.ApprovedDate = now
 	po.ApprovalReason = reason
 	po.UpdatedBy = approvedBy
@@ -293,17 +296,17 @@ func (b *Business) Reject(ctx context.Context, po PurchaseOrder, rejectedBy uuid
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.reject")
 	defer span.End()
 
-	if po.ApprovedBy != (uuid.UUID{}) {
+	if po.ApprovedBy != nil {
 		return PurchaseOrder{}, fmt.Errorf("reject: %w", ErrAlreadyApproved)
 	}
-	if po.RejectedBy != (uuid.UUID{}) {
+	if po.RejectedBy != nil {
 		return PurchaseOrder{}, fmt.Errorf("reject: %w", ErrAlreadyRejected)
 	}
 
 	before := po
 
 	now := time.Now().UTC()
-	po.RejectedBy = rejectedBy
+	po.RejectedBy = &rejectedBy
 	po.RejectedDate = now
 	po.RejectionReason = reason
 	po.UpdatedBy = rejectedBy

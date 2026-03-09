@@ -97,11 +97,11 @@ func (h *ApprovePurchaseOrderHandler) Execute(ctx context.Context, config json.R
 	}
 
 	// Guard: already approved
-	if po.ApprovedBy != (uuid.UUID{}) {
+	if po.ApprovedBy != nil {
 		return map[string]any{"output": "already_approved", "purchase_order_id": cfg.PurchaseOrderID}, nil
 	}
 	// Guard: already rejected
-	if po.RejectedBy != (uuid.UUID{}) {
+	if po.RejectedBy != nil {
 		return map[string]any{"output": "already_rejected", "purchase_order_id": cfg.PurchaseOrderID}, nil
 	}
 
@@ -109,6 +109,9 @@ func (h *ApprovePurchaseOrderHandler) Execute(ctx context.Context, config json.R
 	if err != nil {
 		if errors.Is(err, purchaseorderbus.ErrAlreadyApproved) {
 			return map[string]any{"output": "already_approved", "purchase_order_id": cfg.PurchaseOrderID}, nil
+		}
+		if errors.Is(err, purchaseorderbus.ErrAlreadyRejected) {
+			return map[string]any{"output": "already_rejected", "purchase_order_id": cfg.PurchaseOrderID}, nil
 		}
 		return nil, fmt.Errorf("approve purchase order: %w", err)
 	}
