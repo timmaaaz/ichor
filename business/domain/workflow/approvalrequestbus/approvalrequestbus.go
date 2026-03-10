@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -35,15 +36,17 @@ type Storer interface {
 
 // Business manages approval request operations.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log      *logger.Logger
+	delegate *delegate.Delegate
+	storer   Storer
 }
 
 // NewBusiness constructs an approval request business API for use.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:      log,
+		delegate: del,
+		storer:   storer,
 	}
 }
 
@@ -56,8 +59,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}
 
 	bus := Business{
-		log:    b.log,
-		storer: storer,
+		log:      b.log,
+		delegate: b.delegate,
+		storer:   storer,
 	}
 
 	return &bus, nil
@@ -113,6 +117,12 @@ func (b *Business) Resolve(ctx context.Context, id, resolvedBy uuid.UUID, status
 	req, err := b.storer.Resolve(ctx, id, resolvedBy, status, reason)
 	if err != nil {
 		return ApprovalRequest{}, fmt.Errorf("resolve approval request: %w", err)
+	}
+
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionUpdatedData(ApprovalRequest{ID: id}, req)); err != nil {
+			b.log.Error(ctx, "approvalrequestbus: delegate call failed on resolve", "err", err)
+		}
 	}
 
 	return req, nil

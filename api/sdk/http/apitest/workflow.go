@@ -6,6 +6,8 @@ import (
 
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus/stores/approvalrequestdb"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
@@ -21,12 +23,13 @@ import (
 
 // WorkflowInfra holds the Temporal-based workflow infrastructure for tests.
 type WorkflowInfra struct {
-	WorkflowBus      *workflow.Business
-	TemporalClient   temporalclient.Client
-	WorkflowTrigger  *temporal.WorkflowTrigger
-	DelegateHandler  *temporal.DelegateHandler
-	TriggerProcessor *workflow.TriggerProcessor
-	Worker           worker.Worker
+	WorkflowBus         *workflow.Business
+	TemporalClient      temporalclient.Client
+	WorkflowTrigger     *temporal.WorkflowTrigger
+	DelegateHandler     *temporal.DelegateHandler
+	TriggerProcessor    *workflow.TriggerProcessor
+	Worker              worker.Worker
+	ApprovalRequestBus  *approvalrequestbus.Business
 }
 
 // InitWorkflowInfra sets up Temporal workflow infrastructure for testing.
@@ -55,13 +58,17 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil))
 	registry.Register(control.NewEvaluateConditionHandler(db.Log))
 
+	// Build approval request bus so seek_approval can create real DB records.
+	approvalRequestStore := approvalrequestdb.NewStore(db.Log, db.DB)
+	approvalBus := approvalrequestbus.NewBusiness(db.Log, db.BusDomain.Delegate, approvalRequestStore)
+
 	// 4. Create and start test worker with unique task queue per test.
 	taskQueue := "test-workflow-" + t.Name()
 	w := worker.New(tc, taskQueue, worker.Options{})
 	w.RegisterWorkflow(temporal.ExecuteGraphWorkflow)
 	w.RegisterWorkflow(temporal.ExecuteBranchUntilConvergence)
 	asyncRegistry := temporal.NewAsyncRegistry()
-	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(db.Log, db.DB, nil, nil))
+	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(db.Log, db.DB, approvalBus, alertBus))
 
 	activities := &temporal.Activities{
 		Registry:      registry,
@@ -85,7 +92,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 
 	workflowTrigger := temporal.NewWorkflowTrigger(
 		db.Log, tc, triggerProcessor, edgeStore, workflowStore,
-	)
+	).WithTaskQueue(taskQueue)
 
 	// 6. Create delegate handler.
 	delegateHandler := temporal.NewDelegateHandler(db.Log, workflowTrigger)
@@ -99,11 +106,12 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	t.Log("Temporal workflow infrastructure initialized")
 
 	return &WorkflowInfra{
-		WorkflowBus:      workflowBus,
-		TemporalClient:   tc,
-		WorkflowTrigger:  workflowTrigger,
-		DelegateHandler:  delegateHandler,
-		TriggerProcessor: triggerProcessor,
-		Worker:           w,
+		WorkflowBus:        workflowBus,
+		TemporalClient:     tc,
+		WorkflowTrigger:    workflowTrigger,
+		DelegateHandler:    delegateHandler,
+		TriggerProcessor:   triggerProcessor,
+		Worker:             w,
+		ApprovalRequestBus: approvalBus,
 	}
 }

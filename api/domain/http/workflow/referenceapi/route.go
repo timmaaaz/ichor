@@ -34,6 +34,7 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/workflow/trigger-types", api.queryTriggerTypes, authen)
 	app.HandlerFunc(http.MethodGet, version, "/workflow/entity-types", api.queryEntityTypes, authen)
 	app.HandlerFunc(http.MethodGet, version, "/workflow/entities", api.queryEntities, authen)
+	app.HandlerFunc(http.MethodGet, version, "/workflow/entities/{entity}/fields", api.queryEntityFields, authen)
 	app.HandlerFunc(http.MethodGet, version, "/workflow/action-types", api.queryActionTypes, authen)
 	app.HandlerFunc(http.MethodGet, version, "/workflow/action-types/{type}/schema", api.queryActionTypeSchema, authen)
 	app.HandlerFunc(http.MethodGet, version, "/workflow/templates", api.queryTemplates, authen)

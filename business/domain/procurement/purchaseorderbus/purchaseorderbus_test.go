@@ -2,6 +2,7 @@ package purchaseorderbus_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -37,6 +38,8 @@ func Test_PurchaseOrder(t *testing.T) {
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
+	unitest.Run(t, approve(db.BusDomain, sd), "approve")
+	unitest.Run(t, reject(db.BusDomain, sd), "reject")
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -225,7 +228,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				TotalAmount:              total,
 				CurrencyID:                 sd.PurchaseOrders[0].CurrencyID,
 				RequestedBy:              sd.Admins[0].ID,
-				ApprovedBy:               uuid.Nil,
+				ApprovedBy:               nil,
 				Notes:                    "Test purchase order",
 				SupplierReferenceNumber:  "SUP-REF-TEST",
 				CreatedBy:                sd.Admins[0].ID,
@@ -353,4 +356,163 @@ func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	}
 
 	return table
+}
+
+func approve(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	approverID := sd.Admins[0].ID
+	reason := "approved by test"
+
+	return []unitest.Table{
+		{
+			Name: "Approve",
+			ExpResp: purchaseorderbus.PurchaseOrder{
+				ID:             sd.PurchaseOrders[1].ID,
+				ApprovalReason: reason,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				got, err := busDomain.PurchaseOrder.Approve(ctx, sd.PurchaseOrders[1], approverID, reason)
+				if err != nil {
+					return err
+				}
+				return got
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(purchaseorderbus.PurchaseOrder)
+				if !exists {
+					return fmt.Sprintf("expected purchaseorderbus.PurchaseOrder, got %T", got)
+				}
+				expResp, exists := exp.(purchaseorderbus.PurchaseOrder)
+				if !exists {
+					return fmt.Sprintf("expected purchaseorderbus.PurchaseOrder, got %T", exp)
+				}
+				if gotResp.ApprovedBy == nil {
+					return "expected ApprovedBy to be set, got nil"
+				}
+				if *gotResp.ApprovedBy != approverID {
+					return fmt.Sprintf("ApprovedBy: got %s, want %s", gotResp.ApprovedBy, approverID)
+				}
+				if gotResp.ApprovalReason != expResp.ApprovalReason {
+					return cmp.Diff(gotResp.ApprovalReason, expResp.ApprovalReason)
+				}
+				if gotResp.ApprovedDate.IsZero() {
+					return "expected ApprovedDate to be set"
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "ApproveAlreadyApproved",
+			ExpResp: purchaseorderbus.ErrAlreadyApproved,
+			ExcFunc: func(ctx context.Context) any {
+				po, err := busDomain.PurchaseOrder.Approve(ctx, sd.PurchaseOrders[2], approverID, reason)
+				if err != nil {
+					return err
+				}
+				_, err = busDomain.PurchaseOrder.Approve(ctx, po, approverID, reason)
+				return err
+			},
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return fmt.Sprintf("expected error, got %T", got)
+				}
+				expErr := exp.(error)
+				if !errors.Is(gotErr, expErr) {
+					return fmt.Sprintf("expected %v, got %v", expErr, gotErr)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "ApproveAlreadyRejected",
+			ExpResp: purchaseorderbus.ErrAlreadyRejected,
+			ExcFunc: func(ctx context.Context) any {
+				po, err := busDomain.PurchaseOrder.Reject(ctx, sd.PurchaseOrders[3], approverID, "rejecting first")
+				if err != nil {
+					return err
+				}
+				_, err = busDomain.PurchaseOrder.Approve(ctx, po, approverID, reason)
+				return err
+			},
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return fmt.Sprintf("expected error, got %T", got)
+				}
+				expErr := exp.(error)
+				if !errors.Is(gotErr, expErr) {
+					return fmt.Sprintf("expected %v, got %v", expErr, gotErr)
+				}
+				return ""
+			},
+		},
+	}
+}
+
+func reject(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	rejectorID := sd.Admins[0].ID
+	reason := "rejected by test"
+
+	return []unitest.Table{
+		{
+			Name: "Reject",
+			ExpResp: purchaseorderbus.PurchaseOrder{
+				ID:              sd.PurchaseOrders[4].ID,
+				RejectionReason: reason,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				got, err := busDomain.PurchaseOrder.Reject(ctx, sd.PurchaseOrders[4], rejectorID, reason)
+				if err != nil {
+					return err
+				}
+				return got
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(purchaseorderbus.PurchaseOrder)
+				if !exists {
+					return fmt.Sprintf("expected purchaseorderbus.PurchaseOrder, got %T", got)
+				}
+				expResp, exists := exp.(purchaseorderbus.PurchaseOrder)
+				if !exists {
+					return fmt.Sprintf("expected purchaseorderbus.PurchaseOrder, got %T", exp)
+				}
+				if gotResp.RejectedBy == nil {
+					return "expected RejectedBy to be set, got nil"
+				}
+				if *gotResp.RejectedBy != rejectorID {
+					return fmt.Sprintf("RejectedBy: got %s, want %s", gotResp.RejectedBy, rejectorID)
+				}
+				if gotResp.RejectionReason != expResp.RejectionReason {
+					return cmp.Diff(gotResp.RejectionReason, expResp.RejectionReason)
+				}
+				if gotResp.RejectedDate.IsZero() {
+					return "expected RejectedDate to be set"
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "RejectAlreadyApproved",
+			ExpResp: purchaseorderbus.ErrAlreadyApproved,
+			ExcFunc: func(ctx context.Context) any {
+				po, err := busDomain.PurchaseOrder.Approve(ctx, sd.PurchaseOrders[0], rejectorID, "approving first")
+				if err != nil {
+					return err
+				}
+				_, err = busDomain.PurchaseOrder.Reject(ctx, po, rejectorID, reason)
+				return err
+			},
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return fmt.Sprintf("expected error, got %T", got)
+				}
+				expErr := exp.(error)
+				if !errors.Is(gotErr, expErr) {
+					return fmt.Sprintf("expected %v, got %v", expErr, gotErr)
+				}
+				return ""
+			},
+		},
+	}
 }

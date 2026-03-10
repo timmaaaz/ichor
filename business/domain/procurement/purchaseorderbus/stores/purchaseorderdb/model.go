@@ -27,6 +27,10 @@ type purchaseOrder struct {
 	RequestedBy             uuid.UUID      `db:"requested_by"`
 	ApprovedBy              uuid.NullUUID  `db:"approved_by"`
 	ApprovedDate            sql.NullTime   `db:"approved_date"`
+	ApprovalReason          sql.NullString `db:"approval_reason"`
+	RejectedBy              uuid.NullUUID  `db:"rejected_by"`
+	RejectedDate            sql.NullTime   `db:"rejected_date"`
+	RejectionReason         sql.NullString `db:"rejection_reason"`
 	Notes                   sql.NullString `db:"notes"`
 	SupplierReferenceNumber sql.NullString `db:"supplier_reference_number"`
 	CreatedBy               uuid.UUID      `db:"created_by"`
@@ -68,12 +72,28 @@ func toDBPurchaseOrder(bus purchaseorderbus.PurchaseOrder) purchaseOrder {
 		db.ActualDeliveryDate = sql.NullTime{Time: bus.ActualDeliveryDate, Valid: true}
 	}
 
-	if bus.ApprovedBy != uuid.Nil {
-		db.ApprovedBy = uuid.NullUUID{UUID: bus.ApprovedBy, Valid: true}
+	if bus.ApprovedBy != nil {
+		db.ApprovedBy = uuid.NullUUID{UUID: *bus.ApprovedBy, Valid: true}
 	}
 
 	if !bus.ApprovedDate.IsZero() {
 		db.ApprovedDate = sql.NullTime{Time: bus.ApprovedDate, Valid: true}
+	}
+
+	if bus.ApprovalReason != "" {
+		db.ApprovalReason = sql.NullString{String: bus.ApprovalReason, Valid: true}
+	}
+
+	if bus.RejectedBy != nil {
+		db.RejectedBy = uuid.NullUUID{UUID: *bus.RejectedBy, Valid: true}
+	}
+
+	if !bus.RejectedDate.IsZero() {
+		db.RejectedDate = sql.NullTime{Time: bus.RejectedDate, Valid: true}
+	}
+
+	if bus.RejectionReason != "" {
+		db.RejectionReason = sql.NullString{String: bus.RejectionReason, Valid: true}
 	}
 
 	if bus.Notes != "" {
@@ -121,11 +141,29 @@ func toBusPurchaseOrder(db purchaseOrder) purchaseorderbus.PurchaseOrder {
 	}
 
 	if db.ApprovedBy.Valid {
-		bus.ApprovedBy = db.ApprovedBy.UUID
+		id := db.ApprovedBy.UUID
+		bus.ApprovedBy = &id
 	}
 
 	if db.ApprovedDate.Valid {
 		bus.ApprovedDate = db.ApprovedDate.Time
+	}
+
+	if db.ApprovalReason.Valid {
+		bus.ApprovalReason = db.ApprovalReason.String
+	}
+
+	if db.RejectedBy.Valid {
+		id := db.RejectedBy.UUID
+		bus.RejectedBy = &id
+	}
+
+	if db.RejectedDate.Valid {
+		bus.RejectedDate = db.RejectedDate.Time
+	}
+
+	if db.RejectionReason.Valid {
+		bus.RejectionReason = db.RejectionReason.String
 	}
 
 	if db.Notes.Valid {

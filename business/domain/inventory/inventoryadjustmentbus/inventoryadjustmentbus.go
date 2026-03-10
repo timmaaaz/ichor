@@ -24,6 +24,13 @@ var (
 	ErrInvalidApprovalStatus = errors.New("inventory adjustment is not in pending status")
 )
 
+// Inventory adjustment approval status values.
+const (
+	ApprovalStatusPending  = "pending"
+	ApprovalStatusApproved = "approved"
+	ApprovalStatusRejected = "rejected"
+)
+
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
 type Storer interface {
@@ -80,7 +87,7 @@ func (b *Business) Create(ctx context.Context, nia NewInventoryAdjustment) (Inve
 		LocationID:            nia.LocationID,
 		AdjustedBy:            nia.AdjustedBy,
 		ApprovedBy:            nia.ApprovedBy,
-		ApprovalStatus:        "pending",
+		ApprovalStatus:        ApprovalStatusPending,
 		QuantityChange:        nia.QuantityChange,
 		ReasonCode:            nia.ReasonCode,
 		Notes:                 nia.Notes,
@@ -123,6 +130,15 @@ func (b *Business) Update(ctx context.Context, ia InventoryAdjustment, u UpdateI
 	}
 	if u.ApprovalStatus != nil {
 		ia.ApprovalStatus = *u.ApprovalStatus
+	}
+	if u.ApprovalReason != nil {
+		ia.ApprovalReason = *u.ApprovalReason
+	}
+	if u.RejectedBy != nil {
+		ia.RejectedBy = u.RejectedBy
+	}
+	if u.RejectionReason != nil {
+		ia.RejectionReason = *u.RejectionReason
 	}
 	if u.QuantityChange != nil {
 		ia.QuantityChange = *u.QuantityChange
@@ -170,11 +186,11 @@ func (b *Business) Delete(ctx context.Context, ia InventoryAdjustment) error {
 }
 
 // Approve sets the approver and marks the inventory adjustment as approved.
-func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approvedBy uuid.UUID) (InventoryAdjustment, error) {
+func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approvedBy uuid.UUID, reason string) (InventoryAdjustment, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.approve")
 	defer span.End()
 
-	if ia.ApprovalStatus != "pending" {
+	if ia.ApprovalStatus != ApprovalStatusPending {
 		return InventoryAdjustment{}, fmt.Errorf("approve: %w", ErrInvalidApprovalStatus)
 	}
 
@@ -182,7 +198,8 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 
 	now := time.Now()
 	ia.ApprovedBy = &approvedBy
-	ia.ApprovalStatus = "approved"
+	ia.ApprovalStatus = ApprovalStatusApproved
+	ia.ApprovalReason = reason
 	ia.UpdatedDate = now
 
 	if err := b.storer.Update(ctx, ia); err != nil {
@@ -196,18 +213,20 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 	return ia, nil
 }
 
-// Reject marks the inventory adjustment as rejected.
-func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment) (InventoryAdjustment, error) {
+// Reject marks the inventory adjustment as rejected, capturing the rejector and reason.
+func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment, rejectedBy uuid.UUID, reason string) (InventoryAdjustment, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.reject")
 	defer span.End()
 
-	if ia.ApprovalStatus != "pending" {
+	if ia.ApprovalStatus != ApprovalStatusPending {
 		return InventoryAdjustment{}, fmt.Errorf("reject: %w", ErrInvalidApprovalStatus)
 	}
 
 	before := ia
 
-	ia.ApprovalStatus = "rejected"
+	ia.RejectedBy = &rejectedBy
+	ia.ApprovalStatus = ApprovalStatusRejected
+	ia.RejectionReason = reason
 	ia.UpdatedDate = time.Now()
 
 	if err := b.storer.Update(ctx, ia); err != nil {

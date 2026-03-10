@@ -42,11 +42,13 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (transferorderbus.Storer, e
 func (s *Store) Create(ctx context.Context, transferOrder transferorderbus.TransferOrder) error {
 	const q = `
 	INSERT INTO inventory.transfer_orders (
-	    id, product_id, from_location_id, to_location_id, requested_by, 
-		approved_by, quantity, status, transfer_date, created_date, updated_date
+	    id, product_id, from_location_id, to_location_id, requested_by,
+		approved_by, rejected_by_id, approval_reason, rejection_reason,
+		quantity, status, transfer_date, created_date, updated_date
     ) VALUES (
-        :id, :product_id, :from_location_id, :to_location_id, :requested_by, 
-        :approved_by, :quantity, :status, :transfer_date, :created_date, :updated_date
+        :id, :product_id, :from_location_id, :to_location_id, :requested_by,
+        :approved_by, :rejected_by_id, :approval_reason, :rejection_reason,
+        :quantity, :status, :transfer_date, :created_date, :updated_date
     )
 	`
 
@@ -69,14 +71,17 @@ func (s *Store) Update(ctx context.Context, transferOrder transferorderbus.Trans
     UPDATE
         inventory.transfer_orders
     SET
-        product_id = :product_id, 
-		from_location_id = :from_location_id, 
-		to_location_id = :to_location_id, 
-        requested_by = :requested_by, 
-		approved_by = :approved_by, 
-		quantity = :quantity, 
-        status = :status, 
-		transfer_date = :transfer_date, 
+        product_id = :product_id,
+		from_location_id = :from_location_id,
+		to_location_id = :to_location_id,
+        requested_by = :requested_by,
+		approved_by = :approved_by,
+		rejected_by_id = :rejected_by_id,
+		approval_reason = :approval_reason,
+		rejection_reason = :rejection_reason,
+		quantity = :quantity,
+        status = :status,
+		transfer_date = :transfer_date,
 		updated_date = :updated_date
     WHERE
         id = :id
@@ -116,7 +121,8 @@ func (s *Store) Query(ctx context.Context, filter transferorderbus.QueryFilter, 
 
 	const q = `
 	SELECT
-		id, product_id, from_location_id, to_location_id, requested_by, approved_by, 
+		id, product_id, from_location_id, to_location_id, requested_by, approved_by,
+		rejected_by_id, approval_reason, rejection_reason,
 		quantity, status, transfer_date, created_date, updated_date
     FROM
 	    inventory.transfer_orders
@@ -170,7 +176,8 @@ func (s *Store) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (trans
 
 	const q = `
     SELECT
-        id, product_id, from_location_id, to_location_id, requested_by, approved_by, 
+        id, product_id, from_location_id, to_location_id, requested_by, approved_by,
+        rejected_by_id, approval_reason, rejection_reason,
         quantity, status, transfer_date, created_date, updated_date
     FROM
         inventory.transfer_orders

@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "required": ["purchase_order_id"],
+    "properties": {
+        "purchase_order_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the purchase order to approve"
+        },
+        "approval_reason": {
+            "type": "string",
+            "description": "Optional reason for approval, captured in audit trail"
+        }
+    }
+}

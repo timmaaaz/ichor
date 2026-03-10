@@ -12,17 +12,20 @@ import (
 // expect snake_case keys to match API conventions.
 
 type TransferOrder struct {
-	TransferID     uuid.UUID  `json:"transfer_id"` // TODO: these should be id
-	ProductID      uuid.UUID  `json:"product_id"`
-	FromLocationID uuid.UUID  `json:"from_location_id"`
-	ToLocationID   uuid.UUID  `json:"to_location_id"`
-	RequestedByID  uuid.UUID  `json:"requested_by_id"`
-	ApprovedByID   *uuid.UUID `json:"approved_by_id"`
-	Quantity       int        `json:"quantity"`
-	Status         string     `json:"status"`
-	TransferDate   time.Time  `json:"transfer_date"`
-	CreatedDate    time.Time  `json:"created_date"`
-	UpdatedDate    time.Time  `json:"updated_date"`
+	TransferID      uuid.UUID  `json:"transfer_id"` // TODO: these should be id
+	ProductID       uuid.UUID  `json:"product_id"`
+	FromLocationID  uuid.UUID  `json:"from_location_id"`
+	ToLocationID    uuid.UUID  `json:"to_location_id"`
+	RequestedByID   uuid.UUID  `json:"requested_by_id"`
+	ApprovedByID    *uuid.UUID `json:"approved_by_id"`
+	RejectedByID    *uuid.UUID `json:"rejected_by_id"`
+	ApprovalReason  string     `json:"approval_reason"`
+	RejectionReason string     `json:"rejection_reason"`
+	Quantity        int        `json:"quantity"`
+	Status          string     `json:"status"`
+	TransferDate    time.Time  `json:"transfer_date"`
+	CreatedDate     time.Time  `json:"created_date"`
+	UpdatedDate     time.Time  `json:"updated_date"`
 }
 
 type NewTransferOrder struct {
@@ -37,12 +40,15 @@ type NewTransferOrder struct {
 }
 
 type UpdateTransferOrder struct {
-	ProductID      *uuid.UUID `json:"product_id,omitempty"`
-	FromLocationID *uuid.UUID `json:"from_location_id,omitempty"`
-	ToLocationID   *uuid.UUID `json:"to_location_id,omitempty"`
-	RequestedByID  *uuid.UUID `json:"requested_by_id,omitempty"`
-	ApprovedByID   *uuid.UUID `json:"approved_by_id,omitempty"`
-	Quantity       *int       `json:"quantity,omitempty"`
-	Status         *string    `json:"status,omitempty"`
-	TransferDate   *time.Time `json:"transfer_date,omitempty"`
+	ProductID       *uuid.UUID `json:"product_id,omitempty"`
+	FromLocationID  *uuid.UUID `json:"from_location_id,omitempty"`
+	ToLocationID    *uuid.UUID `json:"to_location_id,omitempty"`
+	RequestedByID   *uuid.UUID `json:"requested_by_id,omitempty"`
+	ApprovedByID    *uuid.UUID `json:"approved_by_id,omitempty"`
+	RejectedByID    *uuid.UUID `json:"rejected_by_id,omitempty"`
+	ApprovalReason  *string    `json:"approval_reason,omitempty"`
+	RejectionReason *string    `json:"rejection_reason,omitempty"`
+	Quantity        *int       `json:"quantity,omitempty"`
+	Status          *string    `json:"status,omitempty"`
+	TransferDate    *time.Time `json:"transfer_date,omitempty"`
 }

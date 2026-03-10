@@ -14,6 +14,9 @@ type inventoryAdjustment struct {
 	AdjustedBy            uuid.UUID  `db:"adjusted_by"`
 	ApprovedBy            *uuid.UUID `db:"approved_by"`
 	ApprovalStatus        string     `db:"approval_status"`
+	ApprovalReason        string     `db:"approval_reason"`
+	RejectedBy            *uuid.UUID `db:"rejected_by"`
+	RejectionReason       string     `db:"rejection_reason"`
 	QuantityChange        int        `db:"quantity_change"`
 	ReasonCode            string     `db:"reason_code"`
 	Notes                 string     `db:"notes"`
@@ -30,6 +33,9 @@ func toBusInventoryAdjustment(ia inventoryAdjustment) inventoryadjustmentbus.Inv
 		AdjustedBy:            ia.AdjustedBy,
 		ApprovedBy:            ia.ApprovedBy,
 		ApprovalStatus:        ia.ApprovalStatus,
+		ApprovalReason:        ia.ApprovalReason,
+		RejectedBy:            ia.RejectedBy,
+		RejectionReason:       ia.RejectionReason,
 		QuantityChange:        ia.QuantityChange,
 		ReasonCode:            ia.ReasonCode,
 		Notes:                 ia.Notes,
@@ -55,6 +61,9 @@ func toDBInventoryAdjustment(ia inventoryadjustmentbus.InventoryAdjustment) inve
 		AdjustedBy:            ia.AdjustedBy,
 		ApprovedBy:            ia.ApprovedBy,
 		ApprovalStatus:        ia.ApprovalStatus,
+		ApprovalReason:        ia.ApprovalReason,
+		RejectedBy:            ia.RejectedBy,
+		RejectionReason:       ia.RejectionReason,
 		QuantityChange:        ia.QuantityChange,
 		ReasonCode:            ia.ReasonCode,
 		Notes:                 ia.Notes,

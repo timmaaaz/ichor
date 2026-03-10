@@ -454,7 +454,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Workflow domain
 	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
-	approvalRequestBus := approvalrequestbus.NewBusiness(cfg.Log, approvalrequestdb.NewStore(cfg.Log, cfg.DB))
+	approvalRequestBus := approvalrequestbus.NewBusiness(cfg.Log, delegate, approvalrequestdb.NewStore(cfg.Log, cfg.DB))
 	actionPermBus := actionpermissionsbus.NewBusiness(cfg.Log, actionpermissionsdb.NewStore(cfg.Log, cfg.DB))
 
 	// Create workflowBus outside the RabbitMQ block so it's available for reference API
@@ -477,6 +477,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		Buses: workflowactions.BusDependencies{
 			InventoryItem:         inventoryItemBus,
 			InventoryTransaction:  inventoryTransactionBus,
+			InventoryAdjustment:   inventoryAdjustmentBus,
+			TransferOrder:         transferOrderBus,
 			SupplierProduct:       supplierProductBus,
 			PurchaseOrder:         purchaseOrderBus,
 			PurchaseOrderLineItem: purchaseOrderLineItemBus,

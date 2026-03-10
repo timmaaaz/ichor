@@ -8,7 +8,7 @@ The Ichor workflow engine provides event-driven automation for business processe
 |----------|-------------|
 | [Architecture](architecture.md) | System overview, event flow, components |
 | [Configuration](configuration/) | Triggers, rules, and template variables |
-| [Actions](actions/) | All 7 action types and their configuration |
+| [Actions](actions/) | All 13 action types and their configuration |
 | [Branching](branching.md) | Graph-based execution and conditional workflows |
 | [Cascade Visualization](cascade-visualization.md) | Downstream workflow detection |
 | [Database Schema](database-schema.md) | Workflow tables and relationships |
@@ -51,6 +51,12 @@ The Ichor workflow engine provides event-driven automation for business processe
 | `seek_approval` | Initiates approval workflows |
 | `allocate_inventory` | Reserves or allocates inventory |
 | `evaluate_condition` | Evaluates conditions for branching workflows |
+| `approve_inventory_adjustment` | Approves a pending inventory adjustment, recording approver and reason |
+| `reject_inventory_adjustment` | Rejects a pending inventory adjustment, recording rejector and reason |
+| `approve_transfer_order` | Approves a pending transfer order, recording approver and reason |
+| `reject_transfer_order` | Rejects a pending transfer order, recording rejector and reason |
+| `approve_purchase_order` | Approves a purchase order, recording approver and reason for audit trail |
+| `reject_purchase_order` | Rejects a purchase order, recording rejector and reason for audit trail |
 
 ## Getting Started
 

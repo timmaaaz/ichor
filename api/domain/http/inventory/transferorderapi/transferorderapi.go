@@ -111,3 +111,18 @@ func (api *api) approve(ctx context.Context, r *http.Request) web.Encoder {
 
 	return to
 }
+
+func (api *api) reject(ctx context.Context, r *http.Request) web.Encoder {
+	toID := web.Param(r, "transfer_id")
+	parsed, err := uuid.Parse(toID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	to, err := api.transferorderapp.Reject(ctx, parsed)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return to
+}

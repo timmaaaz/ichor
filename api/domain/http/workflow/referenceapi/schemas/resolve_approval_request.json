@@ -1,0 +1,20 @@
+{
+    "type": "object",
+    "required": ["approval_request_id", "resolution"],
+    "properties": {
+        "approval_request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the approval request to resolve"
+        },
+        "resolution": {
+            "type": "string",
+            "enum": ["approved", "rejected"],
+            "description": "The resolution outcome for the approval request"
+        },
+        "reason": {
+            "type": "string",
+            "description": "Optional reason for the resolution, captured in audit trail"
+        }
+    }
+}

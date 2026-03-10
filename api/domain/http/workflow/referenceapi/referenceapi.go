@@ -13,11 +13,13 @@ package referenceapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/fieldschema"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -101,6 +103,31 @@ func (a *api) queryActiveTemplates(ctx context.Context, r *http.Request) web.Enc
 		return errs.Newf(errs.Internal, "query active templates: %s", err)
 	}
 	return toActionTemplates(templates)
+}
+
+// queryEntityFields handles GET /v1/workflow/entities/{entity}/fields
+// Returns the known enum field schemas for the given entity.
+// 200 with fields array — entity known (may be empty if no registered enums)
+// 404 — entity not registered in the workflow entity catalog at all
+func (a *api) queryEntityFields(ctx context.Context, r *http.Request) web.Encoder {
+	entityName := web.Param(r, "entity")
+
+	if _, err := a.workflowBus.QueryEntityByName(ctx, entityName); err != nil {
+		if errors.Is(err, workflow.ErrNotFound) {
+			return errs.Newf(errs.NotFound, "entity not found")
+		}
+		return errs.Newf(errs.Internal, "query entity: %s", err)
+	}
+
+	fields, _ := fieldschema.GetEntitySchema(entityName)
+	if fields == nil {
+		fields = []fieldschema.FieldSchema{}
+	}
+
+	return fieldschema.EntitySchema{
+		Entity: entityName,
+		Fields: fields,
+	}
 }
 
 // queryActionTypeSchema handles GET /v1/workflow/action-types/{type}/schema

@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "required": ["adjustment_id"],
+    "properties": {
+        "adjustment_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the inventory adjustment to approve"
+        },
+        "approval_reason": {
+            "type": "string",
+            "description": "Optional reason for approval, captured in audit trail"
+        }
+    }
+}

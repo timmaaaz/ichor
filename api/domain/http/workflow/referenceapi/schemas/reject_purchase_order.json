@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "required": ["purchase_order_id", "rejection_reason"],
+    "properties": {
+        "purchase_order_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the purchase order to reject"
+        },
+        "rejection_reason": {
+            "type": "string",
+            "description": "Reason for rejection, required for audit trail"
+        }
+    }
+}

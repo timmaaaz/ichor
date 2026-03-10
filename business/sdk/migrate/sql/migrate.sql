@@ -1588,6 +1588,10 @@ CREATE TABLE procurement.purchase_orders (
    requested_by UUID NOT NULL,
    approved_by UUID NULL,
    approved_date TIMESTAMP NULL,
+   approval_reason TEXT NULL,
+   rejected_by UUID NULL,
+   rejected_date TIMESTAMP NULL,
+   rejection_reason TEXT NULL,
 
    -- Notes and reference
    notes TEXT NULL,
@@ -1607,6 +1611,7 @@ CREATE TABLE procurement.purchase_orders (
    FOREIGN KEY (currency_id) REFERENCES core.currencies(id) ON DELETE RESTRICT,
    FOREIGN KEY (requested_by) REFERENCES core.users(id) ON DELETE RESTRICT,
    FOREIGN KEY (approved_by) REFERENCES core.users(id) ON DELETE SET NULL,
+   FOREIGN KEY (rejected_by) REFERENCES core.users(id) ON DELETE SET NULL,
    FOREIGN KEY (created_by) REFERENCES core.users(id) ON DELETE RESTRICT,
    FOREIGN KEY (updated_by) REFERENCES core.users(id) ON DELETE RESTRICT,
 
@@ -2126,6 +2131,7 @@ CREATE INDEX idx_put_away_tasks_location ON inventory.put_away_tasks(location_id
 CREATE INDEX idx_put_away_tasks_assigned ON inventory.put_away_tasks(assigned_to)
     WHERE assigned_to IS NOT NULL;
 
+
 -- Version: 2.0
 -- Description: Add approval_status to inventory_adjustments and make approved_by nullable.
 -- Workers submit adjustments in "pending" state; supervisors approve/reject via PUT.
@@ -2181,6 +2187,7 @@ SELECT gen_random_uuid(), id, 'inventory.lot_locations', true, true, true, true 
 ALTER TABLE inventory.inventory_locations
     ADD COLUMN location_code VARCHAR(100) NULL;
 
+
 -- Version: 2.05
 -- Description: Make transfer_orders.approved_by nullable to support pending-approval workflow.
 ALTER TABLE inventory.transfer_orders
@@ -2199,3 +2206,17 @@ CREATE INDEX idx_alerts_status_created ON workflow.alerts(status, created_date D
 -- Description: Add frontend_route column to workflow.entity_types for frontend navigation.
 ALTER TABLE workflow.entity_types
     ADD COLUMN frontend_route TEXT NULL;
+
+-- Version: 2.09
+-- Description: Add rejection audit trail columns to inventory_adjustments.
+ALTER TABLE inventory.inventory_adjustments
+    ADD COLUMN approval_reason TEXT NULL,
+    ADD COLUMN rejected_by UUID NULL REFERENCES core.users(id),
+    ADD COLUMN rejection_reason TEXT NULL;
+
+-- Version: 2.10
+-- Description: Add rejection audit trail columns to transfer_orders.
+ALTER TABLE inventory.transfer_orders
+    ADD COLUMN approval_reason TEXT NULL,
+    ADD COLUMN rejected_by_id UUID NULL REFERENCES core.users(id),
+    ADD COLUMN rejection_reason TEXT NULL;

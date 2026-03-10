@@ -227,7 +227,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			RequestedByID:  sd.TransferOrders[2].RequestedByID,
 			ApprovedByID:   sd.TransferOrders[4].ApprovedByID,
 			Quantity:       10,
-			Status:         "pending",
+			Status:         transferorderbus.StatusPending,
 			TransferDate:   now,
 		},
 		ExcFunc: func(ctx context.Context) any {
@@ -238,7 +238,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				RequestedByID:  sd.TransferOrders[2].RequestedByID,
 				ApprovedByID:   sd.TransferOrders[4].ApprovedByID,
 				Quantity:       10,
-				Status:         "pending",
+				Status:         transferorderbus.StatusPending,
 				TransferDate:   now,
 			})
 			if err != nil {
@@ -275,7 +275,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			RequestedByID:  sd.TransferOrders[2].RequestedByID,
 			ApprovedByID:   sd.TransferOrders[4].ApprovedByID,
 			Quantity:       15,
-			Status:         "pending",
+			Status:         transferorderbus.StatusPending,
 			TransferDate:   now,
 			CreatedDate:    sd.TransferOrders[0].CreatedDate,
 		},
@@ -288,7 +288,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				RequestedByID:  &sd.TransferOrders[2].RequestedByID,
 				ApprovedByID:   sd.TransferOrders[4].ApprovedByID,
 				Quantity:       dbtest.IntPointer(15),
-				Status:         dbtest.StringPointer("pending"),
+				Status:         dbtest.StringPointer(transferorderbus.StatusPending),
 				TransferDate:   &now,
 			}
 

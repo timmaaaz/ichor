@@ -116,6 +116,10 @@ func (s *Store) Resolve(ctx context.Context, id, resolvedBy uuid.UUID, status, r
 	var dbReq dbApprovalRequest
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbReq); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
+			// Disambiguate: does the record exist at all?
+			if _, qErr := s.QueryByID(ctx, id); qErr != nil {
+				return approvalrequestbus.ApprovalRequest{}, approvalrequestbus.ErrNotFound
+			}
 			return approvalrequestbus.ApprovalRequest{}, approvalrequestbus.ErrAlreadyResolved
 		}
 		return approvalrequestbus.ApprovalRequest{}, fmt.Errorf("resolve: %w", err)

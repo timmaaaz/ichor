@@ -41,6 +41,9 @@ type InventoryAdjustment struct {
 	AdjustedBy            string `json:"adjusted_by"`
 	ApprovedBy            string `json:"approved_by"`
 	ApprovalStatus        string `json:"approval_status"`
+	ApprovalReason        string `json:"approval_reason"`
+	RejectedBy            string `json:"rejected_by"`
+	RejectionReason       string `json:"rejection_reason"`
 	QuantityChange        string `json:"quantity_change"`
 	ReasonCode            string `json:"reason_code"`
 	Notes                 string `json:"notes"`
@@ -60,6 +63,11 @@ func ToAppInventoryAdjustment(bus inventoryadjustmentbus.InventoryAdjustment) In
 		approvedBy = bus.ApprovedBy.String()
 	}
 
+	rejectedBy := ""
+	if bus.RejectedBy != nil {
+		rejectedBy = bus.RejectedBy.String()
+	}
+
 	return InventoryAdjustment{
 		InventoryAdjustmentID: bus.InventoryAdjustmentID.String(),
 		ProductID:             bus.ProductID.String(),
@@ -67,6 +75,9 @@ func ToAppInventoryAdjustment(bus inventoryadjustmentbus.InventoryAdjustment) In
 		AdjustedBy:            bus.AdjustedBy.String(),
 		ApprovedBy:            approvedBy,
 		ApprovalStatus:        bus.ApprovalStatus,
+		ApprovalReason:        bus.ApprovalReason,
+		RejectedBy:            rejectedBy,
+		RejectionReason:       bus.RejectionReason,
 		QuantityChange:        strconv.Itoa(bus.QuantityChange),
 		ReasonCode:            bus.ReasonCode,
 		Notes:                 bus.Notes,
