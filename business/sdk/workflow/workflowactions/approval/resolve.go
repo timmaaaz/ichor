@@ -65,7 +65,7 @@ func (h *ResolveApprovalHandler) Validate(config json.RawMessage) error {
 // GetOutputPorts returns the set of named output ports this handler can produce.
 func (h *ResolveApprovalHandler) GetOutputPorts() []workflow.OutputPort {
 	return []workflow.OutputPort{
-		{Name: "resolved_approved", Description: "Approval request was resolved as approved"},
+		{Name: "resolved_approved", Description: "Approval request was resolved as approved", IsDefault: true},
 		{Name: "resolved_rejected", Description: "Approval request was resolved as rejected"},
 		{Name: "not_found", Description: "Approval request not found"},
 		{Name: "already_resolved", Description: "Approval request was already resolved"},

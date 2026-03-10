@@ -12,6 +12,9 @@ import (
 // Defined as a package constant to avoid typos and improve maintainability.
 var expectedActionTypes = []string{
 	"allocate_inventory",
+	"approve_inventory_adjustment",
+	"approve_purchase_order",
+	"approve_transfer_order",
 	"check_inventory",
 	"check_reorder_point",
 	"commit_allocation",
@@ -21,8 +24,12 @@ var expectedActionTypes = []string{
 	"evaluate_condition",
 	"log_audit_entry",
 	"lookup_entity",
+	"reject_inventory_adjustment",
+	"reject_purchase_order",
+	"reject_transfer_order",
 	"release_reservation",
 	"reserve_inventory",
+	"resolve_approval_request",
 	"seek_approval",
 	"send_email",
 	"send_notification",
@@ -274,7 +281,8 @@ func queryActionTypes200(sd ReferenceSeedData) []apitest.Table {
 					// Category must be valid
 					validCategories := map[string]bool{
 						"communication": true, "inventory": true, "control": true,
-						"data": true, "approval": true,
+						"data": true, "approval": true, "integration": true,
+						"procurement": true,
 					}
 					if !validCategories[at.Category] {
 						return fmt.Sprintf("action type %q has invalid category %q", at.Type, at.Category)

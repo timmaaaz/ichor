@@ -19,20 +19,30 @@ func Test_ActionTypeSchemas_MatchExpectedStructure(t *testing.T) {
 		t.Fatal("Expected action types to be returned, got empty slice")
 	}
 
-	// Verify we have all 17 expected action types in alphabetical order
+	// Verify we have all expected action types in alphabetical order
 	expectedTypes := []string{
 		"allocate_inventory",
+		"approve_inventory_adjustment",
+		"approve_purchase_order",
+		"approve_transfer_order",
+		"call_webhook",
 		"check_inventory",
 		"check_reorder_point",
 		"commit_allocation",
 		"create_alert",
 		"create_entity",
+		"create_purchase_order",
 		"delay",
 		"evaluate_condition",
 		"log_audit_entry",
 		"lookup_entity",
+		"receive_inventory",
+		"reject_inventory_adjustment",
+		"reject_purchase_order",
+		"reject_transfer_order",
 		"release_reservation",
 		"reserve_inventory",
+		"resolve_approval_request",
 		"seek_approval",
 		"send_email",
 		"send_notification",
@@ -135,10 +145,17 @@ func Test_ActionTypeSchemas_CategoryConsistency(t *testing.T) {
 
 	expectedCategories := map[string][]string{
 		"communication": {"create_alert", "send_email", "send_notification"},
-		"inventory":     {"allocate_inventory", "check_inventory", "check_reorder_point", "commit_allocation", "release_reservation", "reserve_inventory"},
-		"approval":      {"seek_approval"},
-		"data":          {"create_entity", "log_audit_entry", "lookup_entity", "transition_status", "update_field"},
-		"control":       {"delay", "evaluate_condition"},
+		"inventory": {
+			"allocate_inventory", "approve_inventory_adjustment", "approve_transfer_order",
+			"check_inventory", "check_reorder_point", "commit_allocation",
+			"receive_inventory", "reject_inventory_adjustment", "reject_transfer_order",
+			"release_reservation", "reserve_inventory",
+		},
+		"approval":     {"resolve_approval_request", "seek_approval"},
+		"data":         {"create_entity", "log_audit_entry", "lookup_entity", "transition_status", "update_field"},
+		"control":      {"delay", "evaluate_condition"},
+		"integration":  {"call_webhook"},
+		"procurement":  {"approve_purchase_order", "create_purchase_order", "reject_purchase_order"},
 	}
 
 	for category, expectedTypes := range expectedCategories {
@@ -176,23 +193,33 @@ func Test_ActionTypeSchemas_AsyncFlags(t *testing.T) {
 
 	// Map of action types to their expected async status
 	expectedAsync := map[string]bool{
-		"allocate_inventory": true,
-		"check_inventory":    false,
-		"check_reorder_point": false,
-		"commit_allocation":  false,
-		"create_alert":       false,
-		"create_entity":      false,
-		"delay":              false,
-		"evaluate_condition": false,
-		"log_audit_entry":    false,
-		"lookup_entity":      false,
-		"release_reservation": false,
-		"reserve_inventory":  false,
-		"seek_approval":      true,
-		"send_email":         true,
-		"send_notification":  false,
-		"transition_status":  false,
-		"update_field":       false,
+		"allocate_inventory":           true,
+		"approve_inventory_adjustment": false,
+		"approve_purchase_order":       false,
+		"approve_transfer_order":       false,
+		"call_webhook":                 false,
+		"check_inventory":              false,
+		"check_reorder_point":          false,
+		"commit_allocation":            false,
+		"create_alert":                 false,
+		"create_entity":                false,
+		"create_purchase_order":        false,
+		"delay":                        false,
+		"evaluate_condition":           false,
+		"log_audit_entry":              false,
+		"lookup_entity":                false,
+		"receive_inventory":            false,
+		"reject_inventory_adjustment":  false,
+		"reject_purchase_order":        false,
+		"reject_transfer_order":        false,
+		"release_reservation":          false,
+		"reserve_inventory":            false,
+		"resolve_approval_request":     true,
+		"seek_approval":                true,
+		"send_email":                   true,
+		"send_notification":            false,
+		"transition_status":            false,
+		"update_field":                 false,
 	}
 
 	for _, actionType := range actionTypes {

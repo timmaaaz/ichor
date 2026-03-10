@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "required": ["adjustment_id", "rejection_reason"],
+    "properties": {
+        "adjustment_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the inventory adjustment to reject"
+        },
+        "rejection_reason": {
+            "type": "string",
+            "description": "Reason for rejection, required for audit trail"
+        }
+    }
+}

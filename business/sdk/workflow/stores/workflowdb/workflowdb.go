@@ -436,6 +436,9 @@ func (s *Store) QueryEntityByName(ctx context.Context, name string) (workflow.En
 	var dbEntity entity
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbEntity); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return workflow.Entity{}, workflow.ErrNotFound
+		}
 		return workflow.Entity{}, fmt.Errorf("namedquerystruct: %w", err)
 	}
 

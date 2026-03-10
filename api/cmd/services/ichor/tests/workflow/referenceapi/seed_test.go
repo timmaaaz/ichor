@@ -46,6 +46,23 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (ReferenceSeedData, err
 		return ReferenceSeedData{}, fmt.Errorf("getting entity types: %w", err)
 	}
 
+	// Seed entities needed by field schema tests.
+	// These use schema-qualified names to match the fieldschema registry.
+	if len(entityTypes) > 0 {
+		entityTypeID := entityTypes[0].ID
+		for _, name := range []string{"inventory.put_away_tasks", "inventory.inventory_items"} {
+			if _, err := busDomain.Workflow.QueryEntityByName(ctx, name); err != nil {
+				if _, createErr := busDomain.Workflow.CreateEntity(ctx, workflow.NewEntity{
+					Name:         name,
+					EntityTypeID: entityTypeID,
+					SchemaName:   "inventory",
+				}); createErr != nil {
+					return ReferenceSeedData{}, fmt.Errorf("seeding entity %s: %w", name, createErr)
+				}
+			}
+		}
+	}
+
 	// Get entities (already seeded in database migrations)
 	entities, err := workflow.GetEntities(ctx, busDomain.Workflow)
 	if err != nil {

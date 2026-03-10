@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "required": ["transfer_order_id"],
+    "properties": {
+        "transfer_order_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the transfer order to approve"
+        },
+        "approval_reason": {
+            "type": "string",
+            "description": "Optional reason for approval, captured in audit trail"
+        }
+    }
+}
