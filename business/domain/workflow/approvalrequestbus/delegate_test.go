@@ -47,6 +47,9 @@ func (m *mockApprovalStorer) Count(_ context.Context, _ approvalrequestbus.Query
 func (m *mockApprovalStorer) IsApprover(_ context.Context, _, _ uuid.UUID) (bool, error) {
 	return false, nil
 }
+func (m *mockApprovalStorer) ClearTaskToken(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
 
 // =============================================================================
 

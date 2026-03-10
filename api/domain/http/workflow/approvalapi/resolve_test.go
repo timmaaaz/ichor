@@ -95,7 +95,7 @@ func resolvedApproval(taskToken string) approvalrequestbus.ApprovalRequest {
 // newTestAPI constructs an api with the given storer and completer.
 func newTestAPI(storer approvalrequestbus.Storer, completer temporal.ActivityCompleter) *api {
 	log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-	bus := approvalrequestbus.NewBusiness(log, storer)
+	bus := approvalrequestbus.NewBusiness(log, nil, storer)
 
 	var asyncCompleter *temporal.AsyncCompleter
 	if completer != nil {
