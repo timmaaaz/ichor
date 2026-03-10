@@ -23,13 +23,14 @@ import (
 
 // WorkflowInfra holds the Temporal-based workflow infrastructure for tests.
 type WorkflowInfra struct {
-	WorkflowBus         *workflow.Business
-	TemporalClient      temporalclient.Client
-	WorkflowTrigger     *temporal.WorkflowTrigger
-	DelegateHandler     *temporal.DelegateHandler
-	TriggerProcessor    *workflow.TriggerProcessor
-	Worker              worker.Worker
-	ApprovalRequestBus  *approvalrequestbus.Business
+	WorkflowBus        *workflow.Business
+	TemporalClient     temporalclient.Client
+	WorkflowTrigger    *temporal.WorkflowTrigger
+	DelegateHandler    *temporal.DelegateHandler
+	TriggerProcessor   *workflow.TriggerProcessor
+	Worker             worker.Worker
+	ApprovalRequestBus *approvalrequestbus.Business
+	AlertBus           *alertbus.Business
 }
 
 // InitWorkflowInfra sets up Temporal workflow infrastructure for testing.
@@ -113,5 +114,6 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 		TriggerProcessor:   triggerProcessor,
 		Worker:             w,
 		ApprovalRequestBus: approvalBus,
+		AlertBus:           alertBus,
 	}
 }
