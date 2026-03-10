@@ -32,6 +32,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, pg page.Page) ([]ApprovalRequest, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	IsApprover(ctx context.Context, approvalID, userID uuid.UUID) (bool, error)
+	ClearTaskToken(ctx context.Context, id uuid.UUID) error
 }
 
 // Business manages approval request operations.
@@ -155,4 +156,17 @@ func (b *Business) IsApprover(ctx context.Context, approvalID, userID uuid.UUID)
 	defer span.End()
 
 	return b.storer.IsApprover(ctx, approvalID, userID)
+}
+
+// ClearTaskToken sets the task_token field to empty string for the given approval request.
+// Called after a successful Temporal CompleteActivity to prevent duplicate completions on retry.
+func (b *Business) ClearTaskToken(ctx context.Context, id uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.approvalrequestbus.cleartasktoken")
+	defer span.End()
+
+	if err := b.storer.ClearTaskToken(ctx, id); err != nil {
+		return fmt.Errorf("clear task token: %w", err)
+	}
+
+	return nil
 }
