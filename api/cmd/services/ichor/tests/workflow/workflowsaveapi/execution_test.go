@@ -48,7 +48,10 @@ func testExecuteSingleCreateAlert(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	// SimpleWorkflow creates alerts with alert_type "simple_test" — filter specifically
+	// to avoid counting alerts created by BranchingWorkflow (which shares TriggerTypes[0]).
+	alertType := "simple_test"
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 	if err != nil {
 		t.Fatalf("querying alerts before: %v", err)
 	}
@@ -67,7 +70,7 @@ func testExecuteSingleCreateAlert(t *testing.T, sd ExecutionTestData) {
 	}
 
 	for i := 0; i < 30; i++ {
-		after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+		after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 		if err != nil {
 			t.Fatalf("querying alerts after: %v", err)
 		}
@@ -77,7 +80,7 @@ func testExecuteSingleCreateAlert(t *testing.T, sd ExecutionTestData) {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	t.Fatal("timeout: no new alert after 15s — SimpleWorkflow may not have dispatched")
+	t.Fatal("timeout: no new simple_test alert after 15s — SimpleWorkflow may not have dispatched")
 }
 
 // testExecuteSequence3Actions tests that a workflow with 3 sequential create_alert
@@ -143,6 +146,15 @@ func testExecuteBranchTrue(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
+	// Capture beforeCount so the test isn't satisfied by a pre-existing high_value alert
+	// from a prior test run or concurrent workflow execution.
+	alertType := "high_value"
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("querying high_value alerts before: %v", err)
+	}
+	beforeCount := len(before)
+
 	// BranchingWorkflow uses TriggerTypes[0] and Entities[0]
 	event := createTriggerEvent(
 		sd.Entities[0].Name,
@@ -155,19 +167,18 @@ func testExecuteBranchTrue(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("firing trigger: %v", err)
 	}
 
-	alertType := "high_value"
 	for i := 0; i < 30; i++ {
-		alerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "5"))
+		after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 		if err != nil {
 			t.Fatalf("querying high_value alerts: %v", err)
 		}
-		if len(alerts) > 0 {
+		if len(after) > beforeCount {
 			t.Log("SUCCESS: branch-true path created high_value alert")
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	t.Fatal("timeout: no high_value alert after 15s")
+	t.Fatal("timeout: no new high_value alert after 15s")
 }
 
 // testExecuteBranchFalse fires the BranchingWorkflow with a low amount (<=1000),
@@ -183,6 +194,15 @@ func testExecuteBranchFalse(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
+	// Capture beforeCount so the test isn't satisfied by a pre-existing normal_value alert
+	// from a prior test run or concurrent workflow execution.
+	alertType := "normal_value"
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("querying normal_value alerts before: %v", err)
+	}
+	beforeCount := len(before)
+
 	// BranchingWorkflow uses TriggerTypes[0] and Entities[0]
 	event := createTriggerEvent(
 		sd.Entities[0].Name,
@@ -195,19 +215,18 @@ func testExecuteBranchFalse(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("firing trigger: %v", err)
 	}
 
-	alertType := "normal_value"
 	for i := 0; i < 30; i++ {
-		alerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "5"))
+		after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 		if err != nil {
 			t.Fatalf("querying normal_value alerts: %v", err)
 		}
-		if len(alerts) > 0 {
+		if len(after) > beforeCount {
 			t.Log("SUCCESS: branch-false path created normal_value alert")
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	t.Fatal("timeout: no normal_value alert after 15s")
+	t.Fatal("timeout: no new normal_value alert after 15s")
 }
 
 // testNoMatchingRules fires an event for a non-existent entity and verifies
