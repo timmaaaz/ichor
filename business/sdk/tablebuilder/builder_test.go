@@ -58,7 +58,7 @@ func TestBuildQuery_Filters(t *testing.T) {
 		{name: "gte", op: "gte", value: 10, want: []string{"WHERE", ">=", "10"}},
 		{name: "lt", op: "lt", value: 10, want: []string{"WHERE", "<", "10"}},
 		{name: "lte", op: "lte", value: 10, want: []string{"WHERE", "<=", "10"}},
-		{name: "in", op: "in", value: []interface{}{"a", "b", "c"}, want: []string{"WHERE", "IN"}},
+		{name: "in", op: "in", value: []any{"a", "b", "c"}, want: []string{"WHERE", "IN"}},
 		{name: "like", op: "like", value: "test", want: []string{"WHERE", "LIKE", "test"}},
 		{name: "ilike", op: "ilike", value: "test", want: []string{"WHERE", "ILIKE", "test"}},
 		{
