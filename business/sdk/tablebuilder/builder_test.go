@@ -77,6 +77,7 @@ func TestBuildQuery_Filters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ds := minimalDS("products", "products")
 			ds.Filters = []tablebuilder.Filter{
 				{Column: "quantity", Operator: tt.op, Value: tt.value},
@@ -132,6 +133,7 @@ func TestBuildQuery_Sorting(t *testing.T) {
 	qb := tablebuilder.NewQueryBuilder()
 
 	t.Run("config sort asc used when params empty", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		ds.Sort = []tablebuilder.Sort{{Column: "name", Direction: "asc"}}
 		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
@@ -142,6 +144,7 @@ func TestBuildQuery_Sorting(t *testing.T) {
 	})
 
 	t.Run("config sort desc", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		ds.Sort = []tablebuilder.Sort{{Column: "quantity", Direction: "desc"}}
 		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
@@ -152,6 +155,7 @@ func TestBuildQuery_Sorting(t *testing.T) {
 	})
 
 	t.Run("params sort overrides config sort", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		ds.Sort = []tablebuilder.Sort{{Column: "name", Direction: "asc"}}
 		params := tablebuilder.QueryParams{
@@ -166,6 +170,7 @@ func TestBuildQuery_Sorting(t *testing.T) {
 	})
 
 	t.Run("multiple sort columns all appear", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		ds.Sort = []tablebuilder.Sort{
 			{Column: "category", Direction: "asc"},
@@ -179,6 +184,7 @@ func TestBuildQuery_Sorting(t *testing.T) {
 	})
 
 	t.Run("non-primary source skips sort", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		ds.Sort = []tablebuilder.Sort{{Column: "name", Direction: "asc"}}
 		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, false /* isPrimary=false */)
@@ -193,8 +199,9 @@ func TestBuildQuery_Pagination(t *testing.T) {
 	t.Parallel()
 	qb := tablebuilder.NewQueryBuilder()
 
-	t.Run("page 1 rows 10 produces LIMIT 10", func(t *testing.T) {
-		// goqu omits OFFSET when offset=0 (page 1)
+	t.Run("page 1 rows 10 produces LIMIT 10 without OFFSET", func(t *testing.T) {
+		t.Parallel()
+		// goqu omits OFFSET entirely when offset=0 (page 1)
 		ds := minimalDS("products", "products")
 		params := tablebuilder.QueryParams{Page: 1, Rows: 10}
 		sql, _, err := qb.BuildQuery(&ds, params, true)
@@ -206,6 +213,7 @@ func TestBuildQuery_Pagination(t *testing.T) {
 	})
 
 	t.Run("page 3 rows 10 produces OFFSET 20", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		params := tablebuilder.QueryParams{Page: 3, Rows: 10}
 		sql, _, err := qb.BuildQuery(&ds, params, true)
@@ -216,6 +224,7 @@ func TestBuildQuery_Pagination(t *testing.T) {
 	})
 
 	t.Run("page 2 rows 25 produces OFFSET 25", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		params := tablebuilder.QueryParams{Page: 2, Rows: 25}
 		sql, _, err := qb.BuildQuery(&ds, params, true)
@@ -226,6 +235,7 @@ func TestBuildQuery_Pagination(t *testing.T) {
 	})
 
 	t.Run("non-primary source skips pagination", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		params := tablebuilder.QueryParams{Page: 2, Rows: 10}
 		sql, _, err := qb.BuildQuery(&ds, params, false /* isPrimary=false */)
@@ -236,6 +246,7 @@ func TestBuildQuery_Pagination(t *testing.T) {
 	})
 
 	t.Run("ds.Rows applied when no page params", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		ds.Rows = 50
 		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
@@ -263,6 +274,7 @@ func TestBuildQuery_Joins(t *testing.T) {
 
 	for _, tt := range joinTypes {
 		t.Run(tt.joinType, func(t *testing.T) {
+			t.Parallel()
 			ds := minimalDS("orders", "sales")
 			ds.Joins = []tablebuilder.Join{
 				{
@@ -281,6 +293,7 @@ func TestBuildQuery_Joins(t *testing.T) {
 	}
 
 	t.Run("join condition parsed table.col = table.col", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("orders", "sales")
 		ds.Joins = []tablebuilder.Join{
 			{
@@ -297,6 +310,7 @@ func TestBuildQuery_Joins(t *testing.T) {
 	})
 
 	t.Run("join with schema prefix", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("orders", "sales")
 		ds.Joins = []tablebuilder.Join{
 			{
@@ -319,6 +333,7 @@ func TestBuildQuery_ForeignTableJoins(t *testing.T) {
 	qb := tablebuilder.NewQueryBuilder()
 
 	t.Run("inner join with schema and alias", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("inventory_items", "inventory")
 		ds.Select.ForeignTables = []tablebuilder.ForeignTable{
 			{
@@ -341,6 +356,7 @@ func TestBuildQuery_ForeignTableJoins(t *testing.T) {
 	})
 
 	t.Run("left join without alias", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("inventory_items", "inventory")
 		ds.Select.ForeignTables = []tablebuilder.ForeignTable{
 			{
@@ -362,6 +378,7 @@ func TestBuildQuery_ForeignTableJoins(t *testing.T) {
 	})
 
 	t.Run("nested foreign table join", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("inventory_adjustments", "inventory")
 		ds.Select.ForeignTables = []tablebuilder.ForeignTable{
 			{
@@ -396,6 +413,7 @@ func TestBuildCountQuery(t *testing.T) {
 	qb := tablebuilder.NewQueryBuilder()
 
 	t.Run("produces COUNT star", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		sql, _, err := qb.BuildCountQuery(&ds, tablebuilder.QueryParams{})
 		if err != nil {
@@ -406,6 +424,7 @@ func TestBuildCountQuery(t *testing.T) {
 	})
 
 	t.Run("filter still applied to count", func(t *testing.T) {
+		t.Parallel()
 		ds := minimalDS("products", "products")
 		ds.Filters = []tablebuilder.Filter{
 			{Column: "is_active", Operator: "eq", Value: true},
@@ -433,6 +452,7 @@ func TestBuildMetricQuery(t *testing.T) {
 	}
 
 	t.Run("sum function", func(t *testing.T) {
+		t.Parallel()
 		ds := metricDS("orders", "sales", []tablebuilder.MetricConfig{
 			{Name: "total_revenue", Function: "sum", Column: "orders.amount"},
 		}, nil)
@@ -445,6 +465,7 @@ func TestBuildMetricQuery(t *testing.T) {
 	})
 
 	t.Run("count function", func(t *testing.T) {
+		t.Parallel()
 		ds := metricDS("orders", "sales", []tablebuilder.MetricConfig{
 			{Name: "order_count", Function: "count", Column: "orders.id"},
 		}, nil)
@@ -456,6 +477,7 @@ func TestBuildMetricQuery(t *testing.T) {
 	})
 
 	t.Run("count_distinct produces COUNT DISTINCT", func(t *testing.T) {
+		t.Parallel()
 		ds := metricDS("orders", "sales", []tablebuilder.MetricConfig{
 			{Name: "unique_customers", Function: "count_distinct", Column: "orders.customer_id"},
 		}, nil)
@@ -467,6 +489,7 @@ func TestBuildMetricQuery(t *testing.T) {
 	})
 
 	t.Run("avg function", func(t *testing.T) {
+		t.Parallel()
 		ds := metricDS("orders", "sales", []tablebuilder.MetricConfig{
 			{Name: "avg_order", Function: "avg", Column: "orders.amount"},
 		}, nil)
@@ -478,6 +501,7 @@ func TestBuildMetricQuery(t *testing.T) {
 	})
 
 	t.Run("invalid aggregate function returns error", func(t *testing.T) {
+		t.Parallel()
 		ds := metricDS("orders", "sales", []tablebuilder.MetricConfig{
 			{Name: "bad", Function: "median", Column: "orders.amount"},
 		}, nil)
@@ -488,6 +512,7 @@ func TestBuildMetricQuery(t *testing.T) {
 	})
 
 	t.Run("groupby with date interval produces DATE_TRUNC and GROUP BY", func(t *testing.T) {
+		t.Parallel()
 		ds := metricDS("orders", "sales",
 			[]tablebuilder.MetricConfig{
 				{Name: "revenue", Function: "sum", Column: "orders.amount"},
@@ -504,6 +529,7 @@ func TestBuildMetricQuery(t *testing.T) {
 	})
 
 	t.Run("multiple groupby all appear in GROUP BY clause", func(t *testing.T) {
+		t.Parallel()
 		ds := metricDS("order_line_items", "sales",
 			[]tablebuilder.MetricConfig{
 				{Name: "revenue", Function: "sum", Column: "order_line_items.total_price"},
@@ -521,6 +547,7 @@ func TestBuildMetricQuery(t *testing.T) {
 	})
 
 	t.Run("expression groupby uses raw SQL", func(t *testing.T) {
+		t.Parallel()
 		ds := metricDS("orders", "sales",
 			[]tablebuilder.MetricConfig{
 				{Name: "cnt", Function: "count", Column: "orders.id"},
@@ -558,6 +585,7 @@ func TestBuildMetricQuery_ArithmeticExpression(t *testing.T) {
 
 	for _, tt := range operators {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ds := tablebuilder.DataSource{
 				Type:   "query",
 				Source: "order_line_items",
@@ -582,6 +610,7 @@ func TestBuildMetricQuery_ArithmeticExpression(t *testing.T) {
 	}
 
 	t.Run("invalid operator returns error", func(t *testing.T) {
+		t.Parallel()
 		ds := tablebuilder.DataSource{
 			Source: "t",
 			Metrics: []tablebuilder.MetricConfig{
