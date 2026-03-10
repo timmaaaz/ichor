@@ -1419,7 +1419,8 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// PAGES
 	var pageIDs uuid.UUIDs
 
-	for _, p := range seedmodels.AllPages {
+	for i, p := range seedmodels.AllPages {
+		p.SortOrder = i + 1
 		created, err := busDomain.Page.Create(ctx, p)
 		if err != nil {
 			return fmt.Errorf("creating page %s : %w", p.Name, err)
