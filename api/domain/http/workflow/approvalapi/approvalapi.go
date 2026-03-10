@@ -181,6 +181,9 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 	// Resolve in DB (atomic, checks pending status).
 	approval, err := a.approvalBus.Resolve(ctx, id, userID, req.Resolution, req.Reason)
 	if err != nil {
+		if errors.Is(err, approvalrequestbus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		if errors.Is(err, approvalrequestbus.ErrAlreadyResolved) {
 			return errs.Newf(errs.FailedPrecondition, "approval already resolved")
 		}

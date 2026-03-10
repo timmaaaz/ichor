@@ -33,8 +33,8 @@ func NewResolveApprovalHandler(log *logger.Logger, approvalRequestBus *approvalr
 // GetType returns the action type identifier.
 func (h *ResolveApprovalHandler) GetType() string { return "resolve_approval_request" }
 
-// IsAsync returns true because resolution may complete a Temporal async workflow.
-func (h *ResolveApprovalHandler) IsAsync() bool { return true }
+// IsAsync returns false — resolution is a synchronous database operation.
+func (h *ResolveApprovalHandler) IsAsync() bool { return false }
 
 // SupportsManualExecution returns true to allow manual invocation via the API.
 func (h *ResolveApprovalHandler) SupportsManualExecution() bool { return true }

@@ -130,7 +130,7 @@ var actionTypeMetadata = map[string]actionTypeMeta{
 		Name:           "Seek Approval",
 		Description:    "Creates an approval request for specified users",
 		Category:       "approval",
-		SupportsManual: false,
+		SupportsManual: true,
 		IsAsync:        true,
 	},
 	"send_email": {
@@ -229,7 +229,7 @@ var actionTypeMetadata = map[string]actionTypeMeta{
 		Description:    "Programmatically resolve an open approval request — enables cross-workflow orchestration where one workflow closes an approval another workflow is waiting on",
 		Category:       "approval",
 		SupportsManual: true,
-		IsAsync:        true,
+		IsAsync:        false,
 	},
 }
 

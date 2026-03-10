@@ -165,7 +165,7 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID, approvedBy uuid.UUID, r
 
 	approvedPO, err := a.purchaseorderbus.Approve(ctx, po, approvedBy, reason)
 	if err != nil {
-		if errors.Is(err, purchaseorderbus.ErrAlreadyApproved) {
+		if errors.Is(err, purchaseorderbus.ErrAlreadyApproved) || errors.Is(err, purchaseorderbus.ErrAlreadyRejected) {
 			return PurchaseOrder{}, errs.New(errs.InvalidArgument, err)
 		}
 		return PurchaseOrder{}, errs.Newf(errs.Internal, "approve: %s", err)

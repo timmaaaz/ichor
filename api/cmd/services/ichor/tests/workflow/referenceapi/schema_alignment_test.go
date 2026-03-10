@@ -214,7 +214,7 @@ func Test_ActionTypeSchemas_AsyncFlags(t *testing.T) {
 		"reject_transfer_order":        false,
 		"release_reservation":          false,
 		"reserve_inventory":            false,
-		"resolve_approval_request":     true,
+		"resolve_approval_request":     false,
 		"seek_approval":                true,
 		"send_email":                   true,
 		"send_notification":            false,
