@@ -55,7 +55,7 @@ func (s *Store) Create(ctx context.Context, uom productuombus.ProductUOM) error 
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBProductUOM(uom)); err != nil {
 		if errors.Is(err, sqldb.ErrForeignKeyViolation) {
-			return fmt.Errorf("namedexeccontext: %w", productuombus.ErrNotFound)
+			return fmt.Errorf("namedexeccontext: %w", productuombus.ErrForeignKeyViolation)
 		}
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
 			return fmt.Errorf("namedexeccontext: %w", productuombus.ErrUniqueEntry)

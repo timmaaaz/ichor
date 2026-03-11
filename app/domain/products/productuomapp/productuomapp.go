@@ -34,6 +34,9 @@ func (a *App) Create(ctx context.Context, app NewProductUOM) (ProductUOM, error)
 		if errors.Is(err, productuombus.ErrUniqueEntry) {
 			return ProductUOM{}, errs.New(errs.AlreadyExists, productuombus.ErrUniqueEntry)
 		}
+		if errors.Is(err, productuombus.ErrForeignKeyViolation) {
+			return ProductUOM{}, errs.New(errs.Aborted, productuombus.ErrForeignKeyViolation)
+		}
 		return ProductUOM{}, errs.Newf(errs.Internal, "create: uom[%+v]: %s", uom, err)
 	}
 
@@ -109,6 +112,9 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[ProductUO
 func (a *App) QueryByID(ctx context.Context, uomID uuid.UUID) (ProductUOM, error) {
 	uom, err := a.productuombus.QueryByID(ctx, uomID)
 	if err != nil {
+		if errors.Is(err, productuombus.ErrNotFound) {
+			return ProductUOM{}, errs.New(errs.NotFound, productuombus.ErrNotFound)
+		}
 		return ProductUOM{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
