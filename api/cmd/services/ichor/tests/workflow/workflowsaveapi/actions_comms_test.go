@@ -299,7 +299,7 @@ func TestSendEmailAction(t *testing.T) {
 
 	var completed bool
 	for i := 0; i < 30; i++ {
-		resp, err := tc.ListWorkflowExecutions(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+		resp, err := tc.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 			Namespace: "default",
 			PageSize:  10,
 			Query:     fmt.Sprintf(`TaskQueue = "%s" AND ExecutionStatus = "Completed"`, taskQueue),
@@ -405,7 +405,7 @@ func TestSendNotificationAction(t *testing.T) {
 
 	var completed bool
 	for i := 0; i < 30; i++ {
-		resp, err := tc.ListWorkflowExecutions(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+		resp, err := tc.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 			Namespace: "default",
 			PageSize:  10,
 			Query:     fmt.Sprintf(`TaskQueue = "%s" AND ExecutionStatus = "Completed"`, taskQueue),
