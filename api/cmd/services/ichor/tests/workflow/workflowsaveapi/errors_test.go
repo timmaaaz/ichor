@@ -40,14 +40,18 @@ func runErrorTests(t *testing.T, sd ExecutionTestData) {
 // 10a. Action Failures
 // =============================================================================
 
-// testActionFailsSequenceStops tests that when an action fails in a sequence,
-// the workflow handles the failure gracefully (action 1 still succeeds).
+// testActionFailsSequenceStops tests that when action 2 (invalid config) fails,
+// the sequence stops at action 2. Action 1 (before the failure) still succeeds
+// and its alert is created. Action 3 (after the failure) does NOT run.
 func testActionFailsSequenceStops(t *testing.T, sd ExecutionTestData) {
 	ctx := context.Background()
 
 	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 || len(sd.EntityTypes) == 0 {
 		t.Fatal("insufficient seed data")
 	}
+
+	uniqueSuffix := uuid.New().String()[:8]
+	uniqueType := "fail_seq_" + uniqueSuffix
 
 	// Create a workflow with 3 actions where action 2 has invalid config
 	rule, err := sd.WF.WorkflowBus.CreateRule(ctx, workflow.NewAutomationRule{
@@ -69,7 +73,7 @@ func testActionFailsSequenceStops(t *testing.T, sd ExecutionTestData) {
 	action1, err := sd.WF.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: rule.ID,
 		Name:             "Action 1 - Valid",
-		ActionConfig:     json.RawMessage(`{"alert_type":"test","severity":"low","title":"Test 1","message":"Should succeed","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
+		ActionConfig:     json.RawMessage(`{"alert_type":"` + uniqueType + `","severity":"low","title":"Test 1","message":"Should succeed","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -89,11 +93,11 @@ func testActionFailsSequenceStops(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("creating action 2: %v", err)
 	}
 
-	// Action 3: Valid create_alert (may be skipped on action 2 failure)
+	// Action 3: Valid create_alert (should be skipped after action 2 failure)
 	action3, err := sd.WF.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: rule.ID,
 		Name:             "Action 3 - Should Skip",
-		ActionConfig:     json.RawMessage(`{"alert_type":"test","severity":"low","title":"Test 3","message":"Should be skipped","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
+		ActionConfig:     json.RawMessage(`{"alert_type":"` + uniqueType + `_skip","severity":"low","title":"Test 3","message":"Should be skipped","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -141,28 +145,40 @@ func testActionFailsSequenceStops(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
+	// Capture baseline BEFORE firing the trigger.
+	alertType := uniqueType
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "10"))
+	if err != nil {
+		t.Fatalf("querying baseline alerts: %v", err)
+	}
+	beforeCount := len(before)
+
 	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[0].Name, sd.Users[0].ID, map[string]any{})
 	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
 		t.Fatalf("firing trigger: %v", err)
 	}
 
-	// Wait for action 1's alert (alert_type: "test") to appear. Wait up to 10s.
-	alertType := "test"
+	// Poll for action 1's alert (count increase). Wait up to 10s.
 	var found bool
 	for i := 0; i < 20; i++ {
-		alerts, _ := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "5"))
-		if len(alerts) > 0 {
+		alerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "10"))
+		if err != nil {
+			t.Logf("alert query error (will retry): %v", err)
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		if len(alerts) > beforeCount {
 			found = true
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 	if !found {
-		t.Fatal("timeout: action 1's alert not created after 10s")
+		t.Fatal("timeout: action 1's alert was not created after 10s")
 	}
 	t.Log("SUCCESS: action 1 succeeded, workflow handled action 2 failure gracefully")
 
-	// Suppress unused variable warnings from seeding.
+	// action3 is created but not asserted individually — it should be skipped.
 	_ = action3
 }
 
@@ -179,12 +195,16 @@ func testConditionFieldNotFound(t *testing.T, sd ExecutionTestData) {
 		t.Fatal("insufficient seed data")
 	}
 
+	if len(sd.TriggerTypes) < 3 {
+		t.Skip("need at least 3 trigger types")
+	}
+
 	rule, err := sd.WF.WorkflowBus.CreateRule(ctx, workflow.NewAutomationRule{
 		Name:          "Missing Field Test " + uuid.New().String()[:8],
 		Description:   "Tests condition with missing field",
 		EntityID:      sd.Entities[0].ID,
 		EntityTypeID:  sd.EntityTypes[0].ID,
-		TriggerTypeID: sd.TriggerTypes[0].ID,
+		TriggerTypeID: sd.TriggerTypes[2].ID,
 		IsActive:      true,
 		CreatedBy:     sd.Users[0].ID,
 	})
@@ -221,7 +241,13 @@ func testConditionFieldNotFound(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[0].Name, sd.Users[0].ID, map[string]any{
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
+	if err != nil {
+		t.Fatalf("baseline alert count: %v", err)
+	}
+	beforeCount := len(before)
+
+	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[2].Name, sd.Users[0].ID, map[string]any{
 		"status": "active",
 		"amount": 100,
 		// intentionally no "nonexistent_field_xyz"
@@ -230,9 +256,17 @@ func testConditionFieldNotFound(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("firing trigger: %v", err)
 	}
 
-	// Workflow should complete gracefully. Wait 3s and verify no panic.
+	// Wait for workflow to complete gracefully (evaluate_condition with unknown field).
 	time.Sleep(3 * time.Second)
-	t.Log("SUCCESS: missing field condition handled gracefully")
+
+	after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
+	if err != nil {
+		t.Fatalf("post-trigger alert count: %v", err)
+	}
+	if len(after) != beforeCount {
+		t.Errorf("expected no new alerts (graceful no-op), got %d new", len(after)-beforeCount)
+	}
+	t.Log("SUCCESS: missing field condition handled gracefully — no new alerts, no panic")
 }
 
 // testConditionTypeMismatch tests that type mismatches in conditions are handled gracefully.
@@ -243,12 +277,16 @@ func testConditionTypeMismatch(t *testing.T, sd ExecutionTestData) {
 		t.Fatal("insufficient seed data")
 	}
 
+	if len(sd.TriggerTypes) < 3 {
+		t.Skip("need at least 3 trigger types")
+	}
+
 	rule, err := sd.WF.WorkflowBus.CreateRule(ctx, workflow.NewAutomationRule{
 		Name:          "Type Mismatch Test " + uuid.New().String()[:8],
 		Description:   "Tests condition type mismatch handling",
 		EntityID:      sd.Entities[0].ID,
 		EntityTypeID:  sd.EntityTypes[0].ID,
-		TriggerTypeID: sd.TriggerTypes[0].ID,
+		TriggerTypeID: sd.TriggerTypes[2].ID,
 		IsActive:      true,
 		CreatedBy:     sd.Users[0].ID,
 	})
@@ -285,7 +323,13 @@ func testConditionTypeMismatch(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[0].Name, sd.Users[0].ID, map[string]any{
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
+	if err != nil {
+		t.Fatalf("baseline alert count: %v", err)
+	}
+	beforeCount := len(before)
+
+	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[2].Name, sd.Users[0].ID, map[string]any{
 		"name": "This is a string, not a number",
 	})
 	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
@@ -293,7 +337,15 @@ func testConditionTypeMismatch(t *testing.T, sd ExecutionTestData) {
 	}
 
 	time.Sleep(3 * time.Second)
-	t.Log("SUCCESS: type mismatch handled gracefully")
+
+	after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
+	if err != nil {
+		t.Fatalf("post-trigger alert count: %v", err)
+	}
+	if len(after) != beforeCount {
+		t.Errorf("expected no new alerts (graceful no-op), got %d new", len(after)-beforeCount)
+	}
+	t.Log("SUCCESS: type mismatch handled gracefully — no new alerts, no panic")
 }
 
 // =============================================================================
@@ -309,13 +361,17 @@ func testNoActionsDefined(t *testing.T, sd ExecutionTestData) {
 		t.Fatal("insufficient seed data")
 	}
 
+	if len(sd.TriggerTypes) < 3 {
+		t.Skip("need at least 3 trigger types; only have", len(sd.TriggerTypes))
+	}
+
 	// Create a rule with no actions and no edges
 	_, err := sd.WF.WorkflowBus.CreateRule(ctx, workflow.NewAutomationRule{
 		Name:          "No Actions Test " + uuid.New().String()[:8],
 		Description:   "Tests rule with no actions",
 		EntityID:      sd.Entities[0].ID,
 		EntityTypeID:  sd.EntityTypes[0].ID,
-		TriggerTypeID: sd.TriggerTypes[0].ID,
+		TriggerTypeID: sd.TriggerTypes[2].ID,
 		IsActive:      true,
 		CreatedBy:     sd.Users[0].ID,
 	})
@@ -327,17 +383,23 @@ func testNoActionsDefined(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	before, _ := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("baseline alert query: %v", err)
+	}
 	beforeCount := len(before)
 
-	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[0].Name, sd.Users[0].ID, map[string]any{})
+	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[2].Name, sd.Users[0].ID, map[string]any{})
 	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
 		t.Fatalf("firing trigger: %v", err)
 	}
 
 	time.Sleep(2 * time.Second)
 
-	after, _ := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("post-trigger alert query: %v", err)
+	}
 	if len(after) != beforeCount {
 		t.Errorf("expected no new alerts for rule with no actions, got %d new", len(after)-beforeCount)
 	}
@@ -351,6 +413,11 @@ func testInactiveActionSkipped(t *testing.T, sd ExecutionTestData) {
 	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 || len(sd.EntityTypes) == 0 {
 		t.Fatal("insufficient seed data")
 	}
+
+	uniqueSuffix := uuid.New().String()[:8]
+	active1Type := "active1_" + uniqueSuffix
+	active3Type := "active3_" + uniqueSuffix
+	inactiveType := "inactive_" + uniqueSuffix
 
 	rule, err := sd.WF.WorkflowBus.CreateRule(ctx, workflow.NewAutomationRule{
 		Name:          "Inactive Action Test " + uuid.New().String()[:8],
@@ -371,7 +438,7 @@ func testInactiveActionSkipped(t *testing.T, sd ExecutionTestData) {
 	action1, err := sd.WF.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: rule.ID,
 		Name:             "Active Action 1",
-		ActionConfig:     json.RawMessage(`{"alert_type":"active_test","severity":"low","title":"Active 1","message":"Should execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
+		ActionConfig:     json.RawMessage(`{"alert_type":"` + active1Type + `","severity":"low","title":"Active 1","message":"Should execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -383,7 +450,7 @@ func testInactiveActionSkipped(t *testing.T, sd ExecutionTestData) {
 	action2, err := sd.WF.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: rule.ID,
 		Name:             "Inactive Action 2",
-		ActionConfig:     json.RawMessage(`{"alert_type":"inactive_test","severity":"high","title":"Inactive 2","message":"Should NOT execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
+		ActionConfig:     json.RawMessage(`{"alert_type":"` + inactiveType + `","severity":"high","title":"Inactive 2","message":"Should NOT execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
 		IsActive:         false,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -395,7 +462,7 @@ func testInactiveActionSkipped(t *testing.T, sd ExecutionTestData) {
 	action3, err := sd.WF.WorkflowBus.CreateRuleAction(ctx, workflow.NewRuleAction{
 		AutomationRuleID: rule.ID,
 		Name:             "Active Action 3",
-		ActionConfig:     json.RawMessage(`{"alert_type":"active_test","severity":"low","title":"Active 3","message":"Should execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
+		ActionConfig:     json.RawMessage(`{"alert_type":"` + active3Type + `","severity":"low","title":"Active 3","message":"Should execute","recipients":{"users":["` + userIDStr + `"],"roles":[]}}`),
 		IsActive:         true,
 		TemplateID:       &sd.CreateAlertTemplate.ID,
 	})
@@ -443,38 +510,60 @@ func testInactiveActionSkipped(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	inactiveAlertType := "inactive_test"
-	before, _ := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &inactiveAlertType}, alertbus.DefaultOrderBy, page.MustParse("1", "10"))
-	beforeInactiveCount := len(before)
-
 	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[0].Name, sd.Users[0].ID, map[string]any{})
 	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
 		t.Fatalf("firing trigger: %v", err)
 	}
 
-	// Poll for active action's alert ("active_test")
-	activeAlertType := "active_test"
-	var found bool
+	// Poll for action1's alert.
+	var action1Found bool
 	for i := 0; i < 20; i++ {
-		alerts, _ := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &activeAlertType}, alertbus.DefaultOrderBy, page.MustParse("1", "10"))
+		alerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &active1Type}, alertbus.DefaultOrderBy, page.MustParse("1", "5"))
+		if err != nil {
+			t.Logf("alert query error (will retry): %v", err)
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
 		if len(alerts) > 0 {
-			found = true
+			action1Found = true
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	if !found {
-		t.Fatal("timeout: active action's alert not created after 10s")
+	if !action1Found {
+		t.Fatal("timeout: action1's alert not created after 10s")
 	}
 
-	// Verify inactive action did NOT create an alert
-	after, _ := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &inactiveAlertType}, alertbus.DefaultOrderBy, page.MustParse("1", "10"))
-	if len(after) > beforeInactiveCount {
-		t.Errorf("inactive action 2 should NOT have created an alert, got %d new", len(after)-beforeInactiveCount)
+	// Poll for action3's alert (sequence continues past inactive action2).
+	var action3Found bool
+	for i := 0; i < 20; i++ {
+		alerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &active3Type}, alertbus.DefaultOrderBy, page.MustParse("1", "5"))
+		if err != nil {
+			t.Logf("alert query error (will retry): %v", err)
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		if len(alerts) > 0 {
+			action3Found = true
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if !action3Found {
+		t.Fatal("timeout: action3's alert not created after 10s — sequence did not continue past inactive action2")
 	}
 
-	t.Log("SUCCESS: inactive action was skipped")
+	// Verify inactive action2 did NOT create an alert.
+	inactiveAlerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &inactiveType}, alertbus.DefaultOrderBy, page.MustParse("1", "5"))
+	if err != nil {
+		t.Fatalf("querying inactive alerts: %v", err)
+	}
+	if len(inactiveAlerts) > 0 {
+		t.Errorf("inactive action2 should NOT have created an alert, got %d", len(inactiveAlerts))
+	}
 
-	// Suppress unused variable warnings.
-	_ = action3
+	// Use action2 to suppress unused variable warning.
+	_ = action2
+
+	t.Log("SUCCESS: inactive action2 skipped, action1 and action3 both executed")
 }
