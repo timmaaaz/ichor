@@ -13,10 +13,13 @@ package workflowsaveapi_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"go.temporal.io/api/workflowservice/v1"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
@@ -294,9 +297,27 @@ func TestSendEmailAction(t *testing.T) {
 		t.Fatalf("firing trigger event: %v", err)
 	}
 
-	// Give Temporal time to execute the activity (nil-SMTP path is fast).
-	time.Sleep(5 * time.Second)
-	t.Log("SUCCESS: send_email with nil SMTP client completed without panic")
+	var completed bool
+	for i := 0; i < 30; i++ {
+		resp, err := tc.ListWorkflowExecutions(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+			Namespace: "default",
+			PageSize:  10,
+			Query:     fmt.Sprintf(`TaskQueue = "%s" AND ExecutionStatus = "Completed"`, taskQueue),
+		})
+		if err != nil {
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		if len(resp.Executions) > 0 {
+			completed = true
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if !completed {
+		t.Fatal("timeout: send_email workflow did not complete within 15s")
+	}
+	t.Log("SUCCESS: send_email with nil SMTP client completed without error")
 }
 
 // =============================================================================
@@ -382,8 +403,27 @@ func TestSendNotificationAction(t *testing.T) {
 		t.Fatalf("firing trigger event: %v", err)
 	}
 
-	time.Sleep(5 * time.Second)
-	t.Log("SUCCESS: send_notification with nil queue client completed without panic")
+	var completed bool
+	for i := 0; i < 30; i++ {
+		resp, err := tc.ListWorkflowExecutions(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+			Namespace: "default",
+			PageSize:  10,
+			Query:     fmt.Sprintf(`TaskQueue = "%s" AND ExecutionStatus = "Completed"`, taskQueue),
+		})
+		if err != nil {
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		if len(resp.Executions) > 0 {
+			completed = true
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if !completed {
+		t.Fatal("timeout: send_notification workflow did not complete within 15s")
+	}
+	t.Log("SUCCESS: send_notification with nil queue client completed without error")
 }
 
 // =============================================================================
