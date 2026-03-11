@@ -134,9 +134,15 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		productIDs[i] = p.ProductID
 	}
 
-	uoms, err := productuombus.TestSeedProductUOMs(ctx, 10, productIDs, busDomain.ProductUOM)
+	_, err = productuombus.TestSeedProductUOMs(ctx, 10, productIDs, busDomain.ProductUOM)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding product uoms : %w", err)
+	}
+
+	// Re-query to get DB-canonical values (NUMERIC(10,4) rounds float64 seed values).
+	uoms, err := busDomain.ProductUOM.Query(ctx, productuombus.QueryFilter{}, productuombus.DefaultOrderBy, page.MustParse("1", "10"))
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("re-querying product uoms : %w", err)
 	}
 
 	// =========================================================================
