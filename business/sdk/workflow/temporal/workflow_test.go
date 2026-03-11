@@ -455,9 +455,10 @@ func TestWorkflow_UnknownActionType(t *testing.T) {
 // Deactivated Action Tests
 // =============================================================================
 
-// TestWorkflow_DeactivatedAction_StillExecutes documents that the current
-// implementation does NOT skip deactivated actions. Update when skip logic is added.
-func TestWorkflow_DeactivatedAction_StillExecutes(t *testing.T) {
+// TestWorkflow_DeactivatedAction_IsSkipped verifies that an action with
+// IsActive=false is NOT dispatched as a Temporal activity. The workflow
+// should still complete successfully (the inactive action is just skipped).
+func TestWorkflow_DeactivatedAction_IsSkipped(t *testing.T) {
 	handler := &testActionHandler{
 		actionType: "test_action",
 		result:     map[string]any{"status": "done"},
@@ -484,7 +485,7 @@ func TestWorkflow_DeactivatedAction_StillExecutes(t *testing.T) {
 	env.ExecuteWorkflow(ExecuteGraphWorkflow, input)
 	require.True(t, env.IsWorkflowCompleted())
 	require.NoError(t, env.GetWorkflowError())
-	require.Equal(t, 1, handler.called)
+	require.Equal(t, 0, handler.called) // was 1 before fix; inactive actions must not be dispatched
 }
 
 // =============================================================================

@@ -157,6 +157,20 @@ func executeActions(ctx workflow.Context, executor *GraphExecutor, actions []Act
 // merges the result into context, and recurses with the next actions.
 func executeSingleAction(ctx workflow.Context, executor *GraphExecutor, action ActionNode, mergedCtx *MergedContext, input WorkflowInput) error {
 	logger := workflow.GetLogger(ctx)
+
+	// Skip inactive actions but continue traversal so downstream actions still run.
+	if !action.IsActive {
+		logger.Info("Skipping inactive action",
+			"action_id", action.ID,
+			"action_name", action.Name,
+		)
+		nextActions := executor.GetNextActions(action.ID, map[string]any{"output": "success"})
+		if len(nextActions) == 0 {
+			return nil
+		}
+		return executeActions(ctx, executor, nextActions, mergedCtx, input)
+	}
+
 	logger.Info("Executing action",
 		"action_id", action.ID,
 		"action_name", action.Name,
