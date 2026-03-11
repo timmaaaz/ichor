@@ -54,6 +54,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/products/productcostbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productuombus"
 	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
@@ -115,6 +116,7 @@ type SeedData struct {
 	TableAccesses                 []tableaccessbus.TableAccess
 	UserPermissions               []permissionsbus.UserPermissions
 	Products                      []productbus.Product
+	ProductUOMs                   []productuombus.ProductUOM
 	PhysicalAttributes            []physicalattributebus.PhysicalAttribute
 	ProductCosts                  []productcostbus.ProductCost
 	Suppliers                     []supplierbus.Supplier
