@@ -2224,7 +2224,7 @@ ALTER TABLE inventory.transfer_orders
     ADD COLUMN rejection_reason TEXT NULL;
 
 -- Version: 2.11
--- Description: add product_uoms table
+-- Description: Add product_uoms table
 CREATE TABLE products.product_uoms (
     id                UUID        NOT NULL DEFAULT gen_random_uuid(),
     product_id        UUID        NOT NULL,
@@ -2245,3 +2245,11 @@ CREATE TABLE products.product_uoms (
 CREATE UNIQUE INDEX product_uoms_base_idx
     ON products.product_uoms (product_id)
     WHERE is_base = TRUE;
+
+-- Version: 2.12
+-- Description: Add inventory_type column to products if not already present from v1.42 edit.
+ALTER TABLE products.products ADD COLUMN IF NOT EXISTS inventory_type TEXT NULL;
+
+-- Version: 2.13
+-- Description: Add stage column to inventory zones if not already present from v1.51 edit.
+ALTER TABLE inventory.zones ADD COLUMN IF NOT EXISTS stage TEXT NULL;
