@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -25,15 +26,17 @@ type Storer interface {
 
 // Business manages the set of APIs for product UOM access.
 type Business struct {
-	log    *logger.Logger
-	storer Storer
+	log      *logger.Logger
+	delegate *delegate.Delegate
+	storer   Storer
 }
 
 // NewBusiness constructs a Business for product UOM API access.
-func NewBusiness(log *logger.Logger, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer) *Business {
 	return &Business{
-		log:    log,
-		storer: storer,
+		log:      log,
+		delegate: delegate,
+		storer:   storer,
 	}
 }
 
@@ -58,11 +61,18 @@ func (b *Business) Create(ctx context.Context, npu NewProductUOM) (ProductUOM, e
 		return ProductUOM{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionCreatedData(uom)); err != nil {
+		b.log.Error(ctx, "productuombus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return uom, nil
 }
 
 // Update modifies information about an existing product UOM.
 func (b *Business) Update(ctx context.Context, uom ProductUOM, upu UpdateProductUOM) (ProductUOM, error) {
+	before := uom
+
 	if upu.Name != nil {
 		uom.Name = *upu.Name
 	}
@@ -88,6 +98,11 @@ func (b *Business) Update(ctx context.Context, uom ProductUOM, upu UpdateProduct
 		return ProductUOM{}, fmt.Errorf("update: %w", err)
 	}
 
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, uom)); err != nil {
+		b.log.Error(ctx, "productuombus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
 	return uom, nil
 }
 
@@ -96,6 +111,12 @@ func (b *Business) Delete(ctx context.Context, uom ProductUOM) error {
 	if err := b.storer.Delete(ctx, uom); err != nil {
 		return fmt.Errorf("delete: %w", err)
 	}
+
+	// Fire delegate event for workflow automation
+	if err := b.delegate.Call(ctx, ActionDeletedData(uom)); err != nil {
+		b.log.Error(ctx, "productuombus: delegate call failed", "action", ActionDeleted, "err", err)
+	}
+
 	return nil
 }
 

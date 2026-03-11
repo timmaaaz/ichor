@@ -396,7 +396,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 	productBus := productbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB))
-	productUOMBus := productuombus.NewBusiness(cfg.Log, productuomdb.NewStore(cfg.Log, cfg.DB))
+	productUOMBus := productuombus.NewBusiness(cfg.Log, delegate, productuomdb.NewStore(cfg.Log, cfg.DB))
 	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))

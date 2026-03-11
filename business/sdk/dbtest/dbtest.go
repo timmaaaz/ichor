@@ -325,7 +325,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
 	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db))
 	productBus := productbus.NewBusiness(log, delegate, productdb.NewStore(log, db))
-	productUOMBus := productuombus.NewBusiness(log, productuomdb.NewStore(log, db))
+	productUOMBus := productuombus.NewBusiness(log, delegate, productuomdb.NewStore(log, db))
 	physicalAttributeBus := physicalattributebus.NewBusiness(log, delegate, physicalattributedb.NewStore(log, db))
 	inventoryItemBus := inventoryitembus.NewBusiness(log, delegate, inventoryitemdb.NewStore(log, db))
 
