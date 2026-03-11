@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -58,6 +57,7 @@ func Test_TableBuilder(t *testing.T) {
 	}
 
 	t.Run("pagination_correctness", func(t *testing.T) {
+		t.Parallel()
 		// productsList config has 20 seeded products, no filter, page size 10.
 		pg1 := page.MustParse("1", "10")
 		result1, err := store.QueryByPage(testCtx(t), productsList, pg1)
@@ -101,6 +101,7 @@ func Test_TableBuilder(t *testing.T) {
 	})
 
 	t.Run("simple_inventory_items", func(t *testing.T) {
+		t.Parallel()
 		params := tablebuilder.QueryParams{Page: 1, Rows: 50}
 		result, err := store.FetchTableData(testCtx(t), inventoryItems, params)
 		if err != nil {
@@ -133,6 +134,7 @@ func Test_TableBuilder(t *testing.T) {
 	})
 
 	t.Run("orders_view", func(t *testing.T) {
+		t.Parallel()
 		// currentOrders uses sales.orders_base view (verified present in migrate.sql)
 		params := tablebuilder.QueryParams{Page: 1, Rows: 50}
 		result, err := store.FetchTableData(testCtx(t), currentOrders, params)
@@ -154,6 +156,7 @@ func Test_TableBuilder(t *testing.T) {
 	})
 
 	t.Run("inventory_with_joins_computed_columns", func(t *testing.T) {
+		t.Parallel()
 		params := tablebuilder.QueryParams{Page: 1, Rows: 50}
 		result, err := store.FetchTableData(testCtx(t), currentInventoryProducts, params)
 		if err != nil {
@@ -178,6 +181,7 @@ func Test_TableBuilder(t *testing.T) {
 	})
 
 	t.Run("inventory_adjustments_deep_join", func(t *testing.T) {
+		t.Parallel()
 		// inventoryAdjustmentsPageConfig has 3-level nested join:
 		// inventory_adjustments → inventory_locations → warehouses
 		// and a location_code computed column.
@@ -214,6 +218,7 @@ func Test_TableBuilder(t *testing.T) {
 	})
 
 	t.Run("stored_config_roundtrip", func(t *testing.T) {
+		t.Parallel()
 		// One of the seeded configs is "products_list"
 		loaded, err := configStore.LoadConfigByName(testCtx(t), "products_list")
 		if err != nil {
@@ -235,6 +240,7 @@ func Test_TableBuilder(t *testing.T) {
 	})
 
 	t.Run("configstore_crud", func(t *testing.T) {
+		t.Parallel()
 		testCfg := &tablebuilder.Config{
 			Title:         "CRUD Test Config",
 			WidgetType:    "table",
@@ -295,6 +301,7 @@ func Test_TableBuilder(t *testing.T) {
 	})
 
 	t.Run("page_config_crud", func(t *testing.T) {
+		t.Parallel()
 		pageConfig := tablebuilder.PageConfig{
 			Name:      "Test Page Config",
 			UserID:    sd.Admins[0].ID,
@@ -337,6 +344,7 @@ func Test_TableBuilder(t *testing.T) {
 	})
 
 	t.Run("dynamic_filters", func(t *testing.T) {
+		t.Parallel()
 		// Unfiltered: get all products
 		paramsAll := tablebuilder.QueryParams{Page: 1, Rows: 50}
 		resultAll, err := store.FetchTableData(testCtx(t), productsList, paramsAll)
@@ -1154,17 +1162,14 @@ func insertSeedData(busDomain dbtest.BusDomain, configStore *tablebuilder.Config
 	// SEED CONFIGS
 	cfg1, err := configStore.Create(ctx, "products_list", "Products List", productsList, admins[0].ID)
 	if err != nil {
-		log.Printf("Error saving config: %v", err)
 		return unitest.SeedData{}, err
 	}
 	cfg2, err := configStore.Create(ctx, "current_orders", "Current Orders", currentOrders, admins[0].ID)
 	if err != nil {
-		log.Printf("Error saving config: %v", err)
 		return unitest.SeedData{}, err
 	}
 	cfg3, err := configStore.Create(ctx, "inventory_items", "Inventory Items", inventoryItems, admins[0].ID)
 	if err != nil {
-		log.Printf("Error saving config: %v", err)
 		return unitest.SeedData{}, err
 	}
 
@@ -1190,6 +1195,7 @@ func Test_ChartTypes(t *testing.T) {
 	t.Parallel()
 
 	t.Run("chart type constants", func(t *testing.T) {
+		t.Parallel()
 		// Verify all chart type constants are defined
 		chartTypes := []string{
 			tablebuilder.ChartTypeLine,
@@ -1221,6 +1227,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("chart response serialization", func(t *testing.T) {
+		t.Parallel()
 		// Create a sample KPI chart response
 		kpiResponse := tablebuilder.ChartResponse{
 			Type:  tablebuilder.ChartTypeKPI,
@@ -1261,6 +1268,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("categorical chart response", func(t *testing.T) {
+		t.Parallel()
 		// Create a sample line chart response
 		lineResponse := tablebuilder.ChartResponse{
 			Type:       tablebuilder.ChartTypeLine,
@@ -1301,6 +1309,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("combo chart with dual axis", func(t *testing.T) {
+		t.Parallel()
 		comboResponse := tablebuilder.ChartResponse{
 			Type:       tablebuilder.ChartTypeCombo,
 			Title:      "Revenue vs Growth Rate",
@@ -1344,6 +1353,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("chart visual settings", func(t *testing.T) {
+		t.Parallel()
 		settings := tablebuilder.ChartVisualSettings{
 			ChartType:      tablebuilder.ChartTypeLine,
 			CategoryColumn: "month",
@@ -1383,6 +1393,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("KPI config thresholds", func(t *testing.T) {
+		t.Parallel()
 		kpiConfig := tablebuilder.KPIConfig{
 			Label:             "Active Users",
 			Format:            "number",
@@ -1412,6 +1423,7 @@ func Test_ChartTransformer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("transform KPI from table data", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1443,6 +1455,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform line chart from table data", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1477,6 +1490,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform bar chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1504,6 +1518,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform pie chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1534,6 +1549,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transformer handles empty data", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1560,6 +1576,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transformer rejects nil data", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		config := &tablebuilder.Config{
@@ -1574,6 +1591,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transformer rejects table type", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1595,6 +1613,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform gauge chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1630,6 +1649,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform stacked bar chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1666,6 +1686,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform stacked area chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1692,6 +1713,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform combo chart with series config", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1732,6 +1754,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform waterfall chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1763,6 +1786,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform funnel chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1807,6 +1831,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform heatmap chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1851,6 +1876,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform treemap chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1891,6 +1917,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform gantt chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1935,6 +1962,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform with metadata", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1963,6 +1991,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("KPI with trend calculation", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		// Two rows - current and previous for trend calculation
@@ -2000,6 +2029,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("rejects unsupported chart type", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
