@@ -59,16 +59,21 @@ type ForeignTable struct {
 
 type MetricConfig struct {
     Name       string
-    Function   string    // must be in AllowedAggregateFunctions
+    Function   string            // must be in AllowedAggregateFunctions
     Column     string
-    Expression string
+    Expression *ExpressionConfig // optional; multi-column arithmetic (e.g. revenue - cost)
+}
+
+type ExpressionConfig struct {
+    Operator string   // multiply, add, subtract, divide
+    Columns  []string // ["order_line_items.quantity", "product_costs.selling_price"]
 }
 
 type GroupByConfig struct {
     Column     string
-    Interval   string    // must be in AllowedIntervals
+    Interval   string // must be in AllowedIntervals
     Alias      string
-    Expression string
+    Expression bool   // if true, Column is treated as raw SQL (e.g. EXTRACT(DOW FROM created_date))
 }
 ```
 
