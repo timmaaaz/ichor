@@ -16,6 +16,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/integration"
 	foundationtemporal "github.com/timmaaaz/ichor/foundation/temporal"
 	temporalclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
@@ -58,6 +59,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	alertBus := alertbus.NewBusiness(db.Log, alertdb.NewStore(db.Log, db.DB))
 	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil))
 	registry.Register(control.NewEvaluateConditionHandler(db.Log))
+	registry.Register(integration.NewCallWebhookHandler(db.Log))
 
 	// Build approval request bus so seek_approval can create real DB records.
 	approvalRequestStore := approvalrequestdb.NewStore(db.Log, db.DB)
