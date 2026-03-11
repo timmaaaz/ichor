@@ -57,12 +57,14 @@ func (s *mockStorer) ClearTaskToken(_ context.Context, _ uuid.UUID) error {
 
 // mockActivityCompleter controls the Temporal CompleteActivity call.
 type mockActivityCompleter struct {
-	err    error
-	called bool
+	err         error
+	called      bool
+	capturedOut any
 }
 
-func (m *mockActivityCompleter) CompleteActivity(_ context.Context, _ []byte, _ any, _ error) error {
+func (m *mockActivityCompleter) CompleteActivity(_ context.Context, _ []byte, out any, _ error) error {
 	m.called = true
+	m.capturedOut = out
 	return m.err
 }
 
@@ -208,9 +210,8 @@ func TestRetryTemporalCompletion_NilCompleter(t *testing.T) {
 	}
 }
 
-func TestRetryTemporalCompletion_QueryByIDFails(t *testing.T) {
-	// When the DB lookup fails during retry:
-	// Expect: internal error returned.
+func TestRetryTemporalCompletion_QueryByIDGenericError(t *testing.T) {
+	// Generic DB error → 500 Internal.
 	storer := &mockStorer{
 		queryByIDErr: errors.New("db connection lost"),
 	}
@@ -224,5 +225,54 @@ func TestRetryTemporalCompletion_QueryByIDFails(t *testing.T) {
 	}
 	if appErr.Code != errs.Internal {
 		t.Fatalf("expected Internal error code, got %v", appErr.Code)
+	}
+}
+
+func TestRetryTemporalCompletion_QueryByIDNotFound(t *testing.T) {
+	// ErrNotFound → 404 NotFound (matches all other QueryByID callers in this file).
+	storer := &mockStorer{
+		queryByIDErr: approvalrequestbus.ErrNotFound,
+	}
+	a := newTestAPI(storer, nil)
+
+	result := a.retryTemporalCompletion(context.Background(), uuid.New())
+
+	appErr, ok := result.(*errs.Error)
+	if !ok {
+		t.Fatalf("expected *errs.Error, got %T", result)
+	}
+	if appErr.Code != errs.NotFound {
+		t.Fatalf("expected NotFound error code, got %v", appErr.Code)
+	}
+}
+
+func TestRetryTemporalCompletion_ResultMapIncludesResolvedByAndReason(t *testing.T) {
+	// The Temporal output must carry resolved_by and reason so downstream
+	// workflow activities receive the same payload shape as the primary resolve path.
+	approval := resolvedApproval(validToken()) // has ResolvedBy and ResolutionReason set
+
+	storer := &mockStorer{queryByIDResult: approval}
+	completer := &mockActivityCompleter{}
+	a := newTestAPI(storer, completer)
+
+	a.retryTemporalCompletion(context.Background(), approval.ID)
+
+	if !completer.called {
+		t.Fatal("expected CompleteActivity to be called")
+	}
+
+	out, ok := completer.capturedOut.(temporal.ActionActivityOutput)
+	if !ok {
+		t.Fatalf("expected temporal.ActionActivityOutput, got %T", completer.capturedOut)
+	}
+
+	if _, ok := out.Result["resolved_by"]; !ok {
+		t.Error("result map must contain resolved_by")
+	}
+	if _, ok := out.Result["reason"]; !ok {
+		t.Error("result map must contain reason")
+	}
+	if out.Result["output"] != approval.Status {
+		t.Errorf("output field: got %v, want %v", out.Result["output"], approval.Status)
 	}
 }

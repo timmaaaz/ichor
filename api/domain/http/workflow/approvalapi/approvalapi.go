@@ -372,6 +372,9 @@ func parseQueryParams(r *http.Request) QueryParams {
 func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Encoder {
 	approval, err := a.approvalBus.QueryByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, approvalrequestbus.ErrNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
 		return errs.Newf(errs.Internal, "retry temporal: query approval: %s", err)
 	}
 
@@ -391,13 +394,21 @@ func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Enc
 		return toAppApproval(approval)
 	}
 
+	result := map[string]any{
+		"output":      approval.Status,
+		"approval_id": approval.ID.String(),
+	}
+	if approval.ResolvedBy != nil {
+		result["resolved_by"] = approval.ResolvedBy.String()
+	}
+	if approval.ResolutionReason != "" {
+		result["reason"] = approval.ResolutionReason
+	}
+
 	output := temporal.ActionActivityOutput{
 		ActionName: approval.ActionName,
-		Result: map[string]any{
-			"output":      approval.Status,
-			"approval_id": approval.ID.String(),
-		},
-		Success: true,
+		Result:     result,
+		Success:    true,
 	}
 
 	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
