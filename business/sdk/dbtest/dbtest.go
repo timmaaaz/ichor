@@ -139,6 +139,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/officebus/stores/officedb"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
+	"github.com/timmaaaz/ichor/business/domain/products/productuombus"
+	"github.com/timmaaaz/ichor/business/domain/products/productuombus/stores/productuomdb"
 
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/usercache"
@@ -211,6 +213,7 @@ type BusDomain struct {
 	Brand             *brandbus.Business
 	ProductCategory   *productcategorybus.Business
 	Product           *productbus.Business
+	ProductUOM        *productuombus.Business
 	PhysicalAttribute *physicalattributebus.Business
 	InventoryItem     *inventoryitembus.Business
 
@@ -322,6 +325,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
 	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db))
 	productBus := productbus.NewBusiness(log, delegate, productdb.NewStore(log, db))
+	productUOMBus := productuombus.NewBusiness(log, productuomdb.NewStore(log, db))
 	physicalAttributeBus := physicalattributebus.NewBusiness(log, delegate, physicalattributedb.NewStore(log, db))
 	inventoryItemBus := inventoryitembus.NewBusiness(log, delegate, inventoryitemdb.NewStore(log, db))
 
@@ -430,6 +434,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Permissions:                 permissionsBus,
 		Introspection:               introspectionBus,
 		Product:                     productBus,
+		ProductUOM:                  productUOMBus,
 		PhysicalAttribute:           physicalAttributeBus,
 		ProductCost:                 productCostBus,
 		Supplier:                    supplierBus,
