@@ -185,7 +185,7 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 			return errs.New(errs.NotFound, err)
 		}
 		if errors.Is(err, approvalrequestbus.ErrAlreadyResolved) {
-			return errs.Newf(errs.FailedPrecondition, "approval already resolved")
+			return a.retryTemporalCompletion(ctx, id)
 		}
 		return errs.Newf(errs.Internal, "resolve: %s", err)
 	}
@@ -213,6 +213,13 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 				a.log.Error(ctx, "failed to complete Temporal activity",
 					"approval_id", id,
 					"error", err)
+			} else {
+				// Clear the token so a retry doesn't re-complete an already-completed activity.
+				if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
+					a.log.Error(ctx, "failed to clear task token after Temporal completion",
+						"approval_id", id,
+						"error", err)
+				}
 			}
 		}
 	}
