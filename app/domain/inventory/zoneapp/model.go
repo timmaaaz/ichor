@@ -104,7 +104,7 @@ func toBusNewZone(app NewZone) (zonebus.NewZone, error) {
 }
 
 type UpdateZone struct {
-	WarehouseID *string `json:"warehouse_id" validate:"omitempty,min=36,min=36"`
+	WarehouseID *string `json:"warehouse_id" validate:"omitempty,min=36,max=36"`
 	Name        *string `json:"name" validate:"omitempty"`
 	Description *string `json:"description" validate:"omitempty"`
 	Stage       *string `json:"stage" validate:"omitempty"`
