@@ -1,6 +1,7 @@
 package zonedb
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -8,16 +9,17 @@ import (
 )
 
 type zone struct {
-	ZoneID      uuid.UUID `db:"id"`
-	WarehouseID uuid.UUID `db:"warehouse_id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
-	CreatedDate time.Time `db:"created_date"`
-	UpdatedDate time.Time `db:"updated_date"`
+	ZoneID      uuid.UUID      `db:"id"`
+	WarehouseID uuid.UUID      `db:"warehouse_id"`
+	Name        string         `db:"name"`
+	Description string         `db:"description"`
+	Stage       sql.NullString `db:"stage"`
+	CreatedDate time.Time      `db:"created_date"`
+	UpdatedDate time.Time      `db:"updated_date"`
 }
 
 func toDBZone(bus zonebus.Zone) zone {
-	return zone{
+	dest := zone{
 		ZoneID:      bus.ZoneID,
 		WarehouseID: bus.WarehouseID,
 		Name:        bus.Name,
@@ -25,10 +27,14 @@ func toDBZone(bus zonebus.Zone) zone {
 		CreatedDate: bus.CreatedDate.UTC(),
 		UpdatedDate: bus.UpdatedDate.UTC(),
 	}
+	if bus.Stage != nil {
+		dest.Stage = sql.NullString{String: bus.Stage.String(), Valid: true}
+	}
+	return dest
 }
 
 func toBusZone(db zone) zonebus.Zone {
-	return zonebus.Zone{
+	dest := zonebus.Zone{
 		ZoneID:      db.ZoneID,
 		WarehouseID: db.WarehouseID,
 		Name:        db.Name,
@@ -36,6 +42,13 @@ func toBusZone(db zone) zonebus.Zone {
 		CreatedDate: db.CreatedDate.Local(),
 		UpdatedDate: db.UpdatedDate.Local(),
 	}
+	if db.Stage.Valid {
+		st, err := zonebus.ParseStage(db.Stage.String)
+		if err == nil {
+			dest.Stage = &st
+		}
+	}
+	return dest
 }
 
 func toBusZones(dbs []zone) []zonebus.Zone {

@@ -18,6 +18,7 @@ type QueryParams struct {
 	WarehouseID string
 	Name        string
 	Description string
+	Stage       string
 	CreatedDate string
 	UpdatedDate string
 }
@@ -27,6 +28,7 @@ type Zone struct {
 	WarehouseID string `json:"warehouse_id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Stage       string `json:"stage"`
 	CreatedDate string `json:"created_date"`
 	UpdatedDate string `json:"updated_date"`
 }
@@ -37,7 +39,7 @@ func (app Zone) Encode() ([]byte, string, error) {
 }
 
 func ToAppZone(bus zonebus.Zone) Zone {
-	return Zone{
+	app := Zone{
 		ZoneID:      bus.ZoneID.String(),
 		WarehouseID: bus.WarehouseID.String(),
 		Name:        bus.Name,
@@ -45,6 +47,10 @@ func ToAppZone(bus zonebus.Zone) Zone {
 		CreatedDate: bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate: bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
+	if bus.Stage != nil {
+		app.Stage = bus.Stage.String()
+	}
+	return app
 }
 
 func ToAppZones(zones []zonebus.Zone) []Zone {
@@ -59,6 +65,7 @@ type NewZone struct {
 	WarehouseID string `json:"warehouse_id" validate:"required,min=36,max=36"`
 	Name        string `json:"name" validate:"required"`
 	Description string `json:"description" validate:"omitempty"`
+	Stage       string `json:"stage" validate:"omitempty"`
 }
 
 func (app *NewZone) Decode(data []byte) error {
@@ -79,17 +86,28 @@ func toBusNewZone(app NewZone) (zonebus.NewZone, error) {
 		return zonebus.NewZone{}, err
 	}
 
-	return zonebus.NewZone{
+	dest := zonebus.NewZone{
 		WarehouseID: warehouseID,
 		Name:        app.Name,
 		Description: app.Description,
-	}, nil
+	}
+
+	if app.Stage != "" {
+		st, err := zonebus.ParseStage(app.Stage)
+		if err != nil {
+			return zonebus.NewZone{}, errs.Newf(errs.InvalidArgument, "invalid stage: %s", err)
+		}
+		dest.Stage = &st
+	}
+
+	return dest, nil
 }
 
 type UpdateZone struct {
 	WarehouseID *string `json:"warehouse_id" validate:"omitempty,min=36,min=36"`
 	Name        *string `json:"name" validate:"omitempty"`
 	Description *string `json:"description" validate:"omitempty"`
+	Stage       *string `json:"stage" validate:"omitempty"`
 }
 
 func (app *UpdateZone) Decode(data []byte) error {
@@ -121,6 +139,14 @@ func toBusUpdateZone(app UpdateZone) (zonebus.UpdateZone, error) {
 
 	if app.Name != nil {
 		dest.Name = app.Name
+	}
+
+	if app.Stage != nil && *app.Stage != "" {
+		st, err := zonebus.ParseStage(*app.Stage)
+		if err != nil {
+			return zonebus.UpdateZone{}, errs.Newf(errs.InvalidArgument, "invalid stage: %s", err)
+		}
+		dest.Stage = &st
 	}
 
 	return dest, nil
