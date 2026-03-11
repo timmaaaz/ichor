@@ -168,3 +168,22 @@ PageContent CRUD:
   business/sdk/migrate/sql/migrate.sql        (new version, ALTER TABLE)
   business/sdk/tablebuilder/configstore.go    (StoredConfig/PageConfig model + affected queries)
   business/sdk/tablebuilder/model.go          (StoredConfig/PageConfig struct if field exposed)
+
+## ⚠ Testing patterns for tablebuilder
+
+  Unit tests (no DB):
+    business/sdk/tablebuilder/builder_test.go       — SQL generation: use NewQueryBuilder() + BuildQuery(), assert with assertSQL/assertNoSQL helpers
+    business/sdk/tablebuilder/multi_groupby_test.go — GroupBy SQL generation and validation error cases
+    business/sdk/tablebuilder/chart_test.go         — ChartTransformer unit tests (no DB)
+
+  Integration tests (require DB via dbtest.NewDatabase):
+    business/sdk/tablebuilder/tablebuilder_test.go  — Store.FetchTableData, QueryByPage, ConfigStore CRUD, PageConfig CRUD
+
+  JSON comparison: StoredConfig.Config is json.RawMessage; Postgres normalizes key order on round-trip.
+  Use dbtest.NormalizeJSONFields(got, want) before cmp.Diff to align byte representation
+  without losing semantic equality checking.
+  See: business/sdk/dbtest/dbtest.go — NormalizeJSONFields (exported), normalizeJSON (internal)
+
+  ClientComputedColumns: expressions like "qty <= reorder ? 'low' : 'normal'" are JavaScript,
+  evaluated on the frontend. The server returns nil for these columns in TableRow.
+  Tests should check key presence in row, not value.
