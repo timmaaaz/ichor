@@ -12,6 +12,9 @@ import (
 func TestEvaluateFieldCondition_ContainsOperator(t *testing.T) {
 	t.Parallel()
 
+	// tp is a zero-value TriggerProcessor. evaluateFieldCondition is a pure
+	// method that only reads from its arguments (cond, event.RawData) and
+	// does not access any TriggerProcessor fields. Zero-value is safe here.
 	tp := &TriggerProcessor{}
 
 	tests := []struct {
@@ -56,6 +59,9 @@ func TestEvaluateFieldCondition_ContainsOperator(t *testing.T) {
 func TestEvaluateFieldCondition_UnknownOperator(t *testing.T) {
 	t.Parallel()
 
+	// tp is a zero-value TriggerProcessor. evaluateFieldCondition is a pure
+	// method that only reads from its arguments (cond, event.RawData) and
+	// does not access any TriggerProcessor fields. Zero-value is safe here.
 	tp := &TriggerProcessor{}
 	cond := FieldCondition{
 		FieldName: "test_field",
@@ -83,6 +89,9 @@ func TestEvaluateFieldCondition_UnknownOperator(t *testing.T) {
 func TestEvaluateFieldCondition_NilRawData(t *testing.T) {
 	t.Parallel()
 
+	// tp is a zero-value TriggerProcessor. evaluateFieldCondition is a pure
+	// method that only reads from its arguments (cond, event.RawData) and
+	// does not access any TriggerProcessor fields. Zero-value is safe here.
 	tp := &TriggerProcessor{}
 	cond := FieldCondition{
 		FieldName: "test_field",
