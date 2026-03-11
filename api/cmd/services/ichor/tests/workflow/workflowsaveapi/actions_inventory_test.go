@@ -120,7 +120,10 @@ func TestReceiveInventoryAction(t *testing.T) {
 
 	// Products: query seeded products from migrations.
 	products, err := db.BusDomain.Product.Query(ctx, productbus.QueryFilter{}, productbus.DefaultOrderBy, page.MustParse("1", "2"))
-	if err != nil || len(products) == 0 {
+	if err != nil {
+		t.Fatalf("querying seeded products: %v", err)
+	}
+	if len(products) == 0 {
 		t.Skip("requires seeded products — run database migrations and seeding first")
 	}
 	productID := products[0].ProductID
@@ -416,7 +419,10 @@ func TestCreatePurchaseOrderAction(t *testing.T) {
 
 	// Products: query seeded products from migrations.
 	products, err := db.BusDomain.Product.Query(ctx, productbus.QueryFilter{}, productbus.DefaultOrderBy, page.MustParse("1", "2"))
-	if err != nil || len(products) == 0 {
+	if err != nil {
+		t.Fatalf("querying seeded products: %v", err)
+	}
+	if len(products) == 0 {
 		t.Skip("requires seeded products — run database migrations and seeding first")
 	}
 	productID := products[0].ProductID
@@ -664,6 +670,16 @@ func TestCreatePurchaseOrderAction(t *testing.T) {
 	if po.OrderNumber == "" {
 		t.Error("expected non-empty order number")
 	}
+
+	// Verify at least one line item was created for the PO.
+	lineItems, err := db.BusDomain.PurchaseOrderLineItem.QueryByPurchaseOrderID(ctx, po.ID)
+	if err != nil {
+		t.Fatalf("querying line items: %v", err)
+	}
+	if len(lineItems) == 0 {
+		t.Fatal("expected at least 1 line item to be created by create_purchase_order action")
+	}
+	t.Logf("line items created: count=%d first_id=%s quantity=%d", len(lineItems), lineItems[0].ID, lineItems[0].QuantityOrdered)
 
 	t.Logf("SUCCESS: create_purchase_order verified — po_id=%s order_number=%s supplier=%s",
 		po.ID, po.OrderNumber, po.SupplierID)
