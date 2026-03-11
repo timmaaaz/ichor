@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
@@ -53,15 +53,343 @@ func Test_TableBuilder(t *testing.T) {
 
 	sd, err := insertSeedData(db.BusDomain, configStore)
 	if err != nil {
-		t.Fatalf("failed to insert seed data: %v", err)
+		t.Fatalf("seed data: %v", err)
 	}
 
-	simpleExample(context.Background(), store)
-	simpleExample2(context.Background(), store)
-	complexExample(context.Background(), store)
-	storedConfigExample(context.Background(), store, configStore, sd)
-	paginationExample(context.Background(), store)
-	inventoryAdjustmentsExample(context.Background(), store)
+	t.Run("pagination_correctness", func(t *testing.T) {
+		t.Parallel()
+		// productsList config has 20 seeded products, no filter, page size 10.
+		pg1 := page.MustParse("1", "10")
+		result1, err := store.QueryByPage(testCtx(t), productsList, pg1)
+		if err != nil {
+			t.Fatalf("QueryByPage page1: %v", err)
+		}
+		if len(result1.Data) != 10 {
+			t.Errorf("page1 rows = %d, want 10", len(result1.Data))
+		}
+		if result1.Meta.Total != 20 {
+			t.Errorf("Total = %d, want 20", result1.Meta.Total)
+		}
+		if result1.Meta.TotalPages != 2 {
+			t.Errorf("TotalPages = %d, want 2", result1.Meta.TotalPages)
+		}
+
+		pg2 := page.MustParse("2", "10")
+		result2, err := store.QueryByPage(testCtx(t), productsList, pg2)
+		if err != nil {
+			t.Fatalf("QueryByPage page2: %v", err)
+		}
+		if len(result2.Data) != 10 {
+			t.Errorf("page2 rows = %d, want 10", len(result2.Data))
+		}
+
+		// No ID should appear on both pages
+		page1IDs := make(map[string]bool)
+		for _, row := range result1.Data {
+			if id, ok := row["products.id"]; ok {
+				page1IDs[fmt.Sprintf("%v", id)] = true
+			}
+		}
+		for _, row := range result2.Data {
+			if id, ok := row["products.id"]; ok {
+				idStr := fmt.Sprintf("%v", id)
+				if page1IDs[idStr] {
+					t.Errorf("ID %s appears on both page 1 and page 2", idStr)
+				}
+			}
+		}
+	})
+
+	t.Run("simple_inventory_items", func(t *testing.T) {
+		t.Parallel()
+		params := tablebuilder.QueryParams{Page: 1, Rows: 50}
+		result, err := store.FetchTableData(testCtx(t), inventoryItems, params)
+		if err != nil {
+			t.Fatalf("FetchTableData inventory items: %v", err)
+		}
+
+		// Filter is quantity > 0; we may get fewer than 30 rows
+		if len(result.Data) == 0 {
+			t.Error("expected at least 1 inventory item row, got 0")
+		}
+
+		// Every row must have the expected fields
+		requiredFields := []string{"inventory_items.id", "current_stock"}
+		for i, row := range result.Data {
+			for _, field := range requiredFields {
+				if _, ok := row[field]; !ok {
+					t.Errorf("row %d missing field %q", i, field)
+				}
+			}
+		}
+
+		// Rows sorted DESC by quantity: each row's current_stock <= previous
+		for i := 1; i < len(result.Data); i++ {
+			prev := toFloat(result.Data[i-1]["current_stock"])
+			curr := toFloat(result.Data[i]["current_stock"])
+			if curr > prev {
+				t.Errorf("rows not sorted desc by quantity: row[%d]=%v > row[%d]=%v", i, curr, i-1, prev)
+			}
+		}
+	})
+
+	t.Run("orders_view", func(t *testing.T) {
+		t.Parallel()
+		// currentOrders uses sales.orders_base view (verified present in migrate.sql)
+		params := tablebuilder.QueryParams{Page: 1, Rows: 50}
+		result, err := store.FetchTableData(testCtx(t), currentOrders, params)
+		if err != nil {
+			t.Fatalf("FetchTableData orders: %v", err)
+		}
+		if len(result.Data) != 5 {
+			t.Errorf("rows = %d, want 5 (seeded orders)", len(result.Data))
+		}
+
+		requiredFields := []string{"orders.id", "order_number"}
+		for i, row := range result.Data {
+			for _, field := range requiredFields {
+				if _, ok := row[field]; !ok {
+					t.Errorf("row %d missing field %q", i, field)
+				}
+			}
+		}
+	})
+
+	t.Run("inventory_with_joins_computed_columns", func(t *testing.T) {
+		t.Parallel()
+		params := tablebuilder.QueryParams{Page: 1, Rows: 50}
+		result, err := store.FetchTableData(testCtx(t), currentInventoryProducts, params)
+		if err != nil {
+			t.Fatalf("FetchTableData complex: %v", err)
+		}
+		if len(result.Data) == 0 {
+			t.Fatal("expected rows from complex join query, got 0")
+		}
+
+		for i, row := range result.Data {
+			// Foreign table join produced product_name
+			if _, ok := row["product_name"]; !ok {
+				t.Errorf("row %d missing product_name (join failed)", i)
+			}
+			// ClientComputedColumns (JS expressions) are evaluated client-side;
+			// the server includes the column in metadata but its value is nil.
+			// Just verify the key exists in the row.
+			if _, ok := row["stock_status"]; !ok {
+				t.Errorf("row %d missing stock_status key (column absent from row)", i)
+			}
+		}
+	})
+
+	t.Run("inventory_adjustments_deep_join", func(t *testing.T) {
+		t.Parallel()
+		// inventoryAdjustmentsPageConfig has 3-level nested join:
+		// inventory_adjustments → inventory_locations → warehouses
+		// and a location_code computed column.
+		params := tablebuilder.QueryParams{Page: 1, Rows: 50}
+		result, err := store.FetchTableData(testCtx(t), inventoryAdjustmentsPageConfig, params)
+		if err != nil {
+			t.Fatalf("FetchTableData adjustments: %v", err)
+		}
+
+		// Log actual columns to aid debugging when column names don't match.
+		t.Logf("actual result columns: %v", result.Meta.Columns)
+
+		// Verify expected columns present in metadata
+		expectedCols := []string{
+			"product_name",
+			"product_sku",
+			"warehouse_name",
+			"location_code",
+			"inventory_adjustments.quantity_change",
+			"inventory_adjustments.reason_code",
+			"adjusted_by_username",
+			"approved_by_username",
+			"inventory_adjustments.adjustment_date",
+		}
+		colSet := make(map[string]bool)
+		for _, col := range result.Meta.Columns {
+			colSet[col.Field] = true
+		}
+		for _, expected := range expectedCols {
+			if !colSet[expected] {
+				t.Errorf("column %q not found in result metadata", expected)
+			}
+		}
+	})
+
+	t.Run("stored_config_roundtrip", func(t *testing.T) {
+		t.Parallel()
+		// One of the seeded configs is "products_list"
+		loaded, err := configStore.LoadConfigByName(testCtx(t), "products_list")
+		if err != nil {
+			t.Fatalf("LoadConfigByName: %v", err)
+		}
+		if loaded.Title != productsList.Title {
+			t.Errorf("loaded Title = %q, want %q", loaded.Title, productsList.Title)
+		}
+
+		// Fetch data using the loaded config
+		params := tablebuilder.QueryParams{Page: 1, Rows: 10}
+		result, err := store.FetchTableData(testCtx(t), loaded, params)
+		if err != nil {
+			t.Fatalf("FetchTableData with stored config: %v", err)
+		}
+		if len(result.Data) == 0 {
+			t.Error("expected rows from stored config query, got 0")
+		}
+	})
+
+	t.Run("configstore_crud", func(t *testing.T) {
+		t.Parallel()
+		testCfg := &tablebuilder.Config{
+			Title:         "CRUD Test Config",
+			WidgetType:    "table",
+			Visualization: "table",
+			DataSource: []tablebuilder.DataSource{{Source: "products", Schema: "products", Select: tablebuilder.SelectConfig{Columns: []tablebuilder.ColumnDefinition{{Name: "id", TableColumn: "products.id"}}}}},
+			VisualSettings: tablebuilder.VisualSettings{Columns: map[string]tablebuilder.ColumnConfig{"products.id": {Type: "uuid"}}},
+		}
+
+		created, err := configStore.Create(testCtx(t), "crud_test", "CRUD test desc", testCfg, sd.Admins[0].ID)
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+
+		// Use cmpopts.IgnoreFields to skip time.Time fields (CreatedDate, UpdatedDate)
+		// which include monotonic clock readings that cause false cmp.Diff mismatches.
+		ignoreTime := cmpopts.IgnoreFields(tablebuilder.StoredConfig{}, "CreatedDate", "UpdatedDate")
+
+		// QueryByID
+		byID, err := configStore.QueryByID(testCtx(t), created.ID)
+		if err != nil {
+			t.Fatalf("QueryByID: %v", err)
+		}
+		// NormalizeJSONFields aligns json.RawMessage bytes between got/exp so cmp.Diff
+		// won't flag key-order differences introduced by Postgres round-trip.
+		dbtest.NormalizeJSONFields(byID, created)
+		if diff := cmp.Diff(created, byID, ignoreTime); diff != "" {
+			t.Errorf("QueryByID mismatch (-want +got):\n%s", diff)
+		}
+
+		// QueryByName
+		byName, err := configStore.QueryByName(testCtx(t), "crud_test")
+		if err != nil {
+			t.Fatalf("QueryByName: %v", err)
+		}
+		dbtest.NormalizeJSONFields(byName, created)
+		if diff := cmp.Diff(created, byName, ignoreTime); diff != "" {
+			t.Errorf("QueryByName mismatch (-want +got):\n%s", diff)
+		}
+
+		// Update
+		testCfg.Title = "Updated CRUD Config"
+		updated, err := configStore.Update(testCtx(t), created.ID, "crud_test", "Updated desc", testCfg, sd.Admins[0].ID)
+		if err != nil {
+			t.Fatalf("Update: %v", err)
+		}
+		if updated.Description != "Updated desc" {
+			t.Errorf("Description = %q, want %q", updated.Description, "Updated desc")
+		}
+
+		// Delete
+		if err := configStore.Delete(testCtx(t), created.ID); err != nil {
+			t.Fatalf("Delete: %v", err)
+		}
+		_, err = configStore.QueryByID(testCtx(t), created.ID)
+		if err == nil {
+			t.Error("expected error after Delete, got nil")
+		}
+	})
+
+	t.Run("page_config_crud", func(t *testing.T) {
+		t.Parallel()
+		pageConfig := tablebuilder.PageConfig{
+			Name:      "Test Page Config",
+			UserID:    sd.Admins[0].ID,
+			IsDefault: true,
+		}
+
+		saved, err := configStore.CreatePageConfig(testCtx(t), pageConfig)
+		if err != nil {
+			t.Fatalf("CreatePageConfig: %v", err)
+		}
+
+		byID, err := configStore.QueryPageByID(testCtx(t), saved.ID)
+		if err != nil {
+			t.Fatalf("QueryPageByID: %v", err)
+		}
+		if diff := cmp.Diff(saved, byID); diff != "" {
+			t.Errorf("QueryPageByID mismatch (-want +got):\n%s", diff)
+		}
+
+		byName, err := configStore.QueryPageByName(testCtx(t), "Test Page Config")
+		if err != nil {
+			t.Fatalf("QueryPageByName: %v", err)
+		}
+		if diff := cmp.Diff(saved, byName); diff != "" {
+			t.Errorf("QueryPageByName mismatch (-want +got):\n%s", diff)
+		}
+
+		saved.Name = "Updated Page Config"
+		updated, err := configStore.UpdatePageConfig(testCtx(t), *saved)
+		if err != nil {
+			t.Fatalf("UpdatePageConfig: %v", err)
+		}
+		if updated.Name != "Updated Page Config" {
+			t.Errorf("Name = %q, want %q", updated.Name, "Updated Page Config")
+		}
+
+		if err := configStore.DeletePageConfig(testCtx(t), saved.ID); err != nil {
+			t.Fatalf("DeletePageConfig: %v", err)
+		}
+	})
+
+	t.Run("dynamic_filters", func(t *testing.T) {
+		t.Parallel()
+		// Unfiltered: get all products
+		paramsAll := tablebuilder.QueryParams{Page: 1, Rows: 50}
+		resultAll, err := store.FetchTableData(testCtx(t), productsList, paramsAll)
+		if err != nil {
+			t.Fatalf("FetchTableData unfiltered: %v", err)
+		}
+
+		// Filtered: pass a dynamic filter via QueryParams.Filters
+		paramsFiltered := tablebuilder.QueryParams{
+			Page: 1,
+			Rows: 50,
+			Filters: []tablebuilder.Filter{
+				{Column: "products.is_active", Operator: "eq", Value: true},
+			},
+		}
+		resultFiltered, err := store.FetchTableData(testCtx(t), productsList, paramsFiltered)
+		if err != nil {
+			t.Fatalf("FetchTableData filtered: %v", err)
+		}
+
+		// Filtered ≤ unfiltered (filter reduces or keeps same count)
+		if len(resultFiltered.Data) > len(resultAll.Data) {
+			t.Errorf("filtered count %d > unfiltered count %d", len(resultFiltered.Data), len(resultAll.Data))
+		}
+	})
+}
+
+// testCtx returns a background context. Named testCtx to avoid shadowing any
+// existing ctx variable in the package.
+func testCtx(t *testing.T) context.Context {
+	t.Helper()
+	return context.Background()
+}
+
+// toFloat converts a TableRow value to float64 for numeric comparisons.
+func toFloat(v any) float64 {
+	switch val := v.(type) {
+	case float64:
+		return val
+	case int64:
+		return float64(val)
+	case int:
+		return float64(val)
+	}
+	return 0
 }
 
 var productsList = &tablebuilder.Config{
@@ -834,17 +1162,14 @@ func insertSeedData(busDomain dbtest.BusDomain, configStore *tablebuilder.Config
 	// SEED CONFIGS
 	cfg1, err := configStore.Create(ctx, "products_list", "Products List", productsList, admins[0].ID)
 	if err != nil {
-		log.Printf("Error saving config: %v", err)
 		return unitest.SeedData{}, err
 	}
 	cfg2, err := configStore.Create(ctx, "current_orders", "Current Orders", currentOrders, admins[0].ID)
 	if err != nil {
-		log.Printf("Error saving config: %v", err)
 		return unitest.SeedData{}, err
 	}
 	cfg3, err := configStore.Create(ctx, "inventory_items", "Inventory Items", inventoryItems, admins[0].ID)
 	if err != nil {
-		log.Printf("Error saving config: %v", err)
 		return unitest.SeedData{}, err
 	}
 
@@ -861,384 +1186,6 @@ func insertSeedData(busDomain dbtest.BusDomain, configStore *tablebuilder.Config
 	}, nil
 }
 
-func simpleExample2(ctx context.Context, store *tablebuilder.Store) {
-	params := tablebuilder.QueryParams{
-		Page: 1,
-		Rows: 10,
-	}
-
-	result, err := store.FetchTableData(ctx, currentOrders, params)
-	if err != nil {
-		log.Printf("Error fetching data: %v", err)
-		return
-	}
-
-	fmt.Printf("\n=== Simple Example 2: Orders View ===\n")
-
-	fullJSON, _ := json.MarshalIndent(result, "", "  ")
-	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
-
-	// fmt.Printf("Returned %d rows\n\n", len(result.Data))
-
-	// printResults(result)
-	// printMetadata(result)
-}
-
-func simpleExample(ctx context.Context, store *tablebuilder.Store) {
-	params := tablebuilder.QueryParams{
-		Page: 1,
-		Rows: 10,
-	}
-
-	result, err := store.FetchTableData(ctx, inventoryItems, params)
-	if err != nil {
-		log.Printf("Error fetching data: %v", err)
-		return
-	}
-
-	fmt.Printf("\n=== Simple Example: Inventory Items ===\n")
-
-	fullJSON, _ := json.MarshalIndent(result, "", "  ")
-	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
-
-	// fmt.Printf("Returned %d rows\n\n", len(result.Data))
-
-	// printResults(result)
-	// printMetadata(result)
-}
-
-func complexExample(ctx context.Context, store *tablebuilder.Store) {
-
-	params := tablebuilder.QueryParams{
-		Page: 1,
-		Rows: 10,
-	}
-
-	result, err := store.FetchTableData(ctx, currentInventoryProducts, params)
-	if err != nil {
-		log.Printf("Error fetching complex data: %v", err)
-		return
-	}
-
-	fmt.Printf("\n=== Complex Example: Inventory with Joins ===\n")
-
-	fullJSON, _ := json.MarshalIndent(result, "", "  ")
-	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
-
-	// fmt.Printf("Returned %d rows\n\n", len(result.Data))
-
-	// printResults(result)
-	// printMetadata(result)
-	// printRelationships(result)
-}
-
-func storedConfigExample(ctx context.Context, store *tablebuilder.Store, configStore *tablebuilder.ConfigStore, sd unitest.SeedData) {
-	config := &tablebuilder.Config{
-		Title:           "Orders Dashboard",
-		WidgetType:      "table",
-		Visualization:   "table",
-		PositionX:       0,
-		PositionY:       0,
-		Width:           12,
-		Height:          8,
-		RefreshInterval: 60,
-		RefreshMode:     "polling",
-		DataSource: []tablebuilder.DataSource{
-			{
-				Type:   "view",
-				Source: "orders_base",
-				Schema: "sales",
-				Select: tablebuilder.SelectConfig{
-					Columns: []tablebuilder.ColumnDefinition{
-						{Name: "orders_id", Alias: "order_id", TableColumn: "orders.id"},
-						{Name: "orders_number", Alias: "order_number", TableColumn: "orders.number"},
-						{Name: "customers_name", Alias: "customer_name", TableColumn: "customers.name"},
-						{Name: "order_fulfillment_statuses_name", Alias: "status", TableColumn: "order_fulfillment_statuses.name"},
-					},
-				},
-				Filters: []tablebuilder.Filter{
-					{
-						Column:   "order_fulfillment_statuses_name",
-						Operator: "in",
-						Value:    []string{"PENDING", "PROCESSING", "SHIPPED"},
-					},
-				},
-			},
-		},
-		VisualSettings: tablebuilder.VisualSettings{
-			Columns: map[string]tablebuilder.ColumnConfig{
-				"order_id": {
-					Name:   "order_id",
-					Header: "Order ID",
-					Width:  100,
-					Type:   "uuid",
-				},
-				"order_number": {
-					Name:       "order_number",
-					Header:     "Order #",
-					Width:      150,
-					Type:       "string",
-					Sortable:   true,
-					Filterable: true,
-					Link: &tablebuilder.LinkConfig{
-						URL:   "/orders/{order_id}",
-						Label: "View Order",
-					},
-				},
-				"customer_name": {
-					Name:       "customer_name",
-					Header:     "Customer",
-					Width:      200,
-					Type:       "string",
-					Sortable:   true,
-					Filterable: true,
-				},
-				"status": {
-					Name:   "status",
-					Header: "Status",
-					Width:  120,
-					Type:   "string",
-				},
-			},
-		},
-		Permissions: tablebuilder.Permissions{
-			Roles:   []string{"admin", "sales"},
-			Actions: []string{"view"},
-		},
-	}
-
-	stored, err := configStore.Create(ctx, "orders_dashboard", "Main orders dashboard configuration", config, sd.Admins[0].ID)
-	if err != nil {
-		log.Printf("Error saving config: %v", err)
-		return
-	}
-
-	fmt.Printf("\n=== Stored Config Example ===\n")
-	fmt.Printf("Saved configuration with ID: %s\n\n", stored.ID)
-
-	// Load and use the configuration
-	loadedConfig, err := configStore.LoadConfig(ctx, stored.ID)
-	if err != nil {
-		log.Printf("Error loading config: %v", err)
-		return
-	}
-
-	params := tablebuilder.QueryParams{
-		Page: 1,
-		Rows: 25,
-	}
-
-	result, err := store.FetchTableData(ctx, loadedConfig, params)
-	if err != nil {
-		log.Printf("Error fetching data with stored config: %v", err)
-		return
-	}
-
-	fullJSON, _ := json.MarshalIndent(result, "", "  ")
-	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
-
-	// printResults(result)
-	// printMetadata(result)
-}
-
-func paginationExample(ctx context.Context, store *tablebuilder.Store) {
-
-	fmt.Printf("\n=== Pagination Example ===\n")
-
-	// Page 1
-	pg := page.MustParse("1", "10")
-	result, err := store.QueryByPage(ctx, productsList, pg)
-	if err != nil {
-		log.Printf("Error fetching paginated data: %v", err)
-		return
-	}
-
-	fullJSON, _ := json.MarshalIndent(result, "", "  ")
-	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
-
-	// fmt.Printf("Page 1 of %d (Total records: %d)\n", result.Meta.TotalPages, result.Meta.Total)
-	// printResults(result)
-
-	// Page 2
-	pg = page.MustParse("2", "10")
-	result, err = store.QueryByPage(ctx, productsList, pg)
-	if err != nil {
-		log.Printf("Error fetching page 2: %v", err)
-		return
-	}
-
-	// fmt.Printf("\nPage 2 of %d (Total records: %d)\n", result.Meta.TotalPages, result.Meta.Total)
-	// printResults(result)
-
-	fullJSON, _ = json.MarshalIndent(result, "", "  ")
-	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
-}
-
-func inventoryAdjustmentsExample(ctx context.Context, store *tablebuilder.Store) {
-	fmt.Printf("\n=== Inventory Adjustments Example ===\n")
-
-	params := tablebuilder.QueryParams{
-		Page: 1,
-		Rows: 25,
-	}
-
-	result, err := store.FetchTableData(ctx, inventoryAdjustmentsPageConfig, params)
-	if err != nil {
-		log.Printf("Error fetching inventory adjustments data: %v", err)
-		return
-	}
-
-	fullJSON, _ := json.MarshalIndent(result, "", "  ")
-	fmt.Printf("Full JSON result:\n%s\n\n", fullJSON)
-
-	// Verify that we have the expected columns
-	expectedColumns := []string{
-		"product_name",
-		"product_sku",
-		"warehouse_name",
-		"location_code",
-		"inventory_adjustments.quantity_change",
-		"inventory_adjustments.reason_code",
-		"adjusted_by_username",
-		"approved_by_username",
-		"inventory_adjustments.adjustment_date",
-	}
-
-	fmt.Printf("Verifying expected columns are present...\n")
-	for _, expected := range expectedColumns {
-		found := false
-		for _, col := range result.Meta.Columns {
-			if col.Field == expected {
-				found = true
-				break
-			}
-		}
-		if found {
-			fmt.Printf("✓ Column '%s' found\n", expected)
-		} else {
-			fmt.Printf("✗ Column '%s' NOT found\n", expected)
-		}
-	}
-}
-
-func pageConfigsExample(ctx context.Context, store *tablebuilder.Store, configStore *tablebuilder.ConfigStore, sd unitest.SeedData) {
-	// Create a new page configuration
-	pageConfig := tablebuilder.PageConfig{
-		Name:      "Inventory Overview",
-		UserID:    sd.Admins[0].ID,
-		IsDefault: true,
-	}
-	savedPage, err := configStore.CreatePageConfig(ctx, pageConfig)
-	if err != nil {
-		log.Printf("Error saving page config: %v", err)
-		return
-	}
-
-	// QueryByID
-	queriedPage, err := configStore.QueryPageByID(ctx, savedPage.ID)
-	if err != nil {
-		log.Printf("Error querying page by ID: %v", err)
-		return
-	}
-	if cmp.Diff(queriedPage, savedPage) != "" {
-		log.Printf("Queried page does not match saved page")
-		return
-	}
-
-	// QueryByName
-	queriedPageByName, err := configStore.QueryPageByName(ctx, "Inventory Overview")
-	if err != nil {
-		log.Printf("Error querying page by name: %v", err)
-		return
-	}
-	if cmp.Diff(queriedPageByName, savedPage) != "" {
-		log.Printf("Queried page by name does not match saved page")
-		return
-	}
-
-	// Update Page
-	savedPage.Name = "Updated Inventory Overview"
-	updatedPage, err := configStore.UpdatePageConfig(ctx, *savedPage)
-	if err != nil {
-		log.Printf("Error updating page: %v", err)
-		return
-	}
-	if updatedPage.Name != "Updated Inventory Overview" {
-		log.Printf("Page name not updated")
-		return
-	}
-
-	// Delete page
-	err = configStore.DeletePageConfig(ctx, savedPage.ID)
-	if err != nil {
-		log.Printf("Error deleting page: %v", err)
-		return
-	}
-}
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-func printResults(result *tablebuilder.TableData) {
-	fmt.Println("--- Data Rows ---")
-	for i, row := range result.Data {
-		if i >= 3 {
-			fmt.Printf("... and %d more rows\n", len(result.Data)-3)
-			break
-		}
-
-		jsonData, _ := json.MarshalIndent(row, "", "  ")
-		fmt.Printf("Row %d: %s\n", i+1, string(jsonData))
-	}
-	fmt.Printf("\nExecution time: %dms\n", result.Meta.ExecutionTime)
-}
-
-func printMetadata(result *tablebuilder.TableData) {
-	if len(result.Meta.Columns) == 0 {
-		return
-	}
-
-	fmt.Println("\n--- Column Metadata ---")
-	for _, col := range result.Meta.Columns {
-		fmt.Printf("Field: %-25s | Display: %-20s | DB: %-20s | Type: %-10s",
-			col.Field,
-			col.DisplayName,
-			col.DatabaseName,
-			col.Type,
-		)
-
-		if col.SourceTable != "" {
-			fmt.Printf(" | Source: %s.%s", col.SourceTable, col.SourceColumn)
-		}
-
-		if col.IsPrimaryKey {
-			fmt.Printf(" [PK]")
-		}
-		if col.IsForeignKey {
-			fmt.Printf(" [FK->%s]", col.RelatedTable)
-		}
-
-		fmt.Println()
-	}
-}
-
-func printRelationships(result *tablebuilder.TableData) {
-	if len(result.Meta.Relationships) == 0 {
-		return
-	}
-
-	fmt.Println("\n--- Relationships ---")
-	for _, rel := range result.Meta.Relationships {
-		fmt.Printf("%s.%s -> %s.%s (%s)\n",
-			rel.FromTable,
-			rel.FromColumn,
-			rel.ToTable,
-			rel.ToColumn,
-			rel.Type,
-		)
-	}
-}
 
 // =============================================================================
 // Chart Type Tests
@@ -1248,6 +1195,7 @@ func Test_ChartTypes(t *testing.T) {
 	t.Parallel()
 
 	t.Run("chart type constants", func(t *testing.T) {
+		t.Parallel()
 		// Verify all chart type constants are defined
 		chartTypes := []string{
 			tablebuilder.ChartTypeLine,
@@ -1279,6 +1227,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("chart response serialization", func(t *testing.T) {
+		t.Parallel()
 		// Create a sample KPI chart response
 		kpiResponse := tablebuilder.ChartResponse{
 			Type:  tablebuilder.ChartTypeKPI,
@@ -1319,6 +1268,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("categorical chart response", func(t *testing.T) {
+		t.Parallel()
 		// Create a sample line chart response
 		lineResponse := tablebuilder.ChartResponse{
 			Type:       tablebuilder.ChartTypeLine,
@@ -1359,6 +1309,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("combo chart with dual axis", func(t *testing.T) {
+		t.Parallel()
 		comboResponse := tablebuilder.ChartResponse{
 			Type:       tablebuilder.ChartTypeCombo,
 			Title:      "Revenue vs Growth Rate",
@@ -1402,6 +1353,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("chart visual settings", func(t *testing.T) {
+		t.Parallel()
 		settings := tablebuilder.ChartVisualSettings{
 			ChartType:      tablebuilder.ChartTypeLine,
 			CategoryColumn: "month",
@@ -1441,6 +1393,7 @@ func Test_ChartTypes(t *testing.T) {
 	})
 
 	t.Run("KPI config thresholds", func(t *testing.T) {
+		t.Parallel()
 		kpiConfig := tablebuilder.KPIConfig{
 			Label:             "Active Users",
 			Format:            "number",
@@ -1470,6 +1423,7 @@ func Test_ChartTransformer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("transform KPI from table data", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1501,6 +1455,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform line chart from table data", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1535,6 +1490,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform bar chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1562,6 +1518,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform pie chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1592,6 +1549,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transformer handles empty data", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1618,6 +1576,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transformer rejects nil data", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		config := &tablebuilder.Config{
@@ -1632,6 +1591,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transformer rejects table type", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1653,6 +1613,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform gauge chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1688,6 +1649,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform stacked bar chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1724,6 +1686,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform stacked area chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1750,6 +1713,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform combo chart with series config", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1790,6 +1754,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform waterfall chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1821,6 +1786,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform funnel chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1865,6 +1831,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform heatmap chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1909,6 +1876,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform treemap chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1949,6 +1917,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform gantt chart", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -1993,6 +1962,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("transform with metadata", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{
@@ -2021,6 +1991,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("KPI with trend calculation", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		// Two rows - current and previous for trend calculation
@@ -2058,6 +2029,7 @@ func Test_ChartTransformer(t *testing.T) {
 	})
 
 	t.Run("rejects unsupported chart type", func(t *testing.T) {
+		t.Parallel()
 		transformer := tablebuilder.NewChartTransformer()
 
 		data := &tablebuilder.TableData{

@@ -185,7 +185,7 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 			return errs.New(errs.NotFound, err)
 		}
 		if errors.Is(err, approvalrequestbus.ErrAlreadyResolved) {
-			return errs.Newf(errs.FailedPrecondition, "approval already resolved")
+			return a.retryTemporalCompletion(ctx, id)
 		}
 		return errs.Newf(errs.Internal, "resolve: %s", err)
 	}
@@ -213,6 +213,12 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 				a.log.Error(ctx, "failed to complete Temporal activity",
 					"approval_id", id,
 					"error", err)
+			} else {
+				if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
+					a.log.Error(ctx, "failed to clear task token after Temporal completion",
+						"approval_id", id,
+						"error", err)
+				}
 			}
 		}
 	}
@@ -360,6 +366,64 @@ func parseQueryParams(r *http.Request) QueryParams {
 		OrderBy: values.Get("orderBy"),
 		Status:  values.Get("status"),
 	}
+}
+
+// retryTemporalCompletion looks up the approval by ID and, if a task token is
+// still present, attempts to complete the Temporal activity. This handles the
+// case where the initial resolve call completed the DB write but Temporal
+// notification failed (e.g. network blip). It is idempotent: an empty token
+// means Temporal was already notified so no call is made. Errors from the
+// Temporal call are logged but not returned (fail-open) to keep the HTTP
+// response consistent.
+func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Encoder {
+	approval, err := a.approvalBus.QueryByID(ctx, id)
+	if err != nil {
+		return errs.Newf(errs.Internal, "retry temporal: query approval: %s", err)
+	}
+
+	// No token means Temporal was already notified — nothing to do.
+	if approval.TaskToken == "" {
+		return toAppApproval(approval)
+	}
+
+	// Do not complete a pending approval — only approved/rejected should notify Temporal.
+	if approval.Status == approvalrequestbus.StatusPending {
+		a.log.Warn(ctx, "retry temporal: approval still pending, skipping Complete",
+			"approval_id", id)
+		return toAppApproval(approval)
+	}
+
+	// Temporal not configured — return as-is.
+	if a.asyncCompleter == nil {
+		return toAppApproval(approval)
+	}
+
+	taskToken, err := base64.StdEncoding.DecodeString(approval.TaskToken)
+	if err != nil {
+		a.log.Error(ctx, "retry temporal: invalid task token encoding", "approval_id", id, "error", err)
+		return toAppApproval(approval)
+	}
+
+	output := temporal.ActionActivityOutput{
+		ActionName: approval.ActionName,
+		Result: map[string]any{
+			"output":      approval.Status,
+			"approval_id": approval.ID.String(),
+		},
+		Success: true,
+	}
+
+	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
+		a.log.Error(ctx, "retry temporal: complete activity failed", "approval_id", id, "error", err)
+		return toAppApproval(approval)
+	}
+
+	// Clear the token so this isn't retried again.
+	if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
+		a.log.Error(ctx, "retry temporal: clear task token failed", "approval_id", id, "error", err)
+	}
+
+	return toAppApproval(approval)
 }
 
 // parseFilter constructs a QueryFilter from query parameters.
