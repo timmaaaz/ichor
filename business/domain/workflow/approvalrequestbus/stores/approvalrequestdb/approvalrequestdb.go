@@ -179,6 +179,24 @@ func (s *Store) Count(ctx context.Context, filter approvalrequestbus.QueryFilter
 	return count.Count, nil
 }
 
+// ClearTaskToken sets the task_token column to empty string for the given approval request.
+// Called after a successful Temporal activity completion so the token is not retried.
+func (s *Store) ClearTaskToken(ctx context.Context, id uuid.UUID) error {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: id.String(),
+	}
+
+	const q = `UPDATE workflow.approval_requests SET task_token = '' WHERE approval_request_id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("clear task token: %w", err)
+	}
+
+	return nil
+}
+
 // IsApprover checks whether a given user is in the approvers array for the request.
 func (s *Store) IsApprover(ctx context.Context, approvalID, userID uuid.UUID) (bool, error) {
 	data := struct {
