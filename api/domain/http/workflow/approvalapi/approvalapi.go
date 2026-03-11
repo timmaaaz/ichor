@@ -185,7 +185,7 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 			return errs.New(errs.NotFound, err)
 		}
 		if errors.Is(err, approvalrequestbus.ErrAlreadyResolved) {
-			return errs.Newf(errs.FailedPrecondition, "approval already resolved")
+			return a.retryTemporalCompletion(ctx, id)
 		}
 		return errs.Newf(errs.Internal, "resolve: %s", err)
 	}
@@ -213,6 +213,12 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 				a.log.Error(ctx, "failed to complete Temporal activity",
 					"approval_id", id,
 					"error", err)
+			} else {
+				if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
+					a.log.Error(ctx, "failed to clear task token after Temporal completion",
+						"approval_id", id,
+						"error", err)
+				}
 			}
 		}
 	}
@@ -377,6 +383,13 @@ func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Enc
 
 	// No token means Temporal was already notified — nothing to do.
 	if approval.TaskToken == "" {
+		return toAppApproval(approval)
+	}
+
+	// Do not complete a pending approval — only approved/rejected should notify Temporal.
+	if approval.Status == approvalrequestbus.StatusPending {
+		a.log.Warn(ctx, "retry temporal: approval still pending, skipping Complete",
+			"approval_id", id)
 		return toAppApproval(approval)
 	}
 
