@@ -2,6 +2,7 @@ package action_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
@@ -21,7 +22,10 @@ func execute200CreateAlert(sd ActionSeedData) []apitest.Table {
 			"roles": []string{},
 		},
 	}
-	configBytes, _ := json.Marshal(config)
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		panic(fmt.Sprintf("marshal config: %v", err))
+	}
 
 	return []apitest.Table{
 		{
@@ -36,7 +40,10 @@ func execute200CreateAlert(sd ActionSeedData) []apitest.Table {
 			GotResp: &actionapp.ExecuteResponse{},
 			ExpResp: &actionapp.ExecuteResponse{},
 			CmpFunc: func(got any, exp any) string {
-				gotResp := got.(*actionapp.ExecuteResponse)
+				gotResp, ok := got.(*actionapp.ExecuteResponse)
+				if !ok {
+					return fmt.Sprintf("unexpected response type: %T", got)
+				}
 				if gotResp.ExecutionID == "" {
 					return "expected non-empty execution_id in response"
 				}
@@ -71,7 +78,10 @@ func execute403NoPermission(sd ActionSeedData) []apitest.Table {
 		"warehouse_id": "some-warehouse-id",
 		"items":        []map[string]any{},
 	}
-	configBytes, _ := json.Marshal(config)
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		panic(fmt.Sprintf("marshal config: %v", err))
+	}
 
 	return []apitest.Table{
 		{
