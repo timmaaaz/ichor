@@ -166,6 +166,14 @@ func isValidColumnReference(col string) bool {
 	return columnRefPattern.MatchString(col)
 }
 
+// isIDRevealingHeader returns true if a column header would expose a raw ID to users.
+// Headers that are exactly "ID" or end with " ID" reveal UUIDs which are meaningless to users.
+// Such columns should be Hidden: true with a human-readable display column used instead.
+func isIDRevealingHeader(header string) bool {
+	upper := strings.ToUpper(strings.TrimSpace(header))
+	return upper == "ID" || strings.HasSuffix(upper, " ID")
+}
+
 // isIDColumn checks if a column name represents an ID/reference field.
 // These columns typically end with ".id", "_id", or are exactly "id".
 // ID columns should not have LinkConfig with LabelColumn because:
@@ -587,6 +595,19 @@ func (c *Config) validateVisualSettings(result *ValidationResult) {
 		// Hidden columns don't require a Type
 		if col.Hidden {
 			continue
+		}
+
+		// Visible columns must not expose raw IDs in their header.
+		if isIDRevealingHeader(col.Header) {
+			result.AddError(
+				colPrefix+".header",
+				fmt.Sprintf(
+					"column header %q exposes an ID to users. "+
+						"Set Hidden: true and display the human-readable value via a link or display column instead.",
+					col.Header,
+				),
+				"VISIBLE_ID_HEADER",
+			)
 		}
 
 		if col.Type == "" {
