@@ -1,4 +1,4 @@
-// Package workflowsaveapi_test contains standalone integration tests for inventory
+// Package actionhandlers_test contains standalone integration tests for inventory
 // and procurement workflow actions using a real Temporal container.
 //
 // These tests spin up a minimal Temporal worker registered with ONLY the handler
@@ -8,7 +8,7 @@
 //
 // Tests use the same Temporal test container as other workflow tests (shared via
 // foundationtemporal.GetTestContainer) for efficient reuse.
-package workflowsaveapi_test
+package actionhandlers_test
 
 import (
 	"context"

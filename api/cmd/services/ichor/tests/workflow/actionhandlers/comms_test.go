@@ -1,4 +1,4 @@
-// Package workflowsaveapi_test contains standalone integration tests for
+// Package actionhandlers_test contains standalone integration tests for
 // communication workflow actions using a real Temporal container.
 //
 // TestCallWebhookAction — spins up a local HTTP server and verifies the
@@ -8,7 +8,7 @@
 // TestSendEmailAction / TestSendNotificationAction — verify that handlers
 // registered with nil SMTP/queue clients do not panic; success is defined as
 // the workflow completing (or timing out gracefully) without crashing the test.
-package workflowsaveapi_test
+package actionhandlers_test
 
 import (
 	"context"
