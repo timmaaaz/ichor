@@ -259,8 +259,9 @@ func TestMultiGroupBy(t *testing.T) {
 			Column:     "EXTRACT(DOW FROM orders.created_date)",
 			Expression: true,
 		}
+		// ValidateGroupByConfig permits expression without alias; alias enforcement happens at BuildQuery time.
 		if err := tablebuilder.ValidateGroupByConfig(groupByNoAlias); err != nil {
-			t.Logf("note: ValidateGroupByConfig rejected expression without alias: %v", err)
+			t.Errorf("ValidateGroupByConfig should allow expression without alias (enforced at query build time): %v", err)
 		}
 	})
 
@@ -416,10 +417,9 @@ func TestGroupByValidation(t *testing.T) {
 			// Missing alias
 		}
 
+		// ValidateGroupByConfig is permissive on alias; alias enforcement happens at BuildQuery time.
 		if err := tablebuilder.ValidateGroupByConfig(groupBy); err != nil {
-			t.Logf("ValidateGroupByConfig rejected expression without alias: %v", err)
-		} else {
-			t.Log("ValidateGroupByConfig allows expression without alias (builder enforces alias at query time)")
+			t.Errorf("ValidateGroupByConfig should allow expression without alias (enforced at query build time): %v", err)
 		}
 	})
 
