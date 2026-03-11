@@ -27,6 +27,7 @@ func Test_ApprovalRequest(t *testing.T) {
 	unitest.Run(t, queryWithFilters(sd), "query-with-filters")
 	unitest.Run(t, resolveTests(sd), "resolve")
 	unitest.Run(t, isApproverTests(sd), "is-approver")
+	unitest.Run(t, clearTaskTokenTests(sd), "clear-task-token")
 }
 
 // =============================================================================
@@ -365,6 +366,65 @@ func resolveTests(sd approvalSeedData) []unitest.Table {
 
 				// Second resolve should fail with ErrAlreadyResolved.
 				_, err = sd.ApprovalBus.Resolve(ctx, req.ID, sd.UserID, approvalrequestbus.StatusRejected, "Second")
+				return err != nil
+			},
+			CmpFunc: func(got, exp any) string {
+				if got != exp {
+					return fmt.Sprintf("got %v, want %v", got, exp)
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// =============================================================================
+// ClearTaskToken tests
+
+func clearTaskTokenTests(sd approvalSeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name:    "clear_task_token_success",
+			ExpResp: "", // task_token should be empty after clear
+			ExcFunc: func(ctx context.Context) any {
+				req, err := sd.ApprovalBus.Create(ctx, approvalrequestbus.NewApprovalRequest{
+					ExecutionID:     sd.WFData.AutomationExecutions[0].ID,
+					RuleID:          sd.WFData.AutomationRules[0].ID,
+					ActionName:      "seek_approval_clear_token",
+					Approvers:       []uuid.UUID{sd.ApproverA},
+					ApprovalType:    "any",
+					TimeoutHours:    24,
+					TaskToken:       "token-to-be-cleared",
+					ApprovalMessage: "Clear token test",
+				})
+				if err != nil {
+					return err
+				}
+
+				// Clear the token.
+				if err := sd.ApprovalBus.ClearTaskToken(ctx, req.ID); err != nil {
+					return err
+				}
+
+				// Verify it's gone.
+				got, err := sd.ApprovalBus.QueryByID(ctx, req.ID)
+				if err != nil {
+					return err
+				}
+				return got.TaskToken
+			},
+			CmpFunc: func(got, exp any) string {
+				if got != exp {
+					return fmt.Sprintf("got %q, want %q", got, exp)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "clear_task_token_not_found",
+			ExpResp: true, // error expected
+			ExcFunc: func(ctx context.Context) any {
+				err := sd.ApprovalBus.ClearTaskToken(ctx, uuid.New())
 				return err != nil
 			},
 			CmpFunc: func(got, exp any) string {

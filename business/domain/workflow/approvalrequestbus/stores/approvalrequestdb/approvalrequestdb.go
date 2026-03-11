@@ -180,7 +180,8 @@ func (s *Store) Count(ctx context.Context, filter approvalrequestbus.QueryFilter
 }
 
 // ClearTaskToken sets the task_token column to empty string for the given approval request.
-// Called after a successful Temporal activity completion so the token is not retried.
+// Returns ErrDBNotFound (via sqldb.NamedQueryStruct) if no row matched, which the business
+// layer maps to ErrNotFound.
 func (s *Store) ClearTaskToken(ctx context.Context, id uuid.UUID) error {
 	data := struct {
 		ID string `db:"id"`
@@ -188,9 +189,16 @@ func (s *Store) ClearTaskToken(ctx context.Context, id uuid.UUID) error {
 		ID: id.String(),
 	}
 
-	const q = `UPDATE workflow.approval_requests SET task_token = '' WHERE approval_request_id = :id`
+	const q = `
+		UPDATE workflow.approval_requests
+		SET task_token = ''
+		WHERE approval_request_id = :id
+		RETURNING approval_request_id`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+	var dest struct {
+		ID string `db:"approval_request_id"`
+	}
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dest); err != nil {
 		return fmt.Errorf("clear task token: %w", err)
 	}
 
