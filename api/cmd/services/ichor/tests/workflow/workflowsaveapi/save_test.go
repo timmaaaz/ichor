@@ -63,6 +63,7 @@ func Test_WorkflowSaveAPI(t *testing.T) {
 
 	esd := insertExecutionSeedData(t, test, sd)
 	runExecutionTests(t, esd)
+	runActionTests(t, esd)
 	tsd := insertTriggerSeedData(t, test, esd)
 	runTriggerTests(t, tsd)
 }
