@@ -226,3 +226,43 @@ func TestRetryTemporalCompletion_QueryByIDFails(t *testing.T) {
 		t.Fatalf("expected Internal error code, got %v", appErr.Code)
 	}
 }
+
+// TestCompleteAndClear_CallsClearTokenAfterSuccess verifies that when
+// asyncCompleter.Complete succeeds, ClearTaskToken is called on the storer.
+func TestCompleteAndClear_CallsClearTokenAfterSuccess(t *testing.T) {
+	approval := resolvedApproval(validToken())
+
+	storer := &mockStorer{}
+	completer := &mockActivityCompleter{err: nil}
+	a := newTestAPI(storer, completer)
+
+	req := ResolveRequest{Resolution: "approved", Reason: "looks good"}
+	a.completeAndClear(context.Background(), approval.ID, approval, req, uuid.New())
+
+	if !completer.called {
+		t.Fatal("CompleteActivity should have been called")
+	}
+	if !storer.clearCalled {
+		t.Fatal("ClearTaskToken should have been called after successful Complete")
+	}
+}
+
+// TestCompleteAndClear_NoClearOnCompleteFailure verifies that when
+// asyncCompleter.Complete fails, ClearTaskToken is NOT called.
+func TestCompleteAndClear_NoClearOnCompleteFailure(t *testing.T) {
+	approval := resolvedApproval(validToken())
+
+	storer := &mockStorer{}
+	completer := &mockActivityCompleter{err: errors.New("temporal timeout")}
+	a := newTestAPI(storer, completer)
+
+	req := ResolveRequest{Resolution: "approved", Reason: "looks good"}
+	a.completeAndClear(context.Background(), approval.ID, approval, req, uuid.New())
+
+	if !completer.called {
+		t.Fatal("CompleteActivity should have been attempted")
+	}
+	if storer.clearCalled {
+		t.Fatal("ClearTaskToken must not be called when Complete() fails")
+	}
+}
