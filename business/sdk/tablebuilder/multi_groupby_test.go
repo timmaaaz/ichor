@@ -1,6 +1,7 @@
 package tablebuilder_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
@@ -500,6 +501,193 @@ func TestGroupByJSONSerialization(t *testing.T) {
 		}
 		if len(ds.GroupBy) != 0 {
 			t.Errorf("expected 0 GroupBy, got %d", len(ds.GroupBy))
+		}
+	})
+}
+
+// TestMultiGroupBy_SQLGeneration verifies that the query builder emits correct SQL
+// for various GroupBy configurations. No database required — pure SQL generation.
+func TestMultiGroupBy_SQLGeneration(t *testing.T) {
+	t.Parallel()
+
+	t.Run("single_groupby_date_trunc", func(t *testing.T) {
+		t.Parallel()
+		qb := tablebuilder.NewQueryBuilder()
+		ds := tablebuilder.DataSource{
+			Type:   "query",
+			Source: "orders",
+			Schema: "sales",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{Column: "orders.created_date", Interval: "month", Alias: "month"},
+			},
+			Metrics: []tablebuilder.MetricConfig{
+				{Name: "revenue", Function: "sum", Column: "orders.amount"},
+			},
+		}
+		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
+		if err != nil {
+			t.Fatalf("BuildQuery: %v", err)
+		}
+		if !strings.Contains(sql, "DATE_TRUNC('month'") {
+			t.Errorf("SQL missing DATE_TRUNC('month')\nFull SQL: %s", sql)
+		}
+		if !strings.Contains(sql, "GROUP BY") {
+			t.Errorf("SQL missing GROUP BY\nFull SQL: %s", sql)
+		}
+		if !strings.Contains(sql, `SUM(orders.amount)`) {
+			t.Errorf("SQL missing SUM aggregate\nFull SQL: %s", sql)
+		}
+	})
+
+	t.Run("multiple_groupby_categorical", func(t *testing.T) {
+		t.Parallel()
+		qb := tablebuilder.NewQueryBuilder()
+		ds := tablebuilder.DataSource{
+			Type:   "query",
+			Source: "orders",
+			Schema: "sales",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{Column: "orders.region", Alias: "region"},
+				{Column: "orders.status", Alias: "status"},
+			},
+			Metrics: []tablebuilder.MetricConfig{
+				{Name: "count", Function: "count", Column: "orders.id"},
+			},
+		}
+		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
+		if err != nil {
+			t.Fatalf("BuildQuery: %v", err)
+		}
+		if !strings.Contains(sql, "orders.region") {
+			t.Errorf("SQL missing orders.region\nFull SQL: %s", sql)
+		}
+		if !strings.Contains(sql, "orders.status") {
+			t.Errorf("SQL missing orders.status\nFull SQL: %s", sql)
+		}
+		if !strings.Contains(sql, "GROUP BY") {
+			t.Errorf("SQL missing GROUP BY\nFull SQL: %s", sql)
+		}
+	})
+
+	t.Run("expression_groupby_raw_sql_in_select_and_group_by", func(t *testing.T) {
+		t.Parallel()
+		qb := tablebuilder.NewQueryBuilder()
+		ds := tablebuilder.DataSource{
+			Type:   "query",
+			Source: "orders",
+			Schema: "sales",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{Column: "EXTRACT(DOW FROM orders.created_date)", Expression: true, Alias: "day_of_week"},
+			},
+			Metrics: []tablebuilder.MetricConfig{
+				{Name: "count", Function: "count", Column: "orders.id"},
+			},
+		}
+		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
+		if err != nil {
+			t.Fatalf("BuildQuery: %v", err)
+		}
+		if !strings.Contains(sql, "EXTRACT(DOW FROM orders.created_date)") {
+			t.Errorf("SQL missing raw expression\nFull SQL: %s", sql)
+		}
+		if !strings.Contains(sql, "GROUP BY") {
+			t.Errorf("SQL missing GROUP BY\nFull SQL: %s", sql)
+		}
+	})
+
+	t.Run("mixed_interval_and_expression", func(t *testing.T) {
+		t.Parallel()
+		qb := tablebuilder.NewQueryBuilder()
+		ds := tablebuilder.DataSource{
+			Type:   "query",
+			Source: "orders",
+			Schema: "sales",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{Column: "orders.created_date", Interval: "quarter", Alias: "quarter"},
+				{Column: "orders.region", Alias: "region"},
+			},
+			Metrics: []tablebuilder.MetricConfig{
+				{Name: "total", Function: "sum", Column: "orders.amount"},
+			},
+		}
+		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
+		if err != nil {
+			t.Fatalf("BuildQuery: %v", err)
+		}
+		if !strings.Contains(sql, "DATE_TRUNC('quarter'") {
+			t.Errorf("SQL missing DATE_TRUNC('quarter')\nFull SQL: %s", sql)
+		}
+		if !strings.Contains(sql, "orders.region") {
+			t.Errorf("SQL missing orders.region\nFull SQL: %s", sql)
+		}
+		if !strings.Contains(sql, "GROUP BY") {
+			t.Errorf("SQL missing GROUP BY\nFull SQL: %s", sql)
+		}
+	})
+
+	t.Run("no_groupby_produces_no_group_clause", func(t *testing.T) {
+		t.Parallel()
+		qb := tablebuilder.NewQueryBuilder()
+		ds := tablebuilder.DataSource{
+			Type:   "query",
+			Source: "orders",
+			Schema: "sales",
+			Metrics: []tablebuilder.MetricConfig{
+				{Name: "total", Function: "sum", Column: "orders.amount"},
+			},
+		}
+		sql, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
+		if err != nil {
+			t.Fatalf("BuildQuery: %v", err)
+		}
+		if strings.Contains(sql, "GROUP BY") {
+			t.Errorf("SQL should not contain GROUP BY when no GroupBy configured\nFull SQL: %s", sql)
+		}
+	})
+}
+
+// TestMultiGroupBy_ErrorCases verifies that invalid GroupBy configurations return errors.
+func TestMultiGroupBy_ErrorCases(t *testing.T) {
+	t.Parallel()
+
+	t.Run("invalid_interval_returns_error", func(t *testing.T) {
+		t.Parallel()
+		qb := tablebuilder.NewQueryBuilder()
+		ds := tablebuilder.DataSource{
+			Type:   "query",
+			Source: "orders",
+			Schema: "sales",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{Column: "orders.created_date", Interval: "fortnight", Alias: "period"},
+			},
+			Metrics: []tablebuilder.MetricConfig{
+				{Name: "count", Function: "count", Column: "orders.id"},
+			},
+		}
+		_, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
+		if err == nil {
+			t.Error("expected error for invalid interval 'fortnight', got nil")
+		}
+	})
+
+	t.Run("expression_missing_alias_returns_error", func(t *testing.T) {
+		t.Parallel()
+		qb := tablebuilder.NewQueryBuilder()
+		ds := tablebuilder.DataSource{
+			Type:   "query",
+			Source: "orders",
+			Schema: "sales",
+			GroupBy: []tablebuilder.GroupByConfig{
+				{Column: "EXTRACT(DOW FROM orders.created_date)", Expression: true},
+				// no Alias — should be rejected
+			},
+			Metrics: []tablebuilder.MetricConfig{
+				{Name: "count", Function: "count", Column: "orders.id"},
+			},
+		}
+		_, _, err := qb.BuildQuery(&ds, tablebuilder.QueryParams{}, true)
+		if err == nil {
+			t.Error("expected error for expression GroupBy missing alias, got nil")
 		}
 	})
 }
