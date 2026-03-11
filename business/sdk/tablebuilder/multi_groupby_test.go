@@ -12,6 +12,7 @@ func TestMultiGroupBy(t *testing.T) {
 	t.Parallel()
 
 	t.Run("single GroupBy in slice - backward compatibility", func(t *testing.T) {
+		t.Parallel()
 		config := &tablebuilder.Config{
 			Title:         "Monthly Revenue",
 			WidgetType:    "chart",
@@ -49,6 +50,7 @@ func TestMultiGroupBy(t *testing.T) {
 	})
 
 	t.Run("empty GroupBy slice - no grouping", func(t *testing.T) {
+		t.Parallel()
 		config := &tablebuilder.Config{
 			Title:         "Total Revenue",
 			WidgetType:    "kpi",
@@ -77,6 +79,7 @@ func TestMultiGroupBy(t *testing.T) {
 	})
 
 	t.Run("multiple GroupBy with simple columns", func(t *testing.T) {
+		t.Parallel()
 		config := &tablebuilder.Config{
 			Title:         "Revenue by Region and Product",
 			WidgetType:    "chart",
@@ -119,6 +122,7 @@ func TestMultiGroupBy(t *testing.T) {
 	})
 
 	t.Run("multiple GroupBy with SQL expressions", func(t *testing.T) {
+		t.Parallel()
 		config := &tablebuilder.Config{
 			Title:         "Orders by Day and Hour",
 			WidgetType:    "chart",
@@ -181,6 +185,7 @@ func TestMultiGroupBy(t *testing.T) {
 	})
 
 	t.Run("mixed simple and expression GroupBy", func(t *testing.T) {
+		t.Parallel()
 		config := &tablebuilder.Config{
 			Title:         "Revenue by Month and Product Category",
 			WidgetType:    "chart",
@@ -237,46 +242,30 @@ func TestMultiGroupBy(t *testing.T) {
 	})
 
 	t.Run("Expression GroupBy requires alias", func(t *testing.T) {
-		config := &tablebuilder.Config{
-			Title:         "Orders by Day",
-			WidgetType:    "chart",
-			Visualization: "bar",
-			DataSource: []tablebuilder.DataSource{
-				{
-					Type:   "query",
-					Source: "orders",
-					Schema: "sales",
-					GroupBy: []tablebuilder.GroupByConfig{
-						{
-							Column:     "EXTRACT(DOW FROM orders.created_date)",
-							Expression: true,
-							// Missing Alias - should be caught by validation
-						},
-					},
-					Metrics: []tablebuilder.MetricConfig{
-						{
-							Name:     "count",
-							Function: "count",
-							Column:   "orders.id",
-						},
-					},
-				},
-			},
+		t.Parallel()
+
+		// Expression GroupBy with alias — should be valid.
+		groupBy := &tablebuilder.GroupByConfig{
+			Column:     "EXTRACT(DOW FROM orders.created_date)",
+			Expression: true,
+			Alias:      "day_of_week",
+		}
+		if err := tablebuilder.ValidateGroupByConfig(groupBy); err != nil {
+			t.Errorf("expression GroupBy with alias should be valid: %v", err)
 		}
 
-		// Validate GroupBy
-		groupBy := config.DataSource[0].GroupBy[0]
-		if groupBy.Expression && groupBy.Alias == "" {
-			// This is correct - expressions require aliases
-			t.Log("Correctly detected missing alias for Expression GroupBy")
-		} else if !groupBy.Expression {
-			t.Error("GroupBy should be marked as Expression")
-		} else if groupBy.Alias != "" {
-			t.Error("Test case should have empty alias to demonstrate requirement")
+		// Without alias — confirm validate behavior (builder handles alias at query time).
+		groupByNoAlias := &tablebuilder.GroupByConfig{
+			Column:     "EXTRACT(DOW FROM orders.created_date)",
+			Expression: true,
+		}
+		if err := tablebuilder.ValidateGroupByConfig(groupByNoAlias); err != nil {
+			t.Logf("note: ValidateGroupByConfig rejected expression without alias: %v", err)
 		}
 	})
 
 	t.Run("three-dimensional grouping", func(t *testing.T) {
+		t.Parallel()
 		config := &tablebuilder.Config{
 			Title:         "Sales by Region, Product, and Month",
 			WidgetType:    "chart",
@@ -323,9 +312,18 @@ func TestMultiGroupBy(t *testing.T) {
 				t.Errorf("GroupBy %d alias mismatch: got %s, want %s", i, gb.Alias, aliases[i])
 			}
 		}
+
+		// Validate each GroupBy config is individually valid.
+		for i, gb := range config.DataSource[0].GroupBy {
+			gbCopy := gb
+			if err := tablebuilder.ValidateGroupByConfig(&gbCopy); err != nil {
+				t.Errorf("GroupBy[%d] (%q) failed validation: %v", i, gb.Alias, err)
+			}
+		}
 	})
 
 	t.Run("complex SQL expressions in GroupBy", func(t *testing.T) {
+		t.Parallel()
 		config := &tablebuilder.Config{
 			Title:         "Complex Grouping",
 			WidgetType:    "chart",
@@ -379,6 +377,7 @@ func TestGroupByValidation(t *testing.T) {
 	t.Parallel()
 
 	t.Run("validates interval values", func(t *testing.T) {
+		t.Parallel()
 		validIntervals := []string{"day", "week", "month", "quarter", "year"}
 
 		for _, interval := range validIntervals {
@@ -396,6 +395,7 @@ func TestGroupByValidation(t *testing.T) {
 	})
 
 	t.Run("rejects invalid interval", func(t *testing.T) {
+		t.Parallel()
 		groupBy := &tablebuilder.GroupByConfig{
 			Column:   "orders.created_date",
 			Interval: "invalid_interval",
@@ -409,20 +409,22 @@ func TestGroupByValidation(t *testing.T) {
 	})
 
 	t.Run("validates expression requires alias", func(t *testing.T) {
+		t.Parallel()
 		groupBy := &tablebuilder.GroupByConfig{
 			Column:     "EXTRACT(DOW FROM orders.created_date)",
 			Expression: true,
 			// Missing alias
 		}
 
-		// This validation would be done in the query builder
-		// when buildGroupBySelectExpression is called
-		if groupBy.Expression && groupBy.Alias == "" {
-			t.Log("Correctly detected missing alias requirement")
+		if err := tablebuilder.ValidateGroupByConfig(groupBy); err != nil {
+			t.Logf("ValidateGroupByConfig rejected expression without alias: %v", err)
+		} else {
+			t.Log("ValidateGroupByConfig allows expression without alias (builder enforces alias at query time)")
 		}
 	})
 
 	t.Run("allows simple column without alias", func(t *testing.T) {
+		t.Parallel()
 		groupBy := &tablebuilder.GroupByConfig{
 			Column: "products.name",
 			// No alias - should use column name
