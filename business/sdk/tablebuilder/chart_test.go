@@ -109,6 +109,10 @@ func TestChartTransformer_KPI(t *testing.T) {
 		if resp.KPI.Trend != "down" {
 			t.Errorf("Trend = %q, want %q", resp.KPI.Trend, "down")
 		}
+		// Change = ((80000 - 100000) / 100000) * 100 = -20%
+		if math.Abs(resp.KPI.Change-(-20.0)) > 0.01 {
+			t.Errorf("Change = %v, want ~-20.0", resp.KPI.Change)
+		}
 	})
 
 	t.Run("empty data returns zero value KPI not error", func(t *testing.T) {
@@ -350,6 +354,27 @@ func TestChartTransformer_Heatmap(t *testing.T) {
 		}
 		if len(resp.Heatmap.YCategories) == 0 {
 			t.Error("YCategories is empty")
+		}
+		// Verify the [y][x] data matrix has correct values.
+		// Data layout: Data[yIdx][xIdx] — find Mon/9am cell = 5.0
+		xIdx := -1
+		for i, x := range resp.Heatmap.XCategories {
+			if x == "9am" {
+				xIdx = i
+				break
+			}
+		}
+		yIdx := -1
+		for i, y := range resp.Heatmap.YCategories {
+			if y == "Mon" {
+				yIdx = i
+				break
+			}
+		}
+		if xIdx < 0 || yIdx < 0 {
+			t.Errorf("could not find Mon/9am in categories: X=%v Y=%v", resp.Heatmap.XCategories, resp.Heatmap.YCategories)
+		} else if got := resp.Heatmap.Data[yIdx][xIdx]; got != 5.0 {
+			t.Errorf("Heatmap.Data[Mon][9am] = %v, want 5.0", got)
 		}
 	})
 
