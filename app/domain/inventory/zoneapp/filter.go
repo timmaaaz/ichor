@@ -35,6 +35,14 @@ func parseFilter(qp QueryParams) (zonebus.QueryFilter, error) {
 		filter.ZoneID = &id
 	}
 
+	if qp.Stage != "" {
+		st, err := zonebus.ParseStage(qp.Stage)
+		if err != nil {
+			return zonebus.QueryFilter{}, err
+		}
+		filter.Stage = &st
+	}
+
 	if qp.UpdatedDate != "" {
 		date, err := time.Parse(timeutil.FORMAT, qp.UpdatedDate)
 		if err != nil {

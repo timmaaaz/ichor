@@ -497,8 +497,9 @@ CREATE TABLE products.products (
    is_active BOOLEAN NOT NULL,
    is_perishable BOOLEAN NOT NULL,
    handling_instructions TEXT NULL,
-   units_per_case INT NOT NULL,
+   units_per_case INT NOT NULL,   -- DEPRECATED: superseded by products.product_uoms
    tracking_type VARCHAR(20) NOT NULL DEFAULT 'none' CHECK (tracking_type IN ('none', 'lot', 'serial')),
+   inventory_type TEXT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
@@ -669,6 +670,7 @@ CREATE TABLE inventory.zones (
    warehouse_id UUID NOT NULL,
    name VARCHAR(50) NOT NULL,
    description TEXT NULL,
+   stage TEXT NULL,
    created_date TIMESTAMP NOT NULL,
    updated_date TIMESTAMP NOT NULL,
    PRIMARY KEY (id),
@@ -2220,3 +2222,34 @@ ALTER TABLE inventory.transfer_orders
     ADD COLUMN approval_reason TEXT NULL,
     ADD COLUMN rejected_by_id UUID NULL REFERENCES core.users(id),
     ADD COLUMN rejection_reason TEXT NULL;
+
+-- Version: 2.11
+-- Description: Add product_uoms table
+CREATE TABLE products.product_uoms (
+    id                UUID        NOT NULL DEFAULT gen_random_uuid(),
+    product_id        UUID        NOT NULL,
+    name              TEXT        NOT NULL,
+    abbreviation      TEXT,
+    conversion_factor NUMERIC(10, 4) NOT NULL,
+    is_base           BOOLEAN     NOT NULL DEFAULT FALSE,
+    is_approximate    BOOLEAN     NOT NULL DEFAULT FALSE,
+    notes             TEXT,
+    created_date      TIMESTAMP   NOT NULL,
+    updated_date      TIMESTAMP   NOT NULL,
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (product_id) REFERENCES products.products(id) ON DELETE CASCADE
+);
+
+-- Enforce one base UOM per product
+CREATE UNIQUE INDEX product_uoms_base_idx
+    ON products.product_uoms (product_id)
+    WHERE is_base = TRUE;
+
+-- Version: 2.12
+-- Description: Add inventory_type column to products if not already present from v1.42 edit.
+ALTER TABLE products.products ADD COLUMN IF NOT EXISTS inventory_type TEXT NULL;
+
+-- Version: 2.13
+-- Description: Add stage column to inventory zones if not already present from v1.51 edit.
+ALTER TABLE inventory.zones ADD COLUMN IF NOT EXISTS stage TEXT NULL;

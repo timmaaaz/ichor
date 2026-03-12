@@ -97,6 +97,7 @@ func (b *Business) Create(ctx context.Context, np NewProduct) (Product, error) {
 		HandlingInstructions: np.HandlingInstructions,
 		UnitsPerCase:         np.UnitsPerCase,
 		TrackingType:         trackingType,
+		InventoryType:        np.InventoryType,
 		CreatedDate:          now,
 		UpdatedDate:          now,
 	}
@@ -159,6 +160,10 @@ func (b *Business) Update(ctx context.Context, product Product, ub UpdateProduct
 	}
 	if ub.TrackingType != nil {
 		product.TrackingType = *ub.TrackingType
+	}
+
+	if ub.InventoryType != nil {
+		product.InventoryType = ub.InventoryType
 	}
 
 	product.UpdatedDate = time.Now()

@@ -48,12 +48,12 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productbus.Storer, error) 
 // Create inserts a new product into the database.
 func (s *Store) Create(ctx context.Context, brand productbus.Product) error {
 	const q = `
-    INSERT INTO products.products ( 
+    INSERT INTO products.products (
 		id, sku, brand_id, category_id, name, description, model_number, upc_code, status,
-		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, created_date, updated_date
+		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, inventory_type, created_date, updated_date
     ) VALUES (
 		:id, :sku, :brand_id, :category_id, :name, :description, :model_number, :upc_code, :status,
-		:is_active, :is_perishable, :handling_instructions, :units_per_case, :tracking_type, :created_date, :updated_date
+		:is_active, :is_perishable, :handling_instructions, :units_per_case, :tracking_type, :inventory_type, :created_date, :updated_date
 	)
     `
 
@@ -89,6 +89,7 @@ func (s *Store) Update(ctx context.Context, prod productbus.Product) error {
 		handling_instructions = :handling_instructions,
 		units_per_case = :units_per_case,
 		tracking_type = :tracking_type,
+		inventory_type = :inventory_type,
 		updated_date = :updated_date
 	WHERE
 		id = :id
@@ -131,7 +132,7 @@ func (s *Store) Query(ctx context.Context, filter productbus.QueryFilter, orderB
 	const q = `
     SELECT
 		id, sku, brand_id, category_id, name, description, model_number, upc_code, status,
-		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, created_date, updated_date
+		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, inventory_type, created_date, updated_date
     FROM
         products.products`
 
@@ -197,7 +198,7 @@ func (s *Store) QueryByIDs(ctx context.Context, productIDs []uuid.UUID) ([]produ
 	const q = `
     SELECT
 		id, sku, brand_id, category_id, name, description, model_number, upc_code, status,
-		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, created_date, updated_date
+		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, inventory_type, created_date, updated_date
     FROM
         products.products
     WHERE
@@ -222,7 +223,7 @@ func (s *Store) QueryByID(ctx context.Context, userBrandID uuid.UUID) (productbu
 	const q = `
     SELECT
        	id, sku, brand_id, category_id, name, description, model_number, upc_code, status,
-		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, created_date, updated_date
+		is_active, is_perishable, handling_instructions, units_per_case, tracking_type, inventory_type, created_date, updated_date
     FROM
         products.products
     WHERE

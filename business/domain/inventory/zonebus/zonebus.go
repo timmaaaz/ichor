@@ -76,6 +76,7 @@ func (b *Business) Create(ctx context.Context, nz NewZone) (Zone, error) {
 		WarehouseID: nz.WarehouseID,
 		Name:        nz.Name,
 		Description: nz.Description,
+		Stage:       nz.Stage,
 		CreatedDate: now,
 		UpdatedDate: now,
 	}
@@ -109,6 +110,10 @@ func (b *Business) Update(ctx context.Context, zone Zone, u UpdateZone) (Zone, e
 
 	if u.WarehouseID != nil {
 		zone.WarehouseID = *u.WarehouseID
+	}
+
+	if u.Stage != nil {
+		zone.Stage = u.Stage
 	}
 
 	zone.UpdatedDate = time.Now()
