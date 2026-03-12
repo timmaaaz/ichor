@@ -184,8 +184,8 @@ var TableConfig = &tablebuilder.Config{
 			"products.id": {
 				Name:   "products.id",
 				Header: "ID",
-				Width:  100,
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"products.name": {
 				Name:       "products.name",
@@ -420,8 +420,8 @@ var ProductsWithPricesLookup = &tablebuilder.Config{
 			"products.id": {
 				Name:   "products.id",
 				Header: "ID",
-				Width:  100,
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"products.name": {
 				Name:       "products.name",

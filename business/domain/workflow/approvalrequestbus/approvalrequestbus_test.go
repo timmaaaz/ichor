@@ -57,7 +57,7 @@ func insertApprovalSeedData(db *dbtest.Database) (approvalSeedData, error) {
 		return approvalSeedData{}, fmt.Errorf("seeding workflow data: %w", err)
 	}
 
-	const requiredExecutions = 8
+	const requiredExecutions = 10
 	if len(wfData.AutomationExecutions) < requiredExecutions {
 		return approvalSeedData{}, fmt.Errorf(
 			"insertApprovalSeedData: need at least %d automation executions, got %d (check TestSeedFullWorkflow)",

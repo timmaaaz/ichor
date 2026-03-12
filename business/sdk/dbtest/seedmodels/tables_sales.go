@@ -54,8 +54,8 @@ var OrdersConfig = &tablebuilder.Config{
 			"orders_id": {
 				Name:   "orders_id",
 				Header: "Order ID",
-				Width:  100,
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"order_number": {
 				Name:       "order_number",
@@ -507,6 +507,17 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 							{Name: "last_name", Alias: "created_by_last_name", TableColumn: "users.last_name"},
 						},
 					},
+					{
+						Table:            "users",
+						Schema:           "core",
+						Alias:            "updated_by_user",
+						RelationshipFrom: "order_line_items.updated_by",
+						RelationshipTo:   "users.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "updated_by_username", TableColumn: "updated_by_user.username"},
+						},
+					},
 				},
 				ClientComputedColumns: []tablebuilder.ComputedColumn{
 					{
@@ -728,15 +739,15 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 			},
 			"order_line_items.created_by": {
 				Name:   "order_line_items.created_by",
-				Header: "Created By ID",
-				Width:  100,
+				Header: "Created By",
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"order_line_items.updated_by": {
 				Name:   "order_line_items.updated_by",
-				Header: "Updated By ID",
-				Width:  100,
+				Header: "Updated By",
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"order_line_items.updated_date": {
 				Name:   "order_line_items.updated_date",
@@ -783,6 +794,13 @@ var OrderLineItemsTableConfig = &tablebuilder.Config{
 				Header: "Creator Last Name",
 				Width:  150,
 				Type:   "string",
+			},
+			"updated_by_username": {
+				Name:       "updated_by_username",
+				Header:     "Updated By",
+				Width:      150,
+				Type:       "string",
+				Filterable: true,
 			},
 		},
 		ConditionalFormatting: []tablebuilder.ConditionalFormat{

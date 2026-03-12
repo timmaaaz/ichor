@@ -57,12 +57,14 @@ func (s *mockStorer) ClearTaskToken(_ context.Context, _ uuid.UUID) error {
 
 // mockActivityCompleter controls the Temporal CompleteActivity call.
 type mockActivityCompleter struct {
-	err    error
-	called bool
+	err         error
+	called      bool
+	capturedOut any
 }
 
-func (m *mockActivityCompleter) CompleteActivity(_ context.Context, _ []byte, _ any, _ error) error {
+func (m *mockActivityCompleter) CompleteActivity(_ context.Context, _ []byte, out any, _ error) error {
 	m.called = true
+	m.capturedOut = out
 	return m.err
 }
 
@@ -208,9 +210,8 @@ func TestRetryTemporalCompletion_NilCompleter(t *testing.T) {
 	}
 }
 
-func TestRetryTemporalCompletion_QueryByIDFails(t *testing.T) {
-	// When the DB lookup fails during retry:
-	// Expect: internal error returned.
+func TestRetryTemporalCompletion_QueryByIDGenericError(t *testing.T) {
+	// Generic DB error → 500 Internal.
 	storer := &mockStorer{
 		queryByIDErr: errors.New("db connection lost"),
 	}

@@ -554,8 +554,8 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 			"purchase_orders.purchase_order_status_id": {
 				Name:       "purchase_orders.purchase_order_status_id",
 				Header:     "Status",
-				Width:      150,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.purchase_order_statuses",
@@ -623,9 +623,9 @@ var PurchaseOrderTableConfig = &tablebuilder.Config{
 			},
 			"purchase_orders.approved_by": {
 				Name:   "purchase_orders.approved_by",
-				Header: "Approved By ID",
-				Width:  100,
+				Header: "Approved By",
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"purchase_orders.approved_date": {
 				Name:   "purchase_orders.approved_date",
@@ -847,6 +847,17 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 							{Name: "username", Alias: "created_by_username", TableColumn: "users.username"},
 						},
 					},
+					{
+						Table:            "users",
+						Schema:           "core",
+						Alias:            "updated_by_user",
+						RelationshipFrom: "purchase_order_line_items.updated_by",
+						RelationshipTo:   "updated_by_user.id",
+						JoinType:         "left",
+						Columns: []tablebuilder.ColumnDefinition{
+							{Name: "username", Alias: "updated_by_username", TableColumn: "updated_by_user.username"},
+						},
+					},
 				},
 				ClientComputedColumns: []tablebuilder.ComputedColumn{
 					{
@@ -892,6 +903,10 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Width:      180,
 				Type:       "string",
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/procurement/suppliers/{po_supplier_id}",
+					LabelColumn: "supplier_name",
+				},
 			},
 			"product_name": {
 				Name:       "product_name",
@@ -899,6 +914,10 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Width:      200,
 				Type:       "string",
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/products/products/{product_id}",
+					LabelColumn: "product_name",
+				},
 			},
 			"product_sku": {
 				Name:       "product_sku",
@@ -988,6 +1007,10 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 				Width:      130,
 				Type:       "string",
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/core/users/{line_item_created_by}",
+					LabelColumn: "created_by_username",
+				},
 			},
 			"line_item_id": {
 				Name:   "line_item_id",
@@ -998,8 +1021,8 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			"line_item_purchase_order_id": {
 				Name:       "line_item_purchase_order_id",
 				Header:     "Purchase Order",
-				Width:      150,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.purchase_orders",
@@ -1010,8 +1033,8 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			"line_item_supplier_product_id": {
 				Name:       "line_item_supplier_product_id",
 				Header:     "Supplier Product",
-				Width:      200,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.supplier_products",
@@ -1034,8 +1057,8 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			"line_item_line_item_status_id": {
 				Name:       "line_item_line_item_status_id",
 				Header:     "Status",
-				Width:      150,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.purchase_order_line_item_statuses",
@@ -1061,9 +1084,9 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			},
 			"line_item_created_by": {
 				Name:   "line_item_created_by",
-				Header: "Created By ID",
-				Width:  100,
+				Header: "Created By",
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"line_item_created_date": {
 				Name:   "line_item_created_date",
@@ -1077,9 +1100,20 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			},
 			"line_item_updated_by": {
 				Name:   "line_item_updated_by",
-				Header: "Updated By ID",
-				Width:  100,
+				Header: "Updated By",
 				Type:   "uuid",
+				Hidden: true,
+			},
+			"updated_by_username": {
+				Name:       "updated_by_username",
+				Header:     "Updated By",
+				Width:      130,
+				Type:       "string",
+				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/core/users/{line_item_updated_by}",
+					LabelColumn: "updated_by_username",
+				},
 			},
 			"line_item_updated_date": {
 				Name:   "line_item_updated_date",
@@ -1094,8 +1128,8 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			"po_supplier_id": {
 				Name:       "po_supplier_id",
 				Header:     "Supplier",
-				Width:      200,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.suppliers",
@@ -1116,8 +1150,8 @@ var PurchaseOrderLineItemTableConfig = &tablebuilder.Config{
 			"product_id": {
 				Name:       "product_id",
 				Header:     "Product",
-				Width:      200,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "products.products",
@@ -1377,6 +1411,10 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 				Width:      150,
 				Type:       "computed",
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/core/users/{purchase_orders.requested_by}",
+					LabelColumn: "requested_by_full_name",
+				},
 			},
 			"purchase_orders.id": {
 				Name:   "purchase_orders.id",
@@ -1387,8 +1425,8 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 			"purchase_orders.supplier_id": {
 				Name:       "purchase_orders.supplier_id",
 				Header:     "Supplier",
-				Width:      200,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.suppliers",
@@ -1399,8 +1437,8 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 			"purchase_orders.purchase_order_status_id": {
 				Name:       "purchase_orders.purchase_order_status_id",
 				Header:     "Status",
-				Width:      150,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.purchase_order_statuses",
@@ -1411,8 +1449,8 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 			"purchase_orders.delivery_warehouse_id": {
 				Name:       "purchase_orders.delivery_warehouse_id",
 				Header:     "Warehouse",
-				Width:      200,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "inventory.warehouses",
@@ -1458,9 +1496,9 @@ var ProcurementOpenApprovalsTableConfig = &tablebuilder.Config{
 			},
 			"purchase_orders.requested_by": {
 				Name:   "purchase_orders.requested_by",
-				Header: "Requested By ID",
-				Width:  100,
+				Header: "Requested By",
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"purchase_orders.notes": {
 				Name:   "purchase_orders.notes",
@@ -1809,6 +1847,10 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Width:      150,
 				Type:       "computed",
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/core/users/{purchase_orders.requested_by}",
+					LabelColumn: "requested_by_full_name",
+				},
 			},
 			"approved_by_full_name": {
 				Name:       "approved_by_full_name",
@@ -1816,6 +1858,10 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 				Width:      150,
 				Type:       "computed",
 				Filterable: true,
+				Link: &tablebuilder.LinkConfig{
+					URL:         "/core/users/{purchase_orders.approved_by}",
+					LabelColumn: "approved_by_full_name",
+				},
 			},
 			"purchase_orders.id": {
 				Name:   "purchase_orders.id",
@@ -1826,8 +1872,8 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 			"purchase_orders.supplier_id": {
 				Name:       "purchase_orders.supplier_id",
 				Header:     "Supplier",
-				Width:      200,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.suppliers",
@@ -1838,8 +1884,8 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 			"purchase_orders.purchase_order_status_id": {
 				Name:       "purchase_orders.purchase_order_status_id",
 				Header:     "Status",
-				Width:      150,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "procurement.purchase_order_statuses",
@@ -1850,8 +1896,8 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 			"purchase_orders.delivery_warehouse_id": {
 				Name:       "purchase_orders.delivery_warehouse_id",
 				Header:     "Warehouse",
-				Width:      200,
 				Type:       "lookup",
+				Hidden:     true,
 				Filterable: true,
 				Lookup: &tablebuilder.LookupConfig{
 					Entity:      "inventory.warehouses",
@@ -1907,15 +1953,15 @@ var ProcurementClosedApprovalsTableConfig = &tablebuilder.Config{
 			},
 			"purchase_orders.requested_by": {
 				Name:   "purchase_orders.requested_by",
-				Header: "Requested By ID",
-				Width:  100,
+				Header: "Requested By",
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"purchase_orders.approved_by": {
 				Name:   "purchase_orders.approved_by",
-				Header: "Approved By ID",
-				Width:  100,
+				Header: "Approved By",
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"purchase_orders.notes": {
 				Name:   "purchase_orders.notes",
