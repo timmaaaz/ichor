@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/shopspring/decimal"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
@@ -37,13 +37,13 @@ type CreatePurchaseOrderConfig struct {
 
 // CreatePOLineItemConfig represents a single line item to create.
 type CreatePOLineItemConfig struct {
-	ProductID         string  `json:"product_id"`
-	SupplierProductID string  `json:"supplier_product_id,omitempty"`
-	QuantityOrdered   int     `json:"quantity_ordered"`
-	UnitCost          float64 `json:"unit_cost,omitempty"`
-	Discount          float64 `json:"discount,omitempty"`
-	LineItemStatusID  string  `json:"line_item_status_id"`
-	Notes             string  `json:"notes,omitempty"`
+	ProductID         string          `json:"product_id"`
+	SupplierProductID string          `json:"supplier_product_id,omitempty"`
+	QuantityOrdered   int             `json:"quantity_ordered"`
+	UnitCost          decimal.Decimal `json:"unit_cost"`
+	Discount          decimal.Decimal `json:"discount"`
+	LineItemStatusID  string          `json:"line_item_status_id"`
+	Notes             string          `json:"notes,omitempty"`
 }
 
 // CreatePurchaseOrderHandler handles create_purchase_order actions.
@@ -263,8 +263,8 @@ func (h *CreatePurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 	type resolvedLineItem struct {
 		supplierProductID uuid.UUID
 		supplierID        uuid.UUID
-		unitCost          float64
-		discount          float64
+		unitCost          decimal.Decimal
+		discount          decimal.Decimal
 		quantityOrdered   int
 		lineItemStatusID  uuid.UUID
 		notes             string
@@ -311,10 +311,10 @@ func (h *CreatePurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 			spSupplierID = sp.SupplierID
 
 			// Use supplier product unit cost if not overridden in config.
-			if unitCost == 0 {
+			if unitCost.IsZero() {
 				costStr := sp.UnitCost.Value()
 				if costStr != "" {
-					unitCost, _ = strconv.ParseFloat(costStr, 64)
+					unitCost, _ = decimal.NewFromString(costStr)
 				}
 			}
 		}
@@ -353,12 +353,13 @@ func (h *CreatePurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 	}
 
 	// Compute financial totals with discount applied.
-	var subtotal float64
-	lineTotals := make([]float64, len(resolved))
+	var subtotal decimal.Decimal
+	lineTotals := make([]decimal.Decimal, len(resolved))
 	for i, rli := range resolved {
-		lt := float64(rli.quantityOrdered) * rli.unitCost * (1.0 - rli.discount)
+		qty := decimal.NewFromInt(int64(rli.quantityOrdered))
+		lt := qty.Mul(rli.unitCost).Mul(decimal.NewFromInt(1).Sub(rli.discount))
 		lineTotals[i] = lt
-		subtotal += lt
+		subtotal = subtotal.Add(lt)
 	}
 
 	now := time.Now()
@@ -403,8 +404,8 @@ func (h *CreatePurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 		DeliveryStreetID:      streetID,
 		OrderDate:             now,
 		ExpectedDeliveryDate:  expectedDelivery,
-		Subtotal:              subtotal,
-		TotalAmount:           subtotal,
+		Subtotal:              subtotal.InexactFloat64(),
+		TotalAmount:           subtotal.InexactFloat64(),
 		CurrencyID:            currencyID,
 		RequestedBy:           execCtx.UserID,
 		Notes:                 cfg.Notes,
@@ -421,8 +422,8 @@ func (h *CreatePurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 			PurchaseOrderID:      po.ID,
 			SupplierProductID:    rli.supplierProductID,
 			QuantityOrdered:      rli.quantityOrdered,
-			UnitCost:             rli.unitCost,
-			LineTotal:            lineTotals[i],
+			UnitCost:             rli.unitCost.InexactFloat64(),
+			LineTotal:            lineTotals[i].InexactFloat64(),
 			LineItemStatusID:     rli.lineItemStatusID,
 			ExpectedDeliveryDate: expectedDelivery,
 			Notes:                rli.notes,
@@ -450,8 +451,8 @@ func (h *CreatePurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 		"order_number":      po.OrderNumber,
 		"supplier_id":       supplierID.String(),
 		"line_item_ids":     lineItemIDs,
-		"subtotal":          subtotal,
-		"total_amount":      subtotal,
+		"subtotal":          subtotal.InexactFloat64(),
+		"total_amount":      subtotal.InexactFloat64(),
 	}, nil
 }
 

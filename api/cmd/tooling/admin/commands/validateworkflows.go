@@ -332,7 +332,7 @@ func collectWorkflowConfigs() []workflowEntry {
 						"product_id": "00000000-0000-0000-0000-000000000001",
 						"supplier_product_id": "00000000-0000-0000-0000-000000000001",
 						"quantity_ordered": 100,
-						"unit_cost": 25.50,
+						"unit_cost": "25.50",
 						"line_item_status_id": "00000000-0000-0000-0000-000000000001"
 					}
 				]
