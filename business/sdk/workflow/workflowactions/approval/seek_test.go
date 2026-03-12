@@ -646,9 +646,7 @@ func (s *noopApprovalStorer) Count(_ context.Context, _ approvalrequestbus.Query
 func (s *noopApprovalStorer) IsApprover(_ context.Context, _, _ uuid.UUID) (bool, error) {
 	return false, nil
 }
-func (s *noopApprovalStorer) ClearTaskToken(_ context.Context, _ uuid.UUID) error {
-	return nil
-}
+func (s *noopApprovalStorer) ClearTaskToken(_ context.Context, _ uuid.UUID) error { return nil }
 
 // noopAlertStorer satisfies alertbus.Storer for unit tests.
 type noopAlertStorer struct{}

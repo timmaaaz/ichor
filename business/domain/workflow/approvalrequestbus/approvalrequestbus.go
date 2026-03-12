@@ -96,6 +96,19 @@ func (b *Business) Create(ctx context.Context, na NewApprovalRequest) (ApprovalR
 	return req, nil
 }
 
+// ClearTaskToken removes the Temporal task token for an approval request after
+// successful activity completion, preventing duplicate completes on retry.
+func (b *Business) ClearTaskToken(ctx context.Context, id uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.approvalrequestbus.cleartasktoken")
+	defer span.End()
+
+	if err := b.storer.ClearTaskToken(ctx, id); err != nil {
+		return fmt.Errorf("clear task token: id[%s]: %w", id, err)
+	}
+
+	return nil
+}
+
 // QueryByID returns a single approval request by ID.
 func (b *Business) QueryByID(ctx context.Context, id uuid.UUID) (ApprovalRequest, error) {
 	ctx, span := otel.AddSpan(ctx, "business.approvalrequestbus.querybyid")
@@ -158,15 +171,3 @@ func (b *Business) IsApprover(ctx context.Context, approvalID, userID uuid.UUID)
 	return b.storer.IsApprover(ctx, approvalID, userID)
 }
 
-// ClearTaskToken sets the task_token field to empty string for the given approval request.
-// Called after a successful Temporal CompleteActivity to prevent duplicate completions on retry.
-func (b *Business) ClearTaskToken(ctx context.Context, id uuid.UUID) error {
-	ctx, span := otel.AddSpan(ctx, "business.approvalrequestbus.cleartasktoken")
-	defer span.End()
-
-	if err := b.storer.ClearTaskToken(ctx, id); err != nil {
-		return fmt.Errorf("clear task token: %w", err)
-	}
-
-	return nil
-}
