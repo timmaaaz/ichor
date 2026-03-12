@@ -185,39 +185,110 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 			return errs.New(errs.NotFound, err)
 		}
 		if errors.Is(err, approvalrequestbus.ErrAlreadyResolved) {
-			return errs.Newf(errs.FailedPrecondition, "approval already resolved")
+			// Idempotent: already resolved — retry Temporal completion and return 200.
+			return a.retryTemporalCompletion(ctx, id)
 		}
 		return errs.Newf(errs.Internal, "resolve: %s", err)
 	}
 
-	// Complete the Temporal activity if we have an async completer and a task token.
-	if a.asyncCompleter != nil && approval.TaskToken != "" {
-		taskToken, err := base64.StdEncoding.DecodeString(approval.TaskToken)
-		if err != nil {
-			a.log.Error(ctx, "failed to decode task token",
-				"approval_id", id,
-				"error", err)
-		} else {
-			output := temporal.ActionActivityOutput{
-				ActionName: approval.ActionName,
-				Result: map[string]any{
-					"output":      req.Resolution,
-					"approval_id": approval.ID.String(),
-					"resolved_by": userID.String(),
-					"reason":      req.Reason,
-				},
-				Success: true,
-			}
-
-			if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
-				a.log.Error(ctx, "failed to complete Temporal activity",
-					"approval_id", id,
-					"error", err)
-			}
-		}
-	}
+	// Complete the Temporal activity and clear the task token from DB.
+	a.completeAndClear(ctx, id, approval, req, userID)
 
 	a.publishApprovalResolved(ctx, approval, userID)
+
+	return toAppApproval(approval)
+}
+
+// completeAndClear sends the Temporal activity completion signal and removes the
+// task token from the DB. Called from resolve() on first-time resolution.
+// Errors from both operations are logged but not propagated (fail-open).
+func (a *api) completeAndClear(ctx context.Context, id uuid.UUID, approval approvalrequestbus.ApprovalRequest, req ResolveRequest, userID uuid.UUID) {
+	if a.asyncCompleter == nil || approval.TaskToken == "" {
+		return
+	}
+	taskToken, err := base64.StdEncoding.DecodeString(approval.TaskToken)
+	if err != nil {
+		a.log.Error(ctx, "failed to decode task token",
+			"approval_id", id,
+			"error", err)
+		return
+	}
+	output := temporal.ActionActivityOutput{
+		ActionName: approval.ActionName,
+		Result: map[string]any{
+			"output":      req.Resolution,
+			"approval_id": approval.ID.String(),
+			"resolved_by": userID.String(),
+			"reason":      req.Reason,
+		},
+		Success: true,
+	}
+	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
+		a.log.Error(ctx, "failed to complete Temporal activity",
+			"approval_id", id,
+			"error", err)
+		return
+	}
+	if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
+		a.log.Error(ctx, "resolve: failed to clear task token after Temporal Complete",
+			"approval_id", id,
+			"error", err)
+	}
+}
+
+// retryTemporalCompletion re-delivers the Temporal CompleteActivity call for an already-resolved
+// approval. This makes the resolve endpoint idempotent: a duplicate POST returns 200 instead of 412.
+//
+// Behavior:
+//   - Fetches the approval by ID; returns Internal error if DB lookup fails.
+//   - If task_token is empty, Temporal was already notified — returns approval as-is.
+//   - If asyncCompleter is nil (Temporal not configured) — returns approval as-is.
+//   - Decodes the base64 task token; on decode failure, logs and returns approval (fail-open).
+//   - Calls asyncCompleter.Complete; on success, clears the task token in DB.
+//   - Temporal errors are logged but NOT propagated (fail-open).
+func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Encoder {
+	approval, err := a.approvalBus.QueryByID(ctx, id)
+	if err != nil {
+		return errs.Newf(errs.Internal, "queryByID: %s", err)
+	}
+
+	if approval.TaskToken == "" {
+		return toAppApproval(approval)
+	}
+
+	if a.asyncCompleter == nil {
+		return toAppApproval(approval)
+	}
+
+	taskToken, err := base64.StdEncoding.DecodeString(approval.TaskToken)
+	if err != nil {
+		a.log.Error(ctx, "retryTemporalCompletion: failed to decode task token",
+			"approval_id", id,
+			"error", err)
+		return toAppApproval(approval)
+	}
+
+	output := temporal.ActionActivityOutput{
+		ActionName: approval.ActionName,
+		Result: map[string]any{
+			"output":      string(approval.Status),
+			"approval_id": approval.ID.String(),
+		},
+		Success: true,
+	}
+
+	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
+		a.log.Error(ctx, "retryTemporalCompletion: failed to complete Temporal activity",
+			"approval_id", id,
+			"error", err)
+		return toAppApproval(approval)
+	}
+
+	if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
+		a.log.Error(ctx, "retryTemporalCompletion: failed to clear task token",
+			"approval_id", id,
+			"error", err)
+	}
 
 	return toAppApproval(approval)
 }

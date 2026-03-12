@@ -27,6 +27,7 @@ func Test_ApprovalRequest(t *testing.T) {
 	unitest.Run(t, queryWithFilters(sd), "query-with-filters")
 	unitest.Run(t, resolveTests(sd), "resolve")
 	unitest.Run(t, isApproverTests(sd), "is-approver")
+	unitest.Run(t, clearTaskTokenTests(sd), "clear-task-token")
 }
 
 // =============================================================================
@@ -54,6 +55,14 @@ func insertApprovalSeedData(db *dbtest.Database) (approvalSeedData, error) {
 	wfData, err := workflow.TestSeedFullWorkflow(ctx, userID, db.BusDomain.Workflow)
 	if err != nil {
 		return approvalSeedData{}, fmt.Errorf("seeding workflow data: %w", err)
+	}
+
+	const requiredExecutions = 8
+	if len(wfData.AutomationExecutions) < requiredExecutions {
+		return approvalSeedData{}, fmt.Errorf(
+			"insertApprovalSeedData: need at least %d automation executions, got %d (check TestSeedFullWorkflow)",
+			requiredExecutions, len(wfData.AutomationExecutions),
+		)
 	}
 
 	store := approvalrequestdb.NewStore(db.Log, db.DB)
@@ -370,6 +379,83 @@ func resolveTests(sd approvalSeedData) []unitest.Table {
 			CmpFunc: func(got, exp any) string {
 				if got != exp {
 					return fmt.Sprintf("got %v, want %v", got, exp)
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// =============================================================================
+// ClearTaskToken tests
+
+func clearTaskTokenTests(sd approvalSeedData) []unitest.Table {
+	ctx := context.Background()
+
+	// createWithToken inserts a new approval request with the given task token.
+	// Uses executions [8] and [9] which are unused by earlier test groups
+	// (TestSeedFullWorkflow seeds 15 executions; prior groups use [0..7]).
+	createWithToken := func(execIdx int, token string) approvalrequestbus.ApprovalRequest {
+		ar, err := sd.ApprovalBus.Create(ctx, approvalrequestbus.NewApprovalRequest{
+			ExecutionID:  sd.WFData.AutomationExecutions[execIdx].ID,
+			RuleID:       sd.WFData.AutomationRules[0].ID,
+			ActionName:   fmt.Sprintf("seek_approval_clear_token_%d", execIdx),
+			Approvers:    []uuid.UUID{sd.ApproverA},
+			ApprovalType: "any",
+			TimeoutHours: 24,
+			TaskToken:    token,
+		})
+		if err != nil {
+			panic(fmt.Sprintf("creating approval for clearTaskToken test: %v", err))
+		}
+		return ar
+	}
+
+	arWithToken := createWithToken(8, "some-base64-token")
+	arNoToken := createWithToken(9, "")
+
+	return []unitest.Table{
+		{
+			Name: "clears-task-token-when-present",
+			ExcFunc: func(ctx context.Context) any {
+				return sd.ApprovalBus.ClearTaskToken(ctx, arWithToken.ID)
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("expected nil error, got: %v", got)
+				}
+				updated, err := sd.ApprovalBus.QueryByID(ctx, arWithToken.ID)
+				if err != nil {
+					return fmt.Sprintf("QueryByID after ClearTaskToken: %v", err)
+				}
+				if updated.TaskToken != "" {
+					return fmt.Sprintf("expected empty task_token after ClearTaskToken, got: %q", updated.TaskToken)
+				}
+				return ""
+			},
+		},
+		{
+			Name: "clears-on-already-empty-token-no-error",
+			ExcFunc: func(ctx context.Context) any {
+				return sd.ApprovalBus.ClearTaskToken(ctx, arNoToken.ID)
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("expected nil error on already-empty token, got: %v", got)
+				}
+				return ""
+			},
+		},
+		{
+			Name: "returns-no-error-for-nonexistent-id",
+			ExcFunc: func(ctx context.Context) any {
+				// The store uses NamedExecContext (UPDATE ... WHERE id = :id).
+				// An UPDATE matching 0 rows is not a DB error, so we expect nil.
+				return sd.ApprovalBus.ClearTaskToken(ctx, uuid.New())
+			},
+			CmpFunc: func(got any, exp any) string {
+				if got != nil {
+					return fmt.Sprintf("expected nil error for nonexistent id, got: %v", got)
 				}
 				return ""
 			},

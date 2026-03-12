@@ -1,27 +1,22 @@
-//go:build ignore
-// +build ignore
-
-// Phase 13: Excluded until Phase 15 rewrites for Temporal.
-
 package workflowsaveapi_test
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 )
 
 // =============================================================================
-// Phase 7: Workflow Execution Integration Tests
+// Workflow Execution Integration Tests (Temporal-based)
 // =============================================================================
 
 // runExecutionTests runs all execution tests as subtests.
-// These are not HTTP tests - they test the workflow engine directly.
+// These are not HTTP tests — they test the workflow engine via Temporal directly.
 func runExecutionTests(t *testing.T, sd ExecutionTestData) {
 	t.Run("exec-single-alert", func(t *testing.T) {
 		testExecuteSingleCreateAlert(t, sd)
@@ -35,439 +30,235 @@ func runExecutionTests(t *testing.T, sd ExecutionTestData) {
 	t.Run("exec-branch-false", func(t *testing.T) {
 		testExecuteBranchFalse(t, sd)
 	})
-	t.Run("exec-record-created", func(t *testing.T) {
-		testExecutionRecordCreated(t, sd)
-	})
-	t.Run("exec-history-tracking", func(t *testing.T) {
-		testExecutionHistoryTracking(t, sd)
-	})
 	t.Run("exec-no-matching-rules", func(t *testing.T) {
 		testNoMatchingRules(t, sd)
 	})
 }
 
-// testExecuteSingleCreateAlert tests that a simple workflow with 1 action executes correctly.
+// testExecuteSingleCreateAlert tests that a simple workflow with 1 create_alert
+// action produces a new alert record when its trigger fires.
 func testExecuteSingleCreateAlert(t *testing.T, sd ExecutionTestData) {
 	ctx := context.Background()
 
-	// Get the entity name from the seed data (first entity)
-	if len(sd.Entities) == 0 {
-		t.Fatal("no entities in seed data")
-	}
-	entityName := sd.Entities[0].Name
-
-	// Get trigger type name from seed data (first trigger type = on_create)
-	if len(sd.TriggerTypes) == 0 {
-		t.Fatal("no trigger types in seed data")
-	}
-	triggerTypeName := sd.TriggerTypes[0].Name
-
-	// Create trigger event
-	event := workflow.TriggerEvent{
-		EventType:  triggerTypeName,
-		EntityName: entityName,
-		EntityID:   uuid.New(),
-		Timestamp:  time.Now(),
-		RawData:    map[string]any{"status": "new"},
-		UserID:     sd.Users[0].ID,
+	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 {
+		t.Fatal("insufficient seed data for simple workflow test")
 	}
 
-	// Execute workflow via engine
-	execution, err := sd.WF.Engine.ExecuteWorkflow(ctx, event)
+	if err := sd.WF.TriggerProcessor.RefreshRules(ctx); err != nil {
+		t.Fatalf("refreshing rules: %v", err)
+	}
+
+	// SimpleWorkflow creates alerts with alert_type "simple_test" — filter specifically
+	// to avoid counting alerts created by BranchingWorkflow (which shares TriggerTypes[0]).
+	alertType := "simple_test"
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 	if err != nil {
-		t.Fatalf("execution failed: %v", err)
+		t.Fatalf("querying alerts before: %v", err)
+	}
+	beforeCount := len(before)
+
+	// SimpleWorkflow uses TriggerTypes[0] and Entities[0]
+	event := createTriggerEvent(
+		sd.Entities[0].Name,
+		sd.TriggerTypes[0].Name,
+		sd.Users[0].ID,
+		map[string]any{},
+	)
+
+	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
+		t.Fatalf("firing trigger: %v", err)
 	}
 
-	// Verify execution completed
-	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed:\n%s", formatExecutionErrors(execution))
+	for i := 0; i < 30; i++ {
+		after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+		if err != nil {
+			t.Fatalf("querying alerts after: %v", err)
+		}
+		if len(after) > beforeCount {
+			t.Log("SUCCESS: single create_alert workflow executed via Temporal")
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
+	t.Fatal("timeout: no new simple_test alert after 15s — SimpleWorkflow may not have dispatched")
 }
 
-// testExecuteSequence3Actions tests that a workflow with 3 sequential actions executes in order.
+// testExecuteSequence3Actions tests that a workflow with 3 sequential create_alert
+// actions produces at least 3 new alert records.
 func testExecuteSequence3Actions(t *testing.T, sd ExecutionTestData) {
 	ctx := context.Background()
 
-	// Use the sequence workflow's entity and trigger type
-	if len(sd.Entities) == 0 {
-		t.Fatal("no entities in seed data")
+	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 {
+		t.Fatal("insufficient seed data for sequence workflow test")
 	}
 
-	// Use the second trigger type (on_update) if available
+	if err := sd.WF.TriggerProcessor.RefreshRules(ctx); err != nil {
+		t.Fatalf("refreshing rules: %v", err)
+	}
+
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("querying alerts before: %v", err)
+	}
+	beforeCount := len(before)
+
+	// SequenceWorkflow uses TriggerTypes[1] if available, else TriggerTypes[0]
 	triggerTypeName := sd.TriggerTypes[0].Name
 	if len(sd.TriggerTypes) > 1 {
 		triggerTypeName = sd.TriggerTypes[1].Name
 	}
 
-	// Create trigger event
-	event := workflow.TriggerEvent{
-		EventType:  triggerTypeName,
-		EntityName: sd.Entities[0].Name,
-		EntityID:   uuid.New(),
-		Timestamp:  time.Now(),
-		RawData:    map[string]any{"status": "processing"},
-		UserID:     sd.Users[0].ID,
+	event := createTriggerEvent(
+		sd.Entities[0].Name,
+		triggerTypeName,
+		sd.Users[0].ID,
+		map[string]any{},
+	)
+
+	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
+		t.Fatalf("firing trigger: %v", err)
 	}
 
-	// Execute workflow via engine
-	execution, err := sd.WF.Engine.ExecuteWorkflow(ctx, event)
-	if err != nil {
-		t.Fatalf("execution failed: %v", err)
-	}
-
-	// Verify execution completed
-	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed:\n%s", formatExecutionErrors(execution))
-	}
-
-	// Parse the sequence workflow rule ID
-	ruleID, err := uuid.Parse(sd.SequenceWorkflow.ID)
-	if err != nil {
-		t.Fatalf("parsing sequence workflow rule ID: %v", err)
-	}
-
-	// Find results for our specific rule
-	var matchedRuleResult *workflow.RuleResult
-	for _, batch := range execution.BatchResults {
-		for i := range batch.RuleResults {
-			if batch.RuleResults[i].RuleID == ruleID {
-				matchedRuleResult = &batch.RuleResults[i]
-				break
-			}
+	for i := 0; i < 30; i++ {
+		after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+		if err != nil {
+			t.Fatalf("querying alerts after: %v", err)
 		}
-	}
-
-	if matchedRuleResult == nil {
-		// Rule may not match if trigger type doesn't match, which is OK
-		// The test validates that the engine ran without error
-		return
-	}
-
-	// Verify 3 actions executed
-	if len(matchedRuleResult.ActionResults) != 3 {
-		t.Fatalf("expected 3 actions, got %d", len(matchedRuleResult.ActionResults))
-	}
-
-	// Verify all actions succeeded
-	for i, ar := range matchedRuleResult.ActionResults {
-		if ar.Status != "success" {
-			t.Fatalf("action[%d] failed: %s", i, ar.ErrorMessage)
+		if len(after)-beforeCount >= 3 {
+			t.Log("SUCCESS: sequence workflow created >=3 alerts")
+			return
 		}
+		time.Sleep(500 * time.Millisecond)
 	}
+	t.Fatal("timeout: expected >=3 new alerts from sequence workflow after 15s")
 }
 
-// testExecuteBranchTrue tests that a branching workflow takes the true branch when condition is met.
+// testExecuteBranchTrue fires the BranchingWorkflow with a high amount (>1000),
+// which should route the true branch and produce a "high_value" alert.
 func testExecuteBranchTrue(t *testing.T, sd ExecutionTestData) {
 	ctx := context.Background()
 
 	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 {
-		t.Fatal("insufficient seed data")
+		t.Fatal("insufficient seed data for branch-true test")
 	}
 
-	// Create trigger event with data that makes condition TRUE (amount > 1000)
-	event := workflow.TriggerEvent{
-		EventType:  sd.TriggerTypes[0].Name,
-		EntityName: sd.Entities[0].Name,
-		EntityID:   uuid.New(),
-		Timestamp:  time.Now(),
-		RawData: map[string]any{
-			"amount": 1500, // condition: amount > 1000 should be TRUE
-			"status": "approved",
-		},
-		UserID: sd.Users[0].ID,
+	if err := sd.WF.TriggerProcessor.RefreshRules(ctx); err != nil {
+		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	// Execute workflow via engine
-	execution, err := sd.WF.Engine.ExecuteWorkflow(ctx, event)
+	// Capture beforeCount so the test isn't satisfied by a pre-existing high_value alert
+	// from a prior test run or concurrent workflow execution.
+	alertType := "high_value"
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 	if err != nil {
-		t.Fatalf("execution failed: %v", err)
+		t.Fatalf("querying high_value alerts before: %v", err)
+	}
+	beforeCount := len(before)
+
+	// BranchingWorkflow uses TriggerTypes[0] and Entities[0]
+	event := createTriggerEvent(
+		sd.Entities[0].Name,
+		sd.TriggerTypes[0].Name,
+		sd.Users[0].ID,
+		map[string]any{"amount": float64(1500)},
+	)
+
+	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
+		t.Fatalf("firing trigger: %v", err)
 	}
 
-	// Verify execution completed
-	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed:\n%s", formatExecutionErrors(execution))
-	}
-
-	// Parse the branching workflow rule ID
-	ruleID, err := uuid.Parse(sd.BranchingWorkflow.ID)
-	if err != nil {
-		t.Fatalf("parsing branching workflow rule ID: %v", err)
-	}
-
-	// Find results for our specific rule
-	var matchedRuleResult *workflow.RuleResult
-	for _, batch := range execution.BatchResults {
-		for i := range batch.RuleResults {
-			if batch.RuleResults[i].RuleID == ruleID {
-				matchedRuleResult = &batch.RuleResults[i]
-				break
-			}
+	for i := 0; i < 30; i++ {
+		after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+		if err != nil {
+			t.Fatalf("querying high_value alerts: %v", err)
 		}
-	}
-
-	if matchedRuleResult == nil {
-		// Rule may not match, which is OK for this test
-		return
-	}
-
-	// Verify the evaluate_condition action was executed
-	foundCondition := false
-	for _, ar := range matchedRuleResult.ActionResults {
-		if ar.ActionType == "evaluate_condition" {
-			foundCondition = true
+		if len(after) > beforeCount {
+			t.Log("SUCCESS: branch-true path created high_value alert")
+			return
 		}
+		time.Sleep(500 * time.Millisecond)
 	}
-
-	if !foundCondition {
-		t.Fatal("evaluate_condition action not found in results")
-	}
+	t.Fatal("timeout: no new high_value alert after 15s")
 }
 
-// testExecuteBranchFalse tests that a branching workflow takes the false branch when condition is not met.
+// testExecuteBranchFalse fires the BranchingWorkflow with a low amount (<=1000),
+// which should route the false branch and produce a "normal_value" alert.
 func testExecuteBranchFalse(t *testing.T, sd ExecutionTestData) {
 	ctx := context.Background()
 
 	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 {
-		t.Fatal("insufficient seed data")
+		t.Fatal("insufficient seed data for branch-false test")
 	}
 
-	// Create trigger event with data that makes condition FALSE (amount <= 1000)
-	event := workflow.TriggerEvent{
-		EventType:  sd.TriggerTypes[0].Name,
-		EntityName: sd.Entities[0].Name,
-		EntityID:   uuid.New(),
-		Timestamp:  time.Now(),
-		RawData: map[string]any{
-			"amount": 500, // condition: amount > 1000 should be FALSE
-			"status": "pending",
-		},
-		UserID: sd.Users[0].ID,
+	if err := sd.WF.TriggerProcessor.RefreshRules(ctx); err != nil {
+		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	// Execute workflow via engine
-	execution, err := sd.WF.Engine.ExecuteWorkflow(ctx, event)
+	// Capture beforeCount so the test isn't satisfied by a pre-existing normal_value alert
+	// from a prior test run or concurrent workflow execution.
+	alertType := "normal_value"
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 	if err != nil {
-		t.Fatalf("execution failed: %v", err)
+		t.Fatalf("querying normal_value alerts before: %v", err)
+	}
+	beforeCount := len(before)
+
+	// BranchingWorkflow uses TriggerTypes[0] and Entities[0]
+	event := createTriggerEvent(
+		sd.Entities[0].Name,
+		sd.TriggerTypes[0].Name,
+		sd.Users[0].ID,
+		map[string]any{"amount": float64(500)},
+	)
+
+	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
+		t.Fatalf("firing trigger: %v", err)
 	}
 
-	// Verify execution completed
-	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed:\n%s", formatExecutionErrors(execution))
-	}
-
-	// Parse the branching workflow rule ID
-	ruleID, err := uuid.Parse(sd.BranchingWorkflow.ID)
-	if err != nil {
-		t.Fatalf("parsing branching workflow rule ID: %v", err)
-	}
-
-	// Find results for our specific rule
-	var matchedRuleResult *workflow.RuleResult
-	for _, batch := range execution.BatchResults {
-		for i := range batch.RuleResults {
-			if batch.RuleResults[i].RuleID == ruleID {
-				matchedRuleResult = &batch.RuleResults[i]
-				break
-			}
-		}
-	}
-
-	if matchedRuleResult == nil {
-		// Rule may not match, which is OK
-		return
-	}
-
-	// Verify the evaluate_condition action was executed
-	foundCondition := false
-	for _, ar := range matchedRuleResult.ActionResults {
-		if ar.ActionType == "evaluate_condition" {
-			foundCondition = true
-		}
-	}
-
-	if !foundCondition {
-		t.Fatal("evaluate_condition action not found in results")
-	}
-}
-
-// testExecutionRecordCreated tests that execution records are properly created and tracked.
-func testExecutionRecordCreated(t *testing.T, sd ExecutionTestData) {
-	ctx := context.Background()
-
-	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 {
-		t.Fatal("insufficient seed data")
-	}
-
-	// Create trigger event
-	event := workflow.TriggerEvent{
-		EventType:  sd.TriggerTypes[0].Name,
-		EntityName: sd.Entities[0].Name,
-		EntityID:   uuid.New(),
-		Timestamp:  time.Now(),
-		RawData:    map[string]any{},
-		UserID:     sd.Users[0].ID,
-	}
-
-	// Execute workflow via engine
-	execution, err := sd.WF.Engine.ExecuteWorkflow(ctx, event)
-	if err != nil {
-		t.Fatalf("execution failed: %v", err)
-	}
-
-	// Verify we got an execution ID
-	if execution.ExecutionID == uuid.Nil {
-		t.Fatal("execution ID should not be nil")
-	}
-
-	// Verify execution metadata
-	if execution.StartedAt.IsZero() {
-		t.Fatal("started_at should not be zero")
-	}
-
-	if execution.CompletedAt == nil {
-		t.Fatal("completed_at should not be nil")
-	}
-
-	if execution.TotalDuration == nil {
-		t.Fatal("total_duration should not be nil")
-	}
-
-	if *execution.TotalDuration <= 0 {
-		t.Fatal("total_duration should be > 0")
-	}
-
-	// Verify execution is in history
-	history := sd.WF.Engine.GetExecutionHistory(10)
-	found := false
-	for _, h := range history {
-		if h.ExecutionID == execution.ExecutionID {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatal("execution not found in GetExecutionHistory")
-	}
-
-	// Verify stats were updated
-	stats := sd.WF.Engine.GetStats()
-	if stats.TotalWorkflowsProcessed == 0 {
-		t.Fatal("total_workflows_processed should be > 0")
-	}
-}
-
-// testExecutionHistoryTracking tests that multiple executions are tracked in history.
-func testExecutionHistoryTracking(t *testing.T, sd ExecutionTestData) {
-	ctx := context.Background()
-
-	if len(sd.Entities) == 0 || len(sd.TriggerTypes) == 0 {
-		t.Fatal("insufficient seed data")
-	}
-
-	// Get initial history count
-	initialHistory := len(sd.WF.Engine.GetExecutionHistory(100))
-
-	// Execute multiple workflows
-	executionIDs := make([]uuid.UUID, 3)
-	for i := 0; i < 3; i++ {
-		event := workflow.TriggerEvent{
-			EventType:  sd.TriggerTypes[0].Name,
-			EntityName: sd.Entities[0].Name,
-			EntityID:   uuid.New(),
-			Timestamp:  time.Now(),
-			RawData:    map[string]any{"iteration": i},
-			UserID:     sd.Users[0].ID,
-		}
-
-		execution, err := sd.WF.Engine.ExecuteWorkflow(ctx, event)
+	for i := 0; i < 30; i++ {
+		after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{AlertType: &alertType}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 		if err != nil {
-			t.Fatalf("execution %d failed: %v", i, err)
+			t.Fatalf("querying normal_value alerts: %v", err)
 		}
-		executionIDs[i] = execution.ExecutionID
-	}
-
-	// Verify all executions are in history
-	history := sd.WF.Engine.GetExecutionHistory(100)
-	finalHistoryCount := len(history)
-
-	// Should have at least 3 new executions
-	if finalHistoryCount < initialHistory+3 {
-		t.Fatalf("expected at least %d executions in history, got %d", initialHistory+3, finalHistoryCount)
-	}
-
-	// Verify each execution ID is in history
-	for i, execID := range executionIDs {
-		found := false
-		for _, h := range history {
-			if h.ExecutionID == execID {
-				found = true
-				break
-			}
+		if len(after) > beforeCount {
+			t.Log("SUCCESS: branch-false path created normal_value alert")
+			return
 		}
-		if !found {
-			t.Fatalf("execution[%d] (ID: %s) not found in history", i, execID)
-		}
+		time.Sleep(500 * time.Millisecond)
 	}
+	t.Fatal("timeout: no new normal_value alert after 15s")
 }
 
-// testNoMatchingRules tests behavior when no rules match the trigger event.
+// testNoMatchingRules fires an event for a non-existent entity and verifies
+// that no new alerts are created (no rules match).
 func testNoMatchingRules(t *testing.T, sd ExecutionTestData) {
 	ctx := context.Background()
 
-	// Create trigger event for a non-existent entity
+	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("querying alerts before: %v", err)
+	}
+	beforeCount := len(before)
+
 	event := workflow.TriggerEvent{
 		EventType:  "on_create",
-		EntityName: "nonexistent_entity_xyz_123",
+		EntityName: "nonexistent_entity_xyz_" + uuid.New().String()[:8],
 		EntityID:   uuid.New(),
-		Timestamp:  time.Now(),
-		RawData:    map[string]any{},
 		UserID:     sd.Users[0].ID,
 	}
 
-	// Execute workflow via engine
-	execution, err := sd.WF.Engine.ExecuteWorkflow(ctx, event)
+	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
+		t.Fatalf("unexpected error for no-match event: %v", err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 	if err != nil {
-		t.Fatalf("execution should not fail: %v", err)
+		t.Fatalf("querying alerts after: %v", err)
 	}
-
-	// Verify execution completed with no matching rules
-	if execution.Status != workflow.StatusCompleted {
-		t.Fatalf("expected completed status, got %s", execution.Status)
+	if len(after) != beforeCount {
+		t.Errorf("expected no new alerts, got %d new", len(after)-beforeCount)
 	}
-
-	// Verify no rules matched
-	if execution.ExecutionPlan.MatchedRuleCount != 0 {
-		t.Fatalf("expected 0 matched rules, got %d", execution.ExecutionPlan.MatchedRuleCount)
-	}
-
-	// Verify no batch results
-	if len(execution.BatchResults) != 0 {
-		t.Fatalf("expected 0 batch results, got %d", len(execution.BatchResults))
-	}
-}
-
-// formatExecutionErrors extracts detailed error information from a workflow execution
-// to make test failures unambiguous.
-func formatExecutionErrors(execution *workflow.WorkflowExecution) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("status=%s, errors=%v", execution.Status, execution.Errors))
-
-	for i, batch := range execution.BatchResults {
-		if batch.BatchStatus != "completed" {
-			sb.WriteString(fmt.Sprintf("\n  batch[%d] status=%s:", i, batch.BatchStatus))
-			for j, rule := range batch.RuleResults {
-				if rule.Status != "success" {
-					sb.WriteString(fmt.Sprintf("\n    rule[%d] %s (ID=%s): %s",
-						j, rule.RuleName, rule.RuleID, rule.ErrorMessage))
-					for k, action := range rule.ActionResults {
-						if action.Status != "success" {
-							sb.WriteString(fmt.Sprintf("\n      action[%d] %s (%s): %s",
-								k, action.ActionName, action.ActionType, action.ErrorMessage))
-						}
-					}
-				}
-			}
-		}
-	}
-	return sb.String()
+	t.Log("SUCCESS: no matching rules fired no workflows")
 }

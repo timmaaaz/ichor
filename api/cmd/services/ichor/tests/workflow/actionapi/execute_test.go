@@ -2,6 +2,7 @@ package action_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
@@ -9,6 +10,48 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/workflow/actionapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
+
+func execute200CreateAlert(sd ActionSeedData) []apitest.Table {
+	config := map[string]any{
+		"alert_type": "manual_execute_test",
+		"severity":   "low",
+		"title":      "Manual Execute Test",
+		"message":    "Executed manually via test",
+		"recipients": map[string]any{
+			"users": []string{sd.UserWithAlertPerm.User.ID.String()},
+			"roles": []string{},
+		},
+	}
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		panic(fmt.Sprintf("marshal config: %v", err))
+	}
+
+	return []apitest.Table{
+		{
+			Name:       "user-with-alert-perm-executes-create-alert",
+			URL:        "/v1/workflow/actions/create_alert/execute",
+			Token:      sd.UserWithAlertPerm.Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config: configBytes,
+			},
+			GotResp: &actionapp.ExecuteResponse{},
+			ExpResp: &actionapp.ExecuteResponse{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, ok := got.(*actionapp.ExecuteResponse)
+				if !ok {
+					return fmt.Sprintf("unexpected response type: %T", got)
+				}
+				if gotResp.ExecutionID == "" {
+					return "expected non-empty execution_id in response"
+				}
+				return ""
+			},
+		},
+	}
+}
 
 func execute401(sd ActionSeedData) []apitest.Table {
 	return []apitest.Table{
@@ -35,7 +78,10 @@ func execute403NoPermission(sd ActionSeedData) []apitest.Table {
 		"warehouse_id": "some-warehouse-id",
 		"items":        []map[string]any{},
 	}
-	configBytes, _ := json.Marshal(config)
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		panic(fmt.Sprintf("marshal config: %v", err))
+	}
 
 	return []apitest.Table{
 		{

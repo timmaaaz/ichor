@@ -22,6 +22,9 @@ func Test_ActionAPI(t *testing.T) {
 	test.Run(t, listActions200UserNoPermissions(sd), "list-actions-200-user-no-permissions")
 	test.Run(t, listActions401(sd), "list-actions-401")
 
+	// Execute action tests - happy path
+	test.Run(t, execute200CreateAlert(sd), "execute-200-create-alert")
+
 	// Execute action tests - error cases
 	test.Run(t, execute401(sd), "execute-401")
 	test.Run(t, execute403NoPermission(sd), "execute-403-no-permission")

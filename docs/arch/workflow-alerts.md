@@ -96,11 +96,12 @@ file: business/domain/workflow/approvalrequestbus/approvalrequestbus.go
 ```go
 type Business struct {
     log    *logger.Logger
+    del    *delegate.Delegate
     storer Storer
 }
 ```
 
-  NewBusiness(log, storer) *Business
+  NewBusiness(log, del *delegate.Delegate, storer) *Business
   NewWithTx(tx sqldb.CommitRollbacker) (*Business, error)
   Create(ctx, na NewApprovalRequest) (ApprovalRequest, error)
   QueryByID(ctx, id uuid.UUID) (ApprovalRequest, error)
@@ -108,6 +109,7 @@ type Business struct {
   Count(ctx, filter) (int, error)
   Resolve(ctx, id, resolvedBy, status, reason) (ApprovalRequest, error)
   IsApprover(ctx, approvalID, userID uuid.UUID) (bool, error)
+  ClearTaskToken(ctx, id uuid.UUID) error  — clears task_token after successful Temporal CompleteActivity (prevents duplicate completions on retry)
 
 sentinel error:
   ErrAlreadyResolved — returned by Resolve() when UPDATE WHERE status='pending' matches

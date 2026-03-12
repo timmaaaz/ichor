@@ -170,3 +170,4 @@ func (b *Business) IsApprover(ctx context.Context, approvalID, userID uuid.UUID)
 
 	return b.storer.IsApprover(ctx, approvalID, userID)
 }
+
