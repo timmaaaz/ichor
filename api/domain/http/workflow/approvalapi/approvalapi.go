@@ -236,63 +236,6 @@ func (a *api) completeAndClear(ctx context.Context, id uuid.UUID, approval appro
 	}
 }
 
-// retryTemporalCompletion re-delivers the Temporal CompleteActivity call for an already-resolved
-// approval. This makes the resolve endpoint idempotent: a duplicate POST returns 200 instead of 412.
-//
-// Behavior:
-//   - Fetches the approval by ID; returns Internal error if DB lookup fails.
-//   - If task_token is empty, Temporal was already notified — returns approval as-is.
-//   - If asyncCompleter is nil (Temporal not configured) — returns approval as-is.
-//   - Decodes the base64 task token; on decode failure, logs and returns approval (fail-open).
-//   - Calls asyncCompleter.Complete; on success, clears the task token in DB.
-//   - Temporal errors are logged but NOT propagated (fail-open).
-func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Encoder {
-	approval, err := a.approvalBus.QueryByID(ctx, id)
-	if err != nil {
-		return errs.Newf(errs.Internal, "queryByID: %s", err)
-	}
-
-	if approval.TaskToken == "" {
-		return toAppApproval(approval)
-	}
-
-	if a.asyncCompleter == nil {
-		return toAppApproval(approval)
-	}
-
-	taskToken, err := base64.StdEncoding.DecodeString(approval.TaskToken)
-	if err != nil {
-		a.log.Error(ctx, "retryTemporalCompletion: failed to decode task token",
-			"approval_id", id,
-			"error", err)
-		return toAppApproval(approval)
-	}
-
-	output := temporal.ActionActivityOutput{
-		ActionName: approval.ActionName,
-		Result: map[string]any{
-			"output":      string(approval.Status),
-			"approval_id": approval.ID.String(),
-		},
-		Success: true,
-	}
-
-	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
-		a.log.Error(ctx, "retryTemporalCompletion: failed to complete Temporal activity",
-			"approval_id", id,
-			"error", err)
-		return toAppApproval(approval)
-	}
-
-	if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
-		a.log.Error(ctx, "retryTemporalCompletion: failed to clear task token",
-			"approval_id", id,
-			"error", err)
-	}
-
-	return toAppApproval(approval)
-}
-
 // hasAdminRole checks if the ADMIN role is present in the claims roles.
 func hasAdminRole(roles []string) bool {
 	for _, r := range roles {
