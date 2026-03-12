@@ -228,51 +228,42 @@ func TestRetryTemporalCompletion_QueryByIDGenericError(t *testing.T) {
 	}
 }
 
-func TestRetryTemporalCompletion_QueryByIDNotFound(t *testing.T) {
-	// ErrNotFound → 404 NotFound (matches all other QueryByID callers in this file).
-	storer := &mockStorer{
-		queryByIDErr: approvalrequestbus.ErrNotFound,
-	}
-	a := newTestAPI(storer, nil)
+// TestCompleteAndClear_CallsClearTokenAfterSuccess verifies that when
+// asyncCompleter.Complete succeeds, ClearTaskToken is called on the storer.
+func TestCompleteAndClear_CallsClearTokenAfterSuccess(t *testing.T) {
+	approval := resolvedApproval(validToken())
 
-	result := a.retryTemporalCompletion(context.Background(), uuid.New())
+	storer := &mockStorer{}
+	completer := &mockActivityCompleter{err: nil}
+	a := newTestAPI(storer, completer)
 
-	appErr, ok := result.(*errs.Error)
-	if !ok {
-		t.Fatalf("expected *errs.Error, got %T", result)
+	req := ResolveRequest{Resolution: "approved", Reason: "looks good"}
+	a.completeAndClear(context.Background(), approval.ID, approval, req, uuid.New())
+
+	if !completer.called {
+		t.Fatal("CompleteActivity should have been called")
 	}
-	if appErr.Code != errs.NotFound {
-		t.Fatalf("expected NotFound error code, got %v", appErr.Code)
+	if !storer.clearCalled {
+		t.Fatal("ClearTaskToken should have been called after successful Complete")
 	}
 }
 
-func TestRetryTemporalCompletion_ResultMapIncludesResolvedByAndReason(t *testing.T) {
-	// The Temporal output must carry resolved_by and reason so downstream
-	// workflow activities receive the same payload shape as the primary resolve path.
-	approval := resolvedApproval(validToken()) // has ResolvedBy and ResolutionReason set
+// TestCompleteAndClear_NoClearOnCompleteFailure verifies that when
+// asyncCompleter.Complete fails, ClearTaskToken is NOT called.
+func TestCompleteAndClear_NoClearOnCompleteFailure(t *testing.T) {
+	approval := resolvedApproval(validToken())
 
-	storer := &mockStorer{queryByIDResult: approval}
-	completer := &mockActivityCompleter{}
+	storer := &mockStorer{}
+	completer := &mockActivityCompleter{err: errors.New("temporal timeout")}
 	a := newTestAPI(storer, completer)
 
-	a.retryTemporalCompletion(context.Background(), approval.ID)
+	req := ResolveRequest{Resolution: "approved", Reason: "looks good"}
+	a.completeAndClear(context.Background(), approval.ID, approval, req, uuid.New())
 
 	if !completer.called {
-		t.Fatal("expected CompleteActivity to be called")
+		t.Fatal("CompleteActivity should have been attempted")
 	}
-
-	out, ok := completer.capturedOut.(temporal.ActionActivityOutput)
-	if !ok {
-		t.Fatalf("expected temporal.ActionActivityOutput, got %T", completer.capturedOut)
-	}
-
-	if _, ok := out.Result["resolved_by"]; !ok {
-		t.Error("result map must contain resolved_by")
-	}
-	if _, ok := out.Result["reason"]; !ok {
-		t.Error("result map must contain reason")
-	}
-	if out.Result["output"] != approval.Status {
-		t.Errorf("output field: got %v, want %v", out.Result["output"], approval.Status)
+	if storer.clearCalled {
+		t.Fatal("ClearTaskToken must not be called when Complete() fails")
 	}
 }

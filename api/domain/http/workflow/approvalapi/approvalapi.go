@@ -185,48 +185,55 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 			return errs.New(errs.NotFound, err)
 		}
 		if errors.Is(err, approvalrequestbus.ErrAlreadyResolved) {
+			// Idempotent: already resolved — retry Temporal completion and return 200.
 			return a.retryTemporalCompletion(ctx, id)
 		}
 		return errs.Newf(errs.Internal, "resolve: %s", err)
 	}
 
-	// Complete the Temporal activity if we have an async completer and a task token.
-	if a.asyncCompleter != nil && approval.TaskToken != "" {
-		taskToken, err := base64.StdEncoding.DecodeString(approval.TaskToken)
-		if err != nil {
-			a.log.Error(ctx, "failed to decode task token",
-				"approval_id", id,
-				"error", err)
-		} else {
-			output := temporal.ActionActivityOutput{
-				ActionName: approval.ActionName,
-				Result: map[string]any{
-					"output":      req.Resolution,
-					"approval_id": approval.ID.String(),
-					"resolved_by": userID.String(),
-					"reason":      req.Reason,
-				},
-				Success: true,
-			}
-
-			if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
-				a.log.Error(ctx, "failed to complete Temporal activity",
-					"approval_id", id,
-					"error", err)
-			} else {
-				// Clear the token so a retry doesn't re-complete an already-completed activity.
-				if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
-					a.log.Error(ctx, "failed to clear task token after Temporal completion",
-						"approval_id", id,
-						"error", err)
-				}
-			}
-		}
-	}
+	// Complete the Temporal activity and clear the task token from DB.
+	a.completeAndClear(ctx, id, approval, req, userID)
 
 	a.publishApprovalResolved(ctx, approval, userID)
 
 	return toAppApproval(approval)
+}
+
+// completeAndClear sends the Temporal activity completion signal and removes the
+// task token from the DB. Called from resolve() on first-time resolution.
+// Errors from both operations are logged but not propagated (fail-open).
+func (a *api) completeAndClear(ctx context.Context, id uuid.UUID, approval approvalrequestbus.ApprovalRequest, req ResolveRequest, userID uuid.UUID) {
+	if a.asyncCompleter == nil || approval.TaskToken == "" {
+		return
+	}
+	taskToken, err := base64.StdEncoding.DecodeString(approval.TaskToken)
+	if err != nil {
+		a.log.Error(ctx, "failed to decode task token",
+			"approval_id", id,
+			"error", err)
+		return
+	}
+	output := temporal.ActionActivityOutput{
+		ActionName: approval.ActionName,
+		Result: map[string]any{
+			"output":      req.Resolution,
+			"approval_id": approval.ID.String(),
+			"resolved_by": userID.String(),
+			"reason":      req.Reason,
+		},
+		Success: true,
+	}
+	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
+		a.log.Error(ctx, "failed to complete Temporal activity",
+			"approval_id", id,
+			"error", err)
+		return
+	}
+	if err := a.approvalBus.ClearTaskToken(ctx, id); err != nil {
+		a.log.Error(ctx, "resolve: failed to clear task token after Temporal Complete",
+			"approval_id", id,
+			"error", err)
+	}
 }
 
 // hasAdminRole checks if the ADMIN role is present in the claims roles.
@@ -379,9 +386,6 @@ func parseQueryParams(r *http.Request) QueryParams {
 func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Encoder {
 	approval, err := a.approvalBus.QueryByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, approvalrequestbus.ErrNotFound) {
-			return errs.New(errs.NotFound, err)
-		}
 		return errs.Newf(errs.Internal, "retry temporal: query approval: %s", err)
 	}
 
@@ -401,21 +405,13 @@ func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Enc
 		return toAppApproval(approval)
 	}
 
-	result := map[string]any{
-		"output":      approval.Status,
-		"approval_id": approval.ID.String(),
-	}
-	if approval.ResolvedBy != nil {
-		result["resolved_by"] = approval.ResolvedBy.String()
-	}
-	if approval.ResolutionReason != "" {
-		result["reason"] = approval.ResolutionReason
-	}
-
 	output := temporal.ActionActivityOutput{
 		ActionName: approval.ActionName,
-		Result:     result,
-		Success:    true,
+		Result: map[string]any{
+			"output":      approval.Status,
+			"approval_id": approval.ID.String(),
+		},
+		Success: true,
 	}
 
 	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {

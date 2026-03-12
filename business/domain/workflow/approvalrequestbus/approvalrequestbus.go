@@ -103,9 +103,6 @@ func (b *Business) ClearTaskToken(ctx context.Context, id uuid.UUID) error {
 	defer span.End()
 
 	if err := b.storer.ClearTaskToken(ctx, id); err != nil {
-		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return ErrNotFound
-		}
 		return fmt.Errorf("clear task token: id[%s]: %w", id, err)
 	}
 
@@ -173,3 +170,4 @@ func (b *Business) IsApprover(ctx context.Context, approvalID, userID uuid.UUID)
 
 	return b.storer.IsApprover(ctx, approvalID, userID)
 }
+

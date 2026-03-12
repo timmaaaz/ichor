@@ -30,6 +30,7 @@ type QueryParams struct {
 	HandlingInstructions string
 	UnitsPerCase         string
 	TrackingType         string
+	InventoryType        string
 	CreatedDate          string
 	UpdatedDate          string
 }
@@ -49,6 +50,7 @@ type Product struct {
 	HandlingInstructions string `json:"handling_instructions"`
 	UnitsPerCase         string `json:"units_per_case"`
 	TrackingType         string `json:"tracking_type"`
+	InventoryType        string `json:"inventory_type"`
 	CreatedDate          string `json:"created_date"`
 	UpdatedDate          string `json:"updated_date"`
 }
@@ -59,7 +61,7 @@ func (app Product) Encode() ([]byte, string, error) {
 }
 
 func ToAppProduct(bus productbus.Product) Product {
-	return Product{
+	app := Product{
 		ProductID:            bus.ProductID.String(),
 		SKU:                  bus.SKU,
 		BrandID:              bus.BrandID.String(),
@@ -77,6 +79,10 @@ func ToAppProduct(bus productbus.Product) Product {
 		CreatedDate:          bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:          bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
+	if bus.InventoryType != nil {
+		app.InventoryType = bus.InventoryType.String()
+	}
+	return app
 }
 
 func ToAppProducts(bus []productbus.Product) []Product {
@@ -101,6 +107,7 @@ type NewProduct struct {
 	HandlingInstructions string  `json:"handling_instructions"`
 	UnitsPerCase         string  `json:"units_per_case" validate:"required"`
 	TrackingType         string  `json:"tracking_type" validate:"omitempty,oneof=none lot serial"`
+	InventoryType        string  `json:"inventory_type" validate:"omitempty"`
 	CreatedDate          *string `json:"created_date"` // Optional: for seeding/import
 }
 
@@ -164,6 +171,15 @@ func toBusNewProduct(app NewProduct) (productbus.NewProduct, error) {
 		// CreatedDate: nil by default - API always uses server time
 	}
 
+	// Handle optional InventoryType
+	if app.InventoryType != "" {
+		it, err := productbus.ParseInventoryType(app.InventoryType)
+		if err != nil {
+			return productbus.NewProduct{}, errs.Newf(errs.InvalidArgument, "invalid inventory_type: %s", err)
+		}
+		bus.InventoryType = &it
+	}
+
 	// Handle optional CreatedDate (for imports/admin tools only)
 	if app.CreatedDate != nil && *app.CreatedDate != "" {
 		createdDate, err := time.Parse(time.RFC3339, *app.CreatedDate)
@@ -190,6 +206,7 @@ type UpdateProduct struct {
 	HandlingInstructions *string `json:"handling_instructions"`
 	UnitsPerCase         *string `json:"units_per_case" validate:"omitempty"`
 	TrackingType         *string `json:"tracking_type" validate:"omitempty,oneof=none lot serial"`
+	InventoryType        *string `json:"inventory_type" validate:"omitempty"`
 }
 
 // Decode implements the decoder interface.
@@ -252,6 +269,15 @@ func toBusUpdateProduct(app UpdateProduct) (productbus.UpdateProduct, error) {
 		unitsPerCase = &i
 	}
 
+	var inventoryType *productbus.InventoryType
+	if app.InventoryType != nil && *app.InventoryType != "" {
+		it, err := productbus.ParseInventoryType(*app.InventoryType)
+		if err != nil {
+			return productbus.UpdateProduct{}, errs.Newf(errs.InvalidArgument, "invalid inventory_type: %s", err)
+		}
+		inventoryType = &it
+	}
+
 	bus := productbus.UpdateProduct{
 		SKU:                  app.SKU,
 		BrandID:              brandID,
@@ -266,6 +292,7 @@ func toBusUpdateProduct(app UpdateProduct) (productbus.UpdateProduct, error) {
 		HandlingInstructions: app.HandlingInstructions,
 		UnitsPerCase:         unitsPerCase,
 		TrackingType:         app.TrackingType,
+		InventoryType:        inventoryType,
 	}
 	return bus, nil
 }
