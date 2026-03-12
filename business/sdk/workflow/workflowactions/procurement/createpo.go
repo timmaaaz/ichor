@@ -36,6 +36,10 @@ type CreatePurchaseOrderConfig struct {
 }
 
 // CreatePOLineItemConfig represents a single line item to create.
+// UnitCost and Discount use decimal.Decimal for financial precision. They do not carry
+// omitempty because encoding/json omitempty has no effect on types that implement
+// json.Marshaler (decimal.Decimal serializes zero as "0", not as absent). Zero UnitCost
+// triggers the supplier-product cost fallback; zero Discount means no discount applied.
 type CreatePOLineItemConfig struct {
 	ProductID         string          `json:"product_id"`
 	SupplierProductID string          `json:"supplier_product_id,omitempty"`
@@ -353,14 +357,16 @@ func (h *CreatePurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 	}
 
 	// Compute financial totals with discount applied.
+	// Round each line total to 2 decimal places per docs/financial-calculations.md best practice #2.
 	var subtotal decimal.Decimal
 	lineTotals := make([]decimal.Decimal, len(resolved))
 	for i, rli := range resolved {
 		qty := decimal.NewFromInt(int64(rli.quantityOrdered))
-		lt := qty.Mul(rli.unitCost).Mul(decimal.NewFromInt(1).Sub(rli.discount))
+		lt := qty.Mul(rli.unitCost).Mul(decimal.NewFromInt(1).Sub(rli.discount)).Round(2)
 		lineTotals[i] = lt
 		subtotal = subtotal.Add(lt)
 	}
+	subtotal = subtotal.Round(2)
 
 	now := time.Now()
 
