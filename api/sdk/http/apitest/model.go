@@ -56,6 +56,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/products/productapp"
 	"github.com/timmaaaz/ichor/app/domain/products/productcategoryapp"
 	"github.com/timmaaaz/ichor/app/domain/products/productcostapp"
+	"github.com/timmaaaz/ichor/app/domain/products/productuomapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/customersapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/lineitemfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
@@ -114,6 +115,7 @@ type SeedData struct {
 	UserRoles                   []userroleapp.UserRole
 	TableAccesses               []tableaccessapp.TableAccess
 	Products                    []productapp.Product
+	ProductUOMs                 []productuomapp.ProductUOM
 	PhysicalAttributes          []physicalattributeapp.PhysicalAttribute
 	ProductCosts                []productcostapp.ProductCost
 	PurchaseOrderLineItemStatuses []purchaseorderlineitemstatusapp.PurchaseOrderLineItemStatus

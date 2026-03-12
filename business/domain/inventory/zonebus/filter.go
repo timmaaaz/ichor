@@ -11,6 +11,7 @@ type QueryFilter struct {
 	WarehouseID *uuid.UUID
 	Name        *string
 	Description *string
+	Stage       *Stage
 	CreatedDate *time.Time
 	UpdatedDate *time.Time
 }

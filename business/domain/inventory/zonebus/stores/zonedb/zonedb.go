@@ -48,9 +48,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (zonebus.Storer, error) {
 func (s *Store) Create(ctx context.Context, zone zonebus.Zone) error {
 	const q = `
 	INSERT INTO inventory.zones (
-		id, warehouse_id, name, description, created_date, updated_date
+		id, warehouse_id, name, description, stage, created_date, updated_date
 	) VALUES (
-		:id, :warehouse_id, :name, :description, :created_date, :updated_date
+		:id, :warehouse_id, :name, :description, :stage, :created_date, :updated_date
     )
 	`
 
@@ -72,10 +72,11 @@ func (s *Store) Update(ctx context.Context, zone zonebus.Zone) error {
     UPDATE
         inventory.zones
     SET
-        id = :id, 
-		warehouse_id = :warehouse_id, 
-		name = :name, 
-		description = :description, 
+        id = :id,
+		warehouse_id = :warehouse_id,
+		name = :name,
+		description = :description,
+		stage = :stage,
 		updated_date = :updated_date
     WHERE
         id = :id
@@ -116,7 +117,7 @@ func (s *Store) Query(ctx context.Context, filter zonebus.QueryFilter, orderBy o
 
 	const q = `
 	SELECT
-	    id, warehouse_id, name, description, created_date, updated_date
+	    id, warehouse_id, name, description, stage, created_date, updated_date
 	FROM
 		inventory.zones
 		`
@@ -171,8 +172,8 @@ func (s *Store) QueryByID(ctx context.Context, zoneID uuid.UUID) (zonebus.Zone, 
 	}
 
 	const q = `
-	SELECT 
-	    id, warehouse_id, name, description, created_date, updated_date
+	SELECT
+	    id, warehouse_id, name, description, stage, created_date, updated_date
 	FROM
 		inventory.zones
 	WHERE

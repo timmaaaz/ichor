@@ -30,6 +30,11 @@ func applyFilter(filter zonebus.QueryFilter, data map[string]any, buf *bytes.Buf
 		wc = append(wc, "description ILIKE :description")
 	}
 
+	if filter.Stage != nil {
+		data["stage"] = filter.Stage.String()
+		wc = append(wc, "stage = :stage")
+	}
+
 	if filter.CreatedDate != nil {
 		data["created_date"] = *filter.CreatedDate
 		wc = append(wc, "created_date = :created_date")

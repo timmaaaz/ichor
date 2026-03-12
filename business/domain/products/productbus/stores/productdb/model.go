@@ -1,6 +1,7 @@
 package productdb
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -8,26 +9,27 @@ import (
 )
 
 type product struct {
-	ProductID            uuid.UUID `db:"id"`
-	SKU                  string    `db:"sku"`
-	BrandID              uuid.UUID `db:"brand_id"`
-	ProductCategoryID    uuid.UUID `db:"category_id"`
-	Name                 string    `db:"name"`
-	Description          string    `db:"description"`
-	ModelNumber          string    `db:"model_number"`
-	UpcCode              string    `db:"upc_code"`
-	Status               string    `db:"status"`
-	IsActive             bool      `db:"is_active"`
-	IsPerishable         bool      `db:"is_perishable"`
-	HandlingInstructions string    `db:"handling_instructions"`
-	UnitsPerCase         int       `db:"units_per_case"`
-	TrackingType         string    `db:"tracking_type"`
-	CreatedDate          time.Time `db:"created_date"`
-	UpdatedDate          time.Time `db:"updated_date"`
+	ProductID            uuid.UUID      `db:"id"`
+	SKU                  string         `db:"sku"`
+	BrandID              uuid.UUID      `db:"brand_id"`
+	ProductCategoryID    uuid.UUID      `db:"category_id"`
+	Name                 string         `db:"name"`
+	Description          string         `db:"description"`
+	ModelNumber          string         `db:"model_number"`
+	UpcCode              string         `db:"upc_code"`
+	Status               string         `db:"status"`
+	IsActive             bool           `db:"is_active"`
+	IsPerishable         bool           `db:"is_perishable"`
+	HandlingInstructions string         `db:"handling_instructions"`
+	UnitsPerCase         int            `db:"units_per_case"`
+	TrackingType         string         `db:"tracking_type"`
+	InventoryType        sql.NullString `db:"inventory_type"`
+	CreatedDate          time.Time      `db:"created_date"`
+	UpdatedDate          time.Time      `db:"updated_date"`
 }
 
 func toDBProduct(bus productbus.Product) product {
-	return product{
+	dest := product{
 		ProductID:            bus.ProductID,
 		SKU:                  bus.SKU,
 		BrandID:              bus.BrandID,
@@ -45,10 +47,14 @@ func toDBProduct(bus productbus.Product) product {
 		CreatedDate:          bus.CreatedDate,
 		UpdatedDate:          bus.UpdatedDate,
 	}
+	if bus.InventoryType != nil {
+		dest.InventoryType = sql.NullString{String: bus.InventoryType.String(), Valid: true}
+	}
+	return dest
 }
 
 func toBusProduct(db product) productbus.Product {
-	return productbus.Product{
+	dest := productbus.Product{
 		ProductID:            db.ProductID,
 		SKU:                  db.SKU,
 		BrandID:              db.BrandID,
@@ -66,6 +72,13 @@ func toBusProduct(db product) productbus.Product {
 		CreatedDate:          db.CreatedDate.Local(),
 		UpdatedDate:          db.UpdatedDate.Local(),
 	}
+	if db.InventoryType.Valid {
+		it, err := productbus.ParseInventoryType(db.InventoryType.String)
+		if err == nil {
+			dest.InventoryType = &it
+		}
+	}
+	return dest
 }
 
 func toBusProducts(DBs []product) []productbus.Product {

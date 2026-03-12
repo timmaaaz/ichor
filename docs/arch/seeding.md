@@ -211,7 +211,7 @@ ApprovalStatus, FulfillmentStatus, Tag, AssetTag, ValidAsset
 AssetType, AssetCondition, UserAsset, Asset
 
 // Products
-Brand, ProductCategory, Product, PhysicalAttribute, ProductCost, Metrics, CostHistory
+Brand, ProductCategory, Product, ProductUOM, PhysicalAttribute, ProductCost, Metrics, CostHistory
 
 // Procurement
 Supplier, SupplierProduct, PaymentTerm

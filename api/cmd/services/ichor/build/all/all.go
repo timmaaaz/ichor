@@ -276,6 +276,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/titlebus/stores/titledb"
 
 	productapi "github.com/timmaaaz/ichor/api/domain/http/products/productapi"
+	"github.com/timmaaaz/ichor/api/domain/http/products/productuomapi"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assettypebus/stores/assettypedb"
 	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
@@ -301,6 +302,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus/stores/homedb"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	inventoryproductdb "github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
+	"github.com/timmaaaz/ichor/business/domain/products/productuombus"
+	"github.com/timmaaaz/ichor/business/domain/products/productuombus/stores/productuomdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus/stores/actionpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
@@ -393,6 +396,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
 	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
 	productBus := productbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB))
+	productUOMBus := productuombus.NewBusiness(cfg.Log, delegate, productuomdb.NewStore(cfg.Log, cfg.DB))
 	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
@@ -880,6 +884,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	productapi.Routes(app, productapi.Config{
 		ProductBus:     productBus,
+		AuthClient:     cfg.AuthClient,
+		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
+
+	productuomapi.Routes(app, productuomapi.Config{
+		ProductUOMBus:  productUOMBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
 		PermissionsBus: permissionsBus,

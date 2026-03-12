@@ -16,6 +16,7 @@ type Zone struct {
 	WarehouseID uuid.UUID `json:"warehouse_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	Stage       *Stage    `json:"stage"`
 	CreatedDate time.Time `json:"created_date"`
 	UpdatedDate time.Time `json:"updated_date"`
 }
@@ -24,10 +25,12 @@ type NewZone struct {
 	WarehouseID uuid.UUID `json:"warehouse_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	Stage       *Stage    `json:"stage"`
 }
 
 type UpdateZone struct {
 	WarehouseID *uuid.UUID `json:"warehouse_id,omitempty"`
 	Name        *string    `json:"name,omitempty"`
 	Description *string    `json:"description,omitempty"`
+	Stage       *Stage     `json:"stage,omitempty"`
 }
