@@ -513,6 +513,11 @@ test: test-only lint vuln-check
 
 test-race: test-r lint vuln-check
 
+# Run go test -json, extract failures to .claude/bugs/open/ for /pick-bug
+# Usage: make test-extract ARGS="./api/cmd/services/ichor/tests/core/contactinfosapi/..."
+test-extract:
+	@python3 scripts/extract_test_failures.py $(ARGS)
+
 # ==============================================================================
 # AI-assisted code review (headless Claude)
 #
