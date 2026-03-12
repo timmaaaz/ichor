@@ -362,8 +362,8 @@ var AdminTableAccessTableConfig = &tablebuilder.Config{
 			"table_access.id": {
 				Name:   "table_access.id",
 				Header: "ID",
-				Width:  100,
 				Type:   "uuid",
+				Hidden: true,
 			},
 			"role_name": {
 				Name:       "role_name",

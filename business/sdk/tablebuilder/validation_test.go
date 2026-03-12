@@ -1821,3 +1821,73 @@ func TestValidateConfig_ColumnOrderStrict(t *testing.T) {
 		})
 	}
 }
+
+// =============================================================================
+// Visible ID Header Tests
+// =============================================================================
+
+func TestValidateConfig_VisibleIDHeader(t *testing.T) {
+	// minimalDS is a valid DataSource to avoid other validation errors.
+	minimalDS := tablebuilder.DataSource{Source: "test_table"}
+
+	tests := []struct {
+		name        string
+		header      string
+		hidden      bool
+		expectError bool
+	}{
+		{name: `visible "ID" header`, header: "ID", hidden: false, expectError: true},
+		{name: `visible "Created By ID"`, header: "Created By ID", hidden: false, expectError: true},
+		{name: `visible "Requested By ID"`, header: "Requested By ID", hidden: false, expectError: true},
+		{name: `visible "Approved By ID"`, header: "Approved By ID", hidden: false, expectError: true},
+		{name: `visible "PO ID"`, header: "PO ID", hidden: false, expectError: true},
+		{name: `hidden "ID" column is exempt`, header: "ID", hidden: true, expectError: false},
+		{name: `visible "Status" is fine`, header: "Status", hidden: false, expectError: false},
+		{name: `visible "Updated By" is fine`, header: "Updated By", hidden: false, expectError: false},
+		{name: `visible "Order #" is fine`, header: "Order #", hidden: false, expectError: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			colCfg := tablebuilder.ColumnConfig{
+				Name:   "test_col",
+				Header: tt.header,
+				Hidden: tt.hidden,
+			}
+			if !tt.hidden {
+				colCfg.Type = "string"
+			}
+
+			cfg := tablebuilder.Config{
+				Title:      "Test",
+				DataSource: []tablebuilder.DataSource{minimalDS},
+				VisualSettings: tablebuilder.VisualSettings{
+					Columns: map[string]tablebuilder.ColumnConfig{
+						"test_col": colCfg,
+					},
+				},
+			}
+
+			result := cfg.ValidateConfig()
+
+			if tt.expectError {
+				found := false
+				for _, err := range result.Errors {
+					if err.Code == "VISIBLE_ID_HEADER" {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("expected VISIBLE_ID_HEADER error for header %q, got errors: %v", tt.header, result.Errors)
+				}
+			} else {
+				for _, err := range result.Errors {
+					if err.Code == "VISIBLE_ID_HEADER" {
+						t.Errorf("unexpected VISIBLE_ID_HEADER error for header %q", tt.header)
+					}
+				}
+			}
+		})
+	}
+}
