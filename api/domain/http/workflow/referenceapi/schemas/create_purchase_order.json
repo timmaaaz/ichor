@@ -64,8 +64,8 @@
                     "product_id": {"type": "string", "format": "uuid"},
                     "supplier_product_id": {"type": "string", "format": "uuid"},
                     "quantity_ordered": {"type": "integer", "minimum": 1},
-                    "unit_cost": {"type": "number", "minimum": 0},
-                    "discount": {"type": "number", "minimum": 0},
+                    "unit_cost": {"type": ["number", "string"], "description": "Unit cost as a decimal string (e.g. \"25.50\") or number; string form preferred"},
+                    "discount": {"type": ["number", "string"], "description": "Discount fraction as a decimal string (e.g. \"0.10\" for 10%) or number; string form preferred"},
                     "line_item_status_id": {"type": "string", "format": "uuid"},
                     "notes": {"type": "string"}
                 }
