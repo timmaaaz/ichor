@@ -82,3 +82,9 @@ cookies.txt
 !.claude/bugs/in_progress/.gitkeep
 .claude/bugs/complete/*
 !.claude/bugs/complete/.gitkeep
+
+# Superpowers - brainstorm session artifacts (ephemeral server PIDs, logs, HTML)
+.superpowers/
+
+# Tasks - ephemeral test output artifacts
+tasks/e2e-approvals-run5.txt
