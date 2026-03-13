@@ -483,6 +483,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			InventoryTransaction:  inventoryTransactionBus,
 			InventoryAdjustment:   inventoryAdjustmentBus,
 			TransferOrder:         transferOrderBus,
+			PutAwayTask:           putAwayTaskBus,
 			SupplierProduct:       supplierProductBus,
 			PurchaseOrder:         purchaseOrderBus,
 			PurchaseOrderLineItem: purchaseOrderLineItemBus,
