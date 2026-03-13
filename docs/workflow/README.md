@@ -57,6 +57,7 @@ The Ichor workflow engine provides event-driven automation for business processe
 | `reject_transfer_order` | Rejects a pending transfer order, recording rejector and reason |
 | `approve_purchase_order` | Approves a purchase order, recording approver and reason for audit trail |
 | `reject_purchase_order` | Rejects a purchase order, recording rejector and reason for audit trail |
+| `create_put_away_task` | Creates a put-away task for received goods. Resolves product from `supplier_product_id` (when `source_from_po: true`) and location from PO's `delivery_location_id` (when `location_strategy: "po_delivery"`). Delta-aware: reads `FieldChanges["quantity_received"]` and skips if delta ≤ 0. Output ports: `created`, `no_location`, `product_not_found`, `failure`. |
 
 ## Getting Started
 
