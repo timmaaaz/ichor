@@ -143,6 +143,15 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 		registry.Register(inventory.NewApproveTransferOrderHandler(config.Log, config.Buses.TransferOrder))
 		registry.Register(inventory.NewRejectTransferOrderHandler(config.Log, config.Buses.TransferOrder))
 	}
+
+	if config.Buses.PutAwayTask != nil {
+		registry.Register(inventory.NewCreatePutAwayTaskHandler(
+			config.Log,
+			config.Buses.PutAwayTask,
+			config.Buses.SupplierProduct,
+			config.Buses.PurchaseOrder,
+		))
+	}
 }
 
 // RegisterProcurementActions registers procurement-domain action handlers.
