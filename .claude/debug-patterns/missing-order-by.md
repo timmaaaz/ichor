@@ -22,3 +22,4 @@ type: feedback
 **See also**: `docs/arch/sqldb.md`
 **Examples**:
 - `supplierproductapi_Test_SupplierProducts_query-by-ids-200-basic.md` — `QueryByIDs` had no `ORDER BY`; result order was non-deterministic; fixed by adding `ORDER BY product_id ASC` to the SQL in `supplierproductdb.go`
+- `inventoryitemapi_Test_InventoryItem_query-200-basic.md` — SQL had `ORDER BY id ASC` (DefaultOrderBy) but `TestSeedInventoryItems` in `testutil.go` sorted seed rows by `(product_id, location_id)`; test expected slice was in wrong order; fixed by changing testutil sort to `id ASC` to match DefaultOrderBy

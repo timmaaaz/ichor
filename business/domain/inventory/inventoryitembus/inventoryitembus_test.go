@@ -183,18 +183,23 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	// Filter to items belonging to Products[1] (grid positions 25-29, exactly 5 items).
+	// Using a ProductID filter scopes the query to test-specific rows and avoids
+	// contamination from the global seed's inventory items.
+	p1ID := sd.Products[1].ProductID
+	expItems := make([]inventoryitembus.InventoryItem, 0, 5)
+	for _, item := range sd.InventoryItems {
+		if item.ProductID == p1ID {
+			expItems = append(expItems, item)
+		}
+	}
+
 	return []unitest.Table{
 		{
-			Name: "Query",
-			ExpResp: []inventoryitembus.InventoryItem{
-				sd.InventoryItems[0],
-				sd.InventoryItems[1],
-				sd.InventoryItems[2],
-				sd.InventoryItems[3],
-				sd.InventoryItems[4],
-			},
+			Name:    "Query",
+			ExpResp: expItems,
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.InventoryItem.Query(ctx, inventoryitembus.QueryFilter{}, inventoryitembus.DefaultOrderBy, page.MustParse("1", "5"))
+				got, err := busDomain.InventoryItem.Query(ctx, inventoryitembus.QueryFilter{ProductID: &p1ID}, inventoryitembus.DefaultOrderBy, page.MustParse("1", "5"))
 				if err != nil {
 					return err
 				}

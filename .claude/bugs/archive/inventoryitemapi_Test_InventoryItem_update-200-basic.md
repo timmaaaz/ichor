@@ -11,8 +11,8 @@
 ```
 
 ## Fix
-
-- **File 1**: `business/domain/inventory/inventoryitembus/testutil.go` — changed sort from UUID to `(product_id, location_id)` for deterministic grid-order output
-- **File 2**: `api/cmd/services/ichor/tests/inventory/inventoryitemapi/update_test.go:24,39` — changed `Products[1]` → `Products[2]` (products[0] and [1] fill all 50 seeded slots; products[2] is guaranteed free)
-- **Classification**: test bug — update target collided with an already-seeded `(product_id, location_id)` pair, triggering the unique constraint → 409
+- **File**: `api/cmd/services/ichor/tests/inventory/inventoryitemapi/update_test.go:24,39`
+- **Classification**: test bug
+- **Change**: Changed `Products[2]` → `Products[3]` in both Input and ExpResp; `create-200` and `update-200` both used `(Products[2], InventoryLocations[0])` causing a unique constraint violation when update ran after create in the same test suite
 - **Verified**: `go test -v -run Test_InventoryItem/update-200-basic github.com/timmaaaz/ichor/api/cmd/services/ichor/tests/inventory/inventoryitemapi` ✓
+- **pattern-match**: seed-product-index-exhausted
