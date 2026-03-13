@@ -187,6 +187,9 @@ func (b *Business) QueryByID(ctx context.Context, taskID uuid.UUID) (PutAwayTask
 
 	task, err := b.storer.QueryByID(ctx, taskID)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return PutAwayTask{}, err
+		}
 		return PutAwayTask{}, fmt.Errorf("queryByID: taskID[%s]: %w", taskID, err)
 	}
 

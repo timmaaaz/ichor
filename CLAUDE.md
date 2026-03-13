@@ -413,6 +413,7 @@ docs/arch/ = authoritative. Read → answer directly. No codebase search to veri
 | `docs/arch/inventory-ops.md` | touching putawaytask status machine, scan fan-out, inventory upsert logic |
 | `docs/arch/agent-chat.md` | touching chatapi, agenttools executor, toolindex RAG, llm provider, toolcatalog |
 | `docs/arch/mcp.md` | adding MCP tools, changing tool groups, modifying mcp client or prompts |
+| `docs/arch/testing.md` | touching dbtest.go, docker container setup, NewDatabase, apitest, test container lifecycle, parallel test isolation |
 
 ## Additional Resources
 

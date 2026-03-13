@@ -29,6 +29,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				CustomerID:          sd.Customers[1].ID,
 				FulfillmentStatusID: sd.Orders[0].FulfillmentStatusID,
 				OrderDate:           sd.Orders[0].OrderDate,
+				AssignedTo:          sd.Orders[0].AssignedTo,
 				Subtotal:            sd.Orders[0].Subtotal,
 				TaxRate:             sd.Orders[0].TaxRate,
 				TaxAmount:           sd.Orders[0].TaxAmount,

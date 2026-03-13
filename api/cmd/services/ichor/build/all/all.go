@@ -500,6 +500,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// creates real approval request records.
 	actionRegistry.Register(approval.NewSeekApprovalHandler(cfg.Log, cfg.DB, approvalRequestBus, alertBus))
 
+	// Upgrade create_alert handler with real alert bus.
+	// The core registration uses nil buses (graceful degradation); replace it here
+	// so that manual execution via POST /v1/workflow/actions/create_alert/execute
+	// creates real alert records.
+	actionRegistry.Register(communication.NewCreateAlertHandler(cfg.Log, alertBus, nil))
+
 	// Upgrade send_email handler with real Resend client if credentials are configured.
 	// If ResendAPIKey is empty, the nil-client version from RegisterCoreActions stays,
 	// which logs a warning and skips delivery (graceful degradation).

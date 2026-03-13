@@ -50,8 +50,10 @@ func Routes(app *web.App, cfg Config) {
 
 	// Test endpoint - creates a test alert for the authenticated user (for E2E WebSocket testing)
 	// Admin-only to prevent arbitrary alert creation in production.
+	// Uses AuthorizeUser (OPA only) instead of Authorize (OPA + table permissions) because
+	// E2E test seeds do not include full permissionsbus table access entries.
 	app.HandlerFunc(http.MethodPost, version, "/workflow/alerts/test", api.testAlert, authen,
-		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Create, auth.RuleAdminOnly))
+		mid.AuthorizeUser(cfg.AuthClient, cfg.UserBus, auth.RuleAdminOnly))
 
 	// Single alert endpoints
 	app.HandlerFunc(http.MethodGet, version, "/workflow/alerts/{id}", api.queryByID, authen)

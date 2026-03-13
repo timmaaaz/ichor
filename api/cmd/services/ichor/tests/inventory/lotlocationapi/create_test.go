@@ -20,13 +20,13 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &lotlocationapp.NewLotLocation{
 				LotID:      sd.LotTrackings[0].LotID,
-				LocationID: sd.InventoryLocations[0].LocationID,
+				LocationID: sd.InventoryLocations[1].LocationID,
 				Quantity:   "10",
 			},
 			GotResp: &lotlocationapp.LotLocation{},
 			ExpResp: &lotlocationapp.LotLocation{
 				LotID:      sd.LotTrackings[0].LotID,
-				LocationID: sd.InventoryLocations[0].LocationID,
+				LocationID: sd.InventoryLocations[1].LocationID,
 				Quantity:   "10",
 			},
 			CmpFunc: func(got, exp any) string {

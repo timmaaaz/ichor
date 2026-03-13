@@ -329,7 +329,7 @@ func createBranchingWorkflowDirect(t *testing.T, wfBus *workflow.Business, sd Sa
 		AutomationRuleID: rule.ID,
 		Name:             "Evaluate Amount",
 		Description:      "Evaluates if amount > 1000",
-		ActionConfig:     json.RawMessage(`{"conditions":[{"field":"amount","operator":"greater_than","value":1000}]}`),
+		ActionConfig:     json.RawMessage(`{"conditions":[{"field_name":"amount","operator":"greater_than","value":1000}]}`),
 		IsActive:         true,
 		TemplateID:       &conditionTemplateID,
 	})

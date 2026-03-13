@@ -2253,3 +2253,7 @@ ALTER TABLE products.products ADD COLUMN IF NOT EXISTS inventory_type TEXT NULL;
 -- Version: 2.13
 -- Description: Add stage column to inventory zones if not already present from v1.51 edit.
 ALTER TABLE inventory.zones ADD COLUMN IF NOT EXISTS stage TEXT NULL;
+
+-- Version: 2.14
+-- Description: Add unique constraint on upc_code in products.products table.
+ALTER TABLE products.products ADD CONSTRAINT products_upc_code_unique UNIQUE (upc_code);

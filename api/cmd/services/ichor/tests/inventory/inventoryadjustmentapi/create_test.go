@@ -41,6 +41,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				LocationID:     sd.InventoryLocations[0].LocationID,
 				AdjustedBy:     sd.InventoryAdjustments[0].AdjustedBy,
 				ApprovedBy:     sd.InventoryAdjustments[0].ApprovedBy,
+				ApprovalStatus: "pending",
 				QuantityChange: "10",
 				ReasonCode:     "Purchase",
 				Notes:          "New purchase",

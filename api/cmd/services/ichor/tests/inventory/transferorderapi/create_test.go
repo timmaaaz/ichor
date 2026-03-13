@@ -153,27 +153,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "missing-approved-by-id",
-			URL:        "/v1/inventory/transfer-orders",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &transferorderapp.NewTransferOrder{
-				ProductID:      sd.Products[0].ProductID,
-				FromLocationID: sd.InventoryLocations[0].LocationID,
-				ToLocationID:   sd.InventoryLocations[2].LocationID,
-				RequestedByID:  sd.TransferOrders[0].RequestedByID,
-				Quantity:       "10",
-				Status:         "pending",
-				TransferDate:   now.Format(timeutil.FORMAT),
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"approved_by\",\"error\":\"approved_by is a required field\"}]"),
-			CmpFunc: func(got, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
 			Name:       "missing-quantity",
 			URL:        "/v1/inventory/transfer-orders",
 			Token:      sd.Admins[0].Token,

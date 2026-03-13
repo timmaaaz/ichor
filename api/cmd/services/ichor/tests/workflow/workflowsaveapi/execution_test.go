@@ -245,6 +245,7 @@ func testNoMatchingRules(t *testing.T, sd ExecutionTestData) {
 		EntityName: "nonexistent_entity_xyz_" + uuid.New().String()[:8],
 		EntityID:   uuid.New(),
 		UserID:     sd.Users[0].ID,
+		Timestamp:  time.Now(),
 	}
 
 	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {

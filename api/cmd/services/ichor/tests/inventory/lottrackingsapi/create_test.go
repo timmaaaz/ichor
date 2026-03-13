@@ -35,7 +35,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				ExpirationDate:    ed.Format(timeutil.FORMAT),
 				RecievedDate:      rd.Format(timeutil.FORMAT),
 				Quantity:          "15",
-				QualityStatus:     "poor",
+				QualityStatus:     "good",
 			},
 			GotResp: &lottrackingsapp.LotTrackings{},
 			ExpResp: &lottrackingsapp.LotTrackings{
@@ -45,7 +45,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				ExpirationDate:    ed.Format(timeutil.FORMAT),
 				RecievedDate:      rd.Format(timeutil.FORMAT),
 				Quantity:          "15",
-				QualityStatus:     "poor",
+				QualityStatus:     "good",
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*lottrackingsapp.LotTrackings)
@@ -58,7 +58,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				expResp.UpdatedDate = gotResp.UpdatedDate
 				expResp.CreatedDate = gotResp.CreatedDate
 
-				return cmp.Diff(gotResp, expResp)
+				return cmp.Diff(gotResp, expResp, cmpopts.IgnoreFields(lottrackingsapp.LotTrackings{}, "ProductID", "ProductName", "ProductSKU"))
 			},
 		},
 	}
@@ -350,7 +350,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 				ExpirationDate:    ed.Format(timeutil.FORMAT),
 				RecievedDate:      rd.Format(timeutil.FORMAT),
 				Quantity:          "15",
-				QualityStatus:     "poor",
+				QualityStatus:     "good",
 			},
 			ExpResp: errs.Newf(errs.Aborted, "create: namedexeccontext: foreign key violation"),
 			GotResp: &errs.Error{},

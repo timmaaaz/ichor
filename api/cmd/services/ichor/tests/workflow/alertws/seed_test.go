@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
@@ -113,6 +114,18 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (AlertWSSeedData, error
 	}
 
 	// User 2: no roles (tests users without role-based access)
+
+	// Assign admin user to role 0 and grant table access
+	adminRoleIDs := uuid.UUIDs{roles[0].ID}
+	_, err = userrolebus.TestSeedUserRoles(ctx, uuid.UUIDs{admins[0].ID}, adminRoleIDs, busDomain.UserRole)
+	if err != nil {
+		return AlertWSSeedData{}, fmt.Errorf("assigning role to admin: %w", err)
+	}
+
+	_, err = tableaccessbus.TestSeedTableAccess(ctx, adminRoleIDs, busDomain.TableAccess)
+	if err != nil {
+		return AlertWSSeedData{}, fmt.Errorf("seeding table access: %w", err)
+	}
 
 	return AlertWSSeedData{
 		Users:  testUsers,

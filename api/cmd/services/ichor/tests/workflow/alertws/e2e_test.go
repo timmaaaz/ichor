@@ -367,8 +367,8 @@ func testE2EUserIsolation(t *testing.T, test *apitest.WSTest, sd AlertWSSeedData
 func testE2ETestAlertEndpoint(t *testing.T, test *apitest.WSTest, sd AlertWSSeedData) {
 	ctx := context.Background()
 
-	// Connect WebSocket client with valid JWT
-	conn := test.ConnectClient(t, sd.UserToken(0))
+	// Connect WebSocket client as admin (POST /alerts/test targets the caller's userID)
+	conn := test.ConnectClient(t, sd.AdminToken())
 	defer conn.Close(websocket.StatusNormalClosure, "test complete")
 
 	time.Sleep(500 * time.Millisecond)
@@ -378,7 +378,7 @@ func testE2ETestAlertEndpoint(t *testing.T, test *apitest.WSTest, sd AlertWSSeed
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+sd.UserToken(0))
+	req.Header.Set("Authorization", "Bearer "+sd.AdminToken())
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

@@ -37,7 +37,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				ExpirationDate:    dbtest.StringPointer(ed.Format(timeutil.FORMAT)),
 				RecievedDate:      dbtest.StringPointer(rd.Format(timeutil.FORMAT)),
 				Quantity:          dbtest.StringPointer("15"),
-				QualityStatus:     dbtest.StringPointer("perfect"),
+				QualityStatus:     dbtest.StringPointer("good"),
 			},
 			GotResp: &lottrackingsapp.LotTrackings{},
 			ExpResp: &lottrackingsapp.LotTrackings{
@@ -47,7 +47,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				ExpirationDate:    ed.Format(timeutil.FORMAT),
 				RecievedDate:      rd.Format(timeutil.FORMAT),
 				Quantity:          "15",
-				QualityStatus:     "perfect",
+				QualityStatus:     "good",
 				LotID:             sd.LotTrackings[0].LotID,
 				CreatedDate:       sd.LotTrackings[0].CreatedDate,
 			},
@@ -59,6 +59,9 @@ func update200(sd apitest.SeedData) []apitest.Table {
 
 				expResp := exp.(*lottrackingsapp.LotTrackings)
 				expResp.UpdatedDate = gotResp.UpdatedDate
+				expResp.ProductID = gotResp.ProductID
+				expResp.ProductName = gotResp.ProductName
+				expResp.ProductSKU = gotResp.ProductSKU
 
 				return cmp.Diff(gotResp, expResp)
 			},
@@ -91,7 +94,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &lottrackingsapp.UpdateLotTrackings{
 				Quantity:      dbtest.StringPointer("15"),
-				QualityStatus: dbtest.StringPointer("perfect"),
+				QualityStatus: dbtest.StringPointer("good"),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.InvalidArgument, "invalid UUID length: 10"),
@@ -154,7 +157,7 @@ func update404(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusNotFound,
 			Input: &lottrackingsapp.UpdateLotTrackings{
 				Quantity:      dbtest.StringPointer("15"),
-				QualityStatus: dbtest.StringPointer("perfect"),
+				QualityStatus: dbtest.StringPointer("good"),
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.NotFound, "lot not found"),

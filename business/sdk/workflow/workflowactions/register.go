@@ -181,6 +181,7 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 	// Communication actions that don't need queue or email client (nil = graceful degradation)
 	registry.Register(communication.NewSendEmailHandler(log, db, nil, ""))
 	registry.Register(communication.NewSendNotificationHandler(log, nil))
+	registry.Register(communication.NewCreateAlertHandler(log, nil, nil))
 
 	// Integration actions - no bus/DB/queue dependencies
 	registry.Register(integration.NewCallWebhookHandler(log))

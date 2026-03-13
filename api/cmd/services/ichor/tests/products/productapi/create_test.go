@@ -47,6 +47,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				IsPerishable:         "false",
 				HandlingInstructions: "test handling instructions",
 				UnitsPerCase:         "20",
+				TrackingType:         "none",
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*productapp.Product)
@@ -413,7 +414,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 				ProductCategoryID:    sd.ProductCategories[0].ID,
 				Description:          "test description",
 				ModelNumber:          "test model number",
-				UpcCode:              "test upc code",
+				UpcCode:              "test-upc-brand-fk",
 				Status:               "test status",
 				IsActive:             "true",
 				IsPerishable:         "false",
@@ -439,7 +440,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 				ProductCategoryID:    uuid.NewString(),
 				Description:          "test description",
 				ModelNumber:          "test model number",
-				UpcCode:              "test upc code",
+				UpcCode:              "test-upc-category-fk",
 				Status:               "test status",
 				IsActive:             "true",
 				IsPerishable:         "false",

@@ -275,6 +275,34 @@ workflow.automation_executions  — execution history
 
 ---
 
+## ⚠ evaluate_condition action config JSON tags
+
+read config struct json tags before writing any evaluate_condition seed/test data
+file: business/sdk/workflow/workflowactions/control/condition.go
+silent fail: wrong json key → field evaluates to zero value → condition = false, no error logged
+
+## ⚠ alert source_rule_id propagation
+
+file: business/sdk/workflow/workflowactions/communication/alert.go — Execute() assigns SourceRuleID
+SourceRuleID = uuid.Nil for manual executions (nil execCtx.RuleID)
+test isolation: always scope alert queries — alertbus.QueryFilter{SourceRuleID: &ruleID}
+never count global alert totals in workflow tests — concurrent subtests pollute the count
+
+---
+
+## ⚠ Execute() MUST return map[string]any — never a typed struct
+
+why:
+  1. Temporal deserializes activity results to map — concrete types erased at SDK boundary
+  2. MergedContext.ActionResults is map[string]map[string]any — template resolution needs {{action_name.field}}
+  3. GraphExecutor reads result["output"] for edge routing — must coexist with result data
+
+required key "output": string matched against ActionEdge.SourceOutput
+  if missing: activities.go injects "success" default (silent misroute risk)
+
+typed structs fine internally — only Execute() return must be map
+tests: assert to map[string]any, never concrete struct
+
 ## ⚠ Adding a new ActionHandler
 
   business/sdk/workflow/interfaces.go                              (confirm ActionHandler interface satisfied)

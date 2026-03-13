@@ -76,7 +76,6 @@ _NOISE_RES = [re.compile(p) for p in [
 ]]
 
 _LOGS_START = re.compile(r"\*{10,}.*LOGS")
-_LOGS_END = re.compile(r"\*{10,}.*END")
 _RAW_JSON = re.compile(r"^\s*[\[{]")
 
 
@@ -92,13 +91,14 @@ def filter_noise(lines: list) -> list:
     for raw in lines:
         line = raw.rstrip("\n")
 
-        # LOGS block: skip everything between markers
+        # LOGS block: same marker used for both start and end
         if _LOGS_START.search(line):
-            in_logs = True
+            if not in_logs:
+                in_logs = True
+            else:
+                in_logs = False
             continue
         if in_logs:
-            if _LOGS_END.search(line):
-                in_logs = False
             continue
 
         # Pattern-based noise
@@ -191,17 +191,26 @@ def main() -> None:
     parser.add_argument("packages", nargs="*", help="Go package paths (passed to go test)")
     parser.add_argument("--output-dir", default=".claude/bugs/open",
                         help="Directory to write .md files (default: .claude/bugs/open)")
+    parser.add_argument("--refresh-package", default=None,
+                        help="Only clear/refresh bug files matching this package prefix "
+                             "(e.g., workflowsaveapi). Skips SUMMARY.md update.")
     args = parser.parse_args()
 
     output_dir = pathlib.Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Clear existing .md files from a prior run
-    for f in output_dir.glob("*.md"):
-        f.unlink()
+    # Clear existing .md files — selectively when --refresh-package is set
+    if args.refresh_package:
+        prefix = args.refresh_package + "_"
+        for f in output_dir.glob("*.md"):
+            if f.name.startswith(prefix):
+                f.unlink()
+    else:
+        for f in output_dir.glob("*.md"):
+            f.unlink()
 
     if args.packages:
-        cmd = ["go", "test", "-json", "-count=1"] + args.packages
+        cmd = ["go", "test", "-json", "-count=1", "-p", "1"] + args.packages
         print(f"Running: CGO_ENABLED=0 {' '.join(cmd)}", flush=True)
         env = {**os.environ, "CGO_ENABLED": "0"}
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
@@ -239,7 +248,11 @@ def main() -> None:
         written += 1
         print(f"  wrote: {filename}", flush=True)
 
-    # Write SUMMARY.md
+    if args.refresh_package:
+        print(f"\nRefreshed {args.refresh_package}: {written} failure(s) written to {output_dir}/")
+        return
+
+    # Write SUMMARY.md (skipped for single-package refreshes)
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     summary_lines = "\n".join(summary_entries)
     (output_dir / "SUMMARY.md").write_text(

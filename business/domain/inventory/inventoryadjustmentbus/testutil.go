@@ -15,11 +15,12 @@ func TestNewInventoryAdjustment(n int, productIDs, locationIDs, adjustedByIDs uu
 	idx := rand.Intn(10000)
 
 	for i := 0; i < n; i++ {
+		approvedByID := adjustedByIDs[(idx+1)%len(adjustedByIDs)]
 		newInventoryAdjustments[i] = NewInventoryAdjustment{
 			ProductID:      productIDs[idx%len(productIDs)],
 			LocationID:     locationIDs[idx%len(locationIDs)],
 			AdjustedBy:     adjustedByIDs[idx%len(adjustedByIDs)],
-			ApprovedBy:     nil,
+			ApprovedBy:     &approvedByID,
 			QuantityChange: rand.Intn(100) - 50,
 			ReasonCode:     "Test Reason",
 			Notes:          "Test Notes",

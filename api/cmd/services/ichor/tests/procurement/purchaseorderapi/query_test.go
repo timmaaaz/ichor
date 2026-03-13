@@ -31,13 +31,17 @@ func query200(sd apitest.SeedData) []apitest.Table {
 
 				dbtest.NormalizeJSONFields(gotResp, &expResp)
 
-				// Sort both by OrderNumber for comparison (database sorts lexicographically)
+				// Sort both by OrderNumber for comparison (database sorts lexicographically).
+				// Copy expResp.Items before sorting to avoid mutating the shared sd.PurchaseOrders
+				// backing array, which would corrupt index-based expectations in subsequent subtests.
 				sort.Slice(gotResp.Items, func(i, j int) bool {
 					return gotResp.Items[i].OrderNumber < gotResp.Items[j].OrderNumber
 				})
-				sort.Slice(expResp.Items, func(i, j int) bool {
-					return expResp.Items[i].OrderNumber < expResp.Items[j].OrderNumber
+				expItems := append([]purchaseorderapp.PurchaseOrder{}, expResp.Items...)
+				sort.Slice(expItems, func(i, j int) bool {
+					return expItems[i].OrderNumber < expItems[j].OrderNumber
 				})
+				expResp.Items = expItems
 
 				return cmp.Diff(got, exp)
 			},

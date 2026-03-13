@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"math"
 	"math/rand"
-	"os/exec"
 	"reflect"
 	"testing"
 	"time"
@@ -492,9 +491,6 @@ func NewDatabase(t *testing.T, testName string) *Database {
 	port := "5432"
 	dockerArgs := []string{"-e", "POSTGRES_PASSWORD=postgres"}
 	appArgs := []string{"-c", "log_statement=all"}
-
-	cmd := exec.Command("docker", "rm", "-f", name)
-	cmd.Run() // Ignore error - container might not exist
 
 	c, err := docker.StartContainer(image, name, port, dockerArgs, appArgs)
 	if err != nil {
