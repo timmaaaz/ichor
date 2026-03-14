@@ -49,6 +49,11 @@ func (a *App) Create(ctx context.Context, app NewLotTrackings) (LotTrackings, er
 		return LotTrackings{}, err
 	}
 
+	lt, err = a.lottrackingsbus.QueryByID(ctx, lt.LotID)
+	if err != nil {
+		return LotTrackings{}, err
+	}
+
 	return ToAppLotTracking(lt), nil
 }
 

@@ -21,7 +21,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPut,
 			StatusCode: http.StatusOK,
 			Input: &inventoryitemapp.UpdateInventoryItem{
-				ProductID:             &sd.Products[1].ProductID,
+				ProductID:             &sd.Products[3].ProductID,
 				LocationID:            &sd.InventoryLocations[0].LocationID,
 				Quantity:              dbtest.StringPointer("10"),
 				ReservedQuantity:      dbtest.StringPointer("50"),
@@ -36,7 +36,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &inventoryitemapp.InventoryItem{},
 			ExpResp: &inventoryitemapp.InventoryItem{
 				ID:                    sd.InventoryItems[1].ID,
-				ProductID:             sd.Products[1].ProductID,
+				ProductID:             sd.Products[3].ProductID,
 				LocationID:            sd.InventoryLocations[0].LocationID,
 				Quantity:              "10",
 				ReservedQuantity:      "50",

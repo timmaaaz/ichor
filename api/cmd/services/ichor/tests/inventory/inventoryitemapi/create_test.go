@@ -20,7 +20,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &inventoryitemapp.NewInventoryItem{
-				ProductID:             sd.Products[0].ProductID,
+				ProductID:             sd.Products[2].ProductID,
 				LocationID:            sd.InventoryLocations[0].LocationID,
 				Quantity:              "10",
 				ReservedQuantity:      "50",
@@ -34,7 +34,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &inventoryitemapp.InventoryItem{},
 			ExpResp: &inventoryitemapp.InventoryItem{
-				ProductID:             sd.Products[0].ProductID,
+				ProductID:             sd.Products[2].ProductID,
 				LocationID:            sd.InventoryLocations[0].LocationID,
 				Quantity:              "10",
 				ReservedQuantity:      "50",

@@ -34,6 +34,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				DiscountType:                  sd.OrderLineItems[0].DiscountType,
 				LineTotal:                     sd.OrderLineItems[0].LineTotal,
 				LineItemFulfillmentStatusesID: sd.OrderLineItems[0].LineItemFulfillmentStatusesID,
+				PickedQuantity:                sd.OrderLineItems[0].PickedQuantity,
+				BackorderedQuantity:           sd.OrderLineItems[0].BackorderedQuantity,
 				CreatedBy:                     sd.OrderLineItems[0].CreatedBy,
 				CreatedDate:                   sd.OrderLineItems[0].CreatedDate,
 				UpdatedBy:                     sd.OrderLineItems[0].UpdatedBy,

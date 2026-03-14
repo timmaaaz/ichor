@@ -103,8 +103,8 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					return "gotResp.RoleNames[0] != Role0"
 				}
 
-				if len(gotResp.TableAccess) != 70 {
-					return fmt.Sprintf("len(gotResp.TableAccess) != 70. Len = %d", len(gotResp.TableAccess))
+				if len(gotResp.TableAccess) != 73 {
+					return fmt.Sprintf("len(gotResp.TableAccess) != 73. Len = %d", len(gotResp.TableAccess))
 				}
 
 				return ""

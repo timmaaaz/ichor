@@ -55,7 +55,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &query.Result[ordersapp.Order]{
 				Page:        1,
 				RowsPerPage: 10,
-				Total:       5,
+				Total:       1,
 				Items:       []ordersapp.Order{sd.Orders[0]},
 			},
 			CmpFunc: func(got, exp any) string {

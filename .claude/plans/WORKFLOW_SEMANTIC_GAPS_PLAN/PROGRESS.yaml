@@ -1,0 +1,57 @@
+plan: WORKFLOW_SEMANTIC_GAPS_PLAN
+created: 2026-03-09
+status: in_progress
+
+## Design Threshold (post-review)
+# A dedicated action handler is justified when the bus method provides something
+# generic actions (transition_status, update_field) structurally cannot:
+#   - FK status UUID abstraction (user can't know the UUID)
+#   - Multi-record atomicity (more than one table in a single write)
+#   - Delegate event propagation (generic actions fire none)
+#   - Domain invariant enforcement (guards the generic SQL can't express)
+#
+# complete_putaway REMOVED: physical act — wrong agent to invoke. delegate-reactive is correct.
+# approve/reject_adjustment and approve_transfer_order DEFERRED: only delta is delegate event
+#   (marginal). Build only when a concrete workflow chain requires them.
+# resolve_approval_request DEFERRED: only justified for meta-orchestration, no caller today.
+
+phases:
+  - id: PHASE_1
+    name: putaway completion integration tests (no handler)
+    status: pending
+    file: phases/PHASE_1_COMPLETE_PUTAWAY.md
+    notes: >
+      REVISED: complete_putaway handler removed — physical act, category error for invocation.
+      Phase 1 is now only the integration tests for the putaway completion HTTP endpoint.
+      The 3-way transaction atomicity is completely untested regardless of the handler decision.
+
+  - id: PHASE_2
+    name: approve_purchase_order action handler
+    status: pending
+    file: phases/PHASE_2_APPROVAL_TRANSITIONS.md
+    notes: >
+      REVISED: only approve_purchase_order moves forward. It crosses the threshold because
+      procurement.purchase_order_statuses is a FK UUID lookup table — generic actions cannot
+      abstract this without requiring rule authors to know deployment-specific UUIDs.
+      Also performs 4-field atomic write (status, approved_by, approved_date, updated_*).
+      The marginal handlers (approve/reject_adjustment, approve_transfer_order) are deferred
+      until a concrete workflow chain requires them.
+
+  - id: PHASE_3
+    name: delegate event fix for approvalrequestbus.Resolve() (standalone bug fix)
+    status: pending
+    file: phases/PHASE_3_RESOLVE_APPROVAL.md
+    notes: >
+      REVISED: resolve_approval_request handler deferred (no concrete meta-orchestration
+      caller exists). Part A remains: adding delegate.Call() to Resolve() is a standalone
+      bug fix — it's the only method across all 51 bus domains that changes entity state
+      without firing a delegate event.
+
+  - id: PHASE_4
+    name: Entity Field Schema Discovery API
+    status: pending
+    file: phases/PHASE_4_FIELD_SCHEMA_DISCOVERY.md
+    notes: >
+      Unchanged. Exposes hardcoded enum values via GET /v1/workflow/entities/{entity}/fields.
+      This addresses trigger leakiness independently of invocation value questions.
+      7 enums across inventory + workflow domains.

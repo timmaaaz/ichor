@@ -41,6 +41,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				LocationID:            sd.InventoryLocations[0].LocationID,
 				AdjustedBy:            sd.InventoryAdjustments[0].AdjustedBy,
 				ApprovedBy:            sd.InventoryAdjustments[0].ApprovedBy,
+				ApprovalStatus:        sd.InventoryAdjustments[1].ApprovalStatus,
 				QuantityChange:        "20",
 				ReasonCode:            "Adjustment",
 				Notes:                 "Updated adjustment",

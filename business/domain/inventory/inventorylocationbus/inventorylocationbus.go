@@ -132,6 +132,8 @@ func (b *Business) Update(ctx context.Context, invLocation InventoryLocation, u 
 	}
 	if u.LocationCode != nil {
 		invLocation.LocationCode = u.LocationCode
+	} else if u.Aisle != nil || u.Rack != nil || u.Shelf != nil || u.Bin != nil {
+		invLocation.LocationCode = nil
 	}
 	if u.IsPickLocation != nil {
 		invLocation.IsPickLocation = *u.IsPickLocation

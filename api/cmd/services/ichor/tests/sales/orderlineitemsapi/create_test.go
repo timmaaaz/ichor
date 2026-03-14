@@ -33,6 +33,8 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				Discount:                      "0.00",
 				DiscountType:                  "flat",
 				LineItemFulfillmentStatusesID: sd.LineItemFulfillmentStatuses[0].ID,
+				PickedQuantity:                "0",
+				BackorderedQuantity:           "0",
 				CreatedBy:                     sd.Admins[0].ID.String(),
 				UpdatedBy:                     sd.Admins[0].ID.String(),
 			},

@@ -19,7 +19,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &query.Result[lotlocationapp.LotLocation]{
 				Page:        1,
 				RowsPerPage: 10,
-				Total:       15,
+				Total:       10,
 				Items:       sd.LotLocations[:10],
 			},
 			CmpFunc: func(got, exp any) string {

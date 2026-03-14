@@ -37,7 +37,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				PrimaryPhone:         "+1234567890",
 				StreetID:             sd.Streets[0].ID,
 				DeliveryAddressID:    sd.Streets[1].ID,
-				AvailableHoursStart:  "8:00:00",
+				AvailableHoursStart:  "08:00:00",
 				AvailableHoursEnd:    "17:00:00",
 				TimezoneID:           sd.Timezones[0].ID,
 				PreferredContactType: "email",

@@ -99,10 +99,10 @@ type NewInventoryAdjustment struct {
 	ProductID      string `json:"product_id" validate:"required,min=36,max=36"`
 	LocationID     string `json:"location_id" validate:"required,min=36,max=36"`
 	AdjustedBy     string `json:"adjusted_by" validate:"required,min=36,max=36"`
-	ApprovedBy     string `json:"approved_by" validate:"omitempty,min=36,max=36"`
+	ApprovedBy     string `json:"approved_by" validate:"required,min=36,max=36"`
 	QuantityChange string `json:"quantity_change" validate:"required"`
 	ReasonCode     string `json:"reason_code" validate:"required"`
-	Notes          string `json:"notes" validate:"omitempty"`
+	Notes          string `json:"notes" validate:"required"`
 	AdjustmentDate string `json:"adjustment_date" validate:"required"`
 }
 

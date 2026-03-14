@@ -572,7 +572,7 @@ func GetProductFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.N
 		},
 		{
 			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
-			Name: "product_category_id", Label: "Category", FieldType: "smart-combobox", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "products.product_categories", "display_field": "name"}`),
+			Name: "category_id", Label: "Category", FieldType: "smart-combobox", FieldOrder: 4, Required: true, Config: json.RawMessage(`{"entity": "products.product_categories", "display_field": "name"}`),
 		},
 		{
 			FormID: formID, EntityID: entityID, EntitySchema: "products", EntityTable: "products",
@@ -687,7 +687,7 @@ func GetZoneFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewF
 // GetInventoryLocationFormFields returns form fields for inventory locations (inventory.inventory_locations)
 func GetInventoryLocationFormFields(formID uuid.UUID, entityID uuid.UUID) []formfieldbus.NewFormField {
 	return []formfieldbus.NewFormField{
-		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "zone_id", Label: "Zone", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "inventory.zones", "display_field": "name", "value_column": "zone_id"}`)},
+		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "zone_id", Label: "Zone", FieldType: "smart-combobox", FieldOrder: 1, Required: true, Config: json.RawMessage(`{"entity": "inventory.zones", "display_field": "name", "value_column": "id"}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "aisle", Label: "Aisle", FieldType: "text", FieldOrder: 2, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "rack", Label: "Rack", FieldType: "text", FieldOrder: 3, Required: true, Config: json.RawMessage(`{}`)},
 		{FormID: formID, EntityID: entityID, EntitySchema: "inventory", EntityTable: "inventory_locations", Name: "shelf", Label: "Shelf", FieldType: "text", FieldOrder: 4, Required: true, Config: json.RawMessage(`{}`)},

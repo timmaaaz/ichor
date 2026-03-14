@@ -9,6 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/inventory/putawaytaskapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {
@@ -19,11 +20,16 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodGet,
 			StatusCode: http.StatusOK,
-			GotResp:    &[]putawaytaskapp.PutAwayTask{},
-			ExpResp:    &sd.PutAwayTasks,
+			GotResp: &query.Result[putawaytaskapp.PutAwayTask]{},
+			ExpResp: &query.Result[putawaytaskapp.PutAwayTask]{
+				Items:       sd.PutAwayTasks,
+				Total:       len(sd.PutAwayTasks),
+				Page:        1,
+				RowsPerPage: 10,
+			},
 			CmpFunc: func(got, exp any) string {
-				gotResp := got.(*[]putawaytaskapp.PutAwayTask)
-				expResp := exp.(*[]putawaytaskapp.PutAwayTask)
+				gotResp := got.(*query.Result[putawaytaskapp.PutAwayTask])
+				expResp := exp.(*query.Result[putawaytaskapp.PutAwayTask])
 				return cmp.Diff(*gotResp, *expResp)
 			},
 		},

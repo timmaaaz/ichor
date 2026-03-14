@@ -2,6 +2,7 @@ package action_test
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
@@ -35,12 +36,18 @@ func listActions200Admin(sd ActionSeedData) []apitest.Table {
 }
 
 func listActions200UserWithPermissions(sd ActionSeedData) []apitest.Table {
-	// Core action handlers (including send_notification) are registered via
-	// RegisterCoreActions even without RabbitMQ. The user has permissions for
-	// create_alert and send_notification, and send_notification is registered,
-	// so they should see it in the list.
+	// RegisterCoreActions registers both send_notification and create_alert with
+	// nil buses (graceful degradation). Both SupportsManualExecution() = true.
+	// The user has permissions for both, so both should appear.
 	expActions := actionapp.AvailableActions{
+		{Type: "create_alert", Description: "Create an alert notification for users or roles", IsAsync: false},
 		{Type: "send_notification", Description: "Send an in-app notification", IsAsync: false},
+	}
+
+	sortActions := func(a *actionapp.AvailableActions) {
+		sort.Slice(*a, func(i, j int) bool {
+			return (*a)[i].Type < (*a)[j].Type
+		})
 	}
 
 	return []apitest.Table{
@@ -60,15 +67,10 @@ func listActions200UserWithPermissions(sd ActionSeedData) []apitest.Table {
 					return cmp.Diff(gotResp, expResp)
 				}
 
-				// Verify the expected action is present
-				for i, exp := range *expResp {
-					got := (*gotResp)[i]
-					if got.Type != exp.Type || got.Description != exp.Description || got.IsAsync != exp.IsAsync {
-						return cmp.Diff(gotResp, expResp)
-					}
-				}
+				sortActions(gotResp)
+				sortActions(expResp)
 
-				return ""
+				return cmp.Diff(gotResp, expResp)
 			},
 		},
 	}

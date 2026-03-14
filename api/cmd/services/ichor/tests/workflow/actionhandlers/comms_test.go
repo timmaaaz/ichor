@@ -22,6 +22,7 @@ import (
 	"go.temporal.io/api/workflowservice/v1"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
@@ -116,7 +117,11 @@ func TestCallWebhookAction(t *testing.T) {
 	// Use the well-known "customers" entity + "on_create" trigger that are
 	// present in every seeded test database (confirmed by actions_inventory_test.go).
 
-	adminID := uuid.New()
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, db.BusDomain.User)
+	if err != nil {
+		t.Fatalf("seeding admin users: %v", err)
+	}
+	adminID := admins[0].ID
 
 	customerEntity, err := workflowBus.QueryEntityByName(ctx, "customers")
 	if err != nil {
@@ -267,7 +272,7 @@ func TestSendEmailAction(t *testing.T) {
 	workflowTrigger := workflowtemporal.NewWorkflowTrigger(db.Log, tc, triggerProcessor, edgeStore, workflowStore).
 		WithTaskQueue(taskQueue)
 
-	adminID, rule, action := seedCommsActionRule(t, ctx, workflowBus, "send_email",
+	adminID, rule, action := seedCommsActionRule(t, ctx, workflowBus, db.BusDomain.User, "send_email",
 		`{"recipients":["test@example.com"],"subject":"Test","body":"Hello from workflow"}`)
 
 	_, err = workflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
@@ -373,8 +378,8 @@ func TestSendNotificationAction(t *testing.T) {
 	workflowTrigger := workflowtemporal.NewWorkflowTrigger(db.Log, tc, triggerProcessor, edgeStore, workflowStore).
 		WithTaskQueue(taskQueue)
 
-	adminID, rule, action := seedCommsActionRule(t, ctx, workflowBus, "send_notification",
-		`{"recipients":{"users":["00000000-0000-0000-0000-000000000001"],"roles":[]},"title":"Test","message":"Hello"}`)
+	adminID, rule, action := seedCommsActionRule(t, ctx, workflowBus, db.BusDomain.User, "send_notification",
+		`{"recipients":["5cf37266-3473-4006-984f-9325122678b7"],"priority":"low","title":"Test","message":"Hello"}`)
 
 	_, err = workflowBus.CreateActionEdge(ctx, workflow.NewActionEdge{
 		RuleID:         rule.ID,
@@ -436,12 +441,17 @@ func seedCommsActionRule(
 	t *testing.T,
 	ctx context.Context,
 	workflowBus *workflow.Business,
+	userBus *userbus.Business,
 	actionType string,
 	configJSON string,
 ) (uuid.UUID, workflow.AutomationRule, workflow.RuleAction) {
 	t.Helper()
 
-	adminID := uuid.New()
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, userBus)
+	if err != nil {
+		t.Fatalf("seeding admin users: %v", err)
+	}
+	adminID := admins[0].ID
 
 	customerEntity, err := workflowBus.QueryEntityByName(ctx, "customers")
 	if err != nil {

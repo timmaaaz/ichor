@@ -170,6 +170,14 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 	}
 
 	// Create alert via business layer
+	if h.alertBus == nil {
+		h.log.Warn(ctx, "create_alert: alertBus not configured, skipping alert creation")
+		return map[string]interface{}{
+			"alert_id":       uuid.Nil.String(),
+			"status":         "skipped",
+			"resolved_count": 0,
+		}, nil
+	}
 	if err := h.alertBus.Create(ctx, alert); err != nil {
 		return nil, fmt.Errorf("create alert: %w", err)
 	}

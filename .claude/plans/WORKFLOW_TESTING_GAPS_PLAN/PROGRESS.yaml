@@ -1,0 +1,242 @@
+plan: WORKFLOW_TESTING_GAPS_PLAN
+created: 2026-03-10
+description: Fill confirmed gaps in workflow integration and unit test coverage
+reference_doc: docs/plans/workflow-testing-gaps/PLAN.md
+status: NOT_STARTED
+
+# ─────────────────────────────────────────────────────
+# PHASE 1 — Wire trigger_test.go (Quick Win)
+# ─────────────────────────────────────────────────────
+# trigger_test.go is fully written with 3 subtests but never called
+# from Test_WorkflowSaveAPI. One wiring block away from running.
+# ─────────────────────────────────────────────────────
+phases:
+  - id: 1
+    name: Wire trigger_test.go into Test_WorkflowSaveAPI
+    status: NOT_STARTED
+    tasks:
+      - id: 1.1
+        description: Read execution_seed_test.go to understand ExecutionTestData and how InitWorkflowInfra is set up
+        status: NOT_STARTED
+      - id: 1.2
+        description: Read save_test.go to understand current Test_WorkflowSaveAPI structure
+        status: NOT_STARTED
+      - id: 1.3
+        description: Add insertTriggerSeedData + runTriggerTests call to Test_WorkflowSaveAPI master runner
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/save_test.go
+      - id: 1.4
+        description: Build affected packages to verify no compile errors
+        command: go build ./api/cmd/services/ichor/tests/workflow/workflowsaveapi/...
+        status: NOT_STARTED
+      - id: 1.5
+        description: Run workflowsaveapi tests to confirm trigger tests execute (requires Temporal)
+        command: go test ./api/cmd/services/ichor/tests/workflow/workflowsaveapi/... -v -run Test_WorkflowSaveAPI
+        status: NOT_STARTED
+
+  # ─────────────────────────────────────────────────────
+  # PHASE 2 — Rewrite execution_test.go for Temporal
+  # ─────────────────────────────────────────────────────
+  # execution_test.go was excluded in Phase 13 when workflow.Engine was deleted.
+  # Needs rewrite using InitWorkflowInfra + WorkflowTrigger.
+  # Reference: approvalapi/approval_test.go for Temporal integration pattern.
+  # ─────────────────────────────────────────────────────
+  - id: 2
+    name: Rewrite execution_test.go for Temporal
+    status: NOT_STARTED
+    tasks:
+      - id: 2.1
+        description: Read the ignored execution_test.go to catalog what it tested pre-Phase 13
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/execution_test.go
+      - id: 2.2
+        description: Read approvalapi/approval_test.go as reference pattern for Temporal-based integration tests
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/approvalapi/approval_test.go
+      - id: 2.3
+        description: Remove //go:build ignore tag and rewrite test functions using InitWorkflowInfra
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/execution_test.go
+        notes: >
+          Tests should: seed a rule with 1-2 actions, trigger via delegate or WorkflowTrigger
+          directly, wait for Temporal execution, verify execution record in DB.
+          Use runExecutionTests(t, esd ExecutionTestData) pattern.
+      - id: 2.4
+        description: Wire runExecutionTests into Test_WorkflowSaveAPI master runner
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/save_test.go
+      - id: 2.5
+        description: Build and run to verify
+        command: go test ./api/cmd/services/ichor/tests/workflow/workflowsaveapi/... -v -run Test_WorkflowSaveAPI
+        status: NOT_STARTED
+
+  # ─────────────────────────────────────────────────────
+  # PHASE 3 — Rewrite actions_test.go for Temporal
+  # ─────────────────────────────────────────────────────
+  # Per-action-type side effect tests. For each action: trigger a workflow
+  # with that action, verify the side effect (alert created, approval request
+  # created, etc.) via the appropriate bus.
+  # ─────────────────────────────────────────────────────
+  - id: 3
+    name: Rewrite actions_test.go for Temporal
+    status: NOT_STARTED
+    tasks:
+      - id: 3.1
+        description: Read the ignored actions_test.go to catalog which action types it tested and what side effects it verified
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/actions_test.go
+      - id: 3.2
+        description: Remove //go:build ignore tag and rewrite using InitWorkflowInfra
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/actions_test.go
+        notes: >
+          Priority order: create_alert (verify alertbus), seek_approval (verify approvalrequestbus),
+          allocate_inventory (verify allocation result). Other action types if time permits.
+          Pattern: seed rule → trigger → sleep/poll → verify side effect via bus.
+      - id: 3.3
+        description: Wire runActionTests into Test_WorkflowSaveAPI master runner
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/save_test.go
+      - id: 3.4
+        description: Build and run to verify
+        command: go test ./api/cmd/services/ichor/tests/workflow/workflowsaveapi/... -v -run Test_WorkflowSaveAPI
+        status: NOT_STARTED
+
+  # ─────────────────────────────────────────────────────
+  # PHASE 4 — Rewrite errors_test.go for Temporal
+  # ─────────────────────────────────────────────────────
+  # Error scenario integration tests: bad config, handler not found,
+  # activity failure → execution record marked failed.
+  # ─────────────────────────────────────────────────────
+  - id: 4
+    name: Rewrite errors_test.go for Temporal
+    status: NOT_STARTED
+    tasks:
+      - id: 4.1
+        description: Read the ignored errors_test.go to understand what error scenarios it covered
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/errors_test.go
+      - id: 4.2
+        description: Remove //go:build ignore tag and rewrite error scenario tests using InitWorkflowInfra
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/errors_test.go
+        notes: >
+          Scenarios: invalid action config → Temporal workflow fails, execution record reflects failure.
+          Unknown action type → workflow fails immediately at activity dispatch.
+          Verify Temporal failure propagates to execution record status.
+      - id: 4.3
+        description: Wire runErrorTests into Test_WorkflowSaveAPI master runner
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/workflowsaveapi/save_test.go
+      - id: 4.4
+        description: Build and run to verify
+        command: go test ./api/cmd/services/ichor/tests/workflow/workflowsaveapi/... -v -run Test_WorkflowSaveAPI
+        status: NOT_STARTED
+
+  # ─────────────────────────────────────────────────────
+  # PHASE 5 — actionapi happy-path execute200
+  # ─────────────────────────────────────────────────────
+  # Test_ActionAPI only has error paths for execute endpoint.
+  # Add successful execution and status polling integration tests.
+  # ─────────────────────────────────────────────────────
+  - id: 5
+    name: Add actionapi execute200 and status200 happy-path tests
+    status: NOT_STARTED
+    tasks:
+      - id: 5.1
+        description: Read seed_test.go to understand ActionSeedData and how action permissions are seeded
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/actionapi/seed_test.go
+      - id: 5.2
+        description: Read execute_test.go and status_test.go to understand existing helper structure
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/actionapi/execute_test.go
+          - api/cmd/services/ichor/tests/workflow/actionapi/status_test.go
+      - id: 5.3
+        description: Add execute200CreateAlert helper — successful create_alert execution by authorized user
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/actionapi/execute_test.go
+        notes: >
+          Seed actionpermissions row granting test user create_alert execute permission.
+          POST /v1/workflow/actions/create_alert/execute with valid config.
+          Verify 200 + result payload has expected output.
+      - id: 5.4
+        description: Add getExecutionStatus200 helper — poll a valid execution status ID
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/actionapi/status_test.go
+      - id: 5.5
+        description: Wire new helpers into Test_ActionAPI master runner
+        status: NOT_STARTED
+        files:
+          - api/cmd/services/ichor/tests/workflow/actionapi/action_test.go
+      - id: 5.6
+        description: Build and run to verify
+        command: go test ./api/cmd/services/ichor/tests/workflow/actionapi/... -v -run Test_ActionAPI
+        status: NOT_STARTED
+
+  # ─────────────────────────────────────────────────────
+  # PHASE 6 — TriggerProcessor + EvalExpr unit tests
+  # ─────────────────────────────────────────────────────
+  # Fill sparse business-layer unit tests: TriggerProcessor condition
+  # evaluation, cache invalidation, and EvalExpr error paths.
+  # ─────────────────────────────────────────────────────
+  - id: 6
+    name: TriggerProcessor and EvalExpr unit test gaps
+    status: NOT_STARTED
+    tasks:
+      - id: 6.1
+        description: Read business/sdk/workflow/trigger.go to understand evaluateRuleConditions and evaluateFieldCondition implementations
+        status: NOT_STARTED
+        files:
+          - business/sdk/workflow/trigger.go
+      - id: 6.2
+        description: Add TriggerProcessor condition evaluation unit tests (mixed and/or logic, all operators)
+        status: NOT_STARTED
+        files:
+          - business/sdk/workflow/trigger_test.go  # create if not exists
+        notes: >
+          TestTriggerProcessor_EvaluateConditions_MixedAndOr,
+          TestTriggerProcessor_EvaluateConditions_AllOperators (contains, starts_with, ends_with),
+          TestTriggerProcessor_Initialize_EmptyRuleSet
+      - id: 6.3
+        description: Add RegisterCacheInvalidation → RefreshRules round-trip test
+        status: NOT_STARTED
+        files:
+          - business/sdk/workflow/trigger_test.go
+      - id: 6.4
+        description: Read expr.go to understand EvalExpr error handling
+        status: NOT_STARTED
+        files:
+          - business/sdk/workflow/expr.go
+      - id: 6.5
+        description: Add EvalExpr error path tests (division by zero, unknown variable, malformed expression)
+        status: NOT_STARTED
+        files:
+          - business/sdk/workflow/expr_test.go
+      - id: 6.6
+        description: Build and run unit tests to verify
+        command: go test ./business/sdk/workflow/... -v -run TestTriggerProcessor
+        status: NOT_STARTED
+
+notes:
+  - Phase 1 is the fastest win — code is already written, just needs wiring.
+  - Phases 2-4 require Temporal container running (docker-compose or KIND).
+  - Phase 5 requires understanding actionpermissions seeding pattern first.
+  - Phase 6 is pure unit tests, no infrastructure needed.
+  - All phases are independent — can be executed in any order.
+  - Reference doc: docs/plans/workflow-testing-gaps/PLAN.md

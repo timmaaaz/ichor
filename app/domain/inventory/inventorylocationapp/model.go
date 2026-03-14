@@ -90,17 +90,17 @@ func ToAppInventoryLocations(bus []inventorylocationbus.InventoryLocation) []Inv
 }
 
 type NewInventoryLocation struct {
-	WarehouseID        string `json:"warehouse_id" validate:"omitempty,min=36,max=36"`
+	WarehouseID        string `json:"warehouse_id" validate:"required,min=36,max=36"`
 	ZoneID             string `json:"zone_id" validate:"required,min=36,max=36"`
 	Aisle              string `json:"aisle" validate:"required"`
 	Rack               string `json:"rack" validate:"required"`
 	Shelf              string `json:"shelf" validate:"required"`
 	Bin                string `json:"bin" validate:"required"`
 	LocationCode       string `json:"location_code" validate:"omitempty,max=100"`
-	IsPickLocation     string `json:"is_pick_location" validate:"omitempty"`
-	IsReserveLocation  string `json:"is_reserve_location" validate:"omitempty"`
-	MaxCapacity        string `json:"max_capacity" validate:"omitempty"`
-	CurrentUtilization string `json:"current_utilization" validate:"omitempty"`
+	IsPickLocation     string `json:"is_pick_location" validate:"required"`
+	IsReserveLocation  string `json:"is_reserve_location" validate:"required"`
+	MaxCapacity        string `json:"max_capacity" validate:"required"`
+	CurrentUtilization string `json:"current_utilization" validate:"required"`
 }
 
 func (app *NewInventoryLocation) Decode(data []byte) error {

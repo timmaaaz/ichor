@@ -206,7 +206,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		locationIDs[i] = il.LocationID
 	}
 
-	lotLocations, err := lotlocationbus.TestSeedLotLocations(ctx, 15, lotIDs, locationIDs, busDomain.LotLocation)
+	lotLocations, err := lotlocationbus.TestSeedLotLocations(ctx, 10, lotIDs, locationIDs, busDomain.LotLocation)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding lot locations : %w", err)
 	}

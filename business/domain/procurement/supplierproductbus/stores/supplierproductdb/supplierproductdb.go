@@ -190,7 +190,9 @@ func (s *Store) QueryByIDs(ctx context.Context, supplierProductIDs []uuid.UUID) 
 	FROM
 		procurement.supplier_products
 	WHERE
-	    id IN (:supplier_product_ids)`
+	    id IN (:supplier_product_ids)
+	ORDER BY
+	    product_id ASC`
 
 	var sp []supplierProduct
 	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &sp); err != nil {

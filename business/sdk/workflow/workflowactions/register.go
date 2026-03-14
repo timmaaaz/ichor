@@ -7,6 +7,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
@@ -51,6 +52,7 @@ type BusDependencies struct {
 	InventoryTransaction *inventorytransactionbus.Business
 	InventoryAdjustment  *inventoryadjustmentbus.Business
 	TransferOrder        *transferorderbus.Business
+	PutAwayTask          *putawaytaskbus.Business
 	Product              *productbus.Business
 	Workflow             *workflow.Business
 
@@ -141,6 +143,15 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 		registry.Register(inventory.NewApproveTransferOrderHandler(config.Log, config.Buses.TransferOrder))
 		registry.Register(inventory.NewRejectTransferOrderHandler(config.Log, config.Buses.TransferOrder))
 	}
+
+	if config.Buses.PutAwayTask != nil {
+		registry.Register(inventory.NewCreatePutAwayTaskHandler(
+			config.Log,
+			config.Buses.PutAwayTask,
+			config.Buses.SupplierProduct,
+			config.Buses.PurchaseOrder,
+		))
+	}
 }
 
 // RegisterProcurementActions registers procurement-domain action handlers.
@@ -181,6 +192,7 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 	// Communication actions that don't need queue or email client (nil = graceful degradation)
 	registry.Register(communication.NewSendEmailHandler(log, db, nil, ""))
 	registry.Register(communication.NewSendNotificationHandler(log, nil))
+	registry.Register(communication.NewCreateAlertHandler(log, nil, nil))
 
 	// Integration actions - no bus/DB/queue dependencies
 	registry.Register(integration.NewCallWebhookHandler(log))

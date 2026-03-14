@@ -241,12 +241,6 @@ func testConditionFieldNotFound(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
-	if err != nil {
-		t.Fatalf("baseline alert count: %v", err)
-	}
-	beforeCount := len(before)
-
 	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[2].Name, sd.Users[0].ID, map[string]any{
 		"status": "active",
 		"amount": 100,
@@ -259,12 +253,14 @@ func testConditionFieldNotFound(t *testing.T, sd ExecutionTestData) {
 	// Wait for workflow to complete gracefully (evaluate_condition with unknown field).
 	time.Sleep(3 * time.Second)
 
-	after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
+	// Filter alerts by this rule's ID to avoid counting alerts from other concurrent rule executions.
+	ruleID := rule.ID
+	ruleAlerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{SourceRuleID: &ruleID}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
 	if err != nil {
 		t.Fatalf("post-trigger alert count: %v", err)
 	}
-	if len(after) != beforeCount {
-		t.Errorf("expected no new alerts (graceful no-op), got %d new", len(after)-beforeCount)
+	if len(ruleAlerts) != 0 {
+		t.Errorf("expected no new alerts (graceful no-op), got %d new", len(ruleAlerts))
 	}
 	t.Log("SUCCESS: missing field condition handled gracefully — no new alerts, no panic")
 }
@@ -323,12 +319,6 @@ func testConditionTypeMismatch(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
-	if err != nil {
-		t.Fatalf("baseline alert count: %v", err)
-	}
-	beforeCount := len(before)
-
 	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[2].Name, sd.Users[0].ID, map[string]any{
 		"name": "This is a string, not a number",
 	})
@@ -338,12 +328,14 @@ func testConditionTypeMismatch(t *testing.T, sd ExecutionTestData) {
 
 	time.Sleep(3 * time.Second)
 
-	after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
+	// Filter alerts by this rule's ID to avoid counting alerts from other concurrent rule executions.
+	ruleID := rule.ID
+	ruleAlerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{SourceRuleID: &ruleID}, alertbus.DefaultOrderBy, page.MustParse("1", "200"))
 	if err != nil {
 		t.Fatalf("post-trigger alert count: %v", err)
 	}
-	if len(after) != beforeCount {
-		t.Errorf("expected no new alerts (graceful no-op), got %d new", len(after)-beforeCount)
+	if len(ruleAlerts) != 0 {
+		t.Errorf("expected no new alerts (graceful no-op), got %d new", len(ruleAlerts))
 	}
 	t.Log("SUCCESS: type mismatch handled gracefully — no new alerts, no panic")
 }
@@ -366,7 +358,7 @@ func testNoActionsDefined(t *testing.T, sd ExecutionTestData) {
 	}
 
 	// Create a rule with no actions and no edges
-	_, err := sd.WF.WorkflowBus.CreateRule(ctx, workflow.NewAutomationRule{
+	rule, err := sd.WF.WorkflowBus.CreateRule(ctx, workflow.NewAutomationRule{
 		Name:          "No Actions Test " + uuid.New().String()[:8],
 		Description:   "Tests rule with no actions",
 		EntityID:      sd.Entities[0].ID,
@@ -383,12 +375,6 @@ func testNoActionsDefined(t *testing.T, sd ExecutionTestData) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	before, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
-	if err != nil {
-		t.Fatalf("baseline alert query: %v", err)
-	}
-	beforeCount := len(before)
-
 	event := createTriggerEvent(sd.Entities[0].Name, sd.TriggerTypes[2].Name, sd.Users[0].ID, map[string]any{})
 	if err := sd.WF.WorkflowTrigger.OnEntityEvent(ctx, event); err != nil {
 		t.Fatalf("firing trigger: %v", err)
@@ -396,12 +382,14 @@ func testNoActionsDefined(t *testing.T, sd ExecutionTestData) {
 
 	time.Sleep(2 * time.Second)
 
-	after, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
+	// Filter alerts by this rule's ID to avoid counting alerts from other concurrent rule executions.
+	ruleID := rule.ID
+	ruleAlerts, err := sd.WF.AlertBus.Query(ctx, alertbus.QueryFilter{SourceRuleID: &ruleID}, alertbus.DefaultOrderBy, page.MustParse("1", "100"))
 	if err != nil {
 		t.Fatalf("post-trigger alert query: %v", err)
 	}
-	if len(after) != beforeCount {
-		t.Errorf("expected no new alerts for rule with no actions, got %d new", len(after)-beforeCount)
+	if len(ruleAlerts) != 0 {
+		t.Errorf("expected no new alerts for rule with no actions, got %d new", len(ruleAlerts))
 	}
 	t.Log("SUCCESS: rule with no actions handled gracefully")
 }

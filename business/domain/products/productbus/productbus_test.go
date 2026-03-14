@@ -162,33 +162,49 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
-	idx := rand.Intn(200)
-	product := sd.Products[idx%len(sd.Products)]
+	// Use a fixed index well outside the seeded range (rand.Intn(10000)+1..20)
+	// to avoid UpcCode unique constraint violations.
+	const newIdx = 99999
+	product := sd.Products[0]
+
+	newProduct := productbus.NewProduct{
+		BrandID:              product.BrandID,
+		ProductCategoryID:    product.ProductCategoryID,
+		Name:                 fmt.Sprintf("Product%d", newIdx),
+		Description:          fmt.Sprintf("Description%d", newIdx),
+		SKU:                  fmt.Sprintf("SKU%d", newIdx),
+		ModelNumber:          fmt.Sprintf("ModelNumber%d", newIdx),
+		UpcCode:              fmt.Sprintf("UpcCode%d", newIdx),
+		Status:               fmt.Sprintf("Status%d", newIdx),
+		IsActive:             newIdx%2 != 0,
+		IsPerishable:         false,
+		HandlingInstructions: fmt.Sprintf("Handling instructions %d", newIdx),
+		UnitsPerCase:         newIdx * 5,
+	}
 
 	return []unitest.Table{
 		{
-			Name:    "Create",
-			ExpResp: product,
+			Name: "Create",
+			ExpResp: productbus.Product{
+				BrandID:              product.BrandID,
+				ProductCategoryID:    product.ProductCategoryID,
+				Name:                 newProduct.Name,
+				Description:         newProduct.Description,
+				SKU:                  newProduct.SKU,
+				ModelNumber:          newProduct.ModelNumber,
+				UpcCode:              newProduct.UpcCode,
+				Status:               newProduct.Status,
+				IsActive:             newProduct.IsActive,
+				IsPerishable:         newProduct.IsPerishable,
+				HandlingInstructions: newProduct.HandlingInstructions,
+				UnitsPerCase:         newProduct.UnitsPerCase,
+				TrackingType:         "none",
+			},
 			ExcFunc: func(ctx context.Context) any {
-				newProduct := productbus.NewProduct{
-					BrandID:              product.BrandID,
-					ProductCategoryID:    product.ProductCategoryID,
-					Name:                 product.Name,
-					Description:          product.Description,
-					SKU:                  product.SKU,
-					ModelNumber:          product.ModelNumber,
-					UpcCode:              product.UpcCode,
-					Status:               product.Status,
-					IsActive:             product.IsActive,
-					IsPerishable:         product.IsPerishable,
-					HandlingInstructions: product.HandlingInstructions,
-					UnitsPerCase:         product.UnitsPerCase,
-				}
 				p, err := busDomain.Product.Create(ctx, newProduct)
 				if err != nil {
 					return err
 				}
-
 				return p
 			},
 			CmpFunc: func(got, exp any) string {
@@ -219,19 +235,30 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	idx++
 	updateProduct := sd.Products[idx%len(sd.Products)]
 
+	// Generate fresh unique values for unique-constrained fields to avoid
+	// colliding with updateProduct's row which is still in the DB.
+	newSKU := fmt.Sprintf("UpdatedSKU%d", idx)
+	newUpcCode := fmt.Sprintf("UpdatedUpc%d", idx)
+	newModelNumber := fmt.Sprintf("UpdatedModel%d", idx)
+
+	expected := updateProduct
+	expected.SKU = newSKU
+	expected.UpcCode = newUpcCode
+	expected.ModelNumber = newModelNumber
+
 	return []unitest.Table{
 		{
 			Name:    "Update",
-			ExpResp: updateProduct,
+			ExpResp: expected,
 			ExcFunc: func(ctx context.Context) any {
 				up := productbus.UpdateProduct{
 					BrandID:              &updateProduct.BrandID,
 					ProductCategoryID:    &updateProduct.ProductCategoryID,
 					Name:                 &updateProduct.Name,
 					Description:          &updateProduct.Description,
-					SKU:                  &updateProduct.SKU,
-					ModelNumber:          &updateProduct.ModelNumber,
-					UpcCode:              &updateProduct.UpcCode,
+					SKU:                  &newSKU,
+					ModelNumber:          &newModelNumber,
+					UpcCode:              &newUpcCode,
 					Status:               &updateProduct.Status,
 					IsActive:             &updateProduct.IsActive,
 					IsPerishable:         &updateProduct.IsPerishable,
