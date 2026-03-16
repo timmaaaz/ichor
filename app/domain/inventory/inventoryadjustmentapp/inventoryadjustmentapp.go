@@ -2,36 +2,61 @@ package inventoryadjustmentapp
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 type App struct {
 	inventoryadjustmentbus *inventoryadjustmentbus.Business
+	invTransactionBus      *inventorytransactionbus.Business
+	invItemBus             *inventoryitembus.Business
+	db                     *sqlx.DB
 	auth                   *auth.Auth
 }
 
 // NewApp constructs an inventory adjustment app API for use.
-func NewApp(inventoryadjustmentbus *inventoryadjustmentbus.Business) *App {
+func NewApp(
+	inventoryadjustmentbus *inventoryadjustmentbus.Business,
+	invTransactionBus *inventorytransactionbus.Business,
+	invItemBus *inventoryitembus.Business,
+	db *sqlx.DB,
+) *App {
 	return &App{
 		inventoryadjustmentbus: inventoryadjustmentbus,
+		invTransactionBus:      invTransactionBus,
+		invItemBus:             invItemBus,
+		db:                     db,
 	}
 }
 
 // NewAppWithAuth constructs an inventory adjustment app API for use with auth support.
-func NewAppWithAuth(inventoryadjustmentbus *inventoryadjustmentbus.Business, ath *auth.Auth) *App {
+func NewAppWithAuth(
+	inventoryadjustmentbus *inventoryadjustmentbus.Business,
+	invTransactionBus *inventorytransactionbus.Business,
+	invItemBus *inventoryitembus.Business,
+	db *sqlx.DB,
+	ath *auth.Auth,
+) *App {
 	return &App{
-		auth:                   ath,
 		inventoryadjustmentbus: inventoryadjustmentbus,
+		invTransactionBus:      invTransactionBus,
+		invItemBus:             invItemBus,
+		db:                     db,
+		auth:                   ath,
 	}
 }
 
@@ -137,6 +162,11 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Inventory
 	return query.NewResult(ToAppInventoryAdjustments(results), total, page), nil
 }
 
+// Approve marks an adjustment as approved and atomically applies the quantity
+// change to inventory. This is a 3-way atomic write:
+//  1. Update adjustment status to approved
+//  2. Create an ADJUSTMENT inventory transaction (ledger entry)
+//  3. Adjust inventory_item quantity at the adjustment's location
 func (a *App) Approve(ctx context.Context, id uuid.UUID) (InventoryAdjustment, error) {
 	userID, err := mid.GetUserID(ctx)
 	if err != nil {
@@ -151,15 +181,66 @@ func (a *App) Approve(ctx context.Context, id uuid.UUID) (InventoryAdjustment, e
 		return InventoryAdjustment{}, fmt.Errorf("approve [querybyid]: %w", err)
 	}
 
-	ia, err = a.inventoryadjustmentbus.Approve(ctx, ia, userID, "")
-	if err != nil {
-		if errors.Is(err, inventoryadjustmentbus.ErrInvalidApprovalStatus) {
-			return InventoryAdjustment{}, errs.New(errs.InvalidArgument, err)
-		}
-		return InventoryAdjustment{}, fmt.Errorf("approve: %w", err)
+	if ia.ApprovalStatus != inventoryadjustmentbus.ApprovalStatusPending {
+		return InventoryAdjustment{}, errs.New(errs.FailedPrecondition, inventoryadjustmentbus.ErrInvalidApprovalStatus)
 	}
 
-	return ToAppInventoryAdjustment(ia), nil
+	// --- Begin atomic 3-way write ---
+
+	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 1. Update adjustment status to approved.
+	adjBusTx, err := a.inventoryadjustmentbus.NewWithTx(tx)
+	if err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("new adjustment tx: %w", err)
+	}
+
+	updatedIA, err := adjBusTx.Approve(ctx, ia, userID, "")
+	if err != nil {
+		if errors.Is(err, inventoryadjustmentbus.ErrInvalidApprovalStatus) {
+			return InventoryAdjustment{}, errs.New(errs.FailedPrecondition, err)
+		}
+		return InventoryAdjustment{}, fmt.Errorf("approve adjustment: %w", err)
+	}
+
+	// 2. Create ADJUSTMENT inventory transaction (ledger entry).
+	txBusTx, err := a.invTransactionBus.NewWithTx(tx)
+	if err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("new invtransaction tx: %w", err)
+	}
+
+	_, err = txBusTx.Create(ctx, inventorytransactionbus.NewInventoryTransaction{
+		ProductID:       ia.ProductID,
+		LocationID:      ia.LocationID,
+		UserID:          userID,
+		Quantity:        ia.QuantityChange,
+		TransactionType: "ADJUSTMENT",
+		ReferenceNumber: ia.InventoryAdjustmentID.String(),
+		TransactionDate: time.Now(),
+	})
+	if err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("create inventory transaction: %w", err)
+	}
+
+	// 3. Adjust inventory_item quantity at the adjustment location.
+	itemBusTx, err := a.invItemBus.NewWithTx(tx)
+	if err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("new invitem tx: %w", err)
+	}
+
+	if err := itemBusTx.AdjustQuantity(ctx, ia.ProductID, ia.LocationID, ia.QuantityChange); err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("adjust inventory quantity: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return InventoryAdjustment{}, fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return ToAppInventoryAdjustment(updatedIA), nil
 }
 
 func (a *App) Reject(ctx context.Context, id uuid.UUID) (InventoryAdjustment, error) {
