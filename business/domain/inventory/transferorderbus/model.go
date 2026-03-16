@@ -21,6 +21,10 @@ type TransferOrder struct {
 	RejectedByID    *uuid.UUID `json:"rejected_by_id"`
 	ApprovalReason  string     `json:"approval_reason"`
 	RejectionReason string     `json:"rejection_reason"`
+	ClaimedByID     *uuid.UUID `json:"claimed_by_id"`
+	ClaimedAt       *time.Time `json:"claimed_at"`
+	CompletedByID   *uuid.UUID `json:"completed_by_id"`
+	CompletedAt     *time.Time `json:"completed_at"`
 	Quantity        int        `json:"quantity"`
 	Status          string     `json:"status"`
 	TransferDate    time.Time  `json:"transfer_date"`
@@ -48,6 +52,10 @@ type UpdateTransferOrder struct {
 	RejectedByID    *uuid.UUID `json:"rejected_by_id,omitempty"`
 	ApprovalReason  *string    `json:"approval_reason,omitempty"`
 	RejectionReason *string    `json:"rejection_reason,omitempty"`
+	ClaimedByID     *uuid.UUID `json:"claimed_by_id,omitempty"`
+	ClaimedAt       *time.Time `json:"claimed_at,omitempty"`
+	CompletedByID   *uuid.UUID `json:"completed_by_id,omitempty"`
+	CompletedAt     *time.Time `json:"completed_at,omitempty"`
 	Quantity        *int       `json:"quantity,omitempty"`
 	Status          *string    `json:"status,omitempty"`
 	TransferDate    *time.Time `json:"transfer_date,omitempty"`

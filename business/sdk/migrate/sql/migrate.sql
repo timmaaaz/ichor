@@ -2268,3 +2268,10 @@ ALTER TABLE inventory.inventory_adjustments ADD CONSTRAINT inventory_adjustments
 ALTER TABLE inventory.quality_inspections
     ADD CONSTRAINT quality_inspections_status_check
     CHECK (status IN ('pending', 'passed', 'failed'));
+
+-- Version: 2.17
+-- Description: Add claim/complete tracking columns to transfer_orders.
+ALTER TABLE inventory.transfer_orders ADD COLUMN claimed_by UUID NULL REFERENCES core.users(id);
+ALTER TABLE inventory.transfer_orders ADD COLUMN claimed_at TIMESTAMP NULL;
+ALTER TABLE inventory.transfer_orders ADD COLUMN completed_by UUID NULL REFERENCES core.users(id);
+ALTER TABLE inventory.transfer_orders ADD COLUMN completed_at TIMESTAMP NULL;

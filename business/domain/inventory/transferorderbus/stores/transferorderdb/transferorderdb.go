@@ -44,10 +44,12 @@ func (s *Store) Create(ctx context.Context, transferOrder transferorderbus.Trans
 	INSERT INTO inventory.transfer_orders (
 	    id, product_id, from_location_id, to_location_id, requested_by,
 		approved_by, rejected_by_id, approval_reason, rejection_reason,
+		claimed_by, claimed_at, completed_by, completed_at,
 		quantity, status, transfer_date, created_date, updated_date
     ) VALUES (
         :id, :product_id, :from_location_id, :to_location_id, :requested_by,
         :approved_by, :rejected_by_id, :approval_reason, :rejection_reason,
+        :claimed_by, :claimed_at, :completed_by, :completed_at,
         :quantity, :status, :transfer_date, :created_date, :updated_date
     )
 	`
@@ -79,6 +81,10 @@ func (s *Store) Update(ctx context.Context, transferOrder transferorderbus.Trans
 		rejected_by_id = :rejected_by_id,
 		approval_reason = :approval_reason,
 		rejection_reason = :rejection_reason,
+		claimed_by = :claimed_by,
+		claimed_at = :claimed_at,
+		completed_by = :completed_by,
+		completed_at = :completed_at,
 		quantity = :quantity,
         status = :status,
 		transfer_date = :transfer_date,
@@ -123,6 +129,7 @@ func (s *Store) Query(ctx context.Context, filter transferorderbus.QueryFilter, 
 	SELECT
 		id, product_id, from_location_id, to_location_id, requested_by, approved_by,
 		rejected_by_id, approval_reason, rejection_reason,
+		claimed_by, claimed_at, completed_by, completed_at,
 		quantity, status, transfer_date, created_date, updated_date
     FROM
 	    inventory.transfer_orders
@@ -178,6 +185,7 @@ func (s *Store) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (trans
     SELECT
         id, product_id, from_location_id, to_location_id, requested_by, approved_by,
         rejected_by_id, approval_reason, rejection_reason,
+        claimed_by, claimed_at, completed_by, completed_at,
         quantity, status, transfer_date, created_date, updated_date
     FROM
         inventory.transfer_orders

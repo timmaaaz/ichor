@@ -1,6 +1,7 @@
 package transferorderdb
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,10 @@ type transferOrder struct {
 	RejectedByID    uuid.NullUUID `db:"rejected_by_id"`
 	ApprovalReason  string        `db:"approval_reason"`
 	RejectionReason string        `db:"rejection_reason"`
+	ClaimedByID     uuid.NullUUID `db:"claimed_by"`
+	ClaimedAt       sql.NullTime  `db:"claimed_at"`
+	CompletedByID   uuid.NullUUID `db:"completed_by"`
+	CompletedAt     sql.NullTime  `db:"completed_at"`
 	Quantity        int           `db:"quantity"`
 	Status          string        `db:"status"`
 	TransferDate    time.Time     `db:"transfer_date"`
@@ -46,6 +51,20 @@ func toBusTransferOrder(db transferOrder) transferorderbus.TransferOrder {
 
 	if db.RejectedByID.Valid {
 		to.RejectedByID = &db.RejectedByID.UUID
+	}
+	if db.ClaimedByID.Valid {
+		to.ClaimedByID = &db.ClaimedByID.UUID
+	}
+	if db.ClaimedAt.Valid {
+		t := db.ClaimedAt.Time
+		to.ClaimedAt = &t
+	}
+	if db.CompletedByID.Valid {
+		to.CompletedByID = &db.CompletedByID.UUID
+	}
+	if db.CompletedAt.Valid {
+		t := db.CompletedAt.Time
+		to.CompletedAt = &t
 	}
 
 	return to
@@ -81,6 +100,18 @@ func toDBTransferOrder(bus transferorderbus.TransferOrder) transferOrder {
 
 	if bus.RejectedByID != nil {
 		db.RejectedByID = uuid.NullUUID{UUID: *bus.RejectedByID, Valid: true}
+	}
+	if bus.ClaimedByID != nil {
+		db.ClaimedByID = uuid.NullUUID{UUID: *bus.ClaimedByID, Valid: true}
+	}
+	if bus.ClaimedAt != nil {
+		db.ClaimedAt = sql.NullTime{Time: *bus.ClaimedAt, Valid: true}
+	}
+	if bus.CompletedByID != nil {
+		db.CompletedByID = uuid.NullUUID{UUID: *bus.CompletedByID, Valid: true}
+	}
+	if bus.CompletedAt != nil {
+		db.CompletedAt = sql.NullTime{Time: *bus.CompletedAt, Valid: true}
 	}
 
 	return db

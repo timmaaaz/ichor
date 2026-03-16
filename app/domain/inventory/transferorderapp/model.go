@@ -40,6 +40,10 @@ type TransferOrder struct {
 	RejectedByID    string `json:"rejected_by_id"`
 	ApprovalReason  string `json:"approval_reason"`
 	RejectionReason string `json:"rejection_reason"`
+	ClaimedByID     string `json:"claimed_by_id"`
+	ClaimedAt       string `json:"claimed_at"`
+	CompletedByID   string `json:"completed_by_id"`
+	CompletedAt     string `json:"completed_at"`
 	Quantity        string `json:"quantity"`
 	Status          string `json:"status"`
 	TransferDate    string `json:"transfer_date"`
@@ -63,6 +67,26 @@ func ToAppTransferOrder(bus transferorderbus.TransferOrder) TransferOrder {
 		rejectedByID = bus.RejectedByID.String()
 	}
 
+	claimedByID := ""
+	if bus.ClaimedByID != nil {
+		claimedByID = bus.ClaimedByID.String()
+	}
+
+	claimedAt := ""
+	if bus.ClaimedAt != nil {
+		claimedAt = bus.ClaimedAt.Format(timeutil.FORMAT)
+	}
+
+	completedByID := ""
+	if bus.CompletedByID != nil {
+		completedByID = bus.CompletedByID.String()
+	}
+
+	completedAt := ""
+	if bus.CompletedAt != nil {
+		completedAt = bus.CompletedAt.Format(timeutil.FORMAT)
+	}
+
 	return TransferOrder{
 		TransferID:      bus.TransferID.String(),
 		ProductID:       bus.ProductID.String(),
@@ -73,6 +97,10 @@ func ToAppTransferOrder(bus transferorderbus.TransferOrder) TransferOrder {
 		RejectedByID:    rejectedByID,
 		ApprovalReason:  bus.ApprovalReason,
 		RejectionReason: bus.RejectionReason,
+		ClaimedByID:     claimedByID,
+		ClaimedAt:       claimedAt,
+		CompletedByID:   completedByID,
+		CompletedAt:     completedAt,
 		Quantity:        fmt.Sprintf("%d", bus.Quantity),
 		Status:          bus.Status,
 		TransferDate:    bus.TransferDate.Format(timeutil.FORMAT),
@@ -96,7 +124,7 @@ type NewTransferOrder struct {
 	RequestedByID  string  `json:"requested_by" validate:"required,min=36,max=36"`
 	ApprovedByID   *string `json:"approved_by" validate:"omitempty,min=36,max=36"`
 	Quantity       string  `json:"quantity" validate:"required"`
-	Status         string  `json:"status" validate:"required,oneof=pending approved in_progress completed cancelled"`
+	Status         string  `json:"status" validate:"required,oneof=pending approved rejected in_transit completed"`
 	TransferDate   string  `json:"transfer_date" validate:"required"`
 }
 
@@ -171,7 +199,7 @@ type UpdateTransferOrder struct {
 	RequestedByID  *string `json:"requested_by" validate:"omitempty,min=36,max=36"`
 	ApprovedByID   *string `json:"approved_by" validate:"omitempty,min=36,max=36"`
 	Quantity       *string `json:"quantity" validate:"omitempty"`
-	Status         *string `json:"status" validate:"omitempty,oneof=pending approved in_progress completed cancelled"`
+	Status         *string `json:"status" validate:"omitempty,oneof=pending approved rejected in_transit completed"`
 	TransferDate   *string `json:"transfer_date" validate:"omitempty"`
 }
 
