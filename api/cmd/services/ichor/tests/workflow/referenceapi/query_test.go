@@ -22,6 +22,7 @@ var expectedActionTypes = []string{
 	"create_alert",
 	"create_entity",
 	"create_purchase_order",
+	"create_put_away_task",
 	"delay",
 	"evaluate_condition",
 	"log_audit_entry",
@@ -250,7 +251,7 @@ func queryActionTypes200(sd ReferenceSeedData) []apitest.Table {
 					return "error getting action types response"
 				}
 
-				// Should have all 27 predefined action types
+				// Should have all 28 predefined action types
 				expectedTypes := make(map[string]bool)
 				for _, t := range expectedActionTypes {
 					expectedTypes[t] = true

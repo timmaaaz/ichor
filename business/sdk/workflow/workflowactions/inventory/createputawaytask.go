@@ -120,9 +120,33 @@ func (h *CreatePutAwayTaskHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
+// GetOutputPorts implements workflow.OutputPortProvider.
+func (h *CreatePutAwayTaskHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "created", Description: "Put-away task created successfully", IsDefault: true},
+		{Name: "no_location", Description: "PO delivery strategy but PO has no delivery_location_id"},
+		{Name: "product_not_found", Description: "Supplier product lookup failed"},
+		{Name: "failure", Description: "Unexpected error during task creation"},
+	}
+}
+
+// GetEntityModifications implements workflow.EntityModifier.
+func (h *CreatePutAwayTaskHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
+	return []workflow.EntityModification{
+		{
+			EntityName: "inventory.put_away_tasks",
+			EventType:  "on_create",
+		},
+	}
+}
+
 // Execute creates a put-away task based on the config and execution context.
 // Must return map[string]any with an "output" key for edge routing.
 func (h *CreatePutAwayTaskHandler) Execute(ctx context.Context, config json.RawMessage, execCtx workflow.ActionExecutionContext) (any, error) {
+	if h.putAwayTaskBus == nil {
+		return map[string]any{"output": "failure", "error": "put-away task bus not configured"}, nil
+	}
+
 	var cfg CreatePutAwayTaskConfig
 	if err := json.Unmarshal(config, &cfg); err != nil {
 		return map[string]any{"output": "failure", "error": err.Error()}, nil
@@ -152,6 +176,9 @@ func (h *CreatePutAwayTaskHandler) Execute(ctx context.Context, config json.RawM
 	// Step 2: Resolve product_id.
 	var productID uuid.UUID
 	if cfg.SourceFromPO {
+		if h.supplierProductBus == nil {
+			return map[string]any{"output": "failure", "error": "supplier product bus not configured"}, nil
+		}
 		spIDStr, _ := execCtx.RawData["supplier_product_id"].(string)
 		spID, err := uuid.Parse(spIDStr)
 		if err != nil {
@@ -171,6 +198,9 @@ func (h *CreatePutAwayTaskHandler) Execute(ctx context.Context, config json.RawM
 	// Step 3: Resolve location_id.
 	var locationID uuid.UUID
 	if cfg.LocationStrategy == "po_delivery" {
+		if h.purchaseOrderBus == nil {
+			return map[string]any{"output": "failure", "error": "purchase order bus not configured"}, nil
+		}
 		poIDStr, _ := execCtx.RawData["purchase_order_id"].(string)
 		poID, err := uuid.Parse(poIDStr)
 		if err != nil {

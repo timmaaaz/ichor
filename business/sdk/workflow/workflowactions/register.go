@@ -172,7 +172,8 @@ func RegisterProcurementActions(registry *workflow.ActionRegistry, config Action
 
 // RegisterCoreActions registers action handlers that don't require RabbitMQ or heavy dependencies.
 // This should be called even in test environments to enable cascade visualization.
-// These handlers implement EntityModifier for cascade detection.
+// Entity-modifying handlers implement EntityModifier for cascade detection; communication
+// and control flow handlers that don't modify entities are included for completeness.
 func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, db *sqlx.DB) {
 	// Control flow actions - only need log
 	registry.Register(control.NewEvaluateConditionHandler(log))
@@ -193,6 +194,9 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 	registry.Register(communication.NewSendEmailHandler(log, db, nil, ""))
 	registry.Register(communication.NewSendNotificationHandler(log, nil))
 	registry.Register(communication.NewCreateAlertHandler(log, nil, nil))
+
+	// Inventory actions - nil buses for core path (cascade detection via EntityModifier)
+	registry.Register(inventory.NewCreatePutAwayTaskHandler(log, nil, nil, nil))
 
 	// Integration actions - no bus/DB/queue dependencies
 	registry.Register(integration.NewCallWebhookHandler(log))

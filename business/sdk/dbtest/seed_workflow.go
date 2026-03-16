@@ -297,7 +297,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 			log.Error(ctx, "Failed to create create_purchase_order template", "error", err)
 		}
 
-		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+		createPutAwayTaskTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
 			Name:          "Create Put-Away Task",
 			Description:   "Creates a put-away task directing floor workers to shelve received goods",
 			ActionType:    "create_put_away_task",
@@ -1325,52 +1325,53 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 				}
 			}
 		}
-	}
 
-	// --- Default Workflow 9: Auto-Create Put-Away on Receive ---
-	poLineItemsEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "purchase_order_line_items")
-	if err != nil {
-		log.Error(ctx, "Failed to query purchase_order_line_items entity for put-away rule", "error", err)
-	}
-	putAwayOnUpdateTrigger, err := busDomain.Workflow.QueryTriggerTypeByName(ctx, "on_update")
-	if err != nil {
-		log.Error(ctx, "Failed to query on_update trigger type for put-away rule", "error", err)
-	}
-	if poLineItemsEntity.ID != uuid.Nil && putAwayOnUpdateTrigger.ID != uuid.Nil {
-		putAwayRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
-			Name:          "Auto-Create Put-Away on Receive",
-			Description:   "When a PO line item receives quantity, create a put-away task at the PO's delivery location",
-			EntityID:      poLineItemsEntity.ID,
-			EntityTypeID:  wfEntityType.ID,
-			TriggerTypeID: putAwayOnUpdateTrigger.ID,
-			IsActive:      true,
-			IsDefault:     true,
-			CreatedBy:     adminID,
-		})
+		// --- Default Workflow 9: Auto-Create Put-Away on Receive ---
+		poLineItemsEntity, err := busDomain.Workflow.QueryEntityByName(ctx, "purchase_order_line_items")
 		if err != nil {
-			log.Error(ctx, "Failed to create Auto-Create Put-Away rule", "error", err)
-		} else {
-			putAwayAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
-				AutomationRuleID: putAwayRule.ID,
-				Name:             "Create Put-Away Task from PO Receive",
-				Description:      "Creates a put-away task when a PO line item quantity_received increases",
-				ActionConfig:     json.RawMessage(`{"source_from_po":true,"location_strategy":"po_delivery","reference_number":"PO-RCV-{{purchase_order_id}}"}`),
-				IsActive:         true,
+			log.Error(ctx, "Failed to query purchase_order_line_items entity for put-away rule", "error", err)
+		}
+		putAwayOnUpdateTrigger, err := busDomain.Workflow.QueryTriggerTypeByName(ctx, "on_update")
+		if err != nil {
+			log.Error(ctx, "Failed to query on_update trigger type for put-away rule", "error", err)
+		}
+		if poLineItemsEntity.ID != uuid.Nil && putAwayOnUpdateTrigger.ID != uuid.Nil {
+			putAwayRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
+				Name:          "Auto-Create Put-Away on Receive",
+				Description:   "When a PO line item receives quantity, create a put-away task at the PO's delivery location",
+				EntityID:      poLineItemsEntity.ID,
+				EntityTypeID:  wfEntityType.ID,
+				TriggerTypeID: putAwayOnUpdateTrigger.ID,
+				IsActive:      true,
+				IsDefault:     true,
+				CreatedBy:     adminID,
 			})
 			if err != nil {
-				log.Error(ctx, "Failed to create put-away action", "error", err)
+				log.Error(ctx, "Failed to create Auto-Create Put-Away rule", "error", err)
 			} else {
-				_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
-					RuleID:         putAwayRule.ID,
-					SourceActionID: nil,
-					TargetActionID: putAwayAction.ID,
-					EdgeType:       "start",
-					EdgeOrder:      0,
+				putAwayAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: putAwayRule.ID,
+					Name:             "Create Put-Away Task from PO Receive",
+					Description:      "Creates a put-away task when a PO line item quantity_received increases",
+					ActionConfig:     json.RawMessage(`{"source_from_po":true,"location_strategy":"po_delivery","reference_number":"PO-RCV-{{purchase_order_id}}"}`),
+					IsActive:         true,
+					TemplateID:       &createPutAwayTaskTemplate.ID,
 				})
 				if err != nil {
-					log.Error(ctx, "Failed to create edge for put-away action", "error", err)
+					log.Error(ctx, "Failed to create put-away action", "error", err)
+				} else {
+					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+						RuleID:         putAwayRule.ID,
+						SourceActionID: nil,
+						TargetActionID: putAwayAction.ID,
+						EdgeType:       "start",
+						EdgeOrder:      0,
+					})
+					if err != nil {
+						log.Error(ctx, "Failed to create edge for put-away action", "error", err)
+					}
+					log.Info(ctx, "Created 'Auto-Create Put-Away on Receive' rule")
 				}
-				log.Info(ctx, "Created 'Auto-Create Put-Away on Receive' rule")
 			}
 		}
 	}
