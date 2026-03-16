@@ -2,6 +2,7 @@ package transferorderbus_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -39,6 +40,9 @@ func Test_TransferOrders(t *testing.T) {
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
+	unitest.Run(t, approve(db.BusDomain, sd), "approve")
+	unitest.Run(t, claim(db.BusDomain, sd), "claim")
+	unitest.Run(t, execute(db.BusDomain, sd), "execute")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
@@ -313,6 +317,142 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			return cmp.Diff(gotResp, expResp)
 		},
 	}}
+}
+
+func approve(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	approverID := sd.Admins[0].ID
+	return []unitest.Table{
+		{
+			Name:    "approve-pending-succeeds",
+			ExpResp: transferorderbus.StatusApproved,
+			ExcFunc: func(ctx context.Context) any {
+				// Use a transfer order that's still in pending state.
+				to := sd.TransferOrders[1]
+				approved, err := busDomain.TransferOrder.Approve(ctx, to, approverID, "approved for transfer")
+				if err != nil {
+					return fmt.Errorf("approving transfer order: %w", err)
+				}
+				return approved.Status
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "approve-approved-fails",
+			ExpResp: transferorderbus.ErrInvalidTransferStatus,
+			ExcFunc: func(ctx context.Context) any {
+				// Re-query to get the approved order from previous test.
+				to, err := busDomain.TransferOrder.QueryByID(ctx, sd.TransferOrders[1].TransferID)
+				if err != nil {
+					return fmt.Errorf("query: %w", err)
+				}
+				_, err = busDomain.TransferOrder.Approve(ctx, to, approverID, "double approve")
+				return err
+			},
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error"
+				}
+				expErr := exp.(error)
+				if !errors.Is(gotErr, expErr) {
+					return fmt.Sprintf("got %v, exp %v", gotErr, expErr)
+				}
+				return ""
+			},
+		},
+	}
+}
+
+func claim(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	claimerID := sd.Admins[0].ID
+	return []unitest.Table{
+		{
+			Name:    "claim-pending-fails",
+			ExpResp: transferorderbus.ErrInvalidTransferStatus,
+			ExcFunc: func(ctx context.Context) any {
+				to := sd.TransferOrders[2]
+				_, err := busDomain.TransferOrder.Claim(ctx, to, claimerID)
+				return err
+			},
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error"
+				}
+				expErr := exp.(error)
+				if !errors.Is(gotErr, expErr) {
+					return fmt.Sprintf("got %v, exp %v", gotErr, expErr)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "claim-approved-succeeds",
+			ExpResp: transferorderbus.StatusInTransit,
+			ExcFunc: func(ctx context.Context) any {
+				// Re-query order 1 which is now approved from the approve test.
+				to, err := busDomain.TransferOrder.QueryByID(ctx, sd.TransferOrders[1].TransferID)
+				if err != nil {
+					return fmt.Errorf("query: %w", err)
+				}
+				claimed, err := busDomain.TransferOrder.Claim(ctx, to, claimerID)
+				if err != nil {
+					return fmt.Errorf("claiming transfer order: %w", err)
+				}
+				return claimed.Status
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+}
+
+func execute(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	executorID := sd.Admins[0].ID
+	return []unitest.Table{
+		{
+			Name:    "execute-pending-fails",
+			ExpResp: transferorderbus.ErrInvalidTransferStatus,
+			ExcFunc: func(ctx context.Context) any {
+				to := sd.TransferOrders[3]
+				_, err := busDomain.TransferOrder.Execute(ctx, to, executorID)
+				return err
+			},
+			CmpFunc: func(got, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return "expected error"
+				}
+				expErr := exp.(error)
+				if !errors.Is(gotErr, expErr) {
+					return fmt.Sprintf("got %v, exp %v", gotErr, expErr)
+				}
+				return ""
+			},
+		},
+		{
+			Name:    "execute-in-transit-succeeds",
+			ExpResp: transferorderbus.StatusCompleted,
+			ExcFunc: func(ctx context.Context) any {
+				// Re-query order 1 which is now in_transit from the claim test.
+				to, err := busDomain.TransferOrder.QueryByID(ctx, sd.TransferOrders[1].TransferID)
+				if err != nil {
+					return fmt.Errorf("query: %w", err)
+				}
+				completed, err := busDomain.TransferOrder.Execute(ctx, to, executorID)
+				if err != nil {
+					return fmt.Errorf("executing transfer order: %w", err)
+				}
+				return completed.Status
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
 }
 
 func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {

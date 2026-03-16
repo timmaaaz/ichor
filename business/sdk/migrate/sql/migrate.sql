@@ -2258,7 +2258,7 @@ ALTER TABLE inventory.zones ADD COLUMN IF NOT EXISTS stage TEXT NULL;
 -- Description: Add unique constraint on upc_code in products.products table.
 ALTER TABLE products.products ADD CONSTRAINT products_upc_code_unique UNIQUE (upc_code);
 
--- Version: 2.17
+-- Version: 2.15
 -- Description: Add claim/complete tracking columns to transfer_orders.
 ALTER TABLE inventory.transfer_orders ADD COLUMN claimed_by UUID NULL REFERENCES core.users(id);
 ALTER TABLE inventory.transfer_orders ADD COLUMN claimed_at TIMESTAMP NULL;

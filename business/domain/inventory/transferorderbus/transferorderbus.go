@@ -224,8 +224,8 @@ func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uui
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.approve")
 	defer span.End()
 
-	if to.Status == StatusApproved || to.Status == StatusRejected {
-		return TransferOrder{}, fmt.Errorf("approve: %w", ErrInvalidTransferStatus)
+	if to.Status != StatusPending {
+		return TransferOrder{}, fmt.Errorf("approve: %w: must be pending, got %s", ErrInvalidTransferStatus, to.Status)
 	}
 
 	before := to
@@ -309,8 +309,8 @@ func (b *Business) Reject(ctx context.Context, to TransferOrder, rejectedBy uuid
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.reject")
 	defer span.End()
 
-	if to.Status == StatusApproved || to.Status == StatusRejected {
-		return TransferOrder{}, fmt.Errorf("reject: %w", ErrInvalidTransferStatus)
+	if to.Status != StatusPending {
+		return TransferOrder{}, fmt.Errorf("reject: %w: must be pending, got %s", ErrInvalidTransferStatus, to.Status)
 	}
 
 	before := to

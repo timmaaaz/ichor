@@ -256,11 +256,6 @@ func (a *App) Execute(ctx context.Context, id uuid.UUID) (TransferOrder, error) 
 		return TransferOrder{}, fmt.Errorf("execute [querybyid]: %w", err)
 	}
 
-	if to.Status != transferorderbus.StatusInTransit {
-		return TransferOrder{}, errs.Newf(errs.FailedPrecondition,
-			"transfer must be in_transit, got %s", to.Status)
-	}
-
 	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return TransferOrder{}, fmt.Errorf("begin transaction: %w", err)
@@ -294,7 +289,7 @@ func (a *App) Execute(ctx context.Context, id uuid.UUID) (TransferOrder, error) 
 		ProductID:       to.ProductID,
 		LocationID:      to.FromLocationID,
 		UserID:          userID,
-		Quantity:        to.Quantity,
+		Quantity:        -to.Quantity,
 		TransactionType: "TRANSFER_OUT",
 		ReferenceNumber: refNum,
 		TransactionDate: now,
@@ -324,7 +319,10 @@ func (a *App) Execute(ctx context.Context, id uuid.UUID) (TransferOrder, error) 
 	}
 
 	if err := itemBusTx.DecrementQuantity(ctx, to.ProductID, to.FromLocationID, to.Quantity); err != nil {
-		return TransferOrder{}, errs.Newf(errs.FailedPrecondition, "insufficient stock at source location: %s", err)
+		if errors.Is(err, inventoryitembus.ErrInsufficientStock) {
+			return TransferOrder{}, errs.New(errs.FailedPrecondition, err)
+		}
+		return TransferOrder{}, fmt.Errorf("decrement source inventory: %w", err)
 	}
 
 	// 5. Increment destination location stock.

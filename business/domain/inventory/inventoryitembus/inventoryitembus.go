@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrNotFound              = errors.New("inventoryItem not found")
+	ErrInsufficientStock     = errors.New("insufficient stock at location")
 	ErrUniqueEntry           = errors.New("inventoryItem entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
 	ErrAuthenticationFailure = errors.New("authentication failed")
