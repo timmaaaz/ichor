@@ -35,6 +35,7 @@ type Storer interface {
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, inventoryID uuid.UUID) (InventoryItem, error)
 	UpsertQuantity(ctx context.Context, newID, productID, locationID uuid.UUID, quantityDelta int) error
+	AdjustQuantity(ctx context.Context, newID, productID, locationID uuid.UUID, quantityDelta int) error
 	DecrementQuantity(ctx context.Context, productID, locationID uuid.UUID, quantity int) error
 }
 
@@ -225,6 +226,23 @@ func (b *Business) UpsertQuantity(ctx context.Context, productID, locationID uui
 
 	if err := b.storer.UpsertQuantity(ctx, uuid.New(), productID, locationID, quantityDelta); err != nil {
 		return fmt.Errorf("upsert quantity: %w", err)
+	}
+
+	return nil
+}
+
+// AdjustQuantity creates or updates the inventory item for (productID, locationID),
+// adding quantityDelta which may be positive or negative. Zero is rejected.
+func (b *Business) AdjustQuantity(ctx context.Context, productID, locationID uuid.UUID, quantityDelta int) error {
+	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.adjustquantity")
+	defer span.End()
+
+	if quantityDelta == 0 {
+		return fmt.Errorf("adjust quantity: quantityDelta must be non-zero")
+	}
+
+	if err := b.storer.AdjustQuantity(ctx, uuid.New(), productID, locationID, quantityDelta); err != nil {
+		return fmt.Errorf("adjust quantity: %w", err)
 	}
 
 	return nil
