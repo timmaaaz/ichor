@@ -49,6 +49,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/scanapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/serialnumberapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/putawaytaskapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/supervisorkpiapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/transferorderapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/warehouseapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/zoneapi"
@@ -1061,6 +1062,18 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		DB:                cfg.DB,
 		AuthClient:        cfg.AuthClient,
 		PermissionsBus:    permissionsBus,
+	})
+
+	supervisorkpiapi.Routes(app, supervisorkpiapi.Config{
+		Log:                    cfg.Log,
+		ApprovalRequestBus:     approvalRequestBus,
+		InventoryAdjustmentBus: inventoryAdjustmentBus,
+		TransferOrderBus:       transferOrderBus,
+		InspectionBus:          inspectionBus,
+		PutAwayTaskBus:         putAwayTaskBus,
+		AlertBus:               alertBus,
+		AuthClient:             cfg.AuthClient,
+		PermissionsBus:         permissionsBus,
 	})
 
 	transferorderapi.Routes(app, transferorderapi.Config{
