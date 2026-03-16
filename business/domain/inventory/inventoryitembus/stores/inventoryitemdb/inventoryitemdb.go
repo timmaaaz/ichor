@@ -447,42 +447,11 @@ func (s *Store) UpsertQuantity(ctx context.Context, newID, productID, locationID
 // AdjustQuantity atomically creates or updates the inventory item for the given
 // (product_id, location_id) pair, adding quantityDelta (positive or negative)
 // to the existing quantity. Used for inventory adjustments where shrinkage or
-// damage may produce a negative delta.
+// damage may produce a negative delta. Delegates to UpsertQuantity which uses
+// the same ON CONFLICT upsert SQL — the sign restriction difference is enforced
+// at the business layer.
 func (s *Store) AdjustQuantity(ctx context.Context, newID, productID, locationID uuid.UUID, quantityDelta int) error {
-	data := struct {
-		ID         uuid.UUID `db:"id"`
-		ProductID  uuid.UUID `db:"product_id"`
-		LocationID uuid.UUID `db:"location_id"`
-		Quantity   int       `db:"quantity"`
-	}{
-		ID:         newID,
-		ProductID:  productID,
-		LocationID: locationID,
-		Quantity:   quantityDelta,
-	}
-
-	const q = `
-	INSERT INTO inventory.inventory_items
-		(id, product_id, location_id, quantity,
-		 reserved_quantity, allocated_quantity,
-		 minimum_stock, maximum_stock, reorder_point,
-		 economic_order_quantity, safety_stock, avg_daily_usage,
-		 created_date, updated_date)
-	VALUES
-		(:id, :product_id, :location_id, :quantity,
-		 0, 0, 0, 0, 0, 0, 0, 0,
-		 NOW(), NOW())
-	ON CONFLICT (product_id, location_id)
-	DO UPDATE SET
-		quantity     = inventory.inventory_items.quantity + EXCLUDED.quantity,
-		updated_date = NOW()
-	`
-
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
-		return fmt.Errorf("namedexeccontext: %w", err)
-	}
-
-	return nil
+	return s.UpsertQuantity(ctx, newID, productID, locationID, quantityDelta)
 }
 
 // DecrementQuantity atomically subtracts quantity from the inventory item at

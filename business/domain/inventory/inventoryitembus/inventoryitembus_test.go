@@ -46,6 +46,7 @@ func Test_InventoryItem(t *testing.T) {
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
+	unitest.Run(t, adjustQuantity(db.BusDomain, sd), "adjustQuantity")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
@@ -330,6 +331,61 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+}
+
+func adjustQuantity(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	item := sd.InventoryItems[1]
+
+	return []unitest.Table{
+		{
+			Name:    "AdjustQuantity-positive",
+			ExpResp: item.Quantity + 10,
+			ExcFunc: func(ctx context.Context) any {
+				if err := busDomain.InventoryItem.AdjustQuantity(ctx, item.ProductID, item.LocationID, 10); err != nil {
+					return err
+				}
+				got, err := busDomain.InventoryItem.QueryByID(ctx, item.ID)
+				if err != nil {
+					return err
+				}
+				return got.Quantity
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "AdjustQuantity-negative",
+			ExpResp: item.Quantity + 10 - 3, // after previous +10
+			ExcFunc: func(ctx context.Context) any {
+				if err := busDomain.InventoryItem.AdjustQuantity(ctx, item.ProductID, item.LocationID, -3); err != nil {
+					return err
+				}
+				got, err := busDomain.InventoryItem.QueryByID(ctx, item.ID)
+				if err != nil {
+					return err
+				}
+				return got.Quantity
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:    "AdjustQuantity-zero-rejected",
+			ExpResp: "adjust quantity: quantityDelta must be non-zero",
+			ExcFunc: func(ctx context.Context) any {
+				err := busDomain.InventoryItem.AdjustQuantity(ctx, item.ProductID, item.LocationID, 0)
+				if err != nil {
+					return err.Error()
+				}
+				return "expected error"
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}
