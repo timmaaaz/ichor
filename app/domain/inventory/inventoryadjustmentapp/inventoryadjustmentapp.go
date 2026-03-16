@@ -50,6 +50,9 @@ func (a *App) Create(ctx context.Context, app NewInventoryAdjustment) (Inventory
 		if errors.Is(err, inventoryadjustmentbus.ErrForeignKeyViolation) {
 			return InventoryAdjustment{}, errs.New(errs.Aborted, err)
 		}
+		if errors.Is(err, inventoryadjustmentbus.ErrInvalidReasonCode) {
+			return InventoryAdjustment{}, errs.New(errs.InvalidArgument, err)
+		}
 		return InventoryAdjustment{}, fmt.Errorf("create %w", err)
 	}
 
@@ -78,6 +81,9 @@ func (a *App) Update(ctx context.Context, id uuid.UUID, app UpdateInventoryAdjus
 		}
 		if errors.Is(err, inventoryadjustmentbus.ErrForeignKeyViolation) {
 			return InventoryAdjustment{}, errs.New(errs.Aborted, err)
+		}
+		if errors.Is(err, inventoryadjustmentbus.ErrInvalidReasonCode) {
+			return InventoryAdjustment{}, errs.New(errs.InvalidArgument, err)
 		}
 		return InventoryAdjustment{}, fmt.Errorf("update %w", err)
 	}
