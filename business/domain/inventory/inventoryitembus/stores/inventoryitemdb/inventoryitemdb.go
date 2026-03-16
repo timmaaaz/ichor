@@ -267,41 +267,22 @@ func (s *Store) QueryAvailableForAllocation(ctx context.Context, productID uuid.
 
 	// Apply ordering based on strategy
 	switch strategy {
-	case "fifo":
-		q += " ORDER BY ii.created_date ASC"
+	case "fefo":
+		q += `
+        LEFT JOIN inventory.serial_numbers sn
+            ON sn.product_id = ii.product_id AND sn.location_id = ii.location_id
+        LEFT JOIN inventory.lot_trackings lt
+            ON lt.id = sn.lot_id
+        GROUP BY ii.id, ii.product_id, ii.location_id, ii.quantity,
+            ii.reserved_quantity, ii.allocated_quantity, ii.minimum_stock,
+            ii.maximum_stock, ii.reorder_point, ii.economic_order_quantity,
+            ii.safety_stock, ii.avg_daily_usage, ii.created_date, ii.updated_date
+        ORDER BY MIN(lt.expiration_date) ASC NULLS LAST, ii.created_date ASC`
 	case "lifo":
 		q += " ORDER BY ii.created_date DESC"
 	default:
 		q += " ORDER BY ii.created_date ASC"
 	}
-
-	/* TODO: Advanced Allocation Strategies
-	 *
-	 * nearest_expiry: Requires joining with lot_trackings table
-	 *   - Need to link inventory_items to lot_trackings (currently no FK relationship)
-	 *   - ORDER BY lt.expiration_date ASC
-	 *   - Consider adding lot_id to inventory_items table
-	 *
-	 * lowest_cost: Requires location-specific cost data
-	 *   - product_costs table exists but is product-level, not location-specific
-	 *   - Consider: carrying costs vary by warehouse, landed costs differ by location
-	 *   - May need inventory_location_costs table with warehouse-specific costs
-	 *
-	 * nearest_location: Requires customer shipping address
-	 *   - Need to calculate distance from warehouse to customer
-	 *   - Could use geography tables (countries, regions, cities, streets)
-	 *   - Consider caching distance calculations or using geospatial queries
-	 *
-	 * load_balancing: Requires warehouse utilization metrics
-	 *   - inventory_locations has current_utilization field
-	 *   - Need to aggregate by warehouse and factor into allocation decision
-	 *   - Consider warehouse capacity and current workload
-	 *
-	 * priority_zone: Requires zone prioritization logic
-	 *   - Use is_pick_location vs is_reserve_location flags
-	 *   - May need zone_priorities table for customer-specific rules
-	 *   - VIP customers get allocation from premium/faster zones
-	 */
 
 	q += " LIMIT :limit FOR UPDATE" // Row-level locking for transaction safety
 
