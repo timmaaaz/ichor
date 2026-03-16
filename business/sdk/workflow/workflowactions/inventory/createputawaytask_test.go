@@ -609,7 +609,11 @@ func putAwayExecuteSourceFromPODelivery(busDomain dbtest.BusDomain, sd createPut
 			if output := resultMap["output"]; output != "created" {
 				return fmt.Errorf("expected output=created, got %v", output)
 			}
-			taskID, _ := uuid.Parse(resultMap["task_id"].(string))
+			taskIDStr, ok := resultMap["task_id"].(string)
+			if !ok {
+				return fmt.Errorf("task_id missing or wrong type: %v", resultMap["task_id"])
+			}
+			taskID, _ := uuid.Parse(taskIDStr)
 			task, err := busDomain.PutAwayTask.QueryByID(ctx, taskID)
 			if err != nil {
 				return fmt.Errorf("querying task: %w", err)
@@ -740,8 +744,7 @@ func putAwayExecuteZeroDelta(sd createPutAwayTaskSeedData) unitest.Table {
 			if !ok {
 				return fmt.Errorf("expected map, got %T", result)
 			}
-			skipped, _ := resultMap["skipped"].(bool)
-			return resultMap["output"] == "created" && skipped
+			return resultMap["output"] == "skipped"
 		},
 		CmpFunc: func(got, exp any) string {
 			if got != exp {
@@ -779,8 +782,7 @@ func putAwayExecuteNegativeDelta(sd createPutAwayTaskSeedData) unitest.Table {
 			if !ok {
 				return fmt.Errorf("expected map, got %T", result)
 			}
-			skipped, _ := resultMap["skipped"].(bool)
-			return resultMap["output"] == "created" && skipped
+			return resultMap["output"] == "skipped"
 		},
 		CmpFunc: func(got, exp any) string {
 			if got != exp {
@@ -827,7 +829,11 @@ func putAwayExecuteTemplateReferenceNumber(busDomain dbtest.BusDomain, sd create
 				return fmt.Errorf("expected output=created, got %v", resultMap["output"])
 			}
 
-			taskID, _ := uuid.Parse(resultMap["task_id"].(string))
+			taskIDStr, ok := resultMap["task_id"].(string)
+			if !ok {
+				return fmt.Errorf("task_id missing or wrong type: %v", resultMap["task_id"])
+			}
+			taskID, _ := uuid.Parse(taskIDStr)
 			task, err := busDomain.PutAwayTask.QueryByID(ctx, taskID)
 			if err != nil {
 				return fmt.Errorf("querying task: %w", err)

@@ -153,7 +153,7 @@ func (api *api) receiveQuantity(ctx context.Context, r *http.Request) web.Encode
 		return errs.New(errs.InvalidArgument, err)
 	}
 
-	poli, err := api.purchaseorderlineitemapp.ReceiveQuantity(ctx, parsed, quantity, receivedBy)
+	poli, err := api.purchaseorderlineitemapp.ReceiveQuantity(ctx, parsed, quantity, receivedBy, app.Notes)
 	if err != nil {
 		return errs.NewError(err)
 	}

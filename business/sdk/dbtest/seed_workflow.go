@@ -1335,7 +1335,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 		if err != nil {
 			log.Error(ctx, "Failed to query on_update trigger type for put-away rule", "error", err)
 		}
-		if poLineItemsEntity.ID != uuid.Nil && putAwayOnUpdateTrigger.ID != uuid.Nil {
+		if poLineItemsEntity.ID != uuid.Nil && putAwayOnUpdateTrigger.ID != uuid.Nil && createPutAwayTaskTemplate.ID != uuid.Nil {
 			putAwayRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
 				Name:          "Auto-Create Put-Away on Receive",
 				Description:   "When a PO line item receives quantity, create a put-away task at the PO's delivery location",
