@@ -1023,10 +1023,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	inspectionapi.Routes(app, inspectionapi.Config{
-		InspectionBus:  inspectionBus,
-		AuthClient:     cfg.AuthClient,
-		Log:            cfg.Log,
-		PermissionsBus: permissionsBus,
+		InspectionBus:   inspectionBus,
+		LotTrackingsBus: lotTrackingsBus,
+		DB:              cfg.DB,
+		AuthClient:      cfg.AuthClient,
+		Log:             cfg.Log,
+		PermissionsBus:  permissionsBus,
 	})
 
 	serialnumberapi.Routes(app, serialnumberapi.Config{

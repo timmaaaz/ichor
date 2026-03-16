@@ -3,21 +3,25 @@ package inspectionapi
 import (
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inspectionapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
 type Config struct {
-	Log            *logger.Logger
-	InspectionBus  *inspectionbus.Business
-	AuthClient     *authclient.Client
-	PermissionsBus *permissionsbus.Business
+	Log             *logger.Logger
+	InspectionBus   *inspectionbus.Business
+	LotTrackingsBus *lottrackingsbus.Business
+	DB              *sqlx.DB
+	AuthClient      *authclient.Client
+	PermissionsBus  *permissionsbus.Business
 }
 
 const (
@@ -28,7 +32,7 @@ func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	authen := mid.Authenticate(cfg.AuthClient)
-	api := newAPI(inspectionapp.NewApp(cfg.InspectionBus))
+	api := newAPI(inspectionapp.NewAppWithTx(cfg.InspectionBus, cfg.LotTrackingsBus, cfg.DB))
 
 	app.HandlerFunc(http.MethodGet, version, "/inventory/quality-inspections", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
@@ -44,4 +48,7 @@ func Routes(app *web.App, cfg Config) {
 
 	app.HandlerFunc(http.MethodDelete, version, "/inventory/quality-inspections/{inspection_id}", api.delete, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
+
+	app.HandlerFunc(http.MethodPost, version, "/inventory/quality-inspections/{inspection_id}/fail", api.fail, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 }
