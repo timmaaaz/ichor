@@ -236,16 +236,24 @@ func (s *Store) QueryWithLocationDetails(ctx context.Context, filter inventoryit
 // QueryAvailableForAllocation queries inventory items that have available quantity for allocation
 // with row-level locking for transaction safety
 func (s *Store) QueryAvailableForAllocation(ctx context.Context, productID uuid.UUID, locationID *uuid.UUID, warehouseID *uuid.UUID, strategy string, limit int) ([]inventoryitembus.InventoryItem, error) {
-	args := map[string]interface{}{
+	args := map[string]any{
 		"product_id": productID.String(),
 		"limit":      limit,
 	}
 
+	// FEFO requires a subquery approach because PostgreSQL does not allow
+	// FOR UPDATE with GROUP BY. The inner query finds ordered IDs via
+	// serial_numbers → lot_trackings, and the outer query selects full
+	// rows with row-level locking.
+	if strategy == "fefo" {
+		return s.queryFEFO(ctx, args, locationID, warehouseID)
+	}
+
 	q := `
     SELECT
-        ii.id, ii.product_id, ii.location_id, ii.quantity, ii.reserved_quantity, 
-        ii.allocated_quantity, ii.minimum_stock, ii.maximum_stock, ii.reorder_point, 
-        ii.economic_order_quantity, ii.safety_stock, ii.avg_daily_usage, 
+        ii.id, ii.product_id, ii.location_id, ii.quantity, ii.reserved_quantity,
+        ii.allocated_quantity, ii.minimum_stock, ii.maximum_stock, ii.reorder_point,
+        ii.economic_order_quantity, ii.safety_stock, ii.avg_daily_usage,
         ii.created_date, ii.updated_date
     FROM
         inventory.inventory_items ii
@@ -259,32 +267,78 @@ func (s *Store) QueryAvailableForAllocation(ctx context.Context, productID uuid.
 		args["location_id"] = locationID.String()
 	}
 
-	// Add warehouse filtering if specified — append subquery to preserve any prior locationID filter
+	// Add warehouse filtering if specified
 	if warehouseID != nil {
 		q += ` AND ii.location_id IN (SELECT id FROM inventory.inventory_locations WHERE warehouse_id = :warehouse_id)`
 		args["warehouse_id"] = warehouseID.String()
 	}
 
-	// Apply ordering based on strategy
 	switch strategy {
-	case "fefo":
-		q += `
-        LEFT JOIN inventory.serial_numbers sn
-            ON sn.product_id = ii.product_id AND sn.location_id = ii.location_id
-        LEFT JOIN inventory.lot_trackings lt
-            ON lt.id = sn.lot_id
-        GROUP BY ii.id, ii.product_id, ii.location_id, ii.quantity,
-            ii.reserved_quantity, ii.allocated_quantity, ii.minimum_stock,
-            ii.maximum_stock, ii.reorder_point, ii.economic_order_quantity,
-            ii.safety_stock, ii.avg_daily_usage, ii.created_date, ii.updated_date
-        ORDER BY MIN(lt.expiration_date) ASC NULLS LAST, ii.created_date ASC`
 	case "lifo":
 		q += " ORDER BY ii.created_date DESC"
 	default:
 		q += " ORDER BY ii.created_date ASC"
 	}
 
-	q += " LIMIT :limit FOR UPDATE" // Row-level locking for transaction safety
+	q += " LIMIT :limit FOR UPDATE"
+
+	var items []inventoryItem
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, args, &items); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusInventoryItems(items), nil
+}
+
+// queryFEFO handles the FEFO (First Expired, First Out) allocation strategy.
+// PostgreSQL forbids FOR UPDATE with GROUP BY, so we use a two-step approach:
+// an inner subquery finds inventory item IDs ordered by earliest lot expiration
+// (via serial_numbers → lot_trackings), and the outer query selects the full
+// rows with FOR UPDATE for transaction safety.
+func (s *Store) queryFEFO(ctx context.Context, args map[string]any, locationID *uuid.UUID, warehouseID *uuid.UUID) ([]inventoryitembus.InventoryItem, error) {
+
+	// Build the WHERE filters that apply to both layers.
+	filters := `ii.product_id = :product_id
+        AND (ii.quantity - ii.reserved_quantity - ii.allocated_quantity) > 0`
+
+	if locationID != nil {
+		filters += ` AND ii.location_id = :location_id`
+		args["location_id"] = locationID.String()
+	}
+
+	if warehouseID != nil {
+		filters += ` AND ii.location_id IN (SELECT id FROM inventory.inventory_locations WHERE warehouse_id = :warehouse_id)`
+		args["warehouse_id"] = warehouseID.String()
+	}
+
+	q := `
+    SELECT
+        ii.id, ii.product_id, ii.location_id, ii.quantity, ii.reserved_quantity,
+        ii.allocated_quantity, ii.minimum_stock, ii.maximum_stock, ii.reorder_point,
+        ii.economic_order_quantity, ii.safety_stock, ii.avg_daily_usage,
+        ii.created_date, ii.updated_date
+    FROM
+        inventory.inventory_items ii
+    WHERE
+        ii.id IN (
+            SELECT sub.id
+            FROM inventory.inventory_items sub
+            LEFT JOIN inventory.serial_numbers sn
+                ON sn.product_id = sub.product_id AND sn.location_id = sub.location_id
+            LEFT JOIN inventory.lot_trackings lt
+                ON lt.id = sn.lot_id
+            WHERE ` + filters + `
+            GROUP BY sub.id, sub.created_date
+            ORDER BY MIN(lt.expiration_date) ASC NULLS LAST, sub.created_date ASC
+            LIMIT :limit
+        )
+    ORDER BY (
+        SELECT MIN(lt2.expiration_date)
+        FROM inventory.serial_numbers sn2
+        JOIN inventory.lot_trackings lt2 ON lt2.id = sn2.lot_id
+        WHERE sn2.product_id = ii.product_id AND sn2.location_id = ii.location_id
+    ) ASC NULLS LAST, ii.created_date ASC
+    FOR UPDATE`
 
 	var items []inventoryItem
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, args, &items); err != nil {
