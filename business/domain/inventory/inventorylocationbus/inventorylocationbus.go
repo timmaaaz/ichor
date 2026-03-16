@@ -130,6 +130,23 @@ func (b *Business) Update(ctx context.Context, invLocation InventoryLocation, u 
 	if u.Bin != nil {
 		invLocation.Bin = *u.Bin
 	}
+	// INVARIANT: LocationCode is a scan-lookup key used by scanapp.Scan() to
+	// resolve physical destinations on the warehouse floor. If physical
+	// coordinates change (Aisle/Rack/Shelf/Bin) but LocationCode is not
+	// explicitly updated or cleared, the existing code becomes stale — pointing
+	// scanners to wrong coordinates, corrupting put-away and picking workflows.
+	//
+	// Rather than silently clearing LocationCode (destroys user data) or
+	// silently preserving it (creates stale scan key), we reject the update
+	// and force the caller to provide an explicit LocationCode value.
+	//
+	// History: commit 865580d8 added auto-clearing, commit 9defe77b removed it.
+	// This validation replaces both approaches with an explicit rejection.
+	coordinatesChanging := u.Aisle != nil || u.Rack != nil || u.Shelf != nil || u.Bin != nil
+	if coordinatesChanging && invLocation.LocationCode != nil && u.LocationCode == nil {
+		return InventoryLocation{}, fmt.Errorf("update: location_code must be provided or explicitly cleared when physical coordinates (aisle/rack/shelf/bin) change")
+	}
+
 	if u.LocationCode != nil {
 		invLocation.LocationCode = u.LocationCode
 	} else if u.Aisle != nil || u.Rack != nil || u.Shelf != nil || u.Bin != nil {
