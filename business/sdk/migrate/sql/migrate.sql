@@ -2259,6 +2259,17 @@ ALTER TABLE inventory.zones ADD COLUMN IF NOT EXISTS stage TEXT NULL;
 ALTER TABLE products.products ADD CONSTRAINT products_upc_code_unique UNIQUE (upc_code);
 
 -- Version: 2.15
+-- Description: Add CHECK constraint on reason_code for inventory adjustments.
+UPDATE inventory.inventory_adjustments SET reason_code = 'other' WHERE reason_code NOT IN ('damaged', 'theft', 'data_entry_error', 'receiving_error', 'picking_error', 'found_stock', 'other');
+ALTER TABLE inventory.inventory_adjustments ADD CONSTRAINT inventory_adjustments_reason_code_check CHECK (reason_code IN ('damaged', 'theft', 'data_entry_error', 'receiving_error', 'picking_error', 'found_stock', 'other'));
+
+-- Version: 2.16
+-- Description: Add CHECK constraint on inspection status values
+ALTER TABLE inventory.quality_inspections
+    ADD CONSTRAINT quality_inspections_status_check
+    CHECK (status IN ('pending', 'passed', 'failed'));
+
+-- Version: 2.17
 -- Description: Add claim/complete tracking columns to transfer_orders.
 ALTER TABLE inventory.transfer_orders ADD COLUMN claimed_by UUID NULL REFERENCES core.users(id);
 ALTER TABLE inventory.transfer_orders ADD COLUMN claimed_at TIMESTAMP NULL;

@@ -51,6 +51,9 @@ func (a *App) Create(ctx context.Context, app NewLotTrackings) (LotTrackings, er
 
 	lt, err = a.lottrackingsbus.QueryByID(ctx, lt.LotID)
 	if err != nil {
+		if errors.Is(err, lottrackingsbus.ErrNotFound) {
+			return LotTrackings{}, errs.New(errs.NotFound, lottrackingsbus.ErrNotFound)
+		}
 		return LotTrackings{}, err
 	}
 

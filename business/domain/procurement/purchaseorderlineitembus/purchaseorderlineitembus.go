@@ -242,7 +242,7 @@ func (b *Business) QueryByPurchaseOrderID(ctx context.Context, poID uuid.UUID) (
 }
 
 // ReceiveQuantity updates the received quantity for a line item.
-func (b *Business) ReceiveQuantity(ctx context.Context, poli PurchaseOrderLineItem, quantity int, receivedBy uuid.UUID) (PurchaseOrderLineItem, error) {
+func (b *Business) ReceiveQuantity(ctx context.Context, poli PurchaseOrderLineItem, quantity int, receivedBy uuid.UUID, notes *string) (PurchaseOrderLineItem, error) {
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderlineitembus.receivequantity")
 	defer span.End()
 
@@ -251,6 +251,10 @@ func (b *Business) ReceiveQuantity(ctx context.Context, poli PurchaseOrderLineIt
 	poli.QuantityReceived += quantity
 	poli.UpdatedBy = receivedBy
 	poli.UpdatedDate = time.Now().UTC()
+
+	if notes != nil {
+		poli.Notes = *notes
+	}
 
 	if err := b.storer.Update(ctx, poli); err != nil {
 		return PurchaseOrderLineItem{}, fmt.Errorf("receivequantity: %w", err)

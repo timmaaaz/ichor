@@ -96,3 +96,23 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 
 	return inspection
 }
+
+func (api *api) fail(ctx context.Context, r *http.Request) web.Encoder {
+	var app inspectionapp.FailInspection
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	inspectionID := web.Param(r, "inspection_id")
+	parsed, err := uuid.Parse(inspectionID)
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	result, err := api.inspectionapp.Fail(ctx, parsed, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+
+	return result
+}

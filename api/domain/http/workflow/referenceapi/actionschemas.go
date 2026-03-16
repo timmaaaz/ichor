@@ -224,6 +224,13 @@ var actionTypeMetadata = map[string]actionTypeMeta{
 		SupportsManual: true,
 		IsAsync:        false,
 	},
+	"create_put_away_task": {
+		Name:           "Create Put-Away Task",
+		Description:    "Creates a put-away task directing floor workers to shelve received goods at a designated location",
+		Category:       "inventory",
+		SupportsManual: true,
+		IsAsync:        false,
+	},
 	"resolve_approval_request": {
 		Name:           "Resolve Approval Request",
 		Description:    "Programmatically resolve an open approval request — enables cross-workflow orchestration where one workflow closes an approval another workflow is waiting on",
