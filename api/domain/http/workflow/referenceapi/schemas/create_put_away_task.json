@@ -25,5 +25,21 @@
             "description": "Template string for the put-away task reference. Supports {{variable}} substitution from trigger data. Example: 'PO-RCV-{{purchase_order_id}}'"
         }
     },
-    "required": ["location_strategy"]
+    "required": ["location_strategy"],
+    "if": {
+        "properties": { "source_from_po": { "const": false } }
+    },
+    "then": {
+        "required": ["product_id"]
+    },
+    "allOf": [
+        {
+            "if": {
+                "properties": { "location_strategy": { "const": "static" } }
+            },
+            "then": {
+                "required": ["location_id"]
+            }
+        }
+    ]
 }

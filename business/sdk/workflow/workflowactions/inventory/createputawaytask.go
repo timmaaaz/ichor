@@ -3,6 +3,7 @@ package inventory
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -33,7 +34,7 @@ type CreatePutAwayTaskConfig struct {
 
 	// ReferenceNumber is a template string. Supports {{variable}} substitution from RawData.
 	// Example: "PO-RCV-{{purchase_order_id}}"
-	// Defaults to "PO-{purchase_order_id}" when empty and purchase_order_id is in RawData.
+	// Defaults to "PO-<purchase_order_id>" when empty and purchase_order_id is in RawData.
 	ReferenceNumber string `json:"reference_number,omitempty"`
 }
 
@@ -42,7 +43,7 @@ type CreatePutAwayTaskConfig struct {
 //
 // Execute returns map[string]any with key "output" (string) and one of:
 //   - "created"  — task created; also includes "task_id" string
-//   - "created" + "skipped": true — delta <= 0, no task needed
+//   - "skipped"  — delta <= 0, no task needed
 //   - "no_location"      — po_delivery strategy but PO has no delivery_location_id
 //   - "product_not_found" — supplier_product_id lookup failed
 //   - "failure"           — unexpected error
@@ -124,6 +125,7 @@ func (h *CreatePutAwayTaskHandler) Validate(config json.RawMessage) error {
 func (h *CreatePutAwayTaskHandler) GetOutputPorts() []workflow.OutputPort {
 	return []workflow.OutputPort{
 		{Name: "created", Description: "Put-away task created successfully", IsDefault: true},
+		{Name: "skipped", Description: "Delta <= 0, no task needed"},
 		{Name: "no_location", Description: "PO delivery strategy but PO has no delivery_location_id"},
 		{Name: "product_not_found", Description: "Supplier product lookup failed"},
 		{Name: "failure", Description: "Unexpected error during task creation"},
@@ -170,7 +172,7 @@ func (h *CreatePutAwayTaskHandler) Execute(ctx context.Context, config json.RawM
 	if delta <= 0 {
 		h.log.Info(ctx, "create_put_away_task: delta <= 0, skipping task creation",
 			"delta", delta, "entity_id", execCtx.EntityID)
-		return map[string]any{"output": "created", "skipped": true, "reason": "delta <= 0"}, nil
+		return map[string]any{"output": "skipped", "reason": "delta <= 0"}, nil
 	}
 
 	// Step 2: Resolve product_id.
@@ -208,7 +210,10 @@ func (h *CreatePutAwayTaskHandler) Execute(ctx context.Context, config json.RawM
 		}
 		po, err := h.purchaseOrderBus.QueryByID(ctx, poID)
 		if err != nil {
-			return map[string]any{"output": "no_location", "error": err.Error()}, nil
+			if errors.Is(err, purchaseorderbus.ErrNotFound) {
+				return map[string]any{"output": "no_location", "error": "purchase order not found"}, nil
+			}
+			return map[string]any{"output": "failure", "error": err.Error()}, nil
 		}
 		if po.DeliveryLocationID == uuid.Nil {
 			h.log.Info(ctx, "create_put_away_task: PO has no delivery_location_id",

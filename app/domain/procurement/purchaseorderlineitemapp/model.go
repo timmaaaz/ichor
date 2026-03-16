@@ -342,8 +342,9 @@ func (app QueryByIDsRequest) Validate() error {
 
 // ReceiveQuantityRequest represents a request to receive quantity for a line item.
 type ReceiveQuantityRequest struct {
-	Quantity   string `json:"quantity" validate:"required"`
-	ReceivedBy string `json:"received_by" validate:"required"`
+	Quantity   string  `json:"quantity" validate:"required"`
+	ReceivedBy string  `json:"received_by" validate:"required"`
+	Notes      *string `json:"notes"`
 }
 
 // Decode implements the Decoder interface.

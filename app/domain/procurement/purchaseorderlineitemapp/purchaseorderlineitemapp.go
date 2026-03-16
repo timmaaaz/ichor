@@ -164,7 +164,7 @@ func (a *App) QueryByPurchaseOrderID(ctx context.Context, poID uuid.UUID) (Purch
 }
 
 // ReceiveQuantity updates the received quantity for a line item.
-func (a *App) ReceiveQuantity(ctx context.Context, id uuid.UUID, quantity int, receivedBy uuid.UUID) (PurchaseOrderLineItem, error) {
+func (a *App) ReceiveQuantity(ctx context.Context, id uuid.UUID, quantity int, receivedBy uuid.UUID, notes *string) (PurchaseOrderLineItem, error) {
 	poli, err := a.purchaseorderlineitembus.QueryByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, purchaseorderlineitembus.ErrNotFound) {
@@ -173,7 +173,7 @@ func (a *App) ReceiveQuantity(ctx context.Context, id uuid.UUID, quantity int, r
 		return PurchaseOrderLineItem{}, errs.Newf(errs.Internal, "querybyid: %s", err)
 	}
 
-	updatedPOLI, err := a.purchaseorderlineitembus.ReceiveQuantity(ctx, poli, quantity, receivedBy)
+	updatedPOLI, err := a.purchaseorderlineitembus.ReceiveQuantity(ctx, poli, quantity, receivedBy, notes)
 	if err != nil {
 		return PurchaseOrderLineItem{}, errs.Newf(errs.Internal, "receivequantity: purchaseorderlineitem[%+v]: %s", updatedPOLI, err)
 	}

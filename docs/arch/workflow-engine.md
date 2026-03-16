@@ -203,14 +203,14 @@ type ActionHandler interface {
 	GetDescription() string
 }
 ```
-<!-- lsp:refs:39:6 --> count=20 (production, excl. test mocks)
+<!-- lsp:refs:39:6 --> count=21 (production, excl. test mocks)
 
-registered action types (20, verified 2026-03-09):
+registered action types (21, verified 2026-03-16):
   seek_approval, evaluate_condition, delay, update_field, create_entity,
   lookup_entity, transition_status, log_audit_entry, check_inventory,
   allocate_inventory, reserve_inventory, release_reservation, check_reorder_point,
   receive_inventory, commit_allocation, send_email, send_notification,
-  create_alert, create_purchase_order, call_webhook
+  create_alert, create_purchase_order, call_webhook, create_put_away_task
 
 Implementors (production only — 3 test mocks excluded):
   business/sdk/workflow/workflowactions/approval/seek.go              (seek_approval)
@@ -231,6 +231,7 @@ Implementors (production only — 3 test mocks excluded):
   business/sdk/workflow/workflowactions/inventory/commit_allocation.go (commit_allocation)
   business/sdk/workflow/workflowactions/inventory/receive.go          (receive_inventory)
   business/sdk/workflow/workflowactions/inventory/release_reservation.go (release_reservation)
+  business/sdk/workflow/workflowactions/inventory/createputawaytask.go (create_put_away_task)
   business/sdk/workflow/workflowactions/inventory/reserve_inventory.go (reserve_inventory)
   business/sdk/workflow/workflowactions/procurement/createpo.go       (create_purchase_order)
 
