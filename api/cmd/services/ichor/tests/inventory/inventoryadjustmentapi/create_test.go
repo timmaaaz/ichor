@@ -195,6 +195,28 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
+			Name:       "invalid-reason-code",
+			URL:        "/v1/inventory/inventory-adjustments",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &inventoryadjustmentapp.NewInventoryAdjustment{
+				ProductID:      sd.Products[0].ProductID,
+				LocationID:     sd.InventoryLocations[0].LocationID,
+				AdjustedBy:     sd.InventoryAdjustments[0].AdjustedBy,
+				ApprovedBy:     sd.InventoryAdjustments[0].ApprovedBy,
+				QuantityChange: "10",
+				ReasonCode:     "invalid_code",
+				Notes:          "New purchase",
+				AdjustmentDate: now.Format(timeutil.FORMAT),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"reason_code\",\"error\":\"reason_code must be one of [damaged theft data_entry_error receiving_error picking_error found_stock other]\"}]"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
 			Name:       "missing-notes",
 			URL:        "/v1/inventory/inventory-adjustments",
 			Token:      sd.Admins[0].Token,
