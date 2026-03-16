@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "source_from_po": {
+            "type": "boolean",
+            "description": "When true, resolves product_id from trigger context's supplier_product_id. When false, uses product_id from config."
+        },
+        "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Static product UUID. Required when source_from_po is false."
+        },
+        "location_strategy": {
+            "type": "string",
+            "enum": ["po_delivery", "static"],
+            "description": "How to resolve the destination location. 'po_delivery' uses the PO's delivery_location_id; 'static' uses location_id."
+        },
+        "location_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Static location UUID. Required when location_strategy is 'static'."
+        },
+        "reference_number": {
+            "type": "string",
+            "description": "Template string for the put-away task reference. Supports {{variable}} substitution from trigger data. Example: 'PO-RCV-{{purchase_order_id}}'"
+        }
+    },
+    "required": ["location_strategy"]
+}

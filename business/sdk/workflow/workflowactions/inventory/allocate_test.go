@@ -701,7 +701,11 @@ func testSourceFromLineItem(busDomain dbtest.BusDomain, db *sqlx.DB, sd allocate
 				return fmt.Errorf("expected map[string]any, got %T", result)
 			}
 
-			return queuedResp["status"].(string)
+			status, ok := queuedResp["status"].(string)
+			if !ok {
+				return fmt.Errorf("status key missing or not a string: %v", queuedResp)
+			}
+			return status
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {
@@ -778,10 +782,11 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 					return fmt.Errorf("expected map[string]any for A%d, got %T", i+1, result)
 				}
 
+				refID, _ := queuedResp["reference_id"].(string)
 				allocations = append(allocations, allocationRecord{
 					label:       fmt.Sprintf("A%d", i+1),
 					orderID:     orderA,
-					referenceID: queuedResp["reference_id"].(string),
+					referenceID: refID,
 				})
 			}
 
@@ -817,10 +822,11 @@ func testOrderGroupedAllocation(busDomain dbtest.BusDomain, db *sqlx.DB, sd allo
 					return fmt.Errorf("expected map[string]any for B%d, got %T", i+1, result)
 				}
 
+				refID, _ := queuedResp["reference_id"].(string)
 				allocations = append(allocations, allocationRecord{
 					label:       fmt.Sprintf("B%d", i+1),
 					orderID:     orderB,
-					referenceID: queuedResp["reference_id"].(string),
+					referenceID: refID,
 				})
 			}
 
