@@ -205,3 +205,33 @@ func toBusUpdateInspection(app UpdateInspection) (inspectionbus.UpdateInspection
 	}
 	return bus, nil
 }
+
+// FailInspection represents the request to fail an inspection and optionally
+// quarantine the associated lot.
+type FailInspection struct {
+	Notes         string `json:"notes" validate:"omitempty"`
+	QuarantineLot bool   `json:"quarantine_lot"`
+}
+
+func (app *FailInspection) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+func (app FailInspection) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+// FailInspectionResult is the composite response returned after atomically
+// failing an inspection and (optionally) quarantining the lot.
+type FailInspectionResult struct {
+	Inspection Inspection `json:"inspection"`
+	LotStatus  string     `json:"lot_status"`
+}
+
+func (r FailInspectionResult) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(r)
+	return data, "application/json", err
+}

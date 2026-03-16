@@ -35,4 +35,8 @@ func Test_Inspections(t *testing.T) {
 	test.Run(t, delete401(sd), "delete-401")
 	test.Run(t, delete404(sd), "delete-404")
 
+	test.Run(t, fail200(sd), "fail-200")
+	test.Run(t, fail200NoQuarantine(sd), "fail-200-no-quarantine")
+	test.Run(t, fail403(sd), "fail-403")
+	test.Run(t, fail404(sd), "fail-404")
 }
