@@ -22,6 +22,7 @@ var (
 	ErrUniqueEntry           = errors.New("inventoryAdjustment entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
 	ErrInvalidApprovalStatus = errors.New("inventory adjustment is not in pending status")
+	ErrInvalidReasonCode     = errors.New("invalid reason code")
 )
 
 // Inventory adjustment approval status values.
@@ -30,6 +31,28 @@ const (
 	ApprovalStatusApproved = "approved"
 	ApprovalStatusRejected = "rejected"
 )
+
+// Valid reason code values for inventory adjustments.
+const (
+	ReasonCodeDamaged        = "damaged"
+	ReasonCodeTheft          = "theft"
+	ReasonCodeDataEntryError = "data_entry_error"
+	ReasonCodeReceivingError = "receiving_error"
+	ReasonCodePickingError   = "picking_error"
+	ReasonCodeFoundStock     = "found_stock"
+	ReasonCodeOther          = "other"
+)
+
+// ValidReasonCodes is the set of known reason codes.
+var ValidReasonCodes = map[string]bool{
+	ReasonCodeDamaged:        true,
+	ReasonCodeTheft:          true,
+	ReasonCodeDataEntryError: true,
+	ReasonCodeReceivingError: true,
+	ReasonCodePickingError:   true,
+	ReasonCodeFoundStock:     true,
+	ReasonCodeOther:          true,
+}
 
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
@@ -78,6 +101,10 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 func (b *Business) Create(ctx context.Context, nia NewInventoryAdjustment) (InventoryAdjustment, error) {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.create")
 	defer span.End()
+
+	if !ValidReasonCodes[nia.ReasonCode] {
+		return InventoryAdjustment{}, fmt.Errorf("create: %w", ErrInvalidReasonCode)
+	}
 
 	now := time.Now()
 
@@ -144,6 +171,9 @@ func (b *Business) Update(ctx context.Context, ia InventoryAdjustment, u UpdateI
 		ia.QuantityChange = *u.QuantityChange
 	}
 	if u.ReasonCode != nil {
+		if !ValidReasonCodes[*u.ReasonCode] {
+			return InventoryAdjustment{}, fmt.Errorf("update: %w", ErrInvalidReasonCode)
+		}
 		ia.ReasonCode = *u.ReasonCode
 	}
 	if u.Notes != nil {

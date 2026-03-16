@@ -2,6 +2,7 @@ package inventoryadjustmentbus_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -229,7 +230,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ApprovedBy:     sd.InventoryAdjustments[0].ApprovedBy,
 				ApprovalStatus: inventoryadjustmentbus.ApprovalStatusPending,
 				QuantityChange: 10,
-				ReasonCode:     "Purchase",
+				ReasonCode:     "damaged",
 				Notes:          "New purchase",
 				AdjustmentDate: now,
 			},
@@ -240,7 +241,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					AdjustedBy:     sd.InventoryAdjustments[0].AdjustedBy,
 					ApprovedBy:     sd.InventoryAdjustments[0].ApprovedBy,
 					QuantityChange: 10,
-					ReasonCode:     "Purchase",
+					ReasonCode:     "damaged",
 					Notes:          "New purchase",
 					AdjustmentDate: now,
 				})
@@ -264,6 +265,32 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				return (cmp.Diff(gotResp, expResp))
 			},
 		},
+		{
+			Name:    "invalid-reason-code",
+			ExpResp: nil,
+			ExcFunc: func(ctx context.Context) any {
+				_, err := busDomain.InventoryAdjustment.Create(ctx, inventoryadjustmentbus.NewInventoryAdjustment{
+					ProductID:      sd.Products[0].ProductID,
+					LocationID:     sd.InventoryLocations[0].LocationID,
+					AdjustedBy:     sd.InventoryAdjustments[0].AdjustedBy,
+					ApprovedBy:     sd.InventoryAdjustments[0].ApprovedBy,
+					QuantityChange: 10,
+					ReasonCode:     "invalid_code",
+					Notes:          "Test Notes",
+					AdjustmentDate: now,
+				})
+				if err == nil {
+					return fmt.Errorf("expected error for invalid reason code, got nil")
+				}
+				if !errors.Is(err, inventoryadjustmentbus.ErrInvalidReasonCode) {
+					return fmt.Errorf("expected ErrInvalidReasonCode, got: %v", err)
+				}
+				return nil
+			},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 }
 
@@ -281,7 +308,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				ApprovedBy:            sd.InventoryAdjustments[0].ApprovedBy,
 				ApprovalStatus:        sd.InventoryAdjustments[1].ApprovalStatus,
 				QuantityChange:        20,
-				ReasonCode:            "Adjustment",
+				ReasonCode:            "theft",
 				Notes:                 "Updated adjustment",
 				AdjustmentDate:        now,
 				CreatedDate:           sd.InventoryAdjustments[1].CreatedDate,
@@ -293,7 +320,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 					AdjustedBy:     &sd.InventoryAdjustments[0].AdjustedBy,
 					ApprovedBy:     sd.InventoryAdjustments[0].ApprovedBy,
 					QuantityChange: dbtest.IntPointer(20),
-					ReasonCode:     dbtest.StringPointer("Adjustment"),
+					ReasonCode:     dbtest.StringPointer("theft"),
 					Notes:          dbtest.StringPointer("Updated adjustment"),
 					AdjustmentDate: &now,
 				})
