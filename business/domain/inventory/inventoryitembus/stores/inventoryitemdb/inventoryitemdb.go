@@ -444,6 +444,16 @@ func (s *Store) UpsertQuantity(ctx context.Context, newID, productID, locationID
 	return nil
 }
 
+// AdjustQuantity atomically creates or updates the inventory item for the given
+// (product_id, location_id) pair, adding quantityDelta (positive or negative)
+// to the existing quantity. Used for inventory adjustments where shrinkage or
+// damage may produce a negative delta. Delegates to UpsertQuantity which uses
+// the same ON CONFLICT upsert SQL — the sign restriction difference is enforced
+// at the business layer.
+func (s *Store) AdjustQuantity(ctx context.Context, newID, productID, locationID uuid.UUID, quantityDelta int) error {
+	return s.UpsertQuantity(ctx, newID, productID, locationID, quantityDelta)
+}
+
 // DecrementQuantity atomically subtracts quantity from the inventory item at
 // (product_id, location_id). The UPDATE uses a WHERE guard to prevent the
 // quantity from going negative. If no row is updated (item missing or
