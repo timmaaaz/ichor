@@ -48,13 +48,17 @@ func NewApp(
 func (a *App) Query(ctx context.Context) (KPIs, error) {
 	var kpis KPIs
 
-	pendingStatus := "pending"
-	openStatus := "open"
-	activeStatus := "active"
-	pendingPATStatus := putawaytaskbus.Statuses.Pending
+	approvalStatus := approvalrequestbus.StatusPending
+	adjustmentStatus := inventoryadjustmentbus.ApprovalStatusPending
+	transferStatus := transferorderbus.StatusPending
+	// inspectionbus has no exported status constants; "pending" is the only
+	// status used in seeds and the Create method default.
+	inspectionStatus := "pending"
+	putAwayStatus := putawaytaskbus.Statuses.Pending
+	alertStatus := alertbus.StatusActive
 
 	approvalCount, err := a.approvalRequestBus.Count(ctx, approvalrequestbus.QueryFilter{
-		Status: &pendingStatus,
+		Status: &approvalStatus,
 	})
 	if err != nil {
 		return KPIs{}, err
@@ -62,7 +66,7 @@ func (a *App) Query(ctx context.Context) (KPIs, error) {
 	kpis.PendingApprovals = approvalCount
 
 	adjustmentCount, err := a.inventoryAdjustmentBus.Count(ctx, inventoryadjustmentbus.QueryFilter{
-		ApprovalStatus: &pendingStatus,
+		ApprovalStatus: &adjustmentStatus,
 	})
 	if err != nil {
 		return KPIs{}, err
@@ -70,7 +74,7 @@ func (a *App) Query(ctx context.Context) (KPIs, error) {
 	kpis.PendingAdjustments = adjustmentCount
 
 	transferCount, err := a.transferOrderBus.Count(ctx, transferorderbus.QueryFilter{
-		Status: &pendingStatus,
+		Status: &transferStatus,
 	})
 	if err != nil {
 		return KPIs{}, err
@@ -78,15 +82,15 @@ func (a *App) Query(ctx context.Context) (KPIs, error) {
 	kpis.PendingTransfers = transferCount
 
 	inspectionCount, err := a.inspectionBus.Count(ctx, inspectionbus.QueryFilter{
-		Status: &openStatus,
+		Status: &inspectionStatus,
 	})
 	if err != nil {
 		return KPIs{}, err
 	}
-	kpis.OpenInspections = inspectionCount
+	kpis.PendingInspections = inspectionCount
 
 	putAwayCount, err := a.putAwayTaskBus.Count(ctx, putawaytaskbus.QueryFilter{
-		Status: &pendingPATStatus,
+		Status: &putAwayStatus,
 	})
 	if err != nil {
 		return KPIs{}, err
@@ -94,7 +98,7 @@ func (a *App) Query(ctx context.Context) (KPIs, error) {
 	kpis.PendingPutAwayTasks = putAwayCount
 
 	alertCount, err := a.alertBus.Count(ctx, alertbus.QueryFilter{
-		Status: &activeStatus,
+		Status: &alertStatus,
 	})
 	if err != nil {
 		return KPIs{}, err

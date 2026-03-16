@@ -17,4 +17,5 @@ func Test_SupervisorKPIs(t *testing.T) {
 	}
 
 	test.Run(t, query200(sd), "query-200")
+	test.Run(t, query401(sd), "query-401")
 }

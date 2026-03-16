@@ -7,7 +7,7 @@ type KPIs struct {
 	PendingApprovals    int `json:"pending_approvals"`
 	PendingAdjustments  int `json:"pending_adjustments"`
 	PendingTransfers    int `json:"pending_transfers"`
-	OpenInspections     int `json:"open_inspections"`
+	PendingInspections  int `json:"pending_inspections"`
 	PendingPutAwayTasks int `json:"pending_put_away_tasks"`
 	ActiveAlerts        int `json:"active_alerts"`
 }

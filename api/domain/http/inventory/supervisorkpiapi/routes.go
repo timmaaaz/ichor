@@ -31,7 +31,10 @@ type Config struct {
 	PermissionsBus         *permissionsbus.Business
 }
 
-// RouteTable is the table name used for permission lookups.
+// RouteTable is the table name used for permission lookups. This is a
+// read-only aggregation endpoint with no backing table. It reuses
+// inventory.inventory_adjustments as the permission gate — any user with
+// read access to adjustments can view the supervisor KPI dashboard.
 const RouteTable = "inventory.inventory_adjustments"
 
 // Routes registers supervisor KPI HTTP routes.
