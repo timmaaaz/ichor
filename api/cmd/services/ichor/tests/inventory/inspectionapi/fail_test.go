@@ -61,10 +61,10 @@ func fail200NoQuarantine(sd apitest.SeedData) []apitest.Table {
 	}
 }
 
-func fail401(sd apitest.SeedData) []apitest.Table {
+func fail403(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
-			Name:       "fail-unauthorized",
+			Name:       "fail-forbidden",
 			Token:      sd.Users[0].Token,
 			URL:        "/v1/inventory/quality-inspections/" + sd.Inspections[2].InspectionID + "/fail",
 			Method:     http.MethodPost,

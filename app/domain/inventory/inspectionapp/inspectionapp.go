@@ -37,9 +37,9 @@ func NewAppWithAuth(inspectionbus *inspectionbus.Business, auth *auth.Auth) *App
 	}
 }
 
-// NewAppWithTx constructs an App with dependencies needed for transactional
+// NewAppWithDB constructs an App with dependencies needed for transactional
 // composite operations (e.g., fail + quarantine).
-func NewAppWithTx(inspectionbus *inspectionbus.Business, lotTrackingsBus *lottrackingsbus.Business, db *sqlx.DB) *App {
+func NewAppWithDB(inspectionbus *inspectionbus.Business, lotTrackingsBus *lottrackingsbus.Business, db *sqlx.DB) *App {
 	return &App{
 		inspectionbus:   inspectionbus,
 		lotTrackingsBus: lotTrackingsBus,
@@ -170,14 +170,27 @@ func (a *App) Fail(ctx context.Context, id uuid.UUID, app FailInspection) (FailI
 		return FailInspectionResult{}, errs.Newf(errs.FailedPrecondition, "inspection is already failed")
 	}
 
-	// 2. Begin transaction.
+	// 2. Pre-flight: look up the lot before opening the transaction (matches
+	//    putawaytaskapp pattern — reads before BeginTxx, writes inside).
+	var lot lottrackingsbus.LotTrackings
+	if app.QuarantineLot {
+		lot, err = a.lotTrackingsBus.QueryByID(ctx, inspection.LotID)
+		if err != nil {
+			if errors.Is(err, lottrackingsbus.ErrNotFound) {
+				return FailInspectionResult{}, errs.Newf(errs.NotFound, "lot %s not found", inspection.LotID)
+			}
+			return FailInspectionResult{}, fmt.Errorf("query lot: %w", err)
+		}
+	}
+
+	// 3. Begin transaction.
 	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return FailInspectionResult{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	// 3. Update inspection status to "failed" inside the transaction.
+	// 4. Update inspection status to "failed" inside the transaction.
 	inspBusTx, err := a.inspectionbus.NewWithTx(tx)
 	if err != nil {
 		return FailInspectionResult{}, fmt.Errorf("new inspection tx: %w", err)
@@ -194,17 +207,9 @@ func (a *App) Fail(ctx context.Context, id uuid.UUID, app FailInspection) (FailI
 		return FailInspectionResult{}, fmt.Errorf("update inspection: %w", err)
 	}
 
-	// 4. Optionally quarantine the lot.
+	// 5. Optionally quarantine the lot inside the transaction.
 	lotStatus := ""
 	if app.QuarantineLot {
-		lot, err := a.lotTrackingsBus.QueryByID(ctx, inspection.LotID)
-		if err != nil {
-			if errors.Is(err, lottrackingsbus.ErrNotFound) {
-				return FailInspectionResult{}, errs.Newf(errs.NotFound, "lot %s not found", inspection.LotID)
-			}
-			return FailInspectionResult{}, fmt.Errorf("query lot: %w", err)
-		}
-
 		ltBusTx, err := a.lotTrackingsBus.NewWithTx(tx)
 		if err != nil {
 			return FailInspectionResult{}, fmt.Errorf("new lottrackings tx: %w", err)
@@ -223,7 +228,7 @@ func (a *App) Fail(ctx context.Context, id uuid.UUID, app FailInspection) (FailI
 		lotStatus = lot.QualityStatus
 	}
 
-	// 5. Commit.
+	// 6. Commit.
 	if err := tx.Commit(); err != nil {
 		return FailInspectionResult{}, fmt.Errorf("commit transaction: %w", err)
 	}

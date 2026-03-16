@@ -32,7 +32,7 @@ func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	authen := mid.Authenticate(cfg.AuthClient)
-	api := newAPI(inspectionapp.NewAppWithTx(cfg.InspectionBus, cfg.LotTrackingsBus, cfg.DB))
+	api := newAPI(inspectionapp.NewAppWithDB(cfg.InspectionBus, cfg.LotTrackingsBus, cfg.DB))
 
 	app.HandlerFunc(http.MethodGet, version, "/inventory/quality-inspections", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
