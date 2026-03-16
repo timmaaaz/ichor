@@ -2257,3 +2257,8 @@ ALTER TABLE inventory.zones ADD COLUMN IF NOT EXISTS stage TEXT NULL;
 -- Version: 2.14
 -- Description: Add unique constraint on upc_code in products.products table.
 ALTER TABLE products.products ADD CONSTRAINT products_upc_code_unique UNIQUE (upc_code);
+
+-- Version: 2.15
+-- Description: Add CHECK constraint on reason_code for inventory adjustments.
+UPDATE inventory.inventory_adjustments SET reason_code = 'other' WHERE reason_code NOT IN ('damaged', 'theft', 'data_entry_error', 'receiving_error', 'picking_error', 'found_stock', 'other');
+ALTER TABLE inventory.inventory_adjustments ADD CONSTRAINT inventory_adjustments_reason_code_check CHECK (reason_code IN ('damaged', 'theft', 'data_entry_error', 'receiving_error', 'picking_error', 'found_stock', 'other'));

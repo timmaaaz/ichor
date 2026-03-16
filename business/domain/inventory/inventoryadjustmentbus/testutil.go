@@ -22,7 +22,7 @@ func TestNewInventoryAdjustment(n int, productIDs, locationIDs, adjustedByIDs uu
 			AdjustedBy:     adjustedByIDs[idx%len(adjustedByIDs)],
 			ApprovedBy:     &approvedByID,
 			QuantityChange: rand.Intn(100) - 50,
-			ReasonCode:     "Test Reason",
+			ReasonCode:     "other",
 			Notes:          "Test Notes",
 			AdjustmentDate: time.Now().AddDate(0, 0, i%30),
 		}
