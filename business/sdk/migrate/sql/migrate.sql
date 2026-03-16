@@ -2262,3 +2262,9 @@ ALTER TABLE products.products ADD CONSTRAINT products_upc_code_unique UNIQUE (up
 -- Description: Add CHECK constraint on reason_code for inventory adjustments.
 UPDATE inventory.inventory_adjustments SET reason_code = 'other' WHERE reason_code NOT IN ('damaged', 'theft', 'data_entry_error', 'receiving_error', 'picking_error', 'found_stock', 'other');
 ALTER TABLE inventory.inventory_adjustments ADD CONSTRAINT inventory_adjustments_reason_code_check CHECK (reason_code IN ('damaged', 'theft', 'data_entry_error', 'receiving_error', 'picking_error', 'found_stock', 'other'));
+
+-- Version: 2.16
+-- Description: Add CHECK constraint on inspection status values
+ALTER TABLE inventory.quality_inspections
+    ADD CONSTRAINT quality_inspections_status_check
+    CHECK (status IN ('pending', 'passed', 'failed'));
