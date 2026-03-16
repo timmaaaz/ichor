@@ -1061,10 +1061,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	transferorderapi.Routes(app, transferorderapi.Config{
-		TransferOrderBus: transferOrderBus,
-		AuthClient:       cfg.AuthClient,
-		Log:              cfg.Log,
-		PermissionsBus:   permissionsBus,
+		Log:               cfg.Log,
+		TransferOrderBus:  transferOrderBus,
+		InvTransactionBus: inventoryTransactionBus,
+		InvItemBus:        inventoryItemBus,
+		DB:                cfg.DB,
+		AuthClient:        cfg.AuthClient,
+		PermissionsBus:    permissionsBus,
 	})
 
 	orderfulfillmentstatusapi.Routes(app, orderfulfillmentstatusapi.Config{
@@ -1423,7 +1426,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		inventorylocationapp.NewApp(inventoryLocationBus, zoneBus),
 		inventorytransactionapp.NewApp(inventoryTransactionBus),
 		serialnumberapp.NewApp(serialNumberBus),
-		transferorderapp.NewApp(transferOrderBus),
+		transferorderapp.NewApp(transferOrderBus, inventoryTransactionBus, inventoryItemBus, cfg.DB),
 		warehouseapp.NewApp(warehouseBus),
 		zoneapp.NewApp(zoneBus),
 		inventoryitemapp.NewApp(inventoryItemBus),

@@ -2,34 +2,59 @@ package transferorderapp
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/mid"
 	"github.com/timmaaaz/ichor/app/sdk/query"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 type App struct {
-	transferorderbus *transferorderbus.Business
-	auth             *auth.Auth
+	transferorderbus  *transferorderbus.Business
+	invTransactionBus *inventorytransactionbus.Business
+	invItemBus        *inventoryitembus.Business
+	db                *sqlx.DB
+	auth              *auth.Auth
 }
 
-func NewApp(transferorderbus *transferorderbus.Business) *App {
+func NewApp(
+	transferorderbus *transferorderbus.Business,
+	invTransactionBus *inventorytransactionbus.Business,
+	invItemBus *inventoryitembus.Business,
+	db *sqlx.DB,
+) *App {
 	return &App{
-		transferorderbus: transferorderbus,
+		transferorderbus:  transferorderbus,
+		invTransactionBus: invTransactionBus,
+		invItemBus:        invItemBus,
+		db:                db,
 	}
 }
 
-func NewAppWithAuth(transferorderbus *transferorderbus.Business, auth *auth.Auth) *App {
+func NewAppWithAuth(
+	transferorderbus *transferorderbus.Business,
+	invTransactionBus *inventorytransactionbus.Business,
+	invItemBus *inventoryitembus.Business,
+	db *sqlx.DB,
+	auth *auth.Auth,
+) *App {
 	return &App{
-		transferorderbus: transferorderbus,
-		auth:             auth,
+		transferorderbus:  transferorderbus,
+		invTransactionBus: invTransactionBus,
+		invItemBus:        invItemBus,
+		db:                db,
+		auth:              auth,
 	}
 }
 
@@ -187,4 +212,129 @@ func (a *App) Reject(ctx context.Context, id uuid.UUID) (TransferOrder, error) {
 	}
 
 	return ToAppTransferOrder(rejected), nil
+}
+
+func (a *App) Claim(ctx context.Context, id uuid.UUID) (TransferOrder, error) {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return TransferOrder{}, errs.New(errs.Unauthenticated, err)
+	}
+
+	to, err := a.transferorderbus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, transferorderbus.ErrNotFound) {
+			return TransferOrder{}, errs.New(errs.NotFound, err)
+		}
+		return TransferOrder{}, fmt.Errorf("claim [querybyid]: %w", err)
+	}
+
+	claimed, err := a.transferorderbus.Claim(ctx, to, userID)
+	if err != nil {
+		if errors.Is(err, transferorderbus.ErrInvalidTransferStatus) {
+			return TransferOrder{}, errs.New(errs.FailedPrecondition, err)
+		}
+		return TransferOrder{}, fmt.Errorf("claim: %w", err)
+	}
+
+	return ToAppTransferOrder(claimed), nil
+}
+
+// Execute atomically completes a transfer: marks the order completed, creates
+// two inventory transactions (TRANSFER_OUT and TRANSFER_IN), decrements source
+// location stock, and increments destination location stock.
+func (a *App) Execute(ctx context.Context, id uuid.UUID) (TransferOrder, error) {
+	userID, err := mid.GetUserID(ctx)
+	if err != nil {
+		return TransferOrder{}, errs.New(errs.Unauthenticated, err)
+	}
+
+	to, err := a.transferorderbus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, transferorderbus.ErrNotFound) {
+			return TransferOrder{}, errs.New(errs.NotFound, err)
+		}
+		return TransferOrder{}, fmt.Errorf("execute [querybyid]: %w", err)
+	}
+
+	if to.Status != transferorderbus.StatusInTransit {
+		return TransferOrder{}, errs.Newf(errs.FailedPrecondition,
+			"transfer must be in_transit, got %s", to.Status)
+	}
+
+	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return TransferOrder{}, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 1. Mark transfer order as completed.
+	toBusTx, err := a.transferorderbus.NewWithTx(tx)
+	if err != nil {
+		return TransferOrder{}, fmt.Errorf("new transferorder tx: %w", err)
+	}
+
+	completed, err := toBusTx.Execute(ctx, to, userID)
+	if err != nil {
+		if errors.Is(err, transferorderbus.ErrInvalidTransferStatus) {
+			return TransferOrder{}, errs.New(errs.FailedPrecondition, err)
+		}
+		return TransferOrder{}, fmt.Errorf("execute transfer: %w", err)
+	}
+
+	// 2. Create TRANSFER_OUT inventory transaction (source location).
+	txBusTx, err := a.invTransactionBus.NewWithTx(tx)
+	if err != nil {
+		return TransferOrder{}, fmt.Errorf("new invtransaction tx: %w", err)
+	}
+
+	refNum := to.TransferID.String()
+	now := time.Now()
+
+	_, err = txBusTx.Create(ctx, inventorytransactionbus.NewInventoryTransaction{
+		ProductID:       to.ProductID,
+		LocationID:      to.FromLocationID,
+		UserID:          userID,
+		Quantity:        to.Quantity,
+		TransactionType: "TRANSFER_OUT",
+		ReferenceNumber: refNum,
+		TransactionDate: now,
+	})
+	if err != nil {
+		return TransferOrder{}, fmt.Errorf("create transfer_out transaction: %w", err)
+	}
+
+	// 3. Create TRANSFER_IN inventory transaction (destination location).
+	_, err = txBusTx.Create(ctx, inventorytransactionbus.NewInventoryTransaction{
+		ProductID:       to.ProductID,
+		LocationID:      to.ToLocationID,
+		UserID:          userID,
+		Quantity:        to.Quantity,
+		TransactionType: "TRANSFER_IN",
+		ReferenceNumber: refNum,
+		TransactionDate: now,
+	})
+	if err != nil {
+		return TransferOrder{}, fmt.Errorf("create transfer_in transaction: %w", err)
+	}
+
+	// 4. Decrement source location stock.
+	itemBusTx, err := a.invItemBus.NewWithTx(tx)
+	if err != nil {
+		return TransferOrder{}, fmt.Errorf("new invitem tx: %w", err)
+	}
+
+	if err := itemBusTx.DecrementQuantity(ctx, to.ProductID, to.FromLocationID, to.Quantity); err != nil {
+		return TransferOrder{}, errs.Newf(errs.FailedPrecondition, "insufficient stock at source location: %s", err)
+	}
+
+	// 5. Increment destination location stock.
+	if err := itemBusTx.UpsertQuantity(ctx, to.ProductID, to.ToLocationID, to.Quantity); err != nil {
+		return TransferOrder{}, fmt.Errorf("upsert destination inventory: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return TransferOrder{}, fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return ToAppTransferOrder(completed), nil
 }

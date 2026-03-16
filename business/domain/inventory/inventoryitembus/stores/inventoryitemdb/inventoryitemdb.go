@@ -408,3 +408,41 @@ func (s *Store) UpsertQuantity(ctx context.Context, newID, productID, locationID
 
 	return nil
 }
+
+// DecrementQuantity atomically subtracts quantity from the inventory item at
+// (product_id, location_id). The UPDATE uses a WHERE guard to prevent the
+// quantity from going negative. If no row is updated (item missing or
+// insufficient stock), an ErrNotFound is returned.
+func (s *Store) DecrementQuantity(ctx context.Context, productID, locationID uuid.UUID, quantity int) error {
+	data := struct {
+		ProductID  uuid.UUID `db:"product_id"`
+		LocationID uuid.UUID `db:"location_id"`
+		Quantity   int       `db:"quantity"`
+	}{
+		ProductID:  productID,
+		LocationID: locationID,
+		Quantity:   quantity,
+	}
+
+	const q = `
+	UPDATE inventory.inventory_items
+	SET
+		quantity     = quantity - :quantity,
+		updated_date = NOW()
+	WHERE
+		product_id  = :product_id
+		AND location_id = :location_id
+		AND quantity >= :quantity
+	`
+
+	rowsAffected, err := sqldb.NamedExecContextWithCount(ctx, s.log, s.db, q, data)
+	if err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return inventoryitembus.ErrNotFound
+	}
+
+	return nil
+}

@@ -26,9 +26,11 @@ var (
 
 // Transfer order status values.
 const (
-	StatusPending  = "pending"
-	StatusApproved = "approved"
-	StatusRejected = "rejected"
+	StatusPending   = "pending"
+	StatusApproved  = "approved"
+	StatusRejected  = "rejected"
+	StatusInTransit = "in_transit"
+	StatusCompleted = "completed"
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -139,6 +141,18 @@ func (b *Business) Update(ctx context.Context, to TransferOrder, ut UpdateTransf
 	if ut.TransferDate != nil {
 		to.TransferDate = *ut.TransferDate
 	}
+	if ut.ClaimedByID != nil {
+		to.ClaimedByID = ut.ClaimedByID
+	}
+	if ut.ClaimedAt != nil {
+		to.ClaimedAt = ut.ClaimedAt
+	}
+	if ut.CompletedByID != nil {
+		to.CompletedByID = ut.CompletedByID
+	}
+	if ut.CompletedAt != nil {
+		to.CompletedAt = ut.CompletedAt
+	}
 
 	to.UpdatedDate = time.Now()
 
@@ -224,6 +238,63 @@ func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uui
 
 	if err := b.storer.Update(ctx, to); err != nil {
 		return TransferOrder{}, fmt.Errorf("approve: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return to, nil
+}
+
+// Claim marks an approved transfer order as in_transit, recording who claimed it.
+func (b *Business) Claim(ctx context.Context, to TransferOrder, claimedBy uuid.UUID) (TransferOrder, error) {
+	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.claim")
+	defer span.End()
+
+	if to.Status != StatusApproved {
+		return TransferOrder{}, fmt.Errorf("claim: %w: must be approved, got %s", ErrInvalidTransferStatus, to.Status)
+	}
+
+	before := to
+
+	now := time.Now()
+	to.ClaimedByID = &claimedBy
+	to.ClaimedAt = &now
+	to.Status = StatusInTransit
+	to.UpdatedDate = now
+
+	if err := b.storer.Update(ctx, to); err != nil {
+		return TransferOrder{}, fmt.Errorf("claim: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return to, nil
+}
+
+// Execute marks an in_transit transfer order as completed, recording who completed it.
+// This is a simple status transition — the atomic stock move happens at the app layer.
+func (b *Business) Execute(ctx context.Context, to TransferOrder, completedBy uuid.UUID) (TransferOrder, error) {
+	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.execute")
+	defer span.End()
+
+	if to.Status != StatusInTransit {
+		return TransferOrder{}, fmt.Errorf("execute: %w: must be in_transit, got %s", ErrInvalidTransferStatus, to.Status)
+	}
+
+	before := to
+
+	now := time.Now()
+	to.CompletedByID = &completedBy
+	to.CompletedAt = &now
+	to.Status = StatusCompleted
+	to.UpdatedDate = now
+
+	if err := b.storer.Update(ctx, to); err != nil {
+		return TransferOrder{}, fmt.Errorf("execute: %w", err)
 	}
 
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
