@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrNotFound              = errors.New("inventoryItem not found")
+	ErrInsufficientStock     = errors.New("insufficient stock at location")
 	ErrUniqueEntry           = errors.New("inventoryItem entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
 	ErrAuthenticationFailure = errors.New("authentication failed")
@@ -34,6 +35,7 @@ type Storer interface {
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, inventoryID uuid.UUID) (InventoryItem, error)
 	UpsertQuantity(ctx context.Context, newID, productID, locationID uuid.UUID, quantityDelta int) error
+	DecrementQuantity(ctx context.Context, productID, locationID uuid.UUID, quantity int) error
 }
 
 type Business struct {
@@ -223,6 +225,24 @@ func (b *Business) UpsertQuantity(ctx context.Context, productID, locationID uui
 
 	if err := b.storer.UpsertQuantity(ctx, uuid.New(), productID, locationID, quantityDelta); err != nil {
 		return fmt.Errorf("upsert quantity: %w", err)
+	}
+
+	return nil
+}
+
+// DecrementQuantity subtracts the given quantity from the inventory item at
+// (productID, locationID). Returns an error if the item does not exist or if
+// the resulting quantity would go negative.
+func (b *Business) DecrementQuantity(ctx context.Context, productID, locationID uuid.UUID, quantity int) error {
+	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.decrementquantity")
+	defer span.End()
+
+	if quantity <= 0 {
+		return fmt.Errorf("decrement quantity: quantity must be positive, got %d", quantity)
+	}
+
+	if err := b.storer.DecrementQuantity(ctx, productID, locationID, quantity); err != nil {
+		return fmt.Errorf("decrement quantity: %w", err)
 	}
 
 	return nil

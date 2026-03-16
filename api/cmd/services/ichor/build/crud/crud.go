@@ -565,10 +565,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	transferorderapi.Routes(app, transferorderapi.Config{
-		TransferOrderBus: transferOrderBus,
-		AuthClient:       cfg.AuthClient,
-		Log:              cfg.Log,
-		PermissionsBus:   permissionsBus,
+		Log:               cfg.Log,
+		TransferOrderBus:  transferOrderBus,
+		InvTransactionBus: inventoryTransactionBus,
+		InvItemBus:        inventoryItemBus,
+		DB:                cfg.DB,
+		AuthClient:        cfg.AuthClient,
+		PermissionsBus:    permissionsBus,
 	})
 
 	orderfulfillmentstatusapi.Routes(app, orderfulfillmentstatusapi.Config{
