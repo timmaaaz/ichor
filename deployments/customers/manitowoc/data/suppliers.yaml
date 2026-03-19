@@ -1,0 +1,67 @@
+# Manitowoc Relay Components — Supplier Catalog
+# Source: December 2024 inventory snapshot
+# Generated from: docs/manitowac/inventory-dec-2024.md
+#
+# Schema decision: dual-sourced products (FRM-001, CORE-001, SC-001, TERM-LONG,
+# TERM-SHORT, TERM-OPT, BLD-001) are ONE product each with tracking_type: lot.
+# Each supplier maps their part number to the shared product SKU.
+#
+# MR&P part numbers come directly from the inventory snapshot.
+# Italy part numbers are assigned (no original numbers existed in snapshot).
+# Mitotec is noted as a 3rd supplier for cores only (10,200 units in Dec 2024 snapshot).
+#
+# Note: Cores China source used part number 119578 in the snapshot; that number
+# is NOT an MR&P number. MR&P cores had no assigned part number — using assigned
+# MRP-CORE-001 below.
+
+suppliers:
+  - name: "MR&P Manufacturing"
+    code: "MRP"
+    status: "active"
+    contact:
+      email: "orders@mrp-mfg.example.com"
+      phone: "555-0101"
+    products:
+      # Stage 3 — Coil Riveting
+      - { supplier_part: "119554",  product_sku: "FRM-001"   }  # Frames, MR&P (1000/bin)
+      - { supplier_part: "MRP-CORE-001", product_sku: "CORE-001" }  # Cores, MR&P (3375/bin) — no original part number in snapshot
+      - { supplier_part: "119573",  product_sku: "SC-001"    }  # Shading Coils, MR&P (15,000/Bin)
+      # Stage 4 — Contact Riveting
+      - { supplier_part: "119680",  product_sku: "TERM-LONG" }  # Terminals, Long MR&P (7,500/bin)
+      - { supplier_part: "119681",  product_sku: "TERM-SHORT" } # Terminals, Short MR&P (10,000/bin)
+      - { supplier_part: "119682",  product_sku: "TERM-OPT"  }  # Terminals, Optional MR&P (3,000/bin)
+      - { supplier_part: "119581",  product_sku: "BLD-001"   }  # Blades, MR&P (10,000/Bin)
+
+  - name: "Italy Manufacturing"
+    code: "ITL"
+    status: "active"
+    contact:
+      email: "vendite@italy-mfg.example.com"
+      phone: "+39-555-0202"
+    products:
+      # Stage 3 — Coil Riveting
+      - { supplier_part: "FRM-ITL-001",  product_sku: "FRM-001"    }  # Frames, Italy (1000/bin)
+      - { supplier_part: "CORE-ITL-001", product_sku: "CORE-001"   }  # Cores, Italy (3375/bin)
+      - { supplier_part: "SC-ITL-001",   product_sku: "SC-001"     }  # Shading Coils, Italy (15,000/Bin)
+      # Stage 4 — Contact Riveting
+      - { supplier_part: "TERM-LONG-ITL-001",  product_sku: "TERM-LONG"  }  # Terminals, Long Italy
+      - { supplier_part: "TERM-SHORT-ITL-001", product_sku: "TERM-SHORT" }  # Terminals, Short Italy
+      - { supplier_part: "TERM-OPT-ITL-001",   product_sku: "TERM-OPT"  }  # Terminals, Optional Italy
+      - { supplier_part: "BLD-ITL-001",         product_sku: "BLD-001"   }  # Blades, Italy
+
+  # Mitotec: third supplier, cores only (10,200 units in Dec 2024 snapshot)
+  # Listed as a distinct source in the inventory snapshot alongside China, MR&P, and Italy.
+  # Adding as a supplier record for traceability; no assigned part number in original snapshot.
+  - name: "Mitotec"
+    code: "MTC"
+    status: "active"
+    contact:
+      email: "sales@mitotec.example.com"
+      phone: "555-0303"
+    products:
+      - { supplier_part: "CORE-MTC-001", product_sku: "CORE-001" }  # Cores, Mitotec — no original part number in snapshot
+
+  # Note: Cores China source (part number 119578 in snapshot) is NOT mapped here
+  # because 119578 is tracked as a separate China-origin lot. If a China supplier
+  # record is needed later, add it with:
+  #   supplier_part: "119578", product_sku: "CORE-001"
