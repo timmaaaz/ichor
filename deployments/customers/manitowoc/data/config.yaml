@@ -1,0 +1,16 @@
+# Manitowoc seed generation config
+history_months: 6
+seed_date: "2025-01-01"
+
+# Volume knobs
+employee_count: 50
+customer_count: 15
+order_count: 200
+# Suppliers come from suppliers.yaml, not generated
+po_count: 40
+transfer_count: 80
+adjustment_count: 30
+inspection_count: 25
+
+# Randomization
+random_seed: 42
