@@ -10,8 +10,6 @@ Usage: python3 generate.py
 
 import uuid
 import yaml
-import random
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from faker import Faker
@@ -37,7 +35,11 @@ def det_uuid(key: str) -> str:
 
 
 def sql_str(value) -> str:
-    """Escape a value for SQL insertion."""
+    """Escape a value for SQL insertion.
+
+    NOTE: Only safe for trusted input (YAML data files). Do NOT use with
+    user-supplied data — use parameterized queries via psycopg2 instead.
+    """
     if value is None:
         return "NULL"
     if isinstance(value, bool):
@@ -1234,11 +1236,6 @@ def main():
     warehouses = load_yaml("warehouses.yaml")
     products = load_yaml("products.yaml")
     suppliers = load_yaml("suppliers.yaml")
-
-    # Seed RNG for deterministic output
-    random.seed(config["random_seed"])
-    fake = Faker()
-    Faker.seed(config["random_seed"])
 
     print(f"Config: {config['history_months']} months history, "
           f"{config['employee_count']} employees, {config['order_count']} orders")
