@@ -163,6 +163,7 @@ dev-brew:
 
 dev-python:
 	brew list python@3 || brew install python@3
+	brew list libpq || brew install libpq
 	pip3 install -r deployments/customers/manitowoc/requirements.txt
 
 dev-docker:
