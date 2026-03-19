@@ -659,24 +659,568 @@ def generate_inventory(config, products_data, warehouses, known_ids):
                    stmts)
 
 
-def generate_sales(config, products, known_ids):
-    """Generate 24_manitowoc_sales.sql — customers, orders, line items."""
-    pass
+def generate_sales(config, products_data, known_ids):
+    """Generate 24_manitowoc_sales.sql — fulfillment statuses, customers, orders, line items."""
+    stmts = []
+    seed_date = config["seed_date"]
+    seed_dt = datetime.fromisoformat(seed_date)
+    admin_id = known_ids["users"]["admin_gopher"]
+    customer_count = config["customer_count"]
+    order_count = config["order_count"]
+    history_months = config["history_months"]
+    employee_count = config["employee_count"]
+    net30_id = known_ids["payment_terms"]["net_30"]
+    city_id = det_uuid("city:Manitowoc")
+    street_id = det_uuid("street:MTW-MFG")
+
+    fake = Faker()
+    Faker.seed(config["random_seed"] + 100)  # offset to avoid collision with employees
+
+    # --- 1. Order fulfillment statuses ---
+    order_statuses = [
+        ("PENDING",       "Order received, awaiting processing",   "#FFA500", "#FFF3E0", "clock"),
+        ("PROCESSING",    "Order is being prepared",               "#2196F3", "#E3F2FD", "cog"),
+        ("PICKING",       "Items being picked from warehouse",     "#9C27B0", "#F3E5F5", "hand-pointer"),
+        ("PACKING",       "Items being packed for shipment",       "#795548", "#EFEBE9", "box"),
+        ("READY_TO_SHIP", "Order packed and ready for carrier",    "#00BCD4", "#E0F7FA", "truck-loading"),
+        ("SHIPPED",       "Order shipped to customer",             "#4CAF50", "#E8F5E9", "shipping-fast"),
+        ("DELIVERED",     "Order delivered to customer",           "#388E3C", "#E8F5E9", "check-circle"),
+        ("CANCELLED",     "Order cancelled",                       "#F44336", "#FFEBEE", "times-circle"),
+    ]
+    for name, desc, pc, sc, icon in order_statuses:
+        sid = det_uuid(f"order-fulfillment-status:{name}")
+        stmts.append(
+            f"INSERT INTO sales.order_fulfillment_statuses (id, name, description, primary_color, secondary_color, icon) VALUES (\n"
+            f"  '{sid}', {sql_str(name)}, {sql_str(desc)}, {sql_str(pc)}, {sql_str(sc)}, {sql_str(icon)}\n"
+            f") ON CONFLICT (name) DO NOTHING;\n"
+        )
+
+    # --- 2. Line item fulfillment statuses ---
+    li_statuses = [
+        ("PENDING",           "Line item awaiting processing",       "#FFA500", "#FFF3E0", "clock"),
+        ("PROCESSING",        "Line item being processed",           "#2196F3", "#E3F2FD", "cog"),
+        ("PICKED",            "All units picked",                    "#9C27B0", "#F3E5F5", "check"),
+        ("PARTIALLY_PICKED",  "Some units picked",                   "#FF9800", "#FFF3E0", "tasks"),
+        ("PACKED",            "Line item packed",                    "#795548", "#EFEBE9", "box"),
+        ("SHIPPED",           "Line item shipped",                   "#4CAF50", "#E8F5E9", "shipping-fast"),
+        ("DELIVERED",         "Line item delivered",                 "#388E3C", "#E8F5E9", "check-circle"),
+        ("CANCELLED",         "Line item cancelled",                 "#F44336", "#FFEBEE", "times-circle"),
+        ("BACKORDERED",       "Line item backordered",               "#FF5722", "#FBE9E7", "exclamation-triangle"),
+    ]
+    for name, desc, pc, sc, icon in li_statuses:
+        sid = det_uuid(f"li-fulfillment-status:{name}")
+        stmts.append(
+            f"INSERT INTO sales.line_item_fulfillment_statuses (id, name, description, primary_color, secondary_color, icon) VALUES (\n"
+            f"  '{sid}', {sql_str(name)}, {sql_str(desc)}, {sql_str(pc)}, {sql_str(sc)}, {sql_str(icon)}\n"
+            f") ON CONFLICT (name) DO NOTHING;\n"
+        )
+
+    # --- 3. Customers (with contact_infos + streets) ---
+    customer_ids = []
+    for i in range(customer_count):
+        cust_id = det_uuid(f"customer:{i}")
+        contact_id = det_uuid(f"customer-contact:{i}")
+        addr_id = det_uuid(f"customer-street:{i}")
+        customer_ids.append(cust_id)
+
+        company = fake.company()
+        first = fake.first_name()
+        last = fake.last_name()
+        phone = fake.phone_number()[:20]
+        email = fake.company_email()
+        line1 = fake.street_address()
+
+        # Contact info
+        stmts.append(
+            f"INSERT INTO core.contact_infos (id, first_name, last_name, primary_phone_number, secondary_phone_number, email_address, street_id, delivery_address_id, available_hours_start, available_hours_end, timezone_id, preferred_contact_type, notes) VALUES (\n"
+            f"  '{contact_id}',\n"
+            f"  {sql_str(first)}, {sql_str(last)},\n"
+            f"  {sql_str(phone)}, NULL,\n"
+            f"  {sql_str(email)},\n"
+            f"  '{street_id}', NULL,\n"
+            f"  '08:00:00', '17:00:00',\n"
+            f"  (SELECT id FROM geography.timezones WHERE name = 'America/Chicago'),\n"
+            f"  'email', NULL\n"
+            f");\n"
+        )
+
+        # Delivery street address
+        stmts.append(
+            f"INSERT INTO geography.streets (id, city_id, line_1, line_2, zip_code) VALUES (\n"
+            f"  '{addr_id}', '{city_id}',\n"
+            f"  {sql_str(line1)}, NULL, {sql_str(fake.zipcode())}\n"
+            f");\n"
+        )
+
+        # Customer
+        user_id = det_uuid(f"employee:{i % employee_count}")
+        stmts.append(
+            f"INSERT INTO sales.customers (id, name, contact_id, delivery_address_id, notes, created_by, updated_by, created_date, updated_date) VALUES (\n"
+            f"  '{cust_id}',\n"
+            f"  {sql_str(company)},\n"
+            f"  '{contact_id}',\n"
+            f"  '{addr_id}',\n"
+            f"  NULL,\n"
+            f"  '{user_id}', '{user_id}',\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    # --- 4. Orders ---
+    # Collect finished goods + finished bases for line items
+    finished_products = [p for p in products_data["products"]
+                         if p["inventory_type"] in ("finished_good", "wip")
+                         and p["sku"].startswith(("RELAY-FIN", "BASE-FIN"))]
+    # Also include RELAY-FIN as primary
+    relay_fin = [p for p in products_data["products"] if p["sku"] == "RELAY-FIN"]
+
+    # Status distribution thresholds (cumulative): CANCELLED 5%, PENDING 15%, PROCESSING 40%, SHIPPED 70%, DELIVERED 100%
+    status_thresholds = [
+        (0.05,  "CANCELLED"),
+        (0.15,  "PENDING"),
+        (0.40,  "PROCESSING"),
+        (0.70,  "SHIPPED"),
+        (1.00,  "DELIVERED"),
+    ]
+
+    history_start = seed_dt - timedelta(days=history_months * 30)
+
+    for i in range(order_count):
+        order_id = det_uuid(f"order:{i}")
+        order_number = f"ORD-{i:06d}"
+
+        # Pick customer
+        cust_idx = int(det_uuid(f"order-cust:{i}").replace("-", ""), 16) % customer_count
+        cust_id = customer_ids[cust_idx]
+
+        # Date with exponential distribution
+        rand_val = int(det_uuid(f"order-time:{i}").replace("-", ""), 16) % 10000
+        fraction = rand_val / 10000
+        days_offset = int((history_months * 30) * (1 - fraction ** 2))
+        order_date = seed_dt - timedelta(days=days_offset)
+        due_date = order_date + timedelta(days=14)
+
+        # Status
+        status_seed = int(det_uuid(f"order-status:{i}").replace("-", ""), 16) % 10000 / 10000
+        order_status = "DELIVERED"
+        for threshold, sname in status_thresholds:
+            if status_seed < threshold:
+                order_status = sname
+                break
+
+        order_status_id = det_uuid(f"order-fulfillment-status:{order_status}")
+        user_id = det_uuid(f"employee:{i % employee_count}")
+
+        # Line items: 1-5 per order
+        num_items = int(det_uuid(f"order-items:{i}").replace("-", ""), 16) % 5 + 1
+
+        subtotal = 0.0
+        line_stmts = []
+
+        for j in range(num_items):
+            li_id = det_uuid(f"order-li:{i}:{j}")
+
+            # 80% RELAY-FIN, 20% finished bases
+            prod_seed = int(det_uuid(f"order-li-prod:{i}:{j}").replace("-", ""), 16) % 100
+            if prod_seed < 80 and relay_fin:
+                prod = relay_fin[0]
+            else:
+                pidx = int(det_uuid(f"order-li-pidx:{i}:{j}").replace("-", ""), 16) % len(finished_products)
+                prod = finished_products[pidx]
+
+            prod_id = det_uuid(f"product:{prod['sku']}")
+
+            # Quantity: 10-500 relays per line
+            qty = int(det_uuid(f"order-li-qty:{i}:{j}").replace("-", ""), 16) % 491 + 10
+
+            # Unit price from product cost (deterministic)
+            cost_seed = int(det_uuid(f"cost-seed:{prod['sku']}").replace("-", ""), 16) % 10000
+            inv_type = prod["inventory_type"]
+            cost_ranges = {"finished_good": (100, 500), "wip": (20, 200)}
+            low, high = cost_ranges.get(inv_type, (20, 200))
+            purchase_cost = round(low + (high - low) * (cost_seed / 10000), 2)
+            unit_price = round(purchase_cost * 1.3, 2)  # selling price
+
+            line_total = round(qty * unit_price, 2)
+            subtotal += line_total
+
+            # Line item status matches order status
+            if order_status in ("DELIVERED", "SHIPPED"):
+                li_status = order_status
+                picked_qty = qty
+            elif order_status == "CANCELLED":
+                li_status = "CANCELLED"
+                picked_qty = 0
+            elif order_status == "PROCESSING":
+                li_status = "PROCESSING"
+                picked_qty = 0
+            else:
+                li_status = "PENDING"
+                picked_qty = 0
+
+            li_status_id = det_uuid(f"li-fulfillment-status:{li_status}")
+
+            line_stmts.append(
+                f"INSERT INTO sales.order_line_items (id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date) VALUES (\n"
+                f"  '{li_id}',\n"
+                f"  '{order_id}',\n"
+                f"  '{prod_id}',\n"
+                f"  NULL,\n"
+                f"  {qty}, {unit_price}, 0, 'flat',\n"
+                f"  {line_total},\n"
+                f"  '{li_status_id}',\n"
+                f"  {picked_qty}, 0, NULL,\n"
+                f"  '{user_id}', '{seed_date}',\n"
+                f"  '{user_id}', '{seed_date}'\n"
+                f");\n"
+            )
+
+        # Financial totals
+        tax_rate = 7.50
+        tax_amount = round(subtotal * tax_rate / 100, 2)
+        shipping_cost = round(25 + (int(det_uuid(f"order-ship:{i}").replace("-", ""), 16) % 200), 2)
+        total_amount = round(subtotal + tax_amount + shipping_cost, 2)
+
+        stmts.append(
+            f"INSERT INTO sales.orders (id, number, customer_id, due_date, order_fulfillment_status_id, billing_address_id, shipping_address_id, order_date, payment_term_id, notes, subtotal, tax_rate, tax_amount, shipping_cost, total_amount, currency_id, created_by, updated_by, created_date, updated_date) VALUES (\n"
+            f"  '{order_id}',\n"
+            f"  {sql_str(order_number)},\n"
+            f"  '{cust_id}',\n"
+            f"  {sql_timestamp(due_date)},\n"
+            f"  '{order_status_id}',\n"
+            f"  NULL, NULL,\n"
+            f"  {sql_timestamp(order_date)},\n"
+            f"  '{net30_id}',\n"
+            f"  NULL,\n"
+            f"  {subtotal}, {tax_rate}, {tax_amount}, {shipping_cost}, {total_amount},\n"
+            f"  (SELECT id FROM core.currencies WHERE code = 'USD'),\n"
+            f"  '{user_id}', '{user_id}',\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+        stmts.extend(line_stmts)
+
+    write_sql_file("24_manitowoc_sales.sql",
+                   "Manitowoc sales: fulfillment statuses, customers, orders, line items",
+                   stmts)
 
 
-def generate_procurement(config, products, suppliers, known_ids):
-    """Generate 25_manitowoc_procurement.sql — suppliers, POs, line items."""
-    pass
+def generate_procurement(config, products_data, suppliers_data, known_ids):
+    """Generate 25_manitowoc_procurement.sql — suppliers, POs, lot trackings, line items."""
+    stmts = []
+    seed_date = config["seed_date"]
+    seed_dt = datetime.fromisoformat(seed_date)
+    admin_id = known_ids["users"]["admin_gopher"]
+    employee_count = config["employee_count"]
+    po_count = config["po_count"]
+    history_months = config["history_months"]
+    net30_id = known_ids["payment_terms"]["net_30"]
+    street_id = det_uuid("street:MTW-MFG")
+    wh_id = det_uuid("warehouse:MTW-MFG-01")
+
+    # --- 1. Suppliers (from suppliers.yaml) ---
+    supplier_ids = []
+    all_supplier_products = []  # (supplier_product_id, supplier_id, product_sku, unit_cost)
+
+    for sup in suppliers_data["suppliers"]:
+        sup_code = sup["code"]
+        sup_id = det_uuid(f"supplier:{sup_code}")
+        contact_id = det_uuid(f"supplier-contact:{sup_code}")
+        supplier_ids.append(sup_id)
+
+        contact = sup.get("contact", {})
+
+        # Contact info for supplier
+        stmts.append(
+            f"INSERT INTO core.contact_infos (id, first_name, last_name, primary_phone_number, secondary_phone_number, email_address, street_id, delivery_address_id, available_hours_start, available_hours_end, timezone_id, preferred_contact_type, notes) VALUES (\n"
+            f"  '{contact_id}',\n"
+            f"  {sql_str(sup['name'])}, 'Procurement',\n"
+            f"  {sql_str(contact.get('phone', '555-0000'))}, NULL,\n"
+            f"  {sql_str(contact.get('email', 'sales@example.com'))},\n"
+            f"  '{street_id}', NULL,\n"
+            f"  '08:00:00', '17:00:00',\n"
+            f"  (SELECT id FROM geography.timezones WHERE name = 'America/Chicago'),\n"
+            f"  'email', NULL\n"
+            f");\n"
+        )
+
+        # Lead time: domestic=14, international=45
+        lead_time = 14 if sup_code in ("MRP", "MTC") else 45
+        rating = 4.5 if sup_code == "MRP" else 4.0
+
+        stmts.append(
+            f"INSERT INTO procurement.suppliers (id, contact_infos_id, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date) VALUES (\n"
+            f"  '{sup_id}',\n"
+            f"  '{contact_id}',\n"
+            f"  {sql_str(sup['name'])},\n"
+            f"  '{net30_id}',\n"
+            f"  {lead_time}, {rating}, true,\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+        # Supplier products
+        is_primary = (sup_code == "MRP")  # MR&P is primary for most
+        for sp in sup.get("products", []):
+            sp_id = det_uuid(f"supplier-product:{sup_code}:{sp['supplier_part']}")
+            prod_id = det_uuid(f"product:{sp['product_sku']}")
+
+            # Derive unit cost from product cost
+            cost_seed = int(det_uuid(f"cost-seed:{sp['product_sku']}").replace("-", ""), 16) % 10000
+            unit_cost = round(1 + 99 * (cost_seed / 10000), 2)
+
+            all_supplier_products.append((sp_id, sup_id, sp["product_sku"], unit_cost, sp["supplier_part"]))
+
+            stmts.append(
+                f"INSERT INTO procurement.supplier_products (id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date) VALUES (\n"
+                f"  '{sp_id}',\n"
+                f"  '{sup_id}',\n"
+                f"  '{prod_id}',\n"
+                f"  {sql_str(sp['supplier_part'])},\n"
+                f"  100, 50000,\n"
+                f"  {lead_time}, {unit_cost},\n"
+                f"  {sql_str(is_primary)},\n"
+                f"  '{seed_date}', '{seed_date}'\n"
+                f");\n"
+            )
+
+    # --- 2. Lot trackings (for dual-sourced products with tracking_type: lot) ---
+    lot_products = [p for p in products_data["products"] if p.get("tracking_type") == "lot"]
+    lot_idx = 0
+    for prod in lot_products:
+        sku = prod["sku"]
+        # Find supplier_products for this sku
+        matching_sps = [(sp_id, sup_id, unit_cost, part_num) for sp_id, sup_id, psku, unit_cost, part_num in all_supplier_products if psku == sku]
+
+        for sp_id, sup_id, unit_cost, part_num in matching_sps:
+            lot_id = det_uuid(f"lot:{sku}:{lot_idx}")
+            lot_number = f"LOT-{sku}-{lot_idx:04d}"
+            lot_idx += 1
+
+            # manufacture 90 days before seed, expiration 2 years out, received 60 days before seed
+            mfg_date = seed_dt - timedelta(days=90)
+            exp_date = seed_dt + timedelta(days=730)
+            recv_date = seed_dt - timedelta(days=60)
+
+            # Distribute initial qty across suppliers
+            qty = max(100, prod["initial_qty"] // max(1, len(matching_sps)))
+
+            stmts.append(
+                f"INSERT INTO inventory.lot_trackings (id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, quantity, quality_status, created_date, updated_date) VALUES (\n"
+                f"  '{lot_id}',\n"
+                f"  '{sp_id}',\n"
+                f"  {sql_str(lot_number)},\n"
+                f"  {sql_timestamp(mfg_date)},\n"
+                f"  {sql_timestamp(exp_date)},\n"
+                f"  {sql_timestamp(recv_date)},\n"
+                f"  {qty},\n"
+                f"  'released',\n"
+                f"  '{seed_date}', '{seed_date}'\n"
+                f");\n"
+            )
+
+    # --- 3. Purchase order statuses ---
+    po_statuses = [
+        ("DRAFT",              "Purchase order drafted",           10),
+        ("SUBMITTED",          "Submitted to supplier",           20),
+        ("APPROVED",           "Approved for ordering",           30),
+        ("ORDERED",            "Order placed with supplier",      40),
+        ("PARTIALLY_RECEIVED", "Some items received",             50),
+        ("RECEIVED",           "All items received",              60),
+        ("CLOSED",             "PO closed and reconciled",        70),
+        ("CANCELLED",          "PO cancelled",                    80),
+    ]
+    for name, desc, sort in po_statuses:
+        sid = det_uuid(f"po-status:{name}")
+        stmts.append(
+            f"INSERT INTO procurement.purchase_order_statuses (id, name, description, sort_order) VALUES (\n"
+            f"  '{sid}', {sql_str(name)}, {sql_str(desc)}, {sort}\n"
+            f") ON CONFLICT (name) DO NOTHING;\n"
+        )
+
+    # --- 4. PO line item statuses ---
+    poli_statuses = [
+        ("PENDING",            "Awaiting order placement",        10),
+        ("ORDERED",            "Ordered from supplier",           20),
+        ("PARTIALLY_RECEIVED", "Some units received",             30),
+        ("RECEIVED",           "All units received",              40),
+        ("CANCELLED",          "Line item cancelled",             50),
+    ]
+    for name, desc, sort in poli_statuses:
+        sid = det_uuid(f"poli-status:{name}")
+        stmts.append(
+            f"INSERT INTO procurement.purchase_order_line_item_statuses (id, name, description, sort_order) VALUES (\n"
+            f"  '{sid}', {sql_str(name)}, {sql_str(desc)}, {sort}\n"
+            f") ON CONFLICT (name) DO NOTHING;\n"
+        )
+
+    # --- 5. Purchase orders ---
+    # PO status distribution: ~5% CANCELLED, ~10% DRAFT, ~15% ORDERED, ~30% RECEIVED, ~40% CLOSED
+    po_status_thresholds = [
+        (0.05, "CANCELLED"),
+        (0.15, "DRAFT"),
+        (0.30, "ORDERED"),
+        (0.60, "RECEIVED"),
+        (1.00, "CLOSED"),
+    ]
+
+    for i in range(po_count):
+        po_id = det_uuid(f"po:{i}")
+        po_number = f"PO-{i:06d}"
+
+        # Pick supplier
+        sup_idx = int(det_uuid(f"po-sup:{i}").replace("-", ""), 16) % len(supplier_ids)
+        sup_id = supplier_ids[sup_idx]
+
+        # Find supplier products for this supplier
+        sup_prods = [(sp_id, psku, uc, pn) for sp_id, sid, psku, uc, pn in all_supplier_products if sid == sup_id]
+        if not sup_prods:
+            continue
+
+        # Date with exponential distribution
+        rand_val = int(det_uuid(f"po-time:{i}").replace("-", ""), 16) % 10000
+        fraction = rand_val / 10000
+        days_offset = int((history_months * 30) * (1 - fraction ** 2))
+        order_date = seed_dt - timedelta(days=days_offset)
+        expected_delivery = order_date + timedelta(days=30)
+
+        # Status
+        status_seed = int(det_uuid(f"po-status-seed:{i}").replace("-", ""), 16) % 10000 / 10000
+        po_status = "CLOSED"
+        for threshold, sname in po_status_thresholds:
+            if status_seed < threshold:
+                po_status = sname
+                break
+
+        po_status_id = det_uuid(f"po-status:{po_status}")
+        requested_by = det_uuid(f"employee:{i % employee_count}")
+        approved_by = det_uuid(f"employee:{(i + 1) % employee_count}")
+
+        actual_delivery = None
+        approved_date = None
+        if po_status in ("RECEIVED", "CLOSED"):
+            actual_delivery = expected_delivery + timedelta(days=int(det_uuid(f"po-delay:{i}").replace("-", ""), 16) % 7)
+            approved_date = order_date + timedelta(days=1)
+
+        # Line items: 1-4 per PO
+        num_items = int(det_uuid(f"po-items:{i}").replace("-", ""), 16) % 4 + 1
+        subtotal = 0.0
+        po_line_stmts = []
+
+        for j in range(num_items):
+            li_id = det_uuid(f"po-li:{i}:{j}")
+            sp_idx = int(det_uuid(f"po-li-sp:{i}:{j}").replace("-", ""), 16) % len(sup_prods)
+            sp_id, psku, unit_cost, part_num = sup_prods[sp_idx]
+
+            qty_ordered = int(det_uuid(f"po-li-qty:{i}:{j}").replace("-", ""), 16) % 4901 + 100
+            line_total = round(qty_ordered * unit_cost, 2)
+            subtotal += line_total
+
+            # Quantities based on PO status
+            if po_status in ("RECEIVED", "CLOSED"):
+                qty_received = qty_ordered
+                qty_cancelled = 0
+                li_status = "RECEIVED"
+                li_actual = actual_delivery
+            elif po_status == "CANCELLED":
+                qty_received = 0
+                qty_cancelled = qty_ordered
+                li_status = "CANCELLED"
+                li_actual = None
+            elif po_status == "ORDERED":
+                qty_received = 0
+                qty_cancelled = 0
+                li_status = "ORDERED"
+                li_actual = None
+            else:
+                qty_received = 0
+                qty_cancelled = 0
+                li_status = "PENDING"
+                li_actual = None
+
+            li_status_id = det_uuid(f"poli-status:{li_status}")
+
+            po_line_stmts.append(
+                f"INSERT INTO procurement.purchase_order_line_items (id, purchase_order_id, supplier_product_id, quantity_ordered, quantity_received, quantity_cancelled, unit_cost, discount, line_total, line_item_status_id, expected_delivery_date, actual_delivery_date, notes, created_by, updated_by, created_date, updated_date) VALUES (\n"
+                f"  '{li_id}',\n"
+                f"  '{po_id}',\n"
+                f"  '{sp_id}',\n"
+                f"  {qty_ordered}, {qty_received}, {qty_cancelled},\n"
+                f"  {unit_cost}, 0, {line_total},\n"
+                f"  '{li_status_id}',\n"
+                f"  {sql_timestamp(expected_delivery)},\n"
+                f"  {sql_timestamp(li_actual) if li_actual else 'NULL'},\n"
+                f"  NULL,\n"
+                f"  '{requested_by}', '{requested_by}',\n"
+                f"  '{seed_date}', '{seed_date}'\n"
+                f");\n"
+            )
+
+        tax_amount = round(subtotal * 0.075, 2)
+        shipping_cost = round(50 + (int(det_uuid(f"po-ship:{i}").replace("-", ""), 16) % 300), 2)
+        total_amount = round(subtotal + tax_amount + shipping_cost, 2)
+
+        quoted_approved_by = f"'{approved_by}'" if approved_date else "NULL"
+
+        stmts.append(
+            f"INSERT INTO procurement.purchase_orders (id, order_number, supplier_id, purchase_order_status_id, delivery_warehouse_id, delivery_location_id, delivery_street_id, order_date, expected_delivery_date, actual_delivery_date, subtotal, tax_amount, shipping_cost, total_amount, currency_id, requested_by, approved_by, approved_date, approval_reason, rejected_by, rejected_date, rejection_reason, notes, supplier_reference_number, created_by, updated_by, created_date, updated_date) VALUES (\n"
+            f"  '{po_id}',\n"
+            f"  {sql_str(po_number)},\n"
+            f"  '{sup_id}',\n"
+            f"  '{po_status_id}',\n"
+            f"  '{wh_id}',\n"
+            f"  NULL, NULL,\n"
+            f"  {sql_timestamp(order_date)},\n"
+            f"  {sql_timestamp(expected_delivery)},\n"
+            f"  {sql_timestamp(actual_delivery) if actual_delivery else 'NULL'},\n"
+            f"  {subtotal}, {tax_amount}, {shipping_cost}, {total_amount},\n"
+            f"  (SELECT id FROM core.currencies WHERE code = 'USD'),\n"
+            f"  '{requested_by}',\n"
+            f"  {quoted_approved_by},\n"
+            f"  {sql_timestamp(approved_date) if approved_date else 'NULL'},\n"
+            f"  NULL, NULL, NULL, NULL, NULL, NULL,\n"
+            f"  '{requested_by}', '{requested_by}',\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+        stmts.extend(po_line_stmts)
+
+    write_sql_file("25_manitowoc_procurement.sql",
+                   "Manitowoc procurement: suppliers, supplier products, lot trackings, PO statuses, POs, line items",
+                   stmts)
 
 
 def generate_workflows(config, known_ids):
-    """Generate 26_manitowoc_workflows.sql — automation rules, edges."""
-    pass
+    """Generate 26_manitowoc_workflows.sql — platform defaults are sufficient."""
+    stmts = []
+    stmts.append("-- Workflow rules and templates are provided by the platform baseline.\n")
+    stmts.append("-- No Manitowoc-specific workflow configuration needed at this time.\n")
+
+    write_sql_file("26_manitowoc_workflows.sql",
+                   "Manitowoc workflows: using platform defaults",
+                   stmts)
 
 
 def generate_permissions(config, known_ids):
-    """Generate 27_manitowoc_permissions.sql — role grants."""
-    pass
+    """Generate 27_manitowoc_permissions.sql — assign all employees to ZZZADMIN role."""
+    stmts = []
+    employee_count = config["employee_count"]
+    zzzadmin_id = known_ids["roles"]["zzzadmin"]
+
+    for i in range(employee_count):
+        emp_id = det_uuid(f"employee:{i}")
+        ur_id = det_uuid(f"user-role:{i}")
+        stmts.append(
+            f"INSERT INTO core.user_roles (id, user_id, role_id) VALUES (\n"
+            f"  '{ur_id}', '{emp_id}', '{zzzadmin_id}'\n"
+            f");\n"
+        )
+
+    write_sql_file("27_manitowoc_permissions.sql",
+                   "Manitowoc permissions: employee role assignments",
+                   stmts)
 
 
 def main():
