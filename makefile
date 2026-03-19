@@ -164,7 +164,8 @@ dev-brew:
 dev-python:
 	brew list python@3 || brew install python@3
 	brew list libpq || brew install libpq
-	pip3 install -r deployments/customers/manitowoc/requirements.txt
+	python3 -m venv deployments/customers/manitowoc/.venv
+	deployments/customers/manitowoc/.venv/bin/pip install -r deployments/customers/manitowoc/requirements.txt
 
 dev-docker:
 	docker pull $(GOLANG) & \
@@ -465,7 +466,7 @@ reseed-frontend: dev-database-recreate dev-update-apply seed-frontend
 # Manitowoc Customer Seed
 
 seed-manitowoc:
-	cd deployments/customers/manitowoc && python3 generate.py && ./seed.sh postgresql://postgres:postgres@localhost
+	cd deployments/customers/manitowoc && .venv/bin/python3 generate.py && ./seed.sh postgresql://postgres:postgres@localhost
 
 reseed-manitowoc: dev-database-recreate dev-update-apply migrate seed-manitowoc
 
