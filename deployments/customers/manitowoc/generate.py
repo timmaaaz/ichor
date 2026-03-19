@@ -80,18 +80,265 @@ def generate_org(config, warehouses, known_ids):
     - zones has NO code column (name + description + stage only)
     - locations use aisle/rack/shelf/bin coordinates, NOT name/code
     """
-    pass
+    stmts = []
+    admin_id = known_ids["users"]["admin_gopher"]
+    seed_date = config["seed_date"]
+    geo = warehouses["geography"]
+
+    # --- Geography prerequisites ---
+    city_id = det_uuid("city:Manitowoc")
+    street_id = det_uuid("street:MTW-MFG")
+
+    stmts.append(
+        f"INSERT INTO geography.cities (id, region_id, name) VALUES (\n"
+        f"  '{city_id}',\n"
+        f"  (SELECT id FROM geography.regions WHERE alpha_2 = '{geo['region']}'),\n"
+        f"  {sql_str(geo['city'])}\n"
+        f");\n"
+    )
+
+    stmts.append(
+        f"INSERT INTO geography.streets (id, city_id, line_1, line_2, zip_code) VALUES (\n"
+        f"  '{street_id}',\n"
+        f"  '{city_id}',\n"
+        f"  {sql_str(geo['street']['line_1'])},\n"
+        f"  NULL,\n"
+        f"  {sql_str(geo['street']['postal_code'])}\n"
+        f");\n"
+    )
+
+    # --- Warehouses, Zones, Locations ---
+    for wh in warehouses["warehouses"]:
+        wh_code = wh["code"]
+        wh_id = det_uuid(f"warehouse:{wh_code}")
+
+        stmts.append(
+            f"INSERT INTO inventory.warehouses (id, code, name, street_id, is_active, created_date, updated_date, created_by, updated_by) VALUES (\n"
+            f"  '{wh_id}',\n"
+            f"  {sql_str(wh_code)},\n"
+            f"  {sql_str(wh['name'])},\n"
+            f"  '{street_id}',\n"
+            f"  true,\n"
+            f"  '{seed_date}', '{seed_date}',\n"
+            f"  '{admin_id}', '{admin_id}'\n"
+            f");\n"
+        )
+
+        for zone in wh.get("zones", []):
+            zone_key = f"zone:{wh_code}:{zone['name']}"
+            zone_id = det_uuid(zone_key)
+
+            stmts.append(
+                f"INSERT INTO inventory.zones (id, warehouse_id, name, description, stage, created_date, updated_date) VALUES (\n"
+                f"  '{zone_id}',\n"
+                f"  '{wh_id}',\n"
+                f"  {sql_str(zone['name'])},\n"
+                f"  {sql_str(zone.get('description'))},\n"
+                f"  {sql_str(zone.get('stage'))},\n"
+                f"  '{seed_date}', '{seed_date}'\n"
+                f");\n"
+            )
+
+            for loc in zone.get("locations", []):
+                loc_key = f"location:{wh_code}:{loc['aisle']}:{loc['rack']}:{loc['shelf']}:{loc['bin']}"
+                loc_id = det_uuid(loc_key)
+
+                stmts.append(
+                    f"INSERT INTO inventory.locations (id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, is_reserve_location, max_capacity, current_utilization, created_date, updated_date) VALUES (\n"
+                    f"  '{loc_id}',\n"
+                    f"  '{zone_id}',\n"
+                    f"  '{wh_id}',\n"
+                    f"  {sql_str(loc['aisle'])},\n"
+                    f"  {sql_str(loc['rack'])},\n"
+                    f"  {sql_str(loc['shelf'])},\n"
+                    f"  {sql_str(loc['bin'])},\n"
+                    f"  {sql_str(loc.get('is_pick', False))},\n"
+                    f"  {sql_str(loc.get('is_reserve', False))},\n"
+                    f"  {loc.get('max_capacity', 100)},\n"
+                    f"  0.0000,\n"
+                    f"  '{seed_date}', '{seed_date}'\n"
+                    f");\n"
+                )
+
+    write_sql_file("20_manitowoc_org.sql",
+                   "Manitowoc org: geography, warehouses, zones, locations",
+                   stmts)
 
 
-def generate_products(config, products, known_ids):
-    """Generate 21_manitowoc_products.sql — contact_info, brands, categories, products, UOMs.
+def generate_products(config, products_data, known_ids):
+    """Generate 21_manitowoc_products.sql — contact_info, brands, categories, products, UOMs, costs.
 
     Schema notes:
     - brands requires contact_infos_id FK (core.contact_infos)
     - products requires: description, upc_code, status, is_active, is_perishable,
       units_per_case, tracking_type (all NOT NULL)
     """
-    pass
+    stmts = []
+    seed_date = config["seed_date"]
+    street_id = det_uuid("street:MTW-MFG")
+
+    # --- Cost parameters by inventory_type ---
+    cost_ranges = {
+        "raw_material":  (1, 50),
+        "component":     (5, 100),
+        "consumable":    (2, 20),
+        "wip":           (20, 200),
+        "finished_good": (100, 500),
+    }
+    abc_map = {
+        "finished_good": "A",
+        "wip":           "B",
+        "component":     "B",
+        "raw_material":  "C",
+        "consumable":    "C",
+    }
+
+    # --- 1. Contact info for brand ---
+    for brand in products_data["brands"]:
+        contact_id = det_uuid(f"contact:{brand['code']}")
+        stmts.append(
+            f"INSERT INTO core.contact_infos (id, first_name, last_name, primary_phone_number, secondary_phone_number, email_address, street_id, delivery_address_id, available_hours_start, available_hours_end, timezone_id, preferred_contact_type, notes) VALUES (\n"
+            f"  '{contact_id}',\n"
+            f"  'Manitowoc', 'Relay Division',\n"
+            f"  '920-555-0100', NULL,\n"
+            f"  'relays@manitowoc-mfg.example.com',\n"
+            f"  '{street_id}', NULL,\n"
+            f"  '08:00:00', '17:00:00',\n"
+            f"  (SELECT id FROM geography.timezones WHERE name = 'America/Chicago'),\n"
+            f"  'email',\n"
+            f"  NULL\n"
+            f");\n"
+        )
+
+    # --- 2. Brands ---
+    for brand in products_data["brands"]:
+        brand_id = det_uuid(f"brand:{brand['code']}")
+        contact_id = det_uuid(f"contact:{brand['code']}")
+        stmts.append(
+            f"INSERT INTO products.brands (id, name, contact_infos_id, created_date, updated_date) VALUES (\n"
+            f"  '{brand_id}',\n"
+            f"  {sql_str(brand['name'])},\n"
+            f"  '{contact_id}',\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    # --- 3. Categories ---
+    category_ids = {}
+    for cat_name in products_data["categories"]:
+        cat_id = det_uuid(f"category:{cat_name}")
+        category_ids[cat_name] = cat_id
+        stmts.append(
+            f"INSERT INTO products.product_categories (id, name, description, created_date, updated_date) VALUES (\n"
+            f"  '{cat_id}',\n"
+            f"  {sql_str(cat_name)},\n"
+            f"  {sql_str(cat_name)},\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    # Use the first brand for all products
+    brand_id = det_uuid(f"brand:{products_data['brands'][0]['code']}")
+
+    # --- 4. Products ---
+    for prod in products_data["products"]:
+        sku = prod["sku"]
+        prod_id = det_uuid(f"product:{sku}")
+        cat_id = category_ids[prod["category"]]
+        inv_type = prod["inventory_type"]
+        tracking_type = prod.get("tracking_type", "none")
+
+        # units_per_case: first non-base UOM factor, or 1
+        units_per_case = 1
+        for uom in prod.get("uoms", []):
+            if not uom.get("is_base", False):
+                units_per_case = uom["factor"]
+                break
+
+        stmts.append(
+            f"INSERT INTO products.products (id, sku, brand_id, category_id, name, description, model_number, upc_code, status, is_active, is_perishable, handling_instructions, units_per_case, tracking_type, inventory_type, created_date, updated_date) VALUES (\n"
+            f"  '{prod_id}',\n"
+            f"  {sql_str(sku)},\n"
+            f"  '{brand_id}',\n"
+            f"  '{cat_id}',\n"
+            f"  {sql_str(prod['name'])},\n"
+            f"  {sql_str('Manitowoc relay component: ' + prod['name'])},\n"
+            f"  NULL,\n"
+            f"  {sql_str(f'MTW-{sku}-UPC')},\n"
+            f"  'active',\n"
+            f"  true,\n"
+            f"  false,\n"
+            f"  NULL,\n"
+            f"  {units_per_case},\n"
+            f"  {sql_str(tracking_type)},\n"
+            f"  {sql_str(inv_type)},\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    # --- 5. Product UOMs ---
+    for prod in products_data["products"]:
+        sku = prod["sku"]
+        prod_id = det_uuid(f"product:{sku}")
+        for uom in prod.get("uoms", []):
+            uom_id = det_uuid(f"uom:{sku}:{uom['name']}")
+            is_base = uom.get("is_base", False)
+            is_approx = uom.get("is_approximate", False)
+            stmts.append(
+                f"INSERT INTO products.product_uoms (id, product_id, name, abbreviation, conversion_factor, is_base, is_approximate, notes, created_date, updated_date) VALUES (\n"
+                f"  '{uom_id}',\n"
+                f"  '{prod_id}',\n"
+                f"  {sql_str(uom['name'])},\n"
+                f"  {sql_str(uom['name'][:3])},\n"
+                f"  {uom['factor']},\n"
+                f"  {sql_str(is_base)},\n"
+                f"  {sql_str(is_approx)},\n"
+                f"  NULL,\n"
+                f"  '{seed_date}', '{seed_date}'\n"
+                f");\n"
+            )
+
+    # --- 6. Product Costs ---
+    for prod in products_data["products"]:
+        sku = prod["sku"]
+        prod_id = det_uuid(f"product:{sku}")
+        cost_id = det_uuid(f"cost:{sku}")
+        inv_type = prod["inventory_type"]
+
+        # Deterministic cost based on sku hash
+        low, high = cost_ranges.get(inv_type, (5, 100))
+        # Use det_uuid to derive a stable number
+        cost_seed = int(det_uuid(f"cost-seed:{sku}").replace("-", ""), 16) % 10000
+        purchase_cost = round(low + (high - low) * (cost_seed / 10000), 2)
+        selling_price = round(purchase_cost * 1.3, 2)
+        msrp = round(selling_price * 1.1, 2)
+        landed_cost = round(purchase_cost * 1.05, 2)
+        carrying_cost = round(purchase_cost * 0.02, 2)
+        insurance_value = round(purchase_cost * 0.01, 2)
+        abc = abc_map.get(inv_type, "C")
+
+        stmts.append(
+            f"INSERT INTO products.product_costs (id, product_id, purchase_cost, selling_price, currency_id, msrp, markup_percentage, landed_cost, carrying_cost, abc_classification, depreciation_value, insurance_value, effective_date, created_date, updated_date) VALUES (\n"
+            f"  '{cost_id}',\n"
+            f"  '{prod_id}',\n"
+            f"  {purchase_cost},\n"
+            f"  {selling_price},\n"
+            f"  (SELECT id FROM core.currencies WHERE code = 'USD'),\n"
+            f"  {msrp},\n"
+            f"  0.3,\n"
+            f"  {landed_cost},\n"
+            f"  {carrying_cost},\n"
+            f"  {sql_str(abc)},\n"
+            f"  0.10,\n"
+            f"  {insurance_value},\n"
+            f"  '{seed_date}',\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    write_sql_file("21_manitowoc_products.sql",
+                   "Manitowoc products: contact_infos, brands, categories, products, UOMs, costs",
+                   stmts)
 
 
 def generate_employees(config, known_ids):
