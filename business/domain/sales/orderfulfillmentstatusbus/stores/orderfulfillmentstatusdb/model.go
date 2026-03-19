@@ -10,7 +10,7 @@ import (
 type orderFulfillmentStatus struct {
 	ID             uuid.UUID      `db:"id"`
 	Name           string         `db:"name"`
-	Description    string         `db:"description"`
+	Description    sql.NullString `db:"description"`
 	PrimaryColor   sql.NullString `db:"primary_color"`
 	SecondaryColor sql.NullString `db:"secondary_color"`
 	Icon           sql.NullString `db:"icon"`
@@ -18,9 +18,12 @@ type orderFulfillmentStatus struct {
 
 func toBusOrderFulfillmentStatus(db orderFulfillmentStatus) orderfulfillmentstatusbus.OrderFulfillmentStatus {
 	bus := orderfulfillmentstatusbus.OrderFulfillmentStatus{
-		ID:          db.ID,
-		Name:        db.Name,
-		Description: db.Description,
+		ID:   db.ID,
+		Name: db.Name,
+	}
+
+	if db.Description.Valid {
+		bus.Description = db.Description.String
 	}
 
 	if db.PrimaryColor.Valid {
@@ -48,9 +51,12 @@ func toBusOrderFulfillmentStatuses(dbs []orderFulfillmentStatus) []orderfulfillm
 
 func toDBOrderFulfillmentStatus(bus orderfulfillmentstatusbus.OrderFulfillmentStatus) orderFulfillmentStatus {
 	db := orderFulfillmentStatus{
-		ID:          bus.ID,
-		Name:        bus.Name,
-		Description: bus.Description,
+		ID:   bus.ID,
+		Name: bus.Name,
+	}
+
+	if bus.Description != "" {
+		db.Description = sql.NullString{String: bus.Description, Valid: true}
 	}
 
 	if bus.PrimaryColor != "" {

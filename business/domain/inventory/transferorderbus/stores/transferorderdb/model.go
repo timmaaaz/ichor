@@ -16,8 +16,8 @@ type transferOrder struct {
 	RequestedByID   uuid.UUID     `db:"requested_by"`
 	ApprovedByID    uuid.NullUUID `db:"approved_by"`
 	RejectedByID    uuid.NullUUID `db:"rejected_by_id"`
-	ApprovalReason  string        `db:"approval_reason"`
-	RejectionReason string        `db:"rejection_reason"`
+	ApprovalReason  sql.NullString `db:"approval_reason"`
+	RejectionReason sql.NullString `db:"rejection_reason"`
 	ClaimedByID     uuid.NullUUID `db:"claimed_by"`
 	ClaimedAt       sql.NullTime  `db:"claimed_at"`
 	CompletedByID   uuid.NullUUID `db:"completed_by"`
@@ -31,18 +31,24 @@ type transferOrder struct {
 
 func toBusTransferOrder(db transferOrder) transferorderbus.TransferOrder {
 	to := transferorderbus.TransferOrder{
-		TransferID:      db.TransferID,
-		ProductID:       db.ProductID,
-		FromLocationID:  db.FromLocationID,
-		ToLocationID:    db.ToLocationID,
-		RequestedByID:   db.RequestedByID,
-		ApprovalReason:  db.ApprovalReason,
-		RejectionReason: db.RejectionReason,
-		Quantity:        db.Quantity,
-		Status:          db.Status,
-		TransferDate:    db.TransferDate,
-		CreatedDate:     db.CreatedDate,
-		UpdatedDate:     db.UpdatedDate,
+		TransferID:     db.TransferID,
+		ProductID:      db.ProductID,
+		FromLocationID: db.FromLocationID,
+		ToLocationID:   db.ToLocationID,
+		RequestedByID:  db.RequestedByID,
+		Quantity:       db.Quantity,
+		Status:         db.Status,
+		TransferDate:   db.TransferDate,
+		CreatedDate:    db.CreatedDate,
+		UpdatedDate:    db.UpdatedDate,
+	}
+
+	if db.ApprovalReason.Valid {
+		to.ApprovalReason = db.ApprovalReason.String
+	}
+
+	if db.RejectionReason.Valid {
+		to.RejectionReason = db.RejectionReason.String
 	}
 
 	if db.ApprovedByID.Valid {
@@ -80,18 +86,24 @@ func toBusTransferOrders(dbs []transferOrder) []transferorderbus.TransferOrder {
 
 func toDBTransferOrder(bus transferorderbus.TransferOrder) transferOrder {
 	db := transferOrder{
-		TransferID:      bus.TransferID,
-		ProductID:       bus.ProductID,
-		FromLocationID:  bus.FromLocationID,
-		ToLocationID:    bus.ToLocationID,
-		RequestedByID:   bus.RequestedByID,
-		ApprovalReason:  bus.ApprovalReason,
-		RejectionReason: bus.RejectionReason,
-		Quantity:        bus.Quantity,
-		Status:          bus.Status,
-		TransferDate:    bus.TransferDate,
-		CreatedDate:     bus.CreatedDate,
-		UpdatedDate:     bus.UpdatedDate,
+		TransferID:     bus.TransferID,
+		ProductID:      bus.ProductID,
+		FromLocationID: bus.FromLocationID,
+		ToLocationID:   bus.ToLocationID,
+		RequestedByID:  bus.RequestedByID,
+		Quantity:       bus.Quantity,
+		Status:         bus.Status,
+		TransferDate:   bus.TransferDate,
+		CreatedDate:    bus.CreatedDate,
+		UpdatedDate:    bus.UpdatedDate,
+	}
+
+	if bus.ApprovalReason != "" {
+		db.ApprovalReason = sql.NullString{String: bus.ApprovalReason, Valid: true}
+	}
+
+	if bus.RejectionReason != "" {
+		db.RejectionReason = sql.NullString{String: bus.RejectionReason, Valid: true}
 	}
 
 	if bus.ApprovedByID != nil {

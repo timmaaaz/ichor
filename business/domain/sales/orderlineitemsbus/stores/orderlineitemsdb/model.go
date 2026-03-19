@@ -14,7 +14,7 @@ type orderLineItem struct {
 	ID                            uuid.UUID      `db:"id"`
 	OrderID                       uuid.UUID      `db:"order_id"`
 	ProductID                     uuid.UUID      `db:"product_id"`
-	Description                   string         `db:"description"`
+	Description                   sql.NullString `db:"description"`
 	Quantity                      int            `db:"quantity"`
 	UnitPrice                     sql.NullString `db:"unit_price"`
 	Discount                      sql.NullString `db:"discount"`
@@ -51,11 +51,16 @@ func toBusOrderLineItem(db orderLineItem) (orderlineitemsbus.OrderLineItem, erro
 		shortPickReason = &db.ShortPickReason.String
 	}
 
+	var description string
+	if db.Description.Valid {
+		description = db.Description.String
+	}
+
 	return orderlineitemsbus.OrderLineItem{
 		ID:                            db.ID,
 		OrderID:                       db.OrderID,
 		ProductID:                     db.ProductID,
-		Description:                   db.Description,
+		Description:                   description,
 		Quantity:                      db.Quantity,
 		UnitPrice:                     unitPrice,
 		Discount:                      discount,
@@ -90,11 +95,16 @@ func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderLineItem {
 		shortPickReason = sql.NullString{String: *app.ShortPickReason, Valid: true}
 	}
 
+	var description sql.NullString
+	if app.Description != "" {
+		description = sql.NullString{String: app.Description, Valid: true}
+	}
+
 	return orderLineItem{
 		ID:                            app.ID,
 		OrderID:                       app.OrderID,
 		ProductID:                     app.ProductID,
-		Description:                   app.Description,
+		Description:                   description,
 		Quantity:                      app.Quantity,
 		UnitPrice:                     app.UnitPrice.DBValue(),
 		Discount:                      app.Discount.DBValue(),
