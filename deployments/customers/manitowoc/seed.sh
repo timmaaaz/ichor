@@ -29,7 +29,7 @@ for f in "$SEED_DIR"/*.sql; do
     continue
   fi
   echo "Running $(basename "$f")..."
-  psql "$DB_URL" -f "$f" --set ON_ERROR_STOP=on
+  psql -q "$DB_URL" -f "$f" --set ON_ERROR_STOP=on
 done
 
 echo "Manitowoc seed complete."
