@@ -144,7 +144,7 @@ def generate_org(config, warehouses, known_ids):
                 loc_id = det_uuid(loc_key)
 
                 stmts.append(
-                    f"INSERT INTO inventory.locations (id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, is_reserve_location, max_capacity, current_utilization, created_date, updated_date) VALUES (\n"
+                    f"INSERT INTO inventory.inventory_locations (id, zone_id, warehouse_id, aisle, rack, shelf, bin, is_pick_location, is_reserve_location, max_capacity, current_utilization, created_date, updated_date) VALUES (\n"
                     f"  '{loc_id}',\n"
                     f"  '{zone_id}',\n"
                     f"  '{wh_id}',\n"
@@ -468,7 +468,7 @@ def generate_inventory(config, products_data, warehouses, known_ids):
         reorder_point = max(1, int(qty * 0.2))
         eoq = max(1, int(qty * 0.5))
         safety_stock = max(1, int(qty * 0.15))
-        avg_daily_usage = round(max(0.1, qty / 180), 4)  # ~6 months
+        avg_daily_usage = int(max(1, qty // 180))  # ~6 months, INT column
 
         stmts.append(
             f"INSERT INTO inventory.inventory_items (id, product_id, location_id, "
