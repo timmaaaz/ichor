@@ -342,13 +342,321 @@ def generate_products(config, products_data, known_ids):
 
 
 def generate_employees(config, known_ids):
-    """Generate 22_manitowoc_employees.sql — placeholder users, titles, offices."""
-    pass
+    """Generate 22_manitowoc_employees.sql — placeholder users."""
+    stmts = []
+    seed_date = config["seed_date"]
+    seed_dt = datetime.fromisoformat(seed_date)
+    employee_count = config["employee_count"]
+    approved_status_id = known_ids["hr_user_approval_status"]["approved"]
+    password_hash = "$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a"
+
+    fake = Faker()
+    Faker.seed(config["random_seed"])
+
+    for i in range(employee_count):
+        emp_id = det_uuid(f"employee:{i}")
+        first_name = fake.first_name()
+        last_name = fake.last_name()
+        username = f"{first_name.lower()}_{last_name.lower()}"
+        email = f"{username}@manitowoc-mfg.example.com"
+
+        # 10% ADMIN, 90% no role
+        roles = "'{ADMIN}'" if i < (employee_count // 10) else "'{}'"""
+
+        # date_hired: spread over 2 years before seed_date, weighted toward earlier
+        # Use exponential distribution: most hires are older (tenured workforce)
+        rand_val = int(det_uuid(f"hire-seed:{i}").replace("-", ""), 16) % 10000
+        # Exponential weighting: earlier hires more likely
+        # Map 0..1 to 0..730 days, with bias toward higher values (further in past)
+        fraction = rand_val / 10000
+        days_before = int(730 * (1 - fraction ** 2))  # quadratic bias toward earlier
+        date_hired = (seed_dt - timedelta(days=days_before)).strftime("%Y-%m-%d")
+
+        stmts.append(
+            f"INSERT INTO core.users (id, requested_by, approved_by, user_approval_status_id, "
+            f"title_id, office_id, work_phone_id, cell_phone_id, "
+            f"username, first_name, last_name, email, birthday, "
+            f"roles, system_roles, password_hash, enabled, "
+            f"date_hired, date_requested, date_approved, "
+            f"created_date, updated_date) VALUES (\n"
+            f"  '{emp_id}',\n"
+            f"  NULL, NULL,\n"
+            f"  '{approved_status_id}',\n"
+            f"  NULL, NULL, NULL, NULL,\n"
+            f"  {sql_str(username)},\n"
+            f"  {sql_str(first_name)},\n"
+            f"  {sql_str(last_name)},\n"
+            f"  {sql_str(email)},\n"
+            f"  NULL,\n"
+            f"  {roles}, '{{}}',\n"
+            f"  {sql_str(password_hash)},\n"
+            f"  true,\n"
+            f"  '{date_hired}',\n"
+            f"  NULL, NULL,\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    write_sql_file("22_manitowoc_employees.sql",
+                   "Manitowoc employees: placeholder users",
+                   stmts)
 
 
-def generate_inventory(config, products, warehouses, known_ids):
-    """Generate 23_manitowoc_inventory.sql — items, lot tracking, transactions."""
-    pass
+def generate_inventory(config, products_data, warehouses, known_ids):
+    """Generate 23_manitowoc_inventory.sql — items, transactions, transfers, adjustments."""
+    stmts = []
+    seed_date = config["seed_date"]
+    seed_dt = datetime.fromisoformat(seed_date)
+    history_months = config["history_months"]
+    transfer_count = config["transfer_count"]
+    adjustment_count = config["adjustment_count"]
+    admin_id = known_ids["users"]["admin_gopher"]
+    employee_count = config["employee_count"]
+
+    # --- Build location mapping by inventory_type ---
+    # Map inventory_type to a zone's first location key
+    wh = warehouses["warehouses"][0]
+    wh_code = wh["code"]
+
+    # Build zone-to-locations mapping
+    zone_locations = {}  # zone_name -> list of location keys
+    for zone in wh.get("zones", []):
+        locs = []
+        for loc in zone.get("locations", []):
+            loc_key = f"location:{wh_code}:{loc['aisle']}:{loc['rack']}:{loc['shelf']}:{loc['bin']}"
+            locs.append(loc_key)
+        zone_locations[zone["name"]] = locs
+
+    # Map inventory_type to appropriate zone locations
+    type_to_zone = {
+        "raw_material":  "Raw Material Storage",
+        "component":     "Plastics Storage",
+        "wip":           "Coil Winding Floor",
+        "finished_good": "Finished Goods",
+        "consumable":    "Coil Winding Floor",
+    }
+
+    def get_location_id(inv_type, sku):
+        """Get a deterministic location for a product based on type."""
+        zone_name = type_to_zone.get(inv_type, "Raw Material Storage")
+        locs = zone_locations.get(zone_name, [])
+        if not locs:
+            # Fallback to first location in first zone
+            first_zone = list(zone_locations.values())[0]
+            locs = first_zone
+        # Pick location deterministically based on sku
+        idx = int(det_uuid(f"loc-pick:{sku}").replace("-", ""), 16) % len(locs)
+        return det_uuid(locs[idx])
+
+    def get_employee_id(index):
+        """Get a deterministic employee UUID."""
+        return det_uuid(f"employee:{index % employee_count}")
+
+    # --- 1. Inventory Items (one per product) ---
+    all_products = products_data["products"]
+    for prod in all_products:
+        sku = prod["sku"]
+        prod_id = det_uuid(f"product:{sku}")
+        inv_type = prod["inventory_type"]
+        loc_id = get_location_id(inv_type, sku)
+        item_id = det_uuid(f"inv-item:{sku}")
+        qty = prod["initial_qty"]
+
+        # Stock management fields
+        minimum_stock = max(1, int(qty * 0.1))
+        maximum_stock = max(10, int(qty * 2.0))
+        reorder_point = max(1, int(qty * 0.2))
+        eoq = max(1, int(qty * 0.5))
+        safety_stock = max(1, int(qty * 0.15))
+        avg_daily_usage = round(max(0.1, qty / 180), 4)  # ~6 months
+
+        stmts.append(
+            f"INSERT INTO inventory.inventory_items (id, product_id, location_id, "
+            f"quantity, reserved_quantity, allocated_quantity, "
+            f"minimum_stock, maximum_stock, reorder_point, economic_order_quantity, "
+            f"safety_stock, avg_daily_usage, created_date, updated_date) VALUES (\n"
+            f"  '{item_id}',\n"
+            f"  '{prod_id}',\n"
+            f"  '{loc_id}',\n"
+            f"  {qty}, 0, 0,\n"
+            f"  {minimum_stock}, {maximum_stock}, {reorder_point}, {eoq},\n"
+            f"  {safety_stock}, {avg_daily_usage},\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    # --- 2. Inventory Transactions (historical) ---
+    txn_types = ["received", "shipped", "transferred", "adjusted"]
+    history_start = seed_dt - timedelta(days=history_months * 30)
+
+    for i in range(transfer_count):
+        txn_id = det_uuid(f"inv-txn:{i}")
+        # Exponential distribution: more recent = more activity
+        rand_val = int(det_uuid(f"txn-time:{i}").replace("-", ""), 16) % 10000
+        fraction = rand_val / 10000
+        # Exponential: square the fraction so more cluster near seed_date
+        days_offset = int((history_months * 30) * (1 - fraction ** 2))
+        txn_date = (seed_dt - timedelta(days=days_offset))
+
+        # Pick product deterministically
+        prod_idx = int(det_uuid(f"txn-prod:{i}").replace("-", ""), 16) % len(all_products)
+        prod = all_products[prod_idx]
+        prod_id = det_uuid(f"product:{prod['sku']}")
+        loc_id = get_location_id(prod["inventory_type"], prod["sku"])
+        user_id = get_employee_id(i)
+
+        # Pick txn type
+        type_idx = int(det_uuid(f"txn-type:{i}").replace("-", ""), 16) % len(txn_types)
+        txn_type = txn_types[type_idx]
+
+        # Quantity: positive for received, variable for others
+        qty_seed = int(det_uuid(f"txn-qty:{i}").replace("-", ""), 16) % 200 + 1
+        if txn_type == "shipped":
+            qty_seed = -qty_seed
+        elif txn_type == "adjusted":
+            qty_seed = qty_seed if (i % 3 == 0) else -qty_seed
+
+        ref_num = f"TXN-{i:06d}"
+
+        stmts.append(
+            f"INSERT INTO inventory.inventory_transactions (id, product_id, location_id, "
+            f"user_id, transaction_type, quantity, reference_number, transaction_date, "
+            f"lot_id, created_date, updated_date) VALUES (\n"
+            f"  '{txn_id}',\n"
+            f"  '{prod_id}',\n"
+            f"  '{loc_id}',\n"
+            f"  '{user_id}',\n"
+            f"  {sql_str(txn_type)},\n"
+            f"  {qty_seed},\n"
+            f"  {sql_str(ref_num)},\n"
+            f"  {sql_timestamp(txn_date)},\n"
+            f"  NULL,\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    # --- 3. Transfer Orders (manufacturing flow) ---
+    # Flow zones for transfers
+    flow_stages = [
+        ("Receiving Dock", "Plastics Storage"),
+        ("Receiving Dock", "Raw Material Storage"),
+        ("Raw Material Storage", "Coil Winding Floor"),
+        ("Plastics Storage", "Coil Winding Floor"),
+        ("Coil Winding Floor", "Coil Riveting"),
+        ("Coil Riveting", "Contact Riveting"),
+        ("Contact Riveting", "Assembly Floor"),
+        ("Assembly Floor", "Calibration Bench"),
+        ("Calibration Bench", "QA Hold"),
+        ("QA Hold", "Finished Goods"),
+    ]
+
+    for i in range(transfer_count):
+        xfer_id = det_uuid(f"xfer:{i}")
+        # Pick flow stage
+        stage_idx = int(det_uuid(f"xfer-stage:{i}").replace("-", ""), 16) % len(flow_stages)
+        from_zone, to_zone = flow_stages[stage_idx]
+
+        from_locs = zone_locations.get(from_zone, [])
+        to_locs = zone_locations.get(to_zone, [])
+        if not from_locs or not to_locs:
+            continue
+
+        from_loc_id = det_uuid(from_locs[0])
+        to_loc_id = det_uuid(to_locs[0])
+
+        # Pick product
+        prod_idx = int(det_uuid(f"xfer-prod:{i}").replace("-", ""), 16) % len(all_products)
+        prod = all_products[prod_idx]
+        prod_id = det_uuid(f"product:{prod['sku']}")
+
+        requested_by = get_employee_id(i)
+        approved_by = get_employee_id(i + 1)
+
+        qty = int(det_uuid(f"xfer-qty:{i}").replace("-", ""), 16) % 500 + 10
+
+        # Date with exponential distribution
+        rand_val = int(det_uuid(f"xfer-time:{i}").replace("-", ""), 16) % 10000
+        fraction = rand_val / 10000
+        days_offset = int((history_months * 30) * (1 - fraction ** 2))
+        xfer_date = seed_dt - timedelta(days=days_offset)
+
+        # Status: recent transfers in_transit, older ones completed
+        status = "in_transit" if days_offset < 7 else "completed"
+
+        stmts.append(
+            f"INSERT INTO inventory.transfer_orders (id, product_id, from_location_id, "
+            f"to_location_id, requested_by, approved_by, quantity, status, "
+            f"transfer_date, created_date, updated_date) VALUES (\n"
+            f"  '{xfer_id}',\n"
+            f"  '{prod_id}',\n"
+            f"  '{from_loc_id}',\n"
+            f"  '{to_loc_id}',\n"
+            f"  '{requested_by}',\n"
+            f"  '{approved_by}',\n"
+            f"  {qty},\n"
+            f"  {sql_str(status)},\n"
+            f"  {sql_timestamp(xfer_date)},\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    # --- 4. Inventory Adjustments ---
+    reason_codes = ["cycle_count", "shrinkage", "damage", "correction"]
+    reason_notes = {
+        "cycle_count": "Cycle count variance detected during scheduled audit",
+        "shrinkage":   "Shrinkage identified during inventory reconciliation",
+        "damage":      "Units damaged during handling, scrapped per SOP",
+        "correction":  "Data entry correction to align physical and system counts",
+    }
+
+    for i in range(adjustment_count):
+        adj_id = det_uuid(f"adj:{i}")
+
+        # Pick product
+        prod_idx = int(det_uuid(f"adj-prod:{i}").replace("-", ""), 16) % len(all_products)
+        prod = all_products[prod_idx]
+        prod_id = det_uuid(f"product:{prod['sku']}")
+        loc_id = get_location_id(prod["inventory_type"], prod["sku"])
+
+        adjusted_by = get_employee_id(i)
+        approved_by = get_employee_id(i + 1)
+
+        # Reason code
+        rc_idx = int(det_uuid(f"adj-rc:{i}").replace("-", ""), 16) % len(reason_codes)
+        reason_code = reason_codes[rc_idx]
+        notes = reason_notes[reason_code]
+
+        # Quantity change: small, mostly negative (-50 to +50)
+        qty_seed = int(det_uuid(f"adj-qty:{i}").replace("-", ""), 16) % 100 - 50
+        if qty_seed == 0:
+            qty_seed = -1  # avoid zero adjustments
+
+        # Date with clustering
+        rand_val = int(det_uuid(f"adj-time:{i}").replace("-", ""), 16) % 10000
+        fraction = rand_val / 10000
+        days_offset = int((history_months * 30) * (1 - fraction ** 2))
+        adj_date = seed_dt - timedelta(days=days_offset)
+
+        stmts.append(
+            f"INSERT INTO inventory.inventory_adjustments (id, product_id, location_id, "
+            f"adjusted_by, approved_by, quantity_change, reason_code, notes, "
+            f"adjustment_date, created_date, updated_date) VALUES (\n"
+            f"  '{adj_id}',\n"
+            f"  '{prod_id}',\n"
+            f"  '{loc_id}',\n"
+            f"  '{adjusted_by}',\n"
+            f"  '{approved_by}',\n"
+            f"  {qty_seed},\n"
+            f"  {sql_str(reason_code)},\n"
+            f"  {sql_str(notes)},\n"
+            f"  {sql_timestamp(adj_date)},\n"
+            f"  '{seed_date}', '{seed_date}'\n"
+            f");\n"
+        )
+
+    write_sql_file("23_manitowoc_inventory.sql",
+                   "Manitowoc inventory: items, transactions, transfers, adjustments",
+                   stmts)
 
 
 def generate_sales(config, products, known_ids):
