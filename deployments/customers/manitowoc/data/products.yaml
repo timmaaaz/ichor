@@ -1,0 +1,820 @@
+# Manitowoc Relay Components — Product Catalog
+# Source: December 2024 inventory snapshot
+# Generated from: docs/manitowac/inventory-dec-2024.md
+# Schema decisions: docs/manitowac/schema-decisions.md
+
+brands:
+  - name: "Manitowoc Relay Components"
+    code: "MTW-COMP"
+
+categories:
+  - "Plastics"
+  - "Wire & Coils"
+  - "Frames & Cores"
+  - "Terminals & Contacts"
+  - "Assembly Components"
+  - "Raw Materials"
+  - "Finished Goods"
+
+products:
+
+  # ===========================================================================
+  # STAGE 1 — PLASTICS (Inbound components)
+  # inventory_type: component
+  # ===========================================================================
+
+  - sku: "119644"
+    name: "Covers, Black"
+    category: "Plastics"
+    inventory_type: "component"
+    initial_qty: 15120
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "box", factor: 1000 }
+
+  - sku: "119629"
+    name: "Covers, White"
+    category: "Plastics"
+    inventory_type: "component"
+    initial_qty: 52000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "box", factor: 1000 }
+
+  - sku: "119643"
+    name: "Covers, DanFoss"
+    category: "Plastics"
+    inventory_type: "component"
+    initial_qty: 52680
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "box", factor: 1000 }
+
+  - sku: "CVR-WHT-KS"
+    name: "Covers, White KS"
+    category: "Plastics"
+    inventory_type: "component"
+    initial_qty: 4830
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "box", factor: 1000 }
+
+  - sku: "119537"
+    name: "Bases, Black"
+    category: "Plastics"
+    inventory_type: "component"
+    initial_qty: 12000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "box", factor: 2000 }
+
+  - sku: "119535"
+    name: "Bases, White"
+    category: "Plastics"
+    inventory_type: "component"
+    initial_qty: 227000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "box", factor: 2000 }
+
+  - sku: "119559"
+    name: "Bobbins"
+    category: "Plastics"
+    inventory_type: "component"
+    initial_qty: 153000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "box", factor: 6000 }
+      - { name: "bin", factor: 3000 }
+
+  # ===========================================================================
+  # STAGE 2 — COIL WINDING (WIP / Processing)
+  # ===========================================================================
+
+  # Wire — raw_material, tracked in spools (base) and estimated bobbins
+  - sku: "073050"
+    name: "Wire, 0.05 Gauge (37.5 lb/Spool)"
+    category: "Wire & Coils"
+    inventory_type: "raw_material"
+    initial_qty: 46
+    uoms:
+      - { name: "spool", is_base: true, factor: 1 }
+      - { name: "bobbin", factor: 700, is_approximate: true }
+
+  - sku: "073056"
+    name: "Wire, 0.056 Gauge (38.5 lb/Spool)"
+    category: "Wire & Coils"
+    inventory_type: "raw_material"
+    initial_qty: 59
+    uoms:
+      - { name: "spool", is_base: true, factor: 1 }
+      - { name: "bobbin", factor: 700, is_approximate: true }
+
+  - sku: "073063"
+    name: "Wire, 0.063 Gauge (39.5 lb/Spool)"
+    category: "Wire & Coils"
+    inventory_type: "raw_material"
+    initial_qty: 98
+    uoms:
+      - { name: "spool", is_base: true, factor: 1 }
+      - { name: "bobbin", factor: 700, is_approximate: true }
+
+  - sku: "073090"
+    name: "Wire, 0.09 Gauge (41.5 lb/Spool)"
+    category: "Wire & Coils"
+    inventory_type: "raw_material"
+    initial_qty: 26
+    uoms:
+      - { name: "spool", is_base: true, factor: 1 }
+      - { name: "bobbin", factor: 700, is_approximate: true }
+
+  # Pins — component
+  - sku: "119582"
+    name: "Pins"
+    category: "Wire & Coils"
+    inventory_type: "component"
+    initial_qty: 70000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Mylar Tape — consumable
+  - sku: "31213"
+    name: "Mylar Tape"
+    category: "Wire & Coils"
+    inventory_type: "consumable"
+    initial_qty: 233
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Wire Leads (cut components) — 4 colors, no part numbers
+  - sku: "WLEAD-GRN"
+    name: "Wire Leads, Green"
+    category: "Wire & Coils"
+    inventory_type: "component"
+    initial_qty: 0
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "WLEAD-WHT"
+    name: "Wire Leads, White"
+    category: "Wire & Coils"
+    inventory_type: "component"
+    initial_qty: 0
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "WLEAD-BLU"
+    name: "Wire Leads, Blue"
+    category: "Wire & Coils"
+    inventory_type: "component"
+    initial_qty: 0
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "WLEAD-RED"
+    name: "Wire Leads, Red"
+    category: "Wire & Coils"
+    inventory_type: "component"
+    initial_qty: 0
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Unfinished Coils #2-#9 — WIP, no original part numbers
+  - sku: "COIL-UNF-002"
+    name: "Unfinished Coil #2"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 8750
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 350 }
+
+  - sku: "COIL-UNF-003"
+    name: "Unfinished Coil #3"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 5600
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 350 }
+
+  - sku: "COIL-UNF-004"
+    name: "Unfinished Coil #4"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 8400
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 350 }
+
+  - sku: "COIL-UNF-005"
+    name: "Unfinished Coil #5"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 700
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 350 }
+
+  - sku: "COIL-UNF-006"
+    name: "Unfinished Coil #6"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 8050
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 350 }
+
+  - sku: "COIL-UNF-007"
+    name: "Unfinished Coil #7"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 7000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 350 }
+
+  - sku: "COIL-UNF-008"
+    name: "Unfinished Coil #8 (Imported)"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 16170
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 350 }
+
+  - sku: "COIL-UNF-009"
+    name: "Unfinished Coil #9"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 3500
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 350 }
+
+  # ===========================================================================
+  # STAGE 3 — COIL RIVETING (WIP / Processing)
+  # Dual-sourced items (MR&P + Italy) = ONE product, tracking_type: lot
+  # Initial qty = sum of all sources
+  # ===========================================================================
+
+  # Frames: MR&P qty=0 + Italy qty=280,200 = 280,200 total
+  - sku: "FRM-001"
+    name: "Frames"
+    category: "Frames & Cores"
+    inventory_type: "component"
+    tracking_type: "lot"
+    initial_qty: 280200
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 1000 }
+
+  # Cores: China=174,000 + MR&P=22,000 + Italy=27,000 + Mitotec=10,200 = 233,200 total
+  - sku: "CORE-001"
+    name: "Cores"
+    category: "Frames & Cores"
+    inventory_type: "component"
+    tracking_type: "lot"
+    initial_qty: 233200
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 3375 }
+
+  # Shading Coils: MR&P=237,000 + Italy=35,000 = 272,000 total
+  - sku: "SC-001"
+    name: "Shading Coils"
+    category: "Frames & Cores"
+    inventory_type: "component"
+    tracking_type: "lot"
+    initial_qty: 272000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 15000 }
+
+  # Eyelets and Screws
+  - sku: "209504"
+    name: "Eyelets"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 70000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "119507"
+    name: "Screws"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 60000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Finished Coils #2-#9 — WIP (post-riveting), no original part numbers
+  - sku: "COIL-FIN-002"
+    name: "Finished Coil #2"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 15400
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 200 }
+
+  - sku: "COIL-FIN-003"
+    name: "Finished Coil #3"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 7200
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 200 }
+
+  - sku: "COIL-FIN-004"
+    name: "Finished Coil #4"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 7200
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 200 }
+
+  - sku: "COIL-FIN-005"
+    name: "Finished Coil #5"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 400
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 200 }
+
+  - sku: "COIL-FIN-006"
+    name: "Finished Coil #6"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 3800
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 200 }
+
+  - sku: "COIL-FIN-007"
+    name: "Finished Coil #7"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 4400
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 200 }
+
+  - sku: "COIL-FIN-008"
+    name: "Finished Coil #8"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 1000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 200 }
+
+  - sku: "COIL-FIN-009"
+    name: "Finished Coil #9"
+    category: "Wire & Coils"
+    inventory_type: "wip"
+    initial_qty: 7600
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 200 }
+
+  # ===========================================================================
+  # STAGE 4 — CONTACT RIVETING (WIP / Processing)
+  # Dual-sourced terminals and blades = ONE product each, tracking_type: lot
+  # ===========================================================================
+
+  # Terminals — 3 types, each MR&P+Italy dual-sourced
+  # Long: MR&P=0 + Italy=95,000 = 95,000
+  - sku: "TERM-LONG"
+    name: "Terminals, Long"
+    category: "Terminals & Contacts"
+    inventory_type: "component"
+    tracking_type: "lot"
+    initial_qty: 95000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 7500 }
+
+  # Short: MR&P=0 + Italy=64,000 = 64,000
+  - sku: "TERM-SHORT"
+    name: "Terminals, Short"
+    category: "Terminals & Contacts"
+    inventory_type: "component"
+    tracking_type: "lot"
+    initial_qty: 64000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 10000 }
+
+  # Optional: MR&P=0 + Italy=271,000 = 271,000
+  - sku: "TERM-OPT"
+    name: "Terminals, Optional"
+    category: "Terminals & Contacts"
+    inventory_type: "component"
+    tracking_type: "lot"
+    initial_qty: 271000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 3000 }
+
+  # Contacts
+  - sku: "119567"
+    name: "Contacts, Standard"
+    category: "Terminals & Contacts"
+    inventory_type: "component"
+    initial_qty: 180000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "119574"
+    name: "Contacts, High Capacity"
+    category: "Terminals & Contacts"
+    inventory_type: "component"
+    initial_qty: 40000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Rivets and Washers
+  - sku: "119568"
+    name: "Rivets"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 225000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "903105"
+    name: "Washers, Standard"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 100000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "119580"
+    name: "Washers, High Capacity"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 250000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 30000 }
+
+  # Blades: MR&P=0 + Italy=75,000 = 75,000
+  - sku: "BLD-001"
+    name: "Blades"
+    category: "Terminals & Contacts"
+    inventory_type: "component"
+    tracking_type: "lot"
+    initial_qty: 75000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 10000 }
+
+  # Finished Bases — WIP variants (post-contact riveting)
+  - sku: "BASE-FIN-3T35"
+    name: "Finished Bases - 3 Terminal (35 Amp)"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 11250
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "BASE-FIN-4T35"
+    name: "Finished Bases - 4 Terminal (35 Amp)"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 5100
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "BASE-FIN-3T50"
+    name: "Finished Bases - 3 Terminal (50 Amp)"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 4950
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "BASE-FIN-4T50"
+    name: "Finished Bases - 4 Terminal (50 Amp)"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 5100
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "BASE-FIN-KS"
+    name: "Finished Bases - K.S."
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 9150
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "BASE-FIN-SCR-NS"
+    name: "Finished Bases - Screw (without screws)"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 2400
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "BASE-FIN-SCR-WS"
+    name: "Finished Bases - Screw (with screws)"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 150
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Bases without blades
+  - sku: "BASE-NB-TERM"
+    name: "Bases without Blades (Terminal)"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 1800
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "BASE-NB-SCR"
+    name: "Bases without Blades (Screw)"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 1400
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # ===========================================================================
+  # STAGE 5 — ASSEMBLY + CALIBRATION
+  # ===========================================================================
+
+  # Armatures
+  - sku: "ARM-BENT-STD"
+    name: "Armatures, Bent Standard"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 18000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "bin", factor: 1500 }
+
+  - sku: "119546"
+    name: "Armatures, Unbent Standard"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 45500
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "ARM-UNBENT-NI"
+    name: "Armatures, Unbent Nickel"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 37500
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Actuators
+  - sku: "119610"
+    name: "Actuators, White"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 65000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "ACT-BLK"
+    name: "Actuators, Black"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 13000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Springs #29-#35 (no original part numbers)
+  - sku: "SPRING-029"
+    name: "Spring #29"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 10000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "unit", factor: 12500 }
+
+  - sku: "SPRING-030"
+    name: "Spring #30"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 170000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "unit", factor: 12500 }
+
+  - sku: "SPRING-031"
+    name: "Spring #31"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 156250
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "unit", factor: 13750 }
+
+  - sku: "SPRING-032"
+    name: "Spring #32"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 175000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "unit", factor: 12500 }
+
+  - sku: "SPRING-033"
+    name: "Spring #33"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 160000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "unit", factor: 20000 }
+
+  - sku: "SPRING-034"
+    name: "Spring #34"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 37000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "SPRING-035"
+    name: "Spring #35"
+    category: "Assembly Components"
+    inventory_type: "component"
+    initial_qty: 40000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "unit", factor: 10000 }
+
+  # Calibration WIP and Finished Output
+  - sku: "RELAY-UNF"
+    name: "Unfinished Relays"
+    category: "Assembly Components"
+    inventory_type: "wip"
+    initial_qty: 18200
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "tray", factor: 100 }
+
+  - sku: "RELAY-FIN"
+    name: "Finished Relays"
+    category: "Finished Goods"
+    inventory_type: "finished_good"
+    initial_qty: 71000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+      - { name: "box", factor: 100 }
+
+  # ===========================================================================
+  # STAGE 6 — RAW MATERIALS (Inbound / Stock)
+  # All inventory_type: raw_material, no original part numbers
+  # ===========================================================================
+
+  - sku: "RAW-RESIN-WHT"
+    name: "White Resin"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 16500
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-RESIN-BLK"
+    name: "Black Resin"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 8100
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-STEEL-BAR"
+    name: "Steel Bars"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 11000
+    uoms:
+      - { name: "bar", is_base: true, factor: 1 }
+
+  - sku: "RAW-STEEL-FRM"
+    name: "Steel for Frames"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 12235
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-BRONZE-HC"
+    name: "Bronze for Hi-Cap Washer"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 0
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-PBRONZE-BLD"
+    name: "Phosphor Bronze for Blade"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 3114
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-ARM-MAT"
+    name: "Armature Material"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 4637
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-OPT-TERM"
+    name: "Optional Terminal Material"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 2653
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-SHT-TERM"
+    name: "Short Terminal Material"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 5586
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-LNG-TERM"
+    name: "Long Terminal Material"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 9499
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-SC-MAT"
+    name: "Shade Coil Material"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 1145
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-SOLDER-WIRE"
+    name: "Wire Solder"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 360
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-SOLDER-BAR"
+    name: "Bar Solder"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 240
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  # Lead Wire (bulk raw material — different from Wire Leads cut components in Stage 2)
+  - sku: "RAW-LWIRE-GRN"
+    name: "Lead Wire, Green"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 25000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-LWIRE-WHT"
+    name: "Lead Wire, White"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 30000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-LWIRE-BLU"
+    name: "Lead Wire, Blue"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 15000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
+
+  - sku: "RAW-LWIRE-RED"
+    name: "Lead Wire, Red"
+    category: "Raw Materials"
+    inventory_type: "raw_material"
+    initial_qty: 25000
+    uoms:
+      - { name: "each", is_base: true, factor: 1 }
