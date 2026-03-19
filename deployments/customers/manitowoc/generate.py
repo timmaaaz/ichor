@@ -601,12 +601,14 @@ def generate_inventory(config, products_data, warehouses, known_ids):
         )
 
     # --- 4. Inventory Adjustments ---
-    reason_codes = ["cycle_count", "shrinkage", "damage", "correction"]
+    # Valid reason_codes per CHECK constraint (v2.15):
+    # damaged, theft, data_entry_error, receiving_error, picking_error, found_stock, other
+    reason_codes = ["damaged", "data_entry_error", "receiving_error", "found_stock"]
     reason_notes = {
-        "cycle_count": "Cycle count variance detected during scheduled audit",
-        "shrinkage":   "Shrinkage identified during inventory reconciliation",
-        "damage":      "Units damaged during handling, scrapped per SOP",
-        "correction":  "Data entry correction to align physical and system counts",
+        "damaged":          "Units damaged during handling, scrapped per SOP",
+        "data_entry_error": "Data entry correction to align physical and system counts",
+        "receiving_error":  "Receiving discrepancy identified during reconciliation",
+        "found_stock":      "Previously unaccounted stock found during cycle count",
     }
 
     for i in range(adjustment_count):
@@ -640,7 +642,8 @@ def generate_inventory(config, products_data, warehouses, known_ids):
         stmts.append(
             f"INSERT INTO inventory.inventory_adjustments (id, product_id, location_id, "
             f"adjusted_by, approved_by, quantity_change, reason_code, notes, "
-            f"adjustment_date, created_date, updated_date) VALUES (\n"
+            f"adjustment_date, created_date, updated_date, "
+            f"approval_status, approval_reason, rejected_by, rejection_reason) VALUES (\n"
             f"  '{adj_id}',\n"
             f"  '{prod_id}',\n"
             f"  '{loc_id}',\n"
@@ -650,7 +653,8 @@ def generate_inventory(config, products_data, warehouses, known_ids):
             f"  {sql_str(reason_code)},\n"
             f"  {sql_str(notes)},\n"
             f"  {sql_timestamp(adj_date)},\n"
-            f"  '{seed_date}', '{seed_date}'\n"
+            f"  '{seed_date}', '{seed_date}',\n"
+            f"  'approved', 'Approved during seed', NULL, NULL\n"
             f");\n"
         )
 
