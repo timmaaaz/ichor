@@ -98,7 +98,7 @@ def generate_org(config, warehouses, known_ids):
     )
 
     stmts.append(
-        f"INSERT INTO geography.streets (id, city_id, line_1, line_2, zip_code) VALUES (\n"
+        f"INSERT INTO geography.streets (id, city_id, line_1, line_2, postal_code) VALUES (\n"
         f"  '{street_id}',\n"
         f"  '{city_id}',\n"
         f"  {sql_str(geo['street']['line_1'])},\n"
@@ -746,7 +746,7 @@ def generate_sales(config, products_data, known_ids):
 
         # Delivery street address
         stmts.append(
-            f"INSERT INTO geography.streets (id, city_id, line_1, line_2, zip_code) VALUES (\n"
+            f"INSERT INTO geography.streets (id, city_id, line_1, line_2, postal_code) VALUES (\n"
             f"  '{addr_id}', '{city_id}',\n"
             f"  {sql_str(line1)}, NULL, {sql_str(fake.zipcode())}\n"
             f");\n"
