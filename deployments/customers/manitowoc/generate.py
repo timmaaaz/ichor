@@ -910,7 +910,7 @@ def generate_sales(config, products_data, known_ids):
                    stmts)
 
 
-def generate_procurement(config, products_data, suppliers_data, known_ids):
+def generate_procurement(config, products_data, suppliers_data, warehouses, known_ids):
     """Generate 25_manitowoc_procurement.sql — suppliers, POs, lot trackings, line items."""
     stmts = []
     seed_date = config["seed_date"]
@@ -921,7 +921,7 @@ def generate_procurement(config, products_data, suppliers_data, known_ids):
     history_months = config["history_months"]
     net30_id = known_ids["payment_terms"]["net_30"]
     street_id = det_uuid("street:MTW-MFG")
-    wh_id = det_uuid("warehouse:MTW-MFG-01")
+    wh_id = det_uuid(f"warehouse:{warehouses['warehouses'][0]['code']}")
 
     # --- 1. Suppliers (from suppliers.yaml) ---
     supplier_ids = []
@@ -1262,7 +1262,7 @@ def main():
     generate_employees(config, known_ids)
     generate_inventory(config, products, warehouses, known_ids)
     generate_sales(config, products, known_ids)
-    generate_procurement(config, products, suppliers, known_ids)
+    generate_procurement(config, products, suppliers, warehouses, known_ids)
     generate_workflows(config, known_ids)
     generate_permissions(config, known_ids)
 
