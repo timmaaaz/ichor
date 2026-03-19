@@ -3,7 +3,6 @@ BEGIN;
 -- PostgreSQL database dump
 --
 
-\restrict NalBmfdLGD2pLhF6NuCukTE2OVxN7h9yEKNscQRer5x9iyvh4C4QoAR5afqd33V
 
 -- Dumped from database version 16.4 (Debian 16.4-1.pgdg120+2)
 -- Dumped by pg_dump version 17.6
@@ -11,7 +10,6 @@ BEGIN;
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);

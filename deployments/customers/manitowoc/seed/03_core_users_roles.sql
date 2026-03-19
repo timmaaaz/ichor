@@ -7,7 +7,6 @@ pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid
 -- PostgreSQL database dump
 --
 
-\restrict GcZjLHlwIhRQphJbkEANxHbjGXacCdKEeYPv7scgTgvU0jYuDwVhd2SCdxtMZN4
 
 -- Dumped from database version 16.4 (Debian 16.4-1.pgdg120+2)
 -- Dumped by pg_dump version 17.6
@@ -15,7 +14,6 @@ pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
