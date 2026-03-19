@@ -67,13 +67,13 @@ deployments/customers/<name>/
 │   ├── warehouses.yaml     # Physical warehouse locations (addresses, street FK)
 │   ├── products.yaml       # Product catalog (names, UPCs, categories, brands)
 │   └── suppliers.yaml      # Supplier companies and contacts
-├── seed/                   # Output SQL files (git-committed, not generated at deploy time)
-│   ├── 00_*.sql            # Platform baseline (pg_dumped)
+├── seed/                   # SQL files applied in order by seed.sh
+│   ├── 00_*.sql            # Platform baseline (pg_dumped, committed)
 │   │   ...
-│   ├── 13_*.sql            # Last platform file
-│   ├── 20_*.sql            # First customer-specific file
+│   ├── 13_*.sql            # Last platform file (committed)
+│   ├── 20_*.sql            # First customer-specific file (generated, gitignored)
 │   │   ...
-│   └── NN_*.sql            # Additional generated files
+│   └── NN_*.sql            # Additional generated files (gitignored)
 ├── generate.py             # Reads data/ YAML → writes seed/ SQL
 └── seed.sh                 # Runs all seed/ files against a target DB in order
 ```
@@ -181,13 +181,33 @@ reproducibility.
 
 ---
 
+## Generated Files
+
+Files `20_*.sql` through `27_*.sql` are **gitignored** — they are deterministic output of
+`generate.py` and should be regenerated locally rather than committed. This keeps the repo
+clean (these files total ~21K lines) and avoids noisy diffs when YAML data changes.
+
+Platform baseline files (`00`–`13`) ARE committed since they're pg_dump snapshots.
+
 ## How to Run
+
+From the project root:
+
+```bash
+make dev-python               # One-time: install Python + deps
+make dev-bounce-manitowoc     # Full cluster up + Manitowoc seed
+make reseed-manitowoc         # Recreate DB + migrate + reseed
+make seed-manitowoc           # Just seed against existing DB
+```
+
+Or run directly:
 
 ```bash
 ./seed.sh <db_url>
 ```
 
-Runs all `seed/*.sql` files against `<db_url>` in filename order using `psql`.
+Runs `generate.py` first, then applies all `seed/*.sql` files against `<db_url>` in filename
+order using `psql`.
 
 ### Recovery (start_from)
 
