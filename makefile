@@ -442,6 +442,9 @@ seed: migrate
 seed-frontend:
 	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed-frontend
 
+seed-platform:
+	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed-platform
+
 validate-configs:
 	go run api/cmd/tooling/admin/main.go validate-configs
 
@@ -466,6 +469,7 @@ reseed-frontend: dev-database-recreate dev-update-apply seed-frontend
 # Manitowoc Customer Seed
 
 seed-manitowoc:
+	make seed-platform
 	cd deployments/customers/manitowoc && .venv/bin/python3 generate.py && ./seed.sh postgresql://postgres:postgres@localhost
 
 reseed-manitowoc: dev-database-recreate dev-update-apply migrate seed-manitowoc
