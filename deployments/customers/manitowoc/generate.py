@@ -92,7 +92,7 @@ def generate_org(config, warehouses, known_ids):
     stmts.append(
         f"INSERT INTO geography.cities (id, region_id, name) VALUES (\n"
         f"  '{city_id}',\n"
-        f"  (SELECT id FROM geography.regions WHERE alpha_2 = '{geo['region']}'),\n"
+        f"  (SELECT id FROM geography.regions WHERE code = '{geo['region']}'),\n"
         f"  {sql_str(geo['city'])}\n"
         f");\n"
     )
