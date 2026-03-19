@@ -11,10 +11,20 @@ Seed data pipeline for Manitowoc, a relay manufacturer. Populates a fresh Ichor 
 ## Setup
 
 ```bash
-pip install -r requirements.txt
+make dev-python              # Install Python + deps (one-time)
 ```
 
 ## Running
+
+From the project root:
+
+```bash
+make dev-bounce-manitowoc    # Full cluster up + Manitowoc seed
+make reseed-manitowoc        # Recreate DB + reseed Manitowoc
+make seed-manitowoc          # Just run seed against existing DB
+```
+
+Or run directly:
 
 ```bash
 ./seed.sh postgresql://user:pass@host:5432/manitowoc_db
