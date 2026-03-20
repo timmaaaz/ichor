@@ -77,13 +77,18 @@ func (app Order) Encode() ([]byte, string, error) {
 }
 
 func ToAppOrder(bus ordersbus.Order) Order {
+	var orderDate string
+	if !bus.OrderDate.IsZero() {
+		orderDate = bus.OrderDate.Format(dateFormat)
+	}
+
 	app := Order{
 		ID:                  bus.ID.String(),
 		Number:              bus.Number,
 		CustomerID:          bus.CustomerID.String(),
 		DueDate:             bus.DueDate.Format(dateFormat),
 		FulfillmentStatusID: bus.FulfillmentStatusID.String(),
-		OrderDate:           bus.OrderDate.Format(dateFormat),
+		OrderDate:           orderDate,
 		Subtotal:            bus.Subtotal.Value(),
 		TaxRate:             bus.TaxRate.Value(),
 		TaxAmount:           bus.TaxAmount.Value(),

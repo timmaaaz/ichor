@@ -10,9 +10,15 @@ Usage: python3 generate.py
 
 import uuid
 import yaml
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timedelta
 from pathlib import Path
 from faker import Faker
+
+
+def money(val) -> Decimal:
+    """Round a value to 2 decimal places using Decimal for financial precision."""
+    return Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 # === Constants ===
 BASE_DIR = Path(__file__).parent
@@ -311,12 +317,12 @@ def generate_products(config, products_data, known_ids):
         low, high = cost_ranges.get(inv_type, (5, 100))
         # Use det_uuid to derive a stable number
         cost_seed = int(det_uuid(f"cost-seed:{sku}").replace("-", ""), 16) % 10000
-        purchase_cost = round(low + (high - low) * (cost_seed / 10000), 2)
-        selling_price = round(purchase_cost * 1.3, 2)
-        msrp = round(selling_price * 1.1, 2)
-        landed_cost = round(purchase_cost * 1.05, 2)
-        carrying_cost = round(purchase_cost * 0.02, 2)
-        insurance_value = round(purchase_cost * 0.01, 2)
+        purchase_cost = money(low + (high - low) * (cost_seed / 10000))
+        selling_price = money(purchase_cost * Decimal("1.3"))
+        msrp = money(selling_price * Decimal("1.1"))
+        landed_cost = money(purchase_cost * Decimal("1.05"))
+        carrying_cost = money(purchase_cost * Decimal("0.02"))
+        insurance_value = money(purchase_cost * Decimal("0.01"))
         abc = abc_map.get(inv_type, "C")
 
         stmts.append(
@@ -410,6 +416,7 @@ def generate_inventory(config, products_data, warehouses, known_ids):
     seed_date = config["seed_date"]
     seed_dt = datetime.fromisoformat(seed_date)
     history_months = config["history_months"]
+    transaction_count = config["transaction_count"]
     transfer_count = config["transfer_count"]
     adjustment_count = config["adjustment_count"]
     admin_id = known_ids["users"]["admin_gopher"]
@@ -489,9 +496,8 @@ def generate_inventory(config, products_data, warehouses, known_ids):
 
     # --- 2. Inventory Transactions (historical) ---
     txn_types = ["received", "shipped", "transferred", "adjusted"]
-    history_start = seed_dt - timedelta(days=history_months * 30)
 
-    for i in range(transfer_count):
+    for i in range(transaction_count):
         txn_id = det_uuid(f"inv-txn:{i}")
         # Exponential distribution: more recent = more activity
         rand_val = int(det_uuid(f"txn-time:{i}").replace("-", ""), 16) % 10000
@@ -789,8 +795,6 @@ def generate_sales(config, products_data, known_ids):
         (1.00,  "DELIVERED"),
     ]
 
-    history_start = seed_dt - timedelta(days=history_months * 30)
-
     for i in range(order_count):
         order_id = det_uuid(f"order:{i}")
         order_number = f"ORD-{i:06d}"
@@ -820,7 +824,7 @@ def generate_sales(config, products_data, known_ids):
         # Line items: 1-5 per order
         num_items = int(det_uuid(f"order-items:{i}").replace("-", ""), 16) % 5 + 1
 
-        subtotal = 0.0
+        subtotal = Decimal("0")
         line_stmts = []
 
         for j in range(num_items):
@@ -844,10 +848,10 @@ def generate_sales(config, products_data, known_ids):
             inv_type = prod["inventory_type"]
             cost_ranges = {"finished_good": (100, 500), "wip": (20, 200)}
             low, high = cost_ranges.get(inv_type, (20, 200))
-            purchase_cost = round(low + (high - low) * (cost_seed / 10000), 2)
-            unit_price = round(purchase_cost * 1.3, 2)  # selling price
+            purchase_cost = money(low + (high - low) * (cost_seed / 10000))
+            unit_price = money(purchase_cost * Decimal("1.3"))
 
-            line_total = round(qty * unit_price, 2)
+            line_total = money(qty * unit_price)
             subtotal += line_total
 
             # Line item status matches order status
@@ -882,10 +886,10 @@ def generate_sales(config, products_data, known_ids):
             )
 
         # Financial totals
-        tax_rate = 7.50
-        tax_amount = round(subtotal * tax_rate / 100, 2)
-        shipping_cost = round(25 + (int(det_uuid(f"order-ship:{i}").replace("-", ""), 16) % 200), 2)
-        total_amount = round(subtotal + tax_amount + shipping_cost, 2)
+        tax_rate = Decimal("7.50")
+        tax_amount = money(subtotal * tax_rate / 100)
+        shipping_cost = Decimal(25 + (int(det_uuid(f"order-ship:{i}").replace("-", ""), 16) % 200))
+        total_amount = money(subtotal + tax_amount + shipping_cost)
 
         stmts.append(
             f"INSERT INTO sales.orders (id, number, customer_id, due_date, order_fulfillment_status_id, billing_address_id, shipping_address_id, order_date, payment_term_id, notes, subtotal, tax_rate, tax_amount, shipping_cost, total_amount, currency_id, created_by, updated_by, created_date, updated_date) VALUES (\n"
@@ -1111,7 +1115,7 @@ def generate_procurement(config, products_data, suppliers_data, warehouses, know
 
         # Line items: 1-4 per PO
         num_items = int(det_uuid(f"po-items:{i}").replace("-", ""), 16) % 4 + 1
-        subtotal = 0.0
+        subtotal = Decimal("0")
         po_line_stmts = []
 
         for j in range(num_items):
@@ -1120,7 +1124,7 @@ def generate_procurement(config, products_data, suppliers_data, warehouses, know
             sp_id, psku, unit_cost, part_num = sup_prods[sp_idx]
 
             qty_ordered = int(det_uuid(f"po-li-qty:{i}:{j}").replace("-", ""), 16) % 4901 + 100
-            line_total = round(qty_ordered * unit_cost, 2)
+            line_total = money(qty_ordered * Decimal(str(unit_cost)))
             subtotal += line_total
 
             # Quantities based on PO status
@@ -1163,9 +1167,9 @@ def generate_procurement(config, products_data, suppliers_data, warehouses, know
                 f");\n"
             )
 
-        tax_amount = round(subtotal * 0.075, 2)
-        shipping_cost = round(50 + (int(det_uuid(f"po-ship:{i}").replace("-", ""), 16) % 300), 2)
-        total_amount = round(subtotal + tax_amount + shipping_cost, 2)
+        tax_amount = money(subtotal * Decimal("0.075"))
+        shipping_cost = Decimal(50 + (int(det_uuid(f"po-ship:{i}").replace("-", ""), 16) % 300))
+        total_amount = money(subtotal + tax_amount + shipping_cost)
 
         quoted_approved_by = f"'{approved_by}'" if approved_date else "NULL"
 
