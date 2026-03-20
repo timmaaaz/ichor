@@ -161,6 +161,12 @@ dev-brew:
 	brew list watch || brew install watch
 	brew list ollama || brew install ollama
 
+dev-python:
+	brew list python@3 || brew install python@3
+	brew list libpq || brew install libpq
+	python3 -m venv deployments/customers/manitowoc/.venv
+	deployments/customers/manitowoc/.venv/bin/pip install -r deployments/customers/manitowoc/requirements.txt
+
 dev-docker:
 	docker pull $(GOLANG) & \
 	docker pull $(ALPINE) & \
@@ -436,6 +442,9 @@ seed: migrate
 seed-frontend:
 	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed-frontend
 
+seed-platform:
+	export ICHOR_DB_HOST=localhost; go run api/cmd/tooling/admin/main.go seed-platform
+
 validate-configs:
 	go run api/cmd/tooling/admin/main.go validate-configs
 
@@ -455,6 +464,25 @@ validate-forms-deep:
 validate-forms-all: validate-forms validate-forms-deep
 
 reseed-frontend: dev-database-recreate dev-update-apply seed-frontend
+
+# ==============================================================================
+# Manitowoc Customer Seed
+
+seed-manitowoc:
+	make seed-platform
+	cd deployments/customers/manitowoc && .venv/bin/python3 generate.py && ./seed.sh postgresql://postgres:postgres@localhost
+
+reseed-manitowoc: dev-database-recreate dev-update-apply migrate seed-manitowoc
+
+dev-bounce-manitowoc:
+	make dev-down
+	make dev-up
+	@kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
+	@if [ -f .env ]; then . ./.env; fi && \
+		if [ -n "$$GEMINI_API_KEY" ]; then make dev-gemini-secret GEMINI_API_KEY=$$GEMINI_API_KEY; fi
+	make dev-update-apply
+	make migrate
+	make seed-manitowoc
 
 pgcli:
 	pgcli postgresql://postgres:postgres@localhost

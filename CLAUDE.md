@@ -393,6 +393,14 @@ The in-app agent chat (`api/domain/http/agentapi/chatapi/`) uses **Gemini Flash 
 
 When the user describes a bug, error, or unexpected behavior, **recommend `/investigate` before making any code changes**. Look for signals: error messages, "broken", "failing", "wrong", "not working", stack traces, test failures, or unexpected output. A quick suggestion is sufficient — don't block if they decline. Example: *"This sounds like a bug — want me to run `/investigate` first to diagnose the root cause before making changes?"*
 
+## Conditional Reading
+
+**MUST read the relevant guide before starting work in these areas:**
+
+| When you are... | Read this first |
+|---|---|
+| Working with customer seed data or onboarding | `docs/arch/customer-seeding.md` |
+
 ## Arch Files
 docs/arch/ = authoritative. Read → answer directly. No codebase search to verify. ⚠ callouts are complete.
 

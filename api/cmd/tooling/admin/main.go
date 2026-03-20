@@ -111,6 +111,11 @@ func processCommands(args conf.Args, log *logger.Logger, cfg config) error {
 			return fmt.Errorf("seeding frontend data: %w", err)
 		}
 
+	case "seed-platform":
+		if err := commands.SeedPlatform(log, dbConfig); err != nil {
+			return fmt.Errorf("seeding platform config: %w", err)
+		}
+
 	case "useradd":
 		username := args.Num(1)
 		firstName := args.Num(2)

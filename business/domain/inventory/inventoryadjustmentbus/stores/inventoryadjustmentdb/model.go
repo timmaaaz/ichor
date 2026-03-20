@@ -1,6 +1,7 @@
 package inventoryadjustmentdb
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,9 +15,9 @@ type inventoryAdjustment struct {
 	AdjustedBy            uuid.UUID  `db:"adjusted_by"`
 	ApprovedBy            *uuid.UUID `db:"approved_by"`
 	ApprovalStatus        string     `db:"approval_status"`
-	ApprovalReason        string     `db:"approval_reason"`
-	RejectedBy            *uuid.UUID `db:"rejected_by"`
-	RejectionReason       string     `db:"rejection_reason"`
+	ApprovalReason        sql.NullString `db:"approval_reason"`
+	RejectedBy            *uuid.UUID     `db:"rejected_by"`
+	RejectionReason       sql.NullString `db:"rejection_reason"`
 	QuantityChange        int        `db:"quantity_change"`
 	ReasonCode            string     `db:"reason_code"`
 	Notes                 string     `db:"notes"`
@@ -26,16 +27,14 @@ type inventoryAdjustment struct {
 }
 
 func toBusInventoryAdjustment(ia inventoryAdjustment) inventoryadjustmentbus.InventoryAdjustment {
-	return inventoryadjustmentbus.InventoryAdjustment{
+	bus := inventoryadjustmentbus.InventoryAdjustment{
 		InventoryAdjustmentID: ia.InventoryAdjustmentID,
 		ProductID:             ia.ProductID,
 		LocationID:            ia.LocationID,
 		AdjustedBy:            ia.AdjustedBy,
 		ApprovedBy:            ia.ApprovedBy,
 		ApprovalStatus:        ia.ApprovalStatus,
-		ApprovalReason:        ia.ApprovalReason,
 		RejectedBy:            ia.RejectedBy,
-		RejectionReason:       ia.RejectionReason,
 		QuantityChange:        ia.QuantityChange,
 		ReasonCode:            ia.ReasonCode,
 		Notes:                 ia.Notes,
@@ -43,6 +42,16 @@ func toBusInventoryAdjustment(ia inventoryAdjustment) inventoryadjustmentbus.Inv
 		CreatedDate:           ia.CreatedDate,
 		UpdatedDate:           ia.UpdatedDate,
 	}
+
+	if ia.ApprovalReason.Valid {
+		bus.ApprovalReason = ia.ApprovalReason.String
+	}
+
+	if ia.RejectionReason.Valid {
+		bus.RejectionReason = ia.RejectionReason.String
+	}
+
+	return bus
 }
 
 func toBusInventoryAdjustments(ias []inventoryAdjustment) []inventoryadjustmentbus.InventoryAdjustment {
@@ -54,16 +63,14 @@ func toBusInventoryAdjustments(ias []inventoryAdjustment) []inventoryadjustmentb
 }
 
 func toDBInventoryAdjustment(ia inventoryadjustmentbus.InventoryAdjustment) inventoryAdjustment {
-	return inventoryAdjustment{
+	db := inventoryAdjustment{
 		InventoryAdjustmentID: ia.InventoryAdjustmentID,
 		ProductID:             ia.ProductID,
 		LocationID:            ia.LocationID,
 		AdjustedBy:            ia.AdjustedBy,
 		ApprovedBy:            ia.ApprovedBy,
 		ApprovalStatus:        ia.ApprovalStatus,
-		ApprovalReason:        ia.ApprovalReason,
 		RejectedBy:            ia.RejectedBy,
-		RejectionReason:       ia.RejectionReason,
 		QuantityChange:        ia.QuantityChange,
 		ReasonCode:            ia.ReasonCode,
 		Notes:                 ia.Notes,
@@ -71,4 +78,14 @@ func toDBInventoryAdjustment(ia inventoryadjustmentbus.InventoryAdjustment) inve
 		CreatedDate:           ia.CreatedDate,
 		UpdatedDate:           ia.UpdatedDate,
 	}
+
+	if ia.ApprovalReason != "" {
+		db.ApprovalReason = sql.NullString{String: ia.ApprovalReason, Valid: true}
+	}
+
+	if ia.RejectionReason != "" {
+		db.RejectionReason = sql.NullString{String: ia.RejectionReason, Valid: true}
+	}
+
+	return db
 }

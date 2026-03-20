@@ -16,7 +16,7 @@ type dbOrder struct {
 	CustomerID          uuid.UUID      `db:"customer_id"`
 	DueDate             time.Time      `db:"due_date"`
 	FulfillmentStatusID uuid.UUID      `db:"order_fulfillment_status_id"`
-	OrderDate           time.Time      `db:"order_date"`
+	OrderDate           sql.NullTime   `db:"order_date"`
 	BillingAddressID    *uuid.UUID     `db:"billing_address_id"`
 	ShippingAddressID   *uuid.UUID     `db:"shipping_address_id"`
 	AssignedTo          *uuid.UUID     `db:"assigned_to"`
@@ -27,7 +27,7 @@ type dbOrder struct {
 	TotalAmount         sql.NullString `db:"total_amount"`
 	CurrencyID          uuid.UUID      `db:"currency_id"`
 	PaymentTermID       *uuid.UUID     `db:"payment_term_id"`
-	Notes               string         `db:"notes"`
+	Notes               sql.NullString `db:"notes"`
 	CreatedBy           uuid.UUID      `db:"created_by"`
 	UpdatedBy           uuid.UUID      `db:"updated_by"`
 	CreatedDate         time.Time      `db:"created_date"`
@@ -60,13 +60,12 @@ func toBusOrder(db dbOrder) (ordersbus.Order, error) {
 		return ordersbus.Order{}, fmt.Errorf("tobusorder: total_amount: %w", err)
 	}
 
-	return ordersbus.Order{
+	bus := ordersbus.Order{
 		ID:                  db.ID,
 		Number:              db.Number,
 		CustomerID:          db.CustomerID,
 		DueDate:             db.DueDate.In(time.Local),
 		FulfillmentStatusID: db.FulfillmentStatusID,
-		OrderDate:           db.OrderDate.In(time.Local),
 		BillingAddressID:    db.BillingAddressID,
 		ShippingAddressID:   db.ShippingAddressID,
 		AssignedTo:          db.AssignedTo,
@@ -77,12 +76,21 @@ func toBusOrder(db dbOrder) (ordersbus.Order, error) {
 		TotalAmount:         totalAmount,
 		CurrencyID:          db.CurrencyID,
 		PaymentTermID:       db.PaymentTermID,
-		Notes:               db.Notes,
 		CreatedBy:           db.CreatedBy,
 		UpdatedBy:           db.UpdatedBy,
 		CreatedDate:         db.CreatedDate.In(time.Local),
 		UpdatedDate:         db.UpdatedDate.In(time.Local),
-	}, nil
+	}
+
+	if db.OrderDate.Valid {
+		bus.OrderDate = db.OrderDate.Time.In(time.Local)
+	}
+
+	if db.Notes.Valid {
+		bus.Notes = db.Notes.String
+	}
+
+	return bus, nil
 }
 
 func toBusOrders(dbs []dbOrder) ([]ordersbus.Order, error) {
@@ -98,13 +106,12 @@ func toBusOrders(dbs []dbOrder) ([]ordersbus.Order, error) {
 }
 
 func toDBOrder(bus ordersbus.Order) dbOrder {
-	return dbOrder{
+	db := dbOrder{
 		ID:                  bus.ID,
 		Number:              bus.Number,
 		CustomerID:          bus.CustomerID,
 		DueDate:             bus.DueDate.UTC(),
 		FulfillmentStatusID: bus.FulfillmentStatusID,
-		OrderDate:           bus.OrderDate.UTC(),
 		BillingAddressID:    bus.BillingAddressID,
 		ShippingAddressID:   bus.ShippingAddressID,
 		AssignedTo:          bus.AssignedTo,
@@ -115,10 +122,19 @@ func toDBOrder(bus ordersbus.Order) dbOrder {
 		TotalAmount:         bus.TotalAmount.DBValue(),
 		CurrencyID:          bus.CurrencyID,
 		PaymentTermID:       bus.PaymentTermID,
-		Notes:               bus.Notes,
 		CreatedBy:           bus.CreatedBy,
 		UpdatedBy:           bus.UpdatedBy,
 		CreatedDate:         bus.CreatedDate.UTC(),
 		UpdatedDate:         bus.UpdatedDate.UTC(),
 	}
+
+	if !bus.OrderDate.IsZero() {
+		db.OrderDate = sql.NullTime{Time: bus.OrderDate.UTC(), Valid: true}
+	}
+
+	if bus.Notes != "" {
+		db.Notes = sql.NullString{String: bus.Notes, Valid: true}
+	}
+
+	return db
 }

@@ -12,7 +12,7 @@ type zone struct {
 	ZoneID      uuid.UUID      `db:"id"`
 	WarehouseID uuid.UUID      `db:"warehouse_id"`
 	Name        string         `db:"name"`
-	Description string         `db:"description"`
+	Description sql.NullString `db:"description"`
 	Stage       sql.NullString `db:"stage"`
 	CreatedDate time.Time      `db:"created_date"`
 	UpdatedDate time.Time      `db:"updated_date"`
@@ -23,9 +23,11 @@ func toDBZone(bus zonebus.Zone) zone {
 		ZoneID:      bus.ZoneID,
 		WarehouseID: bus.WarehouseID,
 		Name:        bus.Name,
-		Description: bus.Description,
 		CreatedDate: bus.CreatedDate.UTC(),
 		UpdatedDate: bus.UpdatedDate.UTC(),
+	}
+	if bus.Description != "" {
+		dest.Description = sql.NullString{String: bus.Description, Valid: true}
 	}
 	if bus.Stage != nil {
 		dest.Stage = sql.NullString{String: bus.Stage.String(), Valid: true}
@@ -38,9 +40,11 @@ func toBusZone(db zone) zonebus.Zone {
 		ZoneID:      db.ZoneID,
 		WarehouseID: db.WarehouseID,
 		Name:        db.Name,
-		Description: db.Description,
 		CreatedDate: db.CreatedDate.Local(),
 		UpdatedDate: db.UpdatedDate.Local(),
+	}
+	if db.Description.Valid {
+		dest.Description = db.Description.String
 	}
 	if db.Stage.Valid {
 		st, err := zonebus.ParseStage(db.Stage.String)
