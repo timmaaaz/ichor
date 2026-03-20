@@ -1,0 +1,63 @@
+# Known hardcoded UUIDs from business/sdk/migrate/sql/seed.sql
+# These are stable across all environments that run the same seed.sql.
+# DO NOT change these — they are used for FK references in seed data generators.
+
+# ---------------------------------------------------------------------------
+# Core roles
+# ---------------------------------------------------------------------------
+roles:
+  zzzadmin: "54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"   # 'ZZZADMIN' admin role
+
+# ---------------------------------------------------------------------------
+# Core users (only admin_gopher and user_gopher have hardcoded IDs)
+# ---------------------------------------------------------------------------
+users:
+  admin_gopher: "5cf37266-3473-4006-984f-9325122678b7"
+  user_gopher:  "45b5fbd3-755f-4379-8f07-a58d4a30fa2f"
+
+# ---------------------------------------------------------------------------
+# HR user approval statuses  (hr.user_approval_status)
+# NOTE: these are in hr schema, NOT assets.approval_status
+# ---------------------------------------------------------------------------
+hr_user_approval_status:
+  pending:      "89173300-3f4e-4606-872c-f34914bbee19"
+  approved:     "0394acac-ace4-4e8f-b64e-68625b0af14a"
+  denied:       "7b901e2e-3f33-40c1-9201-b4e8b1718b4b"
+  under_review: "132a2572-b7a0-4b56-a165-55e1c244c3e2"
+
+# ---------------------------------------------------------------------------
+# Payment terms  (core.payment_terms)
+# Pattern: a0000000-0000-4000-8000-0000000000XX
+# ---------------------------------------------------------------------------
+payment_terms:
+  net_30:         "a0000000-0000-4000-8000-000000000001"
+  net_60:         "a0000000-0000-4000-8000-000000000002"
+  due_on_receipt: "a0000000-0000-4000-8000-000000000003"
+  net_15:         "a0000000-0000-4000-8000-000000000004"
+  net_45:         "a0000000-0000-4000-8000-000000000005"
+  net_7:          "a0000000-0000-4000-8000-000000000006"
+  net_10:         "a0000000-0000-4000-8000-000000000007"
+  net_21:         "a0000000-0000-4000-8000-000000000008"
+  net_90:         "a0000000-0000-4000-8000-000000000009"
+  prepaid:        "a0000000-0000-4000-8000-000000000010"
+  cod:            "a0000000-0000-4000-8000-000000000011"
+  cia:            "a0000000-0000-4000-8000-000000000012"
+  deposit_50pct:  "a0000000-0000-4000-8000-000000000013"
+  eom:            "a0000000-0000-4000-8000-000000000014"
+  mfi:            "a0000000-0000-4000-8000-000000000015"
+  mfi_15:         "a0000000-0000-4000-8000-000000000016"
+  open_account:   "a0000000-0000-4000-8000-000000000017"
+  letter_of_credit: "a0000000-0000-4000-8000-000000000018"
+
+# ---------------------------------------------------------------------------
+# Dynamic-UUID tables — no hardcoded IDs in seed.sql
+# Resolve these at runtime by querying the live DB by name.
+# ---------------------------------------------------------------------------
+
+# assets.approval_status        — seeded with uuid_generate_v4(), query by name
+# assets.fulfillment_status     — seeded with uuid_generate_v4(), query by name
+# assets.asset_conditions       — seeded with uuid_generate_v4(), query by name
+# sales.order_fulfillment_statuses  — not in seed.sql; seeded per-env, query by name
+#   known names: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+# sales.line_item_fulfillment_statuses — not in seed.sql; seeded per-env, query by name
+#   known names: ALLOCATED, CANCELLED, PACKED, PENDING, PICKED, SHIPPED

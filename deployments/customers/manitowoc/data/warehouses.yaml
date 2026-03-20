@@ -1,0 +1,108 @@
+# Manitowoc Manufacturing Warehouse Layout
+# Reflects the 6-stage relay production flow:
+#   Raw Material → Plastics → Coil Winding → Coil Riveting → Contact Riveting → Assembly → Calibration → Finished Relays
+#
+# Geography prerequisite — generator creates these before warehouses.
+# The street record is created first and its UUID is referenced by the warehouse.
+
+geography:
+  region: "WI"  # Wisconsin — matched by alpha_2 in geography.regions
+  city: "Manitowoc"
+  street:
+    line_1: "2110 South 26th Street"
+    postal_code: "54220"
+
+warehouses:
+  - name: "Manitowoc Manufacturing"
+    code: "MTW-MFG"  # used for UUID generation only — NOT a DB column
+    zones:
+
+      # ── 1. Receiving Dock ───────────────────────────────────────────────────
+      - name: "Receiving Dock"
+        description: "Inbound receiving area (RCV) — all supplier shipments staged here"
+        stage: "inbound"
+        locations:
+          - { aisle: "RCV", rack: "D", shelf: "1", bin: "01", is_pick: false, is_reserve: false, max_capacity: 100 }
+          - { aisle: "RCV", rack: "D", shelf: "1", bin: "02", is_pick: false, is_reserve: false, max_capacity: 100 }
+          - { aisle: "RCV", rack: "D", shelf: "2", bin: "01", is_pick: false, is_reserve: false, max_capacity: 80 }
+
+      # ── 2. Plastics Storage ─────────────────────────────────────────────────
+      - name: "Plastics Storage"
+        description: "Plastic components storage (PLS) — covers, bases, bobbins"
+        stage: "received"
+        locations:
+          - { aisle: "PLS", rack: "A", shelf: "1", bin: "01", is_pick: true,  is_reserve: false, max_capacity: 200 }
+          - { aisle: "PLS", rack: "A", shelf: "1", bin: "02", is_pick: true,  is_reserve: false, max_capacity: 200 }
+          - { aisle: "PLS", rack: "A", shelf: "2", bin: "01", is_pick: false, is_reserve: true,  max_capacity: 500 }
+
+      # ── 3. Coil Winding Floor ───────────────────────────────────────────────
+      - name: "Coil Winding Floor"
+        description: "Wire winding stations (CWD) — wire spools, pins, unfinished coil staging"
+        stage: "processing"
+        locations:
+          - { aisle: "CWD", rack: "W", shelf: "1", bin: "01", is_pick: true,  is_reserve: false, max_capacity: 50 }
+          - { aisle: "CWD", rack: "W", shelf: "1", bin: "02", is_pick: true,  is_reserve: false, max_capacity: 50 }
+          - { aisle: "CWD", rack: "S", shelf: "1", bin: "01", is_pick: false, is_reserve: false, max_capacity: 150 }
+
+      # ── 4. Coil Riveting ────────────────────────────────────────────────────
+      - name: "Coil Riveting"
+        description: "Riveting lines (CRV) — frames, cores, shading coils, finished coil staging"
+        stage: "processing"
+        locations:
+          - { aisle: "CRV", rack: "L", shelf: "1", bin: "01", is_pick: true,  is_reserve: false, max_capacity: 100 }
+          - { aisle: "CRV", rack: "L", shelf: "1", bin: "02", is_pick: true,  is_reserve: false, max_capacity: 100 }
+          - { aisle: "CRV", rack: "F", shelf: "1", bin: "01", is_pick: false, is_reserve: false, max_capacity: 200 }
+
+      # ── 5. Contact Riveting ─────────────────────────────────────────────────
+      - name: "Contact Riveting"
+        description: "Terminal and contact riveting stations (CTR) — terminals, contacts, rivets, finished base staging"
+        stage: "processing"
+        locations:
+          - { aisle: "CTR", rack: "T", shelf: "1", bin: "01", is_pick: true,  is_reserve: false, max_capacity: 100 }
+          - { aisle: "CTR", rack: "T", shelf: "1", bin: "02", is_pick: true,  is_reserve: false, max_capacity: 100 }
+          - { aisle: "CTR", rack: "B", shelf: "1", bin: "01", is_pick: false, is_reserve: false, max_capacity: 150 }
+
+      # ── 6. Assembly Floor ───────────────────────────────────────────────────
+      - name: "Assembly Floor"
+        description: "Relay assembly lines (ASM) — armatures, actuators, springs, unfinished relays"
+        stage: "assembly"
+        locations:
+          - { aisle: "ASM", rack: "A", shelf: "1", bin: "01", is_pick: true,  is_reserve: false, max_capacity: 120 }
+          - { aisle: "ASM", rack: "A", shelf: "1", bin: "02", is_pick: true,  is_reserve: false, max_capacity: 120 }
+          - { aisle: "ASM", rack: "A", shelf: "2", bin: "01", is_pick: false, is_reserve: false, max_capacity: 180 }
+
+      # ── 7. Calibration Bench ────────────────────────────────────────────────
+      - name: "Calibration Bench"
+        description: "Relay calibration stations (CAL) — unfinished relays awaiting calibration"
+        stage: "calibration"
+        locations:
+          - { aisle: "CAL", rack: "C", shelf: "1", bin: "01", is_pick: true,  is_reserve: false, max_capacity: 60 }
+          - { aisle: "CAL", rack: "C", shelf: "1", bin: "02", is_pick: true,  is_reserve: false, max_capacity: 60 }
+          - { aisle: "CAL", rack: "C", shelf: "2", bin: "01", is_pick: false, is_reserve: false, max_capacity: 100 }
+
+      # ── 8. QA Hold ──────────────────────────────────────────────────────────
+      - name: "QA Hold"
+        description: "Quality inspection bay and quarantine area (QAH)"
+        stage: "qa"
+        locations:
+          - { aisle: "QAH", rack: "I", shelf: "1", bin: "01", is_pick: false, is_reserve: false, max_capacity: 50 }
+          - { aisle: "QAH", rack: "Q", shelf: "1", bin: "01", is_pick: false, is_reserve: false, max_capacity: 50 }
+          - { aisle: "QAH", rack: "Q", shelf: "1", bin: "02", is_pick: false, is_reserve: false, max_capacity: 50 }
+
+      # ── 9. Finished Goods ───────────────────────────────────────────────────
+      - name: "Finished Goods"
+        description: "Finished relay storage and shipping bays (FGS) — outbound product"
+        stage: "outbound"
+        locations:
+          - { aisle: "FGS", rack: "S", shelf: "1", bin: "01", is_pick: true,  is_reserve: false, max_capacity: 300 }
+          - { aisle: "FGS", rack: "S", shelf: "1", bin: "02", is_pick: true,  is_reserve: false, max_capacity: 300 }
+          - { aisle: "FGS", rack: "S", shelf: "2", bin: "01", is_pick: false, is_reserve: true,  max_capacity: 500 }
+
+      # ── 10. Raw Material Storage ────────────────────────────────────────────
+      - name: "Raw Material Storage"
+        description: "Raw material stock (RMS) — resins, steel bars, wire, solder, lead wire"
+        stage: "received"
+        locations:
+          - { aisle: "RMS", rack: "R", shelf: "1", bin: "01", is_pick: true,  is_reserve: false, max_capacity: 200 }
+          - { aisle: "RMS", rack: "R", shelf: "1", bin: "02", is_pick: true,  is_reserve: false, max_capacity: 200 }
+          - { aisle: "RMS", rack: "R", shelf: "2", bin: "01", is_pick: false, is_reserve: true,  max_capacity: 400 }
