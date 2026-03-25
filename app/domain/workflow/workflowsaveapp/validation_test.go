@@ -1,9 +1,12 @@
 package workflowsaveapp
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 )
 
 func TestValidateActionConfig_CreateAlert(t *testing.T) {
@@ -218,6 +221,131 @@ func TestValidateActionConfigs_Wrapper(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "action[1]") {
 		t.Fatalf("error should reference action index: %s", err)
+	}
+}
+
+// =============================================================================
+// Output Port Validation Tests
+// =============================================================================
+
+// testHandler is a minimal ActionHandler + OutputPortProvider for testing.
+type testHandler struct {
+	actionType  string
+	outputPorts []workflow.OutputPort
+}
+
+func (h testHandler) Execute(_ context.Context, _ json.RawMessage, _ workflow.ActionExecutionContext) (any, error) {
+	return nil, nil
+}
+func (h testHandler) Validate(_ json.RawMessage) error { return nil }
+func (h testHandler) GetType() string                  { return h.actionType }
+func (h testHandler) SupportsManualExecution() bool     { return false }
+func (h testHandler) IsAsync() bool                     { return false }
+func (h testHandler) GetDescription() string            { return "test handler" }
+func (h testHandler) GetOutputPorts() []workflow.OutputPort {
+	return h.outputPorts
+}
+
+func newTestRegistry() *workflow.ActionRegistry {
+	reg := workflow.NewActionRegistry()
+	reg.Register(testHandler{
+		actionType: "test_action",
+		outputPorts: []workflow.OutputPort{
+			{Name: "success", Description: "ok", IsDefault: true},
+			{Name: "failure", Description: "fail"},
+		},
+	})
+	return reg
+}
+
+func TestValidateOutputPorts_StartEdgeWithSourceOutput(t *testing.T) {
+	actions := []SaveActionRequest{action("a")}
+	edges := []SaveEdgeRequest{
+		{EdgeType: "start", TargetActionID: "temp:0", SourceOutput: "success"},
+	}
+	err := validateOutputPorts(actions, edges, newTestRegistry())
+	if err == nil {
+		t.Fatal("expected error for start edge with source_output")
+	}
+	if !strings.Contains(err.Error(), "must not have source_output") {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
+
+func TestValidateOutputPorts_AlwaysEdgeWithSourceOutput(t *testing.T) {
+	actions := []SaveActionRequest{action("a"), action("b")}
+	edges := []SaveEdgeRequest{
+		{EdgeType: "always", SourceActionID: "temp:0", TargetActionID: "temp:1", SourceOutput: "success"},
+	}
+	err := validateOutputPorts(actions, edges, newTestRegistry())
+	if err == nil {
+		t.Fatal("expected error for always edge with source_output")
+	}
+	if !strings.Contains(err.Error(), "must not have source_output") {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
+
+func TestValidateOutputPorts_SequenceEdgeValidOutput(t *testing.T) {
+	actions := []SaveActionRequest{{
+		Name:         "a",
+		ActionType:   "test_action",
+		ActionConfig: json.RawMessage(`{}`),
+		IsActive:     true,
+	}, action("b")}
+	edges := []SaveEdgeRequest{
+		{EdgeType: "sequence", SourceActionID: "temp:0", TargetActionID: "temp:1", SourceOutput: "success"},
+	}
+	err := validateOutputPorts(actions, edges, newTestRegistry())
+	if err != nil {
+		t.Fatalf("valid source_output should pass: %s", err)
+	}
+}
+
+func TestValidateOutputPorts_SequenceEdgeInvalidOutput(t *testing.T) {
+	actions := []SaveActionRequest{{
+		Name:         "a",
+		ActionType:   "test_action",
+		ActionConfig: json.RawMessage(`{}`),
+		IsActive:     true,
+	}, action("b")}
+	edges := []SaveEdgeRequest{
+		{EdgeType: "sequence", SourceActionID: "temp:0", TargetActionID: "temp:1", SourceOutput: "nonexistent"},
+	}
+	err := validateOutputPorts(actions, edges, newTestRegistry())
+	if err == nil {
+		t.Fatal("expected error for invalid source_output")
+	}
+	if !strings.Contains(err.Error(), "is not valid") {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
+
+func TestValidateOutputPorts_SequenceEdgeNoOutput(t *testing.T) {
+	actions := []SaveActionRequest{{
+		Name:         "a",
+		ActionType:   "test_action",
+		ActionConfig: json.RawMessage(`{}`),
+		IsActive:     true,
+	}, action("b")}
+	edges := []SaveEdgeRequest{
+		{EdgeType: "sequence", SourceActionID: "temp:0", TargetActionID: "temp:1"},
+	}
+	err := validateOutputPorts(actions, edges, newTestRegistry())
+	if err != nil {
+		t.Fatalf("empty source_output should default at runtime: %s", err)
+	}
+}
+
+func TestValidateOutputPorts_UnknownSourceAction(t *testing.T) {
+	actions := []SaveActionRequest{action("a")}
+	edges := []SaveEdgeRequest{
+		{EdgeType: "sequence", SourceActionID: "unknown-uuid", TargetActionID: "temp:0", SourceOutput: "success"},
+	}
+	// Should skip validation (graph validation catches missing refs)
+	err := validateOutputPorts(actions, edges, newTestRegistry())
+	if err != nil {
+		t.Fatalf("unknown source action should be skipped: %s", err)
 	}
 }
 
