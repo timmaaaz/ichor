@@ -203,3 +203,55 @@ func TestCreatePurchaseOrder_Validate(t *testing.T) {
 		})
 	}
 }
+
+func TestCreatePurchaseOrder_Metadata(t *testing.T) {
+	handler := procurement.NewCreatePurchaseOrderHandler(nil, nil, nil, nil, nil)
+
+	t.Run("GetType", func(t *testing.T) {
+		if got := handler.GetType(); got != "create_purchase_order" {
+			t.Fatalf("expected create_purchase_order, got %s", got)
+		}
+	})
+
+	t.Run("SupportsManualExecution", func(t *testing.T) {
+		if !handler.SupportsManualExecution() {
+			t.Fatal("expected true")
+		}
+	})
+
+	t.Run("IsAsync", func(t *testing.T) {
+		if handler.IsAsync() {
+			t.Fatal("expected false")
+		}
+	})
+
+	t.Run("GetDescription", func(t *testing.T) {
+		desc := handler.GetDescription()
+		if desc == "" {
+			t.Fatal("expected non-empty description")
+		}
+	})
+
+	t.Run("GetOutputPorts", func(t *testing.T) {
+		ports := handler.GetOutputPorts()
+		if len(ports) != 3 {
+			t.Fatalf("expected 3 output ports, got %d", len(ports))
+		}
+		portNames := make(map[string]bool)
+		for _, p := range ports {
+			portNames[p.Name] = true
+		}
+		for _, expected := range []string{"created", "no_supplier_found", "failure"} {
+			if !portNames[expected] {
+				t.Fatalf("missing output port: %s", expected)
+			}
+		}
+	})
+
+	t.Run("GetEntityModifications", func(t *testing.T) {
+		mods := handler.GetEntityModifications(nil)
+		if len(mods) != 2 {
+			t.Fatalf("expected 2 entity modifications, got %d", len(mods))
+		}
+	})
+}
