@@ -18,6 +18,8 @@ import (
 )
 
 func Test_ActionPermissions(t *testing.T) {
+	t.Parallel()
+
 	db := dbtest.NewDatabase(t, "Test_ActionPermissions")
 
 	sd, err := insertSeedData(db.BusDomain)
@@ -434,9 +436,9 @@ func getAllowedActionsTests(busDomain dbtest.BusDomain, sd seedData) []unitest.T
 					return fmt.Sprintf("error: %s", err)
 				}
 				actions := got.([]string)
-				// role1 has send_email + create_alert (allowed)
-				// role2 has send_email (allowed) + update_field (denied)
-				// Aggregated allowed: create_alert, send_email
+				// role1 has test_action_a + test_action_b (allowed)
+				// role2 has test_action_a (allowed) + test_action_denied (denied)
+				// Aggregated allowed: test_action_a, test_action_b
 				if len(actions) < 2 {
 					return fmt.Sprintf("expected at least 2 allowed actions, got %d: %v", len(actions), actions)
 				}
