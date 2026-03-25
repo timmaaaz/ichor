@@ -2,13 +2,22 @@ package transferorderapi
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
+
+type transferStatuses []string
+
+func (ts transferStatuses) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(ts)
+	return data, "application/json", err
+}
 
 type api struct {
 	transferorderapp *transferorderapp.App
@@ -155,4 +164,14 @@ func (api *api) execute(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return to
+}
+
+func (api *api) queryStatuses(ctx context.Context, r *http.Request) web.Encoder {
+	return transferStatuses{
+		transferorderbus.StatusPending,
+		transferorderbus.StatusApproved,
+		transferorderbus.StatusRejected,
+		transferorderbus.StatusInTransit,
+		transferorderbus.StatusCompleted,
+	}
 }

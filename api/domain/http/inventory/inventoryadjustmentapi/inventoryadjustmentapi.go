@@ -2,13 +2,23 @@ package inventoryadjustmentapi
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryadjustmentapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
+
+type reasonCodes []string
+
+func (rc reasonCodes) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(rc)
+	return data, "application/json", err
+}
 
 type api struct {
 	inventoryadjustmentapp *inventoryadjustmentapp.App
@@ -126,4 +136,13 @@ func (api *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return adjustment
+}
+
+func (api *api) queryReasonCodes(ctx context.Context, r *http.Request) web.Encoder {
+	codes := make([]string, 0, len(inventoryadjustmentbus.ValidReasonCodes))
+	for code := range inventoryadjustmentbus.ValidReasonCodes {
+		codes = append(codes, code)
+	}
+	sort.Strings(codes)
+	return reasonCodes(codes)
 }
