@@ -1,12 +1,35 @@
 package procurement_test
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
+	"github.com/timmaaaz/ichor/business/domain/core/userbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
+	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
+	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
+	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/procurement"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/otel"
 )
 
 func TestCreatePurchaseOrder_Validate(t *testing.T) {
@@ -252,6 +275,465 @@ func TestCreatePurchaseOrder_Metadata(t *testing.T) {
 		mods := handler.GetEntityModifications(nil)
 		if len(mods) != 2 {
 			t.Fatalf("expected 2 entity modifications, got %d", len(mods))
+		}
+	})
+}
+
+// =============================================================================
+// Execute tests — require real Postgres with seeded procurement data.
+// =============================================================================
+
+type createPOSeedData struct {
+	Handler          *procurement.CreatePurchaseOrderHandler
+	Admin            userbus.User
+	SupplierProducts []supplierproductbus.SupplierProduct
+	POStatuses       []purchaseorderstatusbus.PurchaseOrderStatus
+	LIStatuses       []purchaseorderlineitemstatusbus.PurchaseOrderLineItemStatus
+	Warehouses       []warehousebus.Warehouse
+	Currencies       []currencybus.Currency
+	ExecCtx          workflow.ActionExecutionContext
+}
+
+func insertCreatePOSeedData(db *dbtest.Database) (createPOSeedData, error) {
+	ctx := context.Background()
+
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, db.BusDomain.User)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding users: %w", err)
+	}
+
+	regions, err := db.BusDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("querying regions: %w", err)
+	}
+	regionIDs := make([]uuid.UUID, len(regions))
+	for i, r := range regions {
+		regionIDs[i] = r.ID
+	}
+
+	cities, err := citybus.TestSeedCities(ctx, 3, regionIDs, db.BusDomain.City)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding cities: %w", err)
+	}
+	cityIDs := make([]uuid.UUID, len(cities))
+	for i, c := range cities {
+		cityIDs[i] = c.ID
+	}
+
+	streets, err := streetbus.TestSeedStreets(ctx, 3, cityIDs, db.BusDomain.Street)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding streets: %w", err)
+	}
+	streetIDs := make(uuid.UUIDs, len(streets))
+	for i, s := range streets {
+		streetIDs[i] = s.ID
+	}
+
+	tzs, err := db.BusDomain.Timezone.QueryAll(ctx)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("querying timezones: %w", err)
+	}
+	tzIDs := make([]uuid.UUID, len(tzs))
+	for i, tz := range tzs {
+		tzIDs[i] = tz.ID
+	}
+
+	contactInfos, err := contactinfosbus.TestSeedContactInfos(ctx, 3, streetIDs, tzIDs, db.BusDomain.ContactInfos)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding contact infos: %w", err)
+	}
+	contactIDs := make(uuid.UUIDs, len(contactInfos))
+	for i, c := range contactInfos {
+		contactIDs[i] = c.ID
+	}
+
+	suppliers, err := supplierbus.TestSeedSuppliers(ctx, 2, contactIDs, db.BusDomain.Supplier)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding suppliers: %w", err)
+	}
+	supplierIDs := make(uuid.UUIDs, len(suppliers))
+	for i, s := range suppliers {
+		supplierIDs[i] = s.SupplierID
+	}
+
+	brands, err := brandbus.TestSeedBrands(ctx, 2, contactIDs, db.BusDomain.Brand)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding brands: %w", err)
+	}
+	brandIDs := make(uuid.UUIDs, len(brands))
+	for i, b := range brands {
+		brandIDs[i] = b.BrandID
+	}
+
+	productCategories, err := productcategorybus.TestSeedProductCategories(ctx, 2, db.BusDomain.ProductCategory)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding product categories: %w", err)
+	}
+	productCategoryIDs := make(uuid.UUIDs, len(productCategories))
+	for i, pc := range productCategories {
+		productCategoryIDs[i] = pc.ProductCategoryID
+	}
+
+	products, err := productbus.TestSeedProducts(ctx, 3, brandIDs, productCategoryIDs, db.BusDomain.Product)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding products: %w", err)
+	}
+	productIDs := make(uuid.UUIDs, len(products))
+	for i, p := range products {
+		productIDs[i] = p.ProductID
+	}
+
+	supplierProducts, err := supplierproductbus.TestSeedSupplierProducts(ctx, 3, productIDs, supplierIDs, db.BusDomain.SupplierProduct)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding supplier products: %w", err)
+	}
+
+	poStatuses, err := purchaseorderstatusbus.TestSeedPurchaseOrderStatuses(ctx, 2, db.BusDomain.PurchaseOrderStatus)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding PO statuses: %w", err)
+	}
+
+	liStatuses, err := purchaseorderlineitemstatusbus.TestSeedPurchaseOrderLineItemStatuses(ctx, 2, db.BusDomain.PurchaseOrderLineItemStatus)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding LI statuses: %w", err)
+	}
+
+	warehouses, err := warehousebus.TestSeedWarehouses(ctx, 2, admins[0].ID, streetIDs, db.BusDomain.Warehouse)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding warehouses: %w", err)
+	}
+
+	currencies, err := currencybus.TestSeedCurrencies(ctx, 2, db.BusDomain.Currency)
+	if err != nil {
+		return createPOSeedData{}, fmt.Errorf("seeding currencies: %w", err)
+	}
+
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string {
+		return otel.GetTraceID(context.Background())
+	})
+
+	handler := procurement.NewCreatePurchaseOrderHandler(
+		log,
+		db.DB,
+		db.BusDomain.PurchaseOrder,
+		db.BusDomain.PurchaseOrderLineItem,
+		db.BusDomain.SupplierProduct,
+	)
+
+	ruleID := uuid.New()
+	execCtx := workflow.ActionExecutionContext{
+		EntityID:      uuid.New(),
+		EntityName:    "procurement.purchase_orders",
+		EventType:     "on_create",
+		UserID:        admins[0].ID,
+		RuleID:        &ruleID,
+		RuleName:      "Test Create PO Rule",
+		ExecutionID:   uuid.New(),
+		Timestamp:     time.Now().UTC(),
+		TriggerSource: workflow.TriggerSourceAutomation,
+	}
+
+	return createPOSeedData{
+		Handler:          handler,
+		Admin:            admins[0],
+		SupplierProducts: supplierProducts,
+		POStatuses:       poStatuses,
+		LIStatuses:       liStatuses,
+		Warehouses:       warehouses,
+		Currencies:       currencies,
+		ExecCtx:          execCtx,
+	}, nil
+}
+
+func Test_CreatePurchaseOrder_Execute(t *testing.T) {
+	db := dbtest.NewDatabase(t, "Test_CreatePO_Execute")
+
+	sd, err := insertCreatePOSeedData(db)
+	if err != nil {
+		t.Fatalf("seeding: %v", err)
+	}
+
+	// Use the first supplier product's ProductID — guaranteed to have a supplier mapping.
+	knownProductID := sd.SupplierProducts[0].ProductID
+
+	t.Run("happy_path", func(t *testing.T) {
+		cfg := procurement.CreatePurchaseOrderConfig{
+			PurchaseOrderStatusID: sd.POStatuses[0].ID.String(),
+			DeliveryWarehouseID:   sd.Warehouses[0].ID.String(),
+			DeliveryLocationID:    uuid.Nil.String(),
+			CurrencyID:            sd.Currencies[0].ID.String(),
+			LineItems: []procurement.CreatePOLineItemConfig{
+				{
+					ProductID:        knownProductID.String(),
+					QuantityOrdered:  5,
+					LineItemStatusID: sd.LIStatuses[0].ID.String(),
+				},
+			},
+		}
+		configJSON, _ := json.Marshal(cfg)
+
+		result, err := sd.Handler.Execute(context.Background(), configJSON, sd.ExecCtx)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		resultMap, ok := result.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", result)
+		}
+
+		if resultMap["output"] != "created" {
+			t.Fatalf("expected output=created, got %v", resultMap["output"])
+		}
+		if resultMap["purchase_order_id"] == nil || resultMap["purchase_order_id"] == "" {
+			t.Fatal("expected non-empty purchase_order_id")
+		}
+		lineItemIDs, ok := resultMap["line_item_ids"].([]string)
+		if !ok || len(lineItemIDs) != 1 {
+			t.Fatalf("expected 1 line_item_id, got %v", resultMap["line_item_ids"])
+		}
+	})
+
+	t.Run("no_supplier_found", func(t *testing.T) {
+		cfg := procurement.CreatePurchaseOrderConfig{
+			PurchaseOrderStatusID: sd.POStatuses[0].ID.String(),
+			DeliveryWarehouseID:   sd.Warehouses[0].ID.String(),
+			DeliveryLocationID:    uuid.Nil.String(),
+			CurrencyID:            sd.Currencies[0].ID.String(),
+			LineItems: []procurement.CreatePOLineItemConfig{
+				{
+					ProductID:        uuid.New().String(), // No supplier product for this UUID.
+					QuantityOrdered:  5,
+					LineItemStatusID: sd.LIStatuses[0].ID.String(),
+				},
+			},
+		}
+		configJSON, _ := json.Marshal(cfg)
+
+		result, err := sd.Handler.Execute(context.Background(), configJSON, sd.ExecCtx)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		resultMap, ok := result.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", result)
+		}
+		if resultMap["output"] != "no_supplier_found" {
+			t.Fatalf("expected output=no_supplier_found, got %v", resultMap["output"])
+		}
+	})
+
+	// =========================================================================
+	// extractFromEvent tests — exercise unexported extractFromEvent through Execute.
+	// =========================================================================
+
+	t.Run("extract_from_event_with_quantity", func(t *testing.T) {
+		cfg := procurement.CreatePurchaseOrderConfig{
+			PurchaseOrderStatusID:   sd.POStatuses[0].ID.String(),
+			DeliveryWarehouseID:     sd.Warehouses[0].ID.String(),
+			DeliveryLocationID:      uuid.Nil.String(),
+			CurrencyID:              sd.Currencies[0].ID.String(),
+			SourceFromEvent:         true,
+			DefaultLineItemStatusID: sd.LIStatuses[0].ID.String(),
+		}
+		configJSON, _ := json.Marshal(cfg)
+
+		ruleID := uuid.New()
+		eventCtx := workflow.ActionExecutionContext{
+			EntityID:      uuid.New(),
+			EntityName:    "inventory.inventory_items",
+			EventType:     "on_update",
+			UserID:        sd.Admin.ID,
+			RuleID:        &ruleID,
+			RuleName:      "Test Reorder Rule",
+			ExecutionID:   uuid.New(),
+			Timestamp:     time.Now().UTC(),
+			TriggerSource: workflow.TriggerSourceAutomation,
+			RawData: map[string]interface{}{
+				"product_id": knownProductID.String(),
+				"quantity":   float64(10),
+			},
+		}
+
+		result, err := sd.Handler.Execute(context.Background(), configJSON, eventCtx)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		resultMap, ok := result.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", result)
+		}
+		if resultMap["output"] != "created" {
+			t.Fatalf("expected output=created, got %v (error: %v)", resultMap["output"], resultMap["error"])
+		}
+	})
+
+	t.Run("extract_from_event_with_reorder_quantity", func(t *testing.T) {
+		cfg := procurement.CreatePurchaseOrderConfig{
+			PurchaseOrderStatusID:   sd.POStatuses[0].ID.String(),
+			DeliveryWarehouseID:     sd.Warehouses[0].ID.String(),
+			DeliveryLocationID:      uuid.Nil.String(),
+			CurrencyID:              sd.Currencies[0].ID.String(),
+			SourceFromEvent:         true,
+			DefaultLineItemStatusID: sd.LIStatuses[0].ID.String(),
+		}
+		configJSON, _ := json.Marshal(cfg)
+
+		ruleID := uuid.New()
+		eventCtx := workflow.ActionExecutionContext{
+			EntityID:      uuid.New(),
+			EntityName:    "inventory.inventory_items",
+			EventType:     "on_update",
+			UserID:        sd.Admin.ID,
+			RuleID:        &ruleID,
+			RuleName:      "Test Reorder Rule",
+			ExecutionID:   uuid.New(),
+			Timestamp:     time.Now().UTC(),
+			TriggerSource: workflow.TriggerSourceAutomation,
+			RawData: map[string]interface{}{
+				"product_id":       knownProductID.String(),
+				"reorder_quantity": float64(20),
+			},
+		}
+
+		result, err := sd.Handler.Execute(context.Background(), configJSON, eventCtx)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		resultMap, ok := result.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", result)
+		}
+		if resultMap["output"] != "created" {
+			t.Fatalf("expected output=created, got %v (error: %v)", resultMap["output"], resultMap["error"])
+		}
+	})
+
+	t.Run("extract_from_event_missing_product_id", func(t *testing.T) {
+		cfg := procurement.CreatePurchaseOrderConfig{
+			PurchaseOrderStatusID:   sd.POStatuses[0].ID.String(),
+			DeliveryWarehouseID:     sd.Warehouses[0].ID.String(),
+			DeliveryLocationID:      uuid.Nil.String(),
+			CurrencyID:              sd.Currencies[0].ID.String(),
+			SourceFromEvent:         true,
+			DefaultLineItemStatusID: sd.LIStatuses[0].ID.String(),
+		}
+		configJSON, _ := json.Marshal(cfg)
+
+		ruleID := uuid.New()
+		eventCtx := workflow.ActionExecutionContext{
+			EntityID:      uuid.New(),
+			EntityName:    "inventory.inventory_items",
+			EventType:     "on_update",
+			UserID:        sd.Admin.ID,
+			RuleID:        &ruleID,
+			RuleName:      "Test Reorder Rule",
+			ExecutionID:   uuid.New(),
+			Timestamp:     time.Now().UTC(),
+			TriggerSource: workflow.TriggerSourceAutomation,
+			RawData: map[string]interface{}{
+				"quantity": float64(10),
+			},
+		}
+
+		result, err := sd.Handler.Execute(context.Background(), configJSON, eventCtx)
+		if err != nil {
+			t.Fatalf("unexpected hard error: %s", err)
+		}
+
+		resultMap, ok := result.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", result)
+		}
+		if resultMap["output"] != "failure" {
+			t.Fatalf("expected output=failure, got %v", resultMap["output"])
+		}
+	})
+
+	t.Run("extract_from_event_missing_quantity", func(t *testing.T) {
+		cfg := procurement.CreatePurchaseOrderConfig{
+			PurchaseOrderStatusID:   sd.POStatuses[0].ID.String(),
+			DeliveryWarehouseID:     sd.Warehouses[0].ID.String(),
+			DeliveryLocationID:      uuid.Nil.String(),
+			CurrencyID:              sd.Currencies[0].ID.String(),
+			SourceFromEvent:         true,
+			DefaultLineItemStatusID: sd.LIStatuses[0].ID.String(),
+		}
+		configJSON, _ := json.Marshal(cfg)
+
+		ruleID := uuid.New()
+		eventCtx := workflow.ActionExecutionContext{
+			EntityID:      uuid.New(),
+			EntityName:    "inventory.inventory_items",
+			EventType:     "on_update",
+			UserID:        sd.Admin.ID,
+			RuleID:        &ruleID,
+			RuleName:      "Test Reorder Rule",
+			ExecutionID:   uuid.New(),
+			Timestamp:     time.Now().UTC(),
+			TriggerSource: workflow.TriggerSourceAutomation,
+			RawData: map[string]interface{}{
+				"product_id": knownProductID.String(),
+			},
+		}
+
+		result, err := sd.Handler.Execute(context.Background(), configJSON, eventCtx)
+		if err != nil {
+			t.Fatalf("unexpected hard error: %s", err)
+		}
+
+		resultMap, ok := result.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", result)
+		}
+		if resultMap["output"] != "failure" {
+			t.Fatalf("expected output=failure, got %v", resultMap["output"])
+		}
+	})
+
+	t.Run("extract_from_event_zero_quantity", func(t *testing.T) {
+		cfg := procurement.CreatePurchaseOrderConfig{
+			PurchaseOrderStatusID:   sd.POStatuses[0].ID.String(),
+			DeliveryWarehouseID:     sd.Warehouses[0].ID.String(),
+			DeliveryLocationID:      uuid.Nil.String(),
+			CurrencyID:              sd.Currencies[0].ID.String(),
+			SourceFromEvent:         true,
+			DefaultLineItemStatusID: sd.LIStatuses[0].ID.String(),
+		}
+		configJSON, _ := json.Marshal(cfg)
+
+		ruleID := uuid.New()
+		eventCtx := workflow.ActionExecutionContext{
+			EntityID:      uuid.New(),
+			EntityName:    "inventory.inventory_items",
+			EventType:     "on_update",
+			UserID:        sd.Admin.ID,
+			RuleID:        &ruleID,
+			RuleName:      "Test Reorder Rule",
+			ExecutionID:   uuid.New(),
+			Timestamp:     time.Now().UTC(),
+			TriggerSource: workflow.TriggerSourceAutomation,
+			RawData: map[string]interface{}{
+				"product_id": knownProductID.String(),
+				"quantity":   float64(0),
+			},
+		}
+
+		result, err := sd.Handler.Execute(context.Background(), configJSON, eventCtx)
+		if err != nil {
+			t.Fatalf("unexpected hard error: %s", err)
+		}
+
+		resultMap, ok := result.(map[string]any)
+		if !ok {
+			t.Fatalf("expected map[string]any, got %T", result)
+		}
+		if resultMap["output"] != "failure" {
+			t.Fatalf("expected output=failure, got %v", resultMap["output"])
 		}
 	})
 }
