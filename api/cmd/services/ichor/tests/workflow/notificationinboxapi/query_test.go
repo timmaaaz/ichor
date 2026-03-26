@@ -1,10 +1,10 @@
 package notificationinboxapi_test
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/notificationinboxapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/workflow/notificationapp"
@@ -16,52 +16,32 @@ func query200(sd SeedData) []apitest.Table {
 		{
 			Name:       "basic-query",
 			URL:        "/v1/workflow/notifications?page=1&rows=10",
-			Token:      sd.User.Token,
+			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &query.Result[notificationapp.Notification]{},
-			ExpResp:    &query.Result[notificationapp.Notification]{},
+			ExpResp: &query.Result[notificationapp.Notification]{
+				Items:       sd.Notifications,
+				Total:       sd.TotalCount,
+				Page:        1,
+				RowsPerPage: 10,
+			},
 			CmpFunc: func(got, exp any) string {
 				gotResp := got.(*query.Result[notificationapp.Notification])
-
-				if len(gotResp.Items) != sd.TotalCount {
-					return fmt.Sprintf("expected %d notifications, got %d", sd.TotalCount, len(gotResp.Items))
-				}
-
-				if gotResp.Total != sd.TotalCount {
-					return fmt.Sprintf("expected total %d, got %d", sd.TotalCount, gotResp.Total)
-				}
-
-				if gotResp.Page != 1 {
-					return fmt.Sprintf("expected page 1, got %d", gotResp.Page)
-				}
-
-				if gotResp.RowsPerPage != 10 {
-					return fmt.Sprintf("expected rows_per_page 10, got %d", gotResp.RowsPerPage)
-				}
-
-				// Verify all seeded IDs are present (set comparison, order may vary).
-				expIDs := make(map[string]bool)
-				for _, n := range sd.Notifications {
-					expIDs[n.ID] = true
-				}
-				for _, n := range gotResp.Items {
-					if !expIDs[n.ID] {
-						return fmt.Sprintf("unexpected notification ID: %s", n.ID)
-					}
-					delete(expIDs, n.ID)
-				}
-				if len(expIDs) > 0 {
-					return fmt.Sprintf("missing notification IDs: %v", expIDs)
-				}
-
-				return ""
+				expResp := exp.(*query.Result[notificationapp.Notification])
+				return cmp.Diff(
+					*gotResp,
+					*expResp,
+					cmpopts.SortSlices(func(a, b notificationapp.Notification) bool {
+						return a.ID < b.ID
+					}),
+				)
 			},
 		},
 		{
 			Name:       "filter-unread",
 			URL:        "/v1/workflow/notifications?page=1&rows=10&is_read=false",
-			Token:      sd.User.Token,
+			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &query.Result[notificationapp.Notification]{},
@@ -69,11 +49,11 @@ func query200(sd SeedData) []apitest.Table {
 			CmpFunc: func(got, exp any) string {
 				gotResp := got.(*query.Result[notificationapp.Notification])
 				if len(gotResp.Items) != sd.UnreadCount {
-					return fmt.Sprintf("expected %d unread notifications, got %d", sd.UnreadCount, len(gotResp.Items))
+					return cmp.Diff(len(gotResp.Items), sd.UnreadCount)
 				}
 				for _, n := range gotResp.Items {
 					if n.IsRead {
-						return fmt.Sprintf("expected all unread, got read notification %s", n.ID)
+						return cmp.Diff(false, n.IsRead)
 					}
 				}
 				return ""
@@ -89,7 +69,7 @@ func count200(sd SeedData) []apitest.Table {
 		{
 			Name:       "unread-count",
 			URL:        "/v1/workflow/notifications/count?is_read=false",
-			Token:      sd.User.Token,
+			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &notificationinboxapi.UnreadCount{},
@@ -101,7 +81,7 @@ func count200(sd SeedData) []apitest.Table {
 		{
 			Name:       "total-count",
 			URL:        "/v1/workflow/notifications/count",
-			Token:      sd.User.Token,
+			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &notificationinboxapi.UnreadCount{},
@@ -113,4 +93,28 @@ func count200(sd SeedData) []apitest.Table {
 	}
 
 	return table
+}
+
+func queryIsolation200(sd SeedData) []apitest.Table {
+	return []apitest.Table{
+		{
+			Name:       "second-user-sees-no-notifications",
+			URL:        "/v1/workflow/notifications?page=1&rows=10",
+			Token:      sd.Users[1].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &query.Result[notificationapp.Notification]{},
+			ExpResp: &query.Result[notificationapp.Notification]{
+				Items:       []notificationapp.Notification{},
+				Total:       0,
+				Page:        1,
+				RowsPerPage: 10,
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp := got.(*query.Result[notificationapp.Notification])
+				expResp := exp.(*query.Result[notificationapp.Notification])
+				return cmp.Diff(*gotResp, *expResp)
+			},
+		},
+	}
 }

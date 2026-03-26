@@ -231,7 +231,7 @@ ConfigStore, TableStore, Form, FormField
 PageAction, PageConfig, PageContent
 
 // Workflow
-Workflow, Alert
+Workflow, Alert, Notification
 ```
 
 ---

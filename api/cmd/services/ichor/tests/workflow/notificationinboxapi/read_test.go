@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/notificationinboxapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
 func markAsRead200(sd SeedData) []apitest.Table {
@@ -17,7 +19,7 @@ func markAsRead200(sd SeedData) []apitest.Table {
 		{
 			Name:       "mark-single-read",
 			URL:        fmt.Sprintf("/v1/workflow/notifications/%s/read", unreadID),
-			Token:      sd.User.Token,
+			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodPost,
 			GotResp:    &notificationinboxapi.SuccessResult{},
@@ -36,24 +38,54 @@ func markAllAsRead200(sd SeedData) []apitest.Table {
 		{
 			Name:       "mark-all-read",
 			URL:        "/v1/workflow/notifications/read-all",
-			Token:      sd.User.Token,
+			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusOK,
 			Method:     http.MethodPost,
 			GotResp:    &notificationinboxapi.MarkAllReadResult{},
-			ExpResp:    &notificationinboxapi.MarkAllReadResult{},
+			ExpResp:    &notificationinboxapi.MarkAllReadResult{Count: 1},
 			CmpFunc: func(got, exp any) string {
-				gotResp := got.(*notificationinboxapi.MarkAllReadResult)
-				// After markAsRead200 already marked 1, there should be
-				// at most 1 remaining unread (originally 2 unread, minus 1).
-				// But test ordering isn't guaranteed to be sequential across
-				// t.Run groups, so just verify count >= 0.
-				if gotResp.Count < 0 {
-					return fmt.Sprintf("expected count >= 0, got %d", gotResp.Count)
-				}
-				return ""
+				return cmp.Diff(got, exp)
 			},
 		},
 	}
 
 	return table
+}
+
+func markAsRead404(sd SeedData) []apitest.Table {
+	return []apitest.Table{
+		{
+			Name:       "non-existent-notification",
+			URL:        fmt.Sprintf("/v1/workflow/notifications/%s/read", uuid.NewString()),
+			Token:      sd.Users[0].Token,
+			StatusCode: http.StatusNotFound,
+			Method:     http.MethodPost,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.NotFound, "notification not found"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+}
+
+func markAsReadOwnership404(sd SeedData) []apitest.Table {
+	// sd.Users[1] tries to mark sd.Users[0]'s notification as read.
+	// The app returns NotFound to avoid leaking existence.
+	targetID := sd.Notifications[0].ID
+
+	return []apitest.Table{
+		{
+			Name:       "wrong-owner",
+			URL:        fmt.Sprintf("/v1/workflow/notifications/%s/read", targetID),
+			Token:      sd.Users[1].Token,
+			StatusCode: http.StatusNotFound,
+			Method:     http.MethodPost,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.NotFound, "notification not found"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
 }
