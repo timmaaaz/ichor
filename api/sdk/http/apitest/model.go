@@ -39,6 +39,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/lotlocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/lottrackingsapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/serialnumberapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/picktaskapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/putawaytaskapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
@@ -137,6 +138,7 @@ type SeedData struct {
 	InventoryAdjustments        []inventoryadjustmentapp.InventoryAdjustment
 	TransferOrders              []transferorderapp.TransferOrder
 	PutAwayTasks                []putawaytaskapp.PutAwayTask
+	PickTasks                   []picktaskapp.PickTask
 	OrderFulfillmentStatuses    []orderfulfillmentstatusapp.OrderFulfillmentStatus
 	LineItemFulfillmentStatuses []lineitemfulfillmentstatusapp.LineItemFulfillmentStatus
 	Orders                      []ordersapp.Order
