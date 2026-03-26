@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -34,17 +33,15 @@ type Storer interface {
 
 // Business manages notification operations.
 type Business struct {
-	log      *logger.Logger
-	storer   Storer
-	delegate *delegate.Delegate
+	log    *logger.Logger
+	storer Storer
 }
 
 // NewBusiness constructs a notification business API for use.
-func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer) *Business {
+func NewBusiness(log *logger.Logger, storer Storer) *Business {
 	return &Business{
-		log:      log,
-		storer:   storer,
-		delegate: delegate,
+		log:    log,
+		storer: storer,
 	}
 }
 
@@ -57,9 +54,8 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}
 
 	return &Business{
-		log:      b.log,
-		storer:   storer,
-		delegate: b.delegate,
+		log:    b.log,
+		storer: storer,
 	}, nil
 }
 

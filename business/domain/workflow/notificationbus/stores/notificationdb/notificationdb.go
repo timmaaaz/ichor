@@ -163,11 +163,13 @@ func (s *Store) MarkAsRead(ctx context.Context, id uuid.UUID, readDate time.Time
 	WHERE
 		id = :id`
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
-		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return fmt.Errorf("db: %w", notificationbus.ErrNotFound)
-		}
+	rows, err := sqldb.NamedExecContextWithCount(ctx, s.log, s.db, q, data)
+	if err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("db: %w", notificationbus.ErrNotFound)
 	}
 
 	return nil
@@ -192,20 +194,9 @@ func (s *Store) MarkAllAsRead(ctx context.Context, userID uuid.UUID, readDate ti
 	WHERE
 		user_id = :user_id AND is_read = false`
 
-	nstmt, args, err := sqlx.Named(q, data)
+	rows, err := sqldb.NamedExecContextWithCount(ctx, s.log, s.db, q, data)
 	if err != nil {
-		return 0, fmt.Errorf("named: %w", err)
-	}
-	nstmt = s.db.Rebind(nstmt)
-
-	result, err := s.db.ExecContext(ctx, nstmt, args...)
-	if err != nil {
-		return 0, fmt.Errorf("execcontext: %w", err)
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("rowsaffected: %w", err)
+		return 0, fmt.Errorf("namedexeccontext: %w", err)
 	}
 
 	return int(rows), nil

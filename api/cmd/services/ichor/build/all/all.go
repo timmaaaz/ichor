@@ -466,7 +466,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Workflow domain
 	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
-	notificationBus := notificationbus.NewBusiness(cfg.Log, delegate, notificationdb.NewStore(cfg.Log, cfg.DB))
+	notificationBus := notificationbus.NewBusiness(cfg.Log, notificationdb.NewStore(cfg.Log, cfg.DB))
 	approvalRequestBus := approvalrequestbus.NewBusiness(cfg.Log, delegate, approvalrequestdb.NewStore(cfg.Log, cfg.DB))
 	actionPermBus := actionpermissionsbus.NewBusiness(cfg.Log, actionpermissionsdb.NewStore(cfg.Log, cfg.DB))
 

@@ -3,7 +3,6 @@ package notificationapp
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
@@ -65,13 +64,12 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Notificat
 }
 
 // Count returns the number of notifications matching the filter for the authenticated user.
-func (a *App) Count(ctx context.Context, r *http.Request) (int, error) {
+func (a *App) Count(ctx context.Context, isRead string) (int, error) {
 	userID, err := mid.GetUserID(ctx)
 	if err != nil {
 		return 0, errs.Newf(errs.Unauthenticated, "get user id: %s", err)
 	}
 
-	isRead := r.URL.Query().Get("is_read")
 	filter, err := parseCountFilter(isRead, userID)
 	if err != nil {
 		return 0, errs.Newf(errs.InvalidArgument, "filter: %s", err)

@@ -45,15 +45,6 @@ func (app Notification) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-// Notifications is a slice of Notification for list responses.
-type Notifications []Notification
-
-// Encode implements web.Encoder.
-func (app Notifications) Encode() ([]byte, string, error) {
-	data, err := json.Marshal(app)
-	return data, "application/json", err
-}
-
 // ToAppNotification converts a bus model to an app-layer response model.
 func ToAppNotification(bus notificationbus.Notification) Notification {
 	readDate := ""

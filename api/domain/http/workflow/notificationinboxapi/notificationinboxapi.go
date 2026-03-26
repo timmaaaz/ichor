@@ -33,16 +33,18 @@ func (a *api) query(ctx context.Context, r *http.Request) web.Encoder {
 
 	result, err := a.notificationApp.Query(ctx, qp)
 	if err != nil {
-		return errs.New(errs.Internal, err)
+		return errs.NewError(err)
 	}
 
 	return result
 }
 
 func (a *api) count(ctx context.Context, r *http.Request) web.Encoder {
-	count, err := a.notificationApp.Count(ctx, r)
+	isRead := r.URL.Query().Get("is_read")
+
+	count, err := a.notificationApp.Count(ctx, isRead)
 	if err != nil {
-		return errs.New(errs.Internal, err)
+		return errs.NewError(err)
 	}
 
 	return UnreadCount{Count: count}
@@ -52,7 +54,7 @@ func (a *api) markAsRead(ctx context.Context, r *http.Request) web.Encoder {
 	id := web.Param(r, "notification_id")
 
 	if err := a.notificationApp.MarkAsRead(ctx, id); err != nil {
-		return errs.New(errs.Internal, err)
+		return errs.NewError(err)
 	}
 
 	return SuccessResult{Success: true}
@@ -61,7 +63,7 @@ func (a *api) markAsRead(ctx context.Context, r *http.Request) web.Encoder {
 func (a *api) markAllAsRead(ctx context.Context, r *http.Request) web.Encoder {
 	count, err := a.notificationApp.MarkAllAsRead(ctx)
 	if err != nil {
-		return errs.New(errs.Internal, err)
+		return errs.NewError(err)
 	}
 
 	return MarkAllReadResult{Count: count}
