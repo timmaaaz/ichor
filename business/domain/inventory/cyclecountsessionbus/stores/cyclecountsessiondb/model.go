@@ -26,9 +26,10 @@ func toBusCycleCountSession(db cycleCountSession) (cyclecountsessionbus.CycleCou
 		return cyclecountsessionbus.CycleCountSession{}, fmt.Errorf("parse status %q: %w", db.Status, err)
 	}
 
-	var completedDate time.Time
+	var completedDate *time.Time
 	if db.CompletedDate.Valid {
-		completedDate = db.CompletedDate.Time
+		t := db.CompletedDate.Time
+		completedDate = &t
 	}
 
 	return cyclecountsessionbus.CycleCountSession{
@@ -56,7 +57,7 @@ func toBusCycleCountSessions(dbs []cycleCountSession) ([]cyclecountsessionbus.Cy
 
 func toDBCycleCountSession(bus cyclecountsessionbus.CycleCountSession) cycleCountSession {
 	var completedDate sql.NullTime
-	if !bus.CompletedDate.IsZero() {
+	if bus.CompletedDate != nil {
 		completedDate = sql.NullTime{Time: bus.CompletedDate.UTC(), Valid: true}
 	}
 

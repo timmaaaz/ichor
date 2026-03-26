@@ -107,7 +107,7 @@ func (b *Business) Update(ctx context.Context, session CycleCountSession, uccs U
 		session.Status = *uccs.Status
 	}
 	if uccs.CompletedDate != nil {
-		session.CompletedDate = *uccs.CompletedDate
+		session.CompletedDate = uccs.CompletedDate
 	}
 
 	session.UpdatedDate = time.Now()

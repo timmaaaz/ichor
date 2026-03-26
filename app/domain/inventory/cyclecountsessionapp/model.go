@@ -44,7 +44,7 @@ func (app CycleCountSession) Encode() ([]byte, string, error) {
 // ToAppCycleCountSession converts a bus model to an app-layer response model.
 func ToAppCycleCountSession(bus cyclecountsessionbus.CycleCountSession) CycleCountSession {
 	completedDate := ""
-	if !bus.CompletedDate.IsZero() {
+	if bus.CompletedDate != nil {
 		completedDate = bus.CompletedDate.Format(timeutil.FORMAT)
 	}
 

@@ -11,6 +11,6 @@ var orderByFields = map[string]string{
 	cyclecountsessionbus.OrderByID:          "id",
 	cyclecountsessionbus.OrderByName:        "name",
 	cyclecountsessionbus.OrderByStatus:      "status",
-	cyclecountsessionbus.OrderByCreatedBy:   "createdBy",
-	cyclecountsessionbus.OrderByCreatedDate: "createdDate",
+	cyclecountsessionbus.OrderByCreatedBy:   "created_by",
+	cyclecountsessionbus.OrderByCreatedDate: "created_date",
 }

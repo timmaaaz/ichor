@@ -37,7 +37,7 @@ func (p *ActionCreatedParms) Marshal() ([]byte, error) {
 func ActionCreatedData(cci CycleCountItem) delegate.Data {
 	params := ActionCreatedParms{
 		EntityID: cci.ID,
-		UserID:   uuid.UUID{},
+		UserID:   cci.CountedBy,
 		Entity:   cci,
 	}
 
@@ -71,7 +71,7 @@ func (p *ActionUpdatedParms) Marshal() ([]byte, error) {
 func ActionUpdatedData(before, after CycleCountItem) delegate.Data {
 	params := ActionUpdatedParms{
 		EntityID:     after.ID,
-		UserID:       uuid.UUID{},
+		UserID:       after.CountedBy,
 		Entity:       after,
 		BeforeEntity: before,
 	}
@@ -105,7 +105,7 @@ func (p *ActionDeletedParms) Marshal() ([]byte, error) {
 func ActionDeletedData(cci CycleCountItem) delegate.Data {
 	params := ActionDeletedParms{
 		EntityID: cci.ID,
-		UserID:   uuid.UUID{},
+		UserID:   cci.CountedBy,
 		Entity:   cci,
 	}
 

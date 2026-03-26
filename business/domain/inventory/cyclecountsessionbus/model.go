@@ -17,7 +17,7 @@ type CycleCountSession struct {
 	CreatedBy     uuid.UUID `json:"created_by"`
 	CreatedDate   time.Time `json:"created_date"`
 	UpdatedDate   time.Time `json:"updated_date"`
-	CompletedDate time.Time `json:"completed_date"`
+	CompletedDate *time.Time `json:"completed_date"`
 }
 
 // NewCycleCountSession contains the information needed to create a new cycle count session.
