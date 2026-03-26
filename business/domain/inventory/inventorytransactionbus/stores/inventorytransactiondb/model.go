@@ -13,6 +13,7 @@ type inventoryTransaction struct {
 	LocationID             uuid.UUID      `db:"location_id"`
 	UserID                 uuid.UUID      `db:"user_id"`
 	LotID                  uuid.NullUUID  `db:"lot_id"`
+	SerialID               uuid.NullUUID  `db:"serial_id"`
 	Quantity               int            `db:"quantity"`
 	TransactionType        string         `db:"transaction_type"`
 	ReferenceNumber        string         `db:"reference_number"`
@@ -28,12 +29,19 @@ func toBusInventoryTransaction(db inventoryTransaction) inventorytransactionbus.
 		lotID = &id
 	}
 
+	var serialID *uuid.UUID
+	if db.SerialID.Valid {
+		id := db.SerialID.UUID
+		serialID = &id
+	}
+
 	return inventorytransactionbus.InventoryTransaction{
 		InventoryTransactionID: db.InventoryTransactionID,
 		ProductID:              db.ProductID,
 		LocationID:             db.LocationID,
 		UserID:                 db.UserID,
 		LotID:                  lotID,
+		SerialID:               serialID,
 		Quantity:               db.Quantity,
 		TransactionType:        db.TransactionType,
 		ReferenceNumber:        db.ReferenceNumber,
@@ -58,12 +66,18 @@ func toDBInventoryTransaction(bus inventorytransactionbus.InventoryTransaction) 
 		lotID = uuid.NullUUID{UUID: *bus.LotID, Valid: true}
 	}
 
+	var serialID uuid.NullUUID
+	if bus.SerialID != nil {
+		serialID = uuid.NullUUID{UUID: *bus.SerialID, Valid: true}
+	}
+
 	return inventoryTransaction{
 		InventoryTransactionID: bus.InventoryTransactionID,
 		ProductID:              bus.ProductID,
 		LocationID:             bus.LocationID,
 		UserID:                 bus.UserID,
 		LotID:                  lotID,
+		SerialID:               serialID,
 		Quantity:               bus.Quantity,
 		TransactionType:        bus.TransactionType,
 		ReferenceNumber:        bus.ReferenceNumber,

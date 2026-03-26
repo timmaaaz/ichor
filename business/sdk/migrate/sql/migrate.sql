@@ -2309,3 +2309,7 @@ CREATE INDEX idx_pick_tasks_assigned    ON inventory.pick_tasks(assigned_to) WHE
 
 INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
 SELECT gen_random_uuid(), id, 'inventory.pick_tasks', true, true, true, true FROM core.roles;
+
+-- Version: 2.21
+-- Description: Add serial_id column to inventory_transactions for serial number traceability.
+ALTER TABLE inventory.inventory_transactions ADD COLUMN serial_id UUID NULL REFERENCES inventory.serial_numbers(id);

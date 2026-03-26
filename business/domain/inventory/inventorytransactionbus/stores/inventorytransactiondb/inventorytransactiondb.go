@@ -42,10 +42,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventorytransactionbus.St
 func (s *Store) Create(ctx context.Context, it inventorytransactionbus.InventoryTransaction) error {
 	const q = `
 	INSERT INTO inventory.inventory_transactions (
-		id, product_id, location_id, user_id, lot_id, transaction_type, reference_number,
+		id, product_id, location_id, user_id, lot_id, serial_id, transaction_type, reference_number,
 		quantity, transaction_date, created_date, updated_date
 	) VALUES (
-		:id, :product_id, :location_id, :user_id, :lot_id, :transaction_type, :reference_number,
+		:id, :product_id, :location_id, :user_id, :lot_id, :serial_id, :transaction_type, :reference_number,
         :quantity, :transaction_date, :created_date, :updated_date
     )
 	`
@@ -74,6 +74,7 @@ func (s *Store) Update(ctx context.Context, it inventorytransactionbus.Inventory
         location_id = :location_id,
         user_id = :user_id,
         lot_id = :lot_id,
+        serial_id = :serial_id,
         transaction_type = :transaction_type,
         reference_number = :reference_number,
         quantity = :quantity,
@@ -120,9 +121,9 @@ func (s *Store) Query(ctx context.Context, filter inventorytransactionbus.QueryF
 
 	const q = `
 	SELECT
-	    id, product_id, location_id, user_id, lot_id, transaction_type, reference_number,
+	    id, product_id, location_id, user_id, lot_id, serial_id, transaction_type, reference_number,
         quantity, transaction_date, created_date, updated_date
-	FROM 
+	FROM
 	    inventory.inventory_transactions
 		`
 
@@ -180,7 +181,7 @@ func (s *Store) QueryByID(ctx context.Context, transactionID uuid.UUID) (invento
 
 	const q = `
     SELECT
-        id, product_id, location_id, user_id, lot_id, transaction_type, reference_number,
+        id, product_id, location_id, user_id, lot_id, serial_id, transaction_type, reference_number,
         quantity, transaction_date, created_date, updated_date
     FROM
         inventory.inventory_transactions
