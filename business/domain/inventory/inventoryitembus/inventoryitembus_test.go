@@ -564,7 +564,7 @@ func Test_QueryAvailableForAllocation(t *testing.T) {
 			LotNumber:         fmt.Sprintf("LOT-%d", i),
 			ManufactureDate:   exp.AddDate(0, -6, 0),
 			ExpirationDate:    exp,
-			RecievedDate:      time.Now(),
+			ReceivedDate:      time.Now(),
 			Quantity:          100,
 			QualityStatus:     "good",
 		})

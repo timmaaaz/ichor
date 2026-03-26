@@ -14,7 +14,7 @@ type QueryFilter struct {
 	ExpirationDate       *time.Time
 	ExpirationDateBefore *time.Time
 	ExpirationDateAfter  *time.Time
-	RecievedDate      *time.Time
+	ReceivedDate      *time.Time
 	Quantity          *int
 	QualityStatus     *string
 	ProductID         *uuid.UUID

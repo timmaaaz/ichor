@@ -17,7 +17,7 @@ type LotTrackings struct {
 	LotNumber         string    `json:"lot_number"`
 	ManufactureDate   time.Time `json:"manufacture_date"`
 	ExpirationDate    time.Time `json:"expiration_date"`
-	RecievedDate      time.Time `json:"recieved_date"`
+	ReceivedDate      time.Time `json:"received_date"`
 	Quantity          int       `json:"quantity"`
 	QualityStatus     string    `json:"quality_status"`
 	CreatedDate       time.Time `json:"created_date"`
@@ -32,7 +32,7 @@ type NewLotTrackings struct {
 	LotNumber         string    `json:"lot_number"`
 	ManufactureDate   time.Time `json:"manufacture_date"`
 	ExpirationDate    time.Time `json:"expiration_date"`
-	RecievedDate      time.Time `json:"recieved_date"`
+	ReceivedDate      time.Time `json:"received_date"`
 	Quantity          int       `json:"quantity"`
 	QualityStatus     string    `json:"quality_status"`
 }
@@ -42,7 +42,7 @@ type UpdateLotTrackings struct {
 	LotNumber         *string    `json:"lot_number,omitempty"`
 	ManufactureDate   *time.Time `json:"manufacture_date,omitempty"`
 	ExpirationDate    *time.Time `json:"expiration_date,omitempty"`
-	RecievedDate      *time.Time `json:"recieved_date,omitempty"`
+	ReceivedDate      *time.Time `json:"received_date,omitempty"`
 	Quantity          *int       `json:"quantity,omitempty"`
 	QualityStatus     *string    `json:"quality_status,omitempty"`
 }

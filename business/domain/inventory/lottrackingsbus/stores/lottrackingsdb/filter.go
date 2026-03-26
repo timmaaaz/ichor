@@ -50,8 +50,8 @@ func applyFilter(filter lottrackingsbus.QueryFilter, data map[string]any, buf *b
 		wc = append(wc, "lt.manufacture_date = :manufacture_date")
 	}
 
-	if filter.RecievedDate != nil {
-		data["received_date"] = *filter.RecievedDate
+	if filter.ReceivedDate != nil {
+		data["received_date"] = *filter.ReceivedDate
 		wc = append(wc, "lt.received_date = :received_date")
 	}
 

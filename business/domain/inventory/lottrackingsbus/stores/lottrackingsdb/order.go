@@ -13,7 +13,7 @@ var orderByFields = map[string]string{
 	lottrackingsbus.OrderByLotNumber:         "lot_number",
 	lottrackingsbus.OrderByManufactureDate:   "manufacture_date",
 	lottrackingsbus.OrderByExpirationDate:    "expiration_date",
-	lottrackingsbus.OrderByRecievedDate:      "received_date",
+	lottrackingsbus.OrderByReceivedDate:      "received_date",
 	lottrackingsbus.OrderByQuantity:          "quantity",
 	lottrackingsbus.OrderByQualityStatus:     "quality_status",
 	lottrackingsbus.OrderByCreatedDate:       "created_date",

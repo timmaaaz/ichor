@@ -79,7 +79,7 @@ func (b *Business) Create(ctx context.Context, nlt NewLotTrackings) (LotTracking
 		LotNumber:         nlt.LotNumber,
 		ManufactureDate:   nlt.ManufactureDate,
 		ExpirationDate:    nlt.ExpirationDate,
-		RecievedDate:      nlt.RecievedDate,
+		ReceivedDate:      nlt.ReceivedDate,
 		Quantity:          nlt.Quantity,
 		QualityStatus:     nlt.QualityStatus,
 		CreatedDate:       now,
@@ -118,8 +118,8 @@ func (b *Business) Update(ctx context.Context, lt LotTrackings, ul UpdateLotTrac
 	if ul.ExpirationDate != nil {
 		lt.ExpirationDate = *ul.ExpirationDate
 	}
-	if ul.RecievedDate != nil {
-		lt.RecievedDate = *ul.RecievedDate
+	if ul.ReceivedDate != nil {
+		lt.ReceivedDate = *ul.ReceivedDate
 	}
 	if ul.Quantity != nil {
 		lt.Quantity = *ul.Quantity

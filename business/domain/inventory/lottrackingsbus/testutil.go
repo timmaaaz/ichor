@@ -32,7 +32,7 @@ func TestNewLotTrackings(n int, supplierProductIDs uuid.UUIDs) []NewLotTrackings
 			LotNumber:         fmt.Sprintf("LotNumber%d", idx),
 			ManufactureDate:   RandomDate(),
 			ExpirationDate:    RandomDate(),
-			RecievedDate:      RandomDate(),
+			ReceivedDate:      RandomDate(),
 			QualityStatus:     validQualityStatuses[idx%len(validQualityStatuses)],
 			Quantity:          rand.Intn(1000),
 		}

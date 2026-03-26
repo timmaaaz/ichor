@@ -10,7 +10,7 @@ const (
 	OrderByLotNumber         = "lot_number"
 	OrderByManufactureDate   = "manufacture_date"
 	OrderByExpirationDate    = "expiration_date"
-	OrderByRecievedDate      = "received_date"
+	OrderByReceivedDate      = "received_date"
 	OrderByQuantity          = "quantity"
 	OrderByQualityStatus     = "quality_status"
 	OrderByCreatedDate       = "created_date"

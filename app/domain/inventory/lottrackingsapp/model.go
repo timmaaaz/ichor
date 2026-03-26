@@ -60,7 +60,7 @@ type QueryParams struct {
 	ExpirationDate    string
 	ExpiryBefore      string
 	ExpiryAfter       string
-	RecievedDate      string
+	ReceivedDate      string
 	Quantity          string
 	QualityStatus     string
 	ProductID         string
@@ -74,7 +74,7 @@ type LotTrackings struct {
 	LotNumber         string `json:"lot_number"`
 	ManufactureDate   string `json:"manufacture_date"`
 	ExpirationDate    string `json:"expiration_date"`
-	RecievedDate      string `json:"received_date"`
+	ReceivedDate      string `json:"received_date"`
 	Quantity          string `json:"quantity"`
 	QualityStatus     string `json:"quality_status"`
 	CreatedDate       string `json:"created_date"`
@@ -96,7 +96,7 @@ func ToAppLotTracking(bus lottrackingsbus.LotTrackings) LotTrackings {
 		LotNumber:         bus.LotNumber,
 		ManufactureDate:   bus.ManufactureDate.Format(timeutil.FORMAT),
 		ExpirationDate:    bus.ExpirationDate.Format(timeutil.FORMAT),
-		RecievedDate:      bus.RecievedDate.Format(timeutil.FORMAT),
+		ReceivedDate:      bus.ReceivedDate.Format(timeutil.FORMAT),
 		Quantity:          fmt.Sprintf("%d", bus.Quantity),
 		QualityStatus:     bus.QualityStatus,
 		CreatedDate:       bus.CreatedDate.Format(timeutil.FORMAT),
@@ -120,7 +120,7 @@ type NewLotTrackings struct {
 	LotNumber         string `json:"lot_number" validate:"required"`
 	ManufactureDate   string `json:"manufacture_date" validate:"required"`
 	ExpirationDate    string `json:"expiration_date" validate:"required"`
-	RecievedDate      string `json:"received_date" validate:"required"`
+	ReceivedDate      string `json:"received_date" validate:"required"`
 	Quantity          string `json:"quantity" validate:"required"`
 	QualityStatus     string `json:"quality_status" validate:"required"`
 }
@@ -152,7 +152,7 @@ func toBusNewLotTrackings(app NewLotTrackings) (lottrackingsbus.NewLotTrackings,
 		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse expirationDate: %s", err)
 	}
 
-	receivedDate, err := time.Parse(timeutil.FORMAT, app.RecievedDate)
+	receivedDate, err := time.Parse(timeutil.FORMAT, app.ReceivedDate)
 	if err != nil {
 		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse receivedDate: %s", err)
 	}
@@ -167,7 +167,7 @@ func toBusNewLotTrackings(app NewLotTrackings) (lottrackingsbus.NewLotTrackings,
 		LotNumber:         app.LotNumber,
 		ManufactureDate:   manufactureDate,
 		ExpirationDate:    expirationDate,
-		RecievedDate:      receivedDate,
+		ReceivedDate:      receivedDate,
 		Quantity:          quantity,
 		QualityStatus:     app.QualityStatus,
 	}
@@ -179,7 +179,7 @@ type UpdateLotTrackings struct {
 	LotNumber         *string `json:"lot_number"`
 	ManufactureDate   *string `json:"manufacture_date"`
 	ExpirationDate    *string `json:"expiration_date"`
-	RecievedDate      *string `json:"received_date"`
+	ReceivedDate      *string `json:"received_date"`
 	Quantity          *string `json:"quantity"`
 	QualityStatus     *string `json:"quality_status"`
 }
@@ -225,12 +225,12 @@ func toBusUpdateLotTrackings(app UpdateLotTrackings) (lottrackingsbus.UpdateLotT
 		bus.ExpirationDate = &expirationDate
 	}
 
-	if app.RecievedDate != nil {
-		receivedDate, err := time.Parse(timeutil.FORMAT, *app.RecievedDate)
+	if app.ReceivedDate != nil {
+		receivedDate, err := time.Parse(timeutil.FORMAT, *app.ReceivedDate)
 		if err != nil {
 			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse receivedDate: %s", err)
 		}
-		bus.RecievedDate = &receivedDate
+		bus.ReceivedDate = &receivedDate
 	}
 
 	if app.Quantity != nil {

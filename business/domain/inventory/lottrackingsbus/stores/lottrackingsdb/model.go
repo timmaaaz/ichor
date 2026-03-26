@@ -43,7 +43,7 @@ type lotTrackings struct {
 	LotNumber         string    `db:"lot_number"`
 	ManufactureDate   time.Time `db:"manufacture_date"`
 	ExpirationDate    time.Time `db:"expiration_date"`
-	RecievedDate      time.Time `db:"received_date"`
+	ReceivedDate      time.Time `db:"received_date"`
 	Quantity          int       `db:"quantity"`
 	QualityStatus     string    `db:"quality_status"`
 	CreatedDate       time.Time `db:"created_date"`
@@ -60,7 +60,7 @@ func toDBLotTrackings(bus lottrackingsbus.LotTrackings) lotTrackings {
 		LotNumber:         bus.LotNumber,
 		ManufactureDate:   bus.ManufactureDate.UTC(),
 		ExpirationDate:    bus.ExpirationDate.UTC(),
-		RecievedDate:      bus.RecievedDate.UTC(),
+		ReceivedDate:      bus.ReceivedDate.UTC(),
 		Quantity:          bus.Quantity,
 		QualityStatus:     bus.QualityStatus,
 		CreatedDate:       bus.CreatedDate.UTC(),
@@ -75,7 +75,7 @@ func toBusLotTrackings(db lotTrackings) lottrackingsbus.LotTrackings {
 		LotNumber:         db.LotNumber,
 		ManufactureDate:   db.ManufactureDate.Local(),
 		ExpirationDate:    db.ExpirationDate.Local(),
-		RecievedDate:      db.RecievedDate.Local(),
+		ReceivedDate:      db.ReceivedDate.Local(),
 		Quantity:          db.Quantity,
 		QualityStatus:     db.QualityStatus,
 		CreatedDate:       db.CreatedDate.Local(),

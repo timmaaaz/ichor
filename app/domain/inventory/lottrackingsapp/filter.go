@@ -65,12 +65,12 @@ func parseFilter(qp QueryParams) (lottrackingsbus.QueryFilter, error) {
 		filter.ExpirationDateAfter = &date
 	}
 
-	if qp.RecievedDate != "" {
-		date, err := time.Parse(timeutil.FORMAT, qp.RecievedDate)
+	if qp.ReceivedDate != "" {
+		date, err := time.Parse(timeutil.FORMAT, qp.ReceivedDate)
 		if err != nil {
 			return lottrackingsbus.QueryFilter{}, errs.NewFieldsError("received_date", err)
 		}
-		filter.RecievedDate = &date
+		filter.ReceivedDate = &date
 	}
 
 	if qp.Quantity != "" {
