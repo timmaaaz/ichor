@@ -20,6 +20,11 @@ func applyFilter(filter inventorytransactionbus.QueryFilter, data map[string]any
 		wc = append(wc, "product_id = :product_id")
 	}
 
+	if filter.SerialID != nil {
+		data["serial_id"] = *filter.SerialID
+		wc = append(wc, "serial_id = :serial_id")
+	}
+
 	if filter.Quantity != nil {
 		data["quantity"] = *filter.Quantity
 		wc = append(wc, "quantity = :quantity")

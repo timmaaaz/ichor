@@ -17,6 +17,7 @@ func parseQueryParams(r *http.Request) (inventorytransactionapp.QueryParams, err
 		ProductID:              values.Get("product_id"),
 		LocationID:             values.Get("location_id"),
 		UserID:                 values.Get("user_id"),
+		SerialID:               values.Get("serial_id"),
 		Quantity:               values.Get("quantity"),
 		TransactionType:        values.Get("transaction_type"),
 		ReferenceNumber:        values.Get("reference_number"),

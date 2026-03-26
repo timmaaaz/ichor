@@ -21,6 +21,7 @@ type QueryParams struct {
 	ProductID              string
 	LocationID             string
 	UserID                 string
+	SerialID               string
 	Quantity               string
 	TransactionType        string
 	ReferenceNumber        string
