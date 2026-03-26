@@ -12,6 +12,88 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
+func query401(sd apitest.SeedData) []apitest.Table {
+	return []apitest.Table{
+		{
+			Name:       "empty-token",
+			URL:        "/v1/inventory/cycle-count-sessions?rows=10&page=1",
+			Token:      "&nbsp;",
+			Method:     http.MethodGet,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token contains an invalid number of segments"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "bad-sig",
+			URL:        "/v1/inventory/cycle-count-sessions?rows=10&page=1",
+			Token:      sd.Admins[0].Token + "A",
+			Method:     http.MethodGet,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "authentication failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "no-read-permission",
+			URL:        "/v1/inventory/cycle-count-sessions?rows=10&page=1",
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodGet,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission READ for table: inventory.cycle_count_sessions"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+}
+
+func queryByID401(sd apitest.SeedData) []apitest.Table {
+	return []apitest.Table{
+		{
+			Name:       "empty-token",
+			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[0].ID),
+			Token:      "&nbsp;",
+			Method:     http.MethodGet,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token contains an invalid number of segments"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "bad-sig",
+			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[0].ID),
+			Token:      sd.Admins[0].Token + "A",
+			Method:     http.MethodGet,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "authentication failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "no-read-permission",
+			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[0].ID),
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodGet,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission READ for table: inventory.cycle_count_sessions"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+}
+
 func query200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{

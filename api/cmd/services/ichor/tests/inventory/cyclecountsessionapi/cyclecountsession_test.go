@@ -18,7 +18,9 @@ func Test_CycleCountSession(t *testing.T) {
 
 	// Query
 	test.Run(t, query200(sd), "query-200")
+	test.Run(t, query401(sd), "query-401")
 	test.Run(t, queryByID200(sd), "query-by-id-200")
+	test.Run(t, queryByID401(sd), "query-by-id-401")
 	test.Run(t, queryByID404(sd), "query-by-id-404")
 
 	// Create

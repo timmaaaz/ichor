@@ -35,9 +35,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	ctx := context.Background()
 	busDomain := db.BusDomain
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Users
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, busDomain.User)
 	if err != nil {
@@ -57,9 +57,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(busDomain.User, ath, admins[0].Email.Address),
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Cycle Count Sessions (only FK is created_by → users)
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	createdByIDs := []uuid.UUID{tu2.ID}
 	sessions, err := cyclecountsessionbus.TestSeedCycleCountSessions(ctx, 4, createdByIDs, busDomain.CycleCountSession)
@@ -67,9 +67,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding cycle count sessions: %w", err)
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Permissions: tu1 (User) = read-only on sessions table
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	roles, err := rolebus.TestSeedRoles(ctx, 2, busDomain.Role)
 	if err != nil {
@@ -122,9 +122,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		}
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Return
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	return apitest.SeedData{
 		Admins:             []apitest.User{tu2},
@@ -139,9 +139,9 @@ func insertCompleteFlowSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.Se
 	ctx := context.Background()
 	busDomain := db.BusDomain
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Users
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, busDomain.User)
 	if err != nil {
@@ -161,9 +161,9 @@ func insertCompleteFlowSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.Se
 		Token: apitest.Token(busDomain.User, ath, admins[0].Email.Address),
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Geography → Warehouse → Zones → Locations
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
 	if err != nil {
@@ -215,9 +215,9 @@ func insertCompleteFlowSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.Se
 		return apitest.SeedData{}, fmt.Errorf("seeding inventory locations: %w", err)
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Products
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	tzs, err := busDomain.Timezone.Query(ctx, timezonebus.QueryFilter{}, timezonebus.DefaultOrderBy, page.MustParse("1", "5"))
 	if err != nil {
@@ -260,18 +260,18 @@ func insertCompleteFlowSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.Se
 		return apitest.SeedData{}, fmt.Errorf("seeding products: %w", err)
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Cycle Count Session (1 session for the complete flow)
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	sessions, err := cyclecountsessionbus.TestSeedCycleCountSessions(ctx, 1, []uuid.UUID{tu2.ID}, busDomain.CycleCountSession)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding sessions: %w", err)
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Permissions
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	roles, err := rolebus.TestSeedRoles(ctx, 2, busDomain.Role)
 	if err != nil {
@@ -293,9 +293,38 @@ func insertCompleteFlowSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.Se
 		return apitest.SeedData{}, fmt.Errorf("seeding table access: %w", err)
 	}
 
-	// -------------------------------------------------------------------------
+	ur1, err := busDomain.UserRole.QueryByUserID(ctx, tu1.ID)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("querying user1 roles: %w", err)
+	}
+
+	usrRoleIDs := make(uuid.UUIDs, len(ur1))
+	for i, r := range ur1 {
+		usrRoleIDs[i] = r.RoleID
+	}
+
+	tas, err := busDomain.TableAccess.QueryByRoleIDs(ctx, usrRoleIDs)
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("querying table access: %w", err)
+	}
+
+	for _, ta := range tas {
+		if ta.TableName == cyclecountsessionapi.RouteTable {
+			update := tableaccessbus.UpdateTableAccess{
+				CanCreate: dbtest.BoolPointer(false),
+				CanUpdate: dbtest.BoolPointer(false),
+				CanDelete: dbtest.BoolPointer(false),
+				CanRead:   dbtest.BoolPointer(true),
+			}
+			if _, err := busDomain.TableAccess.Update(ctx, ta, update); err != nil {
+				return apitest.SeedData{}, fmt.Errorf("updating table access: %w", err)
+			}
+		}
+	}
+
+	// =========================================================================
 	// Return
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	return apitest.SeedData{
 		Admins:             []apitest.User{tu2},
