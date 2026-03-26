@@ -37,6 +37,18 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
+			Name:       "bad-sig",
+			URL:        fmt.Sprintf("/v1/inventory/pick-tasks/%s", sd.PickTasks[0].ID),
+			Token:      sd.Admins[0].Token + "A",
+			Method:     http.MethodDelete,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "authentication failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
 			Name:       "no-delete-permission",
 			URL:        fmt.Sprintf("/v1/inventory/pick-tasks/%s", sd.PickTasks[0].ID),
 			Token:      sd.Users[0].Token,
