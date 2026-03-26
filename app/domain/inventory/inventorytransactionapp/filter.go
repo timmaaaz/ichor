@@ -49,6 +49,14 @@ func parseFilter(qp QueryParams) (inventorytransactionbus.QueryFilter, error) {
 
 	}
 
+	if qp.SerialID != "" {
+		id, err := uuid.Parse(qp.SerialID)
+		if err != nil {
+			return inventorytransactionbus.QueryFilter{}, errs.NewFieldsError("serial_id", err)
+		}
+		filter.SerialID = &id
+	}
+
 	if qp.Quantity != "" {
 		q, err := strconv.Atoi(qp.Quantity)
 		if err != nil {
