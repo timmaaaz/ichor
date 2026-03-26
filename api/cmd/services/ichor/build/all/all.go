@@ -48,6 +48,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/lottrackingsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/scanapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/serialnumberapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/picktaskapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/putawaytaskapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/supervisorkpiapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/transferorderapi"
@@ -218,6 +219,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus/stores/lottrackingsdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus/stores/serialnumberdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus/stores/picktaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus/stores/putawaytaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
@@ -437,6 +440,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB))
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB))
 	putAwayTaskBus := putawaytaskbus.NewBusiness(cfg.Log, delegate, putawaytaskdb.NewStore(cfg.Log, cfg.DB))
+	pickTaskBus := picktaskbus.NewBusiness(cfg.Log, delegate, picktaskdb.NewStore(cfg.Log, cfg.DB))
 
 	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB))
 
@@ -609,6 +613,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			delegateHandler.RegisterDomain(delegate, inventorytransactionbus.DomainName, inventorytransactionbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, inventoryadjustmentbus.DomainName, inventoryadjustmentbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, putawaytaskbus.DomainName, putawaytaskbus.EntityName)
+			delegateHandler.RegisterDomain(delegate, picktaskbus.DomainName, picktaskbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, transferorderbus.DomainName, transferorderbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, inspectionbus.DomainName, inspectionbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, lottrackingsbus.DomainName, lottrackingsbus.EntityName)
@@ -1060,6 +1065,16 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	putawaytaskapi.Routes(app, putawaytaskapi.Config{
 		Log:               cfg.Log,
 		PutAwayTaskBus:    putAwayTaskBus,
+		InvTransactionBus: inventoryTransactionBus,
+		InvItemBus:        inventoryItemBus,
+		DB:                cfg.DB,
+		AuthClient:        cfg.AuthClient,
+		PermissionsBus:    permissionsBus,
+	})
+
+	picktaskapi.Routes(app, picktaskapi.Config{
+		Log:               cfg.Log,
+		PickTaskBus:       pickTaskBus,
 		InvTransactionBus: inventoryTransactionBus,
 		InvItemBus:        inventoryItemBus,
 		DB:                cfg.DB,

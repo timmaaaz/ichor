@@ -56,6 +56,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus/stores/picktaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus/stores/putawaytaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus"
@@ -260,6 +262,7 @@ type BusDomain struct {
 	InventoryAdjustment  *inventoryadjustmentbus.Business
 	TransferOrder        *transferorderbus.Business
 	PutAwayTask          *putawaytaskbus.Business
+	PickTask             *picktaskbus.Business
 
 	// Order
 	OrderFulfillmentStatus    *orderfulfillmentstatusbus.Business
@@ -372,6 +375,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(log, delegate, inventoryadjustmentdb.NewStore(log, db))
 	transferOrderBus := transferorderbus.NewBusiness(log, delegate, transferorderdb.NewStore(log, db))
 	putAwayTaskBus := putawaytaskbus.NewBusiness(log, delegate, putawaytaskdb.NewStore(log, db))
+	pickTaskBus := picktaskbus.NewBusiness(log, delegate, picktaskdb.NewStore(log, db))
 
 	// Orders
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
@@ -455,6 +459,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		InventoryAdjustment:         inventoryAdjustmentBus,
 		TransferOrder:               transferOrderBus,
 		PutAwayTask:                 putAwayTaskBus,
+		PickTask:                    pickTaskBus,
 		OrderFulfillmentStatus:      orderFulfillmentStatusBus,
 		LineItemFulfillmentStatus:   lineItemFulfillmentStatusBus,
 		Order:                       ordersBus,
