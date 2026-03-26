@@ -41,6 +41,7 @@ const (
 	ReasonCodePickingError   = "picking_error"
 	ReasonCodeFoundStock     = "found_stock"
 	ReasonCodeOther          = "other"
+	ReasonCodeCycleCount     = "cycle_count"
 )
 
 // ValidReasonCodes is the set of known reason codes.
@@ -52,6 +53,7 @@ var ValidReasonCodes = map[string]bool{
 	ReasonCodePickingError:   true,
 	ReasonCodeFoundStock:     true,
 	ReasonCodeOther:          true,
+	ReasonCodeCycleCount:     true,
 }
 
 // Storer interface declares the behavior this package needs to persist and
