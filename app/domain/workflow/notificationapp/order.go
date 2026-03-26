@@ -6,10 +6,10 @@ import (
 )
 
 var orderByFields = map[string]string{
-	"id":          notificationbus.OrderByID,
-	"priority":    notificationbus.OrderByPriority,
-	"isRead":      notificationbus.OrderByIsRead,
-	"createdDate": notificationbus.OrderByCreatedDate,
+	notificationbus.OrderByID:          notificationbus.OrderByID,
+	notificationbus.OrderByPriority:    notificationbus.OrderByPriority,
+	notificationbus.OrderByIsRead:      notificationbus.OrderByIsRead,
+	notificationbus.OrderByCreatedDate: notificationbus.OrderByCreatedDate,
 }
 
 // DefaultOrderBy is the default ordering for notification queries.

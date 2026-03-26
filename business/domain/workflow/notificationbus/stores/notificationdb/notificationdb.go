@@ -145,12 +145,14 @@ func (s *Store) Count(ctx context.Context, filter notificationbus.QueryFilter) (
 }
 
 // MarkAsRead updates a single notification's is_read and read_date.
-func (s *Store) MarkAsRead(ctx context.Context, id uuid.UUID, readDate time.Time) error {
+func (s *Store) MarkAsRead(ctx context.Context, id uuid.UUID, userID uuid.UUID, readDate time.Time) error {
 	data := struct {
 		ID       string    `db:"id"`
+		UserID   string    `db:"user_id"`
 		ReadDate time.Time `db:"read_date"`
 	}{
 		ID:       id.String(),
+		UserID:   userID.String(),
 		ReadDate: readDate,
 	}
 
@@ -161,7 +163,7 @@ func (s *Store) MarkAsRead(ctx context.Context, id uuid.UUID, readDate time.Time
 		is_read = true,
 		read_date = :read_date
 	WHERE
-		id = :id`
+		id = :id AND user_id = :user_id`
 
 	rows, err := sqldb.NamedExecContextWithCount(ctx, s.log, s.db, q, data)
 	if err != nil {

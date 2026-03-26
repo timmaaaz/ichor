@@ -109,7 +109,7 @@ func (a *App) MarkAsRead(ctx context.Context, idStr string) error {
 		return errs.Newf(errs.NotFound, "notification not found")
 	}
 
-	if err := a.notificationBus.MarkAsRead(ctx, id); err != nil {
+	if err := a.notificationBus.MarkAsRead(ctx, id, userID); err != nil {
 		return errs.Newf(errs.Internal, "mark as read: %s", err)
 	}
 

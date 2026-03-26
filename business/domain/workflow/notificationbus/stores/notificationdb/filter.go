@@ -36,7 +36,7 @@ func applyFilter(filter notificationbus.QueryFilter, data map[string]any, buf *b
 	}
 
 	if filter.SourceEntityID != nil {
-		data["source_entity_id"] = (*filter.SourceEntityID).String()
+		data["source_entity_id"] = *filter.SourceEntityID
 		wc = append(wc, "source_entity_id = :source_entity_id")
 	}
 

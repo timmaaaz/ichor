@@ -27,7 +27,7 @@ type Storer interface {
 	QueryByID(ctx context.Context, id uuid.UUID) (Notification, error)
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, pg page.Page) ([]Notification, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	MarkAsRead(ctx context.Context, id uuid.UUID, readDate time.Time) error
+	MarkAsRead(ctx context.Context, id uuid.UUID, userID uuid.UUID, readDate time.Time) error
 	MarkAllAsRead(ctx context.Context, userID uuid.UUID, readDate time.Time) (int, error)
 }
 
@@ -121,11 +121,11 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // MarkAsRead marks a single notification as read.
-func (b *Business) MarkAsRead(ctx context.Context, id uuid.UUID) error {
+func (b *Business) MarkAsRead(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.notificationbus.markasread")
 	defer span.End()
 
-	if err := b.storer.MarkAsRead(ctx, id, time.Now()); err != nil {
+	if err := b.storer.MarkAsRead(ctx, id, userID, time.Now()); err != nil {
 		return fmt.Errorf("markasread: notificationID[%s]: %w", id, err)
 	}
 
