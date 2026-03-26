@@ -2388,3 +2388,7 @@ ALTER TABLE inventory.inventory_adjustments ADD CONSTRAINT inventory_adjustments
 -- Version: 2.24
 -- Description: Add serial_id column to inventory_transactions for serial number traceability.
 ALTER TABLE inventory.inventory_transactions ADD COLUMN serial_id UUID NULL REFERENCES inventory.serial_numbers(id);
+
+-- Version: 2.22
+-- Description: Add action_url column to alerts for deep-linking from notifications.
+ALTER TABLE workflow.alerts ADD COLUMN action_url TEXT NULL;

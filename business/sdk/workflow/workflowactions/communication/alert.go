@@ -31,6 +31,7 @@ type AlertConfig struct {
 		Roles []string `json:"roles"`
 	} `json:"recipients"`
 	Context      json.RawMessage `json:"context"`
+	ActionURL    string          `json:"action_url"`
 	ResolvePrior bool            `json:"resolve_prior"` // When true, resolves prior alerts with same source_entity_id + alert_type
 }
 
@@ -136,6 +137,11 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		Status:           alertbus.StatusActive,
 		CreatedDate:      now,
 		UpdatedDate:      now,
+	}
+
+	// Set action URL with template variable substitution
+	if cfg.ActionURL != "" {
+		alert.ActionURL = resolveTemplateVars(cfg.ActionURL, execCtx.RawData)
 	}
 
 	// Build recipients slice - validate all UUIDs first (fail fast on invalid config)
@@ -256,6 +262,10 @@ func (h *CreateAlertHandler) publishAlertToWebSocket(ctx context.Context, alert 
 	// Only include sourceEntityId if it's not the zero UUID
 	if alert.SourceEntityID != uuid.Nil {
 		alertData["sourceEntityId"] = alert.SourceEntityID.String()
+	}
+
+	if alert.ActionURL != "" {
+		alertData["actionUrl"] = alert.ActionURL
 	}
 
 	for _, recipient := range recipients {

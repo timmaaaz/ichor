@@ -21,6 +21,7 @@ type dbAlert struct {
 	SourceEntityID   sql.NullString  `db:"source_entity_id"`
 	SourceRuleID     sql.NullString  `db:"source_rule_id"`
 	SourceRuleName   sql.NullString  `db:"source_rule_name"`
+	ActionURL        sql.NullString  `db:"action_url"`
 	Status           string          `db:"status"`
 	ExpiresDate      sql.NullTime    `db:"expires_date"`
 	CreatedDate      time.Time       `db:"created_date"`
@@ -48,6 +49,9 @@ func toDBAlert(a alertbus.Alert) dbAlert {
 	}
 	if a.SourceRuleID != uuid.Nil {
 		db.SourceRuleID = sql.NullString{String: a.SourceRuleID.String(), Valid: true}
+	}
+	if a.ActionURL != "" {
+		db.ActionURL = sql.NullString{String: a.ActionURL, Valid: true}
 	}
 	if a.ExpiresDate != nil {
 		db.ExpiresDate = sql.NullTime{Time: *a.ExpiresDate, Valid: true}
@@ -80,6 +84,9 @@ func toBusAlert(db dbAlert) alertbus.Alert {
 	}
 	if db.SourceRuleName.Valid {
 		a.SourceRuleName = db.SourceRuleName.String
+	}
+	if db.ActionURL.Valid {
+		a.ActionURL = db.ActionURL.String
 	}
 	if db.ExpiresDate.Valid {
 		a.ExpiresDate = &db.ExpiresDate.Time
