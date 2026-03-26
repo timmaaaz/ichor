@@ -114,6 +114,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus/stores/actionpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus/stores/notificationdb"
 
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetconditionbus/stores/assetconditiondb"
@@ -280,6 +282,7 @@ type BusDomain struct {
 	Workflow          *workflow.Business
 	Alert             *alertbus.Business
 	ActionPermissions *actionpermissionsbus.Business
+	Notification      *notificationbus.Business
 
 	// Data
 	ConfigStore *tablebuilder.ConfigStore
@@ -395,6 +398,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	workflowBus := workflow.NewBusiness(log, delegate, workflowdb.NewStore(log, db))
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
 	actionPermissionsBus := actionpermissionsbus.NewBusiness(log, actionpermissionsdb.NewStore(log, db))
+	notificationBus := notificationbus.NewBusiness(log, notificationdb.NewStore(log, db))
 
 	// Data
 	configBus := tablebuilder.NewConfigStore(log, db)
@@ -477,6 +481,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Workflow:                    workflowBus,
 		Alert:                       alertBus,
 		ActionPermissions:           actionPermissionsBus,
+		Notification:                notificationBus,
 		ConfigStore:                 configBus,
 		TableStore:                  tableBus,
 		Form:                        formBus,

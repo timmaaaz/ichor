@@ -79,6 +79,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/alertws"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/edgeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/executionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/workflow/notificationinboxapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/notificationsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/referenceapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/ruleapi"
@@ -318,6 +319,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus/stores/actionpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus/stores/notificationdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus/stores/approvalrequestdb"
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
@@ -471,6 +474,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Workflow domain
 	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
+	notificationBus := notificationbus.NewBusiness(cfg.Log, notificationdb.NewStore(cfg.Log, cfg.DB))
 	approvalRequestBus := approvalrequestbus.NewBusiness(cfg.Log, delegate, approvalrequestdb.NewStore(cfg.Log, cfg.DB))
 	actionPermBus := actionpermissionsbus.NewBusiness(cfg.Log, actionpermissionsdb.NewStore(cfg.Log, cfg.DB))
 
@@ -1355,6 +1359,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		ApprovalBus: approvalRequestBus,
 		UserRoleBus: userRoleBus,
 		AuthClient:  cfg.AuthClient,
+	})
+
+	notificationinboxapi.Routes(app, notificationinboxapi.Config{
+		Log:             cfg.Log,
+		NotificationBus: notificationBus,
+		AuthClient:      cfg.AuthClient,
 	})
 
 	referenceapi.Routes(app, referenceapi.Config{

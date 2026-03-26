@@ -2310,8 +2310,34 @@ CREATE INDEX idx_pick_tasks_assigned    ON inventory.pick_tasks(assigned_to) WHE
 INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
 SELECT gen_random_uuid(), id, 'inventory.pick_tasks', true, true, true, true FROM core.roles;
 
--- Version: 2.21
--- Description: Create cycle count sessions and items tables for inventory cycle counting.
+-- Version: 2.22
+-- Description: Create workflow.notifications inbox table for user notification persistence.
+CREATE TABLE workflow.notifications (
+    id                  UUID          NOT NULL,
+    user_id             UUID          NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
+    title               TEXT          NOT NULL,
+    message             TEXT          NULL,
+    priority            VARCHAR(10)   NOT NULL DEFAULT 'medium'
+                            CHECK (priority IN ('low', 'medium', 'high', 'critical')),
+    is_read             BOOLEAN       NOT NULL DEFAULT false,
+    read_date           TIMESTAMP     NULL,
+    source_entity_name  VARCHAR(100)  NULL,
+    source_entity_id    UUID          NULL,
+    action_url          TEXT          NULL,
+    created_date        TIMESTAMP     NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_notifications_user_id      ON workflow.notifications(user_id);
+CREATE INDEX idx_notifications_user_unread  ON workflow.notifications(user_id, is_read) WHERE is_read = false;
+CREATE INDEX idx_notifications_created      ON workflow.notifications(created_date DESC);
+CREATE INDEX idx_notifications_user_created ON workflow.notifications(user_id, created_date DESC);
+
+INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
+SELECT gen_random_uuid(), id, 'workflow.notifications', true, true, true, true FROM core.roles;
+
+-- Version: 2.23
+-- Description: Create cycle count sessions and items tables for inventory cycle counting
 CREATE TABLE inventory.cycle_count_sessions (
     id              UUID          NOT NULL,
     name            VARCHAR(200)  NOT NULL,
