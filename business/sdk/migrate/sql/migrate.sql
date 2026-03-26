@@ -2309,3 +2309,52 @@ CREATE INDEX idx_pick_tasks_assigned    ON inventory.pick_tasks(assigned_to) WHE
 
 INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
 SELECT gen_random_uuid(), id, 'inventory.pick_tasks', true, true, true, true FROM core.roles;
+
+-- Version: 2.21
+-- Description: Create cycle count sessions and items tables for inventory cycle counting.
+CREATE TABLE inventory.cycle_count_sessions (
+    id              UUID          NOT NULL,
+    name            VARCHAR(200)  NOT NULL,
+    status          VARCHAR(20)   NOT NULL DEFAULT 'draft'
+                        CHECK (status IN ('draft','in_progress','completed','cancelled')),
+    created_by      UUID          NOT NULL REFERENCES core.users(id),
+    created_date    TIMESTAMP     NOT NULL,
+    updated_date    TIMESTAMP     NOT NULL,
+    completed_date  TIMESTAMP     NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_cycle_count_sessions_status ON inventory.cycle_count_sessions(status);
+CREATE INDEX idx_cycle_count_sessions_created_by ON inventory.cycle_count_sessions(created_by);
+
+INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
+SELECT gen_random_uuid(), id, 'inventory.cycle_count_sessions', true, true, true, true FROM core.roles;
+
+CREATE TABLE inventory.cycle_count_items (
+    id                UUID          NOT NULL,
+    session_id        UUID          NOT NULL REFERENCES inventory.cycle_count_sessions(id) ON DELETE CASCADE,
+    product_id        UUID          NOT NULL REFERENCES products.products(id),
+    location_id       UUID          NOT NULL REFERENCES inventory.inventory_locations(id),
+    system_quantity   INT           NOT NULL,
+    counted_quantity  INT           NULL,
+    variance          INT           NULL,
+    status            VARCHAR(20)   NOT NULL DEFAULT 'pending'
+                          CHECK (status IN ('pending','counted','variance_approved','variance_rejected')),
+    counted_by        UUID          NULL REFERENCES core.users(id),
+    counted_date      TIMESTAMP     NULL,
+    created_date      TIMESTAMP     NOT NULL,
+    updated_date      TIMESTAMP     NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_cycle_count_items_session ON inventory.cycle_count_items(session_id);
+CREATE INDEX idx_cycle_count_items_product ON inventory.cycle_count_items(product_id);
+CREATE INDEX idx_cycle_count_items_location ON inventory.cycle_count_items(location_id);
+CREATE INDEX idx_cycle_count_items_status ON inventory.cycle_count_items(status);
+
+INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
+SELECT gen_random_uuid(), id, 'inventory.cycle_count_items', true, true, true, true FROM core.roles;
+
+ALTER TABLE inventory.inventory_adjustments DROP CONSTRAINT inventory_adjustments_reason_code_check;
+ALTER TABLE inventory.inventory_adjustments ADD CONSTRAINT inventory_adjustments_reason_code_check
+    CHECK (reason_code IN ('damaged', 'theft', 'data_entry_error', 'receiving_error', 'picking_error', 'found_stock', 'other', 'cycle_count'));
