@@ -2275,3 +2275,37 @@ ALTER TABLE inventory.transfer_orders ADD COLUMN claimed_by UUID NULL REFERENCES
 ALTER TABLE inventory.transfer_orders ADD COLUMN claimed_at TIMESTAMP NULL;
 ALTER TABLE inventory.transfer_orders ADD COLUMN completed_by UUID NULL REFERENCES core.users(id);
 ALTER TABLE inventory.transfer_orders ADD COLUMN completed_at TIMESTAMP NULL;
+
+-- Version: 2.20
+-- Description: Create inventory.pick_tasks table for floor worker pick task management.
+CREATE TABLE inventory.pick_tasks (
+    id                        UUID          NOT NULL,
+    sales_order_id            UUID          NOT NULL REFERENCES sales.orders(id),
+    sales_order_line_item_id  UUID          NOT NULL REFERENCES sales.order_line_items(id),
+    product_id                UUID          NOT NULL REFERENCES products.products(id),
+    lot_id                    UUID          NULL REFERENCES inventory.lot_trackings(id),
+    serial_id                 UUID          NULL REFERENCES inventory.serial_numbers(id),
+    location_id               UUID          NOT NULL REFERENCES inventory.inventory_locations(id),
+    quantity_to_pick          INT           NOT NULL CHECK (quantity_to_pick > 0),
+    quantity_picked           INT           NOT NULL DEFAULT 0 CHECK (quantity_picked >= 0),
+    status                    VARCHAR(20)   NOT NULL DEFAULT 'pending'
+                                  CHECK (status IN ('pending','in_progress','completed','short_picked','cancelled')),
+    assigned_to               UUID          NULL REFERENCES core.users(id),
+    assigned_at               TIMESTAMP     NULL,
+    completed_by              UUID          NULL REFERENCES core.users(id),
+    completed_at              TIMESTAMP     NULL,
+    short_pick_reason         TEXT          NULL,
+    created_by                UUID          NOT NULL REFERENCES core.users(id),
+    created_date              TIMESTAMP     NOT NULL,
+    updated_date              TIMESTAMP     NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_pick_tasks_status      ON inventory.pick_tasks(status);
+CREATE INDEX idx_pick_tasks_order       ON inventory.pick_tasks(sales_order_id);
+CREATE INDEX idx_pick_tasks_product     ON inventory.pick_tasks(product_id);
+CREATE INDEX idx_pick_tasks_location    ON inventory.pick_tasks(location_id);
+CREATE INDEX idx_pick_tasks_assigned    ON inventory.pick_tasks(assigned_to) WHERE assigned_to IS NOT NULL;
+
+INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete)
+SELECT gen_random_uuid(), id, 'inventory.pick_tasks', true, true, true, true FROM core.roles;
