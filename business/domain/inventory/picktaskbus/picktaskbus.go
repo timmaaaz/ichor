@@ -92,8 +92,8 @@ func (b *Business) Create(ctx context.Context, npt NewPickTask) (PickTask, error
 		return PickTask{}, fmt.Errorf("create: %w", err)
 	}
 
-	if b.delegate != nil {
-		b.delegate.Call(ctx, ActionCreatedData(task))
+	if err := b.delegate.Call(ctx, ActionCreatedData(task)); err != nil {
+		b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionCreated, "err", err)
 	}
 
 	return task, nil
@@ -146,8 +146,8 @@ func (b *Business) Update(ctx context.Context, task PickTask, upt UpdatePickTask
 		return PickTask{}, fmt.Errorf("update: %w", err)
 	}
 
-	if b.delegate != nil {
-		b.delegate.Call(ctx, ActionUpdatedData(before, task))
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, task)); err != nil {
+		b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
 
 	return task, nil
@@ -162,8 +162,8 @@ func (b *Business) Delete(ctx context.Context, task PickTask) error {
 		return fmt.Errorf("delete: %w", err)
 	}
 
-	if b.delegate != nil {
-		b.delegate.Call(ctx, ActionDeletedData(task))
+	if err := b.delegate.Call(ctx, ActionDeletedData(task)); err != nil {
+		b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
 
 	return nil
@@ -197,7 +197,10 @@ func (b *Business) QueryByID(ctx context.Context, taskID uuid.UUID) (PickTask, e
 
 	task, err := b.storer.QueryByID(ctx, taskID)
 	if err != nil {
-		return PickTask{}, fmt.Errorf("query: %w", err)
+		if errors.Is(err, ErrNotFound) {
+			return PickTask{}, err
+		}
+		return PickTask{}, fmt.Errorf("queryByID: taskID[%s]: %w", taskID, err)
 	}
 
 	return task, nil

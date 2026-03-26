@@ -112,6 +112,15 @@ func (a *App) Update(ctx context.Context, taskID uuid.UUID, app UpdatePickTask) 
 			upt.AssignedAt = &now
 
 		case picktaskbus.Statuses.Completed, picktaskbus.Statuses.ShortPicked:
+			// Validate short_picked requires quantity_picked and short_pick_reason.
+			if newStatus == picktaskbus.Statuses.ShortPicked {
+				if upt.QuantityPicked == nil {
+					return PickTask{}, errs.Newf(errs.InvalidArgument, "quantity_picked is required when status is short_picked")
+				}
+				if upt.ShortPickReason == nil || *upt.ShortPickReason == "" {
+					return PickTask{}, errs.Newf(errs.InvalidArgument, "short_pick_reason is required when status is short_picked")
+				}
+			}
 			return a.complete(ctx, task, upt)
 		}
 	}
@@ -174,12 +183,13 @@ func (a *App) complete(ctx context.Context, task picktaskbus.PickTask, upt pickt
 		return PickTask{}, fmt.Errorf("new invtransaction tx: %w", err)
 	}
 
+	// Create inventory transaction (negative quantity = outbound pick).
 	_, err = txBusTx.Create(ctx, inventorytransactionbus.NewInventoryTransaction{
 		ProductID:       task.ProductID,
 		LocationID:      task.LocationID,
 		UserID:          userID,
 		LotID:           task.LotID,
-		Quantity:        quantityPicked,
+		Quantity:        -quantityPicked,
 		TransactionType: "PICK",
 		ReferenceNumber: task.SalesOrderID.String(),
 		TransactionDate: now,
