@@ -46,6 +46,8 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventorytransactionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/lotlocationapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/lottrackingsapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/cyclecountitemapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/cyclecountsessionapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/picktaskapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/putawaytaskapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/scanapi"
@@ -217,6 +219,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus/stores/lotlocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus/stores/lottrackingsdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus/stores/cyclecountitemdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus/stores/cyclecountsessiondb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus/stores/picktaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
@@ -441,6 +447,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB))
 	putAwayTaskBus := putawaytaskbus.NewBusiness(cfg.Log, delegate, putawaytaskdb.NewStore(cfg.Log, cfg.DB))
 	pickTaskBus := picktaskbus.NewBusiness(cfg.Log, delegate, picktaskdb.NewStore(cfg.Log, cfg.DB))
+	cycleCountSessionBus := cyclecountsessionbus.NewBusiness(cfg.Log, delegate, cyclecountsessiondb.NewStore(cfg.Log, cfg.DB))
+	cycleCountItemBus := cyclecountitembus.NewBusiness(cfg.Log, delegate, cyclecountitemdb.NewStore(cfg.Log, cfg.DB))
 
 	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB))
 
@@ -1078,6 +1086,23 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		InvTransactionBus: inventoryTransactionBus,
 		InvItemBus:        inventoryItemBus,
 		DB:                cfg.DB,
+		AuthClient:        cfg.AuthClient,
+		PermissionsBus:    permissionsBus,
+	})
+
+	cyclecountsessionapi.Routes(app, cyclecountsessionapi.Config{
+		Log:                  cfg.Log,
+		CycleCountSessionBus: cycleCountSessionBus,
+		CycleCountItemBus:    cycleCountItemBus,
+		InvAdjustmentBus:     inventoryAdjustmentBus,
+		DB:                   cfg.DB,
+		AuthClient:           cfg.AuthClient,
+		PermissionsBus:       permissionsBus,
+	})
+
+	cyclecountitemapi.Routes(app, cyclecountitemapi.Config{
+		Log:               cfg.Log,
+		CycleCountItemBus: cycleCountItemBus,
 		AuthClient:        cfg.AuthClient,
 		PermissionsBus:    permissionsBus,
 	})

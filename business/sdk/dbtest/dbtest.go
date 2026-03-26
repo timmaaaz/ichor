@@ -56,6 +56,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus/stores/cyclecountitemdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus/stores/cyclecountsessiondb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus/stores/picktaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
@@ -263,6 +267,8 @@ type BusDomain struct {
 	TransferOrder        *transferorderbus.Business
 	PutAwayTask          *putawaytaskbus.Business
 	PickTask             *picktaskbus.Business
+	CycleCountSession    *cyclecountsessionbus.Business
+	CycleCountItem       *cyclecountitembus.Business
 
 	// Order
 	OrderFulfillmentStatus    *orderfulfillmentstatusbus.Business
@@ -376,6 +382,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	transferOrderBus := transferorderbus.NewBusiness(log, delegate, transferorderdb.NewStore(log, db))
 	putAwayTaskBus := putawaytaskbus.NewBusiness(log, delegate, putawaytaskdb.NewStore(log, db))
 	pickTaskBus := picktaskbus.NewBusiness(log, delegate, picktaskdb.NewStore(log, db))
+	cycleCountSessionBus := cyclecountsessionbus.NewBusiness(log, delegate, cyclecountsessiondb.NewStore(log, db))
+	cycleCountItemBus := cyclecountitembus.NewBusiness(log, delegate, cyclecountitemdb.NewStore(log, db))
 
 	// Orders
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
@@ -460,6 +468,8 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		TransferOrder:               transferOrderBus,
 		PutAwayTask:                 putAwayTaskBus,
 		PickTask:                    pickTaskBus,
+		CycleCountSession:           cycleCountSessionBus,
+		CycleCountItem:              cycleCountItemBus,
 		OrderFulfillmentStatus:      orderFulfillmentStatusBus,
 		LineItemFulfillmentStatus:   lineItemFulfillmentStatusBus,
 		Order:                       ordersBus,
