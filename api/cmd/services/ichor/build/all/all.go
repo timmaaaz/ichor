@@ -622,6 +622,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			delegateHandler.RegisterDomain(delegate, inventoryadjustmentbus.DomainName, inventoryadjustmentbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, putawaytaskbus.DomainName, putawaytaskbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, picktaskbus.DomainName, picktaskbus.EntityName)
+			delegateHandler.RegisterDomain(delegate, cyclecountsessionbus.DomainName, cyclecountsessionbus.EntityName)
+			delegateHandler.RegisterDomain(delegate, cyclecountitembus.DomainName, cyclecountitembus.EntityName)
 			delegateHandler.RegisterDomain(delegate, transferorderbus.DomainName, transferorderbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, inspectionbus.DomainName, inspectionbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, lottrackingsbus.DomainName, lottrackingsbus.EntityName)
