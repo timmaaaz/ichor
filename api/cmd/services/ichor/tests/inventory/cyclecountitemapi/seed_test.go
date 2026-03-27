@@ -37,9 +37,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	ctx := context.Background()
 	busDomain := db.BusDomain
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Users
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	usrs, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, busDomain.User)
 	if err != nil {
@@ -59,9 +59,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Token: apitest.Token(busDomain.User, ath, admins[0].Email.Address),
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Geography → Warehouse → Zones → Locations
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	regions, err := busDomain.Region.Query(ctx, regionbus.QueryFilter{}, regionbus.DefaultOrderBy, page.MustParse("1", "5"))
 	if err != nil {
@@ -117,9 +117,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		locationIDs[i] = il.LocationID
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Products
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	tzs, err := busDomain.Timezone.Query(ctx, timezonebus.QueryFilter{}, timezonebus.DefaultOrderBy, page.MustParse("1", "5"))
 	if err != nil {
@@ -166,9 +166,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		productIDs[i] = p.ProductID
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Sessions → Items
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	sessions, err := cyclecountsessionbus.TestSeedCycleCountSessions(ctx, 1, []uuid.UUID{tu2.ID}, busDomain.CycleCountSession)
 	if err != nil {
@@ -184,9 +184,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding cycle count items: %w", err)
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Permissions
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	roles, err := rolebus.TestSeedRoles(ctx, 2, busDomain.Role)
 	if err != nil {
@@ -229,7 +229,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),
 				CanDelete: dbtest.BoolPointer(false),
-				CanRead:   dbtest.BoolPointer(true),
+				CanRead:   dbtest.BoolPointer(false),
 			}
 			if _, err := busDomain.TableAccess.Update(ctx, ta, update); err != nil {
 				return apitest.SeedData{}, fmt.Errorf("updating table access: %w", err)
@@ -237,9 +237,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		}
 	}
 
-	// -------------------------------------------------------------------------
+	// =========================================================================
 	// Return
-	// -------------------------------------------------------------------------
+	// =========================================================================
 
 	return apitest.SeedData{
 		Admins:             []apitest.User{tu2},

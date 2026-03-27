@@ -26,7 +26,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "empty-token",
-			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[3].ID),
+			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[0].ID),
 			Token:      "&nbsp;",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -38,7 +38,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "bad-sig",
-			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[3].ID),
+			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[0].ID),
 			Token:      sd.Admins[0].Token + "A",
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
@@ -50,7 +50,7 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 		},
 		{
 			Name:       "no-delete-permission",
-			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[3].ID),
+			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
 			StatusCode: http.StatusUnauthorized,
