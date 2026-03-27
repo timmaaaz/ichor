@@ -11,3 +11,4 @@
 **Examples**:
 - `permissionsbus_Test_Permissions_query-Query.md` — `workflow.action_templates` added to table_access in seed.sql, count went from 70 to 71
 - `permissionsbus_Test_Permissions_query-Query.md` (recurrence) — 2 new tables added to seed.sql, count went from 71 to 73
+- `permissionsbus_Test_Permissions_query-Query.md` (recurrence) — 3 new tables added, count went from 73 to 76

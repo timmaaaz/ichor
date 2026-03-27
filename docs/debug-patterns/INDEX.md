@@ -24,3 +24,9 @@ Read this file fully when checking for known patterns. Match by: test name, pack
 | `missing-unique-constraint` | `create-409-duplicate-X` returns 200, no constraint violation in DB, UNIQUE missing from migration | Add `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE (column)` as a new migration version in `migrate.sql` |
 | `hardcoded-action-type-list` | DIFF in `list-actions-*` test, GOT has more action types than EXP, `create_alert`/`send_notification` missing from expected slice | Add missing action type to `ExpResp` in test file; match Type/Description/IsAsync from GOT |
 | `bus-test-seed-contamination` | Bus query test DIFF, GOT has rows from different ProductID/entity group than EXP, `sd.Items[0:N]` wrong, items interleaved across products | Add entity-specific filter (e.g., `ProductID`) to QueryFilter; compute expected slice dynamically |
+| `wrong-seed-index-after-deletion` | 200→404 after delete step, `sd.Entities[N]` hardcoded index, seed slice shifted | Update hardcoded seed index to account for deleted entity |
+| `wrong-error-code-for-table-permission` | 403→401, table permission denial, `authorize.go`, `errs.Unauthenticated` | Change `errs.Unauthenticated` to `errs.PermissionDenied` in authorize.go |
+| `missing-test-table-fields` | `json: Unmarshal(nil)`, test table entry missing GotResp/ExpResp/CmpFunc | Add missing struct fields to test table entry |
+| `invalid-reason-code-seed` | `invalid reason code`, business-layer validation, seed uses free-text reason | Replace with valid reason constant in seed function |
+| `invalid-status-seed-string` | `must be pending, got status4`, `fmt.Sprintf("status%d")`, state machine rejection | Replace computed status string with domain constant in testutil.go |
+| `reference-category-count-mismatch` | `expected N types, got N+M`, category consistency test, action type registry grew | Add new action type to expected list and update count |

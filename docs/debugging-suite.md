@@ -7,7 +7,7 @@ Tools and workflows for diagnosing and fixing test failures and bugs in Ichor.
 | Situation | Tool | Command |
 |---|---|---|
 | Batch of test failures from CI | `/debug-go-tests` | Run `make test-extract ARGS="./..."` first |
-| Single known bug file in `.claude/bugs/open/` | `/pick-bug` | `/pick-bug` or `/pick-bug <filename>` |
+| Single known bug file in `docs/bugs/open/` | `/pick-bug` | `/pick-bug` or `/pick-bug <filename>` |
 | Unexpected behavior, no bug file yet | `/investigate` | Describe the symptom |
 | Vue/frontend + Go full-stack bug | `/debug-vue` | Describe the symptom |
 | Process accumulated completed bugs into patterns | `/distill-bugs` | Run after a batch of `/pick-bug` fixes |
@@ -24,23 +24,23 @@ make test-extract  →  .claude/debug/ files
 /debug-go-tests  →  clusters failures, fixes batches
      │
      ▼  (individual bugs)
-/pick-bug  →  claims .claude/bugs/open/
-     │         checks .claude/debug-patterns/INDEX.md (Step 2.5)
+/pick-bug  →  claims docs/bugs/open/
+     │         checks docs/debug-patterns/INDEX.md (Step 2.5)
      │         if pattern match: apply directly (3 steps instead of 9)
      │         if no match: full investigation
      │
      ▼
-.claude/bugs/complete/  (fixed, verified)
+docs/bugs/complete/  (fixed, verified)
      │
      ▼
 /distill-bugs  →  classifies (haiku) → matches/creates patterns (opus/sonnet)
      │
      ▼
-.claude/debug-patterns/  (pattern library)
-.claude/bugs/archive/    (provenance preserved)
+docs/debug-patterns/  (pattern library)
+docs/bugs/archive/    (provenance preserved)
 ```
 
-## Debug Patterns (`.claude/debug-patterns/`)
+## Debug Patterns (`docs/debug-patterns/`)
 
 The pattern library short-circuits known recurring bugs from 9-step investigation to 3-step apply-and-verify.
 
@@ -61,7 +61,7 @@ The pattern library short-circuits known recurring bugs from 9-step investigatio
 | `formconfig-value-column` | `DROPDOWN_COLUMN_NOT_FOUND` | `dbtest` |
 | `omitempty-to-required` | create-400 returns 200 | any new domain app layer |
 
-## Bug Queue (`.claude/bugs/`)
+## Bug Queue (`docs/bugs/`)
 
 - `open/` — unstarted bugs, claimed atomically via `mv`
 - `in_progress/` — currently being worked on (one agent per file)
@@ -76,13 +76,13 @@ The pattern library short-circuits known recurring bugs from 9-step investigatio
 make test-extract ARGS="./api/cmd/services/ichor/tests/..."
 ```
 
-This writes failure files to `.claude/debug/`. Then `/debug-go-tests` reads and processes them, or move files manually to `.claude/bugs/open/`.
+This writes failure files to `.claude/debug/`. Then `/debug-go-tests` reads and processes them, or move files manually to `docs/bugs/open/`.
 
 ## Arch Docs Integration
 
 - `/pick-bug` reads `docs/arch/*.md` based on the failing package (Step 3)
 - `docs/arch/seeding.md` is always read — most count/auth mismatches are seed-related
 - After multi-iteration fixes, `/pick-bug` proposes `⚠` callouts to arch docs (Step 8)
-- `/distill-bugs` promotes recurring fix patterns to `.claude/debug-patterns/`
+- `/distill-bugs` promotes recurring fix patterns to `docs/debug-patterns/`
 
 See `docs/arch/testing.md` for test infrastructure details.

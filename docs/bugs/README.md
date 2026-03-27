@@ -17,14 +17,14 @@ File-based work queue for parallel agent bug fixing.
 so two agents cannot claim the same bug simultaneously:
 
 ```bash
-mv .claude/bugs/open/my-bug.md .claude/bugs/in_progress/my-bug.md
+mv docs/bugs/open/my-bug.md docs/bugs/in_progress/my-bug.md
 ```
 
 If the `mv` fails, another agent claimed it first — pick a different bug.
 
 **When done:**
 ```bash
-mv .claude/bugs/in_progress/my-bug.md .claude/bugs/complete/my-bug.md
+mv docs/bugs/in_progress/my-bug.md docs/bugs/complete/my-bug.md
 ```
 
 ## Bug File Format

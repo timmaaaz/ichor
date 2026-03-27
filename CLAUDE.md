@@ -39,6 +39,7 @@ docs/arch/ = authoritative. Read → answer directly. No codebase search to veri
 | Working with the workflow engine | `docs/workflow/README.md` |
 | Working with FormData multi-entity operations | `FORMDATA_IMPLEMENTATION.md` |
 | Working with customer seed data or onboarding | `docs/arch/customer-seeding.md` |
+| Investigating or fixing a bug file | `docs/bugs/README.md` |
 
 ---
 

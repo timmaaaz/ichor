@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-extract_test_failures.py — run go test -json, write failures to .claude/bugs/open/
+extract_test_failures.py — run go test -json, write failures to docs/bugs/open/
 
 Usage:
     ./scripts/extract_test_failures.py ./api/cmd/services/ichor/tests/...
@@ -186,11 +186,11 @@ def write_failure_file(path: pathlib.Path, package: str, test: str,
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Extract go test -json failures to .claude/bugs/open/"
+        description="Extract go test -json failures to docs/bugs/open/"
     )
     parser.add_argument("packages", nargs="*", help="Go package paths (passed to go test)")
-    parser.add_argument("--output-dir", default=".claude/bugs/open",
-                        help="Directory to write .md files (default: .claude/bugs/open)")
+    parser.add_argument("--output-dir", default="docs/bugs/open",
+                        help="Directory to write .md files (default: docs/bugs/open)")
     parser.add_argument("--refresh-package", default=None,
                         help="Only clear/refresh bug files matching this package prefix "
                              "(e.g., workflowsaveapi). Skips SUMMARY.md update.")

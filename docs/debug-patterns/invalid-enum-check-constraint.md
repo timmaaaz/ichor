@@ -15,3 +15,5 @@
 **Examples**:
 - `lottrackingsapi_Test_ProductCost_create-200-basic.md` — `QualityStatus: "poor"` and `"perfect"` used in create/update tests; valid values are `good/on_hold/quarantined/released/expired`; fixed by changing to `"good"`
 - `transferorderapi_Test_InventoryLocations_update-200-basic.md` — `Status: "Adjustment"` used in update test; DB CHECK constraint requires `"pending"` (and other valid states); fixed by changing to `"pending"`
+- `inspectionbus_Test_Inspections_create-Create.md` — `Status: "Pending"` (capitalized) used in create; CHECK constraint requires lowercase `"pending"`
+- `inspectionbus_Test_Inspections_update-Update.md` — `Status: "In Progress"` used in update; not a valid CHECK value; fixed by changing to `"passed"`
