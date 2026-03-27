@@ -1,0 +1,207 @@
+== ARCH FILE SUMMARY: mcp.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Standalone MCP (Model Context Protocol) server exposing Ichor capabilities to LLM agents
+- Separate Go module (mcp/ directory) with zero imports of Ichor packages
+- Communicates exclusively via Ichor REST API (HTTP + JWT auth)
+- Transport: stdio (JSON-RPC over stdin/stdout)
+- 39 tools available in 3 context modes (all/workflow/tables)
+- Enables Claude Desktop, Cursor, and other LLM-powered tools to control Ichor
+
+MODULE STRUCTURE:
+
+```
+mcp/ (separate Go module, mcp/go.mod)
+  ├── main.go                    CLI entrypoint (--token, --base-url, --context flags)
+  ├── client/client.go           HTTP client wrapper + auth
+  ├── tools/                     Tool registration (one file per domain)
+  │   └── register.go            Aggregator calling RegisterXyzTools
+  ├── resources/                 5 static + 2 template resources (config:// URIs)
+  └── prompts/                   3 guided prompts (build-workflow, configure-page, design-form)
+```
+
+KEY PROPERTIES:
+- Separate Go module (zero Ichor imports)
+- Communicates via REST API only (no business logic imports)
+- Transport: stdio JSON-RPC (no HTTP server)
+- Single shared JWT token for all operations
+- No caching, no state, no streaming
+- New API fields automatically exposed (all methods return json.RawMessage passthrough)
+
+KEY COMPONENTS:
+
+1. Client [mcp layer]
+   - Location: mcp/client/client.go
+   - Structure:
+     ```
+     baseURL    string
+     token      string
+     httpClient *http.Client   // timeout: 30s
+     ```
+   - Auth: `Authorization: Bearer {token}` on every request
+   - Token source: `--token` CLI flag or `ICHOR_TOKEN` environment variable
+   - Single shared identity (no per-request auth switching)
+   - No caching or state
+
+2. Tool Registration Pattern
+   - Per-domain function: RegisterXyzTools(s *mcp.Server, c *client.Client)
+   - Pattern:
+     ```
+     mcp.AddTool(s, &mcp.Tool{
+       Name:        toolconstant,
+       Description: "...",
+     }, func(ctx, req, args) (*mcp.CallToolResult, any, error) {
+       result, err := c.SomeMethod(ctx, ...)
+       if err != nil { return errorResult(err.Error()) }
+       return jsonResult(result)
+     })
+     ```
+   - Args struct: uses `json:"field" jsonschema:"description,required"` tags
+   - JSON Schema auto-generated from struct tags
+   - No-arg tools use `_ struct{}` parameter
+
+3. Context Modes
+   - Flag: `--context` at startup (default likely "all")
+   - Three modes available:
+
+   Mode "all" (39 tools):
+     - All discovery, UI read/write, workflow, search
+
+   Mode "workflow" (16 tools):
+     - Discovery: 5 tools (DiscoverEntityTypes, DiscoverActionTypes, etc.)
+     - Read: 3 tools (GetWorkflow, ListWorkflows, ListWorkflowRules)
+     - Write: 3 tools (ValidateWorkflow, CreateWorkflow, UpdateWorkflow)
+     - Search: 2 tools (SearchDatabaseSchema, SearchEnums)
+     - Analysis: 3 tools (AnalyzeWorkflow, SuggestTemplates, ShowCascade)
+
+   Mode "tables" (20 tools):
+     - Discovery: 2 tools (DiscoverConfigSurfaces, DiscoverFieldTypes)
+     - Read: 7 tools (GetPageConfig, GetTableConfig, GetFormDef, etc.)
+     - Search: 2 tools
+     - Write: 8 tools (CreatePageConfig, UpdatePageConfig, CreateForm, etc.)
+     - Validate: 1 tool (PreviewWorkflow)
+
+4. Tools By Category (39 total)
+
+   Discovery (workflow): 5
+     - DiscoverEntityTypes, DiscoverActionTypes, others
+
+   Discovery (tables): 2
+     - DiscoverConfigSurfaces, DiscoverFieldTypes
+
+   Workflow read: 5
+     - GetWorkflow, ListWorkflows, ListWorkflowRules, ExplainWorkflowNode, ExplainWorkflowPath
+
+   Workflow write: 3
+     - ValidateWorkflow, CreateWorkflow, UpdateWorkflow
+
+   Workflow analysis: 3
+     - AnalyzeWorkflow, SuggestTemplates, ShowCascade
+
+   UI read: 7
+     - GetPageConfig, GetTableConfig, GetFormDef, ListPages, ListForms, ListTableCfgs, others
+
+   UI write: 8
+     - CreatePageConfig, UpdatePageConfig, CreatePageContent, UpdatePageContent
+     - CreateForm, AddFormField, CreateTableConfig, UpdateTableConfig
+
+   Search: 2
+     - SearchDatabaseSchema, SearchEnums
+
+   Validation: 1
+     - PreviewWorkflow (dry-run)
+
+   Page actions: 3
+     - ApplyColumnChange, ApplyFilterChange, ApplySortChange (and similar)
+
+5. Resources (MCP Resources)
+   - URI scheme: config://
+   - 5 static resources:
+     * Workflow schema
+     * Tables schema
+     * DB introspection
+     * Tool catalog
+     * Field types reference
+   - 2 template resources:
+     * Context-specific schema subsets (generated per query)
+
+6. Prompts (MCP Prompts)
+   - 3 guided workflows (pre-load context for agent):
+     * build-workflow: discovery context for workflow creation
+     * configure-page: page/table config context
+     * design-form: form field schema context
+   - Pre-load reduces token usage + improves quality
+
+7. Agent Infrastructure [api layer]
+   - Five dedicated API packages in Ichor for agent self-discovery:
+     * catalogapi: tool catalog listing
+     * referenceapi: enum/entity reference data
+     * formfieldschemaapi: field schema definitions
+     * configschemaapi: config type schemas
+     * introspectionapi: DB schema introspection
+   - Consumed by: MCP resources + in-app agent chat (ToolIndex RAG)
+   - Validation-first pattern: create/update workflows call validate endpoint before commit
+
+CRITICAL DESIGN POINTS:
+
+Module Separation:
+  - Zero imports of Ichor packages (true separation)
+  - Only imports: MCP SDK (github.com/mark3labs/mcp-go)
+  - Communication exclusively via REST API (no direct Go dependencies)
+  - Enables independent versioning + deployment
+
+Auth Model:
+  - Single shared JWT token for all tool calls
+  - Set once at startup (--token flag or ICHOR_TOKEN env var)
+  - Forwarded on every HTTP request
+  - No per-request auth switching (limitations: per-user auth would require passing credentials per tool call, not supported by stdio transport)
+
+Tool Exposure:
+  - 39 tools organized in categories
+  - Context modes filter tool availability (all/workflow/tables)
+  - Tools are REST API wrappers (thin layer)
+  - All client methods return json.RawMessage (passthrough, no deserialization)
+  - New API fields automatically available (no MCP changes needed)
+
+Performance:
+  - HTTP client timeout: 30s per request
+  - No caching (requests hit API every time)
+  - Stdio transport (no TCP overhead)
+  - JSON-RPC over stdin/stdout
+
+EXTENSION PATTERNS:
+
+To add new MCP tool:
+  1. Create/edit mcp/tools/{domain}_tools.go with RegisterXyzTools function
+  2. Call new RegisterXyzTools in mcp/tools/register.go aggregator
+  3. Add HTTP method in mcp/client/client.go if new Ichor endpoint needed
+  4. Add constant to business/sdk/toolcatalog if tool also in agent-chat
+  5. Add tool to context mode filters in mcp/main.go
+
+To change context modes:
+  1. Edit mcp/main.go context mode filter maps
+  2. Add/remove tool names per mode
+  3. Update tool count table in README.md
+
+To change MCP client auth:
+  1. Edit mcp/client/client.go auth header injection
+  2. Edit mcp/main.go --token flag / ICHOR_TOKEN env var parsing
+  3. Note: token is shared identity; per-user auth would require per-call credential passing
+
+VERIFIED FACTS:
+- 39 tools total (39 exposed in "all" mode)
+- 3 context modes (all=39, workflow=16, tables=20)
+- Single shared JWT token
+- Separate Go module (mcp/go.mod)
+- MCP SDK only import (no Ichor imports)
+- stdio transport (JSON-RPC)
+- HTTP timeout: 30s
+- JSON Schema auto-generated from struct tags
+
+RELATIONSHIP TO AGENT-CHAT:
+- MCP tools expose subset of agent-chat tools
+- Both use tool catalog constants (business/sdk/toolcatalog)
+- MCP is external-facing (Claude Desktop, Cursor)
+- Agent-chat is internal (in-app LLM)
+- Shared infrastructure: referenceapi, catalogapi, introspectionapi

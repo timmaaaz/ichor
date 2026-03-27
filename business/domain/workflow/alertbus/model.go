@@ -41,6 +41,7 @@ type Alert struct {
 	SourceEntityID   uuid.UUID       `json:"source_entity_id"`
 	SourceRuleID     uuid.UUID       `json:"source_rule_id"`
 	SourceRuleName   string          `json:"source_rule_name,omitempty"`
+	ActionURL        string          `json:"action_url,omitempty"`
 	Status           string          `json:"status"`
 	ExpiresDate      *time.Time      `json:"expires_date,omitempty"`
 	CreatedDate      time.Time       `json:"created_date"`

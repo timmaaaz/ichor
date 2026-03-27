@@ -1,0 +1,127 @@
+== ARCH FILE SUMMARY: delegate.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Event callback system for domain entities (Create/Update/Delete events)
+- Single shared Delegate instance across all domains (wired in all.go)
+- Thread-safe design: no locking on Call() path (registration happens at startup only)
+- 205 call sites across 65 files in business/domain/ (verified 2026-03-09)
+
+DELEGATE PATTERN:
+
+Purpose: Decouple domains from each other while enabling cross-domain event notification
+- Subscriber registers handler functions at startup
+- Domain publishes events by calling delegate.Call(ctx, data)
+- Delegate routes to registered handler (fail-safe: missing handlers logged, not errored)
+
+KEY COMPONENTS:
+
+1. Delegate [sdk layer]
+   - Location: business/sdk/delegate/delegate.go
+   - Structure:
+     * log *logger.Logger
+     * funcs map[string]map[string][]Func (nested: domain → action → handlers list)
+   - Methods:
+     * Register(domainType, actionType, fn Func) - startup registration
+     * Call(ctx context.Context, data Data) error - dispatch event (205 call sites)
+   - Thread safety: read-after-startup (no locks on Call path)
+   - Single instance shared across all domains
+
+2. Data [sdk layer]
+   - Location: business/sdk/delegate/model.go
+   - Structure:
+     ```
+     Domain    string     // e.g., "sales.order"
+     Action    string     // e.g., "order.created"
+     RawParams []byte     // JSON-encoded event payload
+     ```
+   - Func signature: func(context.Context, Data) error
+
+STANDARD ACTION CONSTANTS:
+
+Every domain defines three action types:
+  - ActionCreated  = "{entity}.created"
+  - ActionUpdated  = "{entity}.updated"
+  - ActionDeleted  = "{entity}.deleted"
+
+Payload structure (JSON-encoded in RawParams):
+  - ActionCreated  → { EntityID uuid, UserID uuid, Entity T }
+  - ActionUpdated  → { EntityID uuid, UserID uuid, Entity T, BeforeEntity T }
+  - ActionDeleted  → { EntityID uuid, UserID uuid, Entity T }
+
+Publishing pattern in every [bus] domain:
+```
+// In Create methods
+delegate.Call(ctx, ActionCreatedData(entity))  // after DB write succeeds
+
+// In Update methods
+delegate.Call(ctx, ActionUpdatedData(before, after))
+
+// In Delete methods
+delegate.Call(ctx, ActionDeletedData(entity))
+```
+
+CURRENT SUBSCRIBERS:
+
+As of 2026-03-27:
+- Workflow DelegateHandler: business/sdk/workflow/temporal/delegatehandler.go
+  * Listens to all entity create/update/delete events
+  * Triggers workflow rules matching the event's domain/action
+  * Executes workflows via Temporal engine
+  * Decodes RawParams via reflection
+
+CALL SITE DISTRIBUTION:
+
+205 verified Call() sites spread across:
+- 65 files in business/domain/ (primarily {entity}bus Create/Update/Delete methods)
+- Concentrated in domain Create/Update/Delete operations
+- Each domain responsible for calling its own action types
+
+EXTENSION PATTERNS:
+
+To add a new domain that calls delegate.Call():
+  1. Define action constants in {entity}bus.go:
+     - ActionCreated, ActionUpdated, ActionDeleted (string constants)
+     - ActionCreatedData(entity) helper
+     - ActionUpdatedData(before, after) helper
+     - ActionDeletedData(entity) helper
+  2. Call delegate.Call() in Create/Update/Delete methods
+  3. Pass *delegate.Delegate to NewBusiness (wired in all.go)
+
+To register a new subscriber:
+  1. Implement Func signature: func(context.Context, Data) error
+  2. Call delegate.Register(domain, action, fn) in all.go at startup
+  3. Handle missing handlers gracefully (Delegate logs them)
+
+To change Data struct shape:
+  1. Edit business/sdk/delegate/model.go (Data struct)
+  2. Update ALL 205 call sites with ActionCreatedData/etc helpers
+  3. Update temporal/delegatehandler.go to decode new RawParams format
+  4. Verify with findReferences before mass edit (ensure exact count matches)
+
+CRITICAL DESIGN POINTS:
+- No return value used by callers (fire-and-forget semantics)
+- Handlers run synchronously in Call() path
+- Missing handlers are logged but don't block (fail-safe)
+- RawParams is JSON-encoded for flexibility (can add fields without Data struct changes)
+- Single Delegate instance prevents duplicate registrations
+- Action constants pattern ({entity}.{action}) prevents naming collisions
+- Subscriber registration happens only at startup (thread-safe by design)
+
+VERIFIED FACTS (2026-03-09):
+- 205 Call() sites confirmed via findReferences
+- 65 files in business/domain/ contain call sites
+- Single DelegateHandler subscriber (Temporal-based)
+- Three standard action types per domain (Created/Updated/Deleted)
+
+THREAD SAFETY:
+- Registration phase (startup): no concurrency (single-threaded wiring)
+- Call phase (runtime): no locks needed (read-only funcs map)
+- Concurrent calls to Call() are safe (read-only operations)
+- Handler execution is synchronous (blocking until handler returns)
+
+MEMORY CONSIDERATIONS:
+- One Delegate instance for entire system
+- funcs map grows with each Register() call
+- No automatic cleanup (handlers live until server shutdown)
+- Small memory footprint (just function pointers and strings)

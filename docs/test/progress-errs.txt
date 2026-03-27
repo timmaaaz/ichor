@@ -1,0 +1,139 @@
+== ARCH FILE SUMMARY: errs.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- App-layer error code system mapping gRPC-style status codes to HTTP statuses
+- Centralized error handling for consistent API responses
+- Two error types: general ErrCode + validation FieldErrors
+- 1,065 usages of errs.New (151 files), 616 usages of errs.NewFieldsError (138 files)
+
+ERROR CODES AND HTTP STATUS MAPPING:
+
+ErrCode Constants (20 total):
+  OK (0)                 → HTTP 200
+  NoContent (1)          → HTTP 204
+  Canceled (2)           → HTTP 504
+  Unknown (3)            → HTTP 500
+  InvalidArgument (4)    → HTTP 400
+  DeadlineExceeded (5)   → HTTP 504
+  NotFound (6)           → HTTP 404
+  AlreadyExists (7)      → HTTP 409
+  PermissionDenied (8)   → HTTP 403
+  ResourceExhausted (9)  → HTTP 429
+  FailedPrecondition (10) → HTTP 400
+  Aborted (11)           → HTTP 409
+  OutOfRange (12)        → HTTP 400
+  Unimplemented (13)     → HTTP 501
+  Internal (14)          → HTTP 500
+  Unavailable (15)       → HTTP 503
+  DataLoss (16)          → HTTP 500
+  Unauthenticated (17)   → HTTP 401
+  TooManyRequests (18)   → HTTP 429
+  InternalOnlyLog (19)   → HTTP 500
+
+CORE COMPONENTS:
+
+1. ErrCode [sdk layer]
+   - Location: app/sdk/errs/errs.go
+   - Type: struct { value int }
+   - Purpose: map semantic error codes to HTTP status codes
+   - Used by: all [app] and [api] layers
+   - Method: errs.New(code ErrCode, msg string) error
+   - Usage count: 1,065 across 151 files (verified 2026-03-09)
+
+2. FieldError [sdk layer]
+   - Location: app/sdk/errs/errs.go
+   - Structure:
+     ```
+     Field string `json:"field"`    // which field failed validation
+     Err   string `json:"error"`    // why it failed
+     ```
+   - Type: FieldErrors []FieldError (implements error interface)
+   - Method: NewFieldsError(field string, err error) FieldErrors
+   - JSON serialization: [{"field":"name","error":"is required"}]
+   - Usage count: 616 across 138 files (verified 2026-03-09)
+   - Used for: validation failures (returned in HTTP 400 response body)
+
+COMMON USAGE PATTERNS:
+
+For general errors:
+  errs.New(errs.NotFound, "order not found")              // 404 response
+  errs.New(errs.InvalidArgument, "invalid email format")  // 400 response
+  errs.New(errs.Unauthenticated, "invalid token")         // 401 response
+  errs.New(errs.Internal, "database connection failed")   // 500 response
+
+For validation errors:
+  errs.NewFieldsError("name", errors.New("is required"))
+  errs.NewFieldsError("email", errors.New("invalid format"))
+  → returns FieldErrors slice (implements error interface)
+  → encoded in HTTP 400 response body as JSON array
+
+For missing resources:
+  errs.NotFound (constant, shorthand for errs.New(errs.NotFound, ...))
+
+For validation failures:
+  errs.InvalidArgument (constant, 400 status)
+
+For authentication failures:
+  errs.Unauthenticated (constant, 401 status)
+
+RESPONSE STRUCTURE:
+
+HTTP 2xx/3xx/4xx/5xx:
+  Status Code: determined by ErrCode mapping
+  Body: depends on error type
+    - General errors: { "error": "message" }
+    - Validation errors: [{"field": "name", "error": "is required"}]
+
+VERIFIED FACTS (2026-03-09):
+- 20 ErrCode constants defined
+- 1,065 errs.New() call sites (151 files in app/ and api/)
+- 616 errs.NewFieldsError() call sites (138 files)
+- HTTP status mapping covers all standard codes + custom (TooManyRequests, InternalOnlyLog)
+
+EXTENSION PATTERNS:
+
+To add a new ErrCode:
+  1. Define constant in app/sdk/errs/errs.go with value N
+  2. Add HTTP status mapping (switch or map): N → HTTP status code
+  3. No app/api files need changes (backward compatible)
+  4. Example: errs.NewErrCode = 20; add mapping 20 → 418
+
+To return validation error from [app] layer:
+  1. Call errs.NewFieldsError("fieldname", errValue) in validation
+  2. Implement Validate() method on New{Entity}/Update{Entity}
+  3. Return FieldErrors directly (implements error interface)
+  4. HTTP layer automatically encodes as JSON array in 400 response
+
+To change FieldError struct:
+  1. Modify struct definition + JSON tags (app/sdk/errs/errs.go)
+  2. Update ALL 138 call sites if changing field names
+  3. Update frontend API client (parses field + error keys)
+  4. Verify with findReferences before mass edit
+
+CRITICAL DESIGN POINTS:
+- All ErrCodes map to standard HTTP statuses (no custom status codes)
+- FieldErrors is a slice of FieldError (JSON array, not object)
+- FieldErrors implements error interface (can be returned as error)
+- NewFieldsError accepts error value (wraps validation errors from [app] layer)
+- ErrCode constants follow gRPC status code semantics
+- HTTP status mapping is centralized (single source of truth)
+- 1,065 errs.New usages verified (high code coverage)
+- 616 errs.NewFieldsError usages verified (validation is pervasive)
+
+LAYERING:
+- [sdk]: ErrCode + FieldError definitions (app/sdk/errs/)
+- [app]: validation layer calls NewFieldsError, returns FieldErrors
+- [api]: HTTP layer receives errors + encodes as HTTP responses based on ErrCode
+
+PERFORMANCE CONSIDERATIONS:
+- ErrCode is just an int (fast comparison)
+- FieldErrors is slice of structs (minimal allocation overhead)
+- Error wrapping is cheap (ErrCode has no additional fields)
+- FieldError has exactly 2 fields (Field, Err strings)
+
+BACKWARD COMPATIBILITY:
+- Adding new ErrCode is backward compatible (existing codes unchanged)
+- Changing FieldError struct requires updating all 138 call sites AND frontend
+- Adding new validation error (NewFieldsError call) is backward compatible
+- Changing HTTP status mapping may break clients expecting specific codes

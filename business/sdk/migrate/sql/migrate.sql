@@ -2384,3 +2384,11 @@ SELECT gen_random_uuid(), id, 'inventory.cycle_count_items', true, true, true, t
 ALTER TABLE inventory.inventory_adjustments DROP CONSTRAINT inventory_adjustments_reason_code_check;
 ALTER TABLE inventory.inventory_adjustments ADD CONSTRAINT inventory_adjustments_reason_code_check
     CHECK (reason_code IN ('damaged', 'theft', 'data_entry_error', 'receiving_error', 'picking_error', 'found_stock', 'other', 'cycle_count'));
+
+-- Version: 2.24
+-- Description: Add serial_id column to inventory_transactions for serial number traceability.
+ALTER TABLE inventory.inventory_transactions ADD COLUMN serial_id UUID NULL REFERENCES inventory.serial_numbers(id);
+
+-- Version: 2.25
+-- Description: Add action_url column to alerts for deep-linking from notifications.
+ALTER TABLE workflow.alerts ADD COLUMN action_url TEXT NULL;

@@ -1,0 +1,185 @@
+== ARCH FILE SUMMARY: inventory-ops.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Two complementary systems: PutAwayTask (state machine) + Scan (barcode fan-out)
+- PutAwayTask: manages 3-way atomic writes (task status + inventory transaction + item upsert)
+- ScanApp: concurrent barcode scanning with priority-based result selection
+- Isolation: sql.LevelReadCommitted for put-away completions
+
+KEY COMPONENTS:
+
+1. PutAwayTask StateMachine
+   - States: Pending → InProgress → Completed ↘ Cancelled
+   - Terminal guard: no transitions out of Completed or Cancelled
+   - Transition side effects:
+     * → InProgress: auto-assign (assigned_to = current user, assigned_at = now())
+     * → Completed: triggers 3-way atomic write (see below)
+     * → Cancelled: plain update, no side effects
+
+2. PutAwayTaskApp [app layer]
+   - Location: app/domain/inventory/putawaytaskapp/putawaytaskapp.go
+   - Structure:
+     ```
+     putAwayTaskBus    *putawaytaskbus.Business
+     invTransactionBus *inventorytransactionbus.Business
+     invItemBus        *inventoryitembus.Business
+     db                *sqlx.DB (direct DB access for transaction control)
+     ```
+   - Methods:
+     * Create(ctx, NewPutAwayTask) (PutAwayTask, error)
+     * Update(ctx, taskID, UpdatePutAwayTask) (PutAwayTask, error)
+     * Delete(ctx, taskID) error
+     * Query(ctx, QueryParams) (query.Result[PutAwayTask], error)
+     * QueryByID(ctx, taskID) (PutAwayTask, error)
+   - Status constants: "pending", "in_progress", "completed", "cancelled"
+
+3. 3-Way Atomic Write (Completed transition)
+   - TX isolation: sql.LevelReadCommitted
+   - Step 1: UPDATE inventory.put_away_tasks
+     * Set status=completed, completed_by=userID, completed_at=now()
+     * Marks task as complete (permanent record)
+   - Step 2: INSERT inventory.inventory_transactions
+     * New PUT_AWAY ledger record
+     * Fields: ProductID, LocationID, UserID, Quantity, TransactionDate
+     * Creates audit trail of physical movement
+   - Step 3: UPSERT inventory.inventory_items
+     * Adds Quantity at (ProductID + LocationID) destination
+     * Creates row if absent (INSERT), updates if exists (UPDATE)
+     * Synchronizes in-memory inventory to actual location
+   - All 3 writes in single transaction (atomicity guaranteed)
+
+4. ScanApp [app layer]
+   - Location: app/domain/inventory/scanapp/scanapp.go
+   - Structure:
+     ```
+     productBus       *productbus.Business
+     inventoryItemBus *inventoryitembus.Business
+     locationBus      *inventorylocationbus.Business
+     lotTrackingsBus  *lottrackingsbus.Business
+     serialNumberBus  *serialnumberbus.Business
+     ```
+   - Main method: Scan(ctx, barcode string) (ScanResult, error)
+
+5. Fan-Out Pattern (ScanApp.Scan)
+   - Launches 4 concurrent goroutines (sync.WaitGroup, wg.Add(4)):
+     * goroutine 1: productBus.QueryByUPC(barcode)
+     * goroutine 2: locationBus.QueryByCode(barcode)
+     * goroutine 3: lotTrackingsBus.QueryByLotNumber(barcode)
+     * goroutine 4: serialNumberBus.QueryBySerialNumber(barcode)
+   - Each goroutine:
+     * Guards shared result slice with sync.Mutex
+     * Fail-open: individual query errors skip (never block other goroutines)
+   - wg.Wait() after all 4 launches
+   - Priority selection determines final result
+
+6. Scan Result Priority
+   Highest to lowest:
+     1. serial   — serial number match (most specific)
+     2. lot      — lot number match
+     3. product  — UPC code match
+     4. location — location code match
+     5. unknown  — no match (ScanResult{Type: "unknown", Data: nil})
+
+   First matching type in priority order wins; lower-priority results discarded
+
+7. Per-Type Enrichment (ScanApp)
+   - serial:
+     * Call: serialNumberBus.QueryLocationBySerialID(sn.SerialID)
+     * Returns: LocationID, LocationCode, Aisle, Rack, Shelf, Bin, WarehouseName, ZoneName
+     * Fail-open: partial result without location on error
+
+   - lot:
+     * Call: lotTrackingsBus.QueryLocationsByLotID(lot.LotID)
+     * Returns: []Location{LocationID, LocationCode, Aisle, Rack, Shelf, Bin, Quantity}
+     * Fail-open: empty locations list on error
+
+   - product:
+     * Call: inventoryItemBus.QueryWithLocationDetails(filter{ProductID}, page "1-100")
+     * Returns: []InventoryItem{LocationID, LocationCode, Quantity, ReservedQuantity}
+     * Fail-open: nil items on error
+
+   - location:
+     * Call: inventoryItemBus.QueryItemsWithProductAtLocation(loc.LocationID)
+     * Returns: []Product{ProductID, ProductName, ProductSKU, TrackingType, Quantity}
+     * Fail-open: nil items on error
+
+DATABASE OPERATIONS:
+
+PutAwayTask reads:
+  ⊗ inventory.put_away_tasks (query, detail)
+
+PutAwayTask writes:
+  ⊕ inventory.put_away_tasks (update status)
+  ⊕ inventory.inventory_transactions (insert ledger record)
+  ⊕ inventory.inventory_items (upsert inventory location)
+
+ScanApp reads (fan-out concurrent):
+  ⊗ products table (by UPC)
+  ⊗ inventory.locations (by code)
+  ⊗ inventory_tracking/lot_trackings (by lot number)
+  ⊗ inventory_tracking/serial_numbers (by serial)
+  ⊗ inventory.inventory_items (by location + product)
+
+CRITICAL DESIGN POINTS:
+
+PutAwayTask:
+  - 3-way write is atomic (all succeed or all fail together)
+  - Status transitions are terminal (Completed/Cancelled have no exits)
+  - Auto-assignment on InProgress transition reduces manual step
+  - Completed transition creates both task record AND ledger record
+  - Upsert on inventory_items handles first-time items automatically
+
+ScanApp:
+  - Fan-out concurrency (all 4 queries run in parallel)
+  - Fail-open design (individual query failures don't block result)
+  - Priority-based selection prevents ambiguous results
+  - Mutex guards on result writing (thread-safe shared slice)
+  - Per-type enrichment provides context (location details, quantities)
+  - Barcode is versatile (matches UPC, serial, lot, location codes)
+
+ISOLATION AND TRANSACTIONS:
+  - Put-away completion uses sql.LevelReadCommitted
+  - Prevents dirty reads but allows phantom reads
+  - Sufficient for inventory operations (reads are lookups, not aggregations)
+  - Higher isolation (Serializable) not needed (sequential arrival OK)
+
+EXTENSION PATTERNS:
+
+To add new put-away status transition:
+  1. Add status constant (putawaytaskbus/putawaytaskbus.go)
+  2. Add transition switch + side effects (putawaytaskapp/putawaytaskapp.go)
+  3. Add status value to migration if new (business/sdk/migrate/sql/migrate.sql)
+  4. Update tests (api/cmd/services/ichor/tests/inventory/putawaytaskapi/)
+
+To add new scan result type (new barcode domain):
+  1. Add goroutine in wg.Add(N) and launch it
+  2. Add new *ScanResult struct + type constant (scanapp/model.go)
+  3. Add to priority check in result selection
+  4. Update consumers (pickingapp or other users of Scan)
+
+To change 3-way write (add/remove steps):
+  1. Update complete() method (putawaytaskapp/putawaytaskapp.go)
+  2. Keep all writes in single BeginTx block (atomicity requirement)
+  3. Add table/column migration if new write targets new schema
+  4. Verify atomic behavior in integration tests
+
+PERFORMANCE CONSIDERATIONS:
+  - Fan-out parallelism: 4 queries run concurrently (vs. sequential)
+  - Mutex contention on result slice: minimal (only on successful query)
+  - Priority selection: O(4) constant-time operation
+  - 3-way write: 3 sequential database operations in single transaction
+  - sql.LevelReadCommitted: no exclusive locks (higher concurrency)
+
+VERIFIED FACTS:
+  - 4 concurrent goroutines in ScanApp (fixed, not configurable)
+  - 5 result priority levels (serial > lot > product > location > unknown)
+  - 3 atomic writes in PutAwayTask.Completed (not 2, not 4)
+  - Terminal states prevent invalid transitions
+  - Fail-open semantics (never cascade errors)
+
+ERROR HANDLING:
+  - PutAwayTask errors: DB errors returned directly (no masking)
+  - ScanApp errors: fail-open (individual query errors skipped, not returned)
+  - 3-way write: all-or-nothing (transaction rollback on any error)
+  - Enrichment errors: partial results returned (fail-open)

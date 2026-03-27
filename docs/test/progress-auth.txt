@@ -1,0 +1,139 @@
+== ARCH FILE SUMMARY: auth.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Two-layer authentication and authorization system
+- JWT validation (app/sdk/auth) + RBAC permission checks (permissionsbus)
+- Middleware-based: request → Authenticate → Authorize → handler
+- Table-level access checked separately via AuthorizeTable middleware
+
+AUTH PIPELINE:
+1. Request received
+2. Authenticate middleware (JWT validation + blocklist check)
+3. Authorize/AuthorizeTable middleware (permission checks)
+4. Handler execution with Claims in context
+
+KEY COMPONENTS:
+
+1. Auth [sdk layer]
+   - Location: app/sdk/auth/auth.go
+   - Methods:
+     * Authenticate(ctx, bearerToken) - validates JWT + user enabled + blocklist check
+     * Authorize(ctx, claims, userID, rule) - permission check
+     * GenerateToken(kid, claims) - creates new JWT (auto-assigns jti via uuid.NewString())
+   - Config.Blocklist optional (when set, revoked JTIs rejected)
+   - SigningMethod: configurable (interface-based)
+   - KeyLookup: interface for finding signing keys by kid
+   - Dependencies: userbus, approvalbus
+
+2. Blocklist [sdk layer]
+   - Location: app/sdk/auth/blocklist.go
+   - In-memory revoked JTI store: map[jti]expiresAt (thread-safe)
+   - Background cleanup goroutine: purges expired entries every 5 minutes
+   - Methods:
+     * Add(jti, expiresAt) - records revoked token
+     * IsRevoked(jti) - returns true if present AND not expired
+   - Handles jti="" as no-op in both Add and IsRevoked
+   - Multi-node deployments require replacing with Redis/DB (shared store)
+   - Must call Stop() on graceful shutdown (stops cleanup goroutine)
+
+3. PermissionsBus [bus layer]
+   - Location: business/domain/core/permissionsbus/permissionsbus.go
+   - Main method: QueryUserPermissions(ctx, userID) → UserPermissions (cached)
+   - Dependencies: RolesBus, UserRolesBus, TableAccessBus
+   - Delegate subscriber: ClearCache() clears both role and table access caches on relevant events
+   - 88 references in codebase (verified via LSP)
+
+4. RoleCache [cache layer using Sturdyc]
+   - Location: business/domain/core/rolebus/stores/rolecache/rolecache.go
+   - Configuration: TTL=60min, Capacity=10000, Shards=10
+   - Cache-first methods:
+     * QueryByID(ctx, id) - single role lookup
+     * QueryByIDs(ctx, ids) - batch lookup with partial cache hits
+   - Write-through methods (DB write → cache update):
+     * Create, Update, Delete
+   - Pass-through (no cache):
+     * Query (with filter/orderBy/pagination)
+     * Count, QueryAll, NewWithTx
+
+5. TableAccessCache [cache layer using Sturdyc]
+   - Location: business/domain/core/tableaccessbus/stores/tableaccesscache/tableaccesscache.go
+   - Configuration: TTL=60min, Capacity=10000, Shards=10
+   - Cached methods:
+     * QueryByID(ctx, id) - single lookup (cache-first)
+     * QueryByRoleIDs(ctx, roleIDs) - batch lookup, fills cache for all results
+     * QueryAll(ctx) - fills entire cache
+   - Write-through: Create, Update, Delete
+   - Pass-through: Query (with filter/orderBy/pagination), Count, NewWithTx
+
+6. Middleware [app + api layers]
+   - Location: app/sdk/mid/ (and mirror in api/sdk/http/mid/)
+   - Context key injection: userIDKey (uuid.UUID), claimKey (auth.Claims), userKey (User), homeKey (Home), trKey (CommitRollbacker)
+
+   Authentication variants:
+   - Authenticate(client *authclient.Client, authorization) - remote auth service
+   - Bearer(ath *auth.Auth, authorization) - local JWT path
+   - Basic(ath *auth.Auth, userBus, authorization) - HTTP Basic auth
+
+   Authorization variants:
+   - Authorize(client, rule) - rule-only check via auth service
+   - AuthorizeTable(client, permissionsBus, tableInfo, rule) - table-level RBAC (most common)
+   - AuthorizeUser(client, userBus, rule, id) - ownership check
+   - AuthorizeHome(client, homeBus, id) - home-specific resource ownership
+
+   Other middleware:
+   - BeginCommitRollback(ctx, log, bgn, next) - transaction handling
+     * Injects CommitRollbacker into context
+     * Begin() fail → errs.Internal
+     * Commit() fail → errs.Internal
+     * Rollback() errors logged only (sql.ErrTxDone ignored)
+
+AUTHENTICATION FAILURES:
+- All auth middleware return errs.New(errs.Unauthenticated, err) → HTTP 401
+
+CRITICAL DESIGN POINTS:
+- bcryptCost = 12 (not default 10) — applied in userbus Create and Update
+- Authenticate must precede Authorize in middleware chain
+- Blocklist is optional configuration (nil = no revocation support)
+- JTI empty string ("") is no-op in both Add and IsRevoked
+- Cache invalidation happens via delegate subscribers (event-driven)
+- Both role and table access caches MUST use same TTL/Capacity (60min/10000)
+- Table-level access checked separately from JWT validation
+
+EXTENSION PATTERNS:
+
+To revoke a token (logout):
+  1. Call blocklist.Add(jti, expiresAt) with token expiry time
+  2. Authenticate() will check blocklist on next request
+  3. Must call auth.Authenticate() to verify signature before blocklisting
+
+To add a new permission rule/action:
+  1. Add rule constant if needed (permissionsbus/permissionsbus.go)
+  2. If new resource type, add new Authorize* variant (app/sdk/mid/authorize.go)
+  3. Pass rule string to AuthorizeTable call (api/domain/http/{area}/{entity}api/route.go)
+  4. Seed default role permissions if required (business/sdk/migrate/sql/migrate.sql)
+
+To change Sturdyc settings:
+  1. Modify independently in both rolebus and tableaccessbus (same values but separate configs)
+  2. Changes to TTL/Capacity affect performance and memory usage
+  3. ClearCache() delegate subscriber clears both caches on relevant events
+
+To add middleware to route chain:
+  1. Implement new middleware in app/sdk/mid/{middleware}.go (HandlerFunc → Encoder pattern)
+  2. Add to route handler chain (api/domain/http/{area}/{entity}api/route.go)
+  3. Register context key definitions if needed (app/sdk/mid/mid.go)
+  4. Authenticate must precede Authorize (ordering matters)
+
+To add a new context key:
+  1. Define key type in app/sdk/mid/mid.go
+  2. Create Set*/Get* helpers in same file
+  3. Middleware calls setXxx(ctx, value) to inject
+  4. Callers call GetXxx(ctx) to extract (compile error if missing)
+
+VERIFIED FACTS:
+- bcryptCost = 12 (constant, not configurable)
+- TTL for both caches = 60 minutes
+- Capacity for both caches = 10000 entries
+- Shards for both caches = 10
+- All authentication failures return HTTP 401
+- Logout requires both signature verification AND blocklist recording

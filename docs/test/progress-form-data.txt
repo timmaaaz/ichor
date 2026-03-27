@@ -1,0 +1,184 @@
+== ARCH FILE SUMMARY: form-data.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Multi-entity transaction system for form submissions
+- Single HTTP POST triggers N entity creates/updates in FK-safe execution order
+- Registry pattern for runtime entity registration without recompilation
+- All operations execute within single database transaction (sql.LevelReadCommitted isolation)
+- Template resolution for FK values (human-readable names → UUIDs)
+
+KEY COMPONENTS:
+
+1. FormdataApp [app layer]
+   - Location: app/domain/formdata/formdataapp/formdataapp.go
+   - Structure:
+     * log *logger.Logger
+     * registry *formdataregistry.Registry (entity registration)
+     * db *sqlx.DB (direct DB access for transaction management)
+     * formBus *formbus.Business (form definitions)
+     * formFieldBus *formfieldbus.Business (field configurations)
+     * templateProc *workflow.TemplateProcessor (template resolution)
+   - Main method: UpsertFormData(ctx, formID uuid.UUID, req FormDataRequest) FormDataResponse
+
+   Key behaviors:
+     - Sorts operations by OperationMeta.Order (FK-safe execution order)
+     - Single DB transaction at sql.LevelReadCommitted isolation
+     - {{entity.id}} templates resolved via TemplateProcessor after each operation
+     - FK values resolved via Registry.Get(name).QueryByNameFunc (name → UUID)
+     - maxArrayItems = 1000 per operation (DoS protection, enforced before tx begins)
+     - Template resolution applied per-item when Data value is array
+
+2. FormDataRequest [API contract]
+   - Structure:
+     ```
+     Operations map[string]OperationMeta     // "orders": {Operation: "create", Order: 1}
+     Data       map[string]json.RawMessage   // "orders": {...} or "line_items": [{...},...]
+     ```
+   - OperationMeta fields:
+     * Operation: "create" | "update" | "delete" (EntityOperation enum)
+     * Order: int (execution sequence, 1 = first)
+   - Data: keyed by entity name, value is raw JSON (single object or array)
+
+3. FormDataResponse [API contract]
+   - Structure:
+     ```
+     Success bool
+     Results map[string]interface{}   // created/updated entity IDs keyed by operation name
+     ```
+   - Returns: mapping of operation name → created/updated IDs
+
+4. Registry [sdk layer]
+   - Location: app/sdk/formdataregistry/ (registry.go, types.go, reflection.go)
+   - Structure:
+     ```
+     mu         sync.RWMutex
+     entities   map[string]*EntityRegistration      // by entity name
+     entityByID map[uuid.UUID]*EntityRegistration  // by entity UUID (optional)
+     ```
+   - Methods:
+     * New() *Registry
+     * Register(reg EntityRegistration) error (by name)
+     * RegisterWithID(entityID uuid.UUID, reg EntityRegistration) error
+     * Get(name string) (*EntityRegistration, error)
+     * GetByID(id uuid.UUID) (*EntityRegistration, error)
+     * ListEntities() []string
+   - Thread-safe: RWMutex guards all access; registration at startup (read-only after)
+
+5. EntityRegistration [sdk layer]
+   - Purpose: runtime registration of entity handlers (no recompilation needed)
+   - Fields:
+     ```
+     Name              string
+     DecodeNew         func(json.RawMessage) (interface{}, error)
+     CreateFunc        func(context.Context, interface{}) (interface{}, error)
+     CreateModel       interface{}
+     DecodeUpdate      func(json.RawMessage) (interface{}, error)
+     UpdateFunc        func(context.Context, uuid.UUID, interface{}) (interface{}, error)
+     UpdateModel       interface{}
+     QueryByNameFunc   func(ctx context.Context, name string) (uuid.UUID, error)
+     ```
+   - Allows: custom decoding + custom CRUD functions + name→UUID lookup
+   - Registered at startup in api/cmd/services/ichor/build/all/all.go
+
+6. FormBus / FormFieldBus [bus layer]
+   - Location:
+     * business/domain/config/formbus/formbus.go
+     * business/domain/config/formfieldbus/formfieldbus.go
+   - Key data:
+     * FormField.Config json.RawMessage contains:
+       - execution_order (int): which operation group this field belongs to
+       - dropdown_config (object): {entity, display_field, inline_create}
+   - Important: LineItemsFieldConfig.ExecutionOrder is UNRELATED to workflow domain
+   - DB tables: config.forms, config.form_fields (read-only in formdataapp)
+
+7. TemplateProcessor [sdk layer]
+   - Location: business/sdk/workflow/ (shared with workflow engine)
+   - Type: workflow.TemplateProcessor
+   - Method: Process(template string, context ActionExecutionContext) string
+   - Features:
+     * {{entity_id}}, {{field_name}} substitution
+     * Dot notation: {{order.customer.email}}
+     * Filters: {{created_date | dateFormat}}
+     * Applied per-item when Data value is array
+     * Resolves after each operation (supports sequential FK references)
+
+EXECUTION FLOW:
+
+1. HTTP request received with FormDataRequest
+2. Parse Operations map + validate OperationMeta.Order
+3. Begin DB transaction (sql.LevelReadCommitted)
+4. For each operation (sorted by Order):
+   a. Decode Data via Registry.Get(name).DecodeNew or DecodeUpdate
+   b. Resolve FK names → UUIDs via Registry.Get(name).QueryByNameFunc
+   c. Execute CreateFunc/UpdateFunc/DeleteFunc
+   d. Resolve {{entity.id}} templates for next operations
+   e. Append created/updated IDs to Results
+5. Commit transaction
+6. Return FormDataResponse with Results map
+
+CRITICAL DESIGN POINTS:
+- Single transaction ensures atomicity across all entities
+- Order-based execution prevents FK constraint violations (child entities after parents)
+- Registry pattern allows adding entities without recompilation
+- Name→UUID resolution decouples UI from internal UUIDs
+- Template processing enables sequential FK references (e.g., lineItem.order_id = {{order.id}})
+- maxArrayItems=1000 prevents memory exhaustion in array operations
+- sql.LevelReadCommitted prevents dirty reads but allows phantom reads
+- TemplateProcessor shared with workflow engine (consistency across domains)
+
+SCHEMA CONSTRAINTS:
+
+FormField Config:
+  - execution_order field stored as JSON (controls operation grouping)
+  - dropdown_config contains entity reference + display field + inline_create flag
+
+Forms table:
+  - FormField.Config is json.RawMessage (parsed at runtime)
+  - No compile-time validation of Config structure
+
+EXTENSION PATTERNS:
+
+To add a new entity to Registry:
+  1. Define EntityRegistration with DecodeNew/DecodeUpdate, CreateFunc, UpdateFunc
+  2. Implement QueryByNameFunc for FK lookup (name → UUID)
+  3. Call registry.Register() or RegisterWithID() at startup (all.go)
+  4. Add seed helper in business/sdk/dbtest/seedmodels/forms.go if needed
+
+To add new OperationMeta field:
+  1. Update OperationMeta struct (app/domain/formdata/formdataapp/model.go)
+  2. Update UpsertFormData to read + apply new field
+  3. Update FORMDATA_IMPLEMENTATION.md design doc
+
+To change transaction isolation level:
+  1. Modify sql.TxOptions in app/domain/formdata/formdataapp/formdataapp.go
+  2. Beware: Serializable isolation may cause serialization failures under concurrent load
+  3. Test thoroughly under load before deploying
+
+To change FormDataRequest.Data field type:
+  1. Update model.go struct definition
+  2. Update ALL HTTP callers (frontend API client + integration tests)
+  3. Update test builders in api/cmd/services/ichor/tests/.../formdataapi/
+  4. All 138+ NewFieldsError usages must be verified for compatibility
+
+VERIFIED FACTS:
+- Registry is thread-safe (RWMutex with read-only after startup pattern)
+- Order sorting prevents FK constraint violations
+- Template resolution happens per-operation (enables FK references)
+- maxArrayItems = 1000 (DoS protection hardcoded)
+- sql.LevelReadCommitted isolation (default, tunable)
+- FormField.ExecutionOrder unrelated to workflow domain (important constraint)
+
+PERFORMANCE CONSIDERATIONS:
+- Single transaction reduces overhead (vs. N separate transactions)
+- Registry lookup is O(1) map access (thread-safe read path is fast)
+- Template processing per-operation may be slow for large arrays (consider pagination)
+- maxArrayItems=1000 bounds array processing cost
+- RWMutex read path scales well (no contention after startup)
+
+RELATIONSHIP TO WORKFLOWS:
+- TemplateProcessor is shared with workflow engine (same syntax/semantics)
+- FormField execution_order is different from workflow execution order
+- Forms are static UI definitions (config domain)
+- Workflows are dynamic rules engine (workflow domain)
+- No direct coupling between forms and workflows
