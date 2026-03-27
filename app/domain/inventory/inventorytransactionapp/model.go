@@ -39,6 +39,7 @@ type InventoryTransaction struct {
 	LocationID             string `json:"location_id"`
 	UserID                 string `json:"user_id"`
 	LotID                  string `json:"lot_id"`
+	SerialID               string `json:"serial_id"`
 	Quantity               string `json:"quantity"`
 	TransactionType        string `json:"transaction_type"`
 	ReferenceNumber        string `json:"reference_number"`
@@ -58,12 +59,18 @@ func ToAppInventoryTransaction(bus inventorytransactionbus.InventoryTransaction)
 		lotID = bus.LotID.String()
 	}
 
+	serialID := ""
+	if bus.SerialID != nil {
+		serialID = bus.SerialID.String()
+	}
+
 	return InventoryTransaction{
 		InventoryTransactionID: bus.InventoryTransactionID.String(),
 		ProductID:              bus.ProductID.String(),
 		LocationID:             bus.LocationID.String(),
 		UserID:                 bus.UserID.String(),
 		LotID:                  lotID,
+		SerialID:               serialID,
 		Quantity:               fmt.Sprintf("%d", bus.Quantity),
 		TransactionType:        bus.TransactionType,
 		ReferenceNumber:        bus.ReferenceNumber,

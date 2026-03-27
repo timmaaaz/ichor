@@ -79,6 +79,7 @@ func (b *Business) Create(ctx context.Context, nit NewInventoryTransaction) (Inv
 		ProductID:              nit.ProductID,
 		UserID:                 nit.UserID,
 		LotID:                  nit.LotID,
+		SerialID:               nit.SerialID,
 		TransactionType:        nit.TransactionType,
 		Quantity:               nit.Quantity,
 		ReferenceNumber:        nit.ReferenceNumber,

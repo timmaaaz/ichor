@@ -17,6 +17,7 @@ type InventoryTransaction struct {
 	LocationID             uuid.UUID  `json:"location_id"`
 	UserID                 uuid.UUID  `json:"user_id"`
 	LotID                  *uuid.UUID `json:"lot_id,omitempty"`
+	SerialID               *uuid.UUID `json:"serial_id,omitempty"`
 	Quantity               int        `json:"quantity"`
 	TransactionType        string     `json:"transaction_type"`
 	ReferenceNumber        string     `json:"reference_number"`
@@ -30,6 +31,7 @@ type NewInventoryTransaction struct {
 	LocationID      uuid.UUID  `json:"location_id"`
 	UserID          uuid.UUID  `json:"user_id"`
 	LotID           *uuid.UUID `json:"lot_id,omitempty"`
+	SerialID        *uuid.UUID `json:"serial_id,omitempty"`
 	Quantity        int        `json:"quantity"`
 	TransactionType string     `json:"transaction_type"`
 	ReferenceNumber string     `json:"reference_number"`
