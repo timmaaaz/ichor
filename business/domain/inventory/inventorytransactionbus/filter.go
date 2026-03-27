@@ -11,6 +11,7 @@ type QueryFilter struct {
 	ProductID              *uuid.UUID
 	LocationID             *uuid.UUID
 	UserID                 *uuid.UUID
+	SerialID               *uuid.UUID
 	Quantity               *int
 	TransactionType        *string
 	ReferenceNumber        *string

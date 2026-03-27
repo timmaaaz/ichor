@@ -74,11 +74,11 @@ func (s *Store) Create(ctx context.Context, a alertbus.Alert) error {
 	INSERT INTO workflow.alerts (
 		id, alert_type, severity, title, message, context,
 		source_entity_name, source_entity_id, source_rule_id,
-		status, expires_date, created_date, updated_date
+		action_url, status, expires_date, created_date, updated_date
 	) VALUES (
 		:id, :alert_type, :severity, :title, :message, :context,
 		:source_entity_name, :source_entity_id, :source_rule_id,
-		:status, :expires_date, :created_date, :updated_date
+		:action_url, :status, :expires_date, :created_date, :updated_date
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBAlert(a)); err != nil {
@@ -236,7 +236,7 @@ func (s *Store) QueryByID(ctx context.Context, alertID uuid.UUID) (alertbus.Aler
 	SELECT
 		a.id, a.alert_type, a.severity, a.title, a.message, a.context,
 		a.source_entity_name, a.source_entity_id, a.source_rule_id,
-		a.status, a.expires_date, a.created_date, a.updated_date,
+		a.action_url, a.status, a.expires_date, a.created_date, a.updated_date,
 		rule.name AS source_rule_name
 	FROM
 		workflow.alerts a
@@ -266,7 +266,7 @@ func (s *Store) Query(ctx context.Context, filter alertbus.QueryFilter, orderBy 
 	SELECT
 		a.id, a.alert_type, a.severity, a.title, a.message, a.context,
 		a.source_entity_name, a.source_entity_id, a.source_rule_id,
-		a.status, a.expires_date, a.created_date, a.updated_date,
+		a.action_url, a.status, a.expires_date, a.created_date, a.updated_date,
 		rule.name AS source_rule_name
 	FROM
 		workflow.alerts a
@@ -319,7 +319,7 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 		SELECT DISTINCT
 			a.id, a.alert_type, a.severity, a.title, a.message, a.context,
 			a.source_entity_name, a.source_entity_id, a.source_rule_id,
-			a.status, a.expires_date, a.created_date, a.updated_date,
+			a.action_url, a.status, a.expires_date, a.created_date, a.updated_date,
 			rule.name AS source_rule_name
 		FROM
 			workflow.alerts a
@@ -334,7 +334,7 @@ func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID, roleIDs []u
 		SELECT DISTINCT
 			a.id, a.alert_type, a.severity, a.title, a.message, a.context,
 			a.source_entity_name, a.source_entity_id, a.source_rule_id,
-			a.status, a.expires_date, a.created_date, a.updated_date,
+			a.action_url, a.status, a.expires_date, a.created_date, a.updated_date,
 			rule.name AS source_rule_name
 		FROM
 			workflow.alerts a

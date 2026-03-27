@@ -20,6 +20,7 @@ type Alert struct {
 	SourceEntityID      string                    `json:"sourceEntityId,omitempty"`
 	SourceRuleID        string                    `json:"sourceRuleId,omitempty"`
 	SourceRuleName      string                    `json:"sourceRuleName,omitempty"`
+	ActionURL           string                    `json:"actionUrl,omitempty"`
 	Status              string                    `json:"status"`
 	ExpiresDate         *string                   `json:"expiresDate,omitempty"`
 	CreatedDate         string                    `json:"createdDate"`
@@ -76,6 +77,9 @@ func toAppAlert(bus alertbus.Alert) Alert {
 	}
 	if bus.SourceRuleName != "" {
 		app.SourceRuleName = bus.SourceRuleName
+	}
+	if bus.ActionURL != "" {
+		app.ActionURL = bus.ActionURL
 	}
 	if bus.ExpiresDate != nil {
 		exp := bus.ExpiresDate.Format(time.RFC3339)
