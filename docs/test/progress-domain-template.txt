@@ -1,0 +1,171 @@
+== ARCH FILE SUMMARY: domain-template.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Domain entity template showing 7-layer architecture (bus → db → app → api)
+- Reference domain: sales/orders (ordersbus)
+- Used as checklist when adding new domain entities
+- All domains follow the same pattern: Business (CRUD) → DB (storage) → App (validation) → API (HTTP)
+
+LAYERED ARCHITECTURE (7 LAYERS):
+
+1. {Entity}Bus [business layer]
+   - Location: business/domain/{area}/{entity}bus/{entity}bus.go
+   - Structure:
+     * log *logger.Logger
+     * storer Storer (interface to DB store)
+     * delegate *delegate.Delegate (event publisher)
+   - Constructor: NewBusiness(log, delegate, storer) *Business
+   - Transaction support: NewWithTx(tx sqldb.CommitRollbacker) (*Business, error)
+   - CRUD methods:
+     * Create(ctx, entity) (Entity, error) - fires ActionCreated delegate event
+     * Update(ctx, entity) (Entity, error) - fires ActionUpdated delegate event
+     * Delete(ctx, entity) error - fires ActionDeleted delegate event
+     * Query(ctx, filter, orderBy, page) ([]Entity, error)
+     * QueryByID(ctx, id) (Entity, error)
+     * Count(ctx, filter) (int, error)
+   - Delegate events (fired AFTER DB write):
+     * ActionCreated: params = { EntityID, UserID, Entity }
+     * ActionUpdated: params = { EntityID, UserID, Entity, BeforeEntity }
+     * ActionDeleted: params = { EntityID, UserID, Entity }
+   - Filter type: {Entity}Filter with queryable fields
+   - DB access: ⊗ reads {schema}.{table}, ⊕ writes {schema}.{table}
+
+2. {Entity}DB [database layer]
+   - Location: business/domain/{area}/{entity}bus/stores/{entity}db/{entity}db.go
+   - Models: db{Entity} (internal) uses:
+     * sql.NullString for nullable string columns
+     * sql.NullTime for nullable time columns
+     * *uuid.UUID (pointer) for nullable UUID foreign keys
+   - Key principle: NamedQuerySlice returns nil (NOT ErrDBNotFound) for empty results
+   - Key principle: NamedQueryStruct returns ErrDBNotFound for missing single rows
+   - Method patterns:
+     * Query(ctx, filter, orderBy, page) → NamedQuerySlice (batch operation)
+     * Count(ctx, filter) → NamedQueryStruct (single int result)
+     * QueryByID(ctx, id) → NamedQueryStruct (single row)
+     * Create(ctx, entity) → NamedQueryStruct or ExecContext
+     * Update(ctx, entity) → ExecContext
+     * Delete(ctx, entity) → ExecContext
+   - DB access: ⊗ reads, ⊕ writes {schema}.{table}
+
+3. {Entity}App [application layer]
+   - Location: app/domain/{area}/{entity}app/{entity}app.go
+   - Structure:
+     * {entity}bus *{entity}bus.Business (domain layer dependency)
+     * auth *auth.Auth (optional, for authorization)
+   - Constructors:
+     * NewApp(bus) *App (without auth)
+     * NewAppWithAuth(bus, auth) *App (with auth)
+   - Validation: NewApp/UpdateApp validate required fields + format checks
+   - Model conversions:
+     * toBusNew{Entity}(appModel) ({entity}bus.New{Entity}, error)
+     * toBusUpdate{Entity}(appModel) ({entity}bus.Update{Entity}, error)
+     * ToApp{Entity}(busModel) appModel
+     * ToApp{Entities}(busModels []) []appModel
+   - Query handling: parseFilter() converts QueryParams → {Entity}Filter
+
+4. {Entity}API [HTTP layer]
+   - Location: api/domain/http/{area}/{entity}api/{entity}api.go
+   - HTTP routes (standard RESTful pattern):
+     * GET /v1/{area}/{entities} [Authenticate, Authorize(Read)]
+     * GET /v1/{area}/{entities}/{id} [Authenticate, Authorize(Read)]
+     * POST /v1/{area}/{entities} [Authenticate, Authorize(Create)]
+     * PUT /v1/{area}/{entities}/{id} [Authenticate, Authorize(Update)]
+     * DELETE /v1/{area}/{entities}/{id} [Authenticate, Authorize(Delete)]
+     * POST /v1/{area}/{entities}/{id}/{action} [Authenticate, Authorize(Update)] ← action-verb routes (optional)
+   - Middleware: all routes use Authenticate + Authorize
+   - Dependencies: {entity}app.App[app], mid.Authenticate, mid.Authorize
+
+5. Route Registration [HTTP layer]
+   - Location: api/domain/http/{area}/{entity}api/route.go
+   - Registers HTTP handlers + middleware with HTTP server
+   - Wired in all.go with authorization rules
+
+6. Wiring [main/build layer]
+   - Location: api/cmd/services/ichor/build/all/all.go
+   - Constructs dependency graph:
+     * DB store → Bus → App → API handlers
+     * Wires delegate subscriber (for events)
+     * Registers routes with HTTP server
+
+7. Migration [schema layer]
+   - Location: business/sdk/migrate/sql/migrate.sql
+   - Version: X.YY (sequential versioning)
+   - Action: CREATE TABLE {schema}.{table}
+   - Pattern: never edit existing migration, always create new version
+
+TESTING LAYERS:
+
+8. Database Test Infra
+   - Location: business/sdk/dbtest/dbtest.go
+   - Action: add entity to BusDomain enum (for test database initialization)
+
+9. Integration Tests
+   - Location: api/cmd/services/ichor/tests/{area}/{entity}api/
+   - Files:
+     * {entity}api.go (HTTP handlers)
+     * seed_test.go (seed data + test fixtures)
+   - Tests exercise full stack: API → App → Bus → DB
+
+EXTENSION CHECKLIST (7 LAYERS FOR NEW DOMAIN):
+
+When adding a new domain entity, implement in this order:
+
+1. ✓ Business layer: business/domain/{area}/{entity}bus/{entity}bus.go
+   - Business struct + CRUD methods + delegate calls
+
+2. ✓ Database layer: business/domain/{area}/{entity}bus/stores/{entity}db/{entity}db.go
+   - DB store implementation + SQL queries
+
+3. ✓ Application layer: app/domain/{area}/{entity}app/{entity}app.go
+   - App layer with validation + conversions
+
+4. ✓ Models layer: app/domain/{area}/{entity}app/model.go
+   - App models + toBus* and ToApp* conversion functions
+
+5. ✓ HTTP layer: api/domain/http/{area}/{entity}api/{entity}api.go
+   - HTTP handlers for all CRUD operations
+
+6. ✓ Routes layer: api/domain/http/{area}/{entity}api/route.go
+   - Route registration with middleware + authorization rules
+
+7. ✓ Wiring layer: api/cmd/services/ichor/build/all/all.go
+   - Dependency injection + route registration
+
+8. ✓ Migration layer: business/sdk/migrate/sql/migrate.sql
+   - Table creation (new version, never edit existing)
+
+9. ✓ Test infra: business/sdk/dbtest/dbtest.go
+   - Add to BusDomain enum
+
+10. ✓ Integration tests: api/cmd/services/ichor/tests/{area}/{entity}api/
+    - Test files + seed data
+
+COMMON EXTENSION PATTERNS:
+
+To add a filter field to {Entity}Filter:
+  1. business/domain/{area}/{entity}bus/{entity}bus.go (add field to QueryFilter struct)
+  2. business/domain/{area}/{entity}bus/stores/{entity}db/{entity}db.go (add WHERE clause + param binding)
+  3. app/domain/{area}/{entity}app/{entity}app.go (add to parseFilter() + QueryParams struct)
+  4. api/cmd/services/ichor/tests/{area}/{entity}api/{entity}_query_test.go (update test assertions)
+
+To add a column to {schema}.{table}:
+  1. business/sdk/migrate/sql/migrate.sql (new version, ALTER TABLE — never edit existing)
+  2. business/domain/{area}/{entity}bus/stores/{entity}db/{entity}db.go (db{Entity} model + SELECT/INSERT/UPDATE)
+  3. business/domain/{area}/{entity}bus/{entity}bus.go (bus model if exposed in API)
+  4. app/domain/{area}/{entity}app/model.go (app model + toBus*/ToApp* conversions)
+
+CRITICAL DESIGN POINTS:
+- Delegate events fire AFTER DB write succeeds (transactional consistency)
+- All layers are thin: Business orchestrates, App validates, API routes
+- Filter/queryable fields go through entire stack (bus → db → app)
+- Nullable columns use sql.NullString/NullTime in DB layer
+- Nullable UUIDs use *uuid.UUID (pointer type, not NullString)
+- NamedQuerySlice returns nil for empty results (not error)
+- NamedQueryStruct returns ErrDBNotFound for missing rows
+- Every domain publishes Create/Update/Delete events via delegate
+- NewWithTx creates transaction-scoped copy of Business for multi-domain operations
+
+VERIFIED FACT:
+- Reference domain (sales/orders) implements this pattern fully
+- Used as template for all new domains in the system

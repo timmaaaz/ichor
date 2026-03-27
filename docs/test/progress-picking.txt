@@ -1,0 +1,206 @@
+== ARCH FILE SUMMARY: picking.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Order fulfillment orchestration layer (picking, packing, shipping)
+- Multi-bus transaction system with FEFO (First-Expire-First-Out) inventory allocation
+- Three core operations: PickQuantity (normal), ShortPick (exceptions), CompletePacking (state advance)
+- Automatic state transitions when all line items reach terminal states
+
+ORDER FULFILLMENT STATE MACHINE:
+
+States:
+  PICKING → PACKING → READY_TO_SHIP
+
+Terminal states (no further transitions):
+  - PICKED
+  - PARTIALLY_PICKED
+  - BACKORDERED
+  - CANCELLED
+
+Transitions:
+  PICKING → PACKING: auto-triggered when all line items are terminal (via PickQuantity or ShortPick)
+  PACKING → READY_TO_SHIP: manual via CompletePacking()
+
+KEY COMPONENTS:
+
+1. PickingApp [app layer]
+   - Location: app/domain/sales/pickingapp/pickingapp.go
+   - Structure:
+     ```
+     log                        *logger.Logger
+     db                         *sqlx.DB (direct DB access for transactions)
+     ordersBus                  *ordersbus.Business
+     orderLineItemsBus          *orderlineitemsbus.Business
+     inventoryItemBus           *inventoryitembus.Business
+     inventoryTransactionBus    *inventorytransactionbus.Business
+     orderFulfillmentStatusBus  *orderfulfillmentstatusbus.Business
+     lineItemFulfillmentStatusBus *lineitemfulfillmentstatusbus.Business
+     ```
+   - Multi-bus orchestration (coordinates 6 different domains)
+   - Methods:
+     * PickQuantity(ctx, lineItemID, req) (orderlineitemsapp.OrderLineItem, error)
+     * ShortPick(ctx, lineItemID, req) (orderlineitemsapp.OrderLineItem, error)
+     * CompletePacking(ctx, orderID, req) (ordersapp.Order, error)
+
+2. PickQuantity Operation
+   - TX isolation: sql.LevelReadCommitted
+   - Purpose: fulfill order line item by picking from inventory
+   - Steps (atomic):
+     1. Lock inventory via QueryAvailableForAllocation() with FOR UPDATE (FEFO ordering)
+        - Pessimistic lock prevents concurrent allocation
+        - FEFO ensures oldest stock first
+     2. Decrement Quantity + AllocatedQuantity on inventory_item row
+     3. CREATE inventory_transaction record (type="pick", negative quantity)
+     4. UPDATE line item status: * → PICKED
+     5. Check if all line items are terminal:
+        - If yes: UPDATE order FulfillmentStatusID: PICKING → PACKING
+        - If no: stay in PICKING
+   - Inventory operation: FEFO allocation with FOR UPDATE pessimistic lock
+
+3. ShortPick Operation
+   - TX isolation: sql.LevelReadCommitted
+   - Purpose: handle picking exceptions (partial, backorder, substitute, skip)
+   - Four pick types:
+
+   partial:
+     - Inventory touch: yes (pickedQty)
+     - Line item result: PARTIALLY_PICKED
+     - New line created: no
+     - Meaning: picked some quantity, rest unfulfilled
+
+   backorder:
+     - Inventory touch: no
+     - Line item result: BACKORDERED
+     - New line created: no
+     - Meaning: no inventory available, defer to future
+
+   substitute:
+     - Inventory touch: yes (pickedQty)
+     - Line item result: original → BACKORDERED
+     - New line created: yes (new line item for substitute product → PICKED)
+     - Meaning: picked substitute instead of original (two line items after)
+
+   skip:
+     - Inventory touch: no
+     - Line item result: PENDING_REVIEW
+     - New line created: no
+     - Meaning: manual review needed before fulfilling
+
+   Key behaviors:
+     - Order advances PICKING → PACKING only when ALL line items reach terminal state
+     - Substitute creates new line item (parent order unchanged)
+     - Each type has different inventory impact
+
+4. CompletePacking Operation
+   - TX: none (no transaction)
+   - Purpose: advance order from packing to shipping
+   - Steps:
+     1. Validate order is in PACKING state
+     2. UPDATE order FulfillmentStatusID: PACKING → READY_TO_SHIP
+
+DATABASE OPERATIONS:
+
+PickQuantity reads:
+  ⊗ inventory.inventory_items (with FOR UPDATE lock, FEFO ordered)
+  ⊗ sales.order_line_items (status check)
+  ⊗ sales.orders (fulfillment status)
+
+PickQuantity writes:
+  ⊕ inventory.inventory_items (decrement Quantity + AllocatedQuantity)
+  ⊕ inventory.inventory_transactions (create pick record)
+  ⊕ sales.order_line_items (update status → PICKED)
+  ⊕ sales.orders (update FulfillmentStatusID if all terminal)
+
+ShortPick reads:
+  ⊗ inventory.inventory_items (check availability)
+  ⊗ sales.order_line_items (status)
+
+ShortPick writes (depends on type):
+  ⊕ inventory.inventory_items (decrement for partial/substitute)
+  ⊕ inventory.inventory_transactions (create pick/backorder record)
+  ⊕ sales.order_line_items (status update, or deletion if substitute)
+  ⊕ sales.order_line_items (insert new for substitute)
+  ⊕ sales.orders (update FulfillmentStatusID if all terminal)
+
+CompletePacking writes:
+  ⊕ sales.orders (update FulfillmentStatusID: PACKING → READY_TO_SHIP)
+
+CRITICAL DESIGN POINTS:
+
+FEFO Allocation:
+  - QueryAvailableForAllocation() uses FOR UPDATE (pessimistic lock)
+  - FEFO ordering: oldest stock first (by create date or expiry date)
+  - Prevents race conditions in concurrent picking
+  - Used exclusively in PickQuantity
+
+Transaction Isolation:
+  - PickQuantity: sql.LevelReadCommitted (atomic 5-step operation)
+  - ShortPick: sql.LevelReadCommitted (type-dependent 3-4 steps)
+  - CompletePacking: none (single UPDATE, non-critical)
+
+Auto Transitions:
+  - PICKING → PACKING triggered automatically when all line items terminal
+  - No explicit transition call needed
+  - Checked after each PickQuantity/ShortPick
+  - Ensures workflow continuity
+
+Multi-Bus Coordination:
+  - 6 different business domains coordinated
+  - Order → LineItem → InventoryItem → InventoryTransaction → FulfillmentStatus
+  - Tight coupling (required for transactional consistency)
+
+Inventory Ledger:
+  - Every pick creates inventory_transaction record (audit trail)
+  - Supports inventory history + reconciliation
+  - Type codes: "pick" (normal), "short_pick" (exception), "backorder" (deferred)
+
+Line Item States:
+  - PICKED: fulfilled quantity picked
+  - PARTIALLY_PICKED: picked some, rest unfulfilled
+  - BACKORDERED: no inventory, deferred
+  - PENDING_REVIEW: exception awaiting manual review
+  - CANCELLED: order cancelled
+
+EXTENSION PATTERNS:
+
+To add new pick type (ShortPick variant):
+  1. Add to ShortPickRequest enum (pickingapp/model.go)
+  2. Add case in ShortPick switch (pickingapp/pickingapp.go)
+  3. Add new transaction type constant if needed (inventorytransactionbus)
+  4. Add integration test (api/cmd/services/ichor/tests/sales/pickingapi/)
+
+To change order status transitions:
+  1. Update transition logic in PickQuantity + ShortPick (pickingapp.go)
+  2. Ensure status constants exist (orderfulfillmentstatusbus)
+  3. Add migration if new status added (business/sdk/migrate/sql/migrate.sql)
+  4. Update transition test assertions (api/cmd/services/ichor/tests/sales/)
+
+To change FEFO allocation query:
+  1. Modify QueryAvailableForAllocation (inventoryitemdb/inventoryitemdb.go)
+  2. Update FEFO ORDER BY clause (date, expiry, priority, etc.)
+  3. Keep FOR UPDATE clause (pessimistic lock)
+  4. Update consumer (pickingapp.go) if ordering semantics change
+
+VERIFIED FACTS:
+- 4 ShortPick types (partial, backorder, substitute, skip)
+- 3 explicit states (PICKING, PACKING, READY_TO_SHIP)
+- 4 terminal states (PICKED, PARTIALLY_PICKED, BACKORDERED, CANCELLED)
+- 2 auto transitions (PickQuantity, ShortPick can both trigger PICKING→PACKING)
+- sql.LevelReadCommitted isolation for PickQuantity and ShortPick
+- No transaction for CompletePacking (simple status update)
+- Substitute type creates new line item (doubles line count)
+- FEFO uses FOR UPDATE pessimistic lock
+
+PERFORMANCE CONSIDERATIONS:
+- FOR UPDATE lock serializes concurrent picks (expected behavior for allocation)
+- sql.LevelReadCommitted reduces lock duration vs. Serializable
+- 6-bus coordination has latency (each bus is separate DB round-trip)
+- Auto transitions avoid explicit API calls (cleaner workflow)
+- Inventory_transactions audit trail grows with each pick (consider archival)
+
+ERROR HANDLING:
+- PickQuantity: if any step fails, entire operation rolled back
+- ShortPick: if any step fails, entire operation rolled back
+- CompletePacking: simple status update (low failure risk)
+- Lock timeouts: database-specific (PostgreSQL default ~3s)

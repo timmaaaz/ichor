@@ -1,0 +1,219 @@
+== ARCH FILE SUMMARY: seeding.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Comprehensive test data seeding system for development and testing
+- Two entry points: NewDatabase (isolated test DB) + InsertSeedData (live environment)
+- Dependency chain orchestrator (11 seed functions in strict order)
+- Fixed UUIDs for stable references (admin users, roles, payment terms)
+- Randomized data for most entities (names, dates, amounts, emails)
+- Separate seedmodels package for static configuration
+
+TEST DATA COUNTS:
+
+Users: 1 admin + 20 reporters + 10 bosses + 18 named users (total 49)
+Geography: 5 cities, 5 streets, 5 contact infos, 10 offices, ~250 countries, ~50 regions, ~37 timezones
+Products: 20 products, 10 categories, 5 brands, 20 costs, 20 physical attributes, 40 metrics
+Inventory: 5 warehouses, 12 zones, 25 locations, 30 items, 20 transfers, 40 transactions, 20 adjustments
+Sales: 5 customers, 200 orders, 5 line items per order
+Procurement: 25 suppliers, 10 supplier products, 10 POs, 25 PO line items, 15 lot trackings, 50 serials
+Workflow: 15 action templates, 8 automation rules
+Tables/Configs: 20+ module table configs, 48 entity form fields, 4 composite forms
+Assets: asset types, conditions, valid assets, user asset relationships
+HR: 10 titles, approval statuses, comments
+
+KEY COMPONENTS:
+
+1. Fixed UUIDs (Hardcodable in Tests)
+   - admin_gopher: 5cf37266-3473-4006-984f-9325122678b7 (ADMIN role)
+   - user_gopher: 45b5fbd3-755f-4379-8f07-a58d4a30fa2f (USER role)
+   - ZZZADMIN role: 54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+   - Payment terms: a0000000-0000-4000-8000-000000000001 through 000000000018
+   - HR approval statuses: 4 fixed UUIDs (PENDING, APPROVED, DENIED, UNDER_REVIEW)
+
+2. Stable by Name/Code (Query, Don't Hardcode)
+   - Currencies: USD, EUR, GBP, CAD, AUD, JPY, CHF, CNY, INR, MXN (query by code)
+   - Geography: countries (alpha_2), regions (code), timezones (name)
+   - Asset conditions: PERFECT, GOOD, USED, POOR, END_OF_LIFE (by name)
+   - Status types: query by name (not UUID)
+
+3. NewDatabase [dbtest infrastructure]
+   - Location: business/sdk/dbtest/dbtest.go
+   - Function: NewDatabase(t *testing.T, testName string) *Database
+   - Returns:
+     * DB: isolated *sqlx.DB
+     * Log: *logger.Logger
+     * BusDomain: all instantiated business packages
+   - Properties:
+     * DB name: random 4 lowercase letters
+     * TimeZone: set to 'America/New_York'
+     * Each test gets isolated database instance
+     * Runs migrations + seeds before returning
+   - Two seeding entry points: InsertSeedData (live) + NewDatabase (test)
+   - Both use same BusDomain struct and seed chain
+
+4. BusDomain [dbtest infrastructure]
+   - Central struct holding all instantiated business packages
+   - Passed into all seed functions
+   - Includes 60+ bus instances (Delegate, geography, HR, core, assets, products, procurement, inventory, sales, config, workflow)
+   - Single source of truth for all seeded entities
+
+5. SeedOrchestrator [dbtest]
+   - Location: business/sdk/dbtest/seedFrontend.go (~71 lines)
+   - Entry: InsertSeedData(log, cfg sqldb.Config) error
+   - Execution order (FIXED — do not reorder):
+     1. seedFoundation(ctx, busDomain)
+     2. seedGeographyHR(ctx, busDomain)
+     3. seedAssets(ctx, busDomain, foundation)
+     4. seedProducts(ctx, busDomain, geoHR, foundation)
+     5. seedInventory(ctx, busDomain, foundation, geoHR, products)
+     6. seedSales(ctx, busDomain, foundation, geoHR, products)
+     7. seedProcurement(ctx, busDomain, foundation, geoHR, products, inventory)
+     8. seedTableBuilder(ctx, busDomain, adminID)
+     9. seedPages(ctx, log, busDomain)
+     10. seedForms(ctx, log, busDomain)
+     11. seedWorkflow(ctx, log, busDomain, adminID)
+   - Dependency rule: each function only references IDs from prior results, never reach into busDomain
+
+6. Seed Functions (11 Total)
+
+   seedFoundation:
+     - Returns: FoundationSeed (Admins, Reporters, Bosses, USDCurrencyID, Currencies)
+     - Seeds: users, roles, user roles, table access, currencies
+     - adminID extracted from foundation.Admins[0].ID for later use
+
+   seedGeographyHR:
+     - Returns: GeographyHRSeed (Cities, Streets, ContactInfos, Offices)
+     - Seeds: cities, streets, contact infos, offices, titles, reports-to, approval comments
+
+   seedAssets:
+     - Takes: foundation dependency
+     - Seeds: asset types, conditions, valid assets, assets, approval/fulfillment statuses, tags, user assets
+
+   seedProducts:
+     - Takes: geoHR, foundation dependencies
+     - Returns: ProductsSeed
+     - Seeds: brands, categories, products, costs, physical attributes, metrics, cost histories
+
+   seedInventory:
+     - Takes: foundation, geoHR, products dependencies
+     - Returns: InventorySeed
+     - Seeds: warehouses, zones, locations, inventory items, lot trackings, serials, inspections, transfers, transactions, adjustments
+
+   seedSales:
+     - Takes: foundation, geoHR, products dependencies
+     - Seeds: customers, order fulfillment statuses, orders, line item fulfillment statuses, order line items
+
+   seedProcurement:
+     - Takes: foundation, geoHR, products, inventory dependencies
+     - Seeds: suppliers, supplier products, PO statuses, POs, PO line items
+
+   seedTableBuilder:
+     - Takes: busDomain, adminID
+     - Seeds: 20+ module table configs (static from seedmodels/tables_*.go)
+
+   seedPages:
+     - Takes: log, busDomain
+     - Seeds: page configs, content blocks, action buttons, nav pages, role-page access
+     - References seedmodels/pageactions.go, seedmodels/pages.go
+
+   seedForms:
+     - Takes: log, busDomain
+     - Key fact: uses busDomain.Workflow.QueryEntityByName (read-only lookup)
+     - Must NOT run after seedWorkflow
+     - Seeds: forms and all form fields
+     - References seedmodels/tableforms.go, seedmodels/forms.go, seedmodels/formregistry.go
+
+   seedWorkflow:
+     - Takes: log, busDomain, adminID
+     - Must run LAST (depends on forms already seeded)
+     - Seeds: 15 action templates + 8 default automation rules
+
+7. SeedModels Package [static seed data]
+   - Location: business/sdk/dbtest/seedmodels/
+   - 14 files total:
+     * tables_admin.go, tables_assets.go, tables_hr.go, tables_inventory.go, tables_procurement.go, tables_products.go, tables_sales.go
+     * charts.go (14 chart configs)
+     * tableforms.go (48 entity form field generators)
+     * forms.go (4 composite form field generators)
+     * formregistry.go (form registry + 50 registrations)
+     * pageactions.go (button action definitions)
+     * pages.go (allPages slice — nav page records)
+     * enums.go (status name slices)
+
+8. Permission Seeding (Three Layers)
+
+   Layer 1: Page access (router → canAccessPage)
+     - File: business/sdk/dbtest/seedmodels/pages.go → AllPages slice
+     - Behavior: seedPages() auto-grants can_access=true to ZZZADMIN for every AllPages entry
+     - Failure mode: missing → router redirects to /login
+
+   Layer 2: Table access (API auth middleware)
+     - File: business/sdk/migrate/sql/seed.sql → core.table_access
+     - Format: (gen_random_uuid(), ZZZADMIN_id, 'schema.table', true, true, true, true)
+     - Failure mode: 401 "user does not have permission READ for table: ..."
+
+   Layer 3: Action permissions (workflow)
+     - File: business/sdk/migrate/sql/seed.sql → workflow.action_permissions
+     - Failure mode: 403 "permission_denied" on POST /v1/workflow/actions/{type}/execute
+
+9. TestSeed Functions Pattern [bus packages]
+   - Location: business/domain/{area}/{entity}bus/testutil.go (NOT in test files)
+   - Signature: func TestSeed{Entities}(ctx context.Context, n int, ...depIDs, api *Business) ([]Entity, error)
+   - Imported by integration tests in api/cmd/services/ichor/tests/{area}/{entity}api/seed_test.go
+   - Lives in bus package (not test file) to avoid circular imports
+
+DATA CHARACTERISTICS:
+
+Randomized (Never Hardcode):
+  - All UUIDs not in fixed list → query by name/code
+  - Names, descriptions, addresses, emails from TestSeed* functions
+  - Dates (historical relative to seed time) → assert on ranges, not exact values
+  - Monetary amounts
+
+Fixed (Safe to Hardcode):
+  - admin_gopher UUID
+  - ZZZADMIN role UUID
+  - Payment term UUIDs (a0000000-0000-4000-8000-000000000001...018)
+  - HR approval status UUIDs (4 total)
+
+Stable by Name (Query):
+  - Currency codes (USD, EUR, GBP, etc.)
+  - Geography (country alpha_2, region code, timezone name)
+  - Status names (PERFECT, GOOD, USED, PENDING, APPROVED, etc.)
+  - Named users (manager1, finance_admin, employee1-4, etc.) → query by username
+
+EXTENSION PATTERNS:
+
+To add new domain to seeding:
+  1. Add bus field(s) to BusDomain struct (dbtest.go)
+  2. Instantiate in newBusDomains function
+  3. Create business/sdk/dbtest/seed_<domain>.go with seed<Domain>() function
+  4. Add call in dependency chain (seedFrontend.go) at correct position
+  5. Add seedmodels/tables_<domain>.go if static configs needed
+
+To add TestSeed* function:
+  1. Create function in business/domain/{area}/{entity}bus/testutil.go (NOT in test file)
+  2. Call from insertSeedData in integration tests
+  3. Lives in bus package to avoid circular imports
+  4. Signature: TestSeed{Entities}(ctx, n int, ...depIDs, api *Business) ([]Entity, error)
+
+To change seed ordering:
+  1. Update orchestrator chain in seedFrontend.go
+  2. Dependency rule: function can only reference IDs from prior result structs
+  3. Never reach into busDomain for IDs that should come from earlier results
+
+VERIFIED FACTS:
+- 49 users seeded (1 admin + 20 reporters + 10 bosses + 18 named users)
+- 200 orders with 5 line items each (1000 total line items)
+- 11 seed functions in strict dependency order
+- 3 permission layers (page, table, action)
+- 14 seedmodels files
+- 48 entity form field generators
+- 50 form registrations
+- Fixed UUIDs: 1 admin + 1 user + 1 role + 4 statuses + 18 payment terms (25 total)
+
+TOKEN PERFORMANCE:
+- Fast seeding: migrations + seed functions complete within test timeout
+- TestSeed* functions: individual entity creation for integration tests
+- No bulk operations (each entity created individually)

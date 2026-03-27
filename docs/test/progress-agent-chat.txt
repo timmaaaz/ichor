@@ -1,0 +1,96 @@
+== ARCH FILE SUMMARY: agent-chat.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Agent chat system follows a request→RAG→LLM→tool-loop→completion pattern
+- Single endpoint: POST /v1/agent/chat (implemented as RawHandlerFunc for SSE compatibility)
+- Streaming responses require special handling to bypass OTEL middleware and HTTP timeouts
+
+KEY COMPONENTS:
+
+1. ChatAPI [api layer]
+   - Location: api/domain/http/agentapi/chatapi/
+   - Route: POST /v1/agent/chat
+   - Must use RawHandlerFunc (not standard HandlerFunc)
+   - Context isolation: context.WithoutCancel() preserves user/trace but drops HTTP deadline
+   - SSE headers: text/event-stream, no-cache, keep-alive, X-Accel-Buffering: no
+   - Loop limit: maxAgentLoops = 20 (max LLM ↔ tool round-trips)
+
+2. ToolIndex [sdk layer]
+   - Location: business/sdk/toolindex/toolindex.go
+   - RAG engine that finds relevant tools per message
+   - Embedding source: Tool Name + Description + ExampleQueries (queries are RAG-only, never sent to LLM)
+   - Search interface: Search(ctx, message string, topK int, opts SearchOptions)
+   - Returns: topK=6 tools per message (ragMinScore=0.0, no filtering)
+   - Optional BatchEmbedder interface for batch embedding
+
+3. LLMProvider [sdk layer]
+   - Location: business/sdk/llm/
+   - Interface-based design: Provider.StreamChat(ctx, ChatRequest) → <-chan StreamEvent
+   - Active provider: Gemini Flash 2.5
+   - Available but inactive: Claude, Ollama
+   - Supports tool use with StopForToolUse flag in StreamEvent
+   - Thinking support: thinking_delta events (server-side only, not forwarded to client)
+
+4. Executor [sdk layer]
+   - Location: business/sdk/agenttools/executor.go (~2394 lines)
+   - 53 tool handlers: one method per tool name constant
+   - Calls Ichor REST API via http.Client (30s timeout) with Bearer token
+   - Maintains in-memory per-session state for draft workflows (10-min TTL)
+   - Draft state lost on server restart (not persisted)
+   - Lazy-populated caches: entityCache, triggerTypeCache, actionTypeCache, ruleCache (using sync.Mutex)
+
+5. ToolCatalog [sdk layer]
+   - Location: business/sdk/toolcatalog/toolcatalog.go
+   - 53 tools organized in two groups:
+     * GroupWorkflow: workflow discovery, CRUD, draft, alerts (31 tools)
+     * GroupTables: UI config, pages, forms, table config (22 tools)
+   - Functions: InGroup(), ToolsForGroup(), AllTools()
+
+WORKFLOW STATE MACHINE:
+Request
+  ↓
+ToolIndex.Search(userMsg, topK=6)   [RAG: select relevant 6 tools]
+  ↓
+Provider.StreamChat(req)            [LLM with tool definitions]
+  ├─ SSE events → client (text/thinking deltas)
+  ↓
+StopForToolUse?
+  ├─ NO  → done (message_complete)
+  └─ YES → Executor.Execute() → append ToolResults → loop++ → search/stream again
+
+CRITICAL DESIGN POINTS:
+- RawHandlerFunc REQUIRED (not optional) — standard handler breaks SSE streaming
+- OTEL wrapper writes 200 OK post-return, conflicting with long-lived connection
+- SSE must clear read/write deadlines via http.ResponseController
+- Embedding vectors precomputed at startup for all tools (performance optimization)
+- Caches are per-token (session isolation)
+- ExampleQueries are NEVER forwarded to the LLM (RAG-only optimization)
+
+DEPENDENCIES:
+- SSE writer: custom event marshaling + flush after each send
+- http.Client: calls REST API endpoints (not internal domain buses)
+- sync.Mutex: protects concurrent cache access
+- json.RawMessage: holds trigger conditions and draft state
+
+EXTENSION POINTS:
+To add a new agent tool:
+  1. business/sdk/toolcatalog/toolcatalog.go (add constant + group assignment)
+  2. business/sdk/agenttools/executor.go (add Execute case + handler method)
+  3. business/sdk/llm/ (tune ExampleQueries for RAG)
+  4. mcp/tools/ (add MCP equivalent if needed)
+  5. api/cmd/services/ichor/tests/agentapi/ (integration test)
+  6. Verify: documentSymbol confirms constant + total count
+
+To change LLM provider:
+  1. Implement new Provider interface
+  2. Inject at startup in api/cmd/services/ichor/build/all/
+  3. Re-tune system prompt in chatapi/
+  4. Adjust ExampleQueries if embedder changes
+
+VERIFIED FACTS (2026-03-09):
+- 53 tool name constants confirmed in documentSymbol
+- 3 LLM providers: Gemini (active), Claude (available), Ollama (available)
+- SSE lifecycle clearly documented with 4 steps
+- No external dependencies on RabbitMQ or event buses
+- Streaming response controller pattern prevents timeout conflicts

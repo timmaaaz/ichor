@@ -1,0 +1,193 @@
+== ARCH FILE SUMMARY: sqldb.md ==
+Date: 2026-03-27
+
+CORE ARCHITECTURE:
+- Thin wrapper over sqlx providing parameterized query helpers, config, and sentinel errors
+- Most imported SDK package in codebase (185 importers)
+- NamedQuerySlice: 129 call sites across 75 db store files (verified 2026-03-09)
+- Connection pooling config + centralized error constants
+
+KEY COMPONENTS:
+
+1. sqldb [sdk layer]
+   - Location: business/sdk/sqldb/sqldb.go
+   - Wraps sqlx.DB with helpers and config
+   - Most commonly imported: 185 files import this package
+   - Purpose: parameterized queries + pooling + error standardization
+
+2. Config [sdk]
+   ```go
+   type Config struct {
+       User         string  // DB username
+       Password     string  // DB password
+       Host         string  // DB hostname
+       Name         string  // DB name
+       Schema       string  // default schema
+       MaxIdleConns int     // connection pool idle limit
+       MaxOpenConns int     // connection pool max limit
+       DisableTLS   bool    // TLS disabled for dev
+   }
+   ```
+   - Parsed from environment (ICHOR_DB_* pattern)
+   - Used in main.go via conf/v3
+
+3. Query Helpers [sdk]
+
+   NamedQuerySlice (BATCH QUERIES):
+     - Signature: NamedQuerySlice[T any](ctx, log, db, query, data, dest *[]T) error
+     - Returns: nil when result set is empty (NOT ErrDBNotFound)
+     - Binding: named parameters in SQL (:param_name)
+     - Common use: SELECT queries returning multiple rows
+     - Call sites: 129 verified (most common helper)
+     - Files affected: 75 db store files
+
+   NamedQueryStruct (SINGLE-ROW QUERIES):
+     - Signature: NamedQueryStruct(ctx, log, db, query, data, dest any) error
+     - Returns: ErrDBNotFound when no row matches (error, not nil)
+     - Binding: named parameters in SQL
+     - Common use: SELECT queries returning single row or aggregate
+     - Used when row must exist; ErrDBNotFound indicates not-found condition
+
+   ExecContext (NO RESULT QUERIES):
+     - Signature: ExecContext(ctx, log, db, query) error
+     - Returns: error if execution fails
+     - Binding: positional or named parameters
+     - Common use: INSERT, UPDATE, DELETE operations
+     - No result scanning (insert-only operations)
+
+4. Sentinel Errors [sdk]
+   ```go
+   ErrDBNotFound = sql.ErrNoRows                      // single-row query found no match
+   ErrDBDuplicatedEntry = errors.New("duplicated entry")   // unique constraint violation
+   ErrUndefinedTable = errors.New("undefined table")       // table doesn't exist
+   ErrForeignKeyViolation = errors.New("foreign key violation") // FK constraint
+   ```
+   - Used for consistent error handling across [db] stores
+   - Distinguish between expected not-found vs. errors
+
+5. Connection Pooling
+   - MaxIdleConns: limits idle connections (reduces memory)
+   - MaxOpenConns: limits max concurrent connections (prevents overload)
+   - Both configurable via Config
+
+CRITICAL DESIGN POINTS:
+
+NamedQuerySlice Semantics:
+  - Returns nil slice (not error) when no results
+  - Different from NamedQueryStruct (returns ErrDBNotFound)
+  - Pattern: if results == nil { /* no data */ } NOT if err == ErrDBNotFound
+  - Every [db] store Query method must handle nil correctly
+
+NamedQueryStruct Semantics:
+  - Returns ErrDBNotFound when no rows match
+  - Appropriate for queries that SHOULD find data
+  - Pattern: if err == ErrDBNotFound { /* handle not-found */ }
+  - Used for single-row lookups
+
+ExecContext Usage:
+  - No row scanning (INSERT/UPDATE/DELETE only)
+  - Appropriate for operations with no RETURNING clause
+  - Returns error if execution fails
+
+Named Parameters:
+  - All helpers use named parameters (:param_name)
+  - SQL injection protection (parameterized)
+  - Data passed as struct with db tags
+
+DATABASE OPERATIONS:
+
+Pooling:
+  - Configured via Config.MaxIdleConns, MaxOpenConns
+  - Applied to all database connections
+  - Default pool size depends on config
+
+Transactions:
+  - Passed via db sqlx.ExtContext (supports *sqlx.Tx)
+  - Handlers can use same query helpers in transaction context
+
+Logging:
+  - All helpers take *logger.Logger
+  - Queries and errors logged consistently
+
+EXTENSION PATTERNS:
+
+To add new DB store:
+  1. Create business/domain/{area}/{entity}bus/stores/{entity}db/{entity}db.go
+  2. Call NamedQuerySlice/NamedQueryStruct/ExecContext with named parameters
+  3. Handle nil slice from NamedQuerySlice (not an error)
+  4. Add store instantiation to BusDomain (dbtest.go)
+  5. Wire store constructor call in all.go
+
+To change Config fields:
+  1. Update Config struct (business/sdk/sqldb/sqldb.go)
+  2. Update config parsing (api/cmd/services/ichor/main.go, conf/v3)
+  3. Update K8s env vars (zarf/k8s/, follow ICHOR_DB_* pattern)
+  4. Update dev database targets (Makefile)
+
+To add new sentinel error:
+  1. Define in business/sdk/sqldb/sqldb.go
+  2. Use in [db] stores for consistent error handling
+  3. Update [app] layers to check for new error
+
+DATABASE ACCESS PATTERN:
+
+Every [db] store follows this pattern:
+```go
+func (s *Store) Query(ctx context.Context, filter Filter) ([]Entity, error) {
+    var results []Entity
+    if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, query, data, &results); err != nil {
+        return nil, err
+    }
+    if results == nil { // check nil, not error
+        return []Entity{}, nil // or return nil, nil
+    }
+    return results, nil
+}
+
+func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (Entity, error) {
+    var result Entity
+    if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, query, data, &result); err != nil {
+        if err == sqldb.ErrDBNotFound {
+            return Entity{}, errs.NotFound // app-layer error
+        }
+        return Entity{}, err
+    }
+    return result, nil
+}
+
+func (s *Store) Delete(ctx context.Context, id uuid.UUID) error {
+    if err := sqldb.ExecContext(ctx, s.log, s.db, query); err != nil {
+        return err
+    }
+    return nil
+}
+```
+
+VERIFIED FACTS:
+- NamedQuerySlice call sites: 129 (across 75 files)
+- Total sqldb imports: 185 files
+- 4 sentinel errors defined
+- Config has 7 fields (User, Password, Host, Name, Schema, MaxIdleConns, MaxOpenConns, DisableTLS)
+- All helpers use named parameters (:param_name)
+- All helpers accept context for cancellation support
+
+PERFORMANCE CONSIDERATIONS:
+- Connection pooling reduces connection overhead
+- MaxOpenConns limits concurrent connections (prevents database overload)
+- MaxIdleConns limits idle connections (reduces memory when traffic is low)
+- Named parameters use prepared statements (fast execution)
+- Nil slice vs. error distinction allows efficient empty-set handling
+
+DIFFERENCES FROM STANDARD sqlx:
+
+Standard sqlx:
+  - Returns empty slice (not error) when no results
+  - No sentinel error constants
+  - Manual connection pooling config
+
+sqldb wrapper:
+  - NamedQuerySlice explicitly returns nil (more semantic)
+  - NamedQueryStruct returns ErrDBNotFound (different from NamedQuerySlice)
+  - Centralized error constants
+  - Config + Open() helper
+  - Logging on every query
