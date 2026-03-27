@@ -114,7 +114,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 				CanCreate: dbtest.BoolPointer(false),
 				CanUpdate: dbtest.BoolPointer(false),
 				CanDelete: dbtest.BoolPointer(false),
-				CanRead:   dbtest.BoolPointer(true),
+				CanRead:   dbtest.BoolPointer(false),
 			}
 			if _, err := busDomain.TableAccess.Update(ctx, ta, update); err != nil {
 				return apitest.SeedData{}, fmt.Errorf("updating table access: %w", err)
