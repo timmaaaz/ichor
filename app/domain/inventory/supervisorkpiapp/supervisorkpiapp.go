@@ -51,9 +51,7 @@ func (a *App) Query(ctx context.Context) (KPIs, error) {
 	approvalStatus := approvalrequestbus.StatusPending
 	adjustmentStatus := inventoryadjustmentbus.ApprovalStatusPending
 	transferStatus := transferorderbus.StatusPending
-	// inspectionbus has no exported status constants; "pending" is the only
-	// status used in seeds and the Create method default.
-	inspectionStatus := "pending"
+	inspectionStatus := inspectionbus.StatusPending
 	putAwayStatus := putawaytaskbus.Statuses.Pending
 	alertStatus := alertbus.StatusActive
 

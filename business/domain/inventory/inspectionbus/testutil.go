@@ -12,18 +12,15 @@ import (
 func TestNewInspections(n int, productIDs, inspectorIDs, lotIDs uuid.UUIDs) []NewInspection {
 	newInspections := make([]NewInspection, n)
 
-	// floor_worker1 UUID — stable across all environments (from seed.sql)
-	floorWorker1 := uuid.MustParse("c0000000-0000-4000-8000-000000000001")
-
 	idx := rand.Intn(10000)
 
 	for i := 0; i < n; i++ {
 		idx++
 
-		// First 5 inspections assigned to floor_worker1
+		// First 5 inspections assigned to the first inspector in the list
 		inspectorID := inspectorIDs[idx%len(inspectorIDs)]
 		if i < 5 {
-			inspectorID = floorWorker1
+			inspectorID = inspectorIDs[0]
 		}
 
 		newInspections[i] = NewInspection{
@@ -31,7 +28,7 @@ func TestNewInspections(n int, productIDs, inspectorIDs, lotIDs uuid.UUIDs) []Ne
 			InspectorID:        inspectorID,
 			LotID:              lotIDs[idx%len(lotIDs)],
 			InspectionDate:     time.Now().AddDate(0, 0, -(i % 7)),
-			Status:             "pending",
+			Status:             StatusPending,
 			NextInspectionDate: time.Now().AddDate(0, 0, i+7),
 		}
 	}
