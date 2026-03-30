@@ -47,6 +47,8 @@ All values are randomized (names, IDs, dates). Only counts and relationships are
 | Lot locations | 15 | |
 | Inspections | 10 | |
 | Serial numbers | 50 | |
+| Put-away tasks | 15 | first assigned to floor_worker1 |
+| Pick tasks | 15 | cycle over 5 line items via modulo |
 | Action templates | 15 | workflow |
 | Default automation rules | 8 | workflow |
 
@@ -56,8 +58,14 @@ Source: `business/sdk/migrate/sql/seed.sql` — identical on every environment.
 
 Users:
 ```
-admin_gopher  id=5cf37266-3473-4006-984f-9325122678b7  roles={ADMIN}  email=admin@example.com
-user_gopher   id=45b5fbd3-755f-4379-8f07-a58d4a30fa2f  roles={USER}   email=user@example.com
+admin_gopher   id=5cf37266-3473-4006-984f-9325122678b7  roles={ADMIN}  email=admin@example.com
+user_gopher    id=45b5fbd3-755f-4379-8f07-a58d4a30fa2f  roles={USER}   email=user@example.com
+floor_worker1  id=c0000000-0000-4000-8000-000000000001  roles={USER}   email=floor_worker1@example.com
+```
+
+Role:
+```
+FLOOR_WORKER  id=b0000000-0000-4000-8000-000000000001
 ```
 
 Role:
@@ -221,6 +229,7 @@ LotTrackings, LotLocation, Inspection
 // Inventory
 Warehouse, Zones, InventoryLocation, InventoryItem, SerialNumber
 InventoryTransaction, InventoryAdjustment, TransferOrder
+PutAwayTask, PickTask
 
 // Sales
 ContactInfos, Customers, Currency, Order, OrderLineItem
@@ -257,9 +266,11 @@ seedProducts(ctx, busDomain, geoHR, foundation)                 → products res
     ↓
 seedInventory(ctx, busDomain, foundation, geoHR, products)      → inventory result
     ↓
-seedSales(ctx, busDomain, foundation, geoHR, products)
+seedSales(ctx, busDomain, foundation, geoHR, products)          → SalesSeed
     ↓
 seedProcurement(ctx, busDomain, foundation, geoHR, products, inventory)
+    ↓
+seedTasks(ctx, busDomain, foundation, products, inventory, sales) → TasksSeed
     ↓
 seedTableBuilder(ctx, busDomain, adminID)
     ↓
@@ -322,9 +333,23 @@ inspections, transfer orders, transactions, adjustments.
 
 ### seed_sales.go
 ```go
-func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, geoHR GeographyHRSeed, products ProductsSeed) error
+type SalesSeed struct {
+    OrderIDs         uuid.UUIDs
+    OrderLineItemIDs uuid.UUIDs
+}
+func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, geoHR GeographyHRSeed, products ProductsSeed) (SalesSeed, error)
 ```
 Seeds: customers, order fulfillment statuses, orders, line item fulfillment statuses, order line items.
+
+### seed_tasks.go
+```go
+type TasksSeed struct {
+    PutAwayTasks []putawaytaskbus.PutAwayTask
+    PickTasks    []picktaskbus.PickTask
+}
+func seedTasks(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, products ProductsSeed, inventory InventorySeed, sales SalesSeed) (TasksSeed, error)
+```
+Seeds: 15 put-away tasks, 15 pick tasks. First put-away task assigned to floor_worker1.
 
 ### seed_procurement.go
 ```go

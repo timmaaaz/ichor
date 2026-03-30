@@ -388,7 +388,9 @@ INSERT INTO core.users (
     (gen_random_uuid(), 'accounting', 'Skyler', 'Books', NULL, 'accounting@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2023-05-10 00:00:00', '2023-05-10 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a'),
     (gen_random_uuid(), 'payroll', 'Drew', 'Payment', NULL, 'payroll@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2023-05-15 00:00:00', '2023-05-15 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a'),
     (gen_random_uuid(), 'recruitment', 'Harley', 'Hiring', NULL, 'recruitment@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2023-06-01 00:00:00', '2023-06-01 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a'),
-    (gen_random_uuid(), 'benefits', 'Charlie', 'Benefits', NULL, 'benefits@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2023-06-05 00:00:00', '2023-06-05 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a')
+    (gen_random_uuid(), 'benefits', 'Charlie', 'Benefits', NULL, 'benefits@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2023-06-05 00:00:00', '2023-06-05 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a'),
+    -- Floor worker user (fixed UUID for test stability)
+    ('c0000000-0000-4000-8000-000000000001', 'floor_worker1', 'Sam', 'Picker', NULL, 'floor_worker1@example.com', NULL, NULL, NULL, NULL, NULL, '{USER}', '{}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', NULL, true, NULL, NULL, '2023-06-10 00:00:00', '2023-06-10 00:00:00', '0394acac-ace4-4e8f-b64e-68625b0af14a')
 ;
 
 
@@ -416,13 +418,16 @@ INSERT INTO assets.asset_conditions (id, name) VALUES
 -- Add this after your users INSERT statement
 
 -- First, ensure we have an ADMIN role in the roles table
-INSERT INTO core.roles (id, name, description) VALUES 
-    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'ZZZADMIN', 'Administrator role with full access')
+INSERT INTO core.roles (id, name, description) VALUES
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'ZZZADMIN', 'Administrator role with full access'),
+    ('b0000000-0000-4000-8000-000000000001', 'FLOOR_WORKER', 'Floor worker role for warehouse operations')
 ON CONFLICT (id) DO NOTHING;
 
--- -- Link the admin user to the ADMIN role
+-- Link the admin user to the ADMIN role
 INSERT INTO core.user_roles (id, user_id, role_id) VALUES
-    (gen_random_uuid(), '5cf37266-3473-4006-984f-9325122678b7', '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1')
+    (gen_random_uuid(), '5cf37266-3473-4006-984f-9325122678b7', '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1'),
+    -- Link floor_worker1 to FLOOR_WORKER role
+    (gen_random_uuid(), 'c0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001')
 ON CONFLICT DO NOTHING;
 
 -- Payment Terms lookup data (UUIDs are v4-compliant for API validation compatibility)
@@ -503,14 +508,17 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     -- introspection schema
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'introspection', true, true, true, true),
     -- inventory schema
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.cycle_count_items', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.cycle_count_sessions', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_adjustments', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_items', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_locations', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_transactions', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.lot_trackings', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.lot_locations', true, true, true, true),
-    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.quality_inspections', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.pick_tasks', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.put_away_tasks', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.quality_inspections', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.serial_numbers', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.transfer_orders', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.warehouses', true, true, true, true),
@@ -571,6 +579,37 @@ VALUES
     ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'lookup_entity', true),
     ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'transition_status', true),
     ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'log_audit_entry', true)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- FLOOR_WORKER role: scoped table access for warehouse operations
+-- Permissions: pick tasks, putaway, cycle counts, scanning, inventory viewing
+-- ============================================================================
+INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, can_update, can_delete) VALUES
+    -- Pick tasks: claim, update status, complete
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.pick_tasks', true, true, true, false),
+    -- Putaway tasks: claim, update status, complete
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.put_away_tasks', true, true, true, false),
+    -- Cycle count sessions: create, drive to completion
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.cycle_count_sessions', true, true, true, false),
+    -- Cycle count items: record counted quantities
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.cycle_count_items', true, true, true, false),
+    -- Inventory items: read for scan, write for pick/putaway quantity updates
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_items', true, true, true, false),
+    -- Inventory transactions: append-only ledger entries from pick/putaway
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_transactions', true, true, false, false),
+    -- Inventory adjustments: created by cycle count session completion
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_adjustments', true, true, true, false),
+    -- Read-only tables for scan and context
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_locations', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.warehouses', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.zones', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'products.products', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.serial_numbers', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.lot_trackings', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.lot_locations', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.order_line_items', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.orders', false, true, false, false)
 ON CONFLICT DO NOTHING;
 
 -- Seed trigger types for workflow automation

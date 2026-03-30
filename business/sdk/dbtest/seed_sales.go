@@ -134,7 +134,7 @@ func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSe
 	}
 
 	return SalesSeed{
-		OrderIDs:         uuid.UUIDs(orderIDs),
+		OrderIDs:         orderIDs,
 		OrderLineItemIDs: lineItemIDs,
 	}, nil
 }

@@ -57,7 +57,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding procurement: %w", err)
 	}
 
-	if err := seedTasks(ctx, busDomain, foundation, products, inventory, sales); err != nil {
+	if _, err := seedTasks(ctx, busDomain, foundation, products, inventory, sales); err != nil {
 		return fmt.Errorf("seeding tasks: %w", err)
 	}
 
