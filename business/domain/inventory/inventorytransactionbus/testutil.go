@@ -13,18 +13,28 @@ import (
 func TestNewInventoryTransaction(n int, locationIDs, productIDs, userIDs uuid.UUIDs) []NewInventoryTransaction {
 	newInventoryTransactions := make([]NewInventoryTransaction, n)
 
+	floorWorker1 := uuid.MustParse("c0000000-0000-4000-8000-000000000001")
+
+	transactionTypes := []string{"receive", "pick", "putaway", "transfer", "adjustment", "count"}
+
 	idx := rand.Intn(10000)
 
 	for i := 0; i < n; i++ {
 		idx++
+
+		userID := userIDs[idx%len(userIDs)]
+		if i < 5 {
+			userID = floorWorker1
+		}
+
 		newInventoryTransactions[i] = NewInventoryTransaction{
 			LocationID:      locationIDs[idx%len(locationIDs)],
 			ProductID:       productIDs[idx%len(productIDs)],
-			UserID:          userIDs[idx%len(userIDs)],
-			TransactionType: "Movement",
-			Quantity:        rand.Intn(100),
-			ReferenceNumber: fmt.Sprintf("ref_%d", idx),
-			TransactionDate: time.Now(),
+			UserID:          userID,
+			TransactionType: transactionTypes[i%len(transactionTypes)],
+			Quantity:        rand.Intn(100) + 1,
+			ReferenceNumber: fmt.Sprintf("REF-%04d", i+1),
+			TransactionDate: time.Now().AddDate(0, 0, -(i % 7)),
 		}
 	}
 
