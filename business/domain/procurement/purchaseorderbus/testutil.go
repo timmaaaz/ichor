@@ -63,7 +63,18 @@ func TestNewPurchaseOrdersHistorical(n int, daysBack int, supplierIDs uuid.UUIDs
 		// Distribute evenly across the time range
 		daysAgo := (i * daysBack) / n
 		orderDate := now.AddDate(0, 0, -daysAgo)
-		expectedDelivery := orderDate.AddDate(0, 0, 14) // 2 weeks out
+		// Varied delivery dates for dashboard windows
+		var expectedDelivery time.Time
+		switch i {
+		case 0:
+			expectedDelivery = now // Today window
+		case 1:
+			expectedDelivery = now.AddDate(0, 0, 3) // 7 Days window
+		case 2:
+			expectedDelivery = now.AddDate(0, 0, -7) // Overdue (past)
+		default:
+			expectedDelivery = orderDate.AddDate(0, 0, 14) // Standard 2 weeks
+		}
 
 		subtotal := 1000.00 + float64(i*100)
 		tax := subtotal * 0.08
