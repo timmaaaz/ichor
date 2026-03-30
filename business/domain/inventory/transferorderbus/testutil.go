@@ -12,6 +12,9 @@ import (
 func TestNewTransferOrders(n int, productIDs, fromLocationIDs, toLocationIDs, requestedBy, approvedBy []uuid.UUID) []NewTransferOrder {
 	newTransferOrders := make([]NewTransferOrder, n)
 
+	// Status distribution: ~40% pending, ~40% approved, ~20% completed
+	transferStatuses := []string{StatusPending, StatusPending, StatusApproved, StatusApproved, StatusCompleted}
+
 	idx := rand.Intn(10000)
 	for i := range n {
 		idx++
@@ -22,7 +25,7 @@ func TestNewTransferOrders(n int, productIDs, fromLocationIDs, toLocationIDs, re
 			RequestedByID:  requestedBy[idx%len(requestedBy)],
 			ApprovedByID:   func() *uuid.UUID { v := approvedBy[idx%len(approvedBy)]; return &v }(),
 			Quantity:       idx,
-			Status:         StatusPending,
+			Status:         transferStatuses[i%len(transferStatuses)],
 			TransferDate:   time.Now(),
 		}
 	}
