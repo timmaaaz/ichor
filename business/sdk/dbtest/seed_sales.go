@@ -14,7 +14,13 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
 )
 
-func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, geoHR GeographyHRSeed, products ProductsSeed) error {
+// SalesSeed holds the results of seeding sales data.
+type SalesSeed struct {
+	OrderIDs         uuid.UUIDs
+	OrderLineItemIDs uuid.UUIDs
+}
+
+func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, geoHR GeographyHRSeed, products ProductsSeed) (SalesSeed, error) {
 	count := 5
 
 	strIDs := make([]uuid.UUID, 0, len(geoHR.Streets))
@@ -31,7 +37,7 @@ func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSe
 
 	customers, err := customersbus.TestSeedCustomersHistorical(ctx, count, 180, strIDs, contactInfoIDs, adminIDs, busDomain.Customers)
 	if err != nil {
-		return fmt.Errorf("seeding customers : %w", err)
+		return SalesSeed{}, fmt.Errorf("seeding customers : %w", err)
 	}
 	customerIDs := make([]uuid.UUID, 0, len(customers))
 	for _, c := range customers {
@@ -46,7 +52,7 @@ func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSe
 			Description: data.Description,
 		})
 		if err != nil {
-			return fmt.Errorf("seeding order fulfillment status %s: %w", data.Name, err)
+			return SalesSeed{}, fmt.Errorf("seeding order fulfillment status %s: %w", data.Name, err)
 		}
 		ofls = append(ofls, ofl)
 	}
@@ -68,7 +74,7 @@ func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSe
 	// Use weighted random distribution for frontend demo (better heatmap visualization)
 	orders, err := ordersbus.TestSeedOrdersFrontendWeighted(ctx, 200, 90, adminIDs, customerIDs, oflIDs, currencyIDs, busDomain.Order)
 	if err != nil {
-		return fmt.Errorf("seeding Orders: %w", err)
+		return SalesSeed{}, fmt.Errorf("seeding Orders: %w", err)
 	}
 	orderIDs := make([]uuid.UUID, 0, len(orders))
 	for _, o := range orders {
@@ -97,7 +103,7 @@ func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSe
 			Description: data.description,
 		})
 		if err != nil {
-			return fmt.Errorf("seeding line item fulfillment status %s: %w", data.name, err)
+			return SalesSeed{}, fmt.Errorf("seeding line item fulfillment status %s: %w", data.name, err)
 		}
 		olStatuses = append(olStatuses, ols)
 	}
@@ -117,10 +123,18 @@ func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSe
 		productIDs = append(productIDs, p.ProductID)
 	}
 
-	_, err = orderlineitemsbus.TestSeedOrderLineItemsHistorical(ctx, count, orderDates, orderIDs, productIDs, olStatusIDs, userIDs, busDomain.OrderLineItem)
+	lineItems, err := orderlineitemsbus.TestSeedOrderLineItemsHistorical(ctx, count, orderDates, orderIDs, productIDs, olStatusIDs, userIDs, busDomain.OrderLineItem)
 	if err != nil {
-		return fmt.Errorf("seeding Order Line Items: %w", err)
+		return SalesSeed{}, fmt.Errorf("seeding Order Line Items: %w", err)
 	}
 
-	return nil
+	lineItemIDs := make(uuid.UUIDs, len(lineItems))
+	for i, li := range lineItems {
+		lineItemIDs[i] = li.ID
+	}
+
+	return SalesSeed{
+		OrderIDs:         uuid.UUIDs(orderIDs),
+		OrderLineItemIDs: lineItemIDs,
+	}, nil
 }
