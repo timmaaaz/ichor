@@ -313,9 +313,9 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/inventory/serial-numbers",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: inventory.serial_numbers"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission CREATE for table: inventory.serial_numbers"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

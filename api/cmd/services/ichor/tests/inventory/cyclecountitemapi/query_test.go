@@ -99,9 +99,9 @@ func query401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/inventory/cycle-count-items?rows=10&page=1",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodGet,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission READ for table: inventory.cycle_count_items"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission READ for table: inventory.cycle_count_items"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -140,9 +140,9 @@ func queryByID401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/inventory/cycle-count-items/%s", sd.CycleCountItems[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodGet,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission READ for table: inventory.cycle_count_items"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission READ for table: inventory.cycle_count_items"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

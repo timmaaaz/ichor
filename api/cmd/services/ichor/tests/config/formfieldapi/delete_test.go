@@ -77,9 +77,9 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/config/form-fields/" + sd.FormFields[0].ID,
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: config.form_fields"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission DELETE for table: config.form_fields"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

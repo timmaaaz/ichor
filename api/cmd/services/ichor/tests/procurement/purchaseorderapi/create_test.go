@@ -107,13 +107,13 @@ func create400(sd apitest.SeedData) []apitest.Table {
 	return table
 }
 
-func create401(sd apitest.SeedData) []apitest.Table {
+func create403(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
 		{
 			Name:       "unauthorized",
 			URL:        "/v1/procurement/purchase-orders",
 			Token:      sd.Users[0].Token,
-			StatusCode: 401,
+			StatusCode: 403,
 			Method:     "POST",
 			Input: &purchaseorderapp.NewPurchaseOrder{
 				OrderNumber:           "PO-TEST-002",
@@ -133,7 +133,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 				CreatedBy:             sd.Users[0].ID.String(),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: procurement.purchase_orders"),
+			ExpResp: errs.Newf(errs.PermissionDenied, "user does not have permission CREATE for table: procurement.purchase_orders"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

@@ -71,7 +71,7 @@ func query401(sd apitest.SeedData) []apitest.Table {
 			Name:       "basic",
 			URL:        "/v1/core/table-access?page=1&rows=10",
 			Token:      sd.Users[0].Token,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Method:     http.MethodGet,
 			GotResp:    &query.Result[tableaccessapp.TableAccess]{},
 			ExpResp:    &query.Result[tableaccessapp.TableAccess]{},

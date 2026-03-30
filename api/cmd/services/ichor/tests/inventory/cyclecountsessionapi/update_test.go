@@ -123,12 +123,12 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/inventory/cycle-count-sessions/%s", sd.CycleCountSessions[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input: &cyclecountsessionapp.UpdateCycleCountSession{
 				Name: dbtest.StringPointer("Should Fail"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: inventory.cycle_count_sessions"),
+			ExpResp: errs.Newf(errs.PermissionDenied, "user does not have permission UPDATE for table: inventory.cycle_count_sessions"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

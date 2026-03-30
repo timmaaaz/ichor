@@ -121,9 +121,9 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/hr/offices/%s", sd.Offices[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: hr.offices"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission UPDATE for table: hr.offices"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

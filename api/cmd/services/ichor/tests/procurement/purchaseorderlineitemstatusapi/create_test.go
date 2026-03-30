@@ -66,14 +66,14 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/procurement/purchase-order-line-item-statuses",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input: &purchaseorderlineitemstatusapp.NewPurchaseOrderLineItemStatus{
 				Name:        "Test",
 				Description: "Test",
 				SortOrder:   100,
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: procurement.purchase_order_line_item_statuses"),
+			ExpResp: errs.Newf(errs.PermissionDenied, "user does not have permission CREATE for table: procurement.purchase_order_line_item_statuses"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

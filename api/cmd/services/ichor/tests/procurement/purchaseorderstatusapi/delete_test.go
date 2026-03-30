@@ -50,9 +50,9 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/procurement/purchase-order-statuses/" + sd.PurchaseOrderStatuses[0].ID,
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: procurement.purchase_order_statuses"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission DELETE for table: procurement.purchase_order_statuses"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

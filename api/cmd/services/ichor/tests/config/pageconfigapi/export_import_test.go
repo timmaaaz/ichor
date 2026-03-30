@@ -343,10 +343,10 @@ func import401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/config/page-configs/import-blob?mode=skip",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input:      blob,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_only]"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission CREATE for table: config.page_configs"),
 			CmpFunc: func(got any, exp any) string {
 				gotErr := got.(*errs.Error)
 				expErr := exp.(*errs.Error)

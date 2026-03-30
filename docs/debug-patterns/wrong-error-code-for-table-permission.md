@@ -11,3 +11,4 @@
 **See also**: `docs/arch/auth.md`, `docs/arch/errs.md`
 **Examples**:
 - `inspectionapi_Test_Inspections_fail-403-fail-forbidden.md` — table permission denial returned 401 instead of 403; fixed by changing errs.Unauthenticated to errs.PermissionDenied in authorize.go
+- `assetapi_Test_Asset_create-401-roleadminonly.md` + 146 others — all 401-permission tests across every domain expected 401 but got 403 after authorize.go was corrected; tests updated StatusCode 401→403 and errs.Unauthenticated→errs.PermissionDenied
