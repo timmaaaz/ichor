@@ -54,7 +54,8 @@ func TestSeedPurchaseOrders(ctx context.Context, n int, supplierIDs uuid.UUIDs, 
 
 // TestNewPurchaseOrdersHistorical creates purchase orders distributed across a time range for seeding.
 // daysBack specifies how many days of history to generate (e.g., 90, 180).
-// Purchase orders are evenly distributed across the time range.
+// Order dates are evenly distributed across the time range. The first few orders
+// have varied delivery dates (today, +3 days, overdue) for dashboard window testing.
 func TestNewPurchaseOrdersHistorical(n int, daysBack int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewPurchaseOrder {
 	orders := make([]NewPurchaseOrder, 0, n)
 	now := time.Now()

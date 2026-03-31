@@ -6,6 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// Status constants for inspections.
+const (
+	StatusPending = "pending"
+	StatusPassed  = "passed"
+	StatusFailed  = "failed"
+)
+
 // JSON tags are required for workflow event serialization. The workflow system
 // (via EventPublisher) marshals business models to JSON for RawData in TriggerEvents.
 // Without these tags, Go defaults to PascalCase keys, but workflow action handlers
