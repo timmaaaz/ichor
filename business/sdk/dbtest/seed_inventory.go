@@ -94,9 +94,17 @@ func seedInventory(ctx context.Context, busDomain BusDomain, foundation Foundati
 		return InventorySeed{}, fmt.Errorf("seeding inventory transactions : %w", err)
 	}
 
-	_, err = inventoryadjustmentbus.TestSeedInventoryAdjustments(ctx, 20, productIDs, inventoryLocationsIDs, reporterIDs[:2], busDomain.InventoryAdjustment)
+	adjustments, err := inventoryadjustmentbus.TestSeedInventoryAdjustments(ctx, 20, productIDs, inventoryLocationsIDs, reporterIDs[:2], busDomain.InventoryAdjustment)
 	if err != nil {
 		return InventorySeed{}, fmt.Errorf("seeding inventory adjustments : %w", err)
+	}
+
+	// Approve the first adjustment for varied status display
+	if len(adjustments) > 0 {
+		_, err = busDomain.InventoryAdjustment.Approve(ctx, adjustments[0], foundation.Admins[0].ID, "Approved during seeding")
+		if err != nil {
+			return InventorySeed{}, fmt.Errorf("approving adjustment: %w", err)
+		}
 	}
 
 	return InventorySeed{
