@@ -49,6 +49,10 @@ All values are randomized (names, IDs, dates). Only counts and relationships are
 | Serial numbers | 50 | |
 | Action templates | 15 | workflow |
 | Default automation rules | 8 | workflow |
+| Cycle count sessions | 3 | |
+| Cycle count items | 15 | 5 per session |
+| Automation executions | 5 | created for approval request FK |
+| Approval requests | 5 | pending, for supervisor inbox |
 
 ### Fixed UUIDs (safe to hardcode in tests)
 
@@ -56,15 +60,17 @@ Source: `business/sdk/migrate/sql/seed.sql` — identical on every environment.
 
 Users:
 ```
-admin_gopher  id=5cf37266-3473-4006-984f-9325122678b7  roles={ADMIN}  email=admin@example.com
-user_gopher   id=45b5fbd3-755f-4379-8f07-a58d4a30fa2f  roles={USER}   email=user@example.com
+admin_gopher   id=5cf37266-3473-4006-984f-9325122678b7  roles={ADMIN}  email=admin@example.com
+user_gopher    id=45b5fbd3-755f-4379-8f07-a58d4a30fa2f  roles={USER}   email=user@example.com
+floor_worker1  id=c0000000-0000-4000-8000-000000000001  roles={USER}   email=floor_worker1@example.com  password=admin123
 ```
 
-Role:
+Roles:
 ```
-ZZZADMIN  id=54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+ZZZADMIN      id=54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+FLOOR_WORKER  id=b0000000-0000-4000-8000-000000000001
 ```
-(admin_gopher is linked to this role via user_roles)
+(admin_gopher is linked to ZZZADMIN, floor_worker1 is linked to FLOOR_WORKER via user_roles)
 
 HR user approval statuses:
 ```
@@ -231,7 +237,10 @@ ConfigStore, TableStore, Form, FormField
 PageAction, PageConfig, PageContent
 
 // Workflow
-Workflow, Alert, Notification
+Workflow, Alert, Notification, ApprovalRequest
+
+// Inventory (cycle counts)
+CycleCountSession, CycleCountItem
 ```
 
 ---
@@ -268,6 +277,12 @@ seedPages(ctx, log, busDomain)
 seedForms(ctx, log, busDomain)
     ↓
 seedWorkflow(ctx, log, busDomain, adminID)
+    ↓
+seedAlerts(ctx, log, busDomain, adminID)
+    ↓
+seedCycleCounts(ctx, busDomain, foundation, products, inventory)
+    ↓
+seedApprovals(ctx, busDomain, foundation)                         → queries rules from seedWorkflow
 ```
 
 `adminID` is extracted from `foundation.Admins[0].ID` after `seedFoundation`.
@@ -360,7 +375,26 @@ key facts:
 func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, adminID uuid.UUID) error
 ```
 Seeds: 15 action templates + 8 default automation rules.
-Must run LAST — depends on forms and templates already seeded.
+Must run after forms and templates are seeded.
+
+### seed_alerts.go
+```go
+func seedAlerts(ctx context.Context, log *logger.Logger, busDomain BusDomain, adminID uuid.UUID) error
+```
+Seeds: alert records.
+
+### seed_cyclecounts.go
+```go
+func seedCycleCounts(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, products ProductsSeed, inventory InventorySeed) error
+```
+Seeds: 3 cycle count sessions, 15 cycle count items (5 per session).
+
+### seed_approvals.go
+```go
+func seedApprovals(ctx context.Context, busDomain BusDomain, foundation FoundationSeed) error
+```
+Seeds: 5 automation executions (FK prerequisite) + 5 pending approval requests.
+Must run after seedWorkflow — queries rules from DB.
 
 ---
 

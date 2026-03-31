@@ -113,9 +113,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus/stores/actionpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus/stores/approvalrequestdb"
-	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus/stores/notificationdb"
 

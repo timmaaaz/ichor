@@ -9,7 +9,8 @@ import (
 )
 
 // TestNewApprovalRequests generates n new approval requests for testing.
-func TestNewApprovalRequests(n int, approverIDs uuid.UUIDs) []NewApprovalRequest {
+// executionIDs and ruleIDs must reference real rows (FK constraints).
+func TestNewApprovalRequests(n int, executionIDs, ruleIDs, approverIDs uuid.UUIDs) []NewApprovalRequest {
 	requests := make([]NewApprovalRequest, n)
 
 	taskNames := []string{
@@ -22,8 +23,8 @@ func TestNewApprovalRequests(n int, approverIDs uuid.UUIDs) []NewApprovalRequest
 
 	for i := range n {
 		requests[i] = NewApprovalRequest{
-			ExecutionID:     uuid.New(),
-			RuleID:          uuid.New(),
+			ExecutionID:     executionIDs[i%len(executionIDs)],
+			RuleID:          ruleIDs[i%len(ruleIDs)],
 			ActionName:      fmt.Sprintf("approve_%d", i+1),
 			Approvers:       approverIDs,
 			ApprovalType:    ApprovalTypeAny,
@@ -37,8 +38,9 @@ func TestNewApprovalRequests(n int, approverIDs uuid.UUIDs) []NewApprovalRequest
 }
 
 // TestSeedApprovalRequests creates n approval requests in the database for testing.
-func TestSeedApprovalRequests(ctx context.Context, n int, approverIDs uuid.UUIDs, api *Business) ([]ApprovalRequest, error) {
-	newRequests := TestNewApprovalRequests(n, approverIDs)
+// executionIDs and ruleIDs must reference existing DB rows.
+func TestSeedApprovalRequests(ctx context.Context, n int, executionIDs, ruleIDs, approverIDs uuid.UUIDs, api *Business) ([]ApprovalRequest, error) {
+	newRequests := TestNewApprovalRequests(n, executionIDs, ruleIDs, approverIDs)
 
 	requests := make([]ApprovalRequest, len(newRequests))
 	for i, nr := range newRequests {
