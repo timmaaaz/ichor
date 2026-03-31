@@ -36,14 +36,30 @@ func Test_TransferOrders(t *testing.T) {
 		t.Fatalf("Seeding error: %s", err)
 	}
 
+	// Find a pending transfer order for the lifecycle chain (approve → claim → execute).
+	// After UUID sort, status-to-index mapping is non-deterministic with mixed statuses.
+	lifecycleID := findTransferOrderIDByStatus(t, sd.TransferOrders, transferorderbus.StatusPending)
+
 	// -------------------------------------------------------------------------
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
-	unitest.Run(t, approve(db.BusDomain, sd), "approve")
-	unitest.Run(t, claim(db.BusDomain, sd), "claim")
-	unitest.Run(t, execute(db.BusDomain, sd), "execute")
+	unitest.Run(t, approve(db.BusDomain, sd, lifecycleID), "approve")
+	unitest.Run(t, claim(db.BusDomain, sd, lifecycleID), "claim")
+	unitest.Run(t, execute(db.BusDomain, sd, lifecycleID), "execute")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
+}
+
+// findTransferOrderIDByStatus returns the TransferID of the first order with the given status.
+func findTransferOrderIDByStatus(t *testing.T, orders []transferorderbus.TransferOrder, status string) uuid.UUID {
+	t.Helper()
+	for _, to := range orders {
+		if to.Status == status {
+			return to.TransferID
+		}
+	}
+	t.Fatalf("no transfer order with status %q found in seed data", status)
+	return uuid.Nil
 }
 
 func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
@@ -319,15 +335,18 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	}}
 }
 
-func approve(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+func approve(busDomain dbtest.BusDomain, sd unitest.SeedData, lifecycleID uuid.UUID) []unitest.Table {
 	approverID := sd.Admins[0].ID
 	return []unitest.Table{
 		{
 			Name:    "approve-pending-succeeds",
 			ExpResp: transferorderbus.StatusApproved,
 			ExcFunc: func(ctx context.Context) any {
-				// Use a transfer order that's still in pending state.
-				to := sd.TransferOrders[1]
+				// Query the lifecycle order (known to be pending).
+				to, err := busDomain.TransferOrder.QueryByID(ctx, lifecycleID)
+				if err != nil {
+					return fmt.Errorf("query: %w", err)
+				}
 				approved, err := busDomain.TransferOrder.Approve(ctx, to, approverID, "approved for transfer")
 				if err != nil {
 					return fmt.Errorf("approving transfer order: %w", err)
@@ -343,7 +362,7 @@ func approve(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: transferorderbus.ErrInvalidTransferStatus,
 			ExcFunc: func(ctx context.Context) any {
 				// Re-query to get the approved order from previous test.
-				to, err := busDomain.TransferOrder.QueryByID(ctx, sd.TransferOrders[1].TransferID)
+				to, err := busDomain.TransferOrder.QueryByID(ctx, lifecycleID)
 				if err != nil {
 					return fmt.Errorf("query: %w", err)
 				}
@@ -365,15 +384,24 @@ func approve(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	}
 }
 
-func claim(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+func claim(busDomain dbtest.BusDomain, sd unitest.SeedData, lifecycleID uuid.UUID) []unitest.Table {
 	claimerID := sd.Admins[0].ID
+
+	// Find a non-approved order for the failure test (claim requires approved status).
+	var failTO transferorderbus.TransferOrder
+	for _, to := range sd.TransferOrders {
+		if to.Status != transferorderbus.StatusApproved && to.TransferID != lifecycleID {
+			failTO = to
+			break
+		}
+	}
+
 	return []unitest.Table{
 		{
 			Name:    "claim-pending-fails",
 			ExpResp: transferorderbus.ErrInvalidTransferStatus,
 			ExcFunc: func(ctx context.Context) any {
-				to := sd.TransferOrders[2]
-				_, err := busDomain.TransferOrder.Claim(ctx, to, claimerID)
+				_, err := busDomain.TransferOrder.Claim(ctx, failTO, claimerID)
 				return err
 			},
 			CmpFunc: func(got, exp any) string {
@@ -392,8 +420,8 @@ func claim(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "claim-approved-succeeds",
 			ExpResp: transferorderbus.StatusInTransit,
 			ExcFunc: func(ctx context.Context) any {
-				// Re-query order 1 which is now approved from the approve test.
-				to, err := busDomain.TransferOrder.QueryByID(ctx, sd.TransferOrders[1].TransferID)
+				// Re-query lifecycle order which is now approved from the approve test.
+				to, err := busDomain.TransferOrder.QueryByID(ctx, lifecycleID)
 				if err != nil {
 					return fmt.Errorf("query: %w", err)
 				}
@@ -410,15 +438,24 @@ func claim(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	}
 }
 
-func execute(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+func execute(busDomain dbtest.BusDomain, sd unitest.SeedData, lifecycleID uuid.UUID) []unitest.Table {
 	executorID := sd.Admins[0].ID
+
+	// Find a non-in-transit order for the failure test (execute requires in_transit status).
+	var failTO transferorderbus.TransferOrder
+	for _, to := range sd.TransferOrders {
+		if to.Status != transferorderbus.StatusInTransit && to.TransferID != lifecycleID {
+			failTO = to
+			break
+		}
+	}
+
 	return []unitest.Table{
 		{
 			Name:    "execute-pending-fails",
 			ExpResp: transferorderbus.ErrInvalidTransferStatus,
 			ExcFunc: func(ctx context.Context) any {
-				to := sd.TransferOrders[3]
-				_, err := busDomain.TransferOrder.Execute(ctx, to, executorID)
+				_, err := busDomain.TransferOrder.Execute(ctx, failTO, executorID)
 				return err
 			},
 			CmpFunc: func(got, exp any) string {
@@ -437,8 +474,8 @@ func execute(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "execute-in-transit-succeeds",
 			ExpResp: transferorderbus.StatusCompleted,
 			ExcFunc: func(ctx context.Context) any {
-				// Re-query order 1 which is now in_transit from the claim test.
-				to, err := busDomain.TransferOrder.QueryByID(ctx, sd.TransferOrders[1].TransferID)
+				// Re-query lifecycle order which is now in_transit from the claim test.
+				to, err := busDomain.TransferOrder.QueryByID(ctx, lifecycleID)
 				if err != nil {
 					return fmt.Errorf("query: %w", err)
 				}
