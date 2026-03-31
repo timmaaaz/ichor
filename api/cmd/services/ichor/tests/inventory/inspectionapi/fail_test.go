@@ -3,8 +3,11 @@ package inspectionapi_test
 import (
 	"net/http"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inspectionapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
 )
 
 func fail200(sd apitest.SeedData) []apitest.Table {
@@ -22,7 +25,7 @@ func fail200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &inspectionapp.FailInspectionResult{},
 			CmpFunc: func(got any, exp any) string {
 				result := got.(*inspectionapp.FailInspectionResult)
-				if result.Inspection.Status != "failed" {
+				if result.Inspection.Status != inspectionbus.StatusFailed {
 					return "expected inspection status 'failed', got '" + result.Inspection.Status + "'"
 				}
 				if result.LotStatus != "quarantined" {
@@ -39,7 +42,7 @@ func fail200NoQuarantine(sd apitest.SeedData) []apitest.Table {
 		{
 			Name:       "fail-without-quarantine",
 			Token:      sd.Admins[0].Token,
-			URL:        "/v1/inventory/quality-inspections/" + sd.Inspections[1].InspectionID + "/fail",
+			URL:        "/v1/inventory/quality-inspections/" + sd.Inspections[3].InspectionID + "/fail",
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &inspectionapp.FailInspection{
@@ -49,7 +52,7 @@ func fail200NoQuarantine(sd apitest.SeedData) []apitest.Table {
 			GotResp: &inspectionapp.FailInspectionResult{},
 			CmpFunc: func(got any, exp any) string {
 				result := got.(*inspectionapp.FailInspectionResult)
-				if result.Inspection.Status != "failed" {
+				if result.Inspection.Status != inspectionbus.StatusFailed {
 					return "expected inspection status 'failed', got '" + result.Inspection.Status + "'"
 				}
 				if result.LotStatus != "" {
@@ -73,6 +76,11 @@ func fail403(sd apitest.SeedData) []apitest.Table {
 				Notes:         "Should not work",
 				QuarantineLot: true,
 			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.PermissionDenied, "user does not have permission UPDATE for table: inventory.quality_inspections"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
 		},
 	}
 }
@@ -88,6 +96,11 @@ func fail404(sd apitest.SeedData) []apitest.Table {
 			Input: &inspectionapp.FailInspection{
 				Notes:         "Does not exist",
 				QuarantineLot: false,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.NotFound, "queryByID: inspection not found"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
 			},
 		},
 	}

@@ -2,7 +2,6 @@ package transferorderbus
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"sort"
 	"time"
@@ -23,7 +22,7 @@ func TestNewTransferOrders(n int, productIDs, fromLocationIDs, toLocationIDs, re
 			RequestedByID:  requestedBy[idx%len(requestedBy)],
 			ApprovedByID:   func() *uuid.UUID { v := approvedBy[idx%len(approvedBy)]; return &v }(),
 			Quantity:       idx,
-			Status:         fmt.Sprintf("status%d", idx%5),
+			Status:         StatusPending,
 			TransferDate:   time.Now(),
 		}
 	}

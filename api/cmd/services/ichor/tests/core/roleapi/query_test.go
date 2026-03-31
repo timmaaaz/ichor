@@ -66,7 +66,7 @@ func query401(sd apitest.SeedData) []apitest.Table {
 			Name:       "basic",
 			URL:        "/v1/core/roles?page=1&rows=10",
 			Token:      sd.Users[0].Token,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Method:     http.MethodGet,
 			GotResp:    &query.Result[roleapp.Role]{},
 			ExpResp:    &query.Result[roleapp.Role]{},

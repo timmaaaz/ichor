@@ -24,7 +24,7 @@ func Test_PurchaseOrder(t *testing.T) {
 
 	test.Run(t, create200(sd), "create-200")
 	test.Run(t, create400(sd), "create-400")
-	test.Run(t, create401(sd), "create-401")
+	test.Run(t, create403(sd), "create-403")
 
 	test.Run(t, approve200(sd), "approve-200")
 	test.Run(t, approve401(sd), "approve-401")
@@ -32,10 +32,10 @@ func Test_PurchaseOrder(t *testing.T) {
 
 	test.Run(t, update200(sd), "update-200")
 	test.Run(t, update400(sd), "update-400")
-	test.Run(t, update401(sd), "update-401")
+	test.Run(t, update403(sd), "update-403")
 	test.Run(t, update404(sd), "update-404")
 
 	test.Run(t, delete200(sd), "delete-200")
-	test.Run(t, delete401(sd), "delete-401")
+	test.Run(t, delete403(sd), "delete-403")
 	test.Run(t, delete404(sd), "delete-404")
 }

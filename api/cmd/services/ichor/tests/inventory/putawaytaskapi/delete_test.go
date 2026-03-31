@@ -41,9 +41,9 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/inventory/put-away-tasks/%s", sd.PutAwayTasks[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodDelete,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission DELETE for table: inventory.put_away_tasks"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission DELETE for table: inventory.put_away_tasks"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

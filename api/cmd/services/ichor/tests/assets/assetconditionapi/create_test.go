@@ -111,9 +111,9 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/assets/asset-conditions",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: assets.asset_conditions"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission CREATE for table: assets.asset_conditions"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

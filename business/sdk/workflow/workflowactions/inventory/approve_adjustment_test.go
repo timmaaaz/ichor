@@ -206,7 +206,7 @@ func insertAdjustmentSeedData(busDomain dbtest.BusDomain) (adjustmentSeedData, e
 		LocationID:     locationIDs[1%len(locationIDs)],
 		AdjustedBy:     adminIDs[0],
 		QuantityChange: 5,
-		ReasonCode:     "correction",
+		ReasonCode:     "data_entry_error",
 		Notes:          "pre-approved",
 		AdjustmentDate: time.Now(),
 	})
@@ -224,7 +224,7 @@ func insertAdjustmentSeedData(busDomain dbtest.BusDomain) (adjustmentSeedData, e
 		LocationID:     locationIDs[2%len(locationIDs)],
 		AdjustedBy:     adminIDs[0],
 		QuantityChange: -3,
-		ReasonCode:     "damage",
+		ReasonCode:     "damaged",
 		Notes:          "pre-rejected",
 		AdjustmentDate: time.Now(),
 	})

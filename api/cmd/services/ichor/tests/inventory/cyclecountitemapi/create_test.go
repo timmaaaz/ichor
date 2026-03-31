@@ -159,7 +159,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 			URL:        "/v1/inventory/cycle-count-items",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input: &cyclecountitemapp.NewCycleCountItem{
 				SessionID:      sd.CycleCountSessions[0].ID,
 				ProductID:      sd.Products[0].ProductID,
@@ -167,7 +167,7 @@ func create401(sd apitest.SeedData) []apitest.Table {
 				SystemQuantity: "50",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.Unauthenticated, "user does not have permission CREATE for table: inventory.cycle_count_items"),
+			ExpResp: errs.Newf(errs.PermissionDenied, "user does not have permission CREATE for table: inventory.cycle_count_items"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

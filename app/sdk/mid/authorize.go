@@ -71,7 +71,7 @@ func AuthorizeTable(ctx context.Context, client *authclient.Client, permissionsB
 	}
 
 	if !hasTablePermission(perms, *tableInfo) {
-		return errs.New(errs.Unauthenticated, fmt.Errorf("user does not have permission %s for table: %s", tableInfo.Action, tableInfo.Name))
+		return errs.New(errs.PermissionDenied, fmt.Errorf("user does not have permission %s for table: %s", tableInfo.Action, tableInfo.Name))
 	}
 
 	return next(ctx)

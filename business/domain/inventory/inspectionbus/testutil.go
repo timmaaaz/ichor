@@ -16,13 +16,20 @@ func TestNewInspections(n int, productIDs, inspectorIDs, lotIDs uuid.UUIDs) []Ne
 
 	for i := 0; i < n; i++ {
 		idx++
+
+		// First 5 inspections assigned to the first inspector in the list
+		inspectorID := inspectorIDs[idx%len(inspectorIDs)]
+		if i < 5 {
+			inspectorID = inspectorIDs[0]
+		}
+
 		newInspections[i] = NewInspection{
 			ProductID:          productIDs[idx%len(productIDs)],
-			InspectorID:        inspectorIDs[idx%len(inspectorIDs)],
+			InspectorID:        inspectorID,
 			LotID:              lotIDs[idx%len(lotIDs)],
-			InspectionDate:     time.Now(),
-			Status:             "pending",
-			NextInspectionDate: time.Now().AddDate(0, 0, 14),
+			InspectionDate:     time.Now().AddDate(0, 0, -(i % 7)),
+			Status:             StatusPending,
+			NextInspectionDate: time.Now().AddDate(0, 0, i+7),
 		}
 	}
 

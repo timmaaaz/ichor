@@ -148,7 +148,7 @@ func Test_ActionTypeSchemas_CategoryConsistency(t *testing.T) {
 		"communication": {"create_alert", "send_email", "send_notification"},
 		"inventory": {
 			"allocate_inventory", "approve_inventory_adjustment", "approve_transfer_order",
-			"check_inventory", "check_reorder_point", "commit_allocation",
+			"check_inventory", "check_reorder_point", "commit_allocation", "create_put_away_task",
 			"receive_inventory", "reject_inventory_adjustment", "reject_transfer_order",
 			"release_reservation", "reserve_inventory",
 		},

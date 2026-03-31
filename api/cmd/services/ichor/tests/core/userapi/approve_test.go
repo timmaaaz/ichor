@@ -53,9 +53,9 @@ func approve401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/core/users/approve/%s", sd.Users[0].ID.String()),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.Unauthenticated, "user does not have permission UPDATE for table: core.users"),
+			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission UPDATE for table: core.users"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
