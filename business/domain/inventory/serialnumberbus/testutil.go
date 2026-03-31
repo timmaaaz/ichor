@@ -16,12 +16,14 @@ func TestNewSerialNumbers(n int, lotIDs, productIDs, locationIDs []uuid.UUID) []
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
+		statuses := []string{"available", "reserved", "quarantined", "shipped"}
+
 		newSerialNumbers[i] = NewSerialNumber{
 			LotID:        lotIDs[idx%len(lotIDs)],
 			ProductID:    productIDs[idx%len(productIDs)],
 			LocationID:   locationIDs[idx%len(locationIDs)],
-			SerialNumber: fmt.Sprintf("SN-%d", idx),
-			Status:       fmt.Sprintf("Status-%d", idx%2),
+			SerialNumber: fmt.Sprintf("SN-2026-%04d", i+1),
+			Status:       statuses[i%len(statuses)],
 		}
 	}
 

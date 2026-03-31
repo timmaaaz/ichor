@@ -339,7 +339,7 @@ func import401(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "roleadminonly",
+			Name:       "tablepermissiondenied",
 			URL:        "/v1/config/page-configs/import-blob?mode=skip",
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPost,

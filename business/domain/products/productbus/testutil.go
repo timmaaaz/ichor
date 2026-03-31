@@ -13,23 +13,41 @@ import (
 func TestNewProducts(n int, brandIDs, productCategoryIDs uuid.UUIDs) []NewProduct {
 	newProducts := make([]NewProduct, n)
 
+	productNames := []string{
+		"Industrial Bearing 6205",
+		"Nitrile Gloves Box/100",
+		"Hydraulic Filter HF-302",
+		"LED Panel Light 60W",
+		"Stainless Steel Bolt M10",
+		"Thermal Paste Tube 5g",
+		"Safety Goggles Clear",
+		"Rubber Gasket Set",
+		"Wire Spool CAT6 100m",
+		"Epoxy Adhesive 2-Part",
+	}
+
+	trackingTypes := []string{"none", "lot", "serial"}
+
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
 
+		trackingType := trackingTypes[i%len(trackingTypes)]
+
 		np := NewProduct{
-			Name:                 fmt.Sprintf("Product%d", idx),
+			Name:                 productNames[i%len(productNames)],
 			BrandID:              brandIDs[rand.Intn(len(brandIDs))],
 			ProductCategoryID:    productCategoryIDs[rand.Intn(len(productCategoryIDs))],
-			Description:          "Description" + fmt.Sprintf("%d", idx),
-			SKU:                  fmt.Sprintf("SKU%d", idx),
-			ModelNumber:          fmt.Sprintf("ModelNumber%d", idx),
-			UpcCode:              fmt.Sprintf("UpcCode%d", idx),
-			Status:               fmt.Sprintf("Status%d", idx),
+			Description:          fmt.Sprintf("High-quality %s for warehouse operations", productNames[i%len(productNames)]),
+			SKU:                  fmt.Sprintf("SKU-%04d", i+1),
+			ModelNumber:          fmt.Sprintf("MDL-%04d", i+1),
+			UpcCode:              fmt.Sprintf("0123456789%02d", i%100),
+			Status:               "active",
 			IsActive:             idx%2 == 0,
-			IsPerishable:         idx%2 == 0 && idx%5 == 0,
+			IsPerishable:         trackingType == "lot",
 			HandlingInstructions: fmt.Sprintf("Handling instructions %d", idx),
 			UnitsPerCase:         idx * 5,
+			TrackingType:         trackingType,
 		}
 		newProducts[i] = np
 	}
@@ -64,27 +82,44 @@ func TestNewProductsHistorical(n int, daysBack int, brandIDs, productCategoryIDs
 	newProducts := make([]NewProduct, n)
 	now := time.Now()
 
+	productNames := []string{
+		"Industrial Bearing 6205",
+		"Nitrile Gloves Box/100",
+		"Hydraulic Filter HF-302",
+		"LED Panel Light 60W",
+		"Stainless Steel Bolt M10",
+		"Thermal Paste Tube 5g",
+		"Safety Goggles Clear",
+		"Rubber Gasket Set",
+		"Wire Spool CAT6 100m",
+		"Epoxy Adhesive 2-Part",
+	}
+
+	trackingTypes := []string{"none", "lot", "serial"}
+
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
 
-		// Distribute evenly across the time range
 		daysAgo := (i * daysBack) / n
 		createdDate := now.AddDate(0, 0, -daysAgo)
 
+		trackingType := trackingTypes[i%len(trackingTypes)]
+
 		np := NewProduct{
-			Name:                 fmt.Sprintf("Product%d", idx),
+			Name:                 productNames[i%len(productNames)],
 			BrandID:              brandIDs[rand.Intn(len(brandIDs))],
 			ProductCategoryID:    productCategoryIDs[rand.Intn(len(productCategoryIDs))],
-			Description:          "Description" + fmt.Sprintf("%d", idx),
-			SKU:                  fmt.Sprintf("SKU%d", idx),
-			ModelNumber:          fmt.Sprintf("ModelNumber%d", idx),
-			UpcCode:              fmt.Sprintf("UpcCode%d", idx),
-			Status:               fmt.Sprintf("Status%d", idx),
+			Description:          fmt.Sprintf("High-quality %s for warehouse operations", productNames[i%len(productNames)]),
+			SKU:                  fmt.Sprintf("SKU-%04d", i+1),
+			ModelNumber:          fmt.Sprintf("MDL-%04d", i+1),
+			UpcCode:              fmt.Sprintf("0123456789%02d", i%100),
+			Status:               "active",
 			IsActive:             idx%2 == 0,
-			IsPerishable:         idx%2 == 0 && idx%5 == 0,
+			IsPerishable:         trackingType == "lot",
 			HandlingInstructions: fmt.Sprintf("Handling instructions %d", idx),
 			UnitsPerCase:         idx * 5,
+			TrackingType:         trackingType,
 			CreatedDate:          &createdDate,
 		}
 		newProducts[i] = np

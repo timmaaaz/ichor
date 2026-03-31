@@ -7,6 +7,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inspectionapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
 )
 
 func fail200(sd apitest.SeedData) []apitest.Table {
@@ -24,7 +25,7 @@ func fail200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &inspectionapp.FailInspectionResult{},
 			CmpFunc: func(got any, exp any) string {
 				result := got.(*inspectionapp.FailInspectionResult)
-				if result.Inspection.Status != "failed" {
+				if result.Inspection.Status != inspectionbus.StatusFailed {
 					return "expected inspection status 'failed', got '" + result.Inspection.Status + "'"
 				}
 				if result.LotStatus != "quarantined" {
@@ -51,7 +52,7 @@ func fail200NoQuarantine(sd apitest.SeedData) []apitest.Table {
 			GotResp: &inspectionapp.FailInspectionResult{},
 			CmpFunc: func(got any, exp any) string {
 				result := got.(*inspectionapp.FailInspectionResult)
-				if result.Inspection.Status != "failed" {
+				if result.Inspection.Status != inspectionbus.StatusFailed {
 					return "expected inspection status 'failed', got '" + result.Inspection.Status + "'"
 				}
 				if result.LotStatus != "" {

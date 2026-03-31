@@ -15,6 +15,13 @@ import (
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
 
+// Status constants for inspections.
+const (
+	StatusPending = "pending"
+	StatusPassed  = "passed"
+	StatusFailed  = "failed"
+)
+
 // Set of error variables for CRUD operations.
 var (
 	ErrNotFound              = errors.New("inspection not found")
