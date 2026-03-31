@@ -607,7 +607,9 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.lot_locations', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.zones', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.warehouses', false, true, false, false),
-    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'products.products', false, true, false, false)
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'products.products', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.order_line_items', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.orders', false, true, false, false)
 ON CONFLICT DO NOTHING;
 
 -- Grant FLOOR_WORKER workflow action permissions for warehouse operations

@@ -47,6 +47,8 @@ All values are randomized (names, IDs, dates). Only counts and relationships are
 | Lot locations | 15 | |
 | Inspections | 10 | |
 | Serial numbers | 50 | |
+| Put-away tasks | 15 | first assigned to floor_worker1 |
+| Pick tasks | 15 | cycle over 5 line items via modulo |
 | Action templates | 15 | workflow |
 | Default automation rules | 8 | workflow |
 | Cycle count sessions | 3 | |
@@ -227,6 +229,7 @@ LotTrackings, LotLocation, Inspection
 // Inventory
 Warehouse, Zones, InventoryLocation, InventoryItem, SerialNumber
 InventoryTransaction, InventoryAdjustment, TransferOrder
+PutAwayTask, PickTask
 
 // Sales
 ContactInfos, Customers, Currency, Order, OrderLineItem
@@ -266,9 +269,11 @@ seedProducts(ctx, busDomain, geoHR, foundation)                 → products res
     ↓
 seedInventory(ctx, busDomain, foundation, geoHR, products)      → inventory result
     ↓
-seedSales(ctx, busDomain, foundation, geoHR, products)
+seedSales(ctx, busDomain, foundation, geoHR, products)          → SalesSeed
     ↓
 seedProcurement(ctx, busDomain, foundation, geoHR, products, inventory)
+    ↓
+seedTasks(ctx, busDomain, foundation, products, inventory, sales) → TasksSeed
     ↓
 seedTableBuilder(ctx, busDomain, adminID)
     ↓
@@ -337,9 +342,23 @@ inspections, transfer orders, transactions, adjustments.
 
 ### seed_sales.go
 ```go
-func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, geoHR GeographyHRSeed, products ProductsSeed) error
+type SalesSeed struct {
+    OrderIDs         uuid.UUIDs
+    OrderLineItemIDs uuid.UUIDs
+}
+func seedSales(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, geoHR GeographyHRSeed, products ProductsSeed) (SalesSeed, error)
 ```
 Seeds: customers, order fulfillment statuses, orders, line item fulfillment statuses, order line items.
+
+### seed_tasks.go
+```go
+type TasksSeed struct {
+    PutAwayTasks []putawaytaskbus.PutAwayTask
+    PickTasks    []picktaskbus.PickTask
+}
+func seedTasks(ctx context.Context, busDomain BusDomain, foundation FoundationSeed, products ProductsSeed, inventory InventorySeed, sales SalesSeed) (TasksSeed, error)
+```
+Seeds: 15 put-away tasks, 15 pick tasks. First put-away task assigned to floor_worker1.
 
 ### seed_procurement.go
 ```go
