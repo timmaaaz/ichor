@@ -13,6 +13,8 @@ import (
 func TestNewInventoryLocation(n int, warehouseIDs, zoneIDs []uuid.UUID) []NewInventoryLocation {
 	newInventoryLocations := make([]NewInventoryLocation, n)
 
+	aisles := []string{"A", "B", "C"}
+
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
@@ -20,12 +22,14 @@ func TestNewInventoryLocation(n int, warehouseIDs, zoneIDs []uuid.UUID) []NewInv
 		// Warehouse-realistic codes: A-01-02-03 format.
 		// Aisles A/B/C, racks 01-05, shelves 01-04, bins 01-06.
 		// Uses idx (monotonically increasing) to guarantee uniqueness.
-		aisles := []string{"A", "B", "C"}
 		aisle := aisles[idx%3]
 		rack := fmt.Sprintf("%02d", (idx/3)%5+1)
 		shelf := fmt.Sprintf("%02d", (idx/15)%4+1)
 		bin := fmt.Sprintf("%02d", (idx/60)%6+1)
 		locationCode := fmt.Sprintf("%s-%s-%s-%s", aisle, rack, shelf, bin)
+
+		// Alternate: even indices are pick locations, odd are reserve
+		isPickLocation := i%2 == 0
 
 		newInventoryLocations[i] = NewInventoryLocation{
 			WarehouseID:        warehouseIDs[idx%len(warehouseIDs)],
@@ -35,8 +39,8 @@ func TestNewInventoryLocation(n int, warehouseIDs, zoneIDs []uuid.UUID) []NewInv
 			Shelf:              shelf,
 			Bin:                bin,
 			LocationCode:       &locationCode,
-			IsPickLocation:     idx%2 == 0,
-			IsReserveLocation:  idx%2 == 0 && idx%5 == 0,
+			IsPickLocation:     isPickLocation,
+			IsReserveLocation:  !isPickLocation,
 			MaxCapacity:        idx%100 + 10,
 			CurrentUtilization: types.RoundedFloat{Value: float64(idx % 100)},
 		}

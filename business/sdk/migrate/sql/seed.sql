@@ -602,14 +602,24 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_adjustments', true, true, true, false),
     -- Read-only tables for scan and context
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_locations', false, true, false, false),
-    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.warehouses', false, true, false, false),
-    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.zones', false, true, false, false),
-    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'products.products', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.serial_numbers', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.lot_trackings', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.lot_locations', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.zones', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.warehouses', false, true, false, false),
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'products.products', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.order_line_items', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.orders', false, true, false, false)
+ON CONFLICT DO NOTHING;
+
+-- Grant FLOOR_WORKER workflow action permissions for warehouse operations
+INSERT INTO workflow.action_permissions (role_id, action_type, is_allowed)
+VALUES
+    ('b0000000-0000-4000-8000-000000000001', 'transition_status', true),
+    ('b0000000-0000-4000-8000-000000000001', 'create_entity', true),
+    ('b0000000-0000-4000-8000-000000000001', 'lookup_entity', true),
+    ('b0000000-0000-4000-8000-000000000001', 'allocate_inventory', true),
+    ('b0000000-0000-4000-8000-000000000001', 'log_audit_entry', true)
 ON CONFLICT DO NOTHING;
 
 -- Seed trigger types for workflow automation

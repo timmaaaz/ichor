@@ -67,7 +67,7 @@ func AuthorizeTable(ctx context.Context, client *authclient.Client, permissionsB
 	// Authorize on our permissions
 	perms, err := permissionsBus.QueryUserPermissions(ctx, userID)
 	if err != nil {
-		return errs.New(errs.Unauthenticated, fmt.Errorf("query user permissions: %w", err))
+		return errs.New(errs.Internal, fmt.Errorf("query user permissions: %w", err))
 	}
 
 	if !hasTablePermission(perms, *tableInfo) {

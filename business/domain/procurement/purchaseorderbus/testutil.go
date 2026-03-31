@@ -54,7 +54,8 @@ func TestSeedPurchaseOrders(ctx context.Context, n int, supplierIDs uuid.UUIDs, 
 
 // TestNewPurchaseOrdersHistorical creates purchase orders distributed across a time range for seeding.
 // daysBack specifies how many days of history to generate (e.g., 90, 180).
-// Purchase orders are evenly distributed across the time range.
+// Order dates are evenly distributed across the time range. The first few orders
+// have varied delivery dates (today, +3 days, overdue) for dashboard window testing.
 func TestNewPurchaseOrdersHistorical(n int, daysBack int, supplierIDs uuid.UUIDs, statusIDs uuid.UUIDs, warehouseIDs uuid.UUIDs, streetIDs uuid.UUIDs, userIDs uuid.UUIDs, currencyIDs uuid.UUIDs) []NewPurchaseOrder {
 	orders := make([]NewPurchaseOrder, 0, n)
 	now := time.Now()
@@ -63,7 +64,18 @@ func TestNewPurchaseOrdersHistorical(n int, daysBack int, supplierIDs uuid.UUIDs
 		// Distribute evenly across the time range
 		daysAgo := (i * daysBack) / n
 		orderDate := now.AddDate(0, 0, -daysAgo)
-		expectedDelivery := orderDate.AddDate(0, 0, 14) // 2 weeks out
+		// Varied delivery dates for dashboard windows
+		var expectedDelivery time.Time
+		switch i {
+		case 0:
+			expectedDelivery = now // Today window
+		case 1:
+			expectedDelivery = now.AddDate(0, 0, 3) // 7 Days window
+		case 2:
+			expectedDelivery = now.AddDate(0, 0, -7) // Overdue (past)
+		default:
+			expectedDelivery = orderDate.AddDate(0, 0, 14) // Standard 2 weeks
+		}
 
 		subtotal := 1000.00 + float64(i*100)
 		tax := subtotal * 0.08
