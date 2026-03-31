@@ -166,7 +166,7 @@ func (a *App) Fail(ctx context.Context, id uuid.UUID, app FailInspection) (FailI
 	}
 
 	// Guard: cannot fail an already-failed inspection.
-	if inspection.Status == "failed" {
+	if inspection.Status == inspectionbus.StatusFailed {
 		return FailInspectionResult{}, errs.Newf(errs.FailedPrecondition, "inspection is already failed")
 	}
 
@@ -196,7 +196,7 @@ func (a *App) Fail(ctx context.Context, id uuid.UUID, app FailInspection) (FailI
 		return FailInspectionResult{}, fmt.Errorf("new inspection tx: %w", err)
 	}
 
-	failedStatus := "failed"
+	failedStatus := inspectionbus.StatusFailed
 	updateInsp := inspectionbus.UpdateInspection{
 		Status: &failedStatus,
 		Notes:  &app.Notes,

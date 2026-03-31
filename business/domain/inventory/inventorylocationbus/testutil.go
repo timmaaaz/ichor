@@ -19,10 +19,13 @@ func TestNewInventoryLocation(n int, warehouseIDs, zoneIDs []uuid.UUID) []NewInv
 	for i := 0; i < n; i++ {
 		idx++
 
-		aisle := aisles[i%len(aisles)]
-		rack := fmt.Sprintf("%02d", (i/12)%5+1)
-		shelf := fmt.Sprintf("%02d", (i/3)%4+1)
-		bin := fmt.Sprintf("%02d", i%6+1)
+		// Warehouse-realistic codes: A-01-02-03 format.
+		// Aisles A/B/C, racks 01-05, shelves 01-04, bins 01-06.
+		// Uses idx (monotonically increasing) to guarantee uniqueness.
+		aisle := aisles[idx%3]
+		rack := fmt.Sprintf("%02d", (idx/3)%5+1)
+		shelf := fmt.Sprintf("%02d", (idx/15)%4+1)
+		bin := fmt.Sprintf("%02d", (idx/60)%6+1)
 		locationCode := fmt.Sprintf("%s-%s-%s-%s", aisle, rack, shelf, bin)
 
 		// Alternate: even indices are pick locations, odd are reserve

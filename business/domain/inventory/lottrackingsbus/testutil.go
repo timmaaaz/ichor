@@ -24,22 +24,43 @@ var validQualityStatuses = []string{"good", "on_hold", "quarantined", "released"
 func TestNewLotTrackings(n int, supplierProductIDs uuid.UUIDs) []NewLotTrackings {
 	newLotTrackingss := make([]NewLotTrackings, n)
 
+	now := time.Now()
+
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
+
+		// Expiration dates distributed for dashboard buckets:
+		// idx 0: urgent (within 7 days), idx 1: warning (within 30 days),
+		// idx 2: monitor (within 90 days), rest: 30-180 days out
+		var expirationDate time.Time
+		switch i {
+		case 0:
+			expirationDate = now.AddDate(0, 0, 5) // urgent
+		case 1:
+			expirationDate = now.AddDate(0, 0, 20) // warning
+		case 2:
+			expirationDate = now.AddDate(0, 0, 60) // monitor
+		default:
+			expirationDate = now.AddDate(0, 0, 30+rand.Intn(150))
+		}
+
+		// First 3 are "good" (for dashboard visibility), then cycle to ensure quarantined
+		qualityStatuses := []string{"good", "good", "good", "quarantined", "on_hold", "released", "expired"}
+		qualityStatus := qualityStatuses[i%len(qualityStatuses)]
+
 		newLotTrackingss[i] = NewLotTrackings{
 			SupplierProductID: supplierProductIDs[i%len(supplierProductIDs)],
-			LotNumber:         fmt.Sprintf("LotNumber%d", idx),
-			ManufactureDate:   RandomDate(),
-			ExpirationDate:    RandomDate(),
-			ReceivedDate:      RandomDate(),
-			QualityStatus:     validQualityStatuses[idx%len(validQualityStatuses)],
+			LotNumber:         fmt.Sprintf("LOT-2026-%03d", i+1),
+			ManufactureDate:   now.AddDate(0, -3, 0),
+			ExpirationDate:    expirationDate,
+			ReceivedDate:      now.AddDate(0, 0, -rand.Intn(30)),
+			QualityStatus:     qualityStatus,
 			Quantity:          rand.Intn(1000),
 		}
 	}
 
 	return newLotTrackingss
-
 }
 
 func TestSeedLotTrackings(ctx context.Context, n int, supplierProductIDs uuid.UUIDs, api *Business) ([]LotTrackings, error) {
