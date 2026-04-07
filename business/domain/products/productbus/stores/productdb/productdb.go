@@ -202,7 +202,8 @@ func (s *Store) QueryByIDs(ctx context.Context, productIDs []uuid.UUID) ([]produ
     FROM
         products.products
     WHERE
-        id IN (:product_ids)`
+        id IN (:product_ids)
+    ORDER BY id ASC`
 
 	var prod []product
 	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &prod); err != nil {

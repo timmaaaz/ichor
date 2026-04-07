@@ -22,7 +22,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &query.Result[roleapp.Role]{
 				Page:        2,
 				RowsPerPage: 5,
-				Total:       13,
+				Total:       14,
 				Items:       sd.Roles,
 			},
 			CmpFunc: func(got any, exp any) string {
@@ -32,8 +32,8 @@ func query200(sd apitest.SeedData) []apitest.Table {
 				sort.Slice(items, func(i, j int) bool {
 					return items[i].Name < items[j].Name
 				})
-				// Grab the first 10
-				exp.(*query.Result[roleapp.Role]).Items = items[5:10]
+				// Grab page 2 items (offset by 1 due to FLOOR_WORKER pre-seeded role)
+				exp.(*query.Result[roleapp.Role]).Items = items[4:9]
 
 				return cmp.Diff(got, exp)
 			},

@@ -69,7 +69,10 @@ func TestSeedProducts(ctx context.Context, n int, brandIDs, productCategoryIDs u
 	}
 
 	sort.Slice(products, func(i, j int) bool {
-		return products[i].Name < products[j].Name
+		if products[i].Name != products[j].Name {
+			return products[i].Name < products[j].Name
+		}
+		return products[i].SKU < products[j].SKU
 	})
 
 	return products, nil
@@ -143,7 +146,10 @@ func TestSeedProductsHistorical(ctx context.Context, n int, daysBack int, brandI
 	}
 
 	sort.Slice(products, func(i, j int) bool {
-		return products[i].Name < products[j].Name
+		if products[i].Name != products[j].Name {
+			return products[i].Name < products[j].Name
+		}
+		return products[i].SKU < products[j].SKU
 	})
 
 	return products, nil
