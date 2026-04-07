@@ -2392,3 +2392,19 @@ ALTER TABLE inventory.inventory_transactions ADD COLUMN serial_id UUID NULL REFE
 -- Version: 2.25
 -- Description: Add action_url column to alerts for deep-linking from notifications.
 ALTER TABLE workflow.alerts ADD COLUMN action_url TEXT NULL;
+
+-- Version: 2.26
+-- Description: Add priority column to sales.orders and procurement.purchase_orders
+--              to support floor directed-work ranking (Phase 3).
+
+ALTER TABLE sales.orders
+    ADD COLUMN priority VARCHAR(10) NOT NULL DEFAULT 'medium'
+        CHECK (priority IN ('low', 'medium', 'high', 'critical'));
+
+CREATE INDEX idx_sales_orders_priority ON sales.orders(priority);
+
+ALTER TABLE procurement.purchase_orders
+    ADD COLUMN priority VARCHAR(10) NOT NULL DEFAULT 'medium'
+        CHECK (priority IN ('low', 'medium', 'high', 'critical'));
+
+CREATE INDEX idx_procurement_purchase_orders_priority ON procurement.purchase_orders(priority);
