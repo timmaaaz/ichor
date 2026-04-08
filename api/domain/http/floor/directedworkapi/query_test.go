@@ -278,6 +278,35 @@ func TestNormalizePutaways(t *testing.T) {
 	}
 }
 
+// F22 regression: empty ReferenceNumber must not produce a "Putaway "
+// title with a trailing space. Fall back to the 8-char ID prefix.
+func TestNormalizePutaways_EmptyReferenceNumberFallsBackToIDPrefix(t *testing.T) {
+	id := uuid.New()
+	locID := uuid.New()
+	tasks := []putawaytaskbus.PutAwayTask{
+		{
+			ID:              id,
+			LocationID:      locID,
+			ReferenceNumber: "",
+			Status:          putawaytaskbus.Statuses.Pending,
+			AssignedTo:      uuid.New(),
+			UpdatedDate:     time.Now(),
+		},
+	}
+
+	got := normalizePutaways(tasks)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(got))
+	}
+	wantTitle := "Putaway " + id.String()[:8]
+	if got[0].Title != wantTitle {
+		t.Errorf("expected title %q, got %q", wantTitle, got[0].Title)
+	}
+	if got[0].Title == "Putaway " {
+		t.Errorf("title must not be the bare 'Putaway ' with trailing space")
+	}
+}
+
 func TestNormalizeCounts(t *testing.T) {
 	locID := uuid.New()
 	items := []cyclecountitembus.CycleCountItem{

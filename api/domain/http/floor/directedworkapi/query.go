@@ -188,6 +188,11 @@ func mapPutawayStatus(s putawaytaskbus.Status) (WorkItemStatus, bool) {
 // V1 uses the reference_number string directly as the title — the field
 // is free-text (not a UUID), so parent purchase-order enrichment via
 // QueryByIDs doesn't apply. Priority fixed 'medium', DueAt nil.
+//
+// F22: putaway_tasks.reference_number is declared NOT NULL DEFAULT ''
+// (migrate.sql:2117), so empty strings are possible. Fall back to an
+// 8-char ID prefix so the title is never the bare "Putaway " with a
+// trailing space.
 func normalizePutaways(tasks []putawaytaskbus.PutAwayTask) []WorkItem {
 	out := make([]WorkItem, 0, len(tasks))
 	for _, t := range tasks {
@@ -196,11 +201,15 @@ func normalizePutaways(tasks []putawaytaskbus.PutAwayTask) []WorkItem {
 			continue
 		}
 		locID := t.LocationID.String()
+		ref := t.ReferenceNumber
+		if ref == "" {
+			ref = t.ID.String()[:8]
+		}
 		out = append(out, WorkItem{
 			ID:         t.ID.String(),
 			Type:       WorkItemTypePutaway,
 			Status:     status,
-			Title:      "Putaway " + t.ReferenceNumber,
+			Title:      "Putaway " + ref,
 			DetailPath: "/floor/putaway/" + t.ID.String(),
 			UpdatedAt:  t.UpdatedDate,
 			Priority:   WorkItemPriorityMedium,
