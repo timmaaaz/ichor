@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
@@ -233,5 +234,45 @@ func TestNormalizePutaways(t *testing.T) {
 	}
 	if got[0].LocationID == nil || *got[0].LocationID != locID.String() {
 		t.Errorf("expected LocationID=%s, got %v", locID, got[0].LocationID)
+	}
+}
+
+func TestNormalizeCounts(t *testing.T) {
+	locID := uuid.New()
+	items := []cyclecountitembus.CycleCountItem{
+		{
+			ID:          uuid.New(),
+			LocationID:  locID,
+			Status:      cyclecountitembus.Statuses.Pending,
+			UpdatedDate: time.Now(),
+		},
+		{
+			ID:          uuid.New(),
+			LocationID:  locID,
+			Status:      cyclecountitembus.Statuses.Counted, // terminal → filtered
+			UpdatedDate: time.Now(),
+		},
+	}
+
+	got := normalizeCounts(items)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(got))
+	}
+	w := got[0]
+	if w.Type != WorkItemTypeCount {
+		t.Errorf("expected type=count, got %s", w.Type)
+	}
+	wantTitlePrefix := "Cycle Count "
+	if len(w.Title) < len(wantTitlePrefix) || w.Title[:len(wantTitlePrefix)] != wantTitlePrefix {
+		t.Errorf("expected title to start with %q, got %q", wantTitlePrefix, w.Title)
+	}
+	if w.Priority != WorkItemPriorityMedium {
+		t.Errorf("expected medium priority, got %s", w.Priority)
+	}
+	if w.DueAt != nil {
+		t.Errorf("expected nil DueAt for counts, got %v", w.DueAt)
+	}
+	if w.Status != WorkItemStatusPending {
+		t.Errorf("expected Pending (no in_progress concept), got %s", w.Status)
 	}
 }

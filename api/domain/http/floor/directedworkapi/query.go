@@ -2,6 +2,7 @@ package directedworkapi
 
 import (
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
@@ -184,6 +185,37 @@ func normalizePutaways(tasks []putawaytaskbus.PutAwayTask) []WorkItem {
 			Priority:   WorkItemPriorityMedium,
 			DueAt:      nil,
 			LocationID: &locID,
+		})
+	}
+	return out
+}
+
+// normalizeCounts maps CycleCountItem → WorkItem. Cycle counts have no
+// in_progress state (pending → counted → variance_*), so all non-pending
+// items are dropped. Title uses an ID-substring fallback because no
+// batch location-name lookup exists in V1 (see spec open question #2).
+func normalizeCounts(items []cyclecountitembus.CycleCountItem) []WorkItem {
+	out := make([]WorkItem, 0, len(items))
+	for _, it := range items {
+		if it.Status.String() != "pending" {
+			continue
+		}
+		locIDStr := it.LocationID.String()
+		// Short ID prefix so the title isn't a full UUID wall.
+		titleSuffix := locIDStr
+		if len(titleSuffix) > 8 {
+			titleSuffix = titleSuffix[:8]
+		}
+		out = append(out, WorkItem{
+			ID:         it.ID.String(),
+			Type:       WorkItemTypeCount,
+			Status:     WorkItemStatusPending,
+			Title:      "Cycle Count " + titleSuffix,
+			DetailPath: "/floor/cycle-count/" + locIDStr,
+			UpdatedAt:  it.UpdatedDate,
+			Priority:   WorkItemPriorityMedium,
+			DueAt:      nil,
+			LocationID: &locIDStr,
 		})
 	}
 	return out
