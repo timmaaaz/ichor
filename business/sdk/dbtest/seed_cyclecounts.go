@@ -37,7 +37,7 @@ func seedCycleCounts(ctx context.Context, busDomain BusDomain, foundation Founda
 	}
 
 	// Seed cycle count items (5 per session = 15 total)
-	_, err = cyclecountitembus.TestSeedCycleCountItems(ctx, 15, sessionIDs, productIDs, locationIDs, busDomain.CycleCountItem)
+	_, err = cyclecountitembus.TestSeedCycleCountItems(ctx, 15, sessionIDs, productIDs, locationIDs, nil, busDomain.CycleCountItem)
 	if err != nil {
 		return fmt.Errorf("seeding cycle count items: %w", err)
 	}
