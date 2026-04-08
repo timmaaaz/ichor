@@ -16,10 +16,18 @@ import (
 )
 
 // Status constants for inspections.
+//
+// StatusInProgress is Phase-3 scaffolding: added so floor directed-work
+// can treat inspections symmetrically with other task types. No state
+// machine currently transitions pending → in_progress (that's a future
+// inspection UI change); Phase 3 only ensures the enum is future-proof.
+// The DB column inventory.quality_inspections.status has no CHECK
+// constraint (migrate.sql:749), so no migration is required.
 const (
-	StatusPending = "pending"
-	StatusPassed  = "passed"
-	StatusFailed  = "failed"
+	StatusPending    = "pending"
+	StatusInProgress = "in_progress"
+	StatusPassed     = "passed"
+	StatusFailed     = "failed"
 )
 
 // Set of error variables for CRUD operations.
