@@ -84,7 +84,7 @@ func seedInventory(ctx context.Context, busDomain BusDomain, foundation Foundati
 		return InventorySeed{}, fmt.Errorf("seeding inventory products : %w", err)
 	}
 
-	_, err = transferorderbus.TestSeedTransferOrders(ctx, 20, productIDs, inventoryLocationsIDs[:15], inventoryLocationsIDs[15:], reporterIDs[:4], bossIDs[4:], busDomain.TransferOrder)
+	_, err = transferorderbus.TestSeedTransferOrders(ctx, 20, productIDs, inventoryLocationsIDs[:15], inventoryLocationsIDs[15:], reporterIDs[:4], bossIDs[4:], nil, busDomain.TransferOrder)
 	if err != nil {
 		return InventorySeed{}, fmt.Errorf("seeding transfer orders : %w", err)
 	}
