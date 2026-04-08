@@ -44,6 +44,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				ApprovedDate:            sd.PurchaseOrders[1].ApprovedDate,
 				Notes:                   notes,
 				SupplierReferenceNumber: sd.PurchaseOrders[1].SupplierReferenceNumber,
+				Priority:                sd.PurchaseOrders[1].Priority,
 				CreatedBy:               sd.PurchaseOrders[1].CreatedBy,
 				UpdatedBy:               sd.Admins[0].ID.String(),
 				CreatedDate:             sd.PurchaseOrders[1].CreatedDate,

@@ -58,6 +58,7 @@ type PurchaseOrder struct {
 	RejectionReason         string `json:"rejection_reason"`
 	Notes                   string `json:"notes"`
 	SupplierReferenceNumber string `json:"supplier_reference_number"`
+	Priority                string `json:"priority"`
 	CreatedBy               string `json:"created_by"`
 	UpdatedBy               string `json:"updated_by"`
 	CreatedDate             string `json:"created_date"`
@@ -132,6 +133,7 @@ func ToAppPurchaseOrder(bus purchaseorderbus.PurchaseOrder) PurchaseOrder {
 		RejectionReason:         bus.RejectionReason,
 		Notes:                   bus.Notes,
 		SupplierReferenceNumber: bus.SupplierReferenceNumber,
+		Priority:                bus.Priority,
 		CreatedBy:               bus.CreatedBy.String(),
 		UpdatedBy:               bus.UpdatedBy.String(),
 		CreatedDate:             bus.CreatedDate.Format(timeutil.FORMAT),
@@ -166,6 +168,7 @@ type NewPurchaseOrder struct {
 	RequestedBy             string  `json:"requested_by" validate:"required,uuid"`
 	Notes                   string  `json:"notes"`
 	SupplierReferenceNumber string  `json:"supplier_reference_number"`
+	Priority                string  `json:"priority" validate:"omitempty,oneof=low medium high critical"`
 	CreatedBy               string  `json:"created_by" validate:"required,uuid"`
 	CreatedDate             *string `json:"created_date"` // Optional: for seeding/import
 }
@@ -294,6 +297,7 @@ func toBusNewPurchaseOrder(app NewPurchaseOrder) (purchaseorderbus.NewPurchaseOr
 		RequestedBy:             requestedBy,
 		Notes:                   app.Notes,
 		SupplierReferenceNumber: app.SupplierReferenceNumber,
+		Priority:                app.Priority,
 		CreatedBy:               createdBy,
 		// CreatedDate: nil by default - API always uses server time
 	}
@@ -328,6 +332,7 @@ type UpdatePurchaseOrder struct {
 	CurrencyID              *string `json:"currency_id" validate:"omitempty,uuid"`
 	Notes                   *string `json:"notes" validate:"omitempty"`
 	SupplierReferenceNumber *string `json:"supplier_reference_number" validate:"omitempty"`
+	Priority                *string `json:"priority" validate:"omitempty,oneof=low medium high critical"`
 	UpdatedBy               *string `json:"updated_by" validate:"omitempty,uuid"`
 }
 
@@ -462,6 +467,10 @@ func toBusUpdatePurchaseOrder(app UpdatePurchaseOrder) (purchaseorderbus.UpdateP
 
 	if app.SupplierReferenceNumber != nil {
 		dest.SupplierReferenceNumber = app.SupplierReferenceNumber
+	}
+
+	if app.Priority != nil {
+		dest.Priority = app.Priority
 	}
 
 	if app.UpdatedBy != nil {

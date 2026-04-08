@@ -36,6 +36,7 @@ func Test_Order(t *testing.T) {
 	}
 
 	unitest.Run(t, query(db.BusDomain, sd), "query")
+	unitest.Run(t, queryByIDs(db.BusDomain, sd), "queryByIDs")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
@@ -183,6 +184,53 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				})
 
 				// Copy date fields from response due to database precision differences
+				for i := range gotResp {
+					expResp[i].OrderDate = gotResp[i].OrderDate
+					expResp[i].DueDate = gotResp[i].DueDate
+					expResp[i].CreatedDate = gotResp[i].CreatedDate
+					expResp[i].UpdatedDate = gotResp[i].UpdatedDate
+				}
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+}
+
+func queryByIDs(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	// Request the first 3 seeded orders by ID.
+	ids := uuid.UUIDs{sd.Orders[0].ID, sd.Orders[1].ID, sd.Orders[2].ID}
+
+	return []unitest.Table{
+		{
+			Name: "QueryByIDs",
+			ExpResp: []ordersbus.Order{
+				sd.Orders[0],
+				sd.Orders[1],
+				sd.Orders[2],
+			},
+			ExcFunc: func(ctx context.Context) any {
+				got, err := busDomain.Order.QueryByIDs(ctx, ids)
+				if err != nil {
+					return err
+				}
+				return got
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, ok := got.([]ordersbus.Order)
+				if !ok {
+					return fmt.Sprintf("expected []ordersbus.Order, got %T", got)
+				}
+				expResp, ok := exp.([]ordersbus.Order)
+				if !ok {
+					return fmt.Sprintf("expected []ordersbus.Order, got %T", exp)
+				}
+
+				// QueryByIDs does not guarantee ordering — sort both sides by Number.
+				sort.Slice(gotResp, func(i, j int) bool { return gotResp[i].Number < gotResp[j].Number })
+				sort.Slice(expResp, func(i, j int) bool { return expResp[i].Number < expResp[j].Number })
+
+				// Database round-trip may alter time precision.
 				for i := range gotResp {
 					expResp[i].OrderDate = gotResp[i].OrderDate
 					expResp[i].DueDate = gotResp[i].DueDate

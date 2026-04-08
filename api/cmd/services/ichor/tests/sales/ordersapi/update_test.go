@@ -37,6 +37,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				TotalAmount:         sd.Orders[0].TotalAmount,
 				CurrencyID:          sd.Orders[0].CurrencyID,
 				Notes:               sd.Orders[0].Notes,
+				Priority:            sd.Orders[0].Priority,
 				CreatedBy:           sd.Orders[0].CreatedBy,
 				UpdatedBy:           sd.Orders[0].UpdatedBy,
 				DueDate:             sd.Orders[0].DueDate,

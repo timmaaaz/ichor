@@ -21,7 +21,16 @@ var (
 	ErrAuthenticationFailure = errors.New("authentication failed")
 	ErrUniqueEntry           = errors.New("order entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
+	ErrInvalidPriority       = errors.New("invalid priority: must be low, medium, high, or critical")
 )
+
+// validPriorities mirrors the sales.orders.priority CHECK constraint (migration 2.26).
+var validPriorities = map[string]struct{}{
+	"low":      {},
+	"medium":   {},
+	"high":     {},
+	"critical": {},
+}
 
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
@@ -80,6 +89,9 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 	priority := no.Priority
 	if priority == "" {
 		priority = "medium"
+	}
+	if _, ok := validPriorities[priority]; !ok {
+		return Order{}, fmt.Errorf("create: %w: %q", ErrInvalidPriority, priority)
 	}
 
 	order := Order{
@@ -174,6 +186,9 @@ func (b *Business) Update(ctx context.Context, order Order, uo UpdateOrder) (Ord
 		order.Notes = *uo.Notes
 	}
 	if uo.Priority != nil {
+		if _, ok := validPriorities[*uo.Priority]; !ok {
+			return Order{}, fmt.Errorf("update: %w: %q", ErrInvalidPriority, *uo.Priority)
+		}
 		order.Priority = *uo.Priority
 	}
 	if uo.UpdatedBy != nil {
