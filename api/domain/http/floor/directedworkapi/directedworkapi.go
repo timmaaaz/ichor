@@ -3,6 +3,7 @@ package directedworkapi
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
@@ -18,6 +19,12 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
+
+// maxWorkerTasksPerDomain caps how many rows per floor-work domain the
+// handler pulls from each bus before the dispatcher picks the winner.
+// Per-worker active task volume is in the dozens at most, so 500 is an
+// order of magnitude of headroom.
+const maxWorkerTasksPerDomain = 500
 
 type api struct {
 	log               *logger.Logger
@@ -59,7 +66,10 @@ func (a *api) queryNext(ctx context.Context, r *http.Request) web.Encoder {
 	// Use a generously large page size; per-worker active task volume
 	// is in the dozens at most. Default orderBy is fine — the dispatcher
 	// re-sorts in Go anyway.
-	pg := page.MustParse("1", "500")
+	pg, err := page.Parse("1", strconv.Itoa(maxWorkerTasksPerDomain))
+	if err != nil {
+		return errs.Newf(errs.Internal, "page setup: %s", err)
+	}
 	asc := order.NewBy("id", order.ASC)
 
 	var items []WorkItem
@@ -91,15 +101,18 @@ func (a *api) queryNext(ctx context.Context, r *http.Request) web.Encoder {
 	} else {
 		ordersByID = map[uuid.UUID]ordersbus.Order{}
 	}
-	items = append(items, normalizePicks(picks, ordersByID)...)
+	normalizedPicks := normalizePicks(picks, ordersByID)
+	items = append(items, normalizedPicks...)
 
 	// F21: normalizePicks silently drops picks whose parent order is missing
 	// from ordersByID (FK orphan). Log a warning so data integrity issues or
-	// de-dup bugs in QueryByIDs are observable.
-	if normalized := len(items); normalized < len(picks) {
+	// de-dup bugs in QueryByIDs are observable. Comparing the normalized
+	// count directly (rather than len(items)) keeps the invariant explicit
+	// and order-independent from the later domain appends.
+	if len(normalizedPicks) < len(picks) {
 		a.log.Warn(ctx, "directedwork.normalizePicks: dropped orphan picks",
 			"picks_in", len(picks),
-			"picks_out", normalized,
+			"picks_out", len(normalizedPicks),
 			"orders_loaded", len(ordersByID),
 			"user_id", userID,
 		)
