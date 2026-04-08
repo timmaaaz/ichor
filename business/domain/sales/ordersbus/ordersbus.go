@@ -33,6 +33,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Order, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, statusID uuid.UUID) (Order, error)
+	QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Order, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -239,4 +240,17 @@ func (b *Business) QueryByID(ctx context.Context, statusID uuid.UUID) (Order, er
 	}
 
 	return result, nil
+}
+
+// QueryByIDs finds the orders by the specified IDs.
+func (b *Business) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Order, error) {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.querybyids")
+	defer span.End()
+
+	orders, err := b.storer.QueryByIDs(ctx, orderIDs)
+	if err != nil {
+		return nil, fmt.Errorf("querybyids: %w", err)
+	}
+
+	return orders, nil
 }
