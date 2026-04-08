@@ -3,6 +3,7 @@ package directedworkapi
 import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 )
 
@@ -144,6 +145,44 @@ func normalizePicks(tasks []picktaskbus.PickTask, ordersByID map[uuid.UUID]order
 			UpdatedAt:  t.UpdatedDate,
 			Priority:   parsePriority(order.Priority),
 			DueAt:      &due,
+			LocationID: &locID,
+		})
+	}
+	return out
+}
+
+func mapPutawayStatus(s putawaytaskbus.Status) (WorkItemStatus, bool) {
+	switch s.String() {
+	case "pending":
+		return WorkItemStatusPending, true
+	case "in_progress":
+		return WorkItemStatusInProgress, true
+	default:
+		return "", false
+	}
+}
+
+// normalizePutaways maps PutAwayTask → WorkItem with no parent lookup.
+// V1 uses the reference_number string directly as the title — the field
+// is free-text (not a UUID), so parent purchase-order enrichment via
+// QueryByIDs doesn't apply. Priority fixed 'medium', DueAt nil.
+func normalizePutaways(tasks []putawaytaskbus.PutAwayTask) []WorkItem {
+	out := make([]WorkItem, 0, len(tasks))
+	for _, t := range tasks {
+		status, ok := mapPutawayStatus(t.Status)
+		if !ok {
+			continue
+		}
+		locID := t.LocationID.String()
+		out = append(out, WorkItem{
+			ID:         t.ID.String(),
+			Type:       WorkItemTypePutaway,
+			Status:     status,
+			Title:      "Putaway " + t.ReferenceNumber,
+			DetailPath: "/floor/putaway/" + t.ID.String(),
+			UpdatedAt:  t.UpdatedDate,
+			Priority:   WorkItemPriorityMedium,
+			DueAt:      nil,
 			LocationID: &locID,
 		})
 	}

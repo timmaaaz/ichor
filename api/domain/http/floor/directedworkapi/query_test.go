@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 )
 
@@ -184,5 +185,53 @@ func TestNormalizePicks_MissingParentOrderSkips(t *testing.T) {
 	got := normalizePicks(tasks, map[uuid.UUID]ordersbus.Order{})
 	if len(got) != 0 {
 		t.Fatalf("expected 0 items when parent order is missing (FK orphan), got %d", len(got))
+	}
+}
+
+func TestNormalizePutaways(t *testing.T) {
+	userID := uuid.New()
+	locID := uuid.New()
+	tasks := []putawaytaskbus.PutAwayTask{
+		{
+			ID:              uuid.New(),
+			LocationID:      locID,
+			ReferenceNumber: "PO-2025-0042",
+			Status:          putawaytaskbus.Statuses.Pending,
+			AssignedTo:      userID,
+			UpdatedDate:     time.Now(),
+		},
+		{
+			ID:              uuid.New(),
+			LocationID:      locID,
+			ReferenceNumber: "PO-2025-0043",
+			Status:          putawaytaskbus.Statuses.Completed, // filtered
+			AssignedTo:      userID,
+			UpdatedDate:     time.Now(),
+		},
+		{
+			ID:              uuid.New(),
+			LocationID:      locID,
+			ReferenceNumber: "PO-2025-0044",
+			Status:          putawaytaskbus.Statuses.InProgress,
+			AssignedTo:      userID,
+			UpdatedDate:     time.Now(),
+		},
+	}
+
+	got := normalizePutaways(tasks)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 items (1 completed filtered), got %d", len(got))
+	}
+	if got[0].Title != "Putaway PO-2025-0042" {
+		t.Errorf("expected title 'Putaway PO-2025-0042', got %q", got[0].Title)
+	}
+	if got[0].Priority != WorkItemPriorityMedium {
+		t.Errorf("expected fixed medium priority, got %s", got[0].Priority)
+	}
+	if got[0].DueAt != nil {
+		t.Errorf("expected nil DueAt for putaway V1, got %v", got[0].DueAt)
+	}
+	if got[0].LocationID == nil || *got[0].LocationID != locID.String() {
+		t.Errorf("expected LocationID=%s, got %v", locID, got[0].LocationID)
 	}
 }
