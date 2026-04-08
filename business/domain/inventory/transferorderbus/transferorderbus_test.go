@@ -492,6 +492,56 @@ func execute(busDomain dbtest.BusDomain, sd unitest.SeedData, lifecycleID uuid.U
 	}
 }
 
+func TestTransferOrder_ClaimedByIDFilter(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_TransferOrder_ClaimedByIDFilter")
+
+	sd, err := insertSeedData(db.BusDomain)
+	if err != nil {
+		t.Fatalf("seeding: %s", err)
+	}
+
+	ctx := context.Background()
+
+	// Set claimed_by on a known transfer order via Update so we have something
+	// to filter on. Seeded orders never have ClaimedByID populated because
+	// NewTransferOrder/Create don't accept it.
+	target := sd.TransferOrders[0]
+	claimer := sd.Admins[0].ID
+	if _, err := db.BusDomain.TransferOrder.Update(ctx, target, transferorderbus.UpdateTransferOrder{
+		ClaimedByID: &claimer,
+	}); err != nil {
+		t.Fatalf("update claimed_by: %s", err)
+	}
+
+	// Positive case: filter returns only the rows whose ClaimedByID matches.
+	filter := transferorderbus.QueryFilter{ClaimedByID: &claimer}
+	got, err := db.BusDomain.TransferOrder.Query(ctx, filter, transferorderbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("query with filter: %s", err)
+	}
+	if len(got) == 0 {
+		t.Fatal("expected at least one transfer with ClaimedByID filter; got 0")
+	}
+	for _, to := range got {
+		if to.ClaimedByID == nil || *to.ClaimedByID != claimer {
+			t.Errorf("filter leaked: got transfer %s with ClaimedByID=%v", to.TransferID, to.ClaimedByID)
+		}
+	}
+
+	// Negative case: a random UUID that is not a claimer should return zero rows,
+	// proving the WHERE clause is actually being applied.
+	other := uuid.New()
+	gotNone, err := db.BusDomain.TransferOrder.Query(ctx, transferorderbus.QueryFilter{ClaimedByID: &other}, transferorderbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("query with no-match filter: %s", err)
+	}
+	if len(gotNone) != 0 {
+		t.Errorf("expected zero rows for unused ClaimedByID; got %d", len(gotNone))
+	}
+}
+
 func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{{
 		Name: "delete",

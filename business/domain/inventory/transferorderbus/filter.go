@@ -13,6 +13,7 @@ type QueryFilter struct {
 	ToLocationID   *uuid.UUID
 	RequestedByID  *uuid.UUID
 	ApprovedByID   *uuid.UUID
+	ClaimedByID    *uuid.UUID
 	Quantity       *int
 	Status         *string
 	TransferDate   *time.Time

@@ -40,6 +40,11 @@ func applyFilter(filter transferorderbus.QueryFilter, data map[string]any, buf *
 		wc = append(wc, "approved_by = :approved_by")
 	}
 
+	if filter.ClaimedByID != nil {
+		data["claimed_by"] = *filter.ClaimedByID
+		wc = append(wc, "claimed_by = :claimed_by")
+	}
+
 	if filter.Quantity != nil {
 		data["quantity"] = *filter.Quantity
 		wc = append(wc, "quantity = :quantity")
