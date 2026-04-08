@@ -179,6 +179,45 @@ func TestNormalizePicks_UnknownPriorityFallsBackToMedium(t *testing.T) {
 	if len(got) != 1 || got[0].Priority != WorkItemPriorityMedium {
 		t.Fatalf("expected medium fallback, got %+v", got)
 	}
+	// Order had no DueDate set, so the zero-value time should NOT leak
+	// into the dispatcher as a live due date. It must be nil instead.
+	if got[0].DueAt != nil {
+		t.Errorf("expected nil DueAt when parent order has zero DueDate, got %v", got[0].DueAt)
+	}
+}
+
+func TestNormalizePicks_ZeroDueDateBecomesNil(t *testing.T) {
+	// Regression test for a dispatcher-polluting bug: when the parent
+	// order's DueDate column is NULL (non-pointer time.Time zero value),
+	// the normalizer must emit DueAt=nil, not a pointer to 0001-01-01.
+	// If zero-values leaked through, the dispatcher's pendingBeats would
+	// treat them as the earliest possible due date and artificially
+	// boost priority.
+	orderID := uuid.New()
+	ordersByID := map[uuid.UUID]ordersbus.Order{
+		orderID: {
+			ID:       orderID,
+			Number:   "SO-NO-DUE",
+			Priority: "medium",
+			// DueDate omitted → zero value time.Time{}
+		},
+	}
+	tasks := []picktaskbus.PickTask{
+		{
+			ID:           uuid.New(),
+			SalesOrderID: orderID,
+			LocationID:   uuid.New(),
+			Status:       picktaskbus.Statuses.Pending,
+			UpdatedDate:  time.Now(),
+		},
+	}
+	got := normalizePicks(tasks, ordersByID)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(got))
+	}
+	if got[0].DueAt != nil {
+		t.Errorf("expected DueAt=nil for zero DueDate, got %v", got[0].DueAt)
+	}
 }
 
 func TestNormalizePicks_MissingParentOrderSkips(t *testing.T) {
@@ -254,11 +293,23 @@ func TestNormalizeCounts(t *testing.T) {
 			Status:      cyclecountitembus.Statuses.Counted, // terminal → filtered
 			UpdatedDate: time.Now(),
 		},
+		{
+			ID:          uuid.New(),
+			LocationID:  locID,
+			Status:      cyclecountitembus.Statuses.VarianceApproved, // terminal → filtered
+			UpdatedDate: time.Now(),
+		},
+		{
+			ID:          uuid.New(),
+			LocationID:  locID,
+			Status:      cyclecountitembus.Statuses.VarianceRejected, // terminal → filtered
+			UpdatedDate: time.Now(),
+		},
 	}
 
 	got := normalizeCounts(items)
 	if len(got) != 1 {
-		t.Fatalf("expected 1 item, got %d", len(got))
+		t.Fatalf("expected 1 item (counted + both variance_* filtered), got %d", len(got))
 	}
 	w := got[0]
 	if w.Type != WorkItemTypeCount {
@@ -331,6 +382,27 @@ func TestNormalizeInspections(t *testing.T) {
 	}
 	if len(pending.Title) < len("Inspect ") || pending.Title[:len("Inspect ")] != "Inspect " {
 		t.Errorf("expected title to start with 'Inspect ', got %q", pending.Title)
+	}
+}
+
+func TestNormalizeInspections_ZeroNextInspectionDateBecomesNil(t *testing.T) {
+	// Regression test symmetric to TestNormalizePicks_ZeroDueDateBecomesNil:
+	// a zero-valued NextInspectionDate must surface as DueAt=nil, not a
+	// pointer to 0001-01-01, so the dispatcher's nil-DueAt handling works.
+	items := []inspectionbus.Inspection{
+		{
+			InspectionID: uuid.New(),
+			Status:       inspectionbus.StatusPending,
+			UpdatedDate:  time.Now(),
+			// NextInspectionDate omitted → zero value time.Time{}
+		},
+	}
+	got := normalizeInspections(items)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(got))
+	}
+	if got[0].DueAt != nil {
+		t.Errorf("expected DueAt=nil for zero NextInspectionDate, got %v", got[0].DueAt)
 	}
 }
 

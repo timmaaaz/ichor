@@ -1,6 +1,8 @@
 package directedworkapi
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
@@ -92,7 +94,10 @@ func pendingBeats(candidate, current WorkItem) bool {
 
 // mapPickStatus converts picktaskbus.Status to the unified WorkItemStatus,
 // returning (status, ok) — ok=false means the task is terminal and should
-// be dropped.
+// be dropped. The default branch also drops "short_picked" and "cancelled"
+// (terminal states from a worker's perspective) and any future additions
+// to picktaskbus.Statuses that the directed-work surface hasn't learned
+// about yet.
 func mapPickStatus(s picktaskbus.Status) (WorkItemStatus, bool) {
 	switch s.String() {
 	case "pending":
@@ -124,7 +129,11 @@ func parsePriority(p string) WorkItemPriority {
 // normalizePicks turns a slice of pick tasks into WorkItems, filtering
 // out terminal statuses and FK-orphaned rows. ordersByID is the batch
 // lookup result from ordersbus.QueryByIDs covering every SalesOrderID
-// referenced by tasks.
+// referenced by tasks — the caller is responsible for de-duping
+// SalesOrderIDs and ensuring the map has an entry for each one. Tasks
+// whose parent order is missing from the map are treated as FK orphans
+// and silently dropped; callers that care should compare len(out) to
+// len(tasks) and log the gap.
 func normalizePicks(tasks []picktaskbus.PickTask, ordersByID map[uuid.UUID]ordersbus.Order) []WorkItem {
 	out := make([]WorkItem, 0, len(tasks))
 	for _, t := range tasks {
@@ -138,7 +147,14 @@ func normalizePicks(tasks []picktaskbus.PickTask, ordersByID map[uuid.UUID]order
 			continue
 		}
 		locID := t.LocationID.String()
-		due := order.DueDate
+		// order.DueDate is non-pointer time.Time, so a NULL column or
+		// unset field manifests as the zero time. Treat zero as "no due
+		// date" so the dispatcher's nil-DueAt handling kicks in.
+		var dueAt *time.Time
+		if !order.DueDate.IsZero() {
+			due := order.DueDate
+			dueAt = &due
+		}
 		out = append(out, WorkItem{
 			ID:         t.ID.String(),
 			Type:       WorkItemTypePick,
@@ -147,13 +163,16 @@ func normalizePicks(tasks []picktaskbus.PickTask, ordersByID map[uuid.UUID]order
 			DetailPath: "/floor/pick/" + order.ID.String(),
 			UpdatedAt:  t.UpdatedDate,
 			Priority:   parsePriority(order.Priority),
-			DueAt:      &due,
+			DueAt:      dueAt,
 			LocationID: &locID,
 		})
 	}
 	return out
 }
 
+// mapPutawayStatus converts putawaytaskbus.Status to WorkItemStatus.
+// The default branch drops "completed" and "cancelled" (terminal) and
+// any future statuses not yet recognised by directed work.
 func mapPutawayStatus(s putawaytaskbus.Status) (WorkItemStatus, bool) {
 	switch s.String() {
 	case "pending":
@@ -192,6 +211,17 @@ func normalizePutaways(tasks []putawaytaskbus.PutAwayTask) []WorkItem {
 	return out
 }
 
+// mapCountStatus converts cyclecountitembus.Status to WorkItemStatus.
+// Cycle counts have no in_progress state — the lifecycle is pending →
+// counted → variance_approved / variance_rejected — so only "pending"
+// survives. Everything else is terminal from a worker's perspective.
+func mapCountStatus(s cyclecountitembus.Status) (WorkItemStatus, bool) {
+	if s.String() == "pending" {
+		return WorkItemStatusPending, true
+	}
+	return "", false
+}
+
 // normalizeCounts maps CycleCountItem → WorkItem. Cycle counts have no
 // in_progress state (pending → counted → variance_*), so all non-pending
 // items are dropped. Title uses an ID-substring fallback because no
@@ -199,7 +229,7 @@ func normalizePutaways(tasks []putawaytaskbus.PutAwayTask) []WorkItem {
 func normalizeCounts(items []cyclecountitembus.CycleCountItem) []WorkItem {
 	out := make([]WorkItem, 0, len(items))
 	for _, it := range items {
-		if it.Status.String() != "pending" {
+		if _, ok := mapCountStatus(it.Status); !ok {
 			continue
 		}
 		locIDStr := it.LocationID.String()
@@ -249,7 +279,14 @@ func normalizeInspections(items []inspectionbus.Inspection) []WorkItem {
 		if len(titleSuffix) > 8 {
 			titleSuffix = titleSuffix[:8]
 		}
-		due := it.NextInspectionDate
+		// NextInspectionDate is non-pointer time.Time, so treat the zero
+		// value as "no scheduled date" to avoid polluting the dispatcher
+		// with epoch-rank due dates.
+		var dueAt *time.Time
+		if !it.NextInspectionDate.IsZero() {
+			next := it.NextInspectionDate
+			dueAt = &next
+		}
 		out = append(out, WorkItem{
 			ID:         idStr,
 			Type:       WorkItemTypeInspect,
@@ -258,7 +295,7 @@ func normalizeInspections(items []inspectionbus.Inspection) []WorkItem {
 			DetailPath: "/floor/inspections/" + idStr,
 			UpdatedAt:  it.UpdatedDate,
 			Priority:   WorkItemPriorityMedium,
-			DueAt:      &due,
+			DueAt:      dueAt,
 			LocationID: nil,
 		})
 	}
@@ -266,14 +303,17 @@ func normalizeInspections(items []inspectionbus.Inspection) []WorkItem {
 }
 
 // mapTransferStatus translates the free-string transferorderbus status
-// into the unified surface. Only 'approved' (ready to start) and
-// 'in_transit' (in flight) are visible to directed work; 'pending'
-// (awaiting supervisor), 'rejected', and 'completed' are filtered.
+// into the unified surface. Only StatusApproved (ready to start) and
+// StatusInTransit (in flight) are visible to directed work;
+// StatusPending (awaiting supervisor), StatusRejected, and
+// StatusCompleted are filtered. Uses transferorderbus constants instead
+// of raw literals so a future rename of those constants breaks at
+// compile time instead of silently dropping items.
 func mapTransferStatus(s string) (WorkItemStatus, bool) {
 	switch s {
-	case "approved":
+	case transferorderbus.StatusApproved:
 		return WorkItemStatusPending, true
-	case "in_transit":
+	case transferorderbus.StatusInTransit:
 		return WorkItemStatusInProgress, true
 	default:
 		return "", false
