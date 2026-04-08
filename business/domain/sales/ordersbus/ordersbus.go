@@ -90,6 +90,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		OrderDate:           no.OrderDate,
 		BillingAddressID:    no.BillingAddressID,
 		ShippingAddressID:   no.ShippingAddressID,
+		AssignedTo:          no.AssignedTo,
 		Subtotal:            no.Subtotal,
 		TaxRate:             no.TaxRate,
 		TaxAmount:           no.TaxAmount,
