@@ -929,7 +929,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding serial numbers : %w", err)
 	}
 
-	transferOrders, err := transferorderbus.TestSeedTransferOrders(ctx, 20, productIDs, inventoryLocationsIDs[:15], inventoryLocationsIDs[15:], reporterIDs[:4], bossIDs[4:], busDomain.TransferOrder)
+	transferOrders, err := transferorderbus.TestSeedTransferOrders(ctx, 20, productIDs, inventoryLocationsIDs[:15], inventoryLocationsIDs[15:], reporterIDs[:4], bossIDs[4:], nil, busDomain.TransferOrder)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding transfer orders : %w", err)
 	}

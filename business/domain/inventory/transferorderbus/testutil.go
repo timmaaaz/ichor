@@ -2,6 +2,7 @@ package transferorderbus
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sort"
 	"time"
@@ -33,7 +34,11 @@ func TestNewTransferOrders(n int, productIDs, fromLocationIDs, toLocationIDs, re
 	return newTransferOrders
 }
 
-func TestSeedTransferOrders(ctx context.Context, n int, productIDs, fromLocationIDs, toLocationIDs, requestedBy, approvedBy []uuid.UUID, api *Business) ([]TransferOrder, error) {
+// TestSeedTransferOrders creates n transfer orders for testing. If assigneeIDs
+// is non-empty, each created order is claimed via Business.Update in a
+// round-robin fashion over the provided IDs. Passing nil preserves the
+// previous behavior of leaving orders unclaimed.
+func TestSeedTransferOrders(ctx context.Context, n int, productIDs, fromLocationIDs, toLocationIDs, requestedBy, approvedBy, assigneeIDs []uuid.UUID, api *Business) ([]TransferOrder, error) {
 
 	newTransferOrders := TestNewTransferOrders(n, productIDs, fromLocationIDs, toLocationIDs, requestedBy, approvedBy)
 	transferOrders := make([]TransferOrder, len(newTransferOrders))
@@ -48,6 +53,17 @@ func TestSeedTransferOrders(ctx context.Context, n int, productIDs, fromLocation
 	sort.Slice(transferOrders, func(i, j int) bool {
 		return transferOrders[i].TransferID.String() < transferOrders[j].TransferID.String()
 	})
+
+	if len(assigneeIDs) > 0 {
+		for i := range transferOrders {
+			assignee := assigneeIDs[i%len(assigneeIDs)]
+			updated, err := api.Update(ctx, transferOrders[i], UpdateTransferOrder{ClaimedByID: &assignee})
+			if err != nil {
+				return nil, fmt.Errorf("assign transfer order %d: %w", i, err)
+			}
+			transferOrders[i] = updated
+		}
+	}
 
 	return transferOrders, nil
 }

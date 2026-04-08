@@ -53,6 +53,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				RequestedBy:             sd.Admins[0].ID.String(),
 				Notes:                   "Test purchase order",
 				SupplierReferenceNumber: "SUP-REF-TEST",
+				Priority:                "medium",
 				CreatedBy:               sd.Admins[0].ID.String(),
 			},
 			CmpFunc: func(got, exp any) string {

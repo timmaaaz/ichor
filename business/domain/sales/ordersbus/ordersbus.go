@@ -21,7 +21,16 @@ var (
 	ErrAuthenticationFailure = errors.New("authentication failed")
 	ErrUniqueEntry           = errors.New("order entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
+	ErrInvalidPriority       = errors.New("invalid priority: must be low, medium, high, or critical")
 )
+
+// validPriorities mirrors the sales.orders.priority CHECK constraint (migration 2.26).
+var validPriorities = map[string]struct{}{
+	"low":      {},
+	"medium":   {},
+	"high":     {},
+	"critical": {},
+}
 
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
@@ -33,6 +42,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Order, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, statusID uuid.UUID) (Order, error)
+	QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Order, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -76,6 +86,14 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		now = *no.CreatedDate // Use provided date for seeding
 	}
 
+	priority := no.Priority
+	if priority == "" {
+		priority = "medium"
+	}
+	if _, ok := validPriorities[priority]; !ok {
+		return Order{}, fmt.Errorf("create: %w: %q", ErrInvalidPriority, priority)
+	}
+
 	order := Order{
 		ID:                  uuid.New(),
 		Number:              no.Number,
@@ -85,6 +103,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		OrderDate:           no.OrderDate,
 		BillingAddressID:    no.BillingAddressID,
 		ShippingAddressID:   no.ShippingAddressID,
+		AssignedTo:          no.AssignedTo,
 		Subtotal:            no.Subtotal,
 		TaxRate:             no.TaxRate,
 		TaxAmount:           no.TaxAmount,
@@ -93,6 +112,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		CurrencyID:          no.CurrencyID,
 		PaymentTermID:       no.PaymentTermID,
 		Notes:               no.Notes,
+		Priority:            priority,
 		CreatedBy:           no.CreatedBy,
 		UpdatedBy:           no.CreatedBy,
 		CreatedDate:         now,
@@ -165,6 +185,12 @@ func (b *Business) Update(ctx context.Context, order Order, uo UpdateOrder) (Ord
 	if uo.Notes != nil {
 		order.Notes = *uo.Notes
 	}
+	if uo.Priority != nil {
+		if _, ok := validPriorities[*uo.Priority]; !ok {
+			return Order{}, fmt.Errorf("update: %w: %q", ErrInvalidPriority, *uo.Priority)
+		}
+		order.Priority = *uo.Priority
+	}
 	if uo.UpdatedBy != nil {
 		order.UpdatedBy = *uo.UpdatedBy
 	}
@@ -229,4 +255,17 @@ func (b *Business) QueryByID(ctx context.Context, statusID uuid.UUID) (Order, er
 	}
 
 	return result, nil
+}
+
+// QueryByIDs finds the orders by the specified IDs.
+func (b *Business) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Order, error) {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.querybyids")
+	defer span.End()
+
+	orders, err := b.storer.QueryByIDs(ctx, orderIDs)
+	if err != nil {
+		return nil, fmt.Errorf("querybyids: %w", err)
+	}
+
+	return orders, nil
 }

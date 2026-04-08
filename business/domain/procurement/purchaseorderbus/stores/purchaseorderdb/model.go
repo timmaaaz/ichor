@@ -33,6 +33,7 @@ type purchaseOrder struct {
 	RejectionReason         sql.NullString `db:"rejection_reason"`
 	Notes                   sql.NullString `db:"notes"`
 	SupplierReferenceNumber sql.NullString `db:"supplier_reference_number"`
+	Priority                string         `db:"priority"`
 	CreatedBy               uuid.UUID      `db:"created_by"`
 	UpdatedBy               uuid.UUID      `db:"updated_by"`
 	CreatedDate             time.Time      `db:"created_date"`
@@ -54,6 +55,7 @@ func toDBPurchaseOrder(bus purchaseorderbus.PurchaseOrder) purchaseOrder {
 		TotalAmount:           bus.TotalAmount,
 		CurrencyID:            bus.CurrencyID,
 		RequestedBy:           bus.RequestedBy,
+		Priority:              bus.Priority,
 		CreatedBy:             bus.CreatedBy,
 		UpdatedBy:             bus.UpdatedBy,
 		CreatedDate:           bus.CreatedDate,
@@ -122,6 +124,7 @@ func toBusPurchaseOrder(db purchaseOrder) purchaseorderbus.PurchaseOrder {
 		TotalAmount:           db.TotalAmount,
 		CurrencyID:            db.CurrencyID,
 		RequestedBy:           db.RequestedBy,
+		Priority:              db.Priority,
 		CreatedBy:             db.CreatedBy,
 		UpdatedBy:             db.UpdatedBy,
 		CreatedDate:           db.CreatedDate,

@@ -45,13 +45,13 @@ func (s *Store) Create(ctx context.Context, status ordersbus.Order) error {
 	  id, number, customer_id, due_date, order_fulfillment_status_id,
 	  order_date, billing_address_id, shipping_address_id, assigned_to,
 	  subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
-	  currency_id, payment_term_id, notes,
+	  currency_id, payment_term_id, notes, priority,
 	  created_by, updated_by, created_date, updated_date
     ) VALUES (
         :id, :number, :customer_id, :due_date, :order_fulfillment_status_id,
         :order_date, :billing_address_id, :shipping_address_id, :assigned_to,
         :subtotal, :tax_rate, :tax_amount, :shipping_cost, :total_amount,
-        :currency_id, :payment_term_id, :notes,
+        :currency_id, :payment_term_id, :notes, :priority,
         :created_by, :updated_by, :created_date, :updated_date
     )
 	`
@@ -91,6 +91,7 @@ func (s *Store) Update(ctx context.Context, status ordersbus.Order) error {
         currency_id = :currency_id,
         payment_term_id = :payment_term_id,
         notes = :notes,
+        priority = :priority,
         created_by = :created_by,
         updated_by = :updated_by,
         created_date = :created_date,
@@ -136,7 +137,7 @@ func (s *Store) Query(ctx context.Context, filter ordersbus.QueryFilter, orderBy
 		id, number, customer_id, due_date, order_fulfillment_status_id,
 		order_date, billing_address_id, shipping_address_id, assigned_to,
 		subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
-		currency_id, payment_term_id, notes,
+		currency_id, payment_term_id, notes, priority,
 		created_by, updated_by, created_date, updated_date
     FROM
 	    sales.orders
@@ -201,7 +202,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (ordersbus.Or
         id, number, customer_id, due_date, order_fulfillment_status_id,
         order_date, billing_address_id, shipping_address_id, assigned_to,
         subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
-        currency_id, payment_term_id, notes,
+        currency_id, payment_term_id, notes, priority,
         created_by, updated_by, created_date, updated_date
     FROM
         sales.orders
@@ -223,4 +224,46 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (ordersbus.Or
 	}
 
 	return order, nil
+}
+
+// QueryByIDs retrieves a list of orders by their IDs.
+func (s *Store) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]ordersbus.Order, error) {
+	if len(orderIDs) == 0 {
+		return []ordersbus.Order{}, nil
+	}
+
+	uuidStrings := make([]string, len(orderIDs))
+	for i, id := range orderIDs {
+		uuidStrings[i] = id.String()
+	}
+
+	data := struct {
+		OrderIDs []string `db:"order_ids"`
+	}{
+		OrderIDs: uuidStrings,
+	}
+
+	const q = `
+	SELECT
+		id, number, customer_id, due_date, order_fulfillment_status_id,
+		order_date, billing_address_id, shipping_address_id, assigned_to,
+		subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
+		currency_id, payment_term_id, notes, priority,
+		created_by, updated_by, created_date, updated_date
+	FROM
+		sales.orders
+	WHERE
+		id IN (:order_ids)`
+
+	var dbOrders []dbOrder
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &dbOrders); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	busOrders, err := toBusOrders(dbOrders)
+	if err != nil {
+		return nil, fmt.Errorf("tobusorders: %w", err)
+	}
+
+	return busOrders, nil
 }

@@ -37,6 +37,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 				UpdatedBy:           sd.Admins[0].ID.String(),
 				DueDate:             time.Now().Add(3 * 24 * time.Hour).Format("2006-01-02"),
 				OrderDate:           time.Now().Format("2006-01-02"),
+				Priority:            "medium",
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(*ordersapp.Order)

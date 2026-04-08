@@ -280,7 +280,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		salesOrderIDs[i] = li.OrderID
 	}
 
-	tasks, err := picktaskbus.TestSeedPickTasks(ctx, 4, salesOrderIDs, lineItemIDs, productIDs, locationIDs, createdByIDs, busDomain.PickTask)
+	tasks, err := picktaskbus.TestSeedPickTasks(ctx, 4, salesOrderIDs, lineItemIDs, productIDs, locationIDs, createdByIDs, nil, busDomain.PickTask)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding pick tasks : %w", err)
 	}

@@ -33,13 +33,13 @@ func seedTasks(ctx context.Context, busDomain BusDomain, foundation FoundationSe
 	}
 
 	// Seed 15 put-away tasks for frontend
-	putAwayTasks, err := putawaytaskbus.TestSeedPutAwayTasks(ctx, 15, productIDs, locationIDs, adminIDs, busDomain.PutAwayTask)
+	putAwayTasks, err := putawaytaskbus.TestSeedPutAwayTasks(ctx, 15, productIDs, locationIDs, adminIDs, nil, busDomain.PutAwayTask)
 	if err != nil {
 		return TasksSeed{}, fmt.Errorf("seeding put-away tasks: %w", err)
 	}
 
 	// Seed 15 pick tasks for frontend
-	pickTasks, err := picktaskbus.TestSeedPickTasks(ctx, 15, sales.OrderIDs, sales.OrderLineItemIDs, productIDs, locationIDs, adminIDs, busDomain.PickTask)
+	pickTasks, err := picktaskbus.TestSeedPickTasks(ctx, 15, sales.OrderIDs, sales.OrderLineItemIDs, productIDs, locationIDs, adminIDs, nil, busDomain.PickTask)
 	if err != nil {
 		return TasksSeed{}, fmt.Errorf("seeding pick tasks: %w", err)
 	}

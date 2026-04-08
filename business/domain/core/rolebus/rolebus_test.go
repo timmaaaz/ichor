@@ -53,7 +53,7 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name:    "Query",
 			ExpResp: exp,
 			ExcFunc: func(ctx context.Context) any {
-				got, err := busDomain.Role.Query(ctx, rolebus.QueryFilter{}, order.NewBy(rolebus.OrderByName, order.ASC), page.MustParse("1", "3"))
+				got, err := busDomain.Role.Query(ctx, rolebus.QueryFilter{Name: dbtest.StringPointer("Role")}, order.NewBy(rolebus.OrderByName, order.ASC), page.MustParse("1", "3"))
 				if err != nil {
 					return err
 				}

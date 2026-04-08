@@ -181,7 +181,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		usrIDs[i] = u.ID
 	}
 
-	transferOrders, err := transferorderbus.TestSeedTransferOrders(ctx, 10, productIDs, locationIDs[10:], locationIDs[:10], usrIDs[:5], usrIDs[5:], busDomain.TransferOrder)
+	transferOrders, err := transferorderbus.TestSeedTransferOrders(ctx, 10, productIDs, locationIDs[10:], locationIDs[:10], usrIDs[:5], usrIDs[5:], nil, busDomain.TransferOrder)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding transfer orders : %w", err)
 	}

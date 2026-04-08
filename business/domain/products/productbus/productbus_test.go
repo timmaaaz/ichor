@@ -241,10 +241,19 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	newUpcCode := fmt.Sprintf("UpdatedUpc%d", idx)
 	newModelNumber := fmt.Sprintf("UpdatedModel%d", idx)
 
-	expected := updateProduct
+	expected := product
+	expected.BrandID = updateProduct.BrandID
+	expected.ProductCategoryID = updateProduct.ProductCategoryID
+	expected.Name = updateProduct.Name
+	expected.Description = updateProduct.Description
 	expected.SKU = newSKU
 	expected.UpcCode = newUpcCode
 	expected.ModelNumber = newModelNumber
+	expected.Status = updateProduct.Status
+	expected.IsActive = updateProduct.IsActive
+	expected.IsPerishable = updateProduct.IsPerishable
+	expected.HandlingInstructions = updateProduct.HandlingInstructions
+	expected.UnitsPerCase = updateProduct.UnitsPerCase
 
 	return []unitest.Table{
 		{

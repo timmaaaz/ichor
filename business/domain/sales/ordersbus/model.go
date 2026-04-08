@@ -30,6 +30,7 @@ type Order struct {
 	CurrencyID          uuid.UUID        `json:"currency_id"`
 	PaymentTermID       *uuid.UUID       `json:"payment_term_id,omitempty"`
 	Notes               string           `json:"notes"`
+	Priority            string           `json:"priority"` // low|medium|high|critical
 	CreatedBy           uuid.UUID        `json:"created_by"`
 	UpdatedBy           uuid.UUID        `json:"updated_by"`
 	CreatedDate         time.Time        `json:"created_date"`
@@ -53,6 +54,7 @@ type NewOrder struct {
 	CurrencyID          uuid.UUID        `json:"currency_id"`
 	PaymentTermID       *uuid.UUID       `json:"payment_term_id,omitempty"`
 	Notes               string           `json:"notes"`
+	Priority            string           `json:"priority,omitempty"` // defaults to "medium" in Create
 	CreatedBy           uuid.UUID        `json:"created_by"`
 	CreatedDate         *time.Time       `json:"created_date,omitempty"` // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
@@ -74,5 +76,6 @@ type UpdateOrder struct {
 	CurrencyID          *uuid.UUID        `json:"currency_id,omitempty"`
 	PaymentTermID       *uuid.UUID        `json:"payment_term_id,omitempty"`
 	Notes               *string           `json:"notes,omitempty"`
+	Priority            *string           `json:"priority,omitempty"`
 	UpdatedBy           *uuid.UUID        `json:"updated_by,omitempty"`
 }

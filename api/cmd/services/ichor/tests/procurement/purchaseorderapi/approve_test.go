@@ -39,6 +39,7 @@ func approve200(sd apitest.SeedData) []apitest.Table {
 				ApprovedBy:              sd.Admins[0].ID.String(),
 				Notes:                   sd.PurchaseOrders[0].Notes,
 				SupplierReferenceNumber: sd.PurchaseOrders[0].SupplierReferenceNumber,
+				Priority:                sd.PurchaseOrders[0].Priority,
 				CreatedBy:               sd.PurchaseOrders[0].CreatedBy,
 				UpdatedBy:               sd.Admins[0].ID.String(),
 				CreatedDate:             sd.PurchaseOrders[0].CreatedDate,

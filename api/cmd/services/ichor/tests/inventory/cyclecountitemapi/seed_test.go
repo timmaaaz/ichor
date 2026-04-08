@@ -179,7 +179,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		sessionIDs[i] = s.ID
 	}
 
-	items, err := cyclecountitembus.TestSeedCycleCountItems(ctx, 4, sessionIDs, productIDs, locationIDs, busDomain.CycleCountItem)
+	items, err := cyclecountitembus.TestSeedCycleCountItems(ctx, 4, sessionIDs, productIDs, locationIDs, nil, busDomain.CycleCountItem)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding cycle count items: %w", err)
 	}

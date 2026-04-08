@@ -21,7 +21,16 @@ var (
 	ErrUnique          = errors.New("not unique")
 	ErrAlreadyApproved = errors.New("purchase order is already approved")
 	ErrAlreadyRejected = errors.New("purchase order is already rejected")
+	ErrInvalidPriority = errors.New("invalid priority: must be low, medium, high, or critical")
 )
+
+// validPriorities mirrors the procurement.purchase_orders.priority CHECK constraint (migration 2.26).
+var validPriorities = map[string]struct{}{
+	"low":      {},
+	"medium":   {},
+	"high":     {},
+	"critical": {},
+}
 
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
@@ -79,6 +88,14 @@ func (b *Business) Create(ctx context.Context, npo NewPurchaseOrder) (PurchaseOr
 		now = *npo.CreatedDate // Use provided date for seeding
 	}
 
+	priority := npo.Priority
+	if priority == "" {
+		priority = "medium"
+	}
+	if _, ok := validPriorities[priority]; !ok {
+		return PurchaseOrder{}, fmt.Errorf("create: %w: %q", ErrInvalidPriority, priority)
+	}
+
 	po := PurchaseOrder{
 		ID:                       uuid.New(),
 		OrderNumber:              npo.OrderNumber,
@@ -97,6 +114,7 @@ func (b *Business) Create(ctx context.Context, npo NewPurchaseOrder) (PurchaseOr
 		RequestedBy:              npo.RequestedBy,
 		Notes:                    npo.Notes,
 		SupplierReferenceNumber:  npo.SupplierReferenceNumber,
+		Priority:                 priority,
 		CreatedBy:                npo.CreatedBy,
 		UpdatedBy:                npo.CreatedBy,
 		CreatedDate:              now,
@@ -175,6 +193,12 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 	}
 	if upo.SupplierReferenceNumber != nil {
 		po.SupplierReferenceNumber = *upo.SupplierReferenceNumber
+	}
+	if upo.Priority != nil {
+		if _, ok := validPriorities[*upo.Priority]; !ok {
+			return PurchaseOrder{}, fmt.Errorf("update: %w: %q", ErrInvalidPriority, *upo.Priority)
+		}
+		po.Priority = *upo.Priority
 	}
 	if upo.UpdatedBy != nil {
 		po.UpdatedBy = *upo.UpdatedBy

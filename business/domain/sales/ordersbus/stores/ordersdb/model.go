@@ -28,6 +28,7 @@ type dbOrder struct {
 	CurrencyID          uuid.UUID      `db:"currency_id"`
 	PaymentTermID       *uuid.UUID     `db:"payment_term_id"`
 	Notes               sql.NullString `db:"notes"`
+	Priority            string         `db:"priority"`
 	CreatedBy           uuid.UUID      `db:"created_by"`
 	UpdatedBy           uuid.UUID      `db:"updated_by"`
 	CreatedDate         time.Time      `db:"created_date"`
@@ -76,6 +77,7 @@ func toBusOrder(db dbOrder) (ordersbus.Order, error) {
 		TotalAmount:         totalAmount,
 		CurrencyID:          db.CurrencyID,
 		PaymentTermID:       db.PaymentTermID,
+		Priority:            db.Priority,
 		CreatedBy:           db.CreatedBy,
 		UpdatedBy:           db.UpdatedBy,
 		CreatedDate:         db.CreatedDate.In(time.Local),
@@ -122,6 +124,7 @@ func toDBOrder(bus ordersbus.Order) dbOrder {
 		TotalAmount:         bus.TotalAmount.DBValue(),
 		CurrencyID:          bus.CurrencyID,
 		PaymentTermID:       bus.PaymentTermID,
+		Priority:            bus.Priority,
 		CreatedBy:           bus.CreatedBy,
 		UpdatedBy:           bus.UpdatedBy,
 		CreatedDate:         bus.CreatedDate.UTC(),

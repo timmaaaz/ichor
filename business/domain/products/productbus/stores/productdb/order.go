@@ -31,5 +31,9 @@ func orderByClause(orderBy order.By) (string, error) {
 		return "", fmt.Errorf("field %q does not exist", orderBy.Field)
 	}
 
-	return " ORDER BY " + by + " " + orderBy.Direction, nil
+	clause := " ORDER BY " + by + " " + orderBy.Direction
+	if by != "sku" {
+		clause += ", sku ASC"
+	}
+	return clause, nil
 }

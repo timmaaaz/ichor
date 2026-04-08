@@ -65,6 +65,7 @@ type Order struct {
 	CurrencyID          string `json:"currency_id"`
 	PaymentTermID       string `json:"payment_term_id,omitempty"`
 	Notes               string `json:"notes"`
+	Priority            string `json:"priority"`
 	CreatedBy           string `json:"created_by"`
 	UpdatedBy           string `json:"updated_by"`
 	CreatedDate         string `json:"created_date"`
@@ -96,6 +97,7 @@ func ToAppOrder(bus ordersbus.Order) Order {
 		TotalAmount:         bus.TotalAmount.Value(),
 		CurrencyID:          bus.CurrencyID.String(),
 		Notes:               bus.Notes,
+		Priority:            bus.Priority,
 		CreatedBy:           bus.CreatedBy.String(),
 		UpdatedBy:           bus.UpdatedBy.String(),
 		CreatedDate:         bus.CreatedDate.Format(time.RFC3339),
@@ -144,6 +146,7 @@ type NewOrder struct {
 	CurrencyID          string  `json:"currency_id" validate:"required,uuid4"`
 	PaymentTermID       string  `json:"payment_term_id" validate:"omitempty,uuid4"`
 	Notes               string  `json:"notes"`
+	Priority            string  `json:"priority" validate:"omitempty,oneof=low medium high critical"`
 	CreatedBy           string  `json:"created_by" validate:"required,uuid4"`
 	CreatedDate         *string `json:"created_date"` // Optional: for seeding/import
 }
@@ -250,6 +253,7 @@ func toBusNewOrder(app NewOrder) (ordersbus.NewOrder, error) {
 		TotalAmount:         totalAmount,
 		CurrencyID:          currencyID,
 		Notes:               app.Notes,
+		Priority:            app.Priority,
 		CreatedBy:           createdBy,
 		// CreatedDate: nil by default - API always uses server time
 	}
@@ -301,6 +305,7 @@ type UpdateOrder struct {
 	CurrencyID          *string `json:"currency_id" validate:"omitempty,uuid4"`
 	PaymentTermID       *string `json:"payment_term_id" validate:"omitempty,uuid4"`
 	Notes               *string `json:"notes" validate:"omitempty"`
+	Priority            *string `json:"priority" validate:"omitempty,oneof=low medium high critical"`
 	UpdatedBy           *string `json:"updated_by" validate:"omitempty,uuid4"`
 }
 
@@ -469,6 +474,7 @@ func toBusUpdateOrder(app UpdateOrder) (ordersbus.UpdateOrder, error) {
 		CurrencyID:          currencyID,
 		PaymentTermID:       paymentTermID,
 		Notes:               app.Notes,
+		Priority:            app.Priority,
 		UpdatedBy:           updatedBy,
 	}
 	return bus, nil
