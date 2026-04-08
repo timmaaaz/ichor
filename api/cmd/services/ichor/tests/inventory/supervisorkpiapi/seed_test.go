@@ -185,7 +185,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 
 	createdByIDs := []uuid.UUID{tu1.ID, tu2.ID}
 
-	tasks, err := putawaytaskbus.TestSeedPutAwayTasks(ctx, 3, productIDs, locationIDs, createdByIDs, busDomain.PutAwayTask)
+	tasks, err := putawaytaskbus.TestSeedPutAwayTasks(ctx, 3, productIDs, locationIDs, createdByIDs, nil, busDomain.PutAwayTask)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding put-away tasks : %w", err)
 	}

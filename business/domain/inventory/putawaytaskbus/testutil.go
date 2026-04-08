@@ -34,7 +34,10 @@ func TestNewPutAwayTasks(n int, productIDs, locationIDs, createdByIDs []uuid.UUI
 }
 
 // TestSeedPutAwayTasks creates n put-away tasks in the database for testing.
-func TestSeedPutAwayTasks(ctx context.Context, n int, productIDs, locationIDs, createdByIDs []uuid.UUID, api *Business) ([]PutAwayTask, error) {
+// If assigneeIDs is non-empty, each task is round-robin-assigned to one of
+// the provided user IDs via Business.Update after creation. Passing nil
+// preserves the existing unassigned behavior.
+func TestSeedPutAwayTasks(ctx context.Context, n int, productIDs, locationIDs, createdByIDs, assigneeIDs []uuid.UUID, api *Business) ([]PutAwayTask, error) {
 	newTasks := TestNewPutAwayTasks(n, productIDs, locationIDs, createdByIDs)
 
 	tasks := make([]PutAwayTask, len(newTasks))
@@ -49,6 +52,17 @@ func TestSeedPutAwayTasks(ctx context.Context, n int, productIDs, locationIDs, c
 	sort.Slice(tasks, func(i, j int) bool {
 		return tasks[i].ID.String() < tasks[j].ID.String()
 	})
+
+	if len(assigneeIDs) > 0 {
+		for i := range tasks {
+			assignee := assigneeIDs[i%len(assigneeIDs)]
+			updated, err := api.Update(ctx, tasks[i], UpdatePutAwayTask{AssignedTo: &assignee})
+			if err != nil {
+				return nil, fmt.Errorf("assign putaway task %d: %w", i, err)
+			}
+			tasks[i] = updated
+		}
+	}
 
 	return tasks, nil
 }
