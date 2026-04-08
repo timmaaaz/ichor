@@ -3,6 +3,7 @@ package directedworkapi
 import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
@@ -216,6 +217,48 @@ func normalizeCounts(items []cyclecountitembus.CycleCountItem) []WorkItem {
 			Priority:   WorkItemPriorityMedium,
 			DueAt:      nil,
 			LocationID: &locIDStr,
+		})
+	}
+	return out
+}
+
+func mapInspectionStatus(s string) (WorkItemStatus, bool) {
+	switch s {
+	case inspectionbus.StatusPending:
+		return WorkItemStatusPending, true
+	case inspectionbus.StatusInProgress:
+		return WorkItemStatusInProgress, true
+	default:
+		return "", false
+	}
+}
+
+// normalizeInspections maps inspectionbus.Inspection → WorkItem.
+// Title uses an 8-char ID prefix; lot-number lookup is deferred (the
+// lottrackingsbus has no batch QueryByIDs in V1).
+func normalizeInspections(items []inspectionbus.Inspection) []WorkItem {
+	out := make([]WorkItem, 0, len(items))
+	for _, it := range items {
+		status, ok := mapInspectionStatus(it.Status)
+		if !ok {
+			continue
+		}
+		idStr := it.InspectionID.String()
+		titleSuffix := idStr
+		if len(titleSuffix) > 8 {
+			titleSuffix = titleSuffix[:8]
+		}
+		due := it.NextInspectionDate
+		out = append(out, WorkItem{
+			ID:         idStr,
+			Type:       WorkItemTypeInspect,
+			Status:     status,
+			Title:      "Inspect " + titleSuffix,
+			DetailPath: "/floor/inspections/" + idStr,
+			UpdatedAt:  it.UpdatedDate,
+			Priority:   WorkItemPriorityMedium,
+			DueAt:      &due,
+			LocationID: nil,
 		})
 	}
 	return out

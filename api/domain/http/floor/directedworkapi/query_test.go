@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
@@ -274,5 +275,60 @@ func TestNormalizeCounts(t *testing.T) {
 	}
 	if w.Status != WorkItemStatusPending {
 		t.Errorf("expected Pending (no in_progress concept), got %s", w.Status)
+	}
+}
+
+func TestNormalizeInspections(t *testing.T) {
+	next := time.Now().Add(24 * time.Hour)
+	inspections := []inspectionbus.Inspection{
+		{
+			InspectionID:       uuid.New(),
+			Status:             inspectionbus.StatusPending,
+			NextInspectionDate: next,
+			UpdatedDate:        time.Now(),
+		},
+		{
+			InspectionID:       uuid.New(),
+			Status:             inspectionbus.StatusInProgress,
+			NextInspectionDate: next,
+			UpdatedDate:        time.Now(),
+		},
+		{
+			InspectionID:       uuid.New(),
+			Status:             inspectionbus.StatusPassed, // terminal
+			NextInspectionDate: next,
+			UpdatedDate:        time.Now(),
+		},
+	}
+
+	got := normalizeInspections(inspections)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 (passed filtered), got %d", len(got))
+	}
+
+	// Find by status to assert.
+	var pending, inProg *WorkItem
+	for i := range got {
+		switch got[i].Status {
+		case WorkItemStatusPending:
+			pending = &got[i]
+		case WorkItemStatusInProgress:
+			inProg = &got[i]
+		}
+	}
+	if pending == nil || inProg == nil {
+		t.Fatalf("expected both pending and in_progress in output, got %+v", got)
+	}
+	if pending.Priority != WorkItemPriorityMedium || inProg.Priority != WorkItemPriorityMedium {
+		t.Errorf("expected medium priority, got %s / %s", pending.Priority, inProg.Priority)
+	}
+	if pending.DueAt == nil || !pending.DueAt.Equal(next) {
+		t.Errorf("expected DueAt from NextInspectionDate, got %v", pending.DueAt)
+	}
+	if pending.LocationID != nil {
+		t.Errorf("expected nil LocationID for inspections, got %v", pending.LocationID)
+	}
+	if len(pending.Title) < len("Inspect ") || pending.Title[:len("Inspect ")] != "Inspect " {
+		t.Errorf("expected title to start with 'Inspect ', got %q", pending.Title)
 	}
 }
