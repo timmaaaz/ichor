@@ -3,6 +3,10 @@ package directedworkapi
 import (
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 )
 
 func ptrTime(t time.Time) *time.Time { return &t }
@@ -91,5 +95,94 @@ func TestSelectNext_DueAtTieBrokenByEarliestUpdatedAt(t *testing.T) {
 	got := selectNext(items)
 	if got == nil || got.ID != "touched-earlier" {
 		t.Fatalf("expected earliest updated_at to win due_at tie, got %+v", got)
+	}
+}
+
+func TestNormalizePicks(t *testing.T) {
+	orderID := uuid.New()
+	locID := uuid.New()
+	userID := uuid.New()
+	due := time.Now().Add(2 * time.Hour)
+
+	ordersByID := map[uuid.UUID]ordersbus.Order{
+		orderID: {
+			ID:       orderID,
+			Number:   "SO-2025-0891",
+			DueDate:  due,
+			Priority: "high",
+		},
+	}
+
+	tasks := []picktaskbus.PickTask{
+		{
+			ID:           uuid.New(),
+			SalesOrderID: orderID,
+			LocationID:   locID,
+			Status:       picktaskbus.Statuses.InProgress,
+			AssignedTo:   userID,
+			UpdatedDate:  time.Now(),
+		},
+		{
+			ID:           uuid.New(),
+			SalesOrderID: orderID,
+			LocationID:   locID,
+			Status:       picktaskbus.Statuses.Completed, // should be filtered out
+			AssignedTo:   userID,
+			UpdatedDate:  time.Now(),
+		},
+		{
+			ID:           uuid.New(),
+			SalesOrderID: orderID,
+			LocationID:   locID,
+			Status:       picktaskbus.Statuses.Pending,
+			AssignedTo:   userID,
+			UpdatedDate:  time.Now(),
+		},
+	}
+
+	got := normalizePicks(tasks, ordersByID)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 items (1 completed filtered), got %d", len(got))
+	}
+	for _, w := range got {
+		if w.Type != WorkItemTypePick {
+			t.Errorf("expected type=pick, got %s", w.Type)
+		}
+		if w.Title != "Pick SO-2025-0891" {
+			t.Errorf("expected title 'Pick SO-2025-0891', got %q", w.Title)
+		}
+		if w.Priority != WorkItemPriorityHigh {
+			t.Errorf("expected priority=high, got %s", w.Priority)
+		}
+		if w.DueAt == nil || !w.DueAt.Equal(due) {
+			t.Errorf("expected DueAt=%v, got %v", due, w.DueAt)
+		}
+		if w.LocationID == nil || *w.LocationID != locID.String() {
+			t.Errorf("expected LocationID=%s, got %v", locID, w.LocationID)
+		}
+	}
+}
+
+func TestNormalizePicks_UnknownPriorityFallsBackToMedium(t *testing.T) {
+	orderID := uuid.New()
+	ordersByID := map[uuid.UUID]ordersbus.Order{
+		orderID: {ID: orderID, Number: "SO-X", Priority: "" /* defaulted */},
+	}
+	tasks := []picktaskbus.PickTask{
+		{ID: uuid.New(), SalesOrderID: orderID, Status: picktaskbus.Statuses.Pending, UpdatedDate: time.Now()},
+	}
+	got := normalizePicks(tasks, ordersByID)
+	if len(got) != 1 || got[0].Priority != WorkItemPriorityMedium {
+		t.Fatalf("expected medium fallback, got %+v", got)
+	}
+}
+
+func TestNormalizePicks_MissingParentOrderSkips(t *testing.T) {
+	tasks := []picktaskbus.PickTask{
+		{ID: uuid.New(), SalesOrderID: uuid.New(), Status: picktaskbus.Statuses.Pending, UpdatedDate: time.Now()},
+	}
+	got := normalizePicks(tasks, map[uuid.UUID]ordersbus.Order{})
+	if len(got) != 0 {
+		t.Fatalf("expected 0 items when parent order is missing (FK orphan), got %d", len(got))
 	}
 }

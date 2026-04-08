@@ -1,5 +1,11 @@
 package directedworkapi
 
+import (
+	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
+)
+
 // selectNext applies the Phase 3 dispatcher policy to a list of
 // normalized work items and returns the single best next task, or
 // nil if none is directed.
@@ -78,4 +84,68 @@ func pendingBeats(candidate, current WorkItem) bool {
 
 	// Due tie → earliest UpdatedAt.
 	return candidate.UpdatedAt.Before(current.UpdatedAt)
+}
+
+// mapPickStatus converts picktaskbus.Status to the unified WorkItemStatus,
+// returning (status, ok) — ok=false means the task is terminal and should
+// be dropped.
+func mapPickStatus(s picktaskbus.Status) (WorkItemStatus, bool) {
+	switch s.String() {
+	case "pending":
+		return WorkItemStatusPending, true
+	case "in_progress":
+		return WorkItemStatusInProgress, true
+	default:
+		return "", false
+	}
+}
+
+// parsePriority coerces a string priority from a DB row into the
+// WorkItemPriority enum. Empty / unknown falls back to Medium.
+func parsePriority(p string) WorkItemPriority {
+	switch p {
+	case "low":
+		return WorkItemPriorityLow
+	case "medium":
+		return WorkItemPriorityMedium
+	case "high":
+		return WorkItemPriorityHigh
+	case "critical":
+		return WorkItemPriorityCritical
+	default:
+		return WorkItemPriorityMedium
+	}
+}
+
+// normalizePicks turns a slice of pick tasks into WorkItems, filtering
+// out terminal statuses and FK-orphaned rows. ordersByID is the batch
+// lookup result from ordersbus.QueryByIDs covering every SalesOrderID
+// referenced by tasks.
+func normalizePicks(tasks []picktaskbus.PickTask, ordersByID map[uuid.UUID]ordersbus.Order) []WorkItem {
+	out := make([]WorkItem, 0, len(tasks))
+	for _, t := range tasks {
+		status, ok := mapPickStatus(t.Status)
+		if !ok {
+			continue
+		}
+		order, exists := ordersByID[t.SalesOrderID]
+		if !exists {
+			// FK orphan: parent order was deleted. Skip this task.
+			continue
+		}
+		locID := t.LocationID.String()
+		due := order.DueDate
+		out = append(out, WorkItem{
+			ID:         t.ID.String(),
+			Type:       WorkItemTypePick,
+			Status:     status,
+			Title:      "Pick " + order.Number,
+			DetailPath: "/floor/pick/" + order.ID.String(),
+			UpdatedAt:  t.UpdatedDate,
+			Priority:   parsePriority(order.Priority),
+			DueAt:      &due,
+			LocationID: &locID,
+		})
+	}
+	return out
 }
