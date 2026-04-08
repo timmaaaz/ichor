@@ -6,6 +6,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 )
 
@@ -259,6 +260,49 @@ func normalizeInspections(items []inspectionbus.Inspection) []WorkItem {
 			Priority:   WorkItemPriorityMedium,
 			DueAt:      &due,
 			LocationID: nil,
+		})
+	}
+	return out
+}
+
+// mapTransferStatus translates the free-string transferorderbus status
+// into the unified surface. Only 'approved' (ready to start) and
+// 'in_transit' (in flight) are visible to directed work; 'pending'
+// (awaiting supervisor), 'rejected', and 'completed' are filtered.
+func mapTransferStatus(s string) (WorkItemStatus, bool) {
+	switch s {
+	case "approved":
+		return WorkItemStatusPending, true
+	case "in_transit":
+		return WorkItemStatusInProgress, true
+	default:
+		return "", false
+	}
+}
+
+func normalizeTransfers(items []transferorderbus.TransferOrder) []WorkItem {
+	out := make([]WorkItem, 0, len(items))
+	for _, it := range items {
+		status, ok := mapTransferStatus(it.Status)
+		if !ok {
+			continue
+		}
+		idStr := it.TransferID.String()
+		titleSuffix := idStr
+		if len(titleSuffix) > 8 {
+			titleSuffix = titleSuffix[:8]
+		}
+		fromLoc := it.FromLocationID.String()
+		out = append(out, WorkItem{
+			ID:         idStr,
+			Type:       WorkItemTypeTransfer,
+			Status:     status,
+			Title:      "Transfer " + titleSuffix,
+			DetailPath: "/floor/transfers/" + idStr,
+			UpdatedAt:  it.UpdatedDate,
+			Priority:   WorkItemPriorityMedium,
+			DueAt:      nil,
+			LocationID: &fromLoc,
 		})
 	}
 	return out

@@ -9,6 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 )
 
@@ -330,5 +331,64 @@ func TestNormalizeInspections(t *testing.T) {
 	}
 	if len(pending.Title) < len("Inspect ") || pending.Title[:len("Inspect ")] != "Inspect " {
 		t.Errorf("expected title to start with 'Inspect ', got %q", pending.Title)
+	}
+}
+
+func TestNormalizeTransfers(t *testing.T) {
+	fromLoc := uuid.New()
+	userID := uuid.New()
+	transfers := []transferorderbus.TransferOrder{
+		{
+			TransferID:     uuid.New(),
+			FromLocationID: fromLoc,
+			Status:         "approved", // → Pending (ready to start)
+			ClaimedByID:    &userID,
+			UpdatedDate:    time.Now(),
+		},
+		{
+			TransferID:     uuid.New(),
+			FromLocationID: fromLoc,
+			Status:         "in_transit", // → InProgress
+			ClaimedByID:    &userID,
+			UpdatedDate:    time.Now(),
+		},
+		{
+			TransferID:     uuid.New(),
+			FromLocationID: fromLoc,
+			Status:         "pending", // awaiting supervisor; filtered
+			ClaimedByID:    &userID,
+			UpdatedDate:    time.Now(),
+		},
+		{
+			TransferID:     uuid.New(),
+			FromLocationID: fromLoc,
+			Status:         "completed", // terminal; filtered
+			ClaimedByID:    &userID,
+			UpdatedDate:    time.Now(),
+		},
+	}
+
+	got := normalizeTransfers(transfers)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 items (pending + completed filtered), got %d", len(got))
+	}
+
+	var readyToStart, inFlight *WorkItem
+	for i := range got {
+		switch got[i].Status {
+		case WorkItemStatusPending:
+			readyToStart = &got[i]
+		case WorkItemStatusInProgress:
+			inFlight = &got[i]
+		}
+	}
+	if readyToStart == nil || inFlight == nil {
+		t.Fatalf("expected both statuses, got %+v", got)
+	}
+	if readyToStart.LocationID == nil || *readyToStart.LocationID != fromLoc.String() {
+		t.Errorf("expected LocationID from FromLocationID, got %v", readyToStart.LocationID)
+	}
+	if readyToStart.Priority != WorkItemPriorityMedium {
+		t.Errorf("expected medium priority, got %s", readyToStart.Priority)
 	}
 }
