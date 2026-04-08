@@ -76,6 +76,11 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		now = *no.CreatedDate // Use provided date for seeding
 	}
 
+	priority := no.Priority
+	if priority == "" {
+		priority = "medium"
+	}
+
 	order := Order{
 		ID:                  uuid.New(),
 		Number:              no.Number,
@@ -93,6 +98,7 @@ func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
 		CurrencyID:          no.CurrencyID,
 		PaymentTermID:       no.PaymentTermID,
 		Notes:               no.Notes,
+		Priority:            priority,
 		CreatedBy:           no.CreatedBy,
 		UpdatedBy:           no.CreatedBy,
 		CreatedDate:         now,
@@ -164,6 +170,9 @@ func (b *Business) Update(ctx context.Context, order Order, uo UpdateOrder) (Ord
 	}
 	if uo.Notes != nil {
 		order.Notes = *uo.Notes
+	}
+	if uo.Priority != nil {
+		order.Priority = *uo.Priority
 	}
 	if uo.UpdatedBy != nil {
 		order.UpdatedBy = *uo.UpdatedBy
