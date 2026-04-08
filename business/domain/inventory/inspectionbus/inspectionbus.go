@@ -21,8 +21,11 @@ import (
 // can treat inspections symmetrically with other task types. No state
 // machine currently transitions pending → in_progress (that's a future
 // inspection UI change); Phase 3 only ensures the enum is future-proof.
-// The DB column inventory.quality_inspections.status has no CHECK
-// constraint (migrate.sql:749), so no migration is required.
+// Migration 2.27 expands the existing
+// inventory.quality_inspections.status CHECK constraint (originally
+// added in 2.16 with values 'pending','passed','failed') to also allow
+// 'in_progress', so future writes of this constant are accepted by the
+// database.
 const (
 	StatusPending    = "pending"
 	StatusInProgress = "in_progress"

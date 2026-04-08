@@ -2408,3 +2408,14 @@ ALTER TABLE procurement.purchase_orders
         CHECK (priority IN ('low', 'medium', 'high', 'critical'));
 
 CREATE INDEX idx_procurement_purchase_orders_priority ON procurement.purchase_orders(priority);
+
+-- Version: 2.27
+-- Description: Expand inventory.quality_inspections.status CHECK constraint to
+--              include 'in_progress', enabling floor directed-work to surface
+--              inspections symmetrically with other task types (Phase 3).
+ALTER TABLE inventory.quality_inspections
+    DROP CONSTRAINT quality_inspections_status_check;
+
+ALTER TABLE inventory.quality_inspections
+    ADD CONSTRAINT quality_inspections_status_check
+    CHECK (status IN ('pending', 'in_progress', 'passed', 'failed'));
