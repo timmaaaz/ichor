@@ -79,6 +79,11 @@ func (b *Business) Create(ctx context.Context, npo NewPurchaseOrder) (PurchaseOr
 		now = *npo.CreatedDate // Use provided date for seeding
 	}
 
+	priority := npo.Priority
+	if priority == "" {
+		priority = "medium"
+	}
+
 	po := PurchaseOrder{
 		ID:                       uuid.New(),
 		OrderNumber:              npo.OrderNumber,
@@ -97,6 +102,7 @@ func (b *Business) Create(ctx context.Context, npo NewPurchaseOrder) (PurchaseOr
 		RequestedBy:              npo.RequestedBy,
 		Notes:                    npo.Notes,
 		SupplierReferenceNumber:  npo.SupplierReferenceNumber,
+		Priority:                 priority,
 		CreatedBy:                npo.CreatedBy,
 		UpdatedBy:                npo.CreatedBy,
 		CreatedDate:              now,
@@ -175,6 +181,9 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 	}
 	if upo.SupplierReferenceNumber != nil {
 		po.SupplierReferenceNumber = *upo.SupplierReferenceNumber
+	}
+	if upo.Priority != nil {
+		po.Priority = *upo.Priority
 	}
 	if upo.UpdatedBy != nil {
 		po.UpdatedBy = *upo.UpdatedBy

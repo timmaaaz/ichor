@@ -55,7 +55,7 @@ func (s *Store) Create(ctx context.Context, po purchaseorderbus.PurchaseOrder) e
 		subtotal, tax_amount, shipping_cost, total_amount, currency_id,
 		requested_by, approved_by, approved_date, approval_reason,
 		rejected_by, rejected_date, rejection_reason,
-		notes, supplier_reference_number,
+		notes, supplier_reference_number, priority,
 		created_by, updated_by, created_date, updated_date
 	) VALUES (
 		:id, :order_number, :supplier_id, :purchase_order_status_id,
@@ -64,7 +64,7 @@ func (s *Store) Create(ctx context.Context, po purchaseorderbus.PurchaseOrder) e
 		:subtotal, :tax_amount, :shipping_cost, :total_amount, :currency_id,
 		:requested_by, :approved_by, :approved_date, :approval_reason,
 		:rejected_by, :rejected_date, :rejection_reason,
-		:notes, :supplier_reference_number,
+		:notes, :supplier_reference_number, :priority,
 		:created_by, :updated_by, :created_date, :updated_date
 	)
 	`
@@ -107,6 +107,7 @@ func (s *Store) Update(ctx context.Context, po purchaseorderbus.PurchaseOrder) e
 		rejection_reason = :rejection_reason,
 		notes = :notes,
 		supplier_reference_number = :supplier_reference_number,
+		priority = :priority,
 		updated_by = :updated_by,
 		updated_date = :updated_date
 	WHERE
@@ -153,7 +154,7 @@ func (s *Store) Query(ctx context.Context, filter purchaseorderbus.QueryFilter, 
 		subtotal, tax_amount, shipping_cost, total_amount, currency_id,
 		requested_by, approved_by, approved_date, approval_reason,
 		rejected_by, rejected_date, rejection_reason,
-		notes, supplier_reference_number,
+		notes, supplier_reference_number, priority,
 		created_by, updated_by, created_date, updated_date
 	FROM
 		procurement.purchase_orders`
@@ -216,7 +217,7 @@ func (s *Store) QueryByID(ctx context.Context, poID uuid.UUID) (purchaseorderbus
 		subtotal, tax_amount, shipping_cost, total_amount, currency_id,
 		requested_by, approved_by, approved_date, approval_reason,
 		rejected_by, rejected_date, rejection_reason,
-		notes, supplier_reference_number,
+		notes, supplier_reference_number, priority,
 		created_by, updated_by, created_date, updated_date
 	FROM
 		procurement.purchase_orders
@@ -255,7 +256,7 @@ func (s *Store) QueryByIDs(ctx context.Context, poIDs []uuid.UUID) ([]purchaseor
 		subtotal, tax_amount, shipping_cost, total_amount, currency_id,
 		requested_by, approved_by, approved_date, approval_reason,
 		rejected_by, rejected_date, rejection_reason,
-		notes, supplier_reference_number,
+		notes, supplier_reference_number, priority,
 		created_by, updated_by, created_date, updated_date
 	FROM
 		procurement.purchase_orders

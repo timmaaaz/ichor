@@ -37,6 +37,7 @@ type PurchaseOrder struct {
 	RejectionReason         string     `json:"rejection_reason"`
 	Notes                   string    `json:"notes"`
 	SupplierReferenceNumber string    `json:"supplier_reference_number"`
+	Priority                string    `json:"priority"`
 	CreatedBy               uuid.UUID `json:"created_by"`
 	UpdatedBy               uuid.UUID `json:"updated_by"`
 	CreatedDate             time.Time `json:"created_date"`
@@ -61,6 +62,7 @@ type NewPurchaseOrder struct {
 	RequestedBy             uuid.UUID  `json:"requested_by"`
 	Notes                   string     `json:"notes"`
 	SupplierReferenceNumber string     `json:"supplier_reference_number"`
+	Priority                string     `json:"priority,omitempty"`
 	CreatedBy               uuid.UUID  `json:"created_by"`
 	CreatedDate             *time.Time `json:"created_date,omitempty"` // Optional: if nil, uses time.Now(), otherwise explicit date for seeding
 }
@@ -89,5 +91,6 @@ type UpdatePurchaseOrder struct {
 	RejectionReason         *string    `json:"rejection_reason,omitempty"`
 	Notes                   *string    `json:"notes,omitempty"`
 	SupplierReferenceNumber *string    `json:"supplier_reference_number,omitempty"`
+	Priority                *string    `json:"priority,omitempty"`
 	UpdatedBy               *uuid.UUID `json:"updated_by,omitempty"`
 }
