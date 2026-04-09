@@ -1,4 +1,4 @@
-package directedworkapi
+package directedworkapp
 
 import (
 	"time"
@@ -160,7 +160,7 @@ func normalizePicks(tasks []picktaskbus.PickTask, ordersByID map[uuid.UUID]order
 			Type:       WorkItemTypePick,
 			Status:     status,
 			Title:      "Pick " + order.Number,
-			DetailPath: "/floor/pick/" + order.ID.String(),
+			DetailPath: "/floor/pick/" + t.ID.String(),
 			UpdatedAt:  t.UpdatedDate,
 			Priority:   parsePriority(order.Priority),
 			DueAt:      dueAt,

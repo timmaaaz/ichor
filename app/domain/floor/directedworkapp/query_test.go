@@ -1,4 +1,4 @@
-package directedworkapi
+package directedworkapp
 
 import (
 	"testing"
@@ -442,28 +442,35 @@ func TestNormalizeTransfers(t *testing.T) {
 		{
 			TransferID:     uuid.New(),
 			FromLocationID: fromLoc,
-			Status:         "approved", // → Pending (ready to start)
+			Status:         transferorderbus.StatusApproved, // → Pending (ready to start)
+			ClaimedByID:    nil,                             // not yet claimed
+			UpdatedDate:    time.Now(),
+		},
+		{
+			TransferID:     uuid.New(),
+			FromLocationID: fromLoc,
+			Status:         transferorderbus.StatusInTransit, // → InProgress
 			ClaimedByID:    &userID,
 			UpdatedDate:    time.Now(),
 		},
 		{
 			TransferID:     uuid.New(),
 			FromLocationID: fromLoc,
-			Status:         "in_transit", // → InProgress
-			ClaimedByID:    &userID,
+			Status:         transferorderbus.StatusPending, // awaiting supervisor; filtered
+			ClaimedByID:    nil,
 			UpdatedDate:    time.Now(),
 		},
 		{
 			TransferID:     uuid.New(),
 			FromLocationID: fromLoc,
-			Status:         "pending", // awaiting supervisor; filtered
-			ClaimedByID:    &userID,
+			Status:         transferorderbus.StatusRejected, // rejected; filtered
+			ClaimedByID:    nil,
 			UpdatedDate:    time.Now(),
 		},
 		{
 			TransferID:     uuid.New(),
 			FromLocationID: fromLoc,
-			Status:         "completed", // terminal; filtered
+			Status:         transferorderbus.StatusCompleted, // terminal; filtered
 			ClaimedByID:    &userID,
 			UpdatedDate:    time.Now(),
 		},
@@ -471,7 +478,7 @@ func TestNormalizeTransfers(t *testing.T) {
 
 	got := normalizeTransfers(transfers)
 	if len(got) != 2 {
-		t.Fatalf("expected 2 items (pending + completed filtered), got %d", len(got))
+		t.Fatalf("expected 2 items (pending + rejected + completed filtered), got %d", len(got))
 	}
 
 	var readyToStart, inFlight *WorkItem

@@ -6,6 +6,7 @@ import (
 
 	"github.com/timmaaaz/ichor/api/domain/http/floor/directedworkapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/domain/floor/directedworkapp"
 )
 
 func Test_DirectedWork_Query(t *testing.T) {
@@ -47,9 +48,9 @@ func queryTests(sd DirectedWorkSeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			GotResp:    &directedworkapi.Response{},
 			ExpResp: &directedworkapi.Response{
-				WorkItem: &directedworkapi.WorkItem{
-					Type:   directedworkapi.WorkItemTypePick,
-					Status: directedworkapi.WorkItemStatusPending,
+				WorkItem: &directedworkapp.WorkItem{
+					Type:   directedworkapp.WorkItemTypePick,
+					Status: directedworkapp.WorkItemStatusPending,
 				},
 			},
 			CmpFunc: func(got, exp any) string {
@@ -57,10 +58,10 @@ func queryTests(sd DirectedWorkSeedData) []apitest.Table {
 				if g.WorkItem == nil {
 					return "expected a work item, got nil"
 				}
-				if g.WorkItem.Type != directedworkapi.WorkItemTypePick {
+				if g.WorkItem.Type != directedworkapp.WorkItemTypePick {
 					return "expected type=pick, got " + string(g.WorkItem.Type)
 				}
-				if g.WorkItem.Status != directedworkapi.WorkItemStatusPending {
+				if g.WorkItem.Status != directedworkapp.WorkItemStatusPending {
 					return "expected status=pending, got " + string(g.WorkItem.Status)
 				}
 				return ""
