@@ -87,7 +87,10 @@ import (
 
 	"github.com/timmaaaz/ichor/api/domain/http/assets/fulfillmentstatusapi"
 	"github.com/timmaaaz/ichor/api/domain/http/checkapi"
+	"github.com/timmaaaz/ichor/api/domain/http/floor/directedworkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/floor/presenceapi"
+
+	"github.com/timmaaaz/ichor/app/domain/floor/directedworkapp"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/cityapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/countryapi"
 	"github.com/timmaaaz/ichor/api/domain/http/geography/regionapi"
@@ -1460,6 +1463,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AlertHub:       alertHub,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+	})
+
+	// Floor directed-work endpoint — unified "what's next" for workers
+	directedworkapi.Routes(app, directedworkapi.Config{
+		DirectedWorkApp: directedworkapp.NewApp(
+			cfg.Log,
+			pickTaskBus,
+			putAwayTaskBus,
+			cycleCountItemBus,
+			inspectionBus,
+			transferOrderBus,
+			ordersBus,
+		),
+		AuthClient: cfg.AuthClient,
 	})
 
 	// formdata - dynamic multi-entity operations
