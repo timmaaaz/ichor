@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/core/tableaccessapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/userroleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/settingsapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/userpreferencesapi"
 	"github.com/timmaaaz/ichor/api/domain/http/dataapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/officeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/reportstoapi"
@@ -170,6 +171,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/core/userpreferencesbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userpreferencesbus/stores/userpreferencesdb"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/stores/settingsdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -256,6 +259,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	serialNumberBus := serialnumberbus.NewBusiness(cfg.Log, delegate, serialnumberdb.NewStore(cfg.Log, cfg.DB))
 	lotLocationBus := lotlocationbus.NewBusiness(cfg.Log, delegate, lotlocationdb.NewStore(cfg.Log, cfg.DB))
 	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingsdb.NewStore(cfg.Log, cfg.DB))
+	userPreferencesBus := userpreferencesbus.NewBusiness(cfg.Log, userpreferencesdb.NewStore(cfg.Log, cfg.DB))
 
 	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
 	costHistoryBus := costhistorybus.NewBusiness(cfg.Log, delegate, costhistorydb.NewStore(cfg.Log, cfg.DB))
@@ -610,6 +614,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		SettingsBus:    settingsBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+	})
+
+	userpreferencesapi.Routes(app, userpreferencesapi.Config{
+		UserPreferencesBus: userPreferencesBus,
+		AuthClient:         cfg.AuthClient,
+		UserBus:            a.UserBus,
 	})
 
 	// data

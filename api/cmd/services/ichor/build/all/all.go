@@ -24,6 +24,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/config/pageconfigapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/pagecontentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/settingsapi"
+	"github.com/timmaaaz/ichor/api/domain/http/core/userpreferencesapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/contactinfosapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/currencyapi"
 	"github.com/timmaaaz/ichor/api/domain/http/core/pageapi"
@@ -298,6 +299,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/core/userpreferencesbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userpreferencesbus/stores/userpreferencesdb"
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	citydb "github.com/timmaaaz/ichor/business/domain/geography/citybus/stores/citydb"
 	"github.com/timmaaaz/ichor/business/domain/geography/countrybus"
@@ -474,6 +477,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
 	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB), pageContentBus, pageActionBus)
 	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingsdb.NewStore(cfg.Log, cfg.DB))
+	userPreferencesBus := userpreferencesbus.NewBusiness(cfg.Log, userpreferencesdb.NewStore(cfg.Log, cfg.DB))
 
 	// Workflow domain
 	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
@@ -1309,6 +1313,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		SettingsBus:    settingsBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+	})
+
+	userpreferencesapi.Routes(app, userpreferencesapi.Config{
+		UserPreferencesBus: userPreferencesBus,
+		AuthClient:         cfg.AuthClient,
+		UserBus:            a.UserBus,
 	})
 
 	// =========================================================================
