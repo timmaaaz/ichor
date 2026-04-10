@@ -29,6 +29,22 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 	}
 	adminID := foundation.Admins[0].ID
 
+	// Seed user preferences for all foundation users.
+	var allUserIDs uuid.UUIDs
+	for _, u := range foundation.Admins {
+		allUserIDs = append(allUserIDs, u.ID)
+	}
+	for _, u := range foundation.Reporters {
+		allUserIDs = append(allUserIDs, u.ID)
+	}
+	for _, u := range foundation.Bosses {
+		allUserIDs = append(allUserIDs, u.ID)
+	}
+
+	if err := seedUserPreferences(ctx, busDomain, allUserIDs); err != nil {
+		return fmt.Errorf("seeding user preferences: %w", err)
+	}
+
 	geoHR, err := seedGeographyHR(ctx, busDomain)
 	if err != nil {
 		return fmt.Errorf("seeding geography and hr: %w", err)

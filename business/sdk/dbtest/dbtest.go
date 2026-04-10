@@ -154,6 +154,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/usercache"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus/stores/userdb"
+	"github.com/timmaaaz/ichor/business/domain/core/userpreferencesbus"
+	"github.com/timmaaaz/ichor/business/domain/core/userpreferencesbus/stores/userpreferencesdb"
 	"github.com/timmaaaz/ichor/business/domain/hr/reportstobus"
 	"github.com/timmaaaz/ichor/business/domain/hr/reportstobus/store/reportstodb"
 	"github.com/timmaaaz/ichor/business/domain/hr/titlebus"
@@ -213,10 +215,11 @@ type BusDomain struct {
 	Asset             *assetbus.Business
 
 	// Core
-	ContactInfos *contactinfosbus.Business
-	Customers    *customersbus.Business
-	PaymentTerm  *paymenttermbus.Business
-	Currency     *currencybus.Business
+	ContactInfos    *contactinfosbus.Business
+	Customers       *customersbus.Business
+	PaymentTerm     *paymenttermbus.Business
+	Currency        *currencybus.Business
+	UserPreferences *userpreferencesbus.Business
 
 	// Inventory
 	Brand             *brandbus.Business
@@ -334,6 +337,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	customersBus := customersbus.NewBusiness(log, delegate, customersdb.NewStore(log, db))
 	paymentTermBus := paymenttermbus.NewBusiness(log, delegate, paymenttermdb.NewStore(log, db))
 	currencyBus := currencybus.NewBusiness(log, delegate, currencycache.NewStore(log, currencydb.NewStore(log, db), 60*time.Minute))
+	userPreferencesBus := userpreferencesbus.NewBusiness(log, userpreferencesdb.NewStore(log, db))
 
 	// Inventory
 	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
@@ -441,6 +445,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		Customers:                   customersBus,
 		PaymentTerm:                 paymentTermBus,
 		Currency:                    currencyBus,
+		UserPreferences:             userPreferencesBus,
 		Brand:                       brandBus,
 		Warehouse:                   warehouseBus,
 		Role:                        roleBus,
