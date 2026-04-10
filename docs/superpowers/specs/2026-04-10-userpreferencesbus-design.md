@@ -168,10 +168,17 @@ Note: No `delegate` dependency (no events). Config includes `UserBus` for `mid.A
 
 ## Seed Data
 
-In `userpreferencesbus/testutil.go`:
+### Bus-level seed helper (`userpreferencesbus/testutil.go`)
 
-- `TestSeedUserPreferences` — seeds `floor.font_scale = "medium"` for provided seed users.
-- Called from integration test seed setup.
+- `TestSeedUserPreferences(ctx context.Context, userIDs uuid.UUIDs, api *Business) ([]UserPreference, error)` — seeds `floor.font_scale = "medium"` for each provided user ID via `api.Set()`.
+
+### Frontend seed integration (`business/sdk/dbtest/`)
+
+Three changes to wire user preferences into the frontend demo database:
+
+1. **`dbtest.go`** — Add `UserPreferences *userpreferencesbus.Business` field to the `BusDomain` struct. Wire it in `newBusDomains()` with `userpreferencesbus.NewBusiness(log, userpreferencesdb.NewStore(log, db))`.
+2. **`seedFrontend.go`** — Add `seedUserPreferences(ctx, busDomain, foundationSeed)` call after `seedFoundation()` (only dependency is user IDs). This calls `userpreferencesbus.TestSeedUserPreferences()` with the seeded user IDs.
+3. **New file `seed_userpreferences.go`** — Contains the `seedUserPreferences()` function following the pattern of other `seed_*.go` files.
 
 ## Testing
 
