@@ -2,6 +2,7 @@ package userpreferencesapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -20,6 +21,18 @@ func newAPI(userPreferencesApp *userpreferencesapp.App) *api {
 	}
 }
 
+const maxKeyLen = 100
+
+func validateKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("key is required")
+	}
+	if len(key) > maxKeyLen {
+		return fmt.Errorf("key must be %d characters or less", maxKeyLen)
+	}
+	return nil
+}
+
 func (api *api) set(ctx context.Context, r *http.Request) web.Encoder {
 	var app userpreferencesapp.NewUserPreference
 	if err := web.Decode(r, &app); err != nil {
@@ -32,6 +45,9 @@ func (api *api) set(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	key := web.Param(r, "key")
+	if err := validateKey(key); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
 
 	pref, err := api.userPreferencesApp.Set(ctx, userID, key, app)
 	if err != nil {
@@ -48,6 +64,9 @@ func (api *api) get(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	key := web.Param(r, "key")
+	if err := validateKey(key); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
 
 	pref, err := api.userPreferencesApp.Get(ctx, userID, key)
 	if err != nil {
@@ -78,6 +97,9 @@ func (api *api) delete(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	key := web.Param(r, "key")
+	if err := validateKey(key); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
 
 	if err := api.userPreferencesApp.Delete(ctx, userID, key); err != nil {
 		return errs.NewError(err)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
-	"github.com/timmaaaz/ichor/app/domain/core/userpreferencesapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
@@ -79,8 +78,3 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}, nil
 }
 
-// toAppUserPreference is available if tests need to convert seeded bus
-// preferences to app-layer expected values.
-func toAppUserPreference(bus userpreferencesbus.UserPreference) userpreferencesapp.UserPreference {
-	return userpreferencesapp.ToAppUserPreference(bus)
-}
