@@ -2419,3 +2419,17 @@ ALTER TABLE inventory.quality_inspections
 ALTER TABLE inventory.quality_inspections
     ADD CONSTRAINT quality_inspections_status_check
     CHECK (status IN ('pending', 'in_progress', 'passed', 'failed'));
+
+-- Version: 2.28
+-- Description: Add per-user key-value preference store for floor typography
+--              scale picker and future user-scoped settings.
+
+CREATE TABLE core.user_preferences (
+    user_id      UUID         NOT NULL REFERENCES core.users(user_id) ON DELETE CASCADE,
+    key          VARCHAR(100) NOT NULL,
+    value        JSONB        NOT NULL,
+    updated_date TIMESTAMP    NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, key)
+);
+
+CREATE INDEX idx_user_preferences_user_id ON core.user_preferences(user_id);
