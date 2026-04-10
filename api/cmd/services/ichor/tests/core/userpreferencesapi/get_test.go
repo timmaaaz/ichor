@@ -21,7 +21,7 @@ func get200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &userpreferencesapp.UserPreference{
 				UserID: sd.Admins[0].ID.String(),
 				Key:    "floor.font_scale",
-				Value:  json.RawMessage(`"medium"`),
+				Value:  json.RawMessage(`"large"`),
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp := got.(*userpreferencesapp.UserPreference)
@@ -51,7 +51,12 @@ func getAll200(sd apitest.SeedData) []apitest.Table {
 					{
 						UserID: sd.Admins[0].ID.String(),
 						Key:    "floor.font_scale",
-						Value:  json.RawMessage(`"medium"`),
+						Value:  json.RawMessage(`"large"`),
+					},
+					{
+						UserID: sd.Admins[0].ID.String(),
+						Key:    "floor.theme",
+						Value:  json.RawMessage(`"dark"`),
 					},
 				},
 			},

@@ -2425,7 +2425,7 @@ ALTER TABLE inventory.quality_inspections
 --              scale picker and future user-scoped settings.
 
 CREATE TABLE core.user_preferences (
-    user_id      UUID         NOT NULL REFERENCES core.users(user_id) ON DELETE CASCADE,
+    user_id      UUID         NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     key          VARCHAR(100) NOT NULL,
     value        JSONB        NOT NULL,
     updated_date TIMESTAMP    NOT NULL DEFAULT NOW(),
