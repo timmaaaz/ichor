@@ -45,6 +45,7 @@ docs/arch/ = authoritative. Read → answer directly. No codebase search to veri
 
 ## Core Rules
 
+- **Never guess — verify.** Before referencing any column, function signature, file path, import, or wiring: read the actual code or grep for it. Do NOT infer from naming conventions. "It's probably called X" → grep for X first. Cost of verification < cost of a wrong guess.
 - Do NOT make code changes unless explicitly asked. When the user says 'explore', 'analyze', 'investigate', or 'plan' — read and report only, never edit.
 - Prefer targeted, minimal changes over broad refactors. Scope as narrowly as possible.
 - When planning or implementing domain changes, all 7 layers must be addressed — see `docs/arch/domain-template.md`.
@@ -59,6 +60,20 @@ go test ./business/domain/sales/orderlineitemsbus/... ./app/domain/sales/picking
 ```
 
 ## Testing
+
+**Tests verify the app works. They are not the goal — they are the alarm.**
+
+When a test fails:
+1. **Default hypothesis: the production code is broken.** Investigate before touching the test.
+2. Read the failing assertion. Trace the code path. Check recent changes to the code under test.
+3. Only after you understand *why* it failed, decide what to fix.
+
+**Second hypothesis (not first): the test is wrong.** Legitimate categories:
+- Stale `ExpResp` after an intentional behavior change
+- Hardcoded counts that drifted when an endpoint/feature was added or removed
+- Race conditions in test setup
+
+**Hard rule:** Before changing any `ExpResp`, hardcoded count, or test expectation, you must be able to state in one sentence what intentional behavior change made the old expectation wrong. If you can't, the test is right and the code is broken.
 
 Update test assertions (especially hardcoded counts) when adding or removing endpoints/features.
 
