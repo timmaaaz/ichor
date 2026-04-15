@@ -109,3 +109,16 @@ func (b *Business) PrintZPL(ctx context.Context, zpl []byte) error {
 	b.log.Info(ctx, "transaction label printed", "bytes", len(zpl))
 	return nil
 }
+
+// SeedCreate inserts a fully-formed LabelCatalog (caller supplies the ID).
+// Seed-only — preserves deterministic UUIDs across reseeds. bus.Create
+// assigns uuid.New internally, which would break determinism.
+func (b *Business) SeedCreate(ctx context.Context, lc LabelCatalog) error {
+	if lc.CreatedDate.IsZero() {
+		lc.CreatedDate = time.Now()
+	}
+	if err := b.storer.Create(ctx, lc); err != nil {
+		return fmt.Errorf("seedcreate: %w", err)
+	}
+	return nil
+}
