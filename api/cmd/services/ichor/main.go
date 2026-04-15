@@ -170,7 +170,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			ThinkingEffort string `conf:"default:high"`                              // Ollama only
 		}
 		Printer struct {
-			IP   string `conf:"default:172.16.60.116,mask"`
+			IP   string `conf:"default:172.16.60.116"`
 			Port string `conf:"default:9100"`
 		}
 		Resend struct {
