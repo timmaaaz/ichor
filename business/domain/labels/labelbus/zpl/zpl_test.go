@@ -56,3 +56,25 @@ func Test_Pick_Snapshot(t *testing.T) {
 		t.Fatalf("pick snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
 	}
 }
+
+func Test_Location_Snapshot(t *testing.T) {
+	got := zpl.Location(zpl.LocationData{Code: "STG-A02"})
+	want := "^XA\n" +
+		"^FO50,50^A0N,40,40^FDSTG-A02^FS\n" +
+		"^FO50,100^BY2^BCN,80,Y,N,N^FDSTG-A02^FS\n" +
+		"^XZ\n"
+	if got != want {
+		t.Fatalf("location snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
+	}
+}
+
+func Test_Tote_Snapshot(t *testing.T) {
+	got := zpl.Tote(zpl.ToteData{Code: "TOTE-007"})
+	want := "^XA\n" +
+		"^FO50,50^A0N,40,40^FDTOTE-007^FS\n" +
+		"^FO50,100^BY2^BCN,80,Y,N,N^FDTOTE-007^FS\n" +
+		"^XZ\n"
+	if got != want {
+		t.Fatalf("tote snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
+	}
+}
