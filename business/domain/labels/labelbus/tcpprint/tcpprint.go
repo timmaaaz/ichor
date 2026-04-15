@@ -1,0 +1,52 @@
+// Package tcpprint writes ZPL bytes directly to a Zebra-compatible TCP
+// printer on port 9100 (PDL-datastream). One-shot connection per print;
+// no pooling (printers often reset the connection after each job).
+package tcpprint
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"time"
+)
+
+// Printer sends ZPL bytes to a network-attached thermal printer.
+type Printer struct {
+	host    string
+	port    string
+	timeout time.Duration
+}
+
+// New constructs a Printer. `timeout` caps both dial and write durations.
+func New(host, port string, timeout time.Duration) *Printer {
+	return &Printer{host: host, port: port, timeout: timeout}
+}
+
+// SendZPL opens a TCP connection, writes the ZPL bytes, and closes.
+// A single retry is attempted on dial failure after a 250ms backoff,
+// since printers occasionally refuse the first connection after idle.
+func (p *Printer) SendZPL(ctx context.Context, zpl []byte) error {
+	d := net.Dialer{Timeout: p.timeout}
+	addr := net.JoinHostPort(p.host, p.port)
+
+	conn, err := d.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		time.Sleep(250 * time.Millisecond)
+		conn, err = d.DialContext(ctx, "tcp", addr)
+		if err != nil {
+			return fmt.Errorf("dial %s: %w", addr, err)
+		}
+	}
+	defer conn.Close()
+
+	deadline := time.Now().Add(p.timeout)
+	if dl, ok := ctx.Deadline(); ok && dl.Before(deadline) {
+		deadline = dl
+	}
+	_ = conn.SetWriteDeadline(deadline)
+
+	if _, err := conn.Write(zpl); err != nil {
+		return fmt.Errorf("write zpl: %w", err)
+	}
+	return nil
+}
