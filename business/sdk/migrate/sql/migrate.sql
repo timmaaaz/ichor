@@ -2433,3 +2433,15 @@ CREATE TABLE core.user_preferences (
 );
 
 CREATE INDEX idx_user_preferences_user_id ON core.user_preferences(user_id);
+
+-- Version: 2.29
+-- Description: Phase 0b — label_catalog for seedable label definitions.
+CREATE TABLE inventory.label_catalog (
+    id            UUID PRIMARY KEY,
+    code          VARCHAR(32) NOT NULL UNIQUE,
+    type          VARCHAR(16) NOT NULL,
+    entity_ref    VARCHAR(64) NULL,
+    payload_json  TEXT NOT NULL DEFAULT '{}',
+    created_date  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_label_catalog_type ON inventory.label_catalog(type);
