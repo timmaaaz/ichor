@@ -169,6 +169,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 			Host           string `conf:"default:http://host.docker.internal:11434"` // Ollama only
 			ThinkingEffort string `conf:"default:high"`                              // Ollama only
 		}
+		Printer struct {
+			IP   string `conf:"default:172.16.60.116,mask"`
+			Port string `conf:"default:9100"`
+		}
 		Resend struct {
 			APIKey string `conf:"mask"` // ICHOR_RESEND_APIKEY — mask prevents logging
 			From   string              // ICHOR_RESEND_FROM e.g. "Ichor ERP <noreply@yourco.com>"
