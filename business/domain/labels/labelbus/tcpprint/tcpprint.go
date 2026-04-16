@@ -25,7 +25,16 @@ func New(host, port string, timeout time.Duration) *Printer {
 // SendZPL opens a TCP connection, writes the ZPL bytes, and closes.
 // A single retry is attempted on dial failure after a 250ms backoff,
 // since printers occasionally refuse the first connection after idle.
+//
+// An empty host is a no-op: this honours the mux.Config contract that
+// "Empty PrinterIP disables actual network dispatch". Without the
+// guard, net.JoinHostPort("", port) yields ":9100" and the printer
+// dials localhost at request time, which is both unsafe and
+// surprising in environments that intentionally leave PrinterIP unset.
 func (p *Printer) SendZPL(ctx context.Context, zpl []byte) error {
+	if p.host == "" {
+		return nil
+	}
 	d := net.Dialer{Timeout: p.timeout}
 	addr := net.JoinHostPort(p.host, p.port)
 
