@@ -96,6 +96,13 @@ func (app *RenderPrintRequest) Decode(data []byte) error {
 	return json.Unmarshal(data, &app)
 }
 
+// maxRenderPayloadBytes caps the raw JSON payload accepted by the
+// render-print endpoint. Realistic label payloads (pick with 100
+// serial numbers + long names) are ~3KB; 64KB gives generous headroom
+// while preventing an authenticated client from POSTing a multi-MB
+// body through the validate:"required" tag alone.
+const maxRenderPayloadBytes = 64 * 1024
+
 // Validate checks the data in the model is considered clean.
 func (app RenderPrintRequest) Validate() error {
 	if err := errs.Check(app); err != nil {
@@ -103,6 +110,9 @@ func (app RenderPrintRequest) Validate() error {
 	}
 	if len(app.Payload) == 0 {
 		return errs.Newf(errs.InvalidArgument, "validate: payload is empty")
+	}
+	if len(app.Payload) > maxRenderPayloadBytes {
+		return errs.Newf(errs.InvalidArgument, "validate: payload exceeds %d bytes", maxRenderPayloadBytes)
 	}
 	return nil
 }
