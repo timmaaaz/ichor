@@ -40,7 +40,11 @@ func (p *Printer) SendZPL(ctx context.Context, zpl []byte) error {
 
 	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
-		time.Sleep(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(250 * time.Millisecond):
+		}
 		conn, err = d.DialContext(ctx, "tcp", addr)
 		if err != nil {
 			return fmt.Errorf("dial %s: %w", addr, err)
@@ -54,8 +58,12 @@ func (p *Printer) SendZPL(ctx context.Context, zpl []byte) error {
 	}
 	_ = conn.SetWriteDeadline(deadline)
 
-	if _, err := conn.Write(zpl); err != nil {
+	n, err := conn.Write(zpl)
+	if err != nil {
 		return fmt.Errorf("write zpl: %w", err)
+	}
+	if n != len(zpl) {
+		return fmt.Errorf("write zpl: short write: wrote %d of %d bytes", n, len(zpl))
 	}
 	return nil
 }
