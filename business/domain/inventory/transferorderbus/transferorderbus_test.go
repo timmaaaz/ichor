@@ -284,6 +284,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		Name: "update",
 		ExpResp: transferorderbus.TransferOrder{
 			TransferID:     sd.TransferOrders[0].TransferID,
+			TransferNumber: sd.TransferOrders[0].TransferNumber,
 			ProductID:      sd.Products[0].ProductID,
 			FromLocationID: sd.InventoryLocations[0].LocationID,
 			ToLocationID:   sd.InventoryLocations[3].LocationID,

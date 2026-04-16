@@ -13,6 +13,7 @@ import (
 
 type TransferOrder struct {
 	TransferID      uuid.UUID  `json:"transfer_id"` // TODO: these should be id
+	TransferNumber  *string    `json:"transfer_number,omitempty"`
 	ProductID       uuid.UUID  `json:"product_id"`
 	FromLocationID  uuid.UUID  `json:"from_location_id"`
 	ToLocationID    uuid.UUID  `json:"to_location_id"`
@@ -33,6 +34,7 @@ type TransferOrder struct {
 }
 
 type NewTransferOrder struct {
+	TransferNumber *string    `json:"transfer_number,omitempty"`
 	ProductID      uuid.UUID  `json:"product_id"`
 	FromLocationID uuid.UUID  `json:"from_location_id"`
 	ToLocationID   uuid.UUID  `json:"to_location_id"`
@@ -44,6 +46,7 @@ type NewTransferOrder struct {
 }
 
 type UpdateTransferOrder struct {
+	TransferNumber  *string    `json:"transfer_number,omitempty"`
 	ProductID       *uuid.UUID `json:"product_id,omitempty"`
 	FromLocationID  *uuid.UUID `json:"from_location_id,omitempty"`
 	ToLocationID    *uuid.UUID `json:"to_location_id,omitempty"`

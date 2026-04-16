@@ -32,6 +32,7 @@ type QueryParams struct {
 
 type TransferOrder struct {
 	TransferID      string `json:"transfer_id"`
+	TransferNumber  string `json:"transfer_number"`
 	ProductID       string `json:"product_id"`
 	FromLocationID  string `json:"from_location_id"`
 	ToLocationID    string `json:"to_location_id"`
@@ -57,6 +58,11 @@ func (app TransferOrder) Encode() ([]byte, string, error) {
 }
 
 func ToAppTransferOrder(bus transferorderbus.TransferOrder) TransferOrder {
+	transferNumber := ""
+	if bus.TransferNumber != nil {
+		transferNumber = *bus.TransferNumber
+	}
+
 	approvedByID := ""
 	if bus.ApprovedByID != nil {
 		approvedByID = bus.ApprovedByID.String()
@@ -89,6 +95,7 @@ func ToAppTransferOrder(bus transferorderbus.TransferOrder) TransferOrder {
 
 	return TransferOrder{
 		TransferID:      bus.TransferID.String(),
+		TransferNumber:  transferNumber,
 		ProductID:       bus.ProductID.String(),
 		FromLocationID:  bus.FromLocationID.String(),
 		ToLocationID:    bus.ToLocationID.String(),
@@ -118,6 +125,7 @@ func ToAppTransferOrders(bus []transferorderbus.TransferOrder) []TransferOrder {
 }
 
 type NewTransferOrder struct {
+	TransferNumber *string `json:"transfer_number" validate:"omitempty,min=1,max=32"`
 	ProductID      string  `json:"product_id" validate:"required,min=36,max=36"`
 	FromLocationID string  `json:"from_location_id" validate:"required,min=36,max=36"`
 	ToLocationID   string  `json:"to_location_id" validate:"required,min=36,max=36"`
@@ -180,6 +188,7 @@ func toBusNewTransferOrder(app NewTransferOrder) (transferorderbus.NewTransferOr
 	}
 
 	bus := transferorderbus.NewTransferOrder{
+		TransferNumber: app.TransferNumber,
 		ProductID:      productID,
 		FromLocationID: fromLocationID,
 		ToLocationID:   toLocationID,
@@ -193,6 +202,7 @@ func toBusNewTransferOrder(app NewTransferOrder) (transferorderbus.NewTransferOr
 }
 
 type UpdateTransferOrder struct {
+	TransferNumber *string `json:"transfer_number" validate:"omitempty,min=1,max=32"`
 	ProductID      *string `json:"product_id" validate:"omitempty,min=36,max=36"`
 	FromLocationID *string `json:"from_location_id" validate:"omitempty,min=36,max=36"`
 	ToLocationID   *string `json:"to_location_id" validate:"omitempty,min=36,max=36"`
@@ -216,7 +226,8 @@ func (app UpdateTransferOrder) Validate() error {
 
 func toBusUpdateTransferOrder(app UpdateTransferOrder) (transferorderbus.UpdateTransferOrder, error) {
 	bus := transferorderbus.UpdateTransferOrder{
-		Status: app.Status,
+		TransferNumber: app.TransferNumber,
+		Status:         app.Status,
 	}
 
 	if app.ProductID != nil {

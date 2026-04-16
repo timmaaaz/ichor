@@ -2455,3 +2455,8 @@ ALTER TABLE inventory.zones
 -- Description: Phase 0c — add nullable task_number to inventory.pick_tasks for human-readable pick task identifier (PICK-YYMMDD-serial).
 ALTER TABLE inventory.pick_tasks
     ADD COLUMN task_number VARCHAR(32) NULL;
+
+-- Version: 2.32
+-- Description: Phase 0c — add nullable transfer_number to inventory.transfer_orders for human-readable transfer identifier (XFER-YYMMDD-serial).
+ALTER TABLE inventory.transfer_orders
+    ADD COLUMN transfer_number VARCHAR(32) NULL;

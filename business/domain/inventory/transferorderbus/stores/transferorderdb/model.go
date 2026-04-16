@@ -9,8 +9,9 @@ import (
 )
 
 type transferOrder struct {
-	TransferID      uuid.UUID     `db:"id"`
-	ProductID       uuid.UUID     `db:"product_id"`
+	TransferID      uuid.UUID      `db:"id"`
+	TransferNumber  sql.NullString `db:"transfer_number"`
+	ProductID       uuid.UUID      `db:"product_id"`
 	FromLocationID  uuid.UUID     `db:"from_location_id"`
 	ToLocationID    uuid.UUID     `db:"to_location_id"`
 	RequestedByID   uuid.UUID     `db:"requested_by"`
@@ -30,8 +31,15 @@ type transferOrder struct {
 }
 
 func toBusTransferOrder(db transferOrder) transferorderbus.TransferOrder {
+	var transferNumber *string
+	if db.TransferNumber.Valid {
+		s := db.TransferNumber.String
+		transferNumber = &s
+	}
+
 	to := transferorderbus.TransferOrder{
 		TransferID:     db.TransferID,
+		TransferNumber: transferNumber,
 		ProductID:      db.ProductID,
 		FromLocationID: db.FromLocationID,
 		ToLocationID:   db.ToLocationID,
@@ -85,8 +93,14 @@ func toBusTransferOrders(dbs []transferOrder) []transferorderbus.TransferOrder {
 }
 
 func toDBTransferOrder(bus transferorderbus.TransferOrder) transferOrder {
+	var transferNumber sql.NullString
+	if bus.TransferNumber != nil {
+		transferNumber = sql.NullString{String: *bus.TransferNumber, Valid: true}
+	}
+
 	db := transferOrder{
 		TransferID:     bus.TransferID,
+		TransferNumber: transferNumber,
 		ProductID:      bus.ProductID,
 		FromLocationID: bus.FromLocationID,
 		ToLocationID:   bus.ToLocationID,
