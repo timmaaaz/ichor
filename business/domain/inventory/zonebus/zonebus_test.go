@@ -105,6 +105,38 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 
 }
 
+func Test_Zones_ZoneCode_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_Zones_ZoneCode_RoundTrip")
+	ctx := context.Background()
+
+	sd, err := insertSeedData(db.BusDomain)
+	if err != nil {
+		t.Fatalf("Seeding error: %s", err)
+	}
+
+	code := "RCV"
+	zone, err := db.BusDomain.Zones.Create(ctx, zonebus.NewZone{
+		WarehouseID: sd.Warehouses[0].ID,
+		Name:        "round-trip test",
+		ZoneCode:    &code,
+		Description: "test",
+	})
+	if err != nil {
+		t.Fatalf("Create: %s", err)
+	}
+
+	fetched, err := db.BusDomain.Zones.QueryByID(ctx, zone.ZoneID)
+	if err != nil {
+		t.Fatalf("QueryByID: %s", err)
+	}
+
+	if fetched.ZoneCode == nil || *fetched.ZoneCode != "RCV" {
+		t.Fatalf("expected ZoneCode=RCV, got %v", fetched.ZoneCode)
+	}
+}
+
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{
 		{
@@ -182,6 +214,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: zonebus.Zone{
 				ZoneID:      sd.Zones[0].ZoneID,
 				Name:        "Updated Zone",
+				ZoneCode:    sd.Zones[0].ZoneCode,
 				Description: "an updated zone",
 				WarehouseID: sd.Warehouses[0].ID,
 				CreatedDate: sd.Zones[0].CreatedDate,

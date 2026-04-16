@@ -2445,3 +2445,8 @@ CREATE TABLE inventory.label_catalog (
     created_date  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_label_catalog_type ON inventory.label_catalog(type);
+
+-- Version: 2.30
+-- Description: Phase 0c — add nullable zone_code to inventory.zones for 3-letter human-readable identifier.
+ALTER TABLE inventory.zones
+    ADD COLUMN zone_code VARCHAR(16) NULL;

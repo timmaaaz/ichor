@@ -75,6 +75,7 @@ func (b *Business) Create(ctx context.Context, nz NewZone) (Zone, error) {
 		ZoneID:      uuid.New(),
 		WarehouseID: nz.WarehouseID,
 		Name:        nz.Name,
+		ZoneCode:    nz.ZoneCode,
 		Description: nz.Description,
 		Stage:       nz.Stage,
 		CreatedDate: now,
@@ -103,6 +104,9 @@ func (b *Business) Update(ctx context.Context, zone Zone, u UpdateZone) (Zone, e
 
 	if u.Name != nil {
 		zone.Name = *u.Name
+	}
+	if u.ZoneCode != nil {
+		zone.ZoneCode = u.ZoneCode
 	}
 	if u.Description != nil {
 		zone.Description = *u.Description
