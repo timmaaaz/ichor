@@ -2440,7 +2440,7 @@ CREATE TABLE inventory.label_catalog (
     id            UUID PRIMARY KEY,
     code          VARCHAR(32) NOT NULL UNIQUE,
     type          VARCHAR(16) NOT NULL,
-    entity_ref    VARCHAR(64) NULL,
+    entity_ref    VARCHAR(128) NULL,
     payload_json  TEXT NOT NULL DEFAULT '{}',
     created_date  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
