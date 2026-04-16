@@ -60,6 +60,74 @@ func toAppLabels(bus []labelbus.LabelCatalog) Labels {
 	return out
 }
 
+// ToAppLabels exposes the internal slice converter so seed harnesses can
+// pre-shape integration test fixtures.
+func ToAppLabels(bus []labelbus.LabelCatalog) Labels {
+	return toAppLabels(bus)
+}
+
+// =============================================================================
+
+// NewLabel is the input shape for POST /v1/labels (catalog row creation).
+type NewLabel struct {
+	Code        string `json:"code" validate:"required,min=1,max=64"`
+	Type        string `json:"type" validate:"required,oneof=location tote lot serial product receiving pick"`
+	EntityRef   string `json:"entity_ref,omitempty" validate:"omitempty,max=128"`
+	PayloadJSON string `json:"payload_json,omitempty"`
+}
+
+// Decode implements the decoder interface.
+func (app *NewLabel) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks that the new label is well-formed.
+func (app NewLabel) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+func toBusNewLabel(app NewLabel) labelbus.NewLabelCatalog {
+	return labelbus.NewLabelCatalog{
+		Code:        app.Code,
+		Type:        app.Type,
+		EntityRef:   app.EntityRef,
+		PayloadJSON: app.PayloadJSON,
+	}
+}
+
+// UpdateLabel carries optional patch fields for PUT /v1/labels/{label_id}.
+type UpdateLabel struct {
+	Code        *string `json:"code,omitempty" validate:"omitempty,min=1,max=64"`
+	Type        *string `json:"type,omitempty" validate:"omitempty,oneof=location tote lot serial product receiving pick"`
+	EntityRef   *string `json:"entity_ref,omitempty" validate:"omitempty,max=128"`
+	PayloadJSON *string `json:"payload_json,omitempty"`
+}
+
+// Decode implements the decoder interface.
+func (app *UpdateLabel) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate checks the data in the model is considered clean.
+func (app UpdateLabel) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+func toBusUpdateLabel(app UpdateLabel) labelbus.UpdateLabelCatalog {
+	return labelbus.UpdateLabelCatalog{
+		Code:        app.Code,
+		Type:        app.Type,
+		EntityRef:   app.EntityRef,
+		PayloadJSON: app.PayloadJSON,
+	}
+}
+
 // =============================================================================
 
 // PrintRequest is the body of POST /v1/labels/print. A catalog label row is

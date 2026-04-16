@@ -73,6 +73,56 @@ func (b *Business) Create(ctx context.Context, nlc NewLabelCatalog) (LabelCatalo
 	return lc, nil
 }
 
+// Update applies a partial patch to an existing label and persists it.
+func (b *Business) Update(ctx context.Context, lc LabelCatalog, ulc UpdateLabelCatalog) (LabelCatalog, error) {
+	before := lc
+
+	if ulc.Code != nil {
+		lc.Code = *ulc.Code
+	}
+	if ulc.Type != nil {
+		lc.Type = *ulc.Type
+	}
+	if ulc.EntityRef != nil {
+		lc.EntityRef = *ulc.EntityRef
+	}
+	if ulc.PayloadJSON != nil {
+		lc.PayloadJSON = *ulc.PayloadJSON
+	}
+
+	if err := b.storer.Update(ctx, lc); err != nil {
+		return LabelCatalog{}, fmt.Errorf("update: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionUpdatedData(before, lc)); err != nil {
+		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionUpdated, "err", err)
+	}
+
+	return lc, nil
+}
+
+// Delete removes a label from the catalog.
+func (b *Business) Delete(ctx context.Context, lc LabelCatalog) error {
+	if err := b.storer.Delete(ctx, lc); err != nil {
+		return fmt.Errorf("delete: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionDeletedData(lc)); err != nil {
+		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionDeleted, "err", err)
+	}
+
+	return nil
+}
+
+// QueryByID retrieves a label by its ID.
+func (b *Business) QueryByID(ctx context.Context, id uuid.UUID) (LabelCatalog, error) {
+	lc, err := b.storer.QueryByID(ctx, id)
+	if err != nil {
+		return LabelCatalog{}, fmt.Errorf("querybyid: %w", err)
+	}
+	return lc, nil
+}
+
 // QueryByCode retrieves a label by its stable code.
 func (b *Business) QueryByCode(ctx context.Context, code string) (LabelCatalog, error) {
 	lc, err := b.storer.QueryByCode(ctx, code)
@@ -80,6 +130,15 @@ func (b *Business) QueryByCode(ctx context.Context, code string) (LabelCatalog, 
 		return LabelCatalog{}, fmt.Errorf("querybycode: %w", err)
 	}
 	return lc, nil
+}
+
+// Count returns the number of labels matching the filter.
+func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
+	count, err := b.storer.Count(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("count: %w", err)
+	}
+	return count, nil
 }
 
 // Query retrieves a page of labels matching the filter.

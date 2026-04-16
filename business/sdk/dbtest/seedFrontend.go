@@ -5,9 +5,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
-	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
-	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -57,8 +54,7 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding assets: %w", err)
 	}
 
-	labelBus := labelbus.NewBusiness(log, delegate.New(log), labeldb.NewStore(log, db), nil)
-	if err := seedLabels(ctx, labelBus); err != nil {
+	if err := seedLabels(ctx, busDomain.Label); err != nil {
 		return fmt.Errorf("seed labels: %w", err)
 	}
 

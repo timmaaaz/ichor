@@ -115,7 +115,6 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/assets/tagapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/userassetapp"
 	"github.com/timmaaaz/ichor/app/domain/assets/validassetapp"
-	"github.com/timmaaaz/ichor/app/domain/labels/labelapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
@@ -827,15 +826,21 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Label subsystem (Phase 0b) — catalog + transaction-label printing
 	// via ZPL over TCP to a Zebra-compatible printer. PrinterIP/Port come
-	// from ICHOR_PRINTER_* via mux.Config (Phase 0a).
+	// from ICHOR_PRINTER_* via mux.Config (Phase 0a). Tests substitute a
+	// recording printer through cfg.LabelPrinter to assert ZPL dispatch.
 	labelStorer := labeldb.NewStore(cfg.Log, cfg.DB)
-	labelPrinter := tcpprint.New(cfg.PrinterIP, cfg.PrinterPort, 5*time.Second)
+	var labelPrinter labelbus.Printer
+	if cfg.LabelPrinter != nil {
+		labelPrinter = cfg.LabelPrinter
+	} else {
+		labelPrinter = tcpprint.New(cfg.PrinterIP, cfg.PrinterPort, 5*time.Second)
+	}
 	labelBus := labelbus.NewBusiness(cfg.Log, delegate, labelStorer, labelPrinter)
-	labelAppInst := labelapp.NewApp(labelBus)
 	labelapi.Routes(app, labelapi.Config{
-		Log:        cfg.Log,
-		LabelApp:   labelAppInst,
-		AuthClient: cfg.AuthClient,
+		Log:            cfg.Log,
+		LabelBus:       labelBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	approvalapi.Routes(app, approvalapi.Config{

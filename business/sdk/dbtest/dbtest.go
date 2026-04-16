@@ -56,6 +56,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus/stores/cyclecountitemdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus"
@@ -277,6 +279,9 @@ type BusDomain struct {
 	CycleCountSession    *cyclecountsessionbus.Business
 	CycleCountItem       *cyclecountitembus.Business
 
+	// Labels
+	Label *labelbus.Business
+
 	// Order
 	OrderFulfillmentStatus    *orderfulfillmentstatusbus.Business
 	LineItemFulfillmentStatus *lineitemfulfillmentstatusbus.Business
@@ -395,6 +400,11 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	cycleCountSessionBus := cyclecountsessionbus.NewBusiness(log, delegate, cyclecountsessiondb.NewStore(log, db))
 	cycleCountItemBus := cyclecountitembus.NewBusiness(log, delegate, cyclecountitemdb.NewStore(log, db))
 
+	// Labels — printer is nil at the BusDomain layer; tests that exercise
+	// printing inject a recording printer through the API stack via
+	// mux.Config.LabelPrinter. Direct bus-level tests do not print.
+	labelBus := labelbus.NewBusiness(log, delegate, labeldb.NewStore(log, db), nil)
+
 	// Orders
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
 	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(log, delegate, lineitemfulfillmentstatusdb.NewStore(log, db))
@@ -482,6 +492,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		PickTask:                    pickTaskBus,
 		CycleCountSession:           cycleCountSessionBus,
 		CycleCountItem:              cycleCountItemBus,
+		Label:                       labelBus,
 		OrderFulfillmentStatus:      orderFulfillmentStatusBus,
 		LineItemFulfillmentStatus:   lineItemFulfillmentStatusBus,
 		Order:                       ordersBus,

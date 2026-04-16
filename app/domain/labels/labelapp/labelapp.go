@@ -76,6 +76,66 @@ func (a *App) RenderPrint(ctx context.Context, req RenderPrintRequest) error {
 	return nil
 }
 
+// Create inserts a new label catalog row.
+func (a *App) Create(ctx context.Context, app NewLabel) (Label, error) {
+	lc, err := a.bus.Create(ctx, toBusNewLabel(app))
+	if err != nil {
+		if errors.Is(err, labelbus.ErrUniqueCode) {
+			return Label{}, errs.New(errs.Aborted, labelbus.ErrUniqueCode)
+		}
+		return Label{}, errs.Newf(errs.Internal, "create: %s", err)
+	}
+	return toAppLabel(lc), nil
+}
+
+// Update applies a partial patch to an existing label.
+func (a *App) Update(ctx context.Context, labelID uuid.UUID, app UpdateLabel) (Label, error) {
+	lc, err := a.bus.QueryByID(ctx, labelID)
+	if err != nil {
+		if errors.Is(err, labelbus.ErrNotFound) {
+			return Label{}, errs.New(errs.NotFound, labelbus.ErrNotFound)
+		}
+		return Label{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+	}
+
+	updated, err := a.bus.Update(ctx, lc, toBusUpdateLabel(app))
+	if err != nil {
+		if errors.Is(err, labelbus.ErrUniqueCode) {
+			return Label{}, errs.New(errs.Aborted, labelbus.ErrUniqueCode)
+		}
+		return Label{}, errs.Newf(errs.Internal, "update: %s", err)
+	}
+	return toAppLabel(updated), nil
+}
+
+// Delete removes a label catalog row.
+func (a *App) Delete(ctx context.Context, labelID uuid.UUID) error {
+	lc, err := a.bus.QueryByID(ctx, labelID)
+	if err != nil {
+		if errors.Is(err, labelbus.ErrNotFound) {
+			return errs.New(errs.NotFound, labelbus.ErrNotFound)
+		}
+		return errs.Newf(errs.Internal, "querybyid: %s", err)
+	}
+
+	if err := a.bus.Delete(ctx, lc); err != nil {
+		return errs.Newf(errs.Internal, "delete: %s", err)
+	}
+	return nil
+}
+
+// QueryByID returns the catalog label with the given ID.
+func (a *App) QueryByID(ctx context.Context, labelID uuid.UUID) (Label, error) {
+	lc, err := a.bus.QueryByID(ctx, labelID)
+	if err != nil {
+		if errors.Is(err, labelbus.ErrNotFound) {
+			return Label{}, errs.New(errs.NotFound, labelbus.ErrNotFound)
+		}
+		return Label{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+	}
+	return toAppLabel(lc), nil
+}
+
 // Query returns catalog labels matching the optional Type filter. No Count
 // call is exposed on the Business yet, so this returns a plain slice with
 // standard pagination.
