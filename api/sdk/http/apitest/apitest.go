@@ -34,6 +34,13 @@ func New(db *dbtest.Database, ath *auth.Auth, mux http.Handler) *Test {
 	}
 }
 
+// ServeHTTP exposes the wrapped mux so tests that need direct request
+// inspection (e.g. asserting against an injected printer mid-flow) can
+// drive the same handler chain Run() uses.
+func (at *Test) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	at.mux.ServeHTTP(w, r)
+}
+
 // Run performs the actual test logic based on the table data.
 func (at *Test) Run(t *testing.T, table []Table, testName string) {
 	for _, tt := range table {
