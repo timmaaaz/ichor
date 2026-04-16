@@ -13,6 +13,7 @@ import (
 // pickTask mirrors the inventory.pick_tasks DB row.
 type pickTask struct {
 	ID                   uuid.UUID      `db:"id"`
+	TaskNumber           sql.NullString `db:"task_number"`
 	SalesOrderID         uuid.UUID      `db:"sales_order_id"`
 	SalesOrderLineItemID uuid.UUID      `db:"sales_order_line_item_id"`
 	ProductID            uuid.UUID      `db:"product_id"`
@@ -33,6 +34,12 @@ type pickTask struct {
 }
 
 func toBusPickTask(db pickTask) (picktaskbus.PickTask, error) {
+	var taskNumber *string
+	if db.TaskNumber.Valid {
+		s := db.TaskNumber.String
+		taskNumber = &s
+	}
+
 	var lotID *uuid.UUID
 	if db.LotID.Valid {
 		id := db.LotID.UUID
@@ -67,6 +74,7 @@ func toBusPickTask(db pickTask) (picktaskbus.PickTask, error) {
 
 	return picktaskbus.PickTask{
 		ID:                   db.ID,
+		TaskNumber:           taskNumber,
 		SalesOrderID:         db.SalesOrderID,
 		SalesOrderLineItemID: db.SalesOrderLineItemID,
 		ProductID:            db.ProductID,
@@ -100,6 +108,11 @@ func toBusPickTasks(dbs []pickTask) ([]picktaskbus.PickTask, error) {
 }
 
 func toDBPickTask(bus picktaskbus.PickTask) pickTask {
+	var taskNumber sql.NullString
+	if bus.TaskNumber != nil {
+		taskNumber = sql.NullString{String: *bus.TaskNumber, Valid: true}
+	}
+
 	var lotID uuid.NullUUID
 	if bus.LotID != nil {
 		lotID = uuid.NullUUID{UUID: *bus.LotID, Valid: true}
@@ -127,6 +140,7 @@ func toDBPickTask(bus picktaskbus.PickTask) pickTask {
 
 	return pickTask{
 		ID:                   bus.ID,
+		TaskNumber:           taskNumber,
 		SalesOrderID:         bus.SalesOrderID,
 		SalesOrderLineItemID: bus.SalesOrderLineItemID,
 		ProductID:            bus.ProductID,

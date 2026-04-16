@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -12,8 +13,11 @@ import (
 func TestNewPickTasks(n int, salesOrderIDs, salesOrderLineItemIDs, productIDs, locationIDs, createdByIDs []uuid.UUID) []NewPickTask {
 	tasks := make([]NewPickTask, n)
 
+	today := time.Now().Format("060102")
 	for i := range n {
+		num := fmt.Sprintf("PICK-%s-%04d", today, i+1)
 		tasks[i] = NewPickTask{
+			TaskNumber:           &num,
 			SalesOrderID:         salesOrderIDs[i%len(salesOrderIDs)],
 			SalesOrderLineItemID: salesOrderLineItemIDs[i%len(salesOrderLineItemIDs)],
 			ProductID:            productIDs[i%len(productIDs)],

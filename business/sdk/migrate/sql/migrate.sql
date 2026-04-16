@@ -2450,3 +2450,8 @@ CREATE INDEX idx_label_catalog_type ON inventory.label_catalog(type);
 -- Description: Phase 0c — add nullable zone_code to inventory.zones for 3-letter human-readable identifier.
 ALTER TABLE inventory.zones
     ADD COLUMN zone_code VARCHAR(16) NULL;
+
+-- Version: 2.31
+-- Description: Phase 0c — add nullable task_number to inventory.pick_tasks for human-readable pick task identifier (PICK-YYMMDD-serial).
+ALTER TABLE inventory.pick_tasks
+    ADD COLUMN task_number VARCHAR(32) NULL;

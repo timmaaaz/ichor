@@ -74,6 +74,7 @@ func (b *Business) Create(ctx context.Context, npt NewPickTask) (PickTask, error
 
 	task := PickTask{
 		ID:                   uuid.New(),
+		TaskNumber:           npt.TaskNumber,
 		SalesOrderID:         npt.SalesOrderID,
 		SalesOrderLineItemID: npt.SalesOrderLineItemID,
 		ProductID:            npt.ProductID,
@@ -106,6 +107,9 @@ func (b *Business) Update(ctx context.Context, task PickTask, upt UpdatePickTask
 
 	before := task
 
+	if upt.TaskNumber != nil {
+		task.TaskNumber = upt.TaskNumber
+	}
 	if upt.LotID != nil {
 		task.LotID = upt.LotID
 	}

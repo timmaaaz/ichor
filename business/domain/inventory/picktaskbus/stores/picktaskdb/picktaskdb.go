@@ -47,12 +47,12 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (picktaskbus.Storer, error)
 func (s *Store) Create(ctx context.Context, task picktaskbus.PickTask) error {
 	const q = `
 	INSERT INTO inventory.pick_tasks
-		(id, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
+		(id, task_number, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
 		 location_id, quantity_to_pick, quantity_picked, status,
 		 assigned_to, assigned_at, completed_by, completed_at,
 		 short_pick_reason, created_by, created_date, updated_date)
 	VALUES
-		(:id, :sales_order_id, :sales_order_line_item_id, :product_id, :lot_id, :serial_id,
+		(:id, :task_number, :sales_order_id, :sales_order_line_item_id, :product_id, :lot_id, :serial_id,
 		 :location_id, :quantity_to_pick, :quantity_picked, :status,
 		 :assigned_to, :assigned_at, :completed_by, :completed_at,
 		 :short_pick_reason, :created_by, :created_date, :updated_date)
@@ -76,6 +76,7 @@ func (s *Store) Update(ctx context.Context, task picktaskbus.PickTask) error {
 	const q = `
 	UPDATE inventory.pick_tasks
 	SET
+		task_number               = :task_number,
 		sales_order_id            = :sales_order_id,
 		sales_order_line_item_id  = :sales_order_line_item_id,
 		product_id                = :product_id,
@@ -131,7 +132,7 @@ func (s *Store) Query(ctx context.Context, filter picktaskbus.QueryFilter, order
 
 	const q = `
 	SELECT
-		id, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
+		id, task_number, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
 		location_id, quantity_to_pick, quantity_picked, status,
 		assigned_to, assigned_at, completed_by, completed_at,
 		short_pick_reason, created_by, created_date, updated_date
@@ -197,7 +198,7 @@ func (s *Store) QueryByID(ctx context.Context, taskID uuid.UUID) (picktaskbus.Pi
 
 	const q = `
 	SELECT
-		id, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
+		id, task_number, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
 		location_id, quantity_to_pick, quantity_picked, status,
 		assigned_to, assigned_at, completed_by, completed_at,
 		short_pick_reason, created_by, created_date, updated_date

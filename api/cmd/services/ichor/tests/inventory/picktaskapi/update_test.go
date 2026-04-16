@@ -31,6 +31,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &picktaskapp.PickTask{},
 			ExpResp: &picktaskapp.PickTask{
 				ID:                   sd.PickTasks[0].ID,
+				TaskNumber:           sd.PickTasks[0].TaskNumber,
 				SalesOrderID:         sd.PickTasks[0].SalesOrderID,
 				SalesOrderLineItemID: sd.PickTasks[0].SalesOrderLineItemID,
 				ProductID:            sd.PickTasks[0].ProductID,
