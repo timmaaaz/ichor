@@ -39,12 +39,22 @@ func (a *App) Print(ctx context.Context, req PrintRequest) error {
 		copies = 1
 	}
 
+	lc, err := a.bus.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, labelbus.ErrNotFound) {
+			return errs.New(errs.NotFound, labelbus.ErrNotFound)
+		}
+		return errs.Newf(errs.Internal, "querybyid label[%s]: %s", id, err)
+	}
+
+	zpl, err := labelbus.Render(lc)
+	if err != nil {
+		return errs.Newf(errs.Internal, "render label[%s]: %s", id, err)
+	}
+
 	for i := 0; i < copies; i++ {
-		if err := a.bus.Print(ctx, id); err != nil {
-			if errors.Is(err, labelbus.ErrNotFound) {
-				return errs.New(errs.NotFound, labelbus.ErrNotFound)
-			}
-			return errs.Newf(errs.Internal, "print label[%s] copy[%d]: %s", id, i+1, err)
+		if err := a.bus.PrintZPL(ctx, zpl); err != nil {
+			return errs.Newf(errs.Internal, "printzpl label[%s] copy[%d]: %s", id, i+1, err)
 		}
 	}
 	return nil
