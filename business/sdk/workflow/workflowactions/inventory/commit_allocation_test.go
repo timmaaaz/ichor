@@ -167,12 +167,7 @@ func insertCommitAllocationSeedData(busDomain dbtest.BusDomain) (commitAllocatio
 		return commitAllocationSeedData{}, fmt.Errorf("seeding zones : %w", err)
 	}
 
-	zoneIDs := make([]uuid.UUID, len(zones))
-	for i, z := range zones {
-		zoneIDs[i] = z.ZoneID
-	}
-
-	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 10, warehouseIDs, zoneIDs, busDomain.InventoryLocation)
+	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 10, warehouseIDs, zones, busDomain.InventoryLocation)
 	if err != nil {
 		return commitAllocationSeedData{}, fmt.Errorf("seeding inventory locations : %w", err)
 	}

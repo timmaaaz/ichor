@@ -152,13 +152,8 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding zones: %w", err)
 	}
 
-	zoneIDs := make([]uuid.UUID, len(zones))
-	for i, z := range zones {
-		zoneIDs[i] = z.ZoneID
-	}
-
 	// Seed inventory locations
-	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 5, warehouseIDs, zoneIDs, busDomain.InventoryLocation)
+	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 5, warehouseIDs, zones, busDomain.InventoryLocation)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding inventory locations: %w", err)
 	}

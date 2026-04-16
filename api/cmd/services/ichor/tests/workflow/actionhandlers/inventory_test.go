@@ -110,9 +110,7 @@ func TestReceiveInventoryAction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seeding zones: %v", err)
 	}
-	zoneIDs := []uuid.UUID{zones[0].ZoneID}
-
-	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 1, warehouseIDs, zoneIDs, db.BusDomain.InventoryLocation)
+	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 1, warehouseIDs, zones, db.BusDomain.InventoryLocation)
 	if err != nil {
 		t.Fatalf("seeding inventory locations: %v", err)
 	}
@@ -447,9 +445,7 @@ func TestCreatePurchaseOrderAction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seeding zones: %v", err)
 	}
-	zoneIDs := []uuid.UUID{zones[0].ZoneID}
-
-	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 1, warehouseIDs, zoneIDs, db.BusDomain.InventoryLocation)
+	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 1, warehouseIDs, zones, db.BusDomain.InventoryLocation)
 	if err != nil {
 		t.Fatalf("seeding inventory locations: %v", err)
 	}

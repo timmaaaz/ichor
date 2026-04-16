@@ -163,12 +163,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding zones : %w", err)
 	}
 
-	zoneIDs := make([]uuid.UUID, len(zones))
-	for i, z := range zones {
-		zoneIDs[i] = z.ZoneID
-	}
-
-	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 25, warehouseIDs, zoneIDs, busDomain.InventoryLocation)
+	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 25, warehouseIDs, zones, busDomain.InventoryLocation)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding inventory locations : %w", err)
 	}
@@ -495,7 +490,7 @@ func Test_QueryAvailableForAllocation(t *testing.T) {
 		t.Fatalf("seeding zones: %s", err)
 	}
 
-	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 3, uuid.UUIDs{warehouses[0].ID}, uuid.UUIDs{zones[0].ZoneID}, bd.InventoryLocation)
+	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 3, uuid.UUIDs{warehouses[0].ID}, []zonebus.Zone{zones[0]}, bd.InventoryLocation)
 	if err != nil {
 		t.Fatalf("seeding locations: %s", err)
 	}
