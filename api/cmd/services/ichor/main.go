@@ -371,6 +371,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 		LLMThinkingEffort: cfg.LLM.ThinkingEffort,
 		ResendAPIKey:       cfg.Resend.APIKey,
 		ResendFrom:         cfg.Resend.From,
+		PrinterIP:          cfg.Printer.IP,
+		PrinterPort:        cfg.Printer.Port,
 		CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 	}
 
