@@ -16,6 +16,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/assets/tagapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/userassetapi"
 	"github.com/timmaaaz/ichor/api/domain/http/assets/validassetapi"
+	"github.com/timmaaaz/ichor/api/domain/http/labels/labelapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/formapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/formfieldapi"
 	"github.com/timmaaaz/ichor/api/domain/http/config/configschemaapi"
@@ -172,6 +173,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus/stores/approvalstatusdb"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/assetbus/stores/assetdb"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/tcpprint"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
@@ -648,6 +652,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			delegateHandler.RegisterDomain(delegate, pagecontentbus.DomainName, pagecontentbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, pageactionbus.DomainName, pageactionbus.EntityName)
 
+			// Labels domain
+			delegateHandler.RegisterDomain(delegate, labelbus.DomainName, labelbus.EntityName)
+
 			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized")
 		}
 	} else {
@@ -814,6 +821,25 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		AssetBus:       assetBus,
 		AuthClient:     cfg.AuthClient,
 		Log:            cfg.Log,
+		PermissionsBus: permissionsBus,
+	})
+
+	// Label subsystem (Phase 0b) — catalog + transaction-label printing
+	// via ZPL over TCP to a Zebra-compatible printer. PrinterIP/Port come
+	// from ICHOR_PRINTER_* via mux.Config (Phase 0a). Tests substitute a
+	// recording printer through cfg.LabelPrinter to assert ZPL dispatch.
+	labelStorer := labeldb.NewStore(cfg.Log, cfg.DB)
+	var labelPrinter labelbus.Printer
+	if cfg.LabelPrinter != nil {
+		labelPrinter = cfg.LabelPrinter
+	} else {
+		labelPrinter = tcpprint.New(cfg.PrinterIP, cfg.PrinterPort, 5*time.Second)
+	}
+	labelBus := labelbus.NewBusiness(cfg.Log, delegate, labelStorer, labelPrinter)
+	labelapi.Routes(app, labelapi.Config{
+		Log:            cfg.Log,
+		LabelBus:       labelBus,
+		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
 

@@ -514,6 +514,7 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_items', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_locations', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.inventory_transactions', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.label_catalog', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.lot_trackings', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.lot_locations', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'inventory.pick_tasks', true, true, true, true),
@@ -600,6 +601,8 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_transactions', true, true, false, false),
     -- Inventory adjustments: created by cycle count session completion
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_adjustments', true, true, true, false),
+    -- Label catalog: read-only access for printing (no catalog modification)
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.label_catalog', false, true, false, false),
     -- Read-only tables for scan and context
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.inventory_locations', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.serial_numbers', false, true, false, false),

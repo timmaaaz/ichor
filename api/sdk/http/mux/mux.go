@@ -65,9 +65,27 @@ type Config struct {
 	ResendAPIKey  string
 	ResendFrom    string
 
+	// Printer holds TCP print target for the label subsystem (Phase 0a/0b).
+	// Empty PrinterIP disables actual network dispatch at wiring time.
+	PrinterIP   string
+	PrinterPort string
+
+	// LabelPrinter is an optional override for the label subsystem's printer.
+	// When non-nil it takes precedence over PrinterIP/PrinterPort and lets
+	// integration tests substitute a recording printer to assert ZPL dispatch
+	// without touching real hardware. Production callers leave it nil.
+	LabelPrinter LabelPrinter
+
 	// CORSAllowedOrigins for WebSocket and SSE upgrade routes.
 	// Defaults to "*" if empty (open — set from ICHOR_WEB_CORS_ALLOWED_ORIGINS).
 	CORSAllowedOrigins []string
+}
+
+// LabelPrinter is the narrow contract for dispatching ZPL bytes. Defined
+// here (instead of importing labelbus.Printer) to keep mux dependency-free
+// from business packages while still letting tests inject a stub.
+type LabelPrinter interface {
+	SendZPL(ctx context.Context, zpl []byte) error
 }
 
 // RouteAdder defines behavior that sets the routes to bind for an instance

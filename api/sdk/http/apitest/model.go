@@ -34,6 +34,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/inventory/inspectionapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryadjustmentapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryitemapp"
+	"github.com/timmaaaz/ichor/app/domain/labels/labelapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorylocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorytransactionapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/lotlocationapp"
@@ -143,6 +144,7 @@ type SeedData struct {
 	PickTasks                   []picktaskapp.PickTask
 	CycleCountSessions          []cyclecountsessionapp.CycleCountSession
 	CycleCountItems             []cyclecountitemapp.CycleCountItem
+	Labels                      labelapp.Labels
 	OrderFulfillmentStatuses    []orderfulfillmentstatusapp.OrderFulfillmentStatus
 	LineItemFulfillmentStatuses []lineitemfulfillmentstatusapp.LineItemFulfillmentStatus
 	Orders                      []ordersapp.Order
