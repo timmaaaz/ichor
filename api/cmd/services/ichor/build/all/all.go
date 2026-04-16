@@ -653,6 +653,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			delegateHandler.RegisterDomain(delegate, pagecontentbus.DomainName, pagecontentbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, pageactionbus.DomainName, pageactionbus.EntityName)
 
+			// Labels domain
+			delegateHandler.RegisterDomain(delegate, labelbus.DomainName, labelbus.EntityName)
+
 			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized")
 		}
 	} else {

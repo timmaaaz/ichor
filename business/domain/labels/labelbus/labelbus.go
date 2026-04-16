@@ -62,6 +62,14 @@ func (b *Business) Create(ctx context.Context, nlc NewLabelCatalog) (LabelCatalo
 	if err := b.storer.Create(ctx, lc); err != nil {
 		return LabelCatalog{}, fmt.Errorf("create: %w", err)
 	}
+
+	// Fire delegate event for workflow automation. Errors are logged
+	// but not returned — the DB write already succeeded and the caller
+	// has a valid LabelCatalog back.
+	if err := b.delegate.Call(ctx, ActionCreatedData(lc)); err != nil {
+		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionCreated, "err", err)
+	}
+
 	return lc, nil
 }
 
