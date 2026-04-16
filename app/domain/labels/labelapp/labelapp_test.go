@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
 )
@@ -28,6 +29,10 @@ type memStorer struct {
 
 func newMemStorer() *memStorer {
 	return &memStorer{rows: map[uuid.UUID]labelbus.LabelCatalog{}}
+}
+
+func (s *memStorer) NewWithTx(tx sqldb.CommitRollbacker) (labelbus.Storer, error) {
+	return s, nil
 }
 
 func (s *memStorer) Create(ctx context.Context, lc labelbus.LabelCatalog) error {

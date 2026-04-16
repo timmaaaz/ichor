@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -22,6 +23,7 @@ var (
 
 // Storer declares the behavior needed to persist and retrieve label catalog entries.
 type Storer interface {
+	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
 	Create(ctx context.Context, lc LabelCatalog) error
 	Update(ctx context.Context, lc LabelCatalog) error
 	Delete(ctx context.Context, lc LabelCatalog) error
@@ -47,6 +49,22 @@ type Business struct {
 // NewBusiness constructs a label business API for use.
 func NewBusiness(log *logger.Logger, d *delegate.Delegate, storer Storer, printer Printer) *Business {
 	return &Business{log: log, delegate: d, storer: storer, printer: printer}
+}
+
+// NewWithTx constructs a new Business value replacing the Storer value with
+// a Storer value that is currently inside a transaction.
+func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
+	storer, err := b.storer.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Business{
+		log:      b.log,
+		delegate: b.delegate,
+		storer:   storer,
+		printer:  b.printer,
+	}, nil
 }
 
 // Create inserts a new label into the catalog.
