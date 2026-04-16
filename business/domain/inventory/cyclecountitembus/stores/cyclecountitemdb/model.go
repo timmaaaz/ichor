@@ -13,6 +13,7 @@ import (
 // cycleCountItem mirrors the inventory.cycle_count_items DB row.
 type cycleCountItem struct {
 	ID              uuid.UUID      `db:"id"`
+	ItemCode        sql.NullString `db:"item_code"`
 	SessionID       uuid.UUID      `db:"session_id"`
 	ProductID       uuid.UUID      `db:"product_id"`
 	LocationID      uuid.UUID      `db:"location_id"`
@@ -39,6 +40,7 @@ func toBusCycleCountItem(db cycleCountItem) (cyclecountitembus.CycleCountItem, e
 
 	return cyclecountitembus.CycleCountItem{
 		ID:              db.ID,
+		ItemCode:        nulltypes.StringPtr(db.ItemCode),
 		SessionID:       db.SessionID,
 		ProductID:       db.ProductID,
 		LocationID:      db.LocationID,
@@ -73,6 +75,7 @@ func toDBCycleCountItem(bus cyclecountitembus.CycleCountItem) cycleCountItem {
 
 	return cycleCountItem{
 		ID:              bus.ID,
+		ItemCode:        nulltypes.ToNullString(bus.ItemCode),
 		SessionID:       bus.SessionID,
 		ProductID:       bus.ProductID,
 		LocationID:      bus.LocationID,

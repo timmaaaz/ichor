@@ -2460,3 +2460,8 @@ ALTER TABLE inventory.pick_tasks
 -- Description: Phase 0c — add nullable transfer_number to inventory.transfer_orders for human-readable transfer identifier (XFER-YYMMDD-serial).
 ALTER TABLE inventory.transfer_orders
     ADD COLUMN transfer_number VARCHAR(32) NULL;
+
+-- Version: 2.33
+-- Description: Phase 0c — add nullable item_code to inventory.cycle_count_items for human-readable cycle-count item identifier (CC-session_serial-item_serial).
+ALTER TABLE inventory.cycle_count_items
+    ADD COLUMN item_code VARCHAR(32) NULL;

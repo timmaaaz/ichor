@@ -13,7 +13,11 @@ func TestNewCycleCountItems(n int, sessionIDs, productIDs, locationIDs []uuid.UU
 	items := make([]NewCycleCountItem, n)
 
 	for i := range n {
+		sessionSerial := (i % len(sessionIDs)) + 1
+		itemSerial := i + 1
+		code := fmt.Sprintf("CC-%03d-%03d", sessionSerial, itemSerial)
 		items[i] = NewCycleCountItem{
+			ItemCode:       &code,
 			SessionID:      sessionIDs[i%len(sessionIDs)],
 			ProductID:      productIDs[i%len(productIDs)],
 			LocationID:     locationIDs[i%len(locationIDs)],

@@ -32,6 +32,7 @@ type QueryParams struct {
 // CycleCountItem is the app-layer response model. All fields are strings for JSON serialization.
 type CycleCountItem struct {
 	ID              string `json:"id"`
+	ItemCode        string `json:"item_code"`
 	SessionID       string `json:"sessionId"`
 	ProductID       string `json:"productId"`
 	LocationID      string `json:"locationId"`
@@ -52,6 +53,11 @@ func (app CycleCountItem) Encode() ([]byte, string, error) {
 
 // ToAppCycleCountItem converts a bus model to an app-layer response model.
 func ToAppCycleCountItem(bus cyclecountitembus.CycleCountItem) CycleCountItem {
+	itemCode := ""
+	if bus.ItemCode != nil {
+		itemCode = *bus.ItemCode
+	}
+
 	countedQuantity := ""
 	if bus.CountedQuantity != nil {
 		countedQuantity = strconv.Itoa(*bus.CountedQuantity)
@@ -74,6 +80,7 @@ func ToAppCycleCountItem(bus cyclecountitembus.CycleCountItem) CycleCountItem {
 
 	return CycleCountItem{
 		ID:              bus.ID.String(),
+		ItemCode:        itemCode,
 		SessionID:       bus.SessionID.String(),
 		ProductID:       bus.ProductID.String(),
 		LocationID:      bus.LocationID.String(),
@@ -103,7 +110,8 @@ func ToAppCycleCountItems(bus []cyclecountitembus.CycleCountItem) []CycleCountIt
 
 // NewCycleCountItem is the app-layer create request model.
 type NewCycleCountItem struct {
-	SessionID      string `json:"sessionId" validate:"required,min=36,max=36"`
+	ItemCode       *string `json:"item_code" validate:"omitempty,min=1,max=32"`
+	SessionID      string  `json:"sessionId" validate:"required,min=36,max=36"`
 	ProductID      string `json:"productId" validate:"required,min=36,max=36"`
 	LocationID     string `json:"locationId" validate:"required,min=36,max=36"`
 	SystemQuantity string `json:"systemQuantity" validate:"required"`
@@ -141,12 +149,16 @@ func toBusNewCycleCountItem(app NewCycleCountItem) (cyclecountitembus.NewCycleCo
 		return cyclecountitembus.NewCycleCountItem{}, errs.Newf(errs.InvalidArgument, "parse systemQuantity: %s", err)
 	}
 
-	return cyclecountitembus.NewCycleCountItem{
+	dest := cyclecountitembus.NewCycleCountItem{
 		SessionID:      sessionID,
 		ProductID:      productID,
 		LocationID:     locationID,
 		SystemQuantity: systemQuantity,
-	}, nil
+	}
+	if app.ItemCode != nil {
+		dest.ItemCode = app.ItemCode
+	}
+	return dest, nil
 }
 
 // =============================================================================
@@ -155,6 +167,7 @@ func toBusNewCycleCountItem(app NewCycleCountItem) (cyclecountitembus.NewCycleCo
 
 // UpdateCycleCountItem is the app-layer update request model.
 type UpdateCycleCountItem struct {
+	ItemCode        *string `json:"item_code" validate:"omitempty,min=1,max=32"`
 	CountedQuantity *string `json:"countedQuantity" validate:"omitempty"`
 	Status          *string `json:"status" validate:"omitempty"`
 }
@@ -173,6 +186,9 @@ func (app UpdateCycleCountItem) Validate() error {
 func toBusUpdateCycleCountItem(app UpdateCycleCountItem, userID uuid.UUID) (cyclecountitembus.UpdateCycleCountItem, error) {
 	bus := cyclecountitembus.UpdateCycleCountItem{}
 
+	if app.ItemCode != nil {
+		bus.ItemCode = app.ItemCode
+	}
 	if app.CountedQuantity != nil {
 		q, err := strconv.Atoi(*app.CountedQuantity)
 		if err != nil {
