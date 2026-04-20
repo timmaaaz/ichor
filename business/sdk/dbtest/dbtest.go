@@ -58,6 +58,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/scenariobus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/scenariobus/stores/scenariodb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus/stores/cyclecountitemdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus"
@@ -282,6 +284,9 @@ type BusDomain struct {
 	// Labels
 	Label *labelbus.Business
 
+	// Scenarios
+	Scenario *scenariobus.Business
+
 	// Order
 	OrderFulfillmentStatus    *orderfulfillmentstatusbus.Business
 	LineItemFulfillmentStatus *lineitemfulfillmentstatusbus.Business
@@ -405,6 +410,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	// mux.Config.LabelPrinter. Direct bus-level tests do not print.
 	labelBus := labelbus.NewBusiness(log, delegate, labeldb.NewStore(log, db), nil)
 
+	// Scenarios — beginner is required for transactional Load/Reset.
+	scenarioBus := scenariobus.NewBusiness(log, delegate, scenariodb.NewStore(log, db), sqldb.NewBeginner(db))
+
 	// Orders
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
 	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(log, delegate, lineitemfulfillmentstatusdb.NewStore(log, db))
@@ -493,6 +501,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		CycleCountSession:           cycleCountSessionBus,
 		CycleCountItem:              cycleCountItemBus,
 		Label:                       labelBus,
+		Scenario:                    scenarioBus,
 		OrderFulfillmentStatus:      orderFulfillmentStatusBus,
 		LineItemFulfillmentStatus:   lineItemFulfillmentStatusBus,
 		Order:                       ordersBus,

@@ -42,6 +42,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/hr/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/titleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inspectionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/inventory/scenarioapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventoryadjustmentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventoryitemapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventorylocationapi"
@@ -176,6 +177,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/tcpprint"
+	"github.com/timmaaaz/ichor/business/domain/inventory/scenariobus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/scenariobus/stores/scenariodb"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
@@ -336,6 +339,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
 	"github.com/timmaaaz/ichor/business/sdk/llm/claude"
 	"github.com/timmaaaz/ichor/business/sdk/llm/gemini"
@@ -655,6 +659,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			// Labels domain
 			delegateHandler.RegisterDomain(delegate, labelbus.DomainName, labelbus.EntityName)
 
+			// Scenarios domain
+			delegateHandler.RegisterDomain(delegate, scenariobus.DomainName, scenariobus.EntityName)
+
 			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized")
 		}
 	} else {
@@ -839,6 +846,17 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	labelapi.Routes(app, labelapi.Config{
 		Log:            cfg.Log,
 		LabelBus:       labelBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	// Scenario subsystem (Phase 0d) — floor warehouse testing scenario management.
+	// Routes are registered unconditionally; the active-scenario middleware that
+	// populates the scenario context key is wired in Phase 0d.8 (Amendment B).
+	scenarioBus := scenariobus.NewBusiness(cfg.Log, delegate, scenariodb.NewStore(cfg.Log, cfg.DB), sqldb.NewBeginner(cfg.DB))
+	scenarioapi.Routes(app, scenarioapi.Config{
+		Log:            cfg.Log,
+		ScenarioBus:    scenarioBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
