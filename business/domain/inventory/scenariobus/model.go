@@ -1,11 +1,3 @@
-// Package scenariobus owns three tables — scenarios, scenario_fixtures,
-// scenarios_active — as one aggregate. They share ON DELETE CASCADE /
-// SET NULL constraints (migration 2.34), a single transactional boundary
-// (Load/Reset mutate all three atomically), and no independent external
-// lifecycle (fixtures are WORM, active is a singleton). See
-// docs/superpowers/plans/floor-physical-warehouse-testing/NOTES.md
-// 2026-04-20 "Why scenarios + scenario_fixtures + scenarios_active share
-// one slice" for the full rationale.
 package scenariobus
 
 import (
