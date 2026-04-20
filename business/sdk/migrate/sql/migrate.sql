@@ -2495,3 +2495,80 @@ CREATE TABLE inventory.scenarios_active (
     scenario_id   UUID         NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL,
     updated_date  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+
+-- Version: 2.35
+-- Description: Phase 0d — add nullable scenario_id + btree index to every
+-- floor-scoped table per spec §3.5 (plus lot_locations added in Task 0d.0
+-- Decision 1 user gate). scenario_id IS NULL = baseline row;
+-- non-null = row belongs to the referenced scenario's fixture set. 18 tables.
+ALTER TABLE sales.orders
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_orders_scenario ON sales.orders(scenario_id);
+
+ALTER TABLE sales.order_line_items
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_order_line_items_scenario ON sales.order_line_items(scenario_id);
+
+ALTER TABLE sales.order_fulfillment_statuses
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_order_fulfillment_statuses_scenario ON sales.order_fulfillment_statuses(scenario_id);
+
+ALTER TABLE procurement.purchase_orders
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_purchase_orders_scenario ON procurement.purchase_orders(scenario_id);
+
+ALTER TABLE procurement.purchase_order_line_items
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_po_line_items_scenario ON procurement.purchase_order_line_items(scenario_id);
+
+ALTER TABLE inventory.transfer_orders
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_transfer_orders_scenario ON inventory.transfer_orders(scenario_id);
+
+ALTER TABLE inventory.inventory_transactions
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_inventory_transactions_scenario ON inventory.inventory_transactions(scenario_id);
+
+ALTER TABLE inventory.inventory_adjustments
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_inventory_adjustments_scenario ON inventory.inventory_adjustments(scenario_id);
+
+ALTER TABLE inventory.inventory_items
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_inventory_items_scenario ON inventory.inventory_items(scenario_id);
+
+ALTER TABLE inventory.lot_trackings
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_lot_trackings_scenario ON inventory.lot_trackings(scenario_id);
+
+ALTER TABLE inventory.lot_locations
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_lot_locations_scenario ON inventory.lot_locations(scenario_id);
+
+ALTER TABLE inventory.serial_numbers
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_serial_numbers_scenario ON inventory.serial_numbers(scenario_id);
+
+ALTER TABLE inventory.pick_tasks
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_pick_tasks_scenario ON inventory.pick_tasks(scenario_id);
+
+ALTER TABLE inventory.put_away_tasks
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_put_away_tasks_scenario ON inventory.put_away_tasks(scenario_id);
+
+ALTER TABLE inventory.quality_inspections
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_quality_inspections_scenario ON inventory.quality_inspections(scenario_id);
+
+ALTER TABLE inventory.cycle_count_sessions
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_cycle_count_sessions_scenario ON inventory.cycle_count_sessions(scenario_id);
+
+ALTER TABLE inventory.cycle_count_items
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_cycle_count_items_scenario ON inventory.cycle_count_items(scenario_id);
+
+ALTER TABLE workflow.approval_requests
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_approval_requests_scenario ON workflow.approval_requests(scenario_id);
