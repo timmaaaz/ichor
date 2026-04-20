@@ -13,6 +13,7 @@ import (
 // pick QuantityToPick units of ProductID from LocationID to fulfill a sales order line item.
 type PickTask struct {
 	ID                   uuid.UUID  `json:"id"`
+	TaskNumber           *string    `json:"task_number,omitempty"`
 	SalesOrderID         uuid.UUID  `json:"sales_order_id"`
 	SalesOrderLineItemID uuid.UUID  `json:"sales_order_line_item_id"`
 	ProductID            uuid.UUID  `json:"product_id"`
@@ -35,6 +36,7 @@ type PickTask struct {
 // NewPickTask contains the information needed to create a new pick task.
 // Status is always set to Statuses.Pending by the business layer.
 type NewPickTask struct {
+	TaskNumber           *string    `json:"task_number,omitempty"`
 	SalesOrderID         uuid.UUID  `json:"sales_order_id"`
 	SalesOrderLineItemID uuid.UUID  `json:"sales_order_line_item_id"`
 	ProductID            uuid.UUID  `json:"product_id"`
@@ -48,6 +50,7 @@ type NewPickTask struct {
 // UpdatePickTask contains the information that can be changed on a pick task.
 // All fields are optional pointers; nil means "do not update this field."
 type UpdatePickTask struct {
+	TaskNumber      *string    `json:"task_number,omitempty"`
 	LotID           *uuid.UUID `json:"lot_id,omitempty"`
 	SerialID        *uuid.UUID `json:"serial_id,omitempty"`
 	LocationID      *uuid.UUID `json:"location_id,omitempty"`

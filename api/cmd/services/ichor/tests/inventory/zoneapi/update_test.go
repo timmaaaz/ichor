@@ -30,6 +30,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			ExpResp: &zoneapp.Zone{
 				WarehouseID: sd.Warehouses[0].ID,
 				Name:        "updated name",
+				ZoneCode:    sd.Zones[0].ZoneCode,
 				Description: "updated description",
 				CreatedDate: sd.Zones[0].CreatedDate,
 				ZoneID:      sd.Zones[0].ZoneID,

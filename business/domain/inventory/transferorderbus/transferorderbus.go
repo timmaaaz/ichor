@@ -86,6 +86,7 @@ func (b *Business) Create(ctx context.Context, nto NewTransferOrder) (TransferOr
 
 	transferOrder := TransferOrder{
 		TransferID:     uuid.New(),
+		TransferNumber: nto.TransferNumber,
 		ProductID:      nto.ProductID,
 		FromLocationID: nto.FromLocationID,
 		ToLocationID:   nto.ToLocationID,
@@ -117,6 +118,9 @@ func (b *Business) Update(ctx context.Context, to TransferOrder, ut UpdateTransf
 
 	before := to
 
+	if ut.TransferNumber != nil {
+		to.TransferNumber = ut.TransferNumber
+	}
 	if ut.ProductID != nil {
 		to.ProductID = *ut.ProductID
 	}

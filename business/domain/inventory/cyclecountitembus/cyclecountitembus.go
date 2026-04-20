@@ -74,6 +74,7 @@ func (b *Business) Create(ctx context.Context, ncci NewCycleCountItem) (CycleCou
 
 	item := CycleCountItem{
 		ID:             uuid.New(),
+		ItemCode:       ncci.ItemCode,
 		SessionID:      ncci.SessionID,
 		ProductID:      ncci.ProductID,
 		LocationID:     ncci.LocationID,
@@ -102,6 +103,9 @@ func (b *Business) Update(ctx context.Context, item CycleCountItem, ucci UpdateC
 
 	before := item
 
+	if ucci.ItemCode != nil {
+		item.ItemCode = ucci.ItemCode
+	}
 	if ucci.CountedQuantity != nil {
 		item.CountedQuantity = ucci.CountedQuantity
 		variance := *ucci.CountedQuantity - item.SystemQuantity

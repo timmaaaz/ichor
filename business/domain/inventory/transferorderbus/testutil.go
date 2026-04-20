@@ -16,10 +16,13 @@ func TestNewTransferOrders(n int, productIDs, fromLocationIDs, toLocationIDs, re
 	// Status distribution: ~40% pending, ~40% approved, ~20% completed
 	transferStatuses := []string{StatusPending, StatusPending, StatusApproved, StatusApproved, StatusCompleted}
 
+	today := time.Now().Format("060102")
 	idx := rand.Intn(10000)
 	for i := range n {
 		idx++
+		num := fmt.Sprintf("XFER-%s-%04d", today, i+1)
 		newTransferOrders[i] = NewTransferOrder{
+			TransferNumber: &num,
 			ProductID:      productIDs[idx%len(productIDs)],
 			FromLocationID: fromLocationIDs[idx%len(fromLocationIDs)],
 			ToLocationID:   toLocationIDs[idx%len(toLocationIDs)],

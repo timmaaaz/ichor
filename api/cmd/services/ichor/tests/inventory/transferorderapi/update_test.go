@@ -37,6 +37,8 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &transferorderapp.TransferOrder{},
 			ExpResp: &transferorderapp.TransferOrder{
+				TransferID:     sd.TransferOrders[1].TransferID,
+				TransferNumber: sd.TransferOrders[1].TransferNumber,
 				ProductID:      sd.Products[0].ProductID,
 				FromLocationID: sd.InventoryLocations[0].LocationID,
 				ToLocationID:   sd.InventoryLocations[2].LocationID,
@@ -46,7 +48,6 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				Status:         "pending",
 				TransferDate:   now.Format(timeutil.FORMAT),
 				CreatedDate:    sd.TransferOrders[1].CreatedDate,
-				TransferID:     sd.TransferOrders[1].TransferID,
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(*transferorderapp.TransferOrder)

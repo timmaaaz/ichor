@@ -42,12 +42,12 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (transferorderbus.Storer, e
 func (s *Store) Create(ctx context.Context, transferOrder transferorderbus.TransferOrder) error {
 	const q = `
 	INSERT INTO inventory.transfer_orders (
-	    id, product_id, from_location_id, to_location_id, requested_by,
+	    id, transfer_number, product_id, from_location_id, to_location_id, requested_by,
 		approved_by, rejected_by_id, approval_reason, rejection_reason,
 		claimed_by, claimed_at, completed_by, completed_at,
 		quantity, status, transfer_date, created_date, updated_date
     ) VALUES (
-        :id, :product_id, :from_location_id, :to_location_id, :requested_by,
+        :id, :transfer_number, :product_id, :from_location_id, :to_location_id, :requested_by,
         :approved_by, :rejected_by_id, :approval_reason, :rejection_reason,
         :claimed_by, :claimed_at, :completed_by, :completed_at,
         :quantity, :status, :transfer_date, :created_date, :updated_date
@@ -73,6 +73,7 @@ func (s *Store) Update(ctx context.Context, transferOrder transferorderbus.Trans
     UPDATE
         inventory.transfer_orders
     SET
+        transfer_number = :transfer_number,
         product_id = :product_id,
 		from_location_id = :from_location_id,
 		to_location_id = :to_location_id,
@@ -127,7 +128,7 @@ func (s *Store) Query(ctx context.Context, filter transferorderbus.QueryFilter, 
 
 	const q = `
 	SELECT
-		id, product_id, from_location_id, to_location_id, requested_by, approved_by,
+		id, transfer_number, product_id, from_location_id, to_location_id, requested_by, approved_by,
 		rejected_by_id, approval_reason, rejection_reason,
 		claimed_by, claimed_at, completed_by, completed_at,
 		quantity, status, transfer_date, created_date, updated_date
@@ -183,7 +184,7 @@ func (s *Store) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (trans
 
 	const q = `
     SELECT
-        id, product_id, from_location_id, to_location_id, requested_by, approved_by,
+        id, transfer_number, product_id, from_location_id, to_location_id, requested_by, approved_by,
         rejected_by_id, approval_reason, rejection_reason,
         claimed_by, claimed_at, completed_by, completed_at,
         quantity, status, transfer_date, created_date, updated_date

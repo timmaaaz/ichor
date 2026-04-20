@@ -33,6 +33,7 @@ type QueryParams struct {
 // PickTask is the app-layer response model. All fields are strings for JSON serialization.
 type PickTask struct {
 	ID                   string `json:"id"`
+	TaskNumber           string `json:"task_number"`
 	SalesOrderID         string `json:"sales_order_id"`
 	SalesOrderLineItemID string `json:"sales_order_line_item_id"`
 	ProductID            string `json:"product_id"`
@@ -59,6 +60,11 @@ func (app PickTask) Encode() ([]byte, string, error) {
 
 // ToAppPickTask converts a bus model to an app-layer response model.
 func ToAppPickTask(bus picktaskbus.PickTask) PickTask {
+	taskNumber := ""
+	if bus.TaskNumber != nil {
+		taskNumber = *bus.TaskNumber
+	}
+
 	lotID := ""
 	if bus.LotID != nil {
 		lotID = bus.LotID.String()
@@ -91,6 +97,7 @@ func ToAppPickTask(bus picktaskbus.PickTask) PickTask {
 
 	return PickTask{
 		ID:                   bus.ID.String(),
+		TaskNumber:           taskNumber,
 		SalesOrderID:         bus.SalesOrderID.String(),
 		SalesOrderLineItemID: bus.SalesOrderLineItemID.String(),
 		ProductID:            bus.ProductID.String(),
@@ -127,6 +134,7 @@ func ToAppPickTasks(bus []picktaskbus.PickTask) []PickTask {
 // NewPickTask is the app-layer create request model.
 // CreatedBy is injected from the authenticated user — not accepted from the client.
 type NewPickTask struct {
+	TaskNumber           *string `json:"task_number" validate:"omitempty,min=1,max=32"`
 	SalesOrderID         string  `json:"sales_order_id" validate:"required,min=36,max=36"`
 	SalesOrderLineItemID string  `json:"sales_order_line_item_id" validate:"required,min=36,max=36"`
 	ProductID            string  `json:"product_id" validate:"required,min=36,max=36"`
@@ -191,7 +199,7 @@ func toBusNewPickTask(app NewPickTask, createdBy uuid.UUID) (picktaskbus.NewPick
 		serialID = &id
 	}
 
-	return picktaskbus.NewPickTask{
+	bus := picktaskbus.NewPickTask{
 		SalesOrderID:         salesOrderID,
 		SalesOrderLineItemID: salesOrderLineItemID,
 		ProductID:            productID,
@@ -200,7 +208,13 @@ func toBusNewPickTask(app NewPickTask, createdBy uuid.UUID) (picktaskbus.NewPick
 		LocationID:           locationID,
 		QuantityToPick:       quantityToPick,
 		CreatedBy:            createdBy,
-	}, nil
+	}
+
+	if app.TaskNumber != nil {
+		bus.TaskNumber = app.TaskNumber
+	}
+
+	return bus, nil
 }
 
 // =============================================================================
@@ -209,6 +223,7 @@ func toBusNewPickTask(app NewPickTask, createdBy uuid.UUID) (picktaskbus.NewPick
 
 // UpdatePickTask is the app-layer update request model.
 type UpdatePickTask struct {
+	TaskNumber      *string `json:"task_number" validate:"omitempty,min=1,max=32"`
 	LotID           *string `json:"lot_id" validate:"omitempty,min=36,max=36"`
 	SerialID        *string `json:"serial_id" validate:"omitempty,min=36,max=36"`
 	LocationID      *string `json:"location_id" validate:"omitempty,min=36,max=36"`
@@ -282,6 +297,10 @@ func toBusUpdatePickTask(app UpdatePickTask) (picktaskbus.UpdatePickTask, error)
 
 	if app.ShortPickReason != nil {
 		bus.ShortPickReason = app.ShortPickReason
+	}
+
+	if app.TaskNumber != nil {
+		bus.TaskNumber = app.TaskNumber
 	}
 
 	return bus, nil

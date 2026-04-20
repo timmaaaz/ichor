@@ -2445,3 +2445,23 @@ CREATE TABLE inventory.label_catalog (
     created_date  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_label_catalog_type ON inventory.label_catalog(type);
+
+-- Version: 2.30
+-- Description: Phase 0c — add nullable zone_code to inventory.zones for 3-letter human-readable identifier.
+ALTER TABLE inventory.zones
+    ADD COLUMN zone_code VARCHAR(16) NULL;
+
+-- Version: 2.31
+-- Description: Phase 0c — add nullable task_number to inventory.pick_tasks for human-readable pick task identifier (PICK-YYMMDD-serial).
+ALTER TABLE inventory.pick_tasks
+    ADD COLUMN task_number VARCHAR(32) NULL;
+
+-- Version: 2.32
+-- Description: Phase 0c — add nullable transfer_number to inventory.transfer_orders for human-readable transfer identifier (XFER-YYMMDD-serial).
+ALTER TABLE inventory.transfer_orders
+    ADD COLUMN transfer_number VARCHAR(32) NULL;
+
+-- Version: 2.33
+-- Description: Phase 0c — add nullable item_code to inventory.cycle_count_items for human-readable cycle-count item identifier (CC-session_serial-item_serial).
+ALTER TABLE inventory.cycle_count_items
+    ADD COLUMN item_code VARCHAR(32) NULL;

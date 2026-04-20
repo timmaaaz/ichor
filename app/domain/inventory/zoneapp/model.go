@@ -27,6 +27,7 @@ type Zone struct {
 	ZoneID      string `json:"zone_id"`
 	WarehouseID string `json:"warehouse_id"`
 	Name        string `json:"name"`
+	ZoneCode    string `json:"zone_code"`
 	Description string `json:"description"`
 	Stage       string `json:"stage"`
 	CreatedDate string `json:"created_date"`
@@ -47,6 +48,9 @@ func ToAppZone(bus zonebus.Zone) Zone {
 		CreatedDate: bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate: bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
+	if bus.ZoneCode != nil {
+		app.ZoneCode = *bus.ZoneCode
+	}
 	if bus.Stage != nil {
 		app.Stage = bus.Stage.String()
 	}
@@ -62,10 +66,11 @@ func ToAppZones(zones []zonebus.Zone) []Zone {
 }
 
 type NewZone struct {
-	WarehouseID string `json:"warehouse_id" validate:"required,min=36,max=36"`
-	Name        string `json:"name" validate:"required"`
-	Description string `json:"description" validate:"omitempty"`
-	Stage       string `json:"stage" validate:"omitempty"`
+	WarehouseID string  `json:"warehouse_id" validate:"required,min=36,max=36"`
+	Name        string  `json:"name" validate:"required"`
+	ZoneCode    *string `json:"zone_code" validate:"omitempty,min=1,max=16"`
+	Description string  `json:"description" validate:"omitempty"`
+	Stage       string  `json:"stage" validate:"omitempty"`
 }
 
 func (app *NewZone) Decode(data []byte) error {
@@ -92,6 +97,10 @@ func toBusNewZone(app NewZone) (zonebus.NewZone, error) {
 		Description: app.Description,
 	}
 
+	if app.ZoneCode != nil {
+		dest.ZoneCode = app.ZoneCode
+	}
+
 	if app.Stage != "" {
 		st, err := zonebus.ParseStage(app.Stage)
 		if err != nil {
@@ -106,6 +115,7 @@ func toBusNewZone(app NewZone) (zonebus.NewZone, error) {
 type UpdateZone struct {
 	WarehouseID *string `json:"warehouse_id" validate:"omitempty,min=36,max=36"`
 	Name        *string `json:"name" validate:"omitempty"`
+	ZoneCode    *string `json:"zone_code" validate:"omitempty,min=1,max=16"`
 	Description *string `json:"description" validate:"omitempty"`
 	Stage       *string `json:"stage" validate:"omitempty"`
 }
@@ -139,6 +149,10 @@ func toBusUpdateZone(app UpdateZone) (zonebus.UpdateZone, error) {
 
 	if app.Name != nil {
 		dest.Name = app.Name
+	}
+
+	if app.ZoneCode != nil {
+		dest.ZoneCode = app.ZoneCode
 	}
 
 	if app.Stage != nil && *app.Stage != "" {

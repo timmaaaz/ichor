@@ -47,9 +47,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (cyclecountitembus.Storer, 
 func (s *Store) Create(ctx context.Context, item cyclecountitembus.CycleCountItem) error {
 	const q = `
 	INSERT INTO inventory.cycle_count_items
-		(id, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date)
+		(id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date)
 	VALUES
-		(:id, :session_id, :product_id, :location_id, :system_quantity, :counted_quantity, :variance, :status, :counted_by, :counted_date, :created_date, :updated_date)
+		(:id, :item_code, :session_id, :product_id, :location_id, :system_quantity, :counted_quantity, :variance, :status, :counted_by, :counted_date, :created_date, :updated_date)
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCycleCountItem(item)); err != nil {
@@ -70,6 +70,7 @@ func (s *Store) Update(ctx context.Context, item cyclecountitembus.CycleCountIte
 	const q = `
 	UPDATE inventory.cycle_count_items
 	SET
+		item_code        = :item_code,
 		counted_quantity = :counted_quantity,
 		variance         = :variance,
 		status           = :status,
@@ -116,7 +117,7 @@ func (s *Store) Query(ctx context.Context, filter cyclecountitembus.QueryFilter,
 
 	const q = `
 	SELECT
-		id, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date
+		id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date
 	FROM
 		inventory.cycle_count_items
 	`
@@ -179,7 +180,7 @@ func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (cyclecountitem
 
 	const q = `
 	SELECT
-		id, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date
+		id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date
 	FROM
 		inventory.cycle_count_items
 	WHERE

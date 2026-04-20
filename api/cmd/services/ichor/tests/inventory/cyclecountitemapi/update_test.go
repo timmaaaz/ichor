@@ -26,6 +26,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &cyclecountitemapp.CycleCountItem{},
 			ExpResp: &cyclecountitemapp.CycleCountItem{
 				ID:              sd.CycleCountItems[0].ID,
+				ItemCode:        sd.CycleCountItems[0].ItemCode,
 				SessionID:       sd.CycleCountItems[0].SessionID,
 				ProductID:       sd.CycleCountItems[0].ProductID,
 				LocationID:      sd.CycleCountItems[0].LocationID,
@@ -63,6 +64,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &cyclecountitemapp.CycleCountItem{},
 			ExpResp: &cyclecountitemapp.CycleCountItem{
 				ID:              sd.CycleCountItems[1].ID,
+				ItemCode:        sd.CycleCountItems[1].ItemCode,
 				SessionID:       sd.CycleCountItems[1].SessionID,
 				ProductID:       sd.CycleCountItems[1].ProductID,
 				LocationID:      sd.CycleCountItems[1].LocationID,

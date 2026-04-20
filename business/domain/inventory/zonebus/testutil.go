@@ -9,15 +9,25 @@ import (
 	"github.com/google/uuid"
 )
 
+// zoneCodeCycle is the sequence of 3-letter codes assigned to seed zones.
+// Matches Phase 1 physical warehouse layout (spec §3.3). Index i in the
+// 12-zone seed slice receives zoneCodeCycle[i % len(zoneCodeCycle)].
+var zoneCodeCycle = []string{
+	"RCV", "QA", "STG", "PCK", "PKG", "SHP",
+	"STG", "STG", "PCK", "PKG", "RCV", "STG",
+}
+
 func TestNewZone(n int, warehouseIDs []uuid.UUID) []NewZone {
 	newZones := make([]NewZone, n)
 
 	idx := rand.Intn(10000)
 	for i := 0; i < n; i++ {
 		idx++
+		code := zoneCodeCycle[i%len(zoneCodeCycle)]
 		newZones[i] = NewZone{
 			WarehouseID: warehouseIDs[idx%len(warehouseIDs)],
 			Name:        fmt.Sprintf("Name %d", idx),
+			ZoneCode:    &code,
 			Description: fmt.Sprintf("Description %d", idx),
 		}
 	}
