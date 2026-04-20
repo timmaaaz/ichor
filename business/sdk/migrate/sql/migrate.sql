@@ -2465,3 +2465,33 @@ ALTER TABLE inventory.transfer_orders
 -- Description: Phase 0c — add nullable item_code to inventory.cycle_count_items for human-readable cycle-count item identifier (CC-session_serial-item_serial).
 ALTER TABLE inventory.cycle_count_items
     ADD COLUMN item_code VARCHAR(32) NULL;
+
+-- Version: 2.34
+-- Description: Phase 0d — add scenario subsystem tables.
+-- Scenarios are test fixtures; YAML files in deployments/scenarios/ are the
+-- source of truth and are mirrored into these tables by seed_scenarios.go at
+-- seed time. scenario_fixtures holds row blueprints; scenarios_active is a
+-- singleton carrying the currently-active scenario id (NULL = baseline mode).
+CREATE TABLE inventory.scenarios (
+    id            UUID PRIMARY KEY,
+    name          VARCHAR(64)  NOT NULL UNIQUE,
+    description   TEXT         NULL,
+    created_date  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_date  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE inventory.scenario_fixtures (
+    id           UUID PRIMARY KEY,
+    scenario_id  UUID         NOT NULL REFERENCES inventory.scenarios(id) ON DELETE CASCADE,
+    target_table VARCHAR(128) NOT NULL,
+    payload_json JSONB        NOT NULL,
+    created_date TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_scenario_fixtures_scenario ON inventory.scenario_fixtures(scenario_id);
+CREATE INDEX idx_scenario_fixtures_target ON inventory.scenario_fixtures(target_table);
+
+CREATE TABLE inventory.scenarios_active (
+    singleton_key INTEGER PRIMARY KEY CHECK (singleton_key = 0),
+    scenario_id   UUID         NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL,
+    updated_date  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
