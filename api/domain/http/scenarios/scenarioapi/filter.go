@@ -3,7 +3,7 @@ package scenarioapi
 import (
 	"net/http"
 
-	"github.com/timmaaaz/ichor/app/domain/inventory/scenarioapp"
+	"github.com/timmaaaz/ichor/app/domain/scenarios/scenarioapp"
 )
 
 func parseQueryParams(r *http.Request) (scenarioapp.QueryParams, error) {

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/business/domain/inventory/scenariobus"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
 )
 
 type dbScenario struct {

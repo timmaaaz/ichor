@@ -1,7 +1,7 @@
 package scenarioapp
 
 import (
-	"github.com/timmaaaz/ichor/business/domain/inventory/scenariobus"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
 )
 
 func parseFilter(qp QueryParams) (scenariobus.QueryFilter, error) {

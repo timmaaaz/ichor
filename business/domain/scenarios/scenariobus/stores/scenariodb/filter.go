@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/timmaaaz/ichor/business/domain/inventory/scenariobus"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
 )
 
 func applyFilter(filter scenariobus.QueryFilter, data map[string]interface{}, buf *bytes.Buffer) {

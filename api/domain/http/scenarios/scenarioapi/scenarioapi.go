@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/app/domain/inventory/scenarioapp"
+	"github.com/timmaaaz/ichor/app/domain/scenarios/scenarioapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/foundation/web"
 )

@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/timmaaaz/ichor/business/domain/inventory/scenariobus"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
