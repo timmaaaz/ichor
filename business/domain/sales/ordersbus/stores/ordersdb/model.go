@@ -33,6 +33,7 @@ type dbOrder struct {
 	UpdatedBy           uuid.UUID      `db:"updated_by"`
 	CreatedDate         time.Time      `db:"created_date"`
 	UpdatedDate         time.Time      `db:"updated_date"`
+	ScenarioID          *uuid.UUID     `db:"scenario_id"`
 }
 
 func toBusOrder(db dbOrder) (ordersbus.Order, error) {
@@ -82,6 +83,7 @@ func toBusOrder(db dbOrder) (ordersbus.Order, error) {
 		UpdatedBy:           db.UpdatedBy,
 		CreatedDate:         db.CreatedDate.In(time.Local),
 		UpdatedDate:         db.UpdatedDate.In(time.Local),
+		ScenarioID:          db.ScenarioID,
 	}
 
 	if db.OrderDate.Valid {
@@ -129,6 +131,7 @@ func toDBOrder(bus ordersbus.Order) dbOrder {
 		UpdatedBy:           bus.UpdatedBy,
 		CreatedDate:         bus.CreatedDate.UTC(),
 		UpdatedDate:         bus.UpdatedDate.UTC(),
+		ScenarioID:          bus.ScenarioID,
 	}
 
 	if !bus.OrderDate.IsZero() {

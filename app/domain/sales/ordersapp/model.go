@@ -70,6 +70,7 @@ type Order struct {
 	UpdatedBy           string `json:"updated_by"`
 	CreatedDate         string `json:"created_date"`
 	UpdatedDate         string `json:"updated_date"`
+	ScenarioID          string `json:"scenario_id,omitempty"`
 }
 
 func (app Order) Encode() ([]byte, string, error) {
@@ -116,6 +117,9 @@ func ToAppOrder(bus ordersbus.Order) Order {
 	}
 	if bus.PaymentTermID != nil {
 		app.PaymentTermID = bus.PaymentTermID.String()
+	}
+	if bus.ScenarioID != nil {
+		app.ScenarioID = bus.ScenarioID.String()
 	}
 
 	return app

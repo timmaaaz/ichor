@@ -43,9 +43,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (orderfulfillmentstatusbus.
 func (s *Store) Create(ctx context.Context, status orderfulfillmentstatusbus.OrderFulfillmentStatus) error {
 	const q = `
 	INSERT INTO sales.order_fulfillment_statuses (
-	  id, name, description, primary_color, secondary_color, icon
+	  id, name, description, primary_color, secondary_color, icon, scenario_id
     ) VALUES (
-        :id, :name, :description, :primary_color, :secondary_color, :icon
+        :id, :name, :description, :primary_color, :secondary_color, :icon, :scenario_id
     )
 	`
 
@@ -111,13 +111,14 @@ func (s *Store) Query(ctx context.Context, filter orderfulfillmentstatusbus.Quer
 
 	const q = `
 	SELECT
-		id, name, description, primary_color, secondary_color, icon
+		id, name, description, primary_color, secondary_color, icon, scenario_id
     FROM
 	    sales.order_fulfillment_statuses
 		`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -156,23 +157,24 @@ func (s *Store) Count(ctx context.Context, filter orderfulfillmentstatusbus.Quer
 }
 
 func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (orderfulfillmentstatusbus.OrderFulfillmentStatus, error) {
-	data := struct {
-		StatusID string `db:"id"`
-	}{
-		StatusID: statusID.String(),
+	data := map[string]any{
+		"id": statusID.String(),
 	}
 
 	const q = `
     SELECT
-        id, name, description, primary_color, secondary_color, icon
+        id, name, description, primary_color, secondary_color, icon, scenario_id
     FROM
         sales.order_fulfillment_statuses
     WHERE
         id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbStatus orderFulfillmentStatus
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbStatus); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbStatus); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return orderfulfillmentstatusbus.OrderFulfillmentStatus{}, orderfulfillmentstatusbus.ErrNotFound
 		}

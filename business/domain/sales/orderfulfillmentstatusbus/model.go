@@ -8,12 +8,13 @@ import "github.com/google/uuid"
 // expect snake_case keys to match API conventions.
 
 type OrderFulfillmentStatus struct {
-	ID             uuid.UUID `json:"id"`
-	Name           string    `json:"name"`
-	Description    string    `json:"description"`
-	PrimaryColor   string    `json:"primary_color"`
-	SecondaryColor string    `json:"secondary_color"`
-	Icon           string    `json:"icon"`
+	ID             uuid.UUID  `json:"id"`
+	Name           string     `json:"name"`
+	Description    string     `json:"description"`
+	PrimaryColor   string     `json:"primary_color"`
+	SecondaryColor string     `json:"secondary_color"`
+	Icon           string     `json:"icon"`
+	ScenarioID     *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 type NewOrderFulfillmentStatus struct {

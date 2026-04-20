@@ -46,13 +46,13 @@ func (s *Store) Create(ctx context.Context, status ordersbus.Order) error {
 	  order_date, billing_address_id, shipping_address_id, assigned_to,
 	  subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
 	  currency_id, payment_term_id, notes, priority,
-	  created_by, updated_by, created_date, updated_date
+	  created_by, updated_by, created_date, updated_date, scenario_id
     ) VALUES (
         :id, :number, :customer_id, :due_date, :order_fulfillment_status_id,
         :order_date, :billing_address_id, :shipping_address_id, :assigned_to,
         :subtotal, :tax_rate, :tax_amount, :shipping_cost, :total_amount,
         :currency_id, :payment_term_id, :notes, :priority,
-        :created_by, :updated_by, :created_date, :updated_date
+        :created_by, :updated_by, :created_date, :updated_date, :scenario_id
     )
 	`
 
@@ -138,13 +138,14 @@ func (s *Store) Query(ctx context.Context, filter ordersbus.QueryFilter, orderBy
 		order_date, billing_address_id, shipping_address_id, assigned_to,
 		subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
 		currency_id, payment_term_id, notes, priority,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
     FROM
 	    sales.orders
 		`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -179,6 +180,7 @@ func (s *Store) Count(ctx context.Context, filter ordersbus.QueryFilter) (int, e
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -191,10 +193,8 @@ func (s *Store) Count(ctx context.Context, filter ordersbus.QueryFilter) (int, e
 }
 
 func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (ordersbus.Order, error) {
-	data := struct {
-		StatusID string `db:"id"`
-	}{
-		StatusID: statusID.String(),
+	data := map[string]any{
+		"id": statusID.String(),
 	}
 
 	const q = `
@@ -203,15 +203,18 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (ordersbus.Or
         order_date, billing_address_id, shipping_address_id, assigned_to,
         subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
         currency_id, payment_term_id, notes, priority,
-        created_by, updated_by, created_date, updated_date
+        created_by, updated_by, created_date, updated_date, scenario_id
     FROM
         sales.orders
     WHERE
         id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbOrd dbOrder
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbOrd); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbOrd); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return ordersbus.Order{}, ordersbus.ErrNotFound
 		}
@@ -237,10 +240,8 @@ func (s *Store) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]ordersb
 		uuidStrings[i] = id.String()
 	}
 
-	data := struct {
-		OrderIDs []string `db:"order_ids"`
-	}{
-		OrderIDs: uuidStrings,
+	data := map[string]any{
+		"order_ids": uuidStrings,
 	}
 
 	const q = `
@@ -249,14 +250,17 @@ func (s *Store) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]ordersb
 		order_date, billing_address_id, shipping_address_id, assigned_to,
 		subtotal, tax_rate, tax_amount, shipping_cost, total_amount,
 		currency_id, payment_term_id, notes, priority,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	FROM
 		sales.orders
 	WHERE
 		id IN (:order_ids)`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbOrders []dbOrder
-	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &dbOrders); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &dbOrders); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 

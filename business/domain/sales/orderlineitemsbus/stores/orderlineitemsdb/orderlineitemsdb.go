@@ -43,9 +43,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (orderlineitemsbus.Storer, 
 func (s *Store) Create(ctx context.Context, status orderlineitemsbus.OrderLineItem) error {
 	const q = `
 	INSERT INTO sales.order_line_items (
-	  id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date
+	  id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date, scenario_id
     ) VALUES (
-        :id, :order_id, :product_id, :description, :quantity, :unit_price, :discount, :discount_type, :line_total, :line_item_fulfillment_statuses_id, :picked_quantity, :backordered_quantity, :short_pick_reason, :created_by, :created_date, :updated_by, :updated_date
+        :id, :order_id, :product_id, :description, :quantity, :unit_price, :discount, :discount_type, :line_total, :line_item_fulfillment_statuses_id, :picked_quantity, :backordered_quantity, :short_pick_reason, :created_by, :created_date, :updated_by, :updated_date, :scenario_id
     )
 	`
 
@@ -122,13 +122,14 @@ func (s *Store) Query(ctx context.Context, filter orderlineitemsbus.QueryFilter,
 
 	const q = `
 	SELECT
-		id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date
+		id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date, scenario_id
     FROM
 	    sales.order_line_items
 		`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -172,23 +173,24 @@ func (s *Store) Count(ctx context.Context, filter orderlineitemsbus.QueryFilter)
 }
 
 func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (orderlineitemsbus.OrderLineItem, error) {
-	data := struct {
-		StatusID string `db:"id"`
-	}{
-		StatusID: statusID.String(),
+	data := map[string]any{
+		"id": statusID.String(),
 	}
 
 	const q = `
     SELECT
-        id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date
+        id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date, scenario_id
     FROM
         sales.order_line_items
     WHERE
         id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbStatus orderLineItem
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbStatus); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbStatus); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return orderlineitemsbus.OrderLineItem{}, orderlineitemsbus.ErrNotFound
 		}

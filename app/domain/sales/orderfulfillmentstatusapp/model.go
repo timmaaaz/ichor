@@ -24,6 +24,7 @@ type OrderFulfillmentStatus struct {
 	PrimaryColor   string `json:"primary_color"`
 	SecondaryColor string `json:"secondary_color"`
 	Icon           string `json:"icon"`
+	ScenarioID     string `json:"scenario_id,omitempty"`
 }
 
 func (app OrderFulfillmentStatus) Encode() ([]byte, string, error) {
@@ -32,7 +33,7 @@ func (app OrderFulfillmentStatus) Encode() ([]byte, string, error) {
 }
 
 func ToAppOrderFulfillmentStatus(bus orderfulfillmentstatusbus.OrderFulfillmentStatus) OrderFulfillmentStatus {
-	return OrderFulfillmentStatus{
+	app := OrderFulfillmentStatus{
 		ID:             bus.ID.String(),
 		Name:           bus.Name,
 		Description:    bus.Description,
@@ -40,6 +41,10 @@ func ToAppOrderFulfillmentStatus(bus orderfulfillmentstatusbus.OrderFulfillmentS
 		SecondaryColor: bus.SecondaryColor,
 		Icon:           bus.Icon,
 	}
+	if bus.ScenarioID != nil {
+		app.ScenarioID = bus.ScenarioID.String()
+	}
+	return app
 }
 
 func ToAppOrderFulfillmentStatuses(bus []orderfulfillmentstatusbus.OrderFulfillmentStatus) []OrderFulfillmentStatus {

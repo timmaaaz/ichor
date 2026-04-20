@@ -52,6 +52,7 @@ type OrderLineItem struct {
 	CreatedDate                   string  `json:"created_date"`
 	UpdatedBy                     string  `json:"updated_by"`
 	UpdatedDate                   string  `json:"updated_date"`
+	ScenarioID                    string  `json:"scenario_id,omitempty"`
 }
 
 func (app OrderLineItem) Encode() ([]byte, string, error) {
@@ -60,7 +61,7 @@ func (app OrderLineItem) Encode() ([]byte, string, error) {
 }
 
 func ToAppOrderLineItem(bus orderlineitemsbus.OrderLineItem) OrderLineItem {
-	return OrderLineItem{
+	app := OrderLineItem{
 		ID:                            bus.ID.String(),
 		OrderID:                       bus.OrderID.String(),
 		ProductID:                     bus.ProductID.String(),
@@ -79,6 +80,10 @@ func ToAppOrderLineItem(bus orderlineitemsbus.OrderLineItem) OrderLineItem {
 		UpdatedBy:                     bus.UpdatedBy.String(),
 		UpdatedDate:                   bus.UpdatedDate.Format(time.RFC3339),
 	}
+	if bus.ScenarioID != nil {
+		app.ScenarioID = bus.ScenarioID.String()
+	}
+	return app
 }
 
 func ToAppOrderLineItems(bus []orderlineitemsbus.OrderLineItem) []OrderLineItem {

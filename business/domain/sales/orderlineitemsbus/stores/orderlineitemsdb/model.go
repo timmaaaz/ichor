@@ -28,6 +28,7 @@ type orderLineItem struct {
 	CreatedDate                   time.Time      `db:"created_date"`
 	UpdatedBy                     uuid.UUID      `db:"updated_by"`
 	UpdatedDate                   time.Time      `db:"updated_date"`
+	ScenarioID                    *uuid.UUID     `db:"scenario_id"`
 }
 
 func toBusOrderLineItem(db orderLineItem) (orderlineitemsbus.OrderLineItem, error) {
@@ -74,6 +75,7 @@ func toBusOrderLineItem(db orderLineItem) (orderlineitemsbus.OrderLineItem, erro
 		CreatedDate:                   db.CreatedDate.In(time.Local),
 		UpdatedBy:                     db.UpdatedBy,
 		UpdatedDate:                   db.UpdatedDate.In(time.Local),
+		ScenarioID:                    db.ScenarioID,
 	}, nil
 }
 
@@ -118,5 +120,6 @@ func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderLineItem {
 		CreatedDate:                   app.CreatedDate.UTC(),
 		UpdatedBy:                     app.UpdatedBy,
 		UpdatedDate:                   app.UpdatedDate.UTC(),
+		ScenarioID:                    app.ScenarioID,
 	}
 }
