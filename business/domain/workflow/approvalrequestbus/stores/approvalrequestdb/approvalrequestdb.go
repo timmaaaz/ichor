@@ -73,7 +73,12 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (approvalrequestbus
 	}
 
 	const q = `
-	SELECT ar.*, r.name AS rule_name
+	SELECT
+		ar.approval_request_id, ar.execution_id, ar.rule_id, ar.action_name,
+		ar.approvers, ar.approval_type, ar.status, ar.timeout_hours, ar.task_token,
+		ar.approval_message, ar.resolved_by, ar.resolution_reason,
+		ar.created_date, ar.resolved_date, ar.scenario_id,
+		r.name AS rule_name
 	FROM workflow.approval_requests ar
 	LEFT JOIN workflow.automation_rules r ON ar.rule_id = r.id
 	WHERE ar.approval_request_id = :id`
@@ -137,7 +142,12 @@ func (s *Store) Query(ctx context.Context, filter approvalrequestbus.QueryFilter
 	}
 
 	const q = `
-	SELECT ar.*, r.name AS rule_name
+	SELECT
+		ar.approval_request_id, ar.execution_id, ar.rule_id, ar.action_name,
+		ar.approvers, ar.approval_type, ar.status, ar.timeout_hours, ar.task_token,
+		ar.approval_message, ar.resolved_by, ar.resolution_reason,
+		ar.created_date, ar.resolved_date, ar.scenario_id,
+		r.name AS rule_name
 	FROM workflow.approval_requests ar
 	LEFT JOIN workflow.automation_rules r ON ar.rule_id = r.id
 	WHERE TRUE`
