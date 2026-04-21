@@ -38,6 +38,7 @@ type purchaseOrder struct {
 	UpdatedBy               uuid.UUID      `db:"updated_by"`
 	CreatedDate             time.Time      `db:"created_date"`
 	UpdatedDate             time.Time      `db:"updated_date"`
+	ScenarioID              *uuid.UUID     `db:"scenario_id"`
 }
 
 func toDBPurchaseOrder(bus purchaseorderbus.PurchaseOrder) purchaseOrder {
@@ -60,6 +61,7 @@ func toDBPurchaseOrder(bus purchaseorderbus.PurchaseOrder) purchaseOrder {
 		UpdatedBy:             bus.UpdatedBy,
 		CreatedDate:           bus.CreatedDate,
 		UpdatedDate:           bus.UpdatedDate,
+		ScenarioID:            bus.ScenarioID,
 	}
 
 	if bus.DeliveryLocationID != uuid.Nil {
@@ -129,6 +131,7 @@ func toBusPurchaseOrder(db purchaseOrder) purchaseorderbus.PurchaseOrder {
 		UpdatedBy:             db.UpdatedBy,
 		CreatedDate:           db.CreatedDate,
 		UpdatedDate:           db.UpdatedDate,
+		ScenarioID:            db.ScenarioID,
 	}
 
 	if db.DeliveryLocationID.Valid {

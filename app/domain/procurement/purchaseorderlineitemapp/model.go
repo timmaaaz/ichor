@@ -52,6 +52,7 @@ type PurchaseOrderLineItem struct {
 	UpdatedBy            string `json:"updated_by"`
 	CreatedDate          string `json:"created_date"`
 	UpdatedDate          string `json:"updated_date"`
+	ScenarioID           string `json:"scenario_id,omitempty"`
 }
 
 // Encode implements the Encoder interface.
@@ -67,7 +68,7 @@ func ToAppPurchaseOrderLineItem(bus purchaseorderlineitembus.PurchaseOrderLineIt
 		actualDeliveryDate = bus.ActualDeliveryDate.Format(timeutil.FORMAT)
 	}
 
-	return PurchaseOrderLineItem{
+	app := PurchaseOrderLineItem{
 		ID:                   bus.ID.String(),
 		PurchaseOrderID:      bus.PurchaseOrderID.String(),
 		SupplierProductID:    bus.SupplierProductID.String(),
@@ -86,6 +87,12 @@ func ToAppPurchaseOrderLineItem(bus purchaseorderlineitembus.PurchaseOrderLineIt
 		CreatedDate:          bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:          bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
+
+	if bus.ScenarioID != nil {
+		app.ScenarioID = bus.ScenarioID.String()
+	}
+
+	return app
 }
 
 // ToAppPurchaseOrderLineItems converts a slice of business purchase order line items to app purchase order line items.

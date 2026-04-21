@@ -63,6 +63,7 @@ type PurchaseOrder struct {
 	UpdatedBy               string `json:"updated_by"`
 	CreatedDate             string `json:"created_date"`
 	UpdatedDate             string `json:"updated_date"`
+	ScenarioID              string `json:"scenario_id,omitempty"`
 }
 
 // Encode implements the Encoder interface.
@@ -108,7 +109,7 @@ func ToAppPurchaseOrder(bus purchaseorderbus.PurchaseOrder) PurchaseOrder {
 		deliveryStreetID = bus.DeliveryStreetID.String()
 	}
 
-	return PurchaseOrder{
+	app := PurchaseOrder{
 		ID:                      bus.ID.String(),
 		OrderNumber:             bus.OrderNumber,
 		SupplierID:              bus.SupplierID.String(),
@@ -139,6 +140,12 @@ func ToAppPurchaseOrder(bus purchaseorderbus.PurchaseOrder) PurchaseOrder {
 		CreatedDate:             bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:             bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
+
+	if bus.ScenarioID != nil {
+		app.ScenarioID = bus.ScenarioID.String()
+	}
+
+	return app
 }
 
 // ToAppPurchaseOrders converts a slice of business purchase orders to app purchase orders.
