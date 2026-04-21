@@ -177,6 +177,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 			APIKey string `conf:"mask"` // ICHOR_RESEND_APIKEY — mask prevents logging
 			From   string              // ICHOR_RESEND_FROM e.g. "Ichor ERP <noreply@yourco.com>"
 		}
+		Scenarios struct {
+			// Enabled gates the ActiveScenario middleware. Default true so
+			// dev/KIND clusters (and integration tests) exercise scenario
+			// filtering; production deployments override to false to strip
+			// the per-request scenarios_active lookup. Env: ICHOR_SCENARIOS_ENABLED.
+			Enabled bool `conf:"default:true"`
+		}
 	}{
 		Version: conf.Version{
 			Build: build,
@@ -373,6 +380,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		ResendFrom:         cfg.Resend.From,
 		PrinterIP:          cfg.Printer.IP,
 		PrinterPort:        cfg.Printer.Port,
+		ScenariosEnabled:   cfg.Scenarios.Enabled,
 		CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 	}
 

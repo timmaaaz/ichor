@@ -76,6 +76,11 @@ type Config struct {
 	// without touching real hardware. Production callers leave it nil.
 	LabelPrinter LabelPrinter
 
+	// ScenariosEnabled gates the ActiveScenario middleware (Phase 0d).
+	// True in dev/KIND so floor testing scenarios can drive fixture filtering;
+	// false in production to avoid a per-request scenarios_active lookup.
+	ScenariosEnabled bool
+
 	// CORSAllowedOrigins for WebSocket and SSE upgrade routes.
 	// Defaults to "*" if empty (open — set from ICHOR_WEB_CORS_ALLOWED_ORIGINS).
 	CORSAllowedOrigins []string

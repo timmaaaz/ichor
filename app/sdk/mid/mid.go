@@ -51,6 +51,7 @@ const (
 	trKey
 	tableInfoKey
 	restrictedColumnKey
+	scenarioKey
 )
 
 func setClaims(ctx context.Context, claims auth.Claims) context.Context {
@@ -133,4 +134,20 @@ func GetTableInfo(ctx context.Context) (*TableInfo, error) {
 	}
 
 	return v, nil
+}
+
+func setScenario(ctx context.Context, id uuid.UUID) context.Context {
+	return context.WithValue(ctx, scenarioKey, id)
+}
+
+// GetScenario returns the active scenario id from the context and ok=false
+// when no scenario is active. The ActiveScenario middleware populates both
+// this key and the paired sqldb.scenarioKey; app-layer handlers read here
+// while floor-scoped repositories read via sqldb.GetScenarioFilter.
+func GetScenario(ctx context.Context) (uuid.UUID, bool) {
+	v, ok := ctx.Value(scenarioKey).(uuid.UUID)
+	if !ok {
+		return uuid.UUID{}, false
+	}
+	return v, true
 }

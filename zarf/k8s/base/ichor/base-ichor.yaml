@@ -173,6 +173,9 @@ spec:
             - name: ICHOR_PRINTER_PORT
               value: "9100"
 
+            - name: ICHOR_SCENARIOS_ENABLED
+              value: "true"
+
             - name: KUBERNETES_NAMESPACE
               valueFrom:
                 fieldRef:

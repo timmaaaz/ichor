@@ -672,6 +672,15 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// Create ActionService for unified action execution (works with empty registry in tests)
 	actionService := workflow.NewActionService(cfg.Log, cfg.DB, actionRegistry)
 
+	// Scenario subsystem (Phase 0d) — construct early so the active-scenario
+	// middleware can wrap every route registered below. When cfg.ScenariosEnabled
+	// is false (prod default), the middleware is skipped entirely and scoped
+	// repositories' ctx-reads become no-ops.
+	scenarioBus := scenariobus.NewBusiness(cfg.Log, delegate, scenariodb.NewStore(cfg.Log, cfg.DB), sqldb.NewBeginner(cfg.DB))
+	if cfg.ScenariosEnabled {
+		app.Use(mid.ActiveScenario(scenarioBus))
+	}
+
 	// Wire action API routes for manual action execution
 	actionapi.Routes(app, actionapi.Config{
 		Log:           cfg.Log,
@@ -851,9 +860,8 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	// Scenario subsystem (Phase 0d) — floor warehouse testing scenario management.
-	// Routes are registered unconditionally; the active-scenario middleware that
-	// populates the scenario context key is wired in Phase 0d.8 (Amendment B).
-	scenarioBus := scenariobus.NewBusiness(cfg.Log, delegate, scenariodb.NewStore(cfg.Log, cfg.DB), sqldb.NewBeginner(cfg.DB))
+	// scenarioBus is constructed earlier so the ActiveScenario middleware can
+	// wrap every route; here we only register the REST surface for CRUD + Load/Reset.
 	scenarioapi.Routes(app, scenarioapi.Config{
 		Log:            cfg.Log,
 		ScenarioBus:    scenarioBus,
