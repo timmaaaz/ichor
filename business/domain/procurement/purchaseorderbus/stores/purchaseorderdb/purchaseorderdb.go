@@ -56,7 +56,7 @@ func (s *Store) Create(ctx context.Context, po purchaseorderbus.PurchaseOrder) e
 		requested_by, approved_by, approved_date, approval_reason,
 		rejected_by, rejected_date, rejection_reason,
 		notes, supplier_reference_number, priority,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	) VALUES (
 		:id, :order_number, :supplier_id, :purchase_order_status_id,
 		:delivery_warehouse_id, :delivery_location_id, :delivery_street_id,
@@ -65,7 +65,7 @@ func (s *Store) Create(ctx context.Context, po purchaseorderbus.PurchaseOrder) e
 		:requested_by, :approved_by, :approved_date, :approval_reason,
 		:rejected_by, :rejected_date, :rejection_reason,
 		:notes, :supplier_reference_number, :priority,
-		:created_by, :updated_by, :created_date, :updated_date
+		:created_by, :updated_by, :created_date, :updated_date, :scenario_id
 	)
 	`
 
@@ -155,12 +155,13 @@ func (s *Store) Query(ctx context.Context, filter purchaseorderbus.QueryFilter, 
 		requested_by, approved_by, approved_date, approval_reason,
 		rejected_by, rejected_date, rejection_reason,
 		notes, supplier_reference_number, priority,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	FROM
 		procurement.purchase_orders`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -190,6 +191,7 @@ func (s *Store) Count(ctx context.Context, filter purchaseorderbus.QueryFilter) 
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -203,10 +205,8 @@ func (s *Store) Count(ctx context.Context, filter purchaseorderbus.QueryFilter) 
 
 // QueryByID retrieves a single purchase order from the system by its ID.
 func (s *Store) QueryByID(ctx context.Context, poID uuid.UUID) (purchaseorderbus.PurchaseOrder, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: poID.String(),
+	data := map[string]any{
+		"id": poID.String(),
 	}
 
 	const q = `
@@ -218,14 +218,17 @@ func (s *Store) QueryByID(ctx context.Context, poID uuid.UUID) (purchaseorderbus
 		requested_by, approved_by, approved_date, approval_reason,
 		rejected_by, rejected_date, rejection_reason,
 		notes, supplier_reference_number, priority,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	FROM
 		procurement.purchase_orders
 	WHERE
 		id = :id`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbOrder purchaseOrder
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbOrder); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbOrder); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return purchaseorderbus.PurchaseOrder{}, fmt.Errorf("db: %w", purchaseorderbus.ErrNotFound)
 		}
@@ -242,10 +245,8 @@ func (s *Store) QueryByIDs(ctx context.Context, poIDs []uuid.UUID) ([]purchaseor
 		uuidStrings[i] = id.String()
 	}
 
-	data := struct {
-		OrderIDs []string `db:"order_ids"`
-	}{
-		OrderIDs: uuidStrings,
+	data := map[string]any{
+		"order_ids": uuidStrings,
 	}
 
 	const q = `
@@ -257,14 +258,17 @@ func (s *Store) QueryByIDs(ctx context.Context, poIDs []uuid.UUID) ([]purchaseor
 		requested_by, approved_by, approved_date, approval_reason,
 		rejected_by, rejected_date, rejection_reason,
 		notes, supplier_reference_number, priority,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	FROM
 		procurement.purchase_orders
 	WHERE
 		id IN (:order_ids)`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbOrders []purchaseOrder
-	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &dbOrders); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &dbOrders); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 

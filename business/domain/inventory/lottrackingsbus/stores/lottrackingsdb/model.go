@@ -38,19 +38,20 @@ func toBusLotLocations(dbs []lotLocation) []lottrackingsbus.LotLocation {
 }
 
 type lotTrackings struct {
-	LotID             uuid.UUID `db:"id"`
-	SupplierProductID uuid.UUID `db:"supplier_product_id"`
-	LotNumber         string    `db:"lot_number"`
-	ManufactureDate   time.Time `db:"manufacture_date"`
-	ExpirationDate    time.Time `db:"expiration_date"`
-	ReceivedDate      time.Time `db:"received_date"`
-	Quantity          int       `db:"quantity"`
-	QualityStatus     string    `db:"quality_status"`
-	CreatedDate       time.Time `db:"created_date"`
-	UpdatedDate       time.Time `db:"updated_date"`
-	ProductID         uuid.UUID `db:"product_id"`
-	ProductName       string    `db:"product_name"`
-	ProductSKU        string    `db:"product_sku"`
+	LotID             uuid.UUID  `db:"id"`
+	SupplierProductID uuid.UUID  `db:"supplier_product_id"`
+	LotNumber         string     `db:"lot_number"`
+	ManufactureDate   time.Time  `db:"manufacture_date"`
+	ExpirationDate    time.Time  `db:"expiration_date"`
+	ReceivedDate      time.Time  `db:"received_date"`
+	Quantity          int        `db:"quantity"`
+	QualityStatus     string     `db:"quality_status"`
+	CreatedDate       time.Time  `db:"created_date"`
+	UpdatedDate       time.Time  `db:"updated_date"`
+	ProductID         uuid.UUID  `db:"product_id"`
+	ProductName       string     `db:"product_name"`
+	ProductSKU        string     `db:"product_sku"`
+	ScenarioID        *uuid.UUID `db:"scenario_id"`
 }
 
 func toDBLotTrackings(bus lottrackingsbus.LotTrackings) lotTrackings {
@@ -65,6 +66,7 @@ func toDBLotTrackings(bus lottrackingsbus.LotTrackings) lotTrackings {
 		QualityStatus:     bus.QualityStatus,
 		CreatedDate:       bus.CreatedDate.UTC(),
 		UpdatedDate:       bus.UpdatedDate.UTC(),
+		ScenarioID:        bus.ScenarioID,
 	}
 }
 
@@ -83,6 +85,7 @@ func toBusLotTrackings(db lotTrackings) lottrackingsbus.LotTrackings {
 		ProductID:         db.ProductID,
 		ProductName:       db.ProductName,
 		ProductSKU:        db.ProductSKU,
+		ScenarioID:        db.ScenarioID,
 	}
 }
 

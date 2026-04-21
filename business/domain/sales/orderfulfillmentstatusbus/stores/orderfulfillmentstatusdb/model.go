@@ -14,12 +14,14 @@ type orderFulfillmentStatus struct {
 	PrimaryColor   sql.NullString `db:"primary_color"`
 	SecondaryColor sql.NullString `db:"secondary_color"`
 	Icon           sql.NullString `db:"icon"`
+	ScenarioID     *uuid.UUID     `db:"scenario_id"`
 }
 
 func toBusOrderFulfillmentStatus(db orderFulfillmentStatus) orderfulfillmentstatusbus.OrderFulfillmentStatus {
 	bus := orderfulfillmentstatusbus.OrderFulfillmentStatus{
-		ID:   db.ID,
-		Name: db.Name,
+		ID:         db.ID,
+		Name:       db.Name,
+		ScenarioID: db.ScenarioID,
 	}
 
 	if db.Description.Valid {
@@ -51,8 +53,9 @@ func toBusOrderFulfillmentStatuses(dbs []orderFulfillmentStatus) []orderfulfillm
 
 func toDBOrderFulfillmentStatus(bus orderfulfillmentstatusbus.OrderFulfillmentStatus) orderFulfillmentStatus {
 	db := orderFulfillmentStatus{
-		ID:   bus.ID,
-		Name: bus.Name,
+		ID:         bus.ID,
+		Name:       bus.Name,
+		ScenarioID: bus.ScenarioID,
 	}
 
 	if bus.Description != "" {

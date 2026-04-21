@@ -47,6 +47,7 @@ type InventoryTransaction struct {
 	TransactionDate        string `json:"transaction_date"`
 	CreatedDate            string `json:"created_date"`
 	UpdatedDate            string `json:"updated_date"`
+	ScenarioID             string `json:"scenario_id,omitempty"`
 }
 
 func (app InventoryTransaction) Encode() ([]byte, string, error) {
@@ -65,6 +66,11 @@ func ToAppInventoryTransaction(bus inventorytransactionbus.InventoryTransaction)
 		serialID = bus.SerialID.String()
 	}
 
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return InventoryTransaction{
 		InventoryTransactionID: bus.InventoryTransactionID.String(),
 		ProductID:              bus.ProductID.String(),
@@ -78,6 +84,7 @@ func ToAppInventoryTransaction(bus inventorytransactionbus.InventoryTransaction)
 		TransactionDate:        bus.TransactionDate.Format(timeutil.FORMAT),
 		CreatedDate:            bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:            bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:             scenarioID,
 	}
 }
 

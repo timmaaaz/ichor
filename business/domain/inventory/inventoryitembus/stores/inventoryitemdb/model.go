@@ -8,20 +8,21 @@ import (
 )
 
 type inventoryItem struct {
-	ID                    uuid.UUID `db:"id"`
-	ProductID             uuid.UUID `db:"product_id"`
-	LocationID            uuid.UUID `db:"location_id"`
-	Quantity              int       `db:"quantity"`
-	ReservedQuantity      int       `db:"reserved_quantity"`
-	AllocatedQuantity     int       `db:"allocated_quantity"`
-	MinimumStock          int       `db:"minimum_stock"`
-	MaximumStock          int       `db:"maximum_stock"`
-	ReorderPoint          int       `db:"reorder_point"`
-	EconomicOrderQuantity int       `db:"economic_order_quantity"`
-	SafetyStock           int       `db:"safety_stock"`
-	AvgDailyUsage         int       `db:"avg_daily_usage"`
-	CreatedDate           time.Time `db:"created_date"`
-	UpdatedDate           time.Time `db:"updated_date"`
+	ID                    uuid.UUID  `db:"id"`
+	ProductID             uuid.UUID  `db:"product_id"`
+	LocationID            uuid.UUID  `db:"location_id"`
+	Quantity              int        `db:"quantity"`
+	ReservedQuantity      int        `db:"reserved_quantity"`
+	AllocatedQuantity     int        `db:"allocated_quantity"`
+	MinimumStock          int        `db:"minimum_stock"`
+	MaximumStock          int        `db:"maximum_stock"`
+	ReorderPoint          int        `db:"reorder_point"`
+	EconomicOrderQuantity int        `db:"economic_order_quantity"`
+	SafetyStock           int        `db:"safety_stock"`
+	AvgDailyUsage         int        `db:"avg_daily_usage"`
+	CreatedDate           time.Time  `db:"created_date"`
+	UpdatedDate           time.Time  `db:"updated_date"`
+	ScenarioID            *uuid.UUID `db:"scenario_id"`
 }
 
 func toBusInventoryItem(db inventoryItem) inventoryitembus.InventoryItem {
@@ -40,6 +41,7 @@ func toBusInventoryItem(db inventoryItem) inventoryitembus.InventoryItem {
 		AvgDailyUsage:         db.AvgDailyUsage,
 		CreatedDate:           db.CreatedDate.UTC(),
 		UpdatedDate:           db.UpdatedDate.UTC(),
+		ScenarioID:            db.ScenarioID,
 	}
 }
 
@@ -154,5 +156,6 @@ func toDBInventoryItem(bus inventoryitembus.InventoryItem) inventoryItem {
 		AvgDailyUsage:         bus.AvgDailyUsage,
 		CreatedDate:           bus.CreatedDate.UTC(),
 		UpdatedDate:           bus.UpdatedDate.UTC(),
+		ScenarioID:            bus.ScenarioID,
 	}
 }

@@ -28,8 +28,7 @@ func Test_TCPPrinter_SendZPL(t *testing.T) {
 		received <- string(data)
 	}()
 
-	host, port, _ := net.SplitHostPort(ln.Addr().String())
-	p := tcpprint.New(host, port, 2*time.Second)
+	p := tcpprint.New(ln.Addr().String(), 2*time.Second)
 
 	payload := "^XA\n^FDHELLO^FS\n^XZ\n"
 	if err := p.SendZPL(context.Background(), []byte(payload)); err != nil {
@@ -48,7 +47,7 @@ func Test_TCPPrinter_SendZPL(t *testing.T) {
 
 func Test_TCPPrinter_DialFailure(t *testing.T) {
 	// 127.0.0.1:1 is virtually guaranteed to refuse; timeout is hard cap.
-	p := tcpprint.New("127.0.0.1", "1", 500*time.Millisecond)
+	p := tcpprint.New("127.0.0.1:1", 500*time.Millisecond)
 	err := p.SendZPL(context.Background(), []byte("^XA^XZ"))
 	if err == nil {
 		t.Fatal("expected dial error, got nil")

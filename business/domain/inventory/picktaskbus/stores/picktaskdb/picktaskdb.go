@@ -50,12 +50,12 @@ func (s *Store) Create(ctx context.Context, task picktaskbus.PickTask) error {
 		(id, task_number, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
 		 location_id, quantity_to_pick, quantity_picked, status,
 		 assigned_to, assigned_at, completed_by, completed_at,
-		 short_pick_reason, created_by, created_date, updated_date)
+		 short_pick_reason, created_by, created_date, updated_date, scenario_id)
 	VALUES
 		(:id, :task_number, :sales_order_id, :sales_order_line_item_id, :product_id, :lot_id, :serial_id,
 		 :location_id, :quantity_to_pick, :quantity_picked, :status,
 		 :assigned_to, :assigned_at, :completed_by, :completed_at,
-		 :short_pick_reason, :created_by, :created_date, :updated_date)
+		 :short_pick_reason, :created_by, :created_date, :updated_date, :scenario_id)
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBPickTask(task)); err != nil {
@@ -135,13 +135,14 @@ func (s *Store) Query(ctx context.Context, filter picktaskbus.QueryFilter, order
 		id, task_number, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
 		location_id, quantity_to_pick, quantity_picked, status,
 		assigned_to, assigned_at, completed_by, completed_at,
-		short_pick_reason, created_by, created_date, updated_date
+		short_pick_reason, created_by, created_date, updated_date, scenario_id
 	FROM
 		inventory.pick_tasks
 	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -177,6 +178,7 @@ func (s *Store) Count(ctx context.Context, filter picktaskbus.QueryFilter) (int,
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -190,10 +192,8 @@ func (s *Store) Count(ctx context.Context, filter picktaskbus.QueryFilter) (int,
 
 // QueryByID retrieves a single pick task by its ID.
 func (s *Store) QueryByID(ctx context.Context, taskID uuid.UUID) (picktaskbus.PickTask, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: taskID.String(),
+	data := map[string]any{
+		"id": taskID.String(),
 	}
 
 	const q = `
@@ -201,15 +201,18 @@ func (s *Store) QueryByID(ctx context.Context, taskID uuid.UUID) (picktaskbus.Pi
 		id, task_number, sales_order_id, sales_order_line_item_id, product_id, lot_id, serial_id,
 		location_id, quantity_to_pick, quantity_picked, status,
 		assigned_to, assigned_at, completed_by, completed_at,
-		short_pick_reason, created_by, created_date, updated_date
+		short_pick_reason, created_by, created_date, updated_date, scenario_id
 	FROM
 		inventory.pick_tasks
 	WHERE
 		id = :id
 	`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbTask pickTask
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbTask); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbTask); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return picktaskbus.PickTask{}, picktaskbus.ErrNotFound
 		}

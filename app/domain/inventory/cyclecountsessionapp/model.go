@@ -34,6 +34,7 @@ type CycleCountSession struct {
 	CreatedDate   string `json:"createdDate"`
 	UpdatedDate   string `json:"updatedDate"`
 	CompletedDate string `json:"completedDate"`
+	ScenarioID    string `json:"scenario_id,omitempty"`
 }
 
 func (app CycleCountSession) Encode() ([]byte, string, error) {
@@ -48,6 +49,11 @@ func ToAppCycleCountSession(bus cyclecountsessionbus.CycleCountSession) CycleCou
 		completedDate = bus.CompletedDate.Format(timeutil.FORMAT)
 	}
 
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return CycleCountSession{
 		ID:            bus.ID.String(),
 		Name:          bus.Name,
@@ -56,6 +62,7 @@ func ToAppCycleCountSession(bus cyclecountsessionbus.CycleCountSession) CycleCou
 		CreatedDate:   bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:   bus.UpdatedDate.Format(timeutil.FORMAT),
 		CompletedDate: completedDate,
+		ScenarioID:    scenarioID,
 	}
 }
 

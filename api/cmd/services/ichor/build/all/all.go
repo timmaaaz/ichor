@@ -42,6 +42,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/hr/reportstoapi"
 	"github.com/timmaaaz/ichor/api/domain/http/hr/titleapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inspectionapi"
+	"github.com/timmaaaz/ichor/api/domain/http/scenarios/scenarioapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventoryadjustmentapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventoryitemapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/inventorylocationapi"
@@ -176,6 +177,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/tcpprint"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus/stores/scenariodb"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	validassetdb "github.com/timmaaaz/ichor/business/domain/assets/validassetbus/stores/assetdb"
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
@@ -336,6 +339,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
 	"github.com/timmaaaz/ichor/business/sdk/llm/claude"
 	"github.com/timmaaaz/ichor/business/sdk/llm/gemini"
@@ -655,6 +659,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			// Labels domain
 			delegateHandler.RegisterDomain(delegate, labelbus.DomainName, labelbus.EntityName)
 
+			// Scenarios domain
+			delegateHandler.RegisterDomain(delegate, scenariobus.DomainName, scenariobus.EntityName)
+
 			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized")
 		}
 	} else {
@@ -664,6 +671,15 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Create ActionService for unified action execution (works with empty registry in tests)
 	actionService := workflow.NewActionService(cfg.Log, cfg.DB, actionRegistry)
+
+	// Scenario subsystem (Phase 0d) — construct early so the active-scenario
+	// middleware can wrap every route registered below. When cfg.ScenariosEnabled
+	// is false (prod default), the middleware is skipped entirely and scoped
+	// repositories' ctx-reads become no-ops.
+	scenarioBus := scenariobus.NewBusiness(cfg.Log, delegate, scenariodb.NewStore(cfg.Log, cfg.DB), sqldb.NewBeginner(cfg.DB))
+	if cfg.ScenariosEnabled {
+		app.Use(mid.ActiveScenario(scenarioBus))
+	}
 
 	// Wire action API routes for manual action execution
 	actionapi.Routes(app, actionapi.Config{
@@ -825,20 +841,31 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	// Label subsystem (Phase 0b) — catalog + transaction-label printing
-	// via ZPL over TCP to a Zebra-compatible printer. PrinterIP/Port come
-	// from ICHOR_PRINTER_* via mux.Config (Phase 0a). Tests substitute a
-	// recording printer through cfg.LabelPrinter to assert ZPL dispatch.
+	// via ZPL over TCP to a Zebra-compatible printer. PrinterHostPort
+	// comes from ICHOR_PRINTER_HOSTPORT via mux.Config (Phase 0a). Tests
+	// substitute a recording printer through cfg.LabelPrinter to assert
+	// ZPL dispatch.
 	labelStorer := labeldb.NewStore(cfg.Log, cfg.DB)
 	var labelPrinter labelbus.Printer
 	if cfg.LabelPrinter != nil {
 		labelPrinter = cfg.LabelPrinter
 	} else {
-		labelPrinter = tcpprint.New(cfg.PrinterIP, cfg.PrinterPort, 5*time.Second)
+		labelPrinter = tcpprint.New(cfg.PrinterHostPort, 5*time.Second)
 	}
 	labelBus := labelbus.NewBusiness(cfg.Log, delegate, labelStorer, labelPrinter)
 	labelapi.Routes(app, labelapi.Config{
 		Log:            cfg.Log,
 		LabelBus:       labelBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+	})
+
+	// Scenario subsystem (Phase 0d) — floor warehouse testing scenario management.
+	// scenarioBus is constructed earlier so the ActiveScenario middleware can
+	// wrap every route; here we only register the REST surface for CRUD + Load/Reset.
+	scenarioapi.Routes(app, scenarioapi.Config{
+		Log:            cfg.Log,
+		ScenarioBus:    scenarioBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})

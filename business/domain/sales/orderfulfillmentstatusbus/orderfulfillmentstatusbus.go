@@ -79,6 +79,12 @@ func (b *Business) Create(ctx context.Context, newStatus NewOrderFulfillmentStat
 		Icon:           newStatus.Icon,
 	}
 
+	// Phase 0d: tag the row with the active scenario (if any) so scenario
+	// Reset can later undo this row while leaving baseline rows intact.
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		status.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, status); err != nil {
 		return OrderFulfillmentStatus{}, err
 	}

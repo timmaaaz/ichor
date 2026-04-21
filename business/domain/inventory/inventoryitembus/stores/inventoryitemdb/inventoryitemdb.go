@@ -49,13 +49,13 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inventoryitembus.Storer, e
 func (s *Store) Create(ctx context.Context, ip inventoryitembus.InventoryItem) error {
 	const q = `
 	INSERT INTO inventory.inventory_items (
-		id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
-		minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
-		avg_daily_usage, created_date, updated_date
+		id, product_id, location_id, quantity, reserved_quantity, allocated_quantity,
+		minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock,
+		avg_daily_usage, created_date, updated_date, scenario_id
 	) VALUES (
-        :id, :product_id, :location_id, :quantity, :reserved_quantity, :allocated_quantity, 
-        :minimum_stock, :maximum_stock, :reorder_point, :economic_order_quantity, :safety_stock, 
-        :avg_daily_usage, :created_date, :updated_date
+        :id, :product_id, :location_id, :quantity, :reserved_quantity, :allocated_quantity,
+        :minimum_stock, :maximum_stock, :reorder_point, :economic_order_quantity, :safety_stock,
+        :avg_daily_usage, :created_date, :updated_date, :scenario_id
     )
 	`
 
@@ -133,15 +133,16 @@ func (s *Store) Query(ctx context.Context, filter inventoryitembus.QueryFilter, 
 
 	const q = `
     SELECT
-        id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
-        minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
-        avg_daily_usage, created_date, updated_date
+        id, product_id, location_id, quantity, reserved_quantity, allocated_quantity,
+        minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock,
+        avg_daily_usage, created_date, updated_date, scenario_id
     FROM
         inventory.inventory_items
     `
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -161,10 +162,8 @@ func (s *Store) Query(ctx context.Context, filter inventoryitembus.QueryFilter, 
 
 // QueryItemsWithProductAtLocation retrieves all inventory items at a location joined with product details.
 func (s *Store) QueryItemsWithProductAtLocation(ctx context.Context, locationID uuid.UUID) ([]inventoryitembus.ItemWithProduct, error) {
-	data := struct {
-		LocationID uuid.UUID `db:"location_id"`
-	}{
-		LocationID: locationID,
+	data := map[string]any{
+		"location_id": locationID,
 	}
 
 	const q = `
@@ -177,11 +176,18 @@ func (s *Store) QueryItemsWithProductAtLocation(ctx context.Context, locationID 
 	FROM inventory.inventory_items ii
 	JOIN products.products p ON p.id = ii.product_id
 	WHERE ii.location_id = :location_id
-	ORDER BY p.name
 	`
 
+	buf := bytes.NewBufferString(q)
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		buf.WriteString(" AND (ii.scenario_id IS NULL OR ii.scenario_id = :scenario_id)")
+		data["scenario_id"] = sid
+	}
+
+	buf.WriteString(" ORDER BY p.name")
+
 	var items []itemWithProduct
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &items); err != nil {
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &items); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
@@ -216,6 +222,14 @@ func (s *Store) QueryWithLocationDetails(ctx context.Context, filter inventoryit
 
 	buf := bytes.NewBufferString(q)
 	applyFilterAliased(filter, data, buf)
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		if bytes.Contains(buf.Bytes(), []byte(" WHERE ")) {
+			buf.WriteString(" AND (ii.scenario_id IS NULL OR ii.scenario_id = :scenario_id)")
+		} else {
+			buf.WriteString(" WHERE (ii.scenario_id IS NULL OR ii.scenario_id = :scenario_id)")
+		}
+		data["scenario_id"] = sid
+	}
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -273,6 +287,12 @@ func (s *Store) QueryAvailableForAllocation(ctx context.Context, productID uuid.
 		args["warehouse_id"] = warehouseID.String()
 	}
 
+	// Apply scenario filter inline (aliased query uses ii.scenario_id)
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		q += " AND (ii.scenario_id IS NULL OR ii.scenario_id = :scenario_id)"
+		args["scenario_id"] = sid
+	}
+
 	switch strategy {
 	case "lifo":
 		q += " ORDER BY ii.created_date DESC"
@@ -311,6 +331,15 @@ func (s *Store) queryFEFO(ctx context.Context, args map[string]any, locationID *
 		args["warehouse_id"] = warehouseID.String()
 	}
 
+	// Apply scenario filter inline on both the outer and inner query paths
+	// (aliased query uses ii.scenario_id / sub.scenario_id).
+	scenarioClause := ""
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		scenarioClause = " AND (ii.scenario_id IS NULL OR ii.scenario_id = :scenario_id)"
+		filters += " AND (sub.scenario_id IS NULL OR sub.scenario_id = :scenario_id)"
+		args["scenario_id"] = sid
+	}
+
 	q := `
     SELECT
         ii.id, ii.product_id, ii.location_id, ii.quantity, ii.reserved_quantity,
@@ -331,7 +360,7 @@ func (s *Store) queryFEFO(ctx context.Context, args map[string]any, locationID *
             GROUP BY sub.id, sub.created_date
             ORDER BY MIN(lt.expiration_date) ASC NULLS LAST, sub.created_date ASC
             LIMIT :limit
-        )
+        )` + scenarioClause + `
     ORDER BY (
         SELECT MIN(lt2.expiration_date)
         FROM inventory.serial_numbers sn2
@@ -361,6 +390,7 @@ func (s *Store) Count(ctx context.Context, filter inventoryitembus.QueryFilter) 
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -373,26 +403,26 @@ func (s *Store) Count(ctx context.Context, filter inventoryitembus.QueryFilter) 
 }
 
 func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (inventoryitembus.InventoryItem, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: itemID.String(),
+	data := map[string]any{
+		"id": itemID.String(),
 	}
 
 	const q = `
     SELECT
-        id, product_id, location_id, quantity, reserved_quantity, allocated_quantity, 
-        minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock, 
-        avg_daily_usage, created_date, updated_date
+        id, product_id, location_id, quantity, reserved_quantity, allocated_quantity,
+        minimum_stock, maximum_stock, reorder_point, economic_order_quantity, safety_stock,
+        avg_daily_usage, created_date, updated_date, scenario_id
     FROM
         inventory.inventory_items
     WHERE
         id = :id
-
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var ip inventoryItem
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &ip); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &ip); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return inventoryitembus.InventoryItem{}, inventoryitembus.ErrNotFound
 		}
@@ -408,16 +438,19 @@ func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (inventoryitemb
 // Relies on the unique_product_location constraint added in migration v1.998.
 // newID is used only on the INSERT path; it is ignored when the record already exists.
 func (s *Store) UpsertQuantity(ctx context.Context, newID, productID, locationID uuid.UUID, quantityDelta int) error {
-	data := struct {
-		ID         uuid.UUID `db:"id"`
-		ProductID  uuid.UUID `db:"product_id"`
-		LocationID uuid.UUID `db:"location_id"`
-		Quantity   int       `db:"quantity"`
-	}{
-		ID:         newID,
-		ProductID:  productID,
-		LocationID: locationID,
-		Quantity:   quantityDelta,
+	data := map[string]any{
+		"id":          newID,
+		"product_id":  productID,
+		"location_id": locationID,
+		"quantity":    quantityDelta,
+	}
+
+	// Tag new rows with the active scenario; existing rows keep their scenario
+	// (never migrate between scenarios per Decision 4).
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		data["scenario_id"] = sid
+	} else {
+		data["scenario_id"] = nil
 	}
 
 	const q = `
@@ -426,11 +459,11 @@ func (s *Store) UpsertQuantity(ctx context.Context, newID, productID, locationID
 		 reserved_quantity, allocated_quantity,
 		 minimum_stock, maximum_stock, reorder_point,
 		 economic_order_quantity, safety_stock, avg_daily_usage,
-		 created_date, updated_date)
+		 created_date, updated_date, scenario_id)
 	VALUES
 		(:id, :product_id, :location_id, :quantity,
 		 0, 0, 0, 0, 0, 0, 0, 0,
-		 NOW(), NOW())
+		 NOW(), NOW(), :scenario_id)
 	ON CONFLICT (product_id, location_id)
 	DO UPDATE SET
 		quantity     = inventory.inventory_items.quantity + EXCLUDED.quantity,

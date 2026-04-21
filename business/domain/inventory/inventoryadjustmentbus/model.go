@@ -27,6 +27,7 @@ type InventoryAdjustment struct {
 	AdjustmentDate        time.Time  `json:"adjustment_date"`
 	CreatedDate           time.Time  `json:"created_date"`
 	UpdatedDate           time.Time  `json:"updated_date"`
+	ScenarioID            *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 type NewInventoryAdjustment struct {

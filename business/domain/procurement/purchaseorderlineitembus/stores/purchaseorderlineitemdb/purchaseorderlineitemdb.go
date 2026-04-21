@@ -53,13 +53,13 @@ func (s *Store) Create(ctx context.Context, poli purchaseorderlineitembus.Purcha
 		quantity_ordered, quantity_received, quantity_cancelled,
 		unit_cost, discount, line_total, line_item_status_id,
 		expected_delivery_date, actual_delivery_date, notes,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	) VALUES (
 		:id, :purchase_order_id, :supplier_product_id,
 		:quantity_ordered, :quantity_received, :quantity_cancelled,
 		:unit_cost, :discount, :line_total, :line_item_status_id,
 		:expected_delivery_date, :actual_delivery_date, :notes,
-		:created_by, :updated_by, :created_date, :updated_date
+		:created_by, :updated_by, :created_date, :updated_date, :scenario_id
 	)
 	`
 
@@ -134,12 +134,13 @@ func (s *Store) Query(ctx context.Context, filter purchaseorderlineitembus.Query
 		quantity_ordered, quantity_received, quantity_cancelled,
 		unit_cost, discount, line_total, line_item_status_id,
 		expected_delivery_date, actual_delivery_date, notes,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	FROM
 		procurement.purchase_order_line_items`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -169,6 +170,7 @@ func (s *Store) Count(ctx context.Context, filter purchaseorderlineitembus.Query
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -182,10 +184,8 @@ func (s *Store) Count(ctx context.Context, filter purchaseorderlineitembus.Query
 
 // QueryByID retrieves a single purchase order line item from the system by its ID.
 func (s *Store) QueryByID(ctx context.Context, poliID uuid.UUID) (purchaseorderlineitembus.PurchaseOrderLineItem, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: poliID.String(),
+	data := map[string]any{
+		"id": poliID.String(),
 	}
 
 	const q = `
@@ -194,14 +194,17 @@ func (s *Store) QueryByID(ctx context.Context, poliID uuid.UUID) (purchaseorderl
 		quantity_ordered, quantity_received, quantity_cancelled,
 		unit_cost, discount, line_total, line_item_status_id,
 		expected_delivery_date, actual_delivery_date, notes,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	FROM
 		procurement.purchase_order_line_items
 	WHERE
 		id = :id`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbItem purchaseOrderLineItem
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbItem); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbItem); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return purchaseorderlineitembus.PurchaseOrderLineItem{}, fmt.Errorf("db: %w", purchaseorderlineitembus.ErrNotFound)
 		}
@@ -218,10 +221,8 @@ func (s *Store) QueryByIDs(ctx context.Context, poliIDs []uuid.UUID) ([]purchase
 		uuidStrings[i] = id.String()
 	}
 
-	data := struct {
-		LineItemIDs []string `db:"line_item_ids"`
-	}{
-		LineItemIDs: uuidStrings,
+	data := map[string]any{
+		"line_item_ids": uuidStrings,
 	}
 
 	const q = `
@@ -230,14 +231,17 @@ func (s *Store) QueryByIDs(ctx context.Context, poliIDs []uuid.UUID) ([]purchase
 		quantity_ordered, quantity_received, quantity_cancelled,
 		unit_cost, discount, line_total, line_item_status_id,
 		expected_delivery_date, actual_delivery_date, notes,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	FROM
 		procurement.purchase_order_line_items
 	WHERE
 		id IN (:line_item_ids)`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbItems []purchaseOrderLineItem
-	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &dbItems); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &dbItems); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
@@ -246,10 +250,8 @@ func (s *Store) QueryByIDs(ctx context.Context, poliIDs []uuid.UUID) ([]purchase
 
 // QueryByPurchaseOrderID retrieves all line items for a specific purchase order.
 func (s *Store) QueryByPurchaseOrderID(ctx context.Context, poID uuid.UUID) ([]purchaseorderlineitembus.PurchaseOrderLineItem, error) {
-	data := struct {
-		PurchaseOrderID string `db:"purchase_order_id"`
-	}{
-		PurchaseOrderID: poID.String(),
+	data := map[string]any{
+		"purchase_order_id": poID.String(),
 	}
 
 	const q = `
@@ -258,7 +260,7 @@ func (s *Store) QueryByPurchaseOrderID(ctx context.Context, poID uuid.UUID) ([]p
 		quantity_ordered, quantity_received, quantity_cancelled,
 		unit_cost, discount, line_total, line_item_status_id,
 		expected_delivery_date, actual_delivery_date, notes,
-		created_by, updated_by, created_date, updated_date
+		created_by, updated_by, created_date, updated_date, scenario_id
 	FROM
 		procurement.purchase_order_line_items
 	WHERE
@@ -266,8 +268,11 @@ func (s *Store) QueryByPurchaseOrderID(ctx context.Context, poID uuid.UUID) ([]p
 	ORDER BY
 		created_date ASC`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbItems []purchaseOrderLineItem
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbItems); err != nil {
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbItems); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 

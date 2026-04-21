@@ -99,6 +99,10 @@ func (b *Business) Create(ctx context.Context, nto NewTransferOrder) (TransferOr
 		UpdatedDate:    now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		transferOrder.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, transferOrder); err != nil {
 		return TransferOrder{}, fmt.Errorf("create: %w", err)
 	}

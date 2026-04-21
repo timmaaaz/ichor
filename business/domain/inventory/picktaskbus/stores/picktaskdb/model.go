@@ -31,6 +31,7 @@ type pickTask struct {
 	CreatedBy            uuid.UUID      `db:"created_by"`
 	CreatedDate          time.Time      `db:"created_date"`
 	UpdatedDate          time.Time      `db:"updated_date"`
+	ScenarioID           *uuid.UUID     `db:"scenario_id"`
 }
 
 func toBusPickTask(db pickTask) (picktaskbus.PickTask, error) {
@@ -92,6 +93,7 @@ func toBusPickTask(db pickTask) (picktaskbus.PickTask, error) {
 		CreatedBy:            db.CreatedBy,
 		CreatedDate:          db.CreatedDate,
 		UpdatedDate:          db.UpdatedDate,
+		ScenarioID:           db.ScenarioID,
 	}, nil
 }
 
@@ -158,5 +160,6 @@ func toDBPickTask(bus picktaskbus.PickTask) pickTask {
 		CreatedBy:            bus.CreatedBy,
 		CreatedDate:          bus.CreatedDate,
 		UpdatedDate:          bus.UpdatedDate,
+		ScenarioID:           bus.ScenarioID,
 	}
 }

@@ -12,20 +12,21 @@ import (
 // expect snake_case keys to match API conventions.
 
 type InventoryItem struct {
-	ID                    uuid.UUID `json:"id"`
-	ProductID             uuid.UUID `json:"product_id"`
-	LocationID            uuid.UUID `json:"location_id"`
-	Quantity              int       `json:"quantity"`
-	ReservedQuantity      int       `json:"reserved_quantity"`
-	AllocatedQuantity     int       `json:"allocated_quantity"`
-	MinimumStock          int       `json:"minimum_stock"`
-	MaximumStock          int       `json:"maximum_stock"`
-	ReorderPoint          int       `json:"reorder_point"`
-	EconomicOrderQuantity int       `json:"economic_order_quantity"`
-	SafetyStock           int       `json:"safety_stock"`
-	AvgDailyUsage         int       `json:"avg_daily_usage"`
-	CreatedDate           time.Time `json:"created_date"`
-	UpdatedDate           time.Time `json:"updated_date"`
+	ID                    uuid.UUID  `json:"id"`
+	ProductID             uuid.UUID  `json:"product_id"`
+	LocationID            uuid.UUID  `json:"location_id"`
+	Quantity              int        `json:"quantity"`
+	ReservedQuantity      int        `json:"reserved_quantity"`
+	AllocatedQuantity     int        `json:"allocated_quantity"`
+	MinimumStock          int        `json:"minimum_stock"`
+	MaximumStock          int        `json:"maximum_stock"`
+	ReorderPoint          int        `json:"reorder_point"`
+	EconomicOrderQuantity int        `json:"economic_order_quantity"`
+	SafetyStock           int        `json:"safety_stock"`
+	AvgDailyUsage         int        `json:"avg_daily_usage"`
+	CreatedDate           time.Time  `json:"created_date"`
+	UpdatedDate           time.Time  `json:"updated_date"`
+	ScenarioID            *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 type NewInventoryItem struct {

@@ -24,9 +24,10 @@ type PutAwayTask struct {
 	AssignedAt      time.Time `json:"assigned_at"`   // zero when unassigned
 	CompletedBy     uuid.UUID `json:"completed_by"`  // uuid.Nil when not completed
 	CompletedAt     time.Time `json:"completed_at"`  // zero when not completed
-	CreatedBy       uuid.UUID `json:"created_by"`
-	CreatedDate     time.Time `json:"created_date"`
-	UpdatedDate     time.Time `json:"updated_date"`
+	CreatedBy       uuid.UUID  `json:"created_by"`
+	CreatedDate     time.Time  `json:"created_date"`
+	UpdatedDate     time.Time  `json:"updated_date"`
+	ScenarioID      *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 // NewPutAwayTask contains the information needed to create a new put-away task.

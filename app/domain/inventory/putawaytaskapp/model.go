@@ -44,6 +44,7 @@ type PutAwayTask struct {
 	CreatedBy       string `json:"created_by"`
 	CreatedDate     string `json:"created_date"`
 	UpdatedDate     string `json:"updated_date"`
+	ScenarioID      string `json:"scenario_id,omitempty"`
 }
 
 func (app PutAwayTask) Encode() ([]byte, string, error) {
@@ -73,6 +74,11 @@ func ToAppPutAwayTask(bus putawaytaskbus.PutAwayTask) PutAwayTask {
 		completedAt = bus.CompletedAt.Format(timeutil.FORMAT)
 	}
 
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return PutAwayTask{
 		ID:              bus.ID.String(),
 		ProductID:       bus.ProductID.String(),
@@ -87,6 +93,7 @@ func ToAppPutAwayTask(bus putawaytaskbus.PutAwayTask) PutAwayTask {
 		CreatedBy:       bus.CreatedBy.String(),
 		CreatedDate:     bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:     bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:      scenarioID,
 	}
 }
 

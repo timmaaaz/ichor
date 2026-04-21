@@ -30,6 +30,7 @@ type OrderLineItem struct {
 	CreatedDate                   time.Time   `json:"created_date"`
 	UpdatedBy                     uuid.UUID   `json:"updated_by"`
 	UpdatedDate                   time.Time   `json:"updated_date"`
+	ScenarioID                    *uuid.UUID  `json:"scenario_id,omitempty"`
 }
 
 type NewOrderLineItem struct {

@@ -8,12 +8,13 @@ import (
 )
 
 type lotLocation struct {
-	ID          uuid.UUID `db:"id"`
-	LotID       uuid.UUID `db:"lot_id"`
-	LocationID  uuid.UUID `db:"location_id"`
-	Quantity    int       `db:"quantity"`
-	CreatedDate time.Time `db:"created_date"`
-	UpdatedDate time.Time `db:"updated_date"`
+	ID          uuid.UUID  `db:"id"`
+	LotID       uuid.UUID  `db:"lot_id"`
+	LocationID  uuid.UUID  `db:"location_id"`
+	Quantity    int        `db:"quantity"`
+	CreatedDate time.Time  `db:"created_date"`
+	UpdatedDate time.Time  `db:"updated_date"`
+	ScenarioID  *uuid.UUID `db:"scenario_id"`
 }
 
 func toDBLotLocation(bus lotlocationbus.LotLocation) lotLocation {
@@ -24,6 +25,7 @@ func toDBLotLocation(bus lotlocationbus.LotLocation) lotLocation {
 		Quantity:    bus.Quantity,
 		CreatedDate: bus.CreatedDate.UTC(),
 		UpdatedDate: bus.UpdatedDate.UTC(),
+		ScenarioID:  bus.ScenarioID,
 	}
 }
 
@@ -35,6 +37,7 @@ func toBusLotLocation(db lotLocation) lotlocationbus.LotLocation {
 		Quantity:    db.Quantity,
 		CreatedDate: db.CreatedDate.Local(),
 		UpdatedDate: db.UpdatedDate.Local(),
+		ScenarioID:  db.ScenarioID,
 	}
 }
 

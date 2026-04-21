@@ -48,9 +48,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (serialnumberbus.Storer, er
 func (s *Store) Create(ctx context.Context, sn serialnumberbus.SerialNumber) error {
 	const q = `
     INSERT INTO inventory.serial_numbers (
-        id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
+        id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date, scenario_id
     ) VALUES (
-        :id, :lot_id, :product_id, :location_id, :serial_number, :status, :created_date, :updated_date
+        :id, :lot_id, :product_id, :location_id, :serial_number, :status, :created_date, :updated_date, :scenario_id
     )
     `
 
@@ -117,13 +117,14 @@ func (s *Store) Query(ctx context.Context, filter serialnumberbus.QueryFilter, o
 
 	const q = `
 	SELECT
-		id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
-	FROM 
+		id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date, scenario_id
+	FROM
 		inventory.serial_numbers
 	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -154,6 +155,7 @@ func (s *Store) Count(ctx context.Context, filter serialnumberbus.QueryFilter) (
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -168,10 +170,8 @@ func (s *Store) Count(ctx context.Context, filter serialnumberbus.QueryFilter) (
 
 // QueryLocationBySerialID retrieves the location of the specified serial number.
 func (s *Store) QueryLocationBySerialID(ctx context.Context, serialID uuid.UUID) (serialnumberbus.SerialLocation, error) {
-	data := struct {
-		SerialID string `db:"serial_id"`
-	}{
-		SerialID: serialID.String(),
+	data := map[string]any{
+		"serial_id": serialID.String(),
 	}
 
 	const q = `
@@ -191,8 +191,14 @@ func (s *Store) QueryLocationBySerialID(ctx context.Context, serialID uuid.UUID)
 	WHERE sn.id = :serial_id
 	`
 
+	buf := bytes.NewBufferString(q)
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		buf.WriteString(" AND (sn.scenario_id IS NULL OR sn.scenario_id = :scenario_id)")
+		data["scenario_id"] = sid
+	}
+
 	var loc serialLocation
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &loc); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &loc); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return serialnumberbus.SerialLocation{}, fmt.Errorf("namedquerystruct: %w", serialnumberbus.ErrNotFound)
 		}
@@ -204,23 +210,24 @@ func (s *Store) QueryLocationBySerialID(ctx context.Context, serialID uuid.UUID)
 
 // QueryByID gets the specified serial number from the database.
 func (s *Store) QueryByID(ctx context.Context, serialID uuid.UUID) (serialnumberbus.SerialNumber, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: serialID.String(),
+	data := map[string]any{
+		"id": serialID.String(),
 	}
 
 	const q = `
     SELECT
-        id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date
-    FROM 
+        id, lot_id, product_id, location_id, serial_number, status, created_date, updated_date, scenario_id
+    FROM
         inventory.serial_numbers
     WHERE
         id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var sn serialNumber
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &sn); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &sn); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return serialnumberbus.SerialNumber{}, fmt.Errorf("namedquerystruct: %w", serialnumberbus.ErrNotFound)
 		}

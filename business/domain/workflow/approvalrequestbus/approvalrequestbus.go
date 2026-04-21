@@ -89,6 +89,12 @@ func (b *Business) Create(ctx context.Context, na NewApprovalRequest) (ApprovalR
 		CreatedDate:     now,
 	}
 
+	// Phase 0d: tag the row with the active scenario (if any) so scenario
+	// Reset can later undo this row while leaving baseline rows intact.
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		req.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, req); err != nil {
 		return ApprovalRequest{}, fmt.Errorf("create approval request: %w", err)
 	}

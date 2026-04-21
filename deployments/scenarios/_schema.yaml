@@ -1,0 +1,44 @@
+# Scenario fixture schema — documentation only.
+# Source of truth for validation is
+# business/domain/scenarios/scenariobus/yamlload/yamlload.go.
+#
+# Directory layout:
+#   deployments/scenarios/<scenario-name>/
+#     scenario.yaml    (required)
+#     bindings.yaml    (optional — references baseline entities by stable code)
+#     state.yaml       (optional — scenario-tagged row blueprints)
+#
+# scenario.yaml:
+#   id          UUID, optional. Defaults to UUID v5 of "scenario:<name>" under the
+#               deadbeef-dead-beef-dead-beefdeadbeef namespace. Byte-identical
+#               across reseeds.
+#   name        string, required. Scenario identifier — used in URLs and as the
+#               YAML key. Must be unique across all scenarios.
+#   description string, optional. Human-readable summary.
+#
+# bindings.yaml:
+#   totes     list of {code: string}
+#                                  references inventory.label_catalog by code
+#   locations list of {code: string, role?: string}
+#                                  references inventory.inventory_locations by location_code
+#   lots      list of {ref: string, product_code: string}
+#                                  scenario-scoped lot blueprints; ref is used
+#                                  within this scenario's state.yaml FKs
+#   serials   list of {ref: string, product_code: string}
+#                                  same pattern for serial numbers
+#
+# state.yaml:
+#   Keyed by target-table suffix (e.g. purchase_orders, inventory_items,
+#   transfer_orders). Values are lists of objects whose keys map to the
+#   target table's columns. The seeder JSON-serializes each row and inserts
+#   into scenario_fixtures with target_table = "<schema>.<suffix>" resolved
+#   from a static map (see seed_scenarios.go:resolveTargetTable).
+#
+# Example:
+#   purchase_orders:
+#     - number: PO-SCEN-RUSH-001
+#       status: SENT
+#       expected_arrival_date: "2026-04-21T09:00:00Z"
+#
+# Validation is fail-hard: a corrupt YAML aborts seedScenarios() and the
+# dev database is NOT seeded.

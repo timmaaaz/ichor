@@ -31,6 +31,7 @@ type PickTask struct {
 	CreatedBy            uuid.UUID  `json:"created_by"`
 	CreatedDate          time.Time  `json:"created_date"`
 	UpdatedDate          time.Time  `json:"updated_date"`
+	ScenarioID           *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 // NewPickTask contains the information needed to create a new pick task.

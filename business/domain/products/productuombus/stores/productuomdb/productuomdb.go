@@ -128,7 +128,11 @@ func (s *Store) Query(ctx context.Context, filter productuombus.QueryFilter, ord
 		"rows_per_page": page.RowsPerPage(),
 	}
 
-	const q = `SELECT * FROM products.product_uoms`
+	const q = `
+	SELECT
+		id, product_id, name, abbreviation, conversion_factor,
+		is_base, is_approximate, notes, created_date, updated_date
+	FROM products.product_uoms`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -153,7 +157,12 @@ func (s *Store) QueryByID(ctx context.Context, uomID uuid.UUID) (productuombus.P
 		ID uuid.UUID `db:"id"`
 	}{ID: uomID}
 
-	const q = `SELECT * FROM products.product_uoms WHERE id = :id`
+	const q = `
+	SELECT
+		id, product_id, name, abbreviation, conversion_factor,
+		is_base, is_approximate, notes, created_date, updated_date
+	FROM products.product_uoms
+	WHERE id = :id`
 
 	var db productUOM
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &db); err != nil {

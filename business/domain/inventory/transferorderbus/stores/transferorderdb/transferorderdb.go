@@ -45,12 +45,12 @@ func (s *Store) Create(ctx context.Context, transferOrder transferorderbus.Trans
 	    id, transfer_number, product_id, from_location_id, to_location_id, requested_by,
 		approved_by, rejected_by_id, approval_reason, rejection_reason,
 		claimed_by, claimed_at, completed_by, completed_at,
-		quantity, status, transfer_date, created_date, updated_date
+		quantity, status, transfer_date, created_date, updated_date, scenario_id
     ) VALUES (
         :id, :transfer_number, :product_id, :from_location_id, :to_location_id, :requested_by,
         :approved_by, :rejected_by_id, :approval_reason, :rejection_reason,
         :claimed_by, :claimed_at, :completed_by, :completed_at,
-        :quantity, :status, :transfer_date, :created_date, :updated_date
+        :quantity, :status, :transfer_date, :created_date, :updated_date, :scenario_id
     )
 	`
 
@@ -131,13 +131,14 @@ func (s *Store) Query(ctx context.Context, filter transferorderbus.QueryFilter, 
 		id, transfer_number, product_id, from_location_id, to_location_id, requested_by, approved_by,
 		rejected_by_id, approval_reason, rejection_reason,
 		claimed_by, claimed_at, completed_by, completed_at,
-		quantity, status, transfer_date, created_date, updated_date
+		quantity, status, transfer_date, created_date, updated_date, scenario_id
     FROM
 	    inventory.transfer_orders
 		`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -176,10 +177,8 @@ func (s *Store) Count(ctx context.Context, filter transferorderbus.QueryFilter) 
 }
 
 func (s *Store) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (transferorderbus.TransferOrder, error) {
-	data := struct {
-		TransferID string `db:"id"`
-	}{
-		TransferID: transferOrderID.String(),
+	data := map[string]any{
+		"id": transferOrderID.String(),
 	}
 
 	const q = `
@@ -187,15 +186,18 @@ func (s *Store) QueryByID(ctx context.Context, transferOrderID uuid.UUID) (trans
         id, transfer_number, product_id, from_location_id, to_location_id, requested_by, approved_by,
         rejected_by_id, approval_reason, rejection_reason,
         claimed_by, claimed_at, completed_by, completed_at,
-        quantity, status, transfer_date, created_date, updated_date
+        quantity, status, transfer_date, created_date, updated_date, scenario_id
     FROM
         inventory.transfer_orders
     WHERE
         id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbTO transferOrder
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbTO); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbTO); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return transferorderbus.TransferOrder{}, transferorderbus.ErrNotFound
 		}

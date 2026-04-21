@@ -8,12 +8,13 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/tcpprint"
 )
 
-// Test_TCPPrinter_EmptyHostNoop verifies that an empty host short-
-// circuits SendZPL with nil — honouring mux.Config's "Empty PrinterIP
-// disables actual network dispatch" contract. Without the guard,
-// net.JoinHostPort("", "9100") dials localhost:9100 at request time.
+// Test_TCPPrinter_EmptyHostNoop verifies that an empty hostPort short-
+// circuits SendZPL with nil — honouring mux.Config's "Empty
+// PrinterHostPort disables actual network dispatch" contract. Without
+// the guard, an empty dial target would be rejected by the kernel at
+// request time in environments that intentionally leave it unset.
 func Test_TCPPrinter_EmptyHostNoop(t *testing.T) {
-	p := tcpprint.New("", "9100", 500*time.Millisecond)
+	p := tcpprint.New("", 500*time.Millisecond)
 	if err := p.SendZPL(context.Background(), []byte("^XA^XZ")); err != nil {
 		t.Fatalf("SendZPL with empty host should be no-op, got: %v", err)
 	}

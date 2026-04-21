@@ -26,10 +26,11 @@ type PurchaseOrderLineItem struct {
 	ExpectedDeliveryDate time.Time `json:"expected_delivery_date"`
 	ActualDeliveryDate   time.Time `json:"actual_delivery_date"`
 	Notes                string    `json:"notes"`
-	CreatedBy            uuid.UUID `json:"created_by"`
-	UpdatedBy            uuid.UUID `json:"updated_by"`
-	CreatedDate          time.Time `json:"created_date"`
-	UpdatedDate          time.Time `json:"updated_date"`
+	CreatedBy            uuid.UUID  `json:"created_by"`
+	UpdatedBy            uuid.UUID  `json:"updated_by"`
+	CreatedDate          time.Time  `json:"created_date"`
+	UpdatedDate          time.Time  `json:"updated_date"`
+	ScenarioID           *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 // NewPurchaseOrderLineItem contains information needed to create a new purchase order line item.

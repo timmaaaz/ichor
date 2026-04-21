@@ -42,6 +42,7 @@ type PurchaseOrder struct {
 	UpdatedBy               uuid.UUID  `json:"updated_by"`
 	CreatedDate             time.Time  `json:"created_date"`
 	UpdatedDate             time.Time  `json:"updated_date"`
+	ScenarioID              *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 // NewPurchaseOrder contains information needed to create a new purchase order.

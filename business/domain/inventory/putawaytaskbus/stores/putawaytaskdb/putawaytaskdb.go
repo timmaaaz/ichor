@@ -49,11 +49,11 @@ func (s *Store) Create(ctx context.Context, task putawaytaskbus.PutAwayTask) err
 	INSERT INTO inventory.put_away_tasks
 		(id, product_id, location_id, quantity, reference_number, status,
 		 assigned_to, assigned_at, completed_by, completed_at,
-		 created_by, created_date, updated_date)
+		 created_by, created_date, updated_date, scenario_id)
 	VALUES
 		(:id, :product_id, :location_id, :quantity, :reference_number, :status,
 		 :assigned_to, :assigned_at, :completed_by, :completed_at,
-		 :created_by, :created_date, :updated_date)
+		 :created_by, :created_date, :updated_date, :scenario_id)
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBPutAwayTask(task)); err != nil {
@@ -126,13 +126,14 @@ func (s *Store) Query(ctx context.Context, filter putawaytaskbus.QueryFilter, or
 	SELECT
 		id, product_id, location_id, quantity, reference_number, status,
 		assigned_to, assigned_at, completed_by, completed_at,
-		created_by, created_date, updated_date
+		created_by, created_date, updated_date, scenario_id
 	FROM
 		inventory.put_away_tasks
 	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -168,6 +169,7 @@ func (s *Store) Count(ctx context.Context, filter putawaytaskbus.QueryFilter) (i
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -181,25 +183,26 @@ func (s *Store) Count(ctx context.Context, filter putawaytaskbus.QueryFilter) (i
 
 // QueryByID retrieves a single put-away task by its ID.
 func (s *Store) QueryByID(ctx context.Context, taskID uuid.UUID) (putawaytaskbus.PutAwayTask, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: taskID.String(),
+	data := map[string]any{
+		"id": taskID.String(),
 	}
 
 	const q = `
 	SELECT
 		id, product_id, location_id, quantity, reference_number, status,
 		assigned_to, assigned_at, completed_by, completed_at,
-		created_by, created_date, updated_date
+		created_by, created_date, updated_date, scenario_id
 	FROM
 		inventory.put_away_tasks
 	WHERE
 		id = :id
 	`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbTask putAwayTask
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbTask); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbTask); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return putawaytaskbus.PutAwayTask{}, putawaytaskbus.ErrNotFound
 		}

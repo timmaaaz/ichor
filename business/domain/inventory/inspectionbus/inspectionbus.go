@@ -103,6 +103,10 @@ func (b *Business) Create(ctx context.Context, ni NewInspection) (Inspection, er
 		CreatedDate:        now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		inspection.ScenarioID = &sid
+	}
+
 	err := b.storer.Create(ctx, inspection)
 	if err != nil {
 		return Inspection{}, fmt.Errorf("create: %w", err)

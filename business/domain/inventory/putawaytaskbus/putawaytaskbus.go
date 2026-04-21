@@ -84,6 +84,10 @@ func (b *Business) Create(ctx context.Context, npt NewPutAwayTask) (PutAwayTask,
 		UpdatedDate:     now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		task.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, task); err != nil {
 		return PutAwayTask{}, fmt.Errorf("create: %w", err)
 	}

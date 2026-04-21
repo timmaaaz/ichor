@@ -26,6 +26,7 @@ type purchaseOrderLineItem struct {
 	UpdatedBy            uuid.UUID      `db:"updated_by"`
 	CreatedDate          time.Time      `db:"created_date"`
 	UpdatedDate          time.Time      `db:"updated_date"`
+	ScenarioID           *uuid.UUID     `db:"scenario_id"`
 }
 
 func toDBPurchaseOrderLineItem(bus purchaseorderlineitembus.PurchaseOrderLineItem) purchaseOrderLineItem {
@@ -44,6 +45,7 @@ func toDBPurchaseOrderLineItem(bus purchaseorderlineitembus.PurchaseOrderLineIte
 		UpdatedBy:         bus.UpdatedBy,
 		CreatedDate:       bus.CreatedDate,
 		UpdatedDate:       bus.UpdatedDate,
+		ScenarioID:        bus.ScenarioID,
 	}
 
 	if !bus.ExpectedDeliveryDate.IsZero() {
@@ -77,6 +79,7 @@ func toBusPurchaseOrderLineItem(db purchaseOrderLineItem) purchaseorderlineitemb
 		UpdatedBy:         db.UpdatedBy,
 		CreatedDate:       db.CreatedDate,
 		UpdatedDate:       db.UpdatedDate,
+		ScenarioID:        db.ScenarioID,
 	}
 
 	if db.ExpectedDeliveryDate.Valid {

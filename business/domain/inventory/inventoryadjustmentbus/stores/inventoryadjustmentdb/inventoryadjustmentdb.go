@@ -44,11 +44,11 @@ func (s *Store) Create(ctx context.Context, ia inventoryadjustmentbus.InventoryA
     INSERT INTO inventory.inventory_adjustments (
         id, product_id, location_id, adjusted_by, approved_by, approval_status, approval_reason,
 		rejected_by, rejection_reason, quantity_change, reason_code,
-		notes, adjustment_date, created_date, updated_date
+		notes, adjustment_date, created_date, updated_date, scenario_id
     ) VALUES (
         :id, :product_id, :location_id, :adjusted_by, :approved_by, :approval_status, :approval_reason,
 		:rejected_by, :rejection_reason, :quantity_change, :reason_code,
-		:notes, :adjustment_date, :created_date, :updated_date
+		:notes, :adjustment_date, :created_date, :updated_date, :scenario_id
     )
     `
 
@@ -125,12 +125,13 @@ func (s *Store) Query(ctx context.Context, filter inventoryadjustmentbus.QueryFi
 	SELECT
 	    id, product_id, location_id, adjusted_by, approved_by, approval_status, approval_reason,
 		rejected_by, rejection_reason, quantity_change, reason_code,
-        notes, adjustment_date, created_date, updated_date
+        notes, adjustment_date, created_date, updated_date, scenario_id
 	FROM
 		inventory.inventory_adjustments`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -159,6 +160,7 @@ func (s *Store) Count(ctx context.Context, filter inventoryadjustmentbus.QueryFi
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -172,25 +174,26 @@ func (s *Store) Count(ctx context.Context, filter inventoryadjustmentbus.QueryFi
 }
 
 func (s *Store) QueryByID(ctx context.Context, adjustmentID uuid.UUID) (inventoryadjustmentbus.InventoryAdjustment, error) {
-	data := struct {
-		AdjustmentID string `db:"id"`
-	}{
-		AdjustmentID: adjustmentID.String(),
+	data := map[string]any{
+		"id": adjustmentID.String(),
 	}
 
 	const q = `
 	SELECT
 	    id, product_id, location_id, adjusted_by, approved_by, approval_status, approval_reason,
 		rejected_by, rejection_reason, quantity_change, reason_code,
-        notes, adjustment_date, created_date, updated_date
+        notes, adjustment_date, created_date, updated_date, scenario_id
 	FROM
 		inventory.inventory_adjustments
 	WHERE
 		id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbInvAdj inventoryAdjustment
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbInvAdj); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbInvAdj); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return inventoryadjustmentbus.InventoryAdjustment{}, inventoryadjustmentbus.ErrNotFound
 		}

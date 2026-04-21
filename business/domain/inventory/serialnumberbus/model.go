@@ -12,14 +12,15 @@ import (
 // expect snake_case keys to match API conventions.
 
 type SerialNumber struct {
-	SerialID     uuid.UUID `json:"serial_id"`
-	LotID        uuid.UUID `json:"lot_id"`
-	ProductID    uuid.UUID `json:"product_id"`
-	LocationID   uuid.UUID `json:"location_id"`
-	SerialNumber string    `json:"serial_number"`
-	Status       string    `json:"status"`
-	CreatedDate  time.Time `json:"created_date"`
-	UpdatedDate  time.Time `json:"updated_date"`
+	SerialID     uuid.UUID  `json:"serial_id"`
+	LotID        uuid.UUID  `json:"lot_id"`
+	ProductID    uuid.UUID  `json:"product_id"`
+	LocationID   uuid.UUID  `json:"location_id"`
+	SerialNumber string     `json:"serial_number"`
+	Status       string     `json:"status"`
+	CreatedDate  time.Time  `json:"created_date"`
+	UpdatedDate  time.Time  `json:"updated_date"`
+	ScenarioID   *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 type NewSerialNumber struct {

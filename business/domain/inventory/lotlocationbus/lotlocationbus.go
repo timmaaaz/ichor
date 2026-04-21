@@ -81,6 +81,10 @@ func (b *Business) Create(ctx context.Context, nll NewLotLocation) (LotLocation,
 		UpdatedDate: now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		ll.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, ll); err != nil {
 		return LotLocation{}, fmt.Errorf("create: %w", err)
 	}

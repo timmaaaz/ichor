@@ -27,6 +27,7 @@ type LotLocation struct {
 	Quantity    string `json:"quantity"`
 	CreatedDate string `json:"created_date"`
 	UpdatedDate string `json:"updated_date"`
+	ScenarioID  string `json:"scenario_id,omitempty"`
 }
 
 func (app LotLocation) Encode() ([]byte, string, error) {
@@ -35,6 +36,11 @@ func (app LotLocation) Encode() ([]byte, string, error) {
 }
 
 func ToAppLotLocation(bus lotlocationbus.LotLocation) LotLocation {
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return LotLocation{
 		ID:          bus.ID.String(),
 		LotID:       bus.LotID.String(),
@@ -42,6 +48,7 @@ func ToAppLotLocation(bus lotlocationbus.LotLocation) LotLocation {
 		Quantity:    fmt.Sprintf("%d", bus.Quantity),
 		CreatedDate: bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate: bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:  scenarioID,
 	}
 }
 

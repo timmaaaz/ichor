@@ -47,9 +47,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (cyclecountsessionbus.Store
 func (s *Store) Create(ctx context.Context, session cyclecountsessionbus.CycleCountSession) error {
 	const q = `
 	INSERT INTO inventory.cycle_count_sessions
-		(id, name, status, created_by, created_date, updated_date, completed_date)
+		(id, name, status, created_by, created_date, updated_date, completed_date, scenario_id)
 	VALUES
-		(:id, :name, :status, :created_by, :created_date, :updated_date, :completed_date)
+		(:id, :name, :status, :created_by, :created_date, :updated_date, :completed_date, :scenario_id)
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCycleCountSession(session)); err != nil {
@@ -114,13 +114,14 @@ func (s *Store) Query(ctx context.Context, filter cyclecountsessionbus.QueryFilt
 
 	const q = `
 	SELECT
-		id, name, status, created_by, created_date, updated_date, completed_date
+		id, name, status, created_by, created_date, updated_date, completed_date, scenario_id
 	FROM
 		inventory.cycle_count_sessions
 	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -156,6 +157,7 @@ func (s *Store) Count(ctx context.Context, filter cyclecountsessionbus.QueryFilt
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -169,23 +171,24 @@ func (s *Store) Count(ctx context.Context, filter cyclecountsessionbus.QueryFilt
 
 // QueryByID retrieves a single cycle count session by its ID.
 func (s *Store) QueryByID(ctx context.Context, sessionID uuid.UUID) (cyclecountsessionbus.CycleCountSession, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: sessionID.String(),
+	data := map[string]any{
+		"id": sessionID.String(),
 	}
 
 	const q = `
 	SELECT
-		id, name, status, created_by, created_date, updated_date, completed_date
+		id, name, status, created_by, created_date, updated_date, completed_date, scenario_id
 	FROM
 		inventory.cycle_count_sessions
 	WHERE
 		id = :id
 	`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbSession cycleCountSession
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbSession); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbSession); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return cyclecountsessionbus.CycleCountSession{}, cyclecountsessionbus.ErrNotFound
 		}

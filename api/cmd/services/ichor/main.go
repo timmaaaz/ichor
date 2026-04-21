@@ -170,12 +170,18 @@ func run(ctx context.Context, log *logger.Logger) error {
 			ThinkingEffort string `conf:"default:high"`                              // Ollama only
 		}
 		Printer struct {
-			IP   string `conf:"default:172.16.60.116"`
-			Port string `conf:"default:9100"`
+			HostPort string `conf:"default:172.16.60.116:9100"`
 		}
 		Resend struct {
 			APIKey string `conf:"mask"` // ICHOR_RESEND_APIKEY — mask prevents logging
 			From   string              // ICHOR_RESEND_FROM e.g. "Ichor ERP <noreply@yourco.com>"
+		}
+		Scenarios struct {
+			// Enabled gates the ActiveScenario middleware. Default true so
+			// dev/KIND clusters (and integration tests) exercise scenario
+			// filtering; production deployments override to false to strip
+			// the per-request scenarios_active lookup. Env: ICHOR_SCENARIOS_ENABLED.
+			Enabled bool `conf:"default:true"`
 		}
 	}{
 		Version: conf.Version{
@@ -371,8 +377,8 @@ func run(ctx context.Context, log *logger.Logger) error {
 		LLMThinkingEffort: cfg.LLM.ThinkingEffort,
 		ResendAPIKey:       cfg.Resend.APIKey,
 		ResendFrom:         cfg.Resend.From,
-		PrinterIP:          cfg.Printer.IP,
-		PrinterPort:        cfg.Printer.Port,
+		PrinterHostPort:    cfg.Printer.HostPort,
+		ScenariosEnabled:   cfg.Scenarios.Enabled,
 		CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 	}
 

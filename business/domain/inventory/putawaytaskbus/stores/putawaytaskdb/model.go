@@ -26,6 +26,7 @@ type putAwayTask struct {
 	CreatedBy       uuid.UUID      `db:"created_by"`
 	CreatedDate     time.Time      `db:"created_date"`
 	UpdatedDate     time.Time      `db:"updated_date"`
+	ScenarioID      *uuid.UUID     `db:"scenario_id"`
 }
 
 func toBusPutAwayTask(db putAwayTask) (putawaytaskbus.PutAwayTask, error) {
@@ -58,6 +59,7 @@ func toBusPutAwayTask(db putAwayTask) (putawaytaskbus.PutAwayTask, error) {
 		CreatedBy:       db.CreatedBy,
 		CreatedDate:     db.CreatedDate,
 		UpdatedDate:     db.UpdatedDate,
+		ScenarioID:      db.ScenarioID,
 	}, nil
 }
 
@@ -98,5 +100,6 @@ func toDBPutAwayTask(bus putawaytaskbus.PutAwayTask) putAwayTask {
 		CreatedBy:       bus.CreatedBy,
 		CreatedDate:     bus.CreatedDate,
 		UpdatedDate:     bus.UpdatedDate,
+		ScenarioID:      bus.ScenarioID,
 	}
 }

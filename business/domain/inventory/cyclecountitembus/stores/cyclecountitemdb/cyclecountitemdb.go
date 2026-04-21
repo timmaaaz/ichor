@@ -47,9 +47,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (cyclecountitembus.Storer, 
 func (s *Store) Create(ctx context.Context, item cyclecountitembus.CycleCountItem) error {
 	const q = `
 	INSERT INTO inventory.cycle_count_items
-		(id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date)
+		(id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date, scenario_id)
 	VALUES
-		(:id, :item_code, :session_id, :product_id, :location_id, :system_quantity, :counted_quantity, :variance, :status, :counted_by, :counted_date, :created_date, :updated_date)
+		(:id, :item_code, :session_id, :product_id, :location_id, :system_quantity, :counted_quantity, :variance, :status, :counted_by, :counted_date, :created_date, :updated_date, :scenario_id)
 	`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBCycleCountItem(item)); err != nil {
@@ -117,13 +117,14 @@ func (s *Store) Query(ctx context.Context, filter cyclecountitembus.QueryFilter,
 
 	const q = `
 	SELECT
-		id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date
+		id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date, scenario_id
 	FROM
 		inventory.cycle_count_items
 	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -159,6 +160,7 @@ func (s *Store) Count(ctx context.Context, filter cyclecountitembus.QueryFilter)
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -172,23 +174,24 @@ func (s *Store) Count(ctx context.Context, filter cyclecountitembus.QueryFilter)
 
 // QueryByID retrieves a single cycle count item by its ID.
 func (s *Store) QueryByID(ctx context.Context, itemID uuid.UUID) (cyclecountitembus.CycleCountItem, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: itemID.String(),
+	data := map[string]any{
+		"id": itemID.String(),
 	}
 
 	const q = `
 	SELECT
-		id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date
+		id, item_code, session_id, product_id, location_id, system_quantity, counted_quantity, variance, status, counted_by, counted_date, created_date, updated_date, scenario_id
 	FROM
 		inventory.cycle_count_items
 	WHERE
 		id = :id
 	`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbItem cycleCountItem
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbItem); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbItem); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return cyclecountitembus.CycleCountItem{}, cyclecountitembus.ErrNotFound
 		}

@@ -8,16 +8,17 @@ import (
 )
 
 type inspection struct {
-	InspectionID       uuid.UUID `db:"id"`
-	ProductID          uuid.UUID `db:"product_id"`
-	InspectorID        uuid.UUID `db:"inspector_id"`
-	LotID              uuid.UUID `db:"lot_id"`
-	Status             string    `db:"status"`
-	Notes              string    `db:"notes"`
-	InspectionDate     time.Time `db:"inspection_date"`
-	NextInspectionDate time.Time `db:"next_inspection_date"`
-	UpdatedDate        time.Time `db:"updated_date"`
-	CreatedDate        time.Time `db:"created_date"`
+	InspectionID       uuid.UUID  `db:"id"`
+	ProductID          uuid.UUID  `db:"product_id"`
+	InspectorID        uuid.UUID  `db:"inspector_id"`
+	LotID              uuid.UUID  `db:"lot_id"`
+	Status             string     `db:"status"`
+	Notes              string     `db:"notes"`
+	InspectionDate     time.Time  `db:"inspection_date"`
+	NextInspectionDate time.Time  `db:"next_inspection_date"`
+	UpdatedDate        time.Time  `db:"updated_date"`
+	CreatedDate        time.Time  `db:"created_date"`
+	ScenarioID         *uuid.UUID `db:"scenario_id"`
 }
 
 func toBusInspection(db inspection) inspectionbus.Inspection {
@@ -32,6 +33,7 @@ func toBusInspection(db inspection) inspectionbus.Inspection {
 		NextInspectionDate: db.NextInspectionDate,
 		UpdatedDate:        db.UpdatedDate,
 		CreatedDate:        db.CreatedDate,
+		ScenarioID:         db.ScenarioID,
 	}
 }
 
@@ -55,5 +57,6 @@ func toDBInspection(bus inspectionbus.Inspection) inspection {
 		NextInspectionDate: bus.NextInspectionDate,
 		UpdatedDate:        bus.UpdatedDate,
 		CreatedDate:        bus.CreatedDate,
+		ScenarioID:         bus.ScenarioID,
 	}
 }

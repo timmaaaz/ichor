@@ -8,14 +8,15 @@ import (
 )
 
 type serialNumber struct {
-	SerialID     uuid.UUID `db:"id"`
-	LotID        uuid.UUID `db:"lot_id"`
-	ProductID    uuid.UUID `db:"product_id"`
-	LocationID   uuid.UUID `db:"location_id"`
-	SerialNumber string    `db:"serial_number"`
-	Status       string    `db:"status"`
-	CreatedDate  time.Time `db:"created_date"`
-	UpdatedDate  time.Time `db:"updated_date"`
+	SerialID     uuid.UUID  `db:"id"`
+	LotID        uuid.UUID  `db:"lot_id"`
+	ProductID    uuid.UUID  `db:"product_id"`
+	LocationID   uuid.UUID  `db:"location_id"`
+	SerialNumber string     `db:"serial_number"`
+	Status       string     `db:"status"`
+	CreatedDate  time.Time  `db:"created_date"`
+	UpdatedDate  time.Time  `db:"updated_date"`
+	ScenarioID   *uuid.UUID `db:"scenario_id"`
 }
 
 func toBusSerialNumber(db serialNumber) serialnumberbus.SerialNumber {
@@ -28,6 +29,7 @@ func toBusSerialNumber(db serialNumber) serialnumberbus.SerialNumber {
 		Status:       db.Status,
 		CreatedDate:  db.CreatedDate,
 		UpdatedDate:  db.UpdatedDate,
+		ScenarioID:   db.ScenarioID,
 	}
 }
 
@@ -50,6 +52,7 @@ func toDBSerialNumber(bus serialnumberbus.SerialNumber) serialNumber {
 		Status:       bus.Status,
 		CreatedDate:  bus.CreatedDate,
 		UpdatedDate:  bus.UpdatedDate,
+		ScenarioID:   bus.ScenarioID,
 	}
 }
 

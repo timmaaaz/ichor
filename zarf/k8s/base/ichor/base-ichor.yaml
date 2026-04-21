@@ -168,10 +168,15 @@ spec:
                   key: api_key
                   optional: true
 
-            - name: ICHOR_PRINTER_IP
-              value: "172.16.60.116"
-            - name: ICHOR_PRINTER_PORT
-              value: "9100"
+            - name: ICHOR_PRINTER_HOSTPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: printer_hostport
+                  optional: true
+
+            - name: ICHOR_SCENARIOS_ENABLED
+              value: "true"
 
             - name: KUBERNETES_NAMESPACE
               valueFrom:

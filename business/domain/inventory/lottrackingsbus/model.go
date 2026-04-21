@@ -12,19 +12,20 @@ import (
 // expect snake_case keys to match API conventions.
 
 type LotTrackings struct {
-	LotID             uuid.UUID `json:"lot_id"`
-	SupplierProductID uuid.UUID `json:"supplier_product_id"`
-	LotNumber         string    `json:"lot_number"`
-	ManufactureDate   time.Time `json:"manufacture_date"`
-	ExpirationDate    time.Time `json:"expiration_date"`
-	ReceivedDate      time.Time `json:"received_date"`
-	Quantity          int       `json:"quantity"`
-	QualityStatus     string    `json:"quality_status"`
-	CreatedDate       time.Time `json:"created_date"`
-	UpdatedDate       time.Time `json:"updated_date"`
-	ProductID         uuid.UUID `json:"product_id"`
-	ProductName       string    `json:"product_name"`
-	ProductSKU        string    `json:"product_sku"`
+	LotID             uuid.UUID  `json:"lot_id"`
+	SupplierProductID uuid.UUID  `json:"supplier_product_id"`
+	LotNumber         string     `json:"lot_number"`
+	ManufactureDate   time.Time  `json:"manufacture_date"`
+	ExpirationDate    time.Time  `json:"expiration_date"`
+	ReceivedDate      time.Time  `json:"received_date"`
+	Quantity          int        `json:"quantity"`
+	QualityStatus     string     `json:"quality_status"`
+	CreatedDate       time.Time  `json:"created_date"`
+	UpdatedDate       time.Time  `json:"updated_date"`
+	ProductID         uuid.UUID  `json:"product_id"`
+	ProductName       string     `json:"product_name"`
+	ProductSKU        string     `json:"product_sku"`
+	ScenarioID        *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 type NewLotTrackings struct {

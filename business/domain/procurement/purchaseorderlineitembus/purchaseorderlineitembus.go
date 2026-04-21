@@ -94,6 +94,12 @@ func (b *Business) Create(ctx context.Context, npoli NewPurchaseOrderLineItem) (
 		UpdatedDate:          now,
 	}
 
+	// Phase 0d: tag the row with the active scenario (if any) so scenario
+	// Reset can later undo this row while leaving baseline rows intact.
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		poli.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, poli); err != nil {
 		return PurchaseOrderLineItem{}, fmt.Errorf("create: %w", err)
 	}

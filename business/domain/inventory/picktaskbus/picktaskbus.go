@@ -89,6 +89,10 @@ func (b *Business) Create(ctx context.Context, npt NewPickTask) (PickTask, error
 		UpdatedDate:          now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		task.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, task); err != nil {
 		return PickTask{}, fmt.Errorf("create: %w", err)
 	}

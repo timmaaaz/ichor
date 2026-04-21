@@ -81,6 +81,15 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.otmux.ServeHTTP(w, r)
 }
 
+// Use appends a middleware to the app-level chain. Must be called before any
+// HandlerFunc/RawHandlerFunc registration — routes registered earlier do not
+// pick up middleware appended later. Intended for dynamically wired features
+// whose dependencies are only available after NewApp (e.g. buses constructed
+// inside the RouteAdder.Add body).
+func (a *App) Use(mw MidFunc) {
+	a.mw = append(a.mw, mw)
+}
+
 // EnableCORS enables CORS preflight requests to work in the middleware. It
 // prevents the MethodNotAllowedHandler from being called. This must be enabled
 // for the CORS middleware to work.

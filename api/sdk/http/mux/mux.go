@@ -65,16 +65,22 @@ type Config struct {
 	ResendAPIKey  string
 	ResendFrom    string
 
-	// Printer holds TCP print target for the label subsystem (Phase 0a/0b).
-	// Empty PrinterIP disables actual network dispatch at wiring time.
-	PrinterIP   string
-	PrinterPort string
+	// PrinterHostPort holds the combined "host:port" TCP print target for
+	// the label subsystem (Phase 0a/0b). Empty disables actual network
+	// dispatch at wiring time. Mirrors the cfg.Temporal.HostPort style so
+	// downstream callers (tcpprint, net.Dial) consume it directly.
+	PrinterHostPort string
 
 	// LabelPrinter is an optional override for the label subsystem's printer.
-	// When non-nil it takes precedence over PrinterIP/PrinterPort and lets
+	// When non-nil it takes precedence over PrinterHostPort and lets
 	// integration tests substitute a recording printer to assert ZPL dispatch
 	// without touching real hardware. Production callers leave it nil.
 	LabelPrinter LabelPrinter
+
+	// ScenariosEnabled gates the ActiveScenario middleware (Phase 0d).
+	// True in dev/KIND so floor testing scenarios can drive fixture filtering;
+	// false in production to avoid a per-request scenarios_active lookup.
+	ScenariosEnabled bool
 
 	// CORSAllowedOrigins for WebSocket and SSE upgrade routes.
 	// Defaults to "*" if empty (open — set from ICHOR_WEB_CORS_ALLOWED_ORIGINS).

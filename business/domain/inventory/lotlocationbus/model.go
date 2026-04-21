@@ -9,12 +9,13 @@ import (
 // JSON tags are required for workflow event serialization.
 
 type LotLocation struct {
-	ID          uuid.UUID `json:"id"`
-	LotID       uuid.UUID `json:"lot_id"`
-	LocationID  uuid.UUID `json:"location_id"`
-	Quantity    int       `json:"quantity"`
-	CreatedDate time.Time `json:"created_date"`
-	UpdatedDate time.Time `json:"updated_date"`
+	ID          uuid.UUID  `json:"id"`
+	LotID       uuid.UUID  `json:"lot_id"`
+	LocationID  uuid.UUID  `json:"location_id"`
+	Quantity    int        `json:"quantity"`
+	CreatedDate time.Time  `json:"created_date"`
+	UpdatedDate time.Time  `json:"updated_date"`
+	ScenarioID  *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 type NewLotLocation struct {

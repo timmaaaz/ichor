@@ -48,9 +48,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (lotlocationbus.Storer, err
 func (s *Store) Create(ctx context.Context, ll lotlocationbus.LotLocation) error {
 	const q = `
 	INSERT INTO inventory.lot_locations (
-		id, lot_id, location_id, quantity, created_date, updated_date
+		id, lot_id, location_id, quantity, created_date, updated_date, scenario_id
 	) VALUES (
-		:id, :lot_id, :location_id, :quantity, :created_date, :updated_date
+		:id, :lot_id, :location_id, :quantity, :created_date, :updated_date, :scenario_id
 	)
 	`
 
@@ -116,13 +116,14 @@ func (s *Store) Query(ctx context.Context, filter lotlocationbus.QueryFilter, or
 
 	const q = `
 	SELECT
-		id, lot_id, location_id, quantity, created_date, updated_date
+		id, lot_id, location_id, quantity, created_date, updated_date, scenario_id
 	FROM
 		inventory.lot_locations
 	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -153,6 +154,7 @@ func (s *Store) Count(ctx context.Context, filter lotlocationbus.QueryFilter) (i
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -165,24 +167,25 @@ func (s *Store) Count(ctx context.Context, filter lotlocationbus.QueryFilter) (i
 }
 
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lotlocationbus.LotLocation, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: id.String(),
+	data := map[string]any{
+		"id": id.String(),
 	}
 
 	const q = `
 	SELECT
-		id, lot_id, location_id, quantity, created_date, updated_date
+		id, lot_id, location_id, quantity, created_date, updated_date, scenario_id
 	FROM
 		inventory.lot_locations
 	WHERE
 		id = :id
 	`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbLL lotLocation
 
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbLL); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbLL); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return lotlocationbus.LotLocation{}, lotlocationbus.ErrNotFound
 		}

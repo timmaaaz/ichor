@@ -20,6 +20,7 @@ type inventoryTransaction struct {
 	TransactionDate        time.Time      `db:"transaction_date"`
 	CreatedDate            time.Time      `db:"created_date"`
 	UpdatedDate            time.Time      `db:"updated_date"`
+	ScenarioID             *uuid.UUID     `db:"scenario_id"`
 }
 
 func toBusInventoryTransaction(db inventoryTransaction) inventorytransactionbus.InventoryTransaction {
@@ -48,6 +49,7 @@ func toBusInventoryTransaction(db inventoryTransaction) inventorytransactionbus.
 		TransactionDate:        db.TransactionDate,
 		CreatedDate:            db.CreatedDate,
 		UpdatedDate:            db.UpdatedDate,
+		ScenarioID:             db.ScenarioID,
 	}
 }
 
@@ -84,5 +86,6 @@ func toDBInventoryTransaction(bus inventorytransactionbus.InventoryTransaction) 
 		TransactionDate:        bus.TransactionDate,
 		CreatedDate:            bus.CreatedDate,
 		UpdatedDate:            bus.UpdatedDate,
+		ScenarioID:             bus.ScenarioID,
 	}
 }

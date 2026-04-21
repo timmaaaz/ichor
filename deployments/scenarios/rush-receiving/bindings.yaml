@@ -1,0 +1,29 @@
+# deployments/scenarios/rush-receiving/bindings.yaml
+#
+# Bindings reference baseline entities by stable human-readable code.
+# The seeder resolves these against the DB at Load time (Phase 1+);
+# yamlload only parses and validates scenario-struct shape (no DB lookup).
+#
+# - totes:     inventory.label_catalog.code (Phase 0b format "TOTE-%03d")
+# - locations: inventory.inventory_locations.location_code
+#              (Phase 0c format "{ZoneCode}-{Aisle}{Rack}{Shelf}{Bin}")
+# - lots:      scenario-scoped blueprints; ref is an FK handle used within
+#              this scenario's state.yaml. product_code matches the 0c
+#              product SKU format ("SKU-%04d").
+
+totes:
+  - code: TOTE-001
+  - code: TOTE-002
+  - code: TOTE-003
+
+locations:
+  - code: RCV-A010101
+    role: inbound
+  - code: RCV-A010102
+    role: inbound
+  - code: STG-A010203
+    role: storage
+
+lots:
+  - ref: lot_urgent
+    product_code: SKU-0001
