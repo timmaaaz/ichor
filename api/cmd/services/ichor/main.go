@@ -170,8 +170,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			ThinkingEffort string `conf:"default:high"`                              // Ollama only
 		}
 		Printer struct {
-			IP   string `conf:"default:172.16.60.116"`
-			Port string `conf:"default:9100"`
+			HostPort string `conf:"default:172.16.60.116:9100"`
 		}
 		Resend struct {
 			APIKey string `conf:"mask"` // ICHOR_RESEND_APIKEY — mask prevents logging
@@ -378,8 +377,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		LLMThinkingEffort: cfg.LLM.ThinkingEffort,
 		ResendAPIKey:       cfg.Resend.APIKey,
 		ResendFrom:         cfg.Resend.From,
-		PrinterIP:          cfg.Printer.IP,
-		PrinterPort:        cfg.Printer.Port,
+		PrinterHostPort:    cfg.Printer.HostPort,
 		ScenariosEnabled:   cfg.Scenarios.Enabled,
 		CORSAllowedOrigins: cfg.Web.CORSAllowedOrigins,
 	}

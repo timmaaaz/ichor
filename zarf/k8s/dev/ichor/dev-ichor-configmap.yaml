@@ -16,3 +16,6 @@ data:
   # llm_model: "qwen3:14b"
   # llm_host: "http://host.docker.internal:11434"
   # llm_thinking_effort: "high"
+  # printer_hostport overrides the built-in default (172.16.60.116:9100).
+  # Leave empty ("") to disable network dispatch in non-print environments.
+  # printer_hostport: "192.168.1.50:9100"

@@ -841,15 +841,16 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	// Label subsystem (Phase 0b) — catalog + transaction-label printing
-	// via ZPL over TCP to a Zebra-compatible printer. PrinterIP/Port come
-	// from ICHOR_PRINTER_* via mux.Config (Phase 0a). Tests substitute a
-	// recording printer through cfg.LabelPrinter to assert ZPL dispatch.
+	// via ZPL over TCP to a Zebra-compatible printer. PrinterHostPort
+	// comes from ICHOR_PRINTER_HOSTPORT via mux.Config (Phase 0a). Tests
+	// substitute a recording printer through cfg.LabelPrinter to assert
+	// ZPL dispatch.
 	labelStorer := labeldb.NewStore(cfg.Log, cfg.DB)
 	var labelPrinter labelbus.Printer
 	if cfg.LabelPrinter != nil {
 		labelPrinter = cfg.LabelPrinter
 	} else {
-		labelPrinter = tcpprint.New(cfg.PrinterIP, cfg.PrinterPort, 5*time.Second)
+		labelPrinter = tcpprint.New(cfg.PrinterHostPort, 5*time.Second)
 	}
 	labelBus := labelbus.NewBusiness(cfg.Log, delegate, labelStorer, labelPrinter)
 	labelapi.Routes(app, labelapi.Config{

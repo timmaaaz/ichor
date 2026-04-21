@@ -12,42 +12,42 @@ import (
 
 // Printer sends ZPL bytes to a network-attached thermal printer.
 type Printer struct {
-	host    string
-	port    string
-	timeout time.Duration
+	hostPort string
+	timeout  time.Duration
 }
 
-// New constructs a Printer. `timeout` caps both dial and write durations.
-func New(host, port string, timeout time.Duration) *Printer {
-	return &Printer{host: host, port: port, timeout: timeout}
+// New constructs a Printer. `hostPort` is a combined "host:port" dial
+// target (matches net.Dial and mirrors cfg.Temporal.HostPort). `timeout`
+// caps both dial and write durations.
+func New(hostPort string, timeout time.Duration) *Printer {
+	return &Printer{hostPort: hostPort, timeout: timeout}
 }
 
 // SendZPL opens a TCP connection, writes the ZPL bytes, and closes.
 // A single retry is attempted on dial failure after a 250ms backoff,
 // since printers occasionally refuse the first connection after idle.
 //
-// An empty host is a no-op: this honours the mux.Config contract that
-// "Empty PrinterIP disables actual network dispatch". Without the
-// guard, net.JoinHostPort("", port) yields ":9100" and the printer
-// dials localhost at request time, which is both unsafe and
-// surprising in environments that intentionally leave PrinterIP unset.
+// An empty hostPort is a no-op: this honours the mux.Config contract
+// that "Empty PrinterHostPort disables actual network dispatch".
+// Without the guard, an empty dial target would be rejected by the
+// kernel at request time — surprising in environments that
+// intentionally leave PrinterHostPort unset.
 func (p *Printer) SendZPL(ctx context.Context, zpl []byte) error {
-	if p.host == "" {
+	if p.hostPort == "" {
 		return nil
 	}
 	d := net.Dialer{Timeout: p.timeout}
-	addr := net.JoinHostPort(p.host, p.port)
 
-	conn, err := d.DialContext(ctx, "tcp", addr)
+	conn, err := d.DialContext(ctx, "tcp", p.hostPort)
 	if err != nil {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(250 * time.Millisecond):
 		}
-		conn, err = d.DialContext(ctx, "tcp", addr)
+		conn, err = d.DialContext(ctx, "tcp", p.hostPort)
 		if err != nil {
-			return fmt.Errorf("dial %s: %w", addr, err)
+			return fmt.Errorf("dial %s: %w", p.hostPort, err)
 		}
 	}
 	defer conn.Close()
