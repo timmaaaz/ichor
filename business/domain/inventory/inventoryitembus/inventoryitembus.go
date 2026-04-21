@@ -90,6 +90,10 @@ func (b *Business) Create(ctx context.Context, nip NewInventoryItem) (InventoryI
 		UpdatedDate:           now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		inventoryItem.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, inventoryItem); err != nil {
 		return InventoryItem{}, fmt.Errorf("create: %w", err)
 	}

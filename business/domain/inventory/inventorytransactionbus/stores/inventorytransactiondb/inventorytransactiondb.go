@@ -43,10 +43,10 @@ func (s *Store) Create(ctx context.Context, it inventorytransactionbus.Inventory
 	const q = `
 	INSERT INTO inventory.inventory_transactions (
 		id, product_id, location_id, user_id, lot_id, serial_id, transaction_type, reference_number,
-		quantity, transaction_date, created_date, updated_date
+		quantity, transaction_date, created_date, updated_date, scenario_id
 	) VALUES (
 		:id, :product_id, :location_id, :user_id, :lot_id, :serial_id, :transaction_type, :reference_number,
-        :quantity, :transaction_date, :created_date, :updated_date
+        :quantity, :transaction_date, :created_date, :updated_date, :scenario_id
     )
 	`
 
@@ -122,13 +122,14 @@ func (s *Store) Query(ctx context.Context, filter inventorytransactionbus.QueryF
 	const q = `
 	SELECT
 	    id, product_id, location_id, user_id, lot_id, serial_id, transaction_type, reference_number,
-        quantity, transaction_date, created_date, updated_date
+        quantity, transaction_date, created_date, updated_date, scenario_id
 	FROM
 	    inventory.inventory_transactions
 		`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -152,14 +153,15 @@ func (s *Store) Count(ctx context.Context, filter inventorytransactionbus.QueryF
 	data := map[string]any{}
 
 	const q = `
-    SELECT 
+    SELECT
         COUNT(1) AS count
-    FROM 
+    FROM
         inventory.inventory_transactions
     `
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -173,25 +175,26 @@ func (s *Store) Count(ctx context.Context, filter inventorytransactionbus.QueryF
 }
 
 func (s *Store) QueryByID(ctx context.Context, transactionID uuid.UUID) (inventorytransactionbus.InventoryTransaction, error) {
-	data := struct {
-		TransactionID string `db:"id"`
-	}{
-		TransactionID: transactionID.String(),
+	data := map[string]any{
+		"id": transactionID.String(),
 	}
 
 	const q = `
     SELECT
         id, product_id, location_id, user_id, lot_id, serial_id, transaction_type, reference_number,
-        quantity, transaction_date, created_date, updated_date
+        quantity, transaction_date, created_date, updated_date, scenario_id
     FROM
         inventory.inventory_transactions
     WHERE
         id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbInvTran inventoryTransaction
 
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbInvTran); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbInvTran); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return inventorytransactionbus.InventoryTransaction{}, inventorytransactionbus.ErrNotFound
 		}

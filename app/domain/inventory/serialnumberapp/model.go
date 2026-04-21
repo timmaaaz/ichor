@@ -63,6 +63,7 @@ type SerialNumber struct {
 	Status       string `json:"status"`
 	CreatedDate  string `json:"created_date"`
 	UpdatedDate  string `json:"updated_date"`
+	ScenarioID   string `json:"scenario_id,omitempty"`
 }
 
 func (app SerialNumber) Encode() ([]byte, string, error) {
@@ -71,6 +72,11 @@ func (app SerialNumber) Encode() ([]byte, string, error) {
 }
 
 func ToAppSerialNumber(bus serialnumberbus.SerialNumber) SerialNumber {
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return SerialNumber{
 		SerialID:     bus.SerialID.String(),
 		LotID:        bus.LotID.String(),
@@ -80,6 +86,7 @@ func ToAppSerialNumber(bus serialnumberbus.SerialNumber) SerialNumber {
 		Status:       bus.Status,
 		CreatedDate:  bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:  bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:   scenarioID,
 	}
 }
 

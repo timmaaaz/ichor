@@ -48,6 +48,7 @@ type InventoryItem struct {
 	AvgDailyUsage         string `json:"avg_daily_usage"`
 	CreatedDate           string `json:"created_date"`
 	UpdatedDate           string `json:"updated_date"`
+	ScenarioID            string `json:"scenario_id,omitempty"`
 }
 
 func (app InventoryItem) Encode() ([]byte, string, error) {
@@ -56,6 +57,11 @@ func (app InventoryItem) Encode() ([]byte, string, error) {
 }
 
 func ToAppInventoryItem(bus inventoryitembus.InventoryItem) InventoryItem {
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return InventoryItem{
 		ID:                    bus.ID.String(),
 		ProductID:             bus.ProductID.String(),
@@ -71,6 +77,7 @@ func ToAppInventoryItem(bus inventoryitembus.InventoryItem) InventoryItem {
 		AvgDailyUsage:         fmt.Sprintf("%d", bus.AvgDailyUsage),
 		CreatedDate:           bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:           bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:            scenarioID,
 	}
 }
 

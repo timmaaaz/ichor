@@ -50,6 +50,7 @@ type TransferOrder struct {
 	TransferDate    string `json:"transfer_date"`
 	CreatedDate     string `json:"created_date"`
 	UpdatedDate     string `json:"updated_date"`
+	ScenarioID      string `json:"scenario_id,omitempty"`
 }
 
 func (app TransferOrder) Encode() ([]byte, string, error) {
@@ -93,6 +94,11 @@ func ToAppTransferOrder(bus transferorderbus.TransferOrder) TransferOrder {
 		completedAt = bus.CompletedAt.Format(timeutil.FORMAT)
 	}
 
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return TransferOrder{
 		TransferID:      bus.TransferID.String(),
 		TransferNumber:  transferNumber,
@@ -113,6 +119,7 @@ func ToAppTransferOrder(bus transferorderbus.TransferOrder) TransferOrder {
 		TransferDate:    bus.TransferDate.Format(timeutil.FORMAT),
 		CreatedDate:     bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:     bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:      scenarioID,
 	}
 }
 

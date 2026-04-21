@@ -24,6 +24,7 @@ type InventoryTransaction struct {
 	TransactionDate        time.Time  `json:"transaction_date"`
 	CreatedDate            time.Time  `json:"created_date"`
 	UpdatedDate            time.Time  `json:"updated_date"`
+	ScenarioID             *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 type NewInventoryTransaction struct {

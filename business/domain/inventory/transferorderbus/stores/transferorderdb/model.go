@@ -28,6 +28,7 @@ type transferOrder struct {
 	TransferDate    time.Time     `db:"transfer_date"`
 	CreatedDate     time.Time     `db:"created_date"`
 	UpdatedDate     time.Time     `db:"updated_date"`
+	ScenarioID      *uuid.UUID    `db:"scenario_id"`
 }
 
 func toBusTransferOrder(db transferOrder) transferorderbus.TransferOrder {
@@ -49,6 +50,7 @@ func toBusTransferOrder(db transferOrder) transferorderbus.TransferOrder {
 		TransferDate:   db.TransferDate,
 		CreatedDate:    db.CreatedDate,
 		UpdatedDate:    db.UpdatedDate,
+		ScenarioID:     db.ScenarioID,
 	}
 
 	if db.ApprovalReason.Valid {
@@ -110,6 +112,7 @@ func toDBTransferOrder(bus transferorderbus.TransferOrder) transferOrder {
 		TransferDate:   bus.TransferDate,
 		CreatedDate:    bus.CreatedDate,
 		UpdatedDate:    bus.UpdatedDate,
+		ScenarioID:     bus.ScenarioID,
 	}
 
 	if bus.ApprovalReason != "" {

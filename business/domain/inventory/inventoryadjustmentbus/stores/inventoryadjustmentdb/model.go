@@ -24,6 +24,7 @@ type inventoryAdjustment struct {
 	AdjustmentDate        time.Time  `db:"adjustment_date"`
 	CreatedDate           time.Time  `db:"created_date"`
 	UpdatedDate           time.Time  `db:"updated_date"`
+	ScenarioID            *uuid.UUID `db:"scenario_id"`
 }
 
 func toBusInventoryAdjustment(ia inventoryAdjustment) inventoryadjustmentbus.InventoryAdjustment {
@@ -41,6 +42,7 @@ func toBusInventoryAdjustment(ia inventoryAdjustment) inventoryadjustmentbus.Inv
 		AdjustmentDate:        ia.AdjustmentDate,
 		CreatedDate:           ia.CreatedDate,
 		UpdatedDate:           ia.UpdatedDate,
+		ScenarioID:            ia.ScenarioID,
 	}
 
 	if ia.ApprovalReason.Valid {
@@ -77,6 +79,7 @@ func toDBInventoryAdjustment(ia inventoryadjustmentbus.InventoryAdjustment) inve
 		AdjustmentDate:        ia.AdjustmentDate,
 		CreatedDate:           ia.CreatedDate,
 		UpdatedDate:           ia.UpdatedDate,
+		ScenarioID:            ia.ScenarioID,
 	}
 
 	if ia.ApprovalReason != "" {

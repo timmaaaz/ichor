@@ -50,6 +50,7 @@ type InventoryAdjustment struct {
 	AdjustmentDate        string `json:"adjustment_date"`
 	CreatedDate           string `json:"created_date"`
 	UpdatedDate           string `json:"updated_date"`
+	ScenarioID            string `json:"scenario_id,omitempty"`
 }
 
 func (app InventoryAdjustment) Encode() ([]byte, string, error) {
@@ -68,6 +69,11 @@ func ToAppInventoryAdjustment(bus inventoryadjustmentbus.InventoryAdjustment) In
 		rejectedBy = bus.RejectedBy.String()
 	}
 
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return InventoryAdjustment{
 		InventoryAdjustmentID: bus.InventoryAdjustmentID.String(),
 		ProductID:             bus.ProductID.String(),
@@ -84,6 +90,7 @@ func ToAppInventoryAdjustment(bus inventoryadjustmentbus.InventoryAdjustment) In
 		AdjustmentDate:        bus.AdjustmentDate.Format(timeutil.FORMAT),
 		CreatedDate:           bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:           bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:            scenarioID,
 	}
 }
 

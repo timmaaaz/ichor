@@ -125,6 +125,10 @@ func (b *Business) Create(ctx context.Context, nia NewInventoryAdjustment) (Inve
 		CreatedDate:           now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		ia.ScenarioID = &sid
+	}
+
 	err := b.storer.Create(ctx, ia)
 	if err != nil {
 		return InventoryAdjustment{}, fmt.Errorf("create: %w", err)

@@ -48,11 +48,11 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (lottrackingsbus.Storer, er
 func (s *Store) Create(ctx context.Context, lot lottrackingsbus.LotTrackings) error {
 	const q = `
 	INSERT INTO inventory.lot_trackings (
-		id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date, 
-		quantity, quality_status, created_date, updated_date
+		id, supplier_product_id, lot_number, manufacture_date, expiration_date, received_date,
+		quantity, quality_status, created_date, updated_date, scenario_id
 	) VALUES (
-		:id, :supplier_product_id, :lot_number, :manufacture_date, :expiration_date, :received_date, 
-        :quantity, :quality_status, :created_date, :updated_date
+		:id, :supplier_product_id, :lot_number, :manufacture_date, :expiration_date, :received_date,
+        :quantity, :quality_status, :created_date, :updated_date, :scenario_id
     )
 	`
 
@@ -127,7 +127,8 @@ func (s *Store) Query(ctx context.Context, filter lottrackingsbus.QueryFilter, o
         lt.quantity, lt.quality_status, lt.created_date, lt.updated_date,
         COALESCE(p.id, CAST('00000000-0000-0000-0000-000000000000' AS uuid)) AS product_id,
         COALESCE(p.name, '') AS product_name,
-        COALESCE(p.sku, '') AS product_sku
+        COALESCE(p.sku, '') AS product_sku,
+        lt.scenario_id
 	FROM
 		inventory.lot_trackings lt
 	LEFT JOIN procurement.supplier_products sp ON sp.id = lt.supplier_product_id
@@ -136,6 +137,7 @@ func (s *Store) Query(ctx context.Context, filter lottrackingsbus.QueryFilter, o
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -166,6 +168,7 @@ func (s *Store) Count(ctx context.Context, filter lottrackingsbus.QueryFilter) (
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -178,10 +181,8 @@ func (s *Store) Count(ctx context.Context, filter lottrackingsbus.QueryFilter) (
 }
 
 func (s *Store) QueryLocationsByLotID(ctx context.Context, lotID uuid.UUID) ([]lottrackingsbus.LotLocation, error) {
-	data := struct {
-		LotID string `db:"lot_id"`
-	}{
-		LotID: lotID.String(),
+	data := map[string]any{
+		"lot_id": lotID.String(),
 	}
 
 	const q = `
@@ -198,9 +199,15 @@ func (s *Store) QueryLocationsByLotID(ctx context.Context, lotID uuid.UUID) ([]l
 	WHERE ll.lot_id = :lot_id
 	`
 
+	buf := bytes.NewBufferString(q)
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		buf.WriteString(" AND (ll.scenario_id IS NULL OR ll.scenario_id = :scenario_id)")
+		data["scenario_id"] = sid
+	}
+
 	var dbLocs []lotLocation
 
-	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbLocs); err != nil {
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbLocs); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
@@ -208,10 +215,8 @@ func (s *Store) QueryLocationsByLotID(ctx context.Context, lotID uuid.UUID) ([]l
 }
 
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lottrackingsbus.LotTrackings, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: id.String(),
+	data := map[string]any{
+		"id": id.String(),
 	}
 
 	const q = `
@@ -220,7 +225,8 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lottrackingsbus.Lo
         lt.quantity, lt.quality_status, lt.created_date, lt.updated_date,
         COALESCE(p.id, CAST('00000000-0000-0000-0000-000000000000' AS uuid)) AS product_id,
         COALESCE(p.name, '') AS product_name,
-        COALESCE(p.sku, '') AS product_sku
+        COALESCE(p.sku, '') AS product_sku,
+        lt.scenario_id
     FROM
         inventory.lot_trackings lt
     LEFT JOIN procurement.supplier_products sp ON sp.id = lt.supplier_product_id
@@ -229,9 +235,12 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lottrackingsbus.Lo
         lt.id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbLot lotTrackings
 
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbLot); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbLot); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return lottrackingsbus.LotTrackings{}, lottrackingsbus.ErrNotFound
 		}

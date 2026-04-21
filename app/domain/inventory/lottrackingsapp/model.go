@@ -82,6 +82,7 @@ type LotTrackings struct {
 	ProductID         string `json:"product_id"`
 	ProductName       string `json:"product_name"`
 	ProductSKU        string `json:"product_sku"`
+	ScenarioID        string `json:"scenario_id,omitempty"`
 }
 
 func (app LotTrackings) Encode() ([]byte, string, error) {
@@ -90,6 +91,11 @@ func (app LotTrackings) Encode() ([]byte, string, error) {
 }
 
 func ToAppLotTracking(bus lottrackingsbus.LotTrackings) LotTrackings {
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return LotTrackings{
 		LotID:             bus.LotID.String(),
 		SupplierProductID: bus.SupplierProductID.String(),
@@ -104,6 +110,7 @@ func ToAppLotTracking(bus lottrackingsbus.LotTrackings) LotTrackings {
 		ProductID:         bus.ProductID.String(),
 		ProductName:       bus.ProductName,
 		ProductSKU:        bus.ProductSKU,
+		ScenarioID:        scenarioID,
 	}
 }
 
