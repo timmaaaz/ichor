@@ -40,6 +40,7 @@ type ApprovalRequest struct {
 	ResolutionReason string
 	CreatedDate      time.Time
 	ResolvedDate     *time.Time
+	ScenarioID       *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 // NewApprovalRequest contains information needed to create a new approval request.

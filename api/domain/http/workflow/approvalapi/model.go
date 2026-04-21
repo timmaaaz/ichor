@@ -31,6 +31,7 @@ type Approval struct {
 	ResolutionReason string       `json:"resolutionReason,omitempty"`
 	CreatedDate      string       `json:"createdDate"`
 	ResolvedDate     string       `json:"resolvedDate,omitempty"`
+	ScenarioID       string       `json:"scenario_id,omitempty"`
 }
 
 // Encode implements the web.Encoder interface.
@@ -72,6 +73,9 @@ func toAppApproval(bus approvalrequestbus.ApprovalRequest) Approval {
 	}
 	if bus.ResolvedDate != nil {
 		app.ResolvedDate = bus.ResolvedDate.Format(time.RFC3339)
+	}
+	if bus.ScenarioID != nil {
+		app.ScenarioID = bus.ScenarioID.String()
 	}
 
 	return app

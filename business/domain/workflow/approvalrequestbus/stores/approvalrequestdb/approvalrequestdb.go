@@ -52,11 +52,11 @@ func (s *Store) Create(ctx context.Context, req approvalrequestbus.ApprovalReque
 	INSERT INTO workflow.approval_requests (
 		approval_request_id, execution_id, rule_id, action_name,
 		approvers, approval_type, status, timeout_hours,
-		task_token, approval_message, created_date
+		task_token, approval_message, created_date, scenario_id
 	) VALUES (
 		:approval_request_id, :execution_id, :rule_id, :action_name,
 		:approvers, :approval_type, :status, :timeout_hours,
-		:task_token, :approval_message, :created_date
+		:task_token, :approval_message, :created_date, :scenario_id
 	)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBApprovalRequest(req)); err != nil {
@@ -68,10 +68,8 @@ func (s *Store) Create(ctx context.Context, req approvalrequestbus.ApprovalReque
 
 // QueryByID returns a single approval request by its ID.
 func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (approvalrequestbus.ApprovalRequest, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: id.String(),
+	data := map[string]any{
+		"id": id.String(),
 	}
 
 	const q = `
@@ -80,8 +78,11 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (approvalrequestbus
 	LEFT JOIN workflow.automation_rules r ON ar.rule_id = r.id
 	WHERE ar.approval_request_id = :id`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var dbReq dbApprovalRequest
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbReq); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &dbReq); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return approvalrequestbus.ApprovalRequest{}, approvalrequestbus.ErrNotFound
 		}
@@ -143,6 +144,7 @@ func (s *Store) Query(ctx context.Context, filter approvalrequestbus.QueryFilter
 
 	buf := bytes.NewBufferString(q)
 	applyFilterWithJoin(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -168,6 +170,7 @@ func (s *Store) Count(ctx context.Context, filter approvalrequestbus.QueryFilter
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`

@@ -26,6 +26,7 @@ type dbApprovalRequest struct {
 	ResolutionReason sql.NullString `db:"resolution_reason"`
 	CreatedDate      time.Time      `db:"created_date"`
 	ResolvedDate     sql.NullTime   `db:"resolved_date"`
+	ScenarioID       *uuid.UUID     `db:"scenario_id"`
 }
 
 func toDBApprovalRequest(req approvalrequestbus.ApprovalRequest) dbApprovalRequest {
@@ -45,6 +46,7 @@ func toDBApprovalRequest(req approvalrequestbus.ApprovalRequest) dbApprovalReque
 		TimeoutHours: req.TimeoutHours,
 		TaskToken:    req.TaskToken,
 		CreatedDate:  req.CreatedDate,
+		ScenarioID:   req.ScenarioID,
 	}
 
 	if req.ApprovalMessage != "" {
@@ -84,6 +86,7 @@ func toBusApprovalRequest(db dbApprovalRequest) (approvalrequestbus.ApprovalRequ
 		TimeoutHours: db.TimeoutHours,
 		TaskToken:    db.TaskToken,
 		CreatedDate:  db.CreatedDate,
+		ScenarioID:   db.ScenarioID,
 	}
 
 	if db.RuleName.Valid {
