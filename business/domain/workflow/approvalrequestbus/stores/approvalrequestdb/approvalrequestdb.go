@@ -117,7 +117,11 @@ func (s *Store) Resolve(ctx context.Context, id, resolvedBy uuid.UUID, status, r
 	UPDATE workflow.approval_requests
 	SET status = :status, resolved_by = :resolved_by, resolution_reason = :resolution_reason, resolved_date = NOW()
 	WHERE approval_request_id = :id AND status = 'pending'
-	RETURNING *`
+	RETURNING
+		approval_request_id, execution_id, rule_id, action_name,
+		approvers, approval_type, status, timeout_hours, task_token,
+		approval_message, resolved_by, resolution_reason,
+		created_date, resolved_date, scenario_id`
 
 	var dbReq dbApprovalRequest
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbReq); err != nil {
