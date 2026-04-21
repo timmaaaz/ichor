@@ -379,9 +379,14 @@ func (s *Store) ApplyFixtures(ctx context.Context, target uuid.UUID) error {
 		// INSERT … SELECT per target table. The payload_json column holds JSONB;
 		// jsonb_populate_record maps each row to the target table's columns.
 		// Named params :scenario_id and :table_name are bound by sqlx.
+		//
+		// CAST(NULL AS %s) is used instead of NULL::%s because sqlx's named-
+		// parameter parser treats "::" as ":" + ":name" and rejects the cast
+		// with "syntax error at or near ':'". CAST(...) is semantically
+		// identical and avoids the collision.
 		q := fmt.Sprintf(`
 		INSERT INTO %s
-		SELECT (jsonb_populate_record(NULL::%s, payload_json)).*
+		SELECT (jsonb_populate_record(CAST(NULL AS %s), payload_json)).*
 		FROM inventory.scenario_fixtures
 		WHERE scenario_id = :scenario_id AND target_table = :table_name`,
 			tr.TargetTable, tr.TargetTable)
