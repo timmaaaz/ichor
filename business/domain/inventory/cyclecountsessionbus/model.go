@@ -11,13 +11,14 @@ import (
 
 // CycleCountSession represents a cycle count session in the warehouse.
 type CycleCountSession struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	Status        Status    `json:"status"`
-	CreatedBy     uuid.UUID `json:"created_by"`
-	CreatedDate   time.Time `json:"created_date"`
-	UpdatedDate   time.Time `json:"updated_date"`
+	ID            uuid.UUID  `json:"id"`
+	Name          string     `json:"name"`
+	Status        Status     `json:"status"`
+	CreatedBy     uuid.UUID  `json:"created_by"`
+	CreatedDate   time.Time  `json:"created_date"`
+	UpdatedDate   time.Time  `json:"updated_date"`
 	CompletedDate *time.Time `json:"completed_date"`
+	ScenarioID    *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 // NewCycleCountSession contains the information needed to create a new cycle count session.

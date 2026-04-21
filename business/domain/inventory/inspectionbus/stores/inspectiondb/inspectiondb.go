@@ -48,11 +48,11 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (inspectionbus.Storer, erro
 func (s *Store) Create(ctx context.Context, inspection inspectionbus.Inspection) error {
 	const q = `
     INSERT INTO inventory.quality_inspections (
-        id, product_id, inspector_id, lot_id, inspection_date, 
-		next_inspection_date, status, notes,  created_date, updated_date
+        id, product_id, inspector_id, lot_id, inspection_date,
+		next_inspection_date, status, notes, scenario_id, created_date, updated_date
     ) VALUES (
-        :id, :product_id, :inspector_id, :lot_id, :inspection_date, 
-		:next_inspection_date, :status, :notes, :created_date, :updated_date
+        :id, :product_id, :inspector_id, :lot_id, :inspection_date,
+		:next_inspection_date, :status, :notes, :scenario_id, :created_date, :updated_date
     )
     `
 
@@ -123,14 +123,15 @@ func (s *Store) Query(ctx context.Context, filter inspectionbus.QueryFilter, ord
 
 	const q = `
 	SELECT
-	    id, product_id, inspector_id, lot_id, inspection_date, 
-        next_inspection_date, status, notes,  created_date, updated_date
+	    id, product_id, inspector_id, lot_id, inspection_date,
+        next_inspection_date, status, notes, scenario_id, created_date, updated_date
 	FROM
 		inventory.quality_inspections
 	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -161,6 +162,7 @@ func (s *Store) Count(ctx context.Context, filter inspectionbus.QueryFilter) (in
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -174,25 +176,26 @@ func (s *Store) Count(ctx context.Context, filter inspectionbus.QueryFilter) (in
 }
 
 func (s *Store) QueryByID(ctx context.Context, inspectionID uuid.UUID) (inspectionbus.Inspection, error) {
-	data := struct {
-		InspectionID uuid.UUID `db:"id"`
-	}{
-		InspectionID: inspectionID,
+	data := map[string]any{
+		"id": inspectionID,
 	}
 
 	const q = `
     SELECT
-        id, product_id, inspector_id, lot_id, inspection_date, 
-        next_inspection_date, status, notes,  created_date, updated_date
+        id, product_id, inspector_id, lot_id, inspection_date,
+        next_inspection_date, status, notes, scenario_id, created_date, updated_date
     FROM
         inventory.quality_inspections
     WHERE
         id = :id
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var inspection inspection
 
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &inspection); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &inspection); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return inspectionbus.Inspection{}, inspectionbus.ErrNotFound
 		}

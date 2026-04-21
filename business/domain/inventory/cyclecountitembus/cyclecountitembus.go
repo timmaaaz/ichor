@@ -84,6 +84,10 @@ func (b *Business) Create(ctx context.Context, ncci NewCycleCountItem) (CycleCou
 		UpdatedDate:    now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		item.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, item); err != nil {
 		return CycleCountItem{}, fmt.Errorf("create: %w", err)
 	}

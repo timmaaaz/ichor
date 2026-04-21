@@ -38,6 +38,7 @@ type Inspection struct {
 	NextInspectionDate string `json:"next_inspection_date"`
 	UpdatedDate        string `json:"updated_date"`
 	CreatedDate        string `json:"created_date"`
+	ScenarioID         string `json:"scenario_id,omitempty"`
 }
 
 func (app Inspection) Encode() ([]byte, string, error) {
@@ -46,6 +47,10 @@ func (app Inspection) Encode() ([]byte, string, error) {
 }
 
 func ToAppInspection(bus inspectionbus.Inspection) Inspection {
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
 	return Inspection{
 		InspectionID:       bus.InspectionID.String(),
 		ProductID:          bus.ProductID.String(),
@@ -57,6 +62,7 @@ func ToAppInspection(bus inspectionbus.Inspection) Inspection {
 		NextInspectionDate: bus.NextInspectionDate.Format(timeutil.FORMAT),
 		UpdatedDate:        bus.UpdatedDate.Format(timeutil.FORMAT),
 		CreatedDate:        bus.CreatedDate.Format(timeutil.FORMAT),
+		ScenarioID:         scenarioID,
 	}
 }
 

@@ -44,6 +44,7 @@ type CycleCountItem struct {
 	CountedDate     string `json:"countedDate"`
 	CreatedDate     string `json:"createdDate"`
 	UpdatedDate     string `json:"updatedDate"`
+	ScenarioID      string `json:"scenario_id,omitempty"`
 }
 
 func (app CycleCountItem) Encode() ([]byte, string, error) {
@@ -78,6 +79,11 @@ func ToAppCycleCountItem(bus cyclecountitembus.CycleCountItem) CycleCountItem {
 		countedDate = bus.CountedDate.Format(timeutil.FORMAT)
 	}
 
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return CycleCountItem{
 		ID:              bus.ID.String(),
 		ItemCode:        itemCode,
@@ -92,6 +98,7 @@ func ToAppCycleCountItem(bus cyclecountitembus.CycleCountItem) CycleCountItem {
 		CountedDate:     countedDate,
 		CreatedDate:     bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:     bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:      scenarioID,
 	}
 }
 

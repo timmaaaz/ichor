@@ -51,6 +51,7 @@ type PickTask struct {
 	CreatedBy            string `json:"created_by"`
 	CreatedDate          string `json:"created_date"`
 	UpdatedDate          string `json:"updated_date"`
+	ScenarioID           string `json:"scenario_id,omitempty"`
 }
 
 func (app PickTask) Encode() ([]byte, string, error) {
@@ -95,6 +96,11 @@ func ToAppPickTask(bus picktaskbus.PickTask) PickTask {
 		completedAt = bus.CompletedAt.Format(timeutil.FORMAT)
 	}
 
+	scenarioID := ""
+	if bus.ScenarioID != nil {
+		scenarioID = bus.ScenarioID.String()
+	}
+
 	return PickTask{
 		ID:                   bus.ID.String(),
 		TaskNumber:           taskNumber,
@@ -115,6 +121,7 @@ func ToAppPickTask(bus picktaskbus.PickTask) PickTask {
 		CreatedBy:            bus.CreatedBy.String(),
 		CreatedDate:          bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:          bus.UpdatedDate.Format(timeutil.FORMAT),
+		ScenarioID:           scenarioID,
 	}
 }
 

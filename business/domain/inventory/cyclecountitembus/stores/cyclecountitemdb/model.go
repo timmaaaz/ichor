@@ -25,6 +25,7 @@ type cycleCountItem struct {
 	CountedDate     sql.NullTime   `db:"counted_date"`
 	CreatedDate     time.Time      `db:"created_date"`
 	UpdatedDate     time.Time      `db:"updated_date"`
+	ScenarioID      *uuid.UUID     `db:"scenario_id"`
 }
 
 func toBusCycleCountItem(db cycleCountItem) (cyclecountitembus.CycleCountItem, error) {
@@ -52,6 +53,7 @@ func toBusCycleCountItem(db cycleCountItem) (cyclecountitembus.CycleCountItem, e
 		CountedDate:     countedDate,
 		CreatedDate:     db.CreatedDate,
 		UpdatedDate:     db.UpdatedDate,
+		ScenarioID:      db.ScenarioID,
 	}, nil
 }
 
@@ -87,5 +89,6 @@ func toDBCycleCountItem(bus cyclecountitembus.CycleCountItem) cycleCountItem {
 		CountedDate:     countedDate,
 		CreatedDate:     bus.CreatedDate,
 		UpdatedDate:     bus.UpdatedDate,
+		ScenarioID:      bus.ScenarioID,
 	}
 }

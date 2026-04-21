@@ -82,6 +82,10 @@ func (b *Business) Create(ctx context.Context, nccs NewCycleCountSession) (Cycle
 		UpdatedDate: now,
 	}
 
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		session.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, session); err != nil {
 		return CycleCountSession{}, fmt.Errorf("create: %w", err)
 	}

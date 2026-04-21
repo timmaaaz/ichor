@@ -12,19 +12,20 @@ import (
 // CycleCountItem represents a single inventory item line within a cycle count session.
 // Each item records the system quantity, the counted quantity, and the computed variance.
 type CycleCountItem struct {
-	ID               uuid.UUID `json:"id"`
-	ItemCode         *string   `json:"item_code,omitempty"`
-	SessionID        uuid.UUID `json:"session_id"`
-	ProductID        uuid.UUID `json:"product_id"`
-	LocationID       uuid.UUID `json:"location_id"`
-	SystemQuantity   int       `json:"system_quantity"`
-	CountedQuantity  *int      `json:"counted_quantity,omitempty"`
-	Variance         *int      `json:"variance,omitempty"`
-	Status           Status    `json:"status"`
-	CountedBy        uuid.UUID `json:"counted_by"`
-	CountedDate      time.Time `json:"counted_date"`
-	CreatedDate      time.Time `json:"created_date"`
-	UpdatedDate      time.Time `json:"updated_date"`
+	ID              uuid.UUID  `json:"id"`
+	ItemCode        *string    `json:"item_code,omitempty"`
+	SessionID       uuid.UUID  `json:"session_id"`
+	ProductID       uuid.UUID  `json:"product_id"`
+	LocationID      uuid.UUID  `json:"location_id"`
+	SystemQuantity  int        `json:"system_quantity"`
+	CountedQuantity *int       `json:"counted_quantity,omitempty"`
+	Variance        *int       `json:"variance,omitempty"`
+	Status          Status     `json:"status"`
+	CountedBy       uuid.UUID  `json:"counted_by"`
+	CountedDate     time.Time  `json:"counted_date"`
+	CreatedDate     time.Time  `json:"created_date"`
+	UpdatedDate     time.Time  `json:"updated_date"`
+	ScenarioID      *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 // NewCycleCountItem contains the information needed to create a new cycle count item.

@@ -12,16 +12,17 @@ import (
 // expect snake_case keys to match API conventions.
 
 type Inspection struct {
-	InspectionID       uuid.UUID `json:"inspection_id"`
-	ProductID          uuid.UUID `json:"product_id"`
-	InspectorID        uuid.UUID `json:"inspector_id"`
-	LotID              uuid.UUID `json:"lot_id"`
-	Status             string    `json:"status"`
-	Notes              string    `json:"notes"`
-	InspectionDate     time.Time `json:"inspection_date"`
-	NextInspectionDate time.Time `json:"next_inspection_date"`
-	UpdatedDate        time.Time `json:"updated_date"`
-	CreatedDate        time.Time `json:"created_date"`
+	InspectionID       uuid.UUID  `json:"inspection_id"`
+	ProductID          uuid.UUID  `json:"product_id"`
+	InspectorID        uuid.UUID  `json:"inspector_id"`
+	LotID              uuid.UUID  `json:"lot_id"`
+	Status             string     `json:"status"`
+	Notes              string     `json:"notes"`
+	InspectionDate     time.Time  `json:"inspection_date"`
+	NextInspectionDate time.Time  `json:"next_inspection_date"`
+	UpdatedDate        time.Time  `json:"updated_date"`
+	CreatedDate        time.Time  `json:"created_date"`
+	ScenarioID         *uuid.UUID `json:"scenario_id,omitempty"`
 }
 
 type NewInspection struct {

@@ -18,6 +18,7 @@ type cycleCountSession struct {
 	CreatedDate   time.Time    `db:"created_date"`
 	UpdatedDate   time.Time    `db:"updated_date"`
 	CompletedDate sql.NullTime `db:"completed_date"`
+	ScenarioID    *uuid.UUID   `db:"scenario_id"`
 }
 
 func toBusCycleCountSession(db cycleCountSession) (cyclecountsessionbus.CycleCountSession, error) {
@@ -40,6 +41,7 @@ func toBusCycleCountSession(db cycleCountSession) (cyclecountsessionbus.CycleCou
 		CreatedDate:   db.CreatedDate,
 		UpdatedDate:   db.UpdatedDate,
 		CompletedDate: completedDate,
+		ScenarioID:    db.ScenarioID,
 	}, nil
 }
 
@@ -69,5 +71,6 @@ func toDBCycleCountSession(bus cyclecountsessionbus.CycleCountSession) cycleCoun
 		CreatedDate:   bus.CreatedDate,
 		UpdatedDate:   bus.UpdatedDate,
 		CompletedDate: completedDate,
+		ScenarioID:    bus.ScenarioID,
 	}
 }
