@@ -1,0 +1,11 @@
+# deployments/scenarios/rush-receiving/scenario.yaml
+#
+# ID is omitted — yamlload.loadOne computes UUID v5 of "scenario:rush-receiving"
+# under the deadbeef-dead-beef-dead-beefdeadbeef namespace at parse time.
+# Byte-identical across reseeds per Phase 0d Decision 3.
+
+name: rush-receiving
+description: |
+  Three purchase orders arriving in the next hour — exercises the receiving
+  flow under time pressure. Testers play the receiving-worker role:
+  scan inbound totes, put away into staging, resolve discrepancies.
