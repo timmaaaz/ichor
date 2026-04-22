@@ -293,6 +293,7 @@ func (b *Business) Load(ctx context.Context, id uuid.UUID) error {
 	}
 
 	if err := tx.Commit(); err != nil {
+		tx.Rollback()
 		return fmt.Errorf("load commit: %w", err)
 	}
 
