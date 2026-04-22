@@ -40,6 +40,8 @@ func seedScenarios(ctx context.Context, busDomain BusDomain) error {
 		return fmt.Errorf("yamlload.Load: %w", err)
 	}
 
+	lookups := newRefLookups(busDomain.Product, busDomain.InventoryLocation, busDomain.Label)
+
 	for _, s := range scenarios {
 		bus := scenariobus.Scenario{
 			ID:          s.ID,
@@ -65,7 +67,11 @@ func seedScenarios(ctx context.Context, busDomain BusDomain) error {
 				return fmt.Errorf("scenario %s: unknown state key %q (no schema.table mapping)", s.Name, tableSuffix)
 			}
 			for i, row := range s.State[tableSuffix] {
-				payload, err := yamlload.PayloadJSON(row)
+				resolved, err := resolveRefs(ctx, row, s.ID, lookups)
+				if err != nil {
+					return fmt.Errorf("scenario %s: resolve refs %s[%d]: %w", s.Name, targetTable, i, err)
+				}
+				payload, err := yamlload.PayloadJSON(resolved)
 				if err != nil {
 					return fmt.Errorf("scenario %s: payload marshal: %w", s.Name, err)
 				}
