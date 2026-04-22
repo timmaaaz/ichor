@@ -26,4 +26,10 @@ func Test_Scenarios(t *testing.T) {
 	test.Run(t, fixtures200(sd), "fixtures-200")
 	test.Run(t, fixtures401(sd), "fixtures-401")
 	test.Run(t, fixtures404(sd), "fixtures-404")
+	// load-401/404 must run BEFORE load-204: load-204 flips the active
+	// pointer to scenarios[2], and load-401/404 don't mutate state, so
+	// running them first keeps their assumptions stable.
+	test.Run(t, load401(sd), "load-401")
+	test.Run(t, load404(sd), "load-404")
+	test.Run(t, load204(sd), "load-204")
 }

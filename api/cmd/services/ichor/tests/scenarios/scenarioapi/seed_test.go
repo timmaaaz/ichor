@@ -53,9 +53,12 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		return apitest.SeedData{}, fmt.Errorf("seeding scenarios: %w", err)
 	}
 
-	// Attach two fixtures to scenarios[0] across two target tables so the
-	// /fixtures endpoint has something to return AND the grouping-by-table
-	// assertion is meaningful.
+	// Attach fixtures across three scenarios to exercise different test paths:
+	//   - scenarios[0]: fake payloads for two target tables (/fixtures shape test)
+	//   - scenarios[1]: no fixtures (empty /fixtures + empty Load test)
+	//   - scenarios[2]: one pre-resolved sales.order_fulfillment_statuses row
+	//                   that can actually INSERT via ApplyFixtures (Load test)
+	fulfillmentRowID := uuid.New()
 	fixtures := []scenariobus.ScenarioFixture{
 		{
 			ID:          uuid.New(),
@@ -76,6 +79,21 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 			ScenarioID:  scenarios[0].ID,
 			TargetTable: "inventory.inventory_items",
 			PayloadJSON: mustJSON(map[string]any{"quantity": 50}),
+			CreatedDate: time.Now(),
+		},
+		{
+			// Pre-resolved fixture usable by ApplyFixtures. name UNIQUE on
+			// the table, so pick a scenario-unique prefix so we don't
+			// collide with baseline (PENDING / PROCESSING / etc.).
+			ID:          uuid.New(),
+			ScenarioID:  scenarios[2].ID,
+			TargetTable: "sales.order_fulfillment_statuses",
+			PayloadJSON: mustJSON(map[string]any{
+				"id":          fulfillmentRowID.String(),
+				"name":        "SCEN-APITEST-STATUS",
+				"description": "load-test fixture row",
+				"scenario_id": scenarios[2].ID.String(),
+			}),
 			CreatedDate: time.Now(),
 		},
 	}
