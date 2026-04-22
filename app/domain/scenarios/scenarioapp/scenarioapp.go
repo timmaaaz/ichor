@@ -109,6 +109,25 @@ func (a *App) Query(ctx context.Context, qp QueryParams) (Scenarios, error) {
 	return toAppScenarios(scenarios), nil
 }
 
+// Fixtures returns all fixture rows for the given scenario grouped by target_table.
+// Returns HTTP 404 if the scenario does not exist.
+func (a *App) Fixtures(ctx context.Context, scenarioID uuid.UUID) (ScenarioFixtures, error) {
+	s, err := a.bus.QueryByID(ctx, scenarioID)
+	if err != nil {
+		if errors.Is(err, scenariobus.ErrNotFound) {
+			return ScenarioFixtures{}, errs.New(errs.NotFound, scenariobus.ErrNotFound)
+		}
+		return ScenarioFixtures{}, errs.Newf(errs.Internal, "querybyid: %s", err)
+	}
+
+	fixtures, err := a.bus.Fixtures(ctx, scenarioID)
+	if err != nil {
+		return ScenarioFixtures{}, errs.Newf(errs.Internal, "fixtures: %s", err)
+	}
+
+	return toAppScenarioFixtures(s, fixtures), nil
+}
+
 // Active returns the currently active scenario.
 // Returns HTTP 404 if no scenario is active.
 func (a *App) Active(ctx context.Context) (Scenario, error) {

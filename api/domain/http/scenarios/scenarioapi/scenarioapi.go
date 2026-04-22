@@ -94,6 +94,20 @@ func (a *api) query(ctx context.Context, r *http.Request) web.Encoder {
 	return scenarios
 }
 
+// fixtures handles GET /v1/scenarios/{id}/fixtures.
+func (a *api) fixtures(ctx context.Context, r *http.Request) web.Encoder {
+	id, err := uuid.Parse(web.Param(r, "id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	s, err := a.scenarioapp.Fixtures(ctx, id)
+	if err != nil {
+		return errs.NewError(err)
+	}
+	return s
+}
+
 // active handles GET /v1/scenarios/active.
 func (a *api) active(ctx context.Context, r *http.Request) web.Encoder {
 	s, err := a.scenarioapp.Active(ctx)

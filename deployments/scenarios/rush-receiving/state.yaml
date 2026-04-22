@@ -1,47 +1,20 @@
 # deployments/scenarios/rush-receiving/state.yaml
 #
-# Row blueprints keyed by target-table suffix. The Phase 1 seeder resolves
-# each suffix to a schema.table (e.g. "purchase_orders" -> procurement.purchase_orders),
-# JSON-marshals each row into scenario_fixtures.payload_json, and inserts
-# at Load time.
+# State intentionally empty. Phase 0d-followup-fixtures (2026-04-22) landed
+# a seed-time `_ref → _id` resolver in business/sdk/dbtest/seed_scenarios_refs.go
+# that supports three key suffixes:
 #
-# Column names below are illustrative — the actual procurement.purchase_orders
-# DDL (migrate.sql:1566-1624) requires order_number / purchase_order_status_id
-# (UUID FK) / supplier_id / delivery_warehouse_id / currency_id / requested_by
-# / created_by / updated_by + timestamps. Plan §0d.9 Step 3 explicitly starts
-# with this minimal shape and defers FK-correct column expansion to Phase 1.
+#   product_ref  → products.products.sku → product_id
+#   location_ref → inventory.inventory_locations.location_code → location_id
+#   tote_ref     → inventory.label_catalog.code → label_catalog_id
 #
-# IDs use hand-rolled UUIDv4-shaped hex for readability. A future refinement
-# switches to UUID v5 of "fixture:rush-receiving:<table>:<idx>" under the
-# deadbeef namespace (mirrors scenarios.yaml's UUID v5 determinism contract).
+# Realistic purchase_orders / inventory_items fixtures require additional
+# `_ref` types (supplier_ref, warehouse_ref, currency_ref, user_ref,
+# purchase_order_status_ref) that are not yet implemented. Phase 1 authors
+# those resolvers + the first real state.yaml rows using them.
+#
+# Until then, rush-receiving ships as a metadata-only scenario: the Load
+# endpoint still swaps the active pointer and deletes any prior active
+# scenario's scoped rows — it just has no new fixture rows to apply.
 
-purchase_orders:
-  - id: 11111111-1111-4111-8111-111111111001
-    number: PO-SCEN-RUSH-001
-    status: SENT
-    expected_arrival_date: "2026-04-21T09:00:00Z"
-    created_date: "2026-04-20T08:00:00Z"
-    updated_date: "2026-04-20T08:00:00Z"
-  - id: 11111111-1111-4111-8111-111111111002
-    number: PO-SCEN-RUSH-002
-    status: SENT
-    expected_arrival_date: "2026-04-21T10:00:00Z"
-    created_date: "2026-04-20T08:00:00Z"
-    updated_date: "2026-04-20T08:00:00Z"
-  - id: 11111111-1111-4111-8111-111111111003
-    number: PO-SCEN-RUSH-003
-    status: SENT
-    expected_arrival_date: "2026-04-21T11:00:00Z"
-    created_date: "2026-04-20T08:00:00Z"
-    updated_date: "2026-04-20T08:00:00Z"
-
-# One inventory_items row exercises the multi-table shape of State
-# (map[string][]map[string]any). Satisfies the plan's "1 PO + 1 inventory_item
-# that gets tagged" fallback condition even though we ship 3 POs.
-inventory_items:
-  - id: 22222222-2222-4222-8222-222222222001
-    product_ref: SKU-0001
-    location_ref: RCV-A010101
-    quantity: 50
-    created_date: "2026-04-20T08:00:00Z"
-    updated_date: "2026-04-20T08:00:00Z"
+{}

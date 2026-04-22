@@ -206,6 +206,22 @@ func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.
 	return scenarios, nil
 }
 
+// Fixtures returns all fixture rows for the given scenario, ordered by
+// target_table then created_date. Returns ErrNotFound if the scenario itself
+// does not exist; returns an empty slice (not an error) if the scenario has
+// no fixtures.
+func (b *Business) Fixtures(ctx context.Context, scenarioID uuid.UUID) ([]ScenarioFixture, error) {
+	if _, err := b.storer.QueryByID(ctx, scenarioID); err != nil {
+		return nil, fmt.Errorf("fixtures querybyid: %w", err)
+	}
+
+	fixtures, err := b.storer.QueryFixturesByScenario(ctx, scenarioID)
+	if err != nil {
+		return nil, fmt.Errorf("fixtures: %w", err)
+	}
+	return fixtures, nil
+}
+
 // Active returns the currently active scenario or ErrNotFound if none is set.
 func (b *Business) Active(ctx context.Context) (Scenario, error) {
 	activeID, err := b.storer.QueryActive(ctx)
