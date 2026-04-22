@@ -69,6 +69,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 
@@ -149,6 +150,7 @@ type SeedData struct {
 	LineItemFulfillmentStatuses []lineitemfulfillmentstatusapp.LineItemFulfillmentStatus
 	Orders                      []ordersapp.Order
 	OrderLineItems              []orderlineitemsapp.OrderLineItem
+	Scenarios                   []scenariobus.Scenario
 	SimpleTableConfig           *tablebuilder.StoredConfig
 	ComplexTableConfig          *tablebuilder.StoredConfig
 	PageTableConfig             *tablebuilder.StoredConfig
