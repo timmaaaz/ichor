@@ -27,9 +27,13 @@ func SetScenarioFilter(ctx context.Context, id uuid.UUID) context.Context {
 }
 
 // GetScenarioFilter returns the active scenario id from ctx and a bool
-// indicating presence. A zero uuid.UUID is treated as absent. Callers
-// that need to TAG writes (not filter reads) — e.g. bus.Create populating
-// ScenarioID on new rows — use this directly.
+// indicating presence. A zero uuid.UUID is treated as absent.
+//
+// Typical use: write-tagging, e.g. bus.Create populating ScenarioID on
+// new rows. Aliased-read queries (where ApplyScenarioFilter's unaliased
+// scenario_id column would be ambiguous — e.g. inventoryitemdb multi-join
+// reads) also call this directly and hand-build their alias-qualified
+// filter. Prefer ApplyScenarioFilter for single-table reads.
 func GetScenarioFilter(ctx context.Context) (uuid.UUID, bool) {
 	v, ok := ctx.Value(scenarioKey{}).(uuid.UUID)
 	if !ok || v == (uuid.UUID{}) {
