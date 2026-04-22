@@ -487,6 +487,36 @@ symptom → fix:
 
 ---
 
+## ⚠ Scenario fixture `_ref → _id` resolver
+
+file: business/sdk/dbtest/seed_scenarios_refs.go
+
+state.yaml rows may use stable human-readable codes for three FK types.
+The seeder resolves them to UUIDs before writing to
+`inventory.scenario_fixtures.payload_json`, so `scenariodb.ApplyFixtures`
+stays table-agnostic and `jsonb_populate_record` receives real UUIDs
+on every typed column.
+
+| state.yaml key | Resolved via | Output key |
+|---|---|---|
+| `product_ref` | `productbus.Query{SKU}` | `product_id` |
+| `location_ref` | `inventorylocationbus.Query{LocationCodeExact}` | `location_id` |
+| `tote_ref` | `labelbus.QueryByCode` | `label_catalog_id` |
+
+Any key ending in `_ref` that is NOT one of the three above is a
+fail-hard error — prevents silent mis-seeding when new ref types are
+added to YAML before their resolvers land.
+
+`scenario_id` is also auto-injected when absent, so `DeleteScopedRows`
+can remove the fixture rows on the next Load.
+
+Further `_ref` types (e.g. `supplier_ref`, `warehouse_ref`, `currency_ref`,
+`user_ref`, `purchase_order_status_ref`) are expected to land alongside
+the first real scenario fixtures that need them. Add each new resolver
+as a field on `refLookups` and a case in `resolveRefs`'s switch.
+
+---
+
 ## ⚠ Adding a new domain to seeding
 
   business/sdk/dbtest/dbtest.go          (add bus field(s) to BusDomain struct + instantiate in newBusDomains)
