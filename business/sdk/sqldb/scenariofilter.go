@@ -3,10 +3,16 @@ package sqldb
 import (
 	"bytes"
 	"context"
-	"strings"
+	"regexp"
 
 	"github.com/google/uuid"
 )
+
+// hasWhereRe matches a WHERE keyword bounded by non-identifier characters
+// (case-insensitive). The prior substring check looked for " WHERE " — it
+// missed the multi-line SQL shape used by every QueryByID, where WHERE is
+// surrounded by newlines/tabs rather than spaces.
+var hasWhereRe = regexp.MustCompile(`(?i)\bWHERE\b`)
 
 type scenarioKey struct{}
 
@@ -50,7 +56,7 @@ func ApplyScenarioFilter(ctx context.Context, buf *bytes.Buffer, data map[string
 	}
 	data["scenario_id"] = id
 
-	if strings.Contains(buf.String(), " WHERE ") {
+	if hasWhereRe.MatchString(buf.String()) {
 		buf.WriteString(" AND (scenario_id IS NULL OR scenario_id = :scenario_id)")
 		return
 	}

@@ -86,3 +86,30 @@ func TestGetScenarioFilter_ZeroUUIDTreatedAsAbsent(t *testing.T) {
 		t.Fatalf("expected (_, false) for zero UUID, got (%s, true)", id)
 	}
 }
+
+func TestApplyScenarioFilter_MultilineWhere(t *testing.T) {
+	// Regression: QueryByID across 18 stores formats WHERE with surrounding
+	// newlines/tabs, not spaces. The prior Contains(" WHERE ") check missed
+	// this shape and appended a second WHERE — invalid SQL whenever a
+	// scenario was active.
+	ctx := sqldb.SetScenarioFilter(context.Background(), uuid.New())
+
+	const q = `
+    SELECT id, product_id
+    FROM inventory.inventory_items
+    WHERE
+        id = :id
+    `
+	buf := bytes.NewBufferString(q)
+	data := map[string]any{"id": "abc"}
+
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
+	got := buf.String()
+	if n := strings.Count(strings.ToUpper(got), "WHERE"); n != 1 {
+		t.Fatalf("expected exactly one WHERE clause, got %d:\n%s", n, got)
+	}
+	if !strings.Contains(got, " AND (scenario_id IS NULL OR scenario_id = :scenario_id)") {
+		t.Fatalf("expected AND-prefixed scenario clause, got:\n%s", got)
+	}
+}
