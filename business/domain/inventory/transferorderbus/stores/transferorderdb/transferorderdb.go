@@ -166,10 +166,13 @@ func (s *Store) Count(ctx context.Context, filter transferorderbus.QueryFilter) 
         inventory.transfer_orders
     `
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var count struct {
 		Count int `db:"count"`
 	}
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &count); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &count); err != nil {
 		return 0, fmt.Errorf("namedqueryrow: %w", err)
 	}
 
