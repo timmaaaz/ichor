@@ -2,7 +2,9 @@ package scenarioapi_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/domain/http/scenarios/scenarioapi"
@@ -49,6 +51,38 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	scenarios, err := scenariobus.TestSeedScenarios(ctx, 3, busDomain.Scenario)
 	if err != nil {
 		return apitest.SeedData{}, fmt.Errorf("seeding scenarios: %w", err)
+	}
+
+	// Attach two fixtures to scenarios[0] across two target tables so the
+	// /fixtures endpoint has something to return AND the grouping-by-table
+	// assertion is meaningful.
+	fixtures := []scenariobus.ScenarioFixture{
+		{
+			ID:          uuid.New(),
+			ScenarioID:  scenarios[0].ID,
+			TargetTable: "procurement.purchase_orders",
+			PayloadJSON: mustJSON(map[string]any{"number": "PO-TEST-001"}),
+			CreatedDate: time.Now(),
+		},
+		{
+			ID:          uuid.New(),
+			ScenarioID:  scenarios[0].ID,
+			TargetTable: "procurement.purchase_orders",
+			PayloadJSON: mustJSON(map[string]any{"number": "PO-TEST-002"}),
+			CreatedDate: time.Now(),
+		},
+		{
+			ID:          uuid.New(),
+			ScenarioID:  scenarios[0].ID,
+			TargetTable: "inventory.inventory_items",
+			PayloadJSON: mustJSON(map[string]any{"quantity": 50}),
+			CreatedDate: time.Now(),
+		},
+	}
+	for _, f := range fixtures {
+		if err := busDomain.Scenario.SeedCreateFixture(ctx, f); err != nil {
+			return apitest.SeedData{}, fmt.Errorf("seeding fixture: %w", err)
+		}
 	}
 
 	roles, err := rolebus.TestSeedRoles(ctx, 2, busDomain.Role)
@@ -99,8 +133,17 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	return apitest.SeedData{
-		Admins:    []apitest.User{tu2},
-		Users:     []apitest.User{tu1},
-		Scenarios: scenarios,
+		Admins:           []apitest.User{tu2},
+		Users:            []apitest.User{tu1},
+		Scenarios:        scenarios,
+		ScenarioFixtures: fixtures,
 	}, nil
+}
+
+func mustJSON(v any) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }

@@ -151,6 +151,7 @@ type SeedData struct {
 	Orders                      []ordersapp.Order
 	OrderLineItems              []orderlineitemsapp.OrderLineItem
 	Scenarios                   []scenariobus.Scenario
+	ScenarioFixtures            []scenariobus.ScenarioFixture
 	SimpleTableConfig           *tablebuilder.StoredConfig
 	ComplexTableConfig          *tablebuilder.StoredConfig
 	PageTableConfig             *tablebuilder.StoredConfig

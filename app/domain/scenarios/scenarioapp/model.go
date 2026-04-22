@@ -111,3 +111,50 @@ func toBusUpdateScenario(app UpdateScenario) scenariobus.UpdateScenario {
 		Description: app.Description,
 	}
 }
+
+// =============================================================================
+
+// ScenarioFixture is the API-facing shape of a single fixture row.
+// Payload is emitted as raw JSON so callers decode per target_table schema.
+type ScenarioFixture struct {
+	ID          string          `json:"id"`
+	TargetTable string          `json:"target_table"`
+	Payload     json.RawMessage `json:"payload"`
+	CreatedDate string          `json:"created_date"`
+}
+
+// ScenarioFixtures is the GET /v1/scenarios/{id}/fixtures response. Fixture
+// rows are grouped by their target_table so the frontend can reassemble the
+// tote → lot → product preview without re-walking the flat slice.
+type ScenarioFixtures struct {
+	ID              string                       `json:"id"`
+	Name            string                       `json:"name"`
+	FixturesByTable map[string][]ScenarioFixture `json:"fixtures_by_table"`
+}
+
+// Encode implements the web.Encoder interface.
+func (app ScenarioFixtures) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+func toAppScenarioFixtures(s scenariobus.Scenario, fixtures []scenariobus.ScenarioFixture) ScenarioFixtures {
+	byTable := make(map[string][]ScenarioFixture, 4)
+	for _, f := range fixtures {
+		payload := json.RawMessage(f.PayloadJSON)
+		if len(payload) == 0 {
+			payload = json.RawMessage("null")
+		}
+		byTable[f.TargetTable] = append(byTable[f.TargetTable], ScenarioFixture{
+			ID:          f.ID.String(),
+			TargetTable: f.TargetTable,
+			Payload:     payload,
+			CreatedDate: f.CreatedDate.Format(timeutil.FORMAT),
+		})
+	}
+	return ScenarioFixtures{
+		ID:              s.ID.String(),
+		Name:            s.Name,
+		FixturesByTable: byTable,
+	}
+}

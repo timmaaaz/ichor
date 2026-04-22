@@ -45,6 +45,9 @@ func Routes(app *web.App, cfg Config) {
 	app.HandlerFunc(http.MethodGet, version, "/scenarios/{id}", a.queryByID, authen,
 		authorize(permissionsbus.Actions.Read))
 
+	app.HandlerFunc(http.MethodGet, version, "/scenarios/{id}/fixtures", a.fixtures, authen,
+		authorize(permissionsbus.Actions.Read))
+
 	app.HandlerFunc(http.MethodPost, version, "/scenarios", a.create, authen,
 		authorize(permissionsbus.Actions.Create))
 

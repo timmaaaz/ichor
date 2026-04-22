@@ -23,4 +23,7 @@ func Test_Scenarios(t *testing.T) {
 	test.Run(t, queryByID404(sd), "query-by-id-404")
 	test.Run(t, activeNone(sd), "active-none")
 	test.Run(t, active401(sd), "active-401")
+	test.Run(t, fixtures200(sd), "fixtures-200")
+	test.Run(t, fixtures401(sd), "fixtures-401")
+	test.Run(t, fixtures404(sd), "fixtures-404")
 }
