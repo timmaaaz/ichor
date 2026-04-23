@@ -531,7 +531,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// The core registration uses nil buses (graceful degradation); replace it here
 	// so that manual execution via POST /v1/workflow/actions/seek_approval/execute
 	// creates real approval request records.
-	actionRegistry.Register(approval.NewSeekApprovalHandler(cfg.Log, cfg.DB, approvalRequestBus, alertBus))
+	actionRegistry.Register(approval.NewSeekApprovalHandler(cfg.Log, cfg.DB, approvalRequestBus, alertBus, nil))
 
 	// Upgrade create_alert handler with real alert bus.
 	// The core registration uses nil buses (graceful degradation); replace it here

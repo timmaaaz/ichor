@@ -54,7 +54,7 @@ func insertSeekSeedData(db *dbtest.Database) (seekSeedData, error) {
 	approverB := uuid.New()
 
 	return seekSeedData{
-		Handler:            approval.NewSeekApprovalHandler(db.Log, db.DB, nil, db.BusDomain.Alert),
+		Handler:            approval.NewSeekApprovalHandler(db.Log, db.DB, nil, db.BusDomain.Alert, nil),
 		ApprovalRequestBus: nil,
 		AlertBus:           db.BusDomain.Alert,
 		Approvers:          []uuid.UUID{approverA, approverB},
@@ -80,7 +80,7 @@ func validateValidConfig(_ seekSeedData) unitest.Table {
 		ExpResp: nil,
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 
 			config := json.RawMessage(`{
 				"approvers": ["` + uuid.New().String() + `"],
@@ -104,7 +104,7 @@ func validateMissingApprovers(_ seekSeedData) unitest.Table {
 		ExpResp: "approvers list is required and must not be empty",
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 
 			config := json.RawMessage(`{
 				"approval_type": "any",
@@ -131,7 +131,7 @@ func validateEmptyApprovers(_ seekSeedData) unitest.Table {
 		ExpResp: "approvers list is required and must not be empty",
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 
 			config := json.RawMessage(`{
 				"approvers": [],
@@ -159,7 +159,7 @@ func validateInvalidApprovalType(_ seekSeedData) unitest.Table {
 		ExpResp: "invalid approval_type, must be: any, all, or majority",
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 
 			config := json.RawMessage(`{
 				"approvers": ["` + uuid.New().String() + `"],
@@ -187,7 +187,7 @@ func validateInvalidJSON(_ seekSeedData) unitest.Table {
 		ExpResp: true,
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 
 			config := json.RawMessage(`{not valid json}`)
 			err := handler.Validate(config)
@@ -221,7 +221,7 @@ func startAsyncNilBusReturnsError(_ seekSeedData) unitest.Table {
 		ExpResp: true,
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 
 			config := json.RawMessage(`{
 				"approvers": ["` + uuid.New().String() + `"],
@@ -268,7 +268,7 @@ func startAsyncInvalidApproverUUID(_ seekSeedData) unitest.Table {
 			// we use a real handler that will fail on UUID parse before DB call.
 			mockApprovalBus := approvalrequestbus.NewBusiness(log, nil, &noopApprovalStorer{})
 			mockAlertBus := alertbus.NewBusiness(log, &noopAlertStorer{})
-			handler := approval.NewSeekApprovalHandler(log, nil, mockApprovalBus, mockAlertBus)
+			handler := approval.NewSeekApprovalHandler(log, nil, mockApprovalBus, mockAlertBus, nil)
 
 			config := json.RawMessage(`{
 				"approvers": ["not-a-uuid"],
@@ -315,7 +315,7 @@ func executeNilBusGracefulDegradation(_ seekSeedData) unitest.Table {
 		ExpResp: "approved",
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 
 			config := json.RawMessage(`{
 				"approvers": ["` + uuid.New().String() + `"],
@@ -359,7 +359,7 @@ func executeInvalidApproverUUID(_ seekSeedData) unitest.Table {
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
 			mockApprovalBus := approvalrequestbus.NewBusiness(log, nil, &noopApprovalStorer{})
-			handler := approval.NewSeekApprovalHandler(log, nil, mockApprovalBus, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, mockApprovalBus, nil, nil)
 
 			config := json.RawMessage(`{
 				"approvers": ["not-a-uuid"],
@@ -406,7 +406,7 @@ func handlerProperties() unitest.Table {
 		ExpResp: "seek_approval|true|true",
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 
 			return fmt.Sprintf("%s|%v|%v", handler.GetType(), handler.IsAsync(), handler.SupportsManualExecution())
 		},
@@ -425,7 +425,7 @@ func handlerOutputPorts() unitest.Table {
 		ExpResp: 3,
 		ExcFunc: func(ctx context.Context) any {
 			log := logger.New(io.Discard, logger.LevelInfo, "test", nil)
-			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil)
+			handler := approval.NewSeekApprovalHandler(log, nil, nil, nil, nil)
 			ports := handler.GetOutputPorts()
 			return len(ports)
 		},
@@ -464,7 +464,7 @@ func Test_SeekApprovalHandler_StartAsync_WithDB(t *testing.T) {
 	approverB := uuid.New()
 
 	approvalStore := approvalrequestbus.NewBusiness(db.Log, nil, newApprovalRequestStore(db))
-	handler := approval.NewSeekApprovalHandler(db.Log, db.DB, approvalStore, db.BusDomain.Alert)
+	handler := approval.NewSeekApprovalHandler(db.Log, db.DB, approvalStore, db.BusDomain.Alert, nil)
 
 	t.Run("creates_approval_request_with_task_token", func(t *testing.T) {
 		executionID := wfData.AutomationExecutions[0].ID

@@ -203,7 +203,7 @@ func run(log *logger.Logger) error {
 
 	// Create async registry for human-in-the-loop actions.
 	asyncRegistry := temporal.NewAsyncRegistry()
-	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(log, db, approvalRequestBus, alertBus))
+	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(log, db, approvalRequestBus, alertBus, workflowQueue))
 
 	// =========================================================================
 	// Temporal Worker

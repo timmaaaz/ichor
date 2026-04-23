@@ -344,12 +344,11 @@ func (a *api) resolveUserNames(ctx context.Context, ids map[uuid.UUID]bool) map[
 	return nameMap
 }
 
-// publishApprovalResolved publishes a resolved approval event to RabbitMQ for WebSocket delivery.
-func (a *api) publishApprovalResolved(ctx context.Context, approval approvalrequestbus.ApprovalRequest, resolvedBy uuid.UUID) {
-	if a.workflowQueue == nil {
-		return
-	}
-
+// buildApprovalResolvedPayload is the single source of truth for the WebSocket
+// payload sent on an approval_resolved event. Adding a field here forces every
+// caller to supply it through the signature instead of growing an inline map
+// at a secondary site.
+func buildApprovalResolvedPayload(approval approvalrequestbus.ApprovalRequest, resolvedBy uuid.UUID) map[string]any {
 	payload := map[string]any{
 		"approvalId": approval.ID.String(),
 		"status":     approval.Status,
@@ -360,13 +359,21 @@ func (a *api) publishApprovalResolved(ctx context.Context, approval approvalrequ
 	if approval.ResolvedDate != nil {
 		payload["resolvedDate"] = approval.ResolvedDate.Format(time.RFC3339)
 	}
+	return payload
+}
+
+// publishApprovalResolved publishes a resolved approval event to RabbitMQ for WebSocket delivery.
+func (a *api) publishApprovalResolved(ctx context.Context, approval approvalrequestbus.ApprovalRequest, resolvedBy uuid.UUID) {
+	if a.workflowQueue == nil {
+		return
+	}
 
 	msg := &rabbitmq.Message{
 		Type:       "approval_resolved",
 		EntityName: "workflow.approval_requests",
 		EntityID:   approval.ID,
 		UserID:     resolvedBy,
-		Payload:    payload,
+		Payload:    buildApprovalResolvedPayload(approval, resolvedBy),
 	}
 
 	if err := a.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg); err != nil {

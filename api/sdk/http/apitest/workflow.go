@@ -77,7 +77,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	w.RegisterWorkflow(temporal.ExecuteGraphWorkflow)
 	w.RegisterWorkflow(temporal.ExecuteBranchUntilConvergence)
 	asyncRegistry := temporal.NewAsyncRegistry()
-	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(db.Log, db.DB, approvalBus, alertBus))
+	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(db.Log, db.DB, approvalBus, alertBus, nil))
 
 	activities := &temporal.Activities{
 		Registry:      registry,
