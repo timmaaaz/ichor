@@ -199,6 +199,20 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 	return toAppApproval(approval)
 }
 
+// buildResolveResult is the single source of truth for the Temporal activity
+// Result payload emitted by an approval resolution. Both the primary resolve
+// path and retryTemporalCompletion must go through this so downstream workflow
+// steps observe identical keys regardless of which path completed the activity.
+// Adding a field here forces every caller to supply it.
+func buildResolveResult(output, approvalID, resolvedBy, reason string) map[string]any {
+	return map[string]any{
+		"output":      output,
+		"approval_id": approvalID,
+		"resolved_by": resolvedBy,
+		"reason":      reason,
+	}
+}
+
 // completeAndClear sends the Temporal activity completion signal and removes the
 // task token from the DB. Called from resolve() on first-time resolution.
 // Errors from both operations are logged but not propagated (fail-open).
@@ -215,13 +229,8 @@ func (a *api) completeAndClear(ctx context.Context, id uuid.UUID, approval appro
 	}
 	output := temporal.ActionActivityOutput{
 		ActionName: approval.ActionName,
-		Result: map[string]any{
-			"output":      req.Resolution,
-			"approval_id": approval.ID.String(),
-			"resolved_by": userID.String(),
-			"reason":      req.Reason,
-		},
-		Success: true,
+		Result:     buildResolveResult(req.Resolution, approval.ID.String(), userID.String(), req.Reason),
+		Success:    true,
 	}
 	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
 		a.log.Error(ctx, "failed to complete Temporal activity",
@@ -410,17 +419,10 @@ func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Enc
 		resolvedBy = approval.ResolvedBy.String()
 	}
 
-	// Payload shape must match the primary resolve path so downstream workflow
-	// steps observe the same keys regardless of which path notified Temporal.
 	output := temporal.ActionActivityOutput{
 		ActionName: approval.ActionName,
-		Result: map[string]any{
-			"output":      approval.Status,
-			"approval_id": approval.ID.String(),
-			"resolved_by": resolvedBy,
-			"reason":      approval.ResolutionReason,
-		},
-		Success: true,
+		Result:     buildResolveResult(approval.Status, approval.ID.String(), resolvedBy, approval.ResolutionReason),
+		Success:    true,
 	}
 
 	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
