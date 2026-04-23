@@ -405,11 +405,20 @@ func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Enc
 		return toAppApproval(approval)
 	}
 
+	resolvedBy := ""
+	if approval.ResolvedBy != nil {
+		resolvedBy = approval.ResolvedBy.String()
+	}
+
+	// Payload shape must match the primary resolve path so downstream workflow
+	// steps observe the same keys regardless of which path notified Temporal.
 	output := temporal.ActionActivityOutput{
 		ActionName: approval.ActionName,
 		Result: map[string]any{
 			"output":      approval.Status,
 			"approval_id": approval.ID.String(),
+			"resolved_by": resolvedBy,
+			"reason":      approval.ResolutionReason,
 		},
 		Success: true,
 	}

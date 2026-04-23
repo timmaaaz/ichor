@@ -144,6 +144,8 @@ func TestRetryTemporalCompletion_EmptyToken(t *testing.T) {
 func TestRetryTemporalCompletion_TokenPresentCompleteSucceeds(t *testing.T) {
 	// When task_token is present and Complete() succeeds:
 	// Expect: Temporal called, ClearTaskToken called, approval returned.
+	// Payload must carry the same keys as the primary resolve path so
+	// downstream workflow steps see consistent context regardless of path.
 	approval := resolvedApproval(validToken())
 
 	storer := &mockStorer{queryByIDResult: approval}
@@ -162,6 +164,22 @@ func TestRetryTemporalCompletion_TokenPresentCompleteSucceeds(t *testing.T) {
 
 	if !storer.clearCalled {
 		t.Fatal("ClearTaskToken should have been called after successful Complete")
+	}
+
+	out, ok := completer.capturedOut.(temporal.ActionActivityOutput)
+	if !ok {
+		t.Fatalf("expected temporal.ActionActivityOutput, got %T", completer.capturedOut)
+	}
+	for _, key := range []string{"output", "approval_id", "resolved_by", "reason"} {
+		if _, present := out.Result[key]; !present {
+			t.Errorf("retry payload missing key %q; primary resolve path sets it", key)
+		}
+	}
+	if got := out.Result["resolved_by"]; got != approval.ResolvedBy.String() {
+		t.Errorf("resolved_by = %v, want %s", got, approval.ResolvedBy.String())
+	}
+	if got := out.Result["reason"]; got != approval.ResolutionReason {
+		t.Errorf("reason = %v, want %q", got, approval.ResolutionReason)
 	}
 }
 
