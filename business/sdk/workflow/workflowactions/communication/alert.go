@@ -242,60 +242,9 @@ func resolveTemplateVars(template string, data map[string]interface{}) string {
 	})
 }
 
-// publishAlertToWebSocket publishes alert messages to RabbitMQ for WebSocket delivery.
-// Each recipient gets a targeted message (user or role).
+// publishAlertToWebSocket delegates to the shared PublishAlertToRecipients
+// helper so this handler and other alert emitters (e.g. seek_approval) share a
+// single publishing path and payload shape.
 func (h *CreateAlertHandler) publishAlertToWebSocket(ctx context.Context, alert alertbus.Alert, recipients []alertbus.AlertRecipient) {
-	// Build the alert payload once (shared across all messages)
-	alertData := map[string]interface{}{
-		"id":               alert.ID.String(),
-		"alertType":        alert.AlertType,
-		"severity":         alert.Severity,
-		"title":            alert.Title,
-		"message":          alert.Message,
-		"status":           alert.Status,
-		"createdDate":      alert.CreatedDate.Format(time.RFC3339),
-		"updatedDate":      alert.UpdatedDate.Format(time.RFC3339),
-		"sourceEntityName": alert.SourceEntityName,
-		"context":          alert.Context,
-	}
-
-	// Only include sourceEntityId if it's not the zero UUID
-	if alert.SourceEntityID != uuid.Nil {
-		alertData["sourceEntityId"] = alert.SourceEntityID.String()
-	}
-
-	if alert.ActionURL != "" {
-		alertData["actionUrl"] = alert.ActionURL
-	}
-
-	for _, recipient := range recipients {
-		// Build payload with alert data
-		payload := map[string]interface{}{
-			"alert": alertData,
-		}
-
-		msg := &rabbitmq.Message{
-			Type:       "alert",
-			EntityName: "workflow.alerts",
-			EntityID:   alert.ID,
-		}
-
-		// Target by user or role
-		if recipient.RecipientType == "user" {
-			msg.UserID = recipient.RecipientID
-		} else if recipient.RecipientType == "role" {
-			payload["role_id"] = recipient.RecipientID.String()
-		}
-
-		msg.Payload = payload
-
-		if err := h.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg); err != nil {
-			h.log.Error(ctx, "failed to publish alert to rabbitmq",
-				"alert_id", alert.ID,
-				"recipient_type", recipient.RecipientType,
-				"recipient_id", recipient.RecipientID,
-				"error", err)
-			// Continue - alert is already persisted, log error but don't fail
-		}
-	}
+	PublishAlertToRecipients(ctx, h.workflowQueue, h.log, alert, recipients)
 }

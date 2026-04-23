@@ -61,6 +61,23 @@ func (ac *AlertConsumer) HandleMessage(ctx context.Context, msg *rabbitmq.Messag
 	return ac.handleAlert(ctx, msg)
 }
 
+// messageTypeForAlert maps a RabbitMQ message Type to the corresponding
+// WebSocket envelope MessageType. Every RabbitMQ Type that reaches this
+// consumer must have an explicit case so downstream clients can switch on a
+// stable, type-safe value. Adding a new publisher Type without adding a case
+// here causes the envelope to fall through to MessageTypeAlert — a silent
+// routing twin-site that prior audits (tasks/twin-site-audit.md) have flagged.
+func messageTypeForAlert(rabbitType string) websocket.MessageType {
+	switch rabbitType {
+	case "alert_updated":
+		return websocket.MessageTypeAlertUpdated
+	case "approval_resolved":
+		return websocket.MessageTypeApprovalResolved
+	default:
+		return websocket.MessageTypeAlert
+	}
+}
+
 // handleAlert processes a single alert message from RabbitMQ.
 func (ac *AlertConsumer) handleAlert(ctx context.Context, msg *rabbitmq.Message) error {
 	// Check for final failure (max retries exceeded)
@@ -95,11 +112,8 @@ func (ac *AlertConsumer) handleAlert(ctx context.Context, msg *rabbitmq.Message)
 		alertPayload = data
 	}
 
-	// Choose the message type: alert_updated for status changes, alert for new alerts.
-	msgType := websocket.MessageTypeAlert
-	if msg.Type == "alert_updated" {
-		msgType = websocket.MessageTypeAlertUpdated
-	}
+	// Map the RabbitMQ message type to the WebSocket envelope type.
+	msgType := messageTypeForAlert(msg.Type)
 
 	// Build WebSocket message envelope
 	wsMsg := websocket.Message{

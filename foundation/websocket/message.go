@@ -13,8 +13,8 @@ const (
 	MessageTypeAlert MessageType = "alert"
 	// MessageTypeAlertUpdated signals that an existing alert's status changed.
 	MessageTypeAlertUpdated MessageType = "alert_updated"
-	// MessageTypeApprovalUpdated signals that an approval request was resolved.
-	MessageTypeApprovalUpdated MessageType = "approval_updated"
+	// MessageTypeApprovalResolved signals that an approval request was resolved (approved or rejected).
+	MessageTypeApprovalResolved MessageType = "approval_resolved"
 	// MessageTypePing is a heartbeat ping message.
 	MessageTypePing MessageType = "ping"
 	// MessageTypePong is a heartbeat pong response message.

@@ -12,7 +12,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
 
 // seekApprovalConfig represents the configuration for a seek_approval action.
@@ -29,16 +31,21 @@ type SeekApprovalHandler struct {
 	db                 *sqlx.DB
 	approvalRequestBus *approvalrequestbus.Business
 	alertBus           *alertbus.Business
+	workflowQueue      *rabbitmq.WorkflowQueue
 }
 
 // NewSeekApprovalHandler creates a new seek approval handler.
-// approvalRequestBus and alertBus can be nil for core registration (graceful degradation).
-func NewSeekApprovalHandler(log *logger.Logger, db *sqlx.DB, approvalRequestBus *approvalrequestbus.Business, alertBus *alertbus.Business) *SeekApprovalHandler {
+// approvalRequestBus, alertBus, and workflowQueue can be nil for core
+// registration (graceful degradation). workflowQueue enables real-time
+// WebSocket delivery of approval-request alerts; without it the alert is
+// still persisted in the DB and visible via REST polling.
+func NewSeekApprovalHandler(log *logger.Logger, db *sqlx.DB, approvalRequestBus *approvalrequestbus.Business, alertBus *alertbus.Business, workflowQueue *rabbitmq.WorkflowQueue) *SeekApprovalHandler {
 	return &SeekApprovalHandler{
 		log:                log,
 		db:                 db,
 		approvalRequestBus: approvalRequestBus,
 		alertBus:           alertBus,
+		workflowQueue:      workflowQueue,
 	}
 }
 
@@ -268,5 +275,11 @@ func (h *SeekApprovalHandler) createApprovalAlert(ctx context.Context, req appro
 		h.log.Error(ctx, "failed to create approval alert recipients",
 			"approval_request_id", req.ID,
 			"error", err)
+		return
 	}
+
+	// Deliver the alert over WebSocket so approvers are notified in real time.
+	// The DB write above is the source of truth; WS delivery is best-effort
+	// and a nil workflowQueue is a no-op (core registration / offline tests).
+	communication.PublishAlertToRecipients(ctx, h.workflowQueue, h.log, alert, recipients)
 }

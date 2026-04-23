@@ -20,6 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -345,29 +346,18 @@ func (a *api) testAlert(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "create recipient: %s", err)
 	}
 
-	// Publish to RabbitMQ (if available) for WebSocket delivery
+	// Publish to RabbitMQ (if available) for WebSocket delivery. Build the
+	// WS payload from the same alertbus.Alert the HTTP response uses so
+	// both channels emit identical shapes.
 	if a.workflowQueue != nil {
-		alertPayload := map[string]interface{}{
-			"alert": map[string]interface{}{
-				"id":               alertID.String(),
-				"alertType":        "test_alert",
-				"severity":         severity,
-				"title":            title,
-				"message":          message,
-				"sourceEntityName": req.SourceEntityName,
-				"sourceEntityId":   sourceEntityID.String(),
-				"status":           alertbus.StatusActive,
-				"createdDate":      now.Format(time.RFC3339),
-				"updatedDate":      now.Format(time.RFC3339),
-			},
-		}
-
 		msg := &rabbitmq.Message{
 			Type:       "alert",
 			EntityName: "workflow.alerts",
 			EntityID:   alertID,
 			UserID:     userID,
-			Payload:    alertPayload,
+			Payload: map[string]interface{}{
+				"alert": communication.BuildAlertPayload(alert),
+			},
 		}
 
 		if err := a.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg); err != nil {

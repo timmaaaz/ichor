@@ -104,6 +104,19 @@ table: {schema}.{table}
   business/domain/{area}/{entity}bus/{entity}bus.go               (bus model if exposed in API)
   app/domain/{area}/{entity}app/model.go                          (app model + toBus*/ToApp* conversions)
 
+## ⚠ Adding a second writer to a shared payload (twin-site drift)
+
+rule: two sites feeding the same `map[string]any` consumer → use a typed struct or shared builder, never inline literals
+
+existing shared builders:
+  api/domain/http/{area}/{entity}api/{entity}api.go : toApp{Entity}                 (HTTP response shape)
+  business/domain/{area}/{entity}bus/event.go : ActionCreated/Updated/DeletedData   (delegate event payload)
+  api/domain/http/workflow/approvalapi/approvalapi.go : buildResolveResult           (Temporal activity Result)
+  business/sdk/workflow/workflowactions/communication/alert.go : BuildAlertPayload   (WebSocket alert shape)
+
+incident: PR #126 — retry Temporal path dropped resolved_by/reason
+audit: tasks/twin-site-audit.md
+
 ## ⚠ Adding a new domain entity (full 7-layer checklist)
 
   business/domain/{area}/{entity}bus/{entity}bus.go               (Business struct + CRUD methods)
