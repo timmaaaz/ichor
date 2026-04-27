@@ -94,6 +94,12 @@ type OrderContainerBinding struct {
 }
 
 // NewOrderContainerBinding is the input shape for BindContainer.
+//
+// ScenarioID is a fallback only: if the request context carries an active
+// scenario filter, BindContainer overwrites this field with the context's
+// scenario id (context-wins, matching Order.Create behavior). To avoid
+// surprises, callers should leave this nil and let context govern, or
+// invoke BindContainer outside a scenario-filtered context.
 type NewOrderContainerBinding struct {
 	OrderID          uuid.UUID  `json:"order_id"`
 	ContainerLabelID uuid.UUID  `json:"container_label_id"`
