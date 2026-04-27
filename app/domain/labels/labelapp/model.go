@@ -152,9 +152,12 @@ func (app PrintRequest) Validate() error {
 
 // RenderPrintRequest is the body of POST /v1/labels/render-print. A
 // transaction-label payload is rendered in-memory and dispatched to the
-// printer — no catalog row, no DB write.
+// printer — no catalog row, no DB write. Type must be a renderable
+// label type (location, container, product); lot/serial are accepted
+// by NewLabel/UpdateLabel for catalog row creation but cannot render
+// until D-001/D-002 ship.
 type RenderPrintRequest struct {
-	Type    string          `json:"type" validate:"required,oneof=receiving pick"`
+	Type    string          `json:"type" validate:"required,oneof=location container product"`
 	Payload json.RawMessage `json:"payload" validate:"required"`
 	Copies  int             `json:"copies,omitempty" validate:"omitempty,min=1,max=100"`
 }
@@ -165,8 +168,8 @@ func (app *RenderPrintRequest) Decode(data []byte) error {
 }
 
 // maxRenderPayloadBytes caps the raw JSON payload accepted by the
-// render-print endpoint. Realistic label payloads (pick with 100
-// serial numbers + long names) are ~3KB; 64KB gives generous headroom
+// render-print endpoint. Realistic label payloads (product with long
+// names + lot/UPC) are well under 1KB; 64KB gives generous headroom
 // while preventing an authenticated client from POSTing a multi-MB
 // body through the validate:"required" tag alone.
 const maxRenderPayloadBytes = 64 * 1024

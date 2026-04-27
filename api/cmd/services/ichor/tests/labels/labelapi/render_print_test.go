@@ -15,19 +15,18 @@ import (
 // these subtests inspect the recorded ZPL between calls so they bypass the
 // table-driven Run() helper and drive the mux directly.
 func runRenderPrintTests(t *testing.T, test *apitest.Test, printer *apitest.RecPrinter, sd apitest.SeedData) {
-	t.Run("render-print-200-receiving", func(t *testing.T) {
+	t.Run("render-print-200-product", func(t *testing.T) {
 		printer.Reset()
 
 		payload := mustJSON(t, map[string]any{
 			"productName": "Widget",
 			"sku":         "SKU-RP-1",
 			"upc":         "012345678905",
-			"quantity":    10,
-			"poNumber":    "PO-99",
+			"lotNumber":   nil,
 		})
 
 		body := mustJSON(t, labelapp.RenderPrintRequest{
-			Type:    "receiving",
+			Type:    "product",
 			Payload: json.RawMessage(payload),
 			Copies:  2,
 		})
@@ -43,8 +42,8 @@ func runRenderPrintTests(t *testing.T, test *apitest.Test, printer *apitest.RecP
 		if len(calls) != 2 {
 			t.Fatalf("printer calls: got %d want 2", len(calls))
 		}
-		if !bytes.Contains(calls[0], []byte("PO-99")) {
-			t.Fatalf("ZPL did not contain PO-99: %s", calls[0])
+		if !bytes.Contains(calls[0], []byte("SKU: SKU-RP-1")) {
+			t.Fatalf("ZPL did not contain SKU: SKU-RP-1: %s", calls[0])
 		}
 	})
 
@@ -73,7 +72,7 @@ func runRenderPrintTests(t *testing.T, test *apitest.Test, printer *apitest.RecP
 
 		// Sending raw JSON without a "payload" key triggers the
 		// validate:"required" tag on RenderPrintRequest.Payload.
-		body := []byte(`{"type":"receiving"}`)
+		body := []byte(`{"type":"product"}`)
 		req := httptest.NewRequest(http.MethodPost, "/v1/labels/render-print", bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+sd.Admins[0].Token)
 		w := httptest.NewRecorder()
@@ -91,7 +90,7 @@ func runRenderPrintTests(t *testing.T, test *apitest.Test, printer *apitest.RecP
 		printer.Reset()
 
 		body := mustJSON(t, labelapp.RenderPrintRequest{
-			Type:    "receiving",
+			Type:    "product",
 			Payload: json.RawMessage(`{"productName":"X"}`),
 		})
 		req := httptest.NewRequest(http.MethodPost, "/v1/labels/render-print", bytes.NewReader(body))
@@ -111,7 +110,7 @@ func runRenderPrintTests(t *testing.T, test *apitest.Test, printer *apitest.RecP
 		printer.Reset()
 
 		body := mustJSON(t, labelapp.RenderPrintRequest{
-			Type:    "receiving",
+			Type:    "product",
 			Payload: json.RawMessage(`{"productName":"X"}`),
 		})
 		req := httptest.NewRequest(http.MethodPost, "/v1/labels/render-print", bytes.NewReader(body))

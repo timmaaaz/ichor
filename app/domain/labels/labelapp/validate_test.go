@@ -18,7 +18,7 @@ func Test_RenderPrintRequest_Validate_PayloadTooLarge(t *testing.T) {
 	}
 
 	req := labelapp.RenderPrintRequest{
-		Type:    labelbus.TypeReceiving,
+		Type:    labelbus.TypeProduct,
 		Payload: raw,
 	}
 	if err := req.Validate(); err == nil {
@@ -35,7 +35,7 @@ func Test_RenderPrintRequest_Validate_PayloadAtCap(t *testing.T) {
 	}
 
 	req := labelapp.RenderPrintRequest{
-		Type:    labelbus.TypeReceiving,
+		Type:    labelbus.TypeProduct,
 		Payload: raw,
 	}
 	if err := req.Validate(); err != nil {
