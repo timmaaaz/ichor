@@ -28,6 +28,7 @@ type user struct {
 	Birthday           sql.NullTime   `db:"birthday"`
 	Roles              dbarray.String `db:"roles"`
 	SystemRoles        dbarray.String `db:"system_roles"`
+	AssignedZones      dbarray.String `db:"assigned_zones"`
 	PasswordHash       []byte         `db:"password_hash"`
 	Enabled            bool           `db:"enabled"`
 	DateHired          sql.NullTime   `db:"date_hired"`
@@ -83,6 +84,7 @@ func toDBUser(bus userbus.User) user {
 		Birthday:           birthday,
 		Roles:              userbus.ParseRolesToString(bus.Roles),
 		SystemRoles:        userbus.ParseRolesToString(bus.SystemRoles),
+		AssignedZones:      dbarray.String(bus.AssignedZones),
 		PasswordHash:       bus.PasswordHash,
 		Enabled:            bus.Enabled,
 		DateHired:          dateHired,
@@ -164,6 +166,7 @@ func toBusUser(db user) (userbus.User, error) {
 		Birthday:           birthday,
 		Roles:              roles,
 		SystemRoles:        systemRoles,
+		AssignedZones:      []string(db.AssignedZones),
 		PasswordHash:       db.PasswordHash,
 		Enabled:            db.Enabled,
 		DateHired:          dateHired,
