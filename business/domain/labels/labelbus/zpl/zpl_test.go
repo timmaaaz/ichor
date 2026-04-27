@@ -78,3 +78,21 @@ func Test_Tote_Snapshot(t *testing.T) {
 		t.Fatalf("tote snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
 	}
 }
+
+func Test_Product_Snapshot(t *testing.T) {
+	got := zpl.Product(zpl.ProductData{
+		ProductName: "Widget Assembly Type A",
+		SKU:         "SKU-001",
+		UPC:         "012345678905",
+		LotNumber:   strPtr("LOT-42"),
+	})
+	want := "^XA\n" +
+		"^FO40,60^A0N,60,60^FDWidget Assembly Type A^FS\n" +
+		"^FO40,150^A0N,40,40^FDSKU: SKU-001^FS\n" +
+		"^FO40,230^BY3^BCN,120,Y,N,N^FD012345678905^FS\n" +
+		"^FO40,430^A0N,40,40^FDLOT: LOT-42^FS\n" +
+		"^XZ"
+	if got != want {
+		t.Fatalf("product snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
+	}
+}

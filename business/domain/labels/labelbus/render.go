@@ -50,6 +50,16 @@ func Render(lc LabelCatalog) ([]byte, error) {
 			d.SerialNumbers[i] = zpl.Sanitize(d.SerialNumbers[i])
 		}
 		return []byte(zpl.Pick(d)), nil
+	case TypeProduct:
+		var d zpl.ProductData
+		if err := json.Unmarshal([]byte(lc.PayloadJSON), &d); err != nil {
+			return nil, fmt.Errorf("unmarshal product: %w", err)
+		}
+		d.ProductName = zpl.Sanitize(d.ProductName)
+		d.SKU = zpl.Sanitize(d.SKU)
+		d.UPC = zpl.Sanitize(d.UPC)
+		d.LotNumber = zpl.SanitizePtr(d.LotNumber)
+		return []byte(zpl.Product(d)), nil
 	default:
 		return nil, fmt.Errorf("unknown label type: %q", lc.Type)
 	}
