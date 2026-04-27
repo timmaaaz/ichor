@@ -80,3 +80,22 @@ type UpdateOrder struct {
 	Priority            *string           `json:"priority,omitempty"`
 	UpdatedBy           *uuid.UUID        `json:"updated_by,omitempty"`
 }
+
+// OrderContainerBinding represents the linkage between a sales order and a
+// physical container (tote/cart) at a point in time. Active bindings have
+// UnboundAt == nil; historical bindings retain UnboundAt.
+type OrderContainerBinding struct {
+	ID               uuid.UUID  `json:"id"`
+	OrderID          uuid.UUID  `json:"order_id"`
+	ContainerLabelID uuid.UUID  `json:"container_label_id"`
+	BoundAt          time.Time  `json:"bound_at"`
+	UnboundAt        *time.Time `json:"unbound_at,omitempty"`
+	ScenarioID       *uuid.UUID `json:"scenario_id,omitempty"`
+}
+
+// NewOrderContainerBinding is the input shape for BindContainer.
+type NewOrderContainerBinding struct {
+	OrderID          uuid.UUID  `json:"order_id"`
+	ContainerLabelID uuid.UUID  `json:"container_label_id"`
+	ScenarioID       *uuid.UUID `json:"scenario_id,omitempty"`
+}
