@@ -39,6 +39,7 @@ type Storer interface {
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, userID uuid.UUID) (User, error)
 	QueryByEmail(ctx context.Context, email mail.Address) (User, error)
+	QueryByAssignedZone(ctx context.Context, zone string) ([]User, error)
 }
 
 // Business manages the set of APIs for user access.
@@ -117,6 +118,7 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 		Birthday:           nu.Birthday,
 		Roles:              nu.Roles,
 		SystemRoles:        nu.SystemRoles,
+		AssignedZones:      nu.AssignedZones,
 		PasswordHash:       hash,
 		Enabled:            nu.Enabled,
 		DateHired:          time.Time{}, // Zero-value
@@ -183,6 +185,9 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 	}
 	if uu.SystemRoles != nil {
 		usr.SystemRoles = uu.SystemRoles
+	}
+	if uu.AssignedZones != nil {
+		usr.AssignedZones = *uu.AssignedZones
 	}
 	if uu.Enabled != nil {
 		usr.Enabled = *uu.Enabled
@@ -278,6 +283,19 @@ func (b *Business) QueryByEmail(ctx context.Context, email mail.Address) (User, 
 	}
 
 	return user, nil
+}
+
+// QueryByAssignedZone finds users assigned to a specified zone.
+func (b *Business) QueryByAssignedZone(ctx context.Context, zone string) ([]User, error) {
+	ctx, span := otel.AddSpan(ctx, "business.userbus.querybyassignedzone")
+	defer span.End()
+
+	users, err := b.storer.QueryByAssignedZone(ctx, zone)
+	if err != nil {
+		return nil, fmt.Errorf("query: zone[%s]: %w", zone, err)
+	}
+
+	return users, nil
 }
 
 // Authenticate finds a user by their email and verifies their passworb. On
