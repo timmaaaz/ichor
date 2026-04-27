@@ -2591,8 +2591,8 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 CREATE TABLE inventory.order_container_bindings (
     id                 UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id           UUID         NOT NULL REFERENCES sales.orders(id),
-    container_label_id UUID         NOT NULL REFERENCES inventory.label_catalog(id),
+    order_id           UUID         NOT NULL REFERENCES sales.orders(id) ON DELETE RESTRICT,
+    container_label_id UUID         NOT NULL REFERENCES inventory.label_catalog(id) ON DELETE RESTRICT,
     bound_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     unbound_at         TIMESTAMPTZ  NULL,
     scenario_id        UUID         NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL,
