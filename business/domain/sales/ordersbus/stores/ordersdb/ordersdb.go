@@ -332,7 +332,8 @@ func (s *Store) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error 
 }
 
 // QueryActiveBindingsByOrder returns all bindings for the given order whose
-// unbound_at IS NULL, ordered by bound_at ascending.
+// unbound_at IS NULL, ordered by bound_at ascending with id as a deterministic
+// tiebreaker so callers see a stable order even when bound_at collides.
 func (s *Store) QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUID) ([]ordersbus.OrderContainerBinding, error) {
 	const q = `
 	SELECT
@@ -342,7 +343,7 @@ func (s *Store) QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUI
 	WHERE
 		order_id = :order_id AND unbound_at IS NULL
 	ORDER BY
-		bound_at`
+		bound_at, id`
 
 	args := struct {
 		OrderID uuid.UUID `db:"order_id"`
