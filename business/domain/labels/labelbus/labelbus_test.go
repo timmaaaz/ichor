@@ -27,7 +27,7 @@ func Test_Render_DispatchesByType(t *testing.T) {
 		lc   labelbus.LabelCatalog
 		want string
 	}{
-		{"tote", labelbus.LabelCatalog{Code: "TOTE-001", Type: labelbus.TypeTote}, "TOTE-001"},
+		{"container", labelbus.LabelCatalog{Code: "TOTE-001", Type: labelbus.TypeContainer}, "TOTE-001"},
 		{"location", labelbus.LabelCatalog{Code: "STG-A01", Type: labelbus.TypeLocation}, "STG-A01"},
 		{"receiving", labelbus.LabelCatalog{
 			Code: "RX-1", Type: labelbus.TypeReceiving,

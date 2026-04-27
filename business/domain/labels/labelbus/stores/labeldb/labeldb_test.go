@@ -66,7 +66,7 @@ func Test_LabelCatalog_DuplicateCode(t *testing.T) {
 	lc := labelbus.LabelCatalog{
 		ID:          uuid.New(),
 		Code:        "DUPE-01",
-		Type:        labelbus.TypeTote,
+		Type:        labelbus.TypeContainer,
 		PayloadJSON: `{}`,
 		CreatedDate: time.Now(),
 	}

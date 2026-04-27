@@ -44,14 +44,14 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &labelapp.NewLabel{
 				Code:        "NEW-CREATE-002",
-				Type:        "tote",
+				Type:        "container",
 				EntityRef:   "TOTE-A1",
 				PayloadJSON: `{"capacity":50}`,
 			},
 			GotResp: &labelapp.Label{},
 			ExpResp: &labelapp.Label{
 				Code:        "NEW-CREATE-002",
-				Type:        "tote",
+				Type:        "container",
 				EntityRef:   "TOTE-A1",
 				PayloadJSON: `{"capacity":50}`,
 			},
@@ -111,7 +111,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 				Type: "not_a_valid_type",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"type","error":"type must be one of [location tote lot serial product receiving pick]"}]`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"type","error":"type must be one of [location container lot serial product receiving pick]"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

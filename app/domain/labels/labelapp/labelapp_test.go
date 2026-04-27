@@ -117,7 +117,7 @@ func Test_Print_CatalogLabel_SingleCopy(t *testing.T) {
 
 	id := uuid.New()
 	_ = store.Create(context.Background(), labelbus.LabelCatalog{
-		ID: id, Code: "TOTE-001", Type: labelbus.TypeTote,
+		ID: id, Code: "TOTE-001", Type: labelbus.TypeContainer,
 	})
 
 	err := app.Print(context.Background(), labelapp.PrintRequest{LabelID: id.String()})
@@ -174,7 +174,7 @@ func Test_Print_PrinterError(t *testing.T) {
 
 	id := uuid.New()
 	_ = store.Create(context.Background(), labelbus.LabelCatalog{
-		ID: id, Code: "X", Type: labelbus.TypeTote,
+		ID: id, Code: "X", Type: labelbus.TypeContainer,
 	})
 
 	if err := app.Print(context.Background(), labelapp.PrintRequest{LabelID: id.String()}); err == nil {

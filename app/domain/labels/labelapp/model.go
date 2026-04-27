@@ -71,7 +71,7 @@ func ToAppLabels(bus []labelbus.LabelCatalog) Labels {
 // NewLabel is the input shape for POST /v1/labels (catalog row creation).
 type NewLabel struct {
 	Code        string `json:"code" validate:"required,min=1,max=32"`
-	Type        string `json:"type" validate:"required,oneof=location tote lot serial product receiving pick"`
+	Type        string `json:"type" validate:"required,oneof=location container lot serial product receiving pick"`
 	EntityRef   string `json:"entity_ref,omitempty" validate:"omitempty,max=128"`
 	PayloadJSON string `json:"payload_json,omitempty"`
 }
@@ -101,7 +101,7 @@ func toBusNewLabel(app NewLabel) labelbus.NewLabelCatalog {
 // UpdateLabel carries optional patch fields for PUT /v1/labels/{label_id}.
 type UpdateLabel struct {
 	Code        *string `json:"code,omitempty" validate:"omitempty,min=1,max=32"`
-	Type        *string `json:"type,omitempty" validate:"omitempty,oneof=location tote lot serial product receiving pick"`
+	Type        *string `json:"type,omitempty" validate:"omitempty,oneof=location container lot serial product receiving pick"`
 	EntityRef   *string `json:"entity_ref,omitempty" validate:"omitempty,max=128"`
 	PayloadJSON *string `json:"payload_json,omitempty"`
 }

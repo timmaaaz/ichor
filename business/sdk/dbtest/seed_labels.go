@@ -36,7 +36,7 @@ func seedLabels(ctx context.Context, bus *labelbus.Business) error {
 	for i := 1; i <= 20; i++ {
 		entries = append(entries, struct{ code, typ string }{
 			code: fmt.Sprintf("TOTE-%03d", i),
-			typ:  labelbus.TypeTote,
+			typ:  labelbus.TypeContainer,
 		})
 	}
 	if len(entries) != 39 {

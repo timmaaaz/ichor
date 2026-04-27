@@ -20,7 +20,7 @@ func Render(lc LabelCatalog) ([]byte, error) {
 	switch lc.Type {
 	case TypeLocation:
 		return []byte(zpl.Location(zpl.LocationData{Code: zpl.Sanitize(lc.Code)})), nil
-	case TypeTote:
+	case TypeContainer:
 		return []byte(zpl.Tote(zpl.ToteData{Code: zpl.Sanitize(lc.Code)})), nil
 	case TypeReceiving:
 		var d zpl.ReceivingData

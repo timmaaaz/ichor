@@ -22,13 +22,13 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &labelapp.UpdateLabel{
 				Code: dbtest.StringPointer("UPDATED-001"),
-				Type: dbtest.StringPointer("tote"),
+				Type: dbtest.StringPointer("container"),
 			},
 			GotResp: &labelapp.Label{},
 			ExpResp: &labelapp.Label{
 				ID:          sd.Labels[0].ID,
 				Code:        "UPDATED-001",
-				Type:        "tote",
+				Type:        "container",
 				CreatedDate: sd.Labels[0].CreatedDate,
 			},
 			CmpFunc: func(got, exp any) string {
@@ -71,7 +71,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				Type: dbtest.StringPointer("not_a_valid_type"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"type","error":"type must be one of [location tote lot serial product receiving pick]"}]`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"type","error":"type must be one of [location container lot serial product receiving pick]"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
