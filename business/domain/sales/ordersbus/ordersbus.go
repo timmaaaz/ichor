@@ -43,6 +43,9 @@ type Storer interface {
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, statusID uuid.UUID) (Order, error)
 	QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Order, error)
+	BindContainer(ctx context.Context, binding OrderContainerBinding) (OrderContainerBinding, error)
+	UnbindContainer(ctx context.Context, bindingID uuid.UUID) error
+	QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUID) ([]OrderContainerBinding, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -274,4 +277,65 @@ func (b *Business) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Orde
 	}
 
 	return orders, nil
+}
+
+// BindContainer creates a new active binding from an order to a container
+// label. The binding ID is generated here (matching the Create flow's
+// uuid.New() in business) so the store layer is a thin SQL boundary. BoundAt
+// is left zero so the DB default (NOW()) fills it in; the populated value
+// returns via the store's RETURNING clause.
+func (b *Business) BindContainer(ctx context.Context, nb NewOrderContainerBinding) (OrderContainerBinding, error) {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.bindcontainer")
+	defer span.End()
+
+	binding := OrderContainerBinding{
+		ID:               uuid.New(),
+		OrderID:          nb.OrderID,
+		ContainerLabelID: nb.ContainerLabelID,
+		ScenarioID:       nb.ScenarioID,
+	}
+
+	// Phase 0d: tag the row with the active scenario (if any) so scenario
+	// Reset can later undo this row while leaving baseline rows intact.
+	// Caller-supplied ScenarioID wins if set explicitly.
+	if binding.ScenarioID == nil {
+		if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+			binding.ScenarioID = &sid
+		}
+	}
+
+	result, err := b.storer.BindContainer(ctx, binding)
+	if err != nil {
+		return OrderContainerBinding{}, fmt.Errorf("bindcontainer: %w", err)
+	}
+
+	return result, nil
+}
+
+// UnbindContainer marks an active binding as released. Idempotent — calling
+// Unbind on a binding that is already unbound is a silent no-op (the store's
+// WHERE clause filters to active rows only).
+func (b *Business) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.unbindcontainer")
+	defer span.End()
+
+	if err := b.storer.UnbindContainer(ctx, bindingID); err != nil {
+		return fmt.Errorf("unbindcontainer: %w", err)
+	}
+
+	return nil
+}
+
+// QueryActiveBindingsByOrder returns all currently-active container bindings
+// (unbound_at IS NULL) for the given order, ordered by bound_at ascending.
+func (b *Business) QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUID) ([]OrderContainerBinding, error) {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.queryactivebindingsbyorder")
+	defer span.End()
+
+	bindings, err := b.storer.QueryActiveBindingsByOrder(ctx, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("queryactivebindingsbyorder: %w", err)
+	}
+
+	return bindings, nil
 }
