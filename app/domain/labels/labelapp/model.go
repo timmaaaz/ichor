@@ -155,7 +155,9 @@ func (app PrintRequest) Validate() error {
 // printer — no catalog row, no DB write. Type must be a renderable
 // label type (location, container, product); lot/serial are accepted
 // by NewLabel/UpdateLabel for catalog row creation but cannot render
-// until D-001/D-002 ship.
+// until D-001/D-002 ship. NewLabel/UpdateLabel oneof tags also still
+// accept "receiving" and "pick" for catalog parity with pre-0g.B1
+// rows; Phase 0g.B2 deletes those rows and tightens both validators.
 type RenderPrintRequest struct {
 	Type    string          `json:"type" validate:"required,oneof=location container product"`
 	Payload json.RawMessage `json:"payload" validate:"required"`
