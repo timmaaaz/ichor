@@ -70,9 +70,51 @@ func runRenderPrintTests(t *testing.T, test *apitest.Test, printer *apitest.RecP
 	t.Run("render-print-400-missing-payload", func(t *testing.T) {
 		printer.Reset()
 
-		// Sending raw JSON without a "payload" key triggers the
-		// validate:"required" tag on RenderPrintRequest.Payload.
+		// type=product without "payload" trips the conditional check in
+		// RenderPrintRequest.Validate (payload is required for product
+		// but optional for location/container, which carry only Code).
 		body := []byte(`{"type":"product"}`)
+		req := httptest.NewRequest(http.MethodPost, "/v1/labels/render-print", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+sd.Admins[0].Token)
+		w := httptest.NewRecorder()
+		test.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("status: got %d want %d body=%s", w.Code, http.StatusBadRequest, w.Body.String())
+		}
+		if got := len(printer.Calls()); got != 0 {
+			t.Fatalf("printer should not be called on validation failure; got %d", got)
+		}
+	})
+
+	t.Run("render-print-200-location", func(t *testing.T) {
+		printer.Reset()
+
+		body := mustJSON(t, labelapp.RenderPrintRequest{
+			Type: "location",
+			Code: "STG-A02",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/v1/labels/render-print", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+sd.Admins[0].Token)
+		w := httptest.NewRecorder()
+		test.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNoContent {
+			t.Fatalf("status: got %d body=%s", w.Code, w.Body.String())
+		}
+		calls := printer.Calls()
+		if len(calls) != 1 {
+			t.Fatalf("printer calls: got %d want 1", len(calls))
+		}
+		if !bytes.Contains(calls[0], []byte("STG-A02")) {
+			t.Fatalf("ZPL did not contain location code STG-A02: %s", calls[0])
+		}
+	})
+
+	t.Run("render-print-400-location-missing-code", func(t *testing.T) {
+		printer.Reset()
+
+		body := []byte(`{"type":"location"}`)
 		req := httptest.NewRequest(http.MethodPost, "/v1/labels/render-print", bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+sd.Admins[0].Token)
 		w := httptest.NewRecorder()

@@ -2572,3 +2572,8 @@ CREATE INDEX idx_cycle_count_items_scenario ON inventory.cycle_count_items(scena
 ALTER TABLE workflow.approval_requests
     ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
 CREATE INDEX idx_approval_requests_scenario ON workflow.approval_requests(scenario_id);
+
+-- Version: 2.36
+-- Description: Phase 0g.B1 — rename label_catalog type 'tote' -> 'container'; delete unrenderable 'receiving'/'pick' rows.
+UPDATE inventory.label_catalog SET type = 'container' WHERE type = 'tote';
+DELETE FROM inventory.label_catalog WHERE type IN ('receiving', 'pick');

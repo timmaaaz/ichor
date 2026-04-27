@@ -158,9 +158,15 @@ func (app PrintRequest) Validate() error {
 // until D-001/D-002 ship. NewLabel/UpdateLabel oneof tags also still
 // accept "receiving" and "pick" for catalog parity with pre-0g.B1
 // rows; Phase 0g.B2 deletes those rows and tightens both validators.
+//
+// Code populates the human-readable + barcode field for location and
+// container labels (which don't carry a structured payload). Payload
+// is the JSON body for product labels. Validate() enforces that the
+// right field is present for the requested Type.
 type RenderPrintRequest struct {
 	Type    string          `json:"type" validate:"required,oneof=location container product"`
-	Payload json.RawMessage `json:"payload" validate:"required"`
+	Code    string          `json:"code,omitempty" validate:"omitempty,max=32"`
+	Payload json.RawMessage `json:"payload,omitempty"`
 	Copies  int             `json:"copies,omitempty" validate:"omitempty,min=1,max=100"`
 }
 
@@ -181,8 +187,15 @@ func (app RenderPrintRequest) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
 	}
-	if len(app.Payload) == 0 {
-		return errs.Newf(errs.InvalidArgument, "validate: payload is empty")
+	switch app.Type {
+	case "location", "container":
+		if app.Code == "" {
+			return errs.Newf(errs.InvalidArgument, "validate: code is required for type=%s", app.Type)
+		}
+	case "product":
+		if len(app.Payload) == 0 {
+			return errs.Newf(errs.InvalidArgument, "validate: payload is required for type=product")
+		}
 	}
 	if len(app.Payload) > maxRenderPayloadBytes {
 		return errs.Newf(errs.InvalidArgument, "validate: payload exceeds %d bytes", maxRenderPayloadBytes)

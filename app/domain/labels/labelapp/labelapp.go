@@ -66,6 +66,7 @@ func (a *App) Print(ctx context.Context, req PrintRequest) error {
 func (a *App) RenderPrint(ctx context.Context, req RenderPrintRequest) error {
 	lc := labelbus.LabelCatalog{
 		Type:        req.Type,
+		Code:        req.Code,
 		PayloadJSON: string(req.Payload),
 	}
 	zpl, err := labelbus.Render(lc)

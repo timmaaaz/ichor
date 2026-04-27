@@ -42,7 +42,7 @@ func Test_Product_Snapshot(t *testing.T) {
 		"^FO40,150^A0N,40,40^FDSKU: SKU-001^FS\n" +
 		"^FO40,230^BY3^BCN,120,Y,N,N^FD012345678905^FS\n" +
 		"^FO40,430^A0N,40,40^FDLOT: LOT-42^FS\n" +
-		"^XZ"
+		"^XZ\n"
 	if got != want {
 		t.Fatalf("product snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
 	}
@@ -59,7 +59,7 @@ func Test_Product_Snapshot_NilLot(t *testing.T) {
 		"^FO40,60^A0N,60,60^FDWidget Assembly Type A^FS\n" +
 		"^FO40,150^A0N,40,40^FDSKU: SKU-001^FS\n" +
 		"^FO40,230^BY3^BCN,120,Y,N,N^FD012345678905^FS\n" +
-		"^XZ"
+		"^XZ\n"
 	if got != want {
 		t.Fatalf("product snapshot drift (nil lot).\nwant:\n%q\ngot:\n%q\n", want, got)
 	}

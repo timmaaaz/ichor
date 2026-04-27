@@ -20,23 +20,23 @@ func Product(d ProductData) string {
 		name = name[:27] + "..."
 	}
 
+	var b strings.Builder
+	b.WriteString("^XA\n")
+
 	y := 60
-	lines := []string{
-		"^XA",
-		fmt.Sprintf("^FO40,%d^A0N,60,60^FD%s^FS", y, name),
-	}
+	b.WriteString(fmt.Sprintf("^FO40,%d^A0N,60,60^FD%s^FS\n", y, name))
 
 	y += 90
-	lines = append(lines, fmt.Sprintf("^FO40,%d^A0N,40,40^FDSKU: %s^FS", y, d.SKU))
+	b.WriteString(fmt.Sprintf("^FO40,%d^A0N,40,40^FDSKU: %s^FS\n", y, d.SKU))
 
 	y += 80
-	lines = append(lines, fmt.Sprintf("^FO40,%d^BY3^BCN,120,Y,N,N^FD%s^FS", y, d.UPC))
+	b.WriteString(fmt.Sprintf("^FO40,%d^BY3^BCN,120,Y,N,N^FD%s^FS\n", y, d.UPC))
 
 	y += 200
 	if d.LotNumber != nil {
-		lines = append(lines, fmt.Sprintf("^FO40,%d^A0N,40,40^FDLOT: %s^FS", y, *d.LotNumber))
+		b.WriteString(fmt.Sprintf("^FO40,%d^A0N,40,40^FDLOT: %s^FS\n", y, *d.LotNumber))
 	}
 
-	lines = append(lines, "^XZ")
-	return strings.Join(lines, "\n")
+	b.WriteString("^XZ\n")
+	return b.String()
 }
