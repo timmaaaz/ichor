@@ -284,6 +284,13 @@ func (b *Business) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Orde
 // uuid.New() in business) so the store layer is a thin SQL boundary. BoundAt
 // is left zero so the DB default (NOW()) fills it in; the populated value
 // returns via the store's RETURNING clause.
+//
+// EXCLUDE violations on one_active_binding_per_container come back as raw
+// pq errors wrapped via fmt.Errorf — callers that need to distinguish must
+// string-match err.Error().
+//
+// If a scenario is active on the context (sqldb.GetScenarioFilter), the
+// binding is auto-tagged so scenario Reset can roll it back.
 func (b *Business) BindContainer(ctx context.Context, nb NewOrderContainerBinding) (OrderContainerBinding, error) {
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.bindcontainer")
 	defer span.End()
@@ -297,11 +304,8 @@ func (b *Business) BindContainer(ctx context.Context, nb NewOrderContainerBindin
 
 	// Phase 0d: tag the row with the active scenario (if any) so scenario
 	// Reset can later undo this row while leaving baseline rows intact.
-	// Caller-supplied ScenarioID wins if set explicitly.
-	if binding.ScenarioID == nil {
-		if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-			binding.ScenarioID = &sid
-		}
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		binding.ScenarioID = &sid
 	}
 
 	result, err := b.storer.BindContainer(ctx, binding)
