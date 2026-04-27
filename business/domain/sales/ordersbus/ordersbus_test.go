@@ -383,16 +383,16 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	}
 }
 
-// makeToteLabel creates a fresh tote-type label with a unique code so each
-// binding test gets its own container ID free of the EXCLUDE constraint.
-func makeToteLabel(ctx context.Context, busDomain dbtest.BusDomain, code string) (uuid.UUID, error) {
+// makeContainerLabel creates a fresh container-type label with a unique code
+// so each binding test gets its own container ID free of the EXCLUDE constraint.
+func makeContainerLabel(ctx context.Context, busDomain dbtest.BusDomain, code string) (uuid.UUID, error) {
 	lc, err := busDomain.Label.Create(ctx, labelbus.NewLabelCatalog{
 		Code:        code,
-		Type:        labelbus.TypeTote,
+		Type:        labelbus.TypeContainer,
 		PayloadJSON: "{}",
 	})
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("create tote label %s: %w", code, err)
+		return uuid.UUID{}, fmt.Errorf("create container label %s: %w", code, err)
 	}
 	return lc.ID, nil
 }
@@ -407,11 +407,11 @@ func bindContainer(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Ta
 			ExcFunc: func(ctx context.Context) any {
 				orderID := sd.Orders[2].ID
 
-				labelA, err := makeToteLabel(ctx, busDomain, "TEST-BIND-A")
+				labelA, err := makeContainerLabel(ctx, busDomain, "TEST-BIND-A")
 				if err != nil {
 					return err
 				}
-				labelB, err := makeToteLabel(ctx, busDomain, "TEST-BIND-B")
+				labelB, err := makeContainerLabel(ctx, busDomain, "TEST-BIND-B")
 				if err != nil {
 					return err
 				}
@@ -456,7 +456,7 @@ func bindContainerExclude(busDomain dbtest.BusDomain, sd unitest.SeedData) []uni
 				orderX := sd.Orders[3].ID
 				orderY := sd.Orders[4].ID
 
-				container, err := makeToteLabel(ctx, busDomain, "TEST-EXCLUDE-A")
+				container, err := makeContainerLabel(ctx, busDomain, "TEST-EXCLUDE-A")
 				if err != nil {
 					return err
 				}
@@ -501,7 +501,7 @@ func rebindAfterUnbind(busDomain dbtest.BusDomain, sd unitest.SeedData) []unites
 				orderX := sd.Orders[2].ID
 				orderY := sd.Orders[1].ID
 
-				container, err := makeToteLabel(ctx, busDomain, "TEST-REBIND-A")
+				container, err := makeContainerLabel(ctx, busDomain, "TEST-REBIND-A")
 				if err != nil {
 					return err
 				}
