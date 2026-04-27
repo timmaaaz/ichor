@@ -9,7 +9,6 @@ import (
 
 	"github.com/timmaaaz/ichor/app/domain/paperwork/paperworkapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
-	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
 
@@ -19,6 +18,18 @@ type api struct {
 
 func newAPI(app *paperworkapp.App) *api {
 	return &api{app: app}
+}
+
+// pdfResponse implements web.Encoder for raw PDF bytes with
+// Content-Type: application/pdf. Phase 0g.B2 never reaches the success path
+// because the bus returns ErrNotImplemented; B3 fills in real bodies and
+// these handlers stream PDFs through this encoder unchanged.
+type pdfResponse struct {
+	bytes []byte
+}
+
+func (p pdfResponse) Encode() ([]byte, string, error) {
+	return p.bytes, "application/pdf", nil
 }
 
 // pickSheet handles GET /v1/paperwork/pick-sheet?order_id=&zone=
@@ -31,10 +42,11 @@ func (api *api) pickSheet(ctx context.Context, r *http.Request) web.Encoder {
 		OrderID: orderID,
 		Zone:    r.URL.Query().Get("zone"),
 	}
-	if _, err := api.app.BuildPickSheet(ctx, req); err != nil {
-		return mapErr(err)
+	pdf, err := api.app.BuildPickSheet(ctx, req)
+	if err != nil {
+		return errs.NewError(err)
 	}
-	return errs.Newf(errs.Internal, "unexpected nil error from build")
+	return pdfResponse{bytes: pdf}
 }
 
 // receiveCover handles GET /v1/paperwork/receive-cover?po_id=
@@ -44,10 +56,11 @@ func (api *api) receiveCover(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.InvalidArgument, errors.New("po_id must be a valid uuid"))
 	}
 	req := paperworkapp.ReceiveCoverRequest{PurchaseOrderID: poID}
-	if _, err := api.app.BuildReceiveCover(ctx, req); err != nil {
-		return mapErr(err)
+	pdf, err := api.app.BuildReceiveCover(ctx, req)
+	if err != nil {
+		return errs.NewError(err)
 	}
-	return errs.Newf(errs.Internal, "unexpected nil error from build")
+	return pdfResponse{bytes: pdf}
 }
 
 // transferSheet handles GET /v1/paperwork/transfer-sheet?transfer_id=
@@ -57,18 +70,9 @@ func (api *api) transferSheet(ctx context.Context, r *http.Request) web.Encoder 
 		return errs.New(errs.InvalidArgument, errors.New("transfer_id must be a valid uuid"))
 	}
 	req := paperworkapp.TransferSheetRequest{TransferID: transferID}
-	if _, err := api.app.BuildTransferSheet(ctx, req); err != nil {
-		return mapErr(err)
+	pdf, err := api.app.BuildTransferSheet(ctx, req)
+	if err != nil {
+		return errs.NewError(err)
 	}
-	return errs.Newf(errs.Internal, "unexpected nil error from build")
-}
-
-// mapErr translates business-layer errors to HTTP-layer error responses.
-// Phase 0g.B2 maps ErrNotImplemented → 501. B3 expands this with NotFound /
-// InvalidArgument mappings as real handler bodies land.
-func mapErr(err error) web.Encoder {
-	if errors.Is(err, paperworkbus.ErrNotImplemented) {
-		return errs.New(errs.Unimplemented, err)
-	}
-	return errs.New(errs.Internal, err)
+	return pdfResponse{bytes: pdf}
 }

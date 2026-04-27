@@ -74,8 +74,9 @@ func authed501(sd apitest.SeedData) []apitest.Table {
 // the handler. Single case — one Authenticate middleware shared across all
 // three routes; if it rejects on pick-sheet it rejects on the others.
 //
-// Token is "&nbsp;" (the labelapi pattern) — a literal string that fails JWT
-// parsing, which mid.Authenticate maps to 401 Unauthenticated.
+// Token is "&nbsp;" (the labelapi pattern) — a malformed Authorization header
+// that mid.Authenticate forwards to the auth service via authclient; the auth
+// service rejects it and the rejection is mapped to 401 Unauthenticated.
 func noAuth401(_ apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{

@@ -2,18 +2,23 @@
 package paperworkbus_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus"
+	"github.com/timmaaaz/ichor/foundation/logger"
+	"github.com/timmaaaz/ichor/foundation/otel"
 )
 
 func TestBootstrap(t *testing.T) {
 	t.Parallel()
 
-	bus := paperworkbus.NewBusiness(nil)
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
+	bus := paperworkbus.NewBusiness(log)
 	if bus == nil {
 		t.Fatal("NewBusiness returned nil")
 	}
