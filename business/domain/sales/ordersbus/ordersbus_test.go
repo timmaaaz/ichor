@@ -436,6 +436,9 @@ func bindContainer(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Ta
 				return len(bindings)
 			},
 			CmpFunc: func(got, exp any) string {
+				if err, ok := got.(error); ok {
+					return fmt.Sprintf("unexpected error from ExcFunc: %v", err)
+				}
 				return cmp.Diff(got, exp)
 			},
 		},
@@ -481,6 +484,9 @@ func bindContainerExclude(busDomain dbtest.BusDomain, sd unitest.SeedData) []uni
 				return strings.Contains(strings.ToLower(err.Error()), "exclusion")
 			},
 			CmpFunc: func(got, exp any) string {
+				if err, ok := got.(error); ok {
+					return fmt.Sprintf("unexpected error from ExcFunc: %v", err)
+				}
 				return cmp.Diff(got, exp)
 			},
 		},
@@ -532,6 +538,9 @@ func rebindAfterUnbind(busDomain dbtest.BusDomain, sd unitest.SeedData) []unites
 				return len(bindings)
 			},
 			CmpFunc: func(got, exp any) string {
+				if err, ok := got.(error); ok {
+					return fmt.Sprintf("unexpected error from ExcFunc: %v", err)
+				}
 				return cmp.Diff(got, exp)
 			},
 		},
