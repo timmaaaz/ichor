@@ -13,8 +13,6 @@ const (
 	TypeLot       = "lot"
 	TypeSerial    = "serial"
 	TypeProduct   = "product"
-	TypeReceiving = "receiving"
-	TypePick      = "pick"
 )
 
 // LabelCatalog represents one stable printable label definition.
