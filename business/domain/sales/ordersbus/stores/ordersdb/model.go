@@ -109,6 +109,34 @@ func toBusOrders(dbs []dbOrder) ([]ordersbus.Order, error) {
 	return orders, nil
 }
 
+type dbOrderContainerBinding struct {
+	ID               uuid.UUID  `db:"id"`
+	OrderID          uuid.UUID  `db:"order_id"`
+	ContainerLabelID uuid.UUID  `db:"container_label_id"`
+	BoundAt          time.Time  `db:"bound_at"`
+	UnboundAt        *time.Time `db:"unbound_at"`
+	ScenarioID       *uuid.UUID `db:"scenario_id"`
+}
+
+func toBusBinding(r dbOrderContainerBinding) ordersbus.OrderContainerBinding {
+	return ordersbus.OrderContainerBinding{
+		ID:               r.ID,
+		OrderID:          r.OrderID,
+		ContainerLabelID: r.ContainerLabelID,
+		BoundAt:          r.BoundAt.In(time.Local),
+		UnboundAt:        r.UnboundAt,
+		ScenarioID:       r.ScenarioID,
+	}
+}
+
+func toBusBindings(rs []dbOrderContainerBinding) []ordersbus.OrderContainerBinding {
+	bindings := make([]ordersbus.OrderContainerBinding, len(rs))
+	for i, r := range rs {
+		bindings[i] = toBusBinding(r)
+	}
+	return bindings
+}
+
 func toDBOrder(bus ordersbus.Order) dbOrder {
 	db := dbOrder{
 		ID:                  bus.ID,

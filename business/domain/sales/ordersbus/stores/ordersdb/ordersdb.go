@@ -271,3 +271,84 @@ func (s *Store) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]ordersb
 
 	return busOrders, nil
 }
+
+// BindContainer inserts a new active binding. The DB-level EXCLUDE constraint
+// enforces uniqueness on (container_label_id) WHERE unbound_at IS NULL, so
+// attempting to bind a container that is already actively bound returns
+// ordersbus.ErrUniqueEntry.
+//
+// unbound_at is intentionally omitted from the column list — the EXCLUDE
+// constraint only fires for rows where unbound_at IS NULL, so new active
+// bindings MUST leave it NULL. UnbindContainer is the only path that sets it.
+func (s *Store) BindContainer(ctx context.Context, nb ordersbus.NewOrderContainerBinding) (ordersbus.OrderContainerBinding, error) {
+	const q = `
+	INSERT INTO inventory.order_container_bindings
+		(id, order_id, container_label_id, scenario_id)
+	VALUES
+		(:id, :order_id, :container_label_id, :scenario_id)
+	RETURNING id, order_id, container_label_id, bound_at, unbound_at, scenario_id`
+
+	row := dbOrderContainerBinding{
+		ID:               uuid.New(),
+		OrderID:          nb.OrderID,
+		ContainerLabelID: nb.ContainerLabelID,
+		ScenarioID:       nb.ScenarioID,
+	}
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, row, &row); err != nil {
+		if errors.Is(err, sqldb.ErrForeignKeyViolation) {
+			return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", ordersbus.ErrForeignKeyViolation)
+		}
+		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
+			return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", ordersbus.ErrUniqueEntry)
+		}
+		return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", err)
+	}
+
+	return toBusBinding(row), nil
+}
+
+// UnbindContainer marks an active binding as released by setting unbound_at to
+// NOW(). The WHERE clause includes unbound_at IS NULL, so calling Unbind on an
+// already-released binding is a no-op (the UPDATE matches zero rows).
+func (s *Store) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error {
+	const q = `
+	UPDATE inventory.order_container_bindings
+	SET unbound_at = NOW()
+	WHERE id = :id AND unbound_at IS NULL`
+
+	args := struct {
+		ID uuid.UUID `db:"id"`
+	}{ID: bindingID}
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, args); err != nil {
+		return fmt.Errorf("namedexeccontext %w", err)
+	}
+
+	return nil
+}
+
+// QueryActiveBindingsByOrder returns all bindings for the given order whose
+// unbound_at IS NULL, ordered by bound_at ascending.
+func (s *Store) QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUID) ([]ordersbus.OrderContainerBinding, error) {
+	const q = `
+	SELECT
+		id, order_id, container_label_id, bound_at, unbound_at, scenario_id
+	FROM
+		inventory.order_container_bindings
+	WHERE
+		order_id = :order_id AND unbound_at IS NULL
+	ORDER BY
+		bound_at`
+
+	args := struct {
+		OrderID uuid.UUID `db:"order_id"`
+	}{OrderID: orderID}
+
+	var rows []dbOrderContainerBinding
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, args, &rows); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusBindings(rows), nil
+}
