@@ -272,14 +272,13 @@ func (s *Store) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]ordersb
 	return busOrders, nil
 }
 
-// BindContainer inserts a new active binding. The DB-level EXCLUDE constraint
-// enforces uniqueness on (container_label_id) WHERE unbound_at IS NULL, so
-// attempting to bind a container that is already actively bound returns
-// ordersbus.ErrUniqueEntry.
-//
-// unbound_at is intentionally omitted from the column list — the EXCLUDE
-// constraint only fires for rows where unbound_at IS NULL, so new active
-// bindings MUST leave it NULL. UnbindContainer is the only path that sets it.
+// BindContainer creates a new active binding from order to container label.
+// New active bindings leave unbound_at NULL; the EXCLUDE constraint
+// one_active_binding_per_container enforces uniqueness over rows where
+// unbound_at IS NULL. UnbindContainer is the only path that sets unbound_at.
+// EXCLUDE-constraint violations come back as raw pq errors (NamedQueryStruct
+// does not translate SQLSTATE codes); callers that need to distinguish must
+// string-match err.Error().
 func (s *Store) BindContainer(ctx context.Context, nb ordersbus.NewOrderContainerBinding) (ordersbus.OrderContainerBinding, error) {
 	const q = `
 	INSERT INTO inventory.order_container_bindings
@@ -296,18 +295,22 @@ func (s *Store) BindContainer(ctx context.Context, nb ordersbus.NewOrderContaine
 	}
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, row, &row); err != nil {
-		// Note: NamedQueryStruct does not translate PG SQLSTATE codes. EXCLUDE
-		// violations (one_active_binding_per_container) surface as raw pq errors.
-		// Tests assert on err.Error() string contents.
+		// NamedQueryStruct does not translate PG SQLSTATE codes; EXCLUDE
+		// violations on one_active_binding_per_container surface as raw pq
+		// errors. Tests string-match err.Error() to assert the constraint.
 		return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", err)
 	}
 
 	return toBusBinding(row), nil
 }
 
-// UnbindContainer marks an active binding as released by setting unbound_at to
-// NOW(). The WHERE clause includes unbound_at IS NULL, so calling Unbind on an
-// already-released binding is a no-op (the UPDATE matches zero rows).
+// UnbindContainer marks an active binding as released by setting unbound_at = NOW().
+// The WHERE clause includes "AND unbound_at IS NULL" so calling Unbind on a
+// binding that's already unbound is INTENTIONALLY a silent no-op (idempotent
+// resource release). This contract diverges from approvalrequestdb.Resolve's
+// "translate zero-rows to ErrAlreadyResolved" pattern because container
+// release is replay-safe by design — re-issuing "free this container" should
+// not error.
 func (s *Store) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error {
 	const q = `
 	UPDATE inventory.order_container_bindings
@@ -319,7 +322,7 @@ func (s *Store) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error 
 	}{ID: bindingID}
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, args); err != nil {
-		return fmt.Errorf("namedexeccontext %w", err)
+		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 
 	return nil
