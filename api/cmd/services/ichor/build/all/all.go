@@ -58,6 +58,7 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/warehouseapi"
 	"github.com/timmaaaz/ichor/api/domain/http/inventory/zoneapi"
 	"github.com/timmaaaz/ichor/api/domain/http/labels/labelapi"
+	"github.com/timmaaaz/ichor/api/domain/http/paperwork/paperworkapi"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderapi"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderlineitemapi"
 	"github.com/timmaaaz/ichor/api/domain/http/procurement/purchaseorderlineitemstatusapi"
@@ -245,6 +246,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/tcpprint"
+	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus/stores/purchaseorderdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
@@ -858,6 +860,16 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		LabelBus:       labelBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
+	})
+
+	// Paperwork subsystem (Phase 0g.B2) — PDF rendering for pick sheets,
+	// receive cover sheets, and transfer sheets. Handlers return 501 until
+	// 0g.B3 wires gofpdf + boombuler/barcode and fills in rendering bodies.
+	paperworkBus := paperworkbus.NewBusiness(cfg.Log)
+	paperworkapi.Routes(app, paperworkapi.Config{
+		Log:          cfg.Log,
+		PaperworkBus: paperworkBus,
+		AuthClient:   cfg.AuthClient,
 	})
 
 	// Scenario subsystem (Phase 0d) — floor warehouse testing scenario management.
