@@ -84,7 +84,7 @@ func toDBUser(bus userbus.User) user {
 		Birthday:           birthday,
 		Roles:              userbus.ParseRolesToString(bus.Roles),
 		SystemRoles:        userbus.ParseRolesToString(bus.SystemRoles),
-		AssignedZones:      dbarray.String(bus.AssignedZones),
+		AssignedZones:      dbarray.String(coalesceStringSlice(bus.AssignedZones)),
 		PasswordHash:       bus.PasswordHash,
 		Enabled:            bus.Enabled,
 		DateHired:          dateHired,
@@ -166,7 +166,7 @@ func toBusUser(db user) (userbus.User, error) {
 		Birthday:           birthday,
 		Roles:              roles,
 		SystemRoles:        systemRoles,
-		AssignedZones:      []string(db.AssignedZones),
+		AssignedZones:      normalizeStringSlice([]string(db.AssignedZones)),
 		PasswordHash:       db.PasswordHash,
 		Enabled:            db.Enabled,
 		DateHired:          dateHired,
@@ -191,4 +191,23 @@ func toBusUsers(dbs []user) ([]userbus.User, error) {
 	}
 
 	return bus, nil
+}
+
+// coalesceStringSlice returns an empty (non-nil) slice when s is nil,
+// so that dbarray.String never emits a SQL NULL for a NOT NULL column.
+func coalesceStringSlice(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// normalizeStringSlice converts an empty non-nil slice to nil so that the
+// in-memory representation from the DB matches what Business.Create returns
+// (which copies nil from NewUser when no zones are provided).
+func normalizeStringSlice(s []string) []string {
+	if len(s) == 0 {
+		return nil
+	}
+	return s
 }
