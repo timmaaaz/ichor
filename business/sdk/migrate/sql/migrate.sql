@@ -2577,3 +2577,41 @@ CREATE INDEX idx_approval_requests_scenario ON workflow.approval_requests(scenar
 -- Description: Phase 0g.B1 — rename label_catalog type 'tote' -> 'container'; delete unrenderable 'receiving'/'pick' rows.
 UPDATE inventory.label_catalog SET type = 'container' WHERE type = 'tote';
 DELETE FROM inventory.label_catalog WHERE type IN ('receiving', 'pick');
+
+-- Version: 2.37
+-- Description: Phase 0g.B4 — schema additions for label-scan workflow redesign.
+-- 1. inventory.order_container_bindings — many-to-many order↔container with
+--    EXCLUDE constraint enforcing one active binding per container at a time.
+--    Requires btree_gist extension (uuid lacks GiST default opclass otherwise).
+-- 2. core.users.assigned_zones — TEXT[] of warehouse zone codes for
+--    zone-sliced multi-worker pick. GIN index for @> containment queries.
+-- 3. config.scenario_setting_overrides — per-scenario config-resolver source
+--    consumed by 0g.B5 lever-overrides path.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+CREATE TABLE inventory.order_container_bindings (
+    id                 UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id           UUID         NOT NULL REFERENCES sales.orders(id),
+    container_label_id UUID         NOT NULL REFERENCES inventory.label_catalog(id),
+    bound_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    unbound_at         TIMESTAMPTZ  NULL,
+    scenario_id        UUID         NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL,
+    CONSTRAINT one_active_binding_per_container
+        EXCLUDE USING gist (container_label_id WITH =) WHERE (unbound_at IS NULL)
+);
+CREATE INDEX idx_order_container_bindings_order
+    ON inventory.order_container_bindings(order_id) WHERE unbound_at IS NULL;
+CREATE INDEX idx_order_container_bindings_scenario
+    ON inventory.order_container_bindings(scenario_id);
+
+ALTER TABLE core.users
+    ADD COLUMN assigned_zones TEXT[] NOT NULL DEFAULT '{}';
+CREATE INDEX idx_users_assigned_zones
+    ON core.users USING GIN (assigned_zones);
+
+CREATE TABLE config.scenario_setting_overrides (
+    scenario_id UUID NOT NULL REFERENCES inventory.scenarios(id) ON DELETE CASCADE,
+    key         TEXT NOT NULL,
+    value       TEXT NOT NULL,
+    PRIMARY KEY (scenario_id, key)
+);
