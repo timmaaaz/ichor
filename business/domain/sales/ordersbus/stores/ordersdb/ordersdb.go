@@ -296,12 +296,9 @@ func (s *Store) BindContainer(ctx context.Context, nb ordersbus.NewOrderContaine
 	}
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, row, &row); err != nil {
-		if errors.Is(err, sqldb.ErrForeignKeyViolation) {
-			return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", ordersbus.ErrForeignKeyViolation)
-		}
-		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", ordersbus.ErrUniqueEntry)
-		}
+		// Note: NamedQueryStruct does not translate PG SQLSTATE codes. EXCLUDE
+		// violations (one_active_binding_per_container) surface as raw pq errors.
+		// Tests assert on err.Error() string contents.
 		return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", err)
 	}
 
