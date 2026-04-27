@@ -22,6 +22,8 @@ var (
 	ErrUniqueEntry           = errors.New("order entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
 	ErrInvalidPriority       = errors.New("invalid priority: must be low, medium, high, or critical")
+	ErrBindingNotFound       = errors.New("order container binding not found")
+	ErrAlreadyUnbound        = errors.New("order container binding already unbound")
 )
 
 // validPriorities mirrors the sales.orders.priority CHECK constraint (migration 2.26).
@@ -44,8 +46,9 @@ type Storer interface {
 	QueryByID(ctx context.Context, statusID uuid.UUID) (Order, error)
 	QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Order, error)
 	BindContainer(ctx context.Context, binding OrderContainerBinding) (OrderContainerBinding, error)
-	UnbindContainer(ctx context.Context, bindingID uuid.UUID) error
+	UnbindContainer(ctx context.Context, bindingID uuid.UUID) (OrderContainerBinding, error)
 	QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUID) ([]OrderContainerBinding, error)
+	QueryBindingByID(ctx context.Context, bindingID uuid.UUID) (OrderContainerBinding, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -285,8 +288,9 @@ func (b *Business) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Orde
 // is left zero so the DB default (NOW()) fills it in; the populated value
 // returns via the store's RETURNING clause.
 //
-// EXCLUDE violations on one_active_binding_per_container come back as raw
-// pq errors wrapped via fmt.Errorf — callers that need to distinguish must
+// EXCLUDE violations on one_active_binding_per_container (SQLSTATE 23P01)
+// come back as raw pq errors wrapped via fmt.Errorf — NamedQueryStruct does
+// not translate that SQLSTATE, so callers that need to distinguish must
 // string-match err.Error().
 //
 // If a scenario is active on the context (sqldb.GetScenarioFilter), the
@@ -313,18 +317,31 @@ func (b *Business) BindContainer(ctx context.Context, nb NewOrderContainerBindin
 		return OrderContainerBinding{}, fmt.Errorf("bindcontainer: %w", err)
 	}
 
+	if err := b.delegate.Call(ctx, ActionBindingCreatedData(result)); err != nil {
+		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionBindingCreated, "err", err)
+	}
+
 	return result, nil
 }
 
 // UnbindContainer marks an active binding as released. Idempotent — calling
-// Unbind on a binding that is already unbound is a silent no-op (the store's
-// WHERE clause filters to active rows only).
+// Unbind on a binding that is already unbound is a silent no-op (preserves
+// replay safety). A binding ID that does not exist surfaces ErrBindingNotFound
+// so caller bugs do not pass silently.
 func (b *Business) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.unbindcontainer")
 	defer span.End()
 
-	if err := b.storer.UnbindContainer(ctx, bindingID); err != nil {
+	after, err := b.storer.UnbindContainer(ctx, bindingID)
+	if err != nil {
+		if errors.Is(err, ErrAlreadyUnbound) {
+			return nil
+		}
 		return fmt.Errorf("unbindcontainer: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionBindingUpdatedData(OrderContainerBinding{ID: bindingID}, after)); err != nil {
+		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionBindingUpdated, "err", err)
 	}
 
 	return nil

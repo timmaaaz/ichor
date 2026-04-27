@@ -279,9 +279,9 @@ func (s *Store) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]ordersb
 // one_active_binding_per_container enforces uniqueness over rows where
 // unbound_at IS NULL. UnbindContainer is the only path that sets unbound_at.
 // bound_at is filled by the DB default (NOW()) and returned via RETURNING.
-// EXCLUDE-constraint violations come back as raw pq errors (NamedQueryStruct
-// does not translate SQLSTATE codes); callers that need to distinguish must
-// string-match err.Error().
+// NamedQueryStruct translates only ErrDBNotFound and undefinedTable;
+// EXCLUDE-constraint violations (SQLSTATE 23P01) pass through as raw pq
+// errors, so callers that need to distinguish must string-match err.Error().
 func (s *Store) BindContainer(ctx context.Context, binding ordersbus.OrderContainerBinding) (ordersbus.OrderContainerBinding, error) {
 	const q = `
 	INSERT INTO inventory.order_container_bindings
@@ -298,9 +298,10 @@ func (s *Store) BindContainer(ctx context.Context, binding ordersbus.OrderContai
 	}
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, row, &row); err != nil {
-		// NamedQueryStruct does not translate PG SQLSTATE codes; EXCLUDE
-		// violations on one_active_binding_per_container surface as raw pq
-		// errors. Tests string-match err.Error() to assert the constraint.
+		// NamedQueryStruct does not translate EXCLUDE-constraint violations
+		// (SQLSTATE 23P01) on one_active_binding_per_container — they come
+		// through as raw pq errors. Tests string-match err.Error() to assert
+		// the constraint fired.
 		return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", err)
 	}
 
@@ -308,27 +309,58 @@ func (s *Store) BindContainer(ctx context.Context, binding ordersbus.OrderContai
 }
 
 // UnbindContainer marks an active binding as released by setting unbound_at = NOW().
-// The WHERE clause includes "AND unbound_at IS NULL" so calling Unbind on a
-// binding that's already unbound is INTENTIONALLY a silent no-op (idempotent
-// resource release). This contract diverges from approvalrequestdb.Resolve's
-// "translate zero-rows to ErrAlreadyResolved" pattern because container
-// release is replay-safe by design — re-issuing "free this container" should
-// not error.
-func (s *Store) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error {
+// Returns the post-unbind row so the bus layer can fire a delegate event with
+// the resolved state. Modeled on approvalrequestdb.Resolve's RETURNING +
+// disambiguation pattern: zero rows updated triggers a follow-up SELECT to
+// distinguish "already unbound" (replay-safe, returns ErrAlreadyUnbound) from
+// "binding does not exist" (caller bug, returns ErrBindingNotFound).
+func (s *Store) UnbindContainer(ctx context.Context, bindingID uuid.UUID) (ordersbus.OrderContainerBinding, error) {
 	const q = `
 	UPDATE inventory.order_container_bindings
 	SET unbound_at = NOW()
-	WHERE id = :id AND unbound_at IS NULL`
+	WHERE id = :id AND unbound_at IS NULL
+	RETURNING id, order_id, container_label_id, bound_at, unbound_at, scenario_id`
+
+	row := dbOrderContainerBinding{ID: bindingID}
+
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, row, &row); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			if _, qErr := s.QueryBindingByID(ctx, bindingID); qErr != nil {
+				return ordersbus.OrderContainerBinding{}, ordersbus.ErrBindingNotFound
+			}
+			return ordersbus.OrderContainerBinding{}, ordersbus.ErrAlreadyUnbound
+		}
+		return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", err)
+	}
+
+	return toBusBinding(row), nil
+}
+
+// QueryBindingByID returns a single binding row by its ID. Used by
+// UnbindContainer to disambiguate the zero-rows-updated case (already-unbound
+// vs. non-existent). Returns ErrBindingNotFound if no row matches.
+func (s *Store) QueryBindingByID(ctx context.Context, bindingID uuid.UUID) (ordersbus.OrderContainerBinding, error) {
+	const q = `
+	SELECT
+		id, order_id, container_label_id, bound_at, unbound_at, scenario_id
+	FROM
+		inventory.order_container_bindings
+	WHERE
+		id = :id`
 
 	args := struct {
 		ID uuid.UUID `db:"id"`
 	}{ID: bindingID}
 
-	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, args); err != nil {
-		return fmt.Errorf("namedexeccontext: %w", err)
+	var row dbOrderContainerBinding
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, args, &row); err != nil {
+		if errors.Is(err, sqldb.ErrDBNotFound) {
+			return ordersbus.OrderContainerBinding{}, ordersbus.ErrBindingNotFound
+		}
+		return ordersbus.OrderContainerBinding{}, fmt.Errorf("namedqueryrow: %w", err)
 	}
 
-	return nil
+	return toBusBinding(row), nil
 }
 
 // QueryActiveBindingsByOrder returns all bindings for the given order whose
