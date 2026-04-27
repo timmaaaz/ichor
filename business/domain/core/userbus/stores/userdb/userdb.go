@@ -51,15 +51,15 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, usr userbus.User) error {
 	const q = `
 	INSERT INTO core.users (
-		id, requested_by, approved_by, title_id, office_id, work_phone_id, 
-		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
-		system_roles, password_hash, enabled, date_hired, date_requested, 
+		id, requested_by, approved_by, title_id, office_id, work_phone_id,
+		cell_phone_id, username, first_name, last_name, email, birthday, roles,
+		system_roles, assigned_zones, password_hash, enabled, date_hired, date_requested,
 		date_approved, created_date, updated_date, user_approval_status_id
 	) VALUES (
-		:id, :requested_by, :approved_by, :title_id, :office_id, 
-		:work_phone_id, :cell_phone_id, :username, :first_name, :last_name, 
-		:email, :birthday, :roles, :system_roles, :password_hash, :enabled, 
-		:date_hired, :date_requested, :date_approved, :created_date, 
+		:id, :requested_by, :approved_by, :title_id, :office_id,
+		:work_phone_id, :cell_phone_id, :username, :first_name, :last_name,
+		:email, :birthday, :roles, :system_roles, :assigned_zones, :password_hash, :enabled,
+		:date_hired, :date_requested, :date_approved, :created_date,
 		:updated_date, :user_approval_status_id
 	)`
 
@@ -92,6 +92,7 @@ func (s *Store) Update(ctx context.Context, usr userbus.User) error {
 		birthday = :birthday,
 		roles = :roles,
 		system_roles = :system_roles,
+		assigned_zones = :assigned_zones,
 		password_hash = :password_hash,
 		enabled = :enabled,
 		date_hired = :date_hired,
@@ -135,9 +136,9 @@ func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy o
 
 	const q = `
 	SELECT
-		id, requested_by, approved_by, title_id, office_id, work_phone_id, 
-		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
-		system_roles, password_hash, enabled, date_hired, date_requested, 
+		id, requested_by, approved_by, title_id, office_id, work_phone_id,
+		cell_phone_id, username, first_name, last_name, email, birthday, roles,
+		system_roles, assigned_zones, password_hash, enabled, date_hired, date_requested,
 		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
 		core.users`
@@ -194,13 +195,13 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (userbus.User, 
 
 	const q = `
 	SELECT
-        id, requested_by, approved_by, title_id, office_id, work_phone_id, 
-		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
-		system_roles, password_hash, enabled, date_hired, date_requested, 
+        id, requested_by, approved_by, title_id, office_id, work_phone_id,
+		cell_phone_id, username, first_name, last_name, email, birthday, roles,
+		system_roles, assigned_zones, password_hash, enabled, date_hired, date_requested,
 		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
 		core.users
-	WHERE 
+	WHERE
 		id = :id`
 
 	var dbUsr user
@@ -224,9 +225,9 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.U
 
 	const q = `
 	SELECT
-        id, requested_by, approved_by, title_id, office_id, work_phone_id, 
-		cell_phone_id, username, first_name, last_name, email, birthday, roles, 
-		system_roles, password_hash, enabled, date_hired, date_requested, 
+        id, requested_by, approved_by, title_id, office_id, work_phone_id,
+		cell_phone_id, username, first_name, last_name, email, birthday, roles,
+		system_roles, assigned_zones, password_hash, enabled, date_hired, date_requested,
 		date_approved, created_date, updated_date, user_approval_status_id
 	FROM
 		core.users
@@ -242,4 +243,29 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.U
 	}
 
 	return toBusUser(dbUsr)
+}
+
+// QueryByAssignedZone returns all users whose assigned_zones contains the given zone.
+func (s *Store) QueryByAssignedZone(ctx context.Context, zone string) ([]userbus.User, error) {
+	data := struct {
+		Zone string `db:"zone"`
+	}{Zone: zone}
+
+	const q = `
+	SELECT
+		id, requested_by, approved_by, title_id, office_id, work_phone_id,
+		cell_phone_id, username, first_name, last_name, email, birthday, roles,
+		system_roles, assigned_zones, password_hash, enabled, date_hired, date_requested,
+		date_approved, created_date, updated_date, user_approval_status_id
+	FROM
+		core.users
+	WHERE
+		assigned_zones @> CAST(ARRAY[:zone] AS TEXT[])`
+
+	var dbUsrs []user
+	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &dbUsrs); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusUsers(dbUsrs)
 }

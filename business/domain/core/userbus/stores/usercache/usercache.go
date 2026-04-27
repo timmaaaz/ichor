@@ -118,6 +118,11 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.U
 	return usr, nil
 }
 
+// QueryByAssignedZone gets users assigned to the specified zone from the database.
+func (s *Store) QueryByAssignedZone(ctx context.Context, zone string) ([]userbus.User, error) {
+	return s.storer.QueryByAssignedZone(ctx, zone)
+}
+
 // readCache performs a safe search in the cache for the specified key.
 func (s *Store) readCache(key string) (userbus.User, bool) {
 	usr, exists := s.cache.Get(key)

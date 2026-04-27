@@ -43,6 +43,9 @@ func Test_User(t *testing.T) {
 	unitest.Run(t, approve(db.BusDomain, sd), "approve")
 	unitest.Run(t, deny(db.BusDomain, sd), "deny")
 	unitest.Run(t, setUnderReview(db.BusDomain, sd), "setUnderReview")
+	unitest.Run(t, createWithZones(db.BusDomain), "createWithZones")
+	unitest.Run(t, updateZones(db.BusDomain, sd), "updateZones")
+	unitest.Run(t, queryByZone(db.BusDomain, sd), "queryByZone")
 }
 
 // =============================================================================
@@ -268,6 +271,7 @@ func create(busDomain dbtest.BusDomain) []unitest.Table {
 				Email:              *email,
 				Roles:              []userbus.Role{userbus.Roles.Admin},
 				SystemRoles:        []userbus.Role{userbus.Roles.Admin},
+				AssignedZones:      []string{},
 				Enabled:            true,
 				UserApprovalStatus: uuid.MustParse("89173300-3f4e-4606-872c-f34914bbee19"),
 			},
@@ -531,4 +535,98 @@ func setUnderReview(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.T
 		},
 	}
 	return table
+}
+
+func createWithZones(busDomain dbtest.BusDomain) []unitest.Table {
+	email, _ := mail.ParseAddress("zone.create@superiortech.io")
+
+	return []unitest.Table{
+		{
+			Name:    "create-user-with-assigned-zones",
+			ExpResp: []string{"STG-A", "STG-B"},
+			ExcFunc: func(ctx context.Context) any {
+				nu := userbus.NewUser{
+					Username:      userbus.MustParseName("zonetest1"),
+					FirstName:     userbus.MustParseName("Zone"),
+					LastName:      userbus.MustParseName("Create"),
+					Email:         *email,
+					Roles:         []userbus.Role{userbus.Roles.User},
+					SystemRoles:   []userbus.Role{userbus.Roles.User},
+					Password:      "Password123",
+					Enabled:       true,
+					AssignedZones: []string{"STG-A", "STG-B"},
+				}
+
+				u, err := busDomain.User.Create(ctx, nu)
+				if err != nil {
+					return err
+				}
+
+				got := make([]string, len(u.AssignedZones))
+				copy(got, u.AssignedZones)
+				sort.Strings(got)
+				return got
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+}
+
+func updateZones(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name:    "update-user-assigned-zones",
+			ExpResp: []string{"PCK-01"},
+			ExcFunc: func(ctx context.Context) any {
+				u := sd.Users[2].User
+				zones := []string{"PCK-01"}
+
+				updated, err := busDomain.User.Update(ctx, u, userbus.UpdateUser{
+					AssignedZones: &zones,
+				})
+				if err != nil {
+					return err
+				}
+
+				return updated.AssignedZones
+			},
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+}
+
+func queryByZone(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name:    "query-by-assigned-zone-containment",
+			ExpResp: 1,
+			ExcFunc: func(ctx context.Context) any {
+				u := sd.Users[3].User
+				zones := []string{"STG-X", "STG-Y"}
+
+				if _, err := busDomain.User.Update(ctx, u, userbus.UpdateUser{
+					AssignedZones: &zones,
+				}); err != nil {
+					return err
+				}
+
+				out, err := busDomain.User.QueryByAssignedZone(ctx, "STG-X")
+				if err != nil {
+					return err
+				}
+
+				return len(out)
+			},
+			CmpFunc: func(got any, exp any) string {
+				if err, ok := got.(error); ok {
+					return fmt.Sprintf("unexpected error from ExcFunc: %v", err)
+				}
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
 }

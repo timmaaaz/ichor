@@ -80,3 +80,28 @@ type UpdateOrder struct {
 	Priority            *string           `json:"priority,omitempty"`
 	UpdatedBy           *uuid.UUID        `json:"updated_by,omitempty"`
 }
+
+// OrderContainerBinding represents the linkage between a sales order and a
+// physical container (tote/cart) at a point in time. Active bindings have
+// UnboundAt == nil; historical bindings retain UnboundAt.
+type OrderContainerBinding struct {
+	ID               uuid.UUID  `json:"id"`
+	OrderID          uuid.UUID  `json:"order_id"`
+	ContainerLabelID uuid.UUID  `json:"container_label_id"`
+	BoundAt          time.Time  `json:"bound_at"`
+	UnboundAt        *time.Time `json:"unbound_at,omitempty"`
+	ScenarioID       *uuid.UUID `json:"scenario_id,omitempty"`
+}
+
+// NewOrderContainerBinding is the input shape for BindContainer.
+//
+// ScenarioID is a fallback only: if the request context carries an active
+// scenario filter, BindContainer overwrites this field with the context's
+// scenario id (context-wins, matching Order.Create behavior). To avoid
+// surprises, callers should leave this nil and let context govern, or
+// invoke BindContainer outside a scenario-filtered context.
+type NewOrderContainerBinding struct {
+	OrderID          uuid.UUID  `json:"order_id"`
+	ContainerLabelID uuid.UUID  `json:"container_label_id"`
+	ScenarioID       *uuid.UUID `json:"scenario_id,omitempty"`
+}

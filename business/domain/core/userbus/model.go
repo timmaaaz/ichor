@@ -29,6 +29,7 @@ type User struct {
 	Birthday           time.Time    `json:"birthday"`
 	Roles              []Role       `json:"roles"`
 	SystemRoles        []Role       `json:"system_roles"` // TODO: address this data type
+	AssignedZones      []string     `json:"assigned_zones"`
 	PasswordHash       []byte       `json:"password_hash"`
 	Enabled            bool         `json:"enabled"`
 	DateHired          time.Time    `json:"date_hired"`
@@ -53,6 +54,7 @@ type NewUser struct {
 	Birthday           time.Time    `json:"birthday"`
 	Roles              []Role       `json:"roles"`
 	SystemRoles        []Role       `json:"system_roles"` // TODO: address this data type
+	AssignedZones      []string     `json:"assigned_zones"`
 	Password           string       `json:"password"`
 	Enabled            bool         `json:"enabled"`
 }
@@ -73,6 +75,7 @@ type UpdateUser struct {
 	Birthday           *time.Time    `json:"birthday,omitempty"`
 	Roles              []Role        `json:"roles,omitempty"` // Separate endpoint
 	SystemRoles        []Role        `json:"system_roles,omitempty"` // Separate endpoint
+	AssignedZones      *[]string     `json:"assigned_zones,omitempty"`
 	Password           *string       `json:"password,omitempty"`
 	Enabled            *bool         `json:"enabled,omitempty"`
 	DateHired          *time.Time    `json:"date_hired,omitempty"`

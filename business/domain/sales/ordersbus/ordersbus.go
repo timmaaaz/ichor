@@ -22,6 +22,8 @@ var (
 	ErrUniqueEntry           = errors.New("order entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
 	ErrInvalidPriority       = errors.New("invalid priority: must be low, medium, high, or critical")
+	ErrBindingNotFound       = errors.New("order container binding not found")
+	ErrAlreadyUnbound        = errors.New("order container binding already unbound")
 )
 
 // validPriorities mirrors the sales.orders.priority CHECK constraint (migration 2.26).
@@ -43,6 +45,10 @@ type Storer interface {
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, statusID uuid.UUID) (Order, error)
 	QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Order, error)
+	BindContainer(ctx context.Context, binding OrderContainerBinding) (OrderContainerBinding, error)
+	UnbindContainer(ctx context.Context, bindingID uuid.UUID) (OrderContainerBinding, error)
+	QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUID) ([]OrderContainerBinding, error)
+	QueryBindingByID(ctx context.Context, bindingID uuid.UUID) (OrderContainerBinding, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -274,4 +280,83 @@ func (b *Business) QueryByIDs(ctx context.Context, orderIDs []uuid.UUID) ([]Orde
 	}
 
 	return orders, nil
+}
+
+// BindContainer creates a new active binding from an order to a container
+// label. The binding ID is generated here (matching the Create flow's
+// uuid.New() in business) so the store layer is a thin SQL boundary. BoundAt
+// is left zero so the DB default (NOW()) fills it in; the populated value
+// returns via the store's RETURNING clause.
+//
+// EXCLUDE violations on one_active_binding_per_container (SQLSTATE 23P01)
+// come back as raw pq errors wrapped via fmt.Errorf — NamedQueryStruct does
+// not translate that SQLSTATE, so callers that need to distinguish must
+// string-match err.Error().
+//
+// If a scenario is active on the context (sqldb.GetScenarioFilter), the
+// binding is auto-tagged so scenario Reset can roll it back.
+func (b *Business) BindContainer(ctx context.Context, nb NewOrderContainerBinding) (OrderContainerBinding, error) {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.bindcontainer")
+	defer span.End()
+
+	binding := OrderContainerBinding{
+		ID:               uuid.New(),
+		OrderID:          nb.OrderID,
+		ContainerLabelID: nb.ContainerLabelID,
+		ScenarioID:       nb.ScenarioID,
+	}
+
+	// Phase 0d: tag the row with the active scenario (if any) so scenario
+	// Reset can later undo this row while leaving baseline rows intact.
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		binding.ScenarioID = &sid
+	}
+
+	result, err := b.storer.BindContainer(ctx, binding)
+	if err != nil {
+		return OrderContainerBinding{}, fmt.Errorf("bindcontainer: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionBindingCreatedData(result)); err != nil {
+		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionBindingCreated, "err", err)
+	}
+
+	return result, nil
+}
+
+// UnbindContainer marks an active binding as released. Idempotent — calling
+// Unbind on a binding that is already unbound is a silent no-op (preserves
+// replay safety). A binding ID that does not exist surfaces ErrBindingNotFound
+// so caller bugs do not pass silently.
+func (b *Business) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.unbindcontainer")
+	defer span.End()
+
+	after, err := b.storer.UnbindContainer(ctx, bindingID)
+	if err != nil {
+		if errors.Is(err, ErrAlreadyUnbound) {
+			return nil
+		}
+		return fmt.Errorf("unbindcontainer: %w", err)
+	}
+
+	if err := b.delegate.Call(ctx, ActionBindingUpdatedData(OrderContainerBinding{ID: bindingID}, after)); err != nil {
+		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionBindingUpdated, "err", err)
+	}
+
+	return nil
+}
+
+// QueryActiveBindingsByOrder returns all currently-active container bindings
+// (unbound_at IS NULL) for the given order, ordered by bound_at ascending.
+func (b *Business) QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUID) ([]OrderContainerBinding, error) {
+	ctx, span := otel.AddSpan(ctx, "business.ordersbus.queryactivebindingsbyorder")
+	defer span.End()
+
+	bindings, err := b.storer.QueryActiveBindingsByOrder(ctx, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("queryactivebindingsbyorder: %w", err)
+	}
+
+	return bindings, nil
 }

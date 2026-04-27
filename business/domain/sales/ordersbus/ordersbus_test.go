@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/citybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
@@ -39,6 +41,9 @@ func Test_Order(t *testing.T) {
 	unitest.Run(t, queryByIDs(db.BusDomain, sd), "queryByIDs")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
+	unitest.Run(t, bindContainer(db.BusDomain, sd), "bindContainer")
+	unitest.Run(t, bindContainerExclude(db.BusDomain, sd), "bindContainerExclude")
+	unitest.Run(t, rebindAfterUnbind(db.BusDomain, sd), "rebindAfterUnbind")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
 
@@ -373,6 +378,170 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp.UpdatedDate = gotResp.UpdatedDate
 
 				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+}
+
+// makeContainerLabel creates a fresh container-type label with a unique code
+// so each binding test gets its own container ID free of the EXCLUDE constraint.
+func makeContainerLabel(ctx context.Context, busDomain dbtest.BusDomain, code string) (uuid.UUID, error) {
+	lc, err := busDomain.Label.Create(ctx, labelbus.NewLabelCatalog{
+		Code:        code,
+		Type:        labelbus.TypeContainer,
+		PayloadJSON: "{}",
+	})
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("create container label %s: %w", code, err)
+	}
+	return lc.ID, nil
+}
+
+// bindContainer covers the happy path: two distinct containers bound to the
+// same order produce two active bindings.
+func bindContainer(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name:    "BindTwoContainers",
+			ExpResp: 2,
+			ExcFunc: func(ctx context.Context) any {
+				orderID := sd.Orders[2].ID
+
+				labelA, err := makeContainerLabel(ctx, busDomain, "TEST-BIND-A")
+				if err != nil {
+					return err
+				}
+				labelB, err := makeContainerLabel(ctx, busDomain, "TEST-BIND-B")
+				if err != nil {
+					return err
+				}
+
+				if _, err := busDomain.Order.BindContainer(ctx, ordersbus.NewOrderContainerBinding{
+					OrderID:          orderID,
+					ContainerLabelID: labelA,
+				}); err != nil {
+					return err
+				}
+				if _, err := busDomain.Order.BindContainer(ctx, ordersbus.NewOrderContainerBinding{
+					OrderID:          orderID,
+					ContainerLabelID: labelB,
+				}); err != nil {
+					return err
+				}
+
+				bindings, err := busDomain.Order.QueryActiveBindingsByOrder(ctx, orderID)
+				if err != nil {
+					return err
+				}
+				return len(bindings)
+			},
+			CmpFunc: func(got, exp any) string {
+				if err, ok := got.(error); ok {
+					return fmt.Sprintf("unexpected error from ExcFunc: %v", err)
+				}
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+}
+
+// bindContainerExclude verifies the EXCLUDE constraint
+// one_active_binding_per_container fires when a second active bind on the
+// SAME container is attempted (against a different order). NamedQueryStruct
+// surfaces the violation as a raw pq error — caller-side detection is by
+// case-insensitive substring match on "exclusion".
+func bindContainerExclude(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name:    "ExcludeOnSecondActiveBind",
+			ExpResp: true, // err.Error() contains "exclusion"
+			ExcFunc: func(ctx context.Context) any {
+				orderX := sd.Orders[3].ID
+				orderY := sd.Orders[4].ID
+
+				container, err := makeContainerLabel(ctx, busDomain, "TEST-EXCLUDE-A")
+				if err != nil {
+					return err
+				}
+
+				// First bind succeeds.
+				if _, err := busDomain.Order.BindContainer(ctx, ordersbus.NewOrderContainerBinding{
+					OrderID:          orderX,
+					ContainerLabelID: container,
+				}); err != nil {
+					return fmt.Errorf("first bind unexpectedly failed: %w", err)
+				}
+
+				// Second bind on same container against a different order must
+				// be rejected by the EXCLUDE constraint.
+				_, err = busDomain.Order.BindContainer(ctx, ordersbus.NewOrderContainerBinding{
+					OrderID:          orderY,
+					ContainerLabelID: container,
+				})
+				if err == nil {
+					return fmt.Errorf("expected EXCLUDE violation, got nil error")
+				}
+				return strings.Contains(strings.ToLower(err.Error()), "exclusion")
+			},
+			CmpFunc: func(got, exp any) string {
+				if err, ok := got.(error); ok {
+					return fmt.Sprintf("unexpected error from ExcFunc: %v", err)
+				}
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+}
+
+// rebindAfterUnbind verifies the unbound_at lifecycle: bind A→X, unbind, then
+// bind A→Y. All three calls succeed because the EXCLUDE predicate
+// (WHERE unbound_at IS NULL) excludes the released row.
+func rebindAfterUnbind(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			Name:    "RebindAfterUnbindSucceeds",
+			ExpResp: 1, // one active binding on orderY at the end
+			ExcFunc: func(ctx context.Context) any {
+				// orderY (Orders[1]) is otherwise unused by binding tests so the
+				// final active-binding count on it is unambiguous.
+				orderX := sd.Orders[2].ID
+				orderY := sd.Orders[1].ID
+
+				container, err := makeContainerLabel(ctx, busDomain, "TEST-REBIND-A")
+				if err != nil {
+					return err
+				}
+
+				first, err := busDomain.Order.BindContainer(ctx, ordersbus.NewOrderContainerBinding{
+					OrderID:          orderX,
+					ContainerLabelID: container,
+				})
+				if err != nil {
+					return fmt.Errorf("first bind: %w", err)
+				}
+
+				if err := busDomain.Order.UnbindContainer(ctx, first.ID); err != nil {
+					return fmt.Errorf("unbind: %w", err)
+				}
+
+				if _, err := busDomain.Order.BindContainer(ctx, ordersbus.NewOrderContainerBinding{
+					OrderID:          orderY,
+					ContainerLabelID: container,
+				}); err != nil {
+					return fmt.Errorf("rebind after unbind: %w", err)
+				}
+
+				bindings, err := busDomain.Order.QueryActiveBindingsByOrder(ctx, orderY)
+				if err != nil {
+					return err
+				}
+				return len(bindings)
+			},
+			CmpFunc: func(got, exp any) string {
+				if err, ok := got.(error); ok {
+					return fmt.Sprintf("unexpected error from ExcFunc: %v", err)
+				}
+				return cmp.Diff(got, exp)
 			},
 		},
 	}
