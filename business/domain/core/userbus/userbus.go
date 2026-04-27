@@ -102,6 +102,11 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 
 	now := time.Now()
 
+	zones := nu.AssignedZones
+	if zones == nil {
+		zones = []string{}
+	}
+
 	usr := User{
 		ID:                 uuid.New(),
 		RequestedBy:        nu.RequestedBy,
@@ -118,7 +123,7 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 		Birthday:           nu.Birthday,
 		Roles:              nu.Roles,
 		SystemRoles:        nu.SystemRoles,
-		AssignedZones:      nu.AssignedZones,
+		AssignedZones:      zones,
 		PasswordHash:       hash,
 		Enabled:            nu.Enabled,
 		DateHired:          time.Time{}, // Zero-value

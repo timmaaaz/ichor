@@ -271,6 +271,7 @@ func create(busDomain dbtest.BusDomain) []unitest.Table {
 				Email:              *email,
 				Roles:              []userbus.Role{userbus.Roles.Admin},
 				SystemRoles:        []userbus.Role{userbus.Roles.Admin},
+				AssignedZones:      []string{},
 				Enabled:            true,
 				UserApprovalStatus: uuid.MustParse("89173300-3f4e-4606-872c-f34914bbee19"),
 			},
@@ -621,15 +622,10 @@ func queryByZone(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tabl
 				return len(out)
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotInt, ok := got.(int)
-				if !ok {
-					return fmt.Sprintf("expected int, got %T: %v", got, got)
+				if err, ok := got.(error); ok {
+					return fmt.Sprintf("unexpected error from ExcFunc: %v", err)
 				}
-				expInt := exp.(int)
-				if gotInt < expInt {
-					return fmt.Sprintf("expected at least %d results, got %d", expInt, gotInt)
-				}
-				return ""
+				return cmp.Diff(got, exp)
 			},
 		},
 	}
