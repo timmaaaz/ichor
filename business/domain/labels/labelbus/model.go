@@ -9,12 +9,10 @@ import (
 // Label types — matches catalog spec §3.3.
 const (
 	TypeLocation  = "location"
-	TypeTote      = "tote"
+	TypeContainer = "container"
 	TypeLot       = "lot"
 	TypeSerial    = "serial"
 	TypeProduct   = "product"
-	TypeReceiving = "receiving"
-	TypePick      = "pick"
 )
 
 // LabelCatalog represents one stable printable label definition.

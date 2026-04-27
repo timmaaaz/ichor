@@ -27,16 +27,12 @@ func Test_Render_DispatchesByType(t *testing.T) {
 		lc   labelbus.LabelCatalog
 		want string
 	}{
-		{"tote", labelbus.LabelCatalog{Code: "TOTE-001", Type: labelbus.TypeTote}, "TOTE-001"},
+		{"container", labelbus.LabelCatalog{Code: "TOTE-001", Type: labelbus.TypeContainer}, "TOTE-001"},
 		{"location", labelbus.LabelCatalog{Code: "STG-A01", Type: labelbus.TypeLocation}, "STG-A01"},
-		{"receiving", labelbus.LabelCatalog{
-			Code: "RX-1", Type: labelbus.TypeReceiving,
-			PayloadJSON: `{"productName":"Widget","sku":"SKU-1","upc":"012345678905","lotNumber":null,"expiryDate":null,"quantity":10,"poNumber":"PO-1"}`,
-		}, "PO: PO-1"},
-		{"pick", labelbus.LabelCatalog{
-			Code: "PK-1", Type: labelbus.TypePick,
-			PayloadJSON: `{"orderNumber":"SO-1","customerName":"Acme","productName":"Gadget","sku":"SKU-2","upc":"098765432105","lotNumber":null,"serialNumbers":[],"quantity":5,"locationCode":"STG-A02"}`,
-		}, "Order: SO-1"},
+		{"product", labelbus.LabelCatalog{
+			Code: "PROD-1", Type: labelbus.TypeProduct,
+			PayloadJSON: `{"productName":"Widget","sku":"SKU-1","upc":"012345678905","lotNumber":null}`,
+		}, "SKU: SKU-1"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -60,7 +56,7 @@ func Test_Render_UnknownType(t *testing.T) {
 
 func Test_Render_BadPayload(t *testing.T) {
 	_, err := labelbus.Render(labelbus.LabelCatalog{
-		Code: "RX", Type: labelbus.TypeReceiving, PayloadJSON: `{not json`,
+		Code: "PROD", Type: labelbus.TypeProduct, PayloadJSON: `{not json`,
 	})
 	if err == nil {
 		t.Fatal("expected unmarshal error, got nil")

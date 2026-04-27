@@ -71,7 +71,7 @@ func ToAppLabels(bus []labelbus.LabelCatalog) Labels {
 // NewLabel is the input shape for POST /v1/labels (catalog row creation).
 type NewLabel struct {
 	Code        string `json:"code" validate:"required,min=1,max=32"`
-	Type        string `json:"type" validate:"required,oneof=location tote lot serial product receiving pick"`
+	Type        string `json:"type" validate:"required,oneof=location container lot serial product receiving pick"`
 	EntityRef   string `json:"entity_ref,omitempty" validate:"omitempty,max=128"`
 	PayloadJSON string `json:"payload_json,omitempty"`
 }
@@ -101,7 +101,7 @@ func toBusNewLabel(app NewLabel) labelbus.NewLabelCatalog {
 // UpdateLabel carries optional patch fields for PUT /v1/labels/{label_id}.
 type UpdateLabel struct {
 	Code        *string `json:"code,omitempty" validate:"omitempty,min=1,max=32"`
-	Type        *string `json:"type,omitempty" validate:"omitempty,oneof=location tote lot serial product receiving pick"`
+	Type        *string `json:"type,omitempty" validate:"omitempty,oneof=location container lot serial product receiving pick"`
 	EntityRef   *string `json:"entity_ref,omitempty" validate:"omitempty,max=128"`
 	PayloadJSON *string `json:"payload_json,omitempty"`
 }
@@ -152,10 +152,21 @@ func (app PrintRequest) Validate() error {
 
 // RenderPrintRequest is the body of POST /v1/labels/render-print. A
 // transaction-label payload is rendered in-memory and dispatched to the
-// printer — no catalog row, no DB write.
+// printer — no catalog row, no DB write. Type must be a renderable
+// label type (location, container, product); lot/serial are accepted
+// by NewLabel/UpdateLabel for catalog row creation but cannot render
+// until D-001/D-002 ship. NewLabel/UpdateLabel oneof tags also still
+// accept "receiving" and "pick" for catalog parity with pre-0g.B1
+// rows; Phase 0g.B2 deletes those rows and tightens both validators.
+//
+// Code populates the human-readable + barcode field for location and
+// container labels (which don't carry a structured payload). Payload
+// is the JSON body for product labels. Validate() enforces that the
+// right field is present for the requested Type.
 type RenderPrintRequest struct {
-	Type    string          `json:"type" validate:"required,oneof=receiving pick"`
-	Payload json.RawMessage `json:"payload" validate:"required"`
+	Type    string          `json:"type" validate:"required,oneof=location container product"`
+	Code    string          `json:"code,omitempty" validate:"omitempty,max=32"`
+	Payload json.RawMessage `json:"payload,omitempty"`
 	Copies  int             `json:"copies,omitempty" validate:"omitempty,min=1,max=100"`
 }
 
@@ -165,8 +176,8 @@ func (app *RenderPrintRequest) Decode(data []byte) error {
 }
 
 // maxRenderPayloadBytes caps the raw JSON payload accepted by the
-// render-print endpoint. Realistic label payloads (pick with 100
-// serial numbers + long names) are ~3KB; 64KB gives generous headroom
+// render-print endpoint. Realistic label payloads (product with long
+// names + lot/UPC) are well under 1KB; 64KB gives generous headroom
 // while preventing an authenticated client from POSTing a multi-MB
 // body through the validate:"required" tag alone.
 const maxRenderPayloadBytes = 64 * 1024
@@ -176,8 +187,15 @@ func (app RenderPrintRequest) Validate() error {
 	if err := errs.Check(app); err != nil {
 		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
 	}
-	if len(app.Payload) == 0 {
-		return errs.Newf(errs.InvalidArgument, "validate: payload is empty")
+	switch app.Type {
+	case "location", "container":
+		if app.Code == "" {
+			return errs.Newf(errs.InvalidArgument, "validate: code is required for type=%s", app.Type)
+		}
+	case "product":
+		if len(app.Payload) == 0 {
+			return errs.Newf(errs.InvalidArgument, "validate: payload is required for type=product")
+		}
 	}
 	if len(app.Payload) > maxRenderPayloadBytes {
 		return errs.Newf(errs.InvalidArgument, "validate: payload exceeds %d bytes", maxRenderPayloadBytes)

@@ -18,7 +18,7 @@ func detUUID(key string) uuid.UUID {
 	return uuid.NewSHA1(detNamespace, []byte(key))
 }
 
-// seedLabels inserts the 39-label Phase 1 catalog (19 locations + 20 totes)
+// seedLabels inserts the 39-label Phase 1 catalog (19 locations + 20 containers)
 // with deterministic UUIDs. Matches spec §3.3.
 func seedLabels(ctx context.Context, bus *labelbus.Business) error {
 	entries := []struct {
@@ -36,7 +36,7 @@ func seedLabels(ctx context.Context, bus *labelbus.Business) error {
 	for i := 1; i <= 20; i++ {
 		entries = append(entries, struct{ code, typ string }{
 			code: fmt.Sprintf("TOTE-%03d", i),
-			typ:  labelbus.TypeTote,
+			typ:  labelbus.TypeContainer,
 		})
 	}
 	if len(entries) != 39 {

@@ -117,7 +117,7 @@ func Test_Print_CatalogLabel_SingleCopy(t *testing.T) {
 
 	id := uuid.New()
 	_ = store.Create(context.Background(), labelbus.LabelCatalog{
-		ID: id, Code: "TOTE-001", Type: labelbus.TypeTote,
+		ID: id, Code: "TOTE-001", Type: labelbus.TypeContainer,
 	})
 
 	err := app.Print(context.Background(), labelapp.PrintRequest{LabelID: id.String()})
@@ -174,7 +174,7 @@ func Test_Print_PrinterError(t *testing.T) {
 
 	id := uuid.New()
 	_ = store.Create(context.Background(), labelbus.LabelCatalog{
-		ID: id, Code: "X", Type: labelbus.TypeTote,
+		ID: id, Code: "X", Type: labelbus.TypeContainer,
 	})
 
 	if err := app.Print(context.Background(), labelapp.PrintRequest{LabelID: id.String()}); err == nil {
@@ -182,7 +182,7 @@ func Test_Print_PrinterError(t *testing.T) {
 	}
 }
 
-func Test_RenderPrint_Receiving(t *testing.T) {
+func Test_RenderPrint_Product(t *testing.T) {
 	app, _, printer := newApp(t)
 
 	payload := map[string]any{
@@ -190,14 +190,11 @@ func Test_RenderPrint_Receiving(t *testing.T) {
 		"sku":         "SKU-1",
 		"upc":         "012345678905",
 		"lotNumber":   nil,
-		"expiryDate":  nil,
-		"quantity":    10,
-		"poNumber":    "PO-42",
 	}
 	raw, _ := json.Marshal(payload)
 
 	err := app.RenderPrint(context.Background(), labelapp.RenderPrintRequest{
-		Type:    labelbus.TypeReceiving,
+		Type:    labelbus.TypeProduct,
 		Payload: raw,
 		Copies:  2,
 	})
@@ -207,8 +204,8 @@ func Test_RenderPrint_Receiving(t *testing.T) {
 	if len(printer.calls) != 2 {
 		t.Fatalf("expected 2 SendZPL calls, got %d", len(printer.calls))
 	}
-	if !strings.Contains(string(printer.calls[0]), "PO-42") {
-		t.Fatalf("expected ZPL to contain PO-42, got: %s", printer.calls[0])
+	if !strings.Contains(string(printer.calls[0]), "SKU: SKU-1") {
+		t.Fatalf("expected ZPL to contain SKU: SKU-1, got: %s", printer.calls[0])
 	}
 }
 
