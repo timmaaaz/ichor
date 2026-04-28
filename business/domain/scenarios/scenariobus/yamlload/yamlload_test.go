@@ -55,7 +55,7 @@ func TestValidate_DuplicateBindingRef(t *testing.T) {
 	}
 }
 
-func Test_Load_LeverOverrides_Parsed(t *testing.T) {
+func TestLoad_LeverOverridesParsed(t *testing.T) {
 	dir := t.TempDir()
 	scenarioDir := filepath.Join(dir, "with-overrides")
 	if err := os.MkdirAll(scenarioDir, 0o755); err != nil {
@@ -83,7 +83,7 @@ func Test_Load_LeverOverrides_Parsed(t *testing.T) {
 	}
 }
 
-func Test_Load_Workers_Parsed(t *testing.T) {
+func TestLoad_WorkersParsed(t *testing.T) {
 	dir := t.TempDir()
 	scenarioDir := filepath.Join(dir, "with-workers")
 	if err := os.MkdirAll(scenarioDir, 0o755); err != nil {
@@ -109,5 +109,8 @@ func Test_Load_Workers_Parsed(t *testing.T) {
 	}
 	if got[0].Username != "alice@example.com" || len(got[0].Zones) != 2 {
 		t.Fatalf("Workers[0] = %+v, want alice with 2 zones", got[0])
+	}
+	if got[1].Username != "bob@example.com" || len(got[1].Zones) != 1 {
+		t.Fatalf("Workers[1] = %+v, want bob with 1 zone", got[1])
 	}
 }
