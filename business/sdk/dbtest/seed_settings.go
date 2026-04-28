@@ -14,9 +14,10 @@ import (
 // reference these keys via lever_overrides have something to override.
 //
 // Idempotency: settingsbus.Create returns ErrUniqueEntry on duplicate key.
-// We treat that as success because make reseed-frontend wipes the DB
-// before re-running, so a duplicate at this point would mean two callers
-// in the same chain — a developer error worth surfacing.
+// We surface that as a fatal error rather than swallowing it: make
+// reseed-frontend wipes the DB before re-running, so a duplicate at this
+// point would mean two callers in the same chain — a developer error
+// worth surfacing.
 func seedSettings(ctx context.Context, busDomain BusDomain) error {
 	for _, key := range levers.KnownKeys {
 		raw, err := json.Marshal(levers.Defaults[key])
