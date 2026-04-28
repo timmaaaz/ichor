@@ -2,10 +2,14 @@ package dbtest
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/levers"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
@@ -93,5 +97,39 @@ func Test_Seed_Integration(t *testing.T) {
 	}
 	if len(zonedC) < 1 {
 		t.Errorf("expected ≥1 user assigned to STG-C, got %d", len(zonedC))
+	}
+
+	// --- Phase 0g.B5 — assert 11 lever defaults present --------------------
+	leverRows, err := db.BusDomain.Settings.Query(ctx, settingsbus.QueryFilter{}, order.NewBy(settingsbus.OrderByKey, order.ASC), page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("query settings: %v", err)
+	}
+
+	wantKeys := map[string]string{}
+	for _, k := range levers.KnownKeys {
+		wantKeys[k] = levers.Defaults[k]
+	}
+
+	gotKeys := map[string]string{}
+	for _, s := range leverRows {
+		if _, isLever := wantKeys[s.Key]; !isLever {
+			continue
+		}
+		var v string
+		if err := json.Unmarshal(s.Value, &v); err != nil {
+			t.Fatalf("unmarshal value for %q: %v", s.Key, err)
+		}
+		gotKeys[s.Key] = v
+	}
+
+	for k, want := range wantKeys {
+		got, ok := gotKeys[k]
+		if !ok {
+			t.Errorf("missing lever key %q in config.settings after reseed", k)
+			continue
+		}
+		if got != want {
+			t.Errorf("lever %q value: got %q, want %q", k, got, want)
+		}
 	}
 }
