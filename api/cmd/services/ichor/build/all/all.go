@@ -678,7 +678,12 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// middleware can wrap every route registered below. When cfg.ScenariosEnabled
 	// is false (prod default), the middleware is skipped entirely and scoped
 	// repositories' ctx-reads become no-ops.
-	scenarioBus := scenariobus.NewBusiness(cfg.Log, delegate, scenariodb.NewStore(cfg.Log, cfg.DB), sqldb.NewBeginner(cfg.DB))
+	scenariosRoot, scenariosRootErr := scenariobus.FindScenariosRoot()
+	if scenariosRootErr != nil {
+		cfg.Log.Error(context.Background(), "find scenarios root: worker-zone application disabled", "error", scenariosRootErr)
+		scenariosRoot = ""
+	}
+	scenarioBus := scenariobus.NewBusiness(cfg.Log, delegate, scenariodb.NewStore(cfg.Log, cfg.DB), sqldb.NewBeginner(cfg.DB), scenariosRoot)
 	if cfg.ScenariosEnabled {
 		app.Use(mid.ActiveScenario(scenarioBus))
 	}

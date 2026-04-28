@@ -414,7 +414,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	labelBus := labelbus.NewBusiness(log, delegate, labeldb.NewStore(log, db), nil)
 
 	// Scenarios — beginner is required for transactional Load/Reset.
-	scenarioBus := scenariobus.NewBusiness(log, delegate, scenariodb.NewStore(log, db), sqldb.NewBeginner(db))
+	// Pass "" for scenariosRoot: dbtest contexts do not exercise the YAML
+	// worker-zone path.
+	scenarioBus := scenariobus.NewBusiness(log, delegate, scenariodb.NewStore(log, db), sqldb.NewBeginner(db), "")
 
 	// Orders
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))

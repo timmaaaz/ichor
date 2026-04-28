@@ -12,9 +12,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus/yamlload"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -65,15 +68,41 @@ type Storer interface {
 
 // Business manages the set of APIs for scenario access.
 type Business struct {
-	log      *logger.Logger
-	delegate *delegate.Delegate
-	storer   Storer
-	beginner sqldb.Beginner
+	log           *logger.Logger
+	delegate      *delegate.Delegate
+	storer        Storer
+	beginner      sqldb.Beginner
+	scenariosRoot string // filesystem path to deployments/scenarios/ — empty disables worker-zone application
 }
 
 // NewBusiness constructs a scenario business API for use.
-func NewBusiness(log *logger.Logger, d *delegate.Delegate, storer Storer, beginner sqldb.Beginner) *Business {
-	return &Business{log: log, delegate: d, storer: storer, beginner: beginner}
+//
+// scenariosRoot is the absolute path to deployments/scenarios/. Empty string
+// disables worker-zone application during Load (e.g. in unit tests that
+// don't exercise the YAML path). The seeder discovers this path via
+// findRepoRoot in seed_scenarios.go and the API binary wires it via
+// build/all/all.go (Task 11 Step 4).
+func NewBusiness(log *logger.Logger, d *delegate.Delegate, storer Storer, beginner sqldb.Beginner, scenariosRoot string) *Business {
+	return &Business{log: log, delegate: d, storer: storer, beginner: beginner, scenariosRoot: scenariosRoot}
+}
+
+// FindScenariosRoot walks upward from cwd looking for go.mod and returns
+// <root>/deployments/scenarios. Mirrors seed_scenarios.go's findRepoRoot.
+func FindScenariosRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("getwd: %w", err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return filepath.Join(dir, "deployments", "scenarios"), nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("go.mod not found from %s upward", dir)
+		}
+		dir = parent
+	}
 }
 
 // NewWithTx constructs a new Business value replacing the Storer value with
@@ -85,10 +114,11 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	}
 
 	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		storer:   storer,
-		beginner: b.beginner,
+		log:           b.log,
+		delegate:      b.delegate,
+		storer:        storer,
+		beginner:      b.beginner,
+		scenariosRoot: b.scenariosRoot,
 	}, nil
 }
 
@@ -328,6 +358,21 @@ func (b *Business) Load(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("load applyfixtures: %w", err)
 	}
 
+	// Phase 0g.B5 — apply worker→zone bindings. Re-reads YAML at Load time
+	// because Bindings.Workers is not persisted (see plan §Architecture
+	// deviation 1). Empty scenariosRoot (test contexts) disables this path.
+	if b.scenariosRoot != "" {
+		zones, err := readWorkerZonesForScenario(b.scenariosRoot, id, b.storer)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("load read worker zones: %w", err)
+		}
+		if err := txBus.storer.ApplyWorkerZones(ctx, zones); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("load apply worker zones: %w", err)
+		}
+	}
+
 	// Update the active pointer.
 	if err := txBus.storer.SetActive(ctx, id); err != nil {
 		tx.Rollback()
@@ -363,5 +408,32 @@ func (b *Business) Reset(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// readWorkerZonesForScenario re-reads the on-disk scenario directory matching
+// the given UUID and returns its worker bindings as bus-layer values. The
+// matching uses the deterministic scenario ID (uuid.NewSHA1 of "scenario:"+name
+// under the deadbeef namespace, set in yamlload.loadOne). Returns empty slice
+// if the scenario has no workers binding or if the scenariosRoot directory
+// holds no matching scenario.
+func readWorkerZonesForScenario(scenariosRoot string, id uuid.UUID, _ Storer) ([]WorkerZoneBinding, error) {
+	scenarios, err := yamlload.Load(scenariosRoot)
+	if err != nil {
+		if yamlload.IsNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("yamlload.Load: %w", err)
+	}
+	for _, s := range scenarios {
+		if s.ID != id {
+			continue
+		}
+		out := make([]WorkerZoneBinding, 0, len(s.Bindings.Workers))
+		for _, w := range s.Bindings.Workers {
+			out = append(out, WorkerZoneBinding{Username: w.Username, Zones: w.Zones})
+		}
+		return out, nil
+	}
+	return nil, nil
 }
 
