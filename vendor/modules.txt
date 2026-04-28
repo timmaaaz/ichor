@@ -47,6 +47,11 @@ github.com/arl/statsviz/internal/static
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
+# github.com/boombuler/barcode v1.0.1
+## explicit
+github.com/boombuler/barcode
+github.com/boombuler/barcode/code128
+github.com/boombuler/barcode/utils
 # github.com/cenkalti/backoff/v4 v4.3.0
 ## explicit; go 1.18
 github.com/cenkalti/backoff/v4
