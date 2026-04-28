@@ -154,6 +154,25 @@ func TestValidate_RejectsEmptyWorkerZones(t *testing.T) {
 	}
 }
 
+func TestValidate_RejectsDuplicateWorkerUsername(t *testing.T) {
+	s := yamlload.Scenario{
+		Name: "dup-worker",
+		Bindings: yamlload.Bindings{
+			Workers: []yamlload.WorkerBinding{
+				{Username: "alice@example.com", Zones: []string{"STG-A"}},
+				{Username: "alice@example.com", Zones: []string{"PCK"}},
+			},
+		},
+	}
+	err := s.Validate()
+	if err == nil {
+		t.Fatal("Validate() returned nil; want error for duplicate worker username")
+	}
+	if !strings.Contains(err.Error(), "duplicate worker username") {
+		t.Fatalf("error %q does not mention 'duplicate worker username'", err.Error())
+	}
+}
+
 func TestValidate_AcceptsKnownLeverKey(t *testing.T) {
 	s := yamlload.Scenario{
 		Name:           "ok",
