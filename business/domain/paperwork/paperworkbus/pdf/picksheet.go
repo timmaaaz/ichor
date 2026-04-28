@@ -44,6 +44,9 @@ func PickSheet(data PickSheetData) ([]byte, error) {
 	}
 	pdfDoc.Ln(5)
 
+	// Column widths sum to 180mm (letter width 215.9mm minus 2×10mm
+	// margins = 195.9mm, with 15.9mm right slack to keep cell text
+	// from running into the right margin).
 	pdfDoc.SetFont("Helvetica", "B", 9)
 	pdfDoc.Cell(35, 6, "Location")
 	pdfDoc.Cell(40, 6, "SKU")
