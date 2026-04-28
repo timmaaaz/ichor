@@ -112,6 +112,9 @@ func Test_Seed_Integration(t *testing.T) {
 
 	gotKeys := map[string]string{}
 	for _, s := range leverRows {
+		// migrate.sql v2.01 pre-seeds non-lever numeric rows (e.g.
+		// inventory.variance_threshold_units = 5) that would panic the
+		// string unmarshal below. Skip anything not in the lever set.
 		if _, isLever := wantKeys[s.Key]; !isLever {
 			continue
 		}
