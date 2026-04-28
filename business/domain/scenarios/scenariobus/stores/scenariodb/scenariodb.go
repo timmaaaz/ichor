@@ -464,7 +464,7 @@ func (s *Store) ApplyWorkerZones(ctx context.Context, zones []scenariobus.Worker
 		}
 		n, err := sqldb.NamedExecContextWithCount(ctx, s.log, s.db, q, row)
 		if err != nil {
-			return fmt.Errorf("apply worker zones %s: %w", z.Username, err)
+			return fmt.Errorf("apply worker zones %q: %w", z.Username, err)
 		}
 		if n == 0 {
 			return fmt.Errorf("apply worker zones: username %q not found", z.Username)
