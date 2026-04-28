@@ -1,7 +1,9 @@
 package yamlload_test
 
 import (
+	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus/yamlload"
@@ -50,5 +52,62 @@ func TestValidate_DuplicateBindingRef(t *testing.T) {
 	err := s.Validate()
 	if err == nil {
 		t.Fatal("expected validation error for duplicate lot ref")
+	}
+}
+
+func Test_Load_LeverOverrides_Parsed(t *testing.T) {
+	dir := t.TempDir()
+	scenarioDir := filepath.Join(dir, "with-overrides")
+	if err := os.MkdirAll(scenarioDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(scenarioDir, "scenario.yaml"),
+		[]byte("name: with-overrides\nlever_overrides:\n  pick.lotScan: required-if-lot-tracked\n  pick.destinationScan: required\n"),
+		0o644); err != nil {
+		t.Fatalf("write scenario.yaml: %v", err)
+	}
+
+	scenarios, err := yamlload.Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(scenarios) != 1 {
+		t.Fatalf("got %d scenarios, want 1", len(scenarios))
+	}
+	got := scenarios[0].LeverOverrides
+	if want := map[string]string{
+		"pick.lotScan":         "required-if-lot-tracked",
+		"pick.destinationScan": "required",
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LeverOverrides = %v, want %v", got, want)
+	}
+}
+
+func Test_Load_Workers_Parsed(t *testing.T) {
+	dir := t.TempDir()
+	scenarioDir := filepath.Join(dir, "with-workers")
+	if err := os.MkdirAll(scenarioDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(scenarioDir, "scenario.yaml"),
+		[]byte("name: with-workers\n"), 0o644); err != nil {
+		t.Fatalf("write scenario.yaml: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(scenarioDir, "bindings.yaml"),
+		[]byte("workers:\n  - username: alice@example.com\n    zones: [STG-A, STG-B]\n  - username: bob@example.com\n    zones: [PCK]\n"),
+		0o644); err != nil {
+		t.Fatalf("write bindings.yaml: %v", err)
+	}
+
+	scenarios, err := yamlload.Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	got := scenarios[0].Bindings.Workers
+	if len(got) != 2 {
+		t.Fatalf("Workers len = %d, want 2", len(got))
+	}
+	if got[0].Username != "alice@example.com" || len(got[0].Zones) != 2 {
+		t.Fatalf("Workers[0] = %+v, want alice with 2 zones", got[0])
 	}
 }

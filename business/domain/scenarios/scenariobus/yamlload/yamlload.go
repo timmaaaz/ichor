@@ -41,11 +41,12 @@ func IsNotFoundErr(err error) bool {
 // Scenario is the parsed + validated representation of one on-disk scenario
 // directory. Returned by Load.
 type Scenario struct {
-	ID          uuid.UUID `yaml:"id,omitempty"`
-	Name        string    `yaml:"name"`
-	Description string    `yaml:"description"`
-	Bindings    Bindings  `yaml:"-"` // loaded from bindings.yaml separately
-	State       State     `yaml:"-"` // loaded from state.yaml separately
+	ID             uuid.UUID         `yaml:"id,omitempty"`
+	Name           string            `yaml:"name"`
+	Description    string            `yaml:"description"`
+	LeverOverrides map[string]string `yaml:"lever_overrides,omitempty"`
+	Bindings       Bindings          `yaml:"-"` // loaded from bindings.yaml separately
+	State          State             `yaml:"-"` // loaded from state.yaml separately
 }
 
 // Bindings references baseline entities by stable identifier. Resolved
@@ -55,6 +56,7 @@ type Bindings struct {
 	Locations []LocationBinding `yaml:"locations"`
 	Lots      []LotBinding      `yaml:"lots"`
 	Serials   []SerialBinding   `yaml:"serials"`
+	Workers   []WorkerBinding   `yaml:"workers"`
 }
 
 type ToteBinding struct {
@@ -74,6 +76,11 @@ type LotBinding struct {
 type SerialBinding struct {
 	Ref         string `yaml:"ref"`
 	ProductCode string `yaml:"product_code"`
+}
+
+type WorkerBinding struct {
+	Username string   `yaml:"username"`
+	Zones    []string `yaml:"zones"`
 }
 
 // State is an open-shape map keyed by target-table suffix (e.g. "purchase_orders"
