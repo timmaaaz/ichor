@@ -118,6 +118,12 @@ func InsertSeedDataWithDB(log *logger.Logger, db *sqlx.DB) error {
 		return fmt.Errorf("seeding approvals: %w", err)
 	}
 
+	// Phase 0g.B5 — settings must exist before scenarios can reference
+	// them via lever_overrides; semantic ordering even though no FK enforces it.
+	if err := seedSettings(ctx, busDomain); err != nil {
+		return fmt.Errorf("seeding settings: %w", err)
+	}
+
 	if err := seedScenarios(ctx, busDomain); err != nil {
 		return fmt.Errorf("seeding scenarios: %w", err)
 	}
