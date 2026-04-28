@@ -22,11 +22,12 @@ All values are randomized (names, IDs, dates). Only counts and relationships are
 | Offices | 10 | |
 | Brands | 5 | |
 | Product categories | 10 | |
-| Products | 20 | historical dates, 180-day window |
-| Product costs | 20 | all USD |
-| Physical attributes | 20 | |
-| Metrics | 40 | |
-| Cost history entries | 40 | historical, 180-day window |
+| Products | 40 | historical dates, 180-day window; tracking distribution 28 none / 8 lot / 4 serial |
+| Product costs | 40 | all USD |
+| Physical attributes | 40 | |
+| Metrics | 80 | |
+| Cost history entries | 80 | historical, 180-day window |
+| Label catalog | 79 | 19 location + 20 container + 40 product (one per seeded product) |
 | Warehouses | 5 | historical, 365-day window |
 | Zones | 12 | |
 | Inventory locations | 25 | |
@@ -254,7 +255,13 @@ file: business/sdk/dbtest/seedFrontend.go (~71 lines)
 
 ```go
 func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error
+func InsertSeedDataWithDB(log *logger.Logger, db *sqlx.DB) error
 ```
+
+`InsertSeedData` opens a connection from `cfg`, defers Close, and delegates
+to `InsertSeedDataWithDB`. Integration tests (e.g. `Test_Seed_Integration`)
+call `InsertSeedDataWithDB` directly against the `dbtest.NewDatabase`-managed
+`*sqlx.DB` so the seed chain reuses the test container's connection.
 
 Dependency chain (execution order is authoritative — do not reorder):
 
@@ -265,7 +272,9 @@ seedGeographyHR(ctx, busDomain)                                 → GeographyHRS
     ↓
 seedAssets(ctx, busDomain, foundation)
     ↓
-seedProducts(ctx, busDomain, geoHR, foundation)                 → products result
+seedProducts(ctx, busDomain, geoHR, foundation)                 → ProductsSeed
+    ↓
+seedLabels(ctx, busDomain.Label, products)                      → 79 deterministic catalog rows
     ↓
 seedInventory(ctx, busDomain, foundation, geoHR, products)      → inventory result
     ↓
@@ -308,6 +317,9 @@ type FoundationSeed struct {
 func seedFoundation(ctx context.Context, busDomain BusDomain) (FoundationSeed, error)
 ```
 Seeds: users, roles, user roles, table access, currencies.
+After initial user seeding, `reporters[0]` is updated with `assigned_zones=["STG-A","STG-B"]`
+and `reporters[1]` with `assigned_zones=["STG-C","PCK"]` so picking can fan out to
+multiple zone-scoped workers in tests. Other reporters keep the empty default.
 
 ### seed_geography_hr.go
 ```go
@@ -331,7 +343,27 @@ Seeds: asset types, conditions, valid assets, assets, approval/fulfillment statu
 ```go
 func seedProducts(ctx context.Context, busDomain BusDomain, geoHR GeographyHRSeed, foundation FoundationSeed) (ProductsSeed, error)
 ```
-Seeds: brands, categories, products, costs, physical attributes, metrics, cost histories.
+Seeds: brands, categories, 40 products, costs, physical attributes, metrics, cost histories.
+Products use the `productbus.TestSeedProductsHistoricalWithDistribution` helper with an explicit
+28×`"none"` + 8×`"lot"` + 4×`"serial"` tracking-type distribution so downstream
+inventory/lot-tracking/serial-number seed logic has a stable shape to fan out from.
+
+### seed_labels.go
+```go
+func seedLabels(ctx context.Context, bus *labelbus.Business, products ProductsSeed) error
+```
+Seeds 79 rows: 19 location + 20 container + 40 product. Catalog UUIDs are deterministic
+via `detUUID("label:" + code)` (UUID v5 over the `deadbeef-…-beefdeadbeef` namespace) so
+`make reseed-frontend` produces byte-identical label IDs across runs.
+
+Type breakdown:
+- **Location** — RCV-NN, QA-NN, STG-{A|B|C}NN, PCK-NN, PKG-NN, SHP-NN. Empty `payload_json: "{}"`.
+- **Container** — TOTE-001..TOTE-020. Empty `payload_json: "{}"`.
+- **Product** — `PRD-{SKU}` (one per seeded product). `entity_ref` is the product UUID.
+  `payload_json` carries `{"sku":..., "upc":..., "productName":...}` for ZPL rendering.
+
+Note: product `entity_ref` is non-deterministic until `productbus.Business.SeedCreate` lands —
+all other label fields are stable across reseeds.
 
 ### seed_inventory.go
 ```go

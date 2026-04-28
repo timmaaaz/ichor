@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -19,6 +20,14 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("connect database: %w", err)
 	}
 	defer db.Close()
+	return InsertSeedDataWithDB(log, db)
+}
+
+// InsertSeedDataWithDB runs the full Phase-0g seed chain against an
+// already-open database connection. Used by the CLI seedFrontend command (via
+// InsertSeedData) and by integration tests that wire seeding into a
+// dbtest.NewDatabase fixture.
+func InsertSeedDataWithDB(log *logger.Logger, db *sqlx.DB) error {
 	busDomain := newBusDomains(log, db)
 
 	ctx := context.Background()
@@ -54,13 +63,13 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding assets: %w", err)
 	}
 
-	if err := seedLabels(ctx, busDomain.Label); err != nil {
-		return fmt.Errorf("seed labels: %w", err)
-	}
-
 	products, err := seedProducts(ctx, busDomain, geoHR, foundation)
 	if err != nil {
 		return fmt.Errorf("seeding products: %w", err)
+	}
+
+	if err := seedLabels(ctx, busDomain.Label, products); err != nil {
+		return fmt.Errorf("seed labels: %w", err)
 	}
 
 	inventory, err := seedInventory(ctx, busDomain, foundation, geoHR, products)

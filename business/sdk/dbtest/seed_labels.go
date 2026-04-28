@@ -2,6 +2,7 @@ package dbtest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -18,36 +19,80 @@ func detUUID(key string) uuid.UUID {
 	return uuid.NewSHA1(detNamespace, []byte(key))
 }
 
-// seedLabels inserts the 39-label Phase 1 catalog (19 locations + 20 containers)
-// with deterministic UUIDs. Matches spec §3.3.
-func seedLabels(ctx context.Context, bus *labelbus.Business) error {
-	entries := []struct {
-		code, typ string
-	}{
-		{"RCV-01", labelbus.TypeLocation}, {"RCV-02", labelbus.TypeLocation},
-		{"QA-01", labelbus.TypeLocation},
-		{"STG-A01", labelbus.TypeLocation}, {"STG-A02", labelbus.TypeLocation}, {"STG-A03", labelbus.TypeLocation},
-		{"STG-B01", labelbus.TypeLocation}, {"STG-B02", labelbus.TypeLocation}, {"STG-B03", labelbus.TypeLocation},
-		{"STG-C01", labelbus.TypeLocation}, {"STG-C02", labelbus.TypeLocation}, {"STG-C03", labelbus.TypeLocation},
-		{"PCK-01", labelbus.TypeLocation}, {"PCK-02", labelbus.TypeLocation}, {"PCK-03", labelbus.TypeLocation},
-		{"PKG-01", labelbus.TypeLocation}, {"PKG-02", labelbus.TypeLocation},
-		{"SHP-01", labelbus.TypeLocation}, {"SHP-02", labelbus.TypeLocation},
+// seedLabels inserts the 79-label Phase 0g.B4 catalog (19 locations + 20
+// containers + 40 product labels) with deterministic UUIDs. Matches spec §3.3.
+func seedLabels(ctx context.Context, bus *labelbus.Business, products ProductsSeed) error {
+	type entry struct {
+		code        string
+		typ         string
+		entityRef   string
+		payloadJSON string
 	}
+
+	entries := []entry{
+		{code: "RCV-01", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "RCV-02", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "QA-01", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-A01", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-A02", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-A03", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-B01", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-B02", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-B03", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-C01", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-C02", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "STG-C03", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "PCK-01", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "PCK-02", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "PCK-03", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "PKG-01", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "PKG-02", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "SHP-01", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+		{code: "SHP-02", typ: labelbus.TypeLocation, payloadJSON: "{}"},
+	}
+
+	// 20 deterministic container/tote labels.
 	for i := 1; i <= 20; i++ {
-		entries = append(entries, struct{ code, typ string }{
-			code: fmt.Sprintf("TOTE-%03d", i),
-			typ:  labelbus.TypeContainer,
+		entries = append(entries, entry{
+			code:        fmt.Sprintf("TOTE-%03d", i),
+			typ:         labelbus.TypeContainer,
+			payloadJSON: "{}",
 		})
 	}
-	if len(entries) != 39 {
-		return fmt.Errorf("expected 39 seed entries, got %d", len(entries))
+
+	// 40 product labels — one per seeded product, with the product UUID as
+	// entity_ref and a JSON payload carrying SKU/UPC/name for label rendering.
+	for _, p := range products.Products {
+		payload, err := json.Marshal(struct {
+			SKU         string `json:"sku"`
+			UPC         string `json:"upc"`
+			ProductName string `json:"productName"`
+		}{SKU: p.SKU, UPC: p.UpcCode, ProductName: p.Name})
+		if err != nil {
+			return fmt.Errorf("marshal product label payload for %s: %w", p.SKU, err)
+		}
+		entries = append(entries, entry{
+			// Code format depends on productbus.TestNewProductsHistorical's
+			// SKU-%04d pattern; if SKU format changes, label codes shift.
+			code:        fmt.Sprintf("PRD-%s", p.SKU),
+			typ:         labelbus.TypeProduct,
+			entityRef:   p.ProductID.String(),
+			payloadJSON: string(payload),
+		})
 	}
+
+	const expectedTotal = 79
+	if len(entries) != expectedTotal {
+		return fmt.Errorf("expected %d seed entries, got %d", expectedTotal, len(entries))
+	}
+
 	for _, e := range entries {
 		lc := labelbus.LabelCatalog{
 			ID:          detUUID("label:" + e.code),
 			Code:        e.code,
 			Type:        e.typ,
-			PayloadJSON: "{}",
+			EntityRef:   e.entityRef,
+			PayloadJSON: e.payloadJSON,
 		}
 		if err := bus.SeedCreate(ctx, lc); err != nil {
 			return fmt.Errorf("seedcreate %s: %w", e.code, err)

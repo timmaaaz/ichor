@@ -3,7 +3,6 @@ package productbus
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sort"
 	"time"
 
@@ -28,7 +27,7 @@ func TestNewProducts(n int, brandIDs, productCategoryIDs uuid.UUIDs) []NewProduc
 
 	trackingTypes := []string{"none", "lot", "serial"}
 
-	idx := rand.Intn(10000)
+	idx := 0
 	for i := 0; i < n; i++ {
 		idx++
 
@@ -36,8 +35,8 @@ func TestNewProducts(n int, brandIDs, productCategoryIDs uuid.UUIDs) []NewProduc
 
 		np := NewProduct{
 			Name:                 productNames[i%len(productNames)],
-			BrandID:              brandIDs[rand.Intn(len(brandIDs))],
-			ProductCategoryID:    productCategoryIDs[rand.Intn(len(productCategoryIDs))],
+			BrandID:              brandIDs[i%len(brandIDs)],
+			ProductCategoryID:    productCategoryIDs[i%len(productCategoryIDs)],
 			Description:          fmt.Sprintf("High-quality %s for warehouse operations", productNames[i%len(productNames)]),
 			SKU:                  fmt.Sprintf("SKU-%04d", i+1),
 			ModelNumber:          fmt.Sprintf("MDL-%04d", i+1),
@@ -100,7 +99,7 @@ func TestNewProductsHistorical(n int, daysBack int, brandIDs, productCategoryIDs
 
 	trackingTypes := []string{"none", "lot", "serial"}
 
-	idx := rand.Intn(10000)
+	idx := 0
 	for i := 0; i < n; i++ {
 		idx++
 
@@ -111,8 +110,8 @@ func TestNewProductsHistorical(n int, daysBack int, brandIDs, productCategoryIDs
 
 		np := NewProduct{
 			Name:                 productNames[i%len(productNames)],
-			BrandID:              brandIDs[rand.Intn(len(brandIDs))],
-			ProductCategoryID:    productCategoryIDs[rand.Intn(len(productCategoryIDs))],
+			BrandID:              brandIDs[i%len(brandIDs)],
+			ProductCategoryID:    productCategoryIDs[i%len(productCategoryIDs)],
 			Description:          fmt.Sprintf("High-quality %s for warehouse operations", productNames[i%len(productNames)]),
 			SKU:                  fmt.Sprintf("SKU-%04d", i+1),
 			ModelNumber:          fmt.Sprintf("MDL-%04d", i+1),
@@ -131,18 +130,38 @@ func TestNewProductsHistorical(n int, daysBack int, brandIDs, productCategoryIDs
 	return newProducts
 }
 
-// TestSeedProductsHistorical seeds products with historical date distribution.
-func TestSeedProductsHistorical(ctx context.Context, n int, daysBack int, brandIDs, productCategoryIDs uuid.UUIDs, api *Business) ([]Product, error) {
+// TestSeedProductsHistoricalWithDistribution generates n products with the
+// caller-provided tracking-type distribution. distribution must have len == n;
+// each entry must be one of "none", "lot", "serial". Pass nil to fall back to
+// the modulo-based default that TestNewProductsHistorical applies via
+// {"none","lot","serial"}[i%len(trackingTypes)].
+func TestSeedProductsHistoricalWithDistribution(
+	ctx context.Context,
+	n int,
+	daysBack int,
+	distribution []string,
+	brandIDs, productCategoryIDs uuid.UUIDs,
+	api *Business,
+) ([]Product, error) {
+	if distribution != nil && len(distribution) != n {
+		return nil, fmt.Errorf("distribution length %d != n %d", len(distribution), n)
+	}
+
 	newProducts := TestNewProductsHistorical(n, daysBack, brandIDs, productCategoryIDs)
-
-	products := make([]Product, len(newProducts))
-
-	for i, np := range newProducts {
-		product, err := api.Create(ctx, np)
-		if err != nil {
-			return nil, err
+	if distribution != nil {
+		for i := range newProducts {
+			newProducts[i].TrackingType = distribution[i]
+			newProducts[i].IsPerishable = distribution[i] == "lot"
 		}
-		products[i] = product
+	}
+
+	products := make([]Product, 0, n)
+	for i, np := range newProducts {
+		p, err := api.Create(ctx, np)
+		if err != nil {
+			return nil, fmt.Errorf("create product %d: %w", i, err)
+		}
+		products = append(products, p)
 	}
 
 	sort.Slice(products, func(i, j int) bool {
