@@ -43,8 +43,6 @@ var Defaults = map[string]string{
 // IsKnown reports whether key is one of the canonical lever keys. Used by
 // scenario YAML validation to reject typos in lever_overrides.
 func IsKnown(key string) bool {
-	if _, ok := Defaults[key]; ok {
-		return true
-	}
-	return false
+	_, ok := Defaults[key]
+	return ok
 }

@@ -42,12 +42,7 @@ func Test_Defaults_ProductScan_AlwaysRequired(t *testing.T) {
 
 func Test_KnownKeys_Sorted(t *testing.T) {
 	// Stable iteration for seeders + test output diffability.
-	got := append([]string{}, levers.KnownKeys...)
-	want := append([]string{}, levers.KnownKeys...)
-	sort.Strings(want)
-	for i := range got {
-		if got[i] != want[i] {
-			t.Fatalf("KnownKeys not sorted at index %d: got %q, want %q", i, got[i], want[i])
-		}
+	if !sort.StringsAreSorted(levers.KnownKeys) {
+		t.Fatalf("KnownKeys is not sorted: %v", levers.KnownKeys)
 	}
 }
