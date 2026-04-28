@@ -869,9 +869,10 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// so B3 only needs to swap the paperworkbus implementation.
 	paperworkBus := paperworkbus.NewBusiness(cfg.Log, ordersBus, orderLineItemsBus, purchaseOrderBus, purchaseOrderLineItemBus, transferOrderBus)
 	paperworkapi.Routes(app, paperworkapi.Config{
-		Log:          cfg.Log,
-		PaperworkBus: paperworkBus,
-		AuthClient:   cfg.AuthClient,
+		Log:            cfg.Log,
+		PaperworkBus:   paperworkBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	// Scenario subsystem (Phase 0d) — floor warehouse testing scenario management.
