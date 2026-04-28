@@ -40,22 +40,21 @@ func seedFoundation(ctx context.Context, busDomain BusDomain) (FoundationSeed, e
 	}
 
 	// Assign warehouse zones to 2 reporters for zone-sliced multi-worker pick
-	// coverage (Phase 0g.B4). reporters[0] gets STG-A/STG-B; reporters[1] gets
-	// STG-C/PCK. Other reporters keep the empty default.
-	if len(reporters) >= 2 {
-		zonesA := []string{"STG-A", "STG-B"}
-		zonesB := []string{"STG-C", "PCK"}
-		updated0, err := busDomain.User.Update(ctx, reporters[0], userbus.UpdateUser{AssignedZones: &zonesA})
-		if err != nil {
-			return FoundationSeed{}, fmt.Errorf("assign zones to reporter[0]: %w", err)
-		}
-		reporters[0] = updated0
-		updated1, err := busDomain.User.Update(ctx, reporters[1], userbus.UpdateUser{AssignedZones: &zonesB})
-		if err != nil {
-			return FoundationSeed{}, fmt.Errorf("assign zones to reporter[1]: %w", err)
-		}
-		reporters[1] = updated1
+	// coverage. reporters[0] gets STG-A/STG-B; reporters[1] gets STG-C/PCK.
+	// Other reporters keep the empty default. Failures here surface loudly:
+	// a missing reporters[0]/[1] panics rather than silently skipping.
+	zonesA := []string{"STG-A", "STG-B"}
+	zonesB := []string{"STG-C", "PCK"}
+	updated0, err := busDomain.User.Update(ctx, reporters[0], userbus.UpdateUser{AssignedZones: &zonesA})
+	if err != nil {
+		return FoundationSeed{}, fmt.Errorf("assign zones to reporter[0]: %w", err)
 	}
+	reporters[0] = updated0
+	updated1, err := busDomain.User.Update(ctx, reporters[1], userbus.UpdateUser{AssignedZones: &zonesB})
+	if err != nil {
+		return FoundationSeed{}, fmt.Errorf("assign zones to reporter[1]: %w", err)
+	}
+	reporters[1] = updated1
 
 	bosses, err := userbus.TestSeedUsersWithNoFKs(ctx, 10, userbus.Roles.User, busDomain.User)
 	if err != nil {

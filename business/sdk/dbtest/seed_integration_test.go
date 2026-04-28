@@ -26,42 +26,54 @@ func Test_Seed_Integration(t *testing.T) {
 
 	ctx := context.Background()
 
-	// --- 79 labels split 19 / 20 / 40 across types -----------------------
+	// --- labels split across types --------------------------------------
+	expectedLabelsByType := map[string]int{
+		labelbus.TypeLocation:  19,
+		labelbus.TypeContainer: 20,
+		labelbus.TypeProduct:   40,
+	}
+	expectedLabelTotal := 0
+	for _, n := range expectedLabelsByType {
+		expectedLabelTotal += n
+	}
+
 	pg := page.MustParse("1", "200")
 	labels, err := db.BusDomain.Label.Query(ctx, labelbus.QueryFilter{}, labelbus.DefaultOrderBy, pg)
 	if err != nil {
 		t.Fatalf("label query: %v", err)
 	}
-	if got, want := len(labels), 79; got != want {
-		t.Fatalf("label count: got %d, want %d", got, want)
+	if got := len(labels); got != expectedLabelTotal {
+		t.Fatalf("label count: got %d, want %d", got, expectedLabelTotal)
 	}
 	typeCounts := map[string]int{}
 	for _, l := range labels {
 		typeCounts[l.Type]++
 	}
-	for typ, want := range map[string]int{
-		labelbus.TypeLocation:  19,
-		labelbus.TypeContainer: 20,
-		labelbus.TypeProduct:   40,
-	} {
+	for typ, want := range expectedLabelsByType {
 		if got := typeCounts[typ]; got != want {
 			t.Errorf("label type %q count: got %d, want %d", typ, got, want)
 		}
 	}
 
-	// --- 40 products with 28/8/4 tracking distribution -------------------
+	// --- products with tracking distribution ----------------------------
+	expectedProductsByTracking := map[string]int{"none": 28, "lot": 8, "serial": 4}
+	expectedProductTotal := 0
+	for _, n := range expectedProductsByTracking {
+		expectedProductTotal += n
+	}
+
 	products, err := db.BusDomain.Product.Query(ctx, productbus.QueryFilter{}, productbus.DefaultOrderBy, pg)
 	if err != nil {
 		t.Fatalf("product query: %v", err)
 	}
-	if got, want := len(products), 40; got != want {
-		t.Fatalf("product count: got %d, want %d", got, want)
+	if got := len(products); got != expectedProductTotal {
+		t.Fatalf("product count: got %d, want %d", got, expectedProductTotal)
 	}
 	trackCounts := map[string]int{}
 	for _, p := range products {
 		trackCounts[p.TrackingType]++
 	}
-	for typ, want := range map[string]int{"none": 28, "lot": 8, "serial": 4} {
+	for typ, want := range expectedProductsByTracking {
 		if got := trackCounts[typ]; got != want {
 			t.Errorf("tracking %q count: got %d, want %d", typ, got, want)
 		}

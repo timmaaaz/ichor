@@ -3,7 +3,6 @@ package productbus
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sort"
 	"time"
 
@@ -28,7 +27,7 @@ func TestNewProducts(n int, brandIDs, productCategoryIDs uuid.UUIDs) []NewProduc
 
 	trackingTypes := []string{"none", "lot", "serial"}
 
-	idx := rand.Intn(10000)
+	idx := 0
 	for i := 0; i < n; i++ {
 		idx++
 
@@ -36,8 +35,8 @@ func TestNewProducts(n int, brandIDs, productCategoryIDs uuid.UUIDs) []NewProduc
 
 		np := NewProduct{
 			Name:                 productNames[i%len(productNames)],
-			BrandID:              brandIDs[rand.Intn(len(brandIDs))],
-			ProductCategoryID:    productCategoryIDs[rand.Intn(len(productCategoryIDs))],
+			BrandID:              brandIDs[i%len(brandIDs)],
+			ProductCategoryID:    productCategoryIDs[i%len(productCategoryIDs)],
 			Description:          fmt.Sprintf("High-quality %s for warehouse operations", productNames[i%len(productNames)]),
 			SKU:                  fmt.Sprintf("SKU-%04d", i+1),
 			ModelNumber:          fmt.Sprintf("MDL-%04d", i+1),
@@ -100,7 +99,7 @@ func TestNewProductsHistorical(n int, daysBack int, brandIDs, productCategoryIDs
 
 	trackingTypes := []string{"none", "lot", "serial"}
 
-	idx := rand.Intn(10000)
+	idx := 0
 	for i := 0; i < n; i++ {
 		idx++
 
@@ -111,8 +110,8 @@ func TestNewProductsHistorical(n int, daysBack int, brandIDs, productCategoryIDs
 
 		np := NewProduct{
 			Name:                 productNames[i%len(productNames)],
-			BrandID:              brandIDs[rand.Intn(len(brandIDs))],
-			ProductCategoryID:    productCategoryIDs[rand.Intn(len(productCategoryIDs))],
+			BrandID:              brandIDs[i%len(brandIDs)],
+			ProductCategoryID:    productCategoryIDs[i%len(productCategoryIDs)],
 			Description:          fmt.Sprintf("High-quality %s for warehouse operations", productNames[i%len(productNames)]),
 			SKU:                  fmt.Sprintf("SKU-%04d", i+1),
 			ModelNumber:          fmt.Sprintf("MDL-%04d", i+1),
@@ -173,9 +172,4 @@ func TestSeedProductsHistoricalWithDistribution(
 	})
 
 	return products, nil
-}
-
-// TestSeedProductsHistorical seeds products with historical date distribution.
-func TestSeedProductsHistorical(ctx context.Context, n int, daysBack int, brandIDs, productCategoryIDs uuid.UUIDs, api *Business) ([]Product, error) {
-	return TestSeedProductsHistoricalWithDistribution(ctx, n, daysBack, nil, brandIDs, productCategoryIDs, api)
 }

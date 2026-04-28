@@ -72,6 +72,8 @@ func seedLabels(ctx context.Context, bus *labelbus.Business, products ProductsSe
 			return fmt.Errorf("marshal product label payload for %s: %w", p.SKU, err)
 		}
 		entries = append(entries, entry{
+			// Code format depends on productbus.TestNewProductsHistorical's
+			// SKU-%04d pattern; if SKU format changes, label codes shift.
 			code:        fmt.Sprintf("PRD-%s", p.SKU),
 			typ:         labelbus.TypeProduct,
 			entityRef:   p.ProductID.String(),
