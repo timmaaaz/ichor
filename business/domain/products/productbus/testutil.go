@@ -134,7 +134,7 @@ func TestNewProductsHistorical(n int, daysBack int, brandIDs, productCategoryIDs
 // TestSeedProductsHistoricalWithDistribution generates n products with the
 // caller-provided tracking-type distribution. distribution must have len == n;
 // each entry must be one of "none", "lot", "serial". Pass nil to fall back to
-// the modulo-based default ({"none","lot","serial"}[i%3]).
+// the modulo-based default ({"none","lot","serial"}[i%len(defaultTypes)]).
 func TestSeedProductsHistoricalWithDistribution(
 	ctx context.Context,
 	n int,
@@ -147,54 +147,17 @@ func TestSeedProductsHistoricalWithDistribution(
 		return nil, fmt.Errorf("distribution length %d != n %d", len(distribution), n)
 	}
 
-	now := time.Now()
-	productNames := []string{
-		"Industrial Bearing 6205",
-		"Nitrile Gloves Box/100",
-		"Hydraulic Filter HF-302",
-		"LED Panel Light 60W",
-		"Stainless Steel Bolt M10",
-		"Thermal Paste Tube 5g",
-		"Safety Goggles Clear",
-		"Rubber Gasket Set",
-		"Wire Spool CAT6 100m",
-		"Epoxy Adhesive 2-Part",
+	newProducts := TestNewProductsHistorical(n, daysBack, brandIDs, productCategoryIDs)
+	if distribution != nil {
+		for i := range newProducts {
+			newProducts[i].TrackingType = distribution[i]
+			newProducts[i].IsPerishable = distribution[i] == "lot"
+		}
 	}
 
-	defaultTypes := []string{"none", "lot", "serial"}
-	idx := rand.Intn(10000)
 	products := make([]Product, 0, n)
-
-	for i := 0; i < n; i++ {
-		idx++
-
-		daysAgo := (i * daysBack) / n
-		createdDate := now.AddDate(0, 0, -daysAgo)
-
-		var trackingType string
-		if distribution != nil {
-			trackingType = distribution[i]
-		} else {
-			trackingType = defaultTypes[i%len(defaultTypes)]
-		}
-
-		nu := NewProduct{
-			Name:                 productNames[i%len(productNames)],
-			BrandID:              brandIDs[rand.Intn(len(brandIDs))],
-			ProductCategoryID:    productCategoryIDs[rand.Intn(len(productCategoryIDs))],
-			Description:          fmt.Sprintf("High-quality %s for warehouse operations", productNames[i%len(productNames)]),
-			SKU:                  fmt.Sprintf("SKU-%04d", i+1),
-			ModelNumber:          fmt.Sprintf("MDL-%04d", i+1),
-			UpcCode:              fmt.Sprintf("0123456789%02d", i%100),
-			Status:               "active",
-			IsActive:             idx%2 == 0,
-			IsPerishable:         trackingType == "lot",
-			HandlingInstructions: fmt.Sprintf("Handling instructions %d", idx),
-			UnitsPerCase:         idx * 5,
-			TrackingType:         trackingType,
-			CreatedDate:          &createdDate,
-		}
-		p, err := api.Create(ctx, nu)
+	for i, np := range newProducts {
+		p, err := api.Create(ctx, np)
 		if err != nil {
 			return nil, fmt.Errorf("create product %d: %w", i, err)
 		}
