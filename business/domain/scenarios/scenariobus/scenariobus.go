@@ -53,6 +53,14 @@ type Storer interface {
 	// bulk load/reset
 	ApplyFixtures(ctx context.Context, target uuid.UUID) error
 	DeleteScopedRows(ctx context.Context, scenarioID uuid.UUID) error
+
+	// scenario_setting_overrides table — written at seed time, read via JOIN
+	// in settingsdb.Query.
+	ApplyLeverOverrides(ctx context.Context, overrides []SettingOverride) error
+
+	// core.users.assigned_zones — applied at scenario Load time inside the
+	// same TX as ApplyFixtures. Each binding is one UPDATE.
+	ApplyWorkerZones(ctx context.Context, zones []WorkerZoneBinding) error
 }
 
 // Business manages the set of APIs for scenario access.
