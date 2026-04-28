@@ -45,7 +45,24 @@ func seedProducts(ctx context.Context, busDomain BusDomain, geoHR GeographyHRSee
 		productCategoryIDs[i] = pc.ProductCategoryID
 	}
 
-	products, err := productbus.TestSeedProductsHistorical(ctx, 20, 180, brandIDs, productCategoryIDs, busDomain.Product)
+	const productCount = 40
+
+	// 28×"none" + 8×"lot" + 4×"serial" tracking-type distribution for the
+	// 40-product seed. Order is intentional and stable across reseeds.
+	distribution := make([]string, 0, productCount)
+	for i := 0; i < 28; i++ {
+		distribution = append(distribution, "none")
+	}
+	for i := 0; i < 8; i++ {
+		distribution = append(distribution, "lot")
+	}
+	for i := 0; i < 4; i++ {
+		distribution = append(distribution, "serial")
+	}
+
+	products, err := productbus.TestSeedProductsHistoricalWithDistribution(
+		ctx, productCount, 180, distribution, brandIDs, productCategoryIDs, busDomain.Product,
+	)
 	if err != nil {
 		return ProductsSeed{}, fmt.Errorf("seeding product : %w", err)
 	}
@@ -55,23 +72,23 @@ func seedProducts(ctx context.Context, busDomain BusDomain, geoHR GeographyHRSee
 	}
 
 	// All product costs use USD - single base currency for consistency
-	_, err = productcostbus.TestSeedProductCosts(ctx, 20, productIDs, uuid.UUIDs{foundation.USDCurrencyID}, busDomain.ProductCost)
+	_, err = productcostbus.TestSeedProductCosts(ctx, productCount, productIDs, uuid.UUIDs{foundation.USDCurrencyID}, busDomain.ProductCost)
 	if err != nil {
 		return ProductsSeed{}, fmt.Errorf("seeding product cost : %w", err)
 	}
 
-	_, err = physicalattributebus.TestSeedPhysicalAttributes(ctx, 20, productIDs, busDomain.PhysicalAttribute)
+	_, err = physicalattributebus.TestSeedPhysicalAttributes(ctx, productCount, productIDs, busDomain.PhysicalAttribute)
 	if err != nil {
 		return ProductsSeed{}, fmt.Errorf("seeding physical attribute : %w", err)
 	}
 
-	_, err = metricsbus.TestSeedMetrics(ctx, 40, productIDs, busDomain.Metrics)
+	_, err = metricsbus.TestSeedMetrics(ctx, 2*productCount, productIDs, busDomain.Metrics)
 	if err != nil {
 		return ProductsSeed{}, fmt.Errorf("seeding metrics : %w", err)
 	}
 
 	// Cost history also uses USD for consistency
-	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 40, 180, productIDs, uuid.UUIDs{foundation.USDCurrencyID}, busDomain.CostHistory)
+	_, err = costhistorybus.TestSeedCostHistoriesHistorical(ctx, 2*productCount, 180, productIDs, uuid.UUIDs{foundation.USDCurrencyID}, busDomain.CostHistory)
 	if err != nil {
 		return ProductsSeed{}, fmt.Errorf("seeding cost history : %w", err)
 	}
