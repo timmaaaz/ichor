@@ -54,13 +54,13 @@ func InsertSeedData(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding assets: %w", err)
 	}
 
-	if err := seedLabels(ctx, busDomain.Label); err != nil {
-		return fmt.Errorf("seed labels: %w", err)
-	}
-
 	products, err := seedProducts(ctx, busDomain, geoHR, foundation)
 	if err != nil {
 		return fmt.Errorf("seeding products: %w", err)
+	}
+
+	if err := seedLabels(ctx, busDomain.Label, products); err != nil {
+		return fmt.Errorf("seed labels: %w", err)
 	}
 
 	inventory, err := seedInventory(ctx, busDomain, foundation, geoHR, products)
