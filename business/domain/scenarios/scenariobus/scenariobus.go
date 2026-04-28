@@ -141,6 +141,24 @@ func (b *Business) SeedCreateFixture(ctx context.Context, f ScenarioFixture) err
 	return nil
 }
 
+// SeedApplyLeverOverrides inserts (or upserts) lever-override rows for the
+// given scenario. Seed-only — at runtime, overrides are mutated only
+// indirectly through reseed. Idempotent: ON CONFLICT DO UPDATE on PK
+// (scenario_id, key).
+func (b *Business) SeedApplyLeverOverrides(ctx context.Context, scenarioID uuid.UUID, overrides map[string]string) error {
+	if len(overrides) == 0 {
+		return nil
+	}
+	rows := make([]SettingOverride, 0, len(overrides))
+	for k, v := range overrides {
+		rows = append(rows, SettingOverride{ScenarioID: scenarioID, Key: k, Value: v})
+	}
+	if err := b.storer.ApplyLeverOverrides(ctx, rows); err != nil {
+		return fmt.Errorf("seedapply lever overrides: %w", err)
+	}
+	return nil
+}
+
 // Update applies a partial patch to an existing scenario.
 func (b *Business) Update(ctx context.Context, s Scenario, us UpdateScenario) (Scenario, error) {
 	before := s

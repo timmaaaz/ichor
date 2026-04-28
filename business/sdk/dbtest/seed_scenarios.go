@@ -52,6 +52,11 @@ func seedScenarios(ctx context.Context, busDomain BusDomain) error {
 			return fmt.Errorf("seed scenario %s: %w", s.Name, err)
 		}
 
+		// Phase 0g.B5 — mirror lever_overrides into config.scenario_setting_overrides.
+		if err := busDomain.Scenario.SeedApplyLeverOverrides(ctx, s.ID, s.LeverOverrides); err != nil {
+			return fmt.Errorf("seed scenario %s: lever overrides: %w", s.Name, err)
+		}
+
 		// Sort state keys so fixture insertion order is deterministic.
 		// Go map iteration is randomized; sorted iteration plus slice-ordered
 		// rows keeps UUIDs and row identities stable across reseeds.
