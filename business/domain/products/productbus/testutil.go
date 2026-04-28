@@ -134,7 +134,8 @@ func TestNewProductsHistorical(n int, daysBack int, brandIDs, productCategoryIDs
 // TestSeedProductsHistoricalWithDistribution generates n products with the
 // caller-provided tracking-type distribution. distribution must have len == n;
 // each entry must be one of "none", "lot", "serial". Pass nil to fall back to
-// the modulo-based default ({"none","lot","serial"}[i%len(defaultTypes)]).
+// the modulo-based default that TestNewProductsHistorical applies via
+// {"none","lot","serial"}[i%len(trackingTypes)].
 func TestSeedProductsHistoricalWithDistribution(
 	ctx context.Context,
 	n int,
