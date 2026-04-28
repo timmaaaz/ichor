@@ -30,6 +30,9 @@ func Code128PNG(content string) ([]byte, error) {
 		return nil, fmt.Errorf("pdf: code128 encode %q: %w", content, err)
 	}
 
+	// 600×100 px — sized for crisp rendering at 200 DPI in a ~3 in (76 mm)
+	// barcode cell on US-letter paper. Width chosen to leave whitespace
+	// margins in the final PDF cell after fpdf scales the embedded image.
 	scaled, err := barcode.Scale(bc, 600, 100)
 	if err != nil {
 		return nil, fmt.Errorf("pdf: code128 scale: %w", err)

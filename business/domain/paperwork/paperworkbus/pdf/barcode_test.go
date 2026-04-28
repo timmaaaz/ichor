@@ -45,9 +45,3 @@ func TestCode128PNG_EmptyContent(t *testing.T) {
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
