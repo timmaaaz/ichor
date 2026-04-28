@@ -55,12 +55,19 @@ func (a *App) BuildTransferSheet(ctx context.Context, req TransferSheetRequest) 
 	return pdf, nil
 }
 
-// mapBusErr translates paperworkbus errors to errs.Error values. Phase 0g.B2
-// only sees ErrNotImplemented; B3 expands this with NotFound / InvalidArgument
-// mappings as real handler bodies land.
+// mapBusErr translates paperworkbus errors to errs.Error values. The four
+// sentinels surfaced by paperworkbus map onto two HTTP shapes: NotFound (the
+// referenced order/PO/transfer does not exist) and InvalidArgument (the
+// transfer order exists but lacks the transfer_number paperwork requires).
+// Anything else becomes Internal.
 func mapBusErr(op string, err error) error {
-	if errors.Is(err, paperworkbus.ErrNotImplemented) {
-		return errs.New(errs.Unimplemented, paperworkbus.ErrNotImplemented)
+	switch {
+	case errors.Is(err, paperworkbus.ErrOrderNotFound),
+		errors.Is(err, paperworkbus.ErrPONotFound),
+		errors.Is(err, paperworkbus.ErrTransferNotFound):
+		return errs.New(errs.NotFound, err)
+	case errors.Is(err, paperworkbus.ErrTransferNumberMissing):
+		return errs.New(errs.InvalidArgument, err)
 	}
 	return errs.Newf(errs.Internal, "%s: %s", op, err)
 }
