@@ -44,3 +44,20 @@ type NewScenarioFixture struct {
 	TargetTable string
 	PayloadJSON []byte
 }
+
+// WorkerZoneBinding represents a single user→zones assignment applied to
+// core.users.assigned_zones at scenario Load time. Bus-layer value type;
+// yamlload.WorkerBinding is the YAML-layer parallel.
+type WorkerZoneBinding struct {
+	Username string
+	Zones    []string
+}
+
+// SettingOverride represents one row of config.scenario_setting_overrides.
+// Persisted at seed time (see seed_scenarios.go) so the settings resolver
+// LEFT JOIN sees a stable per-scenario override layer.
+type SettingOverride struct {
+	ScenarioID uuid.UUID
+	Key        string
+	Value      string
+}
