@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/levers"
 	"gopkg.in/yaml.v3"
 )
 
@@ -191,6 +192,27 @@ func (s Scenario) Validate() error {
 		}
 		seenSer[sr.Ref] = true
 	}
+
+	for k := range s.LeverOverrides {
+		if !levers.IsKnown(k) {
+			return fmt.Errorf("scenario %s: unknown lever key %q (see business/domain/config/settingsbus/levers)", s.Name, k)
+		}
+	}
+
+	seenWorker := map[string]bool{}
+	for _, w := range s.Bindings.Workers {
+		if w.Username == "" {
+			return fmt.Errorf("scenario %s: worker with empty username", s.Name)
+		}
+		if len(w.Zones) == 0 {
+			return fmt.Errorf("scenario %s: worker %q has empty zones list", s.Name, w.Username)
+		}
+		if seenWorker[w.Username] {
+			return fmt.Errorf("scenario %s: duplicate worker username %q", s.Name, w.Username)
+		}
+		seenWorker[w.Username] = true
+	}
+
 	return nil
 }
 

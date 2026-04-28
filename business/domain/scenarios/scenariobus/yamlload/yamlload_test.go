@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus/yamlload"
@@ -112,5 +113,53 @@ func TestLoad_WorkersParsed(t *testing.T) {
 	}
 	if got[1].Username != "bob@example.com" || len(got[1].Zones) != 1 {
 		t.Fatalf("Workers[1] = %+v, want bob with 1 zone", got[1])
+	}
+}
+
+func TestValidate_RejectsUnknownLeverKey(t *testing.T) {
+	s := yamlload.Scenario{
+		Name:           "bad-lever",
+		LeverOverrides: map[string]string{"pick.notALever": "anything"},
+	}
+	err := s.Validate()
+	if err == nil {
+		t.Fatal("Validate() returned nil; want error for unknown lever key")
+	}
+	if !strings.Contains(err.Error(), "unknown lever key") {
+		t.Fatalf("error %q does not mention 'unknown lever key'", err.Error())
+	}
+}
+
+func TestValidate_RejectsEmptyWorkerUsername(t *testing.T) {
+	s := yamlload.Scenario{
+		Name: "bad-worker",
+		Bindings: yamlload.Bindings{
+			Workers: []yamlload.WorkerBinding{{Username: "", Zones: []string{"STG-A"}}},
+		},
+	}
+	if err := s.Validate(); err == nil {
+		t.Fatal("Validate() returned nil; want error for empty worker username")
+	}
+}
+
+func TestValidate_RejectsEmptyWorkerZones(t *testing.T) {
+	s := yamlload.Scenario{
+		Name: "bad-zones",
+		Bindings: yamlload.Bindings{
+			Workers: []yamlload.WorkerBinding{{Username: "alice", Zones: nil}},
+		},
+	}
+	if err := s.Validate(); err == nil {
+		t.Fatal("Validate() returned nil; want error for empty zones list")
+	}
+}
+
+func TestValidate_AcceptsKnownLeverKey(t *testing.T) {
+	s := yamlload.Scenario{
+		Name:           "ok",
+		LeverOverrides: map[string]string{"pick.lotScan": "required-if-lot-tracked"},
+	}
+	if err := s.Validate(); err != nil {
+		t.Fatalf("Validate() = %v, want nil", err)
 	}
 }
