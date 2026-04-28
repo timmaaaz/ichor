@@ -25,12 +25,13 @@ func Test_Paperwork(t *testing.T) {
 
 	test.Run(t, authed501(sd), "auth-501")
 	test.Run(t, noAuth401(sd), "noauth-401")
+
 }
 
 // authed501 verifies all three paperwork endpoints return 501 Not Implemented
 // when called with a valid admin bearer token. The handlers map ErrNotImplemented
 // (from the bus stub) to errs.Unimplemented (HTTP 501).
-func authed501(sd apitest.SeedData) []apitest.Table {
+func authed501(sd PaperworkSeed) []apitest.Table {
 	tok := sd.Admins[0].Token
 	url := func(path, key string) string {
 		return fmt.Sprintf("%s?%s=%s", path, key, uuid.New().String())
@@ -77,7 +78,7 @@ func authed501(sd apitest.SeedData) []apitest.Table {
 // Token is "&nbsp;" (the labelapi pattern) — a malformed Authorization header
 // that mid.Authenticate forwards to the auth service via authclient; the auth
 // service rejects it and the rejection is mapped to 401 Unauthenticated.
-func noAuth401(_ apitest.SeedData) []apitest.Table {
+func noAuth401(_ PaperworkSeed) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "pick-sheet",

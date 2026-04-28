@@ -21,9 +21,8 @@ func newAPI(app *paperworkapp.App) *api {
 }
 
 // pdfResponse implements web.Encoder for raw PDF bytes with
-// Content-Type: application/pdf. Phase 0g.B2 never reaches the success path
-// because the bus returns ErrNotImplemented; B3 fills in real bodies and
-// these handlers stream PDFs through this encoder unchanged.
+// Content-Type application/pdf. The bus returns rendered PDF bytes;
+// the encoder forwards them to the client unchanged.
 type pdfResponse struct {
 	bytes []byte
 }
