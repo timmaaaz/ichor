@@ -27,9 +27,9 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound          = errors.New("scenario not found")
-	ErrUniqueName        = errors.New("scenario name already exists")
-	ErrNoActiveScenario  = errors.New("no active scenario set")
+	ErrNotFound         = errors.New("scenario not found")
+	ErrUniqueName       = errors.New("scenario name already exists")
+	ErrNoActiveScenario = errors.New("no active scenario set")
 )
 
 // Storer declares the behavior needed to persist and retrieve scenario data.
@@ -359,8 +359,10 @@ func (b *Business) Load(ctx context.Context, id uuid.UUID) error {
 	}
 
 	// Phase 0g.B5 — apply worker→zone bindings. Re-reads YAML at Load time
-	// because Bindings.Workers is not persisted (see plan §Architecture
-	// deviation 1). Empty scenariosRoot (test contexts) disables this path.
+	// because Bindings.Workers is intentionally NOT persisted: workers and
+	// their zone assignments are operational data (core.users.assigned_zones)
+	// and the YAML is the single source of truth. Empty scenariosRoot (test
+	// contexts) disables this path.
 	if b.scenariosRoot != "" {
 		zones, err := readWorkerZonesForScenario(b.scenariosRoot, id)
 		if err != nil {
@@ -436,4 +438,3 @@ func readWorkerZonesForScenario(scenariosRoot string, id uuid.UUID) ([]WorkerZon
 	}
 	return nil, nil
 }
-
