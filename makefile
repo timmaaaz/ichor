@@ -465,6 +465,9 @@ validate-forms-all: validate-forms validate-forms-deep
 
 reseed-frontend: dev-database-recreate dev-update-apply seed-frontend
 
+check-determinism:
+	./scripts/check-determinism.sh
+
 # ==============================================================================
 # Manitowoc Customer Seed
 
