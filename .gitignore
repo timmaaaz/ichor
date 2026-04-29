@@ -93,3 +93,7 @@ docs/bugs/archive/*
 
 # Tasks - ephemeral test output artifacts
 tasks/e2e-approvals-run5.txt
+
+# scripts/check-determinism.sh writes drift diffs to repo root on failure;
+# they're meant to be inspected and discarded, not committed.
+check-determinism-*.diff
