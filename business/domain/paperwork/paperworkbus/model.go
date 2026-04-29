@@ -1,13 +1,9 @@
-// Package paperworkbus provides business access to PDF paperwork generation
-// for warehouse workflows (pick sheets, receive cover sheets, transfer sheets).
-//
-// Paperwork is a renderer, not a persister: there is no Storer interface and
-// no DB writes. The bus orchestrates rendering of PDF bytes from line-item
-// data fetched from sibling domains (sales orders, purchase orders, transfers).
-//
-// Phase 0g.B2 ships scaffolding only — every Build* method returns
-// ErrNotImplemented. Phase 0g.B3 wires gofpdf + boombuler/barcode and fills
-// in the rendering bodies.
+// Package paperworkbus renders paperwork PDFs (pick sheets, receive cover
+// sheets, transfer sheets) for floor-worker workflows. Build* methods
+// query sibling domains (sales orders, purchase orders, transfers),
+// transform the result into pdf-package data types, and delegate to the
+// pdf subpackage for rendering. The bus is renderer-shaped: 5 sibling-bus
+// pointers + log, no Storer, no DB writes.
 package paperworkbus
 
 import "github.com/google/uuid"
@@ -15,7 +11,8 @@ import "github.com/google/uuid"
 // PickSheetRequest carries inputs for rendering a pick sheet PDF.
 //
 // Zone is optional. When non-empty the resulting sheet is filtered to lines
-// whose pick locations fall within the named zone (Phase 0g.B3 behavior).
+// whose pick locations fall within the named zone. Filtering is inert until
+// line items are populated (deferred to phase 0g.F4).
 type PickSheetRequest struct {
 	OrderID uuid.UUID
 	Zone    string

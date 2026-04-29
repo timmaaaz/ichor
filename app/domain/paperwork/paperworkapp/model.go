@@ -1,12 +1,13 @@
-// Package paperworkapp orchestrates paperwork rendering across domain
-// dependencies. Phase 0g.B2 is a thin pass-through; B3 adds cross-domain
-// data fetches before delegating to paperworkbus.
+// Package paperworkapp is a thin pass-through over paperworkbus. The bus
+// owns cross-domain orchestration; the app layer translates bus error
+// sentinels via mapBusErr and delegates rendering. App-layer request
+// types mirror bus-layer types so future enrichment can land in the app
+// layer without breaking the bus contract.
 package paperworkapp
 
 import "github.com/google/uuid"
 
 // PickSheetRequest mirrors paperworkbus.PickSheetRequest at the app layer.
-// Reserved for app-only enrichment (e.g. caller identity) in B3.
 type PickSheetRequest struct {
 	OrderID uuid.UUID
 	Zone    string

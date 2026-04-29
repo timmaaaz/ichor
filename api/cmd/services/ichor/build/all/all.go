@@ -862,16 +862,16 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		PermissionsBus: permissionsBus,
 	})
 
-	// Paperwork subsystem (Phase 0g.B2) — PDF rendering for pick sheets,
-	// receive cover sheets, and transfer sheets. Handlers return 501 until
-	// 0g.B3 wires gofpdf + boombuler/barcode and fills in the bus rendering
-	// bodies; the API handlers and pdfResponse encoder are already in place,
-	// so B3 only needs to swap the paperworkbus implementation.
-	paperworkBus := paperworkbus.NewBusiness(cfg.Log)
+	// Paperwork subsystem — PDF rendering for pick sheets, receive cover
+	// sheets, and transfer sheets. paperworkbus delegates to the pdf/ leaf
+	// package (gofpdf + boombuler/barcode); paperworkapi.Authorize gates
+	// table-level Read access via PermissionsBus.
+	paperworkBus := paperworkbus.NewBusiness(cfg.Log, ordersBus, orderLineItemsBus, purchaseOrderBus, purchaseOrderLineItemBus, transferOrderBus)
 	paperworkapi.Routes(app, paperworkapi.Config{
-		Log:          cfg.Log,
-		PaperworkBus: paperworkBus,
-		AuthClient:   cfg.AuthClient,
+		Log:            cfg.Log,
+		PaperworkBus:   paperworkBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
 	})
 
 	// Scenario subsystem (Phase 0d) — floor warehouse testing scenario management.
