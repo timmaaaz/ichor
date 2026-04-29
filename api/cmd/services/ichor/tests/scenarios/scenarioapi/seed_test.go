@@ -10,6 +10,8 @@ import (
 	"github.com/timmaaaz/ichor/api/domain/http/scenarios/scenarioapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/levers"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/tableaccessbus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -148,6 +150,31 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 				return apitest.SeedData{}, fmt.Errorf("updating table access: %w", err)
 			}
 		}
+	}
+
+	// Phase 0g.B5 — seed 11 lever defaults so the settings GET endpoint has
+	// rows to return. Required before seeding overrides.
+	for _, key := range levers.KnownKeys {
+		raw, err := json.Marshal(levers.Defaults[key])
+		if err != nil {
+			return apitest.SeedData{}, fmt.Errorf("seed setting marshal %s: %w", key, err)
+		}
+		ns := settingsbus.NewSetting{
+			Key:         key,
+			Value:       json.RawMessage(raw),
+			Description: "apitest lever seed",
+		}
+		if _, err := busDomain.Settings.Create(ctx, ns); err != nil {
+			return apitest.SeedData{}, fmt.Errorf("seed setting %s: %w", key, err)
+		}
+	}
+
+	// Pre-seed a lever override on scenarios[1] so loadWithOverrides204 can
+	// assert the merged override is visible via GET /v1/config/settings/{key}.
+	if err := busDomain.Scenario.SeedApplyLeverOverrides(ctx, scenarios[1].ID, map[string]string{
+		"pick.lotScan": "required-if-lot-tracked",
+	}); err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seed lever overrides: %w", err)
 	}
 
 	return apitest.SeedData{

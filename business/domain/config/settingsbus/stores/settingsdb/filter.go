@@ -12,12 +12,12 @@ func applyFilter(filter settingsbus.QueryFilter, data map[string]any, buf *bytes
 
 	if filter.Key != nil {
 		data["key"] = *filter.Key
-		wc = append(wc, "key = :key")
+		wc = append(wc, "s.key = :key")
 	}
 
 	if filter.Prefix != nil {
 		data["prefix"] = *filter.Prefix + "%"
-		wc = append(wc, "key LIKE :prefix")
+		wc = append(wc, "s.key LIKE :prefix")
 	}
 
 	if len(wc) > 0 {

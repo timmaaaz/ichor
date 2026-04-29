@@ -15,6 +15,14 @@
 #   name        string, required. Scenario identifier — used in URLs and as the
 #               YAML key. Must be unique across all scenarios.
 #   description string, optional. Human-readable summary.
+#   lever_overrides
+#               map[string]string, optional. Per-scenario overrides for
+#               scan-discipline lever keys. Keys must be in the canonical
+#               set (see business/domain/config/settingsbus/levers/levers.go
+#               for the 11 supported keys; design doc 2026-04-24 §3.3 for
+#               semantics). Values are free-form strings consumed by the
+#               settings resolver. Mirrored into config.scenario_setting_overrides
+#               at seed time; settings GET returns the merged view.
 #
 # bindings.yaml:
 #   totes     list of {code: string}
@@ -26,6 +34,13 @@
 #                                  within this scenario's state.yaml FKs
 #   serials   list of {ref: string, product_code: string}
 #                                  same pattern for serial numbers
+#   workers   list of {username: string, zones: [string]}
+#                                  scenario-scoped worker→zone assignments.
+#                                  Applied at scenariobus.Load time as
+#                                  UPDATE core.users SET assigned_zones=zones
+#                                  WHERE username=username. Used by zone-sliced
+#                                  pick (lever pick.assignmentGranularity =
+#                                  zone-sliced-order).
 #
 # state.yaml:
 #   Keyed by target-table suffix (e.g. purchase_orders, inventory_items,

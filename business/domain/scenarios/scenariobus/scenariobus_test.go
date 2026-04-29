@@ -14,7 +14,7 @@ import (
 func Test_NewBusiness(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(context.Background()) })
-	bus := scenariobus.NewBusiness(log, delegate.New(log), nil, nil)
+	bus := scenariobus.NewBusiness(log, delegate.New(log), nil, nil, "")
 	if bus == nil {
 		t.Fatalf("NewBusiness returned nil")
 	}

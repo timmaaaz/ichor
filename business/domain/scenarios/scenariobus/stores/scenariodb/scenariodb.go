@@ -13,6 +13,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb/dbarray"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -400,5 +401,74 @@ func (s *Store) ApplyFixtures(ctx context.Context, target uuid.UUID) error {
 		}
 	}
 
+	return nil
+}
+
+// =============================================================================
+// Lever overrides + worker zones
+// =============================================================================
+
+// ApplyLeverOverrides upserts rows into config.scenario_setting_overrides.
+// Called at seed time to persist per-scenario config-lever values. The value
+// column is TEXT so no JSON marshalling is required.
+func (s *Store) ApplyLeverOverrides(ctx context.Context, overrides []scenariobus.SettingOverride) error {
+	if len(overrides) == 0 {
+		return nil
+	}
+
+	const q = `
+	INSERT INTO config.scenario_setting_overrides
+	    (scenario_id, key, value)
+	VALUES
+	    (:scenario_id, :key, :value)
+	ON CONFLICT (scenario_id, key) DO UPDATE
+	    SET value = EXCLUDED.value`
+
+	for _, o := range overrides {
+		row := struct {
+			ScenarioID string `db:"scenario_id"`
+			Key        string `db:"key"`
+			Value      string `db:"value"`
+		}{
+			ScenarioID: o.ScenarioID.String(),
+			Key:        o.Key,
+			Value:      o.Value,
+		}
+		if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, row); err != nil {
+			return fmt.Errorf("apply lever override %s: %w", o.Key, err)
+		}
+	}
+	return nil
+}
+
+// ApplyWorkerZones updates core.users.assigned_zones for each binding.
+// Called inside the Load transaction so zone assignments are atomic with
+// fixture application. Returns an error if a username is not found.
+func (s *Store) ApplyWorkerZones(ctx context.Context, zones []scenariobus.WorkerZoneBinding) error {
+	if len(zones) == 0 {
+		return nil
+	}
+
+	const q = `
+	UPDATE core.users
+	SET    assigned_zones = :zones
+	WHERE  username = :username`
+
+	for _, z := range zones {
+		row := struct {
+			Zones    dbarray.String `db:"zones"`
+			Username string         `db:"username"`
+		}{
+			Zones:    dbarray.String(z.Zones),
+			Username: z.Username,
+		}
+		n, err := sqldb.NamedExecContextWithCount(ctx, s.log, s.db, q, row)
+		if err != nil {
+			return fmt.Errorf("apply worker zones %q: %w", z.Username, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("apply worker zones: username %q not found", z.Username)
+		}
+	}
 	return nil
 }

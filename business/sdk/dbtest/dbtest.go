@@ -175,6 +175,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus/stores/pageconfigdb"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus/stores/pagecontentdb"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/stores/settingsdb"
 
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
@@ -310,6 +312,7 @@ type BusDomain struct {
 	PageAction  *pageactionbus.Business
 	PageConfig  *pageconfigbus.Business
 	PageContent *pagecontentbus.Business
+	Settings    *settingsbus.Business
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -411,7 +414,9 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	labelBus := labelbus.NewBusiness(log, delegate, labeldb.NewStore(log, db), nil)
 
 	// Scenarios — beginner is required for transactional Load/Reset.
-	scenarioBus := scenariobus.NewBusiness(log, delegate, scenariodb.NewStore(log, db), sqldb.NewBeginner(db))
+	// Pass "" for scenariosRoot: dbtest contexts do not exercise the YAML
+	// worker-zone path.
+	scenarioBus := scenariobus.NewBusiness(log, delegate, scenariodb.NewStore(log, db), sqldb.NewBeginner(db), "")
 
 	// Orders
 	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
@@ -435,6 +440,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	pageContentBus := pagecontentbus.NewBusiness(log, delegate, pagecontentdb.NewStore(log, db))
 	pageActionBus := pageactionbus.NewBusiness(log, delegate, pageactiondb.NewStore(log, db))
 	pageConfigBus := pageconfigbus.NewBusiness(log, delegate, pageconfigdb.NewStore(log, db), pageContentBus, pageActionBus)
+	settingsBus := settingsbus.NewBusiness(log, delegate, settingsdb.NewStore(log, db))
 
 	return BusDomain{
 		Delegate:                    delegate,
@@ -518,6 +524,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 		PageAction:                  pageActionBus,
 		PageConfig:                  pageConfigBus,
 		PageContent:                 pageContentBus,
+		Settings:                    settingsBus,
 	}
 
 }

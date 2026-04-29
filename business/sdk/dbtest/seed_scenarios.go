@@ -28,7 +28,16 @@ func seedScenarios(ctx context.Context, busDomain BusDomain) error {
 		return fmt.Errorf("find repo root: %w", err)
 	}
 	scenariosDir := filepath.Join(root, "deployments", "scenarios")
+	return SeedScenariosFromRoot(ctx, busDomain, scenariosDir)
+}
 
+// SeedScenariosFromRoot seeds scenarios from an explicit root directory.
+// It is the workhorse called by seedScenarios (which computes the root via
+// findRepoRoot) and by integration tests that need to seed from a t.TempDir().
+//
+// NotFoundErr from yamlload.Load is silently ignored — callers that pass an
+// empty temp dir or a path with no scenario subdirectories are not an error.
+func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDir string) error {
 	scenarios, err := yamlload.Load(scenariosDir)
 	if err != nil {
 		if yamlload.IsNotFoundErr(err) {
@@ -50,6 +59,11 @@ func seedScenarios(ctx context.Context, busDomain BusDomain) error {
 		}
 		if err := busDomain.Scenario.SeedCreate(ctx, bus); err != nil {
 			return fmt.Errorf("seed scenario %s: %w", s.Name, err)
+		}
+
+		// Phase 0g.B5 — mirror lever_overrides into config.scenario_setting_overrides.
+		if err := busDomain.Scenario.SeedApplyLeverOverrides(ctx, s.ID, s.LeverOverrides); err != nil {
+			return fmt.Errorf("seed scenario %s: lever overrides: %w", s.Name, err)
 		}
 
 		// Sort state keys so fixture insertion order is deterministic.
