@@ -362,7 +362,7 @@ func (b *Business) Load(ctx context.Context, id uuid.UUID) error {
 	// because Bindings.Workers is not persisted (see plan §Architecture
 	// deviation 1). Empty scenariosRoot (test contexts) disables this path.
 	if b.scenariosRoot != "" {
-		zones, err := readWorkerZonesForScenario(b.scenariosRoot, id, b.storer)
+		zones, err := readWorkerZonesForScenario(b.scenariosRoot, id)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("load read worker zones: %w", err)
@@ -416,7 +416,7 @@ func (b *Business) Reset(ctx context.Context) error {
 // under the deadbeef namespace, set in yamlload.loadOne). Returns empty slice
 // if the scenario has no workers binding or if the scenariosRoot directory
 // holds no matching scenario.
-func readWorkerZonesForScenario(scenariosRoot string, id uuid.UUID, _ Storer) ([]WorkerZoneBinding, error) {
+func readWorkerZonesForScenario(scenariosRoot string, id uuid.UUID) ([]WorkerZoneBinding, error) {
 	scenarios, err := yamlload.Load(scenariosRoot)
 	if err != nil {
 		if yamlload.IsNotFoundErr(err) {
