@@ -1,9 +1,11 @@
 package productbus_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -15,10 +17,13 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 func Test_Product(t *testing.T) {
@@ -35,6 +40,7 @@ func Test_Product(t *testing.T) {
 	// -------------------------------------------------------------------------
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
+	unitest.Run(t, delegateFires(db, sd), "delegateFires")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
@@ -222,6 +228,94 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp.ProductID = gotResp.ProductID
 
 				return cmp.Diff(expResp, gotResp)
+			},
+		},
+	}
+}
+
+// capturedDelegate records what a delegate handler observed.
+type capturedDelegate struct {
+	Domain string
+	Action string
+	Count  int
+}
+
+// delegateFires verifies that productbus.Create fires the ActionCreated
+// delegate event. SeedCreate (added in this same PR) intentionally
+// SKIPS this side-effect; pinning Create's behavior here makes that
+// skip verifiable as deliberate rather than an oversight.
+//
+// The sub-test builds a parallel productbus.Business that shares the
+// real DB connection (via productdb.NewStore on db.DB) but uses a
+// fresh delegate.New so the handler can be intercepted. The pre-wired
+// db.BusDomain.Product holds an unobservable production delegate; the
+// only way to assert event firing without mocks is to construct an
+// observable Business beside it.
+func delegateFires(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return "" })
+
+	del := delegate.New(log)
+
+	var (
+		mu             sync.Mutex
+		capturedDomain string
+		capturedAction string
+		capturedCount  int
+	)
+	del.Register(productbus.DomainName, productbus.ActionCreated, func(_ context.Context, data delegate.Data) error {
+		mu.Lock()
+		defer mu.Unlock()
+		capturedDomain = data.Domain
+		capturedAction = data.Action
+		capturedCount++
+		return nil
+	})
+
+	// Real storer against the same DB the rest of Test_Product uses.
+	bus := productbus.NewBusiness(log, del, productdb.NewStore(log, db.DB))
+
+	np := productbus.NewProduct{
+		SKU:                  "DELEGATE-REAL-001",
+		BrandID:              sd.Brands[0].BrandID,
+		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
+		Name:                 "Delegate Real-DB Fixture",
+		Description:         "verifies Create fires ActionCreated through delegate",
+		ModelNumber:          "DLG-REAL",
+		UpcCode:              "DELEGATE-REAL-UPC-001",
+		Status:               "active",
+		IsActive:             true,
+		IsPerishable:         false,
+		HandlingInstructions: "",
+		UnitsPerCase:         1,
+		TrackingType:         "none",
+	}
+
+	return []unitest.Table{
+		{
+			Name: "Create_FiresActionCreated",
+			ExpResp: capturedDelegate{
+				Domain: productbus.DomainName,
+				Action: productbus.ActionCreated,
+				Count:  1,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				if _, err := bus.Create(ctx, np); err != nil {
+					return err
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				return capturedDelegate{
+					Domain: capturedDomain,
+					Action: capturedAction,
+					Count:  capturedCount,
+				}
+			},
+			CmpFunc: func(got, exp any) string {
+				if err, isErr := got.(error); isErr {
+					return err.Error()
+				}
+				return cmp.Diff(exp, got)
 			},
 		},
 	}
