@@ -1,7 +1,6 @@
 package productbus_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -23,7 +22,6 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
-	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 func Test_Product(t *testing.T) {
@@ -40,6 +38,8 @@ func Test_Product(t *testing.T) {
 	// -------------------------------------------------------------------------
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
+	// delegateFires takes *dbtest.Database (not BusDomain) — it needs db.DB and db.Log
+	// to construct an observable parallel productbus.Business. See delegateFires godoc.
 	unitest.Run(t, delegateFires(db, sd), "delegateFires")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
@@ -252,10 +252,7 @@ type capturedDelegate struct {
 // only way to assert event firing without mocks is to construct an
 // observable Business beside it.
 func delegateFires(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
-	var buf bytes.Buffer
-	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return "" })
-
-	del := delegate.New(log)
+	del := delegate.New(db.Log)
 
 	var (
 		mu             sync.Mutex
@@ -273,7 +270,7 @@ func delegateFires(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 	})
 
 	// Real storer against the same DB the rest of Test_Product uses.
-	bus := productbus.NewBusiness(log, del, productdb.NewStore(log, db.DB))
+	bus := productbus.NewBusiness(db.Log, del, productdb.NewStore(db.Log, db.DB))
 
 	np := productbus.NewProduct{
 		SKU:                  "DELEGATE-REAL-001",
