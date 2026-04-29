@@ -190,8 +190,8 @@ key facts:
   - TimeZone: `SET TIME ZONE 'America/New_York'`
   - Runs migrations + seeds before returning
   - Each test gets its own isolated database instance
-  - Two seeding entry points: InsertSeedData (live K8s/Docker DB for `make seed-frontend`) + NewDatabase (isolated test DB)
-  - Both use the same BusDomain struct and same seed_*.go chain
+  - Three seeding entry points: InsertSeedData (live K8s/Docker DB for `make seed-frontend`), NewDatabase (isolated test DB), and InsertPlatformConfig (`make seed-platform` — fresh customer DB bootstrap, platform config only, no demo data)
+  - All use the same BusDomain struct and same seed_*.go functions
 
 ---
 
@@ -307,6 +307,38 @@ seedScenarios(ctx, busDomain)                                     → loads YAML
 ```
 
 `adminID` is extracted from `foundation.Admins[0].ID` after `seedFoundation`.
+
+---
+
+## InsertPlatformConfig [dbtest]
+
+file: business/sdk/dbtest/seedFrontend.go (`InsertPlatformConfig`)
+
+```go
+func InsertPlatformConfig(log *logger.Logger, cfg sqldb.Config) error
+```
+
+Subset of the orchestrator above. Used by `make seed-platform` (sole caller: `api/cmd/tooling/admin/commands/seedPlatform.go`) to bootstrap a fresh customer DB with **platform configuration only** — no demo users, products, orders, or inventory. Requires migrations + `seed.sql` (admin_gopher) to have run first.
+
+Chain (execution order is authoritative — do not reorder):
+
+```
+seedTableBuilder(ctx, busDomain, adminID)
+    ↓
+seedPages(ctx, log, busDomain)
+    ↓
+seedForms(ctx, log, busDomain, db)
+    ↓
+seedWorkflow(ctx, log, busDomain, adminID)
+    ↓
+seedAlerts(ctx, log, busDomain, adminID)
+    ↓
+seedSettings(ctx, busDomain)                                      → 11 scan-discipline lever rows
+```
+
+`adminID` is hardcoded to `5cf37266-3473-4006-984f-9325122678b7` (admin_gopher from `seed.sql`) — no `seedFoundation` runs in this path.
+
+⚠ **Not idempotent.** `seedSettings` (and other seeders) call `Create` directly with no upsert; running `make seed-platform` twice against the same DB fails on `ErrUniqueEntry`. Operators must wipe the DB before re-running.
 
 ---
 
