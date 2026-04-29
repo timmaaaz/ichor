@@ -133,4 +133,41 @@ func Test_Load_AppliesLeverOverrides_AndWorkerZones(t *testing.T) {
 	if !slices.Equal(gotZones, wantZones) {
 		t.Errorf("user %q assigned_zones = %v, want %v", workerUsername, gotZones, wantZones)
 	}
+
+	// Reset re-applies the active scenario via Load. The DoD asserts "Scenario
+	// reset restores default config state" — for B5, that means override
+	// visibility and worker zones survive a Reset round-trip unchanged.
+	if err := scenarioBus.Reset(ctx); err != nil {
+		t.Fatalf("Reset: %v", err)
+	}
+
+	// Re-assert override still wins post-Reset.
+	lotScanSetting2, err := db.BusDomain.Settings.QueryByKey(ctx, "pick.lotScan")
+	if err != nil {
+		t.Fatalf("query pick.lotScan post-Reset: %v", err)
+	}
+	var lotScanValue2 string
+	if err := json.Unmarshal(lotScanSetting2.Value, &lotScanValue2); err != nil {
+		t.Fatalf("unmarshal pick.lotScan value post-Reset: %v", err)
+	}
+	if lotScanValue2 != "required-if-lot-tracked" {
+		t.Errorf("post-Reset pick.lotScan = %q, want %q (override should still win)", lotScanValue2, "required-if-lot-tracked")
+	}
+
+	// Re-assert worker zones still applied post-Reset.
+	queried2, err := db.BusDomain.User.Query(
+		ctx,
+		userbus.QueryFilter{Username: &uname},
+		userbus.DefaultOrderBy,
+		page.MustParse("1", "10"),
+	)
+	if err != nil {
+		t.Fatalf("user query post-Reset: %v", err)
+	}
+	if len(queried2) == 0 {
+		t.Fatalf("user %q not found post-Reset", workerUsername)
+	}
+	if !slices.Equal(queried2[0].AssignedZones, wantZones) {
+		t.Errorf("post-Reset user %q assigned_zones = %v, want %v", workerUsername, queried2[0].AssignedZones, wantZones)
+	}
 }
