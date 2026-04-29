@@ -367,17 +367,24 @@ type capturedDelegate struct {
 	Count  int
 }
 
-// delegateFires verifies that productbus.Create fires the ActionCreated
-// delegate event. SeedCreate (added in this same PR) intentionally
-// SKIPS this side-effect; pinning Create's behavior here makes that
-// skip verifiable as deliberate rather than an oversight.
+// delegateFires verifies two related properties on the same parallel
+// Business:
+//
+//  1. productbus.Create FIRES ActionCreated through the delegate.
+//  2. productbus.SeedCreate DOES NOT fire any delegate event.
+//
+// Both behaviours are deliberate: Create needs to trigger workflow
+// automation; SeedCreate must not, because seed runs would otherwise
+// stampede the Temporal pipeline with synthetic events. Pinning both
+// here makes the SeedCreate skip verifiable as a real invariant
+// rather than a convention that future edits could silently violate.
 //
 // The sub-test builds a parallel productbus.Business that shares the
 // real DB connection (via productdb.NewStore on db.DB) but uses a
 // fresh delegate.New so the handler can be intercepted. The pre-wired
 // db.BusDomain.Product holds an unobservable production delegate; the
-// only way to assert event firing without mocks is to construct an
-// observable Business beside it.
+// only way to assert event firing (or non-firing) without mocks is to
+// construct an observable Business beside it.
 func delegateFires(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 	del := delegate.New(db.Log)
 
@@ -404,7 +411,7 @@ func delegateFires(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 		BrandID:              sd.Brands[0].BrandID,
 		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
 		Name:                 "Delegate Real-DB Fixture",
-		Description:         "verifies Create fires ActionCreated through delegate",
+		Description:          "verifies Create fires ActionCreated through delegate",
 		ModelNumber:          "DLG-REAL",
 		UpcCode:              "DELEGATE-REAL-UPC-001",
 		Status:               "active",
@@ -413,6 +420,20 @@ func delegateFires(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 		HandlingInstructions: "",
 		UnitsPerCase:         1,
 		TrackingType:         "none",
+	}
+
+	noFireSeed := productbus.Product{
+		ProductID:            seedid.Stable("test:productbus:delegateFires:no-fire"),
+		SKU:                  "DELEGATE-REAL-NO-FIRE",
+		BrandID:              sd.Brands[0].BrandID,
+		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
+		Name:                 "Delegate Skip Fixture",
+		Description:          "verifies SeedCreate does NOT fire delegate",
+		ModelNumber:          "DLG-NOFIRE",
+		UpcCode:              "DELEGATE-REAL-UPC-NOFIRE",
+		Status:               "active",
+		IsActive:             true,
+		UnitsPerCase:         1,
 	}
 
 	return []unitest.Table{
@@ -440,6 +461,38 @@ func delegateFires(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
 					return err.Error()
 				}
 				return cmp.Diff(exp, got)
+			},
+		},
+		{
+			// Capture before/after delta around bus.SeedCreate.
+			// Create_FiresActionCreated already incremented capturedCount
+			// to 1; SeedCreate must leave it untouched.
+			Name:    "SeedCreate_DoesNotFireDelegate",
+			ExpResp: 0,
+			ExcFunc: func(ctx context.Context) any {
+				mu.Lock()
+				before := capturedCount
+				mu.Unlock()
+
+				if err := bus.SeedCreate(ctx, noFireSeed); err != nil {
+					return err
+				}
+
+				mu.Lock()
+				after := capturedCount
+				mu.Unlock()
+
+				return after - before
+			},
+			CmpFunc: func(got, exp any) string {
+				if err, isErr := got.(error); isErr {
+					return err.Error()
+				}
+				gotDelta, ok := got.(int)
+				if !ok {
+					return "expected int delta"
+				}
+				return cmp.Diff(exp.(int), gotDelta)
 			},
 		},
 	}
