@@ -32,4 +32,8 @@ func Test_Scenarios(t *testing.T) {
 	test.Run(t, load401(sd), "load-401")
 	test.Run(t, load404(sd), "load-404")
 	test.Run(t, load204(sd), "load-204")
+	// load-with-overrides-204 runs last: it re-loads scenarios[1] (which has a
+	// pre-seeded override) and then asserts GET /v1/config/settings/{key}
+	// returns the merged override value.
+	test.Run(t, loadWithOverrides204(sd), "load-with-overrides-204")
 }
