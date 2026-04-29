@@ -167,5 +167,13 @@ func InsertPlatformConfig(log *logger.Logger, cfg sqldb.Config) error {
 		return fmt.Errorf("seeding alerts: %w", err)
 	}
 
+	// Phase 0g.B5 follow-up — bootstrap-path lever defaults. Mirrors the
+	// InsertSeedDataWithDB call site so customer-bootstrapped DBs have the
+	// 11 lever rows populated in config.settings; without this, the
+	// settingsdb merge LEFT JOIN returns no rows for any lever key.
+	if err := seedSettings(ctx, busDomain); err != nil {
+		return fmt.Errorf("seeding settings: %w", err)
+	}
+
 	return nil
 }
