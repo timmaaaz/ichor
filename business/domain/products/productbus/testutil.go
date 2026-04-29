@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/seedid"
 )
 
 func TestNewProducts(n int, brandIDs, productCategoryIDs uuid.UUIDs) []NewProduct {
@@ -60,11 +61,18 @@ func TestSeedProducts(ctx context.Context, n int, brandIDs, productCategoryIDs u
 	products := make([]Product, len(newProducts))
 
 	for i, np := range newProducts {
-		product, err := api.Create(ctx, np)
-		if err != nil {
+		p := newProductToSeedProduct(np)
+		if err := api.SeedCreate(ctx, p); err != nil {
 			return nil, err
 		}
-		products[i] = product
+		// Round-trip via QueryByID so callers receive whatever the DB
+		// normalised (UTC timestamps, defaulted TrackingType) — matches
+		// the shape they previously got back from api.Create.
+		stored, err := api.QueryByID(ctx, p.ProductID)
+		if err != nil {
+			return nil, fmt.Errorf("querying seeded product %s: %w", np.SKU, err)
+		}
+		products[i] = stored
 	}
 
 	sort.Slice(products, func(i, j int) bool {
@@ -157,11 +165,15 @@ func TestSeedProductsHistoricalWithDistribution(
 
 	products := make([]Product, 0, n)
 	for i, np := range newProducts {
-		p, err := api.Create(ctx, np)
-		if err != nil {
+		p := newProductToSeedProduct(np)
+		if err := api.SeedCreate(ctx, p); err != nil {
 			return nil, fmt.Errorf("create product %d: %w", i, err)
 		}
-		products = append(products, p)
+		stored, err := api.QueryByID(ctx, p.ProductID)
+		if err != nil {
+			return nil, fmt.Errorf("querying seeded product %d: %w", i, err)
+		}
+		products = append(products, stored)
 	}
 
 	sort.Slice(products, func(i, j int) bool {
@@ -172,4 +184,34 @@ func TestSeedProductsHistoricalWithDistribution(
 	})
 
 	return products, nil
+}
+
+// newProductToSeedProduct copies a NewProduct into a Product struct,
+// deriving a deterministic ProductID from the SKU. Historical
+// CreatedDate (set by TestNewProductsHistorical) is preserved verbatim
+// so timestamp-sensitive tests still see the same dates they did under
+// the api.Create path.
+func newProductToSeedProduct(np NewProduct) Product {
+	var createdDate time.Time
+	if np.CreatedDate != nil {
+		createdDate = *np.CreatedDate
+	}
+	return Product{
+		ProductID:            seedid.Stable("product:" + np.SKU),
+		SKU:                  np.SKU,
+		BrandID:              np.BrandID,
+		ProductCategoryID:    np.ProductCategoryID,
+		Name:                 np.Name,
+		Description:          np.Description,
+		ModelNumber:          np.ModelNumber,
+		UpcCode:              np.UpcCode,
+		Status:               np.Status,
+		IsActive:             np.IsActive,
+		IsPerishable:         np.IsPerishable,
+		HandlingInstructions: np.HandlingInstructions,
+		UnitsPerCase:         np.UnitsPerCase,
+		TrackingType:         np.TrackingType,
+		InventoryType:        np.InventoryType,
+		CreatedDate:          createdDate, // zero → defaulted by SeedCreate
+	}
 }
