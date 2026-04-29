@@ -135,6 +135,9 @@ func (b *Business) Create(ctx context.Context, np NewProduct) (Product, error) {
 // covered by the delegateFires sub-test in productbus_test.go. Mirrors
 // labelbus.SeedCreate.
 func (b *Business) SeedCreate(ctx context.Context, p Product) error {
+	ctx, span := otel.AddSpan(ctx, "business.productbus.seedcreate")
+	defer span.End()
+
 	now := time.Now().UTC()
 	if p.CreatedDate.IsZero() {
 		p.CreatedDate = now

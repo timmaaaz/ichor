@@ -338,6 +338,9 @@ func seedCreate(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table
 				if !got.CreatedDate.Equal(historicalDate) {
 					return fmt.Errorf("CreatedDate not preserved: got %s want %s", got.CreatedDate, historicalDate)
 				}
+				if !got.UpdatedDate.Equal(historicalDate) {
+					return fmt.Errorf("UpdatedDate not preserved: got %s want %s", got.UpdatedDate, historicalDate)
+				}
 				if got.TrackingType != "lot" {
 					return fmt.Errorf("TrackingType not preserved: got %q want %q", got.TrackingType, "lot")
 				}
