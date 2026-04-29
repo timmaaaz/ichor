@@ -11,7 +11,8 @@ import "github.com/google/uuid"
 // PickSheetRequest carries inputs for rendering a pick sheet PDF.
 //
 // Zone is optional. When non-empty the resulting sheet is filtered to lines
-// whose pick locations fall within the named zone (Phase 0g.B3 behavior).
+// whose pick locations fall within the named zone. Filtering is inert until
+// line items are populated (deferred to phase 0g.F4).
 type PickSheetRequest struct {
 	OrderID uuid.UUID
 	Zone    string

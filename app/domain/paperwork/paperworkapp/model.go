@@ -8,7 +8,6 @@ package paperworkapp
 import "github.com/google/uuid"
 
 // PickSheetRequest mirrors paperworkbus.PickSheetRequest at the app layer.
-// Reserved for app-only enrichment (e.g. caller identity) in B3.
 type PickSheetRequest struct {
 	OrderID uuid.UUID
 	Zone    string
