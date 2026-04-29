@@ -89,6 +89,10 @@ func (s *Store) Query(ctx context.Context, filter settingsbus.QueryFilter, order
 		"rows_per_page": page.RowsPerPage(),
 	}
 
+	// CASE not COALESCE: to_jsonb(NULL::text) returns jsonb-null (a non-NULL
+	// jsonb value), so COALESCE(to_jsonb(o.value), s.value) would pick the
+	// jsonb-null over the base when no override exists. The CASE form
+	// explicitly checks SQL-NULL to fall through to s.value.
 	const q = `
 	WITH active AS (
 	    SELECT scenario_id FROM inventory.scenarios_active LIMIT 1
@@ -135,7 +139,7 @@ func (s *Store) Count(ctx context.Context, filter settingsbus.QueryFilter) (int,
     SELECT
         COUNT(1) AS count
     FROM
-        config.settings`
+        config.settings s`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -156,6 +160,10 @@ func (s *Store) QueryByKey(ctx context.Context, key string) (settingsbus.Setting
 		Key string `db:"key"`
 	}{Key: key}
 
+	// CASE not COALESCE: to_jsonb(NULL::text) returns jsonb-null (a non-NULL
+	// jsonb value), so COALESCE(to_jsonb(o.value), s.value) would pick the
+	// jsonb-null over the base when no override exists. The CASE form
+	// explicitly checks SQL-NULL to fall through to s.value.
 	const q = `
 	WITH active AS (
 	    SELECT scenario_id FROM inventory.scenarios_active LIMIT 1
