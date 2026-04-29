@@ -90,10 +90,24 @@ func (s *Store) Query(ctx context.Context, filter settingsbus.QueryFilter, order
 	}
 
 	const q = `
+	WITH active AS (
+	    SELECT scenario_id FROM inventory.scenarios_active LIMIT 1
+	)
 	SELECT
-	    key, value, description, created_date, updated_date
+	    s.key                                              AS key,
+	    CASE
+	        WHEN o.value IS NOT NULL THEN to_jsonb(o.value)
+	        ELSE s.value
+	    END                                               AS value,
+	    s.description                                     AS description,
+	    s.created_date                                    AS created_date,
+	    s.updated_date                                    AS updated_date
 	FROM
-		config.settings`
+	    config.settings s
+	    LEFT JOIN active a ON TRUE
+	    LEFT JOIN config.scenario_setting_overrides o
+	        ON o.scenario_id = a.scenario_id
+	       AND o.key         = s.key`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
@@ -143,12 +157,26 @@ func (s *Store) QueryByKey(ctx context.Context, key string) (settingsbus.Setting
 	}{Key: key}
 
 	const q = `
+	WITH active AS (
+	    SELECT scenario_id FROM inventory.scenarios_active LIMIT 1
+	)
 	SELECT
-	    key, value, description, created_date, updated_date
+	    s.key                                              AS key,
+	    CASE
+	        WHEN o.value IS NOT NULL THEN to_jsonb(o.value)
+	        ELSE s.value
+	    END                                               AS value,
+	    s.description                                     AS description,
+	    s.created_date                                    AS created_date,
+	    s.updated_date                                    AS updated_date
 	FROM
-		config.settings
+	    config.settings s
+	    LEFT JOIN active a ON TRUE
+	    LEFT JOIN config.scenario_setting_overrides o
+	        ON o.scenario_id = a.scenario_id
+	       AND o.key         = s.key
 	WHERE
-		key = :key`
+	    s.key = :key`
 
 	var dbSetting setting
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbSetting); err != nil {
