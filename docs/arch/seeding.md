@@ -222,6 +222,9 @@ AssetType, AssetCondition, UserAsset, Asset
 // Products
 Brand, ProductCategory, Product, ProductUOM, PhysicalAttribute, ProductCost, Metrics, CostHistory
 
+// Labels
+Label
+
 // Procurement
 Supplier, SupplierProduct, PaymentTerm
 PurchaseOrderStatus, PurchaseOrderLineItemStatus, PurchaseOrder, PurchaseOrderLineItem
@@ -291,7 +294,7 @@ seedTableBuilder(ctx, busDomain, adminID)
     ↓
 seedPages(ctx, log, busDomain)
     ↓
-seedForms(ctx, log, busDomain)
+seedForms(ctx, log, busDomain, db)
     ↓
 seedWorkflow(ctx, log, busDomain, adminID)
     ↓
@@ -301,7 +304,7 @@ seedCycleCounts(ctx, busDomain, foundation, products, inventory)
     ↓
 seedApprovals(ctx, busDomain, foundation)                         → queries rules from seedWorkflow
     ↓
-seedSettings(ctx, busDomain)                                      → 11 scan-discipline lever rows
+seedSettings(ctx, busDomain)                                      → 11 scan-discipline lever rows (pick.productScan locked; 10 overridable by scenarios)
     ↓
 seedScenarios(ctx, busDomain)                                     → loads YAML fixtures from deployments/scenarios
 ```
@@ -333,10 +336,12 @@ seedWorkflow(ctx, log, busDomain, adminID)
     ↓
 seedAlerts(ctx, log, busDomain, adminID)
     ↓
-seedSettings(ctx, busDomain)                                      → 11 scan-discipline lever rows
+seedSettings(ctx, busDomain)                                      → 11 scan-discipline lever rows (pick.productScan locked; 10 overridable by scenarios)
 ```
 
 `adminID` is hardcoded to `5cf37266-3473-4006-984f-9325122678b7` (admin_gopher from `seed.sql`) — no `seedFoundation` runs in this path.
+
+`seedScenarios` is intentionally omitted — `make seed-platform` is the customer-bootstrap path, not a demo/test seed. Customers load scenarios on demand via the scenarios admin UI / `POST /v1/scenarios/{id}/load`, which writes to the `seedSettings`-seeded base rows via `lever_overrides`.
 
 ⚠ **Not idempotent.** `seedSettings` (and other seeders) call `Create` directly with no upsert; running `make seed-platform` twice against the same DB fails on `ErrUniqueEntry`. Operators must wipe the DB before re-running.
 
@@ -453,7 +458,7 @@ References `seedmodels/pageactions.go` and `seedmodels/pages.go`.
 
 ### seed_forms.go
 ```go
-func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain) error
+func seedForms(ctx context.Context, log *logger.Logger, busDomain BusDomain, db *sqlx.DB) error
 ```
 Seeds: forms and all form fields.
 key facts:
@@ -496,6 +501,11 @@ for default lever values; scenarios may override individual keys via
 `config.scenario_setting_overrides`. Must run before seedScenarios so
 each override has a base row for the settings GET LEFT JOIN to merge
 (semantic ordering; no FK enforces it).
+
+⚠ **`pick.productScan` is non-overridable** — listed in `levers.nonOverridableKeys`
+per design doc §3.3 invariant 1 (always `"required"`). It is still seeded as one
+of the 11 base rows but `levers.IsOverridable` rejects it from any scenario's
+`lever_overrides`. Of the 11 seeded keys, 10 are overridable.
 
 ### seed_scenarios.go
 ```go
