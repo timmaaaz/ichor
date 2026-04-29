@@ -237,7 +237,7 @@ ContactInfos, Customers, Currency, Order, OrderLineItem
 OrderFulfillmentStatus, LineItemFulfillmentStatus
 
 // Config
-ConfigStore, TableStore, Form, FormField
+ConfigStore, TableStore, Form, FormField, Settings
 PageAction, PageConfig, PageContent
 
 // Workflow
@@ -245,6 +245,9 @@ Workflow, Alert, Notification, ApprovalRequest
 
 // Inventory (cycle counts)
 CycleCountSession, CycleCountItem
+
+// Scenarios
+Scenario
 ```
 
 ---
@@ -297,6 +300,10 @@ seedAlerts(ctx, log, busDomain, adminID)
 seedCycleCounts(ctx, busDomain, foundation, products, inventory)
     ↓
 seedApprovals(ctx, busDomain, foundation)                         → queries rules from seedWorkflow
+    ↓
+seedSettings(ctx, busDomain)                                      → 11 scan-discipline lever rows
+    ↓
+seedScenarios(ctx, busDomain)                                     → loads YAML fixtures from deployments/scenarios
 ```
 
 `adminID` is extracted from `foundation.Admins[0].ID` after `seedFoundation`.
@@ -446,6 +453,29 @@ func seedApprovals(ctx context.Context, busDomain BusDomain, foundation Foundati
 ```
 Seeds: 5 automation executions (FK prerequisite) + 5 pending approval requests.
 Must run after seedWorkflow — queries rules from DB.
+
+### seed_settings.go
+```go
+func seedSettings(ctx context.Context, busDomain BusDomain) error
+```
+Seeds: 11 canonical scan-discipline lever rows from `levers.Defaults`
+(`business/domain/config/settingsbus/levers`). Single source of truth
+for default lever values; scenarios may override individual keys via
+`config.scenario_setting_overrides`. Must run before seedScenarios so
+each override has a base row for the settings GET LEFT JOIN to merge
+(semantic ordering; no FK enforces it).
+
+### seed_scenarios.go
+```go
+func seedScenarios(ctx context.Context, busDomain BusDomain) error
+func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDir string) error
+```
+Seeds: scenarios + scenario_fixtures rows from YAML files under
+`deployments/scenarios/`. `seedScenarios` discovers the root via
+`findRepoRoot()` (private, walks for go.mod); `SeedScenariosFromRoot`
+takes an explicit path so integration tests can point at a temp dir.
+Must run last — depends on every preceding seeder for FK references
+(products, locations, totes) resolved by `seed_scenarios_refs.go`.
 
 ---
 

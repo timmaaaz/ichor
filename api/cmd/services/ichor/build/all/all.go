@@ -3,7 +3,9 @@ package all
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/timmaaaz/ichor/api/domain/http/agentapi/catalogapi"
@@ -678,7 +680,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// middleware can wrap every route registered below. When cfg.ScenariosEnabled
 	// is false (prod default), the middleware is skipped entirely and scoped
 	// repositories' ctx-reads become no-ops.
-	scenariosRoot, scenariosRootErr := scenariobus.FindScenariosRoot()
+	scenariosRoot, scenariosRootErr := findScenariosRoot()
 	if scenariosRootErr != nil {
 		cfg.Log.Error(context.Background(), "find scenarios root: worker-zone application disabled", "error", scenariosRootErr)
 		scenariosRoot = ""
@@ -1640,4 +1642,25 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			"entities", len(formDataRegistry.ListEntities()))
 	}
 
+}
+
+// findScenariosRoot walks upward from cwd looking for go.mod and returns
+// <root>/deployments/scenarios. Returns an error in containerized prod
+// environments where go.mod is absent — callers should fall back to an
+// empty scenariosRoot, which disables worker-zone application during Load.
+func findScenariosRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("getwd: %w", err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return filepath.Join(dir, "deployments", "scenarios"), nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("go.mod not found from %s upward", dir)
+		}
+		dir = parent
+	}
 }

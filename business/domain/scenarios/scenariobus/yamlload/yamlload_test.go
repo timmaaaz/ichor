@@ -182,3 +182,19 @@ func TestValidate_AcceptsKnownLeverKey(t *testing.T) {
 		t.Fatalf("Validate() = %v, want nil", err)
 	}
 }
+
+func TestValidate_RejectsNonOverridableLeverKey(t *testing.T) {
+	// pick.productScan is in KnownKeys/Defaults but locked per design doc
+	// §3.3 invariant 1 — must be rejected as a scenario override key.
+	s := yamlload.Scenario{
+		Name:           "locked-lever",
+		LeverOverrides: map[string]string{"pick.productScan": "disabled"},
+	}
+	err := s.Validate()
+	if err == nil {
+		t.Fatal("Validate() returned nil; want error for non-overridable lever key")
+	}
+	if !strings.Contains(err.Error(), "not overridable") {
+		t.Fatalf("error %q does not mention 'not overridable'", err.Error())
+	}
+}

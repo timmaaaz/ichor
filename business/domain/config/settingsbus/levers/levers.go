@@ -46,3 +46,16 @@ func IsKnown(key string) bool {
 	_, ok := Defaults[key]
 	return ok
 }
+
+// nonOverridableKeys holds keys that exist in Defaults for resolver
+// completeness but must never be changed by a scenario or customer override.
+// Per design doc §3.3 invariant 1, pick.productScan is locked to "required".
+var nonOverridableKeys = map[string]bool{
+	"pick.productScan": true,
+}
+
+// IsOverridable reports whether key may appear in scenario lever_overrides.
+// All known keys are overridable except those locked by design invariants.
+func IsOverridable(key string) bool {
+	return IsKnown(key) && !nonOverridableKeys[key]
+}

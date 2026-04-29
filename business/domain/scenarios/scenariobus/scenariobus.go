@@ -12,8 +12,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,28 +79,9 @@ type Business struct {
 // disables worker-zone application during Load (e.g. in unit tests that
 // don't exercise the YAML path). The seeder discovers this path via
 // findRepoRoot in seed_scenarios.go and the API binary wires it via
-// build/all/all.go (Task 11 Step 4).
+// build/all/all.go.
 func NewBusiness(log *logger.Logger, d *delegate.Delegate, storer Storer, beginner sqldb.Beginner, scenariosRoot string) *Business {
 	return &Business{log: log, delegate: d, storer: storer, beginner: beginner, scenariosRoot: scenariosRoot}
-}
-
-// FindScenariosRoot walks upward from cwd looking for go.mod and returns
-// <root>/deployments/scenarios. Mirrors seed_scenarios.go's findRepoRoot.
-func FindScenariosRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("getwd: %w", err)
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return filepath.Join(dir, "deployments", "scenarios"), nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", fmt.Errorf("go.mod not found from %s upward", dir)
-		}
-		dir = parent
-	}
 }
 
 // NewWithTx constructs a new Business value replacing the Storer value with
@@ -314,7 +293,9 @@ func (b *Business) SetActive(ctx context.Context, id uuid.UUID) error {
 //  2. Deletes all scoped rows from the 18 floor-scoped tables for the
 //     current active scenario (if one is set).
 //  3. Inserts fixture rows for the target scenario via ApplyFixtures.
-//  4. Updates scenarios_active to the target scenario.
+//  4. Applies worker→zone bindings via ApplyWorkerZones (skipped when
+//     scenariosRoot is empty, e.g. test contexts without YAML on disk).
+//  5. Updates scenarios_active to the target scenario.
 //
 // Delegate events are NOT fired from Load — this is a bulk mutation that
 // bypasses individual workflow automation triggers by design. The operation

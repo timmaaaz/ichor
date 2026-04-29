@@ -197,6 +197,9 @@ func (s Scenario) Validate() error {
 		if !levers.IsKnown(k) {
 			return fmt.Errorf("scenario %s: unknown lever key %q (see business/domain/config/settingsbus/levers)", s.Name, k)
 		}
+		if !levers.IsOverridable(k) {
+			return fmt.Errorf("scenario %s: lever key %q is not overridable (see business/domain/config/settingsbus/levers)", s.Name, k)
+		}
 	}
 
 	seenWorker := map[string]bool{}

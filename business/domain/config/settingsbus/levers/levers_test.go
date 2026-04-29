@@ -46,3 +46,27 @@ func Test_KnownKeys_Sorted(t *testing.T) {
 		t.Fatalf("KnownKeys is not sorted: %v", levers.KnownKeys)
 	}
 }
+
+func Test_IsOverridable_ProductScanReturnsFalse(t *testing.T) {
+	// Per design doc §3.3 invariant 1, pick.productScan is locked.
+	if levers.IsOverridable("pick.productScan") {
+		t.Fatal("IsOverridable(pick.productScan) = true, want false")
+	}
+}
+
+func Test_IsOverridable_OtherKnownKeysReturnTrue(t *testing.T) {
+	for _, k := range levers.KnownKeys {
+		if k == "pick.productScan" {
+			continue
+		}
+		if !levers.IsOverridable(k) {
+			t.Errorf("IsOverridable(%q) = false, want true", k)
+		}
+	}
+}
+
+func Test_IsOverridable_UnknownKeyReturnsFalse(t *testing.T) {
+	if levers.IsOverridable("pick.notALever") {
+		t.Fatal("IsOverridable(pick.notALever) = true, want false")
+	}
+}
