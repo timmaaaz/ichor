@@ -8,8 +8,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus"
 )
 
-// App is the application layer for paperwork. Currently a thin wrapper over
-// paperworkbus; B3 expands it with cross-domain orchestration.
+// App is a thin wrapper over paperworkbus.Business. Cross-domain
+// orchestration (querying sibling buses for orders/POs/transfers)
+// lives in the bus per the renderer-shaped design (D-CONV-3); this
+// layer translates errors and delegates rendering.
 type App struct {
 	bus *paperworkbus.Business
 }
