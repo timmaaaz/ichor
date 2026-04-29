@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/seedid"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
@@ -38,6 +40,7 @@ func Test_Product(t *testing.T) {
 	// -------------------------------------------------------------------------
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
+	unitest.Run(t, seedCreate(db.BusDomain, sd), "seedCreate")
 	// delegateFires takes *dbtest.Database (not BusDomain) — it needs db.DB and db.Log
 	// to construct an observable parallel productbus.Business. See delegateFires godoc.
 	unitest.Run(t, delegateFires(db, sd), "delegateFires")
@@ -228,6 +231,127 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp.ProductID = gotResp.ProductID
 
 				return cmp.Diff(expResp, gotResp)
+			},
+		},
+	}
+}
+
+func seedCreate(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	// Two fixtures verify SeedCreate's behavior:
+	//   A: zero CreatedDate / UpdatedDate / TrackingType — defaults applied
+	//   B: caller-supplied CreatedDate + TrackingType — preserved verbatim
+	stableA := seedid.Stable("test:productbus:seedCreate:fixture-A")
+	stableB := seedid.Stable("test:productbus:seedCreate:fixture-B")
+
+	historicalDate := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
+
+	productA := productbus.Product{
+		ProductID:            stableA,
+		SKU:                  "SEED-TEST-A",
+		BrandID:              sd.Brands[0].BrandID,
+		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
+		Name:                 "SeedCreate Fixture A",
+		Description:          "deterministic seed test",
+		ModelNumber:          "SC-A",
+		UpcCode:              "SeedTestA-UPC",
+		Status:               "active",
+		IsActive:             true,
+		IsPerishable:         false,
+		HandlingInstructions: "",
+		UnitsPerCase:         12,
+		// TrackingType, CreatedDate, UpdatedDate intentionally zero — must default.
+	}
+
+	productB := productbus.Product{
+		ProductID:            stableB,
+		SKU:                  "SEED-TEST-B",
+		BrandID:              sd.Brands[0].BrandID,
+		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
+		Name:                 "SeedCreate Fixture B",
+		Description:          "deterministic seed test (preserved fields)",
+		ModelNumber:          "SC-B",
+		UpcCode:              "SeedTestB-UPC",
+		Status:               "active",
+		IsActive:             true,
+		IsPerishable:         true,
+		HandlingInstructions: "keep cool",
+		UnitsPerCase:         24,
+		TrackingType:         "lot",
+		CreatedDate:          historicalDate,
+		UpdatedDate:          historicalDate,
+	}
+
+	return []unitest.Table{
+		{
+			Name:    "SeedCreate_DefaultsApplied",
+			ExpResp: stableA,
+			ExcFunc: func(ctx context.Context) any {
+				if err := busDomain.Product.SeedCreate(ctx, productA); err != nil {
+					return err
+				}
+				got, err := busDomain.Product.QueryByID(ctx, stableA)
+				if err != nil {
+					return err
+				}
+				if got.ProductID != stableA {
+					return fmt.Errorf("ProductID drift: got %s want %s", got.ProductID, stableA)
+				}
+				if got.TrackingType != "none" {
+					return fmt.Errorf("TrackingType default missed: got %q want %q", got.TrackingType, "none")
+				}
+				if got.CreatedDate.IsZero() {
+					return fmt.Errorf("CreatedDate not defaulted")
+				}
+				if got.UpdatedDate.IsZero() {
+					return fmt.Errorf("UpdatedDate not defaulted")
+				}
+				if !got.UpdatedDate.Equal(got.CreatedDate) {
+					return fmt.Errorf("UpdatedDate (%s) should equal CreatedDate (%s) when both default", got.UpdatedDate, got.CreatedDate)
+				}
+				return got.ProductID
+			},
+			CmpFunc: func(got, exp any) string {
+				gotID, ok := got.(uuid.UUID)
+				if !ok {
+					if err, isErr := got.(error); isErr {
+						return err.Error()
+					}
+					return "expected uuid.UUID"
+				}
+				return cmp.Diff(exp.(uuid.UUID), gotID)
+			},
+		},
+		{
+			Name:    "SeedCreate_PreservesCallerFields",
+			ExpResp: stableB,
+			ExcFunc: func(ctx context.Context) any {
+				if err := busDomain.Product.SeedCreate(ctx, productB); err != nil {
+					return err
+				}
+				got, err := busDomain.Product.QueryByID(ctx, stableB)
+				if err != nil {
+					return err
+				}
+				if got.ProductID != stableB {
+					return fmt.Errorf("ProductID drift: got %s want %s", got.ProductID, stableB)
+				}
+				if !got.CreatedDate.Equal(historicalDate) {
+					return fmt.Errorf("CreatedDate not preserved: got %s want %s", got.CreatedDate, historicalDate)
+				}
+				if got.TrackingType != "lot" {
+					return fmt.Errorf("TrackingType not preserved: got %q want %q", got.TrackingType, "lot")
+				}
+				return got.ProductID
+			},
+			CmpFunc: func(got, exp any) string {
+				gotID, ok := got.(uuid.UUID)
+				if !ok {
+					if err, isErr := got.(error); isErr {
+						return err.Error()
+					}
+					return "expected uuid.UUID"
+				}
+				return cmp.Diff(exp.(uuid.UUID), gotID)
 			},
 		},
 	}

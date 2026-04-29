@@ -115,6 +115,43 @@ func (b *Business) Create(ctx context.Context, np NewProduct) (Product, error) {
 	return product, nil
 }
 
+// SeedCreate inserts a Product with a caller-supplied ProductID. It is
+// the seeding analogue of Create: the regular Create assigns
+// uuid.New() and fires a delegate event for workflow automation, both
+// of which are inappropriate during deterministic seed runs.
+//
+// Defaults filled when zero/empty:
+//   - CreatedDate (defaults to time.Now().UTC())
+//   - UpdatedDate (defaults to CreatedDate)
+//   - TrackingType (defaults to "none")
+//
+// All other Product fields pass through verbatim — the caller is
+// responsible for SKU, BrandID, ProductCategoryID, and any other
+// required field.
+//
+// Notably absent: b.delegate.Call(...). Seed paths must not trigger
+// workflow events during DB initialization. This skip is the deliberate
+// difference from Create; the delegate-firing behavior of Create is
+// covered by the delegateFires sub-test in productbus_test.go. Mirrors
+// labelbus.SeedCreate.
+func (b *Business) SeedCreate(ctx context.Context, p Product) error {
+	now := time.Now().UTC()
+	if p.CreatedDate.IsZero() {
+		p.CreatedDate = now
+	}
+	if p.UpdatedDate.IsZero() {
+		p.UpdatedDate = p.CreatedDate
+	}
+	if p.TrackingType == "" {
+		p.TrackingType = "none"
+	}
+
+	if err := b.storer.Create(ctx, p); err != nil {
+		return fmt.Errorf("seedcreate: %w", err)
+	}
+	return nil
+}
+
 // Update replaces an product document in the database.
 func (b *Business) Update(ctx context.Context, product Product, ub UpdateProduct) (Product, error) {
 	ctx, span := otel.AddSpan(ctx, "business.productbus.update")
