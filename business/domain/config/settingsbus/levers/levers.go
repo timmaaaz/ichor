@@ -9,12 +9,18 @@ package levers
 // KnownKeys is the complete, sorted list of lever keys. Sorted to
 // stabilize seed insert order and test diff output.
 var KnownKeys = []string{
+	"adjustment.locationScan",
+	"cycleCount.locationScan",
+	"inspection.lotScan",
 	"pick.assignmentGranularity",
 	"pick.destinationMode",
 	"pick.destinationScan",
 	"pick.lotScan",
 	"pick.productScan",
 	"pick.sourceLocationScan",
+	"putaway.destinationLocationScan",
+	"putaway.itemScan",
+	"putaway.lotScan",
 	"receive.expiryCapture",
 	"receive.lotCapture",
 	"receive.poScan",
@@ -27,17 +33,23 @@ var KnownKeys = []string{
 // not exposed as a configurable lever — included here for resolver
 // completeness, NOT for customer override.
 var Defaults = map[string]string{
-	"pick.assignmentGranularity":  "whole-order",
-	"pick.destinationMode":        "direct-stage",
-	"pick.destinationScan":        "button-confirm",
-	"pick.lotScan":                "disabled",
-	"pick.productScan":            "required",
-	"pick.sourceLocationScan":     "button-confirm",
-	"receive.expiryCapture":       "required-if-lot-tracked",
-	"receive.lotCapture":          "required-if-lot-tracked",
-	"receive.poScan":              "required",
-	"transfer.destinationScan":    "button-confirm",
-	"transfer.sourceLocationScan": "button-confirm",
+	"adjustment.locationScan":         "required",
+	"cycleCount.locationScan":         "required",
+	"inspection.lotScan":              "disabled",
+	"pick.assignmentGranularity":      "whole-order",
+	"pick.destinationMode":            "direct-stage",
+	"pick.destinationScan":            "button-confirm",
+	"pick.lotScan":                    "disabled",
+	"pick.productScan":                "required",
+	"pick.sourceLocationScan":         "button-confirm",
+	"putaway.destinationLocationScan": "required",
+	"putaway.itemScan":                "required",
+	"putaway.lotScan":                 "disabled",
+	"receive.expiryCapture":           "required-if-lot-tracked",
+	"receive.lotCapture":              "required-if-lot-tracked",
+	"receive.poScan":                  "required",
+	"transfer.destinationScan":        "button-confirm",
+	"transfer.sourceLocationScan":     "button-confirm",
 }
 
 // IsKnown reports whether key is one of the canonical lever keys. Used by
