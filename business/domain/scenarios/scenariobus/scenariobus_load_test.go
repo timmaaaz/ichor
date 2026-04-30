@@ -27,7 +27,7 @@ func Test_Load_AppliesLeverOverrides_AndWorkerZones(t *testing.T) {
 	db := dbtest.NewDatabase(t, "Test_Load_AppliesLeverOverrides_AndWorkerZones")
 	ctx := context.Background()
 
-	// Baseline seed — populates config.settings (11 levers) plus all FK
+	// Baseline seed — populates config.settings (17 levers) plus all FK
 	// dependencies required by the user bus.
 	if err := dbtest.InsertSeedDataWithDB(db.Log, db.DB); err != nil {
 		t.Fatalf("baseline seed: %v", err)
@@ -48,7 +48,7 @@ func Test_Load_AppliesLeverOverrides_AndWorkerZones(t *testing.T) {
 		t.Fatalf("mkdir scenario dir: %v", err)
 	}
 
-	scenarioYAML := "name: test-levers\ndescription: B5 integration test\nlever_overrides:\n  pick.lotScan: required-if-lot-tracked\n  pick.destinationScan: required\n"
+	scenarioYAML := "name: test-levers\ndescription: B5 + B6 integration test\nlever_overrides:\n  pick.lotScan: required-if-lot-tracked\n  pick.destinationScan: required\n  cycleCount.locationScan: button-confirm\n"
 	if err := os.WriteFile(filepath.Join(scenarioDir, "scenario.yaml"), []byte(scenarioYAML), 0o644); err != nil {
 		t.Fatalf("write scenario.yaml: %v", err)
 	}
@@ -98,6 +98,20 @@ func Test_Load_AppliesLeverOverrides_AndWorkerZones(t *testing.T) {
 	}
 	if lotScanValue != "required-if-lot-tracked" {
 		t.Errorf("pick.lotScan = %q, want %q (override should win)", lotScanValue, "required-if-lot-tracked")
+	}
+
+	// Assert: B6 new-lever override visible.
+	// cycleCount.locationScan default is "required"; override must win.
+	cycleCountSetting, err := db.BusDomain.Settings.QueryByKey(ctx, "cycleCount.locationScan")
+	if err != nil {
+		t.Fatalf("query cycleCount.locationScan: %v", err)
+	}
+	var cycleCountValue string
+	if err := json.Unmarshal(cycleCountSetting.Value, &cycleCountValue); err != nil {
+		t.Fatalf("unmarshal cycleCount.locationScan value: %v", err)
+	}
+	if cycleCountValue != "button-confirm" {
+		t.Errorf("cycleCount.locationScan = %q, want %q (override should win)", cycleCountValue, "button-confirm")
 	}
 
 	// Assert: non-overridden key returns base default.
@@ -152,6 +166,19 @@ func Test_Load_AppliesLeverOverrides_AndWorkerZones(t *testing.T) {
 	}
 	if lotScanValue2 != "required-if-lot-tracked" {
 		t.Errorf("post-Reset pick.lotScan = %q, want %q (override should still win)", lotScanValue2, "required-if-lot-tracked")
+	}
+
+	// Re-assert B6 new-lever override still wins post-Reset.
+	cycleCountSetting2, err := db.BusDomain.Settings.QueryByKey(ctx, "cycleCount.locationScan")
+	if err != nil {
+		t.Fatalf("query cycleCount.locationScan post-Reset: %v", err)
+	}
+	var cycleCountValue2 string
+	if err := json.Unmarshal(cycleCountSetting2.Value, &cycleCountValue2); err != nil {
+		t.Fatalf("unmarshal cycleCount.locationScan value post-Reset: %v", err)
+	}
+	if cycleCountValue2 != "button-confirm" {
+		t.Errorf("post-Reset cycleCount.locationScan = %q, want %q (override should still win)", cycleCountValue2, "button-confirm")
 	}
 
 	// Re-assert worker zones still applied post-Reset.

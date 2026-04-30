@@ -7,8 +7,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/levers"
 )
 
-func Test_Defaults_HasExactlyElevenKeys(t *testing.T) {
-	if got, want := len(levers.Defaults), 11; got != want {
+func Test_Defaults_HasExactlySeventeenKeys(t *testing.T) {
+	if got, want := len(levers.Defaults), 17; got != want {
 		t.Fatalf("len(Defaults) = %d, want %d", got, want)
 	}
 }
