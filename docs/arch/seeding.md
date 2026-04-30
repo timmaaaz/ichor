@@ -397,17 +397,18 @@ inventory/lot-tracking/serial-number seed logic has a stable shape to fan out fr
 func seedLabels(ctx context.Context, bus *labelbus.Business, products ProductsSeed) error
 ```
 Seeds 79 rows: 19 location + 20 container + 40 product. Catalog UUIDs are deterministic
-via `detUUID("label:" + code)` (UUID v5 over the `deadbeef-…-beefdeadbeef` namespace) so
-`make reseed-frontend` produces byte-identical label IDs across runs.
+via `seedid.Stable("label:" + code)` (UUID v5 over the `deadbeef-…-beefdeadbeef` namespace
+held in `business/sdk/seedid`) so `make reseed-frontend` produces byte-identical label IDs
+across runs.
 
 Type breakdown:
 - **Location** — RCV-NN, QA-NN, STG-{A|B|C}NN, PCK-NN, PKG-NN, SHP-NN. Empty `payload_json: "{}"`.
 - **Container** — TOTE-001..TOTE-020. Empty `payload_json: "{}"`.
-- **Product** — `PRD-{SKU}` (one per seeded product). `entity_ref` is the product UUID.
+- **Product** — `PRD-{SKU}` (one per seeded product). `entity_ref` is the product UUID,
+  also deterministic via `seedid.Stable("product:" + sku)` (productbus.SeedCreate path).
   `payload_json` carries `{"sku":..., "upc":..., "productName":...}` for ZPL rendering.
 
-Note: product `entity_ref` is non-deterministic until `productbus.Business.SeedCreate` lands —
-all other label fields are stable across reseeds.
+All label fields — including product `entity_ref` — are stable across reseeds.
 
 ### seed_inventory.go
 ```go
@@ -620,6 +621,48 @@ the first real scenario fixtures that need them. Add each new resolver
 as a field on `refLookups` and a case in `resolveRefs`'s switch.
 
 ---
+
+## ⚠ Deterministic seed UUIDs
+
+file: business/sdk/seedid/seedid.go
+
+Single source of truth for the `deadbeef-dead-beef-dead-beefdeadbeef` namespace
+that anchors every UUID v5 derivation in seed code. Exposes one function:
+
+```go
+func Stable(key string) uuid.UUID  // uuid.NewSHA1(namespace, []byte(key))
+```
+
+Per-domain testutil and `business/sdk/dbtest` seed helpers MUST import this
+package rather than declaring their own copy of the namespace UUID — drift
+between copies silently breaks reseed determinism. The namespace itself is
+unexported; reach for `Stable` instead.
+
+Key conventions (one prefix per domain so distinct entities can never collide):
+- `seedid.Stable("label:" + code)`     → label_catalog rows (location/container/product)
+- `seedid.Stable("product:" + sku)`    → products.products rows (productbus.SeedCreate)
+- `seedid.Stable("scenario:" + name)`  → scenarios.scenarios rows (yamlload)
+
+When adding a new SeedCreate path or a new TestSeed* helper that should be
+reseed-stable, derive the primary key via `seedid.Stable("<entity>:<key>")`
+and add the table to `scripts/check-determinism.sh`'s SNAPSHOTS list.
+
+## ⚠ Reseed-determinism verification
+
+file: scripts/check-determinism.sh
+make target: `make check-determinism`
+
+Reseeds twice via `make reseed-frontend`, snapshots the tables in the
+SNAPSHOTS array (currently `products.products`, `inventory.label_catalog`),
+and diffs the two runs column-by-column. Drift fails the script.
+
+Excludes wall-clock columns (`created_date`, `updated_date`) which use
+`time.Now()` inside the seed code path and never stabilise.
+
+Exit codes: `0` stable / `1` drift / `2` prerequisites missing / `3` make
+failed. Add a SNAPSHOTS entry whenever a new SeedCreate or new
+`seedid.Stable`-keyed primary key lands; remove an entry only if the team
+decides a table will remain non-deterministic.
 
 ## ⚠ Adding a new domain to seeding
 

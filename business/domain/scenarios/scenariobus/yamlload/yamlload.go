@@ -22,14 +22,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/levers"
+	"github.com/timmaaaz/ichor/business/sdk/seedid"
 	"gopkg.in/yaml.v3"
 )
-
-// ScenarioNamespace is the UUID v5 namespace used for deterministic scenario
-// IDs when scenario.yaml does not specify an explicit id. Same "deadbeef"
-// namespace as labelbus (0b §8.5) so scenarios and labels share one
-// determinism pattern.
-var ScenarioNamespace = uuid.MustParse("deadbeef-dead-beef-dead-beefdeadbeef")
 
 // ErrNotFound is returned when scenariosRoot does not exist or contains no
 // loadable scenario directories. Callers use IsNotFoundErr to skip cleanly.
@@ -145,7 +140,7 @@ func loadOne(dir string) (Scenario, error) {
 	}
 
 	if s.ID == (uuid.UUID{}) {
-		s.ID = uuid.NewSHA1(ScenarioNamespace, []byte("scenario:"+s.Name))
+		s.ID = seedid.Stable("scenario:" + s.Name)
 	}
 
 	if err := s.Validate(); err != nil {

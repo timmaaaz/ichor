@@ -7,13 +7,6 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/seedid"
 )
 
-func TestNamespace_MatchesHistoricalValue(t *testing.T) {
-	want := uuid.MustParse("deadbeef-dead-beef-dead-beefdeadbeef")
-	if seedid.Namespace != want {
-		t.Fatalf("namespace drifted: got %s, want %s", seedid.Namespace, want)
-	}
-}
-
 func TestStable_Deterministic(t *testing.T) {
 	a := seedid.Stable("label:STG-A01")
 	b := seedid.Stable("label:STG-A01")

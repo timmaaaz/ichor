@@ -49,6 +49,7 @@
 #   0  all checked tables are byte-identical across reseeds
 #   1  at least one table drifted
 #   2  prerequisites missing (psql, make, expected env)
+#   3  make reseed-frontend failed (build, migrations, or seed error)
 
 set -euo pipefail
 
@@ -93,12 +94,18 @@ dump_snapshot () {
 cd "$REPO_ROOT"
 
 echo "==> Run 1: make reseed-frontend"
-make reseed-frontend
+if ! make reseed-frontend; then
+	echo "ERROR: 'make reseed-frontend' (Run 1) failed. Check build, migrations, or seed logic." >&2
+	exit 3
+fi
 echo "==> Snapshot 1"
 dump_snapshot run1
 
 echo "==> Run 2: make reseed-frontend"
-make reseed-frontend
+if ! make reseed-frontend; then
+	echo "ERROR: 'make reseed-frontend' (Run 2) failed. Check build, migrations, or seed logic." >&2
+	exit 3
+fi
 echo "==> Snapshot 2"
 dump_snapshot run2
 

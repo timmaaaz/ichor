@@ -11,14 +11,16 @@ package seedid
 
 import "github.com/google/uuid"
 
-// Namespace is the UUID v5 namespace that anchors all deterministic
+// namespace is the UUID v5 namespace that anchors all deterministic
 // seed UUIDs. It matches the Manitowoc generator's value; changing it
 // invalidates every deterministic seed UUID in the codebase, including
-// inventory.label_catalog rows.
-var Namespace = uuid.MustParse("deadbeef-dead-beef-dead-beefdeadbeef")
+// inventory.label_catalog rows. Kept unexported so callers can't mutate
+// it; reach for Stable instead.
+var namespace = uuid.MustParse("deadbeef-dead-beef-dead-beefdeadbeef")
 
-// Stable returns a UUID v5 derived from key under Namespace. The same
-// key always produces the same UUID, on any machine, in any process.
+// Stable returns a UUID v5 derived from key under the seed namespace.
+// The same key always produces the same UUID, on any machine, in any
+// process.
 func Stable(key string) uuid.UUID {
-	return uuid.NewSHA1(Namespace, []byte(key))
+	return uuid.NewSHA1(namespace, []byte(key))
 }
