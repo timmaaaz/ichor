@@ -1,0 +1,14 @@
+# deployments/scenarios/e2e-baseline/scenario.yaml
+#
+# Empty scenario reserved for E2E tests. No fixtures, no lever_overrides.
+# `leverOverrides.clearActiveScenario()` loads this to revert the running
+# system to SMB-default lever values between tests/specs that override them.
+#
+# UUID is omitted — yamlload computes UUID v5 of "scenario:e2e-baseline"
+# under the deadbeef-dead-beef-dead-beefdeadbeef namespace at parse time.
+# Byte-identical across reseeds per Phase 0d Decision 3.
+
+name: e2e-baseline
+description: |
+  Empty E2E baseline scenario. Loading this clears any active lever_overrides
+  by virtue of having none of its own. Used by leverOverrides.clearActiveScenario().
