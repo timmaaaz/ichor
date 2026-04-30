@@ -217,27 +217,6 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
-			Name:       "missing-notes",
-			URL:        "/v1/inventory/inventory-adjustments",
-			Token:      sd.Admins[0].Token,
-			Method:     http.MethodPost,
-			StatusCode: http.StatusBadRequest,
-			Input: &inventoryadjustmentapp.NewInventoryAdjustment{
-				ProductID:      sd.Products[0].ProductID,
-				LocationID:     sd.InventoryLocations[0].LocationID,
-				AdjustedBy:     sd.InventoryAdjustments[0].AdjustedBy,
-				ApprovedBy:     sd.InventoryAdjustments[0].ApprovedBy,
-				QuantityChange: "10",
-				ReasonCode:     "damaged",
-				AdjustmentDate: now.Format(timeutil.FORMAT),
-			},
-			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"notes\",\"error\":\"notes is a required field\"}]"),
-			CmpFunc: func(got, exp any) string {
-				return cmp.Diff(got, exp)
-			},
-		},
-		{
 			Name:       "missing-adjustment-date",
 			URL:        "/v1/inventory/inventory-adjustments",
 			Token:      sd.Admins[0].Token,

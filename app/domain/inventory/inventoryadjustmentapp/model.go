@@ -109,7 +109,7 @@ type NewInventoryAdjustment struct {
 	ApprovedBy     string `json:"approved_by" validate:"required,min=36,max=36"`
 	QuantityChange string `json:"quantity_change" validate:"required"`
 	ReasonCode     string `json:"reason_code" validate:"required,oneof=damaged theft data_entry_error receiving_error picking_error found_stock other"`
-	Notes          string `json:"notes" validate:"required"`
+	Notes          string `json:"notes" validate:"omitempty"`
 	AdjustmentDate string `json:"adjustment_date" validate:"required"`
 }
 
