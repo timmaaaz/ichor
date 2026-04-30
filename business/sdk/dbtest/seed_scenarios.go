@@ -9,6 +9,7 @@ import (
 
 	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
 	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus/yamlload"
+	"github.com/timmaaaz/ichor/business/sdk/seedid"
 )
 
 // seedScenarios is the LAST seeder in the InsertSeedData chain. It reads
@@ -90,7 +91,7 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 					return fmt.Errorf("scenario %s: payload marshal: %w", s.Name, err)
 				}
 				fix := scenariobus.ScenarioFixture{
-					ID:          detUUID(fmt.Sprintf("fixture:%s:%s:%d", s.Name, targetTable, i)),
+					ID:          seedid.Stable(fmt.Sprintf("fixture:%s:%s:%d", s.Name, targetTable, i)),
 					ScenarioID:  s.ID,
 					TargetTable: targetTable,
 					PayloadJSON: payload,

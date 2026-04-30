@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
@@ -15,9 +17,12 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus/stores/productdb"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/seedid"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 )
 
@@ -35,6 +40,10 @@ func Test_Product(t *testing.T) {
 	// -------------------------------------------------------------------------
 	unitest.Run(t, query(db.BusDomain, sd), "query")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
+	unitest.Run(t, seedCreate(db.BusDomain, sd), "seedCreate")
+	// delegateFires takes *dbtest.Database (not BusDomain) — it needs db.DB and db.Log
+	// to construct an observable parallel productbus.Business. See delegateFires godoc.
+	unitest.Run(t, delegateFires(db, sd), "delegateFires")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
 }
@@ -222,6 +231,268 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				expResp.ProductID = gotResp.ProductID
 
 				return cmp.Diff(expResp, gotResp)
+			},
+		},
+	}
+}
+
+func seedCreate(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	// Two fixtures verify SeedCreate's behavior:
+	//   A: zero CreatedDate / UpdatedDate / TrackingType — defaults applied
+	//   B: caller-supplied CreatedDate + TrackingType — preserved verbatim
+	stableA := seedid.Stable("test:productbus:seedCreate:fixture-A")
+	stableB := seedid.Stable("test:productbus:seedCreate:fixture-B")
+
+	historicalDate := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
+
+	productA := productbus.Product{
+		ProductID:            stableA,
+		SKU:                  "SEED-TEST-A",
+		BrandID:              sd.Brands[0].BrandID,
+		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
+		Name:                 "SeedCreate Fixture A",
+		Description:          "deterministic seed test",
+		ModelNumber:          "SC-A",
+		UpcCode:              "SeedTestA-UPC",
+		Status:               "active",
+		IsActive:             true,
+		IsPerishable:         false,
+		HandlingInstructions: "",
+		UnitsPerCase:         12,
+		// TrackingType, CreatedDate, UpdatedDate intentionally zero — must default.
+	}
+
+	productB := productbus.Product{
+		ProductID:            stableB,
+		SKU:                  "SEED-TEST-B",
+		BrandID:              sd.Brands[0].BrandID,
+		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
+		Name:                 "SeedCreate Fixture B",
+		Description:          "deterministic seed test (preserved fields)",
+		ModelNumber:          "SC-B",
+		UpcCode:              "SeedTestB-UPC",
+		Status:               "active",
+		IsActive:             true,
+		IsPerishable:         true,
+		HandlingInstructions: "keep cool",
+		UnitsPerCase:         24,
+		TrackingType:         "lot",
+		CreatedDate:          historicalDate,
+		UpdatedDate:          historicalDate,
+	}
+
+	return []unitest.Table{
+		{
+			Name:    "SeedCreate_DefaultsApplied",
+			ExpResp: stableA,
+			ExcFunc: func(ctx context.Context) any {
+				if err := busDomain.Product.SeedCreate(ctx, productA); err != nil {
+					return err
+				}
+				got, err := busDomain.Product.QueryByID(ctx, stableA)
+				if err != nil {
+					return err
+				}
+				if got.ProductID != stableA {
+					return fmt.Errorf("ProductID drift: got %s want %s", got.ProductID, stableA)
+				}
+				if got.TrackingType != "none" {
+					return fmt.Errorf("TrackingType default missed: got %q want %q", got.TrackingType, "none")
+				}
+				if got.CreatedDate.IsZero() {
+					return fmt.Errorf("CreatedDate not defaulted")
+				}
+				if got.UpdatedDate.IsZero() {
+					return fmt.Errorf("UpdatedDate not defaulted")
+				}
+				if !got.UpdatedDate.Equal(got.CreatedDate) {
+					return fmt.Errorf("UpdatedDate (%s) should equal CreatedDate (%s) when both default", got.UpdatedDate, got.CreatedDate)
+				}
+				return got.ProductID
+			},
+			CmpFunc: func(got, exp any) string {
+				gotID, ok := got.(uuid.UUID)
+				if !ok {
+					if err, isErr := got.(error); isErr {
+						return err.Error()
+					}
+					return "expected uuid.UUID"
+				}
+				return cmp.Diff(exp.(uuid.UUID), gotID)
+			},
+		},
+		{
+			Name:    "SeedCreate_PreservesCallerFields",
+			ExpResp: stableB,
+			ExcFunc: func(ctx context.Context) any {
+				if err := busDomain.Product.SeedCreate(ctx, productB); err != nil {
+					return err
+				}
+				got, err := busDomain.Product.QueryByID(ctx, stableB)
+				if err != nil {
+					return err
+				}
+				if got.ProductID != stableB {
+					return fmt.Errorf("ProductID drift: got %s want %s", got.ProductID, stableB)
+				}
+				if !got.CreatedDate.Equal(historicalDate) {
+					return fmt.Errorf("CreatedDate not preserved: got %s want %s", got.CreatedDate, historicalDate)
+				}
+				if !got.UpdatedDate.Equal(historicalDate) {
+					return fmt.Errorf("UpdatedDate not preserved: got %s want %s", got.UpdatedDate, historicalDate)
+				}
+				if got.TrackingType != "lot" {
+					return fmt.Errorf("TrackingType not preserved: got %q want %q", got.TrackingType, "lot")
+				}
+				return got.ProductID
+			},
+			CmpFunc: func(got, exp any) string {
+				gotID, ok := got.(uuid.UUID)
+				if !ok {
+					if err, isErr := got.(error); isErr {
+						return err.Error()
+					}
+					return "expected uuid.UUID"
+				}
+				return cmp.Diff(exp.(uuid.UUID), gotID)
+			},
+		},
+	}
+}
+
+// capturedDelegate records what a delegate handler observed.
+type capturedDelegate struct {
+	Domain string
+	Action string
+	Count  int
+}
+
+// delegateFires verifies two related properties on the same parallel
+// Business:
+//
+//  1. productbus.Create FIRES ActionCreated through the delegate.
+//  2. productbus.SeedCreate DOES NOT fire any delegate event.
+//
+// Both behaviours are deliberate: Create needs to trigger workflow
+// automation; SeedCreate must not, because seed runs would otherwise
+// stampede the Temporal pipeline with synthetic events. Pinning both
+// here makes the SeedCreate skip verifiable as a real invariant
+// rather than a convention that future edits could silently violate.
+//
+// The sub-test builds a parallel productbus.Business that shares the
+// real DB connection (via productdb.NewStore on db.DB) but uses a
+// fresh delegate.New so the handler can be intercepted. The pre-wired
+// db.BusDomain.Product holds an unobservable production delegate; the
+// only way to assert event firing (or non-firing) without mocks is to
+// construct an observable Business beside it.
+func delegateFires(db *dbtest.Database, sd unitest.SeedData) []unitest.Table {
+	del := delegate.New(db.Log)
+
+	var (
+		mu             sync.Mutex
+		capturedDomain string
+		capturedAction string
+		capturedCount  int
+	)
+	del.Register(productbus.DomainName, productbus.ActionCreated, func(_ context.Context, data delegate.Data) error {
+		mu.Lock()
+		defer mu.Unlock()
+		capturedDomain = data.Domain
+		capturedAction = data.Action
+		capturedCount++
+		return nil
+	})
+
+	// Real storer against the same DB the rest of Test_Product uses.
+	bus := productbus.NewBusiness(db.Log, del, productdb.NewStore(db.Log, db.DB))
+
+	np := productbus.NewProduct{
+		SKU:                  "DELEGATE-REAL-001",
+		BrandID:              sd.Brands[0].BrandID,
+		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
+		Name:                 "Delegate Real-DB Fixture",
+		Description:          "verifies Create fires ActionCreated through delegate",
+		ModelNumber:          "DLG-REAL",
+		UpcCode:              "DELEGATE-REAL-UPC-001",
+		Status:               "active",
+		IsActive:             true,
+		IsPerishable:         false,
+		HandlingInstructions: "",
+		UnitsPerCase:         1,
+		TrackingType:         "none",
+	}
+
+	noFireSeed := productbus.Product{
+		ProductID:            seedid.Stable("test:productbus:delegateFires:no-fire"),
+		SKU:                  "DELEGATE-REAL-NO-FIRE",
+		BrandID:              sd.Brands[0].BrandID,
+		ProductCategoryID:    sd.ProductCategories[0].ProductCategoryID,
+		Name:                 "Delegate Skip Fixture",
+		Description:          "verifies SeedCreate does NOT fire delegate",
+		ModelNumber:          "DLG-NOFIRE",
+		UpcCode:              "DELEGATE-REAL-UPC-NOFIRE",
+		Status:               "active",
+		IsActive:             true,
+		UnitsPerCase:         1,
+	}
+
+	return []unitest.Table{
+		{
+			Name: "Create_FiresActionCreated",
+			ExpResp: capturedDelegate{
+				Domain: productbus.DomainName,
+				Action: productbus.ActionCreated,
+				Count:  1,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				if _, err := bus.Create(ctx, np); err != nil {
+					return err
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				return capturedDelegate{
+					Domain: capturedDomain,
+					Action: capturedAction,
+					Count:  capturedCount,
+				}
+			},
+			CmpFunc: func(got, exp any) string {
+				if err, isErr := got.(error); isErr {
+					return err.Error()
+				}
+				return cmp.Diff(exp, got)
+			},
+		},
+		{
+			// Capture before/after delta around bus.SeedCreate.
+			// Create_FiresActionCreated already incremented capturedCount
+			// to 1; SeedCreate must leave it untouched.
+			Name:    "SeedCreate_DoesNotFireDelegate",
+			ExpResp: 0,
+			ExcFunc: func(ctx context.Context) any {
+				mu.Lock()
+				before := capturedCount
+				mu.Unlock()
+
+				if err := bus.SeedCreate(ctx, noFireSeed); err != nil {
+					return err
+				}
+
+				mu.Lock()
+				after := capturedCount
+				mu.Unlock()
+
+				return after - before
+			},
+			CmpFunc: func(got, exp any) string {
+				if err, isErr := got.(error); isErr {
+					return err.Error()
+				}
+				gotDelta, ok := got.(int)
+				if !ok {
+					return "expected int delta"
+				}
+				return cmp.Diff(exp.(int), gotDelta)
 			},
 		},
 	}

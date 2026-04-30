@@ -5,19 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
+	"github.com/timmaaaz/ichor/business/sdk/seedid"
 )
-
-// detNamespace matches the Manitowoc generator's UUID v5 namespace.
-// Using the same namespace guarantees label codes produce byte-identical
-// UUIDs across `make reseed-frontend` invocations and across builds.
-var detNamespace = uuid.MustParse("deadbeef-dead-beef-dead-beefdeadbeef")
-
-// detUUID returns a UUID v5 derived from a stable key string.
-func detUUID(key string) uuid.UUID {
-	return uuid.NewSHA1(detNamespace, []byte(key))
-}
 
 // seedLabels inserts the 79-label Phase 0g.B4 catalog (19 locations + 20
 // containers + 40 product labels) with deterministic UUIDs. Matches spec §3.3.
@@ -88,7 +78,7 @@ func seedLabels(ctx context.Context, bus *labelbus.Business, products ProductsSe
 
 	for _, e := range entries {
 		lc := labelbus.LabelCatalog{
-			ID:          detUUID("label:" + e.code),
+			ID:          seedid.Stable("label:" + e.code),
 			Code:        e.code,
 			Type:        e.typ,
 			EntityRef:   e.entityRef,
