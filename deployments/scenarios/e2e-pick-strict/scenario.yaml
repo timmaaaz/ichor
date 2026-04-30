@@ -1,7 +1,7 @@
 # deployments/scenarios/e2e-pick-strict/scenario.yaml
 #
 # E2E lever-variant scenario for pick-strict.spec.ts. Flips pick.lotScan
-# from its SMB-default ("optional" — lot-scan step shown but skippable) to
+# from its SMB-default ("disabled" — lot-scan step not enforced) to
 # "required-if-lot-tracked" (lot-scan step enforced for lot-tracked products).
 # Used by the canonical lever-variant test pattern in pick-strict.spec.ts.
 

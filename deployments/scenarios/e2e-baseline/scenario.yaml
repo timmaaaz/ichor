@@ -4,7 +4,7 @@
 # `leverOverrides.clearActiveScenario()` loads this to revert the running
 # system to SMB-default lever values between tests/specs that override them.
 #
-# UUID is omitted — yamlload computes UUID v5 of "scenario:e2e-baseline"
+# ID is omitted — yamlload.loadOne computes UUID v5 of "scenario:e2e-baseline"
 # under the deadbeef-dead-beef-dead-beefdeadbeef namespace at parse time.
 # Byte-identical across reseeds per Phase 0d Decision 3.
 
