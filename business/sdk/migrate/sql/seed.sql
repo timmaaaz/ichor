@@ -480,6 +480,7 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'config.page_actions', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'config.page_configs', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'config.page_content', true, true, true, true),
+    (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'config.settings', true, true, true, true),
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'config.table_configs', true, true, true, true),
     -- core schema
     (gen_random_uuid(), '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'core.contact_infos', true, true, true, true),
@@ -613,7 +614,9 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'inventory.warehouses', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'products.products', false, true, false, false),
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.order_line_items', false, true, false, false),
-    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.orders', false, true, false, false)
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'sales.orders', false, true, false, false),
+    -- Config settings: read-only so the floor UI can load lever overrides (pick.lotScan etc.)
+    (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'config.settings', false, true, false, false)
 ON CONFLICT DO NOTHING;
 
 -- Grant FLOOR_WORKER workflow action permissions for warehouse operations

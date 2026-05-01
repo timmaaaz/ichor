@@ -19,10 +19,11 @@
 #               map[string]string, optional. Per-scenario overrides for
 #               scan-discipline lever keys. Keys must be in the canonical
 #               set (see business/domain/config/settingsbus/levers/levers.go
-#               for the 11 supported keys; design doc 2026-04-24 §3.3 for
-#               semantics). Values are free-form strings consumed by the
-#               settings resolver. Mirrored into config.scenario_setting_overrides
-#               at seed time; settings GET returns the merged view.
+#               for the supported keys and overridability rules; design doc
+#               2026-04-24 §3.3 for semantics). Values are free-form strings
+#               consumed by the settings resolver. Mirrored into
+#               config.scenario_setting_overrides at seed time; settings GET
+#               returns the merged view.
 #
 # bindings.yaml:
 #   totes     list of {code: string}
