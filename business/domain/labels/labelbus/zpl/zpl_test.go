@@ -11,8 +11,8 @@ func strPtr(s string) *string { return &s }
 func Test_Location_Snapshot(t *testing.T) {
 	got := zpl.Location(zpl.LocationData{Code: "STG-A02"})
 	want := "^XA\n" +
-		"^FO50,50^A0N,40,40^FDSTG-A02^FS\n" +
-		"^FO50,100^BY2^BCN,80,Y,N,N^FDSTG-A02^FS\n" +
+		"^FO40,80^A0N,150,150^FDSTG-A02^FS\n" +
+		"^FO40,300^BY4^BCN,250,Y,N,N^FDSTG-A02^FS\n" +
 		"^XZ\n"
 	if got != want {
 		t.Fatalf("location snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
@@ -22,8 +22,8 @@ func Test_Location_Snapshot(t *testing.T) {
 func Test_Tote_Snapshot(t *testing.T) {
 	got := zpl.Tote(zpl.ToteData{Code: "TOTE-007"})
 	want := "^XA\n" +
-		"^FO50,50^A0N,40,40^FDTOTE-007^FS\n" +
-		"^FO50,100^BY2^BCN,80,Y,N,N^FDTOTE-007^FS\n" +
+		"^FO40,80^A0N,150,150^FDTOTE-007^FS\n" +
+		"^FO40,300^BY4^BCN,250,Y,N,N^FDTOTE-007^FS\n" +
 		"^XZ\n"
 	if got != want {
 		t.Fatalf("tote snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
