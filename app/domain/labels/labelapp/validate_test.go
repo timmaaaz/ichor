@@ -90,3 +90,11 @@ func Test_UpdateLabel_Validate_CodeTooLong(t *testing.T) {
 		t.Fatal("expected validation error for 28-char code, got nil")
 	}
 }
+
+func Test_UpdateLabel_Validate_CodeAtRenderableCap(t *testing.T) {
+	code := "STG-A01-B12C" // 12 chars, the BY4/812-dot upper bound
+	req := labelapp.UpdateLabel{Code: &code}
+	if err := req.Validate(); err != nil {
+		t.Fatalf("expected 12-char code to validate, got: %v", err)
+	}
+}
