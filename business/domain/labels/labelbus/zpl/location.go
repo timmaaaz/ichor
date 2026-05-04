@@ -11,7 +11,7 @@ import (
 //
 // Layout (203 DPI: 1" = 203 dots; label is 812w × 1218h):
 //   Code text (150-dot font) — top
-//   Code128 barcode (BY4, 250-dot height, with human-readable) — middle
+//   Code128 barcode (BY4, 250-dot height, with human-readable) — upper third
 func Location(d LocationData) string {
 	var b strings.Builder
 	b.WriteString("^XA\n")
