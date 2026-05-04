@@ -190,6 +190,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus/stores/pagecontentdb"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/stores/settingscache"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/stores/settingsdb"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus/stores/contactinfosdb"
@@ -488,7 +489,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	pageContentBus := pagecontentbus.NewBusiness(cfg.Log, delegate, pagecontentdb.NewStore(cfg.Log, cfg.DB))
 	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
 	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB), pageContentBus, pageActionBus)
-	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingsdb.NewStore(cfg.Log, cfg.DB))
+	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingscache.NewStore(cfg.Log, settingsdb.NewStore(cfg.Log, cfg.DB), 30*time.Second))
 	userPreferencesBus := userpreferencesbus.NewBusiness(cfg.Log, userpreferencesdb.NewStore(cfg.Log, cfg.DB))
 
 	// Workflow domain

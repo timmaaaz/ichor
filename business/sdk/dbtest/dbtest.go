@@ -176,6 +176,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus/stores/pagecontentdb"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
+	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/stores/settingscache"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/stores/settingsdb"
 
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -440,7 +441,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	pageContentBus := pagecontentbus.NewBusiness(log, delegate, pagecontentdb.NewStore(log, db))
 	pageActionBus := pageactionbus.NewBusiness(log, delegate, pageactiondb.NewStore(log, db))
 	pageConfigBus := pageconfigbus.NewBusiness(log, delegate, pageconfigdb.NewStore(log, db), pageContentBus, pageActionBus)
-	settingsBus := settingsbus.NewBusiness(log, delegate, settingsdb.NewStore(log, db))
+	settingsBus := settingsbus.NewBusiness(log, delegate, settingscache.NewStore(log, settingsdb.NewStore(log, db), 30*time.Second))
 
 	return BusDomain{
 		Delegate:                    delegate,

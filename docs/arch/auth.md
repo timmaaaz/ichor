@@ -131,6 +131,45 @@ pass-through (no cache):
 
 ---
 
+## SettingsCache [cache] — snapshot variant
+
+file: business/domain/config/settingsbus/stores/settingscache/settingscache.go
+sturdyc config: TTL=30s  Capacity=64  Shards=2  (smaller — single snapshot key, not per-entity)
+
+⚠ This cache uses a SNAPSHOT variant — different sub-pattern than the per-entity caches above.
+  per-entity caches (rolecache, tableaccesscache, usercache, ...): one cache key per UUID,
+                                                                   Query and Count pass-through.
+  snapshot cache (this one):                                       one key for the whole table,
+                                                                   Query/Count/QueryByKey all
+                                                                   derive from the snapshot.
+
+  Use the snapshot variant when:
+    - table is small and bounded (settings = admin-edited lever keys, low hundreds in practice)
+    - read pattern is dominated by prefix queries (per-entity caching can't accelerate them)
+  Avoid for unbounded or write-heavy tables — full eviction on any write is expensive.
+
+cached methods (all derive from one snapshot via sturdyc.GetOrFetch singleflight):
+  Query(ctx, filter, orderBy, page) ([]Setting, error)   ← whole snapshot, filter/sort/paginate in mem
+  Count(ctx, filter) (int, error)                        ← snapshot length after filter (no clone)
+  QueryByKey(ctx, key) (Setting, error)                  ← peek snapshot; fall back to DB if cold
+
+write-through (full snapshot eviction on any write):
+  Create(ctx, setting) error
+  Update(ctx, setting) error
+  Delete(ctx, setting) error
+
+tx-bound (txStore wrapper — eager eviction on inner-store success):
+  NewWithTx(tx) (Storer, error)
+  Note: eviction fires when the inner Create/Update/Delete returns nil error, NOT on tx commit.
+        sqldb.CommitRollbacker exposes no post-commit hook, so a rollback evicts unnecessarily.
+        Safe (one extra DB fetch on next read) but worth knowing.
+
+safety nets:
+  - snapshot result length compared to snapshotCap=1000 each fetch; warns if at cap (truncation risk)
+  - returned Setting is cloneSetting()'d to prevent caller mutation of cached json.RawMessage Value
+
+---
+
 ## Middleware [app]
 
 file: app/sdk/mid/
@@ -202,11 +241,13 @@ key facts:
   api/domain/http/{area}/{entity}api/route.go                 (pass rule string to AuthorizeTable call)
   business/sdk/migrate/sql/migrate.sql                        (seed default role permissions if required)
 
-## ⚠ Changing Sturdyc TTL or capacity (affects 2 caches independently)
+## ⚠ Changing Sturdyc TTL or capacity (affects 3 caches independently — different shapes)
 
-  business/domain/core/rolebus/stores/rolecache/rolecache.go          (TTL=60min, Capacity=10000, Shards=10)
-  business/domain/core/tableaccessbus/stores/tableaccesscache/tableaccesscache.go  (same values — change separately)
-  Note: permissionsbus.ClearCache() is a delegate subscriber — it clears both caches on relevant events
+  business/domain/core/rolebus/stores/rolecache/rolecache.go                       (per-entity:  TTL=60min, Capacity=10000, Shards=10)
+  business/domain/core/tableaccessbus/stores/tableaccesscache/tableaccesscache.go  (per-entity:  same values — change separately)
+  business/domain/config/settingsbus/stores/settingscache/settingscache.go         (snapshot:    TTL=30s,   Capacity=64,    Shards=2 — see SettingsCache section)
+  Note: permissionsbus.ClearCache() is a delegate subscriber — it clears the rolecache + tableaccesscache pair on relevant events.
+        settingscache is invalidated by its own Create/Update/Delete (no delegate subscriber today).
 
 ## ⚠ Adding middleware to the route chain (ordering matters)
 
