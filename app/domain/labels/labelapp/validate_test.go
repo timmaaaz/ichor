@@ -42,3 +42,33 @@ func Test_RenderPrintRequest_Validate_PayloadAtCap(t *testing.T) {
 		t.Fatalf("expected payload under cap to validate, got: %v", err)
 	}
 }
+
+func Test_NewLabel_Validate_CodeTooLong(t *testing.T) {
+	req := labelapp.NewLabel{
+		Code: "WAREHOUSE-RECEIVING-DOCK-12A", // 28 chars, schema-allowed but not renderable
+		Type: labelbus.TypeLocation,
+	}
+	if err := req.Validate(); err == nil {
+		t.Fatal("expected validation error for 28-char code, got nil")
+	}
+}
+
+func Test_NewLabel_Validate_CodeAtRenderableCap(t *testing.T) {
+	req := labelapp.NewLabel{
+		Code: "STG-A01-B12C", // 12 chars, the BY4/812-dot upper bound
+		Type: labelbus.TypeLocation,
+	}
+	if err := req.Validate(); err != nil {
+		t.Fatalf("expected 12-char code to validate, got: %v", err)
+	}
+}
+
+func Test_RenderPrintRequest_Validate_CodeTooLong(t *testing.T) {
+	req := labelapp.RenderPrintRequest{
+		Type: labelbus.TypeLocation,
+		Code: "WAREHOUSE-RECEIVING-DOCK-12A",
+	}
+	if err := req.Validate(); err == nil {
+		t.Fatal("expected validation error for 28-char code, got nil")
+	}
+}

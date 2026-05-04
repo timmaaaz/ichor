@@ -70,7 +70,14 @@ func ToAppLabels(bus []labelbus.LabelCatalog) Labels {
 
 // NewLabel is the input shape for POST /v1/labels (catalog row creation).
 type NewLabel struct {
-	Code        string `json:"code" validate:"required,min=1,max=32"`
+	// Code length max=12 reflects the practical render budget on the
+	// established Zebra GK420t 4"×6" media: ≈12 alphanumeric chars
+	// fit a Code128 BY4 barcode at 812-dot width after start/check/stop
+	// (~140 dots) + quiet zones (~80 dots) at 44 dots/char. Schema
+	// column is VARCHAR(32) for future media flexibility; the
+	// validator is tightened here so we fail loud at ingress instead
+	// of silently producing labels with clipped barcodes.
+	Code        string `json:"code" validate:"required,min=1,max=12"`
 	Type        string `json:"type" validate:"required,oneof=location container lot serial product receiving pick"`
 	EntityRef   string `json:"entity_ref,omitempty" validate:"omitempty,max=128"`
 	PayloadJSON string `json:"payload_json,omitempty"`
@@ -100,7 +107,8 @@ func toBusNewLabel(app NewLabel) labelbus.NewLabelCatalog {
 
 // UpdateLabel carries optional patch fields for PUT /v1/labels/{label_id}.
 type UpdateLabel struct {
-	Code        *string `json:"code,omitempty" validate:"omitempty,min=1,max=32"`
+	// Code: see NewLabel.Code for the max=12 rationale.
+	Code        *string `json:"code,omitempty" validate:"omitempty,min=1,max=12"`
 	Type        *string `json:"type,omitempty" validate:"omitempty,oneof=location container lot serial product receiving pick"`
 	EntityRef   *string `json:"entity_ref,omitempty" validate:"omitempty,max=128"`
 	PayloadJSON *string `json:"payload_json,omitempty"`
@@ -165,7 +173,8 @@ func (app PrintRequest) Validate() error {
 // right field is present for the requested Type.
 type RenderPrintRequest struct {
 	Type    string          `json:"type" validate:"required,oneof=location container product"`
-	Code    string          `json:"code,omitempty" validate:"omitempty,max=32"`
+	// Code: see NewLabel.Code for the max=12 rationale.
+	Code    string          `json:"code,omitempty" validate:"omitempty,max=12"`
 	Payload json.RawMessage `json:"payload,omitempty"`
 	Copies  int             `json:"copies,omitempty" validate:"omitempty,min=1,max=100"`
 }
