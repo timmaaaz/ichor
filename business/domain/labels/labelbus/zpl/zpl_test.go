@@ -82,3 +82,19 @@ func Test_Tote_Body_Identical_To_Location(t *testing.T) {
 		}
 	}
 }
+
+// Test_Location_Snapshot_MaxSafeCode pins template byte output for a
+// 12-char code — the upper bound enforced at the API validator layer
+// (app/domain/labels/labelapp/model.go). If this test fails after a
+// validator change, the template layout has not been re-budgeted for
+// the new bound and the new bound will produce clipped barcodes.
+func Test_Location_Snapshot_MaxSafeCode(t *testing.T) {
+	got := zpl.Location(zpl.LocationData{Code: "STG-A01-B12C"})
+	want := "^XA\n" +
+		"^FO40,80^A0N,150,150^FDSTG-A01-B12C^FS\n" +
+		"^FO40,300^BY4^BCN,250,Y,N,N^FDSTG-A01-B12C^FS\n" +
+		"^XZ\n"
+	if got != want {
+		t.Fatalf("location max-safe snapshot drift.\nwant:\n%q\ngot:\n%q\n", want, got)
+	}
+}
