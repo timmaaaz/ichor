@@ -243,9 +243,15 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "UpdateCode",
 			ExpResp: supplierbus.Supplier{
-				SupplierID:  sd.Suppliers[1].SupplierID,
-				Code:        "SUP-UPDATED-001",
-				CreatedDate: sd.Suppliers[1].CreatedDate,
+				ContactInfosID: sd.Suppliers[1].ContactInfosID,
+				SupplierID:     sd.Suppliers[1].SupplierID,
+				Code:           "SUP-UPDATED-001",
+				Name:           sd.Suppliers[1].Name,
+				PaymentTermID:  sd.Suppliers[1].PaymentTermID,
+				LeadTimeDays:   sd.Suppliers[1].LeadTimeDays,
+				Rating:         sd.Suppliers[1].Rating,
+				IsActive:       sd.Suppliers[1].IsActive,
+				CreatedDate:    sd.Suppliers[1].CreatedDate,
 			},
 			ExcFunc: func(ctx context.Context) any {
 				updateSupplier := supplierbus.UpdateSupplier{
@@ -273,15 +279,10 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 
 				expResp := exp.(supplierbus.Supplier)
 
-				// Only assert the fields we care about for this case.
-				if gotResp.Code != expResp.Code {
-					return fmt.Sprintf("Code mismatch: got %q, want %q", gotResp.Code, expResp.Code)
-				}
-				if gotResp.SupplierID != expResp.SupplierID {
-					return fmt.Sprintf("SupplierID mismatch: got %v, want %v", gotResp.SupplierID, expResp.SupplierID)
-				}
+				expResp.SupplierID = gotResp.SupplierID
+				expResp.UpdatedDate = gotResp.UpdatedDate
 
-				return ""
+				return cmp.Diff(gotResp, expResp)
 			},
 		},
 	}
