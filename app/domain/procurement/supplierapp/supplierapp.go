@@ -70,6 +70,9 @@ func (a *App) Update(ctx context.Context, app UpdateSupplier, id uuid.UUID) (Sup
 
 	supplier, err := a.supplierbus.Update(ctx, st, upc)
 	if err != nil {
+		if errors.Is(err, supplierbus.ErrUniqueEntry) {
+			return Supplier{}, errs.New(errs.AlreadyExists, err)
+		}
 		if errors.Is(err, supplierbus.ErrForeignKeyViolation) {
 			return Supplier{}, errs.New(errs.Aborted, supplierbus.ErrForeignKeyViolation)
 		}

@@ -106,6 +106,9 @@ func newRefLookups(
 			if len(rows) == 0 {
 				return uuid.Nil, fmt.Errorf("warehouse not found for code=%s", code)
 			}
+			if rows[0].Code != code {
+				return uuid.Nil, fmt.Errorf("warehouse not found for code=%s (closest match: %s)", code, rows[0].Code)
+			}
 			return rows[0].ID, nil
 		},
 		currencyIDByCode: func(ctx context.Context, code string) (uuid.UUID, error) {
@@ -136,6 +139,9 @@ func newRefLookups(
 			if len(rows) == 0 {
 				return uuid.Nil, fmt.Errorf("user not found for username=%s", username)
 			}
+			if rows[0].Username.String() != username {
+				return uuid.Nil, fmt.Errorf("user not found for username=%s (closest match: %s)", username, rows[0].Username.String())
+			}
 			return rows[0].ID, nil
 		},
 		purchaseOrderStatusIDByName: func(ctx context.Context, name string) (uuid.UUID, error) {
@@ -148,6 +154,9 @@ func newRefLookups(
 			}
 			if len(rows) == 0 {
 				return uuid.Nil, fmt.Errorf("purchase_order_status not found for name=%s", name)
+			}
+			if rows[0].Name != name {
+				return uuid.Nil, fmt.Errorf("purchase_order_status not found for name=%s (closest match: %s)", name, rows[0].Name)
 			}
 			return rows[0].ID, nil
 		},

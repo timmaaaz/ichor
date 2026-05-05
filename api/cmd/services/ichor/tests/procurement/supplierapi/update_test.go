@@ -170,5 +170,20 @@ func update409(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "duplicate-code",
+			URL:        fmt.Sprintf("/v1/procurement/suppliers/%s", sd.Suppliers[0].SupplierID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusConflict,
+			Input: &supplierapp.UpdateSupplier{
+				Code: dbtest.StringPointer(sd.Suppliers[1].Code),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.AlreadyExists, "update: namedexeccontext: supplier entry is not unique"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 }
