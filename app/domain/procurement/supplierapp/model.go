@@ -77,7 +77,7 @@ func ToAppSuppliers(bus []supplierbus.Supplier) []Supplier {
 
 type NewSupplier struct {
 	ContactInfosID string `json:"contact_infos_id" validate:"required,min=36,max=36"`
-	Code           string `json:"code" validate:"required"`
+	Code           string `json:"code" validate:"required,min=1,max=32"`
 	Name           string `json:"name" validate:"required"`
 	PaymentTermID  string `json:"payment_term_id" validate:"omitempty,uuid4"`
 	LeadTimeDays   string `json:"lead_time_days" validate:"required"`
@@ -139,7 +139,7 @@ func toBusNewSupplier(app NewSupplier) (supplierbus.NewSupplier, error) {
 
 type UpdateSupplier struct {
 	ContactInfosID *string `json:"contact_infos_id" validate:"omitempty,min=36,max=36"`
-	Code           *string `json:"code" validate:"omitempty"`
+	Code           *string `json:"code" validate:"omitempty,min=1,max=32"`
 	Name           *string `json:"name" validate:"omitempty"`
 	PaymentTermID  *string `json:"payment_term_id" validate:"omitempty,uuid4"`
 	LeadTimeDays   *string `json:"lead_time_days" validate:"omitempty"`

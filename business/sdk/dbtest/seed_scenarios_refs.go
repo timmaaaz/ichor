@@ -93,6 +93,9 @@ func newRefLookups(
 			if len(rows) == 0 {
 				return uuid.Nil, fmt.Errorf("supplier not found for code=%s", code)
 			}
+			if rows[0].Code != code {
+				return uuid.Nil, fmt.Errorf("supplier not found for code=%s (closest match: %s)", code, rows[0].Code)
+			}
 			return rows[0].SupplierID, nil
 		},
 		warehouseIDByCode: func(ctx context.Context, code string) (uuid.UUID, error) {
@@ -129,7 +132,7 @@ func newRefLookups(
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("user parse username=%s: %w", username, err)
 			}
-			filter := userbus.QueryFilter{Username: &name}
+			filter := userbus.QueryFilter{UsernameExact: &name}
 			orderBy := order.NewBy("username", order.ASC)
 			pg := page.MustParse("1", "1")
 			rows, err := usr.Query(ctx, filter, orderBy, pg)
@@ -145,7 +148,7 @@ func newRefLookups(
 			return rows[0].ID, nil
 		},
 		purchaseOrderStatusIDByName: func(ctx context.Context, name string) (uuid.UUID, error) {
-			filter := purchaseorderstatusbus.QueryFilter{Name: &name}
+			filter := purchaseorderstatusbus.QueryFilter{NameExact: &name}
 			orderBy := order.NewBy("name", order.ASC)
 			pg := page.MustParse("1", "1")
 			rows, err := pos.Query(ctx, filter, orderBy, pg)

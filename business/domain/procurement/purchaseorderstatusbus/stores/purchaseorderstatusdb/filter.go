@@ -20,6 +20,11 @@ func applyFilter(filter purchaseorderstatusbus.QueryFilter, data map[string]any,
 		wc = append(wc, "name ILIKE :name")
 	}
 
+	if filter.NameExact != nil {
+		data["name_exact"] = *filter.NameExact
+		wc = append(wc, "name = :name_exact")
+	}
+
 	if filter.Description != nil {
 		data["description"] = "%" + *filter.Description + "%"
 		wc = append(wc, "description ILIKE :description")

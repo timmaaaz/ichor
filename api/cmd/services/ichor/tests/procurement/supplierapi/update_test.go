@@ -180,7 +180,7 @@ func update409(sd apitest.SeedData) []apitest.Table {
 				Code: dbtest.StringPointer(sd.Suppliers[1].Code),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.AlreadyExists, "update: namedexeccontext: supplier entry is not unique"),
+			ExpResp: errs.Newf(errs.AlreadyExists, "supplier entry is not unique"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

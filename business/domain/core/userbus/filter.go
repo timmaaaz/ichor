@@ -17,6 +17,7 @@ type QueryFilter struct {
 	TitleID            *uuid.UUID
 	OfficeID           *uuid.UUID
 	Username           *Name
+	UsernameExact      *Name
 	FirstName          *Name
 	LastName           *Name
 	Email              *mail.Address
