@@ -2633,4 +2633,4 @@ FROM ranked
 WHERE s.id = ranked.id;
 
 ALTER TABLE procurement.suppliers ALTER COLUMN code SET NOT NULL;
-ALTER TABLE procurement.suppliers ADD CONSTRAINT uq_suppliers_code UNIQUE (code);
+ALTER TABLE procurement.suppliers ADD CONSTRAINT suppliers_code_unique UNIQUE (code);

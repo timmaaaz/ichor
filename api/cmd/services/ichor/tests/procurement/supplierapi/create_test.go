@@ -218,6 +218,27 @@ func create409(sd apitest.SeedData) []apitest.Table {
 				return cmp.Diff(got, exp)
 			},
 		},
+		{
+			Name:       "duplicate-code",
+			URL:        "/v1/procurement/suppliers",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusConflict,
+			Input: &supplierapp.NewSupplier{
+				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           sd.Suppliers[0].Code,
+				Name:           "DuplicateCode",
+				PaymentTermID:  sd.PaymentTerms[0].ID,
+				LeadTimeDays:   "8",
+				Rating:         "4.6",
+				IsActive:       "true",
+			},
+			ExpResp: errs.Newf(errs.AlreadyExists, "create: namedexeccontext: supplier entry is not unique"),
+			GotResp: &errs.Error{},
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
 	}
 }
 

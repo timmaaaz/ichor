@@ -240,6 +240,50 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				return cmp.Diff(gotResp, expResp)
 			},
 		},
+		{
+			Name: "UpdateCode",
+			ExpResp: supplierbus.Supplier{
+				SupplierID:  sd.Suppliers[1].SupplierID,
+				Code:        "SUP-UPDATED-001",
+				CreatedDate: sd.Suppliers[1].CreatedDate,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				updateSupplier := supplierbus.UpdateSupplier{
+					Code: dbtest.StringPointer("SUP-UPDATED-001"),
+				}
+
+				s, err := busDomain.Supplier.Update(ctx, sd.Suppliers[1], updateSupplier)
+				if err != nil {
+					return err
+				}
+
+				// Re-query to confirm the new Code persisted.
+				persisted, err := busDomain.Supplier.QueryByID(ctx, s.SupplierID)
+				if err != nil {
+					return err
+				}
+
+				return persisted
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(supplierbus.Supplier)
+				if !exists {
+					return fmt.Sprintf("got is not a supplier: %v", got)
+				}
+
+				expResp := exp.(supplierbus.Supplier)
+
+				// Only assert the fields we care about for this case.
+				if gotResp.Code != expResp.Code {
+					return fmt.Sprintf("Code mismatch: got %q, want %q", gotResp.Code, expResp.Code)
+				}
+				if gotResp.SupplierID != expResp.SupplierID {
+					return fmt.Sprintf("SupplierID mismatch: got %v, want %v", gotResp.SupplierID, expResp.SupplierID)
+				}
+
+				return ""
+			},
+		},
 	}
 }
 
