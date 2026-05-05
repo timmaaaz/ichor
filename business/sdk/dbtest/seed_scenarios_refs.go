@@ -6,21 +6,21 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	currencybus "github.com/timmaaaz/ichor/business/domain/core/currencybus"
+	userbus "github.com/timmaaaz/ichor/business/domain/core/userbus"
 	inventorylocationbus "github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	warehousebus "github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
-	currencybus "github.com/timmaaaz/ichor/business/domain/core/currencybus"
-	userbus "github.com/timmaaaz/ichor/business/domain/core/userbus"
-	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	purchaseorderstatusbus "github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
 	supplierbus "github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 // refResolver resolves a single stable human-readable code to a UUID.
-// Each ref suffix (product_ref, location_ref, tote_ref) has its own
-// resolver so the dispatch in resolveRefs can stay a flat switch.
+// Each ref suffix has its own resolver so the dispatch in resolveRefs
+// can stay a flat switch.
 type refResolver func(ctx context.Context, value string) (uuid.UUID, error)
 
 // refLookups bundles the resolver functions the seeder uses at
@@ -155,7 +155,7 @@ func newRefLookups(
 }
 
 // refKeySuffix identifies a key that needs ref→id resolution. Kept as a
-// constant set so unknown suffixes (e.g. warehouse_ref) fail loudly rather
+// constant set so unknown suffixes (e.g. vendor_ref) fail loudly rather
 // than being silently passed through as strings into payload_json.
 var knownRefSuffixes = map[string]struct{}{
 	"product_ref":               {},
