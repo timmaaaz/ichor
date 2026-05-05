@@ -19,6 +19,7 @@ func TestNewSupplier(n int, ContactInfosIDs uuid.UUIDs) []NewSupplier {
 
 		newSuppliers[i] = NewSupplier{
 			ContactInfosID: ContactInfosIDs[idx%len(ContactInfosIDs)],
+			Code:           fmt.Sprintf("SUP-%03d", i+1),
 			Name:           fmt.Sprintf("Name%d", idx),
 			LeadTimeDays:   idx,
 			Rating:         types.MustParseRoundedFloat(fmt.Sprintf("%.2f", rand.Float64()*10)),

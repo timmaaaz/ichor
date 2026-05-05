@@ -15,6 +15,7 @@ import (
 type Supplier struct {
 	SupplierID     uuid.UUID          `json:"supplier_id"`
 	ContactInfosID uuid.UUID          `json:"contact_infos_id"`
+	Code           string             `json:"code"`
 	Name           string             `json:"name"`
 	PaymentTermID  *uuid.UUID         `json:"payment_term_id,omitempty"`
 	LeadTimeDays   int                `json:"lead_time_days"`
@@ -26,6 +27,7 @@ type Supplier struct {
 
 type NewSupplier struct {
 	ContactInfosID uuid.UUID          `json:"contact_infos_id"`
+	Code           string             `json:"code"`
 	Name           string             `json:"name"`
 	PaymentTermID  *uuid.UUID         `json:"payment_term_id,omitempty"`
 	LeadTimeDays   int                `json:"lead_time_days"`
@@ -35,6 +37,7 @@ type NewSupplier struct {
 
 type UpdateSupplier struct {
 	ContactInfosID *uuid.UUID          `json:"contact_infos_id,omitempty"`
+	Code           *string             `json:"code,omitempty"`
 	Name           *string             `json:"name,omitempty"`
 	PaymentTermID  *uuid.UUID          `json:"payment_term_id,omitempty"`
 	LeadTimeDays   *int                `json:"lead_time_days,omitempty"`

@@ -519,6 +519,7 @@ func Test_QueryAvailableForAllocation(t *testing.T) {
 
 	supplier, err := bd.Supplier.Create(ctx, supplierbus.NewSupplier{
 		ContactInfosID: contactIDs[0],
+		Code:           "SUP-IT-001",
 		Name:           "Test Supplier",
 		LeadTimeDays:   7,
 		Rating:         suptypes.NewRoundedFloat(4.5),

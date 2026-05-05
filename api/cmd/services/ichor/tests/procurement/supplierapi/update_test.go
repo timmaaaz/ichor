@@ -32,6 +32,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &supplierapp.Supplier{},
 			ExpResp: &supplierapp.Supplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           sd.Suppliers[0].Code,
 				Name:           "UpdateSupplier",
 				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "10",

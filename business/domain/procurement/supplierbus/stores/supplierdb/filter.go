@@ -20,6 +20,11 @@ func applyFilter(filter supplierbus.QueryFilter, data map[string]any, buf *bytes
 		wc = append(wc, "contact_infos_id = :contact_infos_id")
 	}
 
+	if filter.Code != nil {
+		data["code"] = *filter.Code
+		wc = append(wc, "code = :code")
+	}
+
 	if filter.Name != nil {
 		data["name"] = "%" + *filter.Name + "%"
 		wc = append(wc, "name ILIKE :name")

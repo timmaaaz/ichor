@@ -15,6 +15,7 @@ func parseQueryParams(r *http.Request) (supplierapp.QueryParams, error) {
 		OrderBy:        values.Get("orderBy"),
 		SupplierID:     values.Get("supplier_id"),
 		ContactInfosID: values.Get("contact_infos_id"),
+		Code:           values.Get("code"),
 		Name:           values.Get("name"),
 		PaymentTermID:  values.Get("payment_term_id"),
 		LeadTimeDays:   values.Get("lead_time_days"),

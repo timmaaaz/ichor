@@ -10,6 +10,7 @@ var defaultOrderBy = order.NewBy("name", order.ASC)
 var orderByFields = map[string]string{
 	"id":               supplierbus.OrderBySupplierID,
 	"contact_infos_id": supplierbus.OrderByContactInfosID,
+	"code":             supplierbus.OrderByCode,
 	"name":             supplierbus.OrderByName,
 	"payment_term_id":  supplierbus.OrderByPaymentTermID,
 	"lead_time_days":   supplierbus.OrderByLeadTimeDays,

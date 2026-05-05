@@ -22,6 +22,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           "SUP-API-001",
 				Name:           "NewName",
 				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "8",
@@ -31,6 +32,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &supplierapp.Supplier{},
 			ExpResp: &supplierapp.Supplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           "SUP-API-001",
 				Name:           "NewName",
 				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "8",
@@ -63,6 +65,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.NewSupplier{
+				Code:         "SUP-VAL-001",
 				Name:         "NewName",
 				LeadTimeDays: "8",
 				Rating:       "4.6",
@@ -75,6 +78,25 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
+			Name:       "missing-code",
+			URL:        "/v1/procurement/suppliers",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input: &supplierapp.NewSupplier{
+				ContactInfosID: sd.ContactInfos[0].ID,
+				Name:           "NewName",
+				LeadTimeDays:   "8",
+				Rating:         "4.6",
+				IsActive:       "true",
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"code\",\"error\":\"code is a required field\"}]"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
 			Name:       "missing-name",
 			URL:        "/v1/procurement/suppliers",
 			Token:      sd.Admins[0].Token,
@@ -82,6 +104,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           "SUP-VAL-002",
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
 				IsActive:       "true",
@@ -100,6 +123,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           "SUP-VAL-003",
 				Name:           "NewName",
 				Rating:         "4.6",
 				IsActive:       "true",
@@ -118,6 +142,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           "SUP-VAL-004",
 				Name:           "NewName",
 				LeadTimeDays:   "8",
 				IsActive:       "true",
@@ -136,6 +161,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           "SUP-VAL-005",
 				Name:           "NewName",
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
@@ -154,6 +180,7 @@ func create400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input: &supplierapp.Supplier{
 				ContactInfosID: "not-a-uuid",
+				Code:           "SUP-VAL-006",
 				Name:           "NewName",
 				LeadTimeDays:   "8",
 				Rating:         "4.6",
@@ -178,6 +205,7 @@ func create409(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusConflict,
 			Input: &supplierapp.NewSupplier{
 				ContactInfosID: uuid.New().String(),
+				Code:           "SUP-409-001",
 				Name:           "NewName",
 				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "8",

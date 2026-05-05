@@ -151,6 +151,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "Create",
 			ExpResp: supplierbus.Supplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           "SUP-TEST-001",
 				Name:           "Name",
 				PaymentTermID:  &sd.PaymentTerms[0].ID,
 				LeadTimeDays:   8,
@@ -160,6 +161,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				newSupplier := supplierbus.NewSupplier{
 					ContactInfosID: sd.ContactInfos[0].ID,
+					Code:           "SUP-TEST-001",
 					Name:           "Name",
 					PaymentTermID:  &sd.PaymentTerms[0].ID,
 					LeadTimeDays:   8,
@@ -199,6 +201,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: supplierbus.Supplier{
 				ContactInfosID: sd.ContactInfos[2].ID,
 				SupplierID:     sd.Suppliers[0].SupplierID,
+				Code:           sd.Suppliers[0].Code,
 				Name:           "UpdatedName",
 				PaymentTermID:  &sd.PaymentTerms[1].ID,
 				LeadTimeDays:   10,

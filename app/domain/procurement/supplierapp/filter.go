@@ -30,6 +30,10 @@ func parseFilter(qp QueryParams) (supplierbus.QueryFilter, error) {
 		filter.ContactInfosID = &id
 	}
 
+	if qp.Code != "" {
+		filter.Code = &qp.Code
+	}
+
 	if qp.Name != "" {
 		filter.Name = &qp.Name
 	}

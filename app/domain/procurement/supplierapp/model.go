@@ -19,6 +19,7 @@ type QueryParams struct {
 
 	SupplierID     string
 	ContactInfosID string
+	Code           string
 	Name           string
 	PaymentTermID  string
 	LeadTimeDays   string
@@ -31,6 +32,7 @@ type QueryParams struct {
 type Supplier struct {
 	SupplierID     string `json:"supplier_id"`
 	ContactInfosID string `json:"contact_infos_id"`
+	Code           string `json:"code"`
 	Name           string `json:"name"`
 	PaymentTermID  string `json:"payment_term_id,omitempty"`
 	LeadTimeDays   string `json:"lead_time_days"`
@@ -49,6 +51,7 @@ func ToAppSupplier(bus supplierbus.Supplier) Supplier {
 	app := Supplier{
 		SupplierID:     bus.SupplierID.String(),
 		ContactInfosID: bus.ContactInfosID.String(),
+		Code:           bus.Code,
 		Name:           bus.Name,
 		LeadTimeDays:   fmt.Sprintf("%d", bus.LeadTimeDays),
 		Rating:         bus.Rating.String(),
@@ -74,6 +77,7 @@ func ToAppSuppliers(bus []supplierbus.Supplier) []Supplier {
 
 type NewSupplier struct {
 	ContactInfosID string `json:"contact_infos_id" validate:"required,min=36,max=36"`
+	Code           string `json:"code" validate:"required"`
 	Name           string `json:"name" validate:"required"`
 	PaymentTermID  string `json:"payment_term_id" validate:"omitempty,uuid4"`
 	LeadTimeDays   string `json:"lead_time_days" validate:"required"`
@@ -115,6 +119,7 @@ func toBusNewSupplier(app NewSupplier) (supplierbus.NewSupplier, error) {
 
 	bus := supplierbus.NewSupplier{
 		ContactInfosID: ContactInfosID,
+		Code:           app.Code,
 		Name:           app.Name,
 		LeadTimeDays:   leadTimeDays,
 		Rating:         rating,
@@ -134,6 +139,7 @@ func toBusNewSupplier(app NewSupplier) (supplierbus.NewSupplier, error) {
 
 type UpdateSupplier struct {
 	ContactInfosID *string `json:"contact_infos_id" validate:"omitempty,min=36,max=36"`
+	Code           *string `json:"code" validate:"omitempty"`
 	Name           *string `json:"name" validate:"omitempty"`
 	PaymentTermID  *string `json:"payment_term_id" validate:"omitempty,uuid4"`
 	LeadTimeDays   *string `json:"lead_time_days" validate:"omitempty"`
@@ -189,6 +195,10 @@ func toBusUpdateSupplier(app UpdateSupplier) (supplierbus.UpdateSupplier, error)
 			return supplierbus.UpdateSupplier{}, errs.NewFieldsError("contact_infos_id", err)
 		}
 		dest.ContactInfosID = &ContactInfosID
+	}
+
+	if app.Code != nil {
+		dest.Code = app.Code
 	}
 
 	if app.Name != nil {

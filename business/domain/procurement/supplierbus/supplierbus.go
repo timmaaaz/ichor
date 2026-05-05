@@ -76,6 +76,7 @@ func (b *Business) Create(ctx context.Context, newSupplier NewSupplier) (Supplie
 
 	supplier := Supplier{
 		SupplierID:     uuid.New(),
+		Code:           newSupplier.Code,
 		Name:           newSupplier.Name,
 		ContactInfosID: newSupplier.ContactInfosID,
 		IsActive:       newSupplier.IsActive,
@@ -107,6 +108,9 @@ func (b *Business) Update(ctx context.Context, supplier Supplier, us UpdateSuppl
 
 	if us.ContactInfosID != nil {
 		supplier.ContactInfosID = *us.ContactInfosID
+	}
+	if us.Code != nil {
+		supplier.Code = *us.Code
 	}
 	if us.Name != nil {
 		supplier.Name = *us.Name

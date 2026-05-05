@@ -10,6 +10,7 @@ import (
 var orderByFields = map[string]string{
 	supplierbus.OrderBySupplierID:     "id",
 	supplierbus.OrderByContactInfosID: "contact_infos_id",
+	supplierbus.OrderByCode:           "code",
 	supplierbus.OrderByName:           "name",
 	supplierbus.OrderByPaymentTermID:  "payment_term_id",
 	supplierbus.OrderByLeadTimeDays:   "lead_time_days",
