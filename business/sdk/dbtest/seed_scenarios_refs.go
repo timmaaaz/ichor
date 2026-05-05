@@ -183,8 +183,8 @@ var knownRefSuffixes = map[string]struct{}{
 //   - injects scenario_id if not already present
 //
 // Keys that don't end in "_ref" pass through untouched. Unknown "_ref" keys
-// (e.g. future "supplier_ref" before a resolver lands) fail-hard so silent
-// mis-seeding can't happen.
+// (anything not in knownRefSuffixes above) fail-hard so silent mis-seeding
+// can't happen.
 func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, lookups refLookups) (map[string]any, error) {
 	out := make(map[string]any, len(row)+1)
 	for k, v := range row {
