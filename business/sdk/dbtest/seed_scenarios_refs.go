@@ -7,8 +7,13 @@ import (
 
 	"github.com/google/uuid"
 	inventorylocationbus "github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	warehousebus "github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
+	currencybus "github.com/timmaaaz/ichor/business/domain/core/currencybus"
+	userbus "github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	purchaseorderstatusbus "github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
+	supplierbus "github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
@@ -18,17 +23,31 @@ import (
 // resolver so the dispatch in resolveRefs can stay a flat switch.
 type refResolver func(ctx context.Context, value string) (uuid.UUID, error)
 
-// refLookups bundles the three resolver functions the seeder uses at
+// refLookups bundles the resolver functions the seeder uses at
 // fixture-materialization time. Exposed as an interface (via fields, not
 // methods) so the unit test can pass fakes without touching a live DB.
 type refLookups struct {
-	productIDBySKU   refResolver
-	locationIDByCode refResolver
-	labelIDByCode    refResolver
+	productIDBySKU              refResolver
+	locationIDByCode            refResolver
+	labelIDByCode               refResolver
+	supplierIDByCode            refResolver
+	warehouseIDByCode           refResolver
+	currencyIDByCode            refResolver
+	userIDByUsername            refResolver
+	purchaseOrderStatusIDByName refResolver
 }
 
 // newRefLookups wires resolvers against real bus instances. Seeder path.
-func newRefLookups(prod *productbus.Business, loc *inventorylocationbus.Business, lbl *labelbus.Business) refLookups {
+func newRefLookups(
+	prod *productbus.Business,
+	loc *inventorylocationbus.Business,
+	lbl *labelbus.Business,
+	sup *supplierbus.Business,
+	wh *warehousebus.Business,
+	cur *currencybus.Business,
+	usr *userbus.Business,
+	pos *purchaseorderstatusbus.Business,
+) refLookups {
 	return refLookups{
 		productIDBySKU: func(ctx context.Context, sku string) (uuid.UUID, error) {
 			filter := productbus.QueryFilter{SKU: &sku}
@@ -63,6 +82,75 @@ func newRefLookups(prod *productbus.Business, loc *inventorylocationbus.Business
 			}
 			return lc.ID, nil
 		},
+		supplierIDByCode: func(ctx context.Context, code string) (uuid.UUID, error) {
+			filter := supplierbus.QueryFilter{Code: &code}
+			orderBy := order.NewBy("code", order.ASC)
+			pg := page.MustParse("1", "1")
+			rows, err := sup.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("supplier query code=%s: %w", code, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("supplier not found for code=%s", code)
+			}
+			return rows[0].SupplierID, nil
+		},
+		warehouseIDByCode: func(ctx context.Context, code string) (uuid.UUID, error) {
+			filter := warehousebus.QueryFilter{Code: &code}
+			orderBy := order.NewBy("code", order.ASC)
+			pg := page.MustParse("1", "1")
+			rows, err := wh.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("warehouse query code=%s: %w", code, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("warehouse not found for code=%s", code)
+			}
+			return rows[0].ID, nil
+		},
+		currencyIDByCode: func(ctx context.Context, code string) (uuid.UUID, error) {
+			filter := currencybus.QueryFilter{Code: &code}
+			orderBy := order.NewBy("code", order.ASC)
+			pg := page.MustParse("1", "1")
+			rows, err := cur.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("currency query code=%s: %w", code, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("currency not found for code=%s", code)
+			}
+			return rows[0].ID, nil
+		},
+		userIDByUsername: func(ctx context.Context, username string) (uuid.UUID, error) {
+			name, err := userbus.ParseName(username)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("user parse username=%s: %w", username, err)
+			}
+			filter := userbus.QueryFilter{Username: &name}
+			orderBy := order.NewBy("username", order.ASC)
+			pg := page.MustParse("1", "1")
+			rows, err := usr.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("user query username=%s: %w", username, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("user not found for username=%s", username)
+			}
+			return rows[0].ID, nil
+		},
+		purchaseOrderStatusIDByName: func(ctx context.Context, name string) (uuid.UUID, error) {
+			filter := purchaseorderstatusbus.QueryFilter{Name: &name}
+			orderBy := order.NewBy("name", order.ASC)
+			pg := page.MustParse("1", "1")
+			rows, err := pos.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("purchase_order_status query name=%s: %w", name, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("purchase_order_status not found for name=%s", name)
+			}
+			return rows[0].ID, nil
+		},
 	}
 }
 
@@ -70,9 +158,14 @@ func newRefLookups(prod *productbus.Business, loc *inventorylocationbus.Business
 // constant set so unknown suffixes (e.g. warehouse_ref) fail loudly rather
 // than being silently passed through as strings into payload_json.
 var knownRefSuffixes = map[string]struct{}{
-	"product_ref":  {},
-	"location_ref": {},
-	"tote_ref":     {},
+	"product_ref":               {},
+	"location_ref":              {},
+	"tote_ref":                  {},
+	"supplier_ref":              {},
+	"warehouse_ref":             {},
+	"currency_ref":              {},
+	"user_ref":                  {},
+	"purchase_order_status_ref": {},
 }
 
 // resolveRefs rewrites a single state.yaml row in place:
@@ -91,7 +184,7 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 			continue
 		}
 		if _, ok := knownRefSuffixes[k]; !ok {
-			return nil, fmt.Errorf("unknown ref key %q (expected one of product_ref/location_ref/tote_ref)", k)
+			return nil, fmt.Errorf("unknown ref key %q (grep knownRefSuffixes in seed_scenarios_refs.go for the supported set)", k)
 		}
 		code, ok := v.(string)
 		if !ok {
@@ -111,6 +204,21 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 		case "tote_ref":
 			targetKey = "label_catalog_id"
 			id, err = lookups.labelIDByCode(ctx, code)
+		case "supplier_ref":
+			targetKey = "supplier_id"
+			id, err = lookups.supplierIDByCode(ctx, code)
+		case "warehouse_ref":
+			targetKey = "warehouse_id"
+			id, err = lookups.warehouseIDByCode(ctx, code)
+		case "currency_ref":
+			targetKey = "currency_id"
+			id, err = lookups.currencyIDByCode(ctx, code)
+		case "user_ref":
+			targetKey = "user_id"
+			id, err = lookups.userIDByUsername(ctx, code)
+		case "purchase_order_status_ref":
+			targetKey = "purchase_order_status_id"
+			id, err = lookups.purchaseOrderStatusIDByName(ctx, code)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("resolve %s=%q: %w", k, code, err)

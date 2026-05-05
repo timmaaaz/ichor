@@ -14,6 +14,11 @@ func fixedLookups(t *testing.T) refLookups {
 	productID := uuid.MustParse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 	locationID := uuid.MustParse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
 	labelID := uuid.MustParse("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+	supplierID := uuid.MustParse("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
+	warehouseID := uuid.MustParse("ffffffff-ffff-4fff-8fff-ffffffffffff")
+	currencyID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
+	userID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
+	purchaseOrderStatusID := uuid.MustParse("33333333-3333-4333-8333-333333333333")
 
 	return refLookups{
 		productIDBySKU: func(_ context.Context, sku string) (uuid.UUID, error) {
@@ -33,6 +38,36 @@ func fixedLookups(t *testing.T) refLookups {
 				return uuid.Nil, errors.New("not found")
 			}
 			return labelID, nil
+		},
+		supplierIDByCode: func(_ context.Context, code string) (uuid.UUID, error) {
+			if code != "SUP-001" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return supplierID, nil
+		},
+		warehouseIDByCode: func(_ context.Context, code string) (uuid.UUID, error) {
+			if code != "WH-MAIN" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return warehouseID, nil
+		},
+		currencyIDByCode: func(_ context.Context, code string) (uuid.UUID, error) {
+			if code != "USD" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return currencyID, nil
+		},
+		userIDByUsername: func(_ context.Context, username string) (uuid.UUID, error) {
+			if username != "jdoe" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return userID, nil
+		},
+		purchaseOrderStatusIDByName: func(_ context.Context, name string) (uuid.UUID, error) {
+			if name != "Pending" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return purchaseOrderStatusID, nil
 		},
 	}
 }
@@ -102,7 +137,7 @@ func TestResolveRefs(t *testing.T) {
 		{
 			name: "unknown _ref key errors",
 			in: map[string]any{
-				"supplier_ref": "Acme Inc",
+				"vendor_ref": "Acme Inc",
 			},
 			expectErr: "unknown ref key",
 		},
@@ -119,6 +154,56 @@ func TestResolveRefs(t *testing.T) {
 				"product_ref": "SKU-NONEXISTENT",
 			},
 			expectErr: "resolve product_ref",
+		},
+		{
+			name: "supplier_ref resolves to supplier_id, scenario_id injected",
+			in: map[string]any{
+				"supplier_ref": "SUP-001",
+			},
+			expect: map[string]any{
+				"supplier_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+				"scenario_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "warehouse_ref resolves to warehouse_id, scenario_id injected",
+			in: map[string]any{
+				"warehouse_ref": "WH-MAIN",
+			},
+			expect: map[string]any{
+				"warehouse_id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+				"scenario_id":  "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "currency_ref resolves to currency_id, scenario_id injected",
+			in: map[string]any{
+				"currency_ref": "USD",
+			},
+			expect: map[string]any{
+				"currency_id": "11111111-1111-4111-8111-111111111111",
+				"scenario_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "user_ref resolves to user_id, scenario_id injected",
+			in: map[string]any{
+				"user_ref": "jdoe",
+			},
+			expect: map[string]any{
+				"user_id":     "22222222-2222-4222-8222-222222222222",
+				"scenario_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "purchase_order_status_ref resolves to purchase_order_status_id, scenario_id injected",
+			in: map[string]any{
+				"purchase_order_status_ref": "Pending",
+			},
+			expect: map[string]any{
+				"purchase_order_status_id": "33333333-3333-4333-8333-333333333333",
+				"scenario_id":              "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
 		},
 	}
 
