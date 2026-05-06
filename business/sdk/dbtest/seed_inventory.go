@@ -64,7 +64,7 @@ func seedInventory(ctx context.Context, busDomain BusDomain, foundation Foundati
 		return InventorySeed{}, fmt.Errorf("seeding zones : %w", err)
 	}
 
-	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 25, warehouseIDs, zones, busDomain.InventoryLocation)
+	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 19, warehouseIDs, zones, busDomain.InventoryLocation)
 	if err != nil {
 		return InventorySeed{}, fmt.Errorf("seeding inventory locations : %w", err)
 	}

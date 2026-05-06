@@ -19,9 +19,13 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
+			// Post-Phase-1 the seed uses 19 locations and creates 50 items
+			// over a (location, product) grid. (loc[0], prod[2]) is now
+			// occupied by seed item i=38 — pick the free pair (loc[18],
+			// prod[2]) for the 200 create case so it does not collide.
 			Input: &inventoryitemapp.NewInventoryItem{
 				ProductID:             sd.Products[2].ProductID,
-				LocationID:            sd.InventoryLocations[0].LocationID,
+				LocationID:            sd.InventoryLocations[18].LocationID,
 				Quantity:              "10",
 				ReservedQuantity:      "50",
 				AllocatedQuantity:     "100",
@@ -35,7 +39,7 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &inventoryitemapp.InventoryItem{},
 			ExpResp: &inventoryitemapp.InventoryItem{
 				ProductID:             sd.Products[2].ProductID,
-				LocationID:            sd.InventoryLocations[0].LocationID,
+				LocationID:            sd.InventoryLocations[18].LocationID,
 				Quantity:              "10",
 				ReservedQuantity:      "50",
 				AllocatedQuantity:     "100",

@@ -163,7 +163,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding zones : %w", err)
 	}
 
-	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 25, warehouseIDs, zones, busDomain.InventoryLocation)
+	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 19, warehouseIDs, zones, busDomain.InventoryLocation)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding inventory locations : %w", err)
 	}
@@ -187,14 +187,21 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 }
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	// Filter to items belonging to Products[1] (grid positions 25-29, exactly 5 items).
-	// Using a ProductID filter scopes the query to test-specific rows and avoids
-	// contamination from the global seed's inventory items.
+	// Filter to items belonging to Products[1]. Post-Phase-1 the grid is
+	// 30 items × 19 locations × 20 products: items 19-29 (11 items) carry
+	// Products[1]. The query below pages 5, so we cap expItems to the first
+	// 5 (DefaultOrderBy = id ASC; seed is pre-sorted by id, so positional
+	// order of expItems and got match).
+	// Using a ProductID filter scopes the query to test-specific rows and
+	// avoids contamination from the global seed's inventory items.
 	p1ID := sd.Products[1].ProductID
 	expItems := make([]inventoryitembus.InventoryItem, 0, 5)
 	for _, item := range sd.InventoryItems {
 		if item.ProductID == p1ID {
 			expItems = append(expItems, item)
+			if len(expItems) == 5 {
+				break
+			}
 		}
 	}
 
@@ -229,7 +236,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 		{
 			Name: "Create",
 			ExpResp: inventoryitembus.InventoryItem{
-				LocationID:            sd.InventoryLocations[5].LocationID,
+				LocationID:            sd.InventoryLocations[15].LocationID,
 				ProductID:             sd.Products[1].ProductID,
 				Quantity:              10,
 				ReservedQuantity:      15,
@@ -243,7 +250,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.InventoryItem.Create(ctx, inventoryitembus.NewInventoryItem{
-					LocationID:            sd.InventoryLocations[5].LocationID,
+					LocationID:            sd.InventoryLocations[15].LocationID,
 					ProductID:             sd.Products[1].ProductID,
 					Quantity:              10,
 					ReservedQuantity:      15,
@@ -283,7 +290,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "Update",
 			ExpResp: inventoryitembus.InventoryItem{
 				ID:                    sd.InventoryItems[0].ID,
-				LocationID:            sd.InventoryLocations[6].LocationID,
+				LocationID:            sd.InventoryLocations[18].LocationID,
 				ProductID:             sd.Products[1].ProductID,
 				Quantity:              20,
 				ReservedQuantity:      25,
@@ -298,7 +305,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.InventoryItem.Update(ctx, sd.InventoryItems[0], inventoryitembus.UpdateInventoryItem{
-					LocationID:            &sd.InventoryLocations[6].LocationID,
+					LocationID:            &sd.InventoryLocations[18].LocationID,
 					ProductID:             &sd.Products[1].ProductID,
 					Quantity:              dbtest.IntPointer(20),
 					ReservedQuantity:      dbtest.IntPointer(25),
@@ -485,12 +492,15 @@ func Test_QueryAvailableForAllocation(t *testing.T) {
 		t.Fatalf("seeding warehouses: %s", err)
 	}
 
-	zones, err := zonebus.TestSeedZone(ctx, 1, uuid.UUIDs{warehouses[0].ID}, bd.Zones)
+	// Seed 3 zones (RCV/QA/STG per zoneCodeCycle) so the spec catalogue has
+	// at least 3 location codes available — this test needs 3 distinct
+	// locations for the FEFO/FIFO/LIFO ordering checks below.
+	zones, err := zonebus.TestSeedZone(ctx, 3, uuid.UUIDs{warehouses[0].ID}, bd.Zones)
 	if err != nil {
 		t.Fatalf("seeding zones: %s", err)
 	}
 
-	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 3, uuid.UUIDs{warehouses[0].ID}, []zonebus.Zone{zones[0]}, bd.InventoryLocation)
+	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 3, uuid.UUIDs{warehouses[0].ID}, zones, bd.InventoryLocation)
 	if err != nil {
 		t.Fatalf("seeding locations: %s", err)
 	}
