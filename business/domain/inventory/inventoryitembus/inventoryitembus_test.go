@@ -504,6 +504,9 @@ func Test_QueryAvailableForAllocation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seeding locations: %s", err)
 	}
+	if len(locations) != 3 {
+		t.Fatalf("expected 3 seeded locations, got %d (zone codes may not match specCodes catalogue)", len(locations))
+	}
 	locIDs := make([]uuid.UUID, len(locations))
 	for i, l := range locations {
 		locIDs[i] = l.LocationID

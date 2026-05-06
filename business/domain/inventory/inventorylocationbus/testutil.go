@@ -94,7 +94,7 @@ func TestNewInventoryLocation(n int, warehouseIDs []uuid.UUID, zones []zonebus.Z
 	}
 
 	out := make([]NewInventoryLocation, 0, n)
-	for i, sc := range specCodes {
+	for _, sc := range specCodes {
 		if len(out) >= n {
 			break
 		}
@@ -103,9 +103,9 @@ func TestNewInventoryLocation(n int, warehouseIDs []uuid.UUID, zones []zonebus.Z
 			continue
 		}
 		code := sc.code
-		// Alternate IsPickLocation/IsReserveLocation by spec-catalogue index
-		// (preserves the prior testutil behavior of producing both kinds).
-		isPick := i%2 == 0
+		// Alternate IsPickLocation/IsReserveLocation by emission position
+		// (so callers seeing partial-zone subsets still get both kinds).
+		isPick := len(out)%2 == 0
 		out = append(out, NewInventoryLocation{
 			WarehouseID:        warehouseIDs[0],
 			ZoneID:             zone.ZoneID,
