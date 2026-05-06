@@ -206,6 +206,46 @@ func TestResolveRefs(t *testing.T) {
 				"scenario_id":              "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
 			},
 		},
+		{
+			name: "from_location_ref resolves to from_location_id, scenario_id injected",
+			in: map[string]any{
+				"from_location_ref": "RCV-01",
+			},
+			expect: map[string]any{
+				"from_location_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+				"scenario_id":      "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "to_location_ref resolves to to_location_id, scenario_id injected",
+			in: map[string]any{
+				"to_location_ref": "RCV-01",
+			},
+			expect: map[string]any{
+				"to_location_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+				"scenario_id":    "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "requested_by_ref resolves to requested_by (non-standard column), scenario_id injected",
+			in: map[string]any{
+				"requested_by_ref": "jdoe",
+			},
+			expect: map[string]any{
+				"requested_by": "22222222-2222-4222-8222-222222222222",
+				"scenario_id":  "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "approved_by_ref resolves to approved_by (non-standard column), scenario_id injected",
+			in: map[string]any{
+				"approved_by_ref": "jdoe",
+			},
+			expect: map[string]any{
+				"approved_by": "22222222-2222-4222-8222-222222222222",
+				"scenario_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
 	}
 
 	for _, tc := range tests {

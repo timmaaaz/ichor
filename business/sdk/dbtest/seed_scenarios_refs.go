@@ -173,12 +173,18 @@ func newRefLookups(
 var knownRefSuffixes = map[string]struct{}{
 	"product_ref":               {},
 	"location_ref":              {},
+	"from_location_ref":         {},
+	"to_location_ref":           {},
 	"tote_ref":                  {},
 	"supplier_ref":              {},
 	"warehouse_ref":             {},
 	"currency_ref":              {},
 	"user_ref":                  {},
 	"purchase_order_status_ref": {},
+	// Non-standard column mappings: target column name does not follow the
+	// "<prefix>_id" convention so explicit entries are required.
+	"requested_by_ref": {},
+	"approved_by_ref":  {},
 }
 
 // buildRowIndex performs a pre-pass over the entire scenario state and
@@ -292,6 +298,12 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 			case "location_ref":
 				targetKey = "location_id"
 				id, err = lookups.locationIDByCode(ctx, code)
+			case "from_location_ref":
+				targetKey = "from_location_id"
+				id, err = lookups.locationIDByCode(ctx, code)
+			case "to_location_ref":
+				targetKey = "to_location_id"
+				id, err = lookups.locationIDByCode(ctx, code)
 			case "tote_ref":
 				targetKey = "label_catalog_id"
 				id, err = lookups.labelIDByCode(ctx, code)
@@ -310,6 +322,15 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 			case "purchase_order_status_ref":
 				targetKey = "purchase_order_status_id"
 				id, err = lookups.purchaseOrderStatusIDByName(ctx, code)
+			// Non-standard column mappings: target column name does not follow
+			// the "<prefix>_id" convention (inventory.transfer_orders uses
+			// "requested_by" / "approved_by" instead of "*_id").
+			case "requested_by_ref":
+				targetKey = "requested_by"
+				id, err = lookups.userIDByUsername(ctx, code)
+			case "approved_by_ref":
+				targetKey = "approved_by"
+				id, err = lookups.userIDByUsername(ctx, code)
 			}
 			if err != nil {
 				return nil, fmt.Errorf("resolve %s=%q: %w", k, code, err)

@@ -1,0 +1,9 @@
+# deployments/scenarios/transfer-intra-zone/scenario.yaml
+#
+# ID omitted — computed as UUID v5 of "scenario:transfer-intra-zone"
+# under the deadbeef namespace at parse time (stable across reseeds).
+
+name: transfer-intra-zone
+description: |
+  50 units of SKU-0001 transferred STG-A01 → STG-A02. Intra-zone (within
+  storage). Tests that intra-zone transfers have identical UX to cross-zone.

@@ -1,0 +1,5 @@
+name: cycle-count-variance-over
+description: |
+  Cycle count session at STG-A01: system expected 40 units of SKU-0001,
+  worker counts 50. Tests the positive-variance (overcount) branch where
+  counted_quantity > system_quantity, yielding variance = +10.

@@ -1,0 +1,11 @@
+# deployments/scenarios/transfer-multi-line/scenario.yaml
+#
+# ID omitted — computed as UUID v5 of "scenario:transfer-multi-line"
+# under the deadbeef namespace at parse time (stable across reseeds).
+
+name: transfer-multi-line
+description: |
+  Multi-line transfer: 3 SKUs from STG-A01 → STG-B01 in three separate transfer
+  orders (transfer_orders is single-product-per-row; multi-SKU composition is
+  modelled as concurrent sibling orders with a shared destination). Tests
+  multi-row transfer composition and floor worker queue ordering.

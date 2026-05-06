@@ -1,0 +1,32 @@
+inventory_items:
+  - product_ref: SKU-0001
+    location_ref: STG-A01
+    quantity: 40
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 10
+    economic_order_quantity: 50
+    safety_stock: 5
+    avg_daily_usage: 2
+
+cycle_count_sessions:
+  - _label: count_a
+    name: "CC-VARIANCE-OVER-001"
+    status: draft
+    # floor_worker1 stable UUID from seed.sql
+    created_by: "c0000000-0000-4000-8000-000000000001"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+cycle_count_items:
+  - cycle_count_session_row_ref: count_a
+    product_ref: SKU-0001
+    location_ref: STG-A01
+    system_quantity: 40
+    # counted_quantity omitted — session is pending worker action.
+    # At count time the worker will enter 50, yielding variance = +10.
+    status: pending
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
