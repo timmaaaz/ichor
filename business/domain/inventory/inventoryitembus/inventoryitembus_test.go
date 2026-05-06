@@ -188,10 +188,10 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 
 func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	// Filter to items belonging to Products[1]. Post-Phase-1 the grid is
-	// 30 items × 19 locations × 20 products: items 19-29 (11 items) carry
-	// Products[1]. The query below pages 5, so we cap expItems to the first
-	// 5 (DefaultOrderBy = id ASC; seed is pre-sorted by id, so positional
-	// order of expItems and got match).
+	// 30 items × 19 locations × 20 products: creation indices 19-29 (11 items)
+	// carry Products[1]. The query below pages 5, so we cap expItems to the first
+	// 5 (DefaultOrderBy = id ASC; seed is sorted by ID.String(), matching DB
+	// order within a run, so positional order of expItems and got match).
 	// Using a ProductID filter scopes the query to test-specific rows and
 	// avoids contamination from the global seed's inventory items.
 	p1ID := sd.Products[1].ProductID
