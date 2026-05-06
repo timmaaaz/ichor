@@ -1,0 +1,7 @@
+name: pick-zone-sliced
+description: |
+  Multi-worker pick of 6-line SO across 3 zones (STG-A, STG-B, STG-C).
+  Exercises pick.assignmentGranularity=zone-sliced-order lever override.
+  Lines 1-2 in STG-A, lines 3-4 in STG-B, lines 5-6 in STG-C.
+lever_overrides:
+  pick.assignmentGranularity: zone-sliced-order

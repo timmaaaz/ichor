@@ -1,0 +1,7 @@
+name: pick-lot-tracked
+description: |
+  Single-worker pick of a lot-tracked SKU (SKU-0029).
+  Exercises pick.lotScan=required-if-lot-tracked lever override.
+  Worker must scan the lot number during the pick step.
+lever_overrides:
+  pick.lotScan: required-if-lot-tracked

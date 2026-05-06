@@ -6,11 +6,26 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
+	"github.com/google/uuid"
+	contactinfosbus "github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
+	streetbus "github.com/timmaaaz/ichor/business/domain/geography/streetbus"
+	customersbus "github.com/timmaaaz/ichor/business/domain/sales/customersbus"
 	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
 	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus/yamlload"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/seedid"
 )
+
+// scenarioCustomerName is the stable name used for the single deterministic
+// customer created for pick/order scenario fixtures. The UUID is derived from
+// this name via seedid.Stable so it is byte-identical across reseeds.
+const scenarioCustomerName = "Scenario Default Customer"
+
+// ScenarioCustomerID is the deterministic UUID for the scenario customer.
+// Exported so YAML authors can reference it in # WHY comments if needed.
+var ScenarioCustomerID = seedid.Stable("scenario:customer:" + scenarioCustomerName)
 
 // seedScenarios is the LAST seeder in the InsertSeedData chain. It reads
 // every scenario under deployments/scenarios/ via yamlload and upserts
@@ -50,6 +65,14 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 		return fmt.Errorf("yamlload.Load: %w", err)
 	}
 
+	// Seed a deterministic scenario customer used by pick/order scenario fixtures.
+	// customer_ref: "Scenario Default Customer" resolves to this row.
+	// contact_id and delivery_address_id are taken from the first available
+	// baseline rows; pick scenarios don't exercise these FK paths.
+	if err := seedScenarioCustomer(ctx, busDomain); err != nil {
+		return fmt.Errorf("seed scenario customer: %w", err)
+	}
+
 	lookups := newRefLookups(
 		busDomain.Product,
 		busDomain.InventoryLocation,
@@ -59,6 +82,9 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 		busDomain.Currency,
 		busDomain.User,
 		busDomain.PurchaseOrderStatus,
+		busDomain.OrderFulfillmentStatus,
+		busDomain.LineItemFulfillmentStatus,
+		busDomain.Customers,
 	)
 
 	for _, s := range scenarios {
@@ -147,6 +173,70 @@ func resolveTargetTable(suffix string) string {
 		"approval_requests":          "workflow.approval_requests",
 	}
 	return m[suffix]
+}
+
+// seedScenarioCustomer upserts a single deterministic customer used by
+// pick/order scenario fixtures (customer_ref: "Scenario Default Customer").
+// The UUID is stable via ScenarioCustomerID so repeated seeding is idempotent.
+//
+// contact_id and delivery_address_id are taken from the first available
+// baseline rows (created earlier in the seed chain). Pick scenarios don't
+// exercise customer address or contact paths, so any valid FK is sufficient.
+//
+// WHY: sales.orders.customer_id NOT NULL has no customer_ref resolver; this
+// provides the one deterministic row scenario fixtures can reference by name.
+func seedScenarioCustomer(ctx context.Context, busDomain BusDomain) error {
+	// Idempotent: if the row already exists (e.g. repeated seed), skip.
+	name := scenarioCustomerName
+	existing, err := busDomain.Customers.Query(
+		ctx,
+		customersbus.QueryFilter{Name: &name},
+		customersbus.DefaultOrderBy,
+		page.MustParse("1", "1"),
+	)
+	if err != nil {
+		return fmt.Errorf("query existing scenario customer: %w", err)
+	}
+	if len(existing) > 0 {
+		return nil
+	}
+
+	// Find any contact_info and street from the baseline seed.
+	contacts, err := busDomain.ContactInfos.Query(ctx,
+		contactinfosbus.QueryFilter{},
+		contactinfosbus.DefaultOrderBy,
+		page.MustParse("1", "1"),
+	)
+	if err != nil || len(contacts) == 0 {
+		return fmt.Errorf("seed scenario customer: no contact_infos available (seed chain ordering issue): %w", err)
+	}
+
+	streets, err := busDomain.Street.Query(ctx,
+		streetbus.QueryFilter{},
+		streetbus.DefaultOrderBy,
+		page.MustParse("1", "1"),
+	)
+	if err != nil || len(streets) == 0 {
+		return fmt.Errorf("seed scenario customer: no streets available (seed chain ordering issue): %w", err)
+	}
+
+	adminID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7") // admin_gopher from seed.sql
+	now := time.Now().UTC()
+	c := customersbus.Customers{
+		ID:                ScenarioCustomerID,
+		Name:              scenarioCustomerName,
+		ContactID:         contacts[0].ID,
+		DeliveryAddressID: streets[0].ID,
+		Notes:             "Deterministic scenario customer — do not delete",
+		CreatedBy:         adminID,
+		UpdatedBy:         adminID,
+		CreatedDate:       now,
+		UpdatedDate:       now,
+	}
+	if err := busDomain.Customers.SeedCreate(ctx, c); err != nil {
+		return fmt.Errorf("seed scenario customer create: %w", err)
+	}
+	return nil
 }
 
 // findRepoRoot walks upward from the current working directory looking for

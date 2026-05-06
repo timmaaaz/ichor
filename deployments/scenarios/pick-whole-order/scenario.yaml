@@ -1,0 +1,4 @@
+name: pick-whole-order
+description: |
+  Single-worker pick of 6-line SO. SMB default pick.assignmentGranularity=whole-order.
+  All lines source from STG-A zone.

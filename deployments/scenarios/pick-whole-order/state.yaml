@@ -1,0 +1,200 @@
+orders:
+  - _label: pick_so
+    # WHY: customer_id has no _ref resolver; uses deterministic scenario customer
+    # seeded by seedScenarioCustomer in seed_scenarios.go.
+    customer_ref: "Scenario Default Customer"
+    order_fulfillment_status_ref: PICKING
+    currency_ref: USD
+    number: "SO-PICK-WHOLE-001"
+    order_date: "2026-05-06"
+    due_date: "2026-05-13T00:00:00Z"
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+order_line_items:
+  - _label: line_1
+    sales_order_row_ref: pick_so
+    product_ref: SKU-0001
+    quantity: 5
+    line_item_fulfillment_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - _label: line_2
+    sales_order_row_ref: pick_so
+    product_ref: SKU-0002
+    quantity: 10
+    line_item_fulfillment_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - _label: line_3
+    sales_order_row_ref: pick_so
+    product_ref: SKU-0003
+    quantity: 8
+    line_item_fulfillment_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - _label: line_4
+    sales_order_row_ref: pick_so
+    product_ref: SKU-0004
+    quantity: 3
+    line_item_fulfillment_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - _label: line_5
+    sales_order_row_ref: pick_so
+    product_ref: SKU-0005
+    quantity: 12
+    line_item_fulfillment_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - _label: line_6
+    sales_order_row_ref: pick_so
+    product_ref: SKU-0006
+    quantity: 7
+    line_item_fulfillment_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+inventory_items:
+  - product_ref: SKU-0001
+    location_ref: STG-A01
+    quantity: 20
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 5
+    economic_order_quantity: 10
+    safety_stock: 2
+    avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - product_ref: SKU-0002
+    location_ref: STG-A01
+    quantity: 30
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 5
+    economic_order_quantity: 10
+    safety_stock: 2
+    avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - product_ref: SKU-0003
+    location_ref: STG-A02
+    quantity: 25
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 5
+    economic_order_quantity: 10
+    safety_stock: 2
+    avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - product_ref: SKU-0004
+    location_ref: STG-A02
+    quantity: 15
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 5
+    economic_order_quantity: 10
+    safety_stock: 2
+    avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - product_ref: SKU-0005
+    location_ref: STG-A03
+    quantity: 40
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 5
+    economic_order_quantity: 10
+    safety_stock: 2
+    avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - product_ref: SKU-0006
+    location_ref: STG-A03
+    quantity: 20
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 5
+    economic_order_quantity: 10
+    safety_stock: 2
+    avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+pick_tasks:
+  - sales_order_row_ref: pick_so
+    sales_order_line_item_row_ref: line_1
+    product_ref: SKU-0001
+    location_ref: STG-A01
+    quantity_to_pick: 5
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - sales_order_row_ref: pick_so
+    sales_order_line_item_row_ref: line_2
+    product_ref: SKU-0002
+    location_ref: STG-A01
+    quantity_to_pick: 10
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - sales_order_row_ref: pick_so
+    sales_order_line_item_row_ref: line_3
+    product_ref: SKU-0003
+    location_ref: STG-A02
+    quantity_to_pick: 8
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - sales_order_row_ref: pick_so
+    sales_order_line_item_row_ref: line_4
+    product_ref: SKU-0004
+    location_ref: STG-A02
+    quantity_to_pick: 3
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - sales_order_row_ref: pick_so
+    sales_order_line_item_row_ref: line_5
+    product_ref: SKU-0005
+    location_ref: STG-A03
+    quantity_to_pick: 12
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+  - sales_order_row_ref: pick_so
+    sales_order_line_item_row_ref: line_6
+    product_ref: SKU-0006
+    location_ref: STG-A03
+    quantity_to_pick: 7
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"

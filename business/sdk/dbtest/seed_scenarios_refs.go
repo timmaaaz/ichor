@@ -14,6 +14,9 @@ import (
 	purchaseorderstatusbus "github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
 	supplierbus "github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	customersbus "github.com/timmaaaz/ichor/business/domain/sales/customersbus"
+	lineitemfulfillmentstatusbus "github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
+	orderfulfillmentstatusbus "github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/seedid"
@@ -28,14 +31,17 @@ type refResolver func(ctx context.Context, value string) (uuid.UUID, error)
 // fixture-materialization time. Exposed as an interface (via fields, not
 // methods) so the unit test can pass fakes without touching a live DB.
 type refLookups struct {
-	productIDBySKU              refResolver
-	locationIDByCode            refResolver
-	labelIDByCode               refResolver
-	supplierIDByCode            refResolver
-	warehouseIDByCode           refResolver
-	currencyIDByCode            refResolver
-	userIDByUsername            refResolver
-	purchaseOrderStatusIDByName refResolver
+	productIDBySKU                    refResolver
+	locationIDByCode                  refResolver
+	labelIDByCode                     refResolver
+	supplierIDByCode                  refResolver
+	warehouseIDByCode                 refResolver
+	currencyIDByCode                  refResolver
+	userIDByUsername                  refResolver
+	purchaseOrderStatusIDByName       refResolver
+	orderFulfillmentStatusIDByName    refResolver
+	lineItemFulfillmentStatusIDByName refResolver
+	customerIDByName                  refResolver
 }
 
 // newRefLookups wires resolvers against real bus instances. Seeder path.
@@ -48,6 +54,9 @@ func newRefLookups(
 	cur *currencybus.Business,
 	usr *userbus.Business,
 	pos *purchaseorderstatusbus.Business,
+	ofs *orderfulfillmentstatusbus.Business,
+	lifs *lineitemfulfillmentstatusbus.Business,
+	cust *customersbus.Business,
 ) refLookups {
 	return refLookups{
 		productIDBySKU: func(ctx context.Context, sku string) (uuid.UUID, error) {
@@ -164,6 +173,54 @@ func newRefLookups(
 			}
 			return rows[0].ID, nil
 		},
+		orderFulfillmentStatusIDByName: func(ctx context.Context, name string) (uuid.UUID, error) {
+			filter := orderfulfillmentstatusbus.QueryFilter{Name: &name}
+			orderBy := orderfulfillmentstatusbus.DefaultOrderBy
+			pg := page.MustParse("1", "1")
+			rows, err := ofs.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("order_fulfillment_status query name=%s: %w", name, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("order_fulfillment_status not found for name=%s", name)
+			}
+			if rows[0].Name != name {
+				return uuid.Nil, fmt.Errorf("order_fulfillment_status not found for name=%s (closest match: %s)", name, rows[0].Name)
+			}
+			return rows[0].ID, nil
+		},
+		lineItemFulfillmentStatusIDByName: func(ctx context.Context, name string) (uuid.UUID, error) {
+			filter := lineitemfulfillmentstatusbus.QueryFilter{Name: &name}
+			orderBy := lineitemfulfillmentstatusbus.DefaultOrderBy
+			pg := page.MustParse("1", "1")
+			rows, err := lifs.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("line_item_fulfillment_status query name=%s: %w", name, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("line_item_fulfillment_status not found for name=%s", name)
+			}
+			if rows[0].Name != name {
+				return uuid.Nil, fmt.Errorf("line_item_fulfillment_status not found for name=%s (closest match: %s)", name, rows[0].Name)
+			}
+			return rows[0].ID, nil
+		},
+		customerIDByName: func(ctx context.Context, name string) (uuid.UUID, error) {
+			filter := customersbus.QueryFilter{Name: &name}
+			orderBy := order.NewBy("name", order.ASC)
+			pg := page.MustParse("1", "1")
+			rows, err := cust.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("customer query name=%s: %w", name, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("customer not found for name=%s", name)
+			}
+			if rows[0].Name != name {
+				return uuid.Nil, fmt.Errorf("customer not found for name=%s (closest match: %s)", name, rows[0].Name)
+			}
+			return rows[0].ID, nil
+		},
 	}
 }
 
@@ -171,16 +228,19 @@ func newRefLookups(
 // constant set so unknown suffixes (e.g. vendor_ref) fail loudly rather
 // than being silently passed through as strings into payload_json.
 var knownRefSuffixes = map[string]struct{}{
-	"product_ref":               {},
-	"location_ref":              {},
-	"from_location_ref":         {},
-	"to_location_ref":           {},
-	"tote_ref":                  {},
-	"supplier_ref":              {},
-	"warehouse_ref":             {},
-	"currency_ref":              {},
-	"user_ref":                  {},
-	"purchase_order_status_ref": {},
+	"product_ref":                      {},
+	"location_ref":                     {},
+	"from_location_ref":                {},
+	"to_location_ref":                  {},
+	"tote_ref":                         {},
+	"supplier_ref":                     {},
+	"warehouse_ref":                    {},
+	"currency_ref":                     {},
+	"user_ref":                         {},
+	"purchase_order_status_ref":        {},
+	"order_fulfillment_status_ref":     {},
+	"line_item_fulfillment_status_ref": {},
+	"customer_ref":                     {},
 	// Non-standard column mappings: target column name does not follow the
 	// "<prefix>_id" convention so explicit entries are required.
 	"requested_by_ref": {},
@@ -322,6 +382,17 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 			case "purchase_order_status_ref":
 				targetKey = "purchase_order_status_id"
 				id, err = lookups.purchaseOrderStatusIDByName(ctx, code)
+			case "order_fulfillment_status_ref":
+				targetKey = "order_fulfillment_status_id"
+				id, err = lookups.orderFulfillmentStatusIDByName(ctx, code)
+			case "line_item_fulfillment_status_ref":
+				// Column name on order_line_items is line_item_fulfillment_statuses_id
+				// (plural "statuses"), not "line_item_fulfillment_status_id".
+				targetKey = "line_item_fulfillment_statuses_id"
+				id, err = lookups.lineItemFulfillmentStatusIDByName(ctx, code)
+			case "customer_ref":
+				targetKey = "customer_id"
+				id, err = lookups.customerIDByName(ctx, code)
 			// Non-standard column mappings: target column name does not follow
 			// the "<prefix>_id" convention (inventory.transfer_orders uses
 			// "requested_by" / "approved_by" instead of "*_id").

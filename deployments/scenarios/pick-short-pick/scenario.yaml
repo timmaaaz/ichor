@@ -1,0 +1,5 @@
+name: pick-short-pick
+description: |
+  Short-pick scenario: SO requests 100 units of SKU-0010 but only 50 are
+  on-hand in STG-A01. Forces the short-pick fulfillment path where the
+  worker confirms a partial pick and the line item remains PARTIALLY_PICKED.
