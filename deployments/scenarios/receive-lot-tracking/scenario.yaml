@@ -1,0 +1,5 @@
+name: receive-lot-tracking
+description: |
+  All 3 PO lines reference lot-tracked SKUs. Exercises
+  receive.lotCapture=required-if-lot-tracked + receive.expiryCapture=required-if-lot-tracked
+  end-to-end.

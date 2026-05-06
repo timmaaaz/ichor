@@ -1,0 +1,27 @@
+purchase_orders:
+  - _label: po
+    supplier_ref: SUP-001
+    warehouse_ref: WH-TEST-1
+    currency_ref: USD
+    purchase_order_status_ref: APPROVED
+    order_date: "2026-05-01"
+    expected_delivery_date: "2026-05-06"
+
+purchase_order_line_items:
+  - purchase_order_row_ref: po
+    product_ref: SKU-0001
+    expected_qty: 50
+
+# expected_qty 50 vs on-hand 30 — forces discrepancy path
+inventory_items:
+  - product_ref: SKU-0001
+    location_ref: STG-A01
+    quantity: 30
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 10
+    economic_order_quantity: 50
+    safety_stock: 5
+    avg_daily_usage: 2

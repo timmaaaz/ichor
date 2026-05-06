@@ -1,0 +1,17 @@
+locations:
+  - code: RCV-01
+    role: inbound
+  - code: STG-A01
+    role: storage
+
+serials:
+  - ref: serial_1
+    product_code: SKU-0037
+  - ref: serial_2
+    product_code: SKU-0037
+  - ref: serial_3
+    product_code: SKU-0037
+  - ref: serial_4
+    product_code: SKU-0037
+  - ref: serial_5
+    product_code: SKU-0037

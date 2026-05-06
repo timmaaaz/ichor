@@ -1,0 +1,17 @@
+locations:
+  - code: RCV-01
+    role: inbound
+  - code: STG-A01
+    role: storage
+  - code: STG-A02
+    role: storage
+  - code: STG-A03
+    role: storage
+
+lots:
+  - ref: lot_1
+    product_code: SKU-0029
+  - ref: lot_2
+    product_code: SKU-0030
+  - ref: lot_3
+    product_code: SKU-0031

@@ -1,0 +1,11 @@
+totes:
+  - code: TOTE-001
+  - code: TOTE-002
+
+locations:
+  - code: RCV-01
+    role: inbound
+  - code: RCV-02
+    role: inbound
+  - code: STG-A01
+    role: storage

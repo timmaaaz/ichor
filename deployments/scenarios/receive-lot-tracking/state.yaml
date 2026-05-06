@@ -1,0 +1,56 @@
+purchase_orders:
+  - _label: po
+    supplier_ref: SUP-001
+    warehouse_ref: WH-TEST-1
+    currency_ref: USD
+    purchase_order_status_ref: APPROVED
+    order_date: "2026-05-01"
+    expected_delivery_date: "2026-05-06"
+
+purchase_order_line_items:
+  - purchase_order_row_ref: po
+    product_ref: SKU-0029
+    expected_qty: 40
+  - purchase_order_row_ref: po
+    product_ref: SKU-0030
+    expected_qty: 30
+  - purchase_order_row_ref: po
+    product_ref: SKU-0031
+    expected_qty: 20
+
+lot_trackings:
+  - _label: lot_1
+    product_ref: SKU-0029
+    lot_number: "LOT-RLT-001"
+    manufacture_date: "2026-04-01"
+    expiration_date: "2027-04-01"
+    received_date: "2026-05-06"
+    quantity: 40
+    quality_status: "approved"
+  - _label: lot_2
+    product_ref: SKU-0030
+    lot_number: "LOT-RLT-002"
+    manufacture_date: "2026-04-05"
+    expiration_date: "2027-04-05"
+    received_date: "2026-05-06"
+    quantity: 30
+    quality_status: "approved"
+  - _label: lot_3
+    product_ref: SKU-0031
+    lot_number: "LOT-RLT-003"
+    manufacture_date: "2026-04-10"
+    expiration_date: "2027-04-10"
+    received_date: "2026-05-06"
+    quantity: 20
+    quality_status: "approved"
+
+lot_locations:
+  - lot_row_ref: lot_1
+    location_ref: STG-A01
+    quantity: 40
+  - lot_row_ref: lot_2
+    location_ref: STG-A02
+    quantity: 30
+  - lot_row_ref: lot_3
+    location_ref: STG-A03
+    quantity: 20

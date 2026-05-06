@@ -1,0 +1,5 @@
+name: receive-serial-tracking
+description: |
+  Serial-tracked SKU receive (expected_qty 5). Forces unique-serial capture
+  loop. Note: 4 serial-tracked SKUs are in the seed distribution; pick the
+  lowest-indexed one.
