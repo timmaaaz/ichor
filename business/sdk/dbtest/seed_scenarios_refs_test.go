@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/sdk/seedid"
 )
 
 func fixedLookups(t *testing.T) refLookups {
@@ -212,7 +213,7 @@ func TestResolveRefs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := resolveRefs(ctx, tc.in, scenarioID, lookups)
+			got, err := resolveRefs(ctx, tc.in, scenarioID, lookups, nil)
 			if tc.expectErr != "" {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil (out=%v)", tc.expectErr, got)
@@ -240,4 +241,208 @@ func TestResolveRefs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRowRef covers the _label + _row_ref cross-row resolver contract.
+func TestRowRef(t *testing.T) {
+	t.Parallel()
+
+	const scenarioName = "test-scenario"
+	ctx := context.Background()
+	lookups := fixedLookups(t)
+
+	// scenarioID is not used for label derivation (name is); pick a fixed value.
+	scenarioID := uuid.MustParse("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+
+	// expectedPOID is deterministic from the label key used in buildRowIndex.
+	expectedPOID := seedid.Stable("scenario:" + scenarioName + ":label:po1")
+
+	t.Run("happy path — single _label resolves cross-row", func(t *testing.T) {
+		t.Parallel()
+
+		state := map[string][]map[string]any{
+			"purchase_orders": {
+				{
+					"_label":       "po1",
+					"supplier_ref": "SUP-001",
+				},
+			},
+			"purchase_order_line_items": {
+				{
+					"purchase_order_row_ref": "po1",
+					"product_ref":            "SKU-0001",
+					"expected_qty":           50,
+				},
+				{
+					"purchase_order_row_ref": "po1",
+					"product_ref":            "SKU-0001",
+					"expected_qty":           20,
+				},
+			},
+		}
+
+		rowIndex, err := buildRowIndex(scenarioName, state)
+		if err != nil {
+			t.Fatalf("buildRowIndex: %v", err)
+		}
+
+		// Resolve the PO row.
+		poRow := state["purchase_orders"][0]
+		resolvedPO, err := resolveRefs(ctx, poRow, scenarioID, lookups, rowIndex)
+		if err != nil {
+			t.Fatalf("resolveRefs PO: %v", err)
+		}
+		if resolvedPO["id"] != expectedPOID.String() {
+			t.Errorf("PO id: got %v, want %v", resolvedPO["id"], expectedPOID.String())
+		}
+		if _, hasLabel := resolvedPO["_label"]; hasLabel {
+			t.Error("PO output must not contain _label key")
+		}
+
+		// Resolve the line item rows.
+		for i, liRow := range state["purchase_order_line_items"] {
+			resolvedLI, err := resolveRefs(ctx, liRow, scenarioID, lookups, rowIndex)
+			if err != nil {
+				t.Fatalf("resolveRefs line_item[%d]: %v", i, err)
+			}
+			if resolvedLI["purchase_order_id"] != expectedPOID.String() {
+				t.Errorf("line_item[%d] purchase_order_id: got %v, want %v", i, resolvedLI["purchase_order_id"], expectedPOID.String())
+			}
+			if _, hasRowRef := resolvedLI["purchase_order_row_ref"]; hasRowRef {
+				t.Errorf("line_item[%d] output must not contain purchase_order_row_ref key", i)
+			}
+		}
+	})
+
+	t.Run("unknown row_ref errors", func(t *testing.T) {
+		t.Parallel()
+
+		state := map[string][]map[string]any{
+			"purchase_order_line_items": {
+				{"purchase_order_row_ref": "nonexistent"},
+			},
+		}
+		rowIndex, err := buildRowIndex(scenarioName, state)
+		if err != nil {
+			t.Fatalf("buildRowIndex: %v", err)
+		}
+
+		_, err = resolveRefs(ctx, state["purchase_order_line_items"][0], scenarioID, lookups, rowIndex)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), `row_ref "nonexistent" not found`) {
+			t.Errorf("error %q does not contain expected message", err.Error())
+		}
+	})
+
+	t.Run("duplicate _label errors", func(t *testing.T) {
+		t.Parallel()
+
+		state := map[string][]map[string]any{
+			"purchase_orders": {
+				{"_label": "po1"},
+				{"_label": "po1"},
+			},
+		}
+		_, err := buildRowIndex(scenarioName, state)
+		if err == nil {
+			t.Fatal("expected error for duplicate label, got nil")
+		}
+		if !strings.Contains(err.Error(), `duplicate _label "po1"`) {
+			t.Errorf("error %q does not contain expected message", err.Error())
+		}
+	})
+
+	t.Run("empty _label errors", func(t *testing.T) {
+		t.Parallel()
+
+		state := map[string][]map[string]any{
+			"purchase_orders": {
+				{"_label": ""},
+			},
+		}
+		_, err := buildRowIndex(scenarioName, state)
+		if err == nil {
+			t.Fatal("expected error for empty label, got nil")
+		}
+		if !strings.Contains(err.Error(), "_label must be non-empty string") {
+			t.Errorf("error %q does not contain expected message", err.Error())
+		}
+	})
+
+	t.Run("forward reference works", func(t *testing.T) {
+		// purchase_order_line_items sorts before purchase_orders alphabetically;
+		// the pre-pass must make this safe.
+		t.Parallel()
+
+		state := map[string][]map[string]any{
+			// alphabetically first — references label defined in purchase_orders
+			"purchase_order_line_items": {
+				{
+					"purchase_order_row_ref": "po1",
+					"product_ref":            "SKU-0001",
+				},
+			},
+			// alphabetically second — defines the label
+			"purchase_orders": {
+				{"_label": "po1", "supplier_ref": "SUP-001"},
+			},
+		}
+
+		rowIndex, err := buildRowIndex(scenarioName, state)
+		if err != nil {
+			t.Fatalf("buildRowIndex: %v", err)
+		}
+
+		liRow := state["purchase_order_line_items"][0]
+		resolvedLI, err := resolveRefs(ctx, liRow, scenarioID, lookups, rowIndex)
+		if err != nil {
+			t.Fatalf("resolveRefs (forward ref): %v", err)
+		}
+		if resolvedLI["purchase_order_id"] != expectedPOID.String() {
+			t.Errorf("purchase_order_id: got %v, want %v", resolvedLI["purchase_order_id"], expectedPOID.String())
+		}
+	})
+
+	t.Run("combined _label with existing _ref types", func(t *testing.T) {
+		t.Parallel()
+
+		state := map[string][]map[string]any{
+			"purchase_orders": {
+				{
+					"_label":        "po1",
+					"supplier_ref":  "SUP-001",
+					"warehouse_ref": "WH-MAIN",
+				},
+			},
+		}
+
+		rowIndex, err := buildRowIndex(scenarioName, state)
+		if err != nil {
+			t.Fatalf("buildRowIndex: %v", err)
+		}
+
+		poRow := state["purchase_orders"][0]
+		resolved, err := resolveRefs(ctx, poRow, scenarioID, lookups, rowIndex)
+		if err != nil {
+			t.Fatalf("resolveRefs: %v", err)
+		}
+		// _label stripped
+		if _, hasLabel := resolved["_label"]; hasLabel {
+			t.Error("output must not contain _label key")
+		}
+		// id auto-injected
+		if resolved["id"] != expectedPOID.String() {
+			t.Errorf("id: got %v, want %v", resolved["id"], expectedPOID.String())
+		}
+		// supplier_ref resolved
+		if resolved["supplier_id"] != "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee" {
+			t.Errorf("supplier_id: got %v", resolved["supplier_id"])
+		}
+		// warehouse_ref resolved
+		if resolved["warehouse_id"] != "ffffffff-ffff-4fff-8fff-ffffffffffff" {
+			t.Errorf("warehouse_id: got %v", resolved["warehouse_id"])
+		}
+	})
 }

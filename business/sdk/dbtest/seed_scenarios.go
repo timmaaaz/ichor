@@ -76,6 +76,14 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 			return fmt.Errorf("seed scenario %s: lever overrides: %w", s.Name, err)
 		}
 
+		// Pre-pass: build a label→UUID index across the entire scenario state
+		// so that _row_ref cross-row references resolve correctly regardless
+		// of table iteration order (forward references are safe).
+		rowIndex, err := buildRowIndex(s.Name, s.State)
+		if err != nil {
+			return fmt.Errorf("seed scenario %s: %w", s.Name, err)
+		}
+
 		// Sort state keys so fixture insertion order is deterministic.
 		// Go map iteration is randomized; sorted iteration plus slice-ordered
 		// rows keeps UUIDs and row identities stable across reseeds.
@@ -91,7 +99,7 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 				return fmt.Errorf("scenario %s: unknown state key %q (no schema.table mapping)", s.Name, tableSuffix)
 			}
 			for i, row := range s.State[tableSuffix] {
-				resolved, err := resolveRefs(ctx, row, s.ID, lookups)
+				resolved, err := resolveRefs(ctx, row, s.ID, lookups, rowIndex)
 				if err != nil {
 					return fmt.Errorf("scenario %s: resolve refs %s[%d]: %w", s.Name, targetTable, i, err)
 				}

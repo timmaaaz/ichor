@@ -16,6 +16,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/seedid"
 )
 
 // refResolver resolves a single stable human-readable code to a UUID.
@@ -180,7 +181,38 @@ var knownRefSuffixes = map[string]struct{}{
 	"purchase_order_status_ref": {},
 }
 
+// buildRowIndex performs a pre-pass over the entire scenario state and
+// returns a map of label → deterministic UUID for every row that contains
+// a "_label" key. The UUID is derived via seedid.Stable so it is stable
+// across reseeds and matches the id that resolveRefs auto-injects.
+//
+// Fails if any label is non-string, empty, or duplicated within the scenario.
+func buildRowIndex(scenarioName string, state map[string][]map[string]any) (map[string]uuid.UUID, error) {
+	index := make(map[string]uuid.UUID)
+	for tableSuffix, rows := range state {
+		for i, row := range rows {
+			raw, ok := row["_label"]
+			if !ok {
+				continue
+			}
+			label, ok := raw.(string)
+			if !ok || label == "" {
+				return nil, fmt.Errorf("scenario %s: %s[%d]: _label must be non-empty string", scenarioName, tableSuffix, i)
+			}
+			if _, dup := index[label]; dup {
+				return nil, fmt.Errorf("scenario %s: duplicate _label %q", scenarioName, label)
+			}
+			index[label] = seedid.Stable(fmt.Sprintf("scenario:%s:label:%s", scenarioName, label))
+		}
+	}
+	return index, nil
+}
+
 // resolveRefs rewrites a single state.yaml row in place:
+//   - strips "_label" authoring directives and auto-injects a deterministic
+//     "id" field on labelled rows
+//   - resolves "<prefix>_row_ref" keys to "<prefix>_id" via the row index
+//     (check _row_ref before _ref — longer suffix wins)
 //   - replaces "<prefix>_ref" string values with "<prefix>_id" UUID values
 //     using the appropriate resolver
 //   - injects scenario_id if not already present
@@ -188,54 +220,105 @@ var knownRefSuffixes = map[string]struct{}{
 // Keys that don't end in "_ref" pass through untouched. Unknown "_ref" keys
 // (anything not in knownRefSuffixes above) fail-hard so silent mis-seeding
 // can't happen.
-func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, lookups refLookups) (map[string]any, error) {
+//
+// rowIndex may be nil when no cross-row references are present.
+func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, lookups refLookups, rowIndex map[string]uuid.UUID) (map[string]any, error) {
 	out := make(map[string]any, len(row)+1)
-	for k, v := range row {
-		if !strings.HasSuffix(k, "_ref") {
-			out[k] = v
-			continue
-		}
-		if _, ok := knownRefSuffixes[k]; !ok {
-			return nil, fmt.Errorf("unknown ref key %q (grep knownRefSuffixes in seed_scenarios_refs.go for the supported set)", k)
-		}
-		code, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("ref key %q must be a string, got %T", k, v)
-		}
 
-		var id uuid.UUID
-		var err error
-		var targetKey string
-		switch k {
-		case "product_ref":
-			targetKey = "product_id"
-			id, err = lookups.productIDBySKU(ctx, code)
-		case "location_ref":
-			targetKey = "location_id"
-			id, err = lookups.locationIDByCode(ctx, code)
-		case "tote_ref":
-			targetKey = "label_catalog_id"
-			id, err = lookups.labelIDByCode(ctx, code)
-		case "supplier_ref":
-			targetKey = "supplier_id"
-			id, err = lookups.supplierIDByCode(ctx, code)
-		case "warehouse_ref":
-			targetKey = "warehouse_id"
-			id, err = lookups.warehouseIDByCode(ctx, code)
-		case "currency_ref":
-			targetKey = "currency_id"
-			id, err = lookups.currencyIDByCode(ctx, code)
-		case "user_ref":
-			targetKey = "user_id"
-			id, err = lookups.userIDByUsername(ctx, code)
-		case "purchase_order_status_ref":
-			targetKey = "purchase_order_status_id"
-			id, err = lookups.purchaseOrderStatusIDByName(ctx, code)
+	// --- pass 1: handle _label (strip + auto-inject id) ---
+	if raw, ok := row["_label"]; ok {
+		label, ok := raw.(string)
+		if !ok || label == "" {
+			return nil, fmt.Errorf("_label must be non-empty string")
 		}
-		if err != nil {
-			return nil, fmt.Errorf("resolve %s=%q: %w", k, code, err)
+		id := seedid.Stable(fmt.Sprintf("scenario:%s:label:%s", scenarioID.String(), label))
+		// rowIndex was built from the scenario Name, but resolveRefs receives
+		// scenarioID. Recover the id directly from rowIndex if available
+		// (preferred — same derivation key), otherwise derive from scenarioID.
+		if rowIndex != nil {
+			if indexed, found := rowIndex[label]; found {
+				id = indexed
+			}
 		}
-		out[targetKey] = id.String()
+		// If an explicit id is present it must match.
+		if explicitID, hasID := row["id"]; hasID {
+			if explicitID.(string) != id.String() {
+				return nil, fmt.Errorf("row label %q has explicit id %s but expected %s", label, explicitID, id.String())
+			}
+		}
+		out["id"] = id.String()
+		// _label is an authoring directive; do not include in output.
+	}
+
+	for k, v := range row {
+		switch {
+		case k == "_label":
+			// Already handled above — skip.
+			continue
+
+		case strings.HasSuffix(k, "_row_ref"):
+			// Cross-row reference: <prefix>_row_ref → <prefix>_id via rowIndex.
+			// Check _row_ref BEFORE _ref to avoid false matches (longer suffix wins).
+			label, ok := v.(string)
+			if !ok || label == "" {
+				return nil, fmt.Errorf("row_ref key %q must be a non-empty string, got %T", k, v)
+			}
+			if rowIndex == nil {
+				return nil, fmt.Errorf("row_ref %q not found (key: %s) — no row index available", label, k)
+			}
+			id, found := rowIndex[label]
+			if !found {
+				return nil, fmt.Errorf("row_ref %q not found (key: %s)", label, k)
+			}
+			targetKey := strings.TrimSuffix(k, "_row_ref") + "_id"
+			out[targetKey] = id.String()
+
+		case strings.HasSuffix(k, "_ref"):
+			if _, ok := knownRefSuffixes[k]; !ok {
+				return nil, fmt.Errorf("unknown ref key %q (grep knownRefSuffixes in seed_scenarios_refs.go for the supported set)", k)
+			}
+			code, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("ref key %q must be a string, got %T", k, v)
+			}
+
+			var id uuid.UUID
+			var err error
+			var targetKey string
+			switch k {
+			case "product_ref":
+				targetKey = "product_id"
+				id, err = lookups.productIDBySKU(ctx, code)
+			case "location_ref":
+				targetKey = "location_id"
+				id, err = lookups.locationIDByCode(ctx, code)
+			case "tote_ref":
+				targetKey = "label_catalog_id"
+				id, err = lookups.labelIDByCode(ctx, code)
+			case "supplier_ref":
+				targetKey = "supplier_id"
+				id, err = lookups.supplierIDByCode(ctx, code)
+			case "warehouse_ref":
+				targetKey = "warehouse_id"
+				id, err = lookups.warehouseIDByCode(ctx, code)
+			case "currency_ref":
+				targetKey = "currency_id"
+				id, err = lookups.currencyIDByCode(ctx, code)
+			case "user_ref":
+				targetKey = "user_id"
+				id, err = lookups.userIDByUsername(ctx, code)
+			case "purchase_order_status_ref":
+				targetKey = "purchase_order_status_id"
+				id, err = lookups.purchaseOrderStatusIDByName(ctx, code)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("resolve %s=%q: %w", k, code, err)
+			}
+			out[targetKey] = id.String()
+
+		default:
+			out[k] = v
+		}
 	}
 
 	if _, ok := out["scenario_id"]; !ok {
