@@ -40,6 +40,11 @@ func applyFilter(filter userbus.QueryFilter, data map[string]any, buf *bytes.Buf
 		wc = append(wc, "username ILIKE :username")
 	}
 
+	if filter.UsernameExact != nil {
+		data["username_exact"] = filter.UsernameExact.String()
+		wc = append(wc, "username = :username_exact")
+	}
+
 	if filter.FirstName != nil {
 		data["first_name"] = "%" + filter.FirstName.String() + "%"
 		wc = append(wc, "first_name ILIKE :first_name")

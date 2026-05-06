@@ -2615,3 +2615,22 @@ CREATE TABLE config.scenario_setting_overrides (
     value       TEXT NOT NULL,
     PRIMARY KEY (scenario_id, key)
 );
+
+-- Version: 2.38
+-- Description: Phase 1 scenario ref resolvers — add code column to procurement.suppliers.
+-- Backfill assigns deterministic SUP-NNN codes ordered by created_date so existing
+-- rows get stable, predictable values. Column is then set NOT NULL and given a
+-- UNIQUE constraint (resolver contract: exactly one row per code).
+ALTER TABLE procurement.suppliers ADD COLUMN code TEXT;
+
+WITH ranked AS (
+    SELECT id, row_number() OVER (ORDER BY created_date, id) AS rn
+    FROM procurement.suppliers
+)
+UPDATE procurement.suppliers s
+SET code = 'SUP-' || lpad(ranked.rn::text, 3, '0')
+FROM ranked
+WHERE s.id = ranked.id;
+
+ALTER TABLE procurement.suppliers ALTER COLUMN code SET NOT NULL;
+ALTER TABLE procurement.suppliers ADD CONSTRAINT suppliers_code_unique UNIQUE (code);

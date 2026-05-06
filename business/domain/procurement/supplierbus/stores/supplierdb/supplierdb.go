@@ -49,9 +49,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (supplierbus.Storer, error)
 func (s *Store) Create(ctx context.Context, supplier supplierbus.Supplier) error {
 	const q = `
 	INSERT INTO procurement.suppliers (
-		id, contact_infos_id, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date
+		id, contact_infos_id, code, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date
 	) VALUES (
-		:id, :contact_infos_id, :name, :payment_term_id, :lead_time_days, :rating, :is_active, :created_date, :updated_date
+		:id, :contact_infos_id, :code, :name, :payment_term_id, :lead_time_days, :rating, :is_active, :created_date, :updated_date
 	)
 	`
 
@@ -74,6 +74,7 @@ func (s *Store) Update(ctx context.Context, supplier supplierbus.Supplier) error
 		procurement.suppliers
 	SET
         contact_infos_id = :contact_infos_id,
+        code = :code,
         name = :name,
         payment_term_id = :payment_term_id,
         lead_time_days = :lead_time_days,
@@ -119,7 +120,7 @@ func (s *Store) Query(ctx context.Context, filter supplierbus.QueryFilter, order
 
 	const q = `
 	SELECT
-	    id, contact_infos_id, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date
+	    id, contact_infos_id, code, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
 		procurement.suppliers
 	`
@@ -186,7 +187,7 @@ func (s *Store) QueryByIDs(ctx context.Context, supplierIDs []uuid.UUID) ([]supp
 
 	const q = `
 	SELECT
-	    id, contact_infos_id, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date
+	    id, contact_infos_id, code, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
 		procurement.suppliers
 	WHERE
@@ -210,7 +211,7 @@ func (s *Store) QueryByID(ctx context.Context, supplierID uuid.UUID) (supplierbu
 
 	const q = `
 	SELECT
-	    id, contact_infos_id, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date
+	    id, contact_infos_id, code, name, payment_term_id, lead_time_days, rating, is_active, created_date, updated_date
 	FROM
 		procurement.suppliers
 	WHERE

@@ -19,10 +19,12 @@ func TestNewSupplier(n int, ContactInfosIDs uuid.UUIDs) []NewSupplier {
 
 		newSuppliers[i] = NewSupplier{
 			ContactInfosID: ContactInfosIDs[idx%len(ContactInfosIDs)],
-			Name:           fmt.Sprintf("Name%d", idx),
-			LeadTimeDays:   idx,
-			Rating:         types.MustParseRoundedFloat(fmt.Sprintf("%.2f", rand.Float64()*10)),
-			IsActive:       idx%2 == 0,
+			// Code uses i+1 (not idx) so SUP-NNN is deterministic within a single seed batch; tests must not call TestSeedSuppliers twice in the same DB.
+			Code:         fmt.Sprintf("SUP-%03d", i+1),
+			Name:         fmt.Sprintf("Name%d", idx),
+			LeadTimeDays: idx,
+			Rating:       types.MustParseRoundedFloat(fmt.Sprintf("%.2f", rand.Float64()*10)),
+			IsActive:     idx%2 == 0,
 		}
 	}
 

@@ -596,29 +596,39 @@ symptom → fix:
 
 file: business/sdk/dbtest/seed_scenarios_refs.go
 
-state.yaml rows may use stable human-readable codes for three FK types.
+state.yaml rows may use stable human-readable codes for FK types.
 The seeder resolves them to UUIDs before writing to
 `inventory.scenario_fixtures.payload_json`, so `scenariodb.ApplyFixtures`
 stays table-agnostic and `jsonb_populate_record` receives real UUIDs
 on every typed column.
 
-| state.yaml key | Resolved via | Output key |
+| state.yaml key | Lookup table / column | Output key |
 |---|---|---|
-| `product_ref` | `productbus.Query{SKU}` | `product_id` |
-| `location_ref` | `inventorylocationbus.Query{LocationCodeExact}` | `location_id` |
-| `tote_ref` | `labelbus.QueryByCode` | `label_catalog_id` |
+| `product_ref` | `products.products.sku` | `product_id` |
+| `location_ref` | `inventory.inventory_locations.location_code` | `location_id` |
+| `tote_ref` | `inventory.label_catalog.code` | `label_catalog_id` |
+| `supplier_ref` | `procurement.suppliers.code` | `supplier_id` |
+| `warehouse_ref` | `inventory.warehouses.code` | `warehouse_id` |
+| `currency_ref` | `core.currencies.code` | `currency_id` |
+| `user_ref` | `core.users.username` | `user_id` |
+| `purchase_order_status_ref` | `procurement.purchase_order_statuses.name` | `purchase_order_status_id` |
 
-Any key ending in `_ref` that is NOT one of the three above is a
+Any key ending in `_ref` that is NOT one of the above is a
 fail-hard error — prevents silent mis-seeding when new ref types are
 added to YAML before their resolvers land.
 
 `scenario_id` is also auto-injected when absent, so `DeleteScopedRows`
 can remove the fixture rows on the next Load.
 
-Further `_ref` types (e.g. `supplier_ref`, `warehouse_ref`, `currency_ref`,
-`user_ref`, `purchase_order_status_ref`) are expected to land alongside
-the first real scenario fixtures that need them. Add each new resolver
-as a field on `refLookups` and a case in `resolveRefs`'s switch.
+Phase 1 Task 1 added 5 additional resolvers (`supplier_ref`, `warehouse_ref`,
+`currency_ref`, `user_ref`, `purchase_order_status_ref`) per the bus-closure
+pattern at `business/sdk/dbtest/seed_scenarios_refs.go:newRefLookups`.
+
+⚠ Three of the eight underlying bus-store filters use ILIKE queries
+(`user_ref` via `userdb`, `purchase_order_status_ref` via `purchaseorderstatusdb`,
+`warehouse_ref` via `warehousedb`). The resolvers apply a post-filter
+exact-match guard after the query to enforce the exactly-one-match contract
+despite the non-exact SQL filter.
 
 ---
 

@@ -21,8 +21,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
-	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	suptypes "github.com/timmaaaz/ichor/business/domain/procurement/supplierbus/types"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	spttypes "github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus/types"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
@@ -519,6 +519,7 @@ func Test_QueryAvailableForAllocation(t *testing.T) {
 
 	supplier, err := bd.Supplier.Create(ctx, supplierbus.NewSupplier{
 		ContactInfosID: contactIDs[0],
+		Code:           "SUP-IT-001",
 		Name:           "Test Supplier",
 		LeadTimeDays:   7,
 		Rating:         suptypes.NewRoundedFloat(4.5),

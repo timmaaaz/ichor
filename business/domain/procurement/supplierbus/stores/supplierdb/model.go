@@ -13,6 +13,7 @@ import (
 type supplier struct {
 	SupplierID     uuid.UUID      `db:"id"`
 	ContactInfosID uuid.UUID      `db:"contact_infos_id"`
+	Code           string         `db:"code"`
 	Name           string         `db:"name"`
 	PaymentTermID  *uuid.UUID     `db:"payment_term_id"`
 	LeadTimeDays   int            `db:"lead_time_days"`
@@ -26,6 +27,7 @@ func toDBSupplier(bus supplierbus.Supplier) supplier {
 	return supplier{
 		SupplierID:     bus.SupplierID,
 		ContactInfosID: bus.ContactInfosID,
+		Code:           bus.Code,
 		Name:           bus.Name,
 		PaymentTermID:  bus.PaymentTermID,
 		LeadTimeDays:   bus.LeadTimeDays,
@@ -46,6 +48,7 @@ func toBusSupplier(db supplier) (supplierbus.Supplier, error) {
 	return supplierbus.Supplier{
 		SupplierID:     db.SupplierID,
 		ContactInfosID: db.ContactInfosID,
+		Code:           db.Code,
 		Name:           db.Name,
 		PaymentTermID:  db.PaymentTermID,
 		LeadTimeDays:   db.LeadTimeDays,

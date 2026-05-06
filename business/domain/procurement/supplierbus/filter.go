@@ -10,6 +10,7 @@ import (
 type QueryFilter struct {
 	SupplierID     *uuid.UUID
 	ContactInfosID *uuid.UUID
+	Code           *string
 	Name           *string
 	PaymentTermID  *uuid.UUID
 	LeadTimeDays   *int

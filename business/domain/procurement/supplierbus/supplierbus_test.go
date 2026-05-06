@@ -151,6 +151,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			Name: "Create",
 			ExpResp: supplierbus.Supplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           "SUP-TEST-001",
 				Name:           "Name",
 				PaymentTermID:  &sd.PaymentTerms[0].ID,
 				LeadTimeDays:   8,
@@ -160,6 +161,7 @@ func create(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExcFunc: func(ctx context.Context) any {
 				newSupplier := supplierbus.NewSupplier{
 					ContactInfosID: sd.ContactInfos[0].ID,
+					Code:           "SUP-TEST-001",
 					Name:           "Name",
 					PaymentTermID:  &sd.PaymentTerms[0].ID,
 					LeadTimeDays:   8,
@@ -199,6 +201,7 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			ExpResp: supplierbus.Supplier{
 				ContactInfosID: sd.ContactInfos[2].ID,
 				SupplierID:     sd.Suppliers[0].SupplierID,
+				Code:           sd.Suppliers[0].Code,
 				Name:           "UpdatedName",
 				PaymentTermID:  &sd.PaymentTerms[1].ID,
 				LeadTimeDays:   10,
@@ -222,6 +225,51 @@ func update(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 				}
 
 				return s
+			},
+			CmpFunc: func(got, exp any) string {
+				gotResp, exists := got.(supplierbus.Supplier)
+				if !exists {
+					return fmt.Sprintf("got is not a supplier: %v", got)
+				}
+
+				expResp := exp.(supplierbus.Supplier)
+
+				expResp.SupplierID = gotResp.SupplierID
+				expResp.UpdatedDate = gotResp.UpdatedDate
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+		{
+			Name: "UpdateCode",
+			ExpResp: supplierbus.Supplier{
+				ContactInfosID: sd.Suppliers[1].ContactInfosID,
+				SupplierID:     sd.Suppliers[1].SupplierID,
+				Code:           "SUP-UPDATED-001",
+				Name:           sd.Suppliers[1].Name,
+				PaymentTermID:  sd.Suppliers[1].PaymentTermID,
+				LeadTimeDays:   sd.Suppliers[1].LeadTimeDays,
+				Rating:         sd.Suppliers[1].Rating,
+				IsActive:       sd.Suppliers[1].IsActive,
+				CreatedDate:    sd.Suppliers[1].CreatedDate,
+			},
+			ExcFunc: func(ctx context.Context) any {
+				updateSupplier := supplierbus.UpdateSupplier{
+					Code: dbtest.StringPointer("SUP-UPDATED-001"),
+				}
+
+				s, err := busDomain.Supplier.Update(ctx, sd.Suppliers[1], updateSupplier)
+				if err != nil {
+					return err
+				}
+
+				// Re-query to confirm the new Code persisted.
+				persisted, err := busDomain.Supplier.QueryByID(ctx, s.SupplierID)
+				if err != nil {
+					return err
+				}
+
+				return persisted
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp, exists := got.(supplierbus.Supplier)

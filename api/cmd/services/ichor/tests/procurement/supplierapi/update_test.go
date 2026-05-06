@@ -32,6 +32,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 			GotResp: &supplierapp.Supplier{},
 			ExpResp: &supplierapp.Supplier{
 				ContactInfosID: sd.ContactInfos[0].ID,
+				Code:           sd.Suppliers[0].Code,
 				Name:           "UpdateSupplier",
 				PaymentTermID:  sd.PaymentTerms[0].ID,
 				LeadTimeDays:   "10",
@@ -165,6 +166,21 @@ func update409(sd apitest.SeedData) []apitest.Table {
 			},
 			GotResp: &errs.Error{},
 			ExpResp: errs.Newf(errs.Aborted, "foreign key violation"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "duplicate-code",
+			URL:        fmt.Sprintf("/v1/procurement/suppliers/%s", sd.Suppliers[0].SupplierID),
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPut,
+			StatusCode: http.StatusConflict,
+			Input: &supplierapp.UpdateSupplier{
+				Code: dbtest.StringPointer(sd.Suppliers[1].Code),
+			},
+			GotResp: &errs.Error{},
+			ExpResp: errs.Newf(errs.AlreadyExists, "supplier entry is not unique"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
