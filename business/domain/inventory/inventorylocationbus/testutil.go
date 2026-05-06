@@ -22,8 +22,9 @@ type specCode struct {
 }
 
 // specCodes is the canonical, alphabetically-sorted catalogue of the 19
-// physical location codes. Order is fixed so callers indexing the returned
-// slice (e.g. sd.InventoryLocations[0]) get deterministic results across runs.
+// physical location codes. The var order drives insertion; the seeded slice
+// is re-sorted by LocationID.String() so positional indices match the bus
+// query's ORDER BY id ASC within a run (UUIDs are fresh per run).
 var specCodes = []specCode{
 	{code: "PCK-01", zonePfx: "PCK", aisle: "", rack: "01"},
 	{code: "PCK-02", zonePfx: "PCK", aisle: "", rack: "02"},

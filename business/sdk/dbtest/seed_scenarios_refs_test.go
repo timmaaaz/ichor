@@ -28,7 +28,7 @@ func fixedLookups(t *testing.T) refLookups {
 			return productID, nil
 		},
 		locationIDByCode: func(_ context.Context, code string) (uuid.UUID, error) {
-			if code != "RCV-A010101" {
+			if code != "RCV-01" {
 				return uuid.Nil, errors.New("not found")
 			}
 			return locationID, nil
@@ -101,7 +101,7 @@ func TestResolveRefs(t *testing.T) {
 			name: "three refs together",
 			in: map[string]any{
 				"product_ref":  "SKU-0001",
-				"location_ref": "RCV-A010101",
+				"location_ref": "RCV-01",
 				"tote_ref":     "TOTE-001",
 			},
 			expect: map[string]any{

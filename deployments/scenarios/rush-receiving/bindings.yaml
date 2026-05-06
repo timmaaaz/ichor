@@ -6,7 +6,7 @@
 #
 # - totes:     inventory.label_catalog.code (Phase 0b format "TOTE-%03d")
 # - locations: inventory.inventory_locations.location_code
-#              (Phase 0c format "{ZoneCode}-{Aisle}{Rack}{Shelf}{Bin}")
+#              (spec §3.4 catalogue: "{ZoneCode}-{NN}" or "{ZoneCode}-{Aisle}{NN}")
 # - lots:      scenario-scoped blueprints; ref is an FK handle used within
 #              this scenario's state.yaml. product_code matches the 0c
 #              product SKU format ("SKU-%04d").
@@ -17,11 +17,11 @@ totes:
   - code: TOTE-003
 
 locations:
-  - code: RCV-A010101
+  - code: RCV-01
     role: inbound
-  - code: RCV-A010102
+  - code: RCV-02
     role: inbound
-  - code: STG-A010203
+  - code: STG-A01
     role: storage
 
 lots:
