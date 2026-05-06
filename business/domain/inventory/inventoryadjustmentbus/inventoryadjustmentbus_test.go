@@ -154,7 +154,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unitest.SeedData, error) {
 		return unitest.SeedData{}, fmt.Errorf("seeding zones : %w", err)
 	}
 
-	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 25, warehouseIDs, zones, busDomain.InventoryLocation)
+	inventoryLocations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 19, warehouseIDs, zones, busDomain.InventoryLocation)
 	if err != nil {
 		return unitest.SeedData{}, fmt.Errorf("seeding inventory locations : %w", err)
 	}
