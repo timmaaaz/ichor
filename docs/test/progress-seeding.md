@@ -29,7 +29,7 @@ All values are randomized (names, IDs, dates). Only counts and relationships are
 | Cost history | 40 | historical, 180-day window |
 | Warehouses | 5 | historical, 365-day window |
 | Zones | 12 | |
-| Inventory locations | 25 | |
+| Inventory locations | 19 | spec §3.4 zone codes (RCV/QA/STG-A..C/PCK/PKG/SHP) |
 | Inventory items | 30 | |
 | Transfer orders | 20 | |
 | Inventory transactions | 40 | |
