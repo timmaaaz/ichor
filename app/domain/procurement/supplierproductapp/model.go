@@ -41,6 +41,7 @@ type SupplierProduct struct {
 	IsPrimarySupplier  string `json:"is_primary_supplier"`
 	CreatedDate        string `json:"created_date"`
 	UpdatedDate        string `json:"updated_date"`
+	ScenarioID         string `json:"scenario_id,omitempty"`
 }
 
 func (app SupplierProduct) Encode() ([]byte, string, error) {
@@ -49,7 +50,7 @@ func (app SupplierProduct) Encode() ([]byte, string, error) {
 }
 
 func ToAppSupplierProduct(bus supplierproductbus.SupplierProduct) SupplierProduct {
-	return SupplierProduct{
+	app := SupplierProduct{
 		SupplierProductID:  bus.SupplierProductID.String(),
 		SupplierID:         bus.SupplierID.String(),
 		ProductID:          bus.ProductID.String(),
@@ -62,6 +63,10 @@ func ToAppSupplierProduct(bus supplierproductbus.SupplierProduct) SupplierProduc
 		CreatedDate:        bus.CreatedDate.Format(timeutil.FORMAT),
 		UpdatedDate:        bus.UpdatedDate.Format(timeutil.FORMAT),
 	}
+	if bus.ScenarioID != nil {
+		app.ScenarioID = bus.ScenarioID.String()
+	}
+	return app
 }
 
 func ToAppSupplierProducts(bus []supplierproductbus.SupplierProduct) []SupplierProduct {
@@ -260,5 +265,3 @@ func (app QueryByIDsRequest) Validate() error {
 	}
 	return nil
 }
-
-

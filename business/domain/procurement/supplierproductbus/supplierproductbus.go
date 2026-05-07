@@ -87,6 +87,12 @@ func (b *Business) Create(ctx context.Context, nsp NewSupplierProduct) (Supplier
 		CreatedDate:        now,
 	}
 
+	// Phase 0d: tag the row with the active scenario (if any) so scenario
+	// Reset can later undo this row while leaving baseline rows intact.
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		sp.ScenarioID = &sid
+	}
+
 	if err := b.storer.Create(ctx, sp); err != nil {
 		return SupplierProduct{}, fmt.Errorf("create: %w", err)
 	}
