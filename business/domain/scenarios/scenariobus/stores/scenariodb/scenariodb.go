@@ -312,8 +312,9 @@ func (s *Store) SetActive(ctx context.Context, id uuid.UUID) error {
 // Bulk load/reset helpers
 // =============================================================================
 
-// scopedTables is the ordered list of the 18 floor-scoped tables that carry
-// a scenario_id column (migration 2.35). Order matters for FK constraints —
+// scopedTables is the ordered list of floor-scoped tables that carry a
+// scenario_id column (migration 2.35 added 18 tables; migration 2.39 added
+// procurement.supplier_products). Order matters for FK constraints —
 // more dependent child tables are listed before their parents.
 var scopedTables = []string{
 	"workflow.approval_requests",
@@ -330,6 +331,7 @@ var scopedTables = []string{
 	"inventory.transfer_orders",
 	"procurement.purchase_order_line_items",
 	"procurement.purchase_orders",
+	"procurement.supplier_products",
 	"sales.order_fulfillment_statuses",
 	"sales.order_line_items",
 	"sales.orders",
@@ -337,7 +339,7 @@ var scopedTables = []string{
 }
 
 // DeleteScopedRows removes all rows with the given scenario_id from every
-// one of the 18 floor-scoped tables. Called inside a transaction by Load.
+// scoped table (scopedTables). Called inside a transaction by Load.
 func (s *Store) DeleteScopedRows(ctx context.Context, scenarioID uuid.UUID) error {
 	data := map[string]any{
 		"scenario_id": scenarioID,

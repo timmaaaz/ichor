@@ -610,6 +610,7 @@ on every typed column.
 | `to_location_ref` | `inventory.inventory_locations.location_code` | `to_location_id` |
 | `tote_ref` | `inventory.label_catalog.code` | `label_catalog_id` |
 | `supplier_ref` | `procurement.suppliers.code` | `supplier_id` |
+| `supplier_product_ref` | `procurement.supplier_products.supplier_part_number` | `supplier_product_id` |
 | `warehouse_ref` | `inventory.warehouses.code` | `warehouse_id` |
 | `currency_ref` | `core.currencies.code` | `currency_id` |
 | `user_ref` | `core.users.username` | `user_id` |
@@ -635,7 +636,15 @@ Phase 1 Task 2 added 7 more resolvers (`customer_ref`, `from_location_ref`,
 `to_location_ref`, `requested_by_ref`, `approved_by_ref`,
 `order_fulfillment_status_ref`, `line_item_fulfillment_status_ref`).
 
-⚠ Three of the fifteen underlying bus-store filters use ILIKE queries
+Phase 1 follow-up added `supplier_product_ref` (16th resolver), keyed on
+`supplier_part_number` (exact equality match). Also added
+`procurement.supplier_products` to both `resolveTargetTable` (state.yaml can
+self-author supplier_products rows) and `scopedTables` (migration 2.39 adds
+`scenario_id` column so rows are cleaned up on scenario unload). The
+`transfer-lot-tracked` scenario was completed with `supplier_products`,
+`lot_trackings`, and `lot_locations` rows.
+
+⚠ Three of the sixteen underlying bus-store filters use ILIKE queries
 (`user_ref` via `userdb`, `purchase_order_status_ref` via `purchaseorderstatusdb`,
 `warehouse_ref` via `warehousedb`). The resolvers apply a post-filter
 exact-match guard after the query to enforce the exactly-one-match contract

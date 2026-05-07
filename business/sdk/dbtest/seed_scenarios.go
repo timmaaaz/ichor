@@ -137,7 +137,7 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 }
 
 // resolveTargetTable maps a state.yaml top-level key to "<schema>.<table>".
-// Source of truth is spec §3.5's 18-table scoped list (Decision 1 includes
+// Source of truth is spec §3.5's 19-table scoped list (Decision 1 includes
 // lot_locations). Extend as new floor-scoped tables get scenario_id added.
 func resolveTargetTable(suffix string) string {
 	m := map[string]string{
@@ -146,6 +146,7 @@ func resolveTargetTable(suffix string) string {
 		"order_fulfillment_statuses": "sales.order_fulfillment_statuses",
 		"purchase_orders":            "procurement.purchase_orders",
 		"purchase_order_line_items":  "procurement.purchase_order_line_items",
+		"supplier_products":          "procurement.supplier_products",
 		"transfer_orders":            "inventory.transfer_orders",
 		"inventory_transactions":     "inventory.inventory_transactions",
 		"inventory_adjustments":      "inventory.inventory_adjustments",

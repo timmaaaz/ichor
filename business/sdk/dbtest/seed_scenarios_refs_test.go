@@ -23,6 +23,7 @@ func fixedLookups(t *testing.T) refLookups {
 	orderFulfillmentStatusID := uuid.MustParse("44444444-4444-4444-8444-444444444444")
 	lineItemFulfillmentStatusID := uuid.MustParse("55555555-5555-4555-8555-555555555555")
 	customerID := uuid.MustParse("66666666-6666-4666-8666-666666666666")
+	supplierProductID := uuid.MustParse("77777777-7777-4777-8777-777777777777")
 
 	return refLookups{
 		productIDBySKU: func(_ context.Context, sku string) (uuid.UUID, error) {
@@ -90,6 +91,12 @@ func fixedLookups(t *testing.T) refLookups {
 				return uuid.Nil, errors.New("not found")
 			}
 			return customerID, nil
+		},
+		supplierProductIDByPartNumber: func(_ context.Context, partNumber string) (uuid.UUID, error) {
+			if partNumber != "LOT-SP-0029" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return supplierProductID, nil
 		},
 	}
 }
@@ -296,6 +303,23 @@ func TestResolveRefs(t *testing.T) {
 				"customer_id": "66666666-6666-4666-8666-666666666666",
 				"scenario_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
 			},
+		},
+		{
+			name: "supplier_product_ref resolves to supplier_product_id, scenario_id injected",
+			in: map[string]any{
+				"supplier_product_ref": "LOT-SP-0029",
+			},
+			expect: map[string]any{
+				"supplier_product_id": "77777777-7777-4777-8777-777777777777",
+				"scenario_id":         "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "supplier_product_ref with unknown part number errors",
+			in: map[string]any{
+				"supplier_product_ref": "NONEXISTENT-PART",
+			},
+			expectErr: "resolve supplier_product_ref",
 		},
 	}
 

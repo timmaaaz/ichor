@@ -2,17 +2,50 @@
 #
 # Transfer of lot-tracked SKU-0029 from STG-A01 → STG-B01.
 #
-# NOTE — lot_trackings / lot_locations rows are NOT included here.
-# lot_trackings.supplier_product_id is NOT NULL FK to
-# procurement.supplier_products, which is not in the supported fixture-table
-# set (resolveTargetTable) and has no resolver in seed_scenarios_refs.go.
-# The transfer_orders + inventory_items fixture is sufficient to exercise the
-# transfer UX with a lot-tracked product; full lot-identity propagation
-# validation requires either:
-#   (a) a supplier_product_ref resolver + supplier_products in the fixture
-#       table set, or
-#   (b) the bindings.Lots seeder path being implemented in seed_scenarios.go.
-# Tracked in DONE_WITH_CONCERNS on this fixture set.
+# supplier_products: self-authored row required because lot_trackings.supplier_product_id
+# is NOT NULL FK and supplier_products has no stable natural key in the seeded data
+# (part numbers are randomly generated at seed time). The scenario authors its own
+# supplier_products row with a deterministic supplier_part_number (LOT-SP-0029) so
+# lot_trackings can reference it via supplier_product_row_ref. The supplier_products
+# row is scoped to the scenario via scenario_id (migration 2.39) and cleaned up on
+# unload via DeleteScopedRows.
+#
+# supplier_ref: SUP-001 is safe — supplier codes are deterministic (SUP-001…SUP-025)
+# per supplierbus.TestNewSupplier which uses i+1 (not rand) for the code field.
+# product_ref: SKU-0029 is lot-tracked (index 28 in the 28×none + 8×lot + 4×serial
+# distribution; lot tracking indices 28–35).
+
+supplier_products:
+  - _label: sp_lot_a
+    supplier_ref: SUP-001
+    product_ref: SKU-0029
+    supplier_part_number: "LOT-SP-0029"
+    min_order_quantity: 1
+    max_order_quantity: 500
+    lead_time_days: 7
+    unit_cost: "12.50"
+    is_primary_supplier: true
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+lot_trackings:
+  - _label: lot_a
+    supplier_product_row_ref: sp_lot_a
+    lot_number: "LOT-0029-A"
+    manufacture_date: "2026-01-15T00:00:00Z"
+    expiration_date: "2027-01-15T00:00:00Z"
+    received_date: "2026-05-06T08:00:00Z"
+    quantity: 60
+    quality_status: good
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+lot_locations:
+  - lot_row_ref: lot_a
+    location_ref: STG-A01
+    quantity: 60
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
 
 inventory_items:
   - location_ref: STG-A01

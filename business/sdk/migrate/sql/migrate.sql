@@ -2634,3 +2634,13 @@ WHERE s.id = ranked.id;
 
 ALTER TABLE procurement.suppliers ALTER COLUMN code SET NOT NULL;
 ALTER TABLE procurement.suppliers ADD CONSTRAINT suppliers_code_unique UNIQUE (code);
+
+-- Version: 2.39
+-- Description: Phase 1 scenario ref resolvers — add scenario_id to
+-- procurement.supplier_products so supplier_products rows authored in
+-- state.yaml can be scoped to a scenario and cleaned up on unload (via
+-- DeleteScopedRows). Mirrors the pattern from migration 2.35 for the 18
+-- floor-scoped tables.
+ALTER TABLE procurement.supplier_products
+    ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
+CREATE INDEX idx_supplier_products_scenario ON procurement.supplier_products(scenario_id);

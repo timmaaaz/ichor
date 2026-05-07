@@ -12,6 +12,7 @@ import (
 	warehousebus "github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	purchaseorderstatusbus "github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
 	supplierbus "github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
+	supplierproductbus "github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	customersbus "github.com/timmaaaz/ichor/business/domain/sales/customersbus"
 	lineitemfulfillmentstatusbus "github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
@@ -41,6 +42,7 @@ type refLookups struct {
 	orderFulfillmentStatusIDByName    refResolver
 	lineItemFulfillmentStatusIDByName refResolver
 	customerIDByName                  refResolver
+	supplierProductIDByPartNumber     refResolver
 }
 
 // newRefLookups wires resolvers against real bus instances. Seeder path.
@@ -208,6 +210,25 @@ func newRefLookups(bd BusDomain) refLookups {
 			}
 			return rows[0].ID, nil
 		},
+		// supplier_product_ref uses supplier_part_number as the lookup key.
+		// supplier_products is a junction table (supplier_id + product_id) with no
+		// stable natural key; scenario authors that self-author a supplier_products
+		// row in state.yaml choose a unique part number that they also reference here.
+		// The SQL filter is an exact equality match (= :supplier_part_number) so no
+		// post-filter guard is needed.
+		supplierProductIDByPartNumber: func(ctx context.Context, partNumber string) (uuid.UUID, error) {
+			filter := supplierproductbus.QueryFilter{SupplierPartNumber: &partNumber}
+			orderBy := supplierproductbus.DefaultOrderBy
+			pg := page.MustParse("1", "1")
+			rows, err := bd.SupplierProduct.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("supplier_product query supplier_part_number=%s: %w", partNumber, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("supplier_product not found for supplier_part_number=%s", partNumber)
+			}
+			return rows[0].SupplierProductID, nil
+		},
 	}
 }
 
@@ -221,6 +242,7 @@ var knownRefSuffixes = map[string]struct{}{
 	"to_location_ref":                  {},
 	"tote_ref":                         {},
 	"supplier_ref":                     {},
+	"supplier_product_ref":             {},
 	"warehouse_ref":                    {},
 	"currency_ref":                     {},
 	"user_ref":                         {},
@@ -359,6 +381,9 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 			case "supplier_ref":
 				targetKey = "supplier_id"
 				id, err = lookups.supplierIDByCode(ctx, code)
+			case "supplier_product_ref":
+				targetKey = "supplier_product_id"
+				id, err = lookups.supplierProductIDByPartNumber(ctx, code)
 			case "warehouse_ref":
 				targetKey = "warehouse_id"
 				id, err = lookups.warehouseIDByCode(ctx, code)
