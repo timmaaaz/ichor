@@ -92,6 +92,13 @@ func newRefLookups(
 			}
 			return lc.ID, nil
 		},
+		// Note: each resolver below uses an exact-match filter that returns at most
+		// one row, so orderBy is decorative. Where a bus has a non-default sort key
+		// (e.g. purchaseorderstatusbus.DefaultOrderBy = "sort_order"), we name the
+		// orderBy explicitly to keep the resolver readable; otherwise we use
+		// <bus>.DefaultOrderBy. Raw string literals like order.NewBy("code", ...)
+		// match the bus's whitelist by convention; if a bus's OrderByFields whitelist
+		// changes, the failing test will be Test_Seed_Integration.
 		supplierIDByCode: func(ctx context.Context, code string) (uuid.UUID, error) {
 			filter := supplierbus.QueryFilter{Code: &code}
 			orderBy := order.NewBy("code", order.ASC)
@@ -297,19 +304,21 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 		if !ok || label == "" {
 			return nil, fmt.Errorf("_label must be non-empty string")
 		}
-		id := seedid.Stable(fmt.Sprintf("scenario:%s:label:%s", scenarioID.String(), label))
-		// rowIndex was built from the scenario Name, but resolveRefs receives
-		// scenarioID. Recover the id directly from rowIndex if available
-		// (preferred — same derivation key), otherwise derive from scenarioID.
-		if rowIndex != nil {
-			if indexed, found := rowIndex[label]; found {
-				id = indexed
-			}
+		if rowIndex == nil {
+			return nil, fmt.Errorf("row label %q present but rowIndex is nil — caller must build row index via buildRowIndex before calling resolveRefs", label)
+		}
+		id, found := rowIndex[label]
+		if !found {
+			return nil, fmt.Errorf("row label %q not found in rowIndex", label)
 		}
 		// If an explicit id is present it must match.
 		if explicitID, hasID := row["id"]; hasID {
-			if explicitID.(string) != id.String() {
-				return nil, fmt.Errorf("row label %q has explicit id %s but expected %s", label, explicitID, id.String())
+			explicitStr, ok := explicitID.(string)
+			if !ok {
+				return nil, fmt.Errorf("row label %q has non-string explicit id (type %T)", label, explicitID)
+			}
+			if explicitStr != id.String() {
+				return nil, fmt.Errorf("row label %q has explicit id %s but expected %s", label, explicitStr, id.String())
 			}
 		}
 		out["id"] = id.String()

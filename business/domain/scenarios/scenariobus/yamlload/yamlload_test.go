@@ -265,14 +265,14 @@ func TestLoad_AllScenarios(t *testing.T) {
 }
 
 // TestLoad_AllScenarios_BrokenFixture proves the golden test catches regressions:
-// a scenario directory with malformed YAML must cause Load to return an error.
+// a scenario directory with an empty name must cause Load to return an error.
 func TestLoad_AllScenarios_BrokenFixture(t *testing.T) {
 	dir := t.TempDir()
 	brokenDir := filepath.Join(dir, "broken-scenario")
 	if err := os.MkdirAll(brokenDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	// Write deliberately malformed YAML (missing required name field, bad indent).
+	// Validates that a scenario with empty name fails Load + Validate.
 	if err := os.WriteFile(filepath.Join(brokenDir, "scenario.yaml"),
 		[]byte("name: \"\"\n"), // empty name fails Validate
 		0o644); err != nil {

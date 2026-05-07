@@ -20,6 +20,9 @@ func fixedLookups(t *testing.T) refLookups {
 	currencyID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
 	userID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
 	purchaseOrderStatusID := uuid.MustParse("33333333-3333-4333-8333-333333333333")
+	orderFulfillmentStatusID := uuid.MustParse("44444444-4444-4444-8444-444444444444")
+	lineItemFulfillmentStatusID := uuid.MustParse("55555555-5555-4555-8555-555555555555")
+	customerID := uuid.MustParse("66666666-6666-4666-8666-666666666666")
 
 	return refLookups{
 		productIDBySKU: func(_ context.Context, sku string) (uuid.UUID, error) {
@@ -69,6 +72,24 @@ func fixedLookups(t *testing.T) refLookups {
 				return uuid.Nil, errors.New("not found")
 			}
 			return purchaseOrderStatusID, nil
+		},
+		orderFulfillmentStatusIDByName: func(_ context.Context, name string) (uuid.UUID, error) {
+			if name != "PENDING" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return orderFulfillmentStatusID, nil
+		},
+		lineItemFulfillmentStatusIDByName: func(_ context.Context, name string) (uuid.UUID, error) {
+			if name != "ALLOCATED" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return lineItemFulfillmentStatusID, nil
+		},
+		customerIDByName: func(_ context.Context, name string) (uuid.UUID, error) {
+			if name != "Scenario Default Customer" {
+				return uuid.Nil, errors.New("not found")
+			}
+			return customerID, nil
 		},
 	}
 }
@@ -243,6 +264,36 @@ func TestResolveRefs(t *testing.T) {
 			},
 			expect: map[string]any{
 				"approved_by": "22222222-2222-4222-8222-222222222222",
+				"scenario_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "order_fulfillment_status_ref resolves to order_fulfillment_status_id, scenario_id injected",
+			in: map[string]any{
+				"order_fulfillment_status_ref": "PENDING",
+			},
+			expect: map[string]any{
+				"order_fulfillment_status_id": "44444444-4444-4444-8444-444444444444",
+				"scenario_id":                 "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "line_item_fulfillment_status_ref resolves to line_item_fulfillment_statuses_id, scenario_id injected",
+			in: map[string]any{
+				"line_item_fulfillment_status_ref": "ALLOCATED",
+			},
+			expect: map[string]any{
+				"line_item_fulfillment_statuses_id": "55555555-5555-4555-8555-555555555555",
+				"scenario_id":                       "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+			},
+		},
+		{
+			name: "customer_ref resolves to customer_id, scenario_id injected",
+			in: map[string]any{
+				"customer_ref": "Scenario Default Customer",
+			},
+			expect: map[string]any{
+				"customer_id": "66666666-6666-4666-8666-666666666666",
 				"scenario_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
 			},
 		},
@@ -483,6 +534,45 @@ func TestRowRef(t *testing.T) {
 		// warehouse_ref resolved
 		if resolved["warehouse_id"] != "ffffffff-ffff-4fff-8fff-ffffffffffff" {
 			t.Errorf("warehouse_id: got %v", resolved["warehouse_id"])
+		}
+	})
+
+	t.Run("non-string explicit id errors instead of panicking", func(t *testing.T) {
+		t.Parallel()
+
+		state := map[string][]map[string]any{
+			"purchase_orders": {{"_label": "po1"}},
+		}
+		rowIndex, err := buildRowIndex(scenarioName, state)
+		if err != nil {
+			t.Fatalf("buildRowIndex: %v", err)
+		}
+
+		row := map[string]any{
+			"_label": "po1",
+			"id":     12345, // integer, not string — must error not panic
+		}
+		_, err = resolveRefs(ctx, row, scenarioID, lookups, rowIndex)
+		if err == nil {
+			t.Fatal("expected error for non-string explicit id, got nil")
+		}
+		if !strings.Contains(err.Error(), "non-string explicit id") {
+			t.Errorf("error %q does not contain expected message", err.Error())
+		}
+	})
+
+	t.Run("nil rowIndex with _label is a caller error", func(t *testing.T) {
+		t.Parallel()
+
+		row := map[string]any{
+			"_label": "po1",
+		}
+		_, err := resolveRefs(ctx, row, scenarioID, lookups, nil)
+		if err == nil {
+			t.Fatal("expected error when rowIndex is nil and _label is present, got nil")
+		}
+		if !strings.Contains(err.Error(), "rowIndex is nil") {
+			t.Errorf("error %q does not contain expected message", err.Error())
 		}
 	})
 }

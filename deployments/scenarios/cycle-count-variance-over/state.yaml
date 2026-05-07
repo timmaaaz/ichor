@@ -10,6 +10,8 @@ inventory_items:
     economic_order_quantity: 50
     safety_stock: 5
     avg_daily_usage: 2
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
 
 cycle_count_sessions:
   - _label: count_a
