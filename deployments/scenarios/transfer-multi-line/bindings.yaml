@@ -1,0 +1,7 @@
+# deployments/scenarios/transfer-multi-line/bindings.yaml
+
+locations:
+  - code: STG-A01
+    role: source
+  - code: STG-B01
+    role: destination

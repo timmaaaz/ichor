@@ -1,0 +1,4 @@
+name: receive-rush-multi-line
+description: |
+  Standard 4-line PO receive: 2 untracked SKUs + 2 lot-tracked SKUs. SMB
+  defaults: receive.poScan=required, receive.lotCapture=required-if-lot-tracked.

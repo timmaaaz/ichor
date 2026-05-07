@@ -1,0 +1,35 @@
+purchase_orders:
+  - _label: po
+    supplier_ref: SUP-001
+    warehouse_ref: WH-TEST-1
+    currency_ref: USD
+    purchase_order_status_ref: APPROVED
+    order_date: "2026-05-01"
+    expected_delivery_date: "2026-05-06"
+
+purchase_order_line_items:
+  - purchase_order_row_ref: po
+    product_ref: SKU-0037
+    expected_qty: 5
+
+serial_numbers:
+  - _label: serial_1
+    product_ref: SKU-0037
+    location_ref: RCV-01
+    serial_number: "SN-RST-0001"
+  - _label: serial_2
+    product_ref: SKU-0037
+    location_ref: RCV-01
+    serial_number: "SN-RST-0002"
+  - _label: serial_3
+    product_ref: SKU-0037
+    location_ref: RCV-01
+    serial_number: "SN-RST-0003"
+  - _label: serial_4
+    product_ref: SKU-0037
+    location_ref: RCV-01
+    serial_number: "SN-RST-0004"
+  - _label: serial_5
+    product_ref: SKU-0037
+    location_ref: RCV-01
+    serial_number: "SN-RST-0005"

@@ -1,0 +1,7 @@
+name: cycle-count-scheduled
+description: |
+  Pre-scheduled cycle count session at STG-B01 (status=draft, representing
+  a session that has been set up and is awaiting worker action). Three items
+  across SKU-0001..SKU-0003 are pending. Exercises the resume/open-session
+  path where a worker picks up an existing session rather than creating one
+  from scratch.

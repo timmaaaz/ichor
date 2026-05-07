@@ -1,0 +1,7 @@
+# deployments/scenarios/transfer-cross-zone/bindings.yaml
+
+locations:
+  - code: STG-A01
+    role: source
+  - code: SHP-01
+    role: destination

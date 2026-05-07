@@ -1,0 +1,51 @@
+orders:
+  - _label: pick_lt_so
+    # WHY: customer_id has no _ref resolver; uses deterministic scenario customer
+    # seeded by seedScenarioCustomer in seed_scenarios.go.
+    customer_ref: "Scenario Default Customer"
+    order_fulfillment_status_ref: PICKING
+    currency_ref: USD
+    number: "SO-PICK-LOT-001"
+    order_date: "2026-05-06"
+    due_date: "2026-05-13T00:00:00Z"
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+order_line_items:
+  - _label: line_1
+    order_row_ref: pick_lt_so
+    # WHY: SKU-0029..SKU-0036 are lot-tracked products in the baseline seed.
+    product_ref: SKU-0029
+    quantity: 10
+    line_item_fulfillment_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+inventory_items:
+  - product_ref: SKU-0029
+    location_ref: STG-A01
+    quantity: 50
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 100
+    reorder_point: 5
+    economic_order_quantity: 10
+    safety_stock: 2
+    avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+pick_tasks:
+  - sales_order_row_ref: pick_lt_so
+    sales_order_line_item_row_ref: line_1
+    product_ref: SKU-0029
+    location_ref: STG-A01
+    quantity_to_pick: 10
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"

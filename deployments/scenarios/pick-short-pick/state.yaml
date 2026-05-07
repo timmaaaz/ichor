@@ -1,0 +1,56 @@
+orders:
+  - _label: pick_sp_so
+    # WHY: customer_id has no _ref resolver; uses deterministic scenario customer
+    # seeded by seedScenarioCustomer in seed_scenarios.go.
+    customer_ref: "Scenario Default Customer"
+    order_fulfillment_status_ref: PICKING
+    currency_ref: USD
+    number: "SO-PICK-SHORT-001"
+    order_date: "2026-05-06"
+    due_date: "2026-05-13T00:00:00Z"
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+order_line_items:
+  - _label: line_1
+    order_row_ref: pick_sp_so
+    product_ref: SKU-0010
+    # WHY: quantity intentionally exceeds on-hand (100 ordered, 50 available)
+    # to force the short-pick fulfillment path. Worker confirms partial pick
+    # and the line item transitions to PARTIALLY_PICKED.
+    quantity: 100
+    line_item_fulfillment_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+inventory_items:
+  - product_ref: SKU-0010
+    location_ref: STG-A01
+    # WHY: only 50 units available vs. 100 ordered — drives short-pick path
+    quantity: 50
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 200
+    reorder_point: 10
+    economic_order_quantity: 50
+    safety_stock: 5
+    avg_daily_usage: 2
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+pick_tasks:
+  - sales_order_row_ref: pick_sp_so
+    sales_order_line_item_row_ref: line_1
+    product_ref: SKU-0010
+    location_ref: STG-A01
+    # WHY: quantity_to_pick matches on-hand (50), not ordered quantity (100).
+    # The task represents what the system can fulfil from available stock.
+    quantity_to_pick: 50
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"

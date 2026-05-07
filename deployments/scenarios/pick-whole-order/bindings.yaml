@@ -1,0 +1,9 @@
+locations:
+  - code: STG-A01
+    role: storage
+  - code: STG-A02
+    role: storage
+  - code: STG-A03
+    role: storage
+  - code: PCK-01
+    role: staging

@@ -1,0 +1,33 @@
+# deployments/scenarios/transfer-intra-zone/state.yaml
+#
+# 50 units of SKU-0001 (untracked) available at STG-A01, with a pending
+# transfer order to move them to STG-A02 (intra-zone: both in storage zone A).
+# Same transfer UX as cross-zone; zone boundary is transparent to the floor worker.
+
+inventory_items:
+  - location_ref: STG-A01
+    product_ref: SKU-0001
+    quantity: 50
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 300
+    reorder_point: 10
+    economic_order_quantity: 25
+    safety_stock: 5
+    avg_daily_usage: 3
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+transfer_orders:
+  - _label: xfer
+    transfer_number: "TXF-INTRA-001"
+    product_ref: SKU-0001
+    from_location_ref: STG-A01
+    to_location_ref: STG-A02
+    requested_by_ref: floor_worker1
+    quantity: 50
+    status: pending
+    transfer_date: "2026-05-06T09:00:00Z"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"

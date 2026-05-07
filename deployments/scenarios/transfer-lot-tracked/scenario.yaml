@@ -1,0 +1,10 @@
+# deployments/scenarios/transfer-lot-tracked/scenario.yaml
+#
+# ID omitted — computed as UUID v5 of "scenario:transfer-lot-tracked"
+# under the deadbeef namespace at parse time (stable across reseeds).
+
+name: transfer-lot-tracked
+description: |
+  Lot-tracked SKU transfer STG-A01 → STG-B01. Validates lot identity propagation
+  across a transfer. SKU-0029 is the first lot-tracked product in the 40-product
+  seed (indices 28-35 are lot-tracked, 0-27 untracked, 36-39 serial-tracked).

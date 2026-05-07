@@ -1,0 +1,9 @@
+# deployments/scenarios/transfer-cross-zone/scenario.yaml
+#
+# ID omitted — computed as UUID v5 of "scenario:transfer-cross-zone"
+# under the deadbeef namespace at parse time (stable across reseeds).
+
+name: transfer-cross-zone
+description: |
+  100 units of SKU-0001 transferred STG-A01 → SHP-01. Cross-zone (storage to
+  shipping). Exercises the standard transfer flow between distinct warehouse zones.

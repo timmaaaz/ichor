@@ -1,0 +1,20 @@
+# deployments/scenarios/transfer-lot-tracked/bindings.yaml
+#
+# lots: blueprint is declared for documentation and future seeder support.
+# As of the c747dbe7 resolver, the seeder does NOT yet materialise lot
+# bindings into lot_trackings rows — bindings.Lots is parsed but not acted
+# upon in seed_scenarios.go. The lot_trackings / lot_locations fixture rows
+# cannot be authored in state.yaml because lot_trackings.supplier_product_id
+# is a NOT NULL FK to procurement.supplier_products, which has no resolver
+# and is not in the supported fixture-table set. See DONE_WITH_CONCERNS note
+# in the status report.
+
+locations:
+  - code: STG-A01
+    role: source
+  - code: STG-B01
+    role: destination
+
+lots:
+  - ref: lot_a
+    product_code: SKU-0029

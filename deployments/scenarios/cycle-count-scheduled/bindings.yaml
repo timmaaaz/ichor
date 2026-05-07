@@ -1,0 +1,7 @@
+locations:
+  - code: STG-B01
+    role: storage
+  - code: STG-B02
+    role: storage
+  - code: STG-B03
+    role: storage

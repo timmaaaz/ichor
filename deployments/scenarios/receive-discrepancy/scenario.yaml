@@ -1,0 +1,4 @@
+name: receive-discrepancy
+description: |
+  PO line expects 50 units of an untracked SKU; matching inventory_items seeded
+  with on-hand 30. Worker exercises the discrepancy / partial-receive path.

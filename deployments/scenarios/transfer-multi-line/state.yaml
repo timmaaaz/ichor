@@ -1,0 +1,86 @@
+# deployments/scenarios/transfer-multi-line/state.yaml
+#
+# Three concurrent transfer orders (SKU-0001, SKU-0002, SKU-0003) all moving
+# from STG-A01 → STG-B01. inventory.transfer_orders is single-product-per-row;
+# a "multi-line transfer" is modelled as sibling pending orders sharing the
+# same source + destination. Exercises queue ordering for the floor worker.
+
+inventory_items:
+  - location_ref: STG-A01
+    product_ref: SKU-0001
+    quantity: 80
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 400
+    reorder_point: 15
+    economic_order_quantity: 40
+    safety_stock: 8
+    avg_daily_usage: 4
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+  - location_ref: STG-A01
+    product_ref: SKU-0002
+    quantity: 60
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 300
+    reorder_point: 10
+    economic_order_quantity: 30
+    safety_stock: 5
+    avg_daily_usage: 3
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+  - location_ref: STG-A01
+    product_ref: SKU-0003
+    quantity: 40
+    reserved_quantity: 0
+    allocated_quantity: 0
+    minimum_stock: 0
+    maximum_stock: 200
+    reorder_point: 8
+    economic_order_quantity: 20
+    safety_stock: 4
+    avg_daily_usage: 2
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+transfer_orders:
+  - _label: xfer_a
+    transfer_number: "TXF-MULTI-001"
+    product_ref: SKU-0001
+    from_location_ref: STG-A01
+    to_location_ref: STG-B01
+    requested_by_ref: floor_worker1
+    quantity: 80
+    status: pending
+    transfer_date: "2026-05-06T09:00:00Z"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+  - _label: xfer_b
+    transfer_number: "TXF-MULTI-002"
+    product_ref: SKU-0002
+    from_location_ref: STG-A01
+    to_location_ref: STG-B01
+    requested_by_ref: floor_worker1
+    quantity: 60
+    status: pending
+    transfer_date: "2026-05-06T09:00:00Z"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
+
+  - _label: xfer_c
+    transfer_number: "TXF-MULTI-003"
+    product_ref: SKU-0003
+    from_location_ref: STG-A01
+    to_location_ref: STG-B01
+    requested_by_ref: floor_worker1
+    quantity: 40
+    status: pending
+    transfer_date: "2026-05-06T09:00:00Z"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"

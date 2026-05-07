@@ -606,12 +606,19 @@ on every typed column.
 |---|---|---|
 | `product_ref` | `products.products.sku` | `product_id` |
 | `location_ref` | `inventory.inventory_locations.location_code` | `location_id` |
+| `from_location_ref` | `inventory.inventory_locations.location_code` | `from_location_id` |
+| `to_location_ref` | `inventory.inventory_locations.location_code` | `to_location_id` |
 | `tote_ref` | `inventory.label_catalog.code` | `label_catalog_id` |
 | `supplier_ref` | `procurement.suppliers.code` | `supplier_id` |
 | `warehouse_ref` | `inventory.warehouses.code` | `warehouse_id` |
 | `currency_ref` | `core.currencies.code` | `currency_id` |
 | `user_ref` | `core.users.username` | `user_id` |
 | `purchase_order_status_ref` | `procurement.purchase_order_statuses.name` | `purchase_order_status_id` |
+| `order_fulfillment_status_ref` | `sales.order_fulfillment_statuses.name` | `order_fulfillment_status_id` |
+| `line_item_fulfillment_status_ref` | `sales.line_item_fulfillment_statuses.name` | `line_item_fulfillment_statuses_id` (note plural) |
+| `customer_ref` | `sales.customers.name` | `customer_id` |
+| `requested_by_ref` | `core.users.username` | `requested_by` (non-standard — no `_id` suffix) |
+| `approved_by_ref` | `core.users.username` | `approved_by` (non-standard — no `_id` suffix) |
 
 Any key ending in `_ref` that is NOT one of the above is a
 fail-hard error — prevents silent mis-seeding when new ref types are
@@ -624,11 +631,38 @@ Phase 1 Task 1 added 5 additional resolvers (`supplier_ref`, `warehouse_ref`,
 `currency_ref`, `user_ref`, `purchase_order_status_ref`) per the bus-closure
 pattern at `business/sdk/dbtest/seed_scenarios_refs.go:newRefLookups`.
 
-⚠ Three of the eight underlying bus-store filters use ILIKE queries
+Phase 1 Task 2 added 7 more resolvers (`customer_ref`, `from_location_ref`,
+`to_location_ref`, `requested_by_ref`, `approved_by_ref`,
+`order_fulfillment_status_ref`, `line_item_fulfillment_status_ref`).
+
+⚠ Three of the fifteen underlying bus-store filters use ILIKE queries
 (`user_ref` via `userdb`, `purchase_order_status_ref` via `purchaseorderstatusdb`,
 `warehouse_ref` via `warehousedb`). The resolvers apply a post-filter
 exact-match guard after the query to enforce the exactly-one-match contract
 despite the non-exact SQL filter.
+
+### Cross-row references: `_label` / `_row_ref`
+
+Some tables require FK references to rows seeded in the same state.yaml
+file (e.g. `cycle_count_items` → `cycle_count_sessions`). The resolver
+supports this via two authoring directives:
+
+- **`_label: <name>`** on a parent row — marks the row with a human-readable
+  name. The seeder strips this key from the output and auto-injects a
+  deterministic `id` derived via
+  `seedid.Stable("scenario:<scenario_name>:label:<name>")`. This `id` is
+  stable across reseeds because it is derived from the scenario name and
+  label value, not from a UUID sequence.
+
+- **`<prefix>_row_ref: <name>`** on a child row — resolves to `<prefix>_id`
+  by looking up the label `<name>` in the row index built during the
+  pre-pass over the file. The prefix must match the actual DB column minus
+  `_id`: e.g. `session_row_ref` → `session_id` on `inventory.cycle_count_items`.
+
+  ⚠ The resolver strips `_row_ref` and appends `_id`, so the prefix in
+  the YAML key must match the DB column name exactly. `cycle_count_session_row_ref`
+  would produce `cycle_count_session_id` (wrong); the correct key is
+  `session_row_ref` → `session_id`.
 
 ---
 
@@ -649,9 +683,11 @@ between copies silently breaks reseed determinism. The namespace itself is
 unexported; reach for `Stable` instead.
 
 Key conventions (one prefix per domain so distinct entities can never collide):
-- `seedid.Stable("label:" + code)`     → label_catalog rows (location/container/product)
-- `seedid.Stable("product:" + sku)`    → products.products rows (productbus.SeedCreate)
-- `seedid.Stable("scenario:" + name)`  → scenarios.scenarios rows (yamlload)
+- `seedid.Stable("label:" + code)`              → label_catalog rows (location/container/product)
+- `seedid.Stable("product:" + sku)`             → products.products rows (productbus.SeedCreate)
+- `seedid.Stable("scenario:" + name)`           → scenarios.scenarios rows (yamlload)
+- `seedid.Stable("scenario:customer:" + name)`  → sales.customers row for the deterministic scenario customer used by pick/order fixtures (seedScenarioCustomer)
+- `seedid.Stable("scenario:" + scenarioName + ":label:" + label)` → per-row label IDs that back `_label` / `_row_ref` cross-row references in scenario state.yaml (buildRowIndex)
 
 When adding a new SeedCreate path or a new TestSeed* helper that should be
 reseed-stable, derive the primary key via `seedid.Stable("<entity>:<key>")`

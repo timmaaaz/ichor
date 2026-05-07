@@ -198,3 +198,89 @@ func TestValidate_RejectsNonOverridableLeverKey(t *testing.T) {
 		t.Fatalf("error %q does not mention 'not overridable'", err.Error())
 	}
 }
+
+// TestLoad_AllScenarios is a golden-test loop that walks every subdirectory
+// under deployments/scenarios/ and asserts each one parses + validates without
+// error. Complements Test_Seed_Integration (full seed chain, ~20s, needs DB) by
+// providing <1s CI coverage for YAML shape regressions.
+//
+// The count assertion uses >= so future scenario additions don't break the test.
+// Path depth: test file lives 5 dirs deep (business/domain/scenarios/scenariobus/yamlload/)
+// so 5x ".." reaches repo root.
+func TestLoad_AllScenarios(t *testing.T) {
+	scenariosRoot := filepath.Join("..", "..", "..", "..", "..", "deployments", "scenarios")
+
+	// Per-scenario sub-tests so failures name the offending scenario.
+	entries, err := os.ReadDir(scenariosRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			t.Fatalf("scenarios root not found at %s", scenariosRoot)
+		}
+		t.Fatalf("readdir %s: %v", scenariosRoot, err)
+	}
+
+	var loadable []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if name == "" || name[0] == '_' || name[0] == '.' {
+			continue
+		}
+		loadable = append(loadable, name)
+	}
+
+	const wantMin = 19
+	if len(loadable) < wantMin {
+		t.Fatalf("found %d scenario directories under %s, want >= %d", len(loadable), scenariosRoot, wantMin)
+	}
+
+	// Load the whole directory at once (exercises Load's error-abort path).
+	all, err := yamlload.Load(scenariosRoot)
+	if err != nil {
+		t.Fatalf("yamlload.Load(%s): %v", scenariosRoot, err)
+	}
+	if len(all) < wantMin {
+		t.Fatalf("Load returned %d scenarios, want >= %d", len(all), wantMin)
+	}
+
+	// Sub-tests per scenario name for diagnosable failure output.
+	loaded := make(map[string]yamlload.Scenario, len(all))
+	for _, s := range all {
+		loaded[s.Name] = s
+	}
+	for _, name := range loadable {
+		name := name // capture
+		t.Run(name, func(t *testing.T) {
+			s, ok := loaded[name]
+			if !ok {
+				t.Fatalf("scenario directory %q not present in Load output", name)
+			}
+			if err := s.Validate(); err != nil {
+				t.Fatalf("Validate(): %v", err)
+			}
+		})
+	}
+}
+
+// TestLoad_AllScenarios_BrokenFixture proves the golden test catches regressions:
+// a scenario directory with an empty name must cause Load to return an error.
+func TestLoad_AllScenarios_BrokenFixture(t *testing.T) {
+	dir := t.TempDir()
+	brokenDir := filepath.Join(dir, "broken-scenario")
+	if err := os.MkdirAll(brokenDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// Validates that a scenario with empty name fails Load + Validate.
+	if err := os.WriteFile(filepath.Join(brokenDir, "scenario.yaml"),
+		[]byte("name: \"\"\n"), // empty name fails Validate
+		0o644); err != nil {
+		t.Fatalf("write scenario.yaml: %v", err)
+	}
+
+	_, err := yamlload.Load(dir)
+	if err == nil {
+		t.Fatal("Load() returned nil error for scenario with empty name; want error")
+	}
+}

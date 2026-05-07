@@ -99,6 +99,28 @@ func (b *Business) Create(ctx context.Context, nci NewCustomers) (Customers, err
 	return customers, nil
 }
 
+// SeedCreate inserts a fully-formed Customers value with a caller-specified ID.
+// Used by seedScenarios to create a deterministic scenario customer whose UUID
+// is stable across reseeds (derived via seedid.Stable by the caller).
+// No delegate event is fired — seed rows are infrastructure, not workflow events.
+func (b *Business) SeedCreate(ctx context.Context, c Customers) error {
+	ctx, span := otel.AddSpan(ctx, "business.customersbus.seedcreate")
+	defer span.End()
+
+	now := time.Now().UTC()
+	if c.CreatedDate.IsZero() {
+		c.CreatedDate = now
+	}
+	if c.UpdatedDate.IsZero() {
+		c.UpdatedDate = c.CreatedDate
+	}
+
+	if err := b.storer.Create(ctx, c); err != nil {
+		return fmt.Errorf("seedcreate: %w", err)
+	}
+	return nil
+}
+
 // Update replaces an customers document in the database.
 func (b *Business) Update(ctx context.Context, ci Customers, uci UpdateCustomers) (Customers, error) {
 	ctx, span := otel.AddSpan(ctx, "business.customersbus.update")

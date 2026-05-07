@@ -1,0 +1,6 @@
+name: cycle-count-multi-item
+description: |
+  5-item cycle count session at PCK-01. One session contains five pending
+  items across SKU-0001..SKU-0005 with varied expected quantities (5, 10,
+  15, 20, 25). Exercises multi-item session display and item-level status
+  tracking before counting begins.
