@@ -102,6 +102,6 @@ Ichor is a production-grade ERP system built on the **Ardan Labs Service Starter
 - **Never skip migrations** — always add new version, never edit existing
 - **Business layer is source of truth** — all validation and logic goes here
 - **Keep layers pure** — no business logic in API, no HTTP in business
-- **Use delegate** — for UUID generation, timestamps (testing seams)
+- **Use delegate** — for firing workflow events after DB writes (`delegate.Call(ctx, ActionCreatedData(...))`); see `docs/arch/delegate.md`. UUIDs come from `uuid.New()` and timestamps from `time.Now()` directly.
 - **Use decimal for money math** — never use float64 for financial calculations
 - **Integration tests are primary test strategy**
