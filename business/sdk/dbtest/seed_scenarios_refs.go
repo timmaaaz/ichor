@@ -74,7 +74,7 @@ func newRefLookups(
 		},
 		locationIDByCode: func(ctx context.Context, code string) (uuid.UUID, error) {
 			filter := inventorylocationbus.QueryFilter{LocationCodeExact: &code}
-			orderBy := order.NewBy("location_code", order.ASC)
+			orderBy := inventorylocationbus.DefaultOrderBy
 			pg := page.MustParse("1", "1")
 			rows, err := loc.Query(ctx, filter, orderBy, pg)
 			if err != nil {
