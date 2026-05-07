@@ -44,21 +44,21 @@ cycle_count_sessions:
     updated_date: "2026-05-05T16:00:00Z"
 
 cycle_count_items:
-  - cycle_count_session_row_ref: count_scheduled
+  - session_row_ref: count_scheduled
     product_ref: SKU-0001
     location_ref: STG-B01
     system_quantity: 12
     status: pending
     created_date: "2026-05-05T16:00:00Z"
     updated_date: "2026-05-05T16:00:00Z"
-  - cycle_count_session_row_ref: count_scheduled
+  - session_row_ref: count_scheduled
     product_ref: SKU-0002
     location_ref: STG-B02
     system_quantity: 8
     status: pending
     created_date: "2026-05-05T16:00:00Z"
     updated_date: "2026-05-05T16:00:00Z"
-  - cycle_count_session_row_ref: count_scheduled
+  - session_row_ref: count_scheduled
     product_ref: SKU-0003
     location_ref: STG-B03
     system_quantity: 20

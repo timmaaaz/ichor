@@ -207,8 +207,11 @@ func seedScenarioCustomer(ctx context.Context, busDomain BusDomain) error {
 		contactinfosbus.DefaultOrderBy,
 		page.MustParse("1", "1"),
 	)
-	if err != nil || len(contacts) == 0 {
-		return fmt.Errorf("seed scenario customer: no contact_infos available (seed chain ordering issue): %w", err)
+	if err != nil {
+		return fmt.Errorf("seed scenario customer: query contact_infos: %w", err)
+	}
+	if len(contacts) == 0 {
+		return fmt.Errorf("seed scenario customer: no contact_infos available (seed chain ordering issue)")
 	}
 
 	streets, err := busDomain.Street.Query(ctx,
@@ -216,8 +219,11 @@ func seedScenarioCustomer(ctx context.Context, busDomain BusDomain) error {
 		streetbus.DefaultOrderBy,
 		page.MustParse("1", "1"),
 	)
-	if err != nil || len(streets) == 0 {
-		return fmt.Errorf("seed scenario customer: no streets available (seed chain ordering issue): %w", err)
+	if err != nil {
+		return fmt.Errorf("seed scenario customer: query streets: %w", err)
+	}
+	if len(streets) == 0 {
+		return fmt.Errorf("seed scenario customer: no streets available (seed chain ordering issue)")
 	}
 
 	adminID := uuid.MustParse("5cf37266-3473-4006-984f-9325122678b7") // admin_gopher from seed.sql

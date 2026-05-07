@@ -23,7 +23,7 @@ cycle_count_sessions:
     updated_date: "2026-05-06T08:00:00Z"
 
 cycle_count_items:
-  - cycle_count_session_row_ref: count_a
+  - session_row_ref: count_a
     product_ref: SKU-0001
     location_ref: STG-A01
     system_quantity: 40

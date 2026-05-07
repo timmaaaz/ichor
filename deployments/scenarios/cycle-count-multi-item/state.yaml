@@ -65,35 +65,35 @@ cycle_count_sessions:
     updated_date: "2026-05-06T08:00:00Z"
 
 cycle_count_items:
-  - cycle_count_session_row_ref: count_pck
+  - session_row_ref: count_pck
     product_ref: SKU-0001
     location_ref: PCK-01
     system_quantity: 5
     status: pending
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
-  - cycle_count_session_row_ref: count_pck
+  - session_row_ref: count_pck
     product_ref: SKU-0002
     location_ref: PCK-01
     system_quantity: 10
     status: pending
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
-  - cycle_count_session_row_ref: count_pck
+  - session_row_ref: count_pck
     product_ref: SKU-0003
     location_ref: PCK-01
     system_quantity: 15
     status: pending
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
-  - cycle_count_session_row_ref: count_pck
+  - session_row_ref: count_pck
     product_ref: SKU-0004
     location_ref: PCK-01
     system_quantity: 20
     status: pending
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
-  - cycle_count_session_row_ref: count_pck
+  - session_row_ref: count_pck
     product_ref: SKU-0005
     location_ref: PCK-01
     system_quantity: 25
