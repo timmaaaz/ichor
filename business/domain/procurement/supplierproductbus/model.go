@@ -24,6 +24,7 @@ type SupplierProduct struct {
 	IsPrimarySupplier  bool        `json:"is_primary_supplier"`
 	CreatedDate        time.Time   `json:"created_date"`
 	UpdatedDate        time.Time   `json:"updated_date"`
+	ScenarioID         *uuid.UUID  `json:"scenario_id,omitempty"`
 }
 
 type NewSupplierProduct struct {

@@ -47,12 +47,12 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (supplierproductbus.Storer,
 
 func (s *Store) Create(ctx context.Context, ch supplierproductbus.SupplierProduct) error {
 	const q = `
-    INSERT INTO procurement.supplier_products ( 
-		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
-		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
+    INSERT INTO procurement.supplier_products (
+		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity,
+		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date, scenario_id
     ) VALUES (
-		:id, :supplier_id, :product_id, :supplier_part_number, :min_order_quantity, :max_order_quantity, 
-		:lead_time_days, :unit_cost, :is_primary_supplier, :created_date, :updated_date
+		:id, :supplier_id, :product_id, :supplier_part_number, :min_order_quantity, :max_order_quantity,
+		:lead_time_days, :unit_cost, :is_primary_supplier, :created_date, :updated_date, :scenario_id
     )
     `
 
@@ -119,14 +119,15 @@ func (s *Store) Query(ctx context.Context, filter supplierproductbus.QueryFilter
 
 	const q = `
 	SELECT
-		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
-		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
-	FROM 
+		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity,
+		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date, scenario_id
+	FROM
 		procurement.supplier_products
 	`
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -155,6 +156,7 @@ func (s *Store) Count(ctx context.Context, filter supplierproductbus.QueryFilter
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
 		Count int `db:"count"`
@@ -177,25 +179,25 @@ func (s *Store) QueryByIDs(ctx context.Context, supplierProductIDs []uuid.UUID) 
 		uuidStrings[i] = id.String()
 	}
 
-	data := struct {
-		SupplierProductIDs []string `db:"supplier_product_ids"`
-	}{
-		SupplierProductIDs: uuidStrings,
+	data := map[string]any{
+		"supplier_product_ids": uuidStrings,
 	}
 
 	const q = `
 	SELECT
 		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity,
-		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
+		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date, scenario_id
 	FROM
 		procurement.supplier_products
 	WHERE
-	    id IN (:supplier_product_ids)
-	ORDER BY
-	    product_id ASC`
+	    id IN (:supplier_product_ids)`
+
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+	buf.WriteString(" ORDER BY product_id ASC")
 
 	var sp []supplierProduct
-	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &sp); err != nil {
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, buf.String(), data, &sp); err != nil {
 		return nil, fmt.Errorf("namedqueryslice: %w", err)
 	}
 
@@ -203,23 +205,24 @@ func (s *Store) QueryByIDs(ctx context.Context, supplierProductIDs []uuid.UUID) 
 }
 
 func (s *Store) QueryByID(ctx context.Context, supplierProductID uuid.UUID) (supplierproductbus.SupplierProduct, error) {
-	data := struct {
-		ID string `db:"id"`
-	}{
-		ID: supplierProductID.String(),
+	data := map[string]any{
+		"id": supplierProductID.String(),
 	}
 
 	const q = `
 	SELECT
-		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity, 
-		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date
-	FROM 
+		id, supplier_id, product_id, supplier_part_number, min_order_quantity, max_order_quantity,
+		lead_time_days, unit_cost, is_primary_supplier, created_date, updated_date, scenario_id
+	FROM
 		procurement.supplier_products
-	WHERE 
+	WHERE
 	    id = :id`
 
+	buf := bytes.NewBufferString(q)
+	sqldb.ApplyScenarioFilter(ctx, buf, data)
+
 	var sp supplierProduct
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &sp); err != nil {
+	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, buf.String(), data, &sp); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return supplierproductbus.SupplierProduct{}, supplierproductbus.ErrNotFound
 		}

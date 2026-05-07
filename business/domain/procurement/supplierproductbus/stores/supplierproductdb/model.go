@@ -22,6 +22,7 @@ type supplierProduct struct {
 	IsPrimarySupplier  bool           `db:"is_primary_supplier"`
 	CreatedDate        time.Time      `db:"created_date"`
 	UpdatedDate        time.Time      `db:"updated_date"`
+	ScenarioID         *uuid.UUID     `db:"scenario_id"`
 }
 
 func toDBSupplierProduct(bus supplierproductbus.SupplierProduct) supplierProduct {
@@ -37,6 +38,7 @@ func toDBSupplierProduct(bus supplierproductbus.SupplierProduct) supplierProduct
 		IsPrimarySupplier:  bus.IsPrimarySupplier,
 		CreatedDate:        bus.CreatedDate.UTC(),
 		UpdatedDate:        bus.UpdatedDate.UTC(),
+		ScenarioID:         bus.ScenarioID,
 	}
 }
 
@@ -58,6 +60,7 @@ func toBusSupplierProduct(db supplierProduct) (supplierproductbus.SupplierProduc
 		IsPrimarySupplier:  db.IsPrimarySupplier,
 		CreatedDate:        db.CreatedDate.UTC(),
 		UpdatedDate:        db.UpdatedDate.UTC(),
+		ScenarioID:         db.ScenarioID,
 	}, nil
 }
 
