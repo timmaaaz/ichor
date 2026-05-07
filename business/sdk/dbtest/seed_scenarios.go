@@ -73,19 +73,7 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 		return fmt.Errorf("seed scenario customer: %w", err)
 	}
 
-	lookups := newRefLookups(
-		busDomain.Product,
-		busDomain.InventoryLocation,
-		busDomain.Label,
-		busDomain.Supplier,
-		busDomain.Warehouse,
-		busDomain.Currency,
-		busDomain.User,
-		busDomain.PurchaseOrderStatus,
-		busDomain.OrderFulfillmentStatus,
-		busDomain.LineItemFulfillmentStatus,
-		busDomain.Customers,
-	)
+	lookups := newRefLookups(busDomain)
 
 	for _, s := range scenarios {
 		bus := scenariobus.Scenario{

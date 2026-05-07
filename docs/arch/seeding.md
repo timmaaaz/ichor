@@ -616,7 +616,7 @@ on every typed column.
 | `purchase_order_status_ref` | `procurement.purchase_order_statuses.name` | `purchase_order_status_id` |
 | `order_fulfillment_status_ref` | `sales.order_fulfillment_statuses.name` | `order_fulfillment_status_id` |
 | `line_item_fulfillment_status_ref` | `sales.line_item_fulfillment_statuses.name` | `line_item_fulfillment_statuses_id` (note plural) |
-| `customer_ref` | `core.customers.name` | `customer_id` |
+| `customer_ref` | `sales.customers.name` | `customer_id` |
 | `requested_by_ref` | `core.users.username` | `requested_by` (non-standard — no `_id` suffix) |
 | `approved_by_ref` | `core.users.username` | `approved_by` (non-standard — no `_id` suffix) |
 
@@ -683,9 +683,11 @@ between copies silently breaks reseed determinism. The namespace itself is
 unexported; reach for `Stable` instead.
 
 Key conventions (one prefix per domain so distinct entities can never collide):
-- `seedid.Stable("label:" + code)`     → label_catalog rows (location/container/product)
-- `seedid.Stable("product:" + sku)`    → products.products rows (productbus.SeedCreate)
-- `seedid.Stable("scenario:" + name)`  → scenarios.scenarios rows (yamlload)
+- `seedid.Stable("label:" + code)`              → label_catalog rows (location/container/product)
+- `seedid.Stable("product:" + sku)`             → products.products rows (productbus.SeedCreate)
+- `seedid.Stable("scenario:" + name)`           → scenarios.scenarios rows (yamlload)
+- `seedid.Stable("scenario:customer:" + name)`  → sales.customers row for the deterministic scenario customer used by pick/order fixtures (seedScenarioCustomer)
+- `seedid.Stable("scenario:" + scenarioName + ":label:" + label)` → per-row label IDs that back `_label` / `_row_ref` cross-row references in scenario state.yaml (buildRowIndex)
 
 When adding a new SeedCreate path or a new TestSeed* helper that should be
 reseed-stable, derive the primary key via `seedid.Stable("<entity>:<key>")`

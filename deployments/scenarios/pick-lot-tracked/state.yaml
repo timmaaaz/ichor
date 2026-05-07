@@ -15,7 +15,7 @@ orders:
 
 order_line_items:
   - _label: line_1
-    sales_order_row_ref: pick_lt_so
+    order_row_ref: pick_lt_so
     # WHY: SKU-0029..SKU-0036 are lot-tracked products in the baseline seed.
     product_ref: SKU-0029
     quantity: 10

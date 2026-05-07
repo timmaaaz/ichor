@@ -15,7 +15,7 @@ orders:
 
 order_line_items:
   - _label: line_1
-    sales_order_row_ref: pick_zs_so
+    order_row_ref: pick_zs_so
     product_ref: SKU-0007
     quantity: 6
     line_item_fulfillment_status_ref: PENDING
@@ -24,7 +24,7 @@ order_line_items:
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
   - _label: line_2
-    sales_order_row_ref: pick_zs_so
+    order_row_ref: pick_zs_so
     product_ref: SKU-0008
     quantity: 9
     line_item_fulfillment_status_ref: PENDING
@@ -33,7 +33,7 @@ order_line_items:
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
   - _label: line_3
-    sales_order_row_ref: pick_zs_so
+    order_row_ref: pick_zs_so
     product_ref: SKU-0009
     quantity: 4
     line_item_fulfillment_status_ref: PENDING
@@ -42,7 +42,7 @@ order_line_items:
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
   - _label: line_4
-    sales_order_row_ref: pick_zs_so
+    order_row_ref: pick_zs_so
     product_ref: SKU-0010
     quantity: 11
     line_item_fulfillment_status_ref: PENDING
@@ -51,7 +51,7 @@ order_line_items:
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
   - _label: line_5
-    sales_order_row_ref: pick_zs_so
+    order_row_ref: pick_zs_so
     product_ref: SKU-0011
     quantity: 7
     line_item_fulfillment_status_ref: PENDING
@@ -60,7 +60,7 @@ order_line_items:
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
   - _label: line_6
-    sales_order_row_ref: pick_zs_so
+    order_row_ref: pick_zs_so
     product_ref: SKU-0012
     quantity: 14
     line_item_fulfillment_status_ref: PENDING

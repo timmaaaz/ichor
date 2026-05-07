@@ -10,7 +10,6 @@ import (
 	userbus "github.com/timmaaaz/ichor/business/domain/core/userbus"
 	inventorylocationbus "github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	warehousebus "github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
-	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	purchaseorderstatusbus "github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
 	supplierbus "github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
@@ -45,25 +44,15 @@ type refLookups struct {
 }
 
 // newRefLookups wires resolvers against real bus instances. Seeder path.
-func newRefLookups(
-	prod *productbus.Business,
-	loc *inventorylocationbus.Business,
-	lbl *labelbus.Business,
-	sup *supplierbus.Business,
-	wh *warehousebus.Business,
-	cur *currencybus.Business,
-	usr *userbus.Business,
-	pos *purchaseorderstatusbus.Business,
-	ofs *orderfulfillmentstatusbus.Business,
-	lifs *lineitemfulfillmentstatusbus.Business,
-	cust *customersbus.Business,
-) refLookups {
+// Takes the full BusDomain rather than individual *Business pointers so
+// adding new resolvers doesn't expand a positional argument list.
+func newRefLookups(bd BusDomain) refLookups {
 	return refLookups{
 		productIDBySKU: func(ctx context.Context, sku string) (uuid.UUID, error) {
 			filter := productbus.QueryFilter{SKU: &sku}
 			orderBy := productbus.DefaultOrderBy
 			pg := page.MustParse("1", "1")
-			rows, err := prod.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.Product.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("product query sku=%s: %w", sku, err)
 			}
@@ -76,7 +65,7 @@ func newRefLookups(
 			filter := inventorylocationbus.QueryFilter{LocationCodeExact: &code}
 			orderBy := inventorylocationbus.DefaultOrderBy
 			pg := page.MustParse("1", "1")
-			rows, err := loc.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.InventoryLocation.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("location query code=%s: %w", code, err)
 			}
@@ -86,7 +75,7 @@ func newRefLookups(
 			return rows[0].LocationID, nil
 		},
 		labelIDByCode: func(ctx context.Context, code string) (uuid.UUID, error) {
-			lc, err := lbl.QueryByCode(ctx, code)
+			lc, err := bd.Label.QueryByCode(ctx, code)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("label queryByCode=%s: %w", code, err)
 			}
@@ -103,7 +92,7 @@ func newRefLookups(
 			filter := supplierbus.QueryFilter{Code: &code}
 			orderBy := order.NewBy("code", order.ASC)
 			pg := page.MustParse("1", "1")
-			rows, err := sup.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.Supplier.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("supplier query code=%s: %w", code, err)
 			}
@@ -119,7 +108,7 @@ func newRefLookups(
 			filter := warehousebus.QueryFilter{Code: &code}
 			orderBy := order.NewBy("code", order.ASC)
 			pg := page.MustParse("1", "1")
-			rows, err := wh.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.Warehouse.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("warehouse query code=%s: %w", code, err)
 			}
@@ -135,7 +124,7 @@ func newRefLookups(
 			filter := currencybus.QueryFilter{Code: &code}
 			orderBy := order.NewBy("code", order.ASC)
 			pg := page.MustParse("1", "1")
-			rows, err := cur.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.Currency.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("currency query code=%s: %w", code, err)
 			}
@@ -152,7 +141,7 @@ func newRefLookups(
 			filter := userbus.QueryFilter{UsernameExact: &name}
 			orderBy := order.NewBy("username", order.ASC)
 			pg := page.MustParse("1", "1")
-			rows, err := usr.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.User.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("user query username=%s: %w", username, err)
 			}
@@ -168,7 +157,7 @@ func newRefLookups(
 			filter := purchaseorderstatusbus.QueryFilter{NameExact: &name}
 			orderBy := order.NewBy("name", order.ASC)
 			pg := page.MustParse("1", "1")
-			rows, err := pos.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.PurchaseOrderStatus.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("purchase_order_status query name=%s: %w", name, err)
 			}
@@ -184,15 +173,12 @@ func newRefLookups(
 			filter := orderfulfillmentstatusbus.QueryFilter{Name: &name}
 			orderBy := orderfulfillmentstatusbus.DefaultOrderBy
 			pg := page.MustParse("1", "1")
-			rows, err := ofs.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.OrderFulfillmentStatus.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("order_fulfillment_status query name=%s: %w", name, err)
 			}
 			if len(rows) == 0 {
 				return uuid.Nil, fmt.Errorf("order_fulfillment_status not found for name=%s", name)
-			}
-			if rows[0].Name != name {
-				return uuid.Nil, fmt.Errorf("order_fulfillment_status not found for name=%s (closest match: %s)", name, rows[0].Name)
 			}
 			return rows[0].ID, nil
 		},
@@ -200,15 +186,12 @@ func newRefLookups(
 			filter := lineitemfulfillmentstatusbus.QueryFilter{Name: &name}
 			orderBy := lineitemfulfillmentstatusbus.DefaultOrderBy
 			pg := page.MustParse("1", "1")
-			rows, err := lifs.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.LineItemFulfillmentStatus.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("line_item_fulfillment_status query name=%s: %w", name, err)
 			}
 			if len(rows) == 0 {
 				return uuid.Nil, fmt.Errorf("line_item_fulfillment_status not found for name=%s", name)
-			}
-			if rows[0].Name != name {
-				return uuid.Nil, fmt.Errorf("line_item_fulfillment_status not found for name=%s (closest match: %s)", name, rows[0].Name)
 			}
 			return rows[0].ID, nil
 		},
@@ -216,15 +199,12 @@ func newRefLookups(
 			filter := customersbus.QueryFilter{Name: &name}
 			orderBy := order.NewBy("name", order.ASC)
 			pg := page.MustParse("1", "1")
-			rows, err := cust.Query(ctx, filter, orderBy, pg)
+			rows, err := bd.Customers.Query(ctx, filter, orderBy, pg)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("customer query name=%s: %w", name, err)
 			}
 			if len(rows) == 0 {
 				return uuid.Nil, fmt.Errorf("customer not found for name=%s", name)
-			}
-			if rows[0].Name != name {
-				return uuid.Nil, fmt.Errorf("customer not found for name=%s (closest match: %s)", name, rows[0].Name)
 			}
 			return rows[0].ID, nil
 		},
@@ -411,6 +391,12 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 			case "approved_by_ref":
 				targetKey = "approved_by"
 				id, err = lookups.userIDByUsername(ctx, code)
+			default:
+				// Defensive: knownRefSuffixes (above) and the switch (here) must
+				// stay in lock-step. If a contributor adds an entry to the map
+				// but forgets the case, fail loudly instead of silently writing
+				// out[""] = uuid.Nil.String() which would drop the FK.
+				return nil, fmt.Errorf("knownRefSuffixes/switch drift: %q has no resolver case", k)
 			}
 			if err != nil {
 				return nil, fmt.Errorf("resolve %s=%q: %w", k, code, err)

@@ -15,7 +15,7 @@ orders:
 
 order_line_items:
   - _label: line_1
-    sales_order_row_ref: pick_sp_so
+    order_row_ref: pick_sp_so
     product_ref: SKU-0010
     # WHY: quantity intentionally exceeds on-hand (100 ordered, 50 available)
     # to force the short-pick fulfillment path. Worker confirms partial pick

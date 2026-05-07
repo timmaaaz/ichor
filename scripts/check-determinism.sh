@@ -73,6 +73,7 @@ require_tool diff
 SNAPSHOTS=(
 	"products|products.products|id, sku, brand_id, category_id, name, description, model_number, upc_code, status, is_active, is_perishable, handling_instructions, units_per_case, tracking_type, inventory_type|sku"
 	"label_catalog|inventory.label_catalog|id, code, type, entity_ref, payload_json|code"
+	"customers|sales.customers|id, name, notes, created_by, updated_by|name"
 )
 
 dump_snapshot () {
