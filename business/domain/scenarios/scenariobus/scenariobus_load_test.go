@@ -198,3 +198,96 @@ func Test_Load_AppliesLeverOverrides_AndWorkerZones(t *testing.T) {
 		t.Errorf("post-Reset user %q assigned_zones = %v, want %v", workerUsername, queried2[0].AssignedZones, wantZones)
 	}
 }
+
+// Test_Load_AppliesFixtures_MultiTableFKChain pins the FK-safe INSERT
+// ordering in scenariodb.ApplyFixtures by loading a custom scenario whose
+// state.yaml authors a 2-table FK chain in which the child table
+// (inventory.cycle_count_items) sorts alphabetically BEFORE the parent
+// (inventory.cycle_count_sessions). Under the pre-fix `SELECT DISTINCT
+// target_table` with no ORDER BY, Postgres could return child first and
+// Load would FK-violate. Under the fix, scopedTables is reversed so
+// parents always insert first.
+//
+// A custom temp scenario is used (rather than a shipped scenario) because
+// shipped scenarios under deployments/scenarios/ author unlabelled rows
+// on tables with NOT NULL id and no default — those rows currently fail
+// INSERT for unrelated reasons (resolveRefs only auto-injects id for
+// _label rows). The custom state.yaml below labels every row to sidestep
+// that pre-existing seed-pipeline gap.
+func Test_Load_AppliesFixtures_MultiTableFKChain(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_Load_AppliesFixtures_MultiTableFKChain")
+	ctx := context.Background()
+
+	if err := dbtest.InsertSeedDataWithDB(db.Log, db.DB); err != nil {
+		t.Fatalf("baseline seed: %v", err)
+	}
+
+	scenariosRoot := t.TempDir()
+	scenarioDir := filepath.Join(scenariosRoot, "fk-chain-test")
+	if err := os.MkdirAll(scenarioDir, 0o755); err != nil {
+		t.Fatalf("mkdir scenario dir: %v", err)
+	}
+
+	scenarioYAML := "name: fk-chain-test\ndescription: regression test for follow-up B FK INSERT ordering\n"
+	if err := os.WriteFile(filepath.Join(scenarioDir, "scenario.yaml"), []byte(scenarioYAML), 0o644); err != nil {
+		t.Fatalf("write scenario.yaml: %v", err)
+	}
+
+	// Both rows labelled so resolveRefs auto-injects id. created_by hardcodes
+	// the floor_worker1 stable UUID from seed.sql.
+	stateYAML := `cycle_count_sessions:
+  - _label: sess1
+    name: "FK-Chain-Regression"
+    status: draft
+    # floor_worker1 stable UUID from seed.sql
+    created_by: "c0000000-0000-4000-8000-000000000001"
+    created_date: "2026-05-07T00:00:00Z"
+    updated_date: "2026-05-07T00:00:00Z"
+
+cycle_count_items:
+  - _label: item1
+    session_row_ref: sess1
+    product_ref: SKU-0001
+    location_ref: PCK-01
+    system_quantity: 5
+    status: pending
+    created_date: "2026-05-07T00:00:00Z"
+    updated_date: "2026-05-07T00:00:00Z"
+`
+	if err := os.WriteFile(filepath.Join(scenarioDir, "state.yaml"), []byte(stateYAML), 0o644); err != nil {
+		t.Fatalf("write state.yaml: %v", err)
+	}
+
+	if err := dbtest.SeedScenariosFromRoot(ctx, db.BusDomain, scenariosRoot); err != nil {
+		t.Fatalf("seed temp scenario: %v", err)
+	}
+
+	target, err := db.BusDomain.Scenario.QueryByName(ctx, "fk-chain-test")
+	if err != nil {
+		t.Fatalf("query scenario by name: %v", err)
+	}
+
+	if err := db.BusDomain.Scenario.Load(ctx, target.ID); err != nil {
+		t.Fatalf("Load fk-chain-test: %v", err)
+	}
+
+	var sessCount, itemCount int
+	if err := db.DB.GetContext(ctx, &sessCount,
+		`SELECT COUNT(*) FROM inventory.cycle_count_sessions WHERE scenario_id = $1`,
+		target.ID); err != nil {
+		t.Fatalf("count cycle_count_sessions: %v", err)
+	}
+	if sessCount != 1 {
+		t.Errorf("inventory.cycle_count_sessions count = %d, want 1", sessCount)
+	}
+	if err := db.DB.GetContext(ctx, &itemCount,
+		`SELECT COUNT(*) FROM inventory.cycle_count_items WHERE scenario_id = $1`,
+		target.ID); err != nil {
+		t.Fatalf("count cycle_count_items: %v", err)
+	}
+	if itemCount != 1 {
+		t.Errorf("inventory.cycle_count_items count = %d, want 1 (FK-safe INSERT ordering broken?)", itemCount)
+	}
+}

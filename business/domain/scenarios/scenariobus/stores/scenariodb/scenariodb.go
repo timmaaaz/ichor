@@ -316,6 +316,10 @@ func (s *Store) SetActive(ctx context.Context, id uuid.UUID) error {
 // scenario_id column (migration 2.35 added 18 tables; migration 2.39 added
 // procurement.supplier_products). Order matters for FK constraints —
 // more dependent child tables are listed before their parents.
+//
+// This slice is the single source of truth for FK ordering: DeleteScopedRows
+// walks it as-is (children-first for DELETE), and ApplyFixtures filters and
+// reverses it (parents-first for INSERT) via orderForInsert.
 var scopedTables = []string{
 	"workflow.approval_requests",
 	"inventory.cycle_count_items",
@@ -323,11 +327,11 @@ var scopedTables = []string{
 	"inventory.quality_inspections",
 	"inventory.put_away_tasks",
 	"inventory.pick_tasks",
-	"inventory.serial_numbers",
+	"inventory.inventory_transactions",
 	"inventory.lot_locations",
+	"inventory.serial_numbers",
 	"inventory.lot_trackings",
 	"inventory.inventory_adjustments",
-	"inventory.inventory_transactions",
 	"inventory.transfer_orders",
 	"procurement.purchase_order_line_items",
 	"procurement.purchase_orders",
@@ -354,10 +358,44 @@ func (s *Store) DeleteScopedRows(ctx context.Context, scenarioID uuid.UUID) erro
 	return nil
 }
 
+// orderForInsert returns the subset of scopedTables present in fixtureTables,
+// in reverse FK order (parents first). scopedTables is canonically children-
+// first for DELETE; reversing it yields a parents-first sequence safe for
+// INSERTs that follow FK chains within the scoped set.
+//
+// Returns an error if fixtureTables contains a name that is not in
+// scopedTables — this catches the case where a new floor-scoped table has
+// scenario_id added in a migration but its fully-qualified name was not
+// registered in scopedTables, which would otherwise silently skip rows.
+func orderForInsert(fixtureTables map[string]struct{}) ([]string, error) {
+	known := make(map[string]struct{}, len(scopedTables))
+	for _, t := range scopedTables {
+		known[t] = struct{}{}
+	}
+	for t := range fixtureTables {
+		if _, ok := known[t]; !ok {
+			return nil, fmt.Errorf("orderforinsert: target_table %q is not registered in scopedTables", t)
+		}
+	}
+
+	out := make([]string, 0, len(fixtureTables))
+	for i := len(scopedTables) - 1; i >= 0; i-- {
+		if _, want := fixtureTables[scopedTables[i]]; want {
+			out = append(out, scopedTables[i])
+		}
+	}
+	return out, nil
+}
+
 // ApplyFixtures inserts rows from scenario_fixtures into their target tables
-// using jsonb_populate_record so column defaults are honoured and the Go code
-// remains table-agnostic. Each target_table in the fixture set is handled with
-// a single INSERT … SELECT statement.
+// using jsonb_populate_record, which overlays the JSONB payload onto a NULL
+// base record so the Go code remains table-agnostic. Each target_table in
+// the fixture set is handled with a single INSERT … SELECT statement.
+//
+// Note: jsonb_populate_record does NOT execute table column DEFAULTs;
+// columns absent from payload_json come from the NULL base record (i.e.,
+// NULL), not from any DEFAULT expression. State.yaml authors must specify
+// every NOT NULL column explicitly, even when the schema declares a default.
 func (s *Store) ApplyFixtures(ctx context.Context, target uuid.UUID) error {
 	// Get the distinct target tables for this scenario.
 	tableData := struct {
@@ -378,7 +416,21 @@ func (s *Store) ApplyFixtures(ctx context.Context, target uuid.UUID) error {
 		return fmt.Errorf("applyfixtures distinct tables: %w", err)
 	}
 
+	// Build a set from the discovered tables, then resolve a deterministic
+	// FK-safe (parents-first) order via the scopedTables registry. This
+	// replaces relying on the implementation-defined row order returned by
+	// SELECT DISTINCT.
+	fixtureTables := make(map[string]struct{}, len(tableRows))
 	for _, tr := range tableRows {
+		fixtureTables[tr.TargetTable] = struct{}{}
+	}
+
+	ordered, err := orderForInsert(fixtureTables)
+	if err != nil {
+		return fmt.Errorf("applyfixtures: %w", err)
+	}
+
+	for _, table := range ordered {
 		// INSERT … SELECT per target table. The payload_json column holds JSONB;
 		// jsonb_populate_record maps each row to the target table's columns.
 		// Named params :scenario_id and :table_name are bound by sqlx.
@@ -392,14 +444,14 @@ func (s *Store) ApplyFixtures(ctx context.Context, target uuid.UUID) error {
 		SELECT (jsonb_populate_record(CAST(NULL AS %s), payload_json)).*
 		FROM inventory.scenario_fixtures
 		WHERE scenario_id = :scenario_id AND target_table = :table_name`,
-			tr.TargetTable, tr.TargetTable)
+			table, table)
 
 		data := map[string]any{
 			"scenario_id": target,
-			"table_name":  tr.TargetTable,
+			"table_name":  table,
 		}
 		if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
-			return fmt.Errorf("applyfixtures insert %s: %w", tr.TargetTable, err)
+			return fmt.Errorf("applyfixtures insert %s: %w", table, err)
 		}
 	}
 
