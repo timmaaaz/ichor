@@ -328,7 +328,7 @@ func TestResolveRefs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := resolveRefs(ctx, tc.in, scenarioID, lookups, nil)
+			got, err := resolveRefs(ctx, tc.in, scenarioID, uuid.Nil, "", lookups, nil)
 			if tc.expectErr != "" {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil (out=%v)", tc.expectErr, got)
@@ -403,7 +403,7 @@ func TestRowRef(t *testing.T) {
 
 		// Resolve the PO row.
 		poRow := state["purchase_orders"][0]
-		resolvedPO, err := resolveRefs(ctx, poRow, scenarioID, lookups, rowIndex)
+		resolvedPO, err := resolveRefs(ctx, poRow, scenarioID, uuid.Nil, "", lookups, rowIndex)
 		if err != nil {
 			t.Fatalf("resolveRefs PO: %v", err)
 		}
@@ -416,7 +416,7 @@ func TestRowRef(t *testing.T) {
 
 		// Resolve the line item rows.
 		for i, liRow := range state["purchase_order_line_items"] {
-			resolvedLI, err := resolveRefs(ctx, liRow, scenarioID, lookups, rowIndex)
+			resolvedLI, err := resolveRefs(ctx, liRow, scenarioID, uuid.Nil, "", lookups, rowIndex)
 			if err != nil {
 				t.Fatalf("resolveRefs line_item[%d]: %v", i, err)
 			}
@@ -442,7 +442,7 @@ func TestRowRef(t *testing.T) {
 			t.Fatalf("buildRowIndex: %v", err)
 		}
 
-		_, err = resolveRefs(ctx, state["purchase_order_line_items"][0], scenarioID, lookups, rowIndex)
+		_, err = resolveRefs(ctx, state["purchase_order_line_items"][0], scenarioID, uuid.Nil, "", lookups, rowIndex)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -511,7 +511,7 @@ func TestRowRef(t *testing.T) {
 		}
 
 		liRow := state["purchase_order_line_items"][0]
-		resolvedLI, err := resolveRefs(ctx, liRow, scenarioID, lookups, rowIndex)
+		resolvedLI, err := resolveRefs(ctx, liRow, scenarioID, uuid.Nil, "", lookups, rowIndex)
 		if err != nil {
 			t.Fatalf("resolveRefs (forward ref): %v", err)
 		}
@@ -539,7 +539,7 @@ func TestRowRef(t *testing.T) {
 		}
 
 		poRow := state["purchase_orders"][0]
-		resolved, err := resolveRefs(ctx, poRow, scenarioID, lookups, rowIndex)
+		resolved, err := resolveRefs(ctx, poRow, scenarioID, uuid.Nil, "", lookups, rowIndex)
 		if err != nil {
 			t.Fatalf("resolveRefs: %v", err)
 		}
@@ -576,7 +576,7 @@ func TestRowRef(t *testing.T) {
 			"_label": "po1",
 			"id":     12345, // integer, not string — must error not panic
 		}
-		_, err = resolveRefs(ctx, row, scenarioID, lookups, rowIndex)
+		_, err = resolveRefs(ctx, row, scenarioID, uuid.Nil, "", lookups, rowIndex)
 		if err == nil {
 			t.Fatal("expected error for non-string explicit id, got nil")
 		}
@@ -591,12 +591,176 @@ func TestRowRef(t *testing.T) {
 		row := map[string]any{
 			"_label": "po1",
 		}
-		_, err := resolveRefs(ctx, row, scenarioID, lookups, nil)
+		_, err := resolveRefs(ctx, row, scenarioID, uuid.Nil, "", lookups, nil)
 		if err == nil {
 			t.Fatal("expected error when rowIndex is nil and _label is present, got nil")
 		}
 		if !strings.Contains(err.Error(), "rowIndex is nil") {
 			t.Errorf("error %q does not contain expected message", err.Error())
+		}
+	})
+}
+
+// TestStableRowID verifies the deterministic UUID derivation used by
+// resolveRefs to auto-inject id on unlabelled fixture rows. The four sub-tests
+// cover the four axes that must produce distinct UUIDs (scenario, table,
+// index) plus the determinism axis (same tuple → identical UUID across calls).
+func TestStableRowID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("same tuple is byte-identical across calls", func(t *testing.T) {
+		t.Parallel()
+		a := stableRowID("cycle-count-multi-item", "inventory.inventory_items", 0)
+		b := stableRowID("cycle-count-multi-item", "inventory.inventory_items", 0)
+		if a != b {
+			t.Errorf("non-deterministic: got %s vs %s", a, b)
+		}
+		if a == uuid.Nil {
+			t.Error("stableRowID returned uuid.Nil for valid input")
+		}
+	})
+
+	t.Run("different scenarios produce distinct UUIDs", func(t *testing.T) {
+		t.Parallel()
+		a := stableRowID("scenario-a", "inventory.inventory_items", 0)
+		b := stableRowID("scenario-b", "inventory.inventory_items", 0)
+		if a == b {
+			t.Errorf("expected distinct UUIDs for different scenarios, got %s == %s", a, b)
+		}
+	})
+
+	t.Run("different tables produce distinct UUIDs", func(t *testing.T) {
+		t.Parallel()
+		a := stableRowID("scenario-a", "inventory.inventory_items", 0)
+		b := stableRowID("scenario-a", "inventory.cycle_count_items", 0)
+		if a == b {
+			t.Errorf("expected distinct UUIDs for different tables, got %s == %s", a, b)
+		}
+	})
+
+	t.Run("different indices produce distinct UUIDs", func(t *testing.T) {
+		t.Parallel()
+		a := stableRowID("scenario-a", "inventory.inventory_items", 0)
+		b := stableRowID("scenario-a", "inventory.inventory_items", 1)
+		if a == b {
+			t.Errorf("expected distinct UUIDs for different indices, got %s == %s", a, b)
+		}
+	})
+}
+
+// TestResolveRefs_AutoInjectID covers the third id-priority path: unlabelled
+// rows with a non-Nil defaultID get auto-injected. Existing labelled-row
+// behavior (TestRowRef) and uuid.Nil opt-out (TestResolveRefs) are unchanged.
+func TestResolveRefs_AutoInjectID(t *testing.T) {
+	t.Parallel()
+
+	scenarioID := uuid.MustParse("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+	defaultID := uuid.MustParse("88888888-8888-4888-8888-888888888888")
+	explicitID := "99999999-9999-4999-8999-999999999999"
+	lookups := fixedLookups(t)
+	ctx := context.Background()
+
+	t.Run("unlabelled row + non-Nil defaultID injects id", func(t *testing.T) {
+		t.Parallel()
+		row := map[string]any{
+			"product_ref": "SKU-0001",
+			"quantity":    5,
+		}
+		got, err := resolveRefs(ctx, row, scenarioID, defaultID, "", lookups, nil)
+		if err != nil {
+			t.Fatalf("resolveRefs: %v", err)
+		}
+		if got["id"] != defaultID.String() {
+			t.Errorf("id: got %v, want %v", got["id"], defaultID.String())
+		}
+	})
+
+	t.Run("unlabelled row + non-Nil defaultID + explicit id keeps explicit", func(t *testing.T) {
+		t.Parallel()
+		row := map[string]any{
+			"id":          explicitID,
+			"product_ref": "SKU-0001",
+		}
+		got, err := resolveRefs(ctx, row, scenarioID, defaultID, "", lookups, nil)
+		if err != nil {
+			t.Fatalf("resolveRefs: %v", err)
+		}
+		if got["id"] != explicitID {
+			t.Errorf("id: got %v, want explicit %v (defaultID must not overwrite)", got["id"], explicitID)
+		}
+	})
+
+	t.Run("unlabelled row + uuid.Nil defaultID does not inject id", func(t *testing.T) {
+		t.Parallel()
+		row := map[string]any{
+			"product_ref": "SKU-0001",
+			"quantity":    5,
+		}
+		got, err := resolveRefs(ctx, row, scenarioID, uuid.Nil, "", lookups, nil)
+		if err != nil {
+			t.Fatalf("resolveRefs: %v", err)
+		}
+		if _, hasID := got["id"]; hasID {
+			t.Errorf("expected no id key with uuid.Nil defaultID, got %v", got["id"])
+		}
+	})
+
+	t.Run("labelled row + non-Nil defaultID uses label id (rowIndex wins)", func(t *testing.T) {
+		t.Parallel()
+		const scenarioName = "test-scenario"
+		state := map[string][]map[string]any{
+			"purchase_orders": {
+				{"_label": "po1", "supplier_ref": "SUP-001"},
+			},
+		}
+		rowIndex, err := buildRowIndex(scenarioName, state)
+		if err != nil {
+			t.Fatalf("buildRowIndex: %v", err)
+		}
+		expected := seedid.Stable("scenario:" + scenarioName + ":label:po1")
+
+		row := state["purchase_orders"][0]
+		got, err := resolveRefs(ctx, row, scenarioID, defaultID, "", lookups, rowIndex)
+		if err != nil {
+			t.Fatalf("resolveRefs: %v", err)
+		}
+		if got["id"] != expected.String() {
+			t.Errorf("id: got %v, want labelled %v (label must win over defaultID)", got["id"], expected.String())
+		}
+		if got["id"] == defaultID.String() {
+			t.Errorf("defaultID leaked into labelled row: %v", got["id"])
+		}
+	})
+
+	t.Run("unlabelled row on workflow.approval_requests writes approval_request_id, not id", func(t *testing.T) {
+		t.Parallel()
+		row := map[string]any{
+			"approval_type": "any",
+		}
+		got, err := resolveRefs(ctx, row, scenarioID, defaultID, "workflow.approval_requests", lookups, nil)
+		if err != nil {
+			t.Fatalf("resolveRefs: %v", err)
+		}
+		if got["approval_request_id"] != defaultID.String() {
+			t.Errorf("approval_request_id: got %v, want %v", got["approval_request_id"], defaultID.String())
+		}
+		if _, hasID := got["id"]; hasID {
+			t.Errorf("must not write id key for approval_requests (PK is approval_request_id), got %v", got["id"])
+		}
+	})
+
+	t.Run("explicit approval_request_id on workflow.approval_requests is respected (no auto-inject overwrite)", func(t *testing.T) {
+		t.Parallel()
+		row := map[string]any{
+			"approval_request_id": explicitID,
+			"approval_type":       "any",
+		}
+		got, err := resolveRefs(ctx, row, scenarioID, defaultID, "workflow.approval_requests", lookups, nil)
+		if err != nil {
+			t.Fatalf("resolveRefs: %v", err)
+		}
+		if got["approval_request_id"] != explicitID {
+			t.Errorf("approval_request_id: got %v, want explicit %v", got["approval_request_id"], explicitID)
 		}
 	})
 }
