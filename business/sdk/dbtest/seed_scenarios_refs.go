@@ -24,20 +24,29 @@ import (
 
 // stableRowID returns the deterministic UUID for a fixture row's primary key
 // when the row has no _label. Labelled rows get their UUID from buildRowIndex;
-// this helper handles the no-label path so every row ends up with an id
+// this helper handles the no-label path so every row ends up with a PK value
 // without authors having to label rows that aren't cross-row-referenced.
 //
 // Key prefix "scenario-row:" is distinct from the "scenario:%s:label:%s"
 // prefix used by buildRowIndex (labelled-row UUIDs) and the "fixture:%s:%s:%d"
 // prefix used by SeedScenariosFromRoot for inventory.scenario_fixtures rows.
 //
-// CAVEAT: writes to the "id" column. The 18 of 19 scenario-scoped tables that
-// follow the convention (id UUID NOT NULL) are covered. workflow.approval_requests
-// uses approval_request_id as PK; scenarios authoring approval_requests rows
-// must set approval_request_id explicitly. The existing _label path has the
-// same caveat — this helper does not change that contract.
+// The actual PK column written is determined by pkColumnFor(targetTable); see
+// resolveRefs.
 func stableRowID(scenarioName, targetTable string, rowIndex int) uuid.UUID {
 	return seedid.Stable(fmt.Sprintf("scenario-row:%s:%s:%d", scenarioName, targetTable, rowIndex))
+}
+
+// pkColumnFor returns the primary-key column name for a scenario-scoped table.
+// 18 of 19 tables in resolveTargetTable follow the "id UUID NOT NULL" convention;
+// workflow.approval_requests uses approval_request_id. Centralizing the
+// special case here means both the _label path and the auto-inject path in
+// resolveRefs stay column-name-aware without duplicating table knowledge.
+func pkColumnFor(targetTable string) string {
+	if targetTable == "workflow.approval_requests" {
+		return "approval_request_id"
+	}
+	return "id"
 }
 
 // refResolver resolves a single stable human-readable code to a UUID.
@@ -302,13 +311,13 @@ func buildRowIndex(scenarioName string, state map[string][]map[string]any) (map[
 }
 
 // resolveRefs rewrites a single state.yaml row in place:
-//   - strips "_label" authoring directives and auto-injects a deterministic
-//     "id" field on labelled rows (id derived from buildRowIndex)
-//   - auto-injects "id" on UNLABELLED rows from defaultID (when defaultID !=
-//     uuid.Nil and no explicit id is set); this lets shipped scenarios author
-//     plain rows on tables with NOT NULL id without forcing every row to be
-//     labelled. defaultID == uuid.Nil opts out (used by unit tests that don't
-//     exercise the auto-inject path).
+//   - strips "_label" authoring directives and auto-injects the row's PK on
+//     labelled rows (UUID derived from buildRowIndex)
+//   - auto-injects the row's PK on UNLABELLED rows from defaultID (when
+//     defaultID != uuid.Nil and no explicit PK is set); this lets shipped
+//     scenarios author plain rows on tables with NOT NULL PKs without forcing
+//     every row to be labelled. defaultID == uuid.Nil opts out (used by unit
+//     tests that don't exercise the auto-inject path).
 //   - resolves "<prefix>_row_ref" keys to "<prefix>_id" via the row index
 //     (check _row_ref before _ref — longer suffix wins)
 //   - replaces "<prefix>_ref" string values with "<prefix>_id" UUID values
@@ -319,16 +328,20 @@ func buildRowIndex(scenarioName string, state map[string][]map[string]any) (map[
 // (anything not in knownRefSuffixes above) fail-hard so silent mis-seeding
 // can't happen.
 //
-// id contract priority:
-//  1. Explicit "id" in row → respected (must match _label UUID if labelled).
+// PK contract priority (column name from pkColumnFor(targetTable) — usually
+// "id", but "approval_request_id" for workflow.approval_requests):
+//  1. Explicit PK key in row → respected (must match _label UUID if labelled).
 //  2. _label present → UUID from rowIndex[label].
 //  3. Otherwise → defaultID (when non-Nil); zero-value Nil opts out entirely.
 //
-// rowIndex may be nil when no cross-row references are present.
-func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, defaultID uuid.UUID, lookups refLookups, rowIndex map[string]uuid.UUID) (map[string]any, error) {
+// rowIndex may be nil when no cross-row references are present. targetTable
+// may be "" (treated as the standard "id" PK convention) for unit tests that
+// don't exercise non-standard PKs.
+func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, defaultID uuid.UUID, targetTable string, lookups refLookups, rowIndex map[string]uuid.UUID) (map[string]any, error) {
 	out := make(map[string]any, len(row)+1)
+	pkColumn := pkColumnFor(targetTable)
 
-	// --- pass 1: handle _label (strip + auto-inject id) ---
+	// --- pass 1: handle _label (strip + auto-inject PK) ---
 	if raw, ok := row["_label"]; ok {
 		label, ok := raw.(string)
 		if !ok || label == "" {
@@ -341,26 +354,26 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 		if !found {
 			return nil, fmt.Errorf("row label %q not found in rowIndex", label)
 		}
-		// If an explicit id is present it must match.
-		if explicitID, hasID := row["id"]; hasID {
+		// If an explicit PK is present it must match.
+		if explicitID, hasID := row[pkColumn]; hasID {
 			explicitStr, ok := explicitID.(string)
 			if !ok {
-				return nil, fmt.Errorf("row label %q has non-string explicit id (type %T)", label, explicitID)
+				return nil, fmt.Errorf("row label %q has non-string explicit %s (type %T)", label, pkColumn, explicitID)
 			}
 			if explicitStr != id.String() {
-				return nil, fmt.Errorf("row label %q has explicit id %s but expected %s", label, explicitStr, id.String())
+				return nil, fmt.Errorf("row label %q has explicit %s %s but expected %s", label, pkColumn, explicitStr, id.String())
 			}
 		}
-		out["id"] = id.String()
+		out[pkColumn] = id.String()
 		// _label is an authoring directive; do not include in output.
 	}
 
-	// If neither _label nor an explicit id is set, auto-inject the
+	// If neither _label nor an explicit PK is set, auto-inject the
 	// deterministic position-based UUID. defaultID == uuid.Nil opts out
 	// (used by unit tests that don't exercise the auto-inject path).
 	if _, hasLabel := row["_label"]; !hasLabel {
-		if _, hasExplicitID := row["id"]; !hasExplicitID && defaultID != uuid.Nil {
-			out["id"] = defaultID.String()
+		if _, hasExplicitID := row[pkColumn]; !hasExplicitID && defaultID != uuid.Nil {
+			out[pkColumn] = defaultID.String()
 		}
 	}
 

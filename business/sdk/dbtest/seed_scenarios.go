@@ -114,7 +114,7 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 			}
 			for i, row := range s.State[tableSuffix] {
 				defaultID := stableRowID(s.Name, targetTable, i)
-				resolved, err := resolveRefs(ctx, row, s.ID, defaultID, lookups, rowIndex)
+				resolved, err := resolveRefs(ctx, row, s.ID, defaultID, targetTable, lookups, rowIndex)
 				if err != nil {
 					return fmt.Errorf("scenario %s: resolve refs %s[%d]: %w", s.Name, targetTable, i, err)
 				}
