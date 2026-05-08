@@ -22,6 +22,24 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/seedid"
 )
 
+// stableRowID returns the deterministic UUID for a fixture row's primary key
+// when the row has no _label. Labelled rows get their UUID from buildRowIndex;
+// this helper handles the no-label path so every row ends up with an id
+// without authors having to label rows that aren't cross-row-referenced.
+//
+// Key prefix "scenario-row:" is distinct from the "scenario:%s:label:%s"
+// prefix used by buildRowIndex (labelled-row UUIDs) and the "fixture:%s:%s:%d"
+// prefix used by SeedScenariosFromRoot for inventory.scenario_fixtures rows.
+//
+// CAVEAT: writes to the "id" column. The 18 of 19 scenario-scoped tables that
+// follow the convention (id UUID NOT NULL) are covered. workflow.approval_requests
+// uses approval_request_id as PK; scenarios authoring approval_requests rows
+// must set approval_request_id explicitly. The existing _label path has the
+// same caveat — this helper does not change that contract.
+func stableRowID(scenarioName, targetTable string, rowIndex int) uuid.UUID {
+	return seedid.Stable(fmt.Sprintf("scenario-row:%s:%s:%d", scenarioName, targetTable, rowIndex))
+}
+
 // refResolver resolves a single stable human-readable code to a UUID.
 // Each ref suffix has its own resolver so the dispatch in resolveRefs
 // can stay a flat switch.
@@ -285,7 +303,12 @@ func buildRowIndex(scenarioName string, state map[string][]map[string]any) (map[
 
 // resolveRefs rewrites a single state.yaml row in place:
 //   - strips "_label" authoring directives and auto-injects a deterministic
-//     "id" field on labelled rows
+//     "id" field on labelled rows (id derived from buildRowIndex)
+//   - auto-injects "id" on UNLABELLED rows from defaultID (when defaultID !=
+//     uuid.Nil and no explicit id is set); this lets shipped scenarios author
+//     plain rows on tables with NOT NULL id without forcing every row to be
+//     labelled. defaultID == uuid.Nil opts out (used by unit tests that don't
+//     exercise the auto-inject path).
 //   - resolves "<prefix>_row_ref" keys to "<prefix>_id" via the row index
 //     (check _row_ref before _ref — longer suffix wins)
 //   - replaces "<prefix>_ref" string values with "<prefix>_id" UUID values
@@ -296,8 +319,13 @@ func buildRowIndex(scenarioName string, state map[string][]map[string]any) (map[
 // (anything not in knownRefSuffixes above) fail-hard so silent mis-seeding
 // can't happen.
 //
+// id contract priority:
+//  1. Explicit "id" in row → respected (must match _label UUID if labelled).
+//  2. _label present → UUID from rowIndex[label].
+//  3. Otherwise → defaultID (when non-Nil); zero-value Nil opts out entirely.
+//
 // rowIndex may be nil when no cross-row references are present.
-func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, lookups refLookups, rowIndex map[string]uuid.UUID) (map[string]any, error) {
+func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, defaultID uuid.UUID, lookups refLookups, rowIndex map[string]uuid.UUID) (map[string]any, error) {
 	out := make(map[string]any, len(row)+1)
 
 	// --- pass 1: handle _label (strip + auto-inject id) ---
@@ -325,6 +353,15 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 		}
 		out["id"] = id.String()
 		// _label is an authoring directive; do not include in output.
+	}
+
+	// If neither _label nor an explicit id is set, auto-inject the
+	// deterministic position-based UUID. defaultID == uuid.Nil opts out
+	// (used by unit tests that don't exercise the auto-inject path).
+	if _, hasLabel := row["_label"]; !hasLabel {
+		if _, hasExplicitID := row["id"]; !hasExplicitID && defaultID != uuid.Nil {
+			out["id"] = defaultID.String()
+		}
 	}
 
 	for k, v := range row {

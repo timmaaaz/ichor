@@ -113,7 +113,8 @@ func SeedScenariosFromRoot(ctx context.Context, busDomain BusDomain, scenariosDi
 				return fmt.Errorf("scenario %s: unknown state key %q (no schema.table mapping)", s.Name, tableSuffix)
 			}
 			for i, row := range s.State[tableSuffix] {
-				resolved, err := resolveRefs(ctx, row, s.ID, lookups, rowIndex)
+				defaultID := stableRowID(s.Name, targetTable, i)
+				resolved, err := resolveRefs(ctx, row, s.ID, defaultID, lookups, rowIndex)
 				if err != nil {
 					return fmt.Errorf("scenario %s: resolve refs %s[%d]: %w", s.Name, targetTable, i, err)
 				}
