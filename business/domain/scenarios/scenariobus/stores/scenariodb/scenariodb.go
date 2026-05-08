@@ -327,11 +327,11 @@ var scopedTables = []string{
 	"inventory.quality_inspections",
 	"inventory.put_away_tasks",
 	"inventory.pick_tasks",
-	"inventory.serial_numbers",
+	"inventory.inventory_transactions",
 	"inventory.lot_locations",
+	"inventory.serial_numbers",
 	"inventory.lot_trackings",
 	"inventory.inventory_adjustments",
-	"inventory.inventory_transactions",
 	"inventory.transfer_orders",
 	"procurement.purchase_order_line_items",
 	"procurement.purchase_orders",
@@ -388,9 +388,14 @@ func orderForInsert(fixtureTables map[string]struct{}) ([]string, error) {
 }
 
 // ApplyFixtures inserts rows from scenario_fixtures into their target tables
-// using jsonb_populate_record so column defaults are honoured and the Go code
-// remains table-agnostic. Each target_table in the fixture set is handled with
-// a single INSERT … SELECT statement.
+// using jsonb_populate_record, which overlays the JSONB payload onto a NULL
+// base record so the Go code remains table-agnostic. Each target_table in
+// the fixture set is handled with a single INSERT … SELECT statement.
+//
+// Note: jsonb_populate_record does NOT execute table column DEFAULTs;
+// columns absent from payload_json come from the NULL base record (i.e.,
+// NULL), not from any DEFAULT expression. State.yaml authors must specify
+// every NOT NULL column explicitly, even when the schema declares a default.
 func (s *Store) ApplyFixtures(ctx context.Context, target uuid.UUID) error {
 	// Get the distinct target tables for this scenario.
 	tableData := struct {

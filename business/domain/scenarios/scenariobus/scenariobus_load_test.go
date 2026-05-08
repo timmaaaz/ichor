@@ -236,14 +236,12 @@ func Test_Load_AppliesFixtures_MultiTableFKChain(t *testing.T) {
 	}
 
 	// Both rows labelled so resolveRefs auto-injects id. created_by hardcodes
-	// the floor_worker1 deterministic UUID (see YAML comment below).
+	// the floor_worker1 stable UUID from seed.sql.
 	stateYAML := `cycle_count_sessions:
   - _label: sess1
     name: "FK-Chain-Regression"
     status: draft
-    # floor_worker1 deterministic UUID — created by dbtest.InsertSeedDataWithDB
-    # via the user seeder's position-based stable IDs (not random). Same UUID
-    # is reused by the shipped cycle-count-multi-item state.yaml.
+    # floor_worker1 stable UUID from seed.sql
     created_by: "c0000000-0000-4000-8000-000000000001"
     created_date: "2026-05-07T00:00:00Z"
     updated_date: "2026-05-07T00:00:00Z"

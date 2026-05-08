@@ -87,6 +87,35 @@ func Test_orderForInsert_ThreeDeepFKChain(t *testing.T) {
 	}
 }
 
+// Test_orderForInsert_InventoryTransactionsBeforeParents locks in the
+// scopedTables ordering for inventory.inventory_transactions. It has
+// nullable FKs to BOTH inventory.lot_trackings (lot_id) and
+// inventory.serial_numbers (serial_id, added in migration 2.24), so it
+// must be inserted before both parents and deleted after both children.
+// A fixture that populates non-null lot_id or serial_id would otherwise
+// hit a Postgres FK violation on Load.
+func Test_orderForInsert_InventoryTransactionsBeforeParents(t *testing.T) {
+	t.Parallel()
+
+	in := map[string]struct{}{
+		"inventory.inventory_transactions": {},
+		"inventory.serial_numbers":         {},
+		"inventory.lot_trackings":          {},
+	}
+	got, err := orderForInsert(in)
+	if err != nil {
+		t.Fatalf("orderForInsert(inventory_transactions): unexpected error: %v", err)
+	}
+	want := []string{
+		"inventory.lot_trackings",
+		"inventory.serial_numbers",
+		"inventory.inventory_transactions",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("orderForInsert(inventory_transactions) = %v, want %v (parents must precede inventory_transactions)", got, want)
+	}
+}
+
 // Test_orderForInsert_UnknownTable asserts a loud error when a fixture
 // references a table not registered in scopedTables. This is the safety
 // net for the "new scoped table added in a migration but missed in
