@@ -1,0 +1,19 @@
+name: profile-strict-regulated
+description: |
+  All overridable scan-discipline levers set to `required`. Maximum strict mode.
+  Same DORMANT caveat as medical-device-rental for cycleCount/adjustment/putaway/inspection.
+
+lever_overrides:
+  pick.sourceLocationScan: required
+  pick.destinationScan: required
+  pick.lotScan: required-if-lot-tracked
+  pick.assignmentGranularity: zone-sliced-order
+  receive.poScan: required
+  transfer.sourceLocationScan: required
+  transfer.destinationScan: required
+  cycleCount.locationScan: required              # DORMANT (F1.B pending) — same as default anyway
+  adjustment.locationScan: required              # DORMANT (F1.C pending) — same as default anyway
+  putaway.destinationLocationScan: required      # DORMANT (F1.D pending) — same as default anyway
+  putaway.itemScan: required                     # DORMANT (F1.D pending) — same as default anyway
+  putaway.lotScan: required-if-lot-tracked       # DORMANT (F1.D pending)
+  inspection.lotScan: required-if-lot-tracked    # DORMANT (F1.E pending)
