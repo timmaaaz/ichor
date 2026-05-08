@@ -1,56 +1,158 @@
+# deployments/scenarios/receive-lot-tracking/state.yaml
+#
+# Receive PO with three lot-tracked SKUs (SKU-0029, SKU-0030, SKU-0031), one
+# lot per SKU, each materialised at a separate location via lot_locations.
+#
+# supplier_products self-authored per scenario because supplier_products has
+# no stable natural key in the seeded data (random part numbers). lot_trackings
+# references supplier_product_id (NOT product_id), so we wire it via
+# supplier_product_row_ref → supplier_product_id.
+#
+# quality_status MUST be one of {good, on_hold, quarantined, released, expired}
+# per the inventory.lot_trackings CHECK constraint at migrate.sql:659.
+# "good" is the canonical value for a freshly-received lot.
+
+supplier_products:
+  - _label: sp_029
+    supplier_ref: SUP-001
+    product_ref: SKU-0029
+    supplier_part_number: "RLT-SP-0029"
+    min_order_quantity: 1
+    max_order_quantity: 500
+    lead_time_days: 7
+    unit_cost: "15.00"
+    is_primary_supplier: true
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
+  - _label: sp_030
+    supplier_ref: SUP-001
+    product_ref: SKU-0030
+    supplier_part_number: "RLT-SP-0030"
+    min_order_quantity: 1
+    max_order_quantity: 500
+    lead_time_days: 7
+    unit_cost: "18.00"
+    is_primary_supplier: true
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
+  - _label: sp_031
+    supplier_ref: SUP-001
+    product_ref: SKU-0031
+    supplier_part_number: "RLT-SP-0031"
+    min_order_quantity: 1
+    max_order_quantity: 500
+    lead_time_days: 7
+    unit_cost: "20.00"
+    is_primary_supplier: true
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
+
 purchase_orders:
   - _label: po
+    order_number: "PO-RLT-001"
     supplier_ref: SUP-001
-    warehouse_ref: WH-TEST-1
-    currency_ref: USD
     purchase_order_status_ref: APPROVED
-    order_date: "2026-05-01"
-    expected_delivery_date: "2026-05-06"
+    delivery_warehouse_ref: WH-TEST-1
+    currency_ref: USD
+    order_date: "2026-05-01T08:00:00Z"
+    expected_delivery_date: "2026-05-06T08:00:00Z"
+    subtotal: "1540.00"
+    tax_amount: "0.00"
+    shipping_cost: "0.00"
+    total_amount: "1540.00"
+    priority: "medium"
+    requested_by_ref: admin_gopher
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
 
 purchase_order_line_items:
   - purchase_order_row_ref: po
-    product_ref: SKU-0029
-    expected_qty: 40
+    supplier_product_row_ref: sp_029
+    quantity_ordered: 40
+    quantity_received: 0
+    quantity_cancelled: 0
+    unit_cost: "15.00"
+    discount: "0.00"
+    line_total: "600.00"
+    purchase_order_line_item_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
   - purchase_order_row_ref: po
-    product_ref: SKU-0030
-    expected_qty: 30
+    supplier_product_row_ref: sp_030
+    quantity_ordered: 30
+    quantity_received: 0
+    quantity_cancelled: 0
+    unit_cost: "18.00"
+    discount: "0.00"
+    line_total: "540.00"
+    purchase_order_line_item_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
   - purchase_order_row_ref: po
-    product_ref: SKU-0031
-    expected_qty: 20
+    supplier_product_row_ref: sp_031
+    quantity_ordered: 20
+    quantity_received: 0
+    quantity_cancelled: 0
+    unit_cost: "20.00"
+    discount: "0.00"
+    line_total: "400.00"
+    purchase_order_line_item_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
 
 lot_trackings:
   - _label: lot_1
-    product_ref: SKU-0029
+    supplier_product_row_ref: sp_029
     lot_number: "LOT-RLT-001"
-    manufacture_date: "2026-04-01"
-    expiration_date: "2027-04-01"
-    received_date: "2026-05-06"
+    manufacture_date: "2026-04-01T00:00:00Z"
+    expiration_date: "2027-04-01T00:00:00Z"
+    received_date: "2026-05-06T08:00:00Z"
     quantity: 40
-    quality_status: "approved"
+    quality_status: "good"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - _label: lot_2
-    product_ref: SKU-0030
+    supplier_product_row_ref: sp_030
     lot_number: "LOT-RLT-002"
-    manufacture_date: "2026-04-05"
-    expiration_date: "2027-04-05"
-    received_date: "2026-05-06"
+    manufacture_date: "2026-04-05T00:00:00Z"
+    expiration_date: "2027-04-05T00:00:00Z"
+    received_date: "2026-05-06T08:00:00Z"
     quantity: 30
-    quality_status: "approved"
+    quality_status: "good"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - _label: lot_3
-    product_ref: SKU-0031
+    supplier_product_row_ref: sp_031
     lot_number: "LOT-RLT-003"
-    manufacture_date: "2026-04-10"
-    expiration_date: "2027-04-10"
-    received_date: "2026-05-06"
+    manufacture_date: "2026-04-10T00:00:00Z"
+    expiration_date: "2027-04-10T00:00:00Z"
+    received_date: "2026-05-06T08:00:00Z"
     quantity: 20
-    quality_status: "approved"
+    quality_status: "good"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
 
 lot_locations:
   - lot_row_ref: lot_1
     location_ref: STG-A01
     quantity: 40
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - lot_row_ref: lot_2
     location_ref: STG-A02
     quantity: 30
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - lot_row_ref: lot_3
     location_ref: STG-A03
     quantity: 20
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"

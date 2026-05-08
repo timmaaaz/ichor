@@ -8,6 +8,7 @@ orders:
     number: "SO-PICK-SHORT-001"
     order_date: "2026-05-06"
     due_date: "2026-05-13T00:00:00Z"
+    priority: "medium"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
@@ -16,11 +17,25 @@ orders:
 order_line_items:
   - _label: line_1
     order_row_ref: pick_sp_so
-    product_ref: SKU-0010
+    # WHY SKU-0011 (not SKU-0010): TestSeedProductsHistoricalWithDistribution
+    # SORTS products by Name then SKU before exposing them as productIDs[].
+    # The product name list cycles with productNames[i%10]; "Epoxy Adhesive
+    # 2-Part" (i=9, 19, 29, 49, 59) is alphabetically first, so productIDs[0]
+    # is SKU-0010 (the lowest-SKU Epoxy). TestSeedInventoryItems(n=30) then
+    # pairs productIDs[0] with ALL 19 baseline locations, occupying SKU-0010
+    # at every (product, location) cell. The non-partial unique_product_location
+    # constraint at migrate.sql:2106 (no WHERE scenario_id IS NULL) rejects
+    # the scenario's SKU-0010+STG-A01 row. SKU-0011 is the alphabetically-first
+    # Industrial Bearing — still in baseline at i=12 (locations[12]+SKU-0001
+    # only), but not at STG-A01. Verified empirically: the test fails with
+    # "duplicated entry" under SKU-0010 and passes under SKU-0011.
+    product_ref: SKU-0011
     # WHY: quantity intentionally exceeds on-hand (100 ordered, 50 available)
     # to force the short-pick fulfillment path. Worker confirms partial pick
     # and the line item transitions to PARTIALLY_PICKED.
     quantity: 100
+    picked_quantity: 0
+    backordered_quantity: 0
     line_item_fulfillment_status_ref: PENDING
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
@@ -28,7 +43,7 @@ order_line_items:
     updated_date: "2026-05-06T08:00:00Z"
 
 inventory_items:
-  - product_ref: SKU-0010
+  - product_ref: SKU-0011
     location_ref: STG-A01
     # WHY: only 50 units available vs. 100 ordered — drives short-pick path
     quantity: 50
@@ -46,11 +61,13 @@ inventory_items:
 pick_tasks:
   - sales_order_row_ref: pick_sp_so
     sales_order_line_item_row_ref: line_1
-    product_ref: SKU-0010
+    product_ref: SKU-0011
     location_ref: STG-A01
     # WHY: quantity_to_pick matches on-hand (50), not ordered quantity (100).
     # The task represents what the system can fulfil from available stock.
     quantity_to_pick: 50
+    quantity_picked: 0
+    status: "pending"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"

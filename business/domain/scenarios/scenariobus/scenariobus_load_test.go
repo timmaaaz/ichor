@@ -564,3 +564,93 @@ func Test_Load_ShippedScenario_CycleCountVarianceOver(t *testing.T) {
 		t.Errorf("FK linkage broken: cycle_count_items.session_id=%s, expected sessions.id=%s", itemSessionID, sessionID)
 	}
 }
+
+// Test_Load_AllShippedScenarios is the umbrella regression alarm for every
+// shipped scenario under deployments/scenarios/. It iterates every scenario
+// seeded by InsertSeedDataWithDB (today: 19, auto-detects future additions),
+// invokes Load() on each in turn, and asserts row-count parity between
+// inventory.scenario_fixtures (the authored fixture rows) and each populated
+// target table (the materialised live rows).
+//
+// The assertion is intentionally self-validating: it does not hardcode any
+// per-scenario expected counts. A new scenario added under deployments/scenarios/
+// is picked up automatically. A shipped scenario whose state.yaml drifts (e.g.
+// drops a NOT NULL column or causes any other Load failure) fails its own
+// sub-test without disturbing the others.
+//
+// Concurrency posture: sub-tests run SEQUENTIALLY (no t.Parallel inside the
+// loop) because Load() deletes the previously-active scenario's scoped rows
+// before applying its own fixtures. Asserting BEFORE the next iteration's
+// Load() is the contract. The outer test takes t.Parallel() to overlap with
+// other top-level tests in this package.
+func Test_Load_AllShippedScenarios(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_Load_AllShippedScenarios")
+	ctx := context.Background()
+
+	if err := dbtest.InsertSeedDataWithDB(db.Log, db.DB); err != nil {
+		t.Fatalf("baseline seed: %v", err)
+	}
+
+	scenarios, err := db.BusDomain.Scenario.Query(
+		ctx,
+		scenariobus.QueryFilter{},
+		scenariobus.DefaultOrderBy,
+		page.MustParse("1", "100"),
+	)
+	if err != nil {
+		t.Fatalf("query scenarios: %v", err)
+	}
+	if len(scenarios) == 0 {
+		t.Fatalf("no shipped scenarios found — seed chain broken?")
+	}
+	if len(scenarios) >= 100 {
+		t.Fatalf("page fill — increase page size (got %d scenarios)", len(scenarios))
+	}
+
+	for _, sc := range scenarios {
+		sc := sc
+		t.Run(sc.Name, func(t *testing.T) {
+			if err := db.BusDomain.Scenario.Load(ctx, sc.ID); err != nil {
+				t.Fatalf("Load %s: %v", sc.Name, err)
+			}
+
+			type ttRow struct {
+				TargetTable string `db:"target_table"`
+			}
+			var rows []ttRow
+			if err := db.DB.SelectContext(ctx, &rows, `
+				SELECT DISTINCT target_table FROM inventory.scenario_fixtures
+				WHERE scenario_id = $1 ORDER BY target_table`, sc.ID); err != nil {
+				t.Fatalf("distinct target_tables: %v", err)
+			}
+			if len(rows) == 0 {
+				// Lever-only scenario (no state.yaml fixtures). Load()
+				// succeeded; nothing to assert on row counts.
+				return
+			}
+
+			for _, r := range rows {
+				var fixtureCount, liveCount int
+				if err := db.DB.GetContext(ctx, &fixtureCount, `
+					SELECT COUNT(*) FROM inventory.scenario_fixtures
+					WHERE scenario_id = $1 AND target_table = $2`,
+					sc.ID, r.TargetTable); err != nil {
+					t.Fatalf("count fixtures %s: %v", r.TargetTable, err)
+				}
+				q := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE scenario_id = $1", r.TargetTable)
+				if err := db.DB.GetContext(ctx, &liveCount, q, sc.ID); err != nil {
+					t.Fatalf("count live %s: %v", r.TargetTable, err)
+				}
+				if fixtureCount == 0 {
+					t.Errorf("%s: fixtureCount = 0 (impossible — DISTINCT returned this table)", r.TargetTable)
+				}
+				if liveCount != fixtureCount {
+					t.Errorf("%s: liveCount = %d, fixtureCount = %d (rows lost between scenario_fixtures and live table)",
+						r.TargetTable, liveCount, fixtureCount)
+				}
+			}
+		})
+	}
+}

@@ -8,6 +8,7 @@ orders:
     number: "SO-PICK-ZONE-001"
     order_date: "2026-05-06"
     due_date: "2026-05-13T00:00:00Z"
+    priority: "medium"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
@@ -18,6 +19,8 @@ order_line_items:
     order_row_ref: pick_zs_so
     product_ref: SKU-0007
     quantity: 6
+    picked_quantity: 0
+    backordered_quantity: 0
     line_item_fulfillment_status_ref: PENDING
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
@@ -27,6 +30,8 @@ order_line_items:
     order_row_ref: pick_zs_so
     product_ref: SKU-0008
     quantity: 9
+    picked_quantity: 0
+    backordered_quantity: 0
     line_item_fulfillment_status_ref: PENDING
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
@@ -36,6 +41,8 @@ order_line_items:
     order_row_ref: pick_zs_so
     product_ref: SKU-0009
     quantity: 4
+    picked_quantity: 0
+    backordered_quantity: 0
     line_item_fulfillment_status_ref: PENDING
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
@@ -43,8 +50,16 @@ order_line_items:
     updated_date: "2026-05-06T08:00:00Z"
   - _label: line_4
     order_row_ref: pick_zs_so
-    product_ref: SKU-0010
+    # WHY SKU-0021 (not SKU-0010): see pick-short-pick/state.yaml for full
+    # explanation. TestSeedInventoryItems pairs productIDs[0] (SKU-0010 by
+    # name-then-SKU sort) with all 19 baseline locations, so SKU-0010+STG-B02
+    # collides on the non-partial unique_product_location constraint.
+    # SKU-0021 is an Industrial Bearing at productIDs[14] — outside the
+    # n=30 baseline inventory grid.
+    product_ref: SKU-0021
     quantity: 11
+    picked_quantity: 0
+    backordered_quantity: 0
     line_item_fulfillment_status_ref: PENDING
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
@@ -54,6 +69,8 @@ order_line_items:
     order_row_ref: pick_zs_so
     product_ref: SKU-0011
     quantity: 7
+    picked_quantity: 0
+    backordered_quantity: 0
     line_item_fulfillment_status_ref: PENDING
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
@@ -63,6 +80,8 @@ order_line_items:
     order_row_ref: pick_zs_so
     product_ref: SKU-0012
     quantity: 14
+    picked_quantity: 0
+    backordered_quantity: 0
     line_item_fulfillment_status_ref: PENDING
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
@@ -109,7 +128,7 @@ inventory_items:
     avg_daily_usage: 1
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
-  - product_ref: SKU-0010
+  - product_ref: SKU-0021
     location_ref: STG-B02
     quantity: 35
     reserved_quantity: 0
@@ -155,6 +174,8 @@ pick_tasks:
     product_ref: SKU-0007
     location_ref: STG-A01
     quantity_to_pick: 6
+    quantity_picked: 0
+    status: "pending"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
@@ -163,6 +184,8 @@ pick_tasks:
     product_ref: SKU-0008
     location_ref: STG-A02
     quantity_to_pick: 9
+    quantity_picked: 0
+    status: "pending"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
@@ -171,14 +194,18 @@ pick_tasks:
     product_ref: SKU-0009
     location_ref: STG-B01
     quantity_to_pick: 4
+    quantity_picked: 0
+    status: "pending"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
   - sales_order_row_ref: pick_zs_so
     sales_order_line_item_row_ref: line_4
-    product_ref: SKU-0010
+    product_ref: SKU-0021
     location_ref: STG-B02
     quantity_to_pick: 11
+    quantity_picked: 0
+    status: "pending"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
@@ -187,6 +214,8 @@ pick_tasks:
     product_ref: SKU-0011
     location_ref: STG-C01
     quantity_to_pick: 7
+    quantity_picked: 0
+    status: "pending"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
@@ -195,6 +224,8 @@ pick_tasks:
     product_ref: SKU-0012
     location_ref: STG-C02
     quantity_to_pick: 14
+    quantity_picked: 0
+    status: "pending"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"
