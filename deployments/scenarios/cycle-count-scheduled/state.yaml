@@ -10,6 +10,8 @@ inventory_items:
     economic_order_quantity: 20
     safety_stock: 2
     avg_daily_usage: 1
+    created_date: "2026-05-05T16:00:00Z"
+    updated_date: "2026-05-05T16:00:00Z"
   - product_ref: SKU-0002
     location_ref: STG-B02
     quantity: 8
@@ -21,6 +23,8 @@ inventory_items:
     economic_order_quantity: 20
     safety_stock: 2
     avg_daily_usage: 1
+    created_date: "2026-05-05T16:00:00Z"
+    updated_date: "2026-05-05T16:00:00Z"
   - product_ref: SKU-0003
     location_ref: STG-B03
     quantity: 20
@@ -32,6 +36,8 @@ inventory_items:
     economic_order_quantity: 20
     safety_stock: 2
     avg_daily_usage: 1
+    created_date: "2026-05-05T16:00:00Z"
+    updated_date: "2026-05-05T16:00:00Z"
 
 cycle_count_sessions:
   - _label: count_scheduled

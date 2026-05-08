@@ -8,6 +8,7 @@ orders:
     number: "SO-PICK-LOT-001"
     order_date: "2026-05-06"
     due_date: "2026-05-13T00:00:00Z"
+    priority: "medium"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
@@ -19,6 +20,8 @@ order_line_items:
     # WHY: SKU-0029..SKU-0036 are lot-tracked products in the baseline seed.
     product_ref: SKU-0029
     quantity: 10
+    picked_quantity: 0
+    backordered_quantity: 0
     line_item_fulfillment_status_ref: PENDING
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     updated_by: "5cf37266-3473-4006-984f-9325122678b7"
@@ -46,6 +49,8 @@ pick_tasks:
     product_ref: SKU-0029
     location_ref: STG-A01
     quantity_to_pick: 10
+    quantity_picked: 0
+    status: "pending"
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
     created_date: "2026-05-06T08:00:00Z"
     updated_date: "2026-05-06T08:00:00Z"

@@ -10,6 +10,8 @@ inventory_items:
     economic_order_quantity: 20
     safety_stock: 2
     avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - product_ref: SKU-0002
     location_ref: PCK-01
     quantity: 10
@@ -21,6 +23,8 @@ inventory_items:
     economic_order_quantity: 20
     safety_stock: 2
     avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - product_ref: SKU-0003
     location_ref: PCK-01
     quantity: 15
@@ -32,6 +36,8 @@ inventory_items:
     economic_order_quantity: 20
     safety_stock: 2
     avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - product_ref: SKU-0004
     location_ref: PCK-01
     quantity: 20
@@ -43,6 +49,8 @@ inventory_items:
     economic_order_quantity: 20
     safety_stock: 2
     avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - product_ref: SKU-0005
     location_ref: PCK-01
     quantity: 25
@@ -54,6 +62,8 @@ inventory_items:
     economic_order_quantity: 20
     safety_stock: 2
     avg_daily_usage: 1
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
 
 cycle_count_sessions:
   - _label: count_pck

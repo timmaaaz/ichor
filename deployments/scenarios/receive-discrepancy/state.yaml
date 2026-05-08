@@ -1,18 +1,72 @@
+# deployments/scenarios/receive-discrepancy/state.yaml
+#
+# Receive PO with line item quantity expected (50) > inventory on-hand (30)
+# to force the discrepancy path.
+#
+# supplier_products is self-authored because procurement.supplier_products
+# has no stable natural key in the seeded data (TestNewSupplierProducts
+# generates random part numbers via rand.Intn). Both purchase_order_line_items
+# and lot_trackings reference supplier_products by FK (supplier_product_id),
+# so scenarios must author their own row with a deterministic part number
+# and reference it via supplier_product_row_ref. The supplier_products row
+# is scoped via scenario_id and cleaned up on unload.
+#
+# delivery_warehouse_ref (not warehouse_ref) targets purchase_orders.delivery_warehouse_id,
+# which is the actual schema column (warehouse_ref→warehouse_id is a different
+# resolver used by inventory_locations / zones).
+
+supplier_products:
+  - _label: sp_001
+    supplier_ref: SUP-001
+    product_ref: SKU-0001
+    supplier_part_number: "RD-SP-0001"
+    min_order_quantity: 1
+    max_order_quantity: 500
+    lead_time_days: 7
+    unit_cost: "10.00"
+    is_primary_supplier: true
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
+
 purchase_orders:
   - _label: po
+    order_number: "PO-RD-001"
     supplier_ref: SUP-001
-    warehouse_ref: WH-TEST-1
-    currency_ref: USD
     purchase_order_status_ref: APPROVED
-    order_date: "2026-05-01"
-    expected_delivery_date: "2026-05-06"
+    delivery_warehouse_ref: WH-TEST-1
+    currency_ref: USD
+    order_date: "2026-05-01T08:00:00Z"
+    expected_delivery_date: "2026-05-06T08:00:00Z"
+    subtotal: "500.00"
+    tax_amount: "0.00"
+    shipping_cost: "0.00"
+    total_amount: "500.00"
+    priority: "medium"
+    requested_by_ref: admin_gopher
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
 
 purchase_order_line_items:
   - purchase_order_row_ref: po
-    product_ref: SKU-0001
-    expected_qty: 50
+    supplier_product_row_ref: sp_001
+    quantity_ordered: 50
+    quantity_received: 0
+    quantity_cancelled: 0
+    unit_cost: "10.00"
+    discount: "0.00"
+    line_total: "500.00"
+    purchase_order_line_item_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
 
-# expected_qty 50 vs on-hand 30 — forces discrepancy path
+# expected qty 50 vs on-hand 30 — forces discrepancy path.
+# SKU-0001 is at productIDs[12] in the sorted productIDs[] (Industrial Bearing
+# group), so it's NOT in the n=30 baseline inventory grid (only productIDs[0]
+# Epoxy SKU-0010 and productIDs[1] Epoxy SKU-0020 are seeded). Safe to use.
 inventory_items:
   - product_ref: SKU-0001
     location_ref: STG-A01
@@ -25,3 +79,5 @@ inventory_items:
     economic_order_quantity: 50
     safety_stock: 5
     avg_daily_usage: 2
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"

@@ -10,6 +10,7 @@ import (
 	userbus "github.com/timmaaaz/ichor/business/domain/core/userbus"
 	inventorylocationbus "github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	warehousebus "github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
+	purchaseorderlineitemstatusbus "github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
 	purchaseorderstatusbus "github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
 	supplierbus "github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
 	supplierproductbus "github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
@@ -58,18 +59,19 @@ type refResolver func(ctx context.Context, value string) (uuid.UUID, error)
 // fixture-materialization time. Exposed as an interface (via fields, not
 // methods) so the unit test can pass fakes without touching a live DB.
 type refLookups struct {
-	productIDBySKU                    refResolver
-	locationIDByCode                  refResolver
-	labelIDByCode                     refResolver
-	supplierIDByCode                  refResolver
-	warehouseIDByCode                 refResolver
-	currencyIDByCode                  refResolver
-	userIDByUsername                  refResolver
-	purchaseOrderStatusIDByName       refResolver
-	orderFulfillmentStatusIDByName    refResolver
-	lineItemFulfillmentStatusIDByName refResolver
-	customerIDByName                  refResolver
-	supplierProductIDByPartNumber     refResolver
+	productIDBySKU                      refResolver
+	locationIDByCode                    refResolver
+	labelIDByCode                       refResolver
+	supplierIDByCode                    refResolver
+	warehouseIDByCode                   refResolver
+	currencyIDByCode                    refResolver
+	userIDByUsername                    refResolver
+	purchaseOrderStatusIDByName         refResolver
+	purchaseOrderLineItemStatusIDByName refResolver
+	orderFulfillmentStatusIDByName      refResolver
+	lineItemFulfillmentStatusIDByName   refResolver
+	customerIDByName                    refResolver
+	supplierProductIDByPartNumber       refResolver
 }
 
 // newRefLookups wires resolvers against real bus instances. Seeder path.
@@ -198,6 +200,27 @@ func newRefLookups(bd BusDomain) refLookups {
 			}
 			return rows[0].ID, nil
 		},
+		// QueryFilter.Name on purchaseorderlineitemstatusbus uses ILIKE (fuzzy
+		// match) — unlike purchaseorderstatusbus which exposes a NameExact
+		// field. The post-filter exact-match guard below is mandatory; without
+		// it a query for "PENDING" could silently return "PENDING_REVIEW" or
+		// any other ILIKE-matching row.
+		purchaseOrderLineItemStatusIDByName: func(ctx context.Context, name string) (uuid.UUID, error) {
+			filter := purchaseorderlineitemstatusbus.QueryFilter{Name: &name}
+			orderBy := purchaseorderlineitemstatusbus.DefaultOrderBy
+			pg := page.MustParse("1", "1")
+			rows, err := bd.PurchaseOrderLineItemStatus.Query(ctx, filter, orderBy, pg)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("purchase_order_line_item_status query name=%s: %w", name, err)
+			}
+			if len(rows) == 0 {
+				return uuid.Nil, fmt.Errorf("purchase_order_line_item_status not found for name=%s", name)
+			}
+			if rows[0].Name != name {
+				return uuid.Nil, fmt.Errorf("purchase_order_line_item_status not found for name=%s (closest match: %s)", name, rows[0].Name)
+			}
+			return rows[0].ID, nil
+		},
 		orderFulfillmentStatusIDByName: func(ctx context.Context, name string) (uuid.UUID, error) {
 			filter := orderfulfillmentstatusbus.QueryFilter{Name: &name}
 			orderBy := orderfulfillmentstatusbus.DefaultOrderBy
@@ -263,24 +286,26 @@ func newRefLookups(bd BusDomain) refLookups {
 // constant set so unknown suffixes (e.g. vendor_ref) fail loudly rather
 // than being silently passed through as strings into payload_json.
 var knownRefSuffixes = map[string]struct{}{
-	"product_ref":                      {},
-	"location_ref":                     {},
-	"from_location_ref":                {},
-	"to_location_ref":                  {},
-	"tote_ref":                         {},
-	"supplier_ref":                     {},
-	"supplier_product_ref":             {},
-	"warehouse_ref":                    {},
-	"currency_ref":                     {},
-	"user_ref":                         {},
-	"purchase_order_status_ref":        {},
-	"order_fulfillment_status_ref":     {},
-	"line_item_fulfillment_status_ref": {},
-	"customer_ref":                     {},
+	"product_ref":                         {},
+	"location_ref":                        {},
+	"from_location_ref":                   {},
+	"to_location_ref":                     {},
+	"tote_ref":                            {},
+	"supplier_ref":                        {},
+	"supplier_product_ref":                {},
+	"warehouse_ref":                       {},
+	"currency_ref":                        {},
+	"user_ref":                            {},
+	"purchase_order_status_ref":           {},
+	"purchase_order_line_item_status_ref": {},
+	"order_fulfillment_status_ref":        {},
+	"line_item_fulfillment_status_ref":    {},
+	"customer_ref":                        {},
 	// Non-standard column mappings: target column name does not follow the
 	// "<prefix>_id" convention so explicit entries are required.
-	"requested_by_ref": {},
-	"approved_by_ref":  {},
+	"requested_by_ref":       {},
+	"approved_by_ref":        {},
+	"delivery_warehouse_ref": {},
 }
 
 // buildRowIndex performs a pre-pass over the entire scenario state and
@@ -446,6 +471,13 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 			case "purchase_order_status_ref":
 				targetKey = "purchase_order_status_id"
 				id, err = lookups.purchaseOrderStatusIDByName(ctx, code)
+			case "purchase_order_line_item_status_ref":
+				// Target column is `line_item_status_id`, NOT
+				// `purchase_order_line_item_status_id` — the migrate.sql
+				// schema shortened the column name even though the bus and
+				// table keep the longer form.
+				targetKey = "line_item_status_id"
+				id, err = lookups.purchaseOrderLineItemStatusIDByName(ctx, code)
 			case "order_fulfillment_status_ref":
 				targetKey = "order_fulfillment_status_id"
 				id, err = lookups.orderFulfillmentStatusIDByName(ctx, code)
@@ -466,6 +498,12 @@ func resolveRefs(ctx context.Context, row map[string]any, scenarioID uuid.UUID, 
 			case "approved_by_ref":
 				targetKey = "approved_by"
 				id, err = lookups.userIDByUsername(ctx, code)
+			case "delivery_warehouse_ref":
+				// procurement.purchase_orders uses delivery_warehouse_id,
+				// not warehouse_id, so the standard warehouse_ref resolver
+				// (targetKey=warehouse_id) cannot be reused here.
+				targetKey = "delivery_warehouse_id"
+				id, err = lookups.warehouseIDByCode(ctx, code)
 			default:
 				// Defensive: knownRefSuffixes (above) and the switch (here) must
 				// stay in lock-step. If a contributor adds an entry to the map

@@ -1,35 +1,115 @@
+# deployments/scenarios/receive-serial-tracking/state.yaml
+#
+# Receive PO with one serial-tracked SKU (SKU-0037) — five serial numbers
+# are tracked individually. Each serial_number row requires a lot_id (NOT NULL
+# FK to inventory.lot_trackings) — even for serial-tracked products in this
+# schema. We author one umbrella lot row per scenario and link all five
+# serials to it via lot_row_ref.
+#
+# Like the other receive-* scenarios, supplier_products is self-authored
+# (random part numbers in the seed) and lot_trackings is wired via
+# supplier_product_row_ref.
+
+supplier_products:
+  - _label: sp_037
+    supplier_ref: SUP-001
+    product_ref: SKU-0037
+    supplier_part_number: "RST-SP-0037"
+    min_order_quantity: 1
+    max_order_quantity: 100
+    lead_time_days: 7
+    unit_cost: "150.00"
+    is_primary_supplier: true
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
+
 purchase_orders:
   - _label: po
+    order_number: "PO-RST-001"
     supplier_ref: SUP-001
-    warehouse_ref: WH-TEST-1
-    currency_ref: USD
     purchase_order_status_ref: APPROVED
-    order_date: "2026-05-01"
-    expected_delivery_date: "2026-05-06"
+    delivery_warehouse_ref: WH-TEST-1
+    currency_ref: USD
+    order_date: "2026-05-01T08:00:00Z"
+    expected_delivery_date: "2026-05-06T08:00:00Z"
+    subtotal: "750.00"
+    tax_amount: "0.00"
+    shipping_cost: "0.00"
+    total_amount: "750.00"
+    priority: "medium"
+    requested_by_ref: admin_gopher
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
 
 purchase_order_line_items:
   - purchase_order_row_ref: po
-    product_ref: SKU-0037
-    expected_qty: 5
+    supplier_product_row_ref: sp_037
+    quantity_ordered: 5
+    quantity_received: 0
+    quantity_cancelled: 0
+    unit_cost: "150.00"
+    discount: "0.00"
+    line_total: "750.00"
+    purchase_order_line_item_status_ref: PENDING
+    created_by: "5cf37266-3473-4006-984f-9325122678b7"
+    updated_by: "5cf37266-3473-4006-984f-9325122678b7"
+    created_date: "2026-05-01T08:00:00Z"
+    updated_date: "2026-05-01T08:00:00Z"
+
+# Umbrella lot for all 5 serial numbers; serial_numbers.lot_id is NOT NULL
+# in the schema, so we author one lot row and reference it from each serial.
+lot_trackings:
+  - _label: lot_serial_umbrella
+    supplier_product_row_ref: sp_037
+    lot_number: "LOT-RST-001"
+    manufacture_date: "2026-04-01T00:00:00Z"
+    expiration_date: "2027-04-01T00:00:00Z"
+    received_date: "2026-05-06T08:00:00Z"
+    quantity: 5
+    quality_status: "good"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
 
 serial_numbers:
   - _label: serial_1
     product_ref: SKU-0037
     location_ref: RCV-01
+    lot_row_ref: lot_serial_umbrella
     serial_number: "SN-RST-0001"
+    status: "available"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - _label: serial_2
     product_ref: SKU-0037
     location_ref: RCV-01
+    lot_row_ref: lot_serial_umbrella
     serial_number: "SN-RST-0002"
+    status: "available"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - _label: serial_3
     product_ref: SKU-0037
     location_ref: RCV-01
+    lot_row_ref: lot_serial_umbrella
     serial_number: "SN-RST-0003"
+    status: "available"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - _label: serial_4
     product_ref: SKU-0037
     location_ref: RCV-01
+    lot_row_ref: lot_serial_umbrella
     serial_number: "SN-RST-0004"
+    status: "available"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
   - _label: serial_5
     product_ref: SKU-0037
     location_ref: RCV-01
+    lot_row_ref: lot_serial_umbrella
     serial_number: "SN-RST-0005"
+    status: "available"
+    created_date: "2026-05-06T08:00:00Z"
+    updated_date: "2026-05-06T08:00:00Z"
