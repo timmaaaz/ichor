@@ -62,10 +62,10 @@ purchase_orders:
     currency_ref: USD
     order_date: "2026-05-01T08:00:00Z"
     expected_delivery_date: "2026-05-06T08:00:00Z"
-    subtotal: "1370.00"
+    subtotal: "1610.00"
     tax_amount: "0.00"
     shipping_cost: "0.00"
-    total_amount: "1370.00"
+    total_amount: "1610.00"
     priority: "high"
     requested_by_ref: admin_gopher
     created_by: "5cf37266-3473-4006-984f-9325122678b7"
