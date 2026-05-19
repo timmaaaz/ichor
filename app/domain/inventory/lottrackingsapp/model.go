@@ -143,23 +143,34 @@ func (app NewLotTrackings) Validate() error {
 	return nil
 }
 
+// parseTimeFlexible parses a timestamp accepting either the legacy
+// timeutil.FORMAT ("2006-01-02 15:04:05 -0700 MST") or RFC 3339 / ISO-8601
+// (the format JavaScript's Date.toISOString() emits). The floor PWA sends the
+// latter; older clients and server-emitted strings use the former.
+func parseTimeFlexible(s string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t, nil
+	}
+	return time.Parse(timeutil.FORMAT, s)
+}
+
 func toBusNewLotTrackings(app NewLotTrackings) (lottrackingsbus.NewLotTrackings, error) {
 	supplierProductID, err := uuid.Parse(app.SupplierProductID)
 	if err != nil {
 		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse supplierProductID: %s", err)
 	}
 
-	manufactureDate, err := time.Parse(timeutil.FORMAT, app.ManufactureDate)
+	manufactureDate, err := parseTimeFlexible(app.ManufactureDate)
 	if err != nil {
 		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse manufactureDate: %s", err)
 	}
 
-	expirationDate, err := time.Parse(timeutil.FORMAT, app.ExpirationDate)
+	expirationDate, err := parseTimeFlexible(app.ExpirationDate)
 	if err != nil {
 		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse expirationDate: %s", err)
 	}
 
-	receivedDate, err := time.Parse(timeutil.FORMAT, app.ReceivedDate)
+	receivedDate, err := parseTimeFlexible(app.ReceivedDate)
 	if err != nil {
 		return lottrackingsbus.NewLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse receivedDate: %s", err)
 	}
@@ -217,7 +228,7 @@ func toBusUpdateLotTrackings(app UpdateLotTrackings) (lottrackingsbus.UpdateLotT
 	}
 
 	if app.ManufactureDate != nil {
-		manufactureDate, err := time.Parse(timeutil.FORMAT, *app.ManufactureDate)
+		manufactureDate, err := parseTimeFlexible(*app.ManufactureDate)
 		if err != nil {
 			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse manufactureDate: %s", err)
 		}
@@ -225,7 +236,7 @@ func toBusUpdateLotTrackings(app UpdateLotTrackings) (lottrackingsbus.UpdateLotT
 	}
 
 	if app.ExpirationDate != nil {
-		expirationDate, err := time.Parse(timeutil.FORMAT, *app.ExpirationDate)
+		expirationDate, err := parseTimeFlexible(*app.ExpirationDate)
 		if err != nil {
 			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse expirationDate: %s", err)
 		}
@@ -233,7 +244,7 @@ func toBusUpdateLotTrackings(app UpdateLotTrackings) (lottrackingsbus.UpdateLotT
 	}
 
 	if app.ReceivedDate != nil {
-		receivedDate, err := time.Parse(timeutil.FORMAT, *app.ReceivedDate)
+		receivedDate, err := parseTimeFlexible(*app.ReceivedDate)
 		if err != nil {
 			return lottrackingsbus.UpdateLotTrackings{}, errs.Newf(errs.InvalidArgument, "parse receivedDate: %s", err)
 		}
