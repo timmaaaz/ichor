@@ -317,22 +317,27 @@ func (s *Store) QueryAvailableForAllocation(ctx context.Context, productID uuid.
 // rows with FOR UPDATE for transaction safety.
 func (s *Store) queryFEFO(ctx context.Context, args map[string]any, locationID *uuid.UUID, warehouseID *uuid.UUID) ([]inventoryitembus.InventoryItem, error) {
 
-	// Build the WHERE filters that apply to both layers.
-	filters := `ii.product_id = :product_id
-        AND (ii.quantity - ii.reserved_quantity - ii.allocated_quantity) > 0`
+	// Build the WHERE filters for the inner subquery. The inner aliases
+	// inventory_items as `sub`, so filters must qualify with sub.* — earlier
+	// versions used ii.* here, which Postgres resolved against the OUTER ii
+	// alias (correlated), causing the filter to constrain the outer row
+	// while leaving the sub side wide-open. The subquery then LIMIT 1'd to
+	// an arbitrary row, never matching the targeted product+location.
+	filters := `sub.product_id = :product_id
+        AND (sub.quantity - sub.reserved_quantity - sub.allocated_quantity) > 0`
 
 	if locationID != nil {
-		filters += ` AND ii.location_id = :location_id`
+		filters += ` AND sub.location_id = :location_id`
 		args["location_id"] = locationID.String()
 	}
 
 	if warehouseID != nil {
-		filters += ` AND ii.location_id IN (SELECT id FROM inventory.inventory_locations WHERE warehouse_id = :warehouse_id)`
+		filters += ` AND sub.location_id IN (SELECT id FROM inventory.inventory_locations WHERE warehouse_id = :warehouse_id)`
 		args["warehouse_id"] = warehouseID.String()
 	}
 
 	// Apply scenario filter inline on both the outer and inner query paths
-	// (aliased query uses ii.scenario_id / sub.scenario_id).
+	// (outer alias = ii, inner alias = sub).
 	scenarioClause := ""
 	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
 		scenarioClause = " AND (ii.scenario_id IS NULL OR ii.scenario_id = :scenario_id)"

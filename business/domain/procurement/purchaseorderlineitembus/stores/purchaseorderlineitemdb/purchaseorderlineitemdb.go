@@ -264,12 +264,11 @@ func (s *Store) QueryByPurchaseOrderID(ctx context.Context, poID uuid.UUID) ([]p
 	FROM
 		procurement.purchase_order_line_items
 	WHERE
-		purchase_order_id = :purchase_order_id
-	ORDER BY
-		created_date ASC`
+		purchase_order_id = :purchase_order_id`
 
 	buf := bytes.NewBufferString(q)
 	sqldb.ApplyScenarioFilter(ctx, buf, data)
+	buf.WriteString(" ORDER BY created_date ASC")
 
 	var dbItems []purchaseOrderLineItem
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, buf.String(), data, &dbItems); err != nil {

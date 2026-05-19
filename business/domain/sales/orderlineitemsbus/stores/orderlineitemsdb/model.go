@@ -18,7 +18,7 @@ type orderLineItem struct {
 	Quantity                      int            `db:"quantity"`
 	UnitPrice                     sql.NullString `db:"unit_price"`
 	Discount                      sql.NullString `db:"discount"`
-	DiscountType                  string         `db:"discount_type"`
+	DiscountType                  sql.NullString `db:"discount_type"`
 	LineTotal                     sql.NullString `db:"line_total"`
 	LineItemFulfillmentStatusesID uuid.UUID      `db:"line_item_fulfillment_statuses_id"`
 	PickedQuantity                int            `db:"picked_quantity"`
@@ -57,6 +57,11 @@ func toBusOrderLineItem(db orderLineItem) (orderlineitemsbus.OrderLineItem, erro
 		description = db.Description.String
 	}
 
+	discountType := db.DiscountType.String
+	if discountType == "" {
+		discountType = "flat"
+	}
+
 	return orderlineitemsbus.OrderLineItem{
 		ID:                            db.ID,
 		OrderID:                       db.OrderID,
@@ -65,7 +70,7 @@ func toBusOrderLineItem(db orderLineItem) (orderlineitemsbus.OrderLineItem, erro
 		Quantity:                      db.Quantity,
 		UnitPrice:                     unitPrice,
 		Discount:                      discount,
-		DiscountType:                  db.DiscountType,
+		DiscountType:                  discountType,
 		LineTotal:                     lineTotal,
 		LineItemFulfillmentStatusesID: db.LineItemFulfillmentStatusesID,
 		PickedQuantity:                db.PickedQuantity,
@@ -110,7 +115,7 @@ func toDBOrderLineItem(app orderlineitemsbus.OrderLineItem) orderLineItem {
 		Quantity:                      app.Quantity,
 		UnitPrice:                     app.UnitPrice.DBValue(),
 		Discount:                      app.Discount.DBValue(),
-		DiscountType:                  app.DiscountType,
+		DiscountType:                  sql.NullString{String: app.DiscountType, Valid: app.DiscountType != ""},
 		LineTotal:                     app.LineTotal.DBValue(),
 		LineItemFulfillmentStatusesID: app.LineItemFulfillmentStatusesID,
 		PickedQuantity:                app.PickedQuantity,
