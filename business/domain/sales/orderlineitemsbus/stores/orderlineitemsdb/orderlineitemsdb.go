@@ -122,7 +122,7 @@ func (s *Store) Query(ctx context.Context, filter orderlineitemsbus.QueryFilter,
 
 	const q = `
 	SELECT
-		id, order_id, product_id, description, quantity, unit_price, discount, COALESCE(discount_type, 'flat') AS discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date, scenario_id
+		id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date, scenario_id
     FROM
 	    sales.order_line_items
 		`
@@ -182,7 +182,7 @@ func (s *Store) QueryByID(ctx context.Context, statusID uuid.UUID) (orderlineite
 
 	const q = `
     SELECT
-        id, order_id, product_id, description, quantity, unit_price, discount, COALESCE(discount_type, 'flat') AS discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date, scenario_id
+        id, order_id, product_id, description, quantity, unit_price, discount, discount_type, line_total, line_item_fulfillment_statuses_id, picked_quantity, backordered_quantity, short_pick_reason, created_by, created_date, updated_by, updated_date, scenario_id
     FROM
         sales.order_line_items
     WHERE
