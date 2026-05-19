@@ -236,7 +236,10 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (lottrackingsbus.Lo
     `
 
 	buf := bytes.NewBufferString(q)
-	sqldb.ApplyScenarioFilter(ctx, buf, data)
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		buf.WriteString(" AND (lt.scenario_id IS NULL OR lt.scenario_id = :scenario_id)")
+		data["scenario_id"] = sid
+	}
 
 	var dbLot lotTrackings
 
