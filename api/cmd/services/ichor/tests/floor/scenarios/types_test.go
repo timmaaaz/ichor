@@ -52,7 +52,7 @@ type PickInputs struct {
 }
 
 type PickAllocation struct {
-	AllocationID uuid.UUID
+	PickTaskID uuid.UUID
 	ProductID    uuid.UUID
 	UPC          string
 	LocationCode string // canonical, e.g., "STG-A01"
