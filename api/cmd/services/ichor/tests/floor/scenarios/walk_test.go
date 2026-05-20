@@ -76,24 +76,36 @@ func doRequest(t *testing.T, h *apitest.Test, method, path string, token string,
 	return w
 }
 
-// walkTransfer drives a floor-worker transfer through the canonical 5-step
+// walkTransfer drives a floor-worker transfer through the canonical 6-step
 // wizard using real HTTP against the test mux:
 //
-//  1. GET  /v1/inventory/transfer-orders/{id}            → 200, status=pending   (sanity)
-//  2. POST /v1/inventory/transfer-orders/{id}/approve    → 200, status=approved  (GB-010)
+//  1. GET  /v1/inventory/transfer-orders/{id}            → 200, status=pending    (sanity)
+//  2. POST /v1/inventory/transfer-orders/{id}/approve    → 200, status=approved   (GB-010)
 //  3. POST /v1/inventory/transfer-orders/{id}/claim      → 200, status=in_transit (GB-010)
 //  4. GET  /v1/inventory/inventory-locations?location_code_exact={fromCode} → 200, ≥1 item (GB-008)
 //  5. GET  /v1/inventory/inventory-locations?location_code_exact={toCode}   → 200, ≥1 item (GB-008)
-//  6. POST /v1/inventory/transfer-orders/{id}/execute    → 200, status=completed (GB-015)
+//  6. POST /v1/inventory/transfer-orders/{id}/execute    → 200, status=completed
 //
 // Steps 4-5 validate that the location codes the scenario wired up are actually
 // queryable via the inventory-locations API (GB-008: location-code scan).
 //
-// Step 6 triggers DecrementQuantity at the source. If the scenario seeds
-// insufficient stock, the app returns 422/FailedPrecondition (GB-011). That
-// case is handled by the caller (TestFloorScenarios_TransferIntraZone) by
-// skipping with a descriptive message rather than failing.
-func walkTransfer(t *testing.T, h *apitest.Test, _ uuid.UUID, in TransferInputs) {
+// Step 6 guards transfer-execute integrity: transferorderapp.Execute calls
+// DecrementQuantity directly and does NOT route through
+// pickingapp.QueryAvailableForAllocation (where GB-015's FEFO subquery lives).
+// GB-015 coverage belongs to walkPick (Task 9). Step 6 here guards
+// DecrementQuantity correctness + state transition to completed.
+//
+// If the scenario seeds insufficient stock, the app returns
+// 422/FailedPrecondition (GB-011). The harness surfaces this as a loud failure
+// rather than a skip — the Playwright walks (Phase B) PATCH around GB-011, but
+// the harness intentionally signals the gap.
+//
+// The scenarioID parameter is currently unused by walkTransfer (the transfer
+// state is queried by transfer_id alone), but is retained for signature
+// consistency with walkReceive, walkPick, walkCycleCount — Task 12's
+// table-driven dispatch calls all family walks with the same 4-arg shape.
+func walkTransfer(t *testing.T, h *apitest.Test, scenarioID uuid.UUID, in TransferInputs) {
+	_ = scenarioID // signature-consistent; see doc comment
 	t.Helper()
 	token := adminToken(t, h)
 	idStr := in.TransferID.String()
@@ -197,24 +209,23 @@ func walkTransfer(t *testing.T, h *apitest.Test, _ uuid.UUID, in TransferInputs)
 		}
 	}
 
-	// Step 6 — GB-015: execute the in_transit transfer.
-	// The execute handler calls DecrementQuantity at the source; if the seed
-	// quantity < transfer quantity, this returns 422 (ErrInsufficientStock →
-	// FailedPrecondition). That is the GB-011 surface: the caller must t.Skip
-	// with an explanation rather than letting this t.Fatalf propagate. Any
-	// other non-200 status is a genuine GB-015 regression.
+	// Step 6 — execute the in_transit transfer (completes status + decrements
+	// source stock via DecrementQuantity; does NOT exercise FEFO — GB-015's
+	// FEFO subquery lives in pickingapp and is covered by walkPick).
+	// If seed quantity < transfer quantity this returns 422 (GB-011); the
+	// harness fails loudly to signal the seed gap.
 	{
 		w := doRequest(t, h, http.MethodPost,
 			"/v1/inventory/transfer-orders/"+idStr+"/execute",
 			token, nil, http.StatusOK,
-			"GB-015: POST /execute returned non-200 — may be GB-011 (insufficient stock) or a genuine execute regression")
+			"POST /execute returned non-200 — may be GB-011 (insufficient stock) or a transfer execute / DecrementQuantity regression. GB-015 (FEFO alias scope) is exercised by walkPick, not this step.")
 
 		var to struct {
 			Status string `json:"status"`
 		}
 		mustDecodeJSON(t, w, &to)
 		if to.Status != "completed" {
-			t.Fatalf("walkTransfer step 6 (GB-015): want status=completed after /execute, got %q", to.Status)
+			t.Fatalf("walkTransfer step 6: want status=completed after /execute, got %q", to.Status)
 		}
 	}
 }
