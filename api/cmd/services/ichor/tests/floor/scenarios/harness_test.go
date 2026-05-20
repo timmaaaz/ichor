@@ -36,7 +36,9 @@ func startScenarioTest(t *testing.T, testName string) *apitest.Test {
 	//   - seedScenarios (inside InsertSeedDataWithDB) reads all 21 YAMLs from
 	//     deployments/scenarios/ and populates scenarios + scenario_fixtures.
 	//   - seedScenarioCustomer needs contact_infos + streets from the baseline.
-	// Calling once per *apitest.Test (not per scenario) keeps it O(1).
+	// Seeds once per test DB instance — Task 12's table-driven test will pay this
+	// cost 21x (once per scenario row, since per-DB isolation is required by the
+	// scenarios_active singleton).
 	if err := dbtest.InsertSeedDataWithDB(db.Log, db.DB); err != nil {
 		t.Fatalf("baseline seed: %v", err)
 	}
@@ -120,9 +122,11 @@ func loadScenarioFixtures(t *testing.T, h *apitest.Test, scenarioName string) uu
 func scenarioRoots() []string {
 	return []string{
 		"../../../../../../../deployments/scenarios",
-		// Customer scenarios:
+		// Customer scenarios — NOTE: requires glob expansion before uncommenting.
+		// resolveScenarioPath currently uses filepath.Join + os.Stat with no glob;
+		// '*' would be treated as a literal directory name. Replace the loop body
+		// with filepath.Glob or os.ReadDir expansion when customer onboarding lands.
 		//   "../../../../../../../deployments/customers/*/scenarios",
-		// Added when customer onboarding lands.
 	}
 }
 
