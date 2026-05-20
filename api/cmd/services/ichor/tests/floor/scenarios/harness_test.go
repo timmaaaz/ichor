@@ -44,6 +44,7 @@ func startScenarioTest(t *testing.T, testName string) *apitest.Test {
 		Auth: auth,
 		DB:   db.DB,
 	}, authbuild.Routes()))
+	t.Cleanup(server.Close) // mirrors start_ws.go pattern; apitest.StartTest omits this
 
 	authClient := authclient.New(db.Log, server.URL)
 
