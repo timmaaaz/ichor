@@ -34,3 +34,31 @@ func TestFloorScenarios_TransferIntraZone(t *testing.T) {
 	in := discoverTransferInputs(t, h, scenarioID)
 	walkTransfer(t, h, scenarioID, in)
 }
+
+func TestFloorScenarios_TransferCrossZone(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "transfer-cross-zone")
+	scenarioID := loadScenarioFixtures(t, h, "transfer-cross-zone")
+	in := discoverTransferInputs(t, h, scenarioID)
+	walkTransfer(t, h, scenarioID, in)
+}
+
+func TestFloorScenarios_TransferLotTracked(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "transfer-lot-tracked")
+	scenarioID := loadScenarioFixtures(t, h, "transfer-lot-tracked")
+	in := discoverTransferInputs(t, h, scenarioID)
+	in.LotTracked = true
+	walkTransfer(t, h, scenarioID, in)
+}
+
+func TestFloorScenarios_TransferMultiLine(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "transfer-multi-line")
+	scenarioID := loadScenarioFixtures(t, h, "transfer-multi-line")
+	// Multi-line: discoverTransferInputs returns the first approved transfer;
+	// additional transfers are not covered by this single walk. If we need
+	// full coverage of multi-line, file as a follow-up — out of Phase A scope.
+	in := discoverTransferInputs(t, h, scenarioID)
+	walkTransfer(t, h, scenarioID, in)
+}
