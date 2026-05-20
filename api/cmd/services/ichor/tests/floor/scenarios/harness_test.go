@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -155,4 +156,89 @@ func resolveScenarioPath(name string) (string, error) {
 	default:
 		return "", fmt.Errorf("scenario %q exists in multiple roots: %v — rename one to avoid shadowing", name, matches)
 	}
+}
+
+// familyOverrides handles scenarios whose family is NOT derivable from
+// filename prefix. Resolved during pre-flight investigation of the 21
+// scenarios in deployments/scenarios/ (2026-05-20):
+//   - rush-receiving      → familyReceive (3 POs under time pressure;
+//     same shape as receive-rush-multi-line)
+//   - e2e-baseline        → "" (Custom handler — empty scenario, no walk;
+//     used by leverOverrides.clearActiveScenario())
+//   - profile-medical-device-rental → familyProfile (lever_overrides only)
+//   - profile-strict-regulated      → familyProfile (lever_overrides only)
+//   - e2e-pick-strict     → familyPick (canonical pick under strict levers)
+var familyOverrides = map[string]family{
+	"rush-receiving":                familyReceive,
+	"e2e-pick-strict":               familyPick,
+	"profile-medical-device-rental": familyProfile,
+	"profile-strict-regulated":      familyProfile,
+	// "e2e-baseline" stays unset → resolved to Custom row in scenarios_test.go
+}
+
+// discoverScenarios globs each root for <root>/<name>/scenario.yaml and
+// returns one ScenarioRow per discovered scenario. Family is derived from
+// filename prefix (transfer-* → familyTransfer, etc.); familyOverrides
+// handles non-prefix-named scenarios.
+//
+// Returned rows have Custom == nil unless familyOverrides explicitly leaves
+// the family empty (e2e-baseline). Callers populate Custom from the
+// customRowOverrides table in scenarios_test.go.
+func discoverScenarios(roots []string) ([]ScenarioRow, error) {
+	var rows []ScenarioRow
+	seen := map[string]string{} // name → root, for duplicate detection
+	for _, root := range roots {
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue // missing customer root is fine
+			}
+			return nil, fmt.Errorf("read root %q: %w", root, err)
+		}
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			name := e.Name()
+			if name == "_schema.yaml" || name[0] == '_' {
+				continue
+			}
+			scenarioYAML := filepath.Join(root, name, "scenario.yaml")
+			if _, err := os.Stat(scenarioYAML); err != nil {
+				continue // not a scenario directory
+			}
+			if other, dup := seen[name]; dup {
+				return nil, fmt.Errorf("scenario %q in both %q and %q — rename one", name, other, root)
+			}
+			seen[name] = root
+			rows = append(rows, ScenarioRow{
+				Name:     name,
+				Category: "generic",
+				Family:   deriveFamily(name),
+			})
+		}
+	}
+	return rows, nil
+}
+
+// deriveFamily returns the family for a scenario by filename prefix, then
+// consults familyOverrides for explicit cases. Returns "" if no rule matches —
+// the caller must supply Custom.
+func deriveFamily(name string) family {
+	if override, ok := familyOverrides[name]; ok {
+		return override
+	}
+	switch {
+	case strings.HasPrefix(name, "transfer-"):
+		return familyTransfer
+	case strings.HasPrefix(name, "pick-"):
+		return familyPick
+	case strings.HasPrefix(name, "receive-"):
+		return familyReceive
+	case strings.HasPrefix(name, "cycle-count-"):
+		return familyCycleCount
+	case strings.HasPrefix(name, "profile-"):
+		return familyProfile
+	}
+	return ""
 }
