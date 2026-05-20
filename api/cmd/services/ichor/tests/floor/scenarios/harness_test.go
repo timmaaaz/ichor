@@ -161,18 +161,17 @@ func resolveScenarioPath(name string) (string, error) {
 // familyOverrides handles scenarios whose family is NOT derivable from
 // filename prefix. Resolved during pre-flight investigation of the 21
 // scenarios in deployments/scenarios/ (2026-05-20):
-//   - rush-receiving      → familyReceive (3 POs under time pressure;
-//     same shape as receive-rush-multi-line)
-//   - e2e-baseline        → "" (Custom handler — empty scenario, no walk;
-//     used by leverOverrides.clearActiveScenario())
-//   - profile-medical-device-rental → familyProfile (lever_overrides only)
-//   - profile-strict-regulated      → familyProfile (lever_overrides only)
-//   - e2e-pick-strict     → familyPick (canonical pick under strict levers)
+//   - rush-receiving  → familyReceive (3 POs under time pressure; same shape
+//                       as receive-rush-multi-line but no `receive-` prefix)
+//   - e2e-pick-strict → familyPick (canonical pick under strict levers;
+//                       `e2e-` prefix doesn't match `pick-`)
+//
+// Scenarios with normal prefixes (transfer-, pick-, receive-, cycle-count-,
+// profile-) resolve via deriveFamily's switch and don't need entries here.
+// e2e-baseline stays unset → resolved via Custom in scenarios_test.go.
 var familyOverrides = map[string]family{
-	"rush-receiving":                familyReceive,
-	"e2e-pick-strict":               familyPick,
-	"profile-medical-device-rental": familyProfile,
-	"profile-strict-regulated":      familyProfile,
+	"rush-receiving":  familyReceive,
+	"e2e-pick-strict": familyPick,
 	// "e2e-baseline" stays unset → resolved to Custom row in scenarios_test.go
 }
 
@@ -200,7 +199,7 @@ func discoverScenarios(roots []string) ([]ScenarioRow, error) {
 				continue
 			}
 			name := e.Name()
-			if name == "_schema.yaml" || name[0] == '_' {
+			if name[0] == '_' {
 				continue
 			}
 			scenarioYAML := filepath.Join(root, name, "scenario.yaml")
@@ -221,9 +220,9 @@ func discoverScenarios(roots []string) ([]ScenarioRow, error) {
 	return rows, nil
 }
 
-// deriveFamily returns the family for a scenario by filename prefix, then
-// consults familyOverrides for explicit cases. Returns "" if no rule matches —
-// the caller must supply Custom.
+// deriveFamily returns the family for a scenario by consulting familyOverrides
+// first (for explicit exceptions), then falling back to filename prefix. Returns
+// "" if neither rule matches — the caller must supply Custom.
 func deriveFamily(name string) family {
 	if override, ok := familyOverrides[name]; ok {
 		return override
