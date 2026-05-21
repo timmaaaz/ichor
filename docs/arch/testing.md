@@ -84,14 +84,19 @@ file: api/sdk/http/apitest/start.go
 function: `StartTest(t, testName) *Test`
 
 ```
-StartTest → NewDatabase → auth.New → httptest.NewServer(authbuild.Routes())
-                                   → httptest.NewServer(ichorbuild.Routes()) [main mux]
+StartTest → NewDatabase → auth.New
+                        → httptest.NewServer(authbuild.Routes())   [auth subserver only]
+                        → mux.WebAPI(ichorbuild.Routes())          [ichor mux — raw http.Handler]
+                        → apitest.New(db, auth, ichorMux)
 ```
 
 key facts:
-  - each integration test gets an isolated DB + full HTTP server stack via `httptest.NewServer`
-  - no network port allocation — server listens on loopback via `httptest`
+  - each integration test gets an isolated DB; the auth subserver runs in `httptest.NewServer`
+  - the ichor mux is **not** wrapped in `httptest.NewServer` — tests drive it via `test.ServeHTTP(w, r)` (see `apitest.go:40`)
+  - no inbound port allocation for the ichor mux — but each subtest still burns ephemeral source ports on outbound DB connections (see "Parallel ceiling for fan-out integration harnesses" below)
   - `Test` wraps `*dbtest.Database` + `*auth.Auth` + `http.Handler` for use in table-driven tests
+  - ⚠ `StartTest` does NOT call `t.Cleanup(server.Close)` on the auth subserver — that subserver leaks per test. Harnesses that fan out many subtests should add the cleanup explicitly (see `api/cmd/services/ichor/tests/floor/scenarios/harness_test.go`)
+  - `StartTest` defaults `ScenariosEnabled: false` — integration tests using it bypass `sqldb.ApplyScenarioFilter`. Harnesses that need scenario filtering must construct the mux directly with `ScenariosEnabled: true`
 
 ---
 
@@ -156,6 +161,32 @@ If a new shared container is needed (e.g., Redis, RabbitMQ):
   - workflow integration tests: safe within a process (unique task queues); new Temporal container per process via `GetTestContainer` singleton
   - never call `docker.StopContainer("servicetest")` from test code — it terminates other concurrent test processes
   - `t.Cleanup` must drop the test DB only, never stop the container: see `NewDatabase` cleanup in dbtest.go
+
+---
+
+## ⚠ Parallel ceiling for fan-out integration harnesses
+
+Tests that fan out many subtests within a single package (e.g. `api/cmd/services/ichor/tests/floor/scenarios/` which walks 21 scenarios via `t.Run` + `t.Parallel`) must cap parallelism via `-parallel N`. Each subtest:
+
+  - opens pooled `*sqlx.DB` connections to the shared `servicetest` container (admin DB + test DB), each burning an ephemeral source port
+  - issues many HTTP requests per walk to the in-process `httptest`/handler; the auth `httptest.NewServer` listens on loopback, but the Go test process still consumes ephemeral source ports for the outbound DB connections issued from inside handlers
+
+On macOS the ephemeral range is 49152–65535 (~16k ports, TIME_WAIT held ~2min). At 21 scenarios × `-parallel 4` the floor scenario harness exhausts this range and fails with:
+
+```
+dial tcp 127.0.0.1:5432: connect: can't assign requested address
+```
+
+Safe ceilings observed (macOS Apple Silicon, postgres:16.4):
+
+| Harness shape | Safe -parallel | Notes |
+|---|---|---|
+| 21-scenario floor walk | 2 | `-parallel 4` fails; `-race` adds ~5.7× wall-clock |
+| Single-domain api tests (e.g. labels) | unbounded | small subtest count, no port pressure |
+
+Rule of thumb: if a single package contains >10 parallel subtests **and** each subtest hits the HTTP mux >5 times, cap with `-parallel 2` on macOS. Linux CI with a larger ephemeral range (e.g. 32768–60999) may tolerate `-parallel 4`; verify on the actual CI host before raising.
+
+The author of a fan-out harness should document the chosen ceiling in a comment on the table-driven entry test, with a one-line rationale (e.g. `scenarios_test.go:TestFloorScenarios`).
 
 ---
 
