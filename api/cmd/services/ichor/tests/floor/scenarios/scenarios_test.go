@@ -286,3 +286,58 @@ func TestFloorScenarios_CycleCountScheduled(t *testing.T) {
 	scenarioID := loadScenarioFixtures(t, h, "cycle-count-scheduled")
 	walkCycleCount(t, h, scenarioID, discoverCycleCountInputs(t, h, scenarioID))
 }
+
+// =============================================================================
+// Profile + e2e-baseline canaries (Task 11)
+//
+// These three tests cover the config-only scenarios that don't map to a
+// workflow family. See discoverProfileFlags and the walk functions in
+// walk_test.go for the design rationale and the "Option 3" pivot.
+// =============================================================================
+
+// TestFloorScenarios_ProfileStrictRegulated verifies that loading
+// profile-strict-regulated writes lever_overrides to
+// config.scenario_setting_overrides and that the settings resolver returns
+// those override values (not SMB defaults) via GET /v1/config/settings/{key}.
+//
+// Sentinel keys (both differ from SMB defaults):
+//
+//	pick.sourceLocationScan: "required"  (default: "button-confirm")
+//	pick.destinationScan:    "required"  (default: "button-confirm")
+func TestFloorScenarios_ProfileStrictRegulated(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "profile-strict-regulated")
+	scenarioID := loadScenarioFixtures(t, h, "profile-strict-regulated")
+	walkProfileWithReceive(t, h, h.DB.DB, scenarioID)
+}
+
+// TestFloorScenarios_ProfileMedicalDeviceRental verifies that loading
+// profile-medical-device-rental writes lever_overrides to
+// config.scenario_setting_overrides and that the settings resolver returns
+// those override values via GET /v1/config/settings/{key}.
+//
+// Sentinel keys (both differ from SMB defaults):
+//
+//	transfer.sourceLocationScan: "required"  (default: "button-confirm")
+//	transfer.destinationScan:    "required"  (default: "button-confirm")
+func TestFloorScenarios_ProfileMedicalDeviceRental(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "profile-medical-device-rental")
+	scenarioID := loadScenarioFixtures(t, h, "profile-medical-device-rental")
+	walkProfileWithTransfer(t, h, h.DB.DB, scenarioID)
+}
+
+// TestFloorScenarios_E2EBaseline verifies that loading the intentionally empty
+// e2e-baseline scenario results in:
+//  1. No lever_overrides in config.scenario_setting_overrides.
+//  2. GET /v1/config/settings/{key} returns SMB-default values (not stale
+//     overrides from a previously-active profile scenario).
+//
+// This test double-checks the correctness of clearActiveScenario() used by
+// the Playwright E2E suite to revert lever state between specs.
+func TestFloorScenarios_E2EBaseline(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "e2e-baseline")
+	scenarioID := loadScenarioFixtures(t, h, "e2e-baseline")
+	walkE2EBaseline(t, h, h.DB.DB, scenarioID)
+}

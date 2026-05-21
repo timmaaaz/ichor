@@ -322,6 +322,63 @@ func discoverPickInputs(t *testing.T, h *apitest.Test, scenarioID uuid.UUID) Pic
 	}
 }
 
+// discoverProfileFlags queries config.scenario_setting_overrides directly to
+// return the lever overrides that were written at seed time for the given
+// profile scenario.
+//
+// Design pivot (Task 11 pre-flight):
+//
+// The plan's "load A, load B, re-load A" design is broken. Business.Load calls
+// DeleteScopedRows for the current active then ApplyFixtures for the target —
+// so loading a workflow scenario after a profile scenario destroys the profile's
+// lever_overrides (they're scoped to the profile scenario_id). Re-loading the
+// profile then destroys the workflow entities. The round-trip is a no-op for
+// the entities but leaves you with an empty DB.
+//
+// Chosen alternative — Option 3 (activate profile, assert lever_overrides
+// queryable):
+//   - Profile scenarios have NO entities (no POs, no transfer orders, no pick
+//     tasks). Their only effect is writing rows to config.scenario_setting_overrides.
+//   - discoverProfileFlags queries that table directly to confirm the rows exist.
+//   - walkProfileWithReceive / walkProfileWithTransfer then hit
+//     GET /v1/config/settings/{key} for a representative subset of the profile's
+//     keys to confirm the HTTP layer returns the override value, not the default.
+//   - walkE2EBaseline activates the empty scenario and verifies no overrides exist.
+//
+// This matches the actual codebase behavior: profile scenarios are config-only
+// and their test coverage is "overrides are present in the DB and the settings
+// resolver returns them via HTTP". Walking a workflow (receive, transfer) under
+// the profile requires baseline data; those levers are DORMANT at the API layer
+// (the floor composables read them client-side), so there is nothing for a
+// server-side HTTP walk to assert about lever strictness beyond the settings GET.
+func discoverProfileFlags(t *testing.T, h *apitest.Test, scenarioID uuid.UUID) ProfileFlags {
+	t.Helper()
+	ctx := context.Background()
+	db := h.DB.DB
+
+	type overrideRow struct {
+		Key   string `db:"key"`
+		Value string `db:"value"`
+	}
+
+	var rows []overrideRow
+	if err := db.SelectContext(ctx, &rows, `
+		SELECT key, value
+		FROM config.scenario_setting_overrides
+		WHERE scenario_id = $1
+		ORDER BY key ASC
+	`, scenarioID); err != nil {
+		t.Fatalf("discoverProfileFlags: query scenario_setting_overrides for scenario %s: %v", scenarioID, err)
+	}
+
+	overrides := make(map[string]string, len(rows))
+	for _, r := range rows {
+		overrides[r.Key] = r.Value
+	}
+
+	return ProfileFlags{LeverOverrides: overrides}
+}
+
 // discoverCycleCountInputs queries the DB for the cycle count session and its
 // items seeded by this scenario.
 //

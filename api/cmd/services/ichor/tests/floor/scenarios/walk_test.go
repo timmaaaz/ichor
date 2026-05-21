@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 )
 
@@ -678,6 +679,201 @@ func walkCycleCount(t *testing.T, h *apitest.Test, scenarioID uuid.UUID, in Cycl
 		mustDecodeJSON(t, w, &sess)
 		if sess.Status != "completed" {
 			t.Fatalf("walkCycleCount step 5: want status=completed after PUT, got %q", sess.Status)
+		}
+	}
+}
+
+// =============================================================================
+// Profile + e2e-baseline Custom handlers (Task 11)
+//
+// Profile scenarios (profile-strict-regulated, profile-medical-device-rental)
+// contain ONLY lever_overrides — no entities, no orders, no transfer tasks.
+// They are configuration-only: loading them writes rows to
+// config.scenario_setting_overrides and sets the scenarios_active singleton.
+//
+// Design pivot: the plan's "load profile, load workflow, re-load profile"
+// design is broken because Business.Load deletes scoped rows for the current
+// active before applying the target. See discoverProfileFlags in discover_test.go
+// for the full explanation.
+//
+// These walks use Option 3: activate the profile, assert the lever_overrides
+// are present in the DB (via discoverProfileFlags), then verify the settings
+// resolver returns override values (not defaults) via HTTP.
+//
+// The db *sqlx.DB parameter matches the 4-arg Custom signature required by
+// Task 12's ScenarioRow.Custom dispatch:
+//
+//	func(t *testing.T, h *apitest.Test, db *sqlx.DB, scenarioID uuid.UUID)
+//
+// db is unused here (discoverProfileFlags uses h.DB.DB internally) but is
+// retained so Task 12 can call all Custom funcs with the same 4-arg shape.
+// =============================================================================
+
+// walkProfileWithReceive is the Custom handler for profile-strict-regulated.
+// It asserts that:
+//  1. The profile's lever_overrides are present in config.scenario_setting_overrides
+//     (discoverProfileFlags returns a non-empty map).
+//  2. GET /v1/config/settings/{key} returns the override value (not the SMB
+//     default) for each key in the profile's lever_overrides.
+//
+// Receive-flavoured keys in profile-strict-regulated:
+//
+//	receive.poScan = "required" (same as default, so not a distinguishing test)
+//	pick.sourceLocationScan = "required" (default: "button-confirm") ← sentinel
+//	pick.destinationScan    = "required" (default: "button-confirm") ← sentinel
+//
+// GB regressions this walk guards:
+//   - GB-??? (future): settings resolver LEFT JOIN misses scenario_setting_overrides
+//     (i.e., override rows exist but the JOIN returns the base value). Surface via
+//     the GET /v1/config/settings/{key} assertion below.
+func walkProfileWithReceive(t *testing.T, h *apitest.Test, _ *sqlx.DB, scenarioID uuid.UUID) {
+	t.Helper()
+	token := adminToken(t, h)
+
+	// Step 1 — assert lever_overrides are present in DB.
+	flags := discoverProfileFlags(t, h, scenarioID)
+	if len(flags.LeverOverrides) == 0 {
+		t.Fatalf("walkProfileWithReceive: profile-strict-regulated should have lever_overrides, got empty map (scenario %s)", scenarioID)
+	}
+
+	// Step 2 — verify the settings resolver returns override values via HTTP.
+	// Use two sentinel keys whose override values differ from the SMB default
+	// so a missing JOIN is unambiguously detectable.
+	//
+	// profile-strict-regulated YAML sets:
+	//   pick.sourceLocationScan: required    (SMB default: "button-confirm")
+	//   pick.destinationScan:    required    (SMB default: "button-confirm")
+	sentinels := map[string]string{
+		"pick.sourceLocationScan": "required",
+		"pick.destinationScan":    "required",
+	}
+	for key, wantValue := range sentinels {
+		// Confirm the override row is present (discoverProfileFlags returned it).
+		if got, ok := flags.LeverOverrides[key]; !ok {
+			t.Fatalf("walkProfileWithReceive: expected lever_override for key %q to be present (scenario %s)", key, scenarioID)
+		} else if got != wantValue {
+			t.Fatalf("walkProfileWithReceive: lever_override[%q] = %q, want %q (scenario %s)", key, got, wantValue, scenarioID)
+		}
+
+		// Hit the HTTP settings endpoint and confirm the override is live.
+		w := doRequest(t, h, http.MethodGet,
+			"/v1/config/settings/"+key,
+			token, nil, http.StatusOK,
+			"walkProfileWithReceive: GET /v1/config/settings/"+key+" must return 200")
+
+		var setting struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		}
+		mustDecodeJSON(t, w, &setting)
+		if setting.Value != wantValue {
+			t.Fatalf("walkProfileWithReceive: GET /v1/config/settings/%s returned value %q, want %q (profile lever override not visible via HTTP)",
+				key, setting.Value, wantValue)
+		}
+	}
+}
+
+// walkProfileWithTransfer is the Custom handler for profile-medical-device-rental.
+// It asserts that:
+//  1. The profile's lever_overrides are present in config.scenario_setting_overrides.
+//  2. GET /v1/config/settings/{key} returns the override value for sentinel keys
+//     whose values differ from SMB defaults.
+//
+// Transfer-flavoured sentinel keys in profile-medical-device-rental:
+//
+//	transfer.sourceLocationScan = "required" (default: "button-confirm")
+//	transfer.destinationScan    = "required" (default: "button-confirm")
+func walkProfileWithTransfer(t *testing.T, h *apitest.Test, _ *sqlx.DB, scenarioID uuid.UUID) {
+	t.Helper()
+	token := adminToken(t, h)
+
+	// Step 1 — assert lever_overrides are present in DB.
+	flags := discoverProfileFlags(t, h, scenarioID)
+	if len(flags.LeverOverrides) == 0 {
+		t.Fatalf("walkProfileWithTransfer: profile-medical-device-rental should have lever_overrides, got empty map (scenario %s)", scenarioID)
+	}
+
+	// Step 2 — verify override values are live via HTTP.
+	// profile-medical-device-rental YAML sets:
+	//   transfer.sourceLocationScan: required  (SMB default: "button-confirm")
+	//   transfer.destinationScan:    required  (SMB default: "button-confirm")
+	sentinels := map[string]string{
+		"transfer.sourceLocationScan": "required",
+		"transfer.destinationScan":    "required",
+	}
+	for key, wantValue := range sentinels {
+		if got, ok := flags.LeverOverrides[key]; !ok {
+			t.Fatalf("walkProfileWithTransfer: expected lever_override for key %q to be present (scenario %s)", key, scenarioID)
+		} else if got != wantValue {
+			t.Fatalf("walkProfileWithTransfer: lever_override[%q] = %q, want %q (scenario %s)", key, got, wantValue, scenarioID)
+		}
+
+		w := doRequest(t, h, http.MethodGet,
+			"/v1/config/settings/"+key,
+			token, nil, http.StatusOK,
+			"walkProfileWithTransfer: GET /v1/config/settings/"+key+" must return 200")
+
+		var setting struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		}
+		mustDecodeJSON(t, w, &setting)
+		if setting.Value != wantValue {
+			t.Fatalf("walkProfileWithTransfer: GET /v1/config/settings/%s returned value %q, want %q (profile lever override not visible via HTTP)",
+				key, setting.Value, wantValue)
+		}
+	}
+}
+
+// walkE2EBaseline is the Custom handler for e2e-baseline.
+// e2e-baseline is an intentionally empty scenario (no fixtures, no lever_overrides).
+// Used by the Playwright clearActiveScenario() helper to revert to SMB defaults.
+//
+// This walk asserts:
+//  1. discoverProfileFlags returns an empty map — no overrides leaked.
+//  2. GET /v1/config/settings/{key} returns SMB-default values for two
+//     sentinel keys, confirming the resolver falls through to base values when
+//     no override row exists.
+//
+// GB regressions this walk guards:
+//   - Regression where loading e2e-baseline still shows stale overrides from a
+//     previously-active scenario (the DELETE CASCADE on scenario_id means that
+//     loading e2e-baseline after a profile cleans up the profile's override rows).
+func walkE2EBaseline(t *testing.T, h *apitest.Test, _ *sqlx.DB, scenarioID uuid.UUID) {
+	t.Helper()
+	token := adminToken(t, h)
+
+	// Step 1 — assert no lever_overrides exist for e2e-baseline.
+	flags := discoverProfileFlags(t, h, scenarioID)
+	if len(flags.LeverOverrides) != 0 {
+		t.Fatalf("walkE2EBaseline: e2e-baseline should have no lever_overrides, got %v (scenario %s)", flags.LeverOverrides, scenarioID)
+	}
+
+	// Step 2 — verify the settings resolver returns SMB defaults (not any
+	// leftover override values). Pick two keys that profiles override to
+	// "required" so a stale-override bug is detectable.
+	//
+	// SMB defaults (from levers.Defaults):
+	//   pick.sourceLocationScan: "button-confirm"
+	//   transfer.sourceLocationScan: "button-confirm"
+	sentinels := map[string]string{
+		"pick.sourceLocationScan":     "button-confirm",
+		"transfer.sourceLocationScan": "button-confirm",
+	}
+	for key, wantValue := range sentinels {
+		w := doRequest(t, h, http.MethodGet,
+			"/v1/config/settings/"+key,
+			token, nil, http.StatusOK,
+			"walkE2EBaseline: GET /v1/config/settings/"+key+" must return 200")
+
+		var setting struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		}
+		mustDecodeJSON(t, w, &setting)
+		if setting.Value != wantValue {
+			t.Fatalf("walkE2EBaseline: GET /v1/config/settings/%s returned value %q, want SMB default %q (stale override or wrong base value)",
+				key, setting.Value, wantValue)
 		}
 	}
 }
