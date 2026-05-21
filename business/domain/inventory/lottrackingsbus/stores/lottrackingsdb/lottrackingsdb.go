@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -137,7 +138,19 @@ func (s *Store) Query(ctx context.Context, filter lottrackingsbus.QueryFilter, o
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
-	sqldb.ApplyScenarioFilter(ctx, buf, data)
+	// GB-014: lot_trackings JOINs supplier_products + products, all of which
+	// have a scenario_id column. ApplyScenarioFilter appends an unqualified
+	// `scenario_id` reference → Postgres rejects with "column reference
+	// 'scenario_id' is ambiguous" (SQLSTATE 42702). Use a lt.-qualified
+	// inline filter instead (same fix as QueryByID, commit 76f58974).
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		data["scenario_id"] = sid
+		if strings.Contains(strings.ToUpper(buf.String()), " WHERE ") {
+			buf.WriteString(" AND (lt.scenario_id IS NULL OR lt.scenario_id = :scenario_id)")
+		} else {
+			buf.WriteString(" WHERE (lt.scenario_id IS NULL OR lt.scenario_id = :scenario_id)")
+		}
+	}
 
 	orderByClause, err := orderByClause(orderBy)
 	if err != nil {
@@ -168,7 +181,16 @@ func (s *Store) Count(ctx context.Context, filter lottrackingsbus.QueryFilter) (
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
-	sqldb.ApplyScenarioFilter(ctx, buf, data)
+	// GB-014: same ambiguous scenario_id fix as Query — Count uses the same
+	// lt JOIN shape so the unqualified filter is equally ambiguous.
+	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+		data["scenario_id"] = sid
+		if strings.Contains(strings.ToUpper(buf.String()), " WHERE ") {
+			buf.WriteString(" AND (lt.scenario_id IS NULL OR lt.scenario_id = :scenario_id)")
+		} else {
+			buf.WriteString(" WHERE (lt.scenario_id IS NULL OR lt.scenario_id = :scenario_id)")
+		}
+	}
 
 	var count struct {
 		Count int `db:"count"`
