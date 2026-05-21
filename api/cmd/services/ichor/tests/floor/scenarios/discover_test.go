@@ -2,6 +2,8 @@ package scenarios_test
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -124,5 +126,95 @@ func discoverTransferInputs(t *testing.T, h *apitest.Test, scenarioID uuid.UUID)
 		ProductID:  row.ProductID,
 		UPC:        upc,
 		Quantity:   row.Quantity,
+	}
+}
+
+// discoverReceiveInputs queries the DB for the first APPROVED purchase order
+// that belongs to the given scenario, then enriches it with per-line-item
+// product metadata (UPC, tracking_type).
+//
+// For scenarios that have no purchase orders in their state (e.g.,
+// rush-receiving ships with an empty state.yaml), the function returns a
+// zero-value ReceiveInputs{POID: uuid.Nil, LineItems: nil}.  walkReceive
+// handles that case by running only the endpoint smoke-checks (GB-006 empty
+// list, GB-014 lot-trackings query) and skipping the per-line receive POST.
+//
+// All failure paths call t.Fatalf; when a non-empty ReceiveInputs is returned
+// it is always valid.
+func discoverReceiveInputs(t *testing.T, h *apitest.Test, scenarioID uuid.UUID) ReceiveInputs {
+	t.Helper()
+	ctx := context.Background()
+	db := h.DB.DB
+
+	// Step 1 — find the APPROVED purchase order for this scenario.
+	// purchase_orders.scenario_id links POs authored by the scenario seed.
+	// The APPROVED status name ("APPROVED") is the canonical value in
+	// seedmodels.PurchaseOrderStatusData; the status row is seeded by
+	// seedProcurement and the UUID is looked up dynamically here.
+	var poID uuid.UUID
+	err := db.GetContext(ctx, &poID, `
+		SELECT po.id
+		FROM procurement.purchase_orders po
+		JOIN procurement.purchase_order_statuses pos
+		  ON pos.id = po.purchase_order_status_id
+		WHERE po.scenario_id = $1
+		  AND pos.name = 'APPROVED'
+		ORDER BY po.order_number ASC
+		LIMIT 1
+	`, scenarioID)
+	if errors.Is(err, sql.ErrNoRows) {
+		// scenario has no purchase orders (e.g. rush-receiving empty state)
+		return ReceiveInputs{}
+	}
+	if err != nil {
+		t.Fatalf("discoverReceiveInputs: query purchase_orders for scenario %s: %v", scenarioID, err)
+	}
+
+	// Step 2 — fetch all line items for this PO.
+	// Join supplier_products → products to retrieve product_id, upc_code,
+	// tracking_type in a single query.
+	type lineRow struct {
+		LineID            uuid.UUID `db:"line_id"`
+		SupplierProductID uuid.UUID `db:"supplier_product_id"`
+		ProductID         uuid.UUID `db:"product_id"`
+		UPC               string    `db:"upc_code"`
+		TrackingType      string    `db:"tracking_type"`
+		QuantityOrdered   int       `db:"quantity_ordered"`
+	}
+
+	var rows []lineRow
+	if err := db.SelectContext(ctx, &rows, `
+		SELECT
+			li.id             AS line_id,
+			li.supplier_product_id,
+			p.id              AS product_id,
+			COALESCE(p.upc_code, '')     AS upc_code,
+			COALESCE(p.tracking_type, 'none') AS tracking_type,
+			li.quantity_ordered
+		FROM procurement.purchase_order_line_items li
+		JOIN procurement.supplier_products sp ON sp.id = li.supplier_product_id
+		JOIN products.products p ON p.id = sp.product_id
+		WHERE li.purchase_order_id = $1
+		ORDER BY li.created_date ASC
+	`, poID); err != nil {
+		t.Fatalf("discoverReceiveInputs: query line items for PO %s: %v", poID, err)
+	}
+
+	items := make([]ReceiveLineItem, len(rows))
+	for i, r := range rows {
+		items[i] = ReceiveLineItem{
+			LineID:            r.LineID,
+			ProductID:         r.ProductID,
+			UPC:               r.UPC,
+			ExpectedQty:       r.QuantityOrdered,
+			LotTracked:        r.TrackingType == "lot",
+			SerialTracked:     r.TrackingType == "serial",
+			SupplierProductID: r.SupplierProductID,
+		}
+	}
+
+	return ReceiveInputs{
+		POID:      poID,
+		LineItems: items,
 	}
 }

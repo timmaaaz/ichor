@@ -62,3 +62,86 @@ func TestFloorScenarios_TransferMultiLine(t *testing.T) {
 	in := discoverTransferInputs(t, h, scenarioID)
 	walkTransfer(t, h, scenarioID, in)
 }
+
+// TestFloorScenarios_ReceiveRushMultiLine is the canary for the receive family.
+// It exercises a 4-line PO (2 non-tracked + 2 lot-tracked SKUs) under the
+// receive-rush-multi-line scenario.
+//
+// GB regressions this test guards:
+//   - GB-006: purchase_order_line_items scenario filter (step 1 GET)
+//   - GB-014: lot_trackings scenario filter / JOIN ambiguity (step 4 GET)
+//
+// lotFlow=false: this scenario's lot-tracked lines test the receive-quantity
+// path but we skip the explicit lot-tracking POST (GB-012) — those lines
+// have pre-seeded lot_trackings rows in state.yaml and do not exercise the
+// RFC3339 parse path. GB-012 coverage is in the lot/serial-tracking canaries.
+func TestFloorScenarios_ReceiveRushMultiLine(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "receive-rush-multi-line")
+	scenarioID := loadScenarioFixtures(t, h, "receive-rush-multi-line")
+	walkReceive(t, h, scenarioID, discoverReceiveInputs(t, h, scenarioID), false)
+}
+
+// TestFloorScenarios_ReceiveLotTracking exercises the lot-tracking receive
+// path with lotFlow=true, which fires the RFC3339 manufacture_date POST
+// (GB-012) and the lot-trackings GET (GB-014).
+//
+// GB regressions this test guards:
+//   - GB-006: purchase_order_line_items scenario filter (step 1 GET)
+//   - GB-012: parseTimeFlexible accepts RFC3339 manufacture_date (step 3 POST)
+//   - GB-014: lot_trackings scenario filter / JOIN ambiguity (step 4 GET)
+func TestFloorScenarios_ReceiveLotTracking(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "receive-lot-tracking")
+	scenarioID := loadScenarioFixtures(t, h, "receive-lot-tracking")
+	walkReceive(t, h, scenarioID, discoverReceiveInputs(t, h, scenarioID), true)
+}
+
+// TestFloorScenarios_ReceiveSerialTracking exercises the serial-tracking
+// receive path. The scenario seeds an umbrella lot row for the serial numbers;
+// lotFlow=true fires the lot-tracking POST with RFC3339 dates (GB-012).
+//
+// GB regressions this test guards:
+//   - GB-006: purchase_order_line_items scenario filter (step 1 GET)
+//   - GB-012: parseTimeFlexible accepts RFC3339 manufacture_date (step 3 POST)
+//   - GB-014: lot_trackings scenario filter / JOIN ambiguity (step 4 GET)
+func TestFloorScenarios_ReceiveSerialTracking(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "receive-serial-tracking")
+	scenarioID := loadScenarioFixtures(t, h, "receive-serial-tracking")
+	walkReceive(t, h, scenarioID, discoverReceiveInputs(t, h, scenarioID), true)
+}
+
+// TestFloorScenarios_ReceiveDiscrepancy exercises the discrepancy receive path
+// where the line item quantity_ordered (50) exceeds on-hand inventory (30).
+// The receive-quantity endpoint does not enforce stock availability — it
+// increments quantity_received on the line item and returns 200. The
+// discrepancy is intentional and does not cause a 4xx/5xx.
+//
+// GB regressions this test guards:
+//   - GB-006: purchase_order_line_items scenario filter (step 1 GET)
+//   - GB-014: lot_trackings scenario filter / JOIN ambiguity (step 4 GET)
+func TestFloorScenarios_ReceiveDiscrepancy(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "receive-discrepancy")
+	scenarioID := loadScenarioFixtures(t, h, "receive-discrepancy")
+	walkReceive(t, h, scenarioID, discoverReceiveInputs(t, h, scenarioID), false)
+}
+
+// TestFloorScenarios_RushReceiving exercises the rush-receiving scenario, which
+// ships with an empty state.yaml (no purchase orders). discoverReceiveInputs
+// returns ReceiveInputs{POID: uuid.Nil, LineItems: nil}.
+//
+// walkReceive uses the sentinel PO ID to verify that the purchase-order-line-items
+// endpoint returns 200 with an empty list for an unknown PO (not 404 or 500),
+// then runs the lot-trackings smoke GET (GB-014).
+//
+// GB regressions this test guards:
+//   - GB-006: purchase_order_line_items endpoint returns 200 for unknown PO
+//   - GB-014: lot_trackings scenario filter / JOIN ambiguity (step 4 GET)
+func TestFloorScenarios_RushReceiving(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "rush-receiving")
+	scenarioID := loadScenarioFixtures(t, h, "rush-receiving")
+	walkReceive(t, h, scenarioID, discoverReceiveInputs(t, h, scenarioID), false)
+}
