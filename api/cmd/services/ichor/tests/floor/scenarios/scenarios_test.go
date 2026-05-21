@@ -225,3 +225,64 @@ func TestFloorScenarios_E2EPickStrict(t *testing.T) {
 	scenarioID := loadScenarioFixtures(t, h, "e2e-pick-strict")
 	walkPick(t, h, scenarioID, discoverPickInputs(t, h, scenarioID))
 }
+
+// =============================================================================
+// Cycle-count family canaries (Task 10)
+//
+// These 4 tests lock in the cycle-count baseline. Cycle-count was Track-E-clean
+// on 2026-05-19 so no GB regression labels are asserted. The purpose is to catch
+// future regressions: any breakage in the cycle-count session lifecycle (draft →
+// in_progress → items counted → completed) will surface here before reaching
+// the Playwright walks.
+//
+// walkCycleCount applies variance inside itself based on in.VarianceMode:
+//   "over"  → actualQty = expectedQty + 10 for every item
+//   "under" → actualQty = max(expectedQty - 10, 0) for every item
+//   ""      → actualQty = expectedQty (no variance, zero-delta adjustments)
+// =============================================================================
+
+// TestFloorScenarios_CycleCountVarianceOver exercises an over-count: the worker
+// enters 10 more than the system quantity for each item. The complete() handler
+// creates positive inventory adjustments for the variance and marks the session
+// completed.
+func TestFloorScenarios_CycleCountVarianceOver(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "cycle-count-variance-over")
+	scenarioID := loadScenarioFixtures(t, h, "cycle-count-variance-over")
+	in := discoverCycleCountInputs(t, h, scenarioID)
+	in.VarianceMode = "over"
+	walkCycleCount(t, h, scenarioID, in)
+}
+
+// TestFloorScenarios_CycleCountVarianceUnder exercises an under-count: the
+// worker enters 10 less than the system quantity. The complete() handler creates
+// negative inventory adjustments and marks the session completed.
+func TestFloorScenarios_CycleCountVarianceUnder(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "cycle-count-variance-under")
+	scenarioID := loadScenarioFixtures(t, h, "cycle-count-variance-under")
+	in := discoverCycleCountInputs(t, h, scenarioID)
+	in.VarianceMode = "under"
+	walkCycleCount(t, h, scenarioID, in)
+}
+
+// TestFloorScenarios_CycleCountMultiItem exercises a 5-item count at a single
+// location (PCK-01, SKUs 0001–0005). No variance — the walk submits exact counts
+// to verify that the complete() path handles multi-item sessions cleanly.
+func TestFloorScenarios_CycleCountMultiItem(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "cycle-count-multi-item")
+	scenarioID := loadScenarioFixtures(t, h, "cycle-count-multi-item")
+	walkCycleCount(t, h, scenarioID, discoverCycleCountInputs(t, h, scenarioID))
+}
+
+// TestFloorScenarios_CycleCountScheduled exercises a pre-scheduled session
+// (status=draft, 3 items across 3 different locations). No variance — tests that
+// the walk correctly handles multi-location sessions where each item has a
+// distinct locationId.
+func TestFloorScenarios_CycleCountScheduled(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "cycle-count-scheduled")
+	scenarioID := loadScenarioFixtures(t, h, "cycle-count-scheduled")
+	walkCycleCount(t, h, scenarioID, discoverCycleCountInputs(t, h, scenarioID))
+}

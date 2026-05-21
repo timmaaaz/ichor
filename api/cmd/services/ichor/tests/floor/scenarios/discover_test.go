@@ -321,3 +321,98 @@ func discoverPickInputs(t *testing.T, h *apitest.Test, scenarioID uuid.UUID) Pic
 		Allocations: allocations,
 	}
 }
+
+// discoverCycleCountInputs queries the DB for the cycle count session and its
+// items seeded by this scenario.
+//
+// All cycle-count scenarios pre-seed their session + items in state.yaml
+// (status = draft + pending). The walk uses the seeded records directly — it
+// does NOT create a new session. This mirrors how the floor PWA resumes a
+// cycle count that was previously opened by a supervisor.
+//
+// CycleCountInputs.LocationCode is populated from the first item's location.
+// For single-location scenarios (variance-over, variance-under, multi-item)
+// all items share the same location; for multi-location scenarios (scheduled)
+// each item may differ — the walk drives items by their individual locationId
+// so LocationCode is informational only.
+//
+// CycleCountInputs.Items[i].ActualQty == ExpectedQty; the walk applies variance
+// internally based on VarianceMode. Callers that want a variance walk must set
+// in.VarianceMode before calling walkCycleCount.
+//
+// All failure paths call t.Fatalf; the returned CycleCountInputs is always valid.
+func discoverCycleCountInputs(t *testing.T, h *apitest.Test, scenarioID uuid.UUID) CycleCountInputs {
+	t.Helper()
+	ctx := context.Background()
+	db := h.DB.DB
+
+	// Step 1 — find the draft cycle count session seeded by this scenario.
+	var sessionID uuid.UUID
+	err := db.GetContext(ctx, &sessionID, `
+		SELECT id
+		FROM inventory.cycle_count_sessions
+		WHERE scenario_id = $1
+		  AND status = 'draft'
+		ORDER BY created_date ASC
+		LIMIT 1
+	`, scenarioID)
+	if err != nil {
+		t.Fatalf("discoverCycleCountInputs: query cycle_count_sessions for scenario %s: %v", scenarioID, err)
+	}
+
+	// Step 2 — fetch all pending items for that session.
+	type itemRow struct {
+		ID         uuid.UUID `db:"id"`
+		ProductID  uuid.UUID `db:"product_id"`
+		LocationID uuid.UUID `db:"location_id"`
+		SysQty     int       `db:"system_quantity"`
+	}
+	var rows []itemRow
+	if err := db.SelectContext(ctx, &rows, `
+		SELECT id, product_id, location_id, system_quantity
+		FROM inventory.cycle_count_items
+		WHERE scenario_id = $1
+		  AND session_id = $2
+		  AND status = 'pending'
+		ORDER BY product_id ASC
+	`, scenarioID, sessionID); err != nil {
+		t.Fatalf("discoverCycleCountInputs: query cycle_count_items for session %s: %v", sessionID, err)
+	}
+	if len(rows) == 0 {
+		t.Fatalf("discoverCycleCountInputs: no pending cycle_count_items found for session %s (scenario %s)", sessionID, scenarioID)
+	}
+
+	// Step 3 — resolve location_code + UPC for each item.
+	items := make([]CycleCountItem, 0, len(rows))
+	var primaryLocationCode string // from first item — informational
+	for i, row := range rows {
+		var locCode string
+		if err := db.GetContext(ctx, &locCode, `
+			SELECT location_code FROM inventory.inventory_locations WHERE id = $1
+		`, row.LocationID); err != nil {
+			t.Fatalf("discoverCycleCountInputs: location_code for %s: %v", row.LocationID, err)
+		}
+		if i == 0 {
+			primaryLocationCode = locCode
+		}
+
+		var upc string
+		_ = db.GetContext(ctx, &upc, `
+			SELECT COALESCE(upc_code, '') FROM products.products WHERE id = $1
+		`, row.ProductID)
+
+		items = append(items, CycleCountItem{
+			ProductID:   row.ProductID,
+			UPC:         upc,
+			ExpectedQty: row.SysQty,
+			ActualQty:   row.SysQty, // walk applies variance based on VarianceMode
+		})
+	}
+
+	return CycleCountInputs{
+		LocationCode: primaryLocationCode,
+		LocationID:   rows[0].LocationID,
+		Items:        items,
+		VarianceMode: "", // caller sets VarianceMode before walkCycleCount
+	}
+}
