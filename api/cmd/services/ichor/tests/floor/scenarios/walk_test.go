@@ -384,3 +384,131 @@ func walkReceive(t *testing.T, h *apitest.Test, scenarioID uuid.UUID, in Receive
 			"GB-014: GET /v1/inventory/lot-trackings returned non-200 — ambiguous scenario_id column reference may have reappeared in lot_trackings JOIN")
 	}
 }
+
+// walkPick drives the floor-worker pick flow against the test mux:
+//
+//  1. GET  /v1/sales/order-line-items?order_id={soID}           → 200 (GB-007)
+//  2. POST /v1/sales/order-line-items/{lineItemID}/pick-quantity → 200 per task (GB-015)
+//
+// GB-007 (NULL discount_type COALESCE): Step 1 exercises the order-line-items
+// Query with a scenario filter active. Scenario state.yaml files do not set
+// discount_type, leaving the column NULL. Before fix 19f7cb80, orderlineitemsdb
+// lacked COALESCE on that column; the NULL scan caused sqlx to return
+// "converting NULL to string is unsupported" → 500. Step 1 returning 200
+// confirms the COALESCE is in place.
+//
+// GB-015 (FEFO subquery alias scope): Step 2 exercises
+// pickingapp.PickQuantity, which calls
+// inventoryitembus.QueryAvailableForAllocation with strategy="fefo". Before fix
+// f985029a, queryFEFO used ii.* column qualifiers inside the inner subquery
+// (aliased as `sub`), making Postgres resolve them against the outer ii row —
+// a correlated subquery that never matched the target product+location. The
+// result was 0 inventory items found → 422 "insufficient stock". Step 2
+// returning 200 confirms the sub.* qualification is in place.
+//
+// When in.SOID == uuid.Nil (scenario has no sales orders, e.g. e2e-pick-strict
+// which carries only lever overrides), step 2 is skipped entirely and only step
+// 1 fires with a sentinel order_id. The endpoint must return 200 with an empty
+// list — not 404 or 500.
+//
+// The scenarioID parameter is unused but retained for signature consistency with
+// walkTransfer, walkReceive, walkCycleCount — Task 12's table-driven dispatch
+// calls all family walks with the same 4-arg shape.
+func walkPick(t *testing.T, h *apitest.Test, scenarioID uuid.UUID, in PickInputs) {
+	_ = scenarioID // signature-consistent; see doc comment
+	t.Helper()
+	token := adminToken(t, h)
+
+	// Fixed admin user UUID from seed.sql — used as picked_by in pick-quantity
+	// POST. The ZZZADMIN user (5cf37266-...) is the admin_gopher seeded in
+	// seed.sql and referenced as created_by/updated_by across all scenario
+	// state.yaml files.
+	const adminUserID = "5cf37266-3473-4006-984f-9325122678b7"
+
+	// Step 1 — GB-007: GET order line items for this sales order while an active
+	// scenario is set. Scenario rows have discount_type = NULL; the orderlineitemsdb
+	// SELECT must COALESCE(discount_type, 'flat') to avoid a NULL→string scan
+	// error. A 500 response is the GB-007 regression signal.
+	//
+	// For e2e-pick-strict (no sales order), use uuid.Nil as the sentinel order_id.
+	// The endpoint must return 200 with an empty list for an unknown order ID.
+	{
+		orderIDStr := in.SOID.String()
+		if in.SOID == uuid.Nil {
+			orderIDStr = uuid.Nil.String()
+		}
+		url := fmt.Sprintf("/v1/sales/order-line-items?order_id=%s&page=1&rows=100", orderIDStr)
+		w := doRequest(t, h, http.MethodGet, url, token, nil, http.StatusOK,
+			"GB-007: GET /v1/sales/order-line-items returned non-200 — COALESCE(discount_type,'flat') may have been removed from the orderlineitemsdb SELECT")
+
+		// The order-line-items endpoint returns a paginated envelope:
+		//   {"items": [...], "total": N, "page": N, "rows_per_page": N}
+		var result struct {
+			Items []struct {
+				ID string `json:"id"`
+			} `json:"items"`
+			Total int `json:"total"`
+		}
+		mustDecodeJSON(t, w, &result)
+
+		// When a real sales order is present, the line item count must be > 0.
+		// For the sentinel uuid.Nil case we accept an empty list.
+		if in.SOID != uuid.Nil && len(result.Items) == 0 {
+			t.Fatalf("GB-007: GET order-line-items for order %s returned 0 items — scenario fixtures may not have loaded or order_id filter is broken", in.SOID)
+		}
+	}
+
+	// Step 2 — GB-015: per-task, POST pick-quantity for each pick task.
+	// pickingapp.PickQuantity calls inventoryitembus.QueryAvailableForAllocation
+	// with strategy="fefo" and the location_id from the task. The FEFO subquery
+	// must use sub.* column qualifiers (not ii.*); an ii.* qualifier makes the
+	// filter a correlated reference against the outer row, which almost never
+	// matches the targeted product+location. A 422 with
+	// "insufficient stock at specified location" is the GB-015 regression signal
+	// even when inventory clearly exists.
+	//
+	// Skipped entirely when in.SOID == uuid.Nil (lever-only scenario, no tasks).
+	for i, alloc := range in.Allocations {
+		lineItemIDStr := alloc.PickTaskID.String() // PickTaskID holds the line-item UUID
+
+		// Resolve the inventory location UUID so we can pass it in the request body.
+		// The walk does this via discoverPickInputs already storing LocationCode;
+		// we need the UUID — stored as LocationID in the alloc.ProductID's inventory
+		// record. We look it up inline by location_code + scenario filter-compatible
+		// path via the inventory-locations endpoint.
+		url := fmt.Sprintf("/v1/inventory/inventory-locations?location_code_exact=%s", alloc.LocationCode)
+		locW := doRequest(t, h, http.MethodGet, url, token, nil, http.StatusOK,
+			fmt.Sprintf("walkPick step 2 pre-check: GET inventory-locations for %q returned non-200", alloc.LocationCode))
+
+		var locResult struct {
+			Items []struct {
+				LocationID string `json:"location_id"`
+			} `json:"items"`
+			Total int `json:"total"`
+		}
+		mustDecodeJSON(t, locW, &locResult)
+		if locResult.Total == 0 || len(locResult.Items) == 0 {
+			t.Fatalf("walkPick step 2: location %q not found via location_code_exact filter (task index %d)", alloc.LocationCode, i)
+		}
+		locationID := locResult.Items[0].LocationID
+
+		body := mustJSON(t, map[string]any{
+			"quantity":    strconv.Itoa(alloc.Qty),
+			"picked_by":   adminUserID,
+			"location_id": locationID,
+		})
+		pickURL := "/v1/sales/order-line-items/" + lineItemIDStr + "/pick-quantity"
+		w := doRequest(t, h, http.MethodPost, pickURL, token, body, http.StatusOK,
+			fmt.Sprintf("GB-015: POST /v1/sales/order-line-items/%s/pick-quantity returned non-200 — FEFO subquery may have reverted to ii.* qualifier (sub.* required in queryFEFO inner subquery). Check: product=%s location=%s qty=%d",
+				lineItemIDStr, alloc.ProductID, alloc.LocationCode, alloc.Qty))
+
+		var result struct {
+			PickedQuantity string `json:"picked_quantity"`
+		}
+		mustDecodeJSON(t, w, &result)
+		pickedQty, _ := strconv.Atoi(result.PickedQuantity)
+		if pickedQty <= 0 {
+			t.Fatalf("GB-015: pick-quantity for line item %s returned picked_quantity=%q, want > 0", lineItemIDStr, result.PickedQuantity)
+		}
+	}
+}

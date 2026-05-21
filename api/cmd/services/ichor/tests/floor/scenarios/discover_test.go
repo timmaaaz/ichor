@@ -218,3 +218,106 @@ func discoverReceiveInputs(t *testing.T, h *apitest.Test, scenarioID uuid.UUID) 
 		LineItems: items,
 	}
 }
+
+// discoverPickInputs queries the DB for the sales order and pick tasks seeded
+// by this scenario, then enriches each task with its location code and product
+// UPC needed by walkPick.
+//
+// For scenarios that have no pick_tasks in their state (e.g., e2e-pick-strict
+// which only carries lever_overrides), this returns PickInputs{SOID: uuid.Nil,
+// Allocations: nil}. walkPick handles that case by running only endpoint
+// smoke-checks and skipping the per-task pick-quantity POST.
+//
+// PickAllocation.PickTaskID holds the sales_order_line_item_id (not the
+// pick_tasks.id) because the pick-quantity endpoint is keyed on line item ID:
+//
+//	POST /v1/sales/order-line-items/{order_line_items_id}/pick-quantity
+//
+// The field name "PickTaskID" was locked in Task 2's types_test.go; we reuse
+// it for the endpoint URL parameter to avoid changing a pre-existing type.
+//
+// All failure paths call t.Fatalf; when a non-empty PickInputs is returned it
+// is always valid.
+func discoverPickInputs(t *testing.T, h *apitest.Test, scenarioID uuid.UUID) PickInputs {
+	t.Helper()
+	ctx := context.Background()
+	db := h.DB.DB
+
+	// Step 1 — find the sales order seeded by this scenario.
+	// sales.orders.number is unique; ORDER BY number ASC LIMIT 1 is
+	// deterministic regardless of seeding order.
+	var soID uuid.UUID
+	err := db.GetContext(ctx, &soID, `
+		SELECT id
+		FROM sales.orders
+		WHERE scenario_id = $1
+		ORDER BY number ASC
+		LIMIT 1
+	`, scenarioID)
+	if errors.Is(err, sql.ErrNoRows) {
+		// scenario has no sales orders (e.g. e2e-pick-strict lever-only scenario)
+		return PickInputs{}
+	}
+	if err != nil {
+		t.Fatalf("discoverPickInputs: query sales.orders for scenario %s: %v", scenarioID, err)
+	}
+
+	// Step 2 — fetch all pick_tasks for that sales order.
+	// sales_order_line_item_id is the URL parameter for the pick-quantity
+	// endpoint; quantity_to_pick is the safe amount to pass (matches on-hand).
+	type taskRow struct {
+		LineItemID uuid.UUID `db:"sales_order_line_item_id"`
+		ProductID  uuid.UUID `db:"product_id"`
+		LocationID uuid.UUID `db:"location_id"`
+		Qty        int       `db:"quantity_to_pick"`
+	}
+	var tasks []taskRow
+	if err := db.SelectContext(ctx, &tasks, `
+		SELECT sales_order_line_item_id, product_id, location_id, quantity_to_pick
+		FROM inventory.pick_tasks
+		WHERE sales_order_id = $1
+		ORDER BY sales_order_line_item_id ASC
+	`, soID); err != nil {
+		t.Fatalf("discoverPickInputs: query pick_tasks for order %s: %v", soID, err)
+	}
+
+	// Step 3 — for each task, resolve location_code + UPC + lot-tracking flag.
+	allocations := make([]PickAllocation, 0, len(tasks))
+	for _, task := range tasks {
+		var locCode string
+		if err := db.GetContext(ctx, &locCode, `
+			SELECT location_code FROM inventory.inventory_locations WHERE id = $1
+		`, task.LocationID); err != nil {
+			t.Fatalf("discoverPickInputs: location_code for %s: %v", task.LocationID, err)
+		}
+
+		var upc string
+		if err := db.GetContext(ctx, &upc, `
+			SELECT COALESCE(upc_code, '') FROM products.products WHERE id = $1
+		`, task.ProductID); err != nil {
+			t.Fatalf("discoverPickInputs: upc_code for product %s: %v", task.ProductID, err)
+		}
+
+		var trackingType string
+		_ = db.GetContext(ctx, &trackingType, `
+			SELECT COALESCE(tracking_type, 'none') FROM products.products WHERE id = $1
+		`, task.ProductID)
+
+		// PickTaskID holds the sales_order_line_item_id — that is the URL
+		// parameter for POST /v1/sales/order-line-items/{id}/pick-quantity.
+		// The field name was locked in Task 2; we reuse it for the endpoint key.
+		allocations = append(allocations, PickAllocation{
+			PickTaskID:   task.LineItemID,
+			ProductID:    task.ProductID,
+			UPC:          upc,
+			LocationCode: locCode,
+			Qty:          task.Qty,
+			LotTracked:   trackingType == "lot",
+		})
+	}
+
+	return PickInputs{
+		SOID:        soID,
+		Allocations: allocations,
+	}
+}

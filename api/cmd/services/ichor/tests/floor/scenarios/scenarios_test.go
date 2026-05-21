@@ -145,3 +145,83 @@ func TestFloorScenarios_RushReceiving(t *testing.T) {
 	scenarioID := loadScenarioFixtures(t, h, "rush-receiving")
 	walkReceive(t, h, scenarioID, discoverReceiveInputs(t, h, scenarioID), false)
 }
+
+// TestFloorScenarios_PickWholeOrder is the canary for a full, no-exception pick.
+// The scenario seeds 9 pick tasks across 6 products and 2 staging locations.
+// walkPick step 1 (GB-007) verifies order-line-items returns 200 with scenario's
+// NULL discount_type COALESCEd. Step 2 (GB-015) verifies the FEFO subquery
+// uses sub.* qualifiers so QueryAvailableForAllocation returns inventory rows.
+//
+// GB regressions this test guards:
+//   - GB-007: COALESCE(discount_type,'flat') in order-line-items SELECT (step 1)
+//   - GB-015: FEFO sub.* column qualifiers in queryFEFO inner subquery (step 2)
+func TestFloorScenarios_PickWholeOrder(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "pick-whole-order")
+	scenarioID := loadScenarioFixtures(t, h, "pick-whole-order")
+	walkPick(t, h, scenarioID, discoverPickInputs(t, h, scenarioID))
+}
+
+// TestFloorScenarios_PickShortPick exercises the short-pick scenario where
+// quantity_to_pick (50) < quantity ordered (100). walkPick uses quantity_to_pick
+// as the pick quantity so the POST succeeds (50 units available in inventory).
+// The scenario validates that walkPick handles below-order-quantity picks
+// without 422 from the "quantity exceeds remaining" guard.
+//
+// GB regressions this test guards:
+//   - GB-007: COALESCE(discount_type,'flat') in order-line-items SELECT (step 1)
+//   - GB-015: FEFO sub.* column qualifiers in queryFEFO inner subquery (step 2)
+func TestFloorScenarios_PickShortPick(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "pick-short-pick")
+	scenarioID := loadScenarioFixtures(t, h, "pick-short-pick")
+	walkPick(t, h, scenarioID, discoverPickInputs(t, h, scenarioID))
+}
+
+// TestFloorScenarios_PickLotTracked exercises picking a lot-tracked product
+// (SKU-0029). The FEFO strategy is critical here: lot-tracked products must
+// be allocated from the earliest-expiry lot. GB-015 is most impactful for
+// lot-tracked products because the subquery joins against lot_trackings to
+// find expiry dates.
+//
+// GB regressions this test guards:
+//   - GB-007: COALESCE(discount_type,'flat') in order-line-items SELECT (step 1)
+//   - GB-015: FEFO sub.* column qualifiers in queryFEFO inner subquery (step 2)
+func TestFloorScenarios_PickLotTracked(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "pick-lot-tracked")
+	scenarioID := loadScenarioFixtures(t, h, "pick-lot-tracked")
+	walkPick(t, h, scenarioID, discoverPickInputs(t, h, scenarioID))
+}
+
+// TestFloorScenarios_PickZoneSliced exercises picking across 4 tasks spread
+// across 3 staging zones (STG-A01, STG-A02, STG-B01, STG-B02). Verifies that
+// the FEFO query handles multiple location_ids correctly across calls — the
+// sub.* fix must hold for each location independently.
+//
+// GB regressions this test guards:
+//   - GB-007: COALESCE(discount_type,'flat') in order-line-items SELECT (step 1)
+//   - GB-015: FEFO sub.* column qualifiers in queryFEFO inner subquery (step 2)
+func TestFloorScenarios_PickZoneSliced(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "pick-zone-sliced")
+	scenarioID := loadScenarioFixtures(t, h, "pick-zone-sliced")
+	walkPick(t, h, scenarioID, discoverPickInputs(t, h, scenarioID))
+}
+
+// TestFloorScenarios_E2EPickStrict exercises the e2e-pick-strict lever-variant
+// scenario. This scenario carries only lever overrides (pick.lotScan=required-
+// if-lot-tracked) and no state.yaml, so discoverPickInputs returns
+// PickInputs{SOID: uuid.Nil, Allocations: nil}. walkPick step 1 fires with a
+// sentinel order_id to verify the endpoint returns 200+empty-list rather than
+// 404 or 500. Step 2 is skipped (no tasks). The scenario validates that
+// walkPick gracefully handles lever-only scenarios.
+//
+// GB regressions this test guards:
+//   - GB-007: order-line-items endpoint returns 200 for unknown order_id
+func TestFloorScenarios_E2EPickStrict(t *testing.T) {
+	t.Parallel()
+	h := startScenarioTest(t, "e2e-pick-strict")
+	scenarioID := loadScenarioFixtures(t, h, "e2e-pick-strict")
+	walkPick(t, h, scenarioID, discoverPickInputs(t, h, scenarioID))
+}
