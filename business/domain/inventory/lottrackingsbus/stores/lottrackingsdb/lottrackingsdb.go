@@ -145,6 +145,12 @@ func (s *Store) Query(ctx context.Context, filter lottrackingsbus.QueryFilter, o
 	// inline filter instead (same fix as QueryByID, commit 76f58974).
 	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
 		data["scenario_id"] = sid
+		// The " WHERE " substring check is safe here because applyFilter is the
+		// only thing that can emit WHERE before this point, and it always writes
+		// the literal " WHERE " with surrounding spaces (see filter.go). The base
+		// SQL above has no embedded WHERE clause. If either invariant changes
+		// (multi-line WHERE in base SQL, or applyFilter switches separators),
+		// replace the substring check with sqldb's hasWhereRe-style regex.
 		if strings.Contains(strings.ToUpper(buf.String()), " WHERE ") {
 			buf.WriteString(" AND (lt.scenario_id IS NULL OR lt.scenario_id = :scenario_id)")
 		} else {
@@ -185,6 +191,12 @@ func (s *Store) Count(ctx context.Context, filter lottrackingsbus.QueryFilter) (
 	// lt JOIN shape so the unqualified filter is equally ambiguous.
 	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
 		data["scenario_id"] = sid
+		// The " WHERE " substring check is safe here because applyFilter is the
+		// only thing that can emit WHERE before this point, and it always writes
+		// the literal " WHERE " with surrounding spaces (see filter.go). The base
+		// SQL above has no embedded WHERE clause. If either invariant changes
+		// (multi-line WHERE in base SQL, or applyFilter switches separators),
+		// replace the substring check with sqldb's hasWhereRe-style regex.
 		if strings.Contains(strings.ToUpper(buf.String()), " WHERE ") {
 			buf.WriteString(" AND (lt.scenario_id IS NULL OR lt.scenario_id = :scenario_id)")
 		} else {
