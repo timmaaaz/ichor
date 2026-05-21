@@ -187,8 +187,12 @@ func (s *Store) Count(ctx context.Context, filter lottrackingsbus.QueryFilter) (
 
 	buf := bytes.NewBufferString(q)
 	applyFilter(filter, data, buf)
-	// GB-014: same ambiguous scenario_id fix as Query — Count uses the same
-	// lt JOIN shape so the unqualified filter is equally ambiguous.
+	// GB-014 (defensive consistency): Count's base SQL is single-table, so
+	// scenario_id is unambiguous and plain sqldb.ApplyScenarioFilter would
+	// work. We mirror Query's lt.-qualified inline filter so the paginated
+	// LIST/COUNT pair stays structurally identical and remains correct if
+	// Count later grows JOINs. If you simplify, switch all the way back to
+	// sqldb.ApplyScenarioFilter — do not invent a third shape.
 	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
 		data["scenario_id"] = sid
 		// The " WHERE " substring check is safe here because applyFilter is the
