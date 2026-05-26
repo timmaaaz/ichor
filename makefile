@@ -263,6 +263,7 @@ dev-bounce:
 		if [ -n "$$GEMINI_API_KEY" ]; then make dev-gemini-secret GEMINI_API_KEY=$$GEMINI_API_KEY; fi
 	make dev-update-apply
 	make migrate
+	make seed
 	make seed-frontend
 
 # ------------------------------------------------------------------------------

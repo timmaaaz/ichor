@@ -7,9 +7,10 @@ Customer-specific seed data pipeline outside the Go codebase. Provides real, mea
 
 ### Tier 1: Platform (Baseline)
 
-Seeded by two steps that run before customer data:
+Seeded by three steps that run before customer data:
 
-1. **`make migrate`** — runs `seed.sql` which provides:
+1. **`make migrate`** — applies the schema migrations (`migrate.sql`). Schema only.
+2. **`make seed`** — runs `seed.sql` which provides:
    - Geography (countries, regions, timezones)
    - Currencies
    - admin_gopher user
@@ -18,7 +19,7 @@ Seeded by two steps that run before customer data:
    - Payment terms
    - Table access
 
-2. **`make seed-platform`** — runs Go `InsertPlatformConfig()` function which provides:
+3. **`make seed-platform`** — runs Go `InsertPlatformConfig()` function which provides:
    - Page configs
    - Form definitions
    - Table builder configs
