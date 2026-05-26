@@ -94,10 +94,14 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 		return User{}, fmt.Errorf("query userapprovalstatus pending: %w", err)
 	}
 
+	if len(statuses) == 0 {
+		return User{}, fmt.Errorf("default approval status %q not found", defaultStatus)
+	}
+
 	status := statuses[0]
 
 	if status.Name != defaultStatus {
-		return User{}, fmt.Errorf("default approval status not found: %w", err)
+		return User{}, fmt.Errorf("default approval status not found: got %q, want %q", status.Name, defaultStatus)
 	}
 
 	now := time.Now()
