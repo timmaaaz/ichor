@@ -41,7 +41,15 @@ var ScenarioCustomerID = seedid.Stable("scenario:customer:" + scenarioCustomerNa
 func seedScenarios(ctx context.Context, busDomain BusDomain) error {
 	root, err := findRepoRoot()
 	if err != nil {
-		return fmt.Errorf("find repo root: %w", err)
+		// findRepoRoot walks up for go.mod, which only exists in a source
+		// checkout. When running from the compiled binary (e.g. `./admin
+		// seed-frontend` inside the deployed image), the source tree — and thus
+		// deployments/scenarios/ — is absent. Scenario fixtures are a
+		// source-tree dev convenience, not core seed data, so skip them rather
+		// than aborting the entire seed. (Corrupt-scenario fail-hard semantics
+		// still apply in SeedScenariosFromRoot for the source-checkout case.)
+		fmt.Printf("seedScenarios: skipping scenario fixtures (repo root not found: %v)\n", err)
+		return nil
 	}
 	scenariosDir := filepath.Join(root, "deployments", "scenarios")
 	return SeedScenariosFromRoot(ctx, busDomain, scenariosDir)
