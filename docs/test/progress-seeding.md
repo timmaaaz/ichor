@@ -103,7 +103,7 @@ SUCCESS, ERROR, WAITING, REJECTED, IN_PROGRESS
 #### Named Users (18 Additional — Query by `username`)
 manager1, manager2, finance_admin, hr_admin, employee1–4, readonly, temp_admin, sales_east, sales_west, it_systems, it_dev, accounting, payroll, recruitment, benefits
 
-All use password hash for `admin123` except admin_gopher.
+All seeded users authenticate with password `gophers` (admin_gopher's hash uses a different salt, but the same password).
 
 ### Stable from seedmodels (Query by Name)
 
