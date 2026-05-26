@@ -629,21 +629,21 @@ token:
 
 users:
 	curl -il \
-	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/core/users?page=1&rows=2"
 
 users-timeout:
 	curl -il \
 	--max-time 1 \
-	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/core/users?page=1&rows=2"
 
 load:
 	hey -m GET -c 100 -n 1000 \
-	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/core/users?page=1&rows=2"
 
 otel-test:
 	curl -il \
 	-H "Traceparent: 00-918dd5ecf264712262b68cf2ef8b5239-896d90f23f69f006-01" \
-	--user "admin@example.com:gophers" http://localhost:8080/v1/core/users/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+	--user "admin@example.com:gophers" http://localhost:6000/v1/auth/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
 
 # ==============================================================================
 # MCP Server
@@ -713,7 +713,7 @@ curl-create:
 	-H "Authorization: Bearer ${TOKEN}" \
 	-H 'Content-Type: application/json' \
 	-d '{"name":"bill","email":"b@gmail.com","roles":["ADMIN"],"department":"IT","password":"123","passwordConfirm":"123"}' \
-	http://localhost:8080/v1/users
+	http://localhost:8080/v1/core/users
 
 # ==============================================================================
 # Talk commands
@@ -738,7 +738,7 @@ talk-apply:
 talk-build: all dev-load talk-apply
 
 talk-load:
-	hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/users?page=1&rows=2"
+	hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:8080/v1/core/users?page=1&rows=2"
 
 talk-logs:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(ICHOR_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/cmd/tooling/logfmt/main.go -service=$(ICHOR_APP)
