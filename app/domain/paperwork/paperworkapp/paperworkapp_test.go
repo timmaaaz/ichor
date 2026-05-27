@@ -1,4 +1,4 @@
-// Package paperworkbus_test verifies the paperwork bus renders non-empty PDFs
+// Package paperworkapp_test verifies the paperwork app renders non-empty PDFs
 // containing the expected SO-/PO-/XFER- task codes when the requested order
 // exists, and surfaces the right sentinel errors when it does not.
 //
@@ -6,7 +6,7 @@
 // bytes that begin with the "%PDF-" magic and contain the expected task code
 // somewhere in the document. Visual layout is covered by the pdf subpackage
 // tests (picksheet_test.go etc.); cross-domain wiring is covered here.
-package paperworkbus_test
+package paperworkapp_test
 
 import (
 	"bytes"
@@ -16,6 +16,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/domain/paperwork/paperworkapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/core/contactinfosbus"
 	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
@@ -26,7 +28,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
-	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
@@ -53,12 +54,12 @@ type paperworkSeed struct {
 	transferOrder transferorderbus.TransferOrder
 }
 
-func TestPaperworkBus_Integration(t *testing.T) {
+func TestPaperworkApp_Integration(t *testing.T) {
 	t.Parallel()
 
-	db := dbtest.NewDatabase(t, "TestPaperworkBus_Integration")
+	db := dbtest.NewDatabase(t, "TestPaperworkApp_Integration")
 
-	bus := paperworkbus.NewBusiness(
+	app := paperworkapp.NewApp(
 		db.Log,
 		db.BusDomain.Order,
 		db.BusDomain.OrderLineItem,
@@ -71,7 +72,7 @@ func TestPaperworkBus_Integration(t *testing.T) {
 	seed := seedAll(t, ctx, db.BusDomain)
 
 	t.Run("BuildPickSheet", func(t *testing.T) {
-		got, err := bus.BuildPickSheet(ctx, paperworkbus.PickSheetRequest{OrderID: seed.order.ID})
+		got, err := app.BuildPickSheet(ctx, paperworkapp.PickSheetRequest{OrderID: seed.order.ID})
 		if err != nil {
 			t.Fatalf("BuildPickSheet: unexpected error: %v", err)
 		}
@@ -85,14 +86,15 @@ func TestPaperworkBus_Integration(t *testing.T) {
 	})
 
 	t.Run("BuildPickSheet_NotFound", func(t *testing.T) {
-		_, err := bus.BuildPickSheet(ctx, paperworkbus.PickSheetRequest{OrderID: uuid.New()})
-		if !errors.Is(err, paperworkbus.ErrOrderNotFound) {
-			t.Fatalf("BuildPickSheet: want ErrOrderNotFound for missing order, got %v", err)
+		_, err := app.BuildPickSheet(ctx, paperworkapp.PickSheetRequest{OrderID: uuid.New()})
+		var appErr *errs.Error
+		if !errors.As(err, &appErr) || !appErr.Code.Equal(errs.NotFound) {
+			t.Fatalf("BuildPickSheet: want NotFound errs.Error for missing order, got %v", err)
 		}
 	})
 
 	t.Run("BuildReceiveCover", func(t *testing.T) {
-		got, err := bus.BuildReceiveCover(ctx, paperworkbus.ReceiveCoverRequest{PurchaseOrderID: seed.purchaseOrder.ID})
+		got, err := app.BuildReceiveCover(ctx, paperworkapp.ReceiveCoverRequest{PurchaseOrderID: seed.purchaseOrder.ID})
 		if err != nil {
 			t.Fatalf("BuildReceiveCover: unexpected error: %v", err)
 		}
@@ -110,7 +112,7 @@ func TestPaperworkBus_Integration(t *testing.T) {
 			t.Fatalf("seedAll returned transfer order with nil TransferNumber")
 		}
 
-		got, err := bus.BuildTransferSheet(ctx, paperworkbus.TransferSheetRequest{TransferID: seed.transferOrder.TransferID})
+		got, err := app.BuildTransferSheet(ctx, paperworkapp.TransferSheetRequest{TransferID: seed.transferOrder.TransferID})
 		if err != nil {
 			t.Fatalf("BuildTransferSheet: unexpected error: %v", err)
 		}
@@ -136,7 +138,7 @@ func firstN(b []byte, n int) []byte {
 	return b[:n]
 }
 
-// expectedTaskCode mirrors paperworkbus.taskCodeFor — kept as a separate test
+// expectedTaskCode mirrors paperworkapp.taskCodeFor — kept as a separate test
 // helper because the production helper is unexported. The two MUST stay in
 // lockstep; if production grows a knob, update this helper.
 func expectedTaskCode(prefix, value string) string {
@@ -342,7 +344,7 @@ func seedAll(t *testing.T, ctx context.Context, busDomain dbtest.BusDomain) pape
 }
 
 // TestTaskCodeFor_Idempotent_ViaBuildPickSheet verifies the idempotent
-// strip-then-prepend contract called out in paperworkbus.go: feeding a value
+// strip-then-prepend contract called out in paperworkapp.go: feeding a value
 // that already begins with the "<prefix>-" head must NOT produce a
 // double-prefixed task code in the rendered PDF.
 //
@@ -354,7 +356,7 @@ func TestTaskCodeFor_Idempotent_ViaBuildPickSheet(t *testing.T) {
 
 	db := dbtest.NewDatabase(t, "TestTaskCodeFor_Idempotent")
 
-	bus := paperworkbus.NewBusiness(
+	app := paperworkapp.NewApp(
 		db.Log,
 		db.BusDomain.Order,
 		db.BusDomain.OrderLineItem,
@@ -373,7 +375,7 @@ func TestTaskCodeFor_Idempotent_ViaBuildPickSheet(t *testing.T) {
 		t.Fatalf("update order number: %v", err)
 	}
 
-	got, err := bus.BuildPickSheet(ctx, paperworkbus.PickSheetRequest{OrderID: updated.ID})
+	got, err := app.BuildPickSheet(ctx, paperworkapp.PickSheetRequest{OrderID: updated.ID})
 	if err != nil {
 		t.Fatalf("BuildPickSheet: %v", err)
 	}

@@ -76,8 +76,8 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (PaperworkSeed, error) 
 	// Domain entities — sales order, purchase order, transfer order are
 	// seeded together through a single helper because their FK chains share
 	// fixed-code seeders (currencies, streets, contact info, etc.) that can
-	// only be invoked once per test database. Mirrors paperworkbus_test.go's
-	// seedAll function — see business/domain/paperwork/paperworkbus.
+	// only be invoked once per test database. Mirrors paperworkapp_test.go's
+	// seedAll function — see app/domain/paperwork/paperworkapp.
 	pwk, err := seedPaperworkEntities(ctx, bd, admins[0].ID)
 	if err != nil {
 		return PaperworkSeed{}, fmt.Errorf("seeding paperwork entities: %w", err)
@@ -170,7 +170,7 @@ type paperworkEntities struct {
 // methods need: addresses (region/city/street), contact info, currency,
 // customers, suppliers, warehouses, zones, locations, brands, categories,
 // products, statuses — plus exactly one Order, PurchaseOrder, and
-// TransferOrder. Mirrors paperworkbus_test.go's seedAll one-for-one.
+// TransferOrder. Mirrors paperworkapp_test.go's seedAll one-for-one.
 //
 // All seeding happens in a single function so currency, status, and other
 // fixed-code seeders are invoked exactly once — calling them twice in the

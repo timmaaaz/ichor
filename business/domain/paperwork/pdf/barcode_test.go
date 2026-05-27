@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus/pdf"
+	"github.com/timmaaaz/ichor/business/domain/paperwork/pdf"
 )
 
 func TestCode128PNG_Determinism(t *testing.T) {

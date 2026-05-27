@@ -1,11 +1,11 @@
-// business/domain/paperwork/paperworkbus/pdf/receivecover_test.go
+// business/domain/paperwork/pdf/receivecover_test.go
 package pdf_test
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus/pdf"
+	"github.com/timmaaaz/ichor/business/domain/paperwork/pdf"
 )
 
 func TestReceiveCover_StructuralInvariants(t *testing.T) {
