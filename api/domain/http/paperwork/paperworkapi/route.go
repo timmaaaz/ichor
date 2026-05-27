@@ -9,7 +9,11 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
-	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
 )
@@ -27,7 +31,11 @@ const (
 // Config carries the dependencies for the paperwork API.
 type Config struct {
 	Log            *logger.Logger
-	PaperworkBus   *paperworkbus.Business
+	OrdersBus      *ordersbus.Business
+	OrderLinesBus  *orderlineitemsbus.Business
+	PurchaseOrders *purchaseorderbus.Business
+	PurchaseLines  *purchaseorderlineitembus.Business
+	TransferOrders *transferorderbus.Business
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
 }
@@ -38,7 +46,10 @@ func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	authen := mid.Authenticate(cfg.AuthClient)
-	api := newAPI(paperworkapp.NewApp(cfg.PaperworkBus))
+	api := newAPI(paperworkapp.NewApp(
+		cfg.Log, cfg.OrdersBus, cfg.OrderLinesBus,
+		cfg.PurchaseOrders, cfg.PurchaseLines, cfg.TransferOrders,
+	))
 
 	app.HandlerFunc(http.MethodGet, version, "/paperwork/pick-sheet", api.pickSheet, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTablePickSheet, permissionsbus.Actions.Read, auth.RuleAny))

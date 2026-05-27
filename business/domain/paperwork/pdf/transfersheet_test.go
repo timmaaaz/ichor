@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus/pdf"
+	"github.com/timmaaaz/ichor/business/domain/paperwork/pdf"
 )
 
 func TestTransferSheet_StructuralInvariants(t *testing.T) {

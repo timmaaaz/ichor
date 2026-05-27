@@ -249,7 +249,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/tcpprint"
-	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus/stores/purchaseorderdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
@@ -871,13 +870,16 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	// Paperwork subsystem — PDF rendering for pick sheets, receive cover
-	// sheets, and transfer sheets. paperworkbus delegates to the pdf/ leaf
-	// package (gofpdf + boombuler/barcode); paperworkapi.Authorize gates
+	// sheets, and transfer sheets. paperworkapp orchestrates cross-domain reads
+	// (app-layer pattern); the pdf/ leaf renders. paperworkapi.Authorize gates
 	// table-level Read access via PermissionsBus.
-	paperworkBus := paperworkbus.NewBusiness(cfg.Log, ordersBus, orderLineItemsBus, purchaseOrderBus, purchaseOrderLineItemBus, transferOrderBus)
 	paperworkapi.Routes(app, paperworkapi.Config{
 		Log:            cfg.Log,
-		PaperworkBus:   paperworkBus,
+		OrdersBus:      ordersBus,
+		OrderLinesBus:  orderLineItemsBus,
+		PurchaseOrders: purchaseOrderBus,
+		PurchaseLines:  purchaseOrderLineItemBus,
+		TransferOrders: transferOrderBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})

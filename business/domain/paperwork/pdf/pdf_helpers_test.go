@@ -1,4 +1,4 @@
-// business/domain/paperwork/paperworkbus/pdf/pdf_helpers_test.go
+// business/domain/paperwork/pdf/pdf_helpers_test.go
 //
 // Test helpers for the pdf package. Per plan VFY-2 fallback, these
 // rely on raw byte scanning of uncompressed gofpdf output (renderers

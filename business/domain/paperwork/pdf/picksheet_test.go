@@ -1,11 +1,11 @@
-// business/domain/paperwork/paperworkbus/pdf/picksheet_test.go
+// business/domain/paperwork/pdf/picksheet_test.go
 package pdf_test
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/timmaaaz/ichor/business/domain/paperwork/paperworkbus/pdf"
+	"github.com/timmaaaz/ichor/business/domain/paperwork/pdf"
 )
 
 func TestPickSheet_StructuralInvariants(t *testing.T) {
