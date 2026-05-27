@@ -25,17 +25,23 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -52,24 +58,44 @@ type paperworkSeed struct {
 	order         ordersbus.Order
 	purchaseOrder purchaseorderbus.PurchaseOrder
 	transferOrder transferorderbus.TransferOrder
+
+	// enrichment fields (F4)
+	customerName  string
+	pickTaskCount int
+	vendorName    string
+	srcWHName     string
+	dstWHName     string
+}
+
+// newTestApp constructs a paperworkapp.App wired to the test database's full
+// BusDomain — the 11-bus signature introduced in F4-enrichment.
+func newTestApp(db *dbtest.Database) *paperworkapp.App {
+	return paperworkapp.NewApp(
+		db.Log,
+		db.BusDomain.Order,
+		db.BusDomain.Customers,
+		db.BusDomain.PickTask,
+		db.BusDomain.PurchaseOrder,
+		db.BusDomain.PurchaseOrderLineItem,
+		db.BusDomain.Supplier,
+		db.BusDomain.SupplierProduct,
+		db.BusDomain.TransferOrder,
+		db.BusDomain.Warehouse,
+		db.BusDomain.InventoryLocation,
+		db.BusDomain.Product,
+	)
 }
 
 func TestPaperworkApp_Integration(t *testing.T) {
 	t.Parallel()
 
 	db := dbtest.NewDatabase(t, "TestPaperworkApp_Integration")
-
-	app := paperworkapp.NewApp(
-		db.Log,
-		db.BusDomain.Order,
-		db.BusDomain.OrderLineItem,
-		db.BusDomain.PurchaseOrder,
-		db.BusDomain.PurchaseOrderLineItem,
-		db.BusDomain.TransferOrder,
-	)
+	app := newTestApp(db)
 
 	ctx := context.Background()
 	seed := seedAll(t, ctx, db.BusDomain)
+
+	// --- Sheet A: Pick -------------------------------------------------------
 
 	t.Run("BuildPickSheet", func(t *testing.T) {
 		got, err := app.BuildPickSheet(ctx, paperworkapp.PickSheetRequest{OrderID: seed.order.ID})
@@ -85,13 +111,28 @@ func TestPaperworkApp_Integration(t *testing.T) {
 		}
 	})
 
+	t.Run("BuildPickSheet_Enriched", func(t *testing.T) {
+		got, err := app.BuildPickSheet(ctx, paperworkapp.PickSheetRequest{OrderID: seed.order.ID})
+		if err != nil {
+			t.Fatalf("BuildPickSheet_Enriched: unexpected error: %v", err)
+		}
+		if !bytes.Contains(got, []byte(seed.customerName)) {
+			t.Errorf("BuildPickSheet_Enriched: PDF does not contain customer name %q", seed.customerName)
+		}
+		if seed.pickTaskCount == 0 {
+			t.Errorf("BuildPickSheet_Enriched: no pick tasks were seeded — enrichment test is vacuous")
+		}
+	})
+
 	t.Run("BuildPickSheet_NotFound", func(t *testing.T) {
 		_, err := app.BuildPickSheet(ctx, paperworkapp.PickSheetRequest{OrderID: uuid.New()})
 		var appErr *errs.Error
 		if !errors.As(err, &appErr) || !appErr.Code.Equal(errs.NotFound) {
-			t.Fatalf("BuildPickSheet: want NotFound errs.Error for missing order, got %v", err)
+			t.Fatalf("BuildPickSheet_NotFound: want NotFound errs.Error for missing order, got %v", err)
 		}
 	})
+
+	// --- Sheet B: Receive ----------------------------------------------------
 
 	t.Run("BuildReceiveCover", func(t *testing.T) {
 		got, err := app.BuildReceiveCover(ctx, paperworkapp.ReceiveCoverRequest{PurchaseOrderID: seed.purchaseOrder.ID})
@@ -106,6 +147,30 @@ func TestPaperworkApp_Integration(t *testing.T) {
 			t.Errorf("BuildReceiveCover: PDF does not contain task code %q", expected)
 		}
 	})
+
+	t.Run("BuildReceiveCover_Enriched", func(t *testing.T) {
+		got, err := app.BuildReceiveCover(ctx, paperworkapp.ReceiveCoverRequest{PurchaseOrderID: seed.purchaseOrder.ID})
+		if err != nil {
+			t.Fatalf("BuildReceiveCover_Enriched: unexpected error: %v", err)
+		}
+		if !bytes.Contains(got, []byte(seed.vendorName)) {
+			t.Errorf("BuildReceiveCover_Enriched: PDF does not contain vendor name %q", seed.vendorName)
+		}
+		expectedDate := seed.purchaseOrder.ExpectedDeliveryDate.Format("2006-01-02")
+		if !bytes.Contains(got, []byte(expectedDate)) {
+			t.Errorf("BuildReceiveCover_Enriched: PDF does not contain expected date %q", expectedDate)
+		}
+	})
+
+	t.Run("BuildReceiveCover_NotFound", func(t *testing.T) {
+		_, err := app.BuildReceiveCover(ctx, paperworkapp.ReceiveCoverRequest{PurchaseOrderID: uuid.New()})
+		var appErr *errs.Error
+		if !errors.As(err, &appErr) || !appErr.Code.Equal(errs.NotFound) {
+			t.Fatalf("BuildReceiveCover_NotFound: want NotFound errs.Error for missing PO, got %v", err)
+		}
+	})
+
+	// --- Sheet C: Transfer ---------------------------------------------------
 
 	t.Run("BuildTransferSheet", func(t *testing.T) {
 		if seed.transferOrder.TransferNumber == nil {
@@ -125,6 +190,30 @@ func TestPaperworkApp_Integration(t *testing.T) {
 		expected := []byte(*seed.transferOrder.TransferNumber)
 		if !bytes.Contains(got, expected) {
 			t.Errorf("BuildTransferSheet: PDF does not contain transfer number %q", expected)
+		}
+	})
+
+	t.Run("BuildTransferSheet_Enriched", func(t *testing.T) {
+		if seed.transferOrder.TransferNumber == nil {
+			t.Skip("transfer order has no transfer number — skipping enrichment test")
+		}
+		got, err := app.BuildTransferSheet(ctx, paperworkapp.TransferSheetRequest{TransferID: seed.transferOrder.TransferID})
+		if err != nil {
+			t.Fatalf("BuildTransferSheet_Enriched: unexpected error: %v", err)
+		}
+		if !bytes.Contains(got, []byte(seed.srcWHName)) {
+			t.Errorf("BuildTransferSheet_Enriched: PDF does not contain source WH name %q", seed.srcWHName)
+		}
+		if !bytes.Contains(got, []byte(seed.dstWHName)) {
+			t.Errorf("BuildTransferSheet_Enriched: PDF does not contain destination WH name %q", seed.dstWHName)
+		}
+	})
+
+	t.Run("BuildTransferSheet_NotFound", func(t *testing.T) {
+		_, err := app.BuildTransferSheet(ctx, paperworkapp.TransferSheetRequest{TransferID: uuid.New()})
+		var appErr *errs.Error
+		if !errors.As(err, &appErr) || !appErr.Code.Equal(errs.NotFound) {
+			t.Fatalf("BuildTransferSheet_NotFound: want NotFound errs.Error for missing transfer, got %v", err)
 		}
 	})
 }
@@ -148,7 +237,8 @@ func expectedTaskCode(prefix, value string) string {
 // seedAll provisions the union of FK chains the three Build* methods need:
 // addresses, customers, suppliers, warehouses, zones, locations, products,
 // statuses, currency, plus exactly one Order, PurchaseOrder, and
-// TransferOrder. Returns the three seeded entities.
+// TransferOrder. Also seeds pick tasks (for sheet A) and PO line items (for
+// sheet B). Returns a paperworkSeed with enrichment metadata.
 //
 // All seeding happens in a single function so currency, status, and other
 // fixed-code seeders are invoked exactly once — calling them twice in the
@@ -336,10 +426,123 @@ func seedAll(t *testing.T, ctx context.Context, busDomain dbtest.BusDomain) pape
 		t.Fatalf("seed transfer orders: %v", err)
 	}
 
+	// LINE ITEM FULFILLMENT STATUSES (FK for sales order line items + pick tasks)
+
+	lineItemStatuses, err := lineitemfulfillmentstatusbus.TestSeedLineItemFulfillmentStatuses(ctx, busDomain.LineItemFulfillmentStatus)
+	if err != nil {
+		t.Fatalf("seed line item fulfillment statuses: %v", err)
+	}
+	lineItemStatusIDs := make(uuid.UUIDs, len(lineItemStatuses))
+	for i, s := range lineItemStatuses {
+		lineItemStatusIDs[i] = s.ID
+	}
+
+	// ORDER LINE ITEMS (FK parent for pick tasks) --------------------------
+
+	orderLineItems, err := orderlineitemsbus.TestSeedOrderLineItems(
+		ctx, 2,
+		uuid.UUIDs{orders[0].ID},
+		uuid.UUIDs(productIDs),
+		lineItemStatusIDs,
+		uuid.UUIDs(userIDs),
+		busDomain.OrderLineItem,
+	)
+	if err != nil {
+		t.Fatalf("seed order line items: %v", err)
+	}
+	orderLineItemIDs := make([]uuid.UUID, len(orderLineItems))
+	for i, li := range orderLineItems {
+		orderLineItemIDs[i] = li.ID
+	}
+
+	// PICK TASKS -----------------------------------------------------------
+
+	pickTasks, err := picktaskbus.TestSeedPickTasks(
+		ctx, 2,
+		[]uuid.UUID{orders[0].ID},
+		orderLineItemIDs,
+		productIDs,
+		[]uuid.UUID{locations[0].LocationID, locations[1].LocationID},
+		userIDs[:3],
+		nil,
+		busDomain.PickTask,
+	)
+	if err != nil {
+		t.Fatalf("seed pick tasks: %v", err)
+	}
+
+	// SUPPLIER PRODUCTS (FK for PO line items) -----------------------------
+
+	supplierProducts, err := supplierproductbus.TestSeedSupplierProducts(
+		ctx, 2,
+		uuid.UUIDs(productIDs),
+		supplierIDs,
+		busDomain.SupplierProduct,
+	)
+	if err != nil {
+		t.Fatalf("seed supplier products: %v", err)
+	}
+	supplierProductIDs := make(uuid.UUIDs, len(supplierProducts))
+	for i, sp := range supplierProducts {
+		supplierProductIDs[i] = sp.SupplierProductID
+	}
+
+	// PO LINE ITEM STATUSES (FK for PO line items) -------------------------
+
+	poLineItemStatuses, err := purchaseorderlineitemstatusbus.TestSeedPurchaseOrderLineItemStatuses(
+		ctx, 3,
+		busDomain.PurchaseOrderLineItemStatus,
+	)
+	if err != nil {
+		t.Fatalf("seed PO line item statuses: %v", err)
+	}
+	poLineItemStatusIDs := make(uuid.UUIDs, len(poLineItemStatuses))
+	for i, s := range poLineItemStatuses {
+		poLineItemStatusIDs[i] = s.ID
+	}
+
+	// PO LINE ITEMS --------------------------------------------------------
+
+	_, err = purchaseorderlineitembus.TestSeedPurchaseOrderLineItems(
+		ctx, 2,
+		uuid.UUIDs{pos[0].ID},
+		supplierProductIDs,
+		poLineItemStatusIDs,
+		uuid.UUIDs(userIDs),
+		busDomain.PurchaseOrderLineItem,
+	)
+	if err != nil {
+		t.Fatalf("seed purchase order line items: %v", err)
+	}
+
+	// RESOLVE WAREHOUSE NAMES FOR TRANSFER ENRICHMENT ----------------------
+
+	fromLocFull, err := busDomain.InventoryLocation.QueryByID(ctx, locations[0].LocationID)
+	if err != nil {
+		t.Fatalf("query from location: %v", err)
+	}
+	toLocFull, err := busDomain.InventoryLocation.QueryByID(ctx, locations[1].LocationID)
+	if err != nil {
+		t.Fatalf("query to location: %v", err)
+	}
+	srcWH, err := busDomain.Warehouse.QueryByID(ctx, fromLocFull.WarehouseID)
+	if err != nil {
+		t.Fatalf("query src warehouse: %v", err)
+	}
+	dstWH, err := busDomain.Warehouse.QueryByID(ctx, toLocFull.WarehouseID)
+	if err != nil {
+		t.Fatalf("query dst warehouse: %v", err)
+	}
+
 	return paperworkSeed{
 		order:         orders[0],
 		purchaseOrder: pos[0],
 		transferOrder: tos[0],
+		customerName:  customers[0].Name,
+		pickTaskCount: len(pickTasks),
+		vendorName:    suppliers[0].Name,
+		srcWHName:     srcWH.Name,
+		dstWHName:     dstWH.Name,
 	}
 }
 
@@ -355,15 +558,7 @@ func TestTaskCodeFor_Idempotent_ViaBuildPickSheet(t *testing.T) {
 	t.Parallel()
 
 	db := dbtest.NewDatabase(t, "TestTaskCodeFor_Idempotent")
-
-	app := paperworkapp.NewApp(
-		db.Log,
-		db.BusDomain.Order,
-		db.BusDomain.OrderLineItem,
-		db.BusDomain.PurchaseOrder,
-		db.BusDomain.PurchaseOrderLineItem,
-		db.BusDomain.TransferOrder,
-	)
+	app := newTestApp(db)
 
 	ctx := context.Background()
 	seed := seedAll(t, ctx, db.BusDomain)
