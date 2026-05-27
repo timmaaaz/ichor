@@ -9,10 +9,16 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/authclient"
 	"github.com/timmaaaz/ichor/business/domain/core/permissionsbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
-	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierbus"
+	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -29,15 +35,22 @@ const (
 )
 
 // Config carries the dependencies for the paperwork API.
+// All bus fields use a consistent *Bus suffix (review finding I2).
 type Config struct {
-	Log            *logger.Logger
-	OrdersBus      *ordersbus.Business
-	OrderLinesBus  *orderlineitemsbus.Business
-	PurchaseOrders *purchaseorderbus.Business
-	PurchaseLines  *purchaseorderlineitembus.Business
-	TransferOrders *transferorderbus.Business
-	AuthClient     *authclient.Client
-	PermissionsBus *permissionsbus.Business
+	Log                  *logger.Logger
+	OrdersBus            *ordersbus.Business
+	CustomersBus         *customersbus.Business
+	PickTasksBus         *picktaskbus.Business
+	PurchaseOrdersBus    *purchaseorderbus.Business
+	PurchaseLinesBus     *purchaseorderlineitembus.Business
+	SuppliersBus         *supplierbus.Business
+	SupplierProductsBus  *supplierproductbus.Business
+	TransferOrdersBus    *transferorderbus.Business
+	WarehousesBus        *warehousebus.Business
+	InventoryLocationsBus *inventorylocationbus.Business
+	ProductsBus          *productbus.Business
+	AuthClient           *authclient.Client
+	PermissionsBus       *permissionsbus.Business
 }
 
 // Routes registers paperwork endpoints behind Authenticate + Authorize.
@@ -47,8 +60,18 @@ func Routes(app *web.App, cfg Config) {
 
 	authen := mid.Authenticate(cfg.AuthClient)
 	api := newAPI(paperworkapp.NewApp(
-		cfg.Log, cfg.OrdersBus, cfg.OrderLinesBus,
-		cfg.PurchaseOrders, cfg.PurchaseLines, cfg.TransferOrders,
+		cfg.Log,
+		cfg.OrdersBus,
+		cfg.CustomersBus,
+		cfg.PickTasksBus,
+		cfg.PurchaseOrdersBus,
+		cfg.PurchaseLinesBus,
+		cfg.SuppliersBus,
+		cfg.SupplierProductsBus,
+		cfg.TransferOrdersBus,
+		cfg.WarehousesBus,
+		cfg.InventoryLocationsBus,
+		cfg.ProductsBus,
 	))
 
 	app.HandlerFunc(http.MethodGet, version, "/paperwork/pick-sheet", api.pickSheet, authen,

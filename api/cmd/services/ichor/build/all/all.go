@@ -874,14 +874,20 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// (app-layer pattern); the pdf/ leaf renders. paperworkapi.Authorize gates
 	// table-level Read access via PermissionsBus.
 	paperworkapi.Routes(app, paperworkapi.Config{
-		Log:            cfg.Log,
-		OrdersBus:      ordersBus,
-		OrderLinesBus:  orderLineItemsBus,
-		PurchaseOrders: purchaseOrderBus,
-		PurchaseLines:  purchaseOrderLineItemBus,
-		TransferOrders: transferOrderBus,
-		AuthClient:     cfg.AuthClient,
-		PermissionsBus: permissionsBus,
+		Log:                   cfg.Log,
+		OrdersBus:             ordersBus,
+		CustomersBus:          customersBus,
+		PickTasksBus:          pickTaskBus,
+		PurchaseOrdersBus:     purchaseOrderBus,
+		PurchaseLinesBus:      purchaseOrderLineItemBus,
+		SuppliersBus:          supplierBus,
+		SupplierProductsBus:   supplierProductBus,
+		TransferOrdersBus:     transferOrderBus,
+		WarehousesBus:         warehouseBus,
+		InventoryLocationsBus: inventoryLocationBus,
+		ProductsBus:           productBus,
+		AuthClient:            cfg.AuthClient,
+		PermissionsBus:        permissionsBus,
 	})
 
 	// Scenario subsystem (Phase 0d) — floor warehouse testing scenario management.
