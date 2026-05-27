@@ -197,6 +197,9 @@ func TestPaperworkApp_Integration(t *testing.T) {
 		if seed.transferOrder.TransferNumber == nil {
 			t.Skip("transfer order has no transfer number — skipping enrichment test")
 		}
+		if seed.srcWHName == seed.dstWHName {
+			t.Fatalf("test is vacuous: srcWHName == dstWHName == %q; from/to locations must be in different warehouses", seed.srcWHName)
+		}
 		got, err := app.BuildTransferSheet(ctx, paperworkapp.TransferSheetRequest{TransferID: seed.transferOrder.TransferID})
 		if err != nil {
 			t.Fatalf("BuildTransferSheet_Enriched: unexpected error: %v", err)
@@ -214,6 +217,22 @@ func TestPaperworkApp_Integration(t *testing.T) {
 		var appErr *errs.Error
 		if !errors.As(err, &appErr) || !appErr.Code.Equal(errs.NotFound) {
 			t.Fatalf("BuildTransferSheet_NotFound: want NotFound errs.Error for missing transfer, got %v", err)
+		}
+	})
+
+	// BuildTransferSheet_TransferNumberMissing must run last among transfer
+	// sub-tests because it mutates the shared seed's transfer order (clears
+	// TransferNumber). Other transfer sub-tests depend on a non-empty number.
+	t.Run("BuildTransferSheet_TransferNumberMissing", func(t *testing.T) {
+		empty := ""
+		updated, err := db.BusDomain.TransferOrder.Update(ctx, seed.transferOrder, transferorderbus.UpdateTransferOrder{TransferNumber: &empty})
+		if err != nil {
+			t.Fatalf("clear transfer number: %v", err)
+		}
+		_, err = app.BuildTransferSheet(ctx, paperworkapp.TransferSheetRequest{TransferID: updated.TransferID})
+		var appErr *errs.Error
+		if !errors.As(err, &appErr) || !appErr.Code.Equal(errs.InvalidArgument) {
+			t.Fatalf("want InvalidArgument for empty transfer number, got %v", err)
 		}
 	})
 }
@@ -418,6 +437,19 @@ func seedAll(t *testing.T, ctx context.Context, busDomain dbtest.BusDomain) pape
 	if len(locations) < 2 {
 		t.Fatalf("seed inventory locations: want >=2, got %d", len(locations))
 	}
+
+	// Move locations[1] to warehouseIDs[1] so from/to belong to DIFFERENT
+	// warehouses — without this, TestNewInventoryLocation assigns warehouseIDs[0]
+	// to every location, making BuildTransferSheet_Enriched a vacuous test
+	// (srcWHName == dstWHName).
+	updatedToLoc, err := busDomain.InventoryLocation.Update(ctx, locations[1], inventorylocationbus.UpdateInventoryLocation{
+		WarehouseID: &warehouseIDs[1],
+	})
+	if err != nil {
+		t.Fatalf("update to-location warehouse: %v", err)
+	}
+	locations[1] = updatedToLoc
+
 	fromIDs := []uuid.UUID{locations[0].LocationID}
 	toIDs := []uuid.UUID{locations[1].LocationID}
 
