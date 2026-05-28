@@ -14,7 +14,7 @@ import (
 //
 // Errors:
 //   - empty TaskCode → returned as a regular error (caller should never
-//     pass empty; bus enforces non-empty before calling).
+//     pass empty; the app layer enforces non-empty before calling).
 //   - go-pdf/fpdf failures bubble up wrapped.
 func ReceiveCover(data ReceiveCoverData) ([]byte, error) {
 	if data.TaskCode == "" {

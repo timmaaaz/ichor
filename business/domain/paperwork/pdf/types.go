@@ -2,9 +2,10 @@ package pdf
 
 // PickSheetData holds the rendering inputs for a pick sheet PDF.
 //
-// The renderer is decoupled from sibling-bus types: the bus layer queries
-// ordersbus, transforms the result into PickSheetData, and calls PickSheet.
-// This keeps the pdf package free of cross-domain imports.
+// The renderer is decoupled from sibling-bus types: the app layer
+// (paperworkapp) queries the sibling buses, transforms the results into
+// PickSheetData, and calls PickSheet. This keeps the pdf package free of
+// cross-domain imports.
 type PickSheetData struct {
 	TaskCode     string // Code128 content + plain-text label (e.g. "SO-12345")
 	OrderNumber  string // human-readable order id (e.g. "12345")
