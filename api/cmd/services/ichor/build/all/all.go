@@ -579,6 +579,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 			// Sales domain
 			delegateHandler.RegisterDomain(delegate, ordersbus.DomainName, ordersbus.EntityName)
+			delegateHandler.RegisterDomain(delegate, ordersbus.BindingDomainName, ordersbus.BindingEntityName)
 			delegateHandler.RegisterDomain(delegate, customersbus.DomainName, customersbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, orderlineitemsbus.DomainName, orderlineitemsbus.EntityName)
 			delegateHandler.RegisterDomain(delegate, orderfulfillmentstatusbus.DomainName, orderfulfillmentstatusbus.EntityName)
