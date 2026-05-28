@@ -14,6 +14,7 @@ func parseQueryParams(r *http.Request) (transferorderapp.QueryParams, error) {
 		Rows:           values.Get("rows"),
 		OrderBy:        values.Get("orderBy"),
 		TransferID:     values.Get("transfer_id"),
+		TransferNumber: values.Get("transfer_number"),
 		FromLocationID: values.Get("from_location_id"),
 		ToLocationID:   values.Get("to_location_id"),
 		RequestedByID:  values.Get("requested_by_id"),
