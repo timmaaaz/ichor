@@ -33,6 +33,7 @@ type Storer interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]InventoryLocation, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByID(ctx context.Context, inventoryLocationID uuid.UUID) (InventoryLocation, error)
+	QueryByIDs(ctx context.Context, inventoryLocationIDs []uuid.UUID) ([]InventoryLocation, error)
 }
 
 // Business manages the set of APIs for brand access.
@@ -220,6 +221,21 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 		return 0, fmt.Errorf("count: %w", err)
 	}
 	return count, nil
+}
+
+// QueryByIDs retrieves the inventory locations for the specified IDs in a
+// single query. Missing IDs are absent from the result rather than an error;
+// callers that require every ID to resolve must check the returned length.
+func (b *Business) QueryByIDs(ctx context.Context, inventoryLocationIDs []uuid.UUID) ([]InventoryLocation, error) {
+	ctx, span := otel.AddSpan(ctx, "business.inventorylocationbus.querybyids")
+	defer span.End()
+
+	invLocations, err := b.storer.QueryByIDs(ctx, inventoryLocationIDs)
+	if err != nil {
+		return nil, fmt.Errorf("querybyids: %w", err)
+	}
+
+	return invLocations, nil
 }
 
 // QueryByID retrieves an inventory location by its ID.

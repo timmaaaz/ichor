@@ -33,6 +33,7 @@ func Test_InventoryLocations(t *testing.T) {
 
 	// Run tests
 	unitest.Run(t, query(db.BusDomain, sd), "query")
+	unitest.Run(t, queryByIDs(db.BusDomain, sd), "queryByIDs")
 	unitest.Run(t, create(db.BusDomain, sd), "create")
 	unitest.Run(t, update(db.BusDomain, sd), "update")
 	unitest.Run(t, delete(db.BusDomain, sd), "delete")
@@ -126,6 +127,56 @@ func query(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 			},
 			ExcFunc: func(ctx context.Context) any {
 				got, err := busDomain.InventoryLocation.Query(ctx, inventorylocationbus.QueryFilter{}, inventorylocationbus.DefaultOrderBy, page.MustParse("1", "5"))
+				if err != nil {
+					return err
+				}
+				return got
+			},
+			CmpFunc: func(got, exp interface{}) string {
+				return cmp.Diff(exp, got)
+			},
+		},
+	}
+}
+
+func queryByIDs(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	return []unitest.Table{
+		{
+			// QueryByIDs returns the requested locations ordered by id ASC,
+			// matching the seed order (sd is sorted by LocationID.String()).
+			Name: "QueryByIDs",
+			ExpResp: []inventorylocationbus.InventoryLocation{
+				sd.InventoryLocations[0],
+				sd.InventoryLocations[1],
+				sd.InventoryLocations[2],
+			},
+			ExcFunc: func(ctx context.Context) any {
+				ids := []uuid.UUID{
+					sd.InventoryLocations[0].LocationID,
+					sd.InventoryLocations[1].LocationID,
+					sd.InventoryLocations[2].LocationID,
+				}
+				got, err := busDomain.InventoryLocation.QueryByIDs(ctx, ids)
+				if err != nil {
+					return err
+				}
+				return got
+			},
+			CmpFunc: func(got, exp interface{}) string {
+				return cmp.Diff(exp, got)
+			},
+		},
+		{
+			// Unknown IDs are silently absent from the result (the documented
+			// contract): a request for one real + one missing ID yields only
+			// the real location, not an error.
+			Name: "QueryByIDs_MissingIgnored",
+			ExpResp: []inventorylocationbus.InventoryLocation{
+				sd.InventoryLocations[0],
+			},
+			ExcFunc: func(ctx context.Context) any {
+				ids := []uuid.UUID{sd.InventoryLocations[0].LocationID, uuid.New()}
+				got, err := busDomain.InventoryLocation.QueryByIDs(ctx, ids)
 				if err != nil {
 					return err
 				}
