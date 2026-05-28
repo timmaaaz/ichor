@@ -52,6 +52,9 @@ func Routes(app *web.App, cfg Config) {
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 	app.HandlerFunc(http.MethodGet, version, "/sales/orders/{orders_id}/bindings", api.queryBindings, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
-	app.HandlerFunc(http.MethodDelete, version, "/sales/order-container-bindings/{binding_id}", api.unbindContainer, authen,
+	// Unbind is a state mutation — it sets unbound_at and retains the row for
+	// history, not a deletion — so it is modeled as POST + Actions.Update on the
+	// parent order (matching the repo's state-change convention), not DELETE.
+	app.HandlerFunc(http.MethodPost, version, "/sales/order-container-bindings/{binding_id}/unbind", api.unbindContainer, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 }

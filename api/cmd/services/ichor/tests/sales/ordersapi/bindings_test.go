@@ -197,9 +197,9 @@ func unbindContainer200(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "basic",
-			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s", sd.OrderContainerBindings[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s/unbind", sd.OrderContainerBindings[0].ID),
 			Token:      sd.Admins[0].Token,
-			Method:     http.MethodDelete,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusNoContent,
 		},
 	}
@@ -207,15 +207,15 @@ func unbindContainer200(sd apitest.SeedData) []apitest.Table {
 
 // unbindContainerIdempotent verifies the bus-layer idempotency contract:
 // calling Unbind on an already-unbound binding is a silent no-op (returns
-// 204, not 404). Source of truth: ordersbus.go:336 (ErrAlreadyUnbound is
-// caught inside the bus and swallowed).
+// 204, not 404). Source of truth: ordersbus.UnbindContainer (ErrAlreadyUnbound
+// is caught inside the bus and swallowed).
 func unbindContainerIdempotent(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "double-unbind-still-204",
-			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s", sd.OrderContainerBindings[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s/unbind", sd.OrderContainerBindings[0].ID),
 			Token:      sd.Admins[0].Token,
-			Method:     http.MethodDelete,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusNoContent,
 		},
 	}
@@ -226,9 +226,9 @@ func unbindContainer404(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "unknown-binding",
-			URL:        "/v1/sales/order-container-bindings/00000000-0000-0000-0000-000000000000",
+			URL:        "/v1/sales/order-container-bindings/00000000-0000-0000-0000-000000000000/unbind",
 			Token:      sd.Admins[0].Token,
-			Method:     http.MethodDelete,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusNotFound,
 			GotResp:    &errs.Error{},
 			CmpFunc: func(got, exp any) string {
@@ -250,9 +250,9 @@ func unbindContainer401(sd apitest.SeedData) []apitest.Table {
 	return []apitest.Table{
 		{
 			Name:       "emptytoken",
-			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s", sd.OrderContainerBindings[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s/unbind", sd.OrderContainerBindings[0].ID),
 			Token:      "&nbsp;",
-			Method:     http.MethodDelete,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
 			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token contains an invalid number of segments"),
@@ -261,10 +261,22 @@ func unbindContainer401(sd apitest.SeedData) []apitest.Table {
 			},
 		},
 		{
+			Name:       "badsig",
+			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s/unbind", sd.OrderContainerBindings[0].ID),
+			Token:      sd.Admins[0].Token + "A",
+			Method:     http.MethodPost,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "authentication failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
 			Name:       "readonly-user-no-update",
-			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s", sd.OrderContainerBindings[0].ID),
+			URL:        fmt.Sprintf("/v1/sales/order-container-bindings/%s/unbind", sd.OrderContainerBindings[0].ID),
 			Token:      sd.Users[0].Token,
-			Method:     http.MethodDelete,
+			Method:     http.MethodPost,
 			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
 			ExpResp:    errs.Newf(errs.PermissionDenied, "user does not have permission UPDATE for table: sales.orders"),
@@ -338,6 +350,18 @@ func queryBindings401(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusUnauthorized,
 			GotResp:    &errs.Error{},
 			ExpResp:    errs.Newf(errs.Unauthenticated, "error parsing token: token contains an invalid number of segments"),
+			CmpFunc: func(got, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "badsig",
+			URL:        fmt.Sprintf("/v1/sales/orders/%s/bindings", sd.Orders[3].ID),
+			Token:      sd.Admins[0].Token + "A",
+			Method:     http.MethodGet,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Newf(errs.Unauthenticated, "authentication failed : bindings results[[{[true] map[x:false]}]] ok[true]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
