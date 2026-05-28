@@ -42,10 +42,11 @@ func TestDiscoverScenarios_Smoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discoverScenarios: %v", err)
 	}
-	// We expect exactly 21 scenarios in deployments/scenarios/ as of 2026-05-20.
-	// If this count drifts, either a scenario was added/removed or the
-	// discovery glob broke — investigate, do not blindly update the number.
-	const wantCount = 21
+	// We expect exactly 22 scenarios in deployments/scenarios/ as of 2026-05-28
+	// (e2e-pick-tote added in phase-0g.B7). If this count drifts, either a
+	// scenario was added/removed or the discovery glob broke — investigate, do
+	// not blindly update the number.
+	const wantCount = 22
 	if len(rows) != wantCount {
 		names := make([]string, 0, len(rows))
 		for _, r := range rows {
