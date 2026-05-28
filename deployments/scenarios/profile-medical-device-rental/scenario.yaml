@@ -1,9 +1,10 @@
 name: profile-medical-device-rental
 description: |
   FDA UDI-regulated profile per master spec §3.7 bundle.
-  ⚠ NOTE: 4 of these 8 levers are CURRENTLY DORMANT — useCycleCount, useAdjustment, usePutAway,
-    useInspection do not yet read workflow config (F1.B-E pending). The YAML lands now so no
-    rewrite is needed when F1.B-E ship. Until then, those 4 lever entries are no-ops.
+  ⚠ NOTE: useInspection does not yet read workflow config (F1.E pending). Until F1.E ships,
+    the `inspection.lotScan` entry is a no-op. useCycleCount and useAdjustment are also still
+    pending (F1.B/C) but this profile does not override their levers. The pick/transfer/putaway
+    overrides are LIVE as of F1.A (pick/transfer) and F1.D (putaway) merges.
 
 lever_overrides:
   pick.lotScan: required-if-lot-tracked
@@ -11,6 +12,6 @@ lever_overrides:
   pick.destinationScan: required
   transfer.sourceLocationScan: required
   transfer.destinationScan: required
-  putaway.lotScan: required-if-lot-tracked       # DORMANT (F1.D pending)
-  putaway.destinationLocationScan: required      # DORMANT (F1.D pending)
+  putaway.lotScan: required-if-lot-tracked
+  putaway.destinationLocationScan: required
   inspection.lotScan: required-if-lot-tracked    # DORMANT (F1.E pending)
