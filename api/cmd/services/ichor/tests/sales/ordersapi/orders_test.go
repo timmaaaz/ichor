@@ -29,4 +29,22 @@ func Test_Order(t *testing.T) {
 
 	test.Run(t, delete200(sd), "delete-200")
 	test.Run(t, delete401(sd), "delete-401")
+
+	// =========================================================================
+	// Order container bindings (Phase 0g.B7)
+	// =========================================================================
+	test.Run(t, bindContainer200(sd), "bind-container-200")
+	test.Run(t, bindContainer409(sd), "bind-container-409")
+	test.Run(t, bindContainer400(sd), "bind-container-400")
+	test.Run(t, bindContainer404(sd), "bind-container-404")
+	test.Run(t, bindContainer401(sd), "bind-container-401")
+
+	test.Run(t, unbindContainer200(sd), "unbind-container-200")
+	test.Run(t, unbindContainerIdempotent(sd), "unbind-container-idempotent")
+	test.Run(t, unbindContainer404(sd), "unbind-container-404")
+	test.Run(t, unbindContainer401(sd), "unbind-container-401")
+
+	test.Run(t, queryBindings200(sd), "query-bindings-200")
+	test.Run(t, queryBindingsEmpty(sd), "query-bindings-empty")
+	test.Run(t, queryBindings401(sd), "query-bindings-401")
 }
