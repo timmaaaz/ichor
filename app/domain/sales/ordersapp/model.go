@@ -483,3 +483,97 @@ func toBusUpdateOrder(app UpdateOrder) (ordersbus.UpdateOrder, error) {
 	}
 	return bus, nil
 }
+
+// =============================================================================
+// Order container binding types (Phase 0g.B7)
+// =============================================================================
+
+// OrderContainerBinding is the API-facing shape of an order↔container binding.
+// Active bindings have empty UnboundAt; historical bindings retain the unbind
+// timestamp. The bus-layer source-of-truth lives at
+// business/domain/sales/ordersbus/model.go:87-94.
+type OrderContainerBinding struct {
+	ID               string `json:"id"`
+	OrderID          string `json:"order_id"`
+	ContainerLabelID string `json:"container_label_id"`
+	BoundAt          string `json:"bound_at"`
+	UnboundAt        string `json:"unbound_at,omitempty"`
+	ScenarioID       string `json:"scenario_id,omitempty"`
+}
+
+// Encode implements the web.Encoder interface.
+func (app OrderContainerBinding) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// OrderContainerBindings is a slice wrapper so it implements web.Encoder directly.
+type OrderContainerBindings []OrderContainerBinding
+
+// Encode implements the web.Encoder interface.
+func (app OrderContainerBindings) Encode() ([]byte, string, error) {
+	data, err := json.Marshal(app)
+	return data, "application/json", err
+}
+
+// ToAppOrderContainerBinding converts a bus binding to its API shape.
+func ToAppOrderContainerBinding(bus ordersbus.OrderContainerBinding) OrderContainerBinding {
+	app := OrderContainerBinding{
+		ID:               bus.ID.String(),
+		OrderID:          bus.OrderID.String(),
+		ContainerLabelID: bus.ContainerLabelID.String(),
+		BoundAt:          bus.BoundAt.Format(time.RFC3339),
+	}
+	if bus.UnboundAt != nil {
+		app.UnboundAt = bus.UnboundAt.Format(time.RFC3339)
+	}
+	if bus.ScenarioID != nil {
+		app.ScenarioID = bus.ScenarioID.String()
+	}
+	return app
+}
+
+// ToAppOrderContainerBindings converts a slice of bus bindings to API shape.
+func ToAppOrderContainerBindings(bus []ordersbus.OrderContainerBinding) []OrderContainerBinding {
+	out := make([]OrderContainerBinding, len(bus))
+	for i, b := range bus {
+		out[i] = ToAppOrderContainerBinding(b)
+	}
+	return out
+}
+
+// =============================================================================
+
+// NewOrderContainerBinding is the POST body shape for binding a container to
+// an order. OrderID is supplied via URL path, not body. ScenarioID is omitted
+// from the body — the bus layer auto-tags from request context if a scenario
+// filter is active (matches Order.Create behavior).
+type NewOrderContainerBinding struct {
+	ContainerLabelID string `json:"container_label_id" validate:"required,uuid4"`
+}
+
+// Decode implements the decoder interface.
+func (app *NewOrderContainerBinding) Decode(data []byte) error {
+	return json.Unmarshal(data, &app)
+}
+
+// Validate runs the struct-tag validation rules.
+func (app NewOrderContainerBinding) Validate() error {
+	if err := errs.Check(app); err != nil {
+		return errs.Newf(errs.InvalidArgument, "validate: %s", err)
+	}
+	return nil
+}
+
+// toBusNewOrderContainerBinding converts the app-layer body + URL-derived
+// orderID into the bus-layer input. Parse failures surface as InvalidArgument.
+func toBusNewOrderContainerBinding(app NewOrderContainerBinding, orderID uuid.UUID) (ordersbus.NewOrderContainerBinding, error) {
+	containerLabelID, err := uuid.Parse(app.ContainerLabelID)
+	if err != nil {
+		return ordersbus.NewOrderContainerBinding{}, errs.Newf(errs.InvalidArgument, "parse containerLabelID: %s", err)
+	}
+	return ordersbus.NewOrderContainerBinding{
+		OrderID:          orderID,
+		ContainerLabelID: containerLabelID,
+	}, nil
+}
