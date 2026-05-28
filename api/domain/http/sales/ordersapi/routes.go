@@ -44,4 +44,14 @@ func Routes(app *web.App, cfg Config) {
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Delete, auth.RuleAny))
 	app.HandlerFunc(http.MethodPost, version, "/sales/orders/{orders_id}/complete-packing", api.completePacking, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+
+	// =========================================================================
+	// Order container bindings (Phase 0g.B7)
+	// =========================================================================
+	app.HandlerFunc(http.MethodPost, version, "/sales/orders/{orders_id}/bindings", api.bindContainer, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
+	app.HandlerFunc(http.MethodGet, version, "/sales/orders/{orders_id}/bindings", api.queryBindings, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
+	app.HandlerFunc(http.MethodDelete, version, "/sales/order-container-bindings/{binding_id}", api.unbindContainer, authen,
+		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Update, auth.RuleAny))
 }
