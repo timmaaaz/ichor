@@ -15,6 +15,11 @@ func applyFilter(filter transferorderbus.QueryFilter, data map[string]any, buf *
 		wc = append(wc, "id = :id")
 	}
 
+	if filter.TransferNumber != nil {
+		data["transfer_number"] = *filter.TransferNumber
+		wc = append(wc, "transfer_number = :transfer_number")
+	}
+
 	if filter.ProductID != nil {
 		data["product_id"] = *filter.ProductID
 		wc = append(wc, "product_id = :product_id")

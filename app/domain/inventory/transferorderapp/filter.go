@@ -20,6 +20,10 @@ func parseFilter(qp QueryParams) (transferorderbus.QueryFilter, error) {
 		filter.TransferID = &id
 	}
 
+	if qp.TransferNumber != "" {
+		filter.TransferNumber = &qp.TransferNumber
+	}
+
 	if qp.ProductID != "" {
 		id, err := uuid.Parse(qp.ProductID)
 		if err != nil {
