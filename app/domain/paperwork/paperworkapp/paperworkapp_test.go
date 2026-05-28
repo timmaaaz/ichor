@@ -59,6 +59,12 @@ type paperworkSeed struct {
 	purchaseOrder purchaseorderbus.PurchaseOrder
 	transferOrder transferorderbus.TransferOrder
 
+	// transferOrderNoNum is a second, dedicated transfer order reserved for the
+	// TransferNumberMissing sub-test, which clears its TransferNumber. Keeping
+	// it separate from transferOrder means no sub-test mutates a fixture another
+	// reads, so the transfer sub-tests are order-independent.
+	transferOrderNoNum transferorderbus.TransferOrder
+
 	// enrichment fields (F4)
 	customerName  string
 	pickTaskCount int
@@ -220,12 +226,12 @@ func TestPaperworkApp_Integration(t *testing.T) {
 		}
 	})
 
-	// BuildTransferSheet_TransferNumberMissing must run last among transfer
-	// sub-tests because it mutates the shared seed's transfer order (clears
-	// TransferNumber). Other transfer sub-tests depend on a non-empty number.
+	// BuildTransferSheet_TransferNumberMissing clears the TransferNumber on a
+	// dedicated transfer order (seed.transferOrderNoNum), so it no longer
+	// depends on running last or on any other transfer sub-test's state.
 	t.Run("BuildTransferSheet_TransferNumberMissing", func(t *testing.T) {
 		empty := ""
-		updated, err := db.BusDomain.TransferOrder.Update(ctx, seed.transferOrder, transferorderbus.UpdateTransferOrder{TransferNumber: &empty})
+		updated, err := db.BusDomain.TransferOrder.Update(ctx, seed.transferOrderNoNum, transferorderbus.UpdateTransferOrder{TransferNumber: &empty})
 		if err != nil {
 			t.Fatalf("clear transfer number: %v", err)
 		}
@@ -453,9 +459,15 @@ func seedAll(t *testing.T, ctx context.Context, busDomain dbtest.BusDomain) pape
 	fromIDs := []uuid.UUID{locations[0].LocationID}
 	toIDs := []uuid.UUID{locations[1].LocationID}
 
-	tos, err := transferorderbus.TestSeedTransferOrders(ctx, 1, productIDs, fromIDs, toIDs, userIDs[:3], userIDs[3:], nil, busDomain.TransferOrder)
+	// Seed two transfer orders: tos[0] is the shared fixture the happy-path
+	// transfer sub-tests render; tos[1] is dedicated to the destructive
+	// TransferNumberMissing sub-test (see paperworkSeed.transferOrderNoNum).
+	tos, err := transferorderbus.TestSeedTransferOrders(ctx, 2, productIDs, fromIDs, toIDs, userIDs[:3], userIDs[3:], nil, busDomain.TransferOrder)
 	if err != nil {
 		t.Fatalf("seed transfer orders: %v", err)
+	}
+	if len(tos) < 2 {
+		t.Fatalf("seed transfer orders: want >=2, got %d", len(tos))
 	}
 
 	// LINE ITEM FULFILLMENT STATUSES (FK for sales order line items + pick tasks)
@@ -567,14 +579,15 @@ func seedAll(t *testing.T, ctx context.Context, busDomain dbtest.BusDomain) pape
 	}
 
 	return paperworkSeed{
-		order:         orders[0],
-		purchaseOrder: pos[0],
-		transferOrder: tos[0],
-		customerName:  customers[0].Name,
-		pickTaskCount: len(pickTasks),
-		vendorName:    suppliers[0].Name,
-		srcWHName:     srcWH.Name,
-		dstWHName:     dstWH.Name,
+		order:              orders[0],
+		purchaseOrder:      pos[0],
+		transferOrder:      tos[0],
+		transferOrderNoNum: tos[1],
+		customerName:       customers[0].Name,
+		pickTaskCount:      len(pickTasks),
+		vendorName:         suppliers[0].Name,
+		srcWHName:          srcWH.Name,
+		dstWHName:          dstWH.Name,
 	}
 }
 
@@ -612,5 +625,69 @@ func TestTaskCodeFor_Idempotent_ViaBuildPickSheet(t *testing.T) {
 	}
 	if bytes.Contains(got, []byte("SO-"+overlay)) {
 		t.Fatalf("PDF contains double-prefixed task code %q (taskCodeFor not idempotent)", "SO-"+overlay)
+	}
+}
+
+// TestBuildPickSheet_ExcludesTerminalTasks verifies that BuildPickSheet lists
+// only work still to be done: once every pick task for an order reaches a
+// terminal status, the rendered sheet must contain none of their product SKUs.
+// Guards the active-only status filter in BuildPickSheet against regression
+// (a re-printed sheet must never show already-handled lines as actionable).
+func TestBuildPickSheet_ExcludesTerminalTasks(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "TestBuildPickSheet_ExcludesTerminalTasks")
+	app := newTestApp(db)
+
+	ctx := context.Background()
+	seed := seedAll(t, ctx, db.BusDomain)
+
+	// Collect the seeded tasks and the SKUs they reference.
+	tasks, err := db.BusDomain.PickTask.Query(ctx, picktaskbus.QueryFilter{SalesOrderID: &seed.order.ID}, picktaskbus.DefaultOrderBy, page.MustParse("1", "1000"))
+	if err != nil {
+		t.Fatalf("query pick tasks: %v", err)
+	}
+	if len(tasks) == 0 {
+		t.Fatal("no pick tasks seeded — exclusion test is vacuous")
+	}
+	skus := make([]string, 0, len(tasks))
+	for _, tk := range tasks {
+		prod, err := db.BusDomain.Product.QueryByID(ctx, tk.ProductID)
+		if err != nil {
+			t.Fatalf("query product %s: %v", tk.ProductID, err)
+		}
+		skus = append(skus, prod.SKU)
+	}
+
+	// Baseline: while the tasks are pending, their SKUs appear on the sheet.
+	before, err := app.BuildPickSheet(ctx, paperworkapp.PickSheetRequest{OrderID: seed.order.ID})
+	if err != nil {
+		t.Fatalf("BuildPickSheet (baseline): %v", err)
+	}
+	for _, sku := range skus {
+		if !bytes.Contains(before, []byte(sku)) {
+			t.Fatalf("baseline pick sheet missing SKU %q for a pending task", sku)
+		}
+	}
+
+	// Drive every task to a terminal status.
+	cancelled := picktaskbus.Statuses.Cancelled
+	for _, tk := range tasks {
+		if _, err := db.BusDomain.PickTask.Update(ctx, tk, picktaskbus.UpdatePickTask{Status: &cancelled}); err != nil {
+			t.Fatalf("cancel pick task %s: %v", tk.ID, err)
+		}
+	}
+
+	after, err := app.BuildPickSheet(ctx, paperworkapp.PickSheetRequest{OrderID: seed.order.ID})
+	if err != nil {
+		t.Fatalf("BuildPickSheet (after cancel): %v", err)
+	}
+	if !bytes.HasPrefix(after, pdfMagic) {
+		t.Fatalf("pick sheet output does not start with %%PDF- (first 8 bytes: %q)", firstN(after, 8))
+	}
+	for _, sku := range skus {
+		if bytes.Contains(after, []byte(sku)) {
+			t.Errorf("pick sheet still contains SKU %q after its task was cancelled; terminal tasks must be excluded", sku)
+		}
 	}
 }

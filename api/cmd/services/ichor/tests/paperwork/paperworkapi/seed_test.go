@@ -170,7 +170,10 @@ type paperworkEntities struct {
 // methods need: addresses (region/city/street), contact info, currency,
 // customers, suppliers, warehouses, zones, locations, brands, categories,
 // products, statuses — plus exactly one Order, PurchaseOrder, and
-// TransferOrder. Mirrors paperworkapp_test.go's seedAll one-for-one.
+// TransferOrder. Unlike paperworkapp_test.go's seedAll, it does NOT seed the
+// enrichment children (pick tasks, order/PO line items): these API tests assert
+// on HTTP plumbing and task codes, while seedAll also asserts on enriched line
+// content and so seeds the deeper chain.
 //
 // All seeding happens in a single function so currency, status, and other
 // fixed-code seeders are invoked exactly once — calling them twice in the

@@ -3,8 +3,10 @@ package paperworkapp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
@@ -22,9 +24,9 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
-// Sentinel errors surfaced for HTTP-shape mapping. Relocated from
-// paperworkbus in Phase 0g.F4-enrichment when cross-domain orchestration
-// moved to this layer (reverses D-CONV-3; see docs/arch/paperwork.md).
+// Sentinel errors surfaced for HTTP-shape mapping. Relocated from the deleted
+// paperworkbus in Phase 0g.F4-enrichment, when cross-domain orchestration moved
+// to the app layer to match directedworkapp/supervisorkpiapp/scanapp.
 var (
 	ErrOrderNotFound         = errors.New("paperwork: order not found")
 	ErrPONotFound            = errors.New("paperwork: purchase order not found")
@@ -89,28 +91,58 @@ func (a *App) BuildPickSheet(ctx context.Context, req PickSheetRequest) ([]byte,
 		if errors.Is(err, ordersbus.ErrNotFound) {
 			return nil, errs.New(errs.NotFound, ErrOrderNotFound)
 		}
-		return nil, errs.Newf(errs.Internal, "buildpicksheet: order: %s", err)
+		return nil, a.internal(ctx, "buildpicksheet: order", err)
 	}
 
 	customer, err := a.customers.QueryByID(ctx, order.CustomerID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildpicksheet: customer: %s", err)
+		return nil, a.internal(ctx, "buildpicksheet: customer", err)
 	}
 
-	tasks, err := a.pickTasks.Query(ctx, picktaskbus.QueryFilter{SalesOrderID: &order.ID}, picktaskbus.DefaultOrderBy, page.MustParse("1", "500"))
+	// One sales order never approaches 1000 distinct pick tasks; the high
+	// ceiling matches pickingapp's order-scoped "fetch all" queries and keeps
+	// the sheet from silently dropping lines (a missed line = a missed pick).
+	tasks, err := a.pickTasks.Query(ctx, picktaskbus.QueryFilter{SalesOrderID: &order.ID}, picktaskbus.DefaultOrderBy, page.MustParse("1", "1000"))
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildpicksheet: picktasks: %s", err)
+		return nil, a.internal(ctx, "buildpicksheet: picktasks", err)
 	}
 
-	lines := make([]pdf.PickSheetLine, 0, len(tasks))
+	// A pick sheet lists work still to be done. Skip terminal tasks so a
+	// re-printed sheet never shows already-picked, short-picked, or voided
+	// lines as if they still need picking, and collect the IDs to resolve.
+	active := make([]picktaskbus.PickTask, 0, len(tasks))
+	productIDs := make([]uuid.UUID, 0, len(tasks))
+	locationIDs := make([]uuid.UUID, 0, len(tasks))
 	for _, tk := range tasks {
-		prod, err := a.products.QueryByID(ctx, tk.ProductID)
-		if err != nil {
-			return nil, errs.Newf(errs.Internal, "buildpicksheet: product: %s", err)
+		switch tk.Status {
+		case picktaskbus.Statuses.Completed, picktaskbus.Statuses.ShortPicked, picktaskbus.Statuses.Cancelled:
+			continue
 		}
-		loc, err := a.inventoryLocations.QueryByID(ctx, tk.LocationID)
-		if err != nil {
-			return nil, errs.Newf(errs.Internal, "buildpicksheet: location: %s", err)
+		active = append(active, tk)
+		productIDs = append(productIDs, tk.ProductID)
+		locationIDs = append(locationIDs, tk.LocationID)
+	}
+
+	// Resolve every product and location in one batched query each, rather than
+	// two per task (avoids N+1).
+	productByID, err := a.productsByID(ctx, "buildpicksheet", productIDs)
+	if err != nil {
+		return nil, err
+	}
+	locationByID, err := a.locationsByID(ctx, "buildpicksheet", locationIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := make([]pdf.PickSheetLine, 0, len(active))
+	for _, tk := range active {
+		prod, ok := productByID[tk.ProductID]
+		if !ok {
+			return nil, a.internal(ctx, "buildpicksheet: product", fmt.Errorf("product %s not found for pick task %s", tk.ProductID, tk.ID))
+		}
+		loc, ok := locationByID[tk.LocationID]
+		if !ok {
+			return nil, a.internal(ctx, "buildpicksheet: location", fmt.Errorf("location %s not found for pick task %s", tk.LocationID, tk.ID))
 		}
 		lines = append(lines, pdf.PickSheetLine{
 			LocationCode: derefStr(loc.LocationCode),
@@ -129,7 +161,7 @@ func (a *App) BuildPickSheet(ctx context.Context, req PickSheetRequest) ([]byte,
 	}
 	out, err := pdf.PickSheet(data)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildpicksheet: render: %s", err)
+		return nil, a.internal(ctx, "buildpicksheet: render", err)
 	}
 	return out, nil
 }
@@ -141,28 +173,47 @@ func (a *App) BuildReceiveCover(ctx context.Context, req ReceiveCoverRequest) ([
 		if errors.Is(err, purchaseorderbus.ErrNotFound) {
 			return nil, errs.New(errs.NotFound, ErrPONotFound)
 		}
-		return nil, errs.Newf(errs.Internal, "buildreceivecover: po: %s", err)
+		return nil, a.internal(ctx, "buildreceivecover: po", err)
 	}
 
 	supplier, err := a.suppliers.QueryByID(ctx, po.SupplierID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildreceivecover: supplier: %s", err)
+		return nil, a.internal(ctx, "buildreceivecover: supplier", err)
 	}
 
 	lineItems, err := a.purchaseLines.QueryByPurchaseOrderID(ctx, po.ID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildreceivecover: purchase lines: %s", err)
+		return nil, a.internal(ctx, "buildreceivecover: purchase lines", err)
+	}
+
+	// Resolve every supplier product, then every underlying product, in one
+	// batched query each rather than two per line (avoids N+1).
+	spIDs := make([]uuid.UUID, len(lineItems))
+	for i, li := range lineItems {
+		spIDs[i] = li.SupplierProductID
+	}
+	supplierProductByID, err := a.supplierProductsByID(ctx, "buildreceivecover", spIDs)
+	if err != nil {
+		return nil, err
+	}
+	productIDs := make([]uuid.UUID, 0, len(supplierProductByID))
+	for _, sp := range supplierProductByID {
+		productIDs = append(productIDs, sp.ProductID)
+	}
+	productByID, err := a.productsByID(ctx, "buildreceivecover", productIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	lines := make([]pdf.ReceiveCoverLine, 0, len(lineItems))
 	for _, li := range lineItems {
-		sp, err := a.supplierProducts.QueryByID(ctx, li.SupplierProductID)
-		if err != nil {
-			return nil, errs.Newf(errs.Internal, "buildreceivecover: supplier product: %s", err)
+		sp, ok := supplierProductByID[li.SupplierProductID]
+		if !ok {
+			return nil, a.internal(ctx, "buildreceivecover: supplier product", fmt.Errorf("supplier product %s referenced by a po line not found", li.SupplierProductID))
 		}
-		prod, err := a.products.QueryByID(ctx, sp.ProductID)
-		if err != nil {
-			return nil, errs.Newf(errs.Internal, "buildreceivecover: product: %s", err)
+		prod, ok := productByID[sp.ProductID]
+		if !ok {
+			return nil, a.internal(ctx, "buildreceivecover: product", fmt.Errorf("product %s not found for supplier product %s", sp.ProductID, sp.SupplierProductID))
 		}
 		lines = append(lines, pdf.ReceiveCoverLine{
 			SKU:         prod.SKU,
@@ -181,7 +232,7 @@ func (a *App) BuildReceiveCover(ctx context.Context, req ReceiveCoverRequest) ([
 	}
 	out, err := pdf.ReceiveCover(data)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildreceivecover: render: %s", err)
+		return nil, a.internal(ctx, "buildreceivecover: render", err)
 	}
 	return out, nil
 }
@@ -193,7 +244,7 @@ func (a *App) BuildTransferSheet(ctx context.Context, req TransferSheetRequest) 
 		if errors.Is(err, transferorderbus.ErrNotFound) {
 			return nil, errs.New(errs.NotFound, ErrTransferNotFound)
 		}
-		return nil, errs.Newf(errs.Internal, "buildtransfersheet: transfer: %s", err)
+		return nil, a.internal(ctx, "buildtransfersheet: transfer", err)
 	}
 
 	if to.TransferNumber == nil || *to.TransferNumber == "" {
@@ -203,27 +254,27 @@ func (a *App) BuildTransferSheet(ctx context.Context, req TransferSheetRequest) 
 
 	fromLoc, err := a.inventoryLocations.QueryByID(ctx, to.FromLocationID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildtransfersheet: from location: %s", err)
+		return nil, a.internal(ctx, "buildtransfersheet: from location", err)
 	}
 
 	toLoc, err := a.inventoryLocations.QueryByID(ctx, to.ToLocationID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildtransfersheet: to location: %s", err)
+		return nil, a.internal(ctx, "buildtransfersheet: to location", err)
 	}
 
 	fromWH, err := a.warehouses.QueryByID(ctx, fromLoc.WarehouseID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildtransfersheet: from warehouse: %s", err)
+		return nil, a.internal(ctx, "buildtransfersheet: from warehouse", err)
 	}
 
 	toWH, err := a.warehouses.QueryByID(ctx, toLoc.WarehouseID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildtransfersheet: to warehouse: %s", err)
+		return nil, a.internal(ctx, "buildtransfersheet: to warehouse", err)
 	}
 
 	prod, err := a.products.QueryByID(ctx, to.ProductID)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildtransfersheet: product: %s", err)
+		return nil, a.internal(ctx, "buildtransfersheet: product", err)
 	}
 
 	lines := []pdf.TransferSheetLine{
@@ -245,7 +296,7 @@ func (a *App) BuildTransferSheet(ctx context.Context, req TransferSheetRequest) 
 	}
 	out, err := pdf.TransferSheet(data)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "buildtransfersheet: render: %s", err)
+		return nil, a.internal(ctx, "buildtransfersheet: render", err)
 	}
 	return out, nil
 }
@@ -258,6 +309,75 @@ func (a *App) BuildTransferSheet(ctx context.Context, req TransferSheetRequest) 
 //	taskCodeFor("SO", "SO-12345") → "SO-12345"
 func taskCodeFor(prefix, value string) string {
 	return prefix + "-" + strings.TrimPrefix(value, prefix+"-")
+}
+
+// internal logs a server-side paperwork failure (a primary-query DB error, a
+// secondary cross-domain-join failure, or a render fault) and returns an opaque
+// errs.Internal. The detail is recorded for debugging but never surfaced to the
+// client — mirroring directedworkapp's observable-anomaly logging. Secondary
+// joins route here on purpose: a broken FK (e.g. an order referencing a missing
+// customer) is a server-side data-integrity problem, not a client 404.
+func (a *App) internal(ctx context.Context, op string, err error) error {
+	a.log.Error(ctx, "paperwork: "+op, "error", err)
+	return errs.Newf(errs.Internal, "%s: %s", op, err)
+}
+
+// productsByID resolves products in a single batched query, keyed by product
+// ID. ids may contain duplicates. A query failure is logged and surfaced as
+// errs.Internal (op identifies the calling sheet).
+func (a *App) productsByID(ctx context.Context, op string, ids []uuid.UUID) (map[uuid.UUID]productbus.Product, error) {
+	prods, err := a.products.QueryByIDs(ctx, dedupe(ids))
+	if err != nil {
+		return nil, a.internal(ctx, op+": products", err)
+	}
+	m := make(map[uuid.UUID]productbus.Product, len(prods))
+	for _, p := range prods {
+		m[p.ProductID] = p
+	}
+	return m, nil
+}
+
+// locationsByID resolves inventory locations in a single batched query, keyed
+// by location ID. ids may contain duplicates.
+func (a *App) locationsByID(ctx context.Context, op string, ids []uuid.UUID) (map[uuid.UUID]inventorylocationbus.InventoryLocation, error) {
+	locs, err := a.inventoryLocations.QueryByIDs(ctx, dedupe(ids))
+	if err != nil {
+		return nil, a.internal(ctx, op+": locations", err)
+	}
+	m := make(map[uuid.UUID]inventorylocationbus.InventoryLocation, len(locs))
+	for _, l := range locs {
+		m[l.LocationID] = l
+	}
+	return m, nil
+}
+
+// supplierProductsByID resolves supplier products in a single batched query,
+// keyed by supplier-product ID. ids may contain duplicates.
+func (a *App) supplierProductsByID(ctx context.Context, op string, ids []uuid.UUID) (map[uuid.UUID]supplierproductbus.SupplierProduct, error) {
+	sps, err := a.supplierProducts.QueryByIDs(ctx, dedupe(ids))
+	if err != nil {
+		return nil, a.internal(ctx, op+": supplier products", err)
+	}
+	m := make(map[uuid.UUID]supplierproductbus.SupplierProduct, len(sps))
+	for _, sp := range sps {
+		m[sp.SupplierProductID] = sp
+	}
+	return m, nil
+}
+
+// dedupe returns the unique IDs in ids. Order is not preserved; the result
+// feeds an IN-clause and a lookup map, neither of which is order-sensitive.
+func dedupe(ids []uuid.UUID) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
 
 // derefStr returns the pointed-to string or "" if nil.
