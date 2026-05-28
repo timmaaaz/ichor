@@ -10,11 +10,12 @@ CORE ARCHITECTURE:
 THREE-TIER MODEL:
 
 1. TIER 1: Platform (baseline - seeded first)
-   - Step 1: `make migrate` runs seed.sql
+   - Step 1: `make migrate` applies schema migrations (migrate.sql) - schema only
+   - Step 2: `make seed` runs seed.sql
      * Geography: countries, regions, timezones
      * Core entities: currencies, admin_gopher user, ZZZADMIN role
      * Platform config: approval statuses, payment terms, table access
-   - Step 2: `make seed-platform` runs Go InsertPlatformConfig()
+   - Step 3: `make seed-platform` runs Go InsertPlatformConfig()
      * Page configs, form definitions, table builder configs
      * Workflow templates, alerts
      * Uses admin_gopher (hardcoded UUID from seed.sql) as created_by
