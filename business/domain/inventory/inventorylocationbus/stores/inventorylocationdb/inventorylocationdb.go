@@ -206,3 +206,40 @@ func (s *Store) QueryByID(ctx context.Context, id uuid.UUID) (inventorylocationb
 
 	return toBusInvLocation(dbIL)
 }
+
+// QueryByIDs retrieves the inventory locations for the specified IDs in a
+// single query. Missing IDs are simply absent from the result (no error), so
+// callers that require every ID to resolve must check the returned length.
+func (s *Store) QueryByIDs(ctx context.Context, ids []uuid.UUID) ([]inventorylocationbus.InventoryLocation, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	uuidStrings := make([]string, len(ids))
+	for i, id := range ids {
+		uuidStrings[i] = id.String()
+	}
+
+	data := struct {
+		IDs []string `db:"ids"`
+	}{
+		IDs: uuidStrings,
+	}
+
+	const q = `
+    SELECT
+        id, zone_id, warehouse_id, aisle, rack, shelf, bin, location_code, is_pick_location,
+        is_reserve_location, max_capacity, current_utilization, created_date, updated_date
+    FROM
+        inventory.inventory_locations
+    WHERE
+        id IN (:ids)
+    ORDER BY id ASC`
+
+	var dbILS []inventoryLocation
+	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &dbILS); err != nil {
+		return nil, fmt.Errorf("namedqueryslice: %w", err)
+	}
+
+	return toBusInvLocations(dbILS)
+}
