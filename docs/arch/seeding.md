@@ -65,7 +65,7 @@ Users:
 ```
 admin_gopher   id=5cf37266-3473-4006-984f-9325122678b7  roles={ADMIN}  email=admin@example.com
 user_gopher    id=45b5fbd3-755f-4379-8f07-a58d4a30fa2f  roles={USER}   email=user@example.com
-floor_worker1  id=c0000000-0000-4000-8000-000000000001  roles={USER}   email=floor_worker1@example.com  password=admin123
+floor_worker1  id=c0000000-0000-4000-8000-000000000001  roles={USER}   email=floor_worker1@example.com  password=gophers
 ```
 
 Roles:
@@ -135,7 +135,7 @@ manager1, manager2, finance_admin, hr_admin, employee1–4,
 readonly, temp_admin, sales_east, sales_west,
 it_systems, it_dev, accounting, payroll, recruitment, benefits
 ```
-All use password hash for `admin123` except admin_gopher.
+All seeded users authenticate with password `gophers` (admin_gopher's hash uses a different salt, but the same password).
 
 ### Stable from seedmodels (seeded via InsertSeedData / TestSeed chain)
 
