@@ -567,7 +567,7 @@ func Test_Load_ShippedScenario_CycleCountVarianceOver(t *testing.T) {
 
 // Test_Load_AllShippedScenarios is the umbrella regression alarm for every
 // shipped scenario under deployments/scenarios/. It iterates every scenario
-// seeded by InsertSeedDataWithDB (today: 19, auto-detects future additions),
+// seeded by InsertSeedDataWithDB (today: 22, auto-detects future additions),
 // invokes Load() on each in turn, and asserts row-count parity between
 // inventory.scenario_fixtures (the authored fixture rows) and each populated
 // target table (the materialised live rows).
