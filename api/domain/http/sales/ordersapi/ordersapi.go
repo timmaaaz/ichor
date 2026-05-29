@@ -121,3 +121,50 @@ func (api *api) completePacking(ctx context.Context, r *http.Request) web.Encode
 
 	return result
 }
+
+// =============================================================================
+// Order container bindings (Phase 0g.B7)
+// =============================================================================
+
+func (api *api) bindContainer(ctx context.Context, r *http.Request) web.Encoder {
+	var app ordersapp.NewOrderContainerBinding
+	if err := web.Decode(r, &app); err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	orderID, err := uuid.Parse(web.Param(r, "orders_id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	binding, err := api.ordersapp.BindContainer(ctx, orderID, app)
+	if err != nil {
+		return errs.NewError(err)
+	}
+	return binding
+}
+
+func (api *api) unbindContainer(ctx context.Context, r *http.Request) web.Encoder {
+	bindingID, err := uuid.Parse(web.Param(r, "binding_id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	if err := api.ordersapp.UnbindContainer(ctx, bindingID); err != nil {
+		return errs.NewError(err)
+	}
+	return nil
+}
+
+func (api *api) queryBindings(ctx context.Context, r *http.Request) web.Encoder {
+	orderID, err := uuid.Parse(web.Param(r, "orders_id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	bindings, err := api.ordersapp.QueryActiveBindingsByOrder(ctx, orderID)
+	if err != nil {
+		return errs.NewError(err)
+	}
+	return bindings
+}

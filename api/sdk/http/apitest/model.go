@@ -16,7 +16,6 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/domain/config/pagecontentapp"
 	"github.com/timmaaaz/ichor/app/domain/core/contactinfosapp"
-	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
 	"github.com/timmaaaz/ichor/app/domain/core/paymenttermapp"
 	"github.com/timmaaaz/ichor/app/domain/core/roleapp"
@@ -31,22 +30,22 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/hr/officeapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/reportstoapp"
 	"github.com/timmaaaz/ichor/app/domain/hr/titleapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/cyclecountitemapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/cyclecountsessionapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inspectionapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryadjustmentapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventoryitemapp"
-	"github.com/timmaaaz/ichor/app/domain/labels/labelapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorylocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/inventorytransactionapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/lotlocationapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/lottrackingsapp"
-	"github.com/timmaaaz/ichor/app/domain/inventory/cyclecountitemapp"
-	"github.com/timmaaaz/ichor/app/domain/inventory/cyclecountsessionapp"
-	"github.com/timmaaaz/ichor/app/domain/inventory/serialnumberapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/picktaskapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/putawaytaskapp"
+	"github.com/timmaaaz/ichor/app/domain/inventory/serialnumberapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/transferorderapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/warehouseapp"
 	"github.com/timmaaaz/ichor/app/domain/inventory/zoneapp"
+	"github.com/timmaaaz/ichor/app/domain/labels/labelapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemapp"
 	"github.com/timmaaaz/ichor/app/domain/procurement/purchaseorderlineitemstatusapp"
@@ -66,6 +65,7 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/orderlineitemsapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
+	"github.com/timmaaaz/ichor/business/domain/core/currencybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/countrybus"
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
@@ -86,84 +86,85 @@ type User struct {
 
 // SeedData represents users for api tests.
 type SeedData struct {
-	Users                       []User
-	Admins                      []User
-	Countries                   []countrybus.Country
-	Regions                     []regionbus.Region
-	Cities                      []cityapp.City
-	Streets                     []streetapp.Street
-	Timezones                   []timezoneapp.Timezone
-	ValidAssets                 []validassetapp.ValidAsset
-	AssetTypes                  []assettypeapp.AssetType
-	AssetConditions             []assetconditionapp.AssetCondition
-	ApprovalStatuses            []approvalstatusapp.ApprovalStatus
-	UserApprovalStatuses        []approvalapp.UserApprovalStatus
-	UserApprovalComments        []commentapp.UserApprovalComment
-	FulfillmentStatuses         []fulfillmentstatusapp.FulfillmentStatus
-	Tags                        []tagapp.Tag
-	AssetTags                   []assettagapp.AssetTag
-	Titles                      []titleapp.Title
-	ReportsTo                   []reportstoapp.ReportsTo
-	Offices                     []officeapp.Office
-	UserAssets                  []userassetapp.UserAsset
-	Assets                      []assetapp.Asset
-	ContactInfos                []contactinfosapp.ContactInfos
-	PaymentTerms                []paymenttermapp.PaymentTerm
-	Currencies                  []currencybus.Currency
-	Customers                   []customersapp.Customers
-	Brands                      []brandapp.Brand
-	ProductCategories           []productcategoryapp.ProductCategory
-	Warehouses                  []warehouseapp.Warehouse
-	Roles                       []roleapp.Role
-	Pages                       []pageapp.Page
-	RolePages                   []rolepageapp.RolePage
-	UserRoles                   []userroleapp.UserRole
-	TableAccesses               []tableaccessapp.TableAccess
-	Products                    []productapp.Product
-	ProductUOMs                 []productuomapp.ProductUOM
-	PhysicalAttributes          []physicalattributeapp.PhysicalAttribute
-	ProductCosts                []productcostapp.ProductCost
+	Users                         []User
+	Admins                        []User
+	Countries                     []countrybus.Country
+	Regions                       []regionbus.Region
+	Cities                        []cityapp.City
+	Streets                       []streetapp.Street
+	Timezones                     []timezoneapp.Timezone
+	ValidAssets                   []validassetapp.ValidAsset
+	AssetTypes                    []assettypeapp.AssetType
+	AssetConditions               []assetconditionapp.AssetCondition
+	ApprovalStatuses              []approvalstatusapp.ApprovalStatus
+	UserApprovalStatuses          []approvalapp.UserApprovalStatus
+	UserApprovalComments          []commentapp.UserApprovalComment
+	FulfillmentStatuses           []fulfillmentstatusapp.FulfillmentStatus
+	Tags                          []tagapp.Tag
+	AssetTags                     []assettagapp.AssetTag
+	Titles                        []titleapp.Title
+	ReportsTo                     []reportstoapp.ReportsTo
+	Offices                       []officeapp.Office
+	UserAssets                    []userassetapp.UserAsset
+	Assets                        []assetapp.Asset
+	ContactInfos                  []contactinfosapp.ContactInfos
+	PaymentTerms                  []paymenttermapp.PaymentTerm
+	Currencies                    []currencybus.Currency
+	Customers                     []customersapp.Customers
+	Brands                        []brandapp.Brand
+	ProductCategories             []productcategoryapp.ProductCategory
+	Warehouses                    []warehouseapp.Warehouse
+	Roles                         []roleapp.Role
+	Pages                         []pageapp.Page
+	RolePages                     []rolepageapp.RolePage
+	UserRoles                     []userroleapp.UserRole
+	TableAccesses                 []tableaccessapp.TableAccess
+	Products                      []productapp.Product
+	ProductUOMs                   []productuomapp.ProductUOM
+	PhysicalAttributes            []physicalattributeapp.PhysicalAttribute
+	ProductCosts                  []productcostapp.ProductCost
 	PurchaseOrderLineItemStatuses []purchaseorderlineitemstatusapp.PurchaseOrderLineItemStatus
-	PurchaseOrderStatuses       []purchaseorderstatusapp.PurchaseOrderStatus
-	PurchaseOrders              []purchaseorderapp.PurchaseOrder
-	PurchaseOrderLineItems      []purchaseorderlineitemapp.PurchaseOrderLineItem
-	Suppliers                   []supplierapp.Supplier
-	CostHistory                 []costhistoryapp.CostHistory
-	SupplierProducts            []supplierproductapp.SupplierProduct
-	Metrics                     []metricsapp.Metric
-	LotTrackings                []lottrackingsapp.LotTrackings
-	LotLocations                []lotlocationapp.LotLocation
-	Zones                       []zoneapp.Zone
-	InventoryLocations          []inventorylocationapp.InventoryLocation
-	InventoryItems              []inventoryitemapp.InventoryItem
-	Inspections                 []inspectionapp.Inspection
-	SerialNumbers               []serialnumberapp.SerialNumber
-	InventoryTransactions       []inventorytransactionapp.InventoryTransaction
-	InventoryAdjustments        []inventoryadjustmentapp.InventoryAdjustment
-	TransferOrders              []transferorderapp.TransferOrder
-	PutAwayTasks                []putawaytaskapp.PutAwayTask
-	PickTasks                   []picktaskapp.PickTask
-	CycleCountSessions          []cyclecountsessionapp.CycleCountSession
-	CycleCountItems             []cyclecountitemapp.CycleCountItem
-	Labels                      labelapp.Labels
-	OrderFulfillmentStatuses    []orderfulfillmentstatusapp.OrderFulfillmentStatus
-	LineItemFulfillmentStatuses []lineitemfulfillmentstatusapp.LineItemFulfillmentStatus
-	Orders                      []ordersapp.Order
-	OrderLineItems              []orderlineitemsapp.OrderLineItem
-	Scenarios                   []scenariobus.Scenario
-	ScenarioFixtures            []scenariobus.ScenarioFixture
-	SimpleTableConfig           *tablebuilder.StoredConfig
-	ComplexTableConfig          *tablebuilder.StoredConfig
-	PageTableConfig             *tablebuilder.StoredConfig
-	KPIChartConfig              *tablebuilder.StoredConfig
-	BarChartConfig              *tablebuilder.StoredConfig
-	PieChartConfig              *tablebuilder.StoredConfig
-	PageConfigs                 []pageconfigapp.PageConfig
-	PageContents                []pagecontentapp.PageContent
-	Forms                       []formapp.Form
-	FormFields                  []formfieldapp.FormField
-	PageActions                 []pageactionapp.PageAction
-	Entities                    []workflow.Entity
+	PurchaseOrderStatuses         []purchaseorderstatusapp.PurchaseOrderStatus
+	PurchaseOrders                []purchaseorderapp.PurchaseOrder
+	PurchaseOrderLineItems        []purchaseorderlineitemapp.PurchaseOrderLineItem
+	Suppliers                     []supplierapp.Supplier
+	CostHistory                   []costhistoryapp.CostHistory
+	SupplierProducts              []supplierproductapp.SupplierProduct
+	Metrics                       []metricsapp.Metric
+	LotTrackings                  []lottrackingsapp.LotTrackings
+	LotLocations                  []lotlocationapp.LotLocation
+	Zones                         []zoneapp.Zone
+	InventoryLocations            []inventorylocationapp.InventoryLocation
+	InventoryItems                []inventoryitemapp.InventoryItem
+	Inspections                   []inspectionapp.Inspection
+	SerialNumbers                 []serialnumberapp.SerialNumber
+	InventoryTransactions         []inventorytransactionapp.InventoryTransaction
+	InventoryAdjustments          []inventoryadjustmentapp.InventoryAdjustment
+	TransferOrders                []transferorderapp.TransferOrder
+	PutAwayTasks                  []putawaytaskapp.PutAwayTask
+	PickTasks                     []picktaskapp.PickTask
+	CycleCountSessions            []cyclecountsessionapp.CycleCountSession
+	CycleCountItems               []cyclecountitemapp.CycleCountItem
+	Labels                        labelapp.Labels
+	OrderFulfillmentStatuses      []orderfulfillmentstatusapp.OrderFulfillmentStatus
+	LineItemFulfillmentStatuses   []lineitemfulfillmentstatusapp.LineItemFulfillmentStatus
+	Orders                        []ordersapp.Order
+	OrderContainerBindings        []ordersapp.OrderContainerBinding
+	OrderLineItems                []orderlineitemsapp.OrderLineItem
+	Scenarios                     []scenariobus.Scenario
+	ScenarioFixtures              []scenariobus.ScenarioFixture
+	SimpleTableConfig             *tablebuilder.StoredConfig
+	ComplexTableConfig            *tablebuilder.StoredConfig
+	PageTableConfig               *tablebuilder.StoredConfig
+	KPIChartConfig                *tablebuilder.StoredConfig
+	BarChartConfig                *tablebuilder.StoredConfig
+	PieChartConfig                *tablebuilder.StoredConfig
+	PageConfigs                   []pageconfigapp.PageConfig
+	PageContents                  []pagecontentapp.PageContent
+	Forms                         []formapp.Form
+	FormFields                    []formfieldapp.FormField
+	PageActions                   []pageactionapp.PageAction
+	Entities                      []workflow.Entity
 }
 
 type Table struct {

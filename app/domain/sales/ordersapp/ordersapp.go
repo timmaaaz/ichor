@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
@@ -130,4 +131,62 @@ func (a *App) QueryByID(ctx context.Context, id uuid.UUID) (Order, error) {
 	}
 
 	return ToAppOrder(status), nil
+}
+
+// =============================================================================
+// Order container bindings (Phase 0g.B7)
+// =============================================================================
+
+// BindContainer creates a new active binding between an order and a container
+// label. Pre-checks the order's existence (matches App.Update at line 52)
+// so unknown orders surface as 404. Maps the bus-layer EXCLUDE-constraint
+// violation (one_active_binding_per_container — raw pq error with substring
+// "exclusion") to errs.Aborted → 409 Conflict per app/sdk/errs/codes.go:179.
+func (a *App) BindContainer(ctx context.Context, orderID uuid.UUID, app NewOrderContainerBinding) (OrderContainerBinding, error) {
+	if _, err := a.ordersbus.QueryByID(ctx, orderID); err != nil {
+		if errors.Is(err, ordersbus.ErrNotFound) {
+			return OrderContainerBinding{}, errs.New(errs.NotFound, err)
+		}
+		return OrderContainerBinding{}, err
+	}
+
+	nb, err := toBusNewOrderContainerBinding(app, orderID)
+	if err != nil {
+		return OrderContainerBinding{}, err
+	}
+
+	result, err := a.ordersbus.BindContainer(ctx, nb)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "exclusion") {
+			return OrderContainerBinding{}, errs.New(errs.Aborted, err)
+		}
+		return OrderContainerBinding{}, errs.Newf(errs.Internal, "bindContainer: %s", err)
+	}
+	return ToAppOrderContainerBinding(result), nil
+}
+
+// UnbindContainer marks an active binding as released. The bus layer is
+// idempotent: unbinding an already-unbound binding is a silent no-op, but
+// an unknown bindingID surfaces ErrBindingNotFound → 404.
+func (a *App) UnbindContainer(ctx context.Context, bindingID uuid.UUID) error {
+	if err := a.ordersbus.UnbindContainer(ctx, bindingID); err != nil {
+		if errors.Is(err, ordersbus.ErrBindingNotFound) {
+			return errs.New(errs.NotFound, err)
+		}
+		return errs.Newf(errs.Internal, "unbindContainer: %s", err)
+	}
+	return nil
+}
+
+// QueryActiveBindingsByOrder returns the active (unbound_at IS NULL) bindings
+// for the given order, ordered by bound_at ASC. Returns an empty slice for
+// orders with no active bindings — NOT a 404. The order's existence is not
+// pre-checked because an unknown orderID legitimately maps to "no bindings"
+// from a read perspective.
+func (a *App) QueryActiveBindingsByOrder(ctx context.Context, orderID uuid.UUID) (OrderContainerBindings, error) {
+	bindings, err := a.ordersbus.QueryActiveBindingsByOrder(ctx, orderID)
+	if err != nil {
+		return nil, errs.Newf(errs.Internal, "queryActiveBindingsByOrder: %s", err)
+	}
+	return OrderContainerBindings(ToAppOrderContainerBindings(bindings)), nil
 }

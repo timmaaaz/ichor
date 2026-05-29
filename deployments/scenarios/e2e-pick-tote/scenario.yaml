@@ -1,0 +1,21 @@
+# deployments/scenarios/e2e-pick-tote/scenario.yaml
+#
+# Lever-override scenario for frontend E2E pick-tote.spec.ts (Phase 0g.F2).
+# Activates the strict-mode tote workflow: workers grab a container at
+# pick-start (scan-container step) and confirm destination by scanning the
+# staging location at pick-end (scan-destination step). Companion to
+# baseline behavior tested in pick.spec.ts (SMB defaults).
+#
+# ID is omitted — yamlload.loadOne computes UUID v5 of "scenario:e2e-pick-tote"
+# under the deadbeef-dead-beef-dead-beefdeadbeef namespace at parse time.
+# Byte-identical across reseeds per Phase 0d Decision 3.
+
+name: e2e-pick-tote
+description: |
+  Lever-override scenario for frontend pick-tote E2E. Forces tote-mode
+  destination (workers bind a container at pick-start) and strict-scan
+  destination confirmation at pick-end. Other levers retain SMB defaults.
+
+lever_overrides:
+  pick.destinationMode: tote
+  pick.destinationScan: required

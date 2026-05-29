@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/api/domain/http/sales/ordersapi"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
+	"github.com/timmaaaz/ichor/app/domain/labels/labelapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/customersapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/orderfulfillmentstatusapp"
 	"github.com/timmaaaz/ichor/app/domain/sales/ordersapp"
@@ -21,6 +22,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/timezonebus"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
@@ -141,6 +143,36 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	orders[0] = updatedOrder
 
 	// =========================================================================
+	// Container labels + pre-existing binding (Phase 0g.B7)
+	// =========================================================================
+	// Four distinct container labels for binding apitest scenarios. Pre-bind
+	// CONTAINER-C to Orders[4] so unbind tests have a known active binding to
+	// operate on without having to capture IDs at runtime (apitest tables are
+	// static — they can't read state from prior subtests).
+	containerCodes := []string{"TEST-CONTAINER-A", "TEST-CONTAINER-B", "TEST-CONTAINER-C", "TEST-CONTAINER-D"}
+	containerLabels := make([]labelbus.LabelCatalog, 0, len(containerCodes))
+	for _, code := range containerCodes {
+		lc, err := busDomain.Label.Create(ctx, labelbus.NewLabelCatalog{
+			Code:        code,
+			Type:        labelbus.TypeContainer,
+			PayloadJSON: "{}",
+		})
+		if err != nil {
+			return apitest.SeedData{}, fmt.Errorf("seeding container label %s: %w", code, err)
+		}
+		containerLabels = append(containerLabels, lc)
+	}
+
+	// Pre-bind CONTAINER-C (index 2) to Orders[4] so unbind tests can hit it.
+	preboundC, err := busDomain.Order.BindContainer(ctx, ordersbus.NewOrderContainerBinding{
+		OrderID:          orders[4].ID,
+		ContainerLabelID: containerLabels[2].ID,
+	})
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("pre-binding CONTAINER-C to Orders[4]: %w", err)
+	}
+
+	// =========================================================================
 	// Permissions stuff
 	// =========================================================================
 
@@ -205,5 +237,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 		Customers:                customersapp.ToAppCustomers(customers),
 		OrderFulfillmentStatuses: orderfulfillmentstatusapp.ToAppOrderFulfillmentStatuses(ofls),
 		Currencies:               currencies,
+		Labels:                   labelapp.ToAppLabels(containerLabels),
+		OrderContainerBindings:   ordersapp.ToAppOrderContainerBindings([]ordersbus.OrderContainerBinding{preboundC}),
 	}, nil
 }
