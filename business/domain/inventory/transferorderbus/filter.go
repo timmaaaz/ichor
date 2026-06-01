@@ -8,6 +8,7 @@ import (
 
 type QueryFilter struct {
 	TransferID     *uuid.UUID
+	TransferNumber *string
 	ProductID      *uuid.UUID
 	FromLocationID *uuid.UUID
 	ToLocationID   *uuid.UUID

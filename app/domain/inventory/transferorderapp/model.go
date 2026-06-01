@@ -18,6 +18,7 @@ type QueryParams struct {
 	OrderBy string
 
 	TransferID     string
+	TransferNumber string
 	ProductID      string
 	FromLocationID string
 	ToLocationID   string
