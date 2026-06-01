@@ -538,6 +538,70 @@ func TestTransferOrder_ClaimedByIDFilter(t *testing.T) {
 	}
 }
 
+func TestTransferOrder_TransferNumberFilter(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_TransferOrder_TransferNumberFilter")
+
+	sd, err := insertSeedData(db.BusDomain)
+	if err != nil {
+		t.Fatalf("seeding: %s", err)
+	}
+
+	ctx := context.Background()
+
+	// [0] is the lexicographically-smallest-UUID row after testutil's sort, not
+	// necessarily XFER-...-0001; every seeded row still has a unique, non-nil number.
+	target := sd.TransferOrders[0]
+	if target.TransferNumber == nil {
+		t.Fatal("seeded transfer has nil TransferNumber")
+	}
+	num := *target.TransferNumber
+
+	// Positive: filter by a seeded transfer_number returns exactly that row.
+	filter := transferorderbus.QueryFilter{TransferNumber: &num}
+	got, err := db.BusDomain.TransferOrder.Query(ctx, filter, transferorderbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("query with filter: %s", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected exactly 1 transfer for transfer_number=%q; got %d", num, len(got))
+	}
+	if got[0].TransferNumber == nil || *got[0].TransferNumber != num {
+		t.Errorf("filter leaked: got transfer %s with TransferNumber=%v", got[0].TransferID, got[0].TransferNumber)
+	}
+
+	// Count must honor the same filter (it builds its own query and must call
+	// applyFilter, not just the scenario filter) so pagination totals match.
+	cnt, err := db.BusDomain.TransferOrder.Count(ctx, filter)
+	if err != nil {
+		t.Fatalf("count with filter: %s", err)
+	}
+	if cnt != 1 {
+		t.Errorf("expected Count==1 for transfer_number=%q; got %d", num, cnt)
+	}
+
+	// Negative: a number that does not exist returns zero rows, proving the
+	// WHERE clause is actually applied.
+	bogus := "XFER-DOES-NOT-EXIST"
+	noMatch := transferorderbus.QueryFilter{TransferNumber: &bogus}
+	gotNone, err := db.BusDomain.TransferOrder.Query(ctx, noMatch, transferorderbus.DefaultOrderBy, page.MustParse("1", "100"))
+	if err != nil {
+		t.Fatalf("query with no-match filter: %s", err)
+	}
+	if len(gotNone) != 0 {
+		t.Errorf("expected zero rows for unused transfer_number; got %d", len(gotNone))
+	}
+
+	cntNone, err := db.BusDomain.TransferOrder.Count(ctx, noMatch)
+	if err != nil {
+		t.Fatalf("count with no-match filter: %s", err)
+	}
+	if cntNone != 0 {
+		t.Errorf("expected Count==0 for unused transfer_number; got %d", cntNone)
+	}
+}
+
 func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{{
 		Name: "delete",
