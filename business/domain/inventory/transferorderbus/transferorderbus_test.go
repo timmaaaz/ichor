@@ -571,15 +571,34 @@ func TestTransferOrder_TransferNumberFilter(t *testing.T) {
 		t.Errorf("filter leaked: got transfer %s with TransferNumber=%v", got[0].TransferID, got[0].TransferNumber)
 	}
 
+	// Count must honor the same filter (it builds its own query and must call
+	// applyFilter, not just the scenario filter) so pagination totals match.
+	cnt, err := db.BusDomain.TransferOrder.Count(ctx, filter)
+	if err != nil {
+		t.Fatalf("count with filter: %s", err)
+	}
+	if cnt != 1 {
+		t.Errorf("expected Count==1 for transfer_number=%q; got %d", num, cnt)
+	}
+
 	// Negative: a number that does not exist returns zero rows, proving the
 	// WHERE clause is actually applied.
 	bogus := "XFER-DOES-NOT-EXIST"
-	gotNone, err := db.BusDomain.TransferOrder.Query(ctx, transferorderbus.QueryFilter{TransferNumber: &bogus}, transferorderbus.DefaultOrderBy, page.MustParse("1", "100"))
+	noMatch := transferorderbus.QueryFilter{TransferNumber: &bogus}
+	gotNone, err := db.BusDomain.TransferOrder.Query(ctx, noMatch, transferorderbus.DefaultOrderBy, page.MustParse("1", "100"))
 	if err != nil {
 		t.Fatalf("query with no-match filter: %s", err)
 	}
 	if len(gotNone) != 0 {
 		t.Errorf("expected zero rows for unused transfer_number; got %d", len(gotNone))
+	}
+
+	cntNone, err := db.BusDomain.TransferOrder.Count(ctx, noMatch)
+	if err != nil {
+		t.Fatalf("count with no-match filter: %s", err)
+	}
+	if cntNone != 0 {
+		t.Errorf("expected Count==0 for unused transfer_number; got %d", cntNone)
 	}
 }
 

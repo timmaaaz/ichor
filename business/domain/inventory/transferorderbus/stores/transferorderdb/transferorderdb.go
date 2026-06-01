@@ -167,6 +167,7 @@ func (s *Store) Count(ctx context.Context, filter transferorderbus.QueryFilter) 
     `
 
 	buf := bytes.NewBufferString(q)
+	applyFilter(filter, data, buf)
 	sqldb.ApplyScenarioFilter(ctx, buf, data)
 
 	var count struct {
