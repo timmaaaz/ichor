@@ -9,7 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/levers"
 )
 
-// seedSettings inserts the 11 SMB-default lever keys into config.settings.
+// seedSettings inserts the 17 SMB-default lever keys into config.settings.
 // Called from seedFrontend.go BEFORE seedScenarios so scenarios that
 // reference these keys via lever_overrides have something to override.
 //
