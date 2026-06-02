@@ -1,8 +1,8 @@
 name: profile-strict-regulated
 description: |
   All overridable scan-discipline levers set to `required`. Maximum strict mode.
-  DORMANT caveat applies to cycleCount/adjustment only (F1.B/C still pending).
-  pick/transfer/putaway/inspection overrides are LIVE as of F1.A, F1.D, and F1.E merges.
+  All lever overrides are LIVE: pick/receive/transfer (F1.A), cycleCount (F1.B),
+  adjustment (F1.C), putaway (F1.D), and inspection (F1.E) have all merged.
 
 lever_overrides:
   pick.sourceLocationScan: required
@@ -12,8 +12,8 @@ lever_overrides:
   receive.poScan: required
   transfer.sourceLocationScan: required
   transfer.destinationScan: required
-  cycleCount.locationScan: required              # DORMANT (F1.B pending) — same as default anyway
-  adjustment.locationScan: required              # DORMANT (F1.C pending) — same as default anyway
+  cycleCount.locationScan: required              # LIVE (F1.B) — same as default anyway
+  adjustment.locationScan: required              # LIVE (F1.C) — same as default anyway
   putaway.destinationLocationScan: required      # same as default
   putaway.itemScan: required                     # same as default
   putaway.lotScan: required-if-lot-tracked
