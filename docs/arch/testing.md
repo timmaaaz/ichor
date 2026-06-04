@@ -166,12 +166,12 @@ If a new shared container is needed (e.g., Redis, RabbitMQ):
 
 ## ⚠ Parallel ceiling for fan-out integration harnesses
 
-Tests that fan out many subtests within a single package (e.g. `api/cmd/services/ichor/tests/floor/scenarios/` which walks 21 scenarios via `t.Run` + `t.Parallel`) must cap parallelism via `-parallel N`. Each subtest:
+Tests that fan out many subtests within a single package (e.g. `api/cmd/services/ichor/tests/floor/scenarios/` which walks 22 scenarios via `t.Run` + `t.Parallel`) must cap parallelism via `-parallel N`. Each subtest:
 
   - opens pooled `*sqlx.DB` connections to the shared `servicetest` container (admin DB + test DB), each burning an ephemeral source port
   - issues many HTTP requests per walk to the in-process `httptest`/handler; the auth `httptest.NewServer` listens on loopback, but the Go test process still consumes ephemeral source ports for the outbound DB connections issued from inside handlers
 
-On macOS the ephemeral range is 49152–65535 (~16k ports, TIME_WAIT held ~2min). At 21 scenarios × `-parallel 4` the floor scenario harness exhausts this range and fails with:
+On macOS the ephemeral range is 49152–65535 (~16k ports, TIME_WAIT held ~2min). At 22 scenarios × `-parallel 4` the floor scenario harness exhausts this range and fails with:
 
 ```
 dial tcp 127.0.0.1:5432: connect: can't assign requested address
@@ -181,7 +181,7 @@ Safe ceilings observed (macOS Apple Silicon, postgres:16.4):
 
 | Harness shape | Safe -parallel | Notes |
 |---|---|---|
-| 21-scenario floor walk | 2 | `-parallel 4` fails; `-race` adds ~5.7× wall-clock |
+| 22-scenario floor walk | 2 | `-parallel 4` fails; `-race` adds ~5.7× wall-clock |
 | Single-domain api tests (e.g. labels) | unbounded | small subtest count, no port pressure |
 
 Rule of thumb: if a single package contains >10 parallel subtests **and** each subtest hits the HTTP mux >5 times, cap with `-parallel 2` on macOS. Linux CI with a larger ephemeral range (e.g. 32768–60999) may tolerate `-parallel 4`; verify on the actual CI host before raising.

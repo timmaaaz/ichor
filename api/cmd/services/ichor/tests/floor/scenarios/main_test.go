@@ -1,4 +1,4 @@
-// Package scenarios_test walks 21 scenario YAMLs through floor workflow
+// Package scenarios_test walks 22 scenario YAMLs through floor workflow
 // endpoints with ScenariosEnabled: true on the mux, providing regression
 // coverage for the GB-006/007/012/014/015 bug class.
 //

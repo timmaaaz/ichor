@@ -34,11 +34,11 @@ func startScenarioTest(t *testing.T, testName string) *apitest.Test {
 
 	// Seed the full Phase-0g baseline: products, locations, inventory, scenarios.
 	// Required before loadScenarioFixtures can call QueryByName + Load because:
-	//   - seedScenarios (inside InsertSeedDataWithDB) reads all 21 YAMLs from
+	//   - seedScenarios (inside InsertSeedDataWithDB) reads all 22 YAMLs from
 	//     deployments/scenarios/ and populates scenarios + scenario_fixtures.
 	//   - seedScenarioCustomer needs contact_infos + streets from the baseline.
 	// Seeds once per test DB instance — Task 12's table-driven test will pay this
-	// cost 21x (once per scenario row, since per-DB isolation is required by the
+	// cost 22x (once per scenario row, since per-DB isolation is required by the
 	// scenarios_active singleton).
 	if err := dbtest.InsertSeedDataWithDB(db.Log, db.DB); err != nil {
 		t.Fatalf("baseline seed: %v", err)
