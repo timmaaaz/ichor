@@ -46,7 +46,7 @@ func customRowOverrides() map[string]ScenarioRow {
 	}
 }
 
-// rowsForTest discovers all 21 scenarios and overlays Custom closures from
+// rowsForTest discovers all 22 scenarios and overlays Custom closures from
 // customRowOverrides for scenarios that can't be dispatched to a family walk.
 func rowsForTest(t *testing.T) []ScenarioRow {
 	t.Helper()
