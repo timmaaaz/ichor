@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/userassetbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 )
 
 func seedAssets(ctx context.Context, busDomain BusDomain, foundation FoundationSeed) error {
@@ -55,36 +56,42 @@ func seedAssets(ctx context.Context, busDomain BusDomain, foundation FoundationS
 		assetIDs = append(assetIDs, a.ID)
 	}
 
-	// Create approval statuses matching seed.sql
+	// Query approval statuses (already seeded by seed.sql) for the user-asset FK
+	// pool. seed.sql owns these rows; seed-frontend must NOT re-Create them —
+	// assets.approval_status has no UNIQUE(name), so a second insert silently
+	// double-inserts instead of erroring (mirrors the USD-currency lookup in
+	// seedFoundation).
 	approvalStatusNames := seedmodels.ApprovalStatusNames
 	approvalStatuses := make([]approvalstatusbus.ApprovalStatus, 0, len(approvalStatusNames))
 	for _, name := range approvalStatusNames {
-		as, err := busDomain.ApprovalStatus.Create(ctx, approvalstatusbus.NewApprovalStatus{
-			IconID: uuid.New(),
-			Name:   name,
-		})
+		statuses, err := busDomain.ApprovalStatus.Query(ctx, approvalstatusbus.QueryFilter{Name: &name}, approvalstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
 		if err != nil {
-			return fmt.Errorf("seeding approval status %s: %w", name, err)
+			return fmt.Errorf("querying approval status %s: %w", name, err)
 		}
-		approvalStatuses = append(approvalStatuses, as)
+		if len(statuses) == 0 {
+			return fmt.Errorf("approval status %s not found - ensure seed.sql has run", name)
+		}
+		approvalStatuses = append(approvalStatuses, statuses[0])
 	}
 	approvalStatusIDs := make([]uuid.UUID, len(approvalStatuses))
 	for i, as := range approvalStatuses {
 		approvalStatusIDs[i] = as.ID
 	}
 
-	// Create fulfillment statuses matching seed.sql
+	// Query fulfillment statuses (already seeded by seed.sql) for the user-asset
+	// FK pool. Same rationale as approval statuses above — seed.sql owns these
+	// rows and assets.fulfillment_status has no UNIQUE(name).
 	fulfillmentStatusNames := seedmodels.FulfillmentStatusNames
 	fulfillmentStatuses := make([]fulfillmentstatusbus.FulfillmentStatus, 0, len(fulfillmentStatusNames))
 	for _, name := range fulfillmentStatusNames {
-		fs, err := busDomain.FulfillmentStatus.Create(ctx, fulfillmentstatusbus.NewFulfillmentStatus{
-			IconID: uuid.New(),
-			Name:   name,
-		})
+		statuses, err := busDomain.FulfillmentStatus.Query(ctx, fulfillmentstatusbus.QueryFilter{Name: &name}, fulfillmentstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
 		if err != nil {
-			return fmt.Errorf("seeding fulfillment status %s: %w", name, err)
+			return fmt.Errorf("querying fulfillment status %s: %w", name, err)
 		}
-		fulfillmentStatuses = append(fulfillmentStatuses, fs)
+		if len(statuses) == 0 {
+			return fmt.Errorf("fulfillment status %s not found - ensure seed.sql has run", name)
+		}
+		fulfillmentStatuses = append(fulfillmentStatuses, statuses[0])
 	}
 	fulfillmentStatusIDs := make([]uuid.UUID, len(fulfillmentStatuses))
 	for i, fs := range fulfillmentStatuses {
