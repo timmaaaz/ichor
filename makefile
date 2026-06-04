@@ -263,7 +263,10 @@ dev-bounce:
 		if [ -n "$$GEMINI_API_KEY" ]; then make dev-gemini-secret GEMINI_API_KEY=$$GEMINI_API_KEY; fi
 	make dev-update-apply
 	make migrate
-	make seed
+	# seed.sql is applied by the ichor `init-migrate-seed` initContainer on pod
+	# boot (zarf/k8s/base/ichor); re-running it here collides on the
+	# non-idempotent geography.timezones insert (timezones_name_key). Only
+	# seed-frontend (domain demo data) is needed on top of the init seed.
 	make seed-frontend
 
 # ------------------------------------------------------------------------------

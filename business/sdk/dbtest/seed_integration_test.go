@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/levers"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 )
@@ -134,5 +137,27 @@ func Test_Seed_Integration(t *testing.T) {
 		if got != want {
 			t.Errorf("lever %q value: got %q, want %q", k, got, want)
 		}
+	}
+
+	// --- asset statuses are owned by seed.sql, not re-created by seed-frontend -
+	// Regression guard: seed_assets.go used to Create approval/fulfillment
+	// statuses that seed.sql already inserts. Those tables have no UNIQUE(name),
+	// so both layers ran and left 10 rows / 5 duplicate names each (silent — no
+	// error). seed_assets.go now Queries them instead, so the count must equal
+	// the canonical name list exactly.
+	statusPg := page.MustParse("1", "50")
+	approvals, err := db.BusDomain.ApprovalStatus.Query(ctx, approvalstatusbus.QueryFilter{}, approvalstatusbus.DefaultOrderBy, statusPg)
+	if err != nil {
+		t.Fatalf("query approval statuses: %v", err)
+	}
+	if got, want := len(approvals), len(seedmodels.ApprovalStatusNames); got != want {
+		t.Errorf("approval_status count: got %d, want %d (seed.sql owns these; seed-frontend must not duplicate)", got, want)
+	}
+	fulfillments, err := db.BusDomain.FulfillmentStatus.Query(ctx, fulfillmentstatusbus.QueryFilter{}, fulfillmentstatusbus.DefaultOrderBy, statusPg)
+	if err != nil {
+		t.Fatalf("query fulfillment statuses: %v", err)
+	}
+	if got, want := len(fulfillments), len(seedmodels.FulfillmentStatusNames); got != want {
+		t.Errorf("fulfillment_status count: got %d, want %d (seed.sql owns these; seed-frontend must not duplicate)", got, want)
 	}
 }
