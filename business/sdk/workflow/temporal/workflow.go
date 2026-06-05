@@ -249,6 +249,27 @@ func executeSingleAction(ctx workflow.Context, executor *GraphExecutor, action A
 			"action_name", action.Name,
 			"error", err,
 		)
+
+		// Opt-in failure routing: if the graph wires an explicit
+		// source_output="failure" edge from this action, follow it instead of
+		// failing the workflow. This lets graphs alert on runtime action
+		// errors (e.g. reserve_inventory shortfall) rather than dying
+		// silently. Graphs without a failure edge keep today's behavior:
+		// the error fails the workflow.
+		if failureActions := executor.GetFailureActions(action.ID); len(failureActions) > 0 {
+			logger.Info("Routing action failure to failure-port edge",
+				"action_id", action.ID,
+				"action_name", action.Name,
+				"failure_targets", len(failureActions),
+			)
+			mergedCtx.MergeResult(action.Name, map[string]any{
+				"output":  "failure",
+				"success": false,
+				"error":   err.Error(),
+			})
+			return executeActions(ctx, executor, failureActions, mergedCtx, input)
+		}
+
 		return fmt.Errorf("execute action %s (%s): %w", action.Name, action.ID, err)
 	}
 
