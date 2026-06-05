@@ -19,6 +19,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus/stores/notificationdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -130,7 +132,8 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 
 	// Communication actions
 	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB, config.EmailClient, config.EmailFrom))
-	registry.Register(communication.NewSendNotificationHandler(config.Log, config.QueueClient))
+	registry.Register(communication.NewSendNotificationHandler(config.Log, config.QueueClient,
+		notificationbus.NewBusiness(config.Log, notificationdb.NewStore(config.Log, config.DB))))
 	registry.Register(communication.NewCreateAlertHandler(config.Log, config.Buses.Alert, config.QueueClient))
 
 	// Inventory actions - need additional dependencies
@@ -273,7 +276,8 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 
 	// Communication actions that don't need queue or email client (nil = graceful degradation)
 	registry.Register(communication.NewSendEmailHandler(log, db, nil, ""))
-	registry.Register(communication.NewSendNotificationHandler(log, nil))
+	registry.Register(communication.NewSendNotificationHandler(log, nil,
+		notificationbus.NewBusiness(log, notificationdb.NewStore(log, db))))
 	registry.Register(communication.NewCreateAlertHandler(log, nil, nil))
 
 	// Inventory actions - nil buses for core path (cascade detection via EntityModifier)
