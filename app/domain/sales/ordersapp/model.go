@@ -135,23 +135,23 @@ func ToAppOrders(bus []ordersbus.Order) []Order {
 
 type NewOrder struct {
 	Number              string  `json:"number" validate:"required"`
-	CustomerID          string  `json:"customer_id" validate:"required,uuid4"`
+	CustomerID          string  `json:"customer_id" validate:"required,uuid"`
 	DueDate             string  `json:"due_date" validate:"required"`
-	FulfillmentStatusID string  `json:"order_fulfillment_status_id" validate:"required,uuid4"`
+	FulfillmentStatusID string  `json:"order_fulfillment_status_id" validate:"required,uuid"`
 	OrderDate           string  `json:"order_date" validate:"required"`
-	BillingAddressID    string  `json:"billing_address_id" validate:"omitempty,uuid4"`
-	ShippingAddressID   string  `json:"shipping_address_id" validate:"omitempty,uuid4"`
-	AssignedTo          string  `json:"assigned_to" validate:"omitempty,uuid4"`
+	BillingAddressID    string  `json:"billing_address_id" validate:"omitempty,uuid"`
+	ShippingAddressID   string  `json:"shipping_address_id" validate:"omitempty,uuid"`
+	AssignedTo          string  `json:"assigned_to" validate:"omitempty,uuid"`
 	Subtotal            string  `json:"subtotal"`
 	TaxRate             string  `json:"tax_rate"`
 	TaxAmount           string  `json:"tax_amount"`
 	ShippingCost        string  `json:"shipping_cost"`
 	TotalAmount         string  `json:"total_amount"`
-	CurrencyID          string  `json:"currency_id" validate:"required,uuid4"`
-	PaymentTermID       string  `json:"payment_term_id" validate:"omitempty,uuid4"`
+	CurrencyID          string  `json:"currency_id" validate:"required,uuid"`
+	PaymentTermID       string  `json:"payment_term_id" validate:"omitempty,uuid"`
 	Notes               string  `json:"notes"`
 	Priority            string  `json:"priority" validate:"omitempty,oneof=low medium high critical"`
-	CreatedBy           string  `json:"created_by" validate:"required,uuid4"`
+	CreatedBy           string  `json:"created_by" validate:"required,uuid"`
 	CreatedDate         *string `json:"created_date"` // Optional: for seeding/import
 }
 
@@ -294,23 +294,23 @@ func toBusNewOrder(app NewOrder) (ordersbus.NewOrder, error) {
 
 type UpdateOrder struct {
 	Number              *string `json:"number" validate:"omitempty"`
-	CustomerID          *string `json:"customer_id" validate:"omitempty,uuid4"`
+	CustomerID          *string `json:"customer_id" validate:"omitempty,uuid"`
 	DueDate             *string `json:"due_date" validate:"omitempty"`
-	FulfillmentStatusID *string `json:"order_fulfillment_status_id" validate:"omitempty,uuid4"`
+	FulfillmentStatusID *string `json:"order_fulfillment_status_id" validate:"omitempty,uuid"`
 	OrderDate           *string `json:"order_date" validate:"omitempty"`
-	BillingAddressID    *string `json:"billing_address_id" validate:"omitempty,uuid4"`
-	ShippingAddressID   *string `json:"shipping_address_id" validate:"omitempty,uuid4"`
-	AssignedTo          *string `json:"assigned_to" validate:"omitempty,uuid4"`
+	BillingAddressID    *string `json:"billing_address_id" validate:"omitempty,uuid"`
+	ShippingAddressID   *string `json:"shipping_address_id" validate:"omitempty,uuid"`
+	AssignedTo          *string `json:"assigned_to" validate:"omitempty,uuid"`
 	Subtotal            *string `json:"subtotal" validate:"omitempty"`
 	TaxRate             *string `json:"tax_rate" validate:"omitempty"`
 	TaxAmount           *string `json:"tax_amount" validate:"omitempty"`
 	ShippingCost        *string `json:"shipping_cost" validate:"omitempty"`
 	TotalAmount         *string `json:"total_amount" validate:"omitempty"`
-	CurrencyID          *string `json:"currency_id" validate:"omitempty,uuid4"`
-	PaymentTermID       *string `json:"payment_term_id" validate:"omitempty,uuid4"`
+	CurrencyID          *string `json:"currency_id" validate:"omitempty,uuid"`
+	PaymentTermID       *string `json:"payment_term_id" validate:"omitempty,uuid"`
 	Notes               *string `json:"notes" validate:"omitempty"`
 	Priority            *string `json:"priority" validate:"omitempty,oneof=low medium high critical"`
-	UpdatedBy           *string `json:"updated_by" validate:"omitempty,uuid4"`
+	UpdatedBy           *string `json:"updated_by" validate:"omitempty,uuid"`
 }
 
 func (app *UpdateOrder) Decode(data []byte) error {
@@ -549,7 +549,7 @@ func ToAppOrderContainerBindings(bus []ordersbus.OrderContainerBinding) []OrderC
 // from the body — the bus layer auto-tags from request context if a scenario
 // filter is active (matches Order.Create behavior).
 type NewOrderContainerBinding struct {
-	ContainerLabelID string `json:"container_label_id" validate:"required,uuid4"`
+	ContainerLabelID string `json:"container_label_id" validate:"required,uuid"`
 }
 
 // Decode implements the decoder interface.
