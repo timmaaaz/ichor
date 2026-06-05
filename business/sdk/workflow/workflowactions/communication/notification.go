@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
@@ -14,15 +15,19 @@ import (
 
 // SendNotificationHandler handles send_notification actions
 type SendNotificationHandler struct {
-	log           *logger.Logger
-	workflowQueue *rabbitmq.WorkflowQueue
+	log             *logger.Logger
+	workflowQueue   *rabbitmq.WorkflowQueue
+	notificationBus *notificationbus.Business
 }
 
-// NewSendNotificationHandler creates a new send notification handler
-func NewSendNotificationHandler(log *logger.Logger, workflowQueue *rabbitmq.WorkflowQueue) *SendNotificationHandler {
+// NewSendNotificationHandler creates a new send notification handler.
+// notificationBus persists one workflow.notifications inbox row per
+// recipient (nil = no persistence, e.g. validation-only contexts).
+func NewSendNotificationHandler(log *logger.Logger, workflowQueue *rabbitmq.WorkflowQueue, notificationBus *notificationbus.Business) *SendNotificationHandler {
 	return &SendNotificationHandler{
-		log:           log,
-		workflowQueue: workflowQueue,
+		log:             log,
+		workflowQueue:   workflowQueue,
+		notificationBus: notificationBus,
 	}
 }
 
@@ -92,13 +97,42 @@ func (h *SendNotificationHandler) Execute(ctx context.Context, config json.RawMe
 	message := resolveTemplateVars(cfg.Message, execCtx.RawData)
 	title := resolveTemplateVars(cfg.Title, execCtx.RawData)
 
-	// Publish to RabbitMQ for WebSocket delivery (ephemeral — no DB persistence)
-	if h.workflowQueue != nil {
+	// Persist a durable inbox row per recipient FIRST (write-then-publish).
+	// Without this, the notification exists only as a RabbitMQ message: if no
+	// WebSocket consumer is connected at publish time it evaporates, the
+	// notification inbox (GET /v1/workflow/notifications) stays empty, and
+	// there is no audit trail that the action ever notified anyone.
+	persisted := 0
+	if h.notificationBus != nil {
 		for _, recipientID := range cfg.Recipients {
 			uid, err := uuid.Parse(recipientID)
 			if err != nil {
 				h.log.Warn(ctx, "send_notification: invalid recipient UUID", "recipient", recipientID)
 				continue
+			}
+
+			if _, err := h.notificationBus.Create(ctx, notificationbus.NewNotification{
+				UserID:           uid,
+				Title:            title,
+				Message:          message,
+				Priority:         cfg.Priority,
+				SourceEntityName: execCtx.EntityName,
+				SourceEntityID:   execCtx.EntityID,
+			}); err != nil {
+				h.log.Error(ctx, "send_notification: persist inbox row failed",
+					"recipient", recipientID, "error", err)
+				continue
+			}
+			persisted++
+		}
+	}
+
+	// Publish to RabbitMQ for real-time WebSocket delivery.
+	if h.workflowQueue != nil {
+		for _, recipientID := range cfg.Recipients {
+			uid, err := uuid.Parse(recipientID)
+			if err != nil {
+				continue // already warned during persistence pass
 			}
 
 			msg := &rabbitmq.Message{
@@ -125,6 +159,7 @@ func (h *SendNotificationHandler) Execute(ctx context.Context, config json.RawMe
 	h.log.Info(ctx, "send_notification executed",
 		"notification_id", notificationID,
 		"recipients", len(cfg.Recipients),
+		"persisted", persisted,
 		"priority", cfg.Priority)
 
 	return map[string]interface{}{
@@ -132,5 +167,6 @@ func (h *SendNotificationHandler) Execute(ctx context.Context, config json.RawMe
 		"status":          "sent",
 		"sent_at":         now.Format(time.RFC3339),
 		"recipients":      len(cfg.Recipients),
+		"persisted":       persisted,
 	}, nil
 }
