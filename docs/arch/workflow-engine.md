@@ -243,7 +243,8 @@ file: business/sdk/workflow/temporal/stores/edgedb/edgedb.go
 key facts:
   - Read-only: 2 methods (LoadActions, LoadEdges)
   - Custom query (NOT rule_actions_view — view lacks deactivated_by column)
-  - LEFT JOIN action_templates for ActionType (NULL template_id → empty string)
+  - LEFT JOIN action_templates for ActionType (NULL template_id → falls back to
+    action_config "action_type"/"type"; empty string if neither)
   - sql.NullString for nullable UUIDs (deactivated_by, source_action_id)
   - NamedQuerySlice returns nil for empty (NOT ErrDBNotFound)
 ⊗ workflow.rule_actions

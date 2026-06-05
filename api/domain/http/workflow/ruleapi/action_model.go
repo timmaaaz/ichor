@@ -101,12 +101,35 @@ func ValidateCreateAction(req CreateActionRequest) *ValidationErrors {
 				Field:   "action_config",
 				Message: "action_config must be valid JSON",
 			})
+		} else if req.TemplateID == nil && !configDeclaresActionType(req.ActionConfig) {
+			// The executor resolves an action's executable type from its
+			// template (action_templates.action_type) or, failing that, from
+			// an inline action_type in action_config. An action with neither
+			// passes creation but fails on EVERY execution attempt with
+			// "action_type is required" — reject it here instead.
+			errors = append(errors, ValidationError{
+				Field:   "template_id",
+				Message: "action requires a template_id or an \"action_type\" field inside action_config",
+			})
 		}
 	}
 	if len(errors) > 0 {
 		return &ValidationErrors{Errors: errors}
 	}
 	return nil
+}
+
+// configDeclaresActionType reports whether an action_config JSON document
+// carries an inline "action_type" (or legacy "type") string.
+func configDeclaresActionType(config json.RawMessage) bool {
+	var cfg struct {
+		ActionType string `json:"action_type"`
+		Type       string `json:"type"`
+	}
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return false
+	}
+	return cfg.ActionType != "" || cfg.Type != ""
 }
 
 // ValidateUpdateAction validates an UpdateActionRequest.
