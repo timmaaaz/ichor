@@ -124,12 +124,22 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 
 	// Extract product_id from RawData if sourcing from line item.
 	productIDStr := cfg.ProductID
+	requiredQty := cfg.Threshold
 	if cfg.SourceFromLineItem {
 		raw, _ := execContext.RawData["product_id"].(string)
 		if raw == "" {
 			return nil, errors.New("product_id not found in line item RawData")
 		}
 		productIDStr = raw
+
+		// When sourcing from a line item, the line's requested quantity is
+		// the real requirement: checking only the static threshold lets an
+		// over-order (requested >> available) sail through the "sufficient"
+		// port and then hard-fail downstream at reserve_inventory with no
+		// alertable path. Require available >= max(threshold, requested).
+		if qty, ok := quantityFromRawData(execContext.RawData); ok && qty > requiredQty {
+			requiredQty = qty
+		}
 	}
 
 	productID, err := uuid.Parse(productIDStr)
@@ -165,7 +175,7 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 	}
 	available := totalOnHand - totalReserved - totalAllocated
 
-	sufficient := available >= cfg.Threshold
+	sufficient := available >= requiredQty
 
 	output := "insufficient"
 	if sufficient {
@@ -176,18 +186,42 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 		"product_id", productID,
 		"available", available,
 		"threshold", cfg.Threshold,
+		"required", requiredQty,
 		"sufficient", sufficient,
 		"output", output)
 
 	return map[string]any{
 		"available":    available,
 		"threshold":    cfg.Threshold,
+		"required":     requiredQty,
 		"sufficient":   sufficient,
 		"total_on_hand": totalOnHand,
 		"reserved":     totalReserved,
 		"allocated":    totalAllocated,
 		"output":       output,
 	}, nil
+}
+
+// quantityFromRawData extracts the line item's requested quantity from the
+// trigger's raw entity data. Quantities arrive as JSON numbers (float64) or
+// strings depending on the source path, so both are handled.
+func quantityFromRawData(raw map[string]any) (int, bool) {
+	v, ok := raw["quantity"]
+	if !ok {
+		return 0, false
+	}
+	switch q := v.(type) {
+	case float64:
+		return int(q), true
+	case int:
+		return q, true
+	case string:
+		var n int
+		if _, err := fmt.Sscanf(q, "%d", &n); err == nil {
+			return n, true
+		}
+	}
+	return 0, false
 }
 
 // GetEntityModifications implements workflow.EntityModifier.
