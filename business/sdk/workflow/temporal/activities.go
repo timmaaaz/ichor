@@ -16,6 +16,12 @@ import (
 // Activities Struct
 // =============================================================================
 
+// ExecutionFinalizer records the terminal outcome of a workflow run on its
+// workflow.automation_executions row. Implemented by *workflow.Business.
+type ExecutionFinalizer interface {
+	UpdateExecutionStatus(ctx context.Context, id uuid.UUID, status workflow.ExecutionStatus, errorMessage string, executionTimeMs int) error
+}
+
 // Activities holds both registries needed by Temporal activity methods.
 // Register an instance on the worker (Phase 9) via worker.RegisterActivity(&Activities{...}).
 // Temporal resolves struct method names by string, so workflow.go references
@@ -23,6 +29,51 @@ import (
 type Activities struct {
 	Registry      *workflow.ActionRegistry
 	AsyncRegistry *AsyncRegistry
+
+	// Finalizer is optional (nil in unit tests): when set,
+	// FinalizeExecutionActivity writes terminal status back to the
+	// execution record created at dispatch time.
+	Finalizer ExecutionFinalizer
+}
+
+// =============================================================================
+// Execution Finalization Activity
+// =============================================================================
+
+// FinalizeExecutionInput carries the terminal outcome of a graph workflow.
+type FinalizeExecutionInput struct {
+	ExecutionID     uuid.UUID `json:"execution_id"`
+	Status          string    `json:"status"` // workflow.StatusCompleted / StatusFailed
+	ErrorMessage    string    `json:"error_message"`
+	ExecutionTimeMs int       `json:"execution_time_ms"`
+}
+
+// FinalizeExecutionActivity updates the automation_executions row with the
+// workflow's terminal status. Invoked by ExecuteGraphWorkflow on every
+// terminal path (success and failure); without it, execution history rows
+// stay 'pending' forever regardless of outcome.
+func (a *Activities) FinalizeExecutionActivity(ctx context.Context, input FinalizeExecutionInput) error {
+	logger := activity.GetLogger(ctx)
+
+	if a.Finalizer == nil {
+		logger.Warn("No execution finalizer configured - execution record not updated",
+			"execution_id", input.ExecutionID)
+		return nil
+	}
+	if input.ExecutionID == uuid.Nil {
+		return nil // nothing to finalize (e.g. test dispatch without a record)
+	}
+
+	if err := a.Finalizer.UpdateExecutionStatus(ctx, input.ExecutionID,
+		workflow.ExecutionStatus(input.Status), input.ErrorMessage, input.ExecutionTimeMs); err != nil {
+		return fmt.Errorf("update execution status: %w", err)
+	}
+
+	logger.Info("Execution record finalized",
+		"execution_id", input.ExecutionID,
+		"status", input.Status,
+		"execution_time_ms", input.ExecutionTimeMs)
+	return nil
 }
 
 // =============================================================================

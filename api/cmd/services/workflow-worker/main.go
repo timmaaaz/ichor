@@ -226,6 +226,10 @@ func run(log *logger.Logger) error {
 	w.RegisterActivity(&temporal.Activities{
 		Registry:      actionRegistry,
 		AsyncRegistry: asyncRegistry,
+		// Finalizer lets FinalizeExecutionActivity write terminal status back
+		// to workflow.automation_executions (rows are created 'pending' at
+		// dispatch and were previously never updated).
+		Finalizer: workflowBus,
 	})
 
 	log.Info(context.Background(), "starting workflow worker",
