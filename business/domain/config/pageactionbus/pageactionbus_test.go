@@ -2,6 +2,7 @@ package pageactionbus_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"testing"
@@ -31,6 +32,7 @@ func Test_PageAction(t *testing.T) {
 	unitest.Run(t, queryByID(db.BusDomain, sd), "queryByID")
 	unitest.Run(t, queryByPageConfigID(db.BusDomain, sd), "queryByPageConfigID")
 	unitest.Run(t, createButton(db.BusDomain, sd), "createButton")
+	unitest.Run(t, createExecuteActionButton(db.BusDomain, sd), "createExecuteActionButton")
 	unitest.Run(t, createDropdown(db.BusDomain, sd), "createDropdown")
 	unitest.Run(t, createSeparator(db.BusDomain, sd), "createSeparator")
 	unitest.Run(t, updateButton(db.BusDomain, sd), "updateButton")
@@ -267,6 +269,93 @@ func createButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 
 				expResp := exp.(pageactionbus.PageAction)
 				expResp.ID = gotResp.ID
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func createExecuteActionButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	actionConfig := json.RawMessage(`{"to_status":"PICKING","valid_from_statuses":["PENDING"]}`)
+
+	table := []unitest.Table{
+		{
+			Name: "create-execute-action-button",
+			ExpResp: pageactionbus.PageAction{
+				PageConfigID: sd.PageConfigIDs[0],
+				ActionType:   pageactionbus.ActionTypeButton,
+				ActionOrder:  998,
+				IsActive:     true,
+				Button: &pageactionbus.ButtonAction{
+					Label:              "Release to Picking",
+					Icon:               "truck",
+					TargetPath:         "",
+					Variant:            "default",
+					Alignment:          "right",
+					ConfirmationPrompt: "Release this order to picking?",
+					Behavior:           "execute_action",
+					ActionType:         "transition_status",
+					ActionConfig:       actionConfig,
+				},
+			},
+			ExcFunc: func(ctx context.Context) any {
+				action, err := busDomain.PageAction.CreateButton(ctx, pageactionbus.NewButtonAction{
+					PageConfigID:       sd.PageConfigIDs[0],
+					ActionOrder:        998,
+					IsActive:           true,
+					Label:              "Release to Picking",
+					Icon:               "truck",
+					TargetPath:         "",
+					Variant:            "default",
+					Alignment:          "right",
+					ConfirmationPrompt: "Release this order to picking?",
+					Behavior:           "execute_action",
+					ActionType:         "transition_status",
+					ActionConfig:       actionConfig,
+				})
+				if err != nil {
+					return err
+				}
+				return action
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(pageactionbus.PageAction)
+				if !exists {
+					return fmt.Sprintf("got is not a page action: %v", got)
+				}
+
+				expResp := exp.(pageactionbus.PageAction)
+				expResp.ID = gotResp.ID
+
+				// ActionConfig round-trips through Postgres JSONB which does not
+				// preserve key order or whitespace. Compare by unmarshalling both
+				// sides to map[string]any rather than byte-equality.
+				var gotConfig, expConfig map[string]any
+				if gotResp.Button != nil && len(gotResp.Button.ActionConfig) > 0 {
+					if err := json.Unmarshal(gotResp.Button.ActionConfig, &gotConfig); err != nil {
+						return fmt.Sprintf("failed to unmarshal got ActionConfig: %v", err)
+					}
+				}
+				if expResp.Button != nil && len(expResp.Button.ActionConfig) > 0 {
+					if err := json.Unmarshal(expResp.Button.ActionConfig, &expConfig); err != nil {
+						return fmt.Sprintf("failed to unmarshal exp ActionConfig: %v", err)
+					}
+				}
+				if diff := cmp.Diff(gotConfig, expConfig); diff != "" {
+					return fmt.Sprintf("ActionConfig mismatch (-got +exp):\n%s", diff)
+				}
+
+				// Zero out ActionConfig on both sides before the structural diff
+				// (already verified above).
+				if gotResp.Button != nil {
+					gotResp.Button.ActionConfig = nil
+				}
+				if expResp.Button != nil {
+					expResp.Button.ActionConfig = nil
+				}
 
 				return cmp.Diff(gotResp, expResp)
 			},

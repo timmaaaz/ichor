@@ -99,7 +99,7 @@ func toDBButtonAction(actionID uuid.UUID, bus pageactionbus.ButtonAction) dbButt
 		db.ActionType = &at
 	}
 	if len(bus.ActionConfig) > 0 {
-		db.ActionConfig = []byte(bus.ActionConfig)
+		db.ActionConfig = append([]byte(nil), bus.ActionConfig...)
 	}
 	return db
 }
