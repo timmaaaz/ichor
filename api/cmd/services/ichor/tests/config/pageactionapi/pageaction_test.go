@@ -19,6 +19,7 @@ func Test_PageAction(t *testing.T) {
 	test.Run(t, query200(sd), "query-200")
 	test.Run(t, queryByID200(sd), "queryByID-200")
 	test.Run(t, queryByPageConfigID200(sd), "queryByPageConfigID-200")
+	test.Run(t, queryByPageConfigIDExecuteAction200(sd), "queryByPageConfigIDExecuteAction-200")
 	test.Run(t, query401(sd), "query-401")
 
 	// Button create tests

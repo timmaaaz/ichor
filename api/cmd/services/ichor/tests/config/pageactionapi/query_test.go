@@ -1,6 +1,7 @@
 package pageaction_test
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 
@@ -93,6 +94,42 @@ func queryByPageConfigID200(sd apitest.SeedData) []apitest.Table {
 				}
 				// We don't check exact counts since seed data is random
 				return ""
+			},
+		},
+	}
+	return table
+}
+
+func queryByPageConfigIDExecuteAction200(sd apitest.SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "basic",
+			URL:        "/v1/config/page-configs/actions/" + sd.PageConfigs[0].ID,
+			Token:      sd.Admins[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodGet,
+			GotResp:    &pageactionapp.ActionsGroupedByType{},
+			ExpResp:    &pageactionapp.ActionsGroupedByType{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp := got.(*pageactionapp.ActionsGroupedByType)
+				if gotResp == nil {
+					return "got nil response"
+				}
+
+				// Find the execute_action button seeded in seed_test.go
+				for _, pa := range gotResp.Buttons {
+					if pa.Button != nil && pa.Button.Behavior == "execute_action" {
+						if pa.Button.ActionType != "transition_status" {
+							return fmt.Sprintf("expected action_type %q, got %q", "transition_status", pa.Button.ActionType)
+						}
+						if len(pa.Button.ActionConfig) == 0 {
+							return "expected non-empty action_config"
+						}
+						return ""
+					}
+				}
+
+				return "execute_action button with behavior=execute_action not found in grouped response"
 			},
 		},
 	}

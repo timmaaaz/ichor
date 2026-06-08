@@ -1,6 +1,7 @@
 package pageaction_test
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/google/go-cmp/cmp"
@@ -27,6 +28,7 @@ func createButton200(sd apitest.SeedData) []apitest.Table {
 				IsActive:           true,
 				Label:              "Test Button",
 				Icon:               "test-icon",
+				Behavior:           "navigate",
 				TargetPath:         "/test/path",
 				Variant:            "default",
 				Alignment:          "right",
@@ -41,10 +43,12 @@ func createButton200(sd apitest.SeedData) []apitest.Table {
 				Button: &pageactionapp.ButtonAction{
 					Label:              "Test Button",
 					Icon:               "test-icon",
+					Behavior:           "navigate",
 					TargetPath:         "/test/path",
 					Variant:            "default",
 					Alignment:          "right",
 					ConfirmationPrompt: "Are you sure?",
+					ActionConfig:       json.RawMessage("null"),
 				},
 			},
 			CmpFunc: func(got, exp any) string {
@@ -67,7 +71,7 @@ func createButton400(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Input:      &pageactionapp.NewButtonAction{},
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"page_config_id\",\"error\":\"page_config_id is a required field\"},{\"field\":\"label\",\"error\":\"label is a required field\"},{\"field\":\"action_url\",\"error\":\"action_url is a required field\"},{\"field\":\"variant\",\"error\":\"variant is a required field\"},{\"field\":\"alignment\",\"error\":\"alignment is a required field\"}]"),
+			ExpResp:    errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"page_config_id\",\"error\":\"page_config_id is a required field\"},{\"field\":\"label\",\"error\":\"label is a required field\"},{\"field\":\"behavior\",\"error\":\"behavior is a required field\"},{\"field\":\"variant\",\"error\":\"variant is a required field\"},{\"field\":\"alignment\",\"error\":\"alignment is a required field\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -290,6 +294,7 @@ func batchCreate200(sd apitest.SeedData) []apitest.Table {
 							ActionOrder:  1,
 							IsActive:     true,
 							Label:        "Batch Button",
+							Behavior:     "navigate",
 							TargetPath:   "/batch/path",
 							Variant:      "default",
 							Alignment:    "left",

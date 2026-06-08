@@ -2,6 +2,7 @@ package pageaction_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -133,6 +134,29 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, erro
 	}
 
 	appActions := pageactionapp.ToAppPageActions(actions)
+
+	// =========================================================================
+	// Seed a deterministic execute_action button for B8 assertion
+	// =========================================================================
+
+	executeActionConfig := json.RawMessage(`{"target_entity":"sales.orders","target_id":"{{entity_id}}","status_field":"order_fulfillment_status_id","to_status":"00000000-0000-0000-0000-000000000001","valid_from_statuses":["00000000-0000-0000-0000-000000000002"]}`)
+
+	executeActionButton, err := busDomain.PageAction.CreateButton(ctx, pageactionbus.NewButtonAction{
+		PageConfigID: configs[0].ID,
+		ActionOrder:  99,
+		IsActive:     true,
+		Label:        "Release to Picking",
+		Variant:      "default",
+		Alignment:    "right",
+		Behavior:     "execute_action",
+		ActionType:   "transition_status",
+		ActionConfig: executeActionConfig,
+	})
+	if err != nil {
+		return apitest.SeedData{}, fmt.Errorf("seeding execute_action button : %w", err)
+	}
+
+	appActions = append(appActions, pageactionapp.ToAppPageAction(executeActionButton))
 
 	// Store seed data for tests
 	sd := apitest.SeedData{
