@@ -182,6 +182,12 @@ func embed(ctx context.Context, e Embedder, texts []string) ([][]float32, error)
 		if err != nil {
 			return nil, err
 		}
+		// Guard against a short result: New indexes embeddings[i] over the full
+		// tool slice, so a length mismatch would panic. Returning an error here
+		// routes into New's graceful empty-index fallback instead.
+		if len(vecs) != len(texts) {
+			return nil, fmt.Errorf("batch embed returned %d vectors for %d inputs", len(vecs), len(texts))
+		}
 		for i := range vecs {
 			vecs[i] = normalise(vecs[i])
 		}

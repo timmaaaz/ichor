@@ -2,7 +2,6 @@ package permissionsbus
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	"github.com/google/uuid"
@@ -165,13 +164,6 @@ func (b *Business) QueryUserPermissions(ctx context.Context, userID uuid.UUID) (
 		Roles:       userRoles,
 		TableAccess: combinedTableAccesses,
 	}
-
-	userPermJson, err := json.MarshalIndent(userPerms, "", "  ")
-	if err != nil {
-		return UserPermissions{}, err
-	}
-	atmp := string(userPermJson)
-	_ = atmp
 
 	return userPerms, nil
 }

@@ -486,32 +486,15 @@ func (tp *TemplateProcessor) parseVariablePath(variablePath string) (string, []f
 			args: make([]string, 0),
 		}
 
-		// Get everything after the colon, INCLUDING any spaces that follow
+		// Get everything after the colon, INCLUDING any spaces that follow:
+		// whitespace inside filter arguments is significant (e.g. "join:, "
+		// keeps ", " as the separator argument), so do not trim it.
 		if colonIndex < len(filterStr)-1 {
 			argStr := filterStr[colonIndex+1:]
-			// The key insight: for "join:, " we want to keep ", " as the argument
-			// Only trim the very trailing whitespace at the end of the entire filter expression
-			argStr = strings.TrimRight(argStr, " \t")
 
-			// Wait, that's the problem! We're trimming the space we want to keep!
-			// Don't trim at all - keep the full argument including spaces
-			argStr = filterStr[colonIndex+1:]
-
-			// But we need to handle the trailing space from the original expression
-			// The space at the very end (before }}) should be removed
-			// For "join:, " we want to keep ", " not ", " with extra trailing space
-
-			// Actually, let me reconsider...
-			// Original: " join:, " (after split by |)
-			// After TrimLeft: "join:, "
-			// After colon: ", "
-			// This is correct! We want ", " as the argument
-
-			// Split remaining arguments by colon
+			// Split remaining arguments by colon.
 			argParts := strings.Split(argStr, ":")
-			for _, arg := range argParts {
-				filter.args = append(filter.args, arg)
-			}
+			filter.args = append(filter.args, argParts...)
 		}
 
 		filters = append(filters, filter)
@@ -671,6 +654,11 @@ func (tp *TemplateProcessor) valueToString(value interface{}) string {
 	switch v := value.(type) {
 	case string:
 		return v
+	// time.Time must precede fmt.Stringer: time.Time satisfies Stringer, so a
+	// Stringer case here would shadow it and format timestamps with the default
+	// String() layout instead of the intended RFC3339.
+	case time.Time:
+		return v.Format(time.RFC3339)
 	case fmt.Stringer:
 		return v.String()
 	case bool:
@@ -681,8 +669,6 @@ func (tp *TemplateProcessor) valueToString(value interface{}) string {
 		return fmt.Sprintf("%d", v)
 	case float32, float64:
 		return fmt.Sprintf("%g", v)
-	case time.Time:
-		return v.Format(time.RFC3339)
 	case []byte:
 		return string(v)
 	default:
