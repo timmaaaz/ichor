@@ -294,12 +294,12 @@ Events flow through a channel. The handler drains it to build the SSE stream.
 
 ### Available Providers
 
-| Provider | Package | Notes |
-|---|---|---|
-| Gemini | `llm/gemini` | Default provider |
-| Ollama | `llm/ollama` | Local models (qwen3:14b) |
-| Claude | `llm/claude` | Anthropic API |
-| OpenAI-compatible | `llm/openaicompat` | Any OpenAI-compatible API |
+| Provider | Package | Status | Notes |
+|---|---|---|---|
+| Gemini | `llm/gemini` | **Active (default)** | `ICHOR_LLM_PROVIDER=gemini` |
+| Ollama | `llm/ollama` | Parked — not currently used | Local models (qwen3:14b). Kept for a future switch back to local inference; enable with `ICHOR_LLM_PROVIDER=ollama` + `ICHOR_LLM_HOST`. See `zarf/k8s/dev/ollama/` and the `ollama` compose profile. |
+| Claude | `llm/claude` | Available (not active) | Anthropic API |
+| OpenAI-compatible | `llm/openaicompat` | Available (not active) | Any OpenAI-compatible API |
 
 ---
 
