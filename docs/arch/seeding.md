@@ -702,6 +702,22 @@ When adding a new SeedCreate path or a new TestSeed* helper that should be
 reseed-stable, derive the primary key via `seedid.Stable("<entity>:<key>")`
 and add the table to `scripts/check-determinism.sh`'s SNAPSHOTS list.
 
+## ⚠ uuid4 validators reject deterministic seed IDs
+
+Deterministic seed IDs (`seedid.Stable` → `uuid.NewSHA1`) are UUID **v5**, never v4.
+App-layer `validate:"...,uuid4"` tags on foreign-key fields REJECT seeded product/label
+IDs with "must be a valid version 4 UUID" → **400 on create/update**. A `uuid4` FK
+validator is fundamentally incompatible with deterministic seeding (v4 is random; you
+cannot deterministically generate one). Use `uuid` (any version) for FK reference fields.
+
+  symptom → fix:
+    create/update 200→400, `"field":"<x>_id","error":"must be ... version 4 UUID"`
+      → change `validate:"...,uuid4"` to `validate:"...,uuid"` on that FK field
+    create-400-missing_* test DIFFs (extra `<x>_id` v4 error alongside the expected one)
+      → same fix; the spurious second error vanishes once the FK accepts v5
+
+  fixed: orderlineitemsapp/model.go (product_id, create+update), pickingapp/model.go (substitute_product_id)
+
 ## ⚠ Reseed-determinism verification
 
 file: scripts/check-determinism.sh

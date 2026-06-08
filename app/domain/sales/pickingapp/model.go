@@ -38,7 +38,7 @@ type ShortPickRequest struct {
 	ShortPickReason      string  `json:"short_pick_reason"      validate:"omitempty"`
 	PickedBy             string  `json:"picked_by"              validate:"required,uuid4"`
 	LocationID           string  `json:"location_id"            validate:"omitempty,uuid4"`
-	SubstituteProductID  *string `json:"substitute_product_id"  validate:"omitempty,uuid4"`
+	SubstituteProductID  *string `json:"substitute_product_id"  validate:"omitempty,uuid"`
 	SubstituteQuantity   *string `json:"substitute_quantity"    validate:"omitempty,numeric"`
 }
 

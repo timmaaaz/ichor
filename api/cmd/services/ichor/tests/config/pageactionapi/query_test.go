@@ -1,6 +1,7 @@
 package pageaction_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
@@ -10,6 +11,21 @@ import (
 	"github.com/timmaaaz/ichor/app/domain/config/pageactionapp"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 )
+
+// normalizeJSON parses any json.RawMessage to a generic value before comparison.
+// The button action_config is stored as Postgres JSONB and re-serialized by the
+// HTTP layer, so neither key order nor whitespace survives the round-trip. Comparing
+// the parsed values (instead of raw bytes) makes the diff semantic.
+var normalizeJSON = cmp.Transformer("normalizeJSON", func(rm json.RawMessage) any {
+	if len(rm) == 0 {
+		return nil
+	}
+	var v any
+	if err := json.Unmarshal(rm, &v); err != nil {
+		return string(rm)
+	}
+	return v
+})
 
 func query200(sd apitest.SeedData) []apitest.Table {
 	table := []apitest.Table{
@@ -44,14 +60,18 @@ func query200(sd apitest.SeedData) []apitest.Table {
 				gotItems := got.(*query.Result[pageactionapp.PageAction]).Items
 				sortFunc(gotItems)
 
-				expItems := exp.(*query.Result[pageactionapp.PageAction]).Items
+				// Copy before sorting so we don't mutate the shared sd.PageActions
+				// backing array (other subtests index into it).
+				expResult := exp.(*query.Result[pageactionapp.PageAction])
+				expItems := append([]pageactionapp.PageAction(nil), expResult.Items...)
 				sortFunc(expItems)
 				// Grab the first 5
 				if len(expItems) > 5 {
-					exp.(*query.Result[pageactionapp.PageAction]).Items = expItems[0:5]
+					expItems = expItems[0:5]
 				}
+				expResult.Items = expItems
 
-				return cmp.Diff(got, exp)
+				return cmp.Diff(got, exp, normalizeJSON)
 			},
 		},
 	}

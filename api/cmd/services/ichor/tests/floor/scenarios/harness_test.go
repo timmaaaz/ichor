@@ -165,6 +165,10 @@ func resolveScenarioPath(name string) (string, error) {
 //                       as receive-rush-multi-line but no `receive-` prefix)
 //   - e2e-pick-strict → familyPick (canonical pick under strict levers;
 //                       `e2e-` prefix doesn't match `pick-`)
+//   - e2e-pick-tote   → familyPick (lever-only tote-mode pick; `e2e-` prefix
+//                       doesn't match `pick-`. Same lever-only shape as
+//                       e2e-pick-strict: no sales-order fixtures, so walkPick
+//                       runs with SOID == uuid.Nil and only smokes GB-007.)
 //
 // Scenarios with normal prefixes (transfer-, pick-, receive-, cycle-count-,
 // profile-) resolve via deriveFamily's switch and don't need entries here.
@@ -172,6 +176,7 @@ func resolveScenarioPath(name string) (string, error) {
 var familyOverrides = map[string]family{
 	"rush-receiving":  familyReceive,
 	"e2e-pick-strict": familyPick,
+	"e2e-pick-tote":   familyPick,
 	// "e2e-baseline" stays unset → resolved to Custom row in scenarios_test.go
 }
 

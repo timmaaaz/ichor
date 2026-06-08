@@ -49,7 +49,7 @@ func update200(sd apitest.SeedData) []apitest.Table {
 				IsPerishable:         "false",
 				HandlingInstructions: "test handling instructions",
 				UnitsPerCase:         "20",
-				TrackingType:         "none",
+				TrackingType:         sd.Products[1].TrackingType,
 				CreatedDate:          sd.Products[1].CreatedDate,
 			},
 			CmpFunc: func(got, exp any) string {

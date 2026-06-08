@@ -18,12 +18,12 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &labelapp.NewLabel{
-				Code: "NEW-CREATE-001",
+				Code: "NEW-CRT-001",
 				Type: "location",
 			},
 			GotResp: &labelapp.Label{},
 			ExpResp: &labelapp.Label{
-				Code: "NEW-CREATE-001",
+				Code: "NEW-CRT-001",
 				Type: "location",
 			},
 			CmpFunc: func(got, exp any) string {
@@ -43,14 +43,14 @@ func create200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodPost,
 			StatusCode: http.StatusOK,
 			Input: &labelapp.NewLabel{
-				Code:        "NEW-CREATE-002",
+				Code:        "NEW-CRT-002",
 				Type:        "container",
 				EntityRef:   "TOTE-A1",
 				PayloadJSON: `{"capacity":50}`,
 			},
 			GotResp: &labelapp.Label{},
 			ExpResp: &labelapp.Label{
-				Code:        "NEW-CREATE-002",
+				Code:        "NEW-CRT-002",
 				Type:        "container",
 				EntityRef:   "TOTE-A1",
 				PayloadJSON: `{"capacity":50}`,

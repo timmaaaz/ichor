@@ -1,6 +1,8 @@
 package inventoryproductapi_test
 
 import (
+	"sort"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/products/productapp"
@@ -50,7 +52,14 @@ func queryByID200(sd apitest.SeedData) []apitest.Table {
 
 func queryByIDs200(sd apitest.SeedData) []apitest.Table {
 	ids := []string{sd.Products[0].ProductID, sd.Products[1].ProductID}
+
+	// QueryByIDs returns rows in `id ASC` order (see productdb.go). Product seed
+	// order follows name/SKU, which no longer matches ID order now that products
+	// use deterministic v5 UUIDs, so sort the expected slice by ID to match.
 	expected := productapp.Products{sd.Products[0], sd.Products[1]}
+	sort.Slice(expected, func(i, j int) bool {
+		return expected[i].ProductID < expected[j].ProductID
+	})
 
 	table := []apitest.Table{
 		{

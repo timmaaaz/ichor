@@ -96,7 +96,7 @@ func ToAppOrderLineItems(bus []orderlineitemsbus.OrderLineItem) []OrderLineItem 
 
 type NewOrderLineItem struct {
 	OrderID                       string  `json:"order_id" validate:"required,uuid4"`
-	ProductID                     string  `json:"product_id" validate:"required,uuid4"`
+	ProductID                     string  `json:"product_id" validate:"required,uuid"`
 	Description                   string  `json:"description" validate:"omitempty"`
 	Quantity                      string  `json:"quantity" validate:"required,numeric"`
 	UnitPrice                     string  `json:"unit_price" validate:"omitempty"`
@@ -194,7 +194,7 @@ func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLine
 
 type UpdateOrderLineItem struct {
 	OrderID                       *string `json:"order_id" validate:"omitempty,uuid4"`
-	ProductID                     *string `json:"product_id" validate:"omitempty,uuid4"`
+	ProductID                     *string `json:"product_id" validate:"omitempty,uuid"`
 	Description                   *string `json:"description" validate:"omitempty"`
 	Quantity                      *string `json:"quantity" validate:"omitempty,numeric"`
 	UnitPrice                     *string `json:"unit_price" validate:"omitempty"`

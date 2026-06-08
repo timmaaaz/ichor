@@ -132,6 +132,10 @@ func (s *Store) Query(ctx context.Context, filter costhistorybus.QueryFilter, or
 	}
 
 	buf.WriteString(orderByClause)
+	// Stable tie-breaker: non-unique sort columns (e.g. amount) make ORDER BY
+	// non-deterministic for equal-key rows and can let OFFSET/FETCH paging skip or
+	// duplicate rows. Append the unique id so equal-key rows always sort the same way.
+	buf.WriteString(", id ASC")
 	buf.WriteString(" OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY")
 
 	var ch []costHistory

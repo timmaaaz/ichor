@@ -45,7 +45,11 @@ func TestSeedCostHistories(ctx context.Context, n int, productIDs uuid.UUIDs, cu
 	}
 
 	sort.Slice(costHistories, func(i, j int) bool {
-		return costHistories[i].Amount.Value() < costHistories[j].Amount.Value()
+		if costHistories[i].Amount.Value() != costHistories[j].Amount.Value() {
+			return costHistories[i].Amount.Value() < costHistories[j].Amount.Value()
+		}
+		// Tie-break by id to match the DB query's deterministic ORDER BY amount, id.
+		return costHistories[i].CostHistoryID.String() < costHistories[j].CostHistoryID.String()
 	})
 
 	return costHistories, nil
@@ -97,7 +101,11 @@ func TestSeedCostHistoriesHistorical(ctx context.Context, n int, daysBack int, p
 	}
 
 	sort.Slice(costHistories, func(i, j int) bool {
-		return costHistories[i].Amount.Value() < costHistories[j].Amount.Value()
+		if costHistories[i].Amount.Value() != costHistories[j].Amount.Value() {
+			return costHistories[i].Amount.Value() < costHistories[j].Amount.Value()
+		}
+		// Tie-break by id to match the DB query's deterministic ORDER BY amount, id.
+		return costHistories[i].CostHistoryID.String() < costHistories[j].CostHistoryID.String()
 	})
 
 	return costHistories, nil
