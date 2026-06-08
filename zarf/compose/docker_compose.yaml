@@ -67,7 +67,7 @@ services:
     volumes:
       - ollama-models:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:11434/api/tags || exit 1"]
+      test: ["CMD-SHELL", "ollama list || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
