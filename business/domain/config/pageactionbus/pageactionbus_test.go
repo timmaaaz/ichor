@@ -319,7 +319,15 @@ func createExecuteActionButton(busDomain dbtest.BusDomain, sd unitest.SeedData) 
 				if err != nil {
 					return err
 				}
-				return action
+
+				// Re-read from the DB so the CmpFunc sees the value that
+				// survived the Postgres JSONB round-trip, not the in-memory
+				// value returned by CreateButton.
+				queried, err := busDomain.PageAction.QueryByID(ctx, action.ID)
+				if err != nil {
+					return err
+				}
+				return queried
 			},
 			CmpFunc: func(got any, exp any) string {
 				gotResp, exists := got.(pageactionbus.PageAction)
@@ -330,7 +338,7 @@ func createExecuteActionButton(busDomain dbtest.BusDomain, sd unitest.SeedData) 
 				expResp := exp.(pageactionbus.PageAction)
 				expResp.ID = gotResp.ID
 
-				// ActionConfig round-trips through Postgres JSONB which does not
+				// ActionConfig is read back from Postgres JSONB, which does not
 				// preserve key order or whitespace. Compare by unmarshalling both
 				// sides to map[string]any rather than byte-equality.
 				var gotConfig, expConfig map[string]any
