@@ -65,3 +65,12 @@ make live             # Test liveness probe
 make ready            # Test readiness probe
 make load             # Run load test (100 concurrent, 1000 requests)
 ```
+
+### Floor scenarios (dev)
+```bash
+make scenario ls                       # list all scenario names
+make scenario active                   # show the currently-active scenario
+make scenario receive-discrepancy      # load a scenario by name
+make scenario reset                    # reset (re-apply) the active scenario
+```
+Scenarios are keyed by UUID in the API; `make scenario <name>` resolves the name → id and POSTs `/v1/scenarios/{id}/load`. A loaded profile's lever overrides take effect after the ~30s settings-cache TTL.

@@ -650,6 +650,53 @@ otel-test:
 	--user "admin@example.com:gophers" http://localhost:6000/v1/auth/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
 
 # ==============================================================================
+# Floor scenarios (dev) — load / reset / inspect the active scenario BY NAME.
+#
+#   make scenario <name>          load a scenario (e.g. make scenario receive-discrepancy)
+#   make scenario reset           re-apply (reset) the active scenario's fixtures
+#   make scenario active          show the currently-active scenario name
+#   make scenario ls              list all scenario names
+#   make scenario SCENARIO=<name> equivalent explicit form
+#
+# Scenarios are keyed by UUID in the API; this resolves NAME -> id and POSTs
+# /v1/scenarios/{id}/load. Auth reuses the seeded dev admin (admin@example.com /
+# gophers), same as `token:`. A loaded profile's lever overrides take effect
+# after the ~30s settings cache TTL.
+
+SCN_TOKEN_URL ?= http://localhost:6000/v1/auth/token/54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+SCN_API       ?= http://localhost:8080
+
+# Let `make scenario <name>` take a positional word: capture it and stop Make
+# from treating it as its own goal. Scoped to when `scenario` is the first goal
+# so no global catch-all is introduced.
+ifeq (scenario,$(firstword $(MAKECMDGOALS)))
+SCN_ARG := $(word 2,$(MAKECMDGOALS))
+ifneq ($(SCN_ARG),)
+$(eval $(SCN_ARG):;@:)
+endif
+endif
+
+.PHONY: scenario
+scenario:
+	@tok=$$(curl -s --user "admin@example.com:gophers" $(SCN_TOKEN_URL) | jq -r '.token'); \
+	arg="$(or $(SCN_ARG),$(SCENARIO))"; \
+	case "$$arg" in \
+	  ""|ls) \
+	    echo "scenarios:"; \
+	    curl -s -H "Authorization: Bearer $$tok" "$(SCN_API)/v1/scenarios?rows=50" | jq -r '.[].name' | sort ;; \
+	  active) \
+	    curl -s -H "Authorization: Bearer $$tok" "$(SCN_API)/v1/scenarios/active" | jq -r 'if .name then "active: \(.name)" else "active: (none)" end' ;; \
+	  reset) \
+	    code=$$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Authorization: Bearer $$tok" "$(SCN_API)/v1/scenarios/active/reset"); \
+	    case "$$code" in 2*) echo "reset active scenario" ;; *) echo "reset failed (http $$code — nothing active?)" ;; esac ;; \
+	  *) \
+	    id=$$(curl -s -H "Authorization: Bearer $$tok" "$(SCN_API)/v1/scenarios?rows=50" | jq -r --arg n "$$arg" '.[] | select(.name==$$n) | .id'); \
+	    if [ -z "$$id" ] || [ "$$id" = "null" ]; then echo "scenario '$$arg' not found — try: make scenario ls"; exit 1; fi; \
+	    code=$$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Authorization: Bearer $$tok" "$(SCN_API)/v1/scenarios/$$id/load"); \
+	    case "$$code" in 2*) echo "loaded $$arg ($$id) — profile levers take effect in ~30s" ;; *) echo "load failed for '$$arg' (http $$code)" ;; esac ;; \
+	esac
+
+# ==============================================================================
 # MCP Server
 
 mcp:
