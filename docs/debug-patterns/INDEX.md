@@ -30,3 +30,8 @@ Read this file fully when checking for known patterns. Match by: test name, pack
 | `invalid-reason-code-seed` | `invalid reason code`, business-layer validation, seed uses free-text reason | Replace with valid reason constant in seed function |
 | `invalid-status-seed-string` | `must be pending, got status4`, `fmt.Sprintf("status%d")`, state machine rejection | Replace computed status string with domain constant in testutil.go |
 | `reference-category-count-mismatch` | `expected N types, got N+M`, category consistency test, action type registry grew | Add new action type to expected list and update count |
+| `seedid-v5-breaks-uuid4-validator` | `must be a valid version 4 UUID`, FK field (`product_id`), create-200→400 or spurious create-400 error, deterministic seed IDs | Change `validate:"...,uuid4"` → `uuid` on FK fields in `app/domain/.../model.go` |
+| `new-seed-row-shifts-assertions` | `FLOOR_WORKER` in role/userrole/permission query DIFF, `Total` off by N, indices shifted one | Update `Total`/indices, or add a `Name` ILIKE filter to isolate test rows |
+| `stale-fixture-validator-tightened` | create-200 → 400 with no test change, fixture value exceeds a tightened `max=`/`min=` | Shorten/adjust the fixture to satisfy the new validator bound |
+| `update-unchanged-field-mismatch` | update-200 DIFF on a field the update didn't touch, EXP from hardcode/template not the real record | Build `ExpResp` from `sd.X[n]`; reference the seeded record's field |
+| `jsonb-key-order-comparison` | query-200 DIFF on a JSONB `json.RawMessage` column, keys reordered / whitespace differs, intermittent | Compare via a `cmp.Transformer` that unmarshals JSON; don't compare raw bytes |

@@ -12,3 +12,4 @@
 - `permissionsbus_Test_Permissions_query-Query.md` — `workflow.action_templates` added to table_access in seed.sql, count went from 70 to 71
 - `permissionsbus_Test_Permissions_query-Query.md` (recurrence) — 2 new tables added to seed.sql, count went from 71 to 73
 - `permissionsbus_Test_Permissions_query-Query.md` (recurrence) — 3 new tables added, count went from 73 to 76
+- `permissionsbus_Test_Permissions_query-Query.md` (recurrence) — FLOOR_WORKER role seed added `table_access` rows, count went from 79 to 82 (see `new-seed-row-shifts-assertions` for the sibling role/userrole drift)

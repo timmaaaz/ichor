@@ -6,13 +6,14 @@ type: feedback
 
 # missing-order-by
 
-**Signal**: query-200 DIFF where row order differs between GOT and EXP; failure is intermittent or only appears at certain seed counts; the query is a `QueryByIDs`, `QueryByFilter`, or similar multi-row fetch; no `ORDER BY` in the SQL for that method
+**Signal**: query-200 DIFF where row order differs between GOT and EXP; failure is intermittent or only appears at certain seed counts; the query is a `QueryByIDs`, `QueryByFilter`, or similar multi-row fetch; no `ORDER BY` in the SQL for that method — **or** the SQL has an `ORDER BY` on a *non-unique* column (`amount`, `name`, a status) so equal-value rows tie-break arbitrarily
 **Root cause**: PostgreSQL does not guarantee row order without an explicit `ORDER BY`. A query without one returns rows in heap scan order, which changes based on vacuums, updates, and concurrent activity. Tests that sort `expResp` but rely on the DB to return the same order will fail non-deterministically.
 **Fix**:
 1. Find the failing SQL query in `business/domain/{area}/{entity}bus/stores/{entity}db/{entity}db.go`
 2. Add `ORDER BY {stable_column} ASC` at the end of the SELECT — typically `id`, `created_date`, or a natural key
 3. If the test `CmpFunc` sorts both sides, the `ORDER BY` may be redundant but is still good practice
 4. Verify that `query_test.go` for this entity has a `CmpFunc` that sorts both sides if insertion order is not guaranteed
+5. **Tie-breaker variant**: if an `ORDER BY` already exists but on a non-unique column, append a unique key — `ORDER BY {col} ASC, id ASC`. The test seed/testutil sort must use the **same** tie-breaker, or the expected slice still mismatches the equal-value rows.
 
 **Common stable sort columns**:
 - Primary key (`id UUID`) — always deterministic
@@ -23,3 +24,6 @@ type: feedback
 **Examples**:
 - `supplierproductapi_Test_SupplierProducts_query-by-ids-200-basic.md` — `QueryByIDs` had no `ORDER BY`; result order was non-deterministic; fixed by adding `ORDER BY product_id ASC` to the SQL in `supplierproductdb.go`
 - `inventoryitemapi_Test_InventoryItem_query-200-basic.md` — SQL had `ORDER BY id ASC` (DefaultOrderBy) but `TestSeedInventoryItems` in `testutil.go` sorted seed rows by `(product_id, location_id)`; test expected slice was in wrong order; fixed by changing testutil sort to `id ASC` to match DefaultOrderBy
+- `costhistorybus_Test_CostHistory_query-Query.md` + `costhistoryapi_Test_CostHistory_query-200-basic.md` (tie-breaker variant) — `Query` ordered by `amount ASC` only; equal-`amount` rows came back arbitrarily; added `, id ASC` tie-breaker in `costhistorydb.go` + matching `CostHistoryID` tie-break in `testutil.go`
+- `productapi_Test_InventoryProduct_query-200-basic.md` + `productbus_Test_Product_query-query.md` (tie-breaker variant) — `orderByClause` lacked a secondary key; added `, sku ASC` in `productdb/order.go` + secondary SKU sort in `TestSeedProducts`
+- `productapi_Test_InventoryProduct_query-by-ids-200-basic.md` — test-side fix: sorted the expected slice by `ProductID` to match `QueryByIDs ORDER BY id ASC`

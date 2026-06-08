@@ -190,6 +190,14 @@ The author of a fan-out harness should document the chosen ceiling in a comment 
 
 ---
 
+## ⚠ Scenario family registration (floor harness)
+
+The floor scenario harness (`api/cmd/services/ichor/tests/floor/scenarios/`) discovers scenarios by enumerating `deployments/scenarios/` directories, then resolves each to a **family** (which selects the walk/handler) via a precedence chain: `deriveFamily(name)` → `familyOverrides` (`harness_test.go`) → `customRowOverrides`. Dropping a scenario folder on disk is **necessary but not sufficient** — a scenario whose name prefix matches no `deriveFamily` case must also be registered, or it has no family and dispatch fatals.
+
+⚠ When adding a **lever-only** scenario (just `scenario.yaml`, no fixture subdirs, e.g. `e2e-pick-tote`), also add `"<name>": familyPick` to `familyOverrides` in `harness_test.go`, mirroring `e2e-pick-strict`. Otherwise `deriveFamily` returns `""` and dispatch fatals at runtime: `scenario "<name>" has empty family and no Custom handler`. The fatal message names `customRowOverrides`/`scenarios_test.go`, but lever-only pick scenarios belong in `familyOverrides`/`harness_test.go`.
+
+---
+
 ## ⚠ Running tests
 
 **Never run `go test ./...`** — hundreds of tests, many require live DB.
