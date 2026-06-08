@@ -1,3 +1,7 @@
+# PARKED — ollama is not currently used (default LLM provider is Gemini).
+# This kustomization is intentionally NOT referenced by `make dev-apply`; it is
+# applied on demand only when switching back to local inference. See the banner
+# in dev-ollama.yaml for the bring-up steps.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
