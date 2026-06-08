@@ -3,6 +3,7 @@ package pageactionbus_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -36,6 +37,7 @@ func Test_PageAction(t *testing.T) {
 	unitest.Run(t, createDropdown(db.BusDomain, sd), "createDropdown")
 	unitest.Run(t, createSeparator(db.BusDomain, sd), "createSeparator")
 	unitest.Run(t, updateButton(db.BusDomain, sd), "updateButton")
+	unitest.Run(t, updateButtonInvalidBehavior(db.BusDomain, sd), "updateButtonInvalidBehavior")
 	unitest.Run(t, updateDropdown(db.BusDomain, sd), "updateDropdown")
 	unitest.Run(t, updateSeparator(db.BusDomain, sd), "updateSeparator")
 	unitest.Run(t, deleteAction(db.BusDomain, sd), "delete")
@@ -534,6 +536,55 @@ func updateButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
+// updateButtonInvalidBehavior verifies that flipping a button's behavior without
+// supplying the field the new branch requires is rejected with a clean, typed
+// ErrInvalidButtonBehavior in the business layer — rather than reaching the DB
+// and tripping the page_action_buttons_behavior_chk CHECK constraint as an
+// opaque error (which the app layer would surface as a 500).
+func updateButtonInvalidBehavior(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	table := []unitest.Table{
+		{
+			Name:    "flip-navigate-to-execute-action-missing-config",
+			ExpResp: pageactionbus.ErrInvalidButtonBehavior,
+			ExcFunc: func(ctx context.Context) any {
+				// Start from a valid 'navigate' button.
+				created, err := busDomain.PageAction.CreateButton(ctx, pageactionbus.NewButtonAction{
+					PageConfigID: sd.PageConfigIDs[0],
+					ActionOrder:  997,
+					IsActive:     true,
+					Label:        "Flip Me",
+					Variant:      "default",
+					Alignment:    "right",
+					Behavior:     "navigate",
+					TargetPath:   "/somewhere",
+				})
+				if err != nil {
+					return err
+				}
+
+				// Flip to execute_action WITHOUT supplying action_type/action_config.
+				newBehavior := "execute_action"
+				_, err = busDomain.PageAction.UpdateButton(ctx, created, pageactionbus.UpdateButtonAction{
+					Behavior: &newBehavior,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return fmt.Sprintf("expected an error, got: %v", got)
+				}
+				if !errors.Is(gotErr, pageactionbus.ErrInvalidButtonBehavior) {
+					return fmt.Sprintf("expected ErrInvalidButtonBehavior, got: %v", gotErr)
+				}
+				return ""
 			},
 		},
 	}

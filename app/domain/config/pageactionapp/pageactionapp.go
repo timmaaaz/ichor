@@ -47,6 +47,9 @@ func (a *App) CreateButton(ctx context.Context, app NewButtonAction) (PageAction
 
 	action, err := a.pageactionbus.CreateButton(ctx, nba)
 	if err != nil {
+		if errors.Is(err, pageactionbus.ErrInvalidButtonBehavior) {
+			return PageAction{}, errs.New(errs.InvalidArgument, err)
+		}
 		if errors.Is(err, pageactionbus.ErrUniqueEntry) {
 			return PageAction{}, errs.New(errs.Aborted, pageactionbus.ErrUniqueEntry)
 		}
@@ -126,6 +129,9 @@ func (a *App) UpdateButton(ctx context.Context, app UpdateButtonAction, id uuid.
 
 	updated, err := a.pageactionbus.UpdateButton(ctx, action, uba)
 	if err != nil {
+		if errors.Is(err, pageactionbus.ErrInvalidButtonBehavior) {
+			return PageAction{}, errs.New(errs.InvalidArgument, err)
+		}
 		if errors.Is(err, pageactionbus.ErrNotFound) {
 			return PageAction{}, errs.New(errs.NotFound, pageactionbus.ErrNotFound)
 		}
@@ -339,6 +345,9 @@ func (a *App) BatchCreate(ctx context.Context, app BatchCreateRequest) (PageActi
 		}
 
 		if err != nil {
+			if errors.Is(err, pageactionbus.ErrInvalidButtonBehavior) {
+				return nil, errs.Newf(errs.InvalidArgument, "action[%d]: %s", i, err)
+			}
 			if errors.Is(err, pageactionbus.ErrUniqueEntry) {
 				return nil, errs.Newf(errs.Aborted, "action[%d]: %s", i, pageactionbus.ErrUniqueEntry)
 			}
