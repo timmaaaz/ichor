@@ -619,10 +619,13 @@ INSERT INTO core.table_access (id, role_id, table_name, can_create, can_read, ca
     (gen_random_uuid(), 'b0000000-0000-4000-8000-000000000001', 'config.settings', false, true, false, false)
 ON CONFLICT DO NOTHING;
 
--- Grant FLOOR_WORKER workflow action permissions for warehouse operations
+-- Grant FLOOR_WORKER workflow action permissions for warehouse operations.
+-- NOTE: transition_status is intentionally NOT granted to FLOOR_WORKER — order
+-- status transitions (e.g. Release to Picking) are admin-only (ZZZADMIN). The
+-- floor pick flow does not manually execute transition_status; automated rules
+-- run via Temporal and do not consult action_permissions.
 INSERT INTO workflow.action_permissions (role_id, action_type, is_allowed)
 VALUES
-    ('b0000000-0000-4000-8000-000000000001', 'transition_status', true),
     ('b0000000-0000-4000-8000-000000000001', 'create_entity', true),
     ('b0000000-0000-4000-8000-000000000001', 'lookup_entity', true),
     ('b0000000-0000-4000-8000-000000000001', 'allocate_inventory', true),
