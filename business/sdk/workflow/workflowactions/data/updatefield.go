@@ -216,7 +216,13 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 	return result, nil
 }
 
-// executeUpdate performs the actual database update
+// executeUpdate performs the actual database update.
+//
+// ⚠ This is a raw SQL UPDATE that bypasses the business layer, so NO
+// delegate event is emitted and the mutation can never trigger other
+// automation rules (on_update / changed_to chains are silently dead).
+// See docs/workflow/actions/update-field.md §Limitation for the verified
+// behavior and the design options for lifting this.
 func (h *UpdateFieldHandler) executeUpdate(ctx context.Context, execer sqlx.ExtContext, cfg UpdateFieldConfig, value any, templateContext workflow.TemplateContext) (int64, error) {
 	// Build UPDATE query
 	query := fmt.Sprintf("UPDATE %s SET %s = :value", cfg.TargetEntity, cfg.TargetField)

@@ -255,7 +255,46 @@ Only these tables can be updated (security feature):
 1. **Update order status** when conditions are met
 2. **Set foreign key relationships** using lookup values
 3. **Bulk update records** matching specific criteria
-4. **Cascading field updates** in workflow automation
+4. **Terminal field mutations** at the end of a workflow path (see the cascading limitation below)
+
+## ⚠ Limitation: updates do NOT trigger other rules (no cascading)
+
+`update_field` executes a raw SQL `UPDATE` directly against the database
+(`executeUpdate` in `updatefield.go`). It does **not** go through the
+business layer, so **no delegate event is emitted** — and delegate events
+are the only input to the workflow trigger pipeline.
+
+Consequence: a rule chain like
+
+```
+Rule A:  on_create X  →  update_field  sets X.status = 'on_hold'
+Rule B:  on_update X, status changed_to 'on_hold'  →  create_alert
+```
+
+silently does NOT fire Rule B. The field changes in the database, but Rule B
+only fires when the same change arrives through the business layer (e.g. an
+API `PUT`). The editor will happily let you wire this dead chain.
+
+**Verified behavior (2026-06-05):** rule-driven `update_field` mutation →
+0 downstream events; identical change via API → downstream rule fires.
+
+### If you need a cascade today
+
+Use the synthetic-entity pattern the seeded allocation workflows use: have
+the producing step **create a row through a bus** (e.g. `allocation_results`)
+and let the consuming rule trigger `on_create` of that entity. Bus-path
+creates emit delegate events; raw-SQL updates do not.
+
+### Design options to lift the limitation (maintainer decision)
+
+1. **Synthetic event emission** — after a successful update, the handler
+   constructs a `TriggerEvent` (entity from `target_entity`, FieldChanges
+   old→new, `event_type: on_update`) and feeds the same dispatch path the
+   delegate handler uses. Requires a cascade-depth guard (hop counter in the
+   event) so A→B→A cannot loop.
+2. **Keep as-is + editor warning** — document (this section) and make the
+   workflow editor warn when an `update_field` target entity matches another
+   active rule's trigger entity.
 
 ## Error Handling
 

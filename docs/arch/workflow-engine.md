@@ -329,3 +329,11 @@ tests: assert to map[string]any, never concrete struct
   business/sdk/workflow/temporal/graph_executor.go                 (consume new fields if needed)
   apitest/workflow.go                                               (update test infra if WorkflowInfra changes)
 
+
+## ⚠ update_field does not emit delegate events (no rule cascading)
+
+file: business/sdk/workflow/workflowactions/data/updatefield.go (executeUpdate)
+raw SQL UPDATE — bypasses business layer → no delegate event → cannot trigger
+other rules' on_update conditions. Rule chains via update_field are silently
+dead; cascade requires a bus-path write (see allocation_results pattern).
+Full writeup: docs/workflow/actions/update-field.md §Limitation.
