@@ -98,6 +98,9 @@ func (b *Business) CreateButton(ctx context.Context, nba NewButtonAction) (PageA
 			Variant:            nba.Variant,
 			Alignment:          nba.Alignment,
 			ConfirmationPrompt: nba.ConfirmationPrompt,
+			Behavior:           nba.Behavior,
+			ActionType:         nba.ActionType,
+			ActionConfig:       nba.ActionConfig,
 		},
 	}
 
@@ -231,6 +234,18 @@ func (b *Business) UpdateButton(ctx context.Context, action PageAction, uba Upda
 
 	if uba.ConfirmationPrompt != nil {
 		action.Button.ConfirmationPrompt = *uba.ConfirmationPrompt
+	}
+
+	if uba.Behavior != nil {
+		action.Button.Behavior = *uba.Behavior
+	}
+
+	if uba.ActionType != nil {
+		action.Button.ActionType = *uba.ActionType
+	}
+
+	if uba.ActionConfig != nil {
+		action.Button.ActionConfig = *uba.ActionConfig
 	}
 
 	if err := b.storer.UpdateBaseAction(ctx, action); err != nil {

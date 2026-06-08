@@ -238,6 +238,7 @@ func createButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 					Variant:            "default",
 					Alignment:          "right",
 					ConfirmationPrompt: "Are you sure?",
+					Behavior:           "navigate",
 				},
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -251,6 +252,7 @@ func createButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 					Variant:            "default",
 					Alignment:          "right",
 					ConfirmationPrompt: "Are you sure?",
+					Behavior:           "navigate",
 				})
 				if err != nil {
 					return err
@@ -418,6 +420,9 @@ func updateButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 					Variant:            buttonAction.Button.Variant,
 					Alignment:          buttonAction.Button.Alignment,
 					ConfirmationPrompt: buttonAction.Button.ConfirmationPrompt,
+					Behavior:           buttonAction.Button.Behavior,
+					ActionType:         buttonAction.Button.ActionType,
+					ActionConfig:       buttonAction.Button.ActionConfig,
 				},
 			},
 			ExcFunc: func(ctx context.Context) any {

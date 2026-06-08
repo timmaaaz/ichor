@@ -1,6 +1,8 @@
 package pageactiondb
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 )
@@ -19,10 +21,13 @@ type dbButtonAction struct {
 	ActionID           uuid.UUID `db:"action_id"`
 	Label              string    `db:"label"`
 	Icon               string    `db:"icon"`
-	TargetPath         string    `db:"target_path"`
+	TargetPath         *string   `db:"target_path"`   // NULL when behavior=execute_action
 	Variant            string    `db:"variant"`
 	Alignment          string    `db:"alignment"`
 	ConfirmationPrompt string    `db:"confirmation_prompt"`
+	Behavior           string    `db:"behavior"`
+	ActionType         *string   `db:"action_type"`   // NULL when behavior=navigate
+	ActionConfig       []byte    `db:"action_config"` // NULL when behavior=navigate; JSONB
 }
 
 // dbDropdownAction represents a dropdown action in the database.
@@ -74,28 +79,51 @@ func toBusPageActions(dbs []dbPageAction) []pageactionbus.PageAction {
 }
 
 // toDBButtonAction converts a business ButtonAction to database format.
+// Empty optional values map to SQL NULL to satisfy the behavior CHECK constraint.
 func toDBButtonAction(actionID uuid.UUID, bus pageactionbus.ButtonAction) dbButtonAction {
-	return dbButtonAction{
+	db := dbButtonAction{
 		ActionID:           actionID,
 		Label:              bus.Label,
 		Icon:               bus.Icon,
-		TargetPath:         bus.TargetPath,
 		Variant:            bus.Variant,
 		Alignment:          bus.Alignment,
 		ConfirmationPrompt: bus.ConfirmationPrompt,
+		Behavior:           bus.Behavior,
 	}
+	if bus.TargetPath != "" {
+		tp := bus.TargetPath
+		db.TargetPath = &tp
+	}
+	if bus.ActionType != "" {
+		at := bus.ActionType
+		db.ActionType = &at
+	}
+	if len(bus.ActionConfig) > 0 {
+		db.ActionConfig = []byte(bus.ActionConfig)
+	}
+	return db
 }
 
 // toBusButtonAction converts a database button action to business format.
 func toBusButtonAction(db dbButtonAction) pageactionbus.ButtonAction {
-	return pageactionbus.ButtonAction{
+	b := pageactionbus.ButtonAction{
 		Label:              db.Label,
 		Icon:               db.Icon,
-		TargetPath:         db.TargetPath,
 		Variant:            db.Variant,
 		Alignment:          db.Alignment,
 		ConfirmationPrompt: db.ConfirmationPrompt,
+		Behavior:           db.Behavior,
 	}
+	if db.TargetPath != nil {
+		b.TargetPath = *db.TargetPath
+	}
+	if db.ActionType != nil {
+		b.ActionType = *db.ActionType
+	}
+	if len(db.ActionConfig) > 0 {
+		b.ActionConfig = append(json.RawMessage(nil), db.ActionConfig...)
+	}
+	return b
 }
 
 // toDBDropdownAction converts a business DropdownAction to database format.
