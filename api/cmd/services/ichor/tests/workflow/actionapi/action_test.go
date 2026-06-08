@@ -25,6 +25,11 @@ func Test_ActionAPI(t *testing.T) {
 	// Execute action tests - happy path
 	test.Run(t, execute200CreateAlert(sd), "execute-200-create-alert")
 
+	// Execute action tests - transition_status
+	test.Run(t, executeTransitionStatus200(sd), "execute-transition-status-200")
+	test.Run(t, executeTransitionStatus403Denied(sd), "execute-transition-status-403")
+	test.Run(t, executeTransitionStatusInvalidFrom(sd), "execute-transition-status-invalid-from")
+
 	// Execute action tests - error cases
 	test.Run(t, execute401(sd), "execute-401")
 	test.Run(t, execute403NoPermission(sd), "execute-403-no-permission")

@@ -71,12 +71,15 @@ type PageActionExport struct {
 
 // ButtonActionExport represents button-specific data for export.
 type ButtonActionExport struct {
-	Label              string `json:"label"`
-	Icon               string `json:"icon"`
-	TargetPath         string `json:"target_path"`
-	Variant            string `json:"variant"`
-	Alignment          string `json:"alignment"`
-	ConfirmationPrompt string `json:"confirmation_prompt"`
+	Label              string          `json:"label"`
+	Icon               string          `json:"icon"`
+	TargetPath         string          `json:"target_path"`
+	Variant            string          `json:"variant"`
+	Alignment          string          `json:"alignment"`
+	ConfirmationPrompt string          `json:"confirmation_prompt"`
+	Behavior           string          `json:"behavior"`
+	ActionType         string          `json:"action_type"`
+	ActionConfig       json.RawMessage `json:"action_config"`
 }
 
 // DropdownActionExport represents dropdown-specific data for export.

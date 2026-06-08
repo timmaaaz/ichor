@@ -342,5 +342,6 @@ func CreateNewButtonAction(pageConfigID uuid.UUID, def ButtonActionDefinition) p
 		Variant:            defaultIfEmpty(def.Variant, "default"),
 		Alignment:          defaultIfEmpty(def.Alignment, "right"),
 		ConfirmationPrompt: def.ConfirmationPrompt, // Empty string is valid
+		Behavior:           "navigate",
 	}
 }

@@ -1,6 +1,10 @@
 package pageactionbus
 
-import "github.com/google/uuid"
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 // JSON tags are required for workflow event serialization. The workflow system
 // (via EventPublisher) marshals business models to JSON for RawData in TriggerEvents.
@@ -32,12 +36,15 @@ type PageAction struct {
 
 // ButtonAction contains button-specific configuration.
 type ButtonAction struct {
-	Label              string `json:"label"`
-	Icon               string `json:"icon"`
-	TargetPath         string `json:"target_path"`
-	Variant            string `json:"variant"`
-	Alignment          string `json:"alignment"`
-	ConfirmationPrompt string `json:"confirmation_prompt"`
+	Label              string          `json:"label"`
+	Icon               string          `json:"icon"`
+	TargetPath         string          `json:"target_path"`
+	Variant            string          `json:"variant"`
+	Alignment          string          `json:"alignment"`
+	ConfirmationPrompt string          `json:"confirmation_prompt"`
+	Behavior           string          `json:"behavior"`
+	ActionType         string          `json:"action_type"`
+	ActionConfig       json.RawMessage `json:"action_config"`
 }
 
 // DropdownAction contains dropdown-specific configuration including items.
@@ -57,15 +64,18 @@ type DropdownItem struct {
 
 // NewButtonAction contains information needed to create a button action.
 type NewButtonAction struct {
-	PageConfigID       uuid.UUID `json:"page_config_id"`
-	ActionOrder        int       `json:"action_order"`
-	IsActive           bool      `json:"is_active"`
-	Label              string    `json:"label"`
-	Icon               string    `json:"icon"`
-	TargetPath         string    `json:"target_path"`
-	Variant            string    `json:"variant"`
-	Alignment          string    `json:"alignment"`
-	ConfirmationPrompt string    `json:"confirmation_prompt"`
+	PageConfigID       uuid.UUID       `json:"page_config_id"`
+	ActionOrder        int             `json:"action_order"`
+	IsActive           bool            `json:"is_active"`
+	Label              string          `json:"label"`
+	Icon               string          `json:"icon"`
+	TargetPath         string          `json:"target_path"`
+	Variant            string          `json:"variant"`
+	Alignment          string          `json:"alignment"`
+	ConfirmationPrompt string          `json:"confirmation_prompt"`
+	Behavior           string          `json:"behavior"`
+	ActionType         string          `json:"action_type"`
+	ActionConfig       json.RawMessage `json:"action_config"`
 }
 
 // NewDropdownAction contains information needed to create a dropdown action.
@@ -94,15 +104,18 @@ type NewSeparatorAction struct {
 
 // UpdateButtonAction contains information needed to update a button action.
 type UpdateButtonAction struct {
-	PageConfigID       *uuid.UUID `json:"page_config_id,omitempty"`
-	ActionOrder        *int       `json:"action_order,omitempty"`
-	IsActive           *bool      `json:"is_active,omitempty"`
-	Label              *string    `json:"label,omitempty"`
-	Icon               *string    `json:"icon,omitempty"`
-	TargetPath         *string    `json:"target_path,omitempty"`
-	Variant            *string    `json:"variant,omitempty"`
-	Alignment          *string    `json:"alignment,omitempty"`
-	ConfirmationPrompt *string    `json:"confirmation_prompt,omitempty"`
+	PageConfigID       *uuid.UUID       `json:"page_config_id,omitempty"`
+	ActionOrder        *int             `json:"action_order,omitempty"`
+	IsActive           *bool            `json:"is_active,omitempty"`
+	Label              *string          `json:"label,omitempty"`
+	Icon               *string          `json:"icon,omitempty"`
+	TargetPath         *string          `json:"target_path,omitempty"`
+	Variant            *string          `json:"variant,omitempty"`
+	Alignment          *string          `json:"alignment,omitempty"`
+	ConfirmationPrompt *string          `json:"confirmation_prompt,omitempty"`
+	Behavior           *string          `json:"behavior,omitempty"`
+	ActionType         *string          `json:"action_type,omitempty"`
+	ActionConfig       *json.RawMessage `json:"action_config,omitempty"`
 }
 
 // UpdateDropdownAction contains information needed to update a dropdown action.

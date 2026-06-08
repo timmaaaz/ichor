@@ -2,6 +2,8 @@ package pageactionbus_test
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -31,9 +33,11 @@ func Test_PageAction(t *testing.T) {
 	unitest.Run(t, queryByID(db.BusDomain, sd), "queryByID")
 	unitest.Run(t, queryByPageConfigID(db.BusDomain, sd), "queryByPageConfigID")
 	unitest.Run(t, createButton(db.BusDomain, sd), "createButton")
+	unitest.Run(t, createExecuteActionButton(db.BusDomain, sd), "createExecuteActionButton")
 	unitest.Run(t, createDropdown(db.BusDomain, sd), "createDropdown")
 	unitest.Run(t, createSeparator(db.BusDomain, sd), "createSeparator")
 	unitest.Run(t, updateButton(db.BusDomain, sd), "updateButton")
+	unitest.Run(t, updateButtonInvalidBehavior(db.BusDomain, sd), "updateButtonInvalidBehavior")
 	unitest.Run(t, updateDropdown(db.BusDomain, sd), "updateDropdown")
 	unitest.Run(t, updateSeparator(db.BusDomain, sd), "updateSeparator")
 	unitest.Run(t, deleteAction(db.BusDomain, sd), "delete")
@@ -238,6 +242,7 @@ func createButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 					Variant:            "default",
 					Alignment:          "right",
 					ConfirmationPrompt: "Are you sure?",
+					Behavior:           "navigate",
 				},
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -251,6 +256,7 @@ func createButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 					Variant:            "default",
 					Alignment:          "right",
 					ConfirmationPrompt: "Are you sure?",
+					Behavior:           "navigate",
 				})
 				if err != nil {
 					return err
@@ -265,6 +271,101 @@ func createButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 
 				expResp := exp.(pageactionbus.PageAction)
 				expResp.ID = gotResp.ID
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func createExecuteActionButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	actionConfig := json.RawMessage(`{"to_status":"PICKING","valid_from_statuses":["PENDING"]}`)
+
+	table := []unitest.Table{
+		{
+			Name: "create-execute-action-button",
+			ExpResp: pageactionbus.PageAction{
+				PageConfigID: sd.PageConfigIDs[0],
+				ActionType:   pageactionbus.ActionTypeButton,
+				ActionOrder:  998,
+				IsActive:     true,
+				Button: &pageactionbus.ButtonAction{
+					Label:              "Release to Picking",
+					Icon:               "truck",
+					TargetPath:         "",
+					Variant:            "default",
+					Alignment:          "right",
+					ConfirmationPrompt: "Release this order to picking?",
+					Behavior:           "execute_action",
+					ActionType:         "transition_status",
+					ActionConfig:       actionConfig,
+				},
+			},
+			ExcFunc: func(ctx context.Context) any {
+				action, err := busDomain.PageAction.CreateButton(ctx, pageactionbus.NewButtonAction{
+					PageConfigID:       sd.PageConfigIDs[0],
+					ActionOrder:        998,
+					IsActive:           true,
+					Label:              "Release to Picking",
+					Icon:               "truck",
+					TargetPath:         "",
+					Variant:            "default",
+					Alignment:          "right",
+					ConfirmationPrompt: "Release this order to picking?",
+					Behavior:           "execute_action",
+					ActionType:         "transition_status",
+					ActionConfig:       actionConfig,
+				})
+				if err != nil {
+					return err
+				}
+
+				// Re-read from the DB so the CmpFunc sees the value that
+				// survived the Postgres JSONB round-trip, not the in-memory
+				// value returned by CreateButton.
+				queried, err := busDomain.PageAction.QueryByID(ctx, action.ID)
+				if err != nil {
+					return err
+				}
+				return queried
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(pageactionbus.PageAction)
+				if !exists {
+					return fmt.Sprintf("got is not a page action: %v", got)
+				}
+
+				expResp := exp.(pageactionbus.PageAction)
+				expResp.ID = gotResp.ID
+
+				// ActionConfig is read back from Postgres JSONB, which does not
+				// preserve key order or whitespace. Compare by unmarshalling both
+				// sides to map[string]any rather than byte-equality.
+				var gotConfig, expConfig map[string]any
+				if gotResp.Button != nil && len(gotResp.Button.ActionConfig) > 0 {
+					if err := json.Unmarshal(gotResp.Button.ActionConfig, &gotConfig); err != nil {
+						return fmt.Sprintf("failed to unmarshal got ActionConfig: %v", err)
+					}
+				}
+				if expResp.Button != nil && len(expResp.Button.ActionConfig) > 0 {
+					if err := json.Unmarshal(expResp.Button.ActionConfig, &expConfig); err != nil {
+						return fmt.Sprintf("failed to unmarshal exp ActionConfig: %v", err)
+					}
+				}
+				if diff := cmp.Diff(gotConfig, expConfig); diff != "" {
+					return fmt.Sprintf("ActionConfig mismatch (-got +exp):\n%s", diff)
+				}
+
+				// Zero out ActionConfig on both sides before the structural diff
+				// (already verified above).
+				if gotResp.Button != nil {
+					gotResp.Button.ActionConfig = nil
+				}
+				if expResp.Button != nil {
+					expResp.Button.ActionConfig = nil
+				}
 
 				return cmp.Diff(gotResp, expResp)
 			},
@@ -418,6 +519,9 @@ func updateButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 					Variant:            buttonAction.Button.Variant,
 					Alignment:          buttonAction.Button.Alignment,
 					ConfirmationPrompt: buttonAction.Button.ConfirmationPrompt,
+					Behavior:           buttonAction.Button.Behavior,
+					ActionType:         buttonAction.Button.ActionType,
+					ActionConfig:       buttonAction.Button.ActionConfig,
 				},
 			},
 			ExcFunc: func(ctx context.Context) any {
@@ -432,6 +536,55 @@ func updateButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 			},
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
+// updateButtonInvalidBehavior verifies that flipping a button's behavior without
+// supplying the field the new branch requires is rejected with a clean, typed
+// ErrInvalidButtonBehavior in the business layer — rather than reaching the DB
+// and tripping the page_action_buttons_behavior_chk CHECK constraint as an
+// opaque error (which the app layer would surface as a 500).
+func updateButtonInvalidBehavior(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
+	table := []unitest.Table{
+		{
+			Name:    "flip-navigate-to-execute-action-missing-config",
+			ExpResp: pageactionbus.ErrInvalidButtonBehavior,
+			ExcFunc: func(ctx context.Context) any {
+				// Start from a valid 'navigate' button.
+				created, err := busDomain.PageAction.CreateButton(ctx, pageactionbus.NewButtonAction{
+					PageConfigID: sd.PageConfigIDs[0],
+					ActionOrder:  997,
+					IsActive:     true,
+					Label:        "Flip Me",
+					Variant:      "default",
+					Alignment:    "right",
+					Behavior:     "navigate",
+					TargetPath:   "/somewhere",
+				})
+				if err != nil {
+					return err
+				}
+
+				// Flip to execute_action WITHOUT supplying action_type/action_config.
+				newBehavior := "execute_action"
+				_, err = busDomain.PageAction.UpdateButton(ctx, created, pageactionbus.UpdateButtonAction{
+					Behavior: &newBehavior,
+				})
+				return err
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(error)
+				if !ok {
+					return fmt.Sprintf("expected an error, got: %v", got)
+				}
+				if !errors.Is(gotErr, pageactionbus.ErrInvalidButtonBehavior) {
+					return fmt.Sprintf("expected ErrInvalidButtonBehavior, got: %v", gotErr)
+				}
+				return ""
 			},
 		},
 	}

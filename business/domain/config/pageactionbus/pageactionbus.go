@@ -17,10 +17,38 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound            = errors.New("page action not found")
-	ErrUniqueEntry         = errors.New("page action entry is not unique")
-	ErrForeignKeyViolation = errors.New("foreign key violation")
+	ErrNotFound              = errors.New("page action not found")
+	ErrUniqueEntry           = errors.New("page action entry is not unique")
+	ErrForeignKeyViolation   = errors.New("foreign key violation")
+	ErrInvalidButtonBehavior = errors.New("invalid button behavior configuration")
 )
+
+// validateButtonBehavior enforces the polymorphic behavior invariant that the
+// page_action_buttons_behavior_chk CHECK constraint guarantees at the database
+// level: a 'navigate' button must have a target_path; an 'execute_action' button
+// must have both an action_type and an action_config.
+//
+// Validating here — the business layer is the source of truth — turns an
+// otherwise opaque DB constraint violation into a clean, typed error. This
+// matters most for partial updates: UpdateButton merges a patch onto the
+// existing button, so flipping Behavior (or clearing the field the current
+// behavior requires) without supplying the new branch's required field would
+// otherwise only be caught by the DB and surface to callers as a 500.
+func validateButtonBehavior(b ButtonAction) error {
+	switch b.Behavior {
+	case "navigate":
+		if b.TargetPath == "" {
+			return fmt.Errorf("%w: navigate requires target_path", ErrInvalidButtonBehavior)
+		}
+	case "execute_action":
+		if b.ActionType == "" || len(b.ActionConfig) == 0 {
+			return fmt.Errorf("%w: execute_action requires action_type and action_config", ErrInvalidButtonBehavior)
+		}
+	default:
+		return fmt.Errorf("%w: unknown behavior %q", ErrInvalidButtonBehavior, b.Behavior)
+	}
+	return nil
+}
 
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data. All create/update operations are atomic single-table operations.
@@ -98,7 +126,14 @@ func (b *Business) CreateButton(ctx context.Context, nba NewButtonAction) (PageA
 			Variant:            nba.Variant,
 			Alignment:          nba.Alignment,
 			ConfirmationPrompt: nba.ConfirmationPrompt,
+			Behavior:           nba.Behavior,
+			ActionType:         nba.ActionType,
+			ActionConfig:       nba.ActionConfig,
 		},
+	}
+
+	if err := validateButtonBehavior(*action.Button); err != nil {
+		return PageAction{}, err
 	}
 
 	if err := b.storer.CreateBaseAction(ctx, action); err != nil {
@@ -231,6 +266,25 @@ func (b *Business) UpdateButton(ctx context.Context, action PageAction, uba Upda
 
 	if uba.ConfirmationPrompt != nil {
 		action.Button.ConfirmationPrompt = *uba.ConfirmationPrompt
+	}
+
+	if uba.Behavior != nil {
+		action.Button.Behavior = *uba.Behavior
+	}
+
+	if uba.ActionType != nil {
+		action.Button.ActionType = *uba.ActionType
+	}
+
+	if uba.ActionConfig != nil {
+		action.Button.ActionConfig = *uba.ActionConfig
+	}
+
+	// Validate the merged result up front: a partial update that flips Behavior
+	// (or clears the field the current behavior requires) must not be allowed to
+	// reach the DB and trip the behavior CHECK constraint as an opaque 500.
+	if err := validateButtonBehavior(*action.Button); err != nil {
+		return PageAction{}, err
 	}
 
 	if err := b.storer.UpdateBaseAction(ctx, action); err != nil {

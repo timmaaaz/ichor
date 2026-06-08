@@ -558,11 +558,13 @@ func NewDatabase(t *testing.T, testName string) *Database {
 	t.Logf("HostPort: %s\n", c.HostPort)
 
 	dbM, err := sqldb.Open(sqldb.Config{
-		User:       "postgres",
-		Password:   "postgres",
-		Host:       c.HostPort,
-		Name:       "postgres",
-		DisableTLS: true,
+		User:         "postgres",
+		Password:     "postgres",
+		Host:         c.HostPort,
+		Name:         "postgres",
+		MaxIdleConns: 1,
+		MaxOpenConns: 1,
+		DisableTLS:   true,
 	})
 	if err != nil {
 		t.Fatalf("Opening database connection: %v", err)
@@ -592,11 +594,13 @@ func NewDatabase(t *testing.T, testName string) *Database {
 	// -------------------------------------------------------------------------
 
 	db, err := sqldb.Open(sqldb.Config{
-		User:       "postgres",
-		Password:   "postgres",
-		Host:       c.HostPort,
-		Name:       dbName,
-		DisableTLS: true,
+		User:         "postgres",
+		Password:     "postgres",
+		Host:         c.HostPort,
+		Name:         dbName,
+		MaxIdleConns: 4,
+		MaxOpenConns: 4,
+		DisableTLS:   true,
 	})
 
 	if err != nil {
@@ -629,12 +633,17 @@ func NewDatabase(t *testing.T, testName string) *Database {
 	t.Cleanup(func() {
 		t.Helper()
 
+		// Close the test-database pool BEFORE dropping the database. With idle
+		// connections now retained (MaxIdleConns > 0, for connection reuse),
+		// DROP DATABASE would otherwise fail with "database is being accessed by
+		// other users" because the pool still holds open connections to it.
+		db.Close()
+
 		t.Logf("Drop Database: %s\n", dbName)
 		if _, err := dbM.ExecContext(context.Background(), "DROP DATABASE "+dbName); err != nil {
 			t.Fatalf("dropping database %s: %v", dbName, err)
 		}
 
-		db.Close()
 		dbM.Close()
 
 		t.Logf("******************** LOGS (%s) ********************\n\n", testName)

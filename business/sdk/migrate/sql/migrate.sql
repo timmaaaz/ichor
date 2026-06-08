@@ -2644,3 +2644,26 @@ ALTER TABLE procurement.suppliers ADD CONSTRAINT suppliers_code_unique UNIQUE (c
 ALTER TABLE procurement.supplier_products
     ADD COLUMN scenario_id UUID NULL REFERENCES inventory.scenarios(id) ON DELETE SET NULL;
 CREATE INDEX idx_supplier_products_scenario ON procurement.supplier_products(scenario_id);
+
+-- Version: 2.40
+-- Description: Make config.page_action_buttons polymorphic on behavior
+--   (navigate | execute_action) so a button can either navigate to a path
+--   or execute a workflow action. Existing rows default to 'navigate'.
+CREATE TYPE config.button_behavior AS ENUM ('navigate', 'execute_action');
+
+ALTER TABLE config.page_action_buttons
+    ADD COLUMN behavior      config.button_behavior NOT NULL DEFAULT 'navigate',
+    ADD COLUMN action_type   TEXT,   -- workflow action type, when behavior='execute_action'
+    ADD COLUMN action_config JSONB;  -- workflow action config, when behavior='execute_action'
+
+-- target_path was navigation-only (NOT NULL). Relax + constrain by behavior.
+ALTER TABLE config.page_action_buttons ALTER COLUMN target_path DROP NOT NULL;
+
+ALTER TABLE config.page_action_buttons ADD CONSTRAINT page_action_buttons_behavior_chk CHECK (
+    (behavior = 'navigate'       AND target_path IS NOT NULL) OR
+    (behavior = 'execute_action' AND action_type IS NOT NULL AND action_config IS NOT NULL)
+);
+
+COMMENT ON COLUMN config.page_action_buttons.behavior IS 'navigate = RouterLink/href to target_path; execute_action = run workflow action_type with action_config';
+COMMENT ON COLUMN config.page_action_buttons.action_type IS 'Workflow action type (e.g. transition_status) when behavior=execute_action';
+COMMENT ON COLUMN config.page_action_buttons.action_config IS 'Workflow action config JSON when behavior=execute_action';

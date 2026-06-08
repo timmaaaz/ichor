@@ -72,9 +72,11 @@ func (s *Store) CreateBaseAction(ctx context.Context, action pageactionbus.PageA
 func (s *Store) CreateButtonData(ctx context.Context, actionID uuid.UUID, button pageactionbus.ButtonAction) error {
 	const q = `
 	INSERT INTO config.page_action_buttons (
-		action_id, label, icon, target_path, variant, alignment, confirmation_prompt
+		action_id, label, icon, target_path, variant, alignment, confirmation_prompt,
+		behavior, action_type, action_config
 	) VALUES (
-		:action_id, :label, :icon, :target_path, :variant, :alignment, :confirmation_prompt
+		:action_id, :label, :icon, :target_path, :variant, :alignment, :confirmation_prompt,
+		:behavior, :action_type, :action_config
 	)`
 
 	dbButton := toDBButtonAction(actionID, button)
@@ -148,7 +150,10 @@ func (s *Store) UpdateButtonData(ctx context.Context, actionID uuid.UUID, button
 		target_path = :target_path,
 		variant = :variant,
 		alignment = :alignment,
-		confirmation_prompt = :confirmation_prompt
+		confirmation_prompt = :confirmation_prompt,
+		behavior = :behavior,
+		action_type = :action_type,
+		action_config = :action_config
 	WHERE
 		action_id = :action_id`
 

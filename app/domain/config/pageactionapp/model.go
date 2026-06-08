@@ -41,12 +41,15 @@ func (app PageAction) Encode() ([]byte, string, error) {
 
 // ButtonAction contains button-specific configuration.
 type ButtonAction struct {
-	Label              string `json:"label"`
-	Icon               string `json:"icon,omitempty"`
-	TargetPath         string `json:"action_url"`
-	Variant            string `json:"variant"`
-	Alignment          string `json:"alignment"`
-	ConfirmationPrompt string `json:"confirmation_prompt,omitempty"`
+	Label              string          `json:"label"`
+	Icon               string          `json:"icon,omitempty"`
+	TargetPath         string          `json:"action_url,omitempty"`
+	Variant            string          `json:"variant"`
+	Alignment          string          `json:"alignment"`
+	ConfirmationPrompt string          `json:"confirmation_prompt,omitempty"`
+	Behavior           string          `json:"behavior"`
+	ActionType         string          `json:"action_type,omitempty"`
+	ActionConfig       json.RawMessage `json:"action_config,omitempty"`
 }
 
 // DropdownAction contains dropdown-specific configuration including items.
@@ -102,6 +105,9 @@ func ToAppPageAction(bus pageactionbus.PageAction) PageAction {
 			Variant:            bus.Button.Variant,
 			Alignment:          bus.Button.Alignment,
 			ConfirmationPrompt: bus.Button.ConfirmationPrompt,
+			Behavior:           bus.Button.Behavior,
+			ActionType:         bus.Button.ActionType,
+			ActionConfig:       bus.Button.ActionConfig,
 		}
 	}
 
@@ -149,15 +155,18 @@ func ToAppActionsGroupedByType(bus pageactionbus.ActionsGroupedByType) ActionsGr
 
 // NewButtonAction contains information needed to create a button action.
 type NewButtonAction struct {
-	PageConfigID       string `json:"page_config_id" validate:"required,uuid"`
-	ActionOrder        int    `json:"action_order"`
-	IsActive           bool   `json:"is_active"`
-	Label              string `json:"label" validate:"required"`
-	Icon               string `json:"icon"`
-	TargetPath         string `json:"action_url" validate:"required"`
-	Variant            string `json:"variant" validate:"required,oneof=default secondary outline ghost destructive"`
-	Alignment          string `json:"alignment" validate:"required,oneof=left right"`
-	ConfirmationPrompt string `json:"confirmation_prompt"`
+	PageConfigID       string          `json:"page_config_id" validate:"required,uuid"`
+	ActionOrder        int             `json:"action_order"`
+	IsActive           bool            `json:"is_active"`
+	Label              string          `json:"label" validate:"required"`
+	Icon               string          `json:"icon"`
+	Behavior           string          `json:"behavior" validate:"required,oneof=navigate execute_action"`
+	TargetPath         string          `json:"action_url" validate:"required_if=Behavior navigate"`
+	ActionType         string          `json:"action_type" validate:"required_if=Behavior execute_action"`
+	ActionConfig       json.RawMessage `json:"action_config" validate:"required_if=Behavior execute_action"`
+	Variant            string          `json:"variant" validate:"required,oneof=default secondary outline ghost destructive"`
+	Alignment          string          `json:"alignment" validate:"required,oneof=left right"`
+	ConfirmationPrompt string          `json:"confirmation_prompt"`
 }
 
 func (app *NewButtonAction) Decode(data []byte) error {
@@ -187,6 +196,9 @@ func toBusNewButtonAction(app NewButtonAction) (pageactionbus.NewButtonAction, e
 		Variant:            app.Variant,
 		Alignment:          app.Alignment,
 		ConfirmationPrompt: app.ConfirmationPrompt,
+		Behavior:           app.Behavior,
+		ActionType:         app.ActionType,
+		ActionConfig:       app.ActionConfig,
 	}, nil
 }
 
@@ -280,15 +292,18 @@ func toBusNewSeparatorAction(app NewSeparatorAction) (pageactionbus.NewSeparator
 
 // UpdateButtonAction contains information needed to update a button action.
 type UpdateButtonAction struct {
-	PageConfigID       *string `json:"page_config_id" validate:"omitempty,uuid"`
-	ActionOrder        *int    `json:"action_order"`
-	IsActive           *bool   `json:"is_active"`
-	Label              *string `json:"label"`
-	Icon               *string `json:"icon"`
-	TargetPath         *string `json:"action_url"`
-	Variant            *string `json:"variant" validate:"omitempty,oneof=default secondary outline ghost destructive"`
-	Alignment          *string `json:"alignment" validate:"omitempty,oneof=left right"`
-	ConfirmationPrompt *string `json:"confirmation_prompt"`
+	PageConfigID       *string          `json:"page_config_id" validate:"omitempty,uuid"`
+	ActionOrder        *int             `json:"action_order"`
+	IsActive           *bool            `json:"is_active"`
+	Label              *string          `json:"label"`
+	Icon               *string          `json:"icon"`
+	TargetPath         *string          `json:"action_url"`
+	Variant            *string          `json:"variant" validate:"omitempty,oneof=default secondary outline ghost destructive"`
+	Alignment          *string          `json:"alignment" validate:"omitempty,oneof=left right"`
+	ConfirmationPrompt *string          `json:"confirmation_prompt"`
+	Behavior           *string          `json:"behavior" validate:"omitempty,oneof=navigate execute_action"`
+	ActionType         *string          `json:"action_type"`
+	ActionConfig       *json.RawMessage `json:"action_config"`
 }
 
 func (app *UpdateButtonAction) Decode(data []byte) error {
@@ -312,6 +327,9 @@ func toBusUpdateButtonAction(app UpdateButtonAction) (pageactionbus.UpdateButton
 		Variant:            app.Variant,
 		Alignment:          app.Alignment,
 		ConfirmationPrompt: app.ConfirmationPrompt,
+		Behavior:           app.Behavior,
+		ActionType:         app.ActionType,
+		ActionConfig:       app.ActionConfig,
 	}
 
 	if app.PageConfigID != nil {

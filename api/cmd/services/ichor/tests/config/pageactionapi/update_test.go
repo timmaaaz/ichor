@@ -48,6 +48,7 @@ func updateButton200(sd apitest.SeedData) []apitest.Table {
 				Button: &pageactionapp.ButtonAction{
 					Label:              newLabel,
 					Icon:               buttonAction.Button.Icon,
+					Behavior:           buttonAction.Button.Behavior,
 					TargetPath:         buttonAction.Button.TargetPath,
 					Variant:            buttonAction.Button.Variant,
 					Alignment:          buttonAction.Button.Alignment,

@@ -8,9 +8,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -173,6 +176,16 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	})
 	if err != nil {
 		return fmt.Errorf("creating orders page: %w", err)
+	}
+
+	// Create Orders Detail Page (single-order view; hosts execute_action buttons)
+	ordersDetailPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
+		Name:      "orders_detail_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating orders_detail_page config: %w", err)
 	}
 
 	ordersPageOrderIndex := 1
@@ -1416,6 +1429,16 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 		return fmt.Errorf("seeding page action buttons: %w", err)
 	}
 
+	// Seed the execute_action "Release to Picking" button on the orders detail page.
+	// This button is seeded separately (not via seedPageActionButtons) because
+	// execute_action buttons have no target_path, which the generic nav-button loop
+	// rejects. Order fulfillment statuses are already present (seedSales runs first).
+	// On the platform-config path (no sales data) seedReleaseToPickingButton logs
+	// an informational message and returns nil — it does not abort the seed.
+	if err := seedReleaseToPickingButton(ctx, log, busDomain, ordersDetailPage.ID); err != nil {
+		return fmt.Errorf("seeding release-to-picking button: %w", err)
+	}
+
 	// PAGES
 	var pageIDs uuid.UUIDs
 
@@ -1445,6 +1468,79 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 		}
 	}
 
+	return nil
+}
+
+// seedReleaseToPickingButton seeds the data-driven "Release to Picking" execute_action
+// button on the orders detail page. It resolves status UUIDs by name because the
+// transition_status handler compares the raw order_fulfillment_status_id value.
+//
+// On the platform-config path (InsertPlatformConfig — no sales data) the fulfillment
+// statuses will not exist. In that case the function logs an informational message and
+// returns nil so the platform seed is not aborted. A real query failure still propagates.
+func seedReleaseToPickingButton(ctx context.Context, log *logger.Logger, busDomain BusDomain, pageConfigID uuid.UUID) error {
+	// Resolve status UUIDs by name using the same pattern as seed_scenarios_refs.go.
+	// Returns (id, found, error). Query errors are fatal; missing rows are a soft skip.
+	lookup := func(name string) (uuid.UUID, bool, error) {
+		filter := orderfulfillmentstatusbus.QueryFilter{Name: &name}
+		orderBy := orderfulfillmentstatusbus.DefaultOrderBy
+		pg := page.MustParse("1", "1")
+		rows, err := busDomain.OrderFulfillmentStatus.Query(ctx, filter, orderBy, pg)
+		if err != nil {
+			return uuid.Nil, false, fmt.Errorf("querying fulfillment status %q: %w", name, err)
+		}
+		if len(rows) == 0 {
+			return uuid.Nil, false, nil
+		}
+		return rows[0].ID, true, nil
+	}
+
+	pending, ok1, err := lookup("PENDING")
+	if err != nil {
+		return err
+	}
+	processing, ok2, err := lookup("PROCESSING")
+	if err != nil {
+		return err
+	}
+	picking, ok3, err := lookup("PICKING")
+	if err != nil {
+		return err
+	}
+
+	if !ok1 || !ok2 || !ok3 {
+		log.Info(ctx, "seedReleaseToPickingButton: fulfillment statuses not present (platform-config path) — skipping Release to Picking button")
+		return nil
+	}
+
+	cfg := map[string]any{
+		"target_entity":       "sales.orders",
+		"target_id":           "{{entity_id}}",
+		"status_field":        "order_fulfillment_status_id",
+		"to_status":           picking.String(),
+		"valid_from_statuses": []string{pending.String(), processing.String()},
+	}
+	cfgBytes, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("marshal release button config: %w", err)
+	}
+
+	_, err = busDomain.PageAction.CreateButton(ctx, pageactionbus.NewButtonAction{
+		PageConfigID:       pageConfigID,
+		ActionOrder:        1,
+		IsActive:           true,
+		Label:              "Release to Picking",
+		Icon:               "material-symbols:local-shipping-outline",
+		Behavior:           "execute_action",
+		ActionType:         "transition_status",
+		ActionConfig:       cfgBytes,
+		Variant:            "default",
+		Alignment:          "right",
+		ConfirmationPrompt: "Release this order to picking?",
+	})
+	if err != nil {
+		return fmt.Errorf("creating release-to-picking button: %w", err)
+	}
 	return nil
 }
 

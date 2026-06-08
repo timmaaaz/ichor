@@ -30,6 +30,7 @@ func TestNewButtonActions(n int, pageConfigIDs []uuid.UUID) []NewButtonAction {
 			Variant:            variants[rand.Intn(len(variants))],
 			Alignment:          alignments[rand.Intn(len(alignments))],
 			ConfirmationPrompt: fmt.Sprintf("Confirm action %d?", idx),
+			Behavior:           "navigate",
 		}
 
 		actions[i] = nba

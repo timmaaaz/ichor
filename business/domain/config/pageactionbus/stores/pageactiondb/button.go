@@ -2,6 +2,7 @@ package pageactiondb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -33,9 +34,11 @@ func (s *Store) createButtonAction(ctx context.Context, baseAction dbPageAction,
 	// Insert button-specific data
 	const qButton = `
 	INSERT INTO config.page_action_buttons (
-		action_id, label, icon, target_path, variant, alignment, confirmation_prompt
+		action_id, label, icon, target_path, variant, alignment, confirmation_prompt,
+		behavior, action_type, action_config
 	) VALUES (
-		:action_id, :label, :icon, :target_path, :variant, :alignment, :confirmation_prompt
+		:action_id, :label, :icon, :target_path, :variant, :alignment, :confirmation_prompt,
+		:behavior, :action_type, :action_config
 	)`
 
 	dbButton := toDBButtonAction(baseAction.ID, buttonData)
@@ -71,7 +74,10 @@ func (s *Store) updateButtonAction(ctx context.Context, baseAction dbPageAction,
 		target_path = :target_path,
 		variant = :variant,
 		alignment = :alignment,
-		confirmation_prompt = :confirmation_prompt
+		confirmation_prompt = :confirmation_prompt,
+		behavior = :behavior,
+		action_type = :action_type,
+		action_config = :action_config
 	WHERE
 		action_id = :action_id`
 
@@ -94,7 +100,8 @@ func (s *Store) queryButtonByID(ctx context.Context, actionID uuid.UUID) (pageac
 	const q = `
 	SELECT
 		a.id, a.page_config_id, a.action_type, a.action_order, a.is_active,
-		b.label, b.icon, b.target_path, b.variant, b.alignment, b.confirmation_prompt
+		b.label, b.icon, b.target_path, b.variant, b.alignment, b.confirmation_prompt,
+		b.behavior, b.action_type AS button_action_type, b.action_config
 	FROM
 		config.page_actions a
 	INNER JOIN
@@ -104,12 +111,15 @@ func (s *Store) queryButtonByID(ctx context.Context, actionID uuid.UUID) (pageac
 
 	var result struct {
 		dbPageAction
-		Label              string `db:"label"`
-		Icon               string `db:"icon"`
-		TargetPath         string `db:"target_path"`
-		Variant            string `db:"variant"`
-		Alignment          string `db:"alignment"`
-		ConfirmationPrompt string `db:"confirmation_prompt"`
+		Label              string  `db:"label"`
+		Icon               string  `db:"icon"`
+		TargetPath         *string `db:"target_path"`
+		Variant            string  `db:"variant"`
+		Alignment          string  `db:"alignment"`
+		ConfirmationPrompt string  `db:"confirmation_prompt"`
+		Behavior           string  `db:"behavior"`
+		ButtonActionType   *string `db:"button_action_type"`
+		ActionConfig       []byte  `db:"action_config"`
 	}
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &result); err != nil {
@@ -120,14 +130,24 @@ func (s *Store) queryButtonByID(ctx context.Context, actionID uuid.UUID) (pageac
 	}
 
 	action := toBusPageAction(result.dbPageAction)
-	action.Button = &pageactionbus.ButtonAction{
+	btn := &pageactionbus.ButtonAction{
 		Label:              result.Label,
 		Icon:               result.Icon,
-		TargetPath:         result.TargetPath,
 		Variant:            result.Variant,
 		Alignment:          result.Alignment,
 		ConfirmationPrompt: result.ConfirmationPrompt,
+		Behavior:           result.Behavior,
 	}
+	if result.TargetPath != nil {
+		btn.TargetPath = *result.TargetPath
+	}
+	if result.ButtonActionType != nil {
+		btn.ActionType = *result.ButtonActionType
+	}
+	if len(result.ActionConfig) > 0 {
+		btn.ActionConfig = append(json.RawMessage(nil), result.ActionConfig...)
+	}
+	action.Button = btn
 
 	return action, nil
 }
@@ -143,7 +163,8 @@ func (s *Store) queryButtonsByPageConfigID(ctx context.Context, pageConfigID uui
 	const q = `
 	SELECT
 		a.id, a.page_config_id, a.action_type, a.action_order, a.is_active,
-		b.label, b.icon, b.target_path, b.variant, b.alignment, b.confirmation_prompt
+		b.label, b.icon, b.target_path, b.variant, b.alignment, b.confirmation_prompt,
+		b.behavior, b.action_type AS button_action_type, b.action_config
 	FROM
 		config.page_actions a
 	INNER JOIN
@@ -155,12 +176,15 @@ func (s *Store) queryButtonsByPageConfigID(ctx context.Context, pageConfigID uui
 
 	var results []struct {
 		dbPageAction
-		Label              string `db:"label"`
-		Icon               string `db:"icon"`
-		TargetPath         string `db:"target_path"`
-		Variant            string `db:"variant"`
-		Alignment          string `db:"alignment"`
-		ConfirmationPrompt string `db:"confirmation_prompt"`
+		Label              string  `db:"label"`
+		Icon               string  `db:"icon"`
+		TargetPath         *string `db:"target_path"`
+		Variant            string  `db:"variant"`
+		Alignment          string  `db:"alignment"`
+		ConfirmationPrompt string  `db:"confirmation_prompt"`
+		Behavior           string  `db:"behavior"`
+		ButtonActionType   *string `db:"button_action_type"`
+		ActionConfig       []byte  `db:"action_config"`
 	}
 
 	if err := sqldb.NamedQuerySlice(ctx, s.log, s.db, q, data, &results); err != nil {
@@ -170,14 +194,24 @@ func (s *Store) queryButtonsByPageConfigID(ctx context.Context, pageConfigID uui
 	actions := make([]pageactionbus.PageAction, len(results))
 	for i, result := range results {
 		action := toBusPageAction(result.dbPageAction)
-		action.Button = &pageactionbus.ButtonAction{
+		btn := &pageactionbus.ButtonAction{
 			Label:              result.Label,
 			Icon:               result.Icon,
-			TargetPath:         result.TargetPath,
 			Variant:            result.Variant,
 			Alignment:          result.Alignment,
 			ConfirmationPrompt: result.ConfirmationPrompt,
+			Behavior:           result.Behavior,
 		}
+		if result.TargetPath != nil {
+			btn.TargetPath = *result.TargetPath
+		}
+		if result.ButtonActionType != nil {
+			btn.ActionType = *result.ButtonActionType
+		}
+		if len(result.ActionConfig) > 0 {
+			btn.ActionConfig = append(json.RawMessage(nil), result.ActionConfig...)
+		}
+		action.Button = btn
 		actions[i] = action
 	}
 
