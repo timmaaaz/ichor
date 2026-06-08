@@ -1433,7 +1433,9 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// This button is seeded separately (not via seedPageActionButtons) because
 	// execute_action buttons have no target_path, which the generic nav-button loop
 	// rejects. Order fulfillment statuses are already present (seedSales runs first).
-	if err := seedReleaseToPickingButton(ctx, busDomain, ordersDetailPage.ID); err != nil {
+	// On the platform-config path (no sales data) seedReleaseToPickingButton logs
+	// an informational message and returns nil — it does not abort the seed.
+	if err := seedReleaseToPickingButton(ctx, log, busDomain, ordersDetailPage.ID); err != nil {
 		return fmt.Errorf("seeding release-to-picking button: %w", err)
 	}
 
@@ -1472,34 +1474,43 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 // seedReleaseToPickingButton seeds the data-driven "Release to Picking" execute_action
 // button on the orders detail page. It resolves status UUIDs by name because the
 // transition_status handler compares the raw order_fulfillment_status_id value.
-// Order fulfillment statuses are already present (seedSales runs before seedPages).
-func seedReleaseToPickingButton(ctx context.Context, busDomain BusDomain, pageConfigID uuid.UUID) error {
+//
+// On the platform-config path (InsertPlatformConfig — no sales data) the fulfillment
+// statuses will not exist. In that case the function logs an informational message and
+// returns nil so the platform seed is not aborted. A real query failure still propagates.
+func seedReleaseToPickingButton(ctx context.Context, log *logger.Logger, busDomain BusDomain, pageConfigID uuid.UUID) error {
 	// Resolve status UUIDs by name using the same pattern as seed_scenarios_refs.go.
-	lookup := func(name string) (uuid.UUID, error) {
+	// Returns (id, found, error). Query errors are fatal; missing rows are a soft skip.
+	lookup := func(name string) (uuid.UUID, bool, error) {
 		filter := orderfulfillmentstatusbus.QueryFilter{Name: &name}
 		orderBy := orderfulfillmentstatusbus.DefaultOrderBy
 		pg := page.MustParse("1", "1")
 		rows, err := busDomain.OrderFulfillmentStatus.Query(ctx, filter, orderBy, pg)
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("querying fulfillment status %q: %w", name, err)
+			return uuid.Nil, false, fmt.Errorf("querying fulfillment status %q: %w", name, err)
 		}
 		if len(rows) == 0 {
-			return uuid.Nil, fmt.Errorf("fulfillment status %q not found", name)
+			return uuid.Nil, false, nil
 		}
-		return rows[0].ID, nil
+		return rows[0].ID, true, nil
 	}
 
-	pending, err := lookup("PENDING")
+	pending, ok1, err := lookup("PENDING")
 	if err != nil {
 		return err
 	}
-	processing, err := lookup("PROCESSING")
+	processing, ok2, err := lookup("PROCESSING")
 	if err != nil {
 		return err
 	}
-	picking, err := lookup("PICKING")
+	picking, ok3, err := lookup("PICKING")
 	if err != nil {
 		return err
+	}
+
+	if !ok1 || !ok2 || !ok3 {
+		log.Info(ctx, "seedReleaseToPickingButton: fulfillment statuses not present (platform-config path) — skipping Release to Picking button")
+		return nil
 	}
 
 	cfg := map[string]any{

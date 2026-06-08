@@ -451,6 +451,13 @@ func (b *Business) createActions(ctx context.Context, pageConfigID uuid.UUID, ac
 		if action.Button == nil {
 			continue
 		}
+		// Default empty behavior to "navigate" so legacy export payloads (which
+		// pre-date the polymorphic migration and have no behavior field) continue
+		// to satisfy the NOT NULL enum constraint on config.page_action_buttons.
+		behavior := action.Button.Behavior
+		if behavior == "" {
+			behavior = "navigate"
+		}
 		newAction := pageactionbus.NewButtonAction{
 			PageConfigID:       pageConfigID,
 			ActionOrder:        action.ActionOrder,
@@ -461,6 +468,9 @@ func (b *Business) createActions(ctx context.Context, pageConfigID uuid.UUID, ac
 			Variant:            action.Button.Variant,
 			Alignment:          action.Button.Alignment,
 			ConfirmationPrompt: action.Button.ConfirmationPrompt,
+			Behavior:           behavior,
+			ActionType:         action.Button.ActionType,
+			ActionConfig:       action.Button.ActionConfig,
 		}
 		if _, err := b.pageActionBus.CreateButton(ctx, newAction); err != nil {
 			return fmt.Errorf("create button action: %w", err)
@@ -607,6 +617,9 @@ func toExportPageActions(actions pageactionbus.ActionsGroupedByType) PageActions
 				Variant:            action.Button.Variant,
 				Alignment:          action.Button.Alignment,
 				ConfirmationPrompt: action.Button.ConfirmationPrompt,
+				Behavior:           action.Button.Behavior,
+				ActionType:         action.Button.ActionType,
+				ActionConfig:       action.Button.ActionConfig,
 			}
 		}
 		export.Buttons[i] = PageActionExport{
