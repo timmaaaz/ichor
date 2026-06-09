@@ -9,6 +9,8 @@ import (
 	enumspb "go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+
+	wf "github.com/timmaaaz/ichor/business/sdk/workflow"
 )
 
 // Package-level action type classification maps.
@@ -49,7 +51,65 @@ var (
 //   - No time.Now(), rand, or direct I/O
 //   - Use workflow.GetLogger, workflow.Go, workflow.ExecuteActivity
 //   - All map iterations in GraphExecutor are pre-sorted
+//
+// On terminal completion (success or failure — but NOT Continue-As-New,
+// which the continuation run finalizes) it writes the outcome back to the
+// workflow.automation_executions row created at dispatch time, so execution
+// history reflects reality instead of staying 'pending' forever.
 func ExecuteGraphWorkflow(ctx workflow.Context, input WorkflowInput) error {
+	start := workflow.Now(ctx)
+
+	err := runGraphWorkflow(ctx, input)
+
+	// Continue-As-New is not a terminal outcome; the continuation run owns
+	// finalization. Everything else — success or failure — gets recorded.
+	if !workflow.IsContinueAsNewError(err) {
+		finalizeExecution(ctx, input, start, err)
+	}
+
+	return err
+}
+
+// finalizeExecution records the terminal outcome on the execution row via
+// FinalizeExecutionActivity. Best-effort: a finalization problem is logged,
+// never allowed to mask the workflow's own result. Runs on a disconnected
+// context so it still executes when the workflow is being cancelled.
+func finalizeExecution(ctx workflow.Context, input WorkflowInput, start time.Time, runErr error) {
+	logger := workflow.GetLogger(ctx)
+
+	status := string(wf.StatusCompleted)
+	errMsg := ""
+	if runErr != nil {
+		status = string(wf.StatusFailed)
+		errMsg = runErr.Error()
+	}
+
+	dctx, cancel := workflow.NewDisconnectedContext(ctx)
+	defer cancel()
+	dctx = workflow.WithActivityOptions(dctx, workflow.ActivityOptions{
+		StartToCloseTimeout: 10 * time.Second,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval: time.Second,
+			MaximumAttempts: 3,
+		},
+	})
+
+	finalizeInput := FinalizeExecutionInput{
+		ExecutionID:     input.ExecutionID,
+		Status:          status,
+		ErrorMessage:    errMsg,
+		ExecutionTimeMs: int(workflow.Now(ctx).Sub(start).Milliseconds()),
+	}
+
+	if err := workflow.ExecuteActivity(dctx, "FinalizeExecutionActivity", finalizeInput).Get(dctx, nil); err != nil {
+		logger.Error("Failed to finalize execution record",
+			"execution_id", input.ExecutionID, "status", status, "error", err)
+	}
+}
+
+// runGraphWorkflow holds the original workflow body; ExecuteGraphWorkflow
+// wraps it to guarantee execution-record finalization on every terminal path.
+func runGraphWorkflow(ctx workflow.Context, input WorkflowInput) error {
 	logger := workflow.GetLogger(ctx)
 
 	// Validate input before proceeding.

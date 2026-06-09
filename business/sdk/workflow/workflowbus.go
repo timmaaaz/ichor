@@ -77,6 +77,7 @@ type Storer interface {
 	QueryDeliveriesByAutomationExecution(ctx context.Context, executionID uuid.UUID) ([]NotificationDelivery, error)
 
 	CreateExecution(ctx context.Context, exec AutomationExecution) error
+	UpdateExecutionStatus(ctx context.Context, id uuid.UUID, status ExecutionStatus, errorMessage string, executionTimeMs int) error
 	QueryExecutionHistory(ctx context.Context, ruleid uuid.UUID, limit int) ([]AutomationExecution, error)
 
 	CreateAllocationResult(ctx context.Context, ar AllocationResult) error
@@ -1018,6 +1019,20 @@ func (b *Business) CreateExecution(ctx context.Context, nae NewAutomationExecuti
 	}
 
 	return execution, nil
+}
+
+// UpdateExecutionStatus records the terminal outcome of an automation
+// execution. Called by the Temporal workflow's finalization activity when a
+// graph run completes or fails; without it execution rows stay 'pending'.
+func (b *Business) UpdateExecutionStatus(ctx context.Context, id uuid.UUID, status ExecutionStatus, errorMessage string, executionTimeMs int) error {
+	ctx, span := otel.AddSpan(ctx, "business.workflowbus.updateexecutionstatus")
+	defer span.End()
+
+	if err := b.storer.UpdateExecutionStatus(ctx, id, status, errorMessage, executionTimeMs); err != nil {
+		return fmt.Errorf("update execution status: id[%s]: %w", id, err)
+	}
+
+	return nil
 }
 
 // QueryExecutionHistory retrieves execution history for the specified rule.

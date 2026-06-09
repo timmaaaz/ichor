@@ -82,6 +82,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	activities := &temporal.Activities{
 		Registry:      registry,
 		AsyncRegistry: asyncRegistry,
+		Finalizer:     workflowBus,
 	}
 	w.RegisterActivity(activities)
 

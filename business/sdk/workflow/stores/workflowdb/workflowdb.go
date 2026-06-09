@@ -993,6 +993,38 @@ func (s *Store) CreateExecution(ctx context.Context, exec workflow.AutomationExe
 	return nil
 }
 
+// UpdateExecutionStatus records the terminal outcome of an automation
+// execution (status, error message, duration). The row is created 'pending'
+// at dispatch; the Temporal workflow finalizes it on completion or failure.
+func (s *Store) UpdateExecutionStatus(ctx context.Context, id uuid.UUID, status workflow.ExecutionStatus, errorMessage string, executionTimeMs int) error {
+	data := struct {
+		ID              string `db:"id"`
+		Status          string `db:"status"`
+		ErrorMessage    string `db:"error_message"`
+		ExecutionTimeMs int    `db:"execution_time_ms"`
+	}{
+		ID:              id.String(),
+		Status:          string(status),
+		ErrorMessage:    errorMessage,
+		ExecutionTimeMs: executionTimeMs,
+	}
+
+	const q = `
+	UPDATE workflow.automation_executions
+	SET
+		status = :status,
+		error_message = :error_message,
+		execution_time_ms = :execution_time_ms
+	WHERE
+		id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
 // QueryExecutionHistory gets execution history for the specified automation rule from the database.
 func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, limit int) ([]workflow.AutomationExecution, error) {
 	data := struct {
