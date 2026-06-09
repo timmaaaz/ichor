@@ -138,6 +138,32 @@ func (e *GraphExecutor) GetNextActions(sourceActionID uuid.UUID, result map[stri
 	return nextActions
 }
 
+// GetFailureActions returns the targets of explicit source_output="failure"
+// edges from the given action. Unlike GetNextActions, NULL-source_output
+// (always/sequence) edges deliberately do NOT match: a failed action must
+// never continue down its normal success path. Returns nil when the graph
+// wires no failure port — callers then fail the workflow as before.
+func (e *GraphExecutor) GetFailureActions(sourceActionID uuid.UUID) []ActionNode {
+	edges := e.edgesBySource[sourceActionID]
+	if len(edges) == 0 {
+		return nil
+	}
+
+	var failureActions []ActionNode
+	for _, edge := range edges {
+		if edge.EdgeType == EdgeTypeStart || edge.SourceOutput == nil {
+			continue
+		}
+		if *edge.SourceOutput == "failure" {
+			if action, ok := e.actionsByID[edge.TargetActionID]; ok {
+				failureActions = append(failureActions, action)
+			}
+		}
+	}
+
+	return failureActions
+}
+
 // FindConvergencePoint detects if multiple branches converge to a common node.
 // Returns the closest common node reachable by ALL branches, or nil if no
 // such node exists (fire-and-forget branches with no common downstream node).
