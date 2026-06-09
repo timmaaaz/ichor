@@ -1,3 +1,18 @@
+# =============================================================================
+# PARKED — ollama is NOT currently used.
+#
+# The active LLM provider is Gemini (ICHOR_LLM_PROVIDER=gemini). The ichor
+# deployment does not depend on ollama, and these manifests are intentionally
+# NOT wired into the default dev bring-up: `make dev-bounce` keeps `dev-ollama`
+# commented out, and `make dev-apply` does not `kustomize build` this directory.
+#
+# These manifests are kept in the project so we can switch back to local
+# inference quickly. To deploy ollama on demand:
+#   kustomize build zarf/k8s/dev/ollama | kubectl apply -f -
+#   make ollama-pull-model            # pulls qwen3:14b into the running pod
+# then set ICHOR_LLM_PROVIDER=ollama / ICHOR_LLM_HOST on the ichor deployment
+# (see zarf/k8s/dev/ichor/dev-ichor-configmap.yaml).
+# =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:

@@ -59,9 +59,15 @@ services:
       ichor-system-network:
         ipv4_address: 10.5.0.6
 
+  # PARKED — ollama is NOT currently used. The default LLM provider is Gemini
+  # (ICHOR_LLM_PROVIDER=gemini, see the ichor service below); nothing depends_on
+  # ollama. Kept in the project in case we switch back to local inference.
+  # Gated behind the "ollama" compose profile so a plain `compose-up` does NOT
+  # start it. To run it: docker compose --profile ollama up -d ollama
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
+    profiles: ["ollama"]
     ports:
       - "11434:11434"
     volumes:
@@ -128,7 +134,8 @@ services:
       - ICHOR_LLM_PROVIDER=gemini
       - ICHOR_LLM_MODEL=gemini-2.5-flash
       - ICHOR_LLM_APIKEY=${ICHOR_LLM_APIKEY:-}
-      # To use Ollama instead of Gemini:
+      # Ollama is currently parked (not used). To switch back to local inference,
+      # start it with `docker compose --profile ollama up -d ollama` and set:
       # - ICHOR_LLM_PROVIDER=ollama
       # - ICHOR_LLM_MODEL=qwen3:14b
       # - ICHOR_LLM_HOST=http://ollama:11434
