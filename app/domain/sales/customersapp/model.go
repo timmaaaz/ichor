@@ -69,10 +69,10 @@ func ToAppCustomers(bus []customersbus.Customers) []Customers {
 // TODO: Go over required fields here
 type NewCustomers struct {
 	Name              string  `json:"name" validate:"required"`
-	ContactID         string  `json:"contact_id" validate:"required,uuid4"`
-	DeliveryAddressID string  `json:"delivery_address_id" validate:"required,uuid4"`
+	ContactID         string  `json:"contact_id" validate:"required,uuid"`
+	DeliveryAddressID string  `json:"delivery_address_id" validate:"required,uuid"`
 	Notes             string  `json:"notes" validate:"omitempty,max=500"`
-	CreatedBy         string  `json:"created_by" validate:"required,uuid4"`
+	CreatedBy         string  `json:"created_by" validate:"required,uuid"`
 	CreatedDate       *string `json:"created_date"` // Optional: for seeding/import
 }
 
@@ -127,10 +127,10 @@ func toBusNewCustomers(app NewCustomers) (customersbus.NewCustomers, error) {
 
 type UpdateCustomers struct {
 	Name              *string `json:"name" validate:"omitempty,min=3"`
-	ContactID         *string `json:"contact_id" validate:"omitempty,uuid4"`
-	DeliveryAddressID *string `json:"delivery_address_id" validate:"omitempty,uuid4"`
+	ContactID         *string `json:"contact_id" validate:"omitempty,uuid"`
+	DeliveryAddressID *string `json:"delivery_address_id" validate:"omitempty,uuid"`
 	Notes             *string `json:"notes" validate:"omitempty,max=500"`
-	UpdatedBy         *string `json:"updated_by" validate:"omitempty,uuid4"`
+	UpdatedBy         *string `json:"updated_by" validate:"omitempty,uuid"`
 }
 
 // Decode implements the decoder interface.
