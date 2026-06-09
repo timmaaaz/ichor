@@ -179,9 +179,33 @@ func toActionNode(dba dbAction) temporal.ActionNode {
 
 	if dba.TemplateActionType.Valid {
 		node.ActionType = dba.TemplateActionType.String
+	} else {
+		// No template linked (template_id IS NULL). Fall back to an
+		// action_type declared inline in action_config so that template-less
+		// actions remain executable. Without this fallback the node carries
+		// an empty ActionType, ActionActivityInput.Validate() rejects it,
+		// and the workflow fails at runtime on a rule the API accepted.
+		node.ActionType = extractConfigActionType(dba.ActionConfig)
 	}
 
 	return node
+}
+
+// extractConfigActionType pulls an inline "action_type" (or legacy "type")
+// string out of an action_config JSON document. Returns "" when absent —
+// the activity-input validation will then reject the node with a clear error.
+func extractConfigActionType(config json.RawMessage) string {
+	var cfg struct {
+		ActionType string `json:"action_type"`
+		Type       string `json:"type"`
+	}
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return ""
+	}
+	if cfg.ActionType != "" {
+		return cfg.ActionType
+	}
+	return cfg.Type
 }
 
 // toActionEdge converts a database edge row to a temporal.ActionEdge.

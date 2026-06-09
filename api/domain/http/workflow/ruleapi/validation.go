@@ -80,6 +80,13 @@ func ValidateCreateRule(req CreateRuleRequest) *ValidationErrors {
 					Field:   fmt.Sprintf("actions[%d].action_config", i),
 					Message: "action_config must be valid JSON",
 				})
+			} else if action.TemplateID == nil && !configDeclaresActionType(action.ActionConfig) {
+				// See ValidateCreateAction: without a template or an inline
+				// action_type the action is unexecutable at runtime.
+				errors = append(errors, ValidationError{
+					Field:   fmt.Sprintf("actions[%d].template_id", i),
+					Message: "action requires a template_id or an \"action_type\" field inside action_config",
+				})
 			}
 		}
 	}
