@@ -11,7 +11,7 @@ Three shared test containers. Each uses a distinct isolation strategy:
 
 | Container | Name | Image | Isolation strategy |
 |-----------|------|-------|-------------------|
-| Postgres | `servicetest` | postgres:16.4 | shared container, per-test random DB |
+| Postgres | `servicetest` | postgres:16.4 | shared container, per-test PID-tagged DB + orphan reaper |
 | Temporal | `servicetest-temporal` | temporalio/temporal:latest | process-local singleton (mutex+flag) |
 
 ### Postgres (the primary pattern)
@@ -30,8 +30,8 @@ key facts:
   - `exists()` calls `docker inspect` — returns running container if found, error otherwise
   - `startContainer()` checks `exists()` first; only creates if not running
   - retry loop in `StartContainer` (2 retries, 100ms/200ms sleep) handles the race where two processes try to create simultaneously
-  - container persists across test runs — no cleanup happens automatically
-  - `make test-down` explicitly removes it when needed
+  - container persists across test runs — the container itself is never stopped automatically, but leftover test *databases* are reclaimed each run (see the orphan reaper under `NewDatabase`)
+  - `make test-down` explicitly removes the container when needed
 
 ### Temporal (process-local singleton)
 
@@ -63,15 +63,21 @@ func NewDatabase(t *testing.T, testName string) *Database
 
 lifecycle per test:
 ```
-1. docker.StartContainer("servicetest")   → reuse or create container
-2. CREATE DATABASE <random 4-char name>   → e.g. "vjsb" (26^4 = 456K possibilities)
-3. SET TIME ZONE 'America/New_York'
-4. migrate (run all migrations)
-5. seed   (full seed chain via InsertSeedData)
-6. t.Cleanup → DROP DATABASE <name>       (never stops the container)
+0. orphanSweepOnce → reapOrphanedDatabases    → once per process: drop orphan DBs (dead owner), capped
+1. docker.StartContainer("servicetest")       → reuse or create container
+2. CREATE DATABASE ichortest_<pid>_<12 rand>  → e.g. "ichortest_50647_qz73wr3zjrbd" (retry on collision)
+3. t.Cleanup(DROP DATABASE <name>)            → registered immediately, before migrate/seed (closes leak window)
+4. open pool, SET TIME ZONE 'America/New_York'
+5. migrate (run all migrations)
+6. seed   (full seed chain via InsertSeedData)
 ```
 
 key facts:
+  - DB names embed the creating PID + 12 random chars (36^12 ≈ 4.7e18) — collisions are effectively impossible, even against a backlog of orphans; a retry-on-`already exists` loop is a deterministic backstop
+  - ⚠ names are NO LONGER 4 random letters. The old 26^4 = 456K space + a shared container with no DB cleanup let orphans from killed/interrupted runs accumulate (observed: **717**) and collide → `database "xxxx" already exists`. This was the real cause of full-suite (`./...`) flakiness, not port exhaustion.
+  - orphan reaper (`reapOrphanedDatabases`): runs once per process (`sync.Once`) BEFORE the per-test 10s timeout starts; drops test DBs whose owning PID is dead (`syscall.Kill(pid,0)`), handling both new-format and legacy 4-letter names. Container self-heals to 0 orphans each run.
+  - ⚠ reaper is capped at `maxOrphanReap` (32) per run: `DROP DATABASE` forces a Postgres checkpoint, so dropping a large backlog at once triggers an I/O storm (observed: ~700 drops → a 261s checkpoint syncing 5334 files) that stalls concurrent migrations. The cap bounds the storm; any remainder is reclaimed over subsequent runs.
+  - DROP cleanup is registered immediately after CREATE (not after migrate/seed), so a `t.Fatalf` mid-setup cannot orphan the DB; a drop hiccup logs instead of failing the test (reaper reclaims it next run)
   - each test gets its own database — fully isolated even within parallel runs
   - cleanup drops only the test's own DB; the `servicetest` container is never stopped by test code
   - `BusDomain` is fully wired: every bus package is instantiated against the test DB
@@ -166,7 +172,18 @@ If a new shared container is needed (e.g., Redis, RabbitMQ):
 
 ## ⚠ Parallel ceiling for fan-out integration harnesses
 
-Tests that fan out many subtests within a single package (e.g. `api/cmd/services/ichor/tests/floor/scenarios/` which walks 22 scenarios via `t.Run` + `t.Parallel`) must cap parallelism via `-parallel N`. Each subtest:
+> **Update 2026-06-09 — port saturation NOT reproduced; orphan DBs were the real flake.**
+> The `floor/scenarios` walk (22 subtests) was re-run at the default `-parallel`
+> (GOMAXPROCS, ~8–10 on macOS Apple Silicon) and passed clean in ~26s with **zero**
+> `can't assign requested address` errors. The failures originally attributed to the
+> port ceiling below were actually **DB-name collisions** from ~717 accumulated orphan
+> databases — now fixed by the PID-tagged names + reaper in `NewDatabase`. Treat the
+> `-parallel 2` ceiling below as **unverified on current hardware**: do NOT cap a fan-out
+> harness on its account without first reproducing port exhaustion. The genuinely-true,
+> still-current constraint is the reaper's `maxOrphanReap` cap (`DROP DATABASE` forces a
+> checkpoint). The section below is retained for history and the CI-portability caveat.
+
+Tests that fan out many subtests within a single package (e.g. `api/cmd/services/ichor/tests/floor/scenarios/` which walks 22 scenarios via `t.Run` + `t.Parallel`) were historically thought to need a `-parallel N` cap. Each subtest:
 
   - opens pooled `*sqlx.DB` connections to the shared `servicetest` container (admin DB + test DB), each burning an ephemeral source port
   - issues many HTTP requests per walk to the in-process `httptest`/handler; the auth `httptest.NewServer` listens on loopback, but the Go test process still consumes ephemeral source ports for the outbound DB connections issued from inside handlers

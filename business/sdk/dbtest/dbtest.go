@@ -5,9 +5,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"reflect"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -570,6 +576,12 @@ func NewDatabase(t *testing.T, testName string) *Database {
 		t.Fatalf("Opening database connection: %v", err)
 	}
 
+	// Reclaim leftover test databases from prior runs (e.g. a run killed before
+	// cleanup, or one that t.Fatalf'd mid-setup) BEFORE the per-test timeout
+	// below starts — a one-time sweep must not eat into the migrate/seed budget.
+	// Runs once per process and only drops databases whose owning process is gone.
+	orphanSweepOnce.Do(func() { reapOrphanedDatabases(t, dbM) })
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -579,21 +591,57 @@ func NewDatabase(t *testing.T, testName string) *Database {
 
 	// -------------------------------------------------------------------------
 
-	const letterBytes = "abcdefghijklmnopqrstuvwxyz"
-	b := make([]byte, 4)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	dbName := string(b)
-
-	t.Logf("Create Database: %s\n", dbName)
-	if _, err := dbM.ExecContext(context.Background(), "CREATE DATABASE "+dbName); err != nil {
+	// Create a uniquely-named database. The name embeds the creating PID (so the
+	// reaper can tell live databases from orphans) plus 12 random chars, making
+	// collisions astronomically unlikely; the retry is a deterministic backstop.
+	var dbName string
+	for attempt := 0; ; attempt++ {
+		dbName = newTestDBName()
+		t.Logf("Create Database: %s\n", dbName)
+		if _, err = dbM.ExecContext(context.Background(), "CREATE DATABASE "+dbName); err == nil {
+			break
+		}
+		if attempt < 5 && strings.Contains(err.Error(), "already exists") {
+			continue
+		}
 		t.Fatalf("creating database %s: %v", dbName, err)
 	}
 
 	// -------------------------------------------------------------------------
 
-	db, err := sqldb.Open(sqldb.Config{
+	// Register teardown immediately after CREATE so a t.Fatalf during the open/
+	// migrate/seed steps below cannot orphan the database we just created. db is
+	// opened next; the closure nil-guards it for the pre-open failure paths.
+	var db *sqlx.DB
+	var buf bytes.Buffer
+	t.Cleanup(func() {
+		t.Helper()
+
+		// Close the test-database pool BEFORE dropping the database. With idle
+		// connections now retained (MaxIdleConns > 0, for connection reuse),
+		// DROP DATABASE would otherwise fail with "database is being accessed by
+		// other users" because the pool still holds open connections to it.
+		if db != nil {
+			db.Close()
+		}
+
+		t.Logf("Drop Database: %s\n", dbName)
+		if _, err := dbM.ExecContext(context.Background(), "DROP DATABASE "+dbName); err != nil {
+			// Don't fail the test on a drop hiccup — the orphan reaper reclaims
+			// anything left behind on the next run.
+			t.Logf("dropping database %s: %v", dbName, err)
+		}
+
+		dbM.Close()
+
+		t.Logf("******************** LOGS (%s) ********************\n\n", testName)
+		t.Log(buf.String())
+		t.Logf("******************** LOGS (%s) ********************\n", testName)
+	})
+
+	// -------------------------------------------------------------------------
+
+	db, err = sqldb.Open(sqldb.Config{
 		User:         "postgres",
 		Password:     "postgres",
 		Host:         c.HostPort,
@@ -625,37 +673,146 @@ func NewDatabase(t *testing.T, testName string) *Database {
 
 	// -------------------------------------------------------------------------
 
-	var buf bytes.Buffer
 	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string { return otel.GetTraceID(ctx) })
-
-	// -------------------------------------------------------------------------
-
-	t.Cleanup(func() {
-		t.Helper()
-
-		// Close the test-database pool BEFORE dropping the database. With idle
-		// connections now retained (MaxIdleConns > 0, for connection reuse),
-		// DROP DATABASE would otherwise fail with "database is being accessed by
-		// other users" because the pool still holds open connections to it.
-		db.Close()
-
-		t.Logf("Drop Database: %s\n", dbName)
-		if _, err := dbM.ExecContext(context.Background(), "DROP DATABASE "+dbName); err != nil {
-			t.Fatalf("dropping database %s: %v", dbName, err)
-		}
-
-		dbM.Close()
-
-		t.Logf("******************** LOGS (%s) ********************\n\n", testName)
-		t.Log(buf.String())
-		t.Logf("******************** LOGS (%s) ********************\n", testName)
-	})
 
 	return &Database{
 		DB:        db,
 		Log:       log,
 		BusDomain: newBusDomains(log, db),
 	}
+}
+
+// =============================================================================
+
+// orphanSweepOnce guards reapOrphanedDatabases so it runs at most once per test
+// process, on the first NewDatabase call.
+var orphanSweepOnce sync.Once
+
+// newTestDBName returns a unique Postgres database name of the form
+// ichortest_<pid>_<12 random chars>. The PID lets reapOrphanedDatabases tell
+// databases owned by a live test process from orphans left by a dead one; the
+// 12 random chars (36^12 ≈ 4.7e18) make collisions astronomically unlikely.
+func newTestDBName() string {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, 12)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return fmt.Sprintf("ichortest_%d_%s", os.Getpid(), string(b))
+}
+
+// reapOrphanedDatabases drops leftover test databases in the shared servicetest
+// container whose owning process is no longer alive. Running it once per process
+// keeps a series of killed/interrupted runs from accumulating hundreds of orphan
+// databases (which then collide against the name space). DROP DATABASE fails on
+// a database with active connections, so a genuinely live database is skipped.
+// maxOrphanReap bounds how many orphan databases the reaper drops per run. Each
+// DROP DATABASE forces a Postgres checkpoint, so dropping a large backlog at once
+// triggers an I/O storm that starves concurrent migrations (observed: ~700 drops
+// produced a 260s checkpoint that stalled an entire run). Capping keeps the storm
+// small; any remainder is reclaimed over subsequent runs.
+const maxOrphanReap = 32
+
+func reapOrphanedDatabases(t *testing.T, dbM *sqlx.DB) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	rows, err := dbM.QueryContext(ctx,
+		"SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres'")
+	if err != nil {
+		t.Logf("orphan reaper: listing databases: %v", err)
+		return
+	}
+
+	var candidates []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			continue
+		}
+		candidates = append(candidates, name)
+	}
+	rows.Close()
+
+	dropped, remaining := 0, 0
+	for _, name := range candidates {
+		if !isReapableTestDB(name) {
+			continue
+		}
+		if dropped >= maxOrphanReap {
+			remaining++
+			continue
+		}
+		if _, err := dbM.ExecContext(ctx, "DROP DATABASE "+name); err != nil {
+			continue // likely "being accessed by other users" — a live database
+		}
+		dropped++
+	}
+	if dropped > 0 {
+		t.Logf("orphan reaper: dropped %d leftover test database(s)", dropped)
+	}
+	if remaining > 0 {
+		t.Logf("orphan reaper: %d orphan(s) remain (per-run cap %d); reclaiming over subsequent runs", remaining, maxOrphanReap)
+	}
+}
+
+// isReapableTestDB reports whether name is a test database safe to drop because
+// no live process owns it. It only ever returns true for the two name shapes
+// this harness creates, so it can never target a non-test database:
+//   - new format ichortest_<pid>_<rand>: reaped only when <pid> is not alive
+//   - legacy 4-lowercase-letter names: always reapable, since the current
+//     harness never creates them, so no live process can own one
+func isReapableTestDB(name string) bool {
+	if strings.HasPrefix(name, "ichortest_") {
+		parts := strings.Split(name, "_") // ["ichortest", "<pid>", "<rand>"]
+		if len(parts) == 3 && isLowerAlphaNum(parts[2]) {
+			if pid, err := strconv.Atoi(parts[1]); err == nil {
+				return !processAlive(pid)
+			}
+		}
+		return false // unrecognized ichortest_ shape — leave it alone
+	}
+	return isLegacyTestDBName(name)
+}
+
+// isLegacyTestDBName matches the old 4-random-lowercase-letter naming scheme.
+func isLegacyTestDBName(name string) bool {
+	if len(name) != 4 {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if name[i] < 'a' || name[i] > 'z' {
+			return false
+		}
+	}
+	return true
+}
+
+func isLowerAlphaNum(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+// processAlive reports whether a process with the given PID is currently running.
+func processAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return p.Signal(syscall.Signal(0)) == nil
 }
 
 // =============================================================================
