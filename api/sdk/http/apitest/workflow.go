@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus"
+	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus/stores/notificationdb"
+
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
@@ -55,7 +58,8 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	// 3. Build action registry (same 4 handlers as before).
 	registry := workflow.NewActionRegistry()
 	registry.Register(communication.NewSendEmailHandler(db.Log, db.DB, nil, ""))
-	registry.Register(communication.NewSendNotificationHandler(db.Log, nil))
+	registry.Register(communication.NewSendNotificationHandler(db.Log, nil,
+		notificationbus.NewBusiness(db.Log, notificationdb.NewStore(db.Log, db.DB))))
 	// alertBus and approvalRequestBus are constructed independently (not from
 	// db.BusDomain) so each test gets its own bus instance. This ensures
 	// approval request and alert state is not shared across test runs that

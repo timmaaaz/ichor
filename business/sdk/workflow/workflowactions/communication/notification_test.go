@@ -17,7 +17,7 @@ import (
 func Test_SendNotificationHandler(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "notification_test", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
 
-	handler := communication.NewSendNotificationHandler(log, nil)
+	handler := communication.NewSendNotificationHandler(log, nil, nil)
 
 	unitest.Run(t, notificationValidateTests(handler), "validate")
 	unitest.Run(t, notificationExecuteTests(handler), "execute")
