@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cascade Delegate Events — Call-Chain Visualization</title>
+<style>
+  :root{
+    --bg:#eef1f6; --panel:#ffffff; --ink:#1f2933; --muted:#6b7280; --line:#d8dee9; --rail:#c2cbd9;
+    --blue:#2563eb; --blue-bg:#eff6ff; --amber:#d97706; --amber-bg:#fffbeb; --red:#dc2626; --red-bg:#fef2f2;
+    --green:#16a34a; --green-bg:#f0fdf4; --purple:#7c3aed; --purple-bg:#faf5ff;
+    --teal:#0d9488; --teal-bg:#f0fdfa; --slate:#475569;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:40px 24px 90px}
+  header.page{border-bottom:1px solid var(--line);padding-bottom:24px}
+  h1{font-size:30px;margin:0 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:15px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .pill{font:600 11px/1 var(--mono);padding:6px 9px;border-radius:999px;background:#e2e8f0;color:var(--slate);border:1px solid var(--line)}
+  .pill.ok{background:var(--green-bg);color:var(--green);border-color:#bbf7d0}
+  .lead{font-size:16px;color:var(--slate);margin:28px 0 0;padding:16px 18px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:10px}
+  .lead b{color:var(--ink)}
+  h2{font-size:20px;margin:54px 0 4px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+  h2 .num{font:700 13px/1 var(--mono);color:#fff;background:var(--ink);width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center}
+  .caption{color:var(--muted);font-size:14px;margin:0 0 26px;padding-left:36px}
+
+  .stage-panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:34px 24px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+
+  /* ---------- vertical flowchart ---------- */
+  .flow{display:flex;flex-direction:column;align-items:center;gap:0}
+  .fnode{position:relative;width:100%;max-width:560px;background:#fff;border:2px solid var(--blue);border-radius:12px;
+         padding:15px 20px 14px;text-align:center;box-shadow:0 2px 5px rgba(16,24,40,.07)}
+  .fnode .badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);font:700 10px/1 var(--mono);
+                background:var(--blue);color:#fff;padding:5px 10px;border-radius:999px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+  .fnode code{font:600 14.5px/1.45 var(--mono);color:var(--ink);display:block;word-break:break-word}
+  .fnode .det{font-size:12px;color:var(--muted);margin-top:6px}
+  .fnode .loc{font:600 11px/1 var(--mono);color:var(--slate);margin-top:9px;display:inline-block;background:#eef2f7;padding:4px 8px;border-radius:5px}
+  /* connector */
+  .conn{width:0;height:36px;border-left:2.5px solid var(--rail)}
+  .conn{position:relative}
+  .conn::after{content:"";position:absolute;bottom:-1px;left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--rail)}
+  .conn.short{height:26px}
+  /* variants */
+  .fnode.amber{border-color:var(--amber);background:var(--amber-bg);box-shadow:0 0 0 5px rgba(245,158,11,.13),0 2px 6px rgba(16,24,40,.07)}
+  .fnode.amber .badge{background:var(--amber)} .fnode.amber code{color:#92400e}
+  .fnode.red{border-color:var(--red);background:var(--red-bg)} .fnode.red .badge{background:var(--red)} .fnode.red code{color:#991b1b}
+  .fnode.ghost{border-style:dashed;border-color:var(--rail);background:#f8fafc} .fnode.ghost .badge{background:#94a3b8} .fnode.ghost code{color:var(--muted)}
+  .conn.broken{border-left-style:dashed;border-left-color:var(--red)} .conn.broken::after{border-top-color:var(--red)}
+  .sever{display:flex;align-items:center;gap:10px;color:var(--red);font:700 12px/1 var(--mono);background:var(--red-bg);
+         border:1.5px dashed #fca5a5;border-radius:10px;padding:10px 14px;margin:2px 0}
+  .sever .x{width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+
+  /* DB side-branch off a node */
+  .fnode.hasdb{overflow:visible}
+  .dbside{position:absolute;left:calc(100% + 14px);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:0;white-space:nowrap}
+  .dbside .wire{width:26px;height:2.5px;background:var(--rail);position:relative}
+  .dbside .wire::after{content:"";position:absolute;right:-1px;top:-5px;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:8px solid var(--rail)}
+  .db{border:2px solid var(--slate);border-radius:9px;background:#fff;padding:9px 13px;font:600 11.5px/1.2 var(--mono);color:var(--slate);box-shadow:0 1px 3px rgba(16,24,40,.06)}
+  .db .top{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  @media(max-width:840px){.dbside{position:static;transform:none;justify-content:center;margin-top:10px}.dbside .wire{display:none}}
+
+  /* loop-back arrow note */
+  .loopback{font:600 12px/1.4 var(--mono);color:var(--purple);background:var(--purple-bg);border:1.5px dashed #d8b4fe;
+            border-radius:10px;padding:10px 14px;margin-top:4px;display:flex;align-items:center;gap:8px}
+
+  /* ---------- two mechanisms ---------- */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:820px){.cols{grid-template-columns:1fr}}
+  .mech{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 20px 22px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  .mech > h3{margin:0 0 3px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .mech > h3 .dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
+  .mech > .who{font-size:12px;color:var(--muted);margin:0 0 22px}
+  .mech .fnode{max-width:100%}
+
+  /* ---------- loop svg ---------- */
+  .loopwrap{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 18px 26px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  .loopwrap svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
+  .guards{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:8px}
+  .guard{font:600 12px/1 var(--mono);color:var(--red);background:var(--red-bg);border:1px solid #fecaca;border-radius:999px;padding:9px 13px}
+  .guard b{color:#7f1d1d}
+
+  /* ---------- fixes ---------- */
+  .pipe{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0;margin-bottom:30px}
+  .pstage{font:600 12px/1 var(--mono);padding:11px 13px;border-radius:9px;background:var(--blue-bg);color:var(--blue);border:1.5px solid #c7dbfe;white-space:nowrap}
+  .pstage.write{background:#eef2f7;color:var(--slate);border-color:var(--line)}
+  .pstage.choke{background:var(--amber-bg);color:var(--amber);border-color:#fcd34d;box-shadow:0 0 0 4px rgba(245,158,11,.12)}
+  .parrow{color:var(--rail);font-size:16px;padding:0 7px}
+  .fixcards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:820px){.fixcards{grid-template-columns:1fr}}
+  .fix{position:relative;border:1px solid var(--line);border-radius:14px;padding:20px 18px;background:var(--panel);box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  .fix::before{content:"";position:absolute;top:-15px;left:50%;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:13px solid currentColor}
+  .fix.m2{border-top:4px solid var(--green);color:var(--green)} .fix.m1{border-top:4px solid var(--purple);color:var(--purple)} .fix.gd{border-top:4px solid var(--teal);color:var(--teal)}
+  .fix h4{margin:0 0 4px;font-size:14.5px;color:var(--ink)}
+  .fix .tl{font-size:12px;color:var(--muted);margin:0 0 13px}
+  .fix ul{margin:0;padding-left:17px;font-size:13px;color:var(--slate)} .fix ul li{margin:6px 0}
+  .fix ul li code{font:600 12px/1 var(--mono);color:var(--ink)}
+  .fix .where{font:700 10.5px/1.3 var(--mono);margin-top:14px;padding:9px 11px;border-radius:8px;text-transform:uppercase;letter-spacing:.03em}
+  .fix.m2 .where{background:var(--green-bg);color:var(--green)} .fix.m1 .where{background:var(--purple-bg);color:var(--purple)} .fix.gd .where{background:var(--teal-bg);color:var(--teal)}
+
+  /* ---------- reference table ---------- */
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13.5px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line)}
+  th{background:#f1f5f9;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  tr:last-child td{border-bottom:none}
+  td code{font:600 12.5px/1.3 var(--mono)}
+  .chip{font:700 10px/1 var(--mono);padding:5px 8px;border-radius:6px;white-space:nowrap}
+  .chip.no{background:var(--red-bg);color:var(--red)} .chip.yes{background:var(--green-bg);color:var(--green)}
+  .chip.na{background:#eef2f7;color:var(--slate)} .chip.part{background:var(--amber-bg);color:var(--amber)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:24px;padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--slate)}
+  .legend .sw{width:15px;height:15px;border-radius:4px;border:2px solid}
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  footer code{font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <h1>Cascade Delegate Events — Call-Chain Visualization</h1>
+    <p class="sub">Why some workflow actions silently fail to trigger other rules — and where every fix would intervene.</p>
+    <div class="meta">
+      <span class="pill">branch · feature/cascade-delegate-events</span>
+      <span class="pill">2026-06-09</span>
+      <span class="pill ok">✓ file:line verified ×2 rounds</span>
+    </div>
+  </header>
+
+  <p class="lead"><b>The one idea:</b> a cascade is a chain whose only fragile link is the
+  <code>delegate.Call</code> right after a DB write. Every other link is robust and shared.
+  <b>The bug is always “the chain is severed before <code>delegate.Call</code>.”</b></p>
+
+  <div class="legend">
+    <div class="item"><span class="sw" style="background:#fff;border-color:var(--blue)"></span>robust pipeline node</div>
+    <div class="item"><span class="sw" style="background:var(--amber-bg);border-color:var(--amber)"></span>★ fragile link</div>
+    <div class="item"><span class="sw" style="background:var(--red-bg);border-color:var(--red)"></span>severed</div>
+    <div class="item"><span class="sw" style="background:#fff;border-color:var(--slate)"></span>DB write</div>
+    <div class="item"><span class="sw" style="background:var(--green-bg);border-color:var(--green)"></span>M2 fix</div>
+    <div class="item"><span class="sw" style="background:var(--purple-bg);border-color:var(--purple)"></span>M1 fix</div>
+    <div class="item"><span class="sw" style="background:var(--teal-bg);border-color:var(--teal)"></span>loop guard</div>
+  </div>
+
+  <!-- 1 -->
+  <h2><span class="num">1</span> The working cascade chain</h2>
+  <p class="caption">What the 5 “correct” actions do today — follow the spine top to bottom.</p>
+  <div class="stage-panel">
+    <div class="flow">
+      <div class="fnode ghost"><span class="badge">trigger</span><code>API PUT · or a prior rule's bus write</code></div>
+      <div class="conn"></div>
+      <div class="fnode hasdb"><span class="badge">bus</span><code>[bus].Update(ctx, before, item)</code>
+        <div class="det">b.storer.Update(ctx, ip) persists the row</div><span class="loc">inventoryitembus.go:152</span>
+        <div class="dbside"><span class="wire"></span><span class="db"><span class="top">db write</span>inventory_items ✔</span></div>
+      </div>
+      <div class="conn"></div>
+      <div class="fnode amber"><span class="badge">★ emit</span><code>b.delegate.Call(ctx, ActionUpdatedData(before, ip))</code>
+        <div class="det">THE one fragile link · errors here are <b>swallowed</b> (best-effort)</div><span class="loc">inventoryitembus.go:157</span></div>
+      <div class="conn"></div>
+      <div class="fnode"><span class="badge">sdk</span><code>delegate.Call(ctx, Data)</code>
+        <div class="det">in-memory synchronous dispatch to registered Func(s)</div><span class="loc">delegate.go:48</span></div>
+      <div class="conn"></div>
+      <div class="fnode"><span class="badge">sdk</span><code>DelegateHandler.handleEvent → go func(){…}</code>
+        <div class="det">Data ⇒ TriggerEvent · ⚠ async, off the originating tx</div><span class="loc">temporal/delegatehandler.go:86</span></div>
+      <div class="conn"></div>
+      <div class="fnode"><span class="badge">sdk</span><code>WorkflowTrigger.OnEntityEvent(ctx, event)</code><span class="loc">temporal/trigger.go:102</span></div>
+      <div class="conn"></div>
+      <div class="fnode"><span class="badge">sdk</span><code>TriggerProcessor.ProcessEvent(ctx, event)</code>
+        <div class="det">match EntityName + TriggerType + FieldChanges vs each rule's conditions</div><span class="loc">workflow/trigger.go:122</span></div>
+      <div class="conn"></div>
+      <div class="fnode"><span class="badge">sdk</span><code>starter.ExecuteWorkflow(...)</code>
+        <div class="det">workflowID = …-{uuid.New()} ← unique <b>every</b> fire (no dedup)</div><span class="loc">temporal/trigger.go:170</span></div>
+      <div class="conn"></div>
+      <div class="fnode ghost"><span class="badge">⚡ temporal</span><code>Worker → GraphExecutor → ActionHandler.Execute(…)</code>
+        <div class="det">the next rule runs … and may write again</div></div>
+      <div class="conn short"></div>
+      <div class="loopback">↩ a write here re-enters the chain at the top — this is the cascade (and, unguarded, the loop)</div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <h2><span class="num">2</span> Where the chain breaks</h2>
+  <p class="caption">8 actions write to the DB (✔) but the spine is severed at the same spot the ★ link sits above.</p>
+  <div class="cols">
+    <div class="mech">
+      <h3><span class="dot"></span>Mechanism 1 — raw SQL, no bus</h3>
+      <p class="who">update_field · create_entity · transition_status · log_audit_entry</p>
+      <div class="flow">
+        <div class="fnode"><span class="badge">handler</span><code>ActionHandler.Execute(…)</code></div>
+        <div class="conn"></div>
+        <div class="fnode red hasdb"><span class="badge">raw sql</span><code>sqldb.NamedExecContextWithCount(…)</code>
+          <div class="det">query := "UPDATE %s SET …"</div><span class="loc">updatefield.go:248</span>
+          <div class="dbside"><span class="wire"></span><span class="db"><span class="top">db write</span>target_table ✔</span></div>
+        </div>
+        <div class="conn broken"></div>
+        <div class="sever"><span class="x">✕</span> no bus · no delegate.Call — CHAIN SEVERED</div>
+        <div class="conn broken short"></div>
+        <div class="fnode ghost"><span class="badge">engine</span><code>never hears about it</code></div>
+      </div>
+    </div>
+
+    <div class="mech">
+      <h3><span class="dot"></span>Mechanism 2 — bus exists, never emits</h3>
+      <p class="who">create_alert · seek_approval · allocation_results</p>
+      <div class="flow">
+        <div class="fnode"><span class="badge">handler</span><code>ActionHandler.Execute(…)</code></div>
+        <div class="conn"></div>
+        <div class="fnode"><span class="badge">handler</span><code>alertBus.Create(ctx, alert)</code><span class="loc">alert.go:187</span></div>
+        <div class="conn"></div>
+        <div class="fnode red hasdb"><span class="badge">bus</span><code>[bus].Create → b.storer.Create</code>
+          <div class="det">struct has <b>no delegate field</b></div><span class="loc">alertbus.go:85</span>
+          <div class="dbside"><span class="wire"></span><span class="db"><span class="top">db write</span>workflow.alerts ✔</span></div>
+        </div>
+        <div class="conn broken"></div>
+        <div class="sever"><span class="x">✕</span> delegate dropped — CHAIN SEVERED</div>
+        <div class="conn broken short"></div>
+        <div class="fnode ghost"><span class="badge">engine</span><code>never hears about it</code></div>
+      </div>
+    </div>
+  </div>
+  <p class="caption" style="margin-top:16px;padding-left:0">M2 variants: <code>approvalrequestbus.Create:72</code> (field exists, only <code>Resolve:143</code> fires) · <code>workflowbus.CreateAllocationResult:1050</code> (field exists, TODO at :21). <b>allocate / reserve are partial</b> — their inventory_items write cascades; only the allocation_results side-write is dead.</p>
+
+  <!-- 3 -->
+  <h2><span class="num">3</span> The loop problem</h2>
+  <p class="caption">Once these cascade, nothing stops A → B → A re-firing forever.</p>
+  <div class="loopwrap">
+    <svg viewBox="0 0 760 300" role="img" aria-label="Rule A and Rule B re-triggering each other in a loop">
+      <defs>
+        <marker id="ah" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto">
+          <path d="M0,0 L9,4 L0,8 Z" fill="#7c3aed"/>
+        </marker>
+      </defs>
+      <!-- Rule A -->
+      <rect x="55" y="70" width="250" height="120" rx="14" fill="#faf5ff" stroke="#7c3aed" stroke-width="2.5"/>
+      <text x="180" y="105" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="17" font-weight="700" fill="#7c3aed">Rule A</text>
+      <text x="180" y="129" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#475569">on_update X</text>
+      <text x="180" y="163" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="13" font-weight="600" fill="#1f2933">writes Y</text>
+      <!-- Rule B -->
+      <rect x="455" y="70" width="250" height="120" rx="14" fill="#faf5ff" stroke="#7c3aed" stroke-width="2.5"/>
+      <text x="580" y="105" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="17" font-weight="700" fill="#7c3aed">Rule B</text>
+      <text x="580" y="129" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#475569">on_update Y</text>
+      <text x="580" y="163" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="13" font-weight="600" fill="#1f2933">writes X</text>
+      <!-- A -> B (top) -->
+      <path d="M305,108 L450,108" fill="none" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#ah)"/>
+      <text x="378" y="98" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#7c3aed">delegate ▸ fires B</text>
+      <!-- B -> A (return, bottom) -->
+      <path d="M575,193 L575,255 Q575,268 562,268 L198,268 Q185,268 185,255 L185,196" fill="none" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#ah)"/>
+      <text x="380" y="288" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#7c3aed">delegate ▸ re-fires A</text>
+      <!-- center infinity -->
+      <text x="380" y="150" text-anchor="middle" font-size="30" fill="#dc2626" font-weight="700">∞</text>
+    </svg>
+    <div class="guards">
+      <span class="guard">depth counter <b>✗</b></span>
+      <span class="guard">visited set <b>✗</b></span>
+      <span class="guard">origin flag <b>✗</b></span>
+      <span class="guard">Temporal dedup <b>✗</b> · unique IDs</span>
+    </div>
+    <p class="caption" style="text-align:center;margin:18px 0 0;padding:0">Kahn's algorithm only checks <b>inside one rule's DAG, at save time</b> — structurally blind to cross-rule loops.</p>
+  </div>
+
+  <!-- 4 -->
+  <h2><span class="num">4</span> Every fix option, on the same chain</h2>
+  <p class="caption">M1 &amp; M2 restore/splice the missing link; the loop guard adds a gate at the shared chokepoint.</p>
+  <div class="stage-panel">
+    <div class="pipe">
+      <span class="pstage">Handler.Execute</span><span class="parrow">▶</span>
+      <span class="pstage write">[write]</span><span class="parrow">▶</span>
+      <span class="pstage">delegate.Call</span><span class="parrow">▶</span>
+      <span class="pstage choke">DelegateHandler / OnEntityEvent</span><span class="parrow">▶</span>
+      <span class="pstage">ProcessEvent</span><span class="parrow">▶</span>
+      <span class="pstage">Temporal</span>
+    </div>
+    <div class="fixcards">
+      <div class="fix m2">
+        <h4>M2 — restore the link</h4>
+        <p class="tl">Cheap · local · un-breaks PR #176's workaround</p>
+        <ul>
+          <li>add <code>delegate.Call</code> to <code>alertbus.Create</code></li>
+          <li>… to <code>approvalrequestbus.Create</code></li>
+          <li>… to <code>CreateAllocationResult</code></li>
+          <li>wire a delegate field into alertbus</li>
+        </ul>
+        <div class="where">at: the bus write</div>
+      </div>
+      <div class="fix m1">
+        <h4>M1 — splice a synthetic link</h4>
+        <p class="tl">Architectural · generic actions have no bus</p>
+        <ul>
+          <li>after the raw-SQL write, build a <code>TriggerEvent</code></li>
+          <li>feed it straight into <code>OnEntityEvent</code></li>
+          <li>also decide the validation gap</li>
+        </ul>
+        <div class="where">at: handler, post-write</div>
+      </div>
+      <div class="fix gd">
+        <h4>Loop guard — add a gate</h4>
+        <p class="tl">MANDATORY before shipping either fix</p>
+        <ul>
+          <li><b>A.</b> depth counter on the event — cap hops</li>
+          <li><b>B.</b> visited-set — refuse re-entry</li>
+          <li><b>C.</b> origin tag — suppress automated re-cascade <i>(no flag today)</i></li>
+        </ul>
+        <div class="where">enforce once at: the chokepoint</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <h2><span class="num">5</span> The full map — reference table</h2>
+  <p class="caption">All 21 action types, verified twice. (This one is meant to be a table.)</p>
+  <table>
+    <thead><tr><th>Action</th><th>Writes?</th><th>Cascades?</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><code>update_field</code></td><td>raw SQL</td><td><span class="chip no">NO</span></td><td>M1 · no bus</td></tr>
+      <tr><td><code>create_entity</code></td><td>raw SQL</td><td><span class="chip no">NO</span></td><td>M1 · no bus</td></tr>
+      <tr><td><code>transition_status</code></td><td>raw SQL</td><td><span class="chip no">NO</span></td><td>M1 · no bus</td></tr>
+      <tr><td><code>log_audit_entry</code></td><td>raw SQL</td><td><span class="chip no">NO</span></td><td>M1 · terminal audit sink (arguably OK)</td></tr>
+      <tr><td><code>create_alert</code></td><td>bus</td><td><span class="chip no">NO</span></td><td>M2 · alertbus has no delegate</td></tr>
+      <tr><td><code>seek_approval</code></td><td>bus</td><td><span class="chip no">NO</span></td><td>M2 · Create skips delegate</td></tr>
+      <tr><td><code>allocate_inventory</code></td><td>bus ×2</td><td><span class="chip part">PARTIAL</span></td><td>inventory_items cascades · allocation_results dead</td></tr>
+      <tr><td><code>reserve_inventory</code></td><td>bus ×2</td><td><span class="chip part">PARTIAL</span></td><td>same as allocate</td></tr>
+      <tr><td><code>commit_allocation</code></td><td>bus</td><td><span class="chip yes">YES</span></td><td>inventoryitembus.Update:157</td></tr>
+      <tr><td><code>release_reservation</code></td><td>bus</td><td><span class="chip yes">YES</span></td><td>inventoryitembus.Update:157</td></tr>
+      <tr><td><code>receive_inventory</code></td><td>bus ×2</td><td><span class="chip yes">YES</span></td><td>item + transaction buses fire</td></tr>
+      <tr><td><code>create_put_away_task</code></td><td>bus</td><td><span class="chip yes">YES</span></td><td>putawaytaskbus.Create:95</td></tr>
+      <tr><td><code>create_purchase_order</code></td><td>bus ×2</td><td><span class="chip yes">YES</span></td><td>PO + line-item buses fire</td></tr>
+      <tr><td><code>lookup_entity · check_inventory · check_reorder_point</code></td><td>—</td><td><span class="chip na">N/A</span></td><td>read-only</td></tr>
+      <tr><td><code>evaluate_condition · delay</code></td><td>—</td><td><span class="chip na">N/A</span></td><td>in-memory / Temporal timer</td></tr>
+      <tr><td><code>send_email · send_notification · call_webhook</code></td><td>—</td><td><span class="chip na">N/A</span></td><td>external only (SMTP / RabbitMQ / HTTP)</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    Source of truth: <code>INVESTIGATION.md</code> (§3 map · §7–8 loop &amp; options · §13 verification).
+    Plaintext diagrams: <code>CALL_CHAINS.md</code>. All file:line refs confirmed across two independent verification rounds, 2026-06-09.
+  </footer>
+
+</div>
+</body>
+</html>
