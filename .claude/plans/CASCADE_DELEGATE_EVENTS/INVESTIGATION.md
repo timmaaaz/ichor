@@ -279,3 +279,22 @@ Surfaced while building code-grounded loop scenarios (see `DESIGN.md` §4a/§4b)
 12. **`changed_to V` is a fixed-point latch** — `evaluateFieldCondition` requires `current==V && prev!=V` (`trigger.go:346-349`); an idempotent re-write does NOT re-fire. `on_update`/empty conditions auto-match *every* event (`trigger.go:270-289`). ✅ personally read.
 13. **Real loop-prone seeded rules exist** (🔎 Explore-traced): `Self Trigger Rule` (literal `on_update`+`update_field` self-loop) + chain rules in `api/.../workflow/ruleapi/cascade_seed_test.go`; `Allocation Success - Update Line Items` (writes `order_line_items` status from `allocation_results`) in `business/sdk/dbtest/seed_workflow.go`. The `on_update`+no-conditions auto-match shape is the most common seeded trigger and several **active** rules use it.
 14. **Refines item 11:** a cascade-detection/visualization layer reportedly already excludes self-loops *for display* (exercised in `cascade_seed_test.go`). So item 11's "consumed by nothing" is specific to the `GetEntityModifications` path — some rule-matching/cascade logic may exist via another path. `[OPEN]` locate it before sizing the static-half build.
+
+### Round 5 (decision-grounding probe sweep, 2026-06-09/10)
+Ten parallel opus probes run while making the §8 decisions (see DESIGN §10 and WRITE_PATH.md). All file:line-cited in probe outputs; load-bearing facts folded into the design docs.
+
+**Corrections to earlier rounds:**
+- 15. **§13.11 "manifest consumed by NOTHING" is WRONG.** `GetEntityModifications` IS consumed in production — by the cascade-map endpoint `GET /v1/workflow/rules/{id}/cascade-map` (`api/domain/http/workflow/ruleapi/cascade.go:55`). Display-only/advisory: single-hop, pairwise, entity+event-type granularity (NOT value-aware), excludes self-loops at `:161`, enforces nothing. **19** `EntityModifier` implementors (`cascade-visualization.md` stale: claims 1). ~60% of a static cycle-detector's edge substrate already exists (`findDownstreamRules`, `QueryActiveRules` @ `workflowdb.go:634`).
+- 16. **24 registered handlers** in `register.go` (arch doc's "21" stale — omits the 7 approve/reject/resolve).
+
+**Loop facts (→ DESIGN):**
+- 17. **0 real loops** in seeded rules (active or dormant). Only 2 active rules, both forward-only. Loop shapes exist only in `cascade_seed_test.go` scaffolding → Policy A ships with zero migration.
+- 18. **Token plumbing feasible:** must ride the event payload (`delegatehandler.go:86` goroutine drops ctx); rides `WorkflowInput.TriggerData`, Continue-As-New-safe; cheap chokepoint (stamp activity ctx once, read in `handleEvent` before the goroutine) likely avoids the 205-site change. `ActionExecutionContext` already carries `TriggerSource`/`RuleID`/`ExecutionID`.
+- 19. **Static hooks exist:** `prepareRequest` (`workflowsaveapp.go:62`) + dedicated `ActivateRule`/`toggleActive` (`workflowbus.go:571`/`ruleapi.go:272`); full inter-rule graph buildable in ~1 query (`QueryAutomationRulesViewPaginated`); active-vs-all is a one-line filter.
+- 20. **Manifest value-knowability:** 0 fully static, 10 PARTIAL, 7 DYNAMIC, 2 nil. 4 enum-const handlers trivially value-aware. Manifest drift confirmed (`resolve_approval_request` under-declares; approve/reject omit `updated_*`) → consistency test justified.
+
+**Write-path facts (→ WRITE_PATH.md):**
+- 21. Protected set is SMALL (~9 entities / ~30 (entity,field) pairs); invariants live in action-verb methods, only 6/77 buses; FK columns DB-guarded (drop); money mostly pass-through (drop).
+- 22. **FormData is a generic entity→bus dispatcher** (`app/sdk/formdataregistry` + `formdataapp`; validation + `delegate.Call` free) — BUT the domain trace shows bus-routing does NOT protect guarded status fields (**Verdict a:** `purchaseorderbus.Update:155-157` sets status with no guard; the `ErrAlreadyApproved` check lives only in `Approve:296-301`) and carries a silent column-name↔JSON-tag drop hazard. **Protected-list does NOT dissolve.** Option B = follow-up, not prereq. See WRITE_PATH §7–9.
+- 23. **PR #176:** not merged; `update_field` doc accurate but the `allocation_results` workaround BROKEN → supersede or merge-with-correction.
+- 24. **Frontend:** `update_field` config is free-text (not a table picker); `create_entity` absent on FE → protected-model FE cost Small–Medium.
