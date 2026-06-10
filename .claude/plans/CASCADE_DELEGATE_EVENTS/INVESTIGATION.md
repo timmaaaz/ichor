@@ -265,3 +265,17 @@ Open design questions for the guard:
    - `create_alert`: up to **3** DB ops — alert INSERT (`:187`), `alert_recipients` INSERT-loop (`:192`), and a conditional `ResolveRelatedAlerts` UPDATE (`:200`). The UPDATE also doesn't cascade (alertbus is delegate-free).
    - `create_put_away_task`: the only write-handler using the **non-transactional** bus (no `NewWithTx`) — still cascades.
    - `send_email` and `seek_approval` carry a vestigial, never-dereferenced `db *sqlx.DB` field (dead handle).
+
+### Round 3 (design-driven verification, 2026-06-10)
+Surfaced while designing the loop guard (see `DESIGN.md`):
+7. **Trigger matcher IS value-aware** — `evaluateFieldCondition` (`trigger.go:335-377`) supports `equals/not_equals/changed_from/changed_to/greater_than/less_than/contains/in`; `changed_to` = `current==value && prev!=value`. So edges can in principle be matched on values, not just fields.
+8. **Mutation manifest is value-BLIND** — `EntityModification` (`interfaces.go:152-163`) = `{EntityName, EventType, Fields[]}` only, no produced value. So static edges built from it today would be field-level → would false-positive on state machines. (Design fix: extend with produced value.)
+9. **`GetEntityModifications` coverage is ~19 handlers, not ~4** — correcting §3/§6. Implemented across data/inventory/procurement/approval handlers.
+10. **The action set has grown past the "21" in `docs/arch/workflow-engine.md`** — new types seen: `approve_po, reject_po, approve_adjustment, approve_transfer_order, reject_transfer_order, reject_adjustment, resolve`. §3's enumeration is stale and should be re-counted before any cascade analysis ships.
+11. **The manifest is consumed by NOTHING in Go** — no matcher / cascade graph / cycle detector exists; the "cascade visualization API" the interface comment promises is not implemented in the backend (frontend/planned?). The static-analysis layer is greenfield, though the per-action substrate exists.
+
+### Round 4 (scenario grounding, 2026-06-10)
+Surfaced while building code-grounded loop scenarios (see `DESIGN.md` §4a/§4b):
+12. **`changed_to V` is a fixed-point latch** — `evaluateFieldCondition` requires `current==V && prev!=V` (`trigger.go:346-349`); an idempotent re-write does NOT re-fire. `on_update`/empty conditions auto-match *every* event (`trigger.go:270-289`). ✅ personally read.
+13. **Real loop-prone seeded rules exist** (🔎 Explore-traced): `Self Trigger Rule` (literal `on_update`+`update_field` self-loop) + chain rules in `api/.../workflow/ruleapi/cascade_seed_test.go`; `Allocation Success - Update Line Items` (writes `order_line_items` status from `allocation_results`) in `business/sdk/dbtest/seed_workflow.go`. The `on_update`+no-conditions auto-match shape is the most common seeded trigger and several **active** rules use it.
+14. **Refines item 11:** a cascade-detection/visualization layer reportedly already excludes self-loops *for display* (exercised in `cascade_seed_test.go`). So item 11's "consumed by nothing" is specific to the `GetEntityModifications` path — some rule-matching/cascade logic may exist via another path. `[OPEN]` locate it before sizing the static-half build.
