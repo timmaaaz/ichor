@@ -75,9 +75,10 @@ func (h *ApproveTransferOrderHandler) GetEntityModifications(config json.RawMess
 		{
 			EntityName: "inventory.transfer_orders",
 			EventType:  "on_update",
-			Fields:     []string{"status", "approved_by_id", "approval_reason"},
-			// status is set to a fixed enum constant. approved_by_id (runtime user) and
-			// approval_reason (config) are left indeterminate (no Change entry).
+			Fields:     []string{"status", "approved_by", "approval_reason"},
+			// status is set to a fixed enum constant. approved_by (runtime user; db column
+			// is "approved_by", not "approved_by_id") and approval_reason (config) are left
+			// indeterminate (no Change entry).
 			Changes: []workflow.ProducedChange{
 				{FieldName: "status", Operator: workflow.OperatorChangedTo, Value: transferorderbus.StatusApproved},
 			},

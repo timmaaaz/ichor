@@ -7,8 +7,10 @@ package workflow
 //
 //	ERROR   — a PROVABLE re-arming loop. The save/activation is blocked.
 //	WARNING — a POSSIBLE loop we cannot prove (dynamic/templated values, or a reset we
-//	          cannot evaluate statically). Surfaced, never blocked. The P1 runtime
-//	          visited-set guard is the backstop for these.
+//	          cannot evaluate statically), OR a PROVABLE loop that does NOT involve the
+//	          candidate (a pre-existing loop we won't block this save on, but still surface
+//	          as a safety-net). Surfaced, never blocked. The P1 runtime visited-set guard
+//	          is the backstop for these.
 //	INFO    — a cascade-awareness datapoint ("this rule can trigger / be triggered by
 //	          rule X"). Pure awareness, never a prohibition.
 //
@@ -649,14 +651,16 @@ func classifyCascades(nodes []ruleNode, candidateID uuid.UUID) CascadeAnalysis {
 			continue
 		}
 
-		candInDCycle = true
 		finding.Reason = pathString(names(path)) + " — " + why
 		switch tier {
 		case "error":
+			candInDCycle = true
 			analysis.Errors = append(analysis.Errors, finding)
 		case "warning":
+			candInDCycle = true
 			analysis.Warnings = append(analysis.Warnings, finding)
-		default: // info: convergent cycle, allowed
+		default: // info: convergent cycle, allowed — does NOT suppress the possible-loop scan
+			// below, so a separate indeterminate loop the candidate is also in still warns.
 			analysis.Info = append(analysis.Info, finding)
 		}
 	}

@@ -19,12 +19,9 @@ import (
 	"testing"
 
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
-	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
-	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
-	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/procurement"
 )
 
 // Test_ProtectedFields_ResolveToRealColumns enumerates the production protected registry and
@@ -34,16 +31,14 @@ func Test_ProtectedFields_ResolveToRealColumns(t *testing.T) {
 
 	db := dbtest.NewDatabase(t, "Test_ProtectedFields_Columns")
 	ctx := context.Background()
-	log := newLog()
 
-	// Build the production registry the way RegisterAll/all.go do: register the EntityModifier
-	// handlers (auto-source) + PopulateProtected (which also pulls the db-tag stores + the
-	// whole-table ledger). nil buses are fine — GetEntityModifications ignores them.
-	reg := workflow.NewActionRegistry()
-	reg.Register(inventory.NewReserveInventoryHandler(log, nil, nil, nil))  // on_update inventory_items.reserved_quantity
-	reg.Register(procurement.NewApprovePurchaseOrderHandler(log, nil))      // on_update purchase_orders.approved_by/...
-	reg.Register(inventory.NewCreatePutAwayTaskHandler(log, nil, nil, nil)) // on_create — excluded from auto-source
-	reg.Register(data.NewUpdateFieldHandler(log, nil))                      // generic — skipped
+	// Build the FULL production registry (RegisterAll), not a hand-picked subset. A subset lets a
+	// drifted db tag / manifest field on an UNREGISTERED handler slip past this backstop — it did:
+	// approve_transfer_order's manifest named a non-existent column ("approved_by_id") and an
+	// earlier 4-handler version of this test stayed green. buildFullRegistry mirrors RegisterAll/
+	// all.go; PopulateProtected then pulls the auto-source manifests + db-tag stores + whole-table
+	// ledger. nil/zero-value buses are fine — GetEntityModifications never dereferences them.
+	reg := buildFullRegistry(t)
 
 	preg := protected.New()
 	workflowactions.PopulateProtected(preg, reg)

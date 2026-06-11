@@ -42,10 +42,6 @@ import (
 	"go.temporal.io/sdk/worker"
 )
 
-// cascadeLineageKeyJSON mirrors the unexported cascadeLineageKey in
-// business/sdk/workflow/temporal/lineage.go — the TriggerData key the visited-set rides under.
-const cascadeLineageKeyJSON = "__cascade_lineage"
-
 func TestCascade_LineageThreadsThroughRealTemporalActivity(t *testing.T) {
 	t.Parallel()
 
@@ -207,17 +203,29 @@ func TestCascade_LineageThreadsThroughRealTemporalActivity(t *testing.T) {
 				rows.Close()
 				t.Fatalf("scanning trigger_data: %v", err)
 			}
-			var td struct {
-				Cascade struct {
-					Visited []string `json:"visited"`
-				} `json:"__cascade_lineage"`
-			}
+			// Key off the exported temporal.CascadeLineageKey (not a hardcoded literal) so this
+			// test breaks at compile time if the carrier key is ever renamed.
+			var td map[string]json.RawMessage
 			if err := json.Unmarshal(raw, &td); err != nil {
 				continue
 			}
-			if slices.Contains(td.Cascade.Visited, wantRoot) && slices.Contains(td.Cascade.Visited, wantCascaded) {
-				gotVisited = td.Cascade.Visited
+			lineageRaw, ok := td[workflowtemporal.CascadeLineageKey]
+			if !ok {
+				continue
 			}
+			var lineage struct {
+				Visited []string `json:"visited"`
+			}
+			if err := json.Unmarshal(lineageRaw, &lineage); err != nil {
+				continue
+			}
+			if slices.Contains(lineage.Visited, wantRoot) && slices.Contains(lineage.Visited, wantCascaded) {
+				gotVisited = lineage.Visited
+			}
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			t.Fatalf("iterating rule B trigger_data: %v", err)
 		}
 		rows.Close()
 		if gotVisited != nil {
@@ -229,7 +237,7 @@ func TestCascade_LineageThreadsThroughRealTemporalActivity(t *testing.T) {
 	if gotVisited == nil {
 		t.Fatalf("timeout: rule B never received a cascaded execution carrying lineage {%s, %s} "+
 			"(key %q) — the visited-set did not survive the real Temporal activity / delegate round-trip",
-			wantRoot, wantCascaded, cascadeLineageKeyJSON)
+			wantRoot, wantCascaded, workflowtemporal.CascadeLineageKey)
 	}
 	t.Logf("cascade lineage threaded through real Temporal: visited=%v", gotVisited)
 }

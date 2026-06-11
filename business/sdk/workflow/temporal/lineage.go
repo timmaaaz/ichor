@@ -33,11 +33,12 @@ import (
 // the next generation. This avoids threading a token through the 205 delegate.Call
 // sites or changing the WorkflowInput struct shape.
 
-// cascadeLineageKey is the reserved key under which the lineage rides
+// CascadeLineageKey is the reserved key under which the lineage rides
 // WorkflowInput.TriggerData and (after flowing through MergedContext.Flattened)
 // the action activity Context map. The "__" prefix keeps it clear of any user
-// template variable.
-const cascadeLineageKey = "__cascade_lineage"
+// template variable. Exported so out-of-package tests (e.g. the actionhandlers
+// real-Temporal round-trip) reference the one true key instead of a drifting copy.
+const CascadeLineageKey = "__cascade_lineage"
 
 // WorkflowLineage carries cross-rule cascade provenance along a cascade chain.
 //
@@ -115,7 +116,7 @@ func lineageFromContext(ctx context.Context) WorkflowLineage {
 // both forms decode to the same lineage. Missing/nil/garbage degrade to the zero
 // value (empty set).
 func lineageFromContextMap(m map[string]any) WorkflowLineage {
-	v, ok := m[cascadeLineageKey]
+	v, ok := m[CascadeLineageKey]
 	if !ok || v == nil {
 		return WorkflowLineage{}
 	}
