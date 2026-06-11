@@ -5,7 +5,8 @@
 meta:
   branch: feature/cascade-delegate-events
   plan: .claude/plans/CASCADE_DELEGATE_EVENTS/PLAN.md
-  hard_rule: "loop guard (P1+P2) complete & verified BEFORE P4 opens the cascade gate (DESIGN §0)"
+  hard_rule: "loop guard complete & verified BEFORE P4 opens the cascade gate (DESIGN §0) — made auditable as phase PG: PG green is the precondition that unlocks P4"
+  structure: "TWO construction pieces, each with its own testing phase; P4 (gate) is the seam. Piece 1 = build guard (P0-P3) + PG (verify, cascades OFF). Piece 2 = P4 (enable) + PL (verify live, cascades ON) + P5 (ship)."
 
 core:
   P0:
@@ -201,14 +202,45 @@ core:
     title: "Protected-list (validation fix)"
     status: not_started
     gate: "after P0"
+
+  # ── Construction is TWO pieces, each with its own testing phase; P4 (the gate) is the seam. ──
+  # Piece 1 = build the guard (P0-P3) then PG verifies it with cascades OFF. PG green is the
+  # auditable form of the DESIGN §0 precondition that unlocks P4. Piece 2 = P4 turns cascades ON,
+  # then PL verifies the LIVE pipeline (the tests that cannot run before P4), then P5 ships.
+
+  PG:
+    title: "Guard Verification (Piece 1 exit — cascades OFF)"
+    status: not_started
+    gate: "after P0-P3; GREEN = the §0 precondition that opens P4"
+    note: |
+      Consolidated adversarial/property/cross-cutting pass proving the ASSEMBLED guard correct in
+      isolation (P1/P2/P3 each ship their own inline tests; PG is the whole-guard pass). Static
+      detector: differential (static evalGate ⟺ runtime evaluateFieldCondition), Tarjan property
+      vs brute-force oracle, must-not-block corpus, adversarial loop corpus, full operator matrix
+      (P2.4 STARTED this — extend across P3 paths). Runtime guard: P1.3 scenarios + CAN survival +
+      goroutine-ctx. Protected-list: P3 block/allow/invariant-status cases. No flaky/skipped guard
+      tests. done_when: guard provably correct with cascades OFF → unlocks P4.
   P4:
     title: "Cascade enablement (THE GATE)"
     status: not_started
-    gate: "requires P1+P2+P3 verified"
-  P5:
-    title: "Verification + supersede PR #176 + arch-doc fixes"
+    gate: "requires P1+P2+P3 built AND PG green"
+  PL:
+    title: "Live-System Verification (Piece 2 exit — cascades ON)"
     status: not_started
     gate: "after P4"
+    note: |
+      The end-to-end tests structurally IMPOSSIBLE before P4 (nothing loops while M1/M2 are off),
+      run against real Temporal + real DB. THE DECISIVE TEST: a real A->B->A across SYNTHESIZED
+      events is actually stopped by the runtime visited-set (the loop that could not fire in P1).
+      Plus: fan-out/storm (1 write -> N rows -> N cascades; re-evaluate the HELD depth-cap with
+      real fan-out), read-after-commit ordering (DESIGN §9 best-effort — assert actual behavior,
+      flag if read-your-writes bites -> F2), idempotency/soak, full pipeline sweep (4 handlers
+      cascade, sinks silent, consistency green, guard never over-blocks a live chain).
+      done_when: live guarded pipeline proven end-to-end; decisive loop-stopped test green.
+  P5:
+    title: "Ship — supersede PR #176 + arch-doc fixes"
+    status: not_started
+    gate: "after PL"
 
 follow_up:
   F1: { title: "Bus-routing consolidation (Option B)", type: committed, status: not_started }
