@@ -67,9 +67,78 @@ func (a *App) prepareRequest(req *SaveWorkflowRequest) error {
 	return nil
 }
 
+// analyzeCascades runs the static cascade-loop detector for the in-flight rule against the
+// active rule set. ruleID is uuid.Nil for a create. Returns an empty (no-op) analysis when
+// the rule would be inactive or has no actions.
+func (a *App) analyzeCascades(ctx context.Context, ruleID uuid.UUID, req SaveWorkflowRequest) (workflow.CascadeAnalysis, error) {
+	cand, err := buildCandidate(ruleID, req)
+	if err != nil {
+		return workflow.CascadeAnalysis{}, err
+	}
+	return a.workflowBus.DetectCascadeLoops(ctx, a.registry, cand)
+}
+
+// enforceCascades blocks the save when the detector proves a re-arming loop, and logs the
+// non-blocking warning/info tiers.
+func (a *App) enforceCascades(ctx context.Context, ruleID uuid.UUID, req SaveWorkflowRequest) error {
+	analysis, err := a.analyzeCascades(ctx, ruleID, req)
+	if err != nil {
+		return errs.Newf(errs.Internal, "cascade analysis: %s", err)
+	}
+	if analysis.HasErrors() {
+		return errs.Newf(errs.InvalidArgument, "cascade loop: %s", analysis.ErrorSummary())
+	}
+	for _, f := range analysis.Warnings {
+		a.log.Warn(ctx, "workflowsaveapp: possible cascade loop", "ruleID", ruleID, "detail", f.Reason)
+	}
+	for _, f := range analysis.Info {
+		a.log.Info(ctx, "workflowsaveapp: cascade datapoint", "ruleID", ruleID, "detail", f.Reason)
+	}
+	return nil
+}
+
+// buildCandidate translates an in-flight save request into the detector's CandidateRule.
+// Only active actions contribute mutations (inactive actions never execute).
+func buildCandidate(ruleID uuid.UUID, req SaveWorkflowRequest) (workflow.CandidateRule, error) {
+	entityID, err := uuid.Parse(req.EntityID)
+	if err != nil {
+		return workflow.CandidateRule{}, errs.Newf(errs.InvalidArgument, "entity_id: %s", err)
+	}
+	triggerTypeID, err := uuid.Parse(req.TriggerTypeID)
+	if err != nil {
+		return workflow.CandidateRule{}, errs.Newf(errs.InvalidArgument, "trigger_type_id: %s", err)
+	}
+
+	actions := make([]workflow.CandidateAction, 0, len(req.Actions))
+	for _, act := range req.Actions {
+		if !act.IsActive {
+			continue
+		}
+		actions = append(actions, workflow.CandidateAction{ActionType: act.ActionType, Config: act.ActionConfig})
+	}
+
+	var conds *json.RawMessage
+	if len(req.TriggerConditions) > 0 {
+		tc := req.TriggerConditions
+		conds = &tc
+	}
+
+	return workflow.CandidateRule{
+		RuleID:            ruleID,
+		Name:              req.Name,
+		IsActive:          req.IsActive,
+		EntityID:          entityID,
+		TriggerTypeID:     triggerTypeID,
+		TriggerConditions: conds,
+		Actions:           actions,
+	}, nil
+}
+
 // DryRunValidate runs full validation on the workflow request without committing
-// to the database. Returns a ValidationResult indicating success or errors.
-func (a *App) DryRunValidate(req SaveWorkflowRequest) ValidationResult {
+// to the database. Returns a ValidationResult indicating success or errors. ruleID is the
+// rule being edited (uuid.Nil for a create dry-run) — it lets the cascade analysis overlay
+// the candidate over its own persisted version instead of double-counting it.
+func (a *App) DryRunValidate(ctx context.Context, ruleID uuid.UUID, req SaveWorkflowRequest) ValidationResult {
 	var validationErrors []string
 
 	if err := req.Validate(); err != nil {
@@ -92,11 +161,24 @@ func (a *App) DryRunValidate(req SaveWorkflowRequest) ValidationResult {
 		}
 	}
 
+	// Static cascade-loop analysis (active-only; no-op for draft/inactive rules). Provable
+	// loops fail validation; warnings/info are attached for the editor without blocking.
+	var cascade *workflow.CascadeAnalysis
+	if analysis, err := a.analyzeCascades(ctx, ruleID, req); err != nil {
+		a.log.Error(ctx, "workflowsaveapp: dry-run cascade analysis failed", "ruleID", ruleID, "err", err)
+	} else {
+		cascade = &analysis
+		for _, f := range analysis.Errors {
+			validationErrors = append(validationErrors, fmt.Sprintf("cascade loop: %s", f.Reason))
+		}
+	}
+
 	return ValidationResult{
 		Valid:       len(validationErrors) == 0,
 		Errors:      validationErrors,
 		ActionCount: len(req.Actions),
 		EdgeCount:   len(req.Edges),
+		Cascade:     cascade,
 	}
 }
 
@@ -104,6 +186,11 @@ func (a *App) DryRunValidate(req SaveWorkflowRequest) ValidationResult {
 // This performs all operations within a single database transaction.
 func (a *App) SaveWorkflow(ctx context.Context, ruleID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error) {
 	if err := a.prepareRequest(&req); err != nil {
+		return SaveWorkflowResponse{}, err
+	}
+
+	// Block provable cascade loops before touching the DB (active-only; no-op for drafts).
+	if err := a.enforceCascades(ctx, ruleID, req); err != nil {
 		return SaveWorkflowResponse{}, err
 	}
 
@@ -164,6 +251,11 @@ func (a *App) SaveWorkflow(ctx context.Context, ruleID uuid.UUID, req SaveWorkfl
 // This performs all operations within a single database transaction.
 func (a *App) CreateWorkflow(ctx context.Context, userID uuid.UUID, req SaveWorkflowRequest) (SaveWorkflowResponse, error) {
 	if err := a.prepareRequest(&req); err != nil {
+		return SaveWorkflowResponse{}, err
+	}
+
+	// Block provable cascade loops before touching the DB (uuid.Nil = brand-new candidate).
+	if err := a.enforceCascades(ctx, uuid.Nil, req); err != nil {
 		return SaveWorkflowResponse{}, err
 	}
 

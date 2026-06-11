@@ -295,6 +295,14 @@ func (a *api) toggleActive(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Newf(errs.Internal, "query rule: %s", err)
 	}
 
+	// When activating, block provable cascade loops this rule would close against the
+	// currently-active set (active-only scope; DESIGN §10). Deactivation can never create a loop.
+	if req.IsActive {
+		if encErr := a.checkActivateCascades(ctx, existingRule); encErr != nil {
+			return encErr
+		}
+	}
+
 	// Toggle active status
 	// Business layer methods:
 	//   ActivateRule(ctx, AutomationRule) error
@@ -330,6 +338,52 @@ func (a *api) toggleActive(ctx context.Context, r *http.Request) web.Encoder {
 	response.Actions = toActionResponses(actionsView)
 
 	return response
+}
+
+// checkActivateCascades runs the static cascade-loop detector for a rule about to be
+// activated. It blocks activation (InvalidArgument) when a provable re-arming loop is found,
+// and logs the non-blocking warning/info tiers. Returns nil when activation is safe.
+func (a *api) checkActivateCascades(ctx context.Context, rule workflow.AutomationRule) *errs.Error {
+	actions, err := a.workflowBus.QueryRoleActionsViewByRuleID(ctx, rule.ID)
+	if err != nil {
+		return errs.Newf(errs.Internal, "query actions: %s", err)
+	}
+
+	candActions := make([]workflow.CandidateAction, 0, len(actions))
+	for _, av := range actions {
+		if !av.IsActive {
+			continue
+		}
+		candActions = append(candActions, workflow.CandidateAction{
+			ActionType: av.TemplateActionType,
+			Config:     av.ActionConfig,
+		})
+	}
+
+	cand := workflow.CandidateRule{
+		RuleID:            rule.ID,
+		Name:              rule.Name,
+		IsActive:          true,
+		EntityID:          rule.EntityID,
+		TriggerTypeID:     rule.TriggerTypeID,
+		TriggerConditions: rule.TriggerConditions,
+		Actions:           candActions,
+	}
+
+	analysis, err := a.workflowBus.DetectCascadeLoops(ctx, a.registry, cand)
+	if err != nil {
+		return errs.Newf(errs.Internal, "cascade analysis: %s", err)
+	}
+	if analysis.HasErrors() {
+		return errs.Newf(errs.InvalidArgument, "cascade loop: %s", analysis.ErrorSummary())
+	}
+	for _, f := range analysis.Warnings {
+		a.log.Warn(ctx, "ruleapi: possible cascade loop on activate", "rule_id", rule.ID, "detail", f.Reason)
+	}
+	for _, f := range analysis.Info {
+		a.log.Info(ctx, "ruleapi: cascade datapoint on activate", "rule_id", rule.ID, "detail", f.Reason)
+	}
+	return nil
 }
 
 // ============================================================
