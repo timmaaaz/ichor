@@ -16,6 +16,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
@@ -68,17 +69,22 @@ type BusDependencies struct {
 
 // RegisterAll registers all standard workflow actions using the config
 func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
+	// Protected-field registry: the generic data handlers consult it to reject writes to
+	// invariant-bearing fields (DESIGN §10). Populated once all handlers are registered.
+	reg := protected.New()
+
 	// Control flow actions - only need log
 	registry.Register(control.NewEvaluateConditionHandler(config.Log))
 
 	// Control flow - delay
 	registry.Register(control.NewDelayHandler(config.Log))
 
-	// Data actions - only need log and db
-	registry.Register(data.NewUpdateFieldHandler(config.Log, config.DB))
+	// Data actions - only need log and db. The three generic raw-SQL handlers also take
+	// the protected registry so they reject writes to guarded fields.
+	registry.Register(data.NewUpdateFieldHandler(config.Log, config.DB, data.WithProtectedRegistry(reg)))
 	registry.Register(data.NewLookupEntityHandler(config.Log, config.DB))
-	registry.Register(data.NewCreateEntityHandler(config.Log, config.DB))
-	registry.Register(data.NewTransitionStatusHandler(config.Log, config.DB))
+	registry.Register(data.NewCreateEntityHandler(config.Log, config.DB, data.WithProtectedRegistry(reg)))
+	registry.Register(data.NewTransitionStatusHandler(config.Log, config.DB, data.WithProtectedRegistry(reg)))
 	registry.Register(data.NewAuditLogHandler(config.Log, config.DB))
 
 	// Approval actions
@@ -109,6 +115,10 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 
 	// Integration actions
 	registry.Register(integration.NewCallWebhookHandler(config.Log))
+
+	// All handlers registered — derive the protected-field set (on_update manifest claims
+	// + domain-declared db-model tags) so the generic data handlers enforce it.
+	PopulateProtected(reg, registry)
 }
 
 // RegisterInventoryActions registers only inventory-related actions

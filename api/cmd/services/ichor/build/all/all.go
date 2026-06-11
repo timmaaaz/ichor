@@ -351,12 +351,14 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/toolindex"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	temporalpkg "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -553,6 +555,17 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		actionRegistry.Register(communication.NewSendEmailHandler(cfg.Log, cfg.DB, emailClient, cfg.ResendFrom))
 		cfg.Log.Info(context.Background(), "send_email: Resend client configured", "from", cfg.ResendFrom)
 	}
+
+	// Upgrade the generic data handlers with the protected-field registry so manual
+	// execution (and any cascaded write) rejects writes to invariant-bearing fields
+	// (DESIGN §10 protected-list). The core registration uses no registry (enforcement
+	// off); replace those three here, then derive the protected set now that every action
+	// handler is registered (on_update manifest claims + domain-declared db-model tags).
+	protectedReg := protected.New()
+	actionRegistry.Register(data.NewUpdateFieldHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg)))
+	actionRegistry.Register(data.NewCreateEntityHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg)))
+	actionRegistry.Register(data.NewTransitionStatusHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg)))
+	workflowactions.PopulateProtected(protectedReg, actionRegistry)
 
 	// =========================================================================
 	// Initialize Temporal Workflow Infrastructure

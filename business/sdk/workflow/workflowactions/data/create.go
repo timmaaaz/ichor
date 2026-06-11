@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -26,14 +27,17 @@ type CreateEntityHandler struct {
 	log          *logger.Logger
 	db           *sqlx.DB
 	templateProc *workflow.TemplateProcessor
+	protected    *protected.Registry
 }
 
 // NewCreateEntityHandler creates a new create entity handler.
-func NewCreateEntityHandler(log *logger.Logger, db *sqlx.DB) *CreateEntityHandler {
+func NewCreateEntityHandler(log *logger.Logger, db *sqlx.DB, opts ...Option) *CreateEntityHandler {
+	o := newOptions(opts)
 	return &CreateEntityHandler{
 		log:          log,
 		db:           db,
 		templateProc: workflow.NewTemplateProcessor(workflow.DefaultTemplateProcessingOptions()),
+		protected:    o.protected,
 	}
 }
 
@@ -84,6 +88,16 @@ func (h *CreateEntityHandler) Execute(ctx context.Context, config json.RawMessag
 	var cfg CreateEntityConfig
 	if err := json.Unmarshal(config, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	// Reject creates into a whole-table-protected entity (e.g. an append-only ledger)
+	// or that set any protected field directly (DESIGN §10 protected-list).
+	fieldNames := make([]string, 0, len(cfg.Fields))
+	for k := range cfg.Fields {
+		fieldNames = append(fieldNames, k)
+	}
+	if err := checkProtectedEntity(h.protected, cfg.TargetEntity, fieldNames); err != nil {
+		return nil, err
 	}
 
 	templateContext := buildTemplateContext(execContext)

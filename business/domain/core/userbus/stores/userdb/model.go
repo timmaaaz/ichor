@@ -15,8 +15,8 @@ import (
 type user struct {
 	ID                 uuid.UUID      `db:"id"`
 	RequestedBy        sql.NullString `db:"requested_by"`
-	ApprovedBy         sql.NullString `db:"approved_by"`
-	UserApprovalStatus uuid.UUID      `db:"user_approval_status_id"`
+	ApprovedBy         sql.NullString `db:"approved_by" protected:"true"`
+	UserApprovalStatus uuid.UUID      `db:"user_approval_status_id" protected:"true"`
 	TitleID            sql.NullString `db:"title_id"`
 	OfficeID           sql.NullString `db:"office_id"`
 	WorkPhoneID        uuid.UUID      `db:"work_phone_id"`
@@ -33,7 +33,7 @@ type user struct {
 	Enabled            bool           `db:"enabled"`
 	DateHired          sql.NullTime   `db:"date_hired"`
 	DateRequested      sql.NullTime   `db:"date_requested"`
-	DateApproved       sql.NullTime   `db:"date_approved"`
+	DateApproved       sql.NullTime   `db:"date_approved" protected:"true"`
 	CreatedDate        time.Time      `db:"created_date"`
 	UpdatedDate        time.Time      `db:"updated_date"`
 }

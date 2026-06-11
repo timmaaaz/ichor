@@ -15,14 +15,14 @@ type orderLineItem struct {
 	OrderID                       uuid.UUID      `db:"order_id"`
 	ProductID                     uuid.UUID      `db:"product_id"`
 	Description                   sql.NullString `db:"description"`
-	Quantity                      int            `db:"quantity"`
+	Quantity                      int            `db:"quantity" protected:"true"`
 	UnitPrice                     sql.NullString `db:"unit_price"`
 	Discount                      sql.NullString `db:"discount"`
 	DiscountType                  sql.NullString `db:"discount_type"`
 	LineTotal                     sql.NullString `db:"line_total"`
-	LineItemFulfillmentStatusesID uuid.UUID      `db:"line_item_fulfillment_statuses_id"`
-	PickedQuantity                int            `db:"picked_quantity"`
-	BackorderedQuantity           int            `db:"backordered_quantity"`
+	LineItemFulfillmentStatusesID uuid.UUID      `db:"line_item_fulfillment_statuses_id" protected:"true"`
+	PickedQuantity                int            `db:"picked_quantity" protected:"true"`
+	BackorderedQuantity           int            `db:"backordered_quantity" protected:"true"`
 	ShortPickReason               sql.NullString `db:"short_pick_reason"`
 	CreatedBy                     uuid.UUID      `db:"created_by"`
 	CreatedDate                   time.Time      `db:"created_date"`

@@ -15,7 +15,7 @@ type dbOrder struct {
 	Number              string         `db:"number"`
 	CustomerID          uuid.UUID      `db:"customer_id"`
 	DueDate             time.Time      `db:"due_date"`
-	FulfillmentStatusID uuid.UUID      `db:"order_fulfillment_status_id"`
+	FulfillmentStatusID uuid.UUID      `db:"order_fulfillment_status_id" protected:"true"`
 	OrderDate           sql.NullTime   `db:"order_date"`
 	BillingAddressID    *uuid.UUID     `db:"billing_address_id"`
 	ShippingAddressID   *uuid.UUID     `db:"shipping_address_id"`

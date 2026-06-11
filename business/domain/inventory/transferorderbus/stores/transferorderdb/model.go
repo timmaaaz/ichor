@@ -12,23 +12,23 @@ type transferOrder struct {
 	TransferID      uuid.UUID      `db:"id"`
 	TransferNumber  sql.NullString `db:"transfer_number"`
 	ProductID       uuid.UUID      `db:"product_id"`
-	FromLocationID  uuid.UUID     `db:"from_location_id"`
-	ToLocationID    uuid.UUID     `db:"to_location_id"`
-	RequestedByID   uuid.UUID     `db:"requested_by"`
-	ApprovedByID    uuid.NullUUID `db:"approved_by"`
-	RejectedByID    uuid.NullUUID `db:"rejected_by_id"`
+	FromLocationID  uuid.UUID      `db:"from_location_id"`
+	ToLocationID    uuid.UUID      `db:"to_location_id"`
+	RequestedByID   uuid.UUID      `db:"requested_by"`
+	ApprovedByID    uuid.NullUUID  `db:"approved_by"`
+	RejectedByID    uuid.NullUUID  `db:"rejected_by_id"`
 	ApprovalReason  sql.NullString `db:"approval_reason"`
 	RejectionReason sql.NullString `db:"rejection_reason"`
-	ClaimedByID     uuid.NullUUID `db:"claimed_by"`
-	ClaimedAt       sql.NullTime  `db:"claimed_at"`
-	CompletedByID   uuid.NullUUID `db:"completed_by"`
-	CompletedAt     sql.NullTime  `db:"completed_at"`
-	Quantity        int           `db:"quantity"`
-	Status          string        `db:"status"`
-	TransferDate    time.Time     `db:"transfer_date"`
-	CreatedDate     time.Time     `db:"created_date"`
-	UpdatedDate     time.Time     `db:"updated_date"`
-	ScenarioID      *uuid.UUID    `db:"scenario_id"`
+	ClaimedByID     uuid.NullUUID  `db:"claimed_by" protected:"true"`
+	ClaimedAt       sql.NullTime   `db:"claimed_at"`
+	CompletedByID   uuid.NullUUID  `db:"completed_by" protected:"true"`
+	CompletedAt     sql.NullTime   `db:"completed_at"`
+	Quantity        int            `db:"quantity" protected:"true"`
+	Status          string         `db:"status"`
+	TransferDate    time.Time      `db:"transfer_date"`
+	CreatedDate     time.Time      `db:"created_date"`
+	UpdatedDate     time.Time      `db:"updated_date"`
+	ScenarioID      *uuid.UUID     `db:"scenario_id"`
 }
 
 func toBusTransferOrder(db transferOrder) transferorderbus.TransferOrder {
