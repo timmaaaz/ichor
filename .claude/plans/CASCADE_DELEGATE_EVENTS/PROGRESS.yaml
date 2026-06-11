@@ -1,0 +1,72 @@
+# PROGRESS — Cascade Delegate Events
+# Mirrors PLAN.md. Status: not_started | in_progress | done
+# Created 2026-06-11. Source of truth for design = DESIGN.md / WRITE_PATH.md / FOLLOW_UP.md.
+
+meta:
+  branch: feature/cascade-delegate-events
+  plan: .claude/plans/CASCADE_DELEGATE_EVENTS/PLAN.md
+  hard_rule: "loop guard (P1+P2) complete & verified BEFORE P4 opens the cascade gate (DESIGN §0)"
+
+core:
+  P0:
+    title: "Foundations (shared edge fn, value-aware manifest, consistency test)"
+    status: done
+    gate: "—"
+    note: "Pure foundation — NO behavior change; cascades remain OFF (gate stays at P4 after the loop guard). build+vet clean across all touched packages."
+    tasks:
+      - id: P0.1
+        title: "Lift findDownstreamRules → FindDownstreamRules on *workflow.Business (business/sdk/workflow/cascade.go); ruleapi adapts"
+        status: done
+        verified: "cascade-map integration test green (Test_CascadeAPI, 9 subtests); go build+vet clean; zero behavior change"
+      - id: P0.2
+        title: "Extend EntityModification with Changes []ProducedChange (value + operator + indeterminate); populate 4 enum-const + 3 config-literal"
+        status: done
+        verified: "go build+vet clean; all workflowactions unit tests green (incl. transition/create/createpo GetEntityModifications asserts). Type named ProducedChange (FieldChange already taken by event delta in models.go). Operator consts added in interfaces.go."
+      - id: P0.3
+        title: "Consistency-test harness (declared mutations == delegate events that fire); knownSilent allowlist for M1/M2"
+        status: done
+        verified: |
+          STRUCTURAL (no DB): business/sdk/workflow/workflowactions/manifest_consistency_test.go — iterates the full
+            registry (RegisterAll, zero-value buses); validates well-formedness for all 19 EntityModifiers + pins the
+            P0.2 value-extension (4 enum-const exact values; 3 config-literal literal-vs-templated). GREEN.
+          DB-BACKED declared==fired (FULL coverage, user-chosen Option 3): api/cmd/services/ichor/tests/workflow/
+            actionhandlers/manifest_consistency_test.go — executes every firing handler against real dbtest buses with
+            a spy on the shared db.BusDomain.Delegate; asserts each declared (non-silent) mod fires. 12 subtests GREEN:
+            resolve_approval_request, approve/reject_inventory_adjustment, approve/reject_transfer_order,
+            approve/reject_purchase_order, allocate_inventory, reserve_inventory, create_purchase_order,
+            create_put_away_task, + update_field knownSilent trip-wire.
+          knownSilent: allocate's allocation_results (M2) asserted silent; update_field (M1) trip-wire asserts NO
+            delegate fires today and goes RED when P4 wires synthesis. EntityName↔domain mapping mirrors all.go
+            RegisterDomain. Redundant no-DB mock-storer exemplar removed (subsumed by the DB test).
+    done_when: "shared edge fn in place; manifest carries values; consistency test green on current handlers — ALL MET"
+
+  P1:
+    title: "Runtime loop guard (visited-set)"
+    status: not_started
+    gate: "after P0"
+  P2:
+    title: "Static loop detector (graph + SCC + 3-tier)"
+    status: not_started
+    gate: "after P0"
+  P3:
+    title: "Protected-list (validation fix)"
+    status: not_started
+    gate: "after P0"
+  P4:
+    title: "Cascade enablement (THE GATE)"
+    status: not_started
+    gate: "requires P1+P2+P3 verified"
+  P5:
+    title: "Verification + supersede PR #176 + arch-doc fixes"
+    status: not_started
+    gate: "after P4"
+
+follow_up:
+  F1: { title: "Bus-routing consolidation (Option B)", type: committed, status: not_started }
+  F2: { title: "Reliability hardening — transactional outbox", type: committed, status: not_started }
+  F3: { title: "Missing typed actions (claim/execute_transfer_order, receive_po_line_item, approve/deny_user)", type: on-demand, status: not_started }
+  F4: { title: "Frontend field-picker UX (Path B)", type: on-demand, status: not_started }
+  F5: { title: "Arch-doc cleanup + manifest-drift fixes", type: committed, status: not_started }
+  F6: { title: "Alert/approval-creation cascade", type: on-demand, status: not_started }
+  F7: { title: "Intentional-loop support (maxReEntries)", type: on-demand, status: not_started }
+  F8: { title: "Cascade observability (OTel distributed tracing + drop metric)", type: committed, status: not_started }

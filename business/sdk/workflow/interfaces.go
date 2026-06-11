@@ -160,4 +160,46 @@ type EntityModification struct {
 	// Fields lists which fields are modified (optional, for on_update events).
 	// Used for more precise cascade matching when rules have field-specific conditions.
 	Fields []string `json:"fields,omitempty"`
+
+	// Changes carries the statically-known produced VALUE for the fields this action
+	// sets, enabling value-aware cascade-edge detection (does this modification's
+	// output satisfy a downstream rule's trigger condition?). It is additive over
+	// Fields: a field may appear in Fields with no Change (the value is not statically
+	// knowable — dynamic/templated/computed), in which case the static detector must
+	// treat the edge conservatively and defer to the runtime loop guard. Absence of a
+	// Change for a field therefore means "indeterminate value", same as an explicit
+	// Change with Indeterminate=true (the explicit form additionally records the operator).
+	Changes []ProducedChange `json:"changes,omitempty"`
+}
+
+// Trigger / produced-change operators — the shared vocabulary used on BOTH sides of a
+// cascade edge: matched by the trigger evaluator (see TriggerProcessor.evaluateFieldCondition)
+// and declared by EntityModifier handlers via FieldChange.Operator. Static handlers that set
+// a field to a fixed value emit OperatorChangedTo.
+const (
+	OperatorEquals      = "equals"
+	OperatorNotEquals   = "not_equals"
+	OperatorChangedFrom = "changed_from"
+	OperatorChangedTo   = "changed_to"
+	OperatorGreaterThan = "greater_than"
+	OperatorLessThan    = "less_than"
+	OperatorContains    = "contains"
+	OperatorIn          = "in"
+)
+
+// ProducedChange describes a value an action produces for a single field, expressed in the
+// SAME vocabulary as a trigger FieldCondition (FieldName/Operator/Value) so the static
+// cascade detector can match a produced change against a downstream rule's trigger
+// condition directly (condition-vs-condition). It is the manifest/produced counterpart to
+// the runtime event delta type FieldChange (NewValue/OldValue) in models.go.
+//
+// Indeterminate marks a field the action writes with a value that is NOT statically
+// knowable (dynamic/templated/computed, e.g. "{{trigger.x}}", a runtime user ID, or a
+// computed quantity). When Indeterminate is true, Value is unset and the detector treats
+// the edge conservatively, deferring to the runtime loop guard.
+type ProducedChange struct {
+	FieldName     string `json:"field_name"`
+	Operator      string `json:"operator"`
+	Value         any    `json:"value,omitempty"`
+	Indeterminate bool   `json:"indeterminate,omitempty"`
 }

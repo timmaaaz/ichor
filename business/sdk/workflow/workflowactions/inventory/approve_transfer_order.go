@@ -72,7 +72,16 @@ func (h *ApproveTransferOrderHandler) GetOutputPorts() []workflow.OutputPort {
 // GetEntityModifications implements workflow.EntityModifier.
 func (h *ApproveTransferOrderHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
 	return []workflow.EntityModification{
-		{EntityName: "inventory.transfer_orders", EventType: "on_update", Fields: []string{"status", "approved_by_id", "approval_reason"}},
+		{
+			EntityName: "inventory.transfer_orders",
+			EventType:  "on_update",
+			Fields:     []string{"status", "approved_by_id", "approval_reason"},
+			// status is set to a fixed enum constant. approved_by_id (runtime user) and
+			// approval_reason (config) are left indeterminate (no Change entry).
+			Changes: []workflow.ProducedChange{
+				{FieldName: "status", Operator: workflow.OperatorChangedTo, Value: transferorderbus.StatusApproved},
+			},
+		},
 	}
 }
 
