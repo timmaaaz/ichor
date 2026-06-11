@@ -184,6 +184,13 @@ func RegisterProcurementActions(registry *workflow.ActionRegistry, config Action
 // This should be called even in test environments to enable cascade visualization.
 // Entity-modifying handlers implement EntityModifier for cascade detection; communication
 // and control flow handlers that don't modify entities are included for completeness.
+//
+// NOTE: unlike RegisterAll/all.go, this lightweight path does NOT wire the protected-list:
+// the generic data handlers are constructed without WithProtectedRegistry and PopulateProtected
+// is never called, so protected-field enforcement is a silent no-op here. That is fine for the
+// cascade-visualization / loop-detection tests that use this path, but an enforcement test must
+// build the registry via RegisterAll (or add the WithProtectedRegistry + PopulateProtected step)
+// rather than relying on RegisterCoreActions.
 func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, db *sqlx.DB) {
 	// Control flow actions - only need log
 	registry.Register(control.NewEvaluateConditionHandler(log))

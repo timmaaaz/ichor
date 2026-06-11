@@ -152,7 +152,7 @@ func eventFor(entityName string, entityID uuid.UUID) workflow.TriggerEvent {
 // dispatched WorkflowInput (same-process: stored as a WorkflowLineage value).
 func dispatchedLineage(t *testing.T, in WorkflowInput) WorkflowLineage {
 	t.Helper()
-	v, ok := in.TriggerData[cascadeLineageKey]
+	v, ok := in.TriggerData[CascadeLineageKey]
 	require.True(t, ok, "dispatched TriggerData must carry the cascade lineage")
 	l, ok := v.(WorkflowLineage)
 	require.True(t, ok, "lineage should be a WorkflowLineage value, got %T", v)
@@ -332,7 +332,7 @@ func TestGuard_VisitedSetSurvivesContinueAsNew(t *testing.T) {
 		Visited:                []string{lineagePairKey(ruleA, entityID)},
 		OriginatingExecutionID: execID,
 	}
-	triggerData := map[string]any{cascadeLineageKey: lineage}
+	triggerData := map[string]any{CascadeLineageKey: lineage}
 
 	// Before CAN: the activity reads the lineage from MergedContext.Flattened.
 	mc := NewMergedContext(triggerData)
@@ -450,14 +450,14 @@ func TestLineageFromContextMap(t *testing.T) {
 	l := WorkflowLineage{Visited: []string{lineagePairKey(r, e)}, OriginatingExecutionID: execID}
 
 	t.Run("struct value (same-process)", func(t *testing.T) {
-		got := lineageFromContextMap(map[string]any{cascadeLineageKey: l})
+		got := lineageFromContextMap(map[string]any{CascadeLineageKey: l})
 		require.Equal(t, l, got)
 	})
 
 	t.Run("json-roundtrip map (Temporal-deserialized)", func(t *testing.T) {
 		// Marshal a TriggerData carrying the struct, then unmarshal to map[string]any
 		// — exactly what the activity sees after Temporal serialization.
-		raw, err := json.Marshal(map[string]any{cascadeLineageKey: l})
+		raw, err := json.Marshal(map[string]any{CascadeLineageKey: l})
 		require.NoError(t, err)
 		var decoded map[string]any
 		require.NoError(t, json.Unmarshal(raw, &decoded))
@@ -472,7 +472,7 @@ func TestLineageFromContextMap(t *testing.T) {
 	})
 
 	t.Run("nil value -> empty", func(t *testing.T) {
-		require.Empty(t, lineageFromContextMap(map[string]any{cascadeLineageKey: nil}).Visited)
+		require.Empty(t, lineageFromContextMap(map[string]any{CascadeLineageKey: nil}).Visited)
 	})
 
 	t.Run("nil map -> empty", func(t *testing.T) {
@@ -480,6 +480,6 @@ func TestLineageFromContextMap(t *testing.T) {
 	})
 
 	t.Run("wrong type -> empty", func(t *testing.T) {
-		require.Empty(t, lineageFromContextMap(map[string]any{cascadeLineageKey: "garbage"}).Visited)
+		require.Empty(t, lineageFromContextMap(map[string]any{CascadeLineageKey: "garbage"}).Visited)
 	})
 }

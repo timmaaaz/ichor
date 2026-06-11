@@ -77,6 +77,14 @@ func (h *ResolveApprovalHandler) GetOutputPorts() []workflow.OutputPort {
 // GetEntityModifications declares which entities this handler modifies.
 func (h *ResolveApprovalHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
 	var cfg ResolveApprovalConfig
+	// Return nil on a nil/unparseable config. The protected-list auto-source (PopulateProtected)
+	// is the only nil-config caller, and returning nil there is DELIBERATE: it keeps
+	// workflow.approval_requests OUT of the protected registry. That entity is not in the
+	// generic-handler whitelist (data.IsValidTableName == false), so no generic raw-SQL action can
+	// target it — registering it would be "dead protection" that Test_ProtectedFields_ResolveToRealColumns
+	// rejects. (If approval_requests is ever whitelisted, re-evaluate: this manifest must then feed
+	// the registry, e.g. by passing a representative config here.) Cascade detection and
+	// manifest-consistency call this with the action's real config and get the full manifest below.
 	if err := json.Unmarshal(config, &cfg); err != nil {
 		return nil
 	}

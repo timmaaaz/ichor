@@ -212,7 +212,7 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 	// the handler's bus write / delegate.Call to seed the next cascade generation
 	// (P1 runtime loop guard — see lineage.go). It is also persisted on the execution
 	// record's TriggerData JSON below, giving each execution free cascade provenance.
-	triggerData[cascadeLineageKey] = lineage
+	triggerData[CascadeLineageKey] = lineage
 
 	// Persist the execution record before starting the workflow so that
 	// activities which write to approval_requests (FK → automation_executions)
