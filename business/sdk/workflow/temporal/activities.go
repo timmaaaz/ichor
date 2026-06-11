@@ -57,6 +57,12 @@ func (a *Activities) ExecuteActionActivity(ctx context.Context, input ActionActi
 
 	execCtx := buildExecContext(input)
 
+	// Stamp the cascade lineage from the workflow input onto the Go context so the
+	// handler's bus write — and the delegate.Call it triggers — carry it forward to
+	// DelegateHandler, which seeds the next cascade generation (P1 runtime loop guard).
+	// Inert when no lineage is present (e.g. manual execution).
+	ctx = contextWithLineage(ctx, lineageFromContextMap(input.Context))
+
 	result, err := handler.Execute(ctx, input.Config, execCtx)
 	if err != nil {
 		logger.Error("Action execution failed",
@@ -132,6 +138,9 @@ func (a *Activities) ExecuteAsyncActionActivity(ctx context.Context, input Actio
 	if !exists {
 		return ActionActivityOutput{}, fmt.Errorf("async action %s (%s): no handler registered for type %s", input.ActionName, input.ActionID, input.ActionType)
 	}
+
+	// Stamp the cascade lineage onto the Go context (see ExecuteActionActivity).
+	ctx = contextWithLineage(ctx, lineageFromContextMap(input.Context))
 
 	if err := handler.StartAsync(ctx, input.Config, execCtx, taskToken); err != nil {
 		logger.Error("Async action start failed",

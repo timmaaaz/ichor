@@ -124,13 +124,34 @@ func (t *WorkflowTrigger) OnEntityEvent(ctx context.Context, event workflow.Trig
 		"matched", matchedCount,
 	)
 
+	// Cascade lineage carried from the originating write (empty for a human /
+	// non-workflow write, which starts a fresh chain). See lineage.go.
+	parentLineage := lineageFromContext(ctx)
+
 	// Start a Temporal workflow for each matched rule.
 	for _, rm := range result.MatchedRules {
 		if !rm.Matched {
 			continue
 		}
 
-		if err := t.startWorkflowForRule(ctx, event, rm); err != nil {
+		// Runtime loop guard (P1): refuse to dispatch a (rule, entity) that has
+		// already fired in this cascade chain. This is the universal backstop that
+		// stops A->B->A loops; it keys on the (rule, entity) pair, so the same rule
+		// firing for a *different* entity is allowed (e.g. a rule processing a batch).
+		if parentLineage.Contains(rm.Rule.ID, event.EntityID) {
+			t.log.Warn(ctx, "cascade loop prevented: rule already fired for entity in this chain",
+				"rule_id", rm.Rule.ID,
+				"rule_name", rm.Rule.Name,
+				"entity_name", event.EntityName,
+				"entity_id", event.EntityID,
+			)
+			continue
+		}
+
+		// Seed the next generation: parent set extended with this (rule, entity).
+		childLineage := parentLineage.With(rm.Rule.ID, event.EntityID)
+
+		if err := t.startWorkflowForRule(ctx, event, rm, childLineage); err != nil {
 			t.log.Error(ctx, "Failed to start workflow for rule",
 				"rule_id", rm.Rule.ID,
 				"rule_name", rm.Rule.Name,
@@ -150,6 +171,7 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 	ctx context.Context,
 	event workflow.TriggerEvent,
 	rm workflow.RuleMatchResult,
+	lineage WorkflowLineage,
 ) error {
 	// Load graph definition from database.
 	graph, err := t.loadGraphDefinition(ctx, rm.Rule.ID)
@@ -169,6 +191,11 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 	// Generate unique execution ID.
 	executionID := uuid.New()
 
+	// Stamp the chain root once (first dispatched hop), then preserve it.
+	if lineage.OriginatingExecutionID == uuid.Nil {
+		lineage.OriginatingExecutionID = executionID
+	}
+
 	// Deterministic workflow ID for deduplication and traceability.
 	// Format: workflow-{ruleID}-{entityID}-{executionID}
 	workflowID := fmt.Sprintf("workflow-%s-%s-%s",
@@ -179,6 +206,13 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 
 	// Build trigger data map (reused for both the execution record and workflow input).
 	triggerData := buildTriggerData(event)
+
+	// Carry the seeded cascade lineage onto the workflow input (rides TriggerData,
+	// Continue-As-New-safe). It flows into the action activity context, then through
+	// the handler's bus write / delegate.Call to seed the next cascade generation
+	// (P1 runtime loop guard — see lineage.go). It is also persisted on the execution
+	// record's TriggerData JSON below, giving each execution free cascade provenance.
+	triggerData[cascadeLineageKey] = lineage
 
 	// Persist the execution record before starting the workflow so that
 	// activities which write to approval_requests (FK → automation_executions)
