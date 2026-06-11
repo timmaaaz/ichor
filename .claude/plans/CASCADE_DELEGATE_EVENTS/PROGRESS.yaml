@@ -154,6 +154,29 @@ core:
           ValidationResult.Cascade.Errors populated. REGRESSION: full ruleapi pkg (incl.
           Test_CascadeAPI + toggle) and full workflowsaveapi pkg (incl. create/update/dryrun +
           Temporal) GREEN — no legitimate workflow newly blocked.
+      - id: P2.4
+        title: "Hardening tests (differential vs runtime + must-not-block corpus + Tarjan property + re-arm invariants)"
+        status: done
+        verified: |
+          NEW business/sdk/workflow/cascade_detect_hardening_test.go (pure, no DB):
+          (1) DIFFERENTIAL — feeds the same (operator, produced value, condition) matrix to BOTH
+            the static evalGate AND the real TriggerProcessor.evaluateFieldCondition, asserting
+            they agree on every decidable verdict. This pins the soundness invariant the whole
+            scheme rests on (static graph == what fires at runtime) and fails on drift.
+            **It immediately caught a real bug:** changed_from was lumped with changed_to and
+            returned gateNo when the field wasn't written — but changed_from matches on the PRIOR
+            value (prev==PreviousValue) and does NOT require a change, so the producer never
+            determines it. FIX: changed_from is now ALWAYS indeterminate on on_update (never a
+            definite edge → loops through a changed_from gate surface as WARN, never a hard
+            block). Strictly more conservative (can only add WARN edges, never new ERROR blocks);
+            integration suites re-run GREEN.
+          (2) MUST-NOT-BLOCK corpus — 5 legitimate shapes (linear state machine, fan-out,
+            convergent sync, same-field/different-values no-edge, conditioned self-ref) asserted
+            to produce ZERO Errors (guards the dangerous false-positive failure mode).
+          (3) TARJAN property test — 600 random graphs vs a brute-force transitive-closure SCC
+            oracle, asserting identical partitions.
+          (4) RE-ARM invariants — all-auto-match rings (size 1-5) always ERROR; convergent
+            changed_to rings (size 2-5) never ERROR. All GREEN; go vet clean.
     decisions:
       - "Convergence latches = {changed_to, changed_from} ONLY. equals/not_equals/>/</contains/in
          have no prev!=V clause -> re-fire idempotently -> ALWAYS re-arm; a D-cycle gated only by

@@ -282,8 +282,9 @@ func evalGate(c FieldCondition, prod map[string]fieldProduction, consumerEvent s
 	fp := prod[c.FieldName]
 
 	switch c.Operator {
-	case OperatorChangedTo, OperatorChangedFrom:
-		// changed_* only matches on_update and only when the field actually changed.
+	case OperatorChangedTo:
+		// changed_to matches only on_update, requires the field to change (so the producer must
+		// write it), and the new value to equal the gate value.
 		if consumerEvent != "on_update" {
 			return gateNo
 		}
@@ -293,14 +294,19 @@ func evalGate(c FieldCondition, prod map[string]fieldProduction, consumerEvent s
 		if fp.indeterminate || !fp.hasKnown {
 			return gateIndeterminate
 		}
-		if c.Operator == OperatorChangedTo {
-			if valuesEqual(fp.value, c.Value) {
-				return gateYes
-			}
+		if valuesEqual(fp.value, c.Value) {
+			return gateYes
+		}
+		return gateNo
+
+	case OperatorChangedFrom:
+		// changed_from matches on the PRIOR value (prev == PreviousValue) and does NOT require a
+		// change. The producer never determines the prior value, so this is always indeterminate
+		// on on_update (and cannot match on create/delete). It therefore never yields a definite
+		// edge — cascade loops through a changed_from gate surface as WARN, not a hard block.
+		if consumerEvent != "on_update" {
 			return gateNo
 		}
-		// changed_from depends on the PRIOR value, which the producer does not determine —
-		// we know the field changed but not what it was. Conservatively indeterminate.
 		return gateIndeterminate
 
 	default:
