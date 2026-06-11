@@ -287,7 +287,7 @@ core:
 
   PG:
     title: "Guard Verification (Piece 1 exit — cascades OFF)"
-    status: not_started
+    status: done
     gate: "after P0-P3; GREEN = the §0 precondition that opens P4"
     note: |
       Consolidated adversarial/property/cross-cutting pass proving the ASSEMBLED guard correct in
@@ -297,6 +297,46 @@ core:
       (P2.4 STARTED this — extend across P3 paths). Runtime guard: P1.3 scenarios + CAN survival +
       goroutine-ctx. Protected-list: P3 block/allow/invariant-status cases. No flaky/skipped guard
       tests. done_when: guard provably correct with cascades OFF → unlocks P4.
+    verified: |
+      ★ PG GREEN — the §0 precondition is satisfied; this is what unlocks P4. The assembled
+      P1+P2+P3 guard is provably correct in isolation, cascades still OFF. Three new PG test files
+      fill the whole-guard gaps the per-phase inline tests missed; one minimal production add
+      (protected.Registry.Entries introspection). No M1/M2 synthesis touched; M1 trip-wire still
+      asserts NO delegate fires today.
+
+      STATIC (NEW business/sdk/workflow/cascade_detect_pg_test.go, pure):
+        (A1) DIFFERENTIAL FULL MATRIX — static evalGate ⟺ runtime evaluateFieldCondition over the
+          FULL operator set incl. the greater_than/less_than STRING-fallback compare path the inline
+          differential never fed (trigger.go:403/411 ⟺ matchKnown), + a completeness guard that
+          iterates all 8 Operator* consts and fails if any is missing from the matrix or is unknown
+          to the runtime evaluator (no silent cap on operator coverage).
+        (A2) ADVERSARIAL LOOP CORPUS (must-CATCH complement to the must-not-block corpus): auto-match
+          self-loop, equals-/not_equals-gated rings, same-entity changed_to toggles (sizes 2 & 4),
+          a loop disguised by an indeterminate NON-gate write (must still ERROR), and the
+          create->create auto-match ring the P1 visited-set cannot backstop — each ERROR-blocked.
+        (A3) INDETERMINATE-BAND PROPERTY — rings (sizes 2-5) whose only re-arming evidence is an
+          indeterminate/templated write: asserted WARN, NEVER ERROR, and the warning is surfaced.
+      RUNTIME (NEW business/sdk/workflow/temporal/lineage_pg_test.go, pure, -race): concurrent
+        siblings — N delegate dispatches sharing ONE parent-lineage ctx, each a distinct (rule,
+        entity); every child = parent ∪ {its own pair}, no cross-contamination (exercises
+        WorkflowLineage.With immutability + concurrent ctx reads under -race). Full temporal pkg
+        re-run -race GREEN.
+      PROTECTED (NEW protected.Registry.Entries() introspection + NEW DB-backed
+        workflowactions/protected_columns_test.go): the P3-deferred backstop — every registered
+        protected (entity,field) is asserted IsValidTableName + resolves to a REAL column via
+        information_schema (whole-table entries → table exists). Closes the db-tag silent-drop
+        hazard (a tag drifting off a real column → RED). All 14 production pairs resolve.
+      CROSS-CUTTING: only t.Skip in the guard surface is ruleapi/loopdetect_test.go:36
+        (need >=7 workflow entities) — BENIGN: workflow.entities is dynamically populated from every
+        table+view across 10 schemas (seed.sql:651) = dozens of rows, so it never fires.
+
+      FULL GUARD SURFACE GREEN TOGETHER (cascades OFF):
+        pure: business/sdk/workflow (TestCascade*), .../protected, .../temporal (-race).
+        DB:   .../workflowactions/data (enforcement), .../workflowactions (populate + NEW column
+              backstop), api ruleapi (Test_DetectCascadeLoops + Test_CascadeLoopEnforcement),
+              api workflowsaveapi (Test_WorkflowSaveAPI incl. dryrun-cascade-loop-200), api
+              actionhandlers (Test_ManifestConsistency — update_field_known_silent GREEN = NO fire).
+      NEXT = P4 (THE GATE — the only phase that turns cascades ON; M1 synthesize + M2 allocation_results).
   P4:
     title: "Cascade enablement (THE GATE)"
     status: not_started
