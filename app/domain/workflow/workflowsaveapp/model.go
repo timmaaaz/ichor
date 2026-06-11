@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 )
 
 // SaveWorkflowRequest represents a complete workflow save request including
@@ -109,6 +110,10 @@ type ValidationResult struct {
 	Errors      []string `json:"errors,omitempty"`
 	ActionCount int      `json:"action_count"`
 	EdgeCount   int      `json:"edge_count"`
+	// Cascade is the static cascade-loop analysis for this rule against the active rule set:
+	// provable loops (which also fail validation), possible loops (warnings), and
+	// cascade-awareness datapoints (info). Nil when the rule is inactive/draft (not analyzed).
+	Cascade *workflow.CascadeAnalysis `json:"cascade,omitempty"`
 }
 
 // Encode implements the Encoder interface.

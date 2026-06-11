@@ -100,8 +100,80 @@ core:
          as a test — that is its natural home."
   P2:
     title: "Static loop detector (graph + SCC + 3-tier)"
-    status: not_started
+    status: done
     gate: "after P0"
+    note: |
+      Authoring-time half only. Cascades remain OFF (no M1/M2 synthesis touched; gate stays at
+      P4). NO behavior change for legitimate workflows — existing ruleapi + workflowsaveapi
+      suites stay green (no false-positive blocks). Conservative by design: ERROR-block only
+      provable re-arming loops; everything uncertain → WARN (P1 runtime visited-set is the
+      backstop for the indeterminate band). An adversarial subagent review produced 10 soundness
+      fixes, all baked in (see DECISIONS below).
+    tasks:
+      - id: P2.1
+        title: "Pure detector core + unit tests (business/sdk/workflow/cascade_detect.go)"
+        status: done
+        verified: |
+          NEW cascade_detect.go (~600 lines, 3 layers): pure types (ruleNode, edgeKind,
+          CascadeFinding, CascadeAnalysis{Errors/Warnings/Info}+HasErrors/ErrorSummary) + pure
+          fns (classifyEdge, evalGate, producedOnEvent multi-writer aggregation, valuesEqual +
+          numFloat64 mirroring trigger.go compareValues EXACTLY incl. fmt.Sprintf %% stringify,
+          isConvergentLatch={changed_to,changed_from} ONLY, buildEdges, tarjanSCC, findCyclePath,
+          reArm, classifyCascades) + DB assembly (DetectCascadeLoops/nodeFromView/candidateNode/
+          modsFor). Edge X->Y = value-aware (produced value ⊨ trigger). D=definite / P=incl.
+          indeterminate; Tarjan on both; block only candidate-involving D-cycles that PROVABLY
+          re-arm; convergent (sticky changed_to latch) -> INFO; unprovable -> WARN; non-candidate
+          D-ERROR SCC -> WARN safety-net. NEW cascade_detect_test.go: 18 table-driven subtests
+          (the full adversarial matrix) GREEN; go vet clean.
+      - id: P2.2
+        title: "Enforce at save/create/dry-run (workflowsaveapp) + activation (ruleapi.toggleActive)"
+        status: done
+        verified: |
+          workflowsaveapp.go: enforceCascades (block on HasErrors, log WARN/INFO) called after
+          prepareRequest in SaveWorkflow + CreateWorkflow (uuid.Nil candidate); buildCandidate
+          maps the in-flight request (active actions only) to workflow.CandidateRule.
+          DryRunValidate(ctx, ruleID, req) now runs the detector and attaches the full
+          CascadeAnalysis to ValidationResult.Cascade (model.go field add; both workflowsaveapi
+          dry_run callers updated to pass ctx + ruleID/uuid.Nil — the workflow-save.md ⚠
+          "ValidationResult shape" checklist). ruleapi.toggleActive: checkActivateCascades runs
+          before ActivateRule when req.IsActive (active-only). Registry comes from the app/api
+          layer (the SDK detector takes *ActionRegistry as a param — Business holds none). build
+          + vet clean across business/sdk/workflow, workflowsaveapp, ruleapi, workflowsaveapi,
+          and api/cmd/.../build/all (mux wiring).
+      - id: P2.3
+        title: "Integration tests (DB-backed detector + HTTP enforcement) + regression"
+        status: done
+        verified: |
+          NEW ruleapi/loopdetect_test.go: Test_DetectCascadeLoops drives the real
+          DetectCascadeLoops against seeded Postgres rules w/ a RegisterCoreActions registry —
+          self-loop auto-match -> ERROR, convergent changed_to sync -> INFO (NOT blocked),
+          cross-rule auto-match loop -> ERROR, forward-only -> INFO only, inactive candidate ->
+          no-op. Test_CascadeLoopEnforcement (HTTP): deactivate then RE-activate the seeded
+          auto-match update_field self-loop -> 400 InvalidArgument; benign rule -> 200. NEW
+          workflowsaveapi dryRunCascadeLoop200: create dry_run self-loop -> Valid=false +
+          ValidationResult.Cascade.Errors populated. REGRESSION: full ruleapi pkg (incl.
+          Test_CascadeAPI + toggle) and full workflowsaveapi pkg (incl. create/update/dryrun +
+          Temporal) GREEN — no legitimate workflow newly blocked.
+    decisions:
+      - "Convergence latches = {changed_to, changed_from} ONLY. equals/not_equals/>/</contains/in
+         have no prev!=V clause -> re-fire idempotently -> ALWAYS re-arm; a D-cycle gated only by
+         those is a PROVABLE loop (ERROR). (Fixes the most dangerous misclassification.)"
+      - "Reset detection scans EVERY node in the D-cycle for a known !=V write; indeterminate
+         reset -> downgrade ERROR->WARN (never block on an unprovable reset)."
+      - "Edge value mirrors runtime: aggregate all of X's writes to a gate field (any indeterminate
+         writer -> edge indeterminate); ignore X's writes to NON-gate fields (kills updated_at/
+         updated_by WARN spam); changed_to/changed_from on an on_create consumer -> DEFINITE-NO."
+      - "Block only candidate-involving SCCs (pre-existing set already validated; overlay replaces
+         the candidate's persisted version, or adds it for create/activate). Non-candidate D-ERROR
+         SCC -> WARN safety-net (seed-injected loops)."
+      - "Create->create cascades are NOT backstopped by P1 (each new row = fresh entityID, so the
+         (ruleID,entityID) visited-set never revisits). Provable on_create D-cycles ERROR via the
+         no-latch rule; documented in cascade_detect.go."
+      - "Surfacing (user choice 'best/most-debuggable end product'): detector returns structured
+         CascadeAnalysis (cycle path + human reason per tier); ERROR blocks w/ path at all hooks;
+         DryRunValidate returns the full analysis in ValidationResult.Cascade for the editor;
+         WARN/INFO logged at the write hooks."
+    done_when: "detector enforces at both hooks, active-only — ALL MET"
   P3:
     title: "Protected-list (validation fix)"
     status: not_started

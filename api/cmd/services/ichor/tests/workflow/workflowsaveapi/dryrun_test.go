@@ -74,6 +74,64 @@ func dryRunValid200(sd SaveSeedData) []apitest.Table {
 	}
 }
 
+// dryRunCascadeLoop200 tests that a dry-run of an active rule which would close a provable
+// cascade loop (auto-match update_field writing its own trigger entity → self-loop) reports
+// valid=false and surfaces the loop in the ValidationResult.Cascade analysis.
+func dryRunCascadeLoop200(sd SaveSeedData) []apitest.Table {
+	if len(sd.Entities) == 0 || len(sd.TriggerTypes) < 2 {
+		return nil
+	}
+
+	entity := sd.Entities[0]
+	fullTable := entity.SchemaName + "." + entity.Name
+	onUpdate := sd.TriggerTypes[1].ID.String() // on_update
+
+	return []apitest.Table{
+		{
+			Name:       "self-loop",
+			URL:        "/v1/workflow/rules/full?dry_run=true",
+			Token:      sd.Users[0].Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodPost,
+			Input: workflowsaveapp.SaveWorkflowRequest{
+				Name:          "Dry Run Cascade Self Loop",
+				IsActive:      true,
+				EntityID:      entity.ID.String(),
+				TriggerTypeID: onUpdate, // auto-match on_update (no trigger conditions)
+				Actions: []workflowsaveapp.SaveActionRequest{
+					{
+						Name:         "Self-writing update_field",
+						ActionType:   "update_field",
+						IsActive:     true,
+						ActionConfig: json.RawMessage(fmt.Sprintf(`{"target_entity":%q,"target_field":"status","new_value":"x"}`, fullTable)),
+					},
+				},
+				Edges: []workflowsaveapp.SaveEdgeRequest{
+					{TargetActionID: "temp:0", EdgeType: "start"},
+				},
+			},
+			GotResp: &workflowsaveapp.ValidationResult{},
+			ExpResp: &workflowsaveapp.ValidationResult{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, ok := got.(*workflowsaveapp.ValidationResult)
+				if !ok {
+					return "error casting response"
+				}
+				if gotResp.Valid {
+					return "expected valid=false for a self-loop cascade"
+				}
+				if gotResp.Cascade == nil {
+					return "expected Cascade analysis to be attached"
+				}
+				if len(gotResp.Cascade.Errors) == 0 {
+					return "expected a cascade loop error in the analysis"
+				}
+				return ""
+			},
+		},
+	}
+}
+
 // dryRunInvalid200 tests that invalid workflows return valid=false with
 // meaningful errors, without persisting anything.
 func dryRunInvalid200(sd SaveSeedData) []apitest.Table {

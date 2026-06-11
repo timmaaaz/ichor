@@ -56,6 +56,7 @@ func Test_WorkflowSaveAPI(t *testing.T) {
 
 	test.Run(t, dryRunValid200(sd), "dryrun-valid-200")
 	test.Run(t, dryRunInvalid200(sd), "dryrun-invalid-200")
+	test.Run(t, dryRunCascadeLoop200(sd), "dryrun-cascade-loop-200")
 
 	// ============================================================
 	// Temporal integration tests (requires Temporal container)

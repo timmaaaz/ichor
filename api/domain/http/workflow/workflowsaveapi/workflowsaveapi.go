@@ -37,7 +37,7 @@ func (a *api) save(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	if r.URL.Query().Get("dry_run") == "true" {
-		return a.app.DryRunValidate(req)
+		return a.app.DryRunValidate(ctx, ruleID, req)
 	}
 
 	resp, err := a.app.SaveWorkflow(ctx, ruleID, req)
@@ -79,7 +79,7 @@ func (a *api) create(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	if r.URL.Query().Get("dry_run") == "true" {
-		return a.app.DryRunValidate(req)
+		return a.app.DryRunValidate(ctx, uuid.Nil, req)
 	}
 
 	userID, err := mid.GetUserID(ctx)
